@@ -21,3 +21,10 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
+
+# Tambahan Laravel
+/bootstrap/cache/*.php
+/storage/logs/*.log
+/storage/debugbar
+composer.lock
+error_log
