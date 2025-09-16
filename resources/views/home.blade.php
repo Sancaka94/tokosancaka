@@ -1494,7 +1494,7 @@ width: 22px;
 
                 <div class="trust-logo-card">
 
-                    <img src="https://tokosancaka.com/storage/products/GPiXRCVocc1MGJVOULQO2xEOvlaNq5qlFLcWRfNk.jpg" class="img-fluid" alt="Sertifikat Keanggotaan">
+                    <img src="https://tokosancaka.com/storage/uploads/ahu.jpg" class="img-fluid" alt="Sertifikat Keanggotaan">
 
                 </div>
 
