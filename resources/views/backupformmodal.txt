@@ -1,0 +1,196 @@
+<form id="formCekOngkir">
+
+                        <div class="row g-3">
+
+                            <!-- Kolom Kiri: Asal & Tujuan -->
+
+                            <div class="col-lg-6">
+
+                                <h6 class="fw-bold">Lokasi Asal</h6>
+
+                                <div class="mb-3 autocomplete-container">
+
+                                    <label for="asal_search" class="form-label">Cari Lokasi Asal</label>
+
+                                    <input type="text" id="asal_search" class="form-control" placeholder="Ketik nama desa/kecamatan/kota" autocomplete="off" required>
+
+                                    <input type="hidden" id="asal_id" name="origin">
+
+                                    <div id="asal_results" class="autocomplete-results"></div>
+
+                                </div>
+
+                                <hr>
+
+                                <h6 class="fw-bold">Lokasi Tujuan</h6>
+
+                                <div class="mb-3 autocomplete-container">
+
+                                    <label for="tujuan_search" class="form-label">Cari Lokasi Tujuan</label>
+
+                                    <input type="text" id="tujuan_search" class="form-control" placeholder="Ketik nama desa/kecamatan/kota" autocomplete="off" required>
+
+                                    <input type="hidden" id="tujuan_id" name="destination">
+
+                                    <div id="tujuan_results" class="autocomplete-results"></div>
+
+                                </div>
+
+                            </div>
+
+                            <!-- Kolom Kanan: Detail Barang -->
+
+                            <div class="col-lg-6">
+
+                                <h6 class="fw-bold">Detail Kiriman</h6>
+
+                                <div class="mb-3"><label class="form-label">Jenis Layanan</label>
+
+                                    <div class="form-check form-check-inline"><input class="form-check-input" type="radio" name="jenisLayanan" id="reguler" value="reguler" checked><label class="form-check-label" for="reguler">Reguler</label></div>
+
+                                    <div class="form-check form-check-inline"><input class="form-check-input" type="radio" name="jenisLayanan" id="cod" value="cod"><label class="form-check-label" for="cod">COD</label></div>
+
+                                    <div class="form-check form-check-inline"><input class="form-check-input" type="radio" name="jenisLayanan" id="cargo" value="cargo"><label class="form-check-label" for="cargo">Cargo</label></div>
+
+                                    <div class="form-check form-check-inline"><input class="form-check-input" type="radio" name="jenisLayanan" id="motor" value="motor"><label class="form-check-label" for="motor">Motor</label></div>
+
+                                </div>
+
+
+
+                                <!-- Detail Motor (Hidden by default) -->
+
+                                <div id="motorDetails" class="d-none">
+
+                                    <div class="row g-3">
+
+                                        <div class="col-md-6 mb-3">
+
+                                            <label for="motor_cc" class="form-label">CC Motor</label>
+
+                                            <input type="number" class="form-control" id="motor_cc" placeholder="Contoh: 155">
+
+                                        </div>
+
+                                        <div class="col-md-6 mb-3">
+
+                                            <label for="motor_tipe" class="form-label">Tipe</label>
+
+                                            <select class="form-select" id="motor_tipe">
+
+                                                <option value="Matic">Matic</option>
+
+                                                <option value="Manual">Manual</option>
+
+                                            </select>
+
+                                        </div>
+
+                                    </div>
+
+                                    <div id="motorChecklistDetails" class="mb-3">
+
+                                        <label class="form-label fw-bold">Kelengkapan Motor</label>
+
+                                        <div class="form-check"><input class="form-check-input" type="checkbox" value="STNK" id="cek_stnk"><label class="form-check-label" for="cek_stnk">STNK</label></div>
+
+                                        <div class="form-check"><input class="form-check-input" type="checkbox" value="FC BPKB" id="cek_bpkb"><label class="form-check-label" for="cek_bpkb">FC BPKB Asli</label></div>
+
+                                        <div class="form-check"><input class="form-check-input" type="checkbox" value="Kunci" id="cek_kunci"><label class="form-check-label" for="cek_kunci">Kunci</label></div>
+
+                                        <div class="form-check"><input class="form-check-input" type="checkbox" value="Helm" id="cek_helm"><label class="form-check-label" for="cek_helm">Helm</label></div>
+
+                                        <div class="form-check"><input class="form-check-input" type="checkbox" value="Surat Jalan" id="cek_surat_jalan"><label class="form-check-label" for="cek_surat_jalan">Surat Jalan Polres</label></div>
+
+                                        <div class="form-check"><input class="form-check-input" type="checkbox" value="Sudah Packing" id="cek_packing"><label class="form-check-label" for="cek_packing">Sudah di Packing</label></div>
+
+                                    </div>
+
+                                </div>
+
+                                
+                                <!-- Detail Reguler/Cargo/COD (Visible by default) -->
+
+                                <div id="regulerDetails">
+
+                                    <div class="row">
+
+                                        <div class="col-md-6 mb-3">
+
+                                            <label for="berat" class="form-label">Berat (gram)</label>
+
+                                            <input type="number" class="form-control" id="berat" name="weight" placeholder="Contoh: 1000" value="1000" required>
+
+                                        </div>
+
+                                        <div class="col-md-6 mb-3">
+
+                                            <label for="koli" class="form-label">Jumlah Koli / Pcs</label>
+
+                                            <input type="number" class="form-control" id="koli" placeholder="Contoh: 1" value="1" required>
+
+                                        </div>
+
+                                    </div>
+
+                                    <div class="mb-3">
+
+                                        <label class="form-label">Dimensi Volume (cm)</label>
+
+                                        <div class="input-group">
+
+                                            <input type="number" class="form-control" placeholder="P" id="panjang">
+
+                                            <span class="input-group-text">x</span>
+
+                                            <input type="number" class="form-control" placeholder="L" id="lebar">
+
+                                            <span class="input-group-text">x</span>
+
+                                            <input type="number" class="form-control" placeholder="T" id="tinggi">
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+
+
+                                <div class="mb-3"><label for="pilihanEkspedisi" class="form-label">Pilihan Ekspedisi</label><select class="form-select" id="pilihanEkspedisi">
+
+                                        <option selected>Semua Rekanan</option>
+
+                                        <option value="JNE">JNE</option>
+
+                                        <option value="JNT_EXPRESS">J&T EXPRESS</option>
+
+                                        <option value="JNT_CARGO">J&T CARGO</option>
+
+                                        <option value="WAHANA">WAHANA EXPRESS</option>
+
+                                        <option value="POS">POS INDONESIA</option>
+
+                                        <option value="SAP">SAP EXPRESS</option>
+
+                                        <option value="INDAH">INDAH CARGO</option>
+
+                                        <option value="LION">LION PARCEL</option>
+
+                                        <option value="IDEXPRESS">ID EXPRESS</option>
+
+                                        <option value="SPX">SPX EXPRESS</option>
+
+                                        <option value="NCS">NCS</option>
+
+                                        <option value="SENTRAL">SENTRAL CARGO</option>
+
+                                        <option value="SANCAKA">SANCAKA EXPRESS</option>
+
+                                    </select></div>
+
+                            </div>
+
+                        </div>
+
+                    </form>

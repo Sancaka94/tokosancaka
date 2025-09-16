@@ -1,0 +1,21 @@
+{
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "npx vite build"
+  },
+  "devDependencies": {
+    "vite": "^4.0.0",
+    "laravel-vite-plugin": "^1.2.0",
+    "tailwindcss": "^3.4.13",
+    "postcss": "^8.4.47",
+    "autoprefixer": "^10.4.20",
+    "concurrently": "^9.0.1"
+  },
+  "dependencies": {
+    "axios": "^1.7.4",
+    "laravel-echo": "^2.2.0",
+    "pusher-js": "^8.4.0"
+  }
+}
