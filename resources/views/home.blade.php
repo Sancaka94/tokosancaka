@@ -1506,7 +1506,7 @@ width: 22px;
 
                 <div class="trust-logo-card">
 
-                    <img src="https://tokosancaka.com/storage/products/sTQhc4x9iOcthhn3q5GF3T62jTpLu2A9FcZ8IVEO.png" class="img-fluid" alt="Mitra Resmi">
+                    <img src="https://tokosancaka.com/storage/uploads/pupr.png" class="img-fluid" alt="Mitra Resmi">
 
                 </div>
 
