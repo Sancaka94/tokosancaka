@@ -18,4 +18,4 @@ $all_output = array_merge($output, $output2, $output3, $output4, $output5);
 // Simpan ke file log
 file_put_contents($log_file, date('Y-m-d H:i:s') . "\n" . implode("\n", $all_output) . "\n\n", FILE_APPEND);
 
-echo "✅ Deployment selesai. Cek log di {$log_file}";
+echo "✅ Deployment selesai. Silahkan Cek log di {$log_file}";
