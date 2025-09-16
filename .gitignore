@@ -2,7 +2,8 @@
 /node_modules
 /public/build
 /public/hot
-/public/storage
+
+/public/storage <-- BARIS INI SAYA NONAKTIFKAN/HAPUS
 /storage/*.key
 /storage/pail
 /vendor
@@ -22,9 +23,26 @@ yarn-error.log
 /.vscode
 /.zed
 
-# Tambahan Laravel
+Tambahan Laravel
 /bootstrap/cache/*.php
-/storage/logs/*.log
 /storage/debugbar
 composer.lock
 error_log
+
+=================================================================
+ATURAN BARU UNTUK MELACAK FOLDER UPLOADS
+=================================================================
+1. Abaikan semua yang ada di dalam folder storage...
+/storage/*
+
+2. KECUALI (JANGAN ABAIKAN) path menuju folder uploads Anda
+!/storage/app
+!/storage/app/public
+!/storage/app/public/uploads
+!/storage/app/public/uploads/**
+
+3. Tetap abaikan file log
+/storage/logs
+/storage/logs/*.log
+
+=================================================================
