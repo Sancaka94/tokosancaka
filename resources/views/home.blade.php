@@ -1482,7 +1482,7 @@ width: 22px;
 
                 <div class="trust-logo-card">
 
-                    <img src="https://tokosancaka.com/storage/products/LeFUm7fGVSRlkA0O1LDB1QXUHJMdWgo8OsWn1lNi.png" class="img-fluid" alt="Logo Terdaftar">
+                    <img src="https://tokosancaka.com/storage/uploads/pengertian-oss.jpg.webp" class="img-fluid" alt="Logo Terdaftar">
 
                 </div>
 
