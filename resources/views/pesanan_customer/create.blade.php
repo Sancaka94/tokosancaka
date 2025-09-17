@@ -19,7 +19,7 @@
     PERBAIKAN DESAIN: Tampilan Baru Form Pemesanan
     - Dibuat oleh Gemini
     - Fokus pada Clean UI, UX, dan Responsiveness
-    - Update: Warna diubah menjadi merah & perbaikan filter
+    - Update: Perbaikan ukuran tombol dan responsivitas
     ============================================
     */
 
@@ -141,12 +141,21 @@
         background-color: rgba(var(--primary-rgb), 0.08);
     }
 
-    /* Buttons */
+    /*
+    ============================================
+    PERBAIKAN RESPONSIVE: Ukuran Tombol Dikecilkan
+    ============================================
+    */
     .btn {
         border-radius: var(--border-radius-md);
         font-weight: 600;
-        padding: 0.75rem 1.5rem;
+        padding: 0.6rem 1.2rem; /* Ukuran padding dikurangi */
+        font-size: 0.9rem; /* Ukuran font dikecilkan */
         transition: all 0.2s ease-in-out;
+    }
+    .btn-lg {
+        padding: 0.75rem 1.5rem;
+        font-size: 1rem;
     }
     .btn-primary {
         background-color: var(--primary-color);
@@ -237,11 +246,9 @@
     NEW STYLE: Cek Ongkir Modal (Sesuai Gambar)
     ============================================
     */
-
     #ongkirModal .modal-title {
         color: var(--primary-color);
     }
-    
     .service-filter-buttons .filter-btn {
         --bs-btn-padding-y: .35rem;
         --bs-btn-padding-x: 1.25rem;
@@ -262,7 +269,6 @@
         border-color: var(--primary-color);
         box-shadow: 0 4px 8px rgba(var(--primary-rgb), 0.2);
     }
-    
     .ongkir-header-row {
         font-weight: 600;
         color: var(--secondary-color);
@@ -271,7 +277,6 @@
         padding: 0 1rem;
         margin-bottom: 0.5rem;
     }
-
     .ongkir-item-card {
         display: flex;
         flex-direction: row;
@@ -289,15 +294,13 @@
         transform: translateY(-2px);
         border-color: var(--primary-color);
     }
-
     .ongkir-item-col {
         padding: 0 10px;
         display: flex;
         flex-direction: column;
         justify-content: center;
     }
-    .ongkir-item-col .col-label { display: none; } /* Sembunyikan label di desktop */
-
+    .ongkir-item-col .col-label { display: none; }
     .col-service {
         flex: 0 0 24%;
         flex-direction: row;
@@ -312,7 +315,6 @@
     .service-info { display: flex; flex-direction: column; }
     .service-name { font-weight: 600; font-size: 0.95rem; color: var(--text-color); }
     .service-type { font-size: 0.8rem; color: var(--secondary-color); }
-
     .col-etd, .col-cod, .col-pickup, .col-discount { flex: 0 0 12%; text-align: center; }
     .col-price { flex: 0 0 16%; text-align: right; }
     .price-value .base-price {
@@ -335,16 +337,14 @@
         line-height: 1.3;
         display: block;
     }
-
-
     .col-action { flex: 0 0 12%; text-align: right; }
     .btn-kirim {
         background-color: var(--primary-color);
         color: #fff;
         border-radius: 999px;
         font-weight: 600;
-        font-size: 0.85rem;
-        padding: 0.5rem 1.25rem;
+        font-size: 0.8rem; /* Ukuran font dikecilkan */
+        padding: 0.4rem 1rem; /* Padding dikurangi */
         border: none;
     }
     .btn-kirim:hover {
@@ -352,33 +352,42 @@
         color: #fff;
     }
 
-    /* Responsive untuk Modal Ongkir */
+    /*
+    ============================================
+    PERBAIKAN RESPONSIVE: Media Queries untuk Mobile
+    ============================================
+    */
     @media (max-width: 991px) {
-        .ongkir-item-card {
-            flex-wrap: wrap;
-            padding: 1rem;
+        .main-content-container {
+            padding-top: 5rem; /* Kurangi padding atas di mobile */
         }
-        .ongkir-item-col {
-            padding: 5px 0;
-            text-align: left !important;
-            flex-basis: 50%;
+        .stepper::before {
+            left: 10%; right: 10%;
         }
-        .ongkir-item-col .col-label {
-            display: block;
-            font-size: 0.75rem;
-            color: var(--secondary-color);
-            margin-bottom: 2px;
-            font-weight: 500;
-        }
+        .step-text { font-size: 0.75rem; }
+
+        .ongkir-item-card { flex-wrap: wrap; padding: 1rem; }
+        .ongkir-item-col { padding: 5px 0; text-align: left !important; flex-basis: 50%; }
+        .ongkir-item-col .col-label { display: block; font-size: 0.75rem; color: var(--secondary-color); margin-bottom: 2px; font-weight: 500; }
         .col-service { flex-basis: 70%; order: 1; flex-direction: row; }
         .col-action { flex-basis: 30%; order: 2; align-self: center; text-align: center !important;}
         .col-price { order: 3; text-align: left !important; }
         .col-etd { order: 4; }
         .col-cod { order: 5; }
         .col-pickup { order: 6; }
-        .col-discount { display: none; } /* Sembunyikan diskon di mobile untuk hemat space */
+        .col-discount { display: none; }
         .price-value { text-align: left; }
         .price-details { text-align: left !important; }
+    }
+    
+    @media (max-width: 767px) {
+        /* Tombol aksi utama menjadi full-width di mobile */
+        #confirmBtn, #cekOngkirWaBtn {
+            width: 100%;
+        }
+        #cekOngkirWaBtn {
+            margin-top: 0.5rem;
+        }
     }
 
 </style>
@@ -851,4 +860,3 @@ $(document).ready(function () {
 });
 </script>
 @endpush
-
