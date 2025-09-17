@@ -63,6 +63,7 @@
         width: var(--input-group-icon-width);
         justify-content: center;
         color: #6c757d;
+        transition: color 0.2s ease-in-out, border-color 0.2s ease-in-out;
     }
     
     .form-control:focus + .input-group-text,
@@ -89,7 +90,7 @@
     }
     .search-result-item, .ui-menu-item-wrapper { padding: 12px 18px; cursor: pointer; font-size: 0.9rem; border-bottom: 1px solid #f1f1f1; }
     .search-result-item:last-child, .ui-menu-item:last-child .ui-menu-item-wrapper { border-bottom: none; }
-    .search-result-item:hover, .ui-menu-item-wrapper:hover { background: #f8f9fa; }
+    .search-result-item:hover, .ui-menu-item-wrapper.ui-state-active { background: #f8f9fa; }
     .search-result-item .font-weight-bold, .ui-menu-item-wrapper .font-weight-bold { font-weight: 600; color: #343a40; }
     .search-result-item small, .ui-menu-item-wrapper small { color: #6c757d; }
     
@@ -129,19 +130,29 @@
     /* Fokus → border & ikon biru */
     .input-group:focus-within .input-group-text {
         color: #0d6efd;      /* biru Bootstrap */
-        border-color: #0d6efd;
+        border-color: #86b7fe;
     }
 
     /* Sudah ada isi → ikon ikut biru */
     .input-group.has-value .input-group-text {
         color: #0d6efd;
-        border-color: #0d6efd;
     }
 
     .filled {
         border-color: #0d6efd !important;
         box-shadow: 0 0 0 2px rgba(13,110,253,.25) !important;
     }
+    
+    /* Feedback validasi untuk pencarian alamat otomatis */
+    .form-control.is-valid, .form-control.is-valid:focus {
+        border-color: #198754;
+        box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.25);
+    }
+    .form-control.is-invalid, .form-control.is-invalid:focus {
+        border-color: #dc3545;
+        box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25);
+    }
+
 </style>
 @endpush
 
@@ -438,13 +449,13 @@ $(document).ready(function () {
 
     function formatRupiah(angka) { return 'Rp ' + parseInt(angka, 10).toLocaleString('id-ID'); }
     
-    // --- BARU: LOGIKA PENCARIAN KONTAK (AUTOCOMPLETE) ---
+    // --- PERBAIKAN: LOGIKA PENCARIAN KONTAK (AUTOCOMPLETE) ---
 
     // Fungsi untuk mengisi form berdasarkan data kontak yang dipilih
     function fillContactForm(prefix, data) {
-        $(`#${prefix}_name`).val(data.nama);
-        $(`#${prefix}_phone`).val(data.no_hp);
-        $(`#${prefix}_address`).val(data.alamat);
+        $(`#${prefix}_name`).val(data.nama).trigger('blur');
+        $(`#${prefix}_phone`).val(data.no_hp).trigger('blur');
+        $(`#${prefix}_address`).val(data.alamat).trigger('blur');
         
         // Isi hidden input untuk data alamat teks
         $(`#${prefix}_province`).val(data.province).trigger('change');
@@ -460,9 +471,47 @@ $(document).ready(function () {
             $('#penerima_id').val(data.id);
         }
 
-        // Otomatis picu pencarian alamat untuk mendapatkan ID
+        // PERBAIKAN: Otomatis cari & pilih alamat untuk mendapatkan ID
+        const addressSearchInput = $(`#${prefix}_address_search`);
         const addressQuery = `${data.village}, ${data.district}`;
-        $(`#${prefix}_address_search`).val(addressQuery).trigger('input');
+        
+        if (data.village && data.district) {
+            addressSearchInput.val(`Mencari detail: ${addressQuery}...`).prop('disabled', true);
+            addressSearchInput.removeClass('is-invalid is-valid');
+
+            $.get("{{ route('api.address.search') }}", { search: addressQuery })
+                .done(function(results) {
+                    if (results && results.length > 0) {
+                        const item = results[0]; // Ambil hasil pertama sebagai yang paling relevan
+                        const parts = item.full_address.split(',').map(s => s.trim());
+                        
+                        $(`#${prefix}_village`).val(parts[0] || data.village).trigger('change');
+                        $(`#${prefix}_district`).val(parts[1] || data.district).trigger('change');
+                        $(`#${prefix}_regency`).val(parts[2] || data.regency).trigger('change');
+                        $(`#${prefix}_province`).val(parts[3] || data.province).trigger('change');
+                        $(`#${prefix}_postal_code`).val(parts[4] || data.postal_code).trigger('change');
+                        $(`#${prefix}_district_id`).val(item.district_id).trigger('change');
+                        $(`#${prefix}_subdistrict_id`).val(item.subdistrict_id).trigger('change');
+
+                        addressSearchInput.val(item.full_address);
+                        addressSearchInput.addClass('is-valid').removeClass('is-invalid');
+                        setTimeout(() => addressSearchInput.removeClass('is-valid'), 2500);
+
+                    } else {
+                        addressSearchInput.val(addressQuery);
+                        addressSearchInput.addClass('is-invalid').removeClass('is-valid');
+                        Swal.fire('Peringatan', `Detail alamat untuk "${addressQuery}" tidak ditemukan. Harap cari alamat secara manual.`, 'warning');
+                    }
+                })
+                .fail(() => {
+                    addressSearchInput.val(addressQuery);
+                    addressSearchInput.addClass('is-invalid').removeClass('is-valid');
+                    Swal.fire('Error', 'Gagal memuat detail alamat. Silakan cari manual.', 'error');
+                })
+                .always(() => {
+                    addressSearchInput.prop('disabled', false);
+                });
+        }
     }
 
     // Fungsi inisialisasi autocomplete untuk kontak
@@ -479,28 +528,24 @@ $(document).ready(function () {
                             return;
                         }
                         response($.map(data, function(item) {
-                            return {
-                                label: item.nama + " - " + item.no_hp, // Teks yang tampil di dropdown
-                                value: item.nama, // Nilai yang masuk ke input box saat dipilih
-                                data: item // Seluruh data kontak
-                            };
+                            return { label: `${item.nama} - ${item.no_hp}`, value: item.nama, data: item };
                         }));
                     }
                 });
             },
-            minLength: 2, // Mulai mencari setelah 2 karakter diketik
+            minLength: 2,
             select: function(event, ui) {
                 if(ui.item.disabled) return false;
-                event.preventDefault(); // Mencegah nilai default (hanya nama) masuk ke input
-                fillContactForm(prefix, ui.item.data); // Panggil fungsi untuk mengisi semua kolom
+                event.preventDefault();
+                fillContactForm(prefix, ui.item.data);
             },
             focus: function(event, ui) {
+                if(ui.item.disabled) return false;
                 event.preventDefault();
                 $(`#${prefix}_name`).val(ui.item.data.nama);
                 $(`#${prefix}_phone`).val(ui.item.data.no_hp);
             }
         }).autocomplete("instance")._renderItem = function(ul, item) {
-            // Custom render untuk tampilan dropdown yang lebih baik
             if (item.disabled) {
                 return $("<li class='ui-state-disabled p-3 text-muted'></li>").text(item.label).appendTo(ul);
             }
@@ -517,6 +562,7 @@ $(document).ready(function () {
         const searchInput = $(`#${prefix}_address_search`);
         const resultsContainer = $(`#${prefix}_address_results`);
         searchInput.on('input', debounce(() => {
+            searchInput.removeClass('is-valid is-invalid'); // Hapus feedback saat user ketik manual
             const query = searchInput.val();
             if (query.length < 3) { resultsContainer.addClass('d-none'); return; }
             $.get("{{ route('api.address.search') }}", { search: query })
@@ -551,7 +597,7 @@ $(document).ready(function () {
     
     // FUNGSI Cek Ongkir
     function runCekOngkir() {
-        const required = { '#sender_village': 'Alamat Pengirim', '#receiver_village': 'Alamat Penerima', '#item_price': 'Harga Barang', '#weight': 'Berat', '#service_type': 'Jenis Layanan', '#ansuransi': 'Ansuransi' };
+        const required = { '#sender_district_id': 'Alamat Pengirim', '#receiver_district_id': 'Alamat Penerima', '#item_price': 'Harga Barang', '#weight': 'Berat', '#service_type': 'Jenis Layanan', '#ansuransi': 'Ansuransi' };
         let missing = Object.keys(required).filter(s => !$(s).val());
         if (missing.length > 0) { Swal.fire('Data Belum Lengkap', 'Harap lengkapi: ' + missing.map(s => required[s]).join(', '), 'warning'); return; }
         $('#ongkirModalBody').html(`<div class="text-center p-5"><div class="spinner-border text-danger"></div><p class="mt-2 text-muted">Memuat tarif...</p></div>`);
