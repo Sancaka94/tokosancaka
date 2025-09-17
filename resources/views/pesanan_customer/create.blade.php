@@ -541,4 +541,3 @@ document.querySelectorAll('.input-group .form-control, .input-group .form-select
     });
 </script>
 @endpush
-
