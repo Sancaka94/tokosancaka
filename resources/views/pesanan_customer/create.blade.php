@@ -753,15 +753,21 @@ $(document).ready(function () {
                 allResults.forEach(i => {
                     const safeService = (i.service || '').toString().replace(/-/g, ' ');
                     const safeServiceTypeLabel = (i.service_type_label || '').toString().replace(/-/g, ' ');
-                    const v = `${serviceType}-${safeService}-${safeServiceTypeLabel}-${i.cost}-${i.insurance||0}-${i.setting?.cod_fee_amount||0}`;
                     
+                    // ====================================================================
+                    // PERBAIKAN LOGIKA ASURANSI
+                    // ====================================================================
+                    const useInsurance = $('#ansuransi').val() === 'iya';
+                    const insuranceFeeValue = useInsurance ? (i.insurance || 0) : 0;
+                    const v = `${serviceType}-${safeService}-${safeServiceTypeLabel}-${i.cost}-${insuranceFeeValue}-${i.setting?.cod_fee_amount||0}`;
+                    // ====================================================================
+
                     const hasDiscount = i.price?.base_price && i.price.base_price > i.cost;
                     const basePriceFmt = hasDiscount ? formatRupiah(i.price.base_price) : '';
                     const discountFmt = hasDiscount ? `${Math.round(((i.price.base_price - i.cost) / i.price.base_price) * 100)}%` : 'FLAT';
 
                     const codFee = i.setting?.cod_fee_amount || 0;
                     const insuranceFee = i.insurance || 0;
-                    const useInsurance = $('#ansuransi').val() === 'iya';
                     
                     let feeDetailsHtml = '';
                     if (useInsurance && insuranceFee > 0) {
@@ -860,3 +866,4 @@ $(document).ready(function () {
 });
 </script>
 @endpush
+
