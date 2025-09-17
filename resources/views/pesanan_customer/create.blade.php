@@ -6,6 +6,8 @@
 
 {{-- Font Awesome untuk ikon --}}
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+{{-- BARU: CSS untuk jQuery UI Autocomplete --}}
+<link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
 
 <style>
     /* Menggunakan variabel CSS untuk konsistensi tema */
@@ -69,8 +71,8 @@
         color: var(--bs-primary);
     }
 
-    /* Style untuk hasil pencarian alamat/kontak (dipertahankan dari kode asli) */
-    .search-results-container { 
+    /* Style untuk hasil pencarian alamat/kontak */
+    .search-results-container, .ui-autocomplete { 
         position: absolute; 
         z-index: 1000; 
         width: 100%; 
@@ -81,12 +83,15 @@
         max-height: 250px; 
         overflow-y: auto; 
         box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+        padding: 0;
+        margin: 0;
+        list-style: none;
     }
-    .search-result-item { padding: 12px 18px; cursor: pointer; font-size: 0.9rem; border-bottom: 1px solid #f1f1f1; }
-    .search-result-item:last-child { border-bottom: none; }
-    .search-result-item:hover { background: #f8f9fa; }
-    .search-result-item .font-weight-bold { font-weight: 600; color: #343a40; }
-    .search-result-item small { color: #6c757d; }
+    .search-result-item, .ui-menu-item-wrapper { padding: 12px 18px; cursor: pointer; font-size: 0.9rem; border-bottom: 1px solid #f1f1f1; }
+    .search-result-item:last-child, .ui-menu-item:last-child .ui-menu-item-wrapper { border-bottom: none; }
+    .search-result-item:hover, .ui-menu-item-wrapper:hover { background: #f8f9fa; }
+    .search-result-item .font-weight-bold, .ui-menu-item-wrapper .font-weight-bold { font-weight: 600; color: #343a40; }
+    .search-result-item small, .ui-menu-item-wrapper small { color: #6c757d; }
     
     /* Style untuk tombol pilihan custom (Ekspedisi & Pembayaran) */
     #selected_expedition_display, #paymentMethodButton { 
@@ -167,14 +172,14 @@
                                 <label for="sender_name" class="form-label">Nama Pengirim</label>
                                 <div class="input-group">
                                     <span class="input-group-text"><i class="fas fa-user"></i></span>
-                                    <input type="text" name="sender_name" id="sender_name" class="form-control" placeholder="John Doe" required>
+                                    <input type="text" name="sender_name" id="sender_name" class="form-control" placeholder="Cari nama atau no. HP" required>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <label for="sender_phone" class="form-label">No. HP Pengirim</label>
                                 <div class="input-group">
                                     <span class="input-group-text"><i class="fas fa-phone"></i></span>
-                                    <input type="text" name="sender_phone" id="sender_phone" class="form-control" placeholder="08123456789" required>
+                                    <input type="text" name="sender_phone" id="sender_phone" class="form-control" placeholder="Cari nama atau no. HP" required>
                                 </div>
                             </div>
                         </div>
@@ -190,13 +195,13 @@
                         
                         <div class="mt-3">
                             <label for="sender_address" class="form-label">Detail Alamat Lengkap</label>
-                             <div class="input-group">
+                               <div class="input-group">
                                 <span class="input-group-text align-items-start pt-2"><i class="fas fa-map-marked-alt"></i></span>
                                 <textarea name="sender_address" id="sender_address" rows="2" class="form-control" placeholder="Contoh: Jl. Merdeka No. 10, RT 01/RW 02 Perum. Sancaka Warna Cet Biru" required></textarea>
                             </div>
                         </div>
 
-                        {{-- Hidden inputs tidak diubah --}}
+                        {{-- Hidden inputs --}}
                         <input type="hidden" name="pengirim_id" id="pengirim_id">
                         <input type="hidden" name="sender_lat" id="sender_lat"><input type="hidden" name="sender_lng" id="sender_lng">
                         <input type="hidden" name="sender_province" id="sender_province" required><input type="hidden" name="sender_regency" id="sender_regency" required>
@@ -211,30 +216,30 @@
 
                 {{-- Card Penerima --}}
                 <div class="card">
-                     <div class="card-header text-success d-flex align-items-center">
-                        <span class="fa-stack me-2">
-                            <i class="fas fa-circle fa-stack-2x"></i>
-                            <i class="fas fa-map-marker-alt fa-stack-1x fa-inverse"></i>
-                        </span>
-                        Informasi Penerima
-                     </div>
-                     <div class="card-body p-4">
-                         <div class="row g-3">
-                             <div class="col-md-6">
-                                <label for="receiver_name" class="form-label">Nama Penerima</label>
-                                <div class="input-group">
-                                    <span class="input-group-text"><i class="fas fa-user-friends"></i></span>
-                                    <input type="text" name="receiver_name" id="receiver_name" class="form-control" placeholder="Jane Doe" required>
-                                </div>
-                             </div>
-                             <div class="col-md-6">
-                                <label for="receiver_phone" class="form-label">No. HP Penerima</label>
-                                <div class="input-group">
-                                    <span class="input-group-text"><i class="fas fa-mobile-alt"></i></span>
-                                    <input type="text" name="receiver_phone" id="receiver_phone" class="form-control" placeholder="08987654321" required>
-                                </div>
-                            </div>
-                         </div>
+                       <div class="card-header text-success d-flex align-items-center">
+                            <span class="fa-stack me-2">
+                                <i class="fas fa-circle fa-stack-2x"></i>
+                                <i class="fas fa-map-marker-alt fa-stack-1x fa-inverse"></i>
+                            </span>
+                            Informasi Penerima
+                       </div>
+                       <div class="card-body p-4">
+                           <div class="row g-3">
+                               <div class="col-md-6">
+                                   <label for="receiver_name" class="form-label">Nama Penerima</label>
+                                   <div class="input-group">
+                                       <span class="input-group-text"><i class="fas fa-user-friends"></i></span>
+                                       <input type="text" name="receiver_name" id="receiver_name" class="form-control" placeholder="Cari nama atau no. HP" required>
+                                   </div>
+                               </div>
+                               <div class="col-md-6">
+                                   <label for="receiver_phone" class="form-label">No. HP Penerima</label>
+                                   <div class="input-group">
+                                       <span class="input-group-text"><i class="fas fa-mobile-alt"></i></span>
+                                       <input type="text" name="receiver_phone" id="receiver_phone" class="form-control" placeholder="Cari nama atau no. HP" required>
+                                   </div>
+                               </div>
+                           </div>
                         <div class="position-relative mt-3">
                             <label for="receiver_address_search" class="form-label">Cari Alamat (Kec/Kel/Kodepos)</label>
                             <div class="input-group">
@@ -245,13 +250,13 @@
                         </div>
                         <div class="mt-3">
                             <label for="receiver_address" class="form-label">Detail Alamat Lengkap</label>
-                             <div class="input-group">
+                               <div class="input-group">
                                 <span class="input-group-text align-items-start pt-2"><i class="fas fa-map-marked-alt"></i></span>
                                 <textarea name="receiver_address" id="receiver_address" rows="2" class="form-control" placeholder="Contoh: Jl. Pahlawan No. 21, Dusun Mawar, Sebelah Toko Roti" required></textarea>
                             </div>
                         </div>
 
-                        {{-- Hidden inputs tidak diubah --}}
+                        {{-- Hidden inputs --}}
                         <input type="hidden" name="penerima_id" id="penerima_id">
                         <input type="hidden" name="receiver_lat" id="receiver_lat"><input type="hidden" name="receiver_lng" id="receiver_lng">
                         <input type="hidden" name="receiver_province" id="receiver_province" required><input type="hidden" name="receiver_regency" id="receiver_regency" required>
@@ -261,7 +266,7 @@
                         <input type="hidden" name="receiver_subdistrict_id" id="receiver_subdistrict_id" required>
 
                         <div class="form-check mt-3"><input class="form-check-input" type="checkbox" name="save_receiver" id="save_receiver" value="1"><label class="form-check-label" for="save_receiver">Simpan data penerima ini di buku alamat</label></div>
-                     </div>
+                       </div>
                 </div>
             </div>
 
@@ -385,10 +390,10 @@
     </form>
 </div>
 
-{{-- Modal Pilihan Ekspedisi (Struktur tidak diubah, hanya styling minor) --}}
+{{-- Modal Pilihan Ekspedisi --}}
 <div class="modal fade" id="ongkirModal" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content" style="border-radius: 0.75rem;"><div class="modal-header"><h5 class="modal-title fw-bold"><i class="fas fa-shipping-fast me-2 text-danger"></i>Pilihan Ekspedisi</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body" id="ongkirModalBody"></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button></div></div></div></div>
 
-{{-- Modal Metode Pembayaran (Struktur tidak diubah, hanya styling minor) --}}
+{{-- Modal Metode Pembayaran --}}
 <div class="modal fade" id="paymentMethodModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-dialog-scrollable"><div class="modal-content" style="border-radius: 0.75rem;"><div class="modal-header"><h5 class="modal-title fw-bold"><i class="fas fa-credit-card me-2 text-danger"></i>Pilih Metode Pembayaran</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><ul id="paymentOptionsList" class="list-group list-group-flush">
     <li class="list-group-item list-group-item-action d-flex align-items-center cod-payment-option" data-value="COD" data-label="COD Ongkir"><img src="{{ asset('public/assets/cod.png') }}" class="me-3">COD Ongkir</li>
     <li class="list-group-item list-group-item-action d-flex align-items-center cod-payment-option" data-value="CODBARANG" data-label="COD Barang + Ongkir"><img src="{{ asset('public/assets/cod.png') }}" class="me-3">COD Barang + Ongkir</li>
@@ -407,6 +412,10 @@
 @endsection
 
 @push('scripts')
+{{-- BARU: Pustaka jQuery & jQuery UI --}}
+<script src="https://code.jquery.com/jquery-3.6.0.js"></script>
+<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.js"></script>
+
 <script>
 $(document).ready(function () {
     
@@ -428,8 +437,82 @@ $(document).ready(function () {
     };
 
     function formatRupiah(angka) { return 'Rp ' + parseInt(angka, 10).toLocaleString('id-ID'); }
+    
+    // --- BARU: LOGIKA PENCARIAN KONTAK (AUTOCOMPLETE) ---
 
-    // FUNGSI Autocomplete Pencarian Alamat
+    // Fungsi untuk mengisi form berdasarkan data kontak yang dipilih
+    function fillContactForm(prefix, data) {
+        $(`#${prefix}_name`).val(data.nama);
+        $(`#${prefix}_phone`).val(data.no_hp);
+        $(`#${prefix}_address`).val(data.alamat);
+        
+        // Isi hidden input untuk data alamat teks
+        $(`#${prefix}_province`).val(data.province).trigger('change');
+        $(`#${prefix}_regency`).val(data.regency).trigger('change');
+        $(`#${prefix}_district`).val(data.district).trigger('change');
+        $(`#${prefix}_village`).val(data.village).trigger('change');
+        $(`#${prefix}_postal_code`).val(data.postal_code).trigger('change');
+        
+        // Simpan ID kontak di input hidden
+        if (prefix === 'sender') {
+            $('#pengirim_id').val(data.id);
+        } else if (prefix === 'receiver') {
+            $('#penerima_id').val(data.id);
+        }
+
+        // Otomatis picu pencarian alamat untuk mendapatkan ID
+        const addressQuery = `${data.village}, ${data.district}`;
+        $(`#${prefix}_address_search`).val(addressQuery).trigger('input');
+    }
+
+    // Fungsi inisialisasi autocomplete untuk kontak
+    function setupContactSearch(prefix) {
+        $(`#${prefix}_name, #${prefix}_phone`).autocomplete({
+            source: function(request, response) {
+                $.ajax({
+                    url: "{{ route('api.search.kontak') }}",
+                    dataType: "json",
+                    data: { term: request.term },
+                    success: function(data) {
+                        if (!data.length) {
+                            response([{ label: 'Kontak tidak ditemukan', value: request.term, disabled: true }]);
+                            return;
+                        }
+                        response($.map(data, function(item) {
+                            return {
+                                label: item.nama + " - " + item.no_hp, // Teks yang tampil di dropdown
+                                value: item.nama, // Nilai yang masuk ke input box saat dipilih
+                                data: item // Seluruh data kontak
+                            };
+                        }));
+                    }
+                });
+            },
+            minLength: 2, // Mulai mencari setelah 2 karakter diketik
+            select: function(event, ui) {
+                if(ui.item.disabled) return false;
+                event.preventDefault(); // Mencegah nilai default (hanya nama) masuk ke input
+                fillContactForm(prefix, ui.item.data); // Panggil fungsi untuk mengisi semua kolom
+            },
+            focus: function(event, ui) {
+                event.preventDefault();
+                $(`#${prefix}_name`).val(ui.item.data.nama);
+                $(`#${prefix}_phone`).val(ui.item.data.no_hp);
+            }
+        }).autocomplete("instance")._renderItem = function(ul, item) {
+            // Custom render untuk tampilan dropdown yang lebih baik
+            if (item.disabled) {
+                return $("<li class='ui-state-disabled p-3 text-muted'></li>").text(item.label).appendTo(ul);
+            }
+            return $("<li>")
+                .append(`<div class="ui-menu-item-wrapper"><div class="font-weight-bold">${item.data.nama}</div><small>${item.data.no_hp}</small></div>`)
+                .appendTo(ul);
+        };
+    }
+    setupContactSearch('sender');
+    setupContactSearch('receiver');
+
+    // --- LOGIKA PENCARIAN ALAMAT (YANG SUDAH ADA) ---
     function setupAddressSearch(prefix) {
         const searchInput = $(`#${prefix}_address_search`);
         const resultsContainer = $(`#${prefix}_address_results`);
@@ -464,6 +547,8 @@ $(document).ready(function () {
     setupAddressSearch('sender');
     setupAddressSearch('receiver');
 
+    // --- SISA SCRIPT (CEK ONGKIR, MODAL, DLL) TIDAK DIUBAH ---
+    
     // FUNGSI Cek Ongkir
     function runCekOngkir() {
         const required = { '#sender_village': 'Alamat Pengirim', '#receiver_village': 'Alamat Penerima', '#item_price': 'Harga Barang', '#weight': 'Berat', '#service_type': 'Jenis Layanan', '#ansuransi': 'Ansuransi' };

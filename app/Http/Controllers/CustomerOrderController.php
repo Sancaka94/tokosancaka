@@ -280,6 +280,39 @@ class CustomerOrderController extends Controller
         return Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])->post($baseUrl, $payload)->json();
     }
 
+        /**
+     * BARU: Endpoint API untuk pencarian kontak berdasarkan nama atau no_hp.
+     */
+    public function searchKontak(Request $request)
+    {
+        $request->validate([
+            'term' => 'required|string|min:2'
+        ]);
+
+        $searchTerm = $request->input('term');
+
+        $kontaks = Kontak::where('nama', 'LIKE', "%{$searchTerm}%")
+                         ->orWhere('no_hp', 'LIKE', "%{$searchTerm}%")
+                         ->limit(10) // Batasi hasil agar tidak terlalu banyak
+                         ->get([
+                             'id',
+                             'nama',
+                             'no_hp',
+                             'alamat',
+                             'province',
+                             'regency',
+                             'district',
+                             'village',
+                             'postal_code',
+                             // Pastikan nama kolom di bawah ini sesuai dengan tabel 'kontaks' Anda
+                             // Jika tidak ada, Anda bisa hapus atau sesuaikan.
+                             // 'district_id',
+                             // 'subdistrict_id'
+                         ]);
+
+        return response()->json($kontaks);
+    }
+
     public function success()
     {
         $order = session('order');
