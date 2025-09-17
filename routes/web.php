@@ -64,10 +64,6 @@ use App\Http\Controllers\KodePosController;
 
 
 
-
-
-
-
 /*
 
 |--------------------------------------------------------------------------
@@ -98,7 +94,6 @@ Route::get('/', function () {
 
 })->name('home'); // <-- TAMBAHKAN INI
 
-Route::get('/api/search-kontak', [App\Http\Controllers\CustomerOrderController::class, 'searchKontak'])->name('api.search.kontak');
 
 
 Route::get('/admin/import/wordpress', [ImportController::class, 'showForm'])->name('admin.import.wordpress.form');
@@ -106,6 +101,8 @@ Route::get('/admin/import/wordpress', [ImportController::class, 'showForm'])->na
 Route::post('/admin/import/wordpress', [ImportController::class, 'handleImport'])->name('admin.import.wordpress.handle');
 
 Route::get('/feed', [BlogController::class, 'generateFeed'])->name('feed');
+
+Route::get('/api/search-kontak', [App\Http\Controllers\CustomerOrderController::class, 'searchKontak'])->name('api.search.kontak');
 
 
 
@@ -203,7 +200,11 @@ Route::get('customer/profile/setup/{token}', [CustomerProfileController::class, 
 
 // Kita gunakan {resi} agar cocok dengan parameter '$order->resi' dari view Anda
 
+// Rute untuk menampilkan halaman tracking awal
+Route::get('/tracking', [TrackingController::class, 'showTrackingPage'])->name('tracking.index');
 
+// Rute untuk menangani pencarian dari form
+Route::get('/tracking/search', [TrackingController::class, 'showTrackingPage'])->name('tracking.search');
 
 Route::get('/tracking/cetak-thermal/{resi}', [App\Http\Controllers\TrackingController::class, 'cetakThermal'])->name('tracking.cetak_thermal');
 
