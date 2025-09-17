@@ -6,7 +6,7 @@
 
 {{-- Font Awesome untuk ikon --}}
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-{{-- BARU: CSS untuk jQuery UI Autocomplete --}}
+{{-- CSS untuk jQuery UI Autocomplete --}}
 <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
 
 <style>
@@ -423,12 +423,19 @@
 @endsection
 
 @push('scripts')
-{{-- BARU: Pustaka jQuery & jQuery UI --}}
+{{-- Pustaka jQuery & jQuery UI --}}
 <script src="https://code.jquery.com/jquery-3.6.0.js"></script>
 <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.js"></script>
 
 <script>
 $(document).ready(function () {
+
+    // PERBAIKAN: Setup AJAX global untuk menyertakan CSRF token Laravel
+    $.ajaxSetup({
+        headers: {
+            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+        }
+    });
     
     // Handle session flashes
     @if(session('success'))
@@ -449,7 +456,7 @@ $(document).ready(function () {
 
     function formatRupiah(angka) { return 'Rp ' + parseInt(angka, 10).toLocaleString('id-ID'); }
     
-    // --- PERBAIKAN: LOGIKA PENCARIAN KONTAK (AUTOCOMPLETE) ---
+    // --- LOGIKA PENCARIAN KONTAK (AUTOCOMPLETE) ---
 
     // Fungsi untuk mengisi form berdasarkan data kontak yang dipilih
     function fillContactForm(prefix, data) {
@@ -457,32 +464,29 @@ $(document).ready(function () {
         $(`#${prefix}_phone`).val(data.no_hp).trigger('blur');
         $(`#${prefix}_address`).val(data.alamat).trigger('blur');
         
-        // Isi hidden input untuk data alamat teks
         $(`#${prefix}_province`).val(data.province).trigger('change');
         $(`#${prefix}_regency`).val(data.regency).trigger('change');
         $(`#${prefix}_district`).val(data.district).trigger('change');
         $(`#${prefix}_village`).val(data.village).trigger('change');
         $(`#${prefix}_postal_code`).val(data.postal_code).trigger('change');
         
-        // Simpan ID kontak di input hidden
         if (prefix === 'sender') {
             $('#pengirim_id').val(data.id);
         } else if (prefix === 'receiver') {
             $('#penerima_id').val(data.id);
         }
 
-        // PERBAIKAN: Otomatis cari & pilih alamat untuk mendapatkan ID
         const addressSearchInput = $(`#${prefix}_address_search`);
         const addressQuery = `${data.village}, ${data.district}`;
         
         if (data.village && data.district) {
-            addressSearchInput.val(`Mencari detail: ${addressQuery}...`).prop('disabled', true);
-            addressSearchInput.removeClass('is-invalid is-valid');
+            addressSearchInput.val(`Mencari detail: ${addressQuery}...`).prop('disabled', true).removeClass('is-invalid is-valid');
 
             $.get("{{ route('api.address.search') }}", { search: addressQuery })
                 .done(function(results) {
+                    console.log(`Hasil pencarian alamat untuk "${addressQuery}":`, results); // DEBUG
                     if (results && results.length > 0) {
-                        const item = results[0]; // Ambil hasil pertama sebagai yang paling relevan
+                        const item = results[0]; 
                         const parts = item.full_address.split(',').map(s => s.trim());
                         
                         $(`#${prefix}_village`).val(parts[0] || data.village).trigger('change');
@@ -493,24 +497,25 @@ $(document).ready(function () {
                         $(`#${prefix}_district_id`).val(item.district_id).trigger('change');
                         $(`#${prefix}_subdistrict_id`).val(item.subdistrict_id).trigger('change');
 
-                        addressSearchInput.val(item.full_address);
-                        addressSearchInput.addClass('is-valid').removeClass('is-invalid');
+                        addressSearchInput.val(item.full_address).addClass('is-valid').removeClass('is-invalid');
                         setTimeout(() => addressSearchInput.removeClass('is-valid'), 2500);
 
                     } else {
-                        addressSearchInput.val(addressQuery);
-                        addressSearchInput.addClass('is-invalid').removeClass('is-valid');
-                        Swal.fire('Peringatan', `Detail alamat untuk "${addressQuery}" tidak ditemukan. Harap cari alamat secara manual.`, 'warning');
+                        addressSearchInput.val(addressQuery).addClass('is-invalid').removeClass('is-valid');
+                        Swal.fire('Peringatan', `Detail alamat untuk "${addressQuery}" tidak ditemukan di KiriminAja. Harap cari alamat secara manual untuk mendapatkan ID pengiriman.`, 'warning');
                     }
                 })
-                .fail(() => {
-                    addressSearchInput.val(addressQuery);
-                    addressSearchInput.addClass('is-invalid').removeClass('is-valid');
-                    Swal.fire('Error', 'Gagal memuat detail alamat. Silakan cari manual.', 'error');
+                .fail((jqXHR, textStatus, errorThrown) => {
+                    console.error("Gagal AJAX pencarian alamat:", textStatus, errorThrown); // DEBUG
+                    addressSearchInput.val(addressQuery).addClass('is-invalid').removeClass('is-valid');
+                    Swal.fire('Error', 'Gagal memuat detail alamat dari KiriminAja. Silakan cari manual.', 'error');
                 })
                 .always(() => {
                     addressSearchInput.prop('disabled', false);
                 });
+        } else {
+             // Jika data village/district tidak ada di database kontak
+             Swal.fire('Info', 'Data alamat (desa/kecamatan) tidak lengkap di kontak tersimpan. Silakan cari alamat manual.', 'info');
         }
     }
 
@@ -518,18 +523,24 @@ $(document).ready(function () {
     function setupContactSearch(prefix) {
         $(`#${prefix}_name, #${prefix}_phone`).autocomplete({
             source: function(request, response) {
+                console.log(`Mencari kontak untuk: "${request.term}"`); // DEBUG
                 $.ajax({
                     url: "{{ route('api.search.kontak') }}",
                     dataType: "json",
                     data: { term: request.term },
                     success: function(data) {
-                        if (!data.length) {
+                        console.log("Data kontak diterima:", data); // DEBUG
+                        if (!data || !data.length) {
                             response([{ label: 'Kontak tidak ditemukan', value: request.term, disabled: true }]);
                             return;
                         }
                         response($.map(data, function(item) {
                             return { label: `${item.nama} - ${item.no_hp}`, value: item.nama, data: item };
                         }));
+                    },
+                    error: function(jqXHR, textStatus, errorThrown) {
+                        console.error("AJAX Error untuk pencarian kontak:", textStatus, errorThrown); // DEBUG
+                        response([]); // Beri response kosong jika error
                     }
                 });
             },
@@ -562,7 +573,7 @@ $(document).ready(function () {
         const searchInput = $(`#${prefix}_address_search`);
         const resultsContainer = $(`#${prefix}_address_results`);
         searchInput.on('input', debounce(() => {
-            searchInput.removeClass('is-valid is-invalid'); // Hapus feedback saat user ketik manual
+            searchInput.removeClass('is-valid is-invalid'); 
             const query = searchInput.val();
             if (query.length < 3) { resultsContainer.addClass('d-none'); return; }
             $.get("{{ route('api.address.search') }}", { search: query })
@@ -592,8 +603,6 @@ $(document).ready(function () {
     }
     setupAddressSearch('sender');
     setupAddressSearch('receiver');
-
-    // --- SISA SCRIPT (CEK ONGKIR, MODAL, DLL) TIDAK DIUBAH ---
     
     // FUNGSI Cek Ongkir
     function runCekOngkir() {
@@ -672,3 +681,4 @@ document.querySelectorAll('.input-group .form-control, .input-group .form-select
     });
 </script>
 @endpush
+
