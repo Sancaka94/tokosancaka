@@ -2,7 +2,7 @@
 
 
 
-@section('title', 'Selamat Datang di Sancaka Express - Solusi Pengiriman Terlengkap dan Terpercaya')
+@section('title', 'Selamat Datang di Sancaka Express - Solusi Pengiriman Terlengkap, Terpercaya dan Amanah')
 
 
 
