@@ -13,6 +13,7 @@ use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Validation\ValidationException;
+use App\Http\Controllers\Api\KontakController;
 
 class CustomerOrderController extends Controller
 {
