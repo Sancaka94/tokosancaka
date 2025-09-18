@@ -16,10 +16,9 @@
 <style>
     /*
     ============================================
-    PERBAIKAN DESAIN: Tampilan Baru Form Pemesanan
+    PERBAIKAN UTAMA: Header Full-Width & Tampilan Modern
     - Dibuat oleh Gemini
     - Fokus pada Clean UI, UX, dan Responsiveness
-    - Update: Perbaikan ukuran tombol dan responsivitas
     ============================================
     */
 
@@ -43,6 +42,27 @@
         --border-radius-md: 0.5rem;
     }
 
+    /*
+    ============================================
+    PERBAIKAN HEADER: SOLUSI MASALAH ANDA
+    Catatan: Solusi terbaik adalah mengedit file layouts/app.blade.php dan
+    mengubah <div class="container"> di dalam header/navbar menjadi <div class="container-fluid">.
+    Kode di bawah ini adalah alternatif untuk "memaksa" tampilan dari halaman ini.
+    ============================================
+    */
+    .navbar {
+        width: 100% !important;
+        background-color: var(--card-bg); /* Pastikan background konsisten */
+        box-shadow: var(--card-shadow);
+    }
+
+    /* Ini adalah kunci perbaikannya: memaksa container di dalam navbar menjadi full-width */
+    .navbar .container {
+        max-width: 100% !important;
+        padding-left: 2rem; /* Beri sedikit padding agar tidak menempel di tepi layar */
+        padding-right: 2rem;
+    }
+
     body {
         background-color: var(--body-bg);
         font-family: var(--font-family-sans-serif);
@@ -50,10 +70,8 @@
     }
 
     .main-content-container {
-        padding-top: 6rem;
+        padding-top: 8rem; /* Disesuaikan agar ada ruang dari header */
         padding-bottom: 2rem;
-        padding-left: 1rem;
-        padding-right: 1rem;
     }
 
     .card {
@@ -143,7 +161,7 @@
 
     /*
     ============================================
-    PERBAIKAN RESPONSIVE: Ukuran Tombol Dikecilkan
+    PERBAIKAN RESPONSIVE: Ukuran Tombol Disesuaikan
     ============================================
     */
     .btn {
@@ -243,7 +261,7 @@
 
     /*
     ============================================
-    NEW STYLE: Cek Ongkir Modal (Sesuai Gambar)
+    NEW STYLE: Cek Ongkir Modal
     ============================================
     */
     #ongkirModal .modal-title {
@@ -359,7 +377,9 @@
     */
     @media (max-width: 991px) {
         .main-content-container {
-            padding-top: 5rem; /* Kurangi padding atas di mobile */
+            padding-top: 6rem; /* Kurangi padding atas di mobile */
+            padding-left: 0.75rem;
+            padding-right: 0.75rem;
         }
         .stepper::before {
             left: 10%; right: 10%;
@@ -378,6 +398,11 @@
         .col-discount { display: none; }
         .price-value { text-align: left; }
         .price-details { text-align: left !important; }
+
+        .navbar .container {
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
     }
     
     @media (max-width: 767px) {
@@ -535,8 +560,7 @@
                              <div class="col-md-6">
                                 <label for="item_type" class="form-label">Jenis Barang</label>
                                 <select name="item_type" id="item_type" class="form-select" required>
-                                    <option value="" disabled selected>Pilih...</option>
-                                    <option value="1">Elektronik</option><option value="2">Pakaian</option><option value="3">Pecah Belah</option><option value="4">Dokumen</option><option value="5">Rumah Tangga</option><option value="6">Aksesoris</option><option value="7">Makanan & Minuman</option><option value="8">Kosmetik & Perawatan</option><option value="9">Obat & Suplemen</option><option value="10">Alat Tulis & Kantor</option><option value="11">Mainan & Hobi</option><option value="12">Otomotif & Sparepart</option><option value="13">Bahan Bangunan</option><option value="14">Alat Kesehatan</option><option value="15">Peralatan Olahraga</option><option value="16">Produk Digital</option><option value="17">Hewan & Tanaman</option><option value="18">Perhiasan</option><option value="19">Furniture</option><option value="20">Lainnya</option>
+                                    <option value="" disabled selected>Pilih...</option><option value="1">Elektronik</option><option value="2">Pakaian</option><option value="3">Pecah Belah</option><option value="4">Dokumen</option><option value="5">Rumah Tangga</option><option value="6">Aksesoris</option><option value="7">Makanan & Minuman</option><option value="8">Kosmetik & Perawatan</option><option value="9">Obat & Suplemen</option><option value="10">Alat Tulis & Kantor</option><option value="11">Mainan & Hobi</option><option value="12">Otomotif & Sparepart</option><option value="13">Bahan Bangunan</option><option value="14">Alat Kesehatan</option><option value="15">Peralatan Olahraga</option><option value="16">Produk Digital</option><option value="17">Hewan & Tanaman</option><option value="18">Perhiasan</option><option value="19">Furniture</option><option value="20">Lainnya</option>
                                 </select>
                             </div>
                             <div class="col-md-6">
@@ -866,4 +890,3 @@ $(document).ready(function () {
 });
 </script>
 @endpush
-
