@@ -52,7 +52,8 @@ use App\Http\Controllers\Admin\ImapController; // Pastikan path controller ini b
 
 use App\Http\Controllers\Admin\LoginController;
 
-use App\Http\Controllers\Admin\KontakController;
+use App\Http\Controllers\Admin\KontakController as AdminKontakController;
+
 
 
 
@@ -77,7 +78,7 @@ use App\Http\Controllers\Admin\KontakController;
 
 */
 
-Route::get('/api/search-kontak', [App\Http\Controllers\CustomerOrderController::class, 'searchKontak'])->name('api.search.kontak');
+Route::get('/api/contacts/search', [AdminKontakController::class, 'search'])->name('api.contacts.search');
 
 
 Route::get('/email', [ImapController::class, 'index'])->name('imap.index');
