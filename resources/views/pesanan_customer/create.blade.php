@@ -6,9 +6,11 @@
 @push('styles')
 {{-- Font Awesome untuk ikon --}}
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+{{-- CSS untuk jQuery UI Autocomplete (Diambil dari referensi) --}}
+<link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
 <style>
     /* Style untuk hasil pencarian custom, karena butuh absolute positioning */
-    .search-results-container {
+    .search-results-container, .ui-autocomplete {
         position: absolute;
         z-index: 1000;
         width: 100%;
@@ -16,13 +18,22 @@
         overflow-y: auto;
         background-color: #fff;
         border: 1px solid #e2e8f0;
-        border-radius: 0 0 0.5rem 0.5rem; /* rounded bottom */
+        border-radius: 0 0 0.5rem 0.5rem;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        margin-top: -1px; /* Nempel dengan input */
+        margin-top: -1px;
     }
     .modal-body-scroll {
         max-height: 70vh;
         overflow-y: auto;
+    }
+    /* Style untuk item autocomplete dari referensi */
+    .ui-menu-item-wrapper {
+        padding: 0.75rem 1rem;
+        cursor: pointer;
+    }
+    .ui-menu-item-wrapper.ui-state-active {
+        background-color: #f3f4f6; /* bg-gray-100 */
+        border: none;
     }
 </style>
 @endpush
@@ -55,12 +66,11 @@
                         </div>
                         <div class="relative">
                             <label for="sender_name" class="block mb-2 text-sm font-medium text-gray-700">Nama Pengirim</label>
-                            <input type="text" id="sender_name" name="sender_name" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required autocomplete="off">
-                            <div id="sender_contact_results" class="search-results-container hidden"></div>
+                            <input type="text" id="sender_name" name="sender_name" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" placeholder="Cari dari buku alamat..." required autocomplete="off">
                         </div>
                         <div class="relative">
                             <label for="sender_phone" class="block mb-2 text-sm font-medium text-gray-700">Nomor HP</label>
-                            <input type="tel" id="sender_phone" name="sender_phone" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required autocomplete="off">
+                            <input type="tel" id="sender_phone" name="sender_phone" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" placeholder="Cari dari buku alamat..." required autocomplete="off">
                         </div>
                         <div class="md:col-span-2 relative">
                             <label for="sender_address_search" class="block mb-2 text-sm font-medium text-gray-700">Cari Alamat Ongkir (Kec/Kel/Kodepos)</label>
@@ -68,7 +78,6 @@
                             <div id="sender_address_results" class="search-results-container hidden"></div>
                         </div>
                         
-                        <!-- DIPERBAIKI: Alamat Lengkap dan Kodepos Pengirim -->
                         <div class="md:col-span-2">
                             <div class="grid grid-cols-4 gap-4">
                                 <div class="col-span-4 sm:col-span-3">
@@ -98,12 +107,11 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div class="relative">
                             <label for="receiver_name" class="block mb-2 text-sm font-medium text-gray-700">Nama Penerima</label>
-                            <input type="text" id="receiver_name" name="receiver_name" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required autocomplete="off">
-                            <div id="receiver_contact_results" class="search-results-container hidden"></div>
+                            <input type="text" id="receiver_name" name="receiver_name" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" placeholder="Cari dari buku alamat..." required autocomplete="off">
                         </div>
                         <div class="relative">
                             <label for="receiver_phone" class="block mb-2 text-sm font-medium text-gray-700">Nomor HP</label>
-                            <input type="tel" id="receiver_phone" name="receiver_phone" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required autocomplete="off">
+                            <input type="tel" id="receiver_phone" name="receiver_phone" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" placeholder="Cari dari buku alamat..." required autocomplete="off">
                         </div>
                         <div class="md:col-span-2 relative">
                             <label for="receiver_address_search" class="block mb-2 text-sm font-medium text-gray-700">Cari Alamat Ongkir (Kec/Kel/Kodepos)</label>
@@ -111,7 +119,6 @@
                             <div id="receiver_address_results" class="search-results-container hidden"></div>
                         </div>
                         
-                        <!-- DIPERBAIKI: Alamat Lengkap dan Kodepos Penerima -->
                         <div class="md:col-span-2">
                             <div class="grid grid-cols-4 gap-4">
                                 <div class="col-span-4 sm:col-span-3">
@@ -272,284 +279,292 @@
 @push('scripts')
 {{-- SweetAlert2 untuk notifikasi --}}
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+{{-- Pustaka jQuery & jQuery UI (Diambil dari referensi) --}}
+<script src="https://code.jquery.com/jquery-3.6.0.js"></script>
+<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.js"></script>
 
 <script>
-document.addEventListener('DOMContentLoaded', function () {
+$(document).ready(function () {
+    // ===================================================================
+    // ADAPTASI DARI KODE REFERENSI ANDA
+    // Menggunakan jQuery & jQuery UI untuk fungsionalitas yang lebih baik
+    // ===================================================================
+
+    // Setup CSRF Token untuk semua request AJAX
+    $.ajaxSetup({
+        headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') }
+    });
+    
+    // Inisialisasi Modal (menggunakan metode vanilla JS agar tidak bentrok)
     const ongkirModalEl = document.getElementById('ongkirModal');
     const paymentModalEl = document.getElementById('paymentMethodModal');
+    
     let searchTimeout = null;
+    const debounce = (func, delay) => (...args) => { clearTimeout(searchTimeout); searchTimeout = setTimeout(() => func.apply(this, args), delay); };
+    function formatRupiah(angka) { return 'Rp ' + (parseInt(angka, 10) || 0).toLocaleString('id-ID'); }
 
-    // --- HELPER FUNCTIONS ---
-    const debounce = (func, delay) => {
-        return (...args) => { clearTimeout(searchTimeout); searchTimeout = setTimeout(() => func.apply(this, args), delay); };
-    };
-    function formatRupiah(angka) { 
-        return 'Rp ' + (parseInt(angka, 10) || 0).toLocaleString('id-ID'); 
-    }
-
-    // --- FUNGSI PENCARIAN KONTAK DARI DATABASE ---
+    // --- FUNGSI PENCARIAN KONTAK (autocomplete dari referensi) ---
     function setupContactSearch(prefix) {
-        const nameInput = document.getElementById(`${prefix}_name`);
-        const phoneInput = document.getElementById(`${prefix}_phone`);
-        const resultsContainer = document.getElementById(`${prefix}_contact_results`);
+        const nameInput = $(`#${prefix}_name`);
+        const phoneInput = $(`#${prefix}_phone`);
         const contactType = (prefix === 'sender') ? 'Pengirim' : 'Penerima';
 
-        const performSearch = async (query) => {
-            if (query.length < 3) {
-                resultsContainer.classList.add('hidden');
-                return;
-            }
-            console.log(`[${prefix}] Mencari kontak dengan query: "${query}", tipe: "${contactType}"`);
-
-            try {
-                const url = `{{ route('api.contacts.search') }}?search=${encodeURIComponent(query)}&tipe=${contactType}`;
-                console.log(`[${prefix}] Fetching URL: ${url}`);
-                const response = await fetch(url);
-                
-                console.log(`[${prefix}] Status respons server: ${response.status}`);
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error(`[${prefix}] Error dari server:`, errorText);
-                    throw new Error(`Server error: ${response.statusText}`);
-                }
-                
-                const contacts = await response.json();
-                console.log(`[${prefix}] Data kontak diterima:`, contacts);
-                
-                resultsContainer.innerHTML = '';
-                resultsContainer.classList.remove('hidden');
-
-                if (contacts && contacts.length > 0) {
-                    contacts.forEach(contact => {
-                        const resultDiv = document.createElement('div');
-                        resultDiv.className = 'p-3 border-b hover:bg-gray-100 cursor-pointer text-sm';
-                        resultDiv.innerHTML = `<div class="font-semibold">${contact.nama}</div><div class="text-xs text-gray-500">${contact.no_hp}</div>`;
-                        
-                        resultDiv.addEventListener('click', () => {
-                            console.log(`[${prefix}] Kontak dipilih:`, contact);
-                            document.getElementById(`${prefix}_name`).value = contact.nama || '';
-                            document.getElementById(`${prefix}_phone`).value = contact.no_hp || '';
-                            document.getElementById(`${prefix}_address`).value = contact.alamat || '';
-                            document.getElementById(`${prefix}_province`).value = contact.province || '';
-                            document.getElementById(`${prefix}_regency`).value = contact.regency || '';
-                            document.getElementById(`${prefix}_district`).value = contact.district || '';
-                            document.getElementById(`${prefix}_village`).value = contact.village || '';
-                            document.getElementById(`${prefix}_postal_code`).value = contact.postal_code || '';
-                            // DIPERBAIKI: Mengisi field Kode Pos yang terlihat
-                            document.getElementById(`${prefix}_postal_code_display`).value = contact.postal_code || '';
-                            
-                            const kiriminAjaSearchString = [contact.village, contact.district, contact.regency].filter(Boolean).join(', ');
-                            document.getElementById(`${prefix}_address_search`).value = kiriminAjaSearchString;
-
-                            resultsContainer.classList.add('hidden');
-                        });
-                        resultsContainer.appendChild(resultDiv);
+        function performSearch(inputElement) {
+            inputElement.autocomplete({
+                source: function(request, response) {
+                    $.ajax({
+                        url: "{{ route('api.contacts.search') }}",
+                        dataType: "json",
+                        data: {
+                            search: request.term, // Sesuai dengan nama parameter di Controller
+                            tipe: contactType
+                        },
+                        success: function(data) {
+                            if (!data || !data.length) {
+                                response([{ label: 'Kontak tidak ditemukan', value: request.term, disabled: true }]);
+                                return;
+                            }
+                            response($.map(data, function(item) {
+                                return {
+                                    label: `${item.nama} - ${item.no_hp}`,
+                                    value: item.nama, // Yang akan ditampilkan di input saat dipilih
+                                    data: item // Objek data lengkap
+                                };
+                            }));
+                        },
+                        error: function() {
+                            response([]); // Jika error, kembalikan array kosong
+                        }
                     });
-                } else {
-                    resultsContainer.innerHTML = '<div class="p-3 text-gray-500">Kontak tidak ditemukan.</div>';
+                },
+                minLength: 2,
+                select: function(event, ui) {
+                    if (ui.item.disabled) return false;
+                    event.preventDefault(); // Mencegah value (nama) dimasukkan ke input
+                    fillContactForm(prefix, ui.item.data);
+                },
+                focus: function(event, ui) {
+                    if (ui.item.disabled) return false;
+                    event.preventDefault();
+                    nameInput.val(ui.item.data.nama);
+                    phoneInput.val(ui.item.data.no_hp);
                 }
-            } catch (error) {
-                console.error(`[${prefix}] Gagal melakukan pencarian kontak:`, error);
-                resultsContainer.classList.remove('hidden');
-                resultsContainer.innerHTML = `<div class="p-3 text-red-500">Gagal memuat data. Cek console (F12) untuk detail.</div>`;
-            }
-        };
-
-        nameInput.addEventListener('input', debounce(() => performSearch(nameInput.value), 400));
-        phoneInput.addEventListener('input', debounce(() => performSearch(phoneInput.value), 400));
+            }).autocomplete("instance")._renderItem = function(ul, item) {
+                if (item.disabled) {
+                    return $("<li class='ui-state-disabled p-3 text-gray-500'></li>").text(item.label).appendTo(ul);
+                }
+                return $("<li>")
+                    .append(`<div class="ui-menu-item-wrapper"><div class="font-semibold">${item.data.nama}</div><small class="text-gray-500">${item.data.no_hp}</small></div>`)
+                    .appendTo(ul);
+            };
+        }
+        performSearch(nameInput);
+        performSearch(phoneInput);
     }
+    
+    // --- FUNGSI MENGISI FORM SETELAH KONTAK DIPILIH ---
+    function fillContactForm(prefix, data) {
+        console.log(`[${prefix}] Mengisi form dengan data:`, data);
+        $(`#${prefix}_name`).val(data.nama || '');
+        $(`#${prefix}_phone`).val(data.no_hp || '');
+        $(`#${prefix}_address`).val(data.alamat || '');
+        
+        // Isi hidden fields
+        $(`#${prefix}_province`).val(data.province || '');
+        $(`#${prefix}_regency`).val(data.regency || '');
+        $(`#${prefix}_district`).val(data.district || '');
+        $(`#${prefix}_village`).val(data.village || '');
+        $(`#${prefix}_postal_code`).val(data.postal_code || '');
+        $(`#${prefix}_postal_code_display`).val(data.postal_code || '');
+
+        // Otomatisasi pencarian alamat ongkir
+        const addressSearchInput = $(`#${prefix}_address_search`);
+        if (data.village && data.district) {
+            const addressQuery = `${data.village}, ${data.district}`;
+            addressSearchInput.val(`Mencari: ${addressQuery}...`).prop('disabled', true);
+            
+            $.get("{{ route('api.address.search') }}", { search: addressQuery })
+            .done(function(results) {
+                if (results && results.length > 0) {
+                    const item = results[0];
+                    const parts = item.full_address.split(',').map(s => s.trim());
+                    // Update semua field lagi untuk memastikan konsistensi
+                    $(`#${prefix}_village`).val(parts[0] || data.village);
+                    $(`#${prefix}_district`).val(parts[1] || data.district);
+                    $(`#${prefix}_regency`).val(parts[2] || data.regency);
+                    $(`#${prefix}_province`).val(parts[3] || data.province);
+                    $(`#${prefix}_postal_code`).val(parts[4] || data.postal_code);
+                    $(`#${prefix}_postal_code_display`).val(parts[4] || data.postal_code);
+                    $(`#${prefix}_district_id`).val(item.district_id);
+                    $(`#${prefix}_subdistrict_id`).val(item.subdistrict_id);
+                    addressSearchInput.val(item.full_address);
+                } else {
+                   addressSearchInput.val(addressQuery); // Tampilkan query jika tidak ketemu
+                   Swal.fire('Info', `Detail alamat untuk "${addressQuery}" tidak ditemukan di API ongkir. Harap periksa atau cari manual.`, 'info');
+                }
+            })
+            .fail(() => {
+                addressSearchInput.val(addressQuery);
+                Swal.fire('Error', 'Gagal memuat detail alamat dari API ongkir.', 'error');
+            })
+            .always(() => addressSearchInput.prop('disabled', false));
+        } else {
+            addressSearchInput.val('');
+            Swal.fire('Data Kurang', 'Kontak ini tidak memiliki detail alamat (desa/kecamatan). Harap cari alamat ongkir secara manual.', 'warning');
+        }
+    }
+
     setupContactSearch('sender');
     setupContactSearch('receiver');
     
-    // --- FUNGSI PENCARIAN ALAMAT ONGKIR (KIRIMIN AJA API) ---
+    // --- FUNGSI PENCARIAN ALAMAT ONGKIR (manual) ---
     function setupAddressSearch(prefix) {
-        const searchInput = document.getElementById(`${prefix}_address_search`);
-        const resultsContainer = document.getElementById(`${prefix}_address_results`);
+        const searchInput = $(`#${prefix}_address_search`);
+        const resultsContainer = $(`#${prefix}_address_results`);
         
-        searchInput.addEventListener('input', debounce(async () => {
-            const query = searchInput.value;
-            if (query.length < 3) { resultsContainer.classList.add('hidden'); return; }
-
-            try {
-                const response = await fetch(`{{ route('api.address.search') }}?search=${encodeURIComponent(query)}`);
-                if (!response.ok) throw new Error('Network response error');
-                const data = await response.json();
-                
-                resultsContainer.innerHTML = '';
-                resultsContainer.classList.remove('hidden');
-
+        searchInput.on('input', debounce(() => {
+            const query = searchInput.val();
+            if (query.length < 3) {
+                resultsContainer.addClass('hidden');
+                return;
+            }
+            $.get("{{ route('api.address.search') }}", { search: query })
+            .done(data => {
+                resultsContainer.html('').removeClass('hidden');
                 if (data && data.length > 0) {
                     data.forEach(item => {
-                        const resultDiv = document.createElement('div');
-                        resultDiv.className = 'p-3 border-b hover:bg-gray-100 cursor-pointer text-sm';
-                        resultDiv.innerHTML = `<div class="font-semibold">${item.full_address}</div>`;
-                        resultDiv.addEventListener('click', () => {
-                            searchInput.value = item.full_address;
+                        const resultDiv = $(`<div class="p-3 border-b hover:bg-gray-100 cursor-pointer text-sm"><div class="font-semibold">${item.full_address}</div></div>`);
+                        resultDiv.on('click', () => {
+                            searchInput.val(item.full_address);
                             const parts = item.full_address.split(',').map(s => s.trim());
-                            document.getElementById(`${prefix}_village`).value = parts[0] || '';
-                            document.getElementById(`${prefix}_district`).value = parts[1] || '';
-                            document.getElementById(`${prefix}_regency`).value = parts[2] || '';
-                            document.getElementById(`${prefix}_province`).value = parts[3] || '';
-                            document.getElementById(`${prefix}_postal_code`).value = parts[4] || '';
-                            // DIPERBAIKI: Mengisi field Kode Pos yang terlihat
-                            document.getElementById(`${prefix}_postal_code_display`).value = parts[4] || '';
-                            document.getElementById(`${prefix}_district_id`).value = item.district_id;
-                            document.getElementById(`${prefix}_subdistrict_id`).value = item.subdistrict_id;
-                            resultsContainer.classList.add('hidden');
+                            $(`#${prefix}_village`).val(parts[0] || '');
+                            $(`#${prefix}_district`).val(parts[1] || '');
+                            $(`#${prefix}_regency`).val(parts[2] || '');
+                            $(`#${prefix}_province`).val(parts[3] || '');
+                            $(`#${prefix}_postal_code`).val(parts[4] || '');
+                            $(`#${prefix}_postal_code_display`).val(parts[4] || '');
+                            $(`#${prefix}_district_id`).val(item.district_id);
+                            $(`#${prefix}_subdistrict_id`).val(item.subdistrict_id);
+                            resultsContainer.addClass('hidden');
                         });
-                        resultsContainer.appendChild(resultDiv);
+                        resultsContainer.append(resultDiv);
                     });
                 } else {
-                    resultsContainer.innerHTML = '<div class="p-3 text-gray-500">Alamat tidak ditemukan.</div>';
+                    resultsContainer.html('<div class="p-3 text-gray-500">Alamat tidak ditemukan.</div>');
                 }
-            } catch (error) {
-                console.error('Address search failed:', error);
-                resultsContainer.innerHTML = '<div class="p-3 text-red-500">Gagal memuat data.</div>';
-            }
+            })
+            .fail(() => resultsContainer.html('<div class="p-3 text-red-500">Gagal memuat data.</div>'));
         }, 400));
     }
     setupAddressSearch('sender');
     setupAddressSearch('receiver');
 
-    // --- FUNGSI CEK ONGKIR ---
+    // --- FUNGSI CEK ONGKIR (Disederhanakan dari vanilla ke jQuery) ---
     async function runCekOngkir() {
+        // ... (Fungsi ini tetap sama, hanya jQuery selector)
         const requiredFields = { '#sender_subdistrict_id': 'Alamat Pengirim', '#receiver_subdistrict_id': 'Alamat Penerima', '#item_price': 'Harga Barang', '#weight': 'Berat', '#service_type': 'Jenis Layanan', '#ansuransi': 'Asuransi' };
-        let missing = Object.keys(requiredFields).filter(s => !document.querySelector(s).value);
+        let missing = Object.keys(requiredFields).filter(s => !$(s).val());
         if (missing.length > 0) {
             Swal.fire('Data Belum Lengkap', 'Harap lengkapi: ' + missing.map(s => requiredFields[s]).join(', '), 'warning');
             return;
         }
-
-        const ongkirModalBody = document.getElementById('ongkirModalBody');
-        ongkirModalBody.innerHTML = `<div class="text-center p-5"><i class="fas fa-spinner fa-spin text-3xl text-indigo-600"></i><p class="mt-2 text-gray-500">Memuat tarif...</p></div>`;
-        ongkirModalEl.classList.remove('hidden');
-
-        try {
-            const formData = new FormData(document.getElementById('orderForm'));
-            const params = new URLSearchParams(formData).toString();
-            const response = await fetch(`{{ route('kirimaja.cekongkir') }}?${params}`);
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Gagal mengambil data ongkir');
-            }
-            const res = await response.json();
-
-            ongkirModalBody.innerHTML = '';
-            let results = (res.results || []).concat((res.result || []).flatMap(v => v.costs.map(c => ({...c, service: v.name, service_name: `${v.name.toUpperCase()} - ${c.service_type}`, cost: c.price.total_price, etd: c.estimation || '-', setting: c.setting || {}, insurance: c.price.insurance_fee || 0, cod: c.cod }))));
-            if (results.length === 0) {
-                ongkirModalBody.innerHTML = '<div class="bg-yellow-100 text-yellow-800 p-4 rounded-md text-center">Layanan pengiriman tidak ditemukan. Cek kembali alamat dan jenis layanan.</div>';
-                return;
-            }
-
-            results.sort((a, b) => a.cost - b.cost).forEach(item => {
-                const isCod = item.cod;
-                const insuranceFee = item.insurance || 0;
-                const codFee = item.setting?.cod_fee_amount || 0;
-                const value = `${document.getElementById('service_type').value}-${item.service}-${item.service_type}-${item.cost}-${insuranceFee}-${codFee}`;
-                let details = `<small class="text-gray-500 block">Estimasi: ${item.etd}</small>`;
-                if (document.getElementById('ansuransi').value == 'iya' && insuranceFee > 0) details += `<small class="text-gray-500 block">Asuransi: ${formatRupiah(insuranceFee)}</small>`;
-                if (isCod && codFee > 0) details += `<small class="text-gray-500 block">Biaya COD: ${formatRupiah(codFee)}</small>`;
-                if (isCod) details += `<small class="text-green-600 font-bold block">COD Tersedia</small>`;
-                
-                const card = document.createElement('div');
-                card.className = 'border rounded-lg mb-3 shadow-sm';
-                card.innerHTML = `
-                    <div class="p-4 flex justify-between items-center">
-                        <div class="flex items-center">
-                            <img src="{{ asset('storage/logo-ekspedisi/') }}/${item.service.toLowerCase().replace(/\s+/g, '')}.png" class="w-16 h-auto mr-4 object-contain" onerror="this.src='https://placehold.co/100x40?text=${item.service}'">
-                            <div>
-                                <h6 class="font-bold text-gray-800">${item.service_name}</h6>
-                                ${details}
+        
+        $('#ongkirModalBody').html(`<div class="text-center p-5"><i class="fas fa-spinner fa-spin text-3xl text-indigo-600"></i><p class="mt-2 text-gray-500">Memuat tarif...</p></div>`);
+        $(ongkirModalEl).removeClass('hidden');
+        
+        $.ajax({
+            url: "{{ route('kirimaja.cekongkir') }}",
+            type: "GET",
+            data: $('#orderForm').serialize(),
+            success: function(res) {
+                $('#ongkirModalBody').html('');
+                let results = (res.results || []).concat((res.result || []).flatMap(v => v.costs.map(c => ({...c, service: v.name, service_name: `${v.name.toUpperCase()} - ${c.service_type}`, cost: c.price.total_price, etd: c.estimation || '-', setting: c.setting || {}, insurance: c.price.insurance_fee || 0, cod: c.cod }))));
+                if (results.length === 0) {
+                    $('#ongkirModalBody').html('<div class="bg-yellow-100 text-yellow-800 p-4 rounded-md text-center">Layanan pengiriman tidak ditemukan.</div>');
+                    return;
+                }
+                results.sort((a, b) => a.cost - b.cost).forEach(item => {
+                    // ... (logika render kartu ongkir sama persis seperti sebelumnya) ...
+                    const isCod = item.cod;
+                    const insuranceFee = item.insurance || 0;
+                    const codFee = item.setting?.cod_fee_amount || 0;
+                    const value = `${$('#service_type').val()}-${item.service}-${item.service_type}-${item.cost}-${insuranceFee}-${codFee}`;
+                    let details = `<small class="text-gray-500 block">Estimasi: ${item.etd}</small>`;
+                    if ($('#ansuransi').val() == 'iya' && insuranceFee > 0) details += `<small class="text-gray-500 block">Asuransi: ${formatRupiah(insuranceFee)}</small>`;
+                    if (isCod && codFee > 0) details += `<small class="text-gray-500 block">Biaya COD: ${formatRupiah(codFee)}</small>`;
+                    if (isCod) details += `<small class="text-green-600 font-bold block">COD Tersedia</small>`;
+                    
+                    const card = $(`<div class="border rounded-lg mb-3 shadow-sm">...</div>`); // Konten kartu sama
+                    card.html(`
+                        <div class="p-4 flex justify-between items-center">
+                            <div class="flex items-center">
+                                <img src="{{ asset('storage/logo-ekspedisi/') }}/${item.service.toLowerCase().replace(/\s+/g, '')}.png" class="w-16 h-auto mr-4 object-contain" onerror="this.src='https://placehold.co/100x40?text=${item.service}'">
+                                <div><h6 class="font-bold text-gray-800">${item.service_name}</h6>${details}</div>
                             </div>
-                        </div>
-                        <div class="text-right">
-                            <small class="text-gray-500">Ongkir</small>
-                            <strong class="block text-lg text-red-600">${formatRupiah(item.cost)}</strong>
-                            <button type="button" class="select-ongkir-btn mt-1 bg-indigo-600 text-white px-3 py-1 rounded-md hover:bg-indigo-700 text-sm" data-value="${value}" data-display="${item.service_name}" data-cod-supported="${isCod}">Pilih</button>
-                        </div>
-                    </div>
-                `;
-                ongkirModalBody.appendChild(card);
-            });
-        } catch (error) {
-            console.error('Cek Ongkir failed:', error);
-            ongkirModalBody.innerHTML = `<div class="bg-red-100 text-red-800 p-4 rounded-md text-center">${error.message}</div>`;
-        }
+                            <div class="text-right">
+                                <small class="text-gray-500">Ongkir</small>
+                                <strong class="block text-lg text-red-600">${formatRupiah(item.cost)}</strong>
+                                <button type="button" class="select-ongkir-btn mt-1 bg-indigo-600 text-white px-3 py-1 rounded-md hover:bg-indigo-700 text-sm" data-value="${value}" data-display="${item.service_name}" data-cod-supported="${isCod}">Pilih</button>
+                            </div>
+                        </div>`);
+                    $('#ongkirModalBody').append(card);
+                });
+            },
+            error: function(xhr) {
+                const error = xhr.responseJSON ? xhr.responseJSON.message : 'Gagal mengambil data ongkir.';
+                $('#ongkirModalBody').html(`<div class="bg-red-100 text-red-800 p-4 rounded-md text-center">${error}</div>`);
+            }
+        });
     }
 
-    // --- EVENT LISTENERS ---
-    document.getElementById('selected_expedition_display').addEventListener('click', runCekOngkir);
+    // --- EVENT LISTENERS (menggunakan jQuery) ---
+    $('#selected_expedition_display').on('click', runCekOngkir);
 
-    ongkirModalEl.addEventListener('click', function(e) {
-        if (e.target.classList.contains('select-ongkir-btn')) {
-            document.getElementById('expedition').value = e.target.dataset.value;
-            document.getElementById('selected_expedition_display').value = e.target.dataset.display;
-            
-            const codOptions = document.querySelectorAll('.cod-payment-option');
-            if (e.target.dataset.codSupported === 'true') {
-                codOptions.forEach(opt => opt.style.display = 'flex');
-            } else {
-                if (['COD', 'CODBARANG'].includes(document.getElementById('payment_method').value)) {
-                    document.getElementById('payment_method').value = '';
-                    document.getElementById('selectedPaymentName').textContent = 'Pilih...';
-                    document.getElementById('selectedPaymentLogo').src = 'https://cdn-icons-png.flaticon.com/512/2331/2331941.png';
-                }
-                codOptions.forEach(opt => opt.style.display = 'none');
+    $('#ongkirModalBody').on('click', '.select-ongkir-btn', function() {
+        $('#expedition').val($(this).data('value'));
+        $('#selected_expedition_display').val($(this).data('display'));
+        
+        if ($(this).data('cod-supported')) {
+            $('.cod-payment-option').show();
+        } else {
+            if (['COD', 'CODBARANG'].includes($('#payment_method').val())) {
+                $('#payment_method').val('');
+                $('#selectedPaymentName').text('Pilih...');
+                $('#selectedPaymentLogo').attr('src', 'https://cdn-icons-png.flaticon.com/512/2331/2331941.png');
             }
-            ongkirModalEl.classList.add('hidden');
+            $('.cod-payment-option').hide();
         }
+        $(ongkirModalEl).addClass('hidden');
     });
 
-    document.getElementById('paymentMethodButton').addEventListener('click', () => paymentModalEl.classList.remove('hidden'));
+    $('#paymentMethodButton').on('click', () => $(paymentModalEl).removeClass('hidden'));
 
-    document.querySelectorAll('.payment-option').forEach(item => {
-        item.addEventListener('click', function() {
-            document.getElementById('payment_method').value = this.dataset.value;
-            document.getElementById('selectedPaymentName').textContent = this.dataset.label;
-            document.getElementById('selectedPaymentLogo').src = this.querySelector('img').src;
-            
-            document.querySelectorAll('.payment-option').forEach(opt => opt.classList.remove('bg-indigo-50'));
-            this.classList.add('bg-indigo-50');
-            
-            paymentModalEl.classList.add('hidden');
-        });
+    $('.payment-option').on('click', function() {
+        $('#payment_method').val($(this).data('value'));
+        $('#selectedPaymentName').text($(this).data('label'));
+        $('#selectedPaymentLogo').attr('src', $(this).find('img').attr('src'));
+        $('.payment-option').removeClass('bg-indigo-50');
+        $(this).addClass('bg-indigo-50');
+        $(paymentModalEl).addClass('hidden');
     });
 
-    document.querySelectorAll('.close-modal-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            ongkirModalEl.classList.add('hidden');
-            paymentModalEl.classList.add('hidden');
-        });
+    $('.close-modal-btn').on('click', () => {
+        $(ongkirModalEl).addClass('hidden');
+        $(paymentModalEl).addClass('hidden');
     });
 
-    document.querySelectorAll('input, select, textarea').forEach(el => {
-        if(el.type !== 'hidden' && !el.classList.contains('select-ongkir-btn')){
-             el.addEventListener('change', () => {
-                 document.getElementById('expedition').value = '';
-                 document.getElementById('selected_expedition_display').value = '';
-                 document.getElementById('selected_expedition_display').placeholder = 'Data berubah, klik untuk cek ulang';
-             });
-        }
+    // Reset ekspedisi jika data berubah
+    $('input, select, textarea').not('.select-ongkir-btn').on('change', function() {
+        $('#expedition').val('');
+        $('#selected_expedition_display').val('').attr('placeholder', 'Data berubah, klik untuk cek ulang');
     });
 
-    document.getElementById('confirmBtn').addEventListener('click', (e) => {
+    $('#confirmBtn').on('click', function(e) {
         e.preventDefault();
-        const form = document.getElementById('orderForm');
-        const expedition = document.getElementById('expedition').value;
-        const paymentMethod = document.getElementById('payment_method').value;
-
-        if (!form.checkValidity() || !expedition || !paymentMethod) {
+        const form = $('#orderForm')[0];
+        if (!form.checkValidity() || !$('#expedition').val() || !$('#payment_method').val()) {
             form.reportValidity();
-            let missingFields = [];
-            if (!expedition) missingFields.push('Ekspedisi');
-            if (!paymentMethod) missingFields.push('Metode Pembayaran');
-
-            let message = 'Harap lengkapi semua field yang wajib diisi.';
-            if (missingFields.length > 0) {
-                message += ` Anda belum memilih: ${missingFields.join(', ')}.`;
-            }
-
-            Swal.fire('Peringatan', message, 'warning');
+            Swal.fire('Peringatan', 'Harap lengkapi semua field yang wajib diisi, termasuk Ekspedisi dan Metode Pembayaran.', 'warning');
             return;
         }
 
@@ -564,28 +579,18 @@ document.addEventListener('DOMContentLoaded', function () {
             cancelButtonText: 'Batal'
         }).then((result) => {
             if (result.isConfirmed) {
-                const confirmBtn = document.getElementById('confirmBtn');
-                confirmBtn.disabled = true;
-                confirmBtn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>Memproses...`;
+                $(this).prop('disabled', true).html(`<i class="fas fa-spinner fa-spin mr-2"></i>Memproses...`);
                 form.submit();
             }
         });
     });
 
-    document.querySelectorAll('.cod-payment-option').forEach(opt => opt.style.display = 'none');
+    $('.cod-payment-option').hide();
 
-    document.addEventListener('click', function(event) {
-        if (!event.target.closest('#sender_address_search, #sender_address_results')) {
-            document.getElementById('sender_address_results').classList.add('hidden');
-        }
-        if (!event.target.closest('#receiver_address_search, #receiver_address_results')) {
-            document.getElementById('receiver_address_results').classList.add('hidden');
-        }
-        if (!event.target.closest('#sender_name, #sender_contact_results, #sender_phone')) {
-            document.getElementById('sender_contact_results').classList.add('hidden');
-        }
-        if (!event.target.closest('#receiver_name, #receiver_contact_results, #receiver_phone')) {
-            document.getElementById('receiver_contact_results').classList.add('hidden');
+    // Sembunyikan hasil pencarian saat klik di luar
+    $(document).on('click', function(event) {
+        if (!$(event.target).closest('.relative').length) {
+            $('.search-results-container').addClass('hidden');
         }
     });
 });
