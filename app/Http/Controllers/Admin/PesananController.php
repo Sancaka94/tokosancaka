@@ -264,13 +264,16 @@ class PesananController extends Controller
     }
     
     /**
-     * DIPERBAIKI: Fungsi ini sekarang memfilter berdasarkan tipe (Pengirim/Penerima)
+     * DIPERBAIKI: Fungsi ini sekarang memfilter berdasarkan tipe dan menambahkan logging.
      */
     public function searchKontak(Request $request)
     {
+        // Log request yang masuk untuk debugging
+        Log::info('API Search Kontak dipanggil dengan:', $request->all());
+
         $request->validate([
             'search' => 'required|string|min:2',
-            'tipe'   => 'nullable|in:Pengirim,Penerima', // Validasi parameter 'tipe'
+            'tipe'   => 'nullable|in:Pengirim,Penerima',
         ]);
 
         $searchTerm = $request->input('search');
@@ -278,22 +281,28 @@ class PesananController extends Controller
 
         $query = Kontak::query();
 
-        // Logika utama pencarian untuk nama atau nomor hp
+        // Cari nama atau no_hp (dibuat case-insensitive untuk nama)
         $query->where(function ($q) use ($searchTerm) {
-            $q->where('nama', 'LIKE', "%{$searchTerm}%")
+            $q->where(DB::raw('LOWER(nama)'), 'LIKE', '%' . strtolower($searchTerm) . '%')
               ->orWhere('no_hp', 'LIKE', "%{$searchTerm}%");
         });
 
-        // Filter berdasarkan tipe (Pengirim/Penerima) jika ada
+        // Filter berdasarkan tipe jika ada
         if ($tipe) {
-            // Kontak bisa jadi 'Keduanya', jadi kita cek juga
             $query->where(function ($q) use ($tipe) {
                 $q->where('tipe', $tipe)
                   ->orWhere('tipe', 'Keduanya');
             });
         }
 
+        // Log query SQL yang akan dijalankan
+        Log::info('SQL Query untuk Pencarian Kontak:', ['sql' => $query->toSql(), 'bindings' => $query->getBindings()]);
+
         $kontaks = $query->limit(10)->get();
+
+        // Log hasil yang ditemukan
+        Log::info('Kontak yang ditemukan:', ['count' => $kontaks->count()]);
+
         return response()->json($kontaks);
     }
     
