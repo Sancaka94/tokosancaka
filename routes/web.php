@@ -107,6 +107,7 @@ Route::get('/api/contacts/search', [KontakController::class, 'search'])->name('a
 
 Route::get('/api/contacts/search', [PesananController::class, 'searchKontak'])->name('api.contacts.search');
 
+Route::get('/kontak/search', [KontakController::class, 'search'])->name('api.search.kontak');
 
 
 
