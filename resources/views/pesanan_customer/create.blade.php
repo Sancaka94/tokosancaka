@@ -262,8 +262,70 @@
         }
     }
     
-    /* CSS & Responsiveness untuk Modal tidak diubah */
+    /*
+    ============================================
+    PERBAIKAN DESAIN: Modal Cek Ongkir
+    ============================================
+    */
+    #ongkirModal .modal-dialog {
+        max-width: 90vw; /* Lebar modal 90% dari layar */
+    }
+    .ongkir-header-row {
+        font-weight: 600;
+        color: var(--secondary-color);
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        padding: 0 1rem;
+        margin-bottom: 0.5rem;
+    }
+    .ongkir-item-card {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        background-color: #fff;
+        border: 1px solid var(--card-border-color);
+        border-radius: 0.75rem;
+        padding: 0.75rem 1rem;
+        margin-bottom: 0.75rem;
+        font-size: 0.9rem;
+        transition: all 0.2s ease-in-out;
+    }
+    .ongkir-item-card:hover {
+        box-shadow: var(--card-shadow);
+        transform: translateY(-2px);
+        border-color: var(--primary-color);
+    }
+    .ongkir-item-col {
+        padding: 0 10px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+    .ongkir-item-col .col-label { display: none; } /* Sembunyikan label di desktop */
+    .col-service { flex: 0 0 24%; flex-direction: row; align-items: center; }
+    .ongkir-logo { width: 60px; height: auto; object-fit: contain; margin-right: 15px; }
+    .service-info { display: flex; flex-direction: column; }
+    .service-name { font-weight: 600; font-size: 0.95rem; color: var(--text-color); }
+    .service-type { font-size: 0.8rem; color: var(--secondary-color); }
+    .col-etd, .col-cod { flex: 0 0 12%; text-align: center; }
+    .col-price { flex: 0 0 16%; text-align: right; }
+    .price-value .final-price { font-weight: 700; font-size: 1rem; color: var(--success-color); }
+    .price-details { font-size: 0.8rem; color: var(--secondary-color); margin-top: 2px; }
+    .col-action { flex: 0 0 12%; text-align: right; }
+    .btn-kirim { background-color: var(--primary-color); color: #fff; border-radius: 999px; font-weight: 600; font-size: 0.8rem; padding: 0.4rem 1rem; border: none; }
+    .btn-kirim:hover { background-color: var(--primary-color-darker); color: #fff; }
 
+    /* Responsif untuk Modal */
+    @media (max-width: 991px) {
+        .ongkir-item-card { flex-wrap: wrap; padding: 1rem; }
+        .ongkir-item-col { padding: 5px 0; text-align: left !important; flex-basis: 50%; }
+        .ongkir-item-col .col-label { display: block; font-size: 0.75rem; color: var(--secondary-color); margin-bottom: 2px; font-weight: 500; }
+        .col-service { flex-basis: 70%; order: 1; flex-direction: row; }
+        .col-action { flex-basis: 30%; order: 2; align-self: center; text-align: center !important;}
+        .col-price { order: 3; text-align: left !important; }
+        .col-etd { order: 4; }
+        .col-cod { order: 5; }
+    }
 </style>
 @endpush
 
@@ -402,7 +464,7 @@
 
 {{-- Modal Pilihan Ekspedisi --}}
 <div class="modal fade" id="ongkirModal" tabindex="-1">
-    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title fw-bold"><i class="fas fa-shipping-fast me-2"></i>Pilihan Ekspedisi</h5>
