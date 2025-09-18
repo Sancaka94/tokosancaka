@@ -104,6 +104,7 @@ Route::get('/feed', [BlogController::class, 'generateFeed'])->name('feed');
 
 Route::get('/api/contacts/search', [KontakController::class, 'search'])->name('api.contacts.search');
 
+Route::get('/api/contacts/search', [PesananController::class, 'searchKontak'])->name('api.contacts.search');
 
 
 

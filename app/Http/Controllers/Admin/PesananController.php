@@ -263,14 +263,37 @@ class PesananController extends Controller
         }
     }
     
+    /**
+     * DIPERBAIKI: Fungsi ini sekarang memfilter berdasarkan tipe (Pengirim/Penerima)
+     */
     public function searchKontak(Request $request)
     {
-        $request->validate(['search' => 'required|string|min:2']);
+        $request->validate([
+            'search' => 'required|string|min:2',
+            'tipe'   => 'nullable|in:Pengirim,Penerima', // Validasi parameter 'tipe'
+        ]);
+
         $searchTerm = $request->input('search');
-        $kontaks = Kontak::where('nama', 'LIKE', "%{$searchTerm}%")
-                         ->orWhere('no_hp', 'LIKE', "%{$searchTerm}%")
-                         ->limit(10)
-                         ->get();
+        $tipe = $request->input('tipe');
+
+        $query = Kontak::query();
+
+        // Logika utama pencarian untuk nama atau nomor hp
+        $query->where(function ($q) use ($searchTerm) {
+            $q->where('nama', 'LIKE', "%{$searchTerm}%")
+              ->orWhere('no_hp', 'LIKE', "%{$searchTerm}%");
+        });
+
+        // Filter berdasarkan tipe (Pengirim/Penerima) jika ada
+        if ($tipe) {
+            // Kontak bisa jadi 'Keduanya', jadi kita cek juga
+            $query->where(function ($q) use ($tipe) {
+                $q->where('tipe', $tipe)
+                  ->orWhere('tipe', 'Keduanya');
+            });
+        }
+
+        $kontaks = $query->limit(10)->get();
         return response()->json($kontaks);
     }
     
@@ -590,4 +613,3 @@ class PesananController extends Controller
         return '0' . $phone;
     }
 }
-
