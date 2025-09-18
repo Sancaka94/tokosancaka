@@ -410,7 +410,7 @@ width: 22px;
 
                         <div class="d-grid mt-auto">
 
-                            <button class="btn btn-denger btn-lg text-white" type="button">Cek Alamat</button>
+                            <button class="btn btn-danger btn-lg text-white" type="button">Cek Alamat</button>
 
                         </div>
 
