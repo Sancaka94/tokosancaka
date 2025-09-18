@@ -144,6 +144,11 @@
 
     }
 
+    .auth-card {
+    margin-top: 100px; /* biar tidak ketutup header */
+}
+
+
 </style>
 
 @endpush
