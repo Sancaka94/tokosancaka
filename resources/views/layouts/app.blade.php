@@ -26,11 +26,7 @@
         PERBAIKAN DESAIN: Layout 80% di Layar Besar
         ==========================================================
         */
-        @media (min-width: 1200px) {
-            .container {
-                max-width: 90% !important;
-            }
-        }
+    
 
         .navbar .container {
             max-width: 100% !important;
@@ -277,7 +273,7 @@
 <!-- =================================================================== -->
 <header>
    <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm fixed-top">
-        <div class="container-fluid">
+        <div class="container">
             <a class="navbar-brand d-flex align-items-center" href="{{ url('/') }}">
                 <img src="https://tokosancaka.biz.id/storage/uploads/sancaka.png" alt="Sancaka Express Logo" style="max-height: 40px;" class="me-2">
                 <strong>SANCAKA EXPRESS</strong>
