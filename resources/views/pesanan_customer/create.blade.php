@@ -44,6 +44,20 @@
 
     /*
     ============================================
+    PERBAIKAN DESAIN: Lebar Konten 80% di Layar Besar
+    - Sesuai permintaan, lebar konten utama diatur menjadi 80%
+      pada layar desktop yang lebar untuk tampilan yang lebih fokus.
+    - Header tetap full-width.
+    ============================================
+    */
+    @media (min-width: 1366px) { /* Mulai berlaku di resolusi laptop/desktop umum */
+        .container.main-content-container {
+            max-width: 80%;
+        }
+    }
+
+    /*
+    ============================================
     PERBAIKAN HEADER: SOLUSI MASALAH ANDA
     Catatan: Solusi terbaik adalah mengedit file layouts/app.blade.php dan
     mengubah <div class="container"> di dalam header/navbar menjadi <div class="container-fluid">.
@@ -890,3 +904,4 @@ $(document).ready(function () {
 });
 </script>
 @endpush
+
