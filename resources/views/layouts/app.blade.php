@@ -761,6 +761,19 @@
 <!-- Select2 -->
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
+<!-- Custom & Init Scripts -->
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        
+        // --- INISIALISASI ---
+        if (!localStorage.getItem('tutorial_shown')) {
+            const tutorialModal = new bootstrap.Modal(document.getElementById('tutorialModal'));
+            tutorialModal.show();
+            localStorage.setItem('tutorial_shown', 'true');
+        }
+
+    });
+</script>
 
 <!-- JS khusus halaman (jika ada) -->
 @stack('scripts')
