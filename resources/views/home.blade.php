@@ -248,16 +248,6 @@ width: 22px;
 
 }
 
-
-
-
-
-
-
-
-
-
-
     /* ===== STYLING UNTUK FITUR PENCARIAN ALAMAT BARU ===== */
 
     .address-search-container .nav-pills .nav-link {
@@ -317,6 +307,18 @@ width: 22px;
     }
 
     /* ===== AKHIR STYLING FITUR PENCARIAN ALAMAT BARU ===== */
+
+        /*
+        ==========================================================
+        PERBAIKAN TABEL RESPONSIVE (BISA SCROLL)
+        ==========================================================
+        */
+        .table-responsive {
+            display: block;
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch; /* Memperhalus scroll di iOS */
+        }
 
 </style>
 

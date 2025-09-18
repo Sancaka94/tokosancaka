@@ -222,17 +222,7 @@
             box-shadow: 0 8px 16px rgba(0,0,0,0.1);
         }
 
-         /*
-        ==========================================================
-        PERBAIKAN TABEL RESPONSIVE (BISA SCROLL)
-        ==========================================================
-        */
-        .table-responsive {
-            display: block;
-            width: 100%;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch; /* Memperhalus scroll di iOS */
-        }
+     
 
         /* ========================================================== */
         /* PERBAIKAN TAMPILAN AUTOCOMPLETE ALAMAT                       */
@@ -761,6 +751,18 @@
 <!-- Select2 -->
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
+
+
+<!-- JS khusus halaman (jika ada) -->
+@stack('scripts')
+    
+@if (!empty($__debug))
+<div class="bg-yellow-100 text-yellow-800 p-4 text-sm border-t border-yellow-300 mt-8">
+    <strong>🔧 DEBUG INFO:</strong>
+    <pre class="whitespace-pre-wrap text-xs">{{ print_r($__debug, true) }}</pre>
+</div>
+@endif
+
 <!-- Custom & Init Scripts -->
 <script>
     document.addEventListener("DOMContentLoaded", function () {
@@ -774,16 +776,6 @@
 
     });
 </script>
-
-<!-- JS khusus halaman (jika ada) -->
-@stack('scripts')
-    
-@if (!empty($__debug))
-<div class="bg-yellow-100 text-yellow-800 p-4 text-sm border-t border-yellow-300 mt-8">
-    <strong>🔧 DEBUG INFO:</strong>
-    <pre class="whitespace-pre-wrap text-xs">{{ print_r($__debug, true) }}</pre>
-</div>
-@endif
 
 </body>
 </html>
