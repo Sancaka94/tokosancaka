@@ -447,7 +447,67 @@
                             <div class="col-md-6"><label for="item_price" class="form-label">Harga Barang</label><div class="input-group"><span class="input-group-text fw-bold">Rp</span><input type="number" name="item_price" id="item_price" class="form-control" placeholder="50000" required min="1"></div></div>
                             <div class="col-md-6"><label for="weight" class="form-label">Berat</label><div class="input-group"><span class="input-group-text"><i class="fas fa-weight-hanging"></i></span><input type="number" name="weight" id="weight" class="form-control" placeholder="1000" required min="1"><span class="input-group-text">gr</span></div></div>
                             <div class="col-12"><label class="form-label mb-2">Dimensi (Opsional)</label><div class="row g-2"><div class="col-4"><div class="input-group"><span class="input-group-text">P</span><input type="number" name="length" id="length" class="form-control" placeholder="cm"></div></div><div class="col-4"><div class="input-group"><span class="input-group-text">L</span><input type="number" name="width" id="width" class="form-control" placeholder="cm"></div></div><div class="col-4"><div class="input-group"><span class="input-group-text">T</span><input type="number" name="height" id="height" class="form-control" placeholder="cm"></div></div></div></div>
-                            <div class="col-md-6"><label for="item_type" class="form-label">Jenis Barang</label><select name="item_type" id="item_type" class="form-select" required><option value="" disabled selected>Pilih...</option><option value="1">Elektronik</option><option value="2">Pakaian</option><option value="3">Pecah Belah</option><option value="4">Dokumen</option><option value="5">Rumah Tangga</option><option value="6">Aksesoris</option><option value="7">Lainnya</option></select></div>
+                            
+                            <div class="col-md-6">
+  <label for="item_type" class="form-label">Jenis Barang</label>
+  <select name="item_type" id="item_type" class="form-select" required>
+    <option value="" disabled selected>Pilih...</option>
+
+    <!-- Elektronik & Gadget -->
+    <option value="1">Elektronik</option>
+    <option value="2">HP & Gadget</option>
+    <option value="3">Komputer & Laptop</option>
+    <option value="4">Aksesoris Elektronik</option>
+
+    <!-- Fashion -->
+    <option value="5">Pakaian Pria</option>
+    <option value="6">Pakaian Wanita</option>
+    <option value="7">Pakaian Anak</option>
+    <option value="8">Sepatu & Sandal</option>
+    <option value="9">Tas & Dompet</option>
+    <option value="10">Perhiasan & Aksesoris</option>
+
+    <!-- Rumah Tangga -->
+    <option value="11">Peralatan Rumah Tangga</option>
+    <option value="12">Peralatan Dapur</option>
+    <option value="13">Furniture</option>
+    <option value="14">Dekorasi Rumah</option>
+
+    <!-- Kecantikan & Kesehatan -->
+    <option value="15">Kosmetik & Makeup</option>
+    <option value="16">Skincare</option>
+    <option value="17">Alat Kesehatan</option>
+    <option value="18">Obat & Suplemen</option>
+
+    <!-- Hobi & Lifestyle -->
+    <option value="19">Olahraga</option>
+    <option value="20">Alat Musik</option>
+    <option value="21">Fotografi & Kamera</option>
+    <option value="22">Otomotif (Sparepart, Aksesoris Motor/Mobil)</option>
+
+    <!-- Bayi & Anak -->
+    <option value="23">Mainan Anak</option>
+    <option value="24">Perlengkapan Bayi</option>
+    <option value="25">Fashion Bayi & Anak</option>
+
+    <!-- Makanan & Minuman -->
+    <option value="26">Makanan & Minuman</option>
+    <option value="27">Snack & Camilan</option>
+    <option value="28">Kopi & Teh</option>
+    <option value="29">Bahan Pokok</option>
+
+    <!-- Buku & ATK -->
+    <option value="30">Buku</option>
+    <option value="31">Alat Tulis & Kantor</option>
+
+    <!-- Lainnya -->
+    <option value="32">Dokumen</option>
+    <option value="33">Barang Pecah Belah</option>
+    <option value="34">Lainnya</option>
+  </select>
+</div>
+
+
                             <div class="col-md-6"><label for="service_type" class="form-label">Jenis Layanan</label><select name="service_type" id="service_type" class="form-select" required><option value="regular" selected>Regular</option><option value="cargo">Cargo</option><option value="instant">Instant / Sameday</option></select></div>
                             <div class="col-12"><label for="ansuransi" class="form-label">Asuransi</label><div class="input-group"><span class="input-group-text"><i class="fas fa-shield-alt"></i></span><select name="ansuransi" id="ansuransi" class="form-select" required><option value="tidak" selected>Tidak Pakai Asuransi</option><option value="iya">Ya, Pakai Asuransi</option></select></div></div>
                             <div class="col-12"><hr class="my-3"></div>
