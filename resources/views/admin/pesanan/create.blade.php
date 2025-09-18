@@ -64,7 +64,10 @@
                         </div>
                         <div class="md:col-span-2 relative">
                             <label for="sender_address_search" class="block mb-2 text-sm font-medium text-gray-700">Cari Alamat Ongkir (Kec/Kel/Kodepos)</label>
-                            <input type="text" id="sender_address_search" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" placeholder="Ketik untuk mencari alamat..." autocomplete="off">
+                            <div class="relative">
+                                <input type="text" id="sender_address_search" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pr-8" placeholder="Ketik untuk mencari alamat..." autocomplete="off">
+                                <i id="sender_address_check" class="fas fa-check-circle text-green-500 absolute top-1/2 right-3 transform -translate-y-1/2 hidden"></i>
+                            </div>
                             <div id="sender_address_results" class="search-results-container hidden"></div>
                         </div>
                         <div class="md:col-span-2">
@@ -96,7 +99,10 @@
                         </div>
                         <div class="md:col-span-2 relative">
                             <label for="receiver_address_search" class="block mb-2 text-sm font-medium text-gray-700">Cari Alamat Ongkir (Kec/Kel/Kodepos)</label>
-                            <input type="text" id="receiver_address_search" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" placeholder="Ketik untuk mencari alamat..." autocomplete="off">
+                            <div class="relative">
+                                <input type="text" id="receiver_address_search" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pr-8" placeholder="Ketik untuk mencari alamat..." autocomplete="off">
+                                <i id="receiver_address_check" class="fas fa-check-circle text-green-500 absolute top-1/2 right-3 transform -translate-y-1/2 hidden"></i>
+                            </div>
                             <div id="receiver_address_results" class="search-results-container hidden"></div>
                         </div>
                         <div class="md:col-span-2">
@@ -104,7 +110,7 @@
                             <textarea id="receiver_address" name="receiver_address" rows="3" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" placeholder="Contoh: Jl. Pahlawan No. 12, RT 01/RW 05, (Patokan: Sebelah Kantor Pos)" required></textarea>
                         </div>
                           <div class="md:col-span-2">
-                               <label class="flex items-center text-sm text-gray-600"><input type="checkbox" name="save_receiver" value="1" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-2"> Simpan data penerima ini</label>
+                                <label class="flex items-center text-sm text-gray-600"><input type="checkbox" name="save_receiver" value="1" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-2"> Simpan data penerima ini</label>
                           </div>
                     </div>
                 </div>
@@ -178,14 +184,14 @@
         </div>
 
         {{-- Hidden fields untuk data API --}}
-        <input type="hidden" name="pengirim_id" id="pengirim_id">
+        <input type="hidden" name="pengirim_id" id="sender_id">
         <input type="hidden" name="sender_lat" id="sender_lat"><input type="hidden" name="sender_lng" id="sender_lng">
         <input type="hidden" name="sender_province" id="sender_province" ><input type="hidden" name="sender_regency" id="sender_regency" >
         <input type="hidden" name="sender_district" id="sender_district" ><input type="hidden" name="sender_village" id="sender_village" >
         <input type="hidden" name="sender_postal_code" id="sender_postal_code" >
         <input type="hidden" name="sender_district_id" id="sender_district_id" required>
         <input type="hidden" name="sender_subdistrict_id" id="sender_subdistrict_id" required>
-        <input type="hidden" name="penerima_id" id="penerima_id">
+        <input type="hidden" name="penerima_id" id="receiver_id">
         <input type="hidden" name="receiver_lat" id="receiver_lat"><input type="hidden" name="receiver_lng" id="receiver_lng">
         <input type="hidden" name="receiver_province" id="receiver_province" ><input type="hidden" name="receiver_regency" id="receiver_regency" >
         <input type="hidden" name="receiver_district" id="receiver_district" ><input type="hidden" name="receiver_village" id="receiver_village" >
@@ -265,7 +271,7 @@ document.addEventListener('DOMContentLoaded', function () {
         return 'Rp ' + (parseInt(angka, 10) || 0).toLocaleString('id-ID'); 
     }
 
-    // --- FUNGSI PENCARIAN KONTAK DARI DATABASE (DENGAN LOGGING) ---
+    // --- FUNGSI PENCARIAN KONTAK DARI DATABASE ---
     function setupContactSearch(prefix) {
         const nameInput = document.getElementById(`${prefix}_name`);
         const phoneInput = document.getElementById(`${prefix}_phone`);
@@ -281,10 +287,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
             try {
                 const url = `{{ route('api.contacts.search') }}?search=${encodeURIComponent(query)}&tipe=${contactType}`;
-                console.log(`[${prefix}] Fetching URL: ${url}`);
                 const response = await fetch(url);
                 
-                console.log(`[${prefix}] Status respons server: ${response.status}`);
                 if (!response.ok) {
                     const errorText = await response.text();
                     console.error(`[${prefix}] Error dari server:`, errorText);
@@ -292,8 +296,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 
                 const contacts = await response.json();
-                console.log(`[${prefix}] Data kontak diterima:`, contacts);
-                
                 resultsContainer.innerHTML = '';
                 resultsContainer.classList.remove('hidden');
 
@@ -305,19 +307,27 @@ document.addEventListener('DOMContentLoaded', function () {
                         
                         resultDiv.addEventListener('click', () => {
                             console.log(`[${prefix}] Kontak dipilih:`, contact);
+                            document.getElementById(`${prefix}_id`).value = contact.id || '';
                             document.getElementById(`${prefix}_name`).value = contact.nama || '';
                             document.getElementById(`${prefix}_phone`).value = contact.no_hp || '';
                             document.getElementById(`${prefix}_address`).value = contact.alamat || '';
+                            
                             document.getElementById(`${prefix}_province`).value = contact.province || '';
                             document.getElementById(`${prefix}_regency`).value = contact.regency || '';
                             document.getElementById(`${prefix}_district`).value = contact.district || '';
                             document.getElementById(`${prefix}_village`).value = contact.village || '';
                             document.getElementById(`${prefix}_postal_code`).value = contact.postal_code || '';
                             
-                            const kiriminAjaSearchString = [contact.village, contact.district, contact.regency].filter(Boolean).join(', ');
-                            document.getElementById(`${prefix}_address_search`).value = kiriminAjaSearchString;
+                            const kiriminAjaSearchString = [contact.village, contact.district, contact.regency, contact.postal_code].filter(Boolean).join(', ');
+                            const addressSearchInput = document.getElementById(`${prefix}_address_search`);
+                            addressSearchInput.value = kiriminAjaSearchString;
 
                             resultsContainer.classList.add('hidden');
+
+                            if (kiriminAjaSearchString) {
+                                // Panggil pencarian alamat dengan data kontak untuk pencocokan
+                                performAddressSearch(prefix, kiriminAjaSearchString, contact);
+                            }
                         });
                         resultsContainer.appendChild(resultDiv);
                     });
@@ -327,61 +337,114 @@ document.addEventListener('DOMContentLoaded', function () {
             } catch (error) {
                 console.error(`[${prefix}] Gagal melakukan pencarian kontak:`, error);
                 resultsContainer.classList.remove('hidden');
-                resultsContainer.innerHTML = `<div class="p-3 text-red-500">Gagal memuat data. Cek console (F12) untuk detail.</div>`;
+                resultsContainer.innerHTML = `<div class="p-3 text-red-500">Gagal memuat data. Periksa koneksi atau log server.</div>`;
             }
         };
 
         nameInput.addEventListener('input', debounce(() => performSearch(nameInput.value), 400));
         phoneInput.addEventListener('input', debounce(() => performSearch(phoneInput.value), 400));
     }
-    setupContactSearch('sender');
-    setupContactSearch('receiver');
     
-    // --- FUNGSI PENCARIAN ALAMAT ONGKIR (KIRIMIN AJA API) ---
-    function setupAddressSearch(prefix) {
+    // --- FUNGSI UNTUK MEMILIH ALAMAT DAN UPDATE UI ---
+    function selectAddress(prefix, item) {
         const searchInput = document.getElementById(`${prefix}_address_search`);
         const resultsContainer = document.getElementById(`${prefix}_address_results`);
+        const checkIcon = document.getElementById(`${prefix}_address_check`);
+
+        searchInput.value = item.full_address;
+        const parts = item.full_address.split(',').map(s => s.trim());
+        document.getElementById(`${prefix}_village`).value = parts[0] || '';
+        document.getElementById(`${prefix}_district`).value = parts[1] || '';
+        document.getElementById(`${prefix}_regency`).value = parts[2] || '';
+        document.getElementById(`${prefix}_province`).value = parts[3] || '';
+        document.getElementById(`${prefix}_postal_code`).value = parts[4] || '';
+        document.getElementById(`${prefix}_district_id`).value = item.district_id;
+        document.getElementById(`${prefix}_subdistrict_id`).value = item.subdistrict_id;
+
+        resultsContainer.classList.add('hidden');
+        checkIcon.classList.remove('hidden');
+    }
+
+    // --- FUNGSI PENCARIAN ALAMAT ONGKIR (KIRIMIN AJA API) ---
+    async function performAddressSearch(prefix, query, contactToMatch = null) {
+        const resultsContainer = document.getElementById(`${prefix}_address_results`);
         
-        searchInput.addEventListener('input', debounce(async () => {
-            const query = searchInput.value;
-            if (query.length < 3) { resultsContainer.classList.add('hidden'); return; }
+        if (query.length < 3) { 
+            resultsContainer.classList.add('hidden'); 
+            return; 
+        }
 
-            try {
-                const response = await fetch(`{{ route('api.address.search') }}?search=${encodeURIComponent(query)}`);
-                if (!response.ok) throw new Error('Network response error');
-                const data = await response.json();
-                
-                resultsContainer.innerHTML = '';
-                resultsContainer.classList.remove('hidden');
+        try {
+            const response = await fetch(`{{ route('api.address.search') }}?search=${encodeURIComponent(query)}`);
+            if (!response.ok) throw new Error('Network response error');
+            const data = await response.json();
+            
+            resultsContainer.innerHTML = '';
+            resultsContainer.classList.remove('hidden');
 
-                if (data && data.length > 0) {
-                    data.forEach(item => {
-                        const resultDiv = document.createElement('div');
-                        resultDiv.className = 'p-3 border-b hover:bg-gray-100 cursor-pointer text-sm';
-                        resultDiv.innerHTML = `<div class="font-semibold">${item.full_address}</div>`;
-                        resultDiv.addEventListener('click', () => {
-                            searchInput.value = item.full_address;
-                            const parts = item.full_address.split(',').map(s => s.trim());
-                            document.getElementById(`${prefix}_village`).value = parts[0] || '';
-                            document.getElementById(`${prefix}_district`).value = parts[1] || '';
-                            document.getElementById(`${prefix}_regency`).value = parts[2] || '';
-                            document.getElementById(`${prefix}_province`).value = parts[3] || '';
-                            document.getElementById(`${prefix}_postal_code`).value = parts[4] || '';
-                            document.getElementById(`${prefix}_district_id`).value = item.district_id;
-                            document.getElementById(`${prefix}_subdistrict_id`).value = item.subdistrict_id;
-                            resultsContainer.classList.add('hidden');
-                        });
-                        resultsContainer.appendChild(resultDiv);
+            if (data && data.length > 0) {
+                // --- BARU: Logika untuk "auto-enter" jika ada kecocokan persis dari data kontak ---
+                if (contactToMatch) {
+                    const exactMatch = data.find(item => {
+                        const normalizedApiAddress = item.full_address.toLowerCase();
+                        const village = (contactToMatch.village || '').toLowerCase();
+                        const district = (contactToMatch.district || '').toLowerCase();
+                        const regency = (contactToMatch.regency || '').toLowerCase().replace('kabupaten ', '').replace('kota ', '');
+                        const postalCode = (contactToMatch.postal_code || '');
+
+                        // Memastikan semua bagian dari kontak ada di dalam hasil API
+                        return village && district && regency && postalCode &&
+                               normalizedApiAddress.includes(village) &&
+                               normalizedApiAddress.includes(district) &&
+                               normalizedApiAddress.includes(regency) &&
+                               normalizedApiAddress.includes(postalCode);
                     });
-                } else {
-                    resultsContainer.innerHTML = '<div class="p-3 text-gray-500">Alamat tidak ditemukan.</div>';
+
+                    if (exactMatch) {
+                        selectAddress(prefix, exactMatch); // Auto-select kecocokan persis
+                        return; // Hentikan proses, jangan tampilkan dropdown
+                    }
                 }
-            } catch (error) {
-                console.error('Address search failed:', error);
-                resultsContainer.innerHTML = '<div class="p-3 text-red-500">Gagal memuat data.</div>';
+
+                // Fallback jika tidak ada `contactToMatch` atau tidak ada kecocokan persis
+                if (data.length === 1) {
+                    selectAddress(prefix, data[0]);
+                    return;
+                }
+
+                data.forEach(item => {
+                    const resultDiv = document.createElement('div');
+                    resultDiv.className = 'p-3 border-b hover:bg-gray-100 cursor-pointer text-sm';
+                    resultDiv.innerHTML = `<div class="font-semibold">${item.full_address}</div>`;
+                    resultDiv.addEventListener('click', () => {
+                        selectAddress(prefix, item);
+                    });
+                    resultsContainer.appendChild(resultDiv);
+                });
+            } else {
+                resultsContainer.innerHTML = '<div class="p-3 text-gray-500">Alamat tidak ditemukan.</div>';
             }
+        } catch (error) {
+            console.error('Address search failed:', error);
+            resultsContainer.innerHTML = '<div class="p-3 text-red-500">Gagal memuat data alamat.</div>';
+        }
+    }
+    
+    // --- SETUP PENCARIAN ALAMAT ---
+    function setupAddressSearch(prefix) {
+        const searchInput = document.getElementById(`${prefix}_address_search`);
+        const checkIcon = document.getElementById(`${prefix}_address_check`);
+        
+        searchInput.addEventListener('input', debounce(() => {
+            checkIcon.classList.add('hidden');
+            // Saat user mengetik manual, tidak ada `contactToMatch`
+            performAddressSearch(prefix, searchInput.value, null);
         }, 400));
     }
+    
+    // --- INISIALISASI ---
+    setupContactSearch('sender');
+    setupContactSearch('receiver');
     setupAddressSearch('sender');
     setupAddressSearch('receiver');
 
