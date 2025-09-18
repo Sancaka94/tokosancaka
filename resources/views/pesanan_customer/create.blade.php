@@ -9,9 +9,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 {{-- Font Awesome untuk ikon --}}
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="[https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css](https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css)">
 {{-- CSS untuk jQuery UI Autocomplete --}}
-<link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
+<link rel="stylesheet" href="[https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css](https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css)">
 
 <style>
     /*
@@ -44,8 +44,8 @@
 
     /*
     ============================================
-    PERBAIKAN DESAIN: Lebar Header & Konten 80% di Layar Besar
-    - Sesuai permintaan, lebar header dan konten utama diatur menjadi 80%
+    PERBAIKAN DESAIN: Lebar Header & Konten 90% di Layar Besar
+    - Sesuai permintaan, lebar header dan konten utama diatur menjadi 90%
       pada layar desktop (lebar > 1366px) untuk tampilan yang lebih fokus.
     ============================================
     */
@@ -54,10 +54,10 @@
         CATATAN PENTING:
         Aturan ini menargetkan class .container dari Bootstrap.
         Ini akan memengaruhi header DAN konten utama, membuat keduanya
-        memiliki lebar maksimal 80% dan berada di tengah layar.
+        memiliki lebar maksimal 90% dan berada di tengah layar.
         */
         .container {
-            max-width: 80% !important;
+            max-width: 90% !important;
         }
     }
 
@@ -426,7 +426,7 @@ Agar tombol menu (hamburger) bisa diklik dan berfungsi, pastikan file layout uta
 (kemungkinan besar 'resources/views/layouts/app.blade.php') memuat BUNDLE JAVASCRIPT BOOTSTRAP
 sebelum tag penutup </body>. Contoh:
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="[https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js](https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js)"></script>
 
 Tanpa script tersebut, fungsionalitas menu dropdown dan toggle tidak akan berjalan.
 CSS di halaman ini sudah siap untuk mendukungnya secara visual.
@@ -662,8 +662,8 @@ CSS di halaman ini sudah siap untuk mendukungnya secara visual.
 
 @push('scripts')
 {{-- Pustaka jQuery & jQuery UI --}}
-<script src="https://code.jquery.com/jquery-3.6.0.js"></script>
-<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.js"></script>
+<script src="[https://code.jquery.com/jquery-3.6.0.js](https://code.jquery.com/jquery-3.6.0.js)"></script>
+<script src="[https://code.jquery.com/ui/1.13.2/jquery-ui.js](https://code.jquery.com/ui/1.13.2/jquery-ui.js)"></script>
 
 <script>
 $(document).ready(function () {
