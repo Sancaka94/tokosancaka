@@ -336,7 +336,7 @@ width: 22px;
 
 <!-- Action Bar Section -->
 
-<div class="container" style="margin-top: -80px; position: relative; z-index: 10;">
+<div class="container" style="margin-top: -80px; position: relative; z-index: 20;">
 
     <div class="action-bar">
 
