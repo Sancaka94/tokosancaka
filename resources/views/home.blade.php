@@ -2002,6 +2002,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
         let tableHtml = `
 
+        <div class="table-responsive">
+
+
             <div class="results-table table-responsive">
 
                 <table class="table table-hover table-striped mb-0">
@@ -2283,7 +2286,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
 
-
+    </div>
 
 
     // Inisialisasi
