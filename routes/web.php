@@ -58,7 +58,6 @@ use App\Http\Controllers\BlogController;
 
 use App\Http\Controllers\KodePosController;
 
-use App\Http\Controllers\Admin\KontakController;
 
 
 
@@ -103,7 +102,6 @@ Route::post('/admin/import/wordpress', [ImportController::class, 'handleImport']
 
 Route::get('/feed', [BlogController::class, 'generateFeed'])->name('feed');
 
-Route::get('/api/search-kontak', [App\Http\Controllers\CustomerOrderController::class, 'searchKontak'])->name('api.search.kontak');
 
 
 
