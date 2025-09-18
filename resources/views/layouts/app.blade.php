@@ -162,7 +162,7 @@
 
         #cekOngkirModal .form-label {
             font-weight: 600;
-            color: #495057;
+            color: #ff0000ff;
             margin-bottom: 0.5rem;
         }
 
