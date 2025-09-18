@@ -52,6 +52,7 @@ use App\Http\Controllers\Admin\ImapController; // Pastikan path controller ini b
 
 use App\Http\Controllers\Admin\LoginController;
 
+use App\Http\Controllers\Admin\KontakController;
 
 
 
