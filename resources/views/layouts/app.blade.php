@@ -277,7 +277,7 @@
 <!-- =================================================================== -->
 <header>
    <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm fixed-top">
-        <div class="container">
+        <div class="container-fluid">
             <a class="navbar-brand d-flex align-items-center" href="{{ url('/') }}">
                 <img src="https://tokosancaka.biz.id/storage/uploads/sancaka.png" alt="Sancaka Express Logo" style="max-height: 40px;" class="me-2">
                 <strong>SANCAKA EXPRESS</strong>
