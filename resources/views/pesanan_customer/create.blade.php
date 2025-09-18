@@ -14,406 +14,407 @@
 <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
 
 <style>
+/*
+============================================
+PERBAIKAN UTAMA: Desain Modern & Responsif
+- Dibuat oleh Gemini
+- Fokus pada Clean UI, UX, dan Responsiveness
+============================================
+*/
+
+:root {
+    --primary-color: #dc3545; /* Warna Merah */
+    --primary-rgb: 220, 53, 69;
+    --primary-color-darker: #b02a37;
+    --secondary-color: #6c757d;
+    --success-color: #198754;
+    --danger-color: #dc3545;
+    --body-bg: #f8f9fa;
+    --text-color: #212529;
+    --card-bg: #ffffff;
+    --card-border-color: #e9ecef;
+    --input-border-color: #ced4da;
+    --input-focus-border-color: var(--primary-color);
+    --font-family-sans-serif: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+    --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    --card-shadow-hover: 0 6px 16px rgba(0, 0, 0, 0.08);
+    --border-radius-lg: 1rem;
+    --border-radius-md: 0.5rem;
+}
+
+/*
+============================================
+PERBAIKAN DESAIN: Lebar Konten 90% di Layar Besar
+- Sesuai permintaan, lebar konten utama diatur menjadi 90%
+  pada layar desktop (lebar > 1366px) untuk tampilan yang lebih fokus.
+============================================
+*/
+@media (min-width: 1366px) {
     /*
-    ============================================
-    PERBAIKAN UTAMA: Desain Modern & Responsif
-    - Dibuat oleh Gemini
-    - Fokus pada Clean UI, UX, dan Responsiveness
-    ============================================
+    CATATAN PENTING:
+    Aturan ini menargetkan class .container dari Bootstrap.
+    Ini akan memengaruhi konten utama, membuatnya
+    memiliki lebar maksimal 90% dan berada di tengah layar.
     */
-
-    :root {
-        --primary-color: #dc3545; /* Warna Merah */
-        --primary-rgb: 220, 53, 69;
-        --primary-color-darker: #b02a37;
-        --secondary-color: #6c757d;
-        --success-color: #198754;
-        --danger-color: #dc3545;
-        --body-bg: #f8f9fa;
-        --text-color: #212529;
-        --card-bg: #ffffff;
-        --card-border-color: #e9ecef;
-        --input-border-color: #ced4da;
-        --input-focus-border-color: var(--primary-color);
-        --font-family-sans-serif: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
-        --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-        --card-shadow-hover: 0 6px 16px rgba(0, 0, 0, 0.08);
-        --border-radius-lg: 1rem;
-        --border-radius-md: 0.5rem;
+    .container {
+        max-width: 90% !important;
     }
+}
 
-    /*
-    ============================================
-    PERBAIKAN DESAIN: Lebar Header & Konten 90% di Layar Besar
-    - Sesuai permintaan, lebar header dan konten utama diatur menjadi 90%
-      pada layar desktop (lebar > 1366px) untuk tampilan yang lebih fokus.
-    ============================================
-    */
-    @media (min-width: 1366px) {
-        /*
-        CATATAN PENTING:
-        Aturan ini menargetkan class .container dari Bootstrap.
-        Ini akan memengaruhi header DAN konten utama, membuat keduanya
-        memiliki lebar maksimal 90% dan berada di tengah layar.
-        */
-        .container {
-            max-width: 90% !important;
-        }
-    }
+body {
+    background-color: var(--body-bg);
+    font-family: var(--font-family-sans-serif);
+    color: var(--text-color);
+}
 
-    body {
-        background-color: var(--body-bg);
-        font-family: var(--font-family-sans-serif);
-        color: var(--text-color);
-    }
-    
-    .navbar {
-        background-color: var(--card-bg);
-        box-shadow: var(--card-shadow);
-    }
+.main-content-container {
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+}
 
+.card {
+    border: 1px solid var(--card-border-color);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--card-shadow);
+    transition: box-shadow 0.3s ease-in-out;
+    background-color: var(--card-bg);
+}
+
+.card:hover {
+    box-shadow: var(--card-shadow-hover);
+}
+
+.card-header {
+    background-color: transparent;
+    border-bottom: 1px solid var(--card-border-color);
+    font-weight: 600;
+    font-size: 1.1rem;
+    padding: 1.25rem 1.5rem;
+}
+
+.card-header .fa-icon {
+    color: var(--primary-color);
+}
+
+.form-label {
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    color: #495057;
+}
+
+.input-group-text {
+    background-color: #f8f9fa;
+    border-color: var(--input-border-color);
+    border-right: none;
+    width: 45px;
+    justify-content: center;
+    color: var(--secondary-color);
+    transition: all 0.2s ease-in-out;
+}
+
+.form-control, .form-select {
+    border-color: var(--input-border-color);
+    transition: all 0.2s ease-in-out;
+    height: calc(1.5em + 1rem + 2px);
+    padding: 0.5rem 1rem;
+}
+textarea.form-control { height: auto; }
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--input-focus-border-color);
+    box-shadow: 0 0 0 0.25rem rgba(var(--primary-rgb), 0.15);
+}
+
+.input-group:focus-within .input-group-text {
+    color: var(--primary-color);
+    border-color: var(--input-focus-border-color);
+}
+
+.input-group .form-control { border-left: none; }
+
+/* Autocomplete & Search Results */
+.search-results-container, .ui-autocomplete {
+    position: absolute;
+    z-index: 1050;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border-color);
+    border-radius: var(--border-radius-md);
+    max-height: 250px;
+    overflow-y: auto;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+    padding: 0.5rem;
+    margin-top: 0.25rem;
+    list-style: none;
+}
+.ui-autocomplete { min-width: 300px; }
+.search-result-item, .ui-menu-item-wrapper {
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+    border-radius: 0.375rem;
+}
+.search-result-item:hover, .ui-menu-item-wrapper.ui-state-active {
+    background-color: rgba(var(--primary-rgb), 0.08);
+}
+
+/*
+============================================
+PERBAIKAN RESPONSIVE: Ukuran Tombol Disesuaikan
+============================================
+*/
+.btn {
+    border-radius: var(--border-radius-md);
+    font-weight: 600;
+    padding: 0.6rem 1.2rem;
+    font-size: 0.9rem;
+    transition: all 0.2s ease-in-out;
+}
+.btn-lg {
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+}
+.btn-primary {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+.btn-primary:hover {
+    background-color: var(--primary-color-darker);
+    border-color: var(--primary-color-darker);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(var(--primary-rgb), 0.2);
+}
+.btn-outline-success {
+    border-color: var(--success-color);
+    color: var(--success-color);
+}
+.btn-outline-success:hover {
+    background-color: var(--success-color);
+    color: #fff;
+}
+
+/* Stepper */
+.stepper {
+    display: flex;
+    justify-content: space-around;
+    position: relative;
+    margin-bottom: 2.5rem;
+}
+.stepper::before {
+    content: '';
+    position: absolute;
+    top: 20px;
+    left: 15%;
+    right: 15%;
+    height: 2px;
+    background-color: var(--card-border-color);
+    z-index: 1;
+}
+.step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    z-index: 2;
+    background-color: var(--body-bg);
+    padding: 0 0.5rem;
+    width: 80px;
+}
+.step-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: var(--card-bg);
+    border: 2px solid var(--card-border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0.5rem;
+    color: var(--secondary-color);
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+.step-text {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--secondary-color);
+}
+.step.active .step-icon {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    background-color: rgba(var(--primary-rgb), 0.08);
+}
+.step.active .step-text {
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+/* Sticky Card for Desktop */
+@media (min-width: 992px) {
+    .sticky-lg-top {
+        position: sticky;
+        top: 2rem;
+        z-index: 1020;
+    }
     .main-content-container {
-        padding-top: 8rem; /* Disesuaikan agar ada ruang dari header */
-        padding-bottom: 2rem;
+        padding-top: 4rem; /* Sesuaikan padding untuk desktop */
     }
+}
 
-    .card {
-        border: 1px solid var(--card-border-color);
-        border-radius: var(--border-radius-lg);
-        box-shadow: var(--card-shadow);
-        transition: box-shadow 0.3s ease-in-out;
-        background-color: var(--card-bg);
-    }
+/*
+============================================
+NEW STYLE: Cek Ongkir Modal
+============================================
+*/
+#ongkirModal .modal-title {
+    color: var(--primary-color);
+}
+.ongkir-header-row {
+    font-weight: 600;
+    color: var(--secondary-color);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    padding: 0 1rem;
+    margin-bottom: 0.5rem;
+}
+.ongkir-item-card {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    background-color: #fff;
+    border: 1px solid var(--card-border-color);
+    border-radius: 0.75rem;
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.9rem;
+    transition: all 0.2s ease-in-out;
+}
+.ongkir-item-card:hover {
+    box-shadow: var(--card-shadow);
+    transform: translateY(-2px);
+    border-color: var(--primary-color);
+    cursor: pointer;
+}
+.ongkir-item-col {
+    padding: 0 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+.ongkir-item-col .col-label { display: none; }
+.col-service {
+    flex: 0 0 24%;
+    flex-direction: row;
+    align-items: center;
+}
+.ongkir-logo {
+    width: 60px;
+    height: auto;
+    object-fit: contain;
+    margin-right: 15px;
+}
+.service-info { display: flex; flex-direction: column; }
+.service-name { font-weight: 600; font-size: 0.95rem; color: var(--text-color); }
+.service-type { font-size: 0.8rem; color: var(--secondary-color); }
+.col-etd, .col-cod, .col-pickup, .col-discount { flex: 0 0 12%; text-align: center; }
+.col-price { flex: 0 0 16%; text-align: right; }
+.price-value .base-price {
+    text-decoration: line-through;
+    font-size: 0.8rem;
+    color: var(--danger-color);
+    margin-left: 5px;
+}
+.price-value .final-price {
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--success-color);
+}
+.price-details {
+    font-size: 0.8rem;
+    color: var(--secondary-color);
+    margin-top: 2px;
+}
+.price-details small {
+    line-height: 1.3;
+    display: block;
+}
+.col-action { flex: 0 0 12%; text-align: right; }
+.btn-kirim {
+    background-color: var(--primary-color);
+    color: #fff;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 0.8rem;
+    padding: 0.4rem 1rem;
+    border: none;
+}
+.btn-kirim:hover {
+    background-color: var(--primary-color-darker);
+    color: #fff;
+}
 
-    .card:hover {
-        box-shadow: var(--card-shadow-hover);
-    }
-
-    .card-header {
-        background-color: transparent;
-        border-bottom: 1px solid var(--card-border-color);
-        font-weight: 600;
-        font-size: 1.1rem;
-        padding: 1.25rem 1.5rem;
-    }
-
-    .card-header .fa-icon {
-        color: var(--primary-color);
-    }
-
-    .form-label {
-        font-weight: 500;
-        margin-bottom: 0.5rem;
-        color: #495057;
-    }
-
-    .input-group-text {
-        background-color: #f8f9fa;
-        border-color: var(--input-border-color);
-        border-right: none;
-        width: 45px;
-        justify-content: center;
-        color: var(--secondary-color);
-        transition: all 0.2s ease-in-out;
-    }
-
-    .form-control, .form-select {
-        border-color: var(--input-border-color);
-        transition: all 0.2s ease-in-out;
-        height: calc(1.5em + 1rem + 2px);
-        padding: 0.5rem 1rem;
-    }
-    textarea.form-control { height: auto; }
-
-    .form-control:focus, .form-select:focus {
-        border-color: var(--input-focus-border-color);
-        box-shadow: 0 0 0 0.25rem rgba(var(--primary-rgb), 0.15);
-    }
-
-    .input-group:focus-within .input-group-text {
-        color: var(--primary-color);
-        border-color: var(--input-focus-border-color);
-    }
-
-    .input-group .form-control { border-left: none; }
-
-    /* Autocomplete & Search Results */
-    .search-results-container, .ui-autocomplete {
-        position: absolute;
-        z-index: 1050;
-        background: var(--card-bg);
-        border: 1px solid var(--card-border-color);
-        border-radius: var(--border-radius-md);
-        max-height: 250px;
-        overflow-y: auto;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.1);
-        padding: 0.5rem;
-        margin-top: 0.25rem;
-        list-style: none;
-    }
-    .ui-autocomplete { min-width: 300px; }
-    .search-result-item, .ui-menu-item-wrapper {
-        padding: 0.75rem 1rem;
-        cursor: pointer;
-        font-size: 0.9rem;
-        border-radius: 0.375rem;
-    }
-    .search-result-item:hover, .ui-menu-item-wrapper.ui-state-active {
-        background-color: rgba(var(--primary-rgb), 0.08);
-    }
-
-    /*
-    ============================================
-    PERBAIKAN RESPONSIVE: Ukuran Tombol Disesuaikan
-    ============================================
-    */
-    .btn {
-        border-radius: var(--border-radius-md);
-        font-weight: 600;
-        padding: 0.6rem 1.2rem; /* Ukuran padding dikurangi */
-        font-size: 0.9rem; /* Ukuran font dikecilkan */
-        transition: all 0.2s ease-in-out;
-    }
-    .btn-lg {
-        padding: 0.75rem 1.5rem;
-        font-size: 1rem;
-    }
-    .btn-primary {
-        background-color: var(--primary-color);
-        border-color: var(--primary-color);
-    }
-    .btn-primary:hover {
-        background-color: var(--primary-color-darker);
-        border-color: var(--primary-color-darker);
-        transform: translateY(-2px);
-        box-shadow: 0 6px 12px rgba(var(--primary-rgb), 0.2);
-    }
-    .btn-outline-success {
-        border-color: var(--success-color);
-        color: var(--success-color);
-    }
-    .btn-outline-success:hover {
-        background-color: var(--success-color);
-        color: #fff;
-    }
-
-    /* Stepper */
-    .stepper {
-        display: flex;
-        justify-content: space-around;
-        position: relative;
-        margin-bottom: 2.5rem;
+/*
+============================================
+PERBAIKAN RESPONSIVE: Media Queries untuk Mobile & Tablet
+============================================
+*/
+@media (max-width: 991px) {
+    .main-content-container {
+        padding-top: 1rem; /* Kurangi padding atas di mobile */
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
     }
     .stepper::before {
-        content: '';
-        position: absolute;
-        top: 20px;
-        left: 15%;
-        right: 15%;
-        height: 2px;
-        background-color: var(--card-border-color);
-        z-index: 1;
+        left: 10%; right: 10%;
     }
-    .step {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
-        z-index: 2;
-        background-color: var(--body-bg);
-        padding: 0 0.5rem;
-        width: 80px;
-    }
-    .step-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        background-color: var(--card-bg);
-        border: 2px solid var(--card-border-color);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-bottom: 0.5rem;
-        color: var(--secondary-color);
-        font-weight: bold;
-        transition: all 0.3s ease;
-    }
-    .step-text {
-        font-size: 0.85rem;
-        font-weight: 500;
-        color: var(--secondary-color);
-    }
-    .step.active .step-icon {
-        border-color: var(--primary-color);
-        color: var(--primary-color);
-        background-color: rgba(var(--primary-rgb), 0.08);
-    }
-    .step.active .step-text {
-        color: var(--primary-color);
-        font-weight: 600;
-    }
+    .step-text { font-size: 0.75rem; }
 
-    /* Sticky Card for Desktop */
-    @media (min-width: 992px) {
-        .sticky-lg-top {
-            position: sticky;
-            top: 2rem;
-            z-index: 1020;
-        }
-    }
-
-    /*
-    ============================================
-    NEW STYLE: Cek Ongkir Modal
-    ============================================
-    */
-    #ongkirModal .modal-title {
-        color: var(--primary-color);
-    }
-    .service-filter-buttons .filter-btn {
-        --bs-btn-padding-y: .35rem;
-        --bs-btn-padding-x: 1.25rem;
-        --bs-btn-font-size: .875rem;
-        border-radius: 999px; /* Pill shape */
-        border: 1px solid #dee2e6;
-        font-weight: 500;
-        background-color: #f8f9fa; /* Light grey background */
-        color: var(--secondary-color);
-        transition: all 0.2s ease;
-    }
-    .service-filter-buttons .filter-btn:hover {
-        background-color: #e9ecef;
-    }
-    .service-filter-buttons .filter-btn.active {
-        background-color: var(--primary-color);
-        color: #fff;
-        border-color: var(--primary-color);
-        box-shadow: 0 4px 8px rgba(var(--primary-rgb), 0.2);
-    }
-    .ongkir-header-row {
-        font-weight: 600;
-        color: var(--secondary-color);
-        font-size: 0.8rem;
-        text-transform: uppercase;
-        padding: 0 1rem;
-        margin-bottom: 0.5rem;
-    }
     .ongkir-item-card {
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        background-color: #fff;
-        border: 1px solid var(--card-border-color);
-        border-radius: 0.75rem;
-        padding: 0.75rem 1rem;
-        margin-bottom: 0.75rem;
-        font-size: 0.9rem;
-        transition: all 0.2s ease-in-out;
-    }
-    .ongkir-item-card:hover {
-        box-shadow: var(--card-shadow);
-        transform: translateY(-2px);
-        border-color: var(--primary-color);
+        flex-wrap: wrap;
+        padding: 1rem;
+        row-gap: 0.5rem;
     }
     .ongkir-item-col {
-        padding: 0 10px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
+        padding: 5px 0;
+        text-align: left !important;
+        flex-basis: 50%;
     }
-    .ongkir-item-col .col-label { display: none; }
+    .ongkir-item-col .col-label {
+        display: block;
+        font-size: 0.75rem;
+        color: var(--secondary-color);
+        margin-bottom: 2px;
+        font-weight: 500;
+    }
     .col-service {
-        flex: 0 0 24%;
+        flex-basis: 65%;
+        order: 1;
         flex-direction: row;
         align-items: center;
     }
-    .ongkir-logo {
-        width: 60px;
-        height: auto;
-        object-fit: contain;
-        margin-right: 15px;
+    .col-action {
+        flex-basis: 35%;
+        order: 2;
+        align-self: center;
+        text-align: right !important;
     }
-    .service-info { display: flex; flex-direction: column; }
-    .service-name { font-weight: 600; font-size: 0.95rem; color: var(--text-color); }
-    .service-type { font-size: 0.8rem; color: var(--secondary-color); }
-    .col-etd, .col-cod, .col-pickup, .col-discount { flex: 0 0 12%; text-align: center; }
-    .col-price { flex: 0 0 16%; text-align: right; }
-    .price-value .base-price {
-        text-decoration: line-through;
-        font-size: 0.8rem;
-        color: var(--danger-color);
-        margin-left: 5px;
-    }
-    .price-value .final-price {
-        font-weight: 700;
-        font-size: 1rem;
-        color: var(--success-color);
-    }
-    .price-details {
-        font-size: 0.8rem;
-        color: var(--secondary-color);
-        margin-top: 2px;
-    }
-    .price-details small {
-        line-height: 1.3;
-        display: block;
-    }
-    .col-action { flex: 0 0 12%; text-align: right; }
-    .btn-kirim {
-        background-color: var(--primary-color);
-        color: #fff;
-        border-radius: 999px;
-        font-weight: 600;
-        font-size: 0.8rem; /* Ukuran font dikecilkan */
-        padding: 0.4rem 1rem; /* Padding dikurangi */
-        border: none;
-    }
-    .btn-kirim:hover {
-        background-color: var(--primary-color-darker);
-        color: #fff;
-    }
+    .col-price { order: 3; text-align: left !important; }
+    .col-etd { order: 4; }
+    .col-cod { order: 5; }
+    .col-pickup { order: 6; }
+    .col-discount { display: none; }
+    .price-value { text-align: left; }
+    .price-details { text-align: left !important; }
+}
 
-    /*
-    ============================================
-    PERBAIKAN RESPONSIVE: Media Queries untuk Mobile & Tablet
-    ============================================
-    */
-    @media (max-width: 991px) {
-        .main-content-container {
-            padding-top: 6rem; /* Kurangi padding atas di mobile */
-            padding-left: 0.75rem;
-            padding-right: 0.75rem;
-        }
-        .stepper::before {
-            left: 10%; right: 10%;
-        }
-        .step-text { font-size: 0.75rem; }
-
-        .ongkir-item-card { flex-wrap: wrap; padding: 1rem; }
-        .ongkir-item-col { padding: 5px 0; text-align: left !important; flex-basis: 50%; }
-        .ongkir-item-col .col-label { display: block; font-size: 0.75rem; color: var(--secondary-color); margin-bottom: 2px; font-weight: 500; }
-        .col-service { flex-basis: 70%; order: 1; flex-direction: row; }
-        .col-action { flex-basis: 30%; order: 2; align-self: center; text-align: center !important;}
-        .col-price { order: 3; text-align: left !important; }
-        .col-etd { order: 4; }
-        .col-cod { order: 5; }
-        .col-pickup { order: 6; }
-        .col-discount { display: none; }
-        .price-value { text-align: left; }
-        .price-details { text-align: left !important; }
-
+@media (max-width: 767px) {
+    /* Tombol aksi utama menjadi full-width di mobile */
+    #confirmBtn, #cekOngkirWaBtn {
+        width: 100%;
     }
-    
-    @media (max-width: 767px) {
-        /* Tombol aksi utama menjadi full-width di mobile */
-        #confirmBtn, #cekOngkirWaBtn {
-            width: 100%;
-        }
-        #cekOngkirWaBtn {
-            margin-top: 0.5rem;
-        }
+    #cekOngkirWaBtn {
+        margin-top: 0.5rem;
     }
-
+}
 </style>
 @endpush
 
@@ -433,7 +434,7 @@ CSS di halaman ini sudah siap untuk mendukungnya secara visual.
 ============================================
 -->
 <div class="container main-content-container">
-    
+
     <!-- Stepper/Progres Indikator -->
     <div class="stepper">
         <div class="step active">
@@ -449,7 +450,7 @@ CSS di halaman ini sudah siap untuk mendukungnya secara visual.
             <div class="step-text">Detail & Bayar</div>
         </div>
     </div>
-    
+
     <form id="orderForm" action="{{ route('pesanan.public.store') }}" method="POST">
         @csrf
         <div class="row g-4 g-lg-5">
@@ -570,7 +571,7 @@ CSS di halaman ini sudah siap untuk mendukungnya secara visual.
                                     <div class="col-4"><div class="input-group"><span class="input-group-text">T</span><input type="number" name="height" id="height" class="form-control" placeholder="cm"></div></div>
                                 </div>
                             </div>
-                             <div class="col-md-6">
+                            <div class="col-md-6">
                                 <label for="item_type" class="form-label">Jenis Barang</label>
                                 <select name="item_type" id="item_type" class="form-select" required>
                                     <option value="" disabled selected>Pilih...</option><option value="1">Elektronik</option><option value="2">Pakaian</option><option value="3">Pecah Belah</option><option value="4">Dokumen</option><option value="5">Rumah Tangga</option><option value="6">Aksesoris</option><option value="7">Makanan & Minuman</option><option value="8">Kosmetik & Perawatan</option><option value="9">Obat & Suplemen</option><option value="10">Alat Tulis & Kantor</option><option value="11">Mainan & Hobi</option><option value="12">Otomotif & Sparepart</option><option value="13">Bahan Bangunan</option><option value="14">Alat Kesehatan</option><option value="15">Peralatan Olahraga</option><option value="16">Produk Digital</option><option value="17">Hewan & Tanaman</option><option value="18">Perhiasan</option><option value="19">Furniture</option><option value="20">Lainnya</option>
@@ -626,14 +627,13 @@ CSS di halaman ini sudah siap untuk mendukungnya secara visual.
 
 {{-- Modal Pilihan Ekspedisi --}}
 <div class="modal fade" id="ongkirModal" tabindex="-1">
-    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable"> {{-- Ubah ke modal-xl --}}
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title fw-bold"><i class="fas fa-shipping-fast me-2"></i>Pilihan Ekspedisi</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="ongkirModalBody">
-                 {{-- Filter dihilangkan dari sini --}}
                 <div id="ongkirResultsContainer">
                     {{-- Hasil ongkir akan dimuat di sini oleh JavaScript --}}
                 </div>
@@ -669,7 +669,7 @@ CSS di halaman ini sudah siap untuk mendukungnya secara visual.
 $(document).ready(function () {
 
     $.ajaxSetup({ headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') } });
-    
+
     @if ($errors->any())
         let errorHtml = '<ul class="list-unstyled text-start mb-0" style="padding-left: 1rem;">';
         @foreach ($errors->all() as $error)
@@ -697,10 +697,11 @@ $(document).ready(function () {
     function fillContactForm(prefix, data) { $(`#${prefix}_name`).val(maskData('name', data.nama)).trigger('blur').attr('data-real-value', data.nama); $(`#${prefix}_phone`).val(maskData('phone', data.no_hp)).trigger('blur').attr('data-real-value', data.no_hp); $(`#${prefix}_address`).val(maskData('address', data.alamat)).trigger('blur').attr('data-real-value', data.alamat); $(`#${prefix}_id`).val(data.id); clearHiddenAddress(prefix); const addressSearchInput = $(`#${prefix}_address_search`); if (data.village && data.district) { const addressQuery = `${data.village}, ${data.district}`; addressSearchInput.val(`Mencari: ${addressQuery}...`).prop('disabled', true).removeClass('is-invalid is-valid'); $.get("{{ route('api.address.search') }}", { search: addressQuery }).done(function(results) { if (results && results.length > 0) { const item = results[0]; const parts = item.full_address.split(',').map(s => s.trim()); $(`#${prefix}_village`).val(parts[0] || data.village).trigger('change'); $(`#${prefix}_district`).val(parts[1] || data.district).trigger('change'); $(`#${prefix}_regency`).val(parts[2] || data.regency).trigger('change'); $(`#${prefix}_province`).val(parts[3] || data.province).trigger('change'); $(`#${prefix}_postal_code`).val(parts[4] || data.postal_code).trigger('change'); $(`#${prefix}_district_id`).val(item.district_id).trigger('change'); $(`#${prefix}_subdistrict_id`).val(item.subdistrict_id).trigger('change'); addressSearchInput.val('Alamat Ditemukan (Privasi Terjaga)').addClass('is-valid').removeClass('is-invalid'); setTimeout(() => addressSearchInput.removeClass('is-valid'), 2500); } else { addressSearchInput.val('').addClass('is-invalid').removeClass('is-valid'); Swal.fire({ title: 'Alamat Tidak Ditemukan', text: `Detail alamat untuk "${addressQuery}" tidak ditemukan. Anda wajib mencari alamat secara manual.`, icon: 'warning', confirmButtonColor: '#dc3545' }).then(() => addressSearchInput.focus()); } }).fail(() => { addressSearchInput.val('').addClass('is-invalid').removeClass('is-valid'); Swal.fire({ title: 'Error', text: 'Gagal memuat detail alamat. Anda wajib mencari alamat secara manual.', icon: 'error', confirmButtonColor: '#dc3545' }).then(() => addressSearchInput.focus()); }).always(() => addressSearchInput.prop('disabled', false)); } else { addressSearchInput.val('').addClass('is-invalid'); Swal.fire({ title: 'Data Tidak Lengkap', text: 'Kontak yang dipilih tidak memiliki data alamat. Anda wajib mengisi dan mencari alamat secara manual.', icon: 'info', confirmButtonColor: '#0d6efd' }).then(() => addressSearchInput.focus()); } }
     function setupContactSearch(prefix) { $(`#${prefix}_name, #${prefix}_phone`).autocomplete({ source: function(request, response) { $.ajax({ url: "{{ route('api.search.kontak') }}", dataType: "json", data: { term: request.term }, success: function(data) { if (!data || !data.length) { response([{ label: 'Kontak tidak ditemukan', value: request.term, disabled: true }]); return; } response($.map(data, function(item) { return { label: `${item.nama} - ${item.no_hp}`, value: item.nama, data: item }; })); }, error: function() { response([]); } }); }, minLength: 2, select: function(event, ui) { if (ui.item.disabled) return false; event.preventDefault(); fillContactForm(prefix, ui.item.data); }, focus: function(event, ui) { if (ui.item.disabled) return false; event.preventDefault(); $(`#${prefix}_name`).val(ui.item.data.nama); $(`#${prefix}_phone`).val(ui.item.data.no_hp); } }).autocomplete("instance")._renderItem = function(ul, item) { if (item.disabled) { return $("<li class='ui-state-disabled p-3 text-muted'></li>").text(item.label).appendTo(ul); } return $("<li>").append(`<div class="ui-menu-item-wrapper"><div class="font-weight-bold">${item.data.nama}</div><small>${item.data.no_hp}</small></div>`).appendTo(ul); }; }
     setupContactSearch('sender'); setupContactSearch('receiver');
+
     function unmaskDataForSubmit() { ['sender', 'receiver'].forEach(p => { $(`#${p}_name, #${p}_phone, #${p}_address`).each(function() { if ($(this).attr('data-real-value')) $(this).val($(this).attr('data-real-value')); }); }); }
     function setupAddressSearch(prefix) { const s = $(`#${prefix}_address_search`), r = $(`#${prefix}_address_results`); s.on('input', debounce(() => { s.removeClass('is-valid is-invalid'); const q = s.val(); if (q.length < 3) return r.addClass('d-none'); $.get("{{ route('api.address.search') }}", { search: q }).done(d => { r.html('').removeClass('d-none'); if (d && d.length > 0) d.forEach(i => r.append($(`<div class="search-result-item"><div class="font-weight-bold">${i.full_address}</div></div>`).on('click', () => { s.val(i.full_address); const p = i.full_address.split(',').map(t => t.trim()); $(`#${prefix}_village`).val(p[0] || '').trigger('change'); $(`#${prefix}_district`).val(p[1] || '').trigger('change'); $(`#${prefix}_regency`).val(p[2] || '').trigger('change'); $(`#${prefix}_province`).val(p[3] || '').trigger('change'); $(`#${prefix}_postal_code`).val(p[4] || '').trigger('change'); $(`#${prefix}_district_id`).val(i.district_id).trigger('change'); $(`#${prefix}_subdistrict_id`).val(i.subdistrict_id).trigger('change'); r.addClass('d-none'); }))); else r.html('<div class="p-3 text-muted">Alamat tidak ditemukan.</div>'); }).fail(() => r.html('<div class="p-3 text-danger">Gagal memuat data.</div>')); }, 400)); }
     setupAddressSearch('sender'); setupAddressSearch('receiver');
-    
+
     // ====================================================================
     // NEW JS LOGIC: Cek Ongkir dan Filter dengan Tampilan Baru
     // ====================================================================
@@ -709,25 +710,25 @@ $(document).ready(function () {
         let formData = $('#orderForm').serializeArray();
         formData.forEach((item, index) => { let realVal = $(`#${item.name.replace(/\[/g, '\\[').replace(/\]/g, '\\]')}`).attr('data-real-value'); if (realVal) formData[index].value = realVal; });
         let tempForm = $('<form>').append($.map(formData, item => $('<input>').attr({type: 'hidden', name: item.name, value: item.value})));
-        
+
         const required = { 'sender_district_id': 'Alamat Pengirim', 'receiver_district_id': 'Alamat Penerima', 'item_price': 'Harga Barang', 'weight': 'Berat' };
         let missing = Object.keys(required).filter(s => !tempForm.find(`[name="${s.replace('#','')}"]`).val());
         if (missing.length > 0) { Swal.fire('Data Belum Lengkap', 'Harap lengkapi: ' + missing.map(s => required[s]).join(', '), 'warning'); return; }
-        
+
         $('#ongkirResultsContainer').html(`<div class="text-center p-5"><div class="spinner-border text-danger"></div><p class="mt-2 text-muted">Memuat semua tarif...</p></div>`);
         ongkirModal.show();
 
         const serviceType = $('#service_type').val();
-        
+
         $.ajax({
             url: "{{ route('kirimaja.cekongkir') }}",
             type: "GET",
             data: tempForm.serialize(),
             success: function(res) {
                 let allResults = [];
-                
+
                 if (typeof res !== 'object' || res === null) {
-                       $('#ongkirResultsContainer').html('<div class="alert alert-danger text-center">Format respons tidak valid.</div>');
+                    $('#ongkirResultsContainer').html('<div class="alert alert-danger text-center">Format respons tidak valid.</div>');
                     return;
                 }
 
@@ -772,9 +773,9 @@ $(document).ready(function () {
                 }
 
                 allResults.sort((a, b) => a.cost - b.cost);
-                
+
                 const b = $('#ongkirResultsContainer').empty();
-                
+
                 const headerHtml = `
                 <div class="ongkir-header-row d-none d-lg-flex">
                     <div class="ongkir-item-col col-service">Layanan</div>
@@ -790,7 +791,7 @@ $(document).ready(function () {
                 allResults.forEach(i => {
                     const safeService = (i.service || '').toString().replace(/-/g, ' ');
                     const safeServiceTypeLabel = (i.service_type_label || '').toString().replace(/-/g, ' ');
-                    
+
                     // ====================================================================
                     // PERBAIKAN LOGIKA ASURANSI
                     // ====================================================================
@@ -805,7 +806,7 @@ $(document).ready(function () {
 
                     const codFee = i.setting?.cod_fee_amount || 0;
                     const insuranceFee = i.insurance || 0;
-                    
+
                     let feeDetailsHtml = '';
                     if (useInsurance && insuranceFee > 0) {
                         feeDetailsHtml += `<div><small>Termasuk Asuransi: ${formatRupiah(insuranceFee)}</small></div>`;
@@ -813,7 +814,7 @@ $(document).ready(function () {
                     if (i.cod && codFee > 0) {
                         feeDetailsHtml += `<div><small>Biaya COD: ${formatRupiah(codFee)}</small></div>`;
                     }
-                    
+
                     const buttonHtml = `<button type="button" class="btn btn-kirim select-ongkir-btn" data-value="${v}" data-display="${i.service_name} - ${i.service_type_label}" data-cod-supported="${i.cod}">Kirim Paket</button>`;
 
                     const itemHtml = `
@@ -875,9 +876,9 @@ $(document).ready(function () {
 
     $(document).on('click', '.select-ongkir-btn', function() {
         const expeditionValue = $(this).data('value');
-        
+
         $('#expedition').val(expeditionValue);
-        
+
         $('#selected_expedition_display').val($(this).data('display')).addClass('is-valid');
         if ($(this).data('cod-supported')) {
             $('.cod-payment-option').show();
@@ -903,3 +904,4 @@ $(document).ready(function () {
 });
 </script>
 @endpush
+
