@@ -21,6 +21,17 @@
     <link rel="stylesheet" href="{{ asset('public/assets/css/home-style.css') }}">
     
     <style>
+        /*
+        ==========================================================
+        PERBAIKAN DESAIN: Layout 80% di Layar Besar
+        ==========================================================
+        */
+        @media (min-width: 1200px) {
+            .container {
+                max-width: 80% !important;
+            }
+        }
+
         /* CSS for Mega Menu */
         .dropdown.mega-dropdown {
           position: static;
@@ -147,7 +158,7 @@
 
         #cekOngkirModal .form-control,
         #cekOngkirModal .form-select {
-            border: 1px solid #ff0000ff;
+            border: 1px solid #dee2e6;
             border-radius: 0.75rem;
             padding: 0.75rem 1rem;
             transition: all 0.3s ease;
@@ -156,13 +167,13 @@
 
         #cekOngkirModal .form-control:focus,
         #cekOngkirModal .form-select:focus {
-            border-color: #ff0015ff;
+            border-color: #ff4757;
             box-shadow: 0 0 0 0.25rem rgba(255, 71, 87, 0.25);
         }
 
         #cekOngkirModal .form-label {
             font-weight: 600;
-            color: #ff0000ff;
+            color: #495057;
             margin-bottom: 0.5rem;
         }
 
