@@ -28,9 +28,14 @@
         */
         @media (min-width: 1200px) {
             .container {
-                max-width: 80% !important;
+                max-width: 90% !important;
             }
         }
+
+        .navbar .container {
+            max-width: 100% !important;
+        }
+
         
         /*
         ==========================================================
@@ -96,6 +101,9 @@
             flex-direction: column;
             justify-content: center;
         }
+
+        .text-purple { color: #6f42c1 !important; }
+
         
         /* Hanya target mega menu, jangan global .btn */
         .mega-dropdown { position: static; }
@@ -275,9 +283,12 @@
                 <strong>SANCAKA EXPRESS</strong>
             </a>
 
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
+            <!-- Tombol toggle (harus di dalam .container) -->
+      <button class="navbar-toggler ms-auto" type="button" data-bs-toggle="collapse" 
+              data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" 
+              aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
 
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto align-items-lg-center">
