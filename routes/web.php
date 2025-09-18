@@ -268,6 +268,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
     Route::get('/wilayah/district/{district}/villages', [WilayahController::class, 'getDesa'])->name('wilayah.desa');
 
+    
 });
 
 
@@ -281,6 +282,8 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])
         // All general admin routes should go in this file
 
         require __DIR__.'/web/admin.php';
+
+    Route::get('/api/contacts/search', [App\Http\Controllers\Admin\KontakController::class, 'search'])->name('api.contacts.search');
 
         
 
