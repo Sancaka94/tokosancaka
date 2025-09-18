@@ -2043,51 +2043,36 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
         // Tambah Paginasi
-if (pagination && pagination.total > 0) {
-    let maxButtons = 5; // maksimal tombol angka yang ditampilkan
-    let current = pagination.current_page;
-    let last = pagination.last_page;
 
-    // Tentukan start & end page
-    let start = Math.max(1, current - Math.floor(maxButtons / 2));
-    let end = start + maxButtons - 1;
+        if (pagination && pagination.total > 0) {
 
-    if (end > last) {
-        end = last;
-        start = Math.max(1, end - maxButtons + 1);
-    }
+            tableHtml += `
 
-    // Generate tombol angka
-    let pageButtons = '';
-    for (let i = start; i <= end; i++) {
-        pageButtons += `
-            <button class="btn btn-sm ${i === current ? 'btn-primary' : 'btn-outline-secondary'} ms-1 btn-page" data-page="${i}">
-                ${i}
-            </button>
-        `;
-    }
+                <div class="d-flex justify-content-between align-items-center p-3 mt-1 border-top bg-light">
 
-    tableHtml += `
-        <div class="d-flex justify-content-between align-items-center p-3 mt-1 border-top bg-light">
-            <p class="text-muted small mb-0">
-                Menampilkan ${pagination.from} - ${pagination.to} dari ${pagination.total} hasil
-            </p>
-            <div class="d-flex align-items-center">
-                <button class="btn btn-sm btn-outline-secondary btn-prev me-1"
-                    ${current <= 1 ? 'disabled' : ''} data-page="${current - 1}">
-                    Sebelumnya
-                </button>
-                ${pageButtons}
-                <button class="btn btn-sm btn-outline-secondary btn-next ms-1"
-                    ${current >= last ? 'disabled' : ''} data-page="${current + 1}">
-                    Berikutnya
-                </button>
-            </div>
-        </div>
-    `;
-}
+                    <p class="text-muted small mb-0">
 
-container.innerHTML = tableHtml;
+                        Menampilkan ${pagination.from} - ${pagination.to} dari ${pagination.total} hasil
+
+                    </p>
+
+                    <div>
+
+                        <button class="btn btn-sm btn-outline-secondary btn-prev" ${pagination.current_page <= 1 ? 'disabled' : ''} data-page="${pagination.current_page - 1}">Sebelumnya</button>
+
+                        <button class="btn btn-sm btn-outline-secondary ms-2 btn-next" ${pagination.current_page >= pagination.last_page ? 'disabled' : ''} data-page="${pagination.current_page + 1}">Berikutnya</button>
+
+                    </div>
+
+                </div>
+
+            `;
+
+        }
+
+        container.innerHTML = tableHtml;
+
+    };
 
 
 
