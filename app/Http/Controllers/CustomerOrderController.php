@@ -420,4 +420,21 @@ private function _preparePesananData(array $validatedData, int $total, string $i
         if (!$order) return redirect()->route('home');
         return view('pesanan_customer.success', ['order' => $order]);
     }
+
+    public function search(Request $request)
+{
+    try {
+        $term = $request->get('term'); // jQuery UI Autocomplete pakai "term"
+        
+        $kontak = \App\Models\Kontak::where('nama', 'like', "%{$term}%")
+            ->limit(10)
+            ->get(['id', 'nama']);
+
+        return response()->json($kontak);
+    } catch (\Exception $e) {
+        return response()->json(['error' => $e->getMessage()], 500);
+    }
+}
+
+
 }
