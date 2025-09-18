@@ -1840,31 +1840,12 @@ width: 22px;
 
 <a href="https://wa.me/6285745808809" class="floating-btn wa-float" target="_blank" title="Hubungi via WhatsApp"><i class="fa fa-whatsapp"></i></a>
 
-<button id="scrollTopBtn" class="floating-btn" title="Kembali ke atas">
-
- <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 24px; height: 24px;">
-
- <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
-
-</svg>
-
-</button>
-
 
 
     <!-- Tombol Floating -->
 
 
-
-    <a href="https://wa.me/6285745808809" class="floating-btn wa-float" target="_blank" title="Hubungi via WhatsApp">
-
-
-
-        <i class="fab fa-whatsapp"></i>
-
-
-
-    </a>
+<a href="https://wa.me/6285745808809" class="floating-btn wa-float" target="_blank" title="Hubungi via WhatsApp"><i class="fab fa-whatsapp"></i></a>
 
 
 
