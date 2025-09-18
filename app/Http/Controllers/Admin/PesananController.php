@@ -1,23 +1,23 @@
 <?php
 
-namespace App\Http\Controllers\Admin; // DIPERBAIKI: Namespace diubah ke Admin
+namespace App\Http\Controllers\Admin;
 
-use App\Http\Controllers\Controller; // DITAMBAHKAN: Path ke base Controller
+use App\Http\Controllers\Controller;
 use App\Models\Pesanan;
 use App\Models\Kontak;
 use App\Models\User;
 use App\Services\KiriminAjaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
+use Exception;
+use Carbon\Carbon;
 use App\Exports\PesanansExport;
 use Maatwebsite\Excel\Facades\Excel;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Carbon\Carbon;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\DB;
-use Exception;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\ValidationException;
 
 
 class PesananController extends Controller
@@ -27,7 +27,7 @@ class PesananController extends Controller
         \App\Models\Pesanan::where('status', 'baru')
                          ->where('telah_dilihat', false)
                          ->update(['telah_dilihat' => true]);
-                         
+                                 
         $query = Pesanan::query();
         if ($request->filled('search')) {
             $search = $request->input('search');
@@ -48,15 +48,10 @@ class PesananController extends Controller
 
     public function create()
     {
-        // DIPERBAIKI: Menghapus filter where('role_id', 2) yang menyebabkan error
         $customers = User::orderBy('nama_lengkap', 'asc')->get();
         return view('admin.pesanan.create', compact('customers'));
     }
 
-    /**
-     * DIGANTI TOTAL: Menggunakan logika lengkap dari referensi
-     * untuk memproses pesanan, terhubung ke KiriminAja dan Tripay.
-     */
     public function store(Request $request, KiriminAjaService $kirimaja)
     {
         DB::beginTransaction();
@@ -100,7 +95,6 @@ class PesananController extends Controller
             $pesananData = $this->_preparePesananData($validatedData, $total_paid, $request->ip(), $request->userAgent());
             $pesanan = Pesanan::create($pesananData);
             
-            // Logika untuk pembayaran non-online (COD & Potong Saldo)
             if (in_array($validatedData['payment_method'], ['COD', 'CODBARANG', 'Potong Saldo'])) {
                 $senderAddressData = $this->_getAddressData($request, 'sender');
                 $receiverAddressData = $this->_getAddressData($request, 'receiver');
@@ -135,7 +129,6 @@ class PesananController extends Controller
 
             if (!empty($pesanan->payment_url)) return redirect()->away($pesanan->payment_url);
             
-            // Redirect ke halaman sukses jika COD atau metode lain yang tidak memiliki payment_url
             return redirect()->route('admin.pesanan.index')->with('success', 'Pesanan baru dengan resi ' . $pesanan->resi . ' berhasil dibuat!');
         } catch (ValidationException $e) {
             DB::rollBack();
@@ -191,62 +184,6 @@ class PesananController extends Controller
         return redirect()->route('admin.pesanan.index')->with('success', 'Pesanan ' . $resi . ' berhasil dihapus.');
     }
 
-    public function showScanForm($resi)
-    {
-        $pesanan = Pesanan::where('resi', $resi)->firstOrFail();
-        return view('admin.pesanan.scan-aktual', compact('pesanan'));
-    }
-
-    public function updateResiAktual(Request $request, $resi)
-    {
-        $request->validate([
-            'jasa_ekspedisi_aktual' => 'required|string',
-            'resi_aktual' => 'required|string',
-            'total_ongkir' => 'nullable|numeric|min:0',
-        ]);
-
-        $pesanan = Pesanan::where('resi', $resi)->firstOrFail();
-        $pesanan->jasa_ekspedisi_aktual = $request->input('jasa_ekspedisi_aktual');
-        $pesanan->resi_aktual = $request->input('resi_aktual');
-        $pesanan->total_ongkir = $request->input('total_ongkir');
-        $pesanan->status = 'Diproses';
-        $pesanan->save();
-
-        return redirect()->route('admin.pesanan.index')->with('success', 'Resi aktual dan ongkir berhasil diperbarui!');
-    }
-
-    public function riwayatScan(Request $request)
-    {
-        $query = Pesanan::whereNotNull('resi_aktual');
-        if ($request->filled('search')) {
-            $search = $request->input('search');
-            $query->where(function($q) use ($search) {
-                $q->where('resi', 'like', "%{$search}%")->orWhere('resi_aktual', 'like', "%{$search}%");
-            });
-        }
-        if ($request->filled('range')) {
-            switch ($request->input('range')) {
-                case 'harian': $query->whereDate('updated_at', Carbon::today()); break;
-                case 'mingguan': $query->whereBetween('updated_at', [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()]); break;
-                case 'bulanan': $query->whereMonth('updated_at', Carbon::now()->month)->whereYear('updated_at', Carbon::now()->year); break;
-            }
-        }
-        $perPage = $request->input('per_page', 10);
-        $scannedOrders = $query->latest('updated_at')->paginate($perPage);
-        $scannedOrders->appends($request->all());
-        return view('admin.pesanan.riwayat-scan', compact('scannedOrders'));
-    }
-
-    public function updateStatus(Request $request, $resi)
-    {
-        $request->validate(['status' => 'required|string|in:Terkirim,Batal']);
-        $pesanan = Pesanan::where('resi', $resi)->firstOrFail();
-        $pesanan->update(['status' => $request->status]);
-        return redirect()->route('admin.pesanan.index')->with('success', 'Status pesanan ' . $resi . ' berhasil diubah menjadi "' . $request->status . '".');
-    }
-
-    // --- FUNGSI BARU DARI REFERENSI ---
-
     public function searchAddressApi(Request $request, KiriminAjaService $kirimaja)
     {
         $request->validate(['search' => 'required|string|min:3']);
@@ -263,12 +200,8 @@ class PesananController extends Controller
         }
     }
     
-    /**
-     * DIPERBAIKI: Fungsi ini sekarang memfilter berdasarkan tipe dan menambahkan logging.
-     */
     public function searchKontak(Request $request)
     {
-        // Log request yang masuk untuk debugging
         Log::info('API Search Kontak dipanggil dengan:', $request->all());
 
         $request->validate([
@@ -281,13 +214,11 @@ class PesananController extends Controller
 
         $query = Kontak::query();
 
-        // Cari nama atau no_hp (dibuat case-insensitive untuk nama)
         $query->where(function ($q) use ($searchTerm) {
             $q->where(DB::raw('LOWER(nama)'), 'LIKE', '%' . strtolower($searchTerm) . '%')
               ->orWhere('no_hp', 'LIKE', "%{$searchTerm}%");
         });
 
-        // Filter berdasarkan tipe jika ada
         if ($tipe) {
             $query->where(function ($q) use ($tipe) {
                 $q->where('tipe', $tipe)
@@ -295,12 +226,8 @@ class PesananController extends Controller
             });
         }
 
-        // Log query SQL yang akan dijalankan
         Log::info('SQL Query untuk Pencarian Kontak:', ['sql' => $query->toSql(), 'bindings' => $query->getBindings()]);
-
         $kontaks = $query->limit(10)->get();
-
-        // Log hasil yang ditemukan
         Log::info('Kontak yang ditemukan:', ['count' => $kontaks->count()]);
 
         return response()->json($kontaks);
@@ -345,77 +272,6 @@ class PesananController extends Controller
         }
     }
 
-
-    // --- FUNGSI LAINNYA ---
-    public function exportExcel() 
-    {
-        return Excel::download(new PesanansExport, 'semua-pesanan.xlsx');
-    }
-    public function exportPdf() 
-    {
-        $orders = Pesanan::all();
-        $pdf = PDF::loadView('admin.pesanan.pdf', ['orders' => $orders]);
-        return $pdf->download('semua-pesanan.pdf');
-    }
-    public function exportExcelRiwayat(Request $request) 
-    {
-        $query = Pesanan::whereNotNull('resi_aktual');
-        $pesanansToExport = $query->get();
-        return Excel::download(new PesanansExport($pesanansToExport), 'riwayat-scan.xlsx');
-    }
-    public function exportPdfRiwayat(Request $request) 
-    {
-        $query = Pesanan::whereNotNull('resi_aktual');
-        $orders = $query->get();
-        $pdf = PDF::loadView('admin.pesanan.pdf', ['orders' => $orders]);
-        return $pdf->download('riwayat-scan.pdf');
-    }
-    public function cetakResi($resi)
-    {
-        $order = Pesanan::where('resi', $resi)->firstOrFail();
-        return view('admin.pesanan.cetak', compact('order'));
-    }
-    public function cetakResiThermal($resi)
-    {
-        $pesanan = Pesanan::where('resi', $resi)->firstOrFail();
-        return view('admin.pesanan.cetak_thermal', ['pesanan' => $pesanan]);
-    }
-    public function showScanPaket()
-    {
-        $kontaks = Kontak::orderBy('nama', 'asc')->get();
-        return view('admin.pesanan.scan-paket', compact('kontaks'));
-    }
-    public function processScanPaket(Request $request)
-    {
-        // ... (Kode asli Anda dipertahankan)
-        $request->validate([
-            'kontak_id' => 'required|exists:kontaks,id',
-            'resi' => 'required|string|max:255|unique:pesanans,resi',
-        ], [
-            'kontak_id.required' => 'GAGAL: Anda harus memilih pengirim terlebih dahulu.',
-            'kontak_id.exists' => 'GAGAL: Pengirim yang dipilih tidak valid.',
-            'resi.required' => 'GAGAL: Nomor resi tidak boleh kosong.',
-            'resi.unique' => 'GAGAL: Resi ini sudah pernah di-scan sebelumnya.',
-        ]);
-        $kontakId = $request->input('kontak_id');
-        $resi = $request->input('resi');
-        $pengirim = Kontak::findOrFail($kontakId);
-        try {
-            Pesanan::create([
-                'kontak_id' => $pengirim->id,
-                'sender_name' => $pengirim->nama,
-                'resi' => $resi,
-                'status' => 'manifest',
-                'receiver_name' => 'Belum Diisi',
-                'created_at' => now(),
-            ]);
-        } catch (\Exception $e) {
-            return back()->withErrors(['GAGAL: Terjadi kesalahan saat menyimpan ke database. ' . $e->getMessage()]);
-        }
-        return back()->with('success', "BERHASIL: Resi '{$resi}' untuk pengirim '{$pengirim->nama}' berhasil dicatat.")
-                     ->with('selected_kontak_id', $kontakId);
-    }
-    
     public function count()
     {
         $count = \App\Models\Pesanan::where('status', 'baru')
@@ -424,7 +280,7 @@ class PesananController extends Controller
         return response()->json(['count' => $count]);
     }
 
-    // --- HELPER METHODS DARI REFERENSI ---
+    // --- HELPER METHODS ---
 
     private function _validateOrderRequest(Request $request): array
     {
@@ -442,20 +298,6 @@ class PesananController extends Controller
             'sender_district_id' => 'required|integer', 'sender_subdistrict_id' => 'required|integer',
             'receiver_district_id' => 'required|integer', 'receiver_subdistrict_id' => 'required|integer',
         ]);
-    }
-
-    private function geocode(string $address): ?array
-    {
-        $url = "https://nominatim.openstreetmap.org/search?q=" . urlencode($address) . "&format=json&limit=1";
-        try {
-            $response = Http::withHeaders(['User-Agent' => 'SancakaExpressApp/1.0 (support@tokosancaka.com)'])->get($url)->json();
-            if (!empty($response[0])) {
-                return ['lat' => (float) $response[0]['lat'], 'lng' => (float) $response[0]['lon']];
-            }
-        } catch (\Throwable $e) {
-            return null;
-        }
-        return null;
     }
     
     private function _getAddressData(Request $request, string $type): array
@@ -483,6 +325,39 @@ class PesananController extends Controller
         }
 
         return ['lat' => $lat, 'lng' => $lng, 'kirimaja_data' => $kirimajaAddr];
+    }
+
+    private function geocode(string $address): ?array
+    {
+        $url = "https://nominatim.openstreetmap.org/search?q=" . urlencode($address) . "&format=json&limit=1";
+        try {
+            $response = Http::withHeaders(['User-Agent' => 'YourAppName/1.0 (your-contact@example.com)'])->get($url)->json();
+            if (!empty($response[0])) {
+                return ['lat' => (float) $response[0]['lat'], 'lng' => (float) $response[0]['lon']];
+            }
+        } catch (\Throwable $e) {
+            return null;
+        }
+        return null;
+    }
+
+    private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
+    {
+        if (!empty($data["save_{$prefix}"])) {
+            Kontak::updateOrCreate(
+                ['no_hp' => $this->_sanitizePhoneNumber($data["{$prefix}_phone"])],
+                [
+                    'nama'        => $data["{$prefix}_name"],
+                    'alamat'      => $data["{$prefix}_address"],
+                    'province'    => $data["{$prefix}_province"],
+                    'regency'     => $data["{$prefix}_regency"],
+                    'district'    => $data["{$prefix}_district"],
+                    'village'     => $data["{$prefix}_village"],
+                    'postal_code' => $data["{$prefix}_postal_code"],
+                    'tipe'        => $tipe,
+                ]
+            );
+        }
     }
     
     private function _preparePesananData(array $validatedData, int $total, string $ip, string $userAgent): array
@@ -523,49 +398,19 @@ class PesananController extends Controller
             ]
         );
     }
-
-    private function _prepareOrderItemsPayload(int $shipping_cost, int $ansuransi_fee, string $ansuransi_choice): array
-    {
-        $payload = [];
-        $payload[] = ['sku' => 'SHIPPING', 'name' => 'Ongkos Kirim', 'price' => $shipping_cost, 'quantity' => 1];
-        
-        if ($ansuransi_choice == 'iya' && $ansuransi_fee > 0) {
-            $payload[] = ['sku' => 'INSURANCE', 'name' => 'Biaya Asuransi', 'price' => $ansuransi_fee, 'quantity' => 1];
-        }
-        return $payload;
-    }
-
-    private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
-    {
-        if (!empty($data["save_{$prefix}"])) {
-            Kontak::updateOrCreate(
-                ['no_hp' => $this->_sanitizePhoneNumber($data["{$prefix}_phone"])],
-                [
-                    'nama'        => $data["{$prefix}_name"],
-                    'alamat'      => $data["{$prefix}_address"],
-                    'province'    => $data["{$prefix}_province"],
-                    'regency'     => $data["{$prefix}_regency"],
-                    'district'    => $data["{$prefix}_district"],
-                    'village'     => $data["{$prefix}_village"],
-                    'postal_code' => $data["{$prefix}_postal_code"],
-                    'tipe'        => $tipe,
-                ]
-            );
-        }
-    }
-
+    
     private function _createKiriminAjaOrder(array $data, Pesanan $pesanan, KiriminAjaService $kirimaja, array $senderData, array $receiverData, int $cod_value): array
     {
         list($serviceGroup, $courier, $service_type, $shipping_cost) = array_pad(explode('-', $data['expedition']), 4, null);
         if (in_array($serviceGroup, ['instant', 'sameday'])) { 
+            // Logika untuk instant/sameday (jika ada)
             return []; // Placeholder
-        } 
-        else {
+        } else {
             $schedule = $kirimaja->getSchedules();
             $payload = [
                 'address' => $data['sender_address'], 'phone' => $data['sender_phone'], 'name' => $data['sender_name'],
                 'kecamatan_id' => $senderData['kirimaja_data']['district_id'], 'kelurahan_id' => $senderData['kirimaja_data']['subdistrict_id'],
-                'zipcode' => $senderData['kirimaja_data']['postal_code'], 'schedule' => $schedule['clock'], 'platform_name' => 'TOKOSANCAKA.COM',
+                'zipcode' => $senderData['kirimaja_data']['postal_code'], 'schedule' => $schedule['clock'], 'platform_name' => 'YourPlatformName.COM',
                 'packages' => [[
                     'order_id' => $pesanan->nomor_invoice, 'item_name' => $data['item_description'], 'package_type_id' => (int)$data['item_type'],
                     'destination_name' => $data['receiver_name'], 'destination_phone' => $data['receiver_phone'], 'destination_address' => $data['receiver_address'],
@@ -580,6 +425,17 @@ class PesananController extends Controller
         }
     }
 
+    private function _prepareOrderItemsPayload(int $shipping_cost, int $ansuransi_fee, string $ansuransi_choice): array
+    {
+        $payload = [];
+        $payload[] = ['sku' => 'SHIPPING', 'name' => 'Ongkos Kirim', 'price' => $shipping_cost, 'quantity' => 1];
+        
+        if ($ansuransi_choice == 'iya' && $ansuransi_fee > 0) {
+            $payload[] = ['sku' => 'INSURANCE', 'name' => 'Biaya Asuransi', 'price' => $ansuransi_fee, 'quantity' => 1];
+        }
+        return $payload;
+    }
+
     private function _createTripayTransaction(array $validatedData, Pesanan $pesanan, int $total, array $orderItemsPayload): array
     {
         $apiKey = config('tripay.api_key'); $privateKey = config('tripay.private_key');
@@ -590,7 +446,7 @@ class PesananController extends Controller
             'merchant_ref'   => $pesanan->nomor_invoice,
             'amount'         => $total,
             'customer_name'  => $validatedData['receiver_name'],
-            'customer_email' => 'customer@tokosancaka.com',
+            'customer_email' => 'customer@example.com', // Ganti dengan email valid jika ada
             'customer_phone' => $validatedData['receiver_phone'],
             'order_items'    => $orderItemsPayload,
             'expired_time'   => time() + (24 * 60 * 60),
@@ -616,9 +472,10 @@ class PesananController extends Controller
         if (Str::startsWith($phone, '62')) {
             return '0' . substr($phone, 2);
         }
-        if (Str::startsWith($phone, '0')) {
-            return $phone;
+        if (!Str::startsWith($phone, '0')) {
+            return '0' . $phone;
         }
-        return '0' . $phone;
+        return $phone;
     }
 }
+
