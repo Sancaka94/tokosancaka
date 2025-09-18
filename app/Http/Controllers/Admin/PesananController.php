@@ -1,22 +1,23 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Admin; // DIPERBAIKI: Namespace diubah ke Admin
 
+use App\Http\Controllers\Controller; // DITAMBAHKAN: Path ke base Controller
 use App\Models\Pesanan;
 use App\Models\Kontak;
 use App\Models\User;
-use App\Services\KiriminAjaService; // DITAMBAHKAN
+use App\Services\KiriminAjaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use App\Exports\PesanansExport;
 use Maatwebsite\Excel\Facades\Excel;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Http; // DITAMBAHKAN
-use Illuminate\Support\Facades\DB;   // DITAMBAHKAN
-use Exception;                      // DITAMBAHKAN
-use Illuminate\Support\Facades\Log; // DITAMBAHKAN
-use Illuminate\Validation\ValidationException; // DITAMBAHKAN
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\DB;
+use Exception;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 
 class PesananController extends Controller
@@ -588,4 +589,3 @@ class PesananController extends Controller
         return '0' . $phone;
     }
 }
-
