@@ -531,7 +531,7 @@
                 <!-- Tombol & Akun Gabungan -->
                 <div class="d-lg-flex align-items-center mt-3 mt-lg-0 ms-lg-3">
                     <div class="dropdown">
-                        <button class="btn btn-primary dropdown-toggle fw-bold" type="button" id="mainDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <button class="btn btn-danger dropdown-toggle fw-bold" type="button" id="mainDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="fa-solid fa-user me-1"></i> Login / Order
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="mainDropdown">
