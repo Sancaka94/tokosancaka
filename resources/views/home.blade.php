@@ -2872,10 +2872,149 @@ document.addEventListener('DOMContentLoaded', function() {
 
 </script>
 
+<!-- Custom & Init Scripts -->
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        
+        // --- INISIALISASI ---
+        if (!localStorage.getItem('tutorial_shown')) {
+            const tutorialModal = new bootstrap.Modal(document.getElementById('tutorialModal'));
+            tutorialModal.show();
+            localStorage.setItem('tutorial_shown', 'true');
+        }
 
+        const debounce = (func, delay) => {
+            let timeout;
+            return function(...args) {
+                const context = this;
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(context, args), delay);
+            };
+        };
 
-   
+        // --- FUNGSI AUTOCOMPLETE ALAMAT ---
+        function setupAddressAutocomplete(inputId, resultsId, idFieldId, subDistrictFieldId) {
+            const searchInput = document.getElementById(inputId);
+            const resultsContainer = document.getElementById(resultsId);
+            const idField = document.getElementById(idFieldId);
+            const subDistrictField = document.getElementById(subDistrictFieldId);
+            
+            const fetchAddresses = async (term) => {
+                if (term.length < 3) {
+                    resultsContainer.classList.add('d-none');
+                    return;
+                }
+                try {
+                    // Ganti URL ini dengan URL API pencarian alamat Anda yang sebenarnya
+                    const response = await fetch(`{{ route('api.address.search') }}?search=${encodeURIComponent(term)}`);
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    
+                    const data = await response.json();
+                    
+                    resultsContainer.innerHTML = '';
+                    resultsContainer.classList.remove('d-none');
 
+                    if (data && data.length > 0) {
+                        data.forEach(item => {
+                            const resultDiv = document.createElement('div');
+                            resultDiv.classList.add('autocomplete-item', 'p-2');
+                            resultDiv.textContent = item.full_address;
+                            resultDiv.addEventListener('click', () => {
+                                searchInput.value = item.full_address;
+                                idField.value = item.district_id;
+                                subDistrictField.value = item.subdistrict_id;
+                                resultsContainer.classList.add('d-none');
+                            });
+                            resultsContainer.appendChild(resultDiv);
+                        });
+                    } else {
+                        resultsContainer.innerHTML = `<div class="p-2 text-muted">Alamat tidak ditemukan.</div>`;
+                    }
+                } catch (error) {
+                    console.error('Error fetching addresses:', error);
+                    resultsContainer.innerHTML = `<div class="p-2 text-danger">Gagal memuat data.</div>`;
+                }
+            };
+            
+            searchInput.addEventListener('input', debounce((e) => fetchAddresses(e.target.value), 400));
+        }
+
+        setupAddressAutocomplete('origin', 'origin-results', 'origin_id', 'origin_subdistrict_id');
+        setupAddressAutocomplete('destination', 'destination-results', 'destination_id', 'destination_subdistrict_id');
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.position-relative')) {
+                document.getElementById('origin-results').classList.add('d-none');
+                document.getElementById('destination-results').classList.add('d-none');
+            }
+        });
+
+        // --- FUNGSI SUBMIT CEK ONGKIR ---
+        const shippingForm = document.getElementById('shipping-form');
+        const resultsContainer = document.getElementById('cost-results-container');
+        const submitButton = document.getElementById('submit-button');
+
+        shippingForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const originalButtonText = submitButton.innerHTML;
+            submitButton.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Mencari...`;
+            submitButton.disabled = true;
+            resultsContainer.innerHTML = '';
+
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData.entries());
+
+            try {
+                // Ganti URL ini dengan URL API Cek Ongkir Anda
+                const response = await fetch(`{{ route('kirimaja.cekongkir') }}`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.message || 'Gagal mengambil data ongkir.');
+                }
+                
+                // Logika untuk menampilkan hasil
+                let html = '<h4 class="mb-3">Hasil Pengecekan</h4>';
+                if (result.result && result.result.length > 0) {
+                     html += '<ul class="list-group">';
+                     result.result.forEach(provider => {
+                        provider.costs.forEach(cost => {
+                            const formattedPrice = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(cost.price.total_price);
+                            html += `<li class="list-group-item d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <div class="fw-bold">${provider.name.toUpperCase()} - ${cost.service_type}</div>
+                                            <small class="text-muted">Estimasi: ${cost.estimation || '-'} hari</small>
+                                        </div>
+                                        <span class="badge bg-primary rounded-pill fs-6">${formattedPrice}</span>
+                                    </li>`;
+                        });
+                     });
+                     html += '</ul>';
+                } else {
+                    html += `<div class="alert alert-warning">${result.text || 'Tidak ada layanan pengiriman yang tersedia untuk rute ini.'}</div>`;
+                }
+                resultsContainer.innerHTML = html;
+
+            } catch (error) {
+                console.error('Cek Ongkir Error:', error);
+                resultsContainer.innerHTML = `<div class="alert alert-danger">${error.message}</div>`;
+            } finally {
+                submitButton.innerHTML = originalButtonText;
+                submitButton.disabled = false;
+            }
+        });
+    });
+</script>
 
 
     <!-- Memuat JS khusus untuk halaman home -->
