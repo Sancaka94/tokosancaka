@@ -68,7 +68,8 @@ body {
 }
 
 .main-content-container {
-    padding-top: 2rem;
+    /* PERBAIKAN: Menambah jarak dari header agar tidak tertutup */
+    padding-top: 6rem;
     padding-bottom: 2rem;
 }
 
@@ -256,7 +257,7 @@ PERBAIKAN RESPONSIVE: Ukuran Tombol Disesuaikan
         z-index: 1020;
     }
     .main-content-container {
-        padding-top: 4rem; /* Sesuaikan padding untuk desktop */
+        padding-top: 8rem; /* PERBAIKAN: Menambah jarak dari header di desktop */
     }
 }
 
@@ -359,7 +360,7 @@ PERBAIKAN RESPONSIVE: Media Queries untuk Mobile & Tablet
 */
 @media (max-width: 991px) {
     .main-content-container {
-        padding-top: 1rem; /* Kurangi padding atas di mobile */
+        padding-top: 6rem; /* Kurangi padding atas di mobile agar tidak tertutup header */
         padding-left: 0.75rem;
         padding-right: 0.75rem;
     }
