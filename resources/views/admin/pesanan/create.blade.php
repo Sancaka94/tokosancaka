@@ -64,7 +64,10 @@
                         </div>
                         <div class="md:col-span-2 relative">
                             <label for="sender_address_search" class="block mb-2 text-sm font-medium text-gray-700">Cari Alamat Ongkir (Kec/Kel/Kodepos)</label>
-                            <input type="text" id="sender_address_search" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" placeholder="Ketik untuk mencari alamat..." autocomplete="off">
+                            <div class="relative">
+                                <input type="text" id="sender_address_search" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pr-8" placeholder="Ketik untuk mencari alamat..." autocomplete="off">
+                                <i id="sender_address_check" class="fas fa-check-circle text-green-500 absolute top-1/2 right-3 transform -translate-y-1/2 hidden"></i>
+                            </div>
                             <div id="sender_address_results" class="search-results-container hidden"></div>
                         </div>
                         <div class="md:col-span-2">
@@ -96,7 +99,10 @@
                         </div>
                         <div class="md:col-span-2 relative">
                             <label for="receiver_address_search" class="block mb-2 text-sm font-medium text-gray-700">Cari Alamat Ongkir (Kec/Kel/Kodepos)</label>
-                            <input type="text" id="receiver_address_search" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" placeholder="Ketik untuk mencari alamat..." autocomplete="off">
+                            <div class="relative">
+                                <input type="text" id="receiver_address_search" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pr-8" placeholder="Ketik untuk mencari alamat..." autocomplete="off">
+                                <i id="receiver_address_check" class="fas fa-check-circle text-green-500 absolute top-1/2 right-3 transform -translate-y-1/2 hidden"></i>
+                            </div>
                             <div id="receiver_address_results" class="search-results-container hidden"></div>
                         </div>
                         <div class="md:col-span-2">
@@ -313,14 +319,12 @@ document.addEventListener('DOMContentLoaded', function () {
                             document.getElementById(`${prefix}_village`).value = contact.village || '';
                             document.getElementById(`${prefix}_postal_code`).value = contact.postal_code || '';
                             
-                            // --- DIPERBARUI: Menyertakan postal_code dalam pencarian ---
                             const kiriminAjaSearchString = [contact.village, contact.district, contact.regency, contact.postal_code].filter(Boolean).join(', ');
                             const addressSearchInput = document.getElementById(`${prefix}_address_search`);
                             addressSearchInput.value = kiriminAjaSearchString;
 
                             resultsContainer.classList.add('hidden');
 
-                            // --- OTOMATIS CARI ALAMAT KIRIMINAJA ---
                             if (kiriminAjaSearchString) {
                                 performAddressSearch(prefix, kiriminAjaSearchString);
                             }
@@ -341,9 +345,28 @@ document.addEventListener('DOMContentLoaded', function () {
         phoneInput.addEventListener('input', debounce(() => performSearch(phoneInput.value), 400));
     }
     
+    // --- FUNGSI BARU: Untuk memilih alamat dan update UI ---
+    function selectAddress(prefix, item) {
+        const searchInput = document.getElementById(`${prefix}_address_search`);
+        const resultsContainer = document.getElementById(`${prefix}_address_results`);
+        const checkIcon = document.getElementById(`${prefix}_address_check`);
+
+        searchInput.value = item.full_address;
+        const parts = item.full_address.split(',').map(s => s.trim());
+        document.getElementById(`${prefix}_village`).value = parts[0] || '';
+        document.getElementById(`${prefix}_district`).value = parts[1] || '';
+        document.getElementById(`${prefix}_regency`).value = parts[2] || '';
+        document.getElementById(`${prefix}_province`).value = parts[3] || '';
+        document.getElementById(`${prefix}_postal_code`).value = parts[4] || '';
+        document.getElementById(`${prefix}_district_id`).value = item.district_id;
+        document.getElementById(`${prefix}_subdistrict_id`).value = item.subdistrict_id;
+
+        resultsContainer.classList.add('hidden');
+        checkIcon.classList.remove('hidden'); // Tampilkan centang hijau
+    }
+
     // --- FUNGSI PENCARIAN ALAMAT ONGKIR (KIRIMIN AJA API) ---
     async function performAddressSearch(prefix, query) {
-        const searchInput = document.getElementById(`${prefix}_address_search`);
         const resultsContainer = document.getElementById(`${prefix}_address_results`);
         
         if (query.length < 3) { 
@@ -360,19 +383,9 @@ document.addEventListener('DOMContentLoaded', function () {
             resultsContainer.classList.remove('hidden');
 
             if (data && data.length > 0) {
-                 // --- Logika auto-select jika hanya ada 1 hasil ---
+                 // --- DIPERBARUI: Logika auto-select ("Enter") jika ada hasil tunggal ---
                 if (data.length === 1) {
-                    const item = data[0];
-                    searchInput.value = item.full_address;
-                    const parts = item.full_address.split(',').map(s => s.trim());
-                    document.getElementById(`${prefix}_village`).value = parts[0] || '';
-                    document.getElementById(`${prefix}_district`).value = parts[1] || '';
-                    document.getElementById(`${prefix}_regency`).value = parts[2] || '';
-                    document.getElementById(`${prefix}_province`).value = parts[3] || '';
-                    document.getElementById(`${prefix}_postal_code`).value = parts[4] || '';
-                    document.getElementById(`${prefix}_district_id`).value = item.district_id;
-                    document.getElementById(`${prefix}_subdistrict_id`).value = item.subdistrict_id;
-                    resultsContainer.classList.add('hidden');
+                    selectAddress(prefix, data[0]); // Panggil fungsi selectAddress
                     return; // Selesai, tidak perlu menampilkan dropdown
                 }
 
@@ -381,16 +394,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     resultDiv.className = 'p-3 border-b hover:bg-gray-100 cursor-pointer text-sm';
                     resultDiv.innerHTML = `<div class="font-semibold">${item.full_address}</div>`;
                     resultDiv.addEventListener('click', () => {
-                        searchInput.value = item.full_address;
-                        const parts = item.full_address.split(',').map(s => s.trim());
-                        document.getElementById(`${prefix}_village`).value = parts[0] || '';
-                        document.getElementById(`${prefix}_district`).value = parts[1] || '';
-                        document.getElementById(`${prefix}_regency`).value = parts[2] || '';
-                        document.getElementById(`${prefix}_province`).value = parts[3] || '';
-                        document.getElementById(`${prefix}_postal_code`).value = parts[4] || '';
-                        document.getElementById(`${prefix}_district_id`).value = item.district_id;
-                        document.getElementById(`${prefix}_subdistrict_id`).value = item.subdistrict_id;
-                        resultsContainer.classList.add('hidden');
+                        selectAddress(prefix, item); // Panggil fungsi selectAddress
                     });
                     resultsContainer.appendChild(resultDiv);
                 });
@@ -403,9 +407,15 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
     
+    // --- DIPERBARUI: Setup pencarian alamat untuk menyembunyikan centang saat mengetik ---
     function setupAddressSearch(prefix) {
         const searchInput = document.getElementById(`${prefix}_address_search`);
-        searchInput.addEventListener('input', debounce(() => performAddressSearch(prefix, searchInput.value), 400));
+        const checkIcon = document.getElementById(`${prefix}_address_check`);
+        
+        searchInput.addEventListener('input', debounce(() => {
+            checkIcon.classList.add('hidden'); // Sembunyikan centang saat mulai mengetik baru
+            performAddressSearch(prefix, searchInput.value)
+        }, 400));
     }
     
     // --- INISIALISASI ---
