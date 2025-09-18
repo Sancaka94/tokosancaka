@@ -364,7 +364,7 @@ width: 22px;
 
                         <div class="input-group">
 
-                            <input type="text" name="resi" class="form-control form-control-lg" placeholder="Masukkan nomor resi..." required>
+                            <input type="text" name="resi" class="form-control form-control-lg" placeholder="Cek Resi" required>
 
                             <button class="btn btn-primary px-4" type="submit" style="background-color: var(--google-blue); border-color: var(--google-blue);">
 
