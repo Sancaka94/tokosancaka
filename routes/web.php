@@ -102,6 +102,7 @@ Route::post('/admin/import/wordpress', [ImportController::class, 'handleImport']
 
 Route::get('/feed', [BlogController::class, 'generateFeed'])->name('feed');
 
+Route::get('/api/contacts/search', [KontakController::class, 'search'])->name('api.contacts.search');
 
 
 
@@ -267,7 +268,6 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
     Route::get('/wilayah/district/{district}/villages', [WilayahController::class, 'getDesa'])->name('wilayah.desa');
 
-    Route::get('/api/contacts/search', [KontakController::class, 'search'])->name('api.contacts.search');
 
     
 });
@@ -284,8 +284,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])
 
         require __DIR__.'/web/admin.php';
 
-    Route::get('/api/contacts/search', [App\Http\Controllers\Admin\KontakController::class, 'search'])->name('api.contacts.search');
-
+    
         
 
      // --- MANAJEMEN WILAYAH TERINTEGRASI ---
@@ -464,7 +463,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])
 
         
 
-        
+   
 
     
 
