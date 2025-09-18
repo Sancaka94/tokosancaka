@@ -112,6 +112,7 @@ Route::get('/kontak/search', [KontakController::class, 'search'])->name('api.sea
 
 
 
+
 // =========================================================================
 
 // == PUBLIC & AUTHENTICATION ROUTES
