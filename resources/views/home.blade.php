@@ -2007,7 +2007,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             <div class="results-table table-responsive">
 
-            <div class="table-responsive">
+            
 
                 <table class="table table-hover table-striped mb-0">
 
@@ -2288,7 +2288,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
 
-    </div>
+    
 
 
     // Inisialisasi
