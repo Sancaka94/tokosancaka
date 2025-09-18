@@ -156,13 +156,13 @@
 
         #cekOngkirModal .form-control:focus,
         #cekOngkirModal .form-select:focus {
-            border-color: #ff4757;
+            border-color: #ff0015ff;
             box-shadow: 0 0 0 0.25rem rgba(255, 71, 87, 0.25);
         }
 
         #cekOngkirModal .form-label {
             font-weight: 600;
-            color: #aaaaaaff;
+            color: #ff0000ff;
             margin-bottom: 0.5rem;
         }
 
