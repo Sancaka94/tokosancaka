@@ -257,7 +257,7 @@
 <!-- =================================================================== -->
 <header>
    <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm fixed-top">
-        <div class="container">
+        <div class="container-fluid">
             <a class="navbar-brand d-flex align-items-center" href="{{ url('/') }}">
                 <img src="https://tokosancaka.biz.id/storage/uploads/sancaka.png" alt="Sancaka Express Logo" style="max-height: 40px;" class="me-2">
                 <strong>SANCAKA EXPRESS</strong>
@@ -516,52 +516,44 @@
                     </li>
                 </ul>
 
-                <!-- Tombol & Akun -->
-                <div class="d-lg-flex align-items-center mt-3 mt-lg-0 ms-lg-3">
-                    <!-- Dropdown Akun -->
-                    <div class="dropdown me-2">
-                        <a class="btn btn-outline-primary dropdown-toggle" href="#" id="akunDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="fa-solid fa-user me-1"></i> Akun
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="akunDropdown">
-                            {{-- Pilihan Login untuk Customer --}}
-                            <li>
-                                <a class="dropdown-item" href="{{ route('login') }}">
-                                    <i class="fa-solid fa-right-to-bracket me-2"></i> Login
-                                </a>
-                            </li>
-                            {{-- Pemisah visual --}}
-                            <li><hr class="dropdown-divider"></li>
-                            {{-- Pilihan Daftar (tetap untuk Customer) --}}
-                            <li>
-                                <a class="dropdown-item" href="{{ route('register') }}">
-                                    <i class="fa-solid fa-user-plus me-2"></i> Daftar Akun Baru
-                                </a>
-                            </li>
-                        </ul>
-                    </div>
-                    
-                    <!-- Ganti tombol "Order Sekarang" yang lama dengan kode dropdown ini -->
-                    <div class="dropdown">
-                        <button class="btn btn-danger dropdown-toggle fw-bold" type="button" id="orderDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                            Order Sekarang
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="orderDropdown">
-                            <li>
-                                <a class="dropdown-item" href="{{ route('pesanan.public.create') }}">
-                                    <i class="fas fa-shipping-fast me-2"></i> Order via Sancaka Express
-                                </a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item" href="{{ route('scan.spx.show') }}">
-                                    <i class="fas fa-barcode me-2"></i> Input Resi SPX Express
-                                </a>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </div>
+                <!-- Dropdown Gabungan Akun & Order -->
+<div class="d-lg-flex align-items-center mt-3 mt-lg-0 ms-lg-3">
+    <div class="dropdown">
+        <button class="btn btn-primary dropdown-toggle fw-bold" type="button" id="mainDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="fa-solid fa-user me-1"></i> Login / Order
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="mainDropdown">
+
+            {{-- Bagian Akun --}}
+            <li>
+                <a class="dropdown-item" href="{{ route('login') }}">
+                    <i class="fa-solid fa-right-to-bracket me-2"></i> Login
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item" href="{{ route('register') }}">
+                    <i class="fa-solid fa-user-plus me-2"></i> Daftar Akun Baru
+                </a>
+            </li>
+
+            <li><hr class="dropdown-divider"></li>
+
+            {{-- Bagian Order --}}
+            <li>
+                <a class="dropdown-item" href="{{ route('pesanan.public.create') }}">
+                    <i class="fas fa-shipping-fast me-2"></i> Order via Sancaka Express
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item" href="{{ route('scan.spx.show') }}">
+                    <i class="fas fa-barcode me-2"></i> Input Resi SPX Express
+                </a>
+            </li>
+
+        </ul>
+    </div>
+</div>
+
     </nav>
 </header>
 
@@ -914,4 +906,3 @@
 
 </body>
 </html>
-
