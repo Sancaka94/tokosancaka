@@ -845,7 +845,7 @@
             try {
                 // Ganti URL ini dengan URL API Cek Ongkir Anda
                 const response = await fetch(`{{ route('kirimaja.cekongkir') }}`, {
-                    method: 'POST',
+                    method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
