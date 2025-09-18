@@ -16,7 +16,7 @@
 <style>
     /*
     ============================================
-    PERBAIKAN UTAMA: Header Full-Width & Tampilan Modern
+    PERBAIKAN UTAMA: Desain Modern & Responsif
     - Dibuat oleh Gemini
     - Fokus pada Clean UI, UX, dan Responsiveness
     ============================================
@@ -44,43 +44,32 @@
 
     /*
     ============================================
-    PERBAIKAN DESAIN: Lebar Konten 80% di Layar Besar
-    - Sesuai permintaan, lebar konten utama diatur menjadi 80%
-      pada layar desktop yang lebar untuk tampilan yang lebih fokus.
-    - Header tetap full-width.
+    PERBAIKAN DESAIN: Lebar Header & Konten 80% di Layar Besar
+    - Sesuai permintaan, lebar header dan konten utama diatur menjadi 80%
+      pada layar desktop (lebar > 1366px) untuk tampilan yang lebih fokus.
     ============================================
     */
-    @media (min-width: 1366px) { /* Mulai berlaku di resolusi laptop/desktop umum */
-        .container.main-content-container {
-            max-width: 80%;
+    @media (min-width: 1366px) {
+        /*
+        CATATAN PENTING:
+        Aturan ini menargetkan class .container dari Bootstrap.
+        Ini akan memengaruhi header DAN konten utama, membuat keduanya
+        memiliki lebar maksimal 80% dan berada di tengah layar.
+        */
+        .container {
+            max-width: 80% !important;
         }
-    }
-
-    /*
-    ============================================
-    PERBAIKAN HEADER: SOLUSI MASALAH ANDA
-    Catatan: Solusi terbaik adalah mengedit file layouts/app.blade.php dan
-    mengubah <div class="container"> di dalam header/navbar menjadi <div class="container-fluid">.
-    Kode di bawah ini adalah alternatif untuk "memaksa" tampilan dari halaman ini.
-    ============================================
-    */
-    .navbar {
-        width: 100% !important;
-        background-color: var(--card-bg); /* Pastikan background konsisten */
-        box-shadow: var(--card-shadow);
-    }
-
-    /* Ini adalah kunci perbaikannya: memaksa container di dalam navbar menjadi full-width */
-    .navbar .container {
-        max-width: 100% !important;
-        padding-left: 2rem; /* Beri sedikit padding agar tidak menempel di tepi layar */
-        padding-right: 2rem;
     }
 
     body {
         background-color: var(--body-bg);
         font-family: var(--font-family-sans-serif);
         color: var(--text-color);
+    }
+    
+    .navbar {
+        background-color: var(--card-bg);
+        box-shadow: var(--card-shadow);
     }
 
     .main-content-container {
@@ -386,7 +375,7 @@
 
     /*
     ============================================
-    PERBAIKAN RESPONSIVE: Media Queries untuk Mobile
+    PERBAIKAN RESPONSIVE: Media Queries untuk Mobile & Tablet
     ============================================
     */
     @media (max-width: 991px) {
@@ -413,10 +402,6 @@
         .price-value { text-align: left; }
         .price-details { text-align: left !important; }
 
-        .navbar .container {
-            padding-left: 1rem;
-            padding-right: 1rem;
-        }
     }
     
     @media (max-width: 767px) {
@@ -433,6 +418,20 @@
 @endpush
 
 @section('content')
+<!--
+============================================
+CATATAN PENTING UNTUK MENU TOGGLE (MOBILE & TABLET)
+============================================
+Agar tombol menu (hamburger) bisa diklik dan berfungsi, pastikan file layout utama Anda
+(kemungkinan besar 'resources/views/layouts/app.blade.php') memuat BUNDLE JAVASCRIPT BOOTSTRAP
+sebelum tag penutup </body>. Contoh:
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+Tanpa script tersebut, fungsionalitas menu dropdown dan toggle tidak akan berjalan.
+CSS di halaman ini sudah siap untuk mendukungnya secara visual.
+============================================
+-->
 <div class="container main-content-container">
     
     <!-- Stepper/Progres Indikator -->
