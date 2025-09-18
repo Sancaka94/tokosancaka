@@ -58,6 +58,7 @@ use App\Http\Controllers\BlogController;
 
 use App\Http\Controllers\KodePosController;
 
+use App\Http\Controllers\Admin\KontakController;
 
 
 
@@ -267,6 +268,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::get('/wilayah/regency/{regency}/districts', [WilayahController::class, 'getKecamatan'])->name('wilayah.kecamatan');
 
     Route::get('/wilayah/district/{district}/villages', [WilayahController::class, 'getDesa'])->name('wilayah.desa');
+
+    Route::get('/api/contacts/search', [KontakController::class, 'search'])->name('api.contacts.search');
 
     
 });
