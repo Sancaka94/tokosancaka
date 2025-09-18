@@ -313,13 +313,14 @@ document.addEventListener('DOMContentLoaded', function () {
                             document.getElementById(`${prefix}_village`).value = contact.village || '';
                             document.getElementById(`${prefix}_postal_code`).value = contact.postal_code || '';
                             
-                            const kiriminAjaSearchString = [contact.village, contact.district, contact.regency].filter(Boolean).join(', ');
+                            // --- DIPERBARUI: Menyertakan postal_code dalam pencarian ---
+                            const kiriminAjaSearchString = [contact.village, contact.district, contact.regency, contact.postal_code].filter(Boolean).join(', ');
                             const addressSearchInput = document.getElementById(`${prefix}_address_search`);
                             addressSearchInput.value = kiriminAjaSearchString;
 
                             resultsContainer.classList.add('hidden');
 
-                            // --- BARU: OTOMATIS CARI ALAMAT KIRIMINAJA ---
+                            // --- OTOMATIS CARI ALAMAT KIRIMINAJA ---
                             if (kiriminAjaSearchString) {
                                 performAddressSearch(prefix, kiriminAjaSearchString);
                             }
@@ -359,7 +360,7 @@ document.addEventListener('DOMContentLoaded', function () {
             resultsContainer.classList.remove('hidden');
 
             if (data && data.length > 0) {
-                 // --- BARU: Logika auto-select jika hanya ada 1 hasil ---
+                 // --- Logika auto-select jika hanya ada 1 hasil ---
                 if (data.length === 1) {
                     const item = data[0];
                     searchInput.value = item.full_address;
