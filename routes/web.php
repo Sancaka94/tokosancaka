@@ -259,7 +259,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
     Route::get('/wilayah', [WilayahController::class, 'index'])->name('wilayah.index');
 
-
+    Route::get('/api/contacts/search', [AdminKontakController::class, 'search'])->name('api.contacts.search');
 
     Route::get('/wilayah/province/{province}/regencies', [WilayahController::class, 'getKabupaten'])->name('wilayah.kabupaten');
 

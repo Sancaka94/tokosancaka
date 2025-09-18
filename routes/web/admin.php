@@ -78,7 +78,6 @@ use App\Http\Controllers\Admin\KontakController as AdminKontakController;
 
 */
 
-Route::get('/api/contacts/search', [AdminKontakController::class, 'search'])->name('api.contacts.search');
 
 
 Route::get('/email', [ImapController::class, 'index'])->name('imap.index');
