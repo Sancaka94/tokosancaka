@@ -147,7 +147,7 @@
 
         #cekOngkirModal .form-control,
         #cekOngkirModal .form-select {
-            border: 1px solid #dee2e6;
+            border: 1px solid #ff0000ff;
             border-radius: 0.75rem;
             padding: 0.75rem 1rem;
             transition: all 0.3s ease;
