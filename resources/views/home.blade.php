@@ -300,8 +300,6 @@ width: 22px;
 
         border-radius: 0.75rem;
 
-        overflow: hidden;
-
         box-shadow: 0 2px 10px rgba(0,0,0,0.07);
 
     }
