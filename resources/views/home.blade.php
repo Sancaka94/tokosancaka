@@ -2044,7 +2044,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Tambah Paginasi
 if (pagination && pagination.total > 0) {
-    let maxButtons = 10; // maksimal tombol angka yang ditampilkan
+    let maxButtons = 5; // maksimal tombol angka yang ditampilkan
     let current = pagination.current_page;
     let last = pagination.last_page;
 
