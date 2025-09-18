@@ -14,8 +14,12 @@
         width: 100%;
         max-height: 250px;
         overflow-y: auto;
-        border-radius: 0 0 0.5rem 0.5rem; /* rounded-b-lg */
-        margin-top: -1px; /* Nempel dengan input di atasnya */
+        /* Tambahkan beberapa style agar lebih menarik */
+        background-color: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 0 0 0.5rem 0.5rem; /* rounded bottom */
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        margin-top: -1px; /* Nempel dengan input */
     }
     .modal-body-scroll {
         max-height: 70vh;
@@ -41,7 +45,6 @@
                         </h3>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {{-- Opsi Pelanggan untuk potong saldo --}}
                         <div class="md:col-span-2">
                             <label for="customer_id" class="block mb-2 text-sm font-medium text-gray-700">Pelanggan (Jika Potong Saldo)</label>
                             <select id="customer_id" name="id_pengguna_pembeli" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5">
@@ -51,36 +54,28 @@
                                 @endforeach
                             </select>
                         </div>
-                        
-                        {{-- Input Nama Pengirim dengan autocomplete --}}
+                        {{-- Input Nama dan Nomor HP Pengirim sekarang dalam satu div relative --}}
                         <div class="relative">
                             <label for="sender_name" class="block mb-2 text-sm font-medium text-gray-700">Nama Pengirim</label>
                             <input type="text" id="sender_name" name="sender_name" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required autocomplete="off">
-                            <div id="sender_contact_results" class="search-results-container bg-white border rounded-b-lg mt-1 hidden shadow-lg"></div>
+                            <div id="sender_contact_results" class="search-results-container hidden"></div>
                         </div>
-                        
-                        {{-- Input Nomor HP Pengirim dengan autocomplete --}}
                         <div class="relative">
                             <label for="sender_phone" class="block mb-2 text-sm font-medium text-gray-700">Nomor HP</label>
                             <input type="tel" id="sender_phone" name="sender_phone" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required autocomplete="off">
                         </div>
-
-                        {{-- Input Alamat API Ongkir --}}
                         <div class="md:col-span-2 relative">
                             <label for="sender_address_search" class="block mb-2 text-sm font-medium text-gray-700">Cari Alamat Ongkir (Kec/Kel/Kodepos)</label>
                             <input type="text" id="sender_address_search" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" placeholder="Ketik untuk mencari alamat..." autocomplete="off">
-                            <div id="sender_address_results" class="search-results-container bg-white border rounded-b-lg mt-1 hidden shadow-lg"></div>
+                            <div id="sender_address_results" class="search-results-container hidden"></div>
                         </div>
-                        
-                        {{-- Input Alamat Lengkap --}}
                         <div class="md:col-span-2">
                             <label for="sender_address" class="block mb-2 text-sm font-medium text-gray-700">Detail Alamat Lengkap Pengirim</label>
-                            <textarea id="sender_address" name="sender_address" rows="3" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required placeholder="Contoh: Jl. Pahlawan No. 12, RT 01/RW 05, (Patokan: Sebelah Kantor Pos)"></textarea>
+                            <textarea id="sender_address" name="sender_address" rows="3" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" placeholder="Contoh: Jl. Pahlawan No. 12, RT 01/RW 05, (Patokan: Sebelah Kantor Pos)" required></textarea>
                         </div>
-                        
-                        <div class="md:col-span-2">
-                            <label class="flex items-center text-sm text-gray-600"><input type="checkbox" name="save_sender" value="1" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-2"> Simpan data pengirim ini</label>
-                        </div>
+                         <div class="md:col-span-2">
+                              <label class="flex items-center text-sm text-gray-600"><input type="checkbox" name="save_sender" value="1" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-2"> Simpan data pengirim ini</label>
+                         </div>
                     </div>
                 </div>
 
@@ -92,35 +87,28 @@
                         </h3>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                         {{-- Input Nama Penerima dengan autocomplete --}}
+                         {{-- Input Nama dan Nomor HP Penerima sekarang dalam satu div relative --}}
                         <div class="relative">
                             <label for="receiver_name" class="block mb-2 text-sm font-medium text-gray-700">Nama Penerima</label>
                             <input type="text" id="receiver_name" name="receiver_name" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required autocomplete="off">
-                             <div id="receiver_contact_results" class="search-results-container bg-white border rounded-b-lg mt-1 hidden shadow-lg"></div>
+                            <div id="receiver_contact_results" class="search-results-container hidden"></div>
                         </div>
-
-                        {{-- Input Nomor HP Penerima dengan autocomplete --}}
                         <div class="relative">
                             <label for="receiver_phone" class="block mb-2 text-sm font-medium text-gray-700">Nomor HP</label>
                             <input type="tel" id="receiver_phone" name="receiver_phone" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required autocomplete="off">
                         </div>
-
-                        {{-- Input Alamat API Ongkir --}}
                         <div class="md:col-span-2 relative">
                             <label for="receiver_address_search" class="block mb-2 text-sm font-medium text-gray-700">Cari Alamat Ongkir (Kec/Kel/Kodepos)</label>
                             <input type="text" id="receiver_address_search" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" placeholder="Ketik untuk mencari alamat..." autocomplete="off">
-                            <div id="receiver_address_results" class="search-results-container bg-white border rounded-b-lg mt-1 hidden shadow-lg"></div>
+                            <div id="receiver_address_results" class="search-results-container hidden"></div>
                         </div>
-                        
-                        {{-- Input Alamat Lengkap --}}
                         <div class="md:col-span-2">
-                            <label for="receiver_address" class="block mb-2 text-sm font-medium text-gray-700">Alamat Lengkap Penerima</label>
-                            <textarea id="receiver_address" name="receiver_address" rows="3" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required placeholder="Contoh: Jl. Kemerdekaan No. 30, RT 02/RW 03, (Patokan: Depan Taman Kota)"></textarea>
+                            <label for="receiver_address" class="block mb-2 text-sm font-medium text-gray-700">Alamat Penerima Lengkap</label>
+                            <textarea id="receiver_address" name="receiver_address" rows="3" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" placeholder="Contoh: Jl. Pahlawan No. 12, RT 01/RW 05, (Patokan: Sebelah Kantor Pos)" required></textarea>
                         </div>
-                        
-                        <div class="md:col-span-2">
-                             <label class="flex items-center text-sm text-gray-600"><input type="checkbox" name="save_receiver" value="1" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-2"> Simpan data penerima ini</label>
-                        </div>
+                          <div class="md:col-span-2">
+                               <label class="flex items-center text-sm text-gray-600"><input type="checkbox" name="save_receiver" value="1" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-2"> Simpan data penerima ini</label>
+                          </div>
                     </div>
                 </div>
 
@@ -212,52 +200,9 @@
     </form>
 </div>
 
-<!-- Modal Pilihan Ekspedisi -->
-<div id="ongkirModal" class="fixed inset-0 bg-gray-800 bg-opacity-60 z-50 hidden flex items-center justify-center">
-    <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4">
-        <div class="p-4 border-b flex justify-between items-center">
-            <h5 class="text-lg font-semibold"><i class="fas fa-shipping-fast mr-2 text-indigo-600"></i>Pilihan Ekspedisi</h5>
-            <button type="button" class="close-modal-btn text-gray-500 hover:text-gray-800">&times;</button>
-        </div>
-        <div id="ongkirModalBody" class="p-6 modal-body-scroll"></div>
-        <div class="p-4 border-t text-right">
-            <button type="button" class="close-modal-btn px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Tutup</button>
-        </div>
-    </div>
-</div>
+<!-- Semua Modal (Ongkir & Pembayaran) tidak berubah -->
+@include('admin.pesanan.partials.modals')
 
-<!-- Modal Metode Pembayaran -->
-<div id="paymentMethodModal" class="fixed inset-0 bg-gray-800 bg-opacity-60 z-50 hidden flex items-center justify-center">
-    <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
-        <div class="p-4 border-b flex justify-between items-center">
-            <h5 class="text-lg font-semibold"><i class="fas fa-credit-card mr-2 text-indigo-600"></i>Pilih Metode Pembayaran</h5>
-            <button type="button" class="close-modal-btn text-gray-500 hover:text-gray-800">&times;</button>
-        </div>
-        <div class="modal-body-scroll">
-            <ul id="paymentOptionsList" class="divide-y">
-                {{-- Opsi Potong Saldo khusus Admin --}}
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="Potong Saldo" data-label="Potong Saldo"><img src="https://cdn-icons-png.flaticon.com/512/1086/1086060.png" class="w-8 h-8 mr-4">Potong Saldo</li>
-                {{-- Opsi dari KiriminAja --}}
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50 cod-payment-option" data-value="COD" data-label="COD Ongkir"><img src="{{ asset('public/assets/cod.png') }}" class="w-8 h-8 mr-4">COD Ongkir</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50 cod-payment-option" data-value="CODBARANG" data-label="COD Barang + Ongkir"><img src="{{ asset('public/assets/cod.png') }}" class="w-8 h-8 mr-4">COD Barang + Ongkir</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="PERMATAVA" data-label="Permata VA"><img src="{{ asset('public/assets/permata.webp') }}" class="w-8 h-8 mr-4">Permata VA</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="BNIVA" data-label="BNI VA"><img src="{{ asset('public/assets/bni.webp') }}" class="w-8 h-8 mr-4">BNI VA</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="BRIVA" data-label="BRI VA"><img src="{{ asset('public/assets/bri.webp') }}" class="w-8 h-8 mr-4">BRI VA</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="MANDIRIVA" data-label="Mandiri VA"><img src="{{ asset('public/assets/mandiri.webp') }}" class="w-8 h-8 mr-4">Mandiri VA</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="BCAVA" data-label="BCA VA"><img src="{{ asset('public/assets/bca.webp') }}" class="w-8 h-8 mr-4">BCA VA</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="ALFAMART" data-label="Alfamart"><img src="{{ asset('public/assets/alfamart.webp') }}" class="w-8 h-8 mr-4">Alfamart</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="INDOMARET" data-label="Indomaret"><img src="{{ asset('public/assets/indomaret.webp') }}" class="w-8 h-8 mr-4">Indomaret</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="OVO" data-label="OVO"><img src="{{ asset('public/assets/ovo.webp') }}" class="w-8 h-8 mr-4">OVO</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="DANA" data-label="DANA"><img src="{{ asset('public/assets/dana.webp') }}" class="w-8 h-8 mr-4">DANA</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="SHOPEEPAY" data-label="ShopeePay"><img src="{{ asset('public/assets/shopeepay.webp') }}" class="w-8 h-8 mr-4">ShopeePay</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="QRIS" data-label="QRIS"><img src="{{ asset('public/assets/qris2.png') }}" class="w-8 h-8 mr-4">QRIS</li>
-            </ul>
-        </div>
-         <div class="p-4 border-t text-right">
-            <button type="button" class="close-modal-btn px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Tutup</button>
-        </div>
-    </div>
-</div>
 @endsection
 
 @push('scripts')
@@ -281,19 +226,16 @@ document.addEventListener('DOMContentLoaded', function () {
         const nameInput = document.getElementById(`${prefix}_name`);
         const phoneInput = document.getElementById(`${prefix}_phone`);
         const resultsContainer = document.getElementById(`${prefix}_contact_results`);
+        const contactType = (prefix === 'sender') ? 'Pengirim' : 'Penerima';
 
-        const searchHandler = debounce(async (event) => {
-            const query = event.target.value;
+        const performSearch = async (query) => {
             if (query.length < 3) {
                 resultsContainer.classList.add('hidden');
                 return;
             }
 
-            // Tentukan tipe kontak berdasarkan prefix
-            const contactType = (prefix === 'sender') ? 'Pengirim' : 'Penerima';
-
             try {
-                // Pastikan route 'api.contacts.search' sudah ada di web.php/api.php
+                // Pastikan route ini benar dan mengarah ke PesananController@searchKontak
                 const response = await fetch(`{{ route('api.contacts.search') }}?search=${query}&tipe=${contactType}`);
                 if (!response.ok) throw new Error('Network response error');
                 const contacts = await response.json();
@@ -307,31 +249,22 @@ document.addEventListener('DOMContentLoaded', function () {
                         resultDiv.className = 'p-3 border-b hover:bg-gray-100 cursor-pointer text-sm';
                         resultDiv.innerHTML = `<div class="font-semibold">${contact.nama}</div><div class="text-xs text-gray-500">${contact.no_hp}</div>`;
                         
-                        // Simpan semua data kontak di dataset untuk autofill
-                        resultDiv.dataset.contact = JSON.stringify(contact);
-
                         resultDiv.addEventListener('click', () => {
-                            // Isi semua field dari data kontak yang dipilih
-                            document.getElementById(`${prefix}_name`).value = contact.nama;
-                            document.getElementById(`${prefix}_phone`).value = contact.no_hp;
-                            document.getElementById(`${prefix}_address`).value = contact.alamat; // Alamat lengkap
-
-                            // Isi input pencarian alamat ongkir agar user bisa lihat
-                            const apiAddress = [contact.village, contact.district, contact.regency, contact.province, contact.postal_code].filter(Boolean).join(', ');
-                            document.getElementById(`${prefix}_address_search`).value = apiAddress;
-
-                            // Isi hidden fields untuk data ongkir dari database
+                            // Isi semua field yang relevan
+                            document.getElementById(`${prefix}_name`).value = contact.nama || '';
+                            document.getElementById(`${prefix}_phone`).value = contact.no_hp || '';
+                            document.getElementById(`${prefix}_address`).value = contact.alamat || '';
+                            
+                            // Isi hidden fields untuk alamat terstruktur
                             document.getElementById(`${prefix}_province`).value = contact.province || '';
                             document.getElementById(`${prefix}_regency`).value = contact.regency || '';
                             document.getElementById(`${prefix}_district`).value = contact.district || '';
                             document.getElementById(`${prefix}_village`).value = contact.village || '';
                             document.getElementById(`${prefix}_postal_code`).value = contact.postal_code || '';
                             
-                            // Penting: Isi juga district_id dan subdistrict_id jika ada di database
-                            // Catatan: KiriminAja mungkin butuh ID yang berbeda. Fungsi ini hanya mengisi data awal.
-                            // User mungkin perlu mencari ulang jika ID tidak cocok.
-                            document.getElementById(`${prefix}_district_id`).value = contact.district_id || ''; // Asumsi nama kolom
-                            document.getElementById(`${prefix}_subdistrict_id`).value = contact.subdistrict_id || ''; // Asumsi nama kolom
+                            // Coba isi field pencarian alamat ongkir jika datanya ada
+                            const kiriminAjaSearchString = [contact.village, contact.district, contact.regency].filter(Boolean).join(', ');
+                            document.getElementById(`${prefix}_address_search`).value = kiriminAjaSearchString;
 
                             resultsContainer.classList.add('hidden');
                         });
@@ -342,16 +275,18 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             } catch (error) {
                 console.error('Contact search failed:', error);
-                resultsContainer.innerHTML = '<div class="p-3 text-red-500">Gagal memuat kontak.</div>';
+                resultsContainer.innerHTML = '<div class="p-3 text-red-500">Gagal memuat data kontak.</div>';
             }
-        }, 400);
+        };
 
-        nameInput.addEventListener('input', searchHandler);
-        phoneInput.addEventListener('input', searchHandler);
+        // Dengarkan input di kedua field (nama dan no hp)
+        nameInput.addEventListener('input', debounce(() => performSearch(nameInput.value), 400));
+        phoneInput.addEventListener('input', debounce(() => performSearch(phoneInput.value), 400));
     }
+
     setupContactSearch('sender');
     setupContactSearch('receiver');
-
+    
     // --- ADDRESS SEARCH (KIRIMIN AJA API) ---
     function setupAddressSearch(prefix) {
         const searchInput = document.getElementById(`${prefix}_address_search`);
@@ -362,7 +297,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (query.length < 3) { resultsContainer.classList.add('hidden'); return; }
 
             try {
-                // Pastikan route 'api.address.search' sudah ada di web.php/api.php
+                // Pastikan route 'api.address.search' sudah ada
                 const response = await fetch(`{{ route('api.address.search') }}?search=${query}`);
                 if (!response.ok) throw new Error('Network response error');
                 const data = await response.json();
