@@ -390,7 +390,7 @@ width: 22px;
 
                     <div class="d-grid mt-auto">
 
-                        <button class="btn btn-warning btn-lg" type="button">Cek Ongkir Sekarang</button>
+                        <button class="btn btn-warning btn-lg" type="button">Cek Ongkir</button>
 
                     </div>
 
@@ -410,7 +410,7 @@ width: 22px;
 
                         <div class="d-grid mt-auto">
 
-                            <button class="btn btn-success btn-lg text-white" type="button">Cek Alamat Sekarang</button>
+                            <button class="btn btn-success btn-lg text-white" type="button">Cek Alamat</button>
 
                         </div>
 
