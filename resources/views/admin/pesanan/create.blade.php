@@ -261,9 +261,11 @@ document.addEventListener('DOMContentLoaded', function () {
     const debounce = (func, delay) => {
         return (...args) => { clearTimeout(searchTimeout); searchTimeout = setTimeout(() => func.apply(this, args), delay); };
     };
-    function formatRupiah(angka) { return 'Rp ' + parseInt(angka, 10).toLocaleString('id-ID'); }
+    function formatRupiah(angka) { 
+        return 'Rp ' + (parseInt(angka, 10) || 0).toLocaleString('id-ID'); 
+    }
 
-    // --- FUNGSI PENCARIAN KONTAK DARI DATABASE ---
+    // --- FUNGSI PENCARIAN KONTAK DARI DATABASE (DENGAN LOGGING) ---
     function setupContactSearch(prefix) {
         const nameInput = document.getElementById(`${prefix}_name`);
         const phoneInput = document.getElementById(`${prefix}_phone`);
@@ -275,11 +277,22 @@ document.addEventListener('DOMContentLoaded', function () {
                 resultsContainer.classList.add('hidden');
                 return;
             }
+            console.log(`[${prefix}] Mencari kontak dengan query: "${query}", tipe: "${contactType}"`);
 
             try {
-                const response = await fetch(`{{ route('api.contacts.search') }}?search=${encodeURIComponent(query)}&tipe=${contactType}`);
-                if (!response.ok) throw new Error('Network response error');
+                const url = `{{ route('api.contacts.search') }}?search=${encodeURIComponent(query)}&tipe=${contactType}`;
+                console.log(`[${prefix}] Fetching URL: ${url}`);
+                const response = await fetch(url);
+                
+                console.log(`[${prefix}] Status respons server: ${response.status}`);
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error(`[${prefix}] Error dari server:`, errorText);
+                    throw new Error(`Server error: ${response.statusText}`);
+                }
+                
                 const contacts = await response.json();
+                console.log(`[${prefix}] Data kontak diterima:`, contacts);
                 
                 resultsContainer.innerHTML = '';
                 resultsContainer.classList.remove('hidden');
@@ -291,6 +304,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         resultDiv.innerHTML = `<div class="font-semibold">${contact.nama}</div><div class="text-xs text-gray-500">${contact.no_hp}</div>`;
                         
                         resultDiv.addEventListener('click', () => {
+                            console.log(`[${prefix}] Kontak dipilih:`, contact);
                             document.getElementById(`${prefix}_name`).value = contact.nama || '';
                             document.getElementById(`${prefix}_phone`).value = contact.no_hp || '';
                             document.getElementById(`${prefix}_address`).value = contact.alamat || '';
@@ -311,8 +325,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     resultsContainer.innerHTML = '<div class="p-3 text-gray-500">Kontak tidak ditemukan.</div>';
                 }
             } catch (error) {
-                console.error('Contact search failed:', error);
-                resultsContainer.innerHTML = '<div class="p-3 text-red-500">Gagal memuat data kontak.</div>';
+                console.error(`[${prefix}] Gagal melakukan pencarian kontak:`, error);
+                resultsContainer.classList.remove('hidden');
+                resultsContainer.innerHTML = `<div class="p-3 text-red-500">Gagal memuat data. Cek console (F12) untuk detail.</div>`;
             }
         };
 
@@ -540,10 +555,10 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!event.target.closest('#receiver_address_search, #receiver_address_results')) {
             document.getElementById('receiver_address_results').classList.add('hidden');
         }
-        if (!event.target.closest('#sender_name, #sender_contact_results')) {
+        if (!event.target.closest('#sender_name, #sender_contact_results, #sender_phone')) {
             document.getElementById('sender_contact_results').classList.add('hidden');
         }
-        if (!event.target.closest('#receiver_name, #receiver_contact_results')) {
+        if (!event.target.closest('#receiver_name, #receiver_contact_results, #receiver_phone')) {
             document.getElementById('receiver_contact_results').classList.add('hidden');
         }
     });
