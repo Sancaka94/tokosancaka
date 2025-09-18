@@ -48,7 +48,8 @@ class PesananController extends Controller
 
     public function create()
     {
-        $customers = User::where('role_id', 2)->orderBy('nama_lengkap', 'asc')->get();
+        // DIPERBAIKI: Menghapus filter where('role_id', 2) yang menyebabkan error
+        $customers = User::orderBy('nama_lengkap', 'asc')->get();
         return view('admin.pesanan.create', compact('customers'));
     }
 
@@ -241,7 +242,7 @@ class PesananController extends Controller
         $request->validate(['status' => 'required|string|in:Terkirim,Batal']);
         $pesanan = Pesanan::where('resi', $resi)->firstOrFail();
         $pesanan->update(['status' => $request->status]);
-        return redirect()->back()->with('success', 'Status pesanan ' . $resi . ' berhasil diubah menjadi "' . $request->status . '".');
+        return redirect()->route('admin.pesanan.index')->with('success', 'Status pesanan ' . $resi . ' berhasil diubah menjadi "' . $request->status . '".');
     }
 
     // --- FUNGSI BARU DARI REFERENSI ---
@@ -589,3 +590,4 @@ class PesananController extends Controller
         return '0' . $phone;
     }
 }
+
