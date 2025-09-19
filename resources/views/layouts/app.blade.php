@@ -238,6 +238,18 @@
             box-shadow: 0 8px 16px rgba(0,0,0,0.1);
         }
 
+         /* 3. Style tambahan untuk hasil autocomplete */
+        .autocomplete-results {
+            position: absolute; z-index: 1000; width: 100%;
+            max-height: 250px; overflow-y: auto; background-color: #fff;
+            border: 1px solid #ddd; border-top: none;
+            border-radius: 0 0 0.5rem 0.5rem; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .autocomplete-item { padding: 10px 15px; cursor: pointer; }
+        .autocomplete-item:hover { background-color: #f1f5f9; }
+        .modal-backdrop { z-index: 40; }
+        .modal { z-index: 50; }
+
         /* ========================================================== */
         /* PERBAIKAN TAMPILAN AUTOCOMPLETE ALAMAT                       */
         /* ========================================================== */
