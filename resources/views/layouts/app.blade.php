@@ -253,7 +253,7 @@
                         </li>
                         
                         <li class="nav-item ms-lg-2">
-                            <a class="btn btn-warning d-flex align-items-center" href="{{ url('') }}/etalase">
+                            <a class="btn btn-orange d-flex align-items-center" href="{{ url('') }}/etalase">
                                 <i class="fas fa-shopping-cart me-2"></i> Etalase
                             </a>
                         </li>
