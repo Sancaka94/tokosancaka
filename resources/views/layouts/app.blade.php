@@ -446,18 +446,18 @@
                         </div>
                         <!-- Dimensi -->
                         <div class="mb-3">
-                            <label class="form-label fw-semibold">Dimensi Paket (cm) (Opsional)</label>
+                            <label class="form-label fw-semibold">Dimensi Paket (Opsional)</label>
                             <div class="row g-3">
-                                <div class="col"><input type="number" id="length" name="length" placeholder="Panjang" class="form-control"></div>
-                                <div class="col"><input type="number" id="width" name="width" placeholder="Lebar" class="form-control"></div>
-                                <div class="col"><input type="number" id="height" name="height" placeholder="Tinggi" class="form-control"></div>
+                                <div class="col"><input type="number" id="length" name="length" placeholder="Panjang (cm)" class="form-control"></div>
+                                <div class="col"><input type="number" id="width" name="width" placeholder="Lebar (cm)" class="form-control"></div>
+                                <div class="col"><input type="number" id="height" name="height" placeholder="Tinggi (cm)" class="form-control"></div>
                             </div>
-                            <small class="text-muted">Isi jika ongkir dihitung berdasarkan volume.</small>
+                            <small class="text-muted">Wajib Isi jika paket lebih besar dari tonase, ongkir dihitung berdasarkan volume.</small>
                         </div>
                         <!-- Nilai Barang -->
                         <div class="mb-4">
                             <label for="item_value" class="form-label fw-semibold">Nilai Barang (Rp) (Opsional)</label>
-                            <input type="number" id="item_value" name="item_value" placeholder="Contoh: 500000" class="form-control">
+                            <input type="number" id="item_value" name="item_value" placeholder="Contoh: 50000" class="form-control">
                             <div class="form-check mt-2">
                                 <input type="checkbox" id="insurance" name="insurance" class="form-check-input">
                                 <label for="insurance" class="form-check-label">Gunakan Asuransi</label>
