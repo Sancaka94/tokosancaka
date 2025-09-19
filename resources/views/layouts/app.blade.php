@@ -126,6 +126,18 @@
         .autocomplete-item:hover {
             background-color: #f1f5f9;
         }
+
+        .btn-orange {
+  background-color: #fd7e14;
+  border-color: #fd7e14;
+  color: #fff;
+}
+.btn-orange:hover {
+  background-color: #e36414;
+  border-color: #e36414;
+  color: #fff;
+}
+
     </style>
 
     @stack('styles')
