@@ -652,23 +652,29 @@
 <!-- Modal Cek Ongkir -->
 <div class="modal fade" id="cekOngkirModal" tabindex="-1" aria-labelledby="cekOngkirModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="cekOngkirModalLabel"><i class="fa-solid fa-calculator me-2"></i>Formulir Cek Ongkos Kirim</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <!-- Header -->
+            <div class="modal-header bg-gradient text-white" style="background: linear-gradient(90deg,#dc3545,#a71d2a);">
+                <h5 class="modal-title fw-bold d-flex align-items-center" id="cekOngkirModalLabel">
+                    <i class="fa-solid fa-calculator me-2"></i> Formulir Cek Ongkos Kirim
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body">
-                 <div class="w-full max-w-4xl mx-auto bg-white p-4 p-md-5 rounded">
+
+            <!-- Body -->
+            <div class="modal-body bg-light">
+                <div class="w-full max-w-4xl mx-auto bg-white p-4 p-md-5 rounded-4 shadow-sm">
                     <div class="text-center mb-4">
-                        <h1 class="h3 fw-bold text-dark">Cek Ongkos Kirim</h1>
-                        <p class="text-muted">Didukung oleh Sancaka Express</p>
+                        <h1 class="h3 fw-bold text-dark mb-1">Cek Ongkos Kirim</h1>
+                        <p class="text-muted small">Didukung oleh <span class="fw-semibold text-danger">Sancaka Express</span></p>
                     </div>
+
                     <form id="shipping-form" class="space-y-3">
                         @csrf
                         <!-- Alamat Asal -->
                         <div class="mb-3 position-relative">
-                            <label for="origin" class="form-label">Alamat Asal</label>
-                            <input type="text" id="origin" name="origin_text" class="form-control" placeholder="Ketik nama Kecamatan/Kelurahan/kodepos..." required>
+                            <label for="origin" class="form-label fw-semibold">Alamat Asal</label>
+                            <input type="text" id="origin" name="origin_text" class="form-control form-control-lg" placeholder="Ketik nama Kecamatan/Kelurahan/kodepos..." required>
                             <input type="hidden" id="origin_id" name="origin_id">
                             <input type="hidden" id="origin_subdistrict_id" name="origin_subdistrict_id">
                             <div id="origin-results" class="autocomplete-results d-none"></div>
@@ -676,8 +682,8 @@
 
                         <!-- Alamat Tujuan -->
                         <div class="mb-3 position-relative">
-                            <label for="destination" class="form-label">Alamat Tujuan</label>
-                            <input type="text" id="destination" name="destination_text" class="form-control" placeholder="Ketik nama Kecamatan/Kelurahan/kodepos..." required>
+                            <label for="destination" class="form-label fw-semibold">Alamat Tujuan</label>
+                            <input type="text" id="destination" name="destination_text" class="form-control form-control-lg" placeholder="Ketik nama Kecamatan/Kelurahan/kodepos..." required>
                             <input type="hidden" id="destination_id" name="destination_id">
                             <input type="hidden" id="destination_subdistrict_id" name="destination_subdistrict_id">
                             <div id="destination-results" class="autocomplete-results d-none"></div>
@@ -685,25 +691,25 @@
 
                         <!-- Berat -->
                         <div class="mb-3">
-                            <label for="weight" class="form-label">Berat (gram)</label>
-                            <input type="number" id="weight" name="weight" class="form-control" placeholder="Contoh: 1000" min="1" required>
+                            <label for="weight" class="form-label fw-semibold">Berat (gram)</label>
+                            <input type="number" id="weight" name="weight" class="form-control form-control-lg" placeholder="Contoh: 1000" min="1" required>
                         </div>
 
                         <!-- Dimensi -->
                         <div class="mb-3">
-                            <label class="form-label">Dimensi Paket (cm)</label>
+                            <label class="form-label fw-semibold">Dimensi Paket (cm)</label>
                             <div class="row g-2">
-                                <div class="col"><input type="number" id="length" name="length" placeholder="Panjang" class="form-control"></div>
-                                <div class="col"><input type="number" id="width" name="width" placeholder="Lebar" class="form-control"></div>
-                                <div class="col"><input type="number" id="height" name="height" placeholder="Tinggi" class="form-control"></div>
+                                <div class="col"><input type="number" id="length" name="length" placeholder="Panjang" class="form-control form-control-lg"></div>
+                                <div class="col"><input type="number" id="width" name="width" placeholder="Lebar" class="form-control form-control-lg"></div>
+                                <div class="col"><input type="number" id="height" name="height" placeholder="Tinggi" class="form-control form-control-lg"></div>
                             </div>
                             <small class="text-muted">Isi jika ongkir dihitung berdasarkan volume.</small>
                         </div>
 
                         <!-- Nilai Barang -->
                         <div class="mb-3">
-                            <label for="item_value" class="form-label">Nilai Barang (Rp)</label>
-                            <input type="number" id="item_value" name="item_value" placeholder="Contoh: 500000" class="form-control">
+                            <label for="item_value" class="form-label fw-semibold">Nilai Barang (Rp)</label>
+                            <input type="number" id="item_value" name="item_value" placeholder="Contoh: 500000" class="form-control form-control-lg">
                             <small class="text-muted d-block">Isi untuk perhitungan biaya asuransi.</small>
                             <div class="form-check mt-2">
                                 <input type="checkbox" id="insurance" name="insurance" class="form-check-input">
@@ -713,18 +719,25 @@
 
                         <!-- Tombol -->
                         <div class="d-grid">
-                            <button type="submit" class="btn btn-danger btn-lg" id="submit-button">Cek Ongkir</button>
+                            <button type="submit" class="btn btn-danger btn-lg shadow-sm" id="submit-button">
+                                <i class="fa-solid fa-truck-fast me-2"></i> Cek Ongkir
+                            </button>
                         </div>
                     </form>
                     <div id="cost-results-container" class="mt-4"></div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kembali</button>
+
+            <!-- Footer -->
+            <div class="modal-footer bg-light border-0">
+                <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">
+                    <i class="fa-solid fa-arrow-left me-1"></i> Kembali
+                </button>
             </div>
         </div>
     </div>
 </div>
+
     
 <!-- Modal Tutorial Onboarding -->
 <div class="modal fade" id="tutorialModal" tabindex="-1" aria-labelledby="tutorialModalLabel" aria-hidden="true">
