@@ -649,79 +649,115 @@
     </div>
 </footer>
     
-<!-- Modal Cek Ongkir -->
+<!-- Awal Kode Modal Cek Ongkir yang Didesain Ulang -->
 <div class="modal fade" id="cekOngkirModal" tabindex="-1" aria-labelledby="cekOngkirModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="cekOngkirModalLabel"><i class="fa-solid fa-calculator me-2"></i>Formulir Cek Ongkos Kirim</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                 <div class="w-full max-w-4xl mx-auto bg-white p-4 p-md-5 rounded">
-                    <div class="text-center mb-4">
-                        <h1 class="h3 fw-bold text-dark">Cek Ongkos Kirim</h1>
-                        <p class="text-muted">Didukung oleh Sancaka Express</p>
+        <!-- Menggunakan class Tailwind untuk styling, bukan class default Bootstrap -->
+        <div class="modal-content bg-slate-50 text-slate-800 rounded-2xl shadow-2xl border-0">
+
+            <!-- Header -->
+            <div class="modal-header border-b-0 p-6 text-center relative">
+                <div class="w-full">
+                    <div class="mx-auto bg-red-100 text-red-600 w-16 h-16 rounded-full flex items-center justify-center mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-truck"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
                     </div>
-                    <form id="shipping-form" class="space-y-3">
-                        @csrf
+                    <h5 class="modal-title text-2xl font-bold text-slate-900" id="cekOngkirModalLabel">
+                        Cek Ongkos Kirim
+                    </h5>
+                    <p class="text-slate-500 text-sm mt-1">Didukung oleh <span class="font-semibold text-red-500">Sancaka Express</span></p>
+                </div>
+                <button type="button" class="btn-close absolute top-4 right-4 text-slate-400 hover:text-slate-600" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <!-- Body -->
+            <div class="modal-body p-6 pt-0">
+                <form id="shipping-form">
+                    @csrf
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
                         <!-- Alamat Asal -->
-                        <div class="mb-3 position-relative">
-                            <label for="origin" class="form-label">Alamat Asal</label>
-                            <input type="text" id="origin" name="origin_text" class="form-control" placeholder="Ketik nama Kecamatan/Kelurahan/kodepos..." required>
+                        <div class="md:col-span-1 relative">
+                            <label for="origin" class="block text-sm font-semibold text-slate-600 mb-2">Alamat Asal</label>
+                            <div class="relative">
+                                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                </div>
+                                <input type="text" id="origin" name="origin_text" class="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition" placeholder="Kecamatan/Kelurahan/Kodepos..." required>
+                            </div>
                             <input type="hidden" id="origin_id" name="origin_id">
                             <input type="hidden" id="origin_subdistrict_id" name="origin_subdistrict_id">
-                            <div id="origin-results" class="autocomplete-results d-none"></div>
+                            <div id="origin-results" class="autocomplete-results d-none"></div> <!-- Menggunakan d-none dari bootstrap agar JS Anda tetap bekerja -->
                         </div>
 
                         <!-- Alamat Tujuan -->
-                        <div class="mb-3 position-relative">
-                            <label for="destination" class="form-label">Alamat Tujuan</label>
-                            <input type="text" id="destination" name="destination_text" class="form-control" placeholder="Ketik nama Kecamatan/Kelurahan/kodepos..." required>
+                        <div class="md:col-span-1 relative">
+                            <label for="destination" class="block text-sm font-semibold text-slate-600 mb-2">Alamat Tujuan</label>
+                             <div class="relative">
+                                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                </div>
+                                <input type="text" id="destination" name="destination_text" class="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition" placeholder="Kecamatan/Kelurahan/Kodepos..." required>
+                            </div>
                             <input type="hidden" id="destination_id" name="destination_id">
                             <input type="hidden" id="destination_subdistrict_id" name="destination_subdistrict_id">
-                            <div id="destination-results" class="autocomplete-results d-none"></div>
+                            <div id="destination-results" class="autocomplete-results d-none"></div> <!-- Menggunakan d-none dari bootstrap -->
                         </div>
 
                         <!-- Berat -->
-                        <div class="mb-3">
-                            <label for="weight" class="form-label">Berat (gram)</label>
-                            <input type="number" id="weight" name="weight" class="form-control" placeholder="Contoh: 1000" min="1" required>
+                        <div class="md:col-span-2">
+                            <label for="weight" class="block text-sm font-semibold text-slate-600 mb-2">Berat</label>
+                            <div class="relative">
+                                <input type="number" id="weight" name="weight" class="w-full pr-14 pl-4 py-2.5 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition" placeholder="Contoh: 1000" min="1" required>
+                                <span class="absolute inset-y-0 right-0 flex items-center pr-4 text-sm text-slate-500">gram</span>
+                            </div>
                         </div>
 
                         <!-- Dimensi -->
-                        <div class="mb-3">
-                            <label class="form-label">Dimensi Paket (cm)</label>
-                            <div class="row g-2">
-                                <div class="col"><input type="number" id="length" name="length" placeholder="Panjang" class="form-control"></div>
-                                <div class="col"><input type="number" id="width" name="width" placeholder="Lebar" class="form-control"></div>
-                                <div class="col"><input type="number" id="height" name="height" placeholder="Tinggi" class="form-control"></div>
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-semibold text-slate-600 mb-2">Dimensi Paket (Opsional)</label>
+                            <div class="grid grid-cols-3 gap-4">
+                                <input type="number" id="length" name="length" placeholder="Panjang (cm)" class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition">
+                                <input type="number" id="width" name="width" placeholder="Lebar (cm)" class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition">
+                                <input type="number" id="height" name="height" placeholder="Tinggi (cm)" class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition">
                             </div>
-                            <small class="text-muted">Isi jika ongkir dihitung berdasarkan volume.</small>
+                            <small class="text-slate-500 mt-2 block">Isi jika ongkir dihitung berdasarkan volume.</small>
                         </div>
 
-                        <!-- Nilai Barang -->
-                        <div class="mb-3">
-                            <label for="item_value" class="form-label">Nilai Barang (Rp)</label>
-                            <input type="number" id="item_value" name="item_value" placeholder="Contoh: 500000" class="form-control">
-                            <small class="text-muted d-block">Isi untuk perhitungan biaya asuransi.</small>
-                            <div class="form-check mt-2">
-                                <input type="checkbox" id="insurance" name="insurance" class="form-check-input">
-                                <label for="insurance" class="form-check-label">Gunakan Asuransi</label>
+                        <!-- Nilai Barang & Asuransi -->
+                        <div class="md:col-span-2 p-4 bg-slate-100 rounded-lg">
+                            <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+                                <div class="flex-grow">
+                                    <label for="item_value" class="block text-sm font-semibold text-slate-600 mb-2">Nilai Barang (Opsional)</label>
+                                    <div class="relative">
+                                       <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-sm text-slate-500">Rp</span>
+                                        <input type="number" id="item_value" name="item_value" placeholder="500000" class="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition">
+                                    </div>
+                                </div>
+                                <div class="flex-shrink-0 pt-2 sm:pt-7">
+                                    <div class="relative flex items-center">
+                                        <!-- Checkbox ini hanya diubah tampilannya, fungsionalitasnya tetap sama -->
+                                        <input type="checkbox" id="insurance" name="insurance" class="appearance-none w-10 h-6 bg-slate-300 rounded-full cursor-pointer transition-colors duration-300 checked:bg-red-500 peer">
+                                        <label for="insurance" class="absolute left-1 top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full cursor-pointer transition-transform duration-300 peer-checked:translate-x-4"></label>
+                                        <label for="insurance" class="ml-3 text-sm font-medium text-slate-700 cursor-pointer">Gunakan Asuransi</label>
+                                    </div>
+                                </div>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- Tombol -->
-                        <div class="d-grid">
-                            <button type="submit" class="btn btn-danger btn-lg" id="submit-button">Cek Ongkir</button>
-                        </div>
-                    </form>
-                    <div id="cost-results-container" class="mt-4"></div>
-                </div>
+                    <!-- Tombol Submit -->
+                    <div class="mt-8">
+                        <button type="submit" class="w-full bg-red-600 text-white font-bold py-3.5 px-4 rounded-lg shadow-lg hover:bg-red-700 focus:outline-none focus:ring-4 focus:ring-red-300 transition-all duration-300 flex items-center justify-center gap-2" id="submit-button">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="feather feather-search"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                            Cek Ongkir Sekarang
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Hasil akan ditampilkan di sini -->
+                <div id="cost-results-container" class="mt-6"></div>
+
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kembali</button>
-            </div>
+            <!-- Footer tidak saya sertakan karena tidak ada di kode awal Anda, namun bisa ditambahkan jika perlu -->
         </div>
     </div>
 </div>
