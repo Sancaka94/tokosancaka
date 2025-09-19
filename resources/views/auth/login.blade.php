@@ -151,7 +151,7 @@
     }
 
     .auth-card {
-    margin-top: 10px; /* biar tidak ketutup header */
+    margin-top: 5px; /* biar tidak ketutup header */
 }
 
 
