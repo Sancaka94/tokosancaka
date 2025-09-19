@@ -27,5 +27,5 @@ composer.lock
 error_log
 /storage/logs
 /storage/logs/*.log
-
-=================================================================
+/storage/uploads/
+/storage/*.zip
