@@ -444,26 +444,37 @@
                             <label for="weight" class="form-label fw-semibold">Berat (gram)</label>
                             <input type="number" id="weight" name="weight" class="form-control" placeholder="Contoh: 1000" min="1" required>
                         </div>
-                        <!-- Dimensi -->
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold">Dimensi Paket (Opsional)</label>
-                            <div class="row g-3">
-                                <div class="col"><input type="number" id="length" name="length" placeholder="Panjang (cm)" class="form-control"></div>
-                                <div class="col"><input type="number" id="width" name="width" placeholder="Lebar (cm)" class="form-control"></div>
-                                <div class="col"><input type="number" id="height" name="height" placeholder="Tinggi (cm)" class="form-control"></div>
-                            </div>
-                            <small class="text-muted">Wajib Isi jika paket lebih besar dari tonase, ongkir dihitung berdasarkan volume.</small>
+
+                        <!-- Tombol Opsi Lanjutan -->
+                        <div class="d-flex justify-content-end gap-2 mb-3">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="toggle-volume-btn">
+                                <i class="fa-solid fa-box-open me-1"></i> Hitung Volume
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="toggle-insurance-btn">
+                                <i class="fa-solid fa-shield-halved me-1"></i> Gunakan Asuransi
+                            </button>
                         </div>
-                        <!-- Nilai Barang -->
-                        <div class="mb-4">
-                            <label for="item_value" class="form-label fw-semibold">Nilai Barang (Rp) (Opsional)</label>
-                            <input type="number" id="item_value" name="item_value" placeholder="Contoh: 50000" class="form-control">
+                        
+                        <!-- Dimensi (Hidden by default) -->
+                        <div class="mb-3 d-none" id="volume-fields">
+                            <label class="form-label fw-semibold">Dimensi Paket (cm)</label>
+                            <div class="row g-3">
+                                <div class="col"><input type="number" id="length" name="length" placeholder="Panjang" class="form-control"></div>
+                                <div class="col"><input type="number" id="width" name="width" placeholder="Lebar" class="form-control"></div>
+                                <div class="col"><input type="number" id="height" name="height" placeholder="Tinggi" class="form-control"></div>
+                            </div>
+                            <small class="text-muted">Isi jika ongkir dihitung berdasarkan volume.</small>
+                        </div>
+                        <!-- Nilai Barang (Hidden by default) -->
+                        <div class="mb-4 d-none" id="insurance-fields">
+                            <label for="item_value" class="form-label fw-semibold">Nilai Barang (Rp)</label>
+                            <input type="number" id="item_value" name="item_value" placeholder="Contoh: 500000" class="form-control">
                             <div class="form-check mt-2">
                                 <input type="checkbox" id="insurance" name="insurance" class="form-check-input">
                                 <label for="insurance" class="form-check-label">Gunakan Asuransi</label>
                             </div>
                         </div>
-                        <!-- Tombol -->
+                        <!-- Tombol Submit -->
                         <div class="d-grid">
                             <button type="submit" class="btn btn-danger btn-lg rounded-pill" id="submit-button">
                                 <i class="fa-solid fa-magnifying-glass-location me-2"></i> Cek Ongkir
@@ -527,6 +538,24 @@
                 const tutorialModal = new bootstrap.Modal(document.getElementById('tutorialModal'));
                 tutorialModal.show();
                 localStorage.setItem('tutorial_shown', 'true');
+            }
+
+            // --- LOGIC UNTUK TOMBOL OPSI LANJUTAN DI MODAL CEK ONGKIR ---
+            const toggleVolumeBtn = document.getElementById('toggle-volume-btn');
+            const toggleInsuranceBtn = document.getElementById('toggle-insurance-btn');
+            const volumeFields = document.getElementById('volume-fields');
+            const insuranceFields = document.getElementById('insurance-fields');
+
+            if (toggleVolumeBtn && volumeFields) {
+                toggleVolumeBtn.addEventListener('click', function() {
+                    volumeFields.classList.toggle('d-none');
+                });
+            }
+
+            if (toggleInsuranceBtn && insuranceFields) {
+                toggleInsuranceBtn.addEventListener('click', function() {
+                    insuranceFields.classList.toggle('d-none');
+                });
             }
         });
     </script>
