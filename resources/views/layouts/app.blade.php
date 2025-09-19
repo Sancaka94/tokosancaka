@@ -16,9 +16,6 @@
     <!-- Vendor CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-
-    <!-- Tailwind CSS (diperlukan untuk Modal Cek Ongkir baru) -->
-    <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ asset('public/assets/css/home-style.css') }}">
@@ -29,12 +26,12 @@
         KONFIGURASI & GAYA TAMBAHAN
         ==========================================================
         */
-
         body {
             font-family: 'Poppins', sans-serif;
+            padding-top: 70px; /* Menambahkan padding untuk navbar fixed-top */
         }
         
-        /* Layout 80% di Layar Besar */
+        /* Layout 100% di semua layar */
         .navbar .container {
             max-width: 100% !important;
         }
@@ -49,7 +46,7 @@
 
         /*
         ==========================================================
-        MEGA MENU STYLING
+        MEGA MENU STYLING (BOOTSTRAP)
         ==========================================================
         */
         .dropdown.mega-dropdown {
@@ -87,12 +84,7 @@
         .megamenu-list a:hover {
             color: #0d6efd;
         }
-
-        .megamenu-list a .fa-solid {
-            width: 20px;
-            text-align: center;
-        }
-
+        
         .megamenu-feature {
             background-color: #f8f9fa;
             padding: 20px;
@@ -108,35 +100,14 @@
             color: #6f42c1 !important;
         }
         
-        .mega-menu {
-            border-top: 3px solid #0d6efd;
-            background: #fff;
-            position: absolute;
-            z-index: 1050;
-        }
-
-        /* Tombol Shopee agar selalu terlihat di atas mega menu */
-        .btn-shopee {
-            position: relative;
-            z-index: 2000;
-            background-color: #ff5722;
-            color: #fff;
-            border: none;
-        }
-
-        .btn-shopee:hover {
-            background-color: #e64a19;
-            color: #fff;
-        }
-
         /*
         ==========================================================
-        STYLING PENDUKUNG MODAL BARU (TAILWIND + BOOTSTRAP)
+        AUTOCOMPLETE STYLING (BOOTSTRAP)
         ==========================================================
         */
         .autocomplete-results {
             position: absolute;
-            z-index: 1000;
+            z-index: 1055; /* Pastikan lebih tinggi dari elemen form lain */
             width: 100%;
             max-height: 250px;
             overflow-y: auto;
@@ -153,16 +124,7 @@
         }
 
         .autocomplete-item:hover {
-            background-color: #f1f5f9; /* slate-100 */
-        }
-
-        /* Penyesuaian Z-index agar modal Tailwind berfungsi dengan backdrop Bootstrap */
-        .modal-backdrop {
-            z-index: 40;
-        }
-
-        .modal {
-            z-index: 50;
+            background-color: #f1f5f9;
         }
     </style>
 
@@ -198,17 +160,12 @@
                             <a class="nav-link dropdown-toggle" href="#" id="megaMenuServices" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 Jasa Kami
                             </a>
-                            <div class="dropdown-menu mega-menu p-4" aria-labelledby="megaMenuServices">
+                            <div class="dropdown-menu dropdown-megamenu p-4" aria-labelledby="megaMenuServices">
                                 <div class="row g-4">
                                     <!-- Perizinan Properti -->
                                     <div class="col-md-3 col-6">
-                                        <h6 class="fw-bold text-primary mb-2">
-                                            <i class="fas fa-home me-1"></i> Perizinan Properti
-                                        </h6>
-                                        <p class="small mb-2">
-                                            <i class="fas fa-money-bill-wave text-primary me-1"></i>
-                                            <span class="text-primary">Mulai dari Rp 7.000.000</span>
-                                        </p>
+                                        <h6 class="fw-bold text-primary mb-2"><i class="fas fa-home me-1"></i> Perizinan Properti</h6>
+                                        <p class="small mb-2"><i class="fas fa-money-bill-wave text-primary me-1"></i><span class="text-primary">Mulai dari Rp 7.000.000</span></p>
                                         <ul class="list-unstyled">
                                             <li><a href="#" class="dropdown-item">Sertifikat Tanah</a></li>
                                             <li><a href="#" class="dropdown-item">IMB</a></li>
@@ -216,47 +173,29 @@
                                             <li><a href="#" class="dropdown-item">SLF</a></li>
                                         </ul>
                                     </div>
-
                                     <!-- Perizinan Produk -->
                                     <div class="col-md-3 col-6">
-                                        <h6 class="fw-bold text-success mb-2">
-                                            <i class="fas fa-box-open me-1"></i> Perizinan Produk
-                                        </h6>
-                                        <p class="small mb-2">
-                                            <i class="fas fa-money-bill-wave text-success me-1"></i>
-                                            <span class="text-success">Mulai dari Rp 8.000.000</span>
-                                        </p>
+                                        <h6 class="fw-bold text-success mb-2"><i class="fas fa-box-open me-1"></i> Perizinan Produk</h6>
+                                        <p class="small mb-2"><i class="fas fa-money-bill-wave text-success me-1"></i><span class="text-success">Mulai dari Rp 8.000.000</span></p>
                                         <ul class="list-unstyled">
                                             <li><a href="#" class="dropdown-item">BPOM</a></li>
                                             <li><a href="#" class="dropdown-item">Sertifikasi Halal</a></li>
                                             <li><a href="#" class="dropdown-item">PIRT</a></li>
                                         </ul>
                                     </div>
-
                                     <!-- Kekayaan Intelektual -->
                                     <div class="col-md-3 col-6">
-                                        <h6 class="fw-bold text-warning mb-2">
-                                            <i class="fas fa-lightbulb me-1"></i> Kekayaan Intelektual
-                                        </h6>
-                                        <p class="small mb-2">
-                                            <i class="fas fa-money-bill-wave text-warning me-1"></i>
-                                            <span class="text-warning">Mulai dari Rp 5.000.000</span>
-                                        </p>
+                                        <h6 class="fw-bold text-warning mb-2"><i class="fas fa-lightbulb me-1"></i> Kekayaan Intelektual</h6>
+                                        <p class="small mb-2"><i class="fas fa-money-bill-wave text-warning me-1"></i><span class="text-warning">Mulai dari Rp 5.000.000</span></p>
                                         <ul class="list-unstyled">
                                             <li><a href="#" class="dropdown-item">Pendaftaran Merk Dagang</a></li>
                                             <li><a href="#" class="dropdown-item">Pendaftaran Paten</a></li>
                                         </ul>
                                     </div>
-
                                     <!-- Legalitas Usaha & Website -->
                                     <div class="col-md-3 col-6">
-                                        <h6 class="fw-bold text-danger mb-2">
-                                            <i class="fas fa-gavel me-1"></i> Legalitas Usaha & Website
-                                        </h6>
-                                        <p class="small mb-2">
-                                            <i class="fas fa-money-bill-wave text-danger me-1"></i>
-                                            <span class="text-danger">Mulai dari Rp 10.000.000</span>
-                                        </p>
+                                        <h6 class="fw-bold text-danger mb-2"><i class="fas fa-gavel me-1"></i> Legalitas Usaha & Website</h6>
+                                        <p class="small mb-2"><i class="fas fa-money-bill-wave text-danger me-1"></i><span class="text-danger">Mulai dari Rp 10.000.000</span></p>
                                         <ul class="list-unstyled">
                                             <li><a href="#" class="dropdown-item">Pendirian CV</a></li>
                                             <li><a href="#" class="dropdown-item">Pendirian PT</a></li>
@@ -265,50 +204,31 @@
                                         </ul>
                                     </div>
                                 </div>
-
                                 <hr>
-
                                 <div class="row g-4">
                                     <!-- Konstruksi & RAB -->
                                     <div class="col-md-3 col-6">
-                                        <h6 class="fw-bold text-info mb-2">
-                                            <i class="fas fa-hard-hat me-1"></i> Konstruksi & RAB
-                                        </h6>
-                                        <p class="small mb-2">
-                                            <i class="fas fa-money-bill-wave text-info me-1"></i>
-                                            <span class="text-info">Mulai Rp 10K - 20K</span>
-                                        </p>
+                                        <h6 class="fw-bold text-info mb-2"><i class="fas fa-hard-hat me-1"></i> Konstruksi & RAB</h6>
+                                        <p class="small mb-2"><i class="fas fa-money-bill-wave text-info me-1"></i><span class="text-info">Mulai Rp 10K - 20K</span></p>
                                         <ul class="list-unstyled">
                                             <li><a href="#" class="dropdown-item">Hitung RAB Akurat</a></li>
                                             <li><a href="#" class="dropdown-item">Bangun Rumah Impian</a></li>
                                             <li><a href="#" class="dropdown-item">Bangun Toko Modern</a></li>
                                         </ul>
                                     </div>
-
                                     <!-- Pengeboran Sumur & SIPA -->
                                     <div class="col-md-3 col-6">
-                                        <h6 class="fw-bold text-secondary mb-2">
-                                            <i class="fas fa-tint me-1"></i> Pengeboran Sumur & SIPA
-                                        </h6>
-                                        <p class="small mb-2">
-                                            <i class="fas fa-money-bill-wave text-secondary me-1"></i>
-                                            <span class="text-secondary">Mulai dari Rp 30.000.000</span>
-                                        </p>
+                                        <h6 class="fw-bold text-secondary mb-2"><i class="fas fa-tint me-1"></i> Pengeboran Sumur & SIPA</h6>
+                                        <p class="small mb-2"><i class="fas fa-money-bill-wave text-secondary me-1"></i><span class="text-secondary">Mulai dari Rp 30.000.000</span></p>
                                         <ul class="list-unstyled">
                                             <li><a href="#" class="dropdown-item">Pengeboran Sumur Dalam</a></li>
                                             <li><a href="#" class="dropdown-item">Pengurusan SIPA</a></li>
                                         </ul>
                                     </div>
-
                                     <!-- Jasa Ekspedisi -->
                                     <div class="col-md-3 col-6">
-                                        <h6 class="fw-bold text-dark mb-2">
-                                            <i class="fas fa-truck me-1"></i> Jasa Ekspedisi
-                                        </h6>
-                                        <p class="small mb-2">
-                                            <i class="fas fa-money-bill-wave text-dark me-1"></i>
-                                            <span class="text-dark">Mulai Rp 2.424</span>
-                                        </p>
+                                        <h6 class="fw-bold text-dark mb-2"><i class="fas fa-truck me-1"></i> Jasa Ekspedisi</h6>
+                                        <p class="small mb-2"><i class="fas fa-money-bill-wave text-dark me-1"></i><span class="text-dark">Mulai Rp 2.424</span></p>
                                         <ul class="list-unstyled">
                                             <li><a href="#" class="dropdown-item">J&T Express</a></li>
                                             <li><a href="#" class="dropdown-item">JNE</a></li>
@@ -317,16 +237,10 @@
                                             <li><a href="#" class="dropdown-item">SPX Express</a></li>
                                         </ul>
                                     </div>
-
                                     <!-- Desain Arsitek -->
                                     <div class="col-md-3 col-6">
-                                        <h6 class="fw-bold text-purple mb-2">
-                                            <i class="fas fa-pencil-ruler me-1"></i> Desain Arsitek
-                                        </h6>
-                                        <p class="small mb-2">
-                                            <i class="fas fa-money-bill-wave text-purple me-1"></i>
-                                            <span class="text-purple">Mulai dari Rp 6.000.000</span>
-                                        </p>
+                                        <h6 class="fw-bold text-purple mb-2"><i class="fas fa-pencil-ruler me-1"></i> Desain Arsitek</h6>
+                                        <p class="small mb-2"><i class="fas fa-money-bill-wave text-purple me-1"></i><span class="text-purple">Mulai dari Rp 6.000.000</span></p>
                                         <ul class="list-unstyled">
                                             <li><a href="#" class="dropdown-item">Desain Denah Bangunan</a></li>
                                             <li><a href="#" class="dropdown-item">Gambar Arsitektur 2D</a></li>
@@ -338,13 +252,13 @@
                             </div>
                         </li>
                         
-                        <li class="nav-item ms-2">
-                            <a class="btn btn-shopee d-flex align-items-center" href="{{ url('') }}/etalase">
+                        <li class="nav-item ms-lg-2">
+                            <a class="btn btn-warning d-flex align-items-center" href="{{ url('') }}/etalase">
                                 <i class="fas fa-shopping-cart me-2"></i> Etalase
                             </a>
                         </li>
                         
-                        <li class="nav-item ms-2">
+                        <li class="nav-item ms-lg-2">
                             <a class="btn btn-success d-flex align-items-center" href="{{ url('') }}/blog">
                                 <i class="fas fa-blog me-2"></i> Blog
                             </a>
@@ -426,29 +340,11 @@
                                 <i class="fa-solid fa-user me-1"></i> Login / Order
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="mainDropdown">
-                                {{-- Bagian Akun --}}
-                                <li>
-                                    <a class="dropdown-item" href="{{ route('login') }}">
-                                        <i class="fa-solid fa-right-to-bracket me-2"></i> Login
-                                    </a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item" href="{{ route('register') }}">
-                                        <i class="fa-solid fa-user-plus me-2"></i> Daftar Akun Baru
-                                    </a>
-                                </li>
+                                <li><a class="dropdown-item" href="{{ route('login') }}"><i class="fa-solid fa-right-to-bracket me-2"></i> Login</a></li>
+                                <li><a class="dropdown-item" href="{{ route('register') }}"><i class="fa-solid fa-user-plus me-2"></i> Daftar Akun Baru</a></li>
                                 <li><hr class="dropdown-divider"></li>
-                                {{-- Bagian Order --}}
-                                <li>
-                                    <a class="dropdown-item" href="{{ route('pesanan.public.create') }}">
-                                        <i class="fas fa-shipping-fast me-2"></i> Order via Sancaka Express
-                                    </a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item" href="{{ route('scan.spx.show') }}">
-                                        <i class="fas fa-barcode me-2"></i> Input Resi SPX Express
-                                    </a>
-                                </li>
+                                <li><a class="dropdown-item" href="{{ route('pesanan.public.create') }}"><i class="fas fa-shipping-fast me-2"></i> Order via Sancaka Express</a></li>
+                                <li><a class="dropdown-item" href="{{ route('scan.spx.show') }}"><i class="fas fa-barcode me-2"></i> Input Resi SPX Express</a></li>
                             </ul>
                         </div>
                     </div>
@@ -467,27 +363,23 @@
     <footer class="text-white pt-5 pb-4" style="background-color: #1a253c;">
         <div class="container text-center text-md-start">
             <div class="row text-center text-md-start">
-
                 <div class="col-md-3 col-lg-3 col-xl-3 mx-auto mt-3">
                     <h5 class="text-uppercase mb-4 fw-bold text-white">Sancaka Express</h5>
                     <p class="text-white-50">Solusi pengiriman terpercaya untuk semua kebutuhan personal dan bisnis Anda. Cepat, aman, dan dapat diandalkan.</p>
                     <img src="https://tokosancaka.com/storage/uploads/sectigo.png" alt="Sectigo Secure" style="max-width: 120px; margin-top: 15px;">
                 </div>
-
                 <div class="col-md-2 col-lg-2 col-xl-2 mx-auto mt-3">
                     <h5 class="text-uppercase mb-4 fw-bold text-white">Navigasi</h5>
                     <p><a href="#" class="text-white-50 text-decoration-none">Layanan</a></p>
                     <p><a href="#" class="text-white-50 text-decoration-none">Rekanan</a></p>
                     <p><a href="#" class="text-white-50 text-decoration-none">Testimoni</a></p>
                 </div>
-
                 <div class="col-md-3 col-lg-2 col-xl-2 mx-auto mt-3">
                      <h5 class="text-uppercase mb-4 fw-bold text-white">Layanan</h5>
                     <p><a href="#" class="text-white-50 text-decoration-none">Reguler & COD</a></p>
                     <p><a href="#" class="text-white-50 text-decoration-none">Cargo</a></p>
                     <p><a href="#" class="text-white-50 text-decoration-none">Pengiriman Motor</a></p>
                 </div>
-
                 <div class="col-md-4 col-lg-3 col-xl-3 mx-auto mt-3">
                     <h5 class="text-uppercase mb-4 fw-bold text-white">Hubungi Kami</h5>
                     <p class="text-white-50"><i class="fas fa-home me-3"></i>Jl. Dr. Wahidin No.18A RT.22 RW.05 Kel Ketanggi Kec.Ngawi Kab.Ngawi Jawa Timur 63211</p>
@@ -495,9 +387,7 @@
                     <p class="text-white-50"><i class="fas fa-phone me-3"></i>+62 85 745 808 809</p>
                 </div>
             </div>
-
             <hr class="my-3">
-
             <div class="row align-items-center">
                 <div class="col-md-7 col-lg-8">
                     <p class="text-center text-md-start text-white-50">
@@ -507,15 +397,9 @@
                 <div class="col-md-5 col-lg-4">
                     <div class="text-center text-md-end">
                         <ul class="list-unstyled list-inline">
-                            <li class="list-inline-item">
-                                <a href="#" class="btn-floating btn-sm text-white" style="font-size: 23px;"><i class="fab fa-facebook"></i></a>
-                            </li>
-                             <li class="list-inline-item">
-                                <a href="#" class="btn-floating btn-sm text-white" style="font-size: 23px;"><i class="fab fa-instagram"></i></a>
-                            </li>
-                             <li class="list-inline-item">
-                                <a href="#" class="btn-floating btn-sm text-white" style="font-size: 23px;"><i class="fab fa-twitter"></i></a>
-                            </li>
+                            <li class="list-inline-item"><a href="#" class="btn-floating btn-sm text-white" style="font-size: 23px;"><i class="fab fa-facebook"></i></a></li>
+                            <li class="list-inline-item"><a href="#" class="btn-floating btn-sm text-white" style="font-size: 23px;"><i class="fab fa-instagram"></i></a></li>
+                            <li class="list-inline-item"><a href="#" class="btn-floating btn-sm text-white" style="font-size: 23px;"><i class="fab fa-twitter"></i></a></li>
                         </ul>
                     </div>
                 </div>
@@ -523,93 +407,71 @@
         </div>
     </footer>
     
-    <!-- Modal Cek Ongkir (Desain Baru dengan Tailwind) -->
+    <!-- Modal Cek Ongkir (Desain Bootstrap 5) -->
     <div class="modal fade" id="cekOngkirModal" tabindex="-1" aria-labelledby="cekOngkirModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content bg-slate-50 text-slate-800 rounded-2xl shadow-2xl border-0">
-                <div class="modal-header border-b-0 p-6 text-center relative">
-                    <div class="w-full">
-                        <div class="mx-auto bg-red-100 text-red-600 w-16 h-16 rounded-full flex items-center justify-center mb-4">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-truck"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
-                        </div>
-                        <h5 class="modal-title text-2xl font-bold text-slate-900" id="cekOngkirModalLabel">
-                            Cek Ongkos Kirim
+            <div class="modal-content border-0 rounded-3 shadow-lg">
+                <div class="modal-header border-0 pb-0">
+                    <div class="w-100 text-center">
+                        <h5 class="modal-title fw-bold text-dark" id="cekOngkirModalLabel">
+                            <i class="fa-solid fa-truck-fast text-danger me-2"></i> Cek Ongkos Kirim
                         </h5>
-                        <p class="text-slate-500 text-sm mt-1">Didukung oleh <span class="font-semibold text-red-500">Sancaka Express</span></p>
+                        <p class="text-muted small mb-0">Didukung oleh <span class="fw-semibold text-danger">Sancaka Express</span></p>
                     </div>
-                    <button type="button" class="btn-close absolute top-4 right-4 text-slate-400 hover:text-slate-600" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close position-absolute end-0 top-0 m-3" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body p-6 pt-0">
+                <div class="modal-body p-4 p-md-5">
                     <form id="shipping-form">
                         @csrf
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
-                            <div class="md:col-span-1 relative">
-                                <label for="origin" class="block text-sm font-semibold text-slate-600 mb-2">Alamat Asal</label>
-                                <div class="relative">
-                                    <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                                    </div>
-                                    <input type="text" id="origin" name="origin_text" class="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition" placeholder="Kecamatan/Kelurahan/Kodepos..." required>
-                                </div>
-                                <input type="hidden" id="origin_id" name="origin_id">
-                                <input type="hidden" id="origin_subdistrict_id" name="origin_subdistrict_id">
-                                <div id="origin-results" class="autocomplete-results d-none"></div>
+                        <!-- Alamat Asal -->
+                        <div class="mb-3 position-relative">
+                            <label for="origin" class="form-label fw-semibold">Alamat Asal</label>
+                            <input type="text" id="origin" name="origin_text" class="form-control" placeholder="Ketik nama Kecamatan/Kelurahan/kodepos..." required>
+                            <input type="hidden" id="origin_id" name="origin_id">
+                            <input type="hidden" id="origin_subdistrict_id" name="origin_subdistrict_id">
+                            <div id="origin-results" class="autocomplete-results d-none"></div>
+                        </div>
+                        <!-- Alamat Tujuan -->
+                        <div class="mb-3 position-relative">
+                            <label for="destination" class="form-label fw-semibold">Alamat Tujuan</label>
+                            <input type="text" id="destination" name="destination_text" class="form-control" placeholder="Ketik nama Kecamatan/Kelurahan/kodepos..." required>
+                            <input type="hidden" id="destination_id" name="destination_id">
+                            <input type="hidden" id="destination_subdistrict_id" name="destination_subdistrict_id">
+                            <div id="destination-results" class="autocomplete-results d-none"></div>
+                        </div>
+                        <!-- Berat -->
+                        <div class="mb-3">
+                            <label for="weight" class="form-label fw-semibold">Berat (gram)</label>
+                            <input type="number" id="weight" name="weight" class="form-control" placeholder="Contoh: 1000" min="1" required>
+                        </div>
+                        <!-- Dimensi -->
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Dimensi Paket (cm) (Opsional)</label>
+                            <div class="row g-3">
+                                <div class="col"><input type="number" id="length" name="length" placeholder="Panjang" class="form-control"></div>
+                                <div class="col"><input type="number" id="width" name="width" placeholder="Lebar" class="form-control"></div>
+                                <div class="col"><input type="number" id="height" name="height" placeholder="Tinggi" class="form-control"></div>
                             </div>
-                            <div class="md:col-span-1 relative">
-                                <label for="destination" class="block text-sm font-semibold text-slate-600 mb-2">Alamat Tujuan</label>
-                                 <div class="relative">
-                                    <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                                    </div>
-                                    <input type="text" id="destination" name="destination_text" class="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition" placeholder="Kecamatan/Kelurahan/Kodepos..." required>
-                                </div>
-                                <input type="hidden" id="destination_id" name="destination_id">
-                                <input type="hidden" id="destination_subdistrict_id" name="destination_subdistrict_id">
-                                <div id="destination-results" class="autocomplete-results d-none"></div>
-                            </div>
-                            <div class="md:col-span-2">
-                                <label for="weight" class="block text-sm font-semibold text-slate-600 mb-2">Berat</label>
-                                <div class="relative">
-                                    <input type="number" id="weight" name="weight" class="w-full pr-14 pl-4 py-2.5 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition" placeholder="Contoh: 1000" min="1" required>
-                                    <span class="absolute inset-y-0 right-0 flex items-center pr-4 text-sm text-slate-500">gram</span>
-                                </div>
-                            </div>
-                            <div class="md:col-span-2">
-                                <label class="block text-sm font-semibold text-slate-600 mb-2">Dimensi Paket (Opsional)</label>
-                                <div class="grid grid-cols-3 gap-4">
-                                    <input type="number" id="length" name="length" placeholder="Panjang (cm)" class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition">
-                                    <input type="number" id="width" name="width" placeholder="Lebar (cm)" class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition">
-                                    <input type="number" id="height" name="height" placeholder="Tinggi (cm)" class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition">
-                                </div>
-                                <small class="text-slate-500 mt-2 block">Isi jika ongkir dihitung berdasarkan volume.</small>
-                            </div>
-                            <div class="md:col-span-2 p-4 bg-slate-100 rounded-lg">
-                                <div class="flex flex-col sm:flex-row sm:items-center gap-4">
-                                    <div class="flex-grow">
-                                        <label for="item_value" class="block text-sm font-semibold text-slate-600 mb-2">Nilai Barang (Opsional)</label>
-                                        <div class="relative">
-                                           <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-sm text-slate-500">Rp</span>
-                                            <input type="number" id="item_value" name="item_value" placeholder="500000" class="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition">
-                                        </div>
-                                    </div>
-                                    <div class="flex-shrink-0 pt-2 sm:pt-7">
-                                        <div class="relative flex items-center">
-                                            <input type="checkbox" id="insurance" name="insurance" class="appearance-none w-10 h-6 bg-slate-300 rounded-full cursor-pointer transition-colors duration-300 checked:bg-red-500 peer">
-                                            <label for="insurance" class="absolute left-1 top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full cursor-pointer transition-transform duration-300 peer-checked:translate-x-4"></label>
-                                            <label for="insurance" class="ml-3 text-sm font-medium text-slate-700 cursor-pointer">Gunakan Asuransi</label>
-                                        </div>
-                                    </div>
-                                </div>
+                            <small class="text-muted">Isi jika ongkir dihitung berdasarkan volume.</small>
+                        </div>
+                        <!-- Nilai Barang -->
+                        <div class="mb-4">
+                            <label for="item_value" class="form-label fw-semibold">Nilai Barang (Rp) (Opsional)</label>
+                            <input type="number" id="item_value" name="item_value" placeholder="Contoh: 500000" class="form-control">
+                            <div class="form-check mt-2">
+                                <input type="checkbox" id="insurance" name="insurance" class="form-check-input">
+                                <label for="insurance" class="form-check-label">Gunakan Asuransi</label>
                             </div>
                         </div>
-                        <div class="mt-8">
-                            <button type="submit" class="w-full bg-red-600 text-white font-bold py-3.5 px-4 rounded-lg shadow-lg hover:bg-red-700 focus:outline-none focus:ring-4 focus:ring-red-300 transition-all duration-300 flex items-center justify-center gap-2" id="submit-button">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="feather feather-search"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                                Cek Ongkir Sekarang
+                        <!-- Tombol -->
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-danger btn-lg rounded-pill" id="submit-button">
+                                <i class="fa-solid fa-magnifying-glass-location me-2"></i> Cek Ongkir
                             </button>
                         </div>
                     </form>
-                    <div id="cost-results-container" class="mt-6"></div>
+                    <!-- Hasil -->
+                    <div id="cost-results-container" class="mt-4"></div>
                 </div>
             </div>
         </div>
@@ -621,7 +483,7 @@
             <div class="modal-content rounded-4 border-0 shadow-lg">
                 <div class="modal-header bg-gradient text-white rounded-top-4" style="background: linear-gradient(90deg, #ff4d4d, #b30000);">
                     <h5 class="modal-title fw-bold" id="tutorialModalLabel">
-                        <span class="text-dark fw-semibold">🎉 Selamat Datang di Sancaka Express</span>!
+                        <span class="fw-semibold">🎉 Selamat Datang di Sancaka Express</span>!
                     </h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Tutup"></button>
                 </div>
