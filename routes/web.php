@@ -126,10 +126,9 @@ Route::get('/kontak/search', [KontakController::class, 'search'])->name('api.sea
     Route::get('/wallet/search', [WalletController::class, 'search'])->name('wallet.search');
 
     
-   // TAMBAHKAN ROUTE INI UNTUK MENGHINDARI ERROR
+   // TAMBAHKAN ROUTE INI UNTUK HALAMAN PENGATURAN
     Route::get('/settings', function () {
-        // Arahkan ke view atau controller untuk halaman pengaturan Anda
-        return 'Halaman Pengaturan Admin akan ada di sini.'; 
+        return view('admin.settings');
     })->name('settings');
 
 // =========================================================================
