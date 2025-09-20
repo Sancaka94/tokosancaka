@@ -117,7 +117,7 @@ $(document).ready(function() {
         placeholder: "-- Ketik nama atau email pelanggan --",
         allowClear: true,
         ajax: {
-            url: '{{ route('wallet.search') }}',
+            url: '{{ route('admin.wallet.search') }}',
             dataType: 'json',
             delay: 250, // Menunggu 250ms setelah user berhenti mengetik
             processResults: function (data) {
