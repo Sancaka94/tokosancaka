@@ -9,20 +9,15 @@ use Illuminate\Support\Facades\DB;
 
 class WalletController extends Controller
 {
-    /**
-     * Menampilkan halaman utama wallet.
-     * ✅ PERBAIKAN: Mengganti nama variabel agar lebih jelas.
-     */
     public function index()
     {
-        // ✅ FIX: Menyesuaikan nama variabel dari '$users' menjadi '$pengguna' agar cocok dengan view.
         $pengguna = User::orderBy('nama_lengkap', 'asc')->paginate(15);
         return view('admin.wallet.index', compact('pengguna'));
     }
 
     /**
      * Menangani pencarian pelanggan via AJAX untuk dropdown Select2.
-     * ✅ PERBAIKAN: Menambahkan pencarian berdasarkan ID dan No. HP.
+     * ✅ FIX: Menyesuaikan nama kolom dengan database (id_pengguna, no_wa, saldo).
      */
     public function search(Request $request)
     {
@@ -36,10 +31,11 @@ class WalletController extends Controller
                      ->where(function ($query) use ($searchTerm) {
                          $query->where('nama_lengkap', 'like', '%' . $searchTerm . '%')
                                ->orWhere('email', 'like', '%' . $searchTerm . '%')
-                               ->orWhere('id', 'like', '%' . $searchTerm . '%')
-                               ->orWhere('no_hp', 'like', '%' . $searchTerm . '%');
+                               ->orWhere('id_pengguna', 'like', '%' . $searchTerm . '%') // Menggunakan id_pengguna
+                               ->orWhere('no_wa', 'like', '%' . $searchTerm . '%');      // Menggunakan no_wa
                      })
-                     ->select('id', 'nama_lengkap', 'email', 'balance', 'no_hp')
+                     // ✅ FIX: Menggunakan alias 'id' dan 'balance' agar tidak perlu mengubah view/JS
+                     ->select('id_pengguna as id', 'nama_lengkap', 'email', 'saldo as balance', 'no_wa') 
                      ->limit(15)
                      ->get();
         
@@ -55,36 +51,38 @@ class WalletController extends Controller
     }
     
     /**
-     * ✅ BARU: Menangani pencarian live untuk tabel utama.
-     * Fungsi ini akan membuat tabel merespons secara instan saat admin mengetik.
+     * Menangani pencarian live untuk tabel utama.
+     * ✅ FIX: Menyesuaikan nama kolom dengan database (id_pengguna, no_wa).
      */
     public function liveSearch(Request $request)
     {
         $search = $request->get('search');
-        $query = User::query(); // Mulai query untuk semua user
+        $query = User::query(); 
 
         if (!empty($search)) {
             $query->where(function($q) use ($search) {
                 $q->where('nama_lengkap', 'like', '%' . $search . '%')
                   ->orWhere('email', 'like', '%' . $search . '%')
-                  ->orWhere('id', 'like', '%' . $search . '%')
-                  ->orWhere('no_hp', 'like', '%' . $search . '%');
+                  ->orWhere('id_pengguna', 'like', '%' . $search . '%') // Menggunakan id_pengguna
+                  ->orWhere('no_wa', 'like', '%' . $search . '%');      // Menggunakan no_wa
             });
         }
 
-        $users = $query->orderBy('nama_lengkap', 'asc')->get();
+        // ✅ FIX: Mengganti nama kolom `balance` menjadi `saldo`
+        $users = $query->select('id_pengguna as id', 'nama_lengkap', 'email', 'saldo as balance')->orderBy('nama_lengkap', 'asc')->get();
         
-        // Mengembalikan data dalam format JSON untuk diproses oleh JavaScript
         return response()->json($users);
     }
 
     /**
      * Memproses permintaan penambahan saldo (top up).
+     * ✅ FIX: Menyesuaikan nama kolom dan aturan validasi.
      */
     public function topup(Request $request)
     {
         $validated = $request->validate([
-            'user_id' => 'required|exists:users,id',
+            // Memvalidasi ke tabel 'Pengguna' dengan kolom 'id_pengguna'
+            'user_id' => 'required|exists:Pengguna,id_pengguna',
             'amount' => 'required|numeric|min:1000',
         ]);
 
@@ -92,7 +90,8 @@ class WalletController extends Controller
 
         try {
             DB::transaction(function () use ($pelanggan, $validated) {
-                $pelanggan->increment('balance', $validated['amount']);
+                // ✅ FIX: Menggunakan increment pada kolom 'saldo'
+                $pelanggan->increment('saldo', $validated['amount']);
             });
         } catch (\Exception $e) {
             return back()->with('error', 'Gagal melakukan top up. Terjadi kesalahan teknis.');
