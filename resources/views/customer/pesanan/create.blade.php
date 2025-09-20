@@ -48,20 +48,14 @@
                         <h3 class="text-xl font-semibold text-gray-800">
                             <i class="fas fa-arrow-up-from-bracket text-red-500 mr-2"></i>Informasi Pengirim
                         </h3>
-                        <div class="relative w-1/2">
-                            <input type="search" id="sender_contact_search" class="w-full pl-10 pr-4 py-2 border rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500" placeholder="Cari dari kontak pengirim...">
-                             <div class="absolute top-0 left-0 inline-flex items-center p-2 h-full text-gray-400">
-                                <i class="fas fa-search"></i>
-                            </div>
-                            <div id="sender_contact_results" class="search-results-container hidden"></div>
-                        </div>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
+                        <div class="relative">
                             <label for="sender_name" class="block mb-2 text-sm font-medium text-gray-700">Nama Pengirim</label>
                             <input type="text" id="sender_name" name="sender_name" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" value="{{ old('sender_name', auth()->user()->nama_lengkap) }}" required autocomplete="off">
+                            <div id="sender_contact_results" class="search-results-container hidden"></div>
                         </div>
-                        <div>
+                        <div class="relative">
                             <label for="sender_phone" class="block mb-2 text-sm font-medium text-gray-700">Nomor HP</label>
                             <input type="tel" id="sender_phone" name="sender_phone" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" value="{{ old('sender_phone', auth()->user()->no_wa) }}" required autocomplete="off">
                         </div>
@@ -89,20 +83,14 @@
                         <h3 class="text-xl font-semibold text-gray-800">
                             <i class="fas fa-map-marker-alt text-green-500 mr-2"></i>Informasi Penerima
                         </h3>
-                         <div class="relative w-1/2">
-                            <input type="search" id="receiver_contact_search" class="w-full pl-10 pr-4 py-2 border rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500" placeholder="Cari dari kontak penerima...">
-                             <div class="absolute top-0 left-0 inline-flex items-center p-2 h-full text-gray-400">
-                                <i class="fas fa-search"></i>
-                            </div>
-                            <div id="receiver_contact_results" class="search-results-container hidden"></div>
-                        </div>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
+                        <div class="relative">
                             <label for="receiver_name" class="block mb-2 text-sm font-medium text-gray-700">Nama Penerima</label>
                             <input type="text" id="receiver_name" name="receiver_name" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required autocomplete="off">
+                             <div id="receiver_contact_results" class="search-results-container hidden"></div>
                         </div>
-                        <div>
+                        <div class="relative">
                             <label for="receiver_phone" class="block mb-2 text-sm font-medium text-gray-700">Nomor HP</label>
                             <input type="tel" id="receiver_phone" name="receiver_phone" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required autocomplete="off">
                         </div>
@@ -152,34 +140,9 @@
                          <div>
                             <label for="item_type" class="block mb-2 text-sm font-medium text-gray-700">Jenis Barang</label>
                             <select name="item_type" id="item_type" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required>
-    <option value="" disabled selected>Pilih...</option>
-    <option value="1">Elektronik</option>
-    <option value="2">Pakaian</option>
-    <option value="3">Pecah Belah</option>
-    <option value="4">Dokumen</option>
-    <option value="5">Rumah Tangga</option>
-    <option value="6">Aksesoris</option>
-    <option value="7">Lainnya</option>
-    <option value="8">Makanan & Minuman</option>
-    <option value="9">Peralatan Dapur</option>
-    <option value="10">Peralatan Kantor</option>
-    <option value="11">Buku & Alat Tulis</option>
-    <option value="12">Mainan & Hobi</option>
-    <option value="13">Peralatan Olahraga</option>
-    <option value="14">Kosmetik & Kecantikan</option>
-    <option value="15">Kesehatan & Obat</option>
-    <option value="16">Alat Musik</option>
-    <option value="17">Perhiasan</option>
-    <option value="18">Otomotif</option>
-    <option value="19">Peralatan Pertukangan</option>
-    <option value="20">Dekorasi Rumah</option>
-    <option value="21">Produk Bayi & Anak</option>
-    <option value="22">Peralatan Kebersihan</option>
-    <option value="23">Bahan Bangunan</option>
-    <option value="24">Alat Elektrik</option>
-    <option value="25">Tanaman & Pertanian</option>
-</select>
-
+                                <option value="" disabled selected>Pilih...</option>
+                                <option value="1">Elektronik</option><option value="2">Pakaian</option><option value="3">Pecah Belah</option><option value="4">Dokumen</option><option value="5">Rumah Tangga</option><option value="6">Aksesoris</option><option value="7">Lainnya</option>
+                            </select>
                         </div>
                         <div>
                             <label for="service_type" class="block mb-2 text-sm font-medium text-gray-700">Jenis Layanan</label>
@@ -258,6 +221,7 @@
         <div class="modal-body-scroll">
             <ul id="paymentOptionsList" class="divide-y">
                 <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="Potong Saldo" data-label="Potong Saldo"><img src="https://cdn-icons-png.flaticon.com/512/1086/1086060.png" class="w-8 h-8 mr-4">Potong Saldo (Tersedia: Rp {{ number_format(Auth::user()->saldo ?? 0) }})</li>
+                {{-- Opsi dari KiriminAja --}}
                 <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50 cod-payment-option" data-value="COD" data-label="COD Ongkir"><img src="{{ asset('public/assets/cod.png') }}" class="w-8 h-8 mr-4">COD Ongkir</li>
                 <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50 cod-payment-option" data-value="CODBARANG" data-label="COD Barang + Ongkir"><img src="{{ asset('public/assets/cod.png') }}" class="w-8 h-8 mr-4">COD Barang + Ongkir</li>
                 <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="PERMATAVA" data-label="Permata VA"><img src="{{ asset('public/assets/permata.webp') }}" class="w-8 h-8 mr-4">Permata VA</li>
@@ -282,6 +246,7 @@
 
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const ongkirModalEl = document.getElementById('ongkirModal');
@@ -296,10 +261,11 @@ document.addEventListener('DOMContentLoaded', function () {
         return 'Rp ' + (parseInt(angka, 10) || 0).toLocaleString('id-ID'); 
     }
 
-    // --- FUNGSI PENCARIAN KONTAK DARI DATABASE ---
+    // --- FUNGSI PENCARIAN KONTAK ---
     function setupContactSearch(prefix) {
         const searchInput = document.getElementById(`${prefix}_contact_search`);
         const resultsContainer = document.getElementById(`${prefix}_contact_results`);
+        const contactType = (prefix === 'sender') ? 'Pengirim' : 'Penerima';
 
         const performSearch = async (query) => {
             if (query.length < 3) {
@@ -307,11 +273,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
             try {
-                const url = `{{ route('customer.kontak.search') }}?search=${encodeURIComponent(query)}&tipe=${prefix === 'sender' ? 'Pengirim' : 'Penerima'}`;
+                const url = `{{ route('customer.kontak.search') }}?search=${encodeURIComponent(query)}&tipe=${contactType}`;
                 const response = await fetch(url);
                 if (!response.ok) throw new Error('Server error');
-                
                 const contacts = await response.json();
+                
                 resultsContainer.innerHTML = '';
                 resultsContainer.classList.remove('hidden');
 
@@ -325,6 +291,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             document.getElementById(`${prefix}_name`).value = contact.nama || '';
                             document.getElementById(`${prefix}_phone`).value = contact.no_hp || '';
                             document.getElementById(`${prefix}_address`).value = contact.alamat || '';
+                            document.getElementById(`${prefix}_address_search`).value = [contact.village, contact.district, contact.regency, contact.postal_code].filter(Boolean).join(', ');
                             resultsContainer.classList.add('hidden');
                         });
                         resultsContainer.appendChild(resultDiv);
@@ -333,13 +300,14 @@ document.addEventListener('DOMContentLoaded', function () {
                     resultsContainer.innerHTML = '<div class="p-3 text-gray-500">Kontak tidak ditemukan.</div>';
                 }
             } catch (error) {
-                console.error(`Gagal melakukan pencarian kontak:`, error);
+                console.error(`Gagal mencari kontak:`, error);
                 resultsContainer.innerHTML = `<div class="p-3 text-red-500">Gagal memuat data.</div>`;
             }
         };
         searchInput.addEventListener('input', debounce(() => performSearch(searchInput.value), 400));
     }
-    // --- FUNGSI PENCARIAN ALAMAT ONGKIR ---
+
+    // --- FUNGSI PENCARIAN ALAMAT ---
     async function performAddressSearch(prefix, query) {
         const resultsContainer = document.getElementById(`${prefix}_address_results`);
         if (query.length < 3) { 
@@ -371,38 +339,18 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // --- FUNGSI UNTUK MEMILIH ALAMAT ---
+    // --- FUNGSI MEMILIH ALAMAT ---
     function selectAddress(prefix, item) {
         document.getElementById(`${prefix}_address_search`).value = item.full_address;
-        const parts = item.full_address.split(',').map(s => s.trim());
-        // Mengisi hidden fields
         document.getElementById(`${prefix}_district_id`).value = item.district_id;
         document.getElementById(`${prefix}_subdistrict_id`).value = item.subdistrict_id;
-        // Tampilkan checkmark
         document.getElementById(`${prefix}_address_check`).classList.remove('hidden');
         document.getElementById(`${prefix}_address_results`).classList.add('hidden');
     }
-
-    // --- Inisialisasi Pencarian Kontak & Alamat ---
-    ['sender', 'receiver'].forEach(prefix => {
-        setupContactSearch(prefix);
-        const searchInput = document.getElementById(`${prefix}_address_search`);
-        const checkIcon = document.getElementById(`${prefix}_address_check`);
-        searchInput.addEventListener('input', debounce(() => {
-            checkIcon.classList.add('hidden');
-            performAddressSearch(prefix, searchInput.value);
-        }, 400));
-    });
-
-     // --- INISIALISASI ---
-    setupContactSearch('sender');
-    setupContactSearch('receiver');
-    setupAddressSearch('sender');
-    setupAddressSearch('receiver');
-
+    
     // --- FUNGSI CEK ONGKIR ---
     async function runCekOngkir() {
-        const requiredFields = { '#sender_subdistrict_id': 'Alamat Pengirim', '#receiver_subdistrict_id': 'Alamat Penerima', '#item_price': 'Harga Barang', '#weight': 'Berat', '#service_type': 'Jenis Layanan', '#ansuransi': 'Asuransi' };
+        const requiredFields = { '#sender_subdistrict_id': 'Alamat Pengirim', '#receiver_subdistrict_id': 'Alamat Penerima', '#item_price': 'Harga Barang', '#weight': 'Berat', '#service_type': 'Jenis Layanan' };
         let missing = Object.keys(requiredFields).filter(s => !document.querySelector(s).value);
         if (missing.length > 0) {
             Swal.fire('Data Belum Lengkap', 'Harap lengkapi: ' + missing.map(s => requiredFields[s]).join(', '), 'warning');
@@ -426,38 +374,30 @@ document.addEventListener('DOMContentLoaded', function () {
             ongkirModalBody.innerHTML = '';
             let results = (res.results || []).concat((res.result || []).flatMap(v => v.costs.map(c => ({...c, service: v.name, service_name: `${v.name.toUpperCase()} - ${c.service_type}`, cost: c.price.total_price, etd: c.estimation || '-', setting: c.setting || {}, insurance: c.price.insurance_fee || 0, cod: c.cod }))));
             if (results.length === 0) {
-                ongkirModalBody.innerHTML = '<div class="bg-yellow-100 text-yellow-800 p-4 rounded-md text-center">Layanan pengiriman tidak ditemukan. Cek kembali alamat dan jenis layanan.</div>';
+                ongkirModalBody.innerHTML = '<div class="bg-yellow-100 text-yellow-800 p-4 rounded-md text-center">Layanan pengiriman tidak ditemukan.</div>';
                 return;
             }
 
             results.sort((a, b) => a.cost - b.cost).forEach(item => {
-                const isCod = item.cod;
-                const insuranceFee = item.insurance || 0;
-                const codFee = item.setting?.cod_fee_amount || 0;
-                const value = `${document.getElementById('service_type').value}-${item.service}-${item.service_type}-${item.cost}-${insuranceFee}-${codFee}`;
+                const value = `${document.getElementById('service_type').value}-${item.service}-${item.service_type}-${item.cost}-${item.insurance}-${item.setting?.cod_fee_amount || 0}`;
                 let details = `<small class="text-gray-500 block">Estimasi: ${item.etd}</small>`;
-                if (document.getElementById('ansuransi').value == 'iya' && insuranceFee > 0) details += `<small class="text-gray-500 block">Asuransi: ${formatRupiah(insuranceFee)}</small>`;
-                if (isCod && codFee > 0) details += `<small class="text-gray-500 block">Biaya COD: ${formatRupiah(codFee)}</small>`;
-                if (isCod) details += `<small class="text-green-600 font-bold block">COD Tersedia</small>`;
+                if (item.insurance > 0) details += `<small class="text-gray-500 block">Asuransi: ${formatRupiah(item.insurance)}</small>`;
+                if (item.cod) details += `<small class="text-green-600 font-bold block">COD Tersedia</small>`;
                 
                 const card = document.createElement('div');
                 card.className = 'border rounded-lg mb-3 shadow-sm';
                 card.innerHTML = `
                     <div class="p-4 flex justify-between items-center">
                         <div class="flex items-center">
-                            <img src="{{ asset('storage/logo-ekspedisi/') }}/${item.service.toLowerCase().replace(/\s+/g, '')}.png" class="w-16 h-auto mr-4 object-contain" onerror="this.src='https://placehold.co/100x40?text=${item.service}'">
-                            <div>
-                                <h6 class="font-bold text-gray-800">${item.service_name}</h6>
-                                ${details}
-                            </div>
+                            <img src="/storage/logo-ekspedisi/${item.service.toLowerCase().replace(/\s+/g, '')}.png" class="w-16 h-auto mr-4 object-contain" onerror="this.src='https://placehold.co/100x40?text=${item.service}'">
+                            <div><h6 class="font-bold text-gray-800">${item.service_name}</h6>${details}</div>
                         </div>
                         <div class="text-right">
                             <small class="text-gray-500">Ongkir</small>
                             <strong class="block text-lg text-red-600">${formatRupiah(item.cost)}</strong>
-                            <button type="button" class="select-ongkir-btn mt-1 bg-indigo-600 text-white px-3 py-1 rounded-md hover:bg-indigo-700 text-sm" data-value="${value}" data-display="${item.service_name}" data-cod-supported="${isCod}">Pilih</button>
+                            <button type="button" class="select-ongkir-btn mt-1 bg-indigo-600 text-white px-3 py-1 rounded-md hover:bg-indigo-700 text-sm" data-value="${value}" data-display="${item.service_name}" data-cod-supported="${item.cod}">Pilih</button>
                         </div>
-                    </div>
-                `;
+                    </div>`;
                 ongkirModalBody.appendChild(card);
             });
         } catch (error) {
@@ -467,13 +407,20 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // --- EVENT LISTENERS ---
+    setupContactSearch('sender');
+    setupContactSearch('receiver');
+    ['sender', 'receiver'].forEach(prefix => {
+        const searchInput = document.getElementById(`${prefix}_address_search`);
+        searchInput.addEventListener('input', debounce(() => {
+            document.getElementById(`${prefix}_address_check`).classList.add('hidden');
+            performAddressSearch(prefix, searchInput.value);
+        }, 400));
+    });
     document.getElementById('selected_expedition_display').addEventListener('click', runCekOngkir);
-
     ongkirModalEl.addEventListener('click', function(e) {
         if (e.target.classList.contains('select-ongkir-btn')) {
             document.getElementById('expedition').value = e.target.dataset.value;
             document.getElementById('selected_expedition_display').value = e.target.dataset.display;
-            
             const codOptions = document.querySelectorAll('.cod-payment-option');
             if (e.target.dataset.codSupported === 'true') {
                 codOptions.forEach(opt => opt.style.display = 'flex');
@@ -488,60 +435,27 @@ document.addEventListener('DOMContentLoaded', function () {
             ongkirModalEl.classList.add('hidden');
         }
     });
-
     document.getElementById('paymentMethodButton').addEventListener('click', () => paymentModalEl.classList.remove('hidden'));
-
     document.querySelectorAll('.payment-option').forEach(item => {
         item.addEventListener('click', function() {
             document.getElementById('payment_method').value = this.dataset.value;
             document.getElementById('selectedPaymentName').textContent = this.dataset.label;
             document.getElementById('selectedPaymentLogo').src = this.querySelector('img').src;
-            
-            document.querySelectorAll('.payment-option').forEach(opt => opt.classList.remove('bg-indigo-50'));
-            this.classList.add('bg-indigo-50');
-            
             paymentModalEl.classList.add('hidden');
         });
     });
-
-    document.querySelectorAll('.close-modal-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            ongkirModalEl.classList.add('hidden');
-            paymentModalEl.classList.add('hidden');
-        });
-    });
-
-    document.querySelectorAll('input, select, textarea').forEach(el => {
-        if(el.type !== 'hidden' && !el.classList.contains('select-ongkir-btn')){
-             el.addEventListener('change', () => {
-                 document.getElementById('expedition').value = '';
-                 document.getElementById('selected_expedition_display').value = '';
-                 document.getElementById('selected_expedition_display').placeholder = 'Data berubah, klik untuk cek ulang';
-             });
-        }
-    });
-
+    document.querySelectorAll('.close-modal-btn').forEach(btn => btn.addEventListener('click', () => {
+        ongkirModalEl.classList.add('hidden');
+        paymentModalEl.classList.add('hidden');
+    }));
     document.getElementById('confirmBtn').addEventListener('click', (e) => {
         e.preventDefault();
         const form = document.getElementById('orderForm');
-        const expedition = document.getElementById('expedition').value;
-        const paymentMethod = document.getElementById('payment_method').value;
-
-        if (!form.checkValidity() || !expedition || !paymentMethod) {
+        if (!form.checkValidity()) {
             form.reportValidity();
-            let missingFields = [];
-            if (!expedition) missingFields.push('Ekspedisi');
-            if (!paymentMethod) missingFields.push('Metode Pembayaran');
-
-            let message = 'Harap lengkapi semua field yang wajib diisi.';
-            if (missingFields.length > 0) {
-                message += ` Anda belum memilih: ${missingFields.join(', ')}.`;
-            }
-
-            Swal.fire('Peringatan', message, 'warning');
+            Swal.fire('Peringatan', 'Harap lengkapi semua field yang wajib diisi.', 'warning');
             return;
         }
-
         Swal.fire({
             title: 'Konfirmasi Pesanan',
             text: "Apakah semua data sudah benar?",
@@ -553,30 +467,13 @@ document.addEventListener('DOMContentLoaded', function () {
             cancelButtonText: 'Batal'
         }).then((result) => {
             if (result.isConfirmed) {
-                const confirmBtn = document.getElementById('confirmBtn');
-                confirmBtn.disabled = true;
-                confirmBtn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>Memproses...`;
+                document.getElementById('confirmBtn').disabled = true;
+                document.getElementById('confirmBtn').innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>Memproses...`;
                 form.submit();
             }
         });
     });
-
     document.querySelectorAll('.cod-payment-option').forEach(opt => opt.style.display = 'none');
-
-    document.addEventListener('click', function(event) {
-        if (!event.target.closest('#sender_address_search, #sender_address_results')) {
-            document.getElementById('sender_address_results').classList.add('hidden');
-        }
-        if (!event.target.closest('#receiver_address_search, #receiver_address_results')) {
-            document.getElementById('receiver_address_results').classList.add('hidden');
-        }
-        if (!event.target.closest('#sender_name, #sender_contact_results, #sender_phone')) {
-            document.getElementById('sender_contact_results').classList.add('hidden');
-        }
-        if (!event.target.closest('#receiver_name, #receiver_contact_results, #receiver_phone')) {
-            document.getElementById('receiver_contact_results').classList.add('hidden');
-        }
-    });
 });
 </script>
 @endpush
