@@ -64,7 +64,7 @@ use App\Http\Controllers\Api\KontakController;
 
 use App\Http\Controllers\Admin\WalletController;
 
-
+use App\Http\Controllers\Customer\KontakController;
 
 
 
@@ -231,6 +231,8 @@ Route::middleware(['auth', RoleMiddleware::class . ':Pelanggan|Seller'])
         require __DIR__.'/web/customer.php';
 
         Route::get('/kontak/search', [KontakController::class, 'search'])->name('kontak.search'); 
+
+        Route::get('/kontak/search', [KontakController::class, 'search'])->name('customer.kontak.search');
 
         // Customer Chat
 
