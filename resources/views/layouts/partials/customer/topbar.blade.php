@@ -10,9 +10,19 @@
         <div class="flex-1"></div>
 
         {{-- Bagian Kanan Topbar --}}
-        <ul class="flex items-center flex-shrink-0 space-x-4 sm:space-x-6">
+        <ul class="flex items-center flex-shrink-0 space-x-2 sm:space-x-4">
             
-            <!-- Saldo & Tombol Top Up -->
+            {{-- ✅ DITAMBAHKAN: Saldo & Tombol Top Up untuk Mobile --}}
+            <li class="flex md:hidden items-center space-x-2">
+                <span class="font-semibold text-xs sm:text-sm text-gray-700">
+                    Rp {{ number_format($saldo ?? 0, 0, ',', '.') }}
+                </span>
+                <a href="{{ route('customer.topup.create') }}" class="inline-flex items-center justify-center w-8 h-8 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-full hover:bg-indigo-700 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <i class="fas fa-plus"></i>
+                </a>
+            </li>
+
+            <!-- Saldo & Tombol Top Up (Hanya Desktop) -->
             <li class="hidden md:flex items-center space-x-2">
                 <i class="fas fa-wallet text-gray-500"></i>
                 <span class="font-semibold text-sm text-gray-700">
