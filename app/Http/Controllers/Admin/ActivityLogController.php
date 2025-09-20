@@ -35,19 +35,21 @@ class ActivityLogController extends Controller
                     'description' => 'Mendaftar sebagai ' . $user->role,
                     'details' => '',
                     'type' => 'user',
-                    'status' => 'Selesai', // Status untuk pendaftaran
+                    'status' => 'Selesai',
                     'timestamp' => $user->created_at,
                     'ip_address' => $user->ip_address ?? 'N/A',
                     'device' => $this->parseUserAgent($agent, $user->user_agent),
                     'latitude' => $user->latitude,
                     'longitude' => $user->longitude,
+                    // ✅ TAMBAHAN: Membuat URL Google Maps jika koordinat ada
+                    'maps_url' => ($user->latitude && $user->longitude) ? "https://www.google.com/maps?q={$user->latitude},{$user->longitude}" : null,
                 ]);
             }
         }
 
         if (!$filter || $filter === 'order') {
             $newOrders = Pesanan::with('pembeli')
-                ->select('id_pesanan', 'id_pengguna_pembeli', 'total_harga_barang', 'created_at', 'ip_address', 'user_agent', 'latitude', 'longitude', 'status_pesanan', 'sender_name')
+                ->select('id_pesanan', 'id_pengguna_pembeli', 'resi', 'total_harga_barang', 'created_at', 'ip_address', 'user_agent', 'latitude', 'longitude', 'status_pesanan', 'sender_name')
                 ->latest()->take(100)->get();
             foreach ($newOrders as $order) {
                 $allActivities->push([
@@ -55,15 +57,16 @@ class ActivityLogController extends Controller
                     'description' => 'Aktivitas Pesanan',
                     'details' => 'Rp ' . number_format($order->total_harga_barang, 0, ',', '.'),
                     'type' => 'order',
-                    'status' => $order->status_pesanan ?? 'Baru', // Menambahkan status pesanan
+                    'status' => $order->status_pesanan ?? 'Baru',
                     'timestamp' => $order->created_at,
                     'ip_address' => $order->ip_address ?? 'N/A',
                     'device' => $this->parseUserAgent($agent, $order->user_agent),
                     'latitude' => $order->latitude,
                     'longitude' => $order->longitude,
+                    // ✅ TAMBAHAN: Membuat URL Google Maps jika koordinat ada
+                    'maps_url' => ($order->latitude && $order->longitude) ? "https://www.google.com/maps?q={$order->latitude},{$order->longitude}" : null,
                 ]);
             }
-            
         }
 
         if (!$filter || $filter === 'topup') {
@@ -76,12 +79,14 @@ class ActivityLogController extends Controller
                     'description' => 'Top Up Saldo',
                     'details' => 'Rp ' . number_format($topUp->amount, 0, ',', '.'),
                     'type' => 'topup',
-                    'status' => $topUp->status, // Menambahkan status top up
+                    'status' => $topUp->status,
                     'timestamp' => $topUp->created_at,
                     'ip_address' => $topUp->ip_address ?? 'N/A',
                     'device' => $this->parseUserAgent($agent, $topUp->user_agent),
                     'latitude' => $topUp->latitude,
                     'longitude' => $topUp->longitude,
+                    // ✅ TAMBAHAN: Membuat URL Google Maps jika koordinat ada
+                    'maps_url' => ($topUp->latitude && $topUp->longitude) ? "https://www.google.com/maps?q={$topUp->latitude},{$topUp->longitude}" : null,
                 ]);
             }
         }
@@ -93,26 +98,24 @@ class ActivityLogController extends Controller
             
             foreach ($spxScans as $scan) {
                 $userName = optional($scan->kontak)->nama ?? optional($scan->user)->nama_lengkap ?? 'Nama Tidak Ditemukan';
-                
                 $allActivities->push([
                     'user' => $userName,
                     'description' => 'Scan Resi SPX',
                     'details' => $scan->resi_number,
                     'type' => 'scan',
-                    'status' => $scan->status, // Menambahkan status scan
+                    'status' => $scan->status,
                     'timestamp' => $scan->created_at,
                     'ip_address' => $scan->ip_address ?? 'N/A',
                     'device' => $this->parseUserAgent($agent, $scan->user_agent),
                     'latitude' => $scan->latitude,
                     'longitude' => $scan->longitude,
+                    // ✅ TAMBAHAN: Membuat URL Google Maps jika koordinat ada
+                    'maps_url' => ($scan->latitude && $scan->longitude) ? "https://www.google.com/maps?q={$scan->latitude},{$scan->longitude}" : null,
                 ]);
             }
         }
 
-        // Mengurutkan semua aktivitas dari yang terbaru
         $sortedActivities = $allActivities->sortByDesc('timestamp');
-
-        // Membuat pagination secara manual
         $perPage = 25;
         $currentPage = LengthAwarePaginator::resolveCurrentPage();
         $currentPageItems = $sortedActivities->slice(($currentPage - 1) * $perPage, $perPage)->values();
@@ -128,13 +131,12 @@ class ActivityLogController extends Controller
     }
 
     /**
-     * ✅ DIPERBARUI: Mengambil 5 log aktivitas terbaru untuk notifikasi header
-     * yang lebih jelas, rinci, dan bisa diklik, sekarang dengan data koordinat.
+     * Mengambil log aktivitas terbaru untuk notifikasi header.
      */
     public function getHeaderNotifications()
     {
         $allActivities = collect([]);
-        $limit = 5; // Batas pengambilan data untuk setiap jenis aktivitas
+        $limit = 5;
 
         // 1. Ambil pendaftaran pengguna terbaru
         $userRegistrations = User::latest()->take($limit)->get();
@@ -146,8 +148,8 @@ class ActivityLogController extends Controller
                     'details' => 'Mendaftar sebagai ' . $user->role,
                     'url' => route('admin.customers.edit', $user->id_pengguna),
                     'created_at' => $user->created_at,
-                    'latitude' => $user->latitude,
-                    'longitude' => $user->longitude,
+                    // ✅ TAMBAHAN: Membuat URL Google Maps jika koordinat ada
+                    'maps_url' => ($user->latitude && $user->longitude) ? "https://www.google.com/maps?q={$user->latitude},{$user->longitude}" : null,
                 ]);
             }
         }
@@ -162,8 +164,8 @@ class ActivityLogController extends Controller
                     'details' => 'Total: Rp ' . number_format($order->total_harga_barang, 0, ',', '.'),
                     'url' => route('admin.pesanan.show', $order->resi),
                     'created_at' => $order->created_at,
-                    'latitude' => $order->latitude,
-                    'longitude' => $order->longitude,
+                    // ✅ TAMBAHAN: Membuat URL Google Maps jika koordinat ada
+                    'maps_url' => ($order->latitude && $order->longitude) ? "https://www.google.com/maps?q={$order->latitude},{$order->longitude}" : null,
                 ]);
             }
         }
@@ -172,14 +174,14 @@ class ActivityLogController extends Controller
         $topUps = TopUp::with('customer')->latest()->take($limit)->get();
         foreach ($topUps as $topUp) {
             if ($topUp) {
-                $allActivities->push((object)[
+                 $allActivities->push((object)[
                     'icon' => 'fa-solid fa-wallet text-orange-500',
                     'title' => 'Request Top Up dari ' . (optional($topUp->customer)->nama_lengkap ?? 'N/A'),
                     'details' => 'Jumlah: Rp ' . number_format($topUp->amount, 0, ',', '.'),
-                    'url' => route('admin.saldo.requests.index'), // Mengarah ke halaman daftar request
+                    'url' => route('admin.saldo.requests.index'),
                     'created_at' => $topUp->created_at,
-                    'latitude' => $topUp->latitude,
-                    'longitude' => $topUp->longitude,
+                    // ✅ TAMBAHAN: Membuat URL Google Maps jika koordinat ada
+                    'maps_url' => ($topUp->latitude && $topUp->longitude) ? "https://www.google.com/maps?q={$topUp->latitude},{$topUp->longitude}" : null,
                 ]);
             }
         }
@@ -187,21 +189,20 @@ class ActivityLogController extends Controller
         // 4. Ambil scan paket terbaru
         $spxScans = ScannedPackage::with('user')->latest()->take($limit)->get();
         foreach ($spxScans as $scan) {
-            if ($scan) {
+             if ($scan) {
                 $allActivities->push((object)[
                     'icon' => 'fa-solid fa-barcode text-purple-500',
                     'title' => 'Scan Resi oleh ' . (optional($scan->user)->nama_lengkap ?? 'N/A'),
                     'details' => 'Resi: ' . $scan->resi_number,
-                    'url' => route('admin.spx_scans.index'), // Mengarah ke halaman daftar scan
+                    'url' => route('admin.spx_scans.index'),
                     'created_at' => $scan->created_at,
-                    'latitude' => $scan->latitude,
-                    'longitude' => $scan->longitude,
+                    // ✅ TAMBAHAN: Membuat URL Google Maps jika koordinat ada
+                    'maps_url' => ($scan->latitude && $scan->longitude) ? "https://www.google.com/maps?q={$scan->latitude},{$scan->longitude}" : null,
                 ]);
             }
         }
 
-        // Urutkan semua aktivitas yang terkumpul dan ambil 5 yang paling baru
-        return $allActivities->sortByDesc('created_at')->take(5);
+        return $allActivities->sortByDesc('created_at');
     }
 
     /**
@@ -233,4 +234,3 @@ class ActivityLogController extends Controller
         return "$browserStr on $platformStr";
     }
 }
-
