@@ -36,7 +36,7 @@
             <i class="fa-solid fa-sun text-lg" x-show="darkMode" x-cloak></i>
         </button>
 
-        <!-- ✅ DIPERBARUI: Dropdown Notifikasi dari Activity Log -->
+        <!-- ✅ DIPERBARUI: Dropdown Notifikasi dengan Tampilan Lengkap -->
         <div x-data="{ open: false }" class="relative">
             <button @click="open = !open" class="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none">
                 <span class="sr-only">Lihat notifikasi</span>
@@ -50,16 +50,28 @@
                     <div class="px-4 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100 border-b dark:border-gray-700">Aktivitas Terbaru</div>
                     <div class="max-h-96 overflow-y-auto custom-scrollbar">
                         @forelse($activityNotifications as $notification)
-                            <a href="{{ $notification->url ?? '#' }}" class="flex items-start px-4 py-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border-b dark:border-gray-700 last:border-b-0">
-                                <div class="flex-shrink-0 pt-1">
-                                     <i class="fas {{ $notification->icon ?? 'fa-bell' }} fa-fw text-gray-500"></i>
-                                </div>
-                                <div class="ml-3 w-0 flex-1">
-                                    <p class="font-semibold text-gray-800 dark:text-gray-200">{{ $notification->title }}</p>
-                                    <p class="text-xs text-gray-600 dark:text-gray-400">{{ $notification->details }}</p>
-                                    <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">{{ $notification->created_at->diffForHumans() }}</p>
-                                </div>
-                            </a>
+                            <div class="block px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 border-b dark:border-gray-700 last:border-b-0">
+                                <a href="{{ $notification->url ?? '#' }}" class="flex items-start w-full">
+                                    <div class="flex-shrink-0 pt-1">
+                                         <i class="fas {{ $notification->icon ?? 'fa-bell' }} fa-fw text-gray-500"></i>
+                                    </div>
+                                    <div class="ml-3 w-0 flex-1">
+                                        <p class="font-semibold text-sm text-gray-800 dark:text-gray-200">{{ $notification->title }}</p>
+                                        <p class="text-xs text-gray-600 dark:text-gray-400">{{ $notification->details }}</p>
+                                        <div class="mt-1 flex justify-between items-center">
+                                            <p class="text-xs text-gray-400 dark:text-gray-500">{{ $notification->created_at->diffForHumans() }}</p>
+                                            
+                                            {{-- ✅ TAMBAHAN: Link Lacak Lokasi --}}
+                                            @if($notification->maps_url)
+                                                <a href="{{ $notification->maps_url }}" target="_blank" rel="noopener noreferrer" class="text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 font-semibold flex items-center gap-1">
+                                                    <i class="fa-solid fa-location-dot fa-fw"></i>
+                                                    Lacak
+                                                </a>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
                         @empty
                             <p class="px-4 py-10 text-sm text-gray-500 dark:text-gray-400 text-center">Tidak ada aktivitas terbaru.</p>
                         @endforelse
