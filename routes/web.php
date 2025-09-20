@@ -62,7 +62,8 @@ use App\Http\Controllers\Admin\PesananController;
 
 use App\Http\Controllers\Api\KontakController;
 
-use App\Http\Controllers\WalletController; // Pastikan Anda menambahkan ini jika controller ada
+use App\Http\Controllers\Admin\WalletController;
+
 
 
 
