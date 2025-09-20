@@ -234,23 +234,7 @@ return [
 
         Illuminate\View\ViewServiceProvider::class,
 
-
-
-        /*
-
-         * Package Service Providers...
-
-         */
-
-        Milon\Barcode\BarcodeServiceProvider::class, // <-- PERBAIKAN: Menambahkan provider barcode
-
-
-
-        /*
-
-         * Application Service Providers...
-
-         */
+        Milon\Barcode\BarcodeServiceProvider::class,
 
         App\Providers\AppServiceProvider::class,
 
@@ -262,8 +246,10 @@ return [
 
         App\Providers\RouteServiceProvider::class,
 
-        // ✅ DITAMBAHKAN: Mendaftarkan Composer Service Provider agar notifikasi di header berfungsi
         App\Providers\ComposerServiceProvider::class,
+
+        App\Providers\ViewServiceProvider::class,
+
 
     ],
 
