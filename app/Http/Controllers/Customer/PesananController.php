@@ -332,7 +332,7 @@ $expeditionParts = explode('-', $validatedData['expedition']);
 $type          = $expeditionParts[0] ?? 'unknown';
 $service       = $expeditionParts[1] ?? null;
 $service_type  = $expeditionParts[2] ?? null;
-$cost          = (int)($expeditionParts[3] ?? 0);
+$cost          = (int)($expeditionParts[3] ?? 0); // <- Variabel $cost sekarang PASTI dibuat
 $ansuransi_fee = (int)($expeditionParts[4] ?? 0);
 $cod_fee       = (int)($expeditionParts[5] ?? 0);
 
