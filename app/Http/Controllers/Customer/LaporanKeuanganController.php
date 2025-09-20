@@ -28,13 +28,10 @@ class LaporanKeuanganController extends Controller
         $endDate = $request->filled('end_date') ? Carbon::parse($request->input('end_date'))->endOfDay() : null;
 
         // --- Query untuk Riwayat Transaksi ---
-
-        // 1. Data dari tabel 'transactions'
         $generalTransactions = DB::table('transactions')
             ->where('user_id', $userId)
             ->select('created_at', 'description', 'type', 'amount');
 
-        // 2. Data dari tabel 'Pesanan'
         $orderPayments = DB::table('Pesanan')
             ->where('id_pengguna_pembeli', $userId)
             ->select(
@@ -45,16 +42,13 @@ class LaporanKeuanganController extends Controller
             );
 
         // --- Query untuk Saldo Awal Periode ---
-        // ✅ FIX: Hitung saldo awal SEBELUM tanggal mulai filter.
         $saldoAwalPemasukan = DB::table('transactions')
-            ->where('user_id', $userId)
-            ->where('type', 'topup')
+            ->where('user_id', $userId)->where('type', 'topup')
             ->when($startDate, fn($q) => $q->where('created_at', '<', $startDate))
             ->sum('amount');
         
         $saldoAwalPengeluaran = DB::table('transactions')
-            ->where('user_id', $userId)
-            ->whereIn('type', ['withdrawal', 'payment'])
+            ->where('user_id', $userId)->whereIn('type', ['withdrawal', 'payment'])
             ->when($startDate, fn($q) => $q->where('created_at', '<', $startDate))
             ->sum('amount');
 
@@ -65,20 +59,21 @@ class LaporanKeuanganController extends Controller
 
         $saldoAwal = $saldoAwalPemasukan - ($saldoAwalPengeluaran + $saldoAwalPengeluaranPesanan);
 
-        // Terapkan filter tanggal ke setiap sub-query jika ada
         if ($startDate && $endDate) {
             $generalTransactions->whereBetween('created_at', [$startDate, $endDate]);
             $orderPayments->whereBetween('tanggal_pesanan', [$startDate, $endDate]);
         }
 
-        // Gabungkan kedua sumber data dan urutkan berdasarkan tanggal (dari yang paling lama)
-        // ✅ FIX: Diurutkan dari ASC (lama ke baru) untuk menghitung maju.
         $results = $generalTransactions->unionAll($orderPayments)->orderBy('created_at', 'asc')->get();
 
-        // Konversi string tanggal menjadi objek Carbon
-        $results->transform(fn($item) => $item->created_at = Carbon::parse($item->created_at));
+        // ✅ FIX: Logika diubah agar mengembalikan seluruh item, bukan hanya tanggal.
+        // Ini memperbaiki error "Unknown getter 'type'".
+        $results->transform(function($item) {
+            $item->created_at = Carbon::parse($item->created_at);
+            return $item; // Mengembalikan objek item yang sudah dimodifikasi
+        });
         
-        // ✅ FIX: Menghitung sisa saldo berjalan MAJU dari saldo awal.
+        // Menghitung sisa saldo berjalan MAJU dari saldo awal.
         $runningBalance = $saldoAwal;
         $results->transform(function ($item) use (&$runningBalance) {
             if ($item->type === 'topup') {
@@ -90,14 +85,11 @@ class LaporanKeuanganController extends Controller
             return $item;
         });
         
-        // Balik urutan koleksi agar yang terbaru ada di atas.
         $results = $results->reverse();
 
-        // --- Perhitungan Total Pemasukan & Pengeluaran Berdasarkan Hasil Gabungan ---
         $totalPemasukan = $results->where('type', 'topup')->sum('amount');
         $totalPengeluaran = $results->whereIn('type', ['withdrawal', 'payment'])->sum('amount');
         
-        // Paginasi Manual
         $currentPage = LengthAwarePaginator::resolveCurrentPage();
         $perPage = 15;
         $currentPageResults = $results->slice(($currentPage - 1) * $perPage, $perPage)->values();
@@ -110,8 +102,10 @@ class LaporanKeuanganController extends Controller
             'totalPemasukan'    => $totalPemasukan,
             'totalPengeluaran'  => $totalPengeluaran,
             'transactions'      => $transactions,
+            'saldoAwal'         => $saldoAwal,
             'startDate'         => $request->input('start_date'),
             'endDate'           => $request->input('end_date'),
         ]);
     }
 }
+
