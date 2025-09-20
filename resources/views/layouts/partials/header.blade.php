@@ -1,13 +1,6 @@
-{{-- 
-    ================================================================================
-    PERBAIKAN UTAMA:
-    - Menghapus semua `onclick="..."` JavaScript dan menggantinya dengan Alpine.js
-      (`x-data`, `@click`, `x-show`) untuk konsistensi dan menghindari error.
-    - Menambahkan dukungan Dark Mode (`dark:...`) agar cocok dengan layout utama.
-    - Mengambil saldo dan gambar profil langsung dari `Auth::user()` agar lebih aman
-      dan tidak bergantung pada variabel yang dilempar dari controller.
-    - Menambahkan `x-cloak` untuk mencegah "kedipan" elemen saat halaman dimuat.
-    ================================================================================
+{{--
+    Versi header ini dikembalikan ke desain awal yang lebih sederhana,
+    namun tetap menggunakan Alpine.js untuk semua interaksi agar bebas dari error.
 --}}
 <header class="flex justify-between items-center p-4 bg-white dark:bg-gray-800 border-b dark:border-gray-700 shadow-sm sticky top-0 z-40">
     <!-- Sisi Kiri: Tombol Toggle & Judul Halaman -->
@@ -25,15 +18,15 @@
     <!-- Sisi Kanan: Aksi & Profil -->
     <div class="ml-auto flex items-center space-x-2 sm:space-x-4">
         <!-- Saldo dan Tombol Top Up -->
-        <div class="hidden md:flex items-center space-x-2 bg-gray-100 dark:bg-gray-700 p-2 rounded-lg">
+        <div class="hidden md:flex items-center">
             <span class="text-sm font-medium text-gray-600 dark:text-gray-300">Saldo:</span>
-            <span class="font-bold text-green-600 dark:text-green-400">
+            <span class="ml-2 text-sm font-semibold bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300 py-1 px-3 rounded-full">
                 Rp {{ number_format(Auth::user()->balance ?? 0, 0, ',', '.') }}
             </span>
-            {{-- PERBAIKAN: Menghapus `onclick` dan menggunakan `href` ke route yang benar --}}
-            <a href="{{ route('wallet.index') }}" class="inline-flex items-center gap-x-1 bg-green-500 text-white px-2 py-1 text-xs font-bold rounded-md hover:bg-green-600 transition-colors">
-                <i class="fas fa-plus"></i>
-                <span>Top Up</span>
+             {{-- PERUBAHAN: Tombol Top Up sekarang menggunakan route 'wallet.index' --}}
+            <a href="{{ route('wallet.index') }}" class="ml-2 inline-flex items-center gap-x-1.5 px-2.5 py-1.5 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none">
+                <svg class="w-4 h-4 text-green-600" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                Top Up
             </a>
         </div>
 
@@ -49,12 +42,12 @@
             <button @click="open = !open" class="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none">
                 <span class="sr-only">Lihat notifikasi</span>
                 <i class="fas fa-bell text-lg"></i>
-                @if(Auth::user()->unreadNotifications->isNotEmpty())
+                @if(Auth::user() && Auth::user()->unreadNotifications->isNotEmpty())
                     <span class="absolute top-1 right-1 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white dark:ring-gray-800"></span>
                 @endif
             </button>
             <div x-show="open" @click.away="open = false" x-cloak class="origin-top-right absolute right-0 mt-2 w-80 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 focus:outline-none">
-                <div class="py-1">
+                 <div class="py-1">
                     <div class="px-4 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100 border-b dark:border-gray-700">Notifikasi</div>
                     <div class="max-h-80 overflow-y-auto custom-scrollbar">
                         @forelse(Auth::user()->unreadNotifications->take(5) as $notification)

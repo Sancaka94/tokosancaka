@@ -62,6 +62,7 @@ use App\Http\Controllers\Admin\PesananController;
 
 use App\Http\Controllers\Api\KontakController;
 
+use App\Http\Controllers\WalletController; // Pastikan Anda menambahkan ini jika controller ada
 
 
 
@@ -289,7 +290,10 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])
 
         require __DIR__.'/web/admin.php';
 
-    
+        Route::get('/wallet', function () {
+        // Ini hanya contoh, arahkan ke controller yang benar
+        return 'Halaman Wallet/Top Up'; 
+        })->name('wallet.index');
         
 
      // --- MANAJEMEN WILAYAH TERINTEGRASI ---
