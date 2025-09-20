@@ -670,13 +670,6 @@ Route::middleware(['auth', RoleMiddleware::class . ':Seller|Admin'])
 
 Route::get('/kontak/search', [KontakController::class, 'search'])->name('api.search.kontak');
 
-Route::prefix('admin')
-    ->name('admin.')
-    ->middleware(['auth'])
-    ->group(function () {
-        // route setting
-        Route::view('/settings', 'admin.settings')->name('settings');
-    });
 
 Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () {
     // Settings
