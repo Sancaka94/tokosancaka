@@ -30,7 +30,7 @@ use App\Http\Controllers\Toko\PesananController; // Asumsi Anda akan membuat con
 
 use App\Http\Controllers\CekOngkirController;
 
-use App\Http\Controllers\Admin\KontakController;
+use App\Http\Controllers\KontakController;
 
 
 
