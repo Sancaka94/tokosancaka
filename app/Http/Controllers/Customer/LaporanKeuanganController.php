@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\Transaction;
 use Carbon\Carbon; // ✅ 2. Tambahkan Carbon untuk memanipulasi tanggal
 
-class FinancialReportController extends Controller
+class LaporanKeuanganController extends Controller
 {
     /**
      * Menampilkan halaman laporan keuangan yang disempurnakan dengan filter tanggal.
