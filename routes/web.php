@@ -112,7 +112,7 @@ Route::get('/api/contacts/search', [PesananController::class, 'searchKontak'])->
 
 Route::get('/kontak/search', [KontakController::class, 'search'])->name('api.search.kontak');
 
-Route::get('/kontak/search', [KontakController::class, 'search'])->name('kontak.search');     
+   
   
 // =========================================================================
 
@@ -230,7 +230,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Pelanggan|Seller'])
 
         require __DIR__.'/web/customer.php';
 
-        
+        Route::get('/kontak/search', [KontakController::class, 'search'])->name('kontak.search');  
 
         // Customer Chat
 
