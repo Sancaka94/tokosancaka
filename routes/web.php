@@ -111,7 +111,7 @@ Route::get('/api/contacts/search', [PesananController::class, 'searchKontak'])->
 
 Route::get('/kontak/search', [KontakController::class, 'search'])->name('api.search.kontak');
 
-    // Route ini yang menyebabkan error karena belum terdaftar
+   // Route ini yang menyebabkan error karena belum terdaftar
     Route::get('/wallet', [WalletController::class, 'index'])->name('wallet.index');
 
     // Route untuk memproses form top up dari halaman wallet
@@ -128,7 +128,6 @@ Route::get('/kontak/search', [KontakController::class, 'search'])->name('api.sea
     Route::get('/settings', function () {
         return view('admin.settings');
     })->name('settings');
-    
   
 // =========================================================================
 
