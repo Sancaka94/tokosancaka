@@ -18,7 +18,7 @@
                 <a class="px-3 py-2 text-sm font-medium text-gray-700 transition-colors duration-150 rounded-lg hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700" href="#">
                     Pesanan
                 </a>
-                <a class="px-3 py-2 text-sm font-medium text-gray-700 transition-colors duration-150 rounded-lg hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700 {{ request()->routeIs('customer.laporan.index') ? 'bg-gray-100 dark:bg-gray-700' : '' }}" href="{{ route('customer.laporan-keuangan') }}">
+                <a class="px-3 py-2 text-sm font-medium text-gray-700 transition-colors duration-150 rounded-lg hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700 {{ request()->routeIs('customer.laporan.index') ? 'bg-gray-100 dark:bg-gray-700' : '' }}" href="{{ route('customer.laporan.index') }}">
                     Keuangan
                 </a>
             </nav>
