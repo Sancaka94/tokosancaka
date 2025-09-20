@@ -1638,7 +1638,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         try {
 
-            const response = await fetch(`{{ route('customer.kontak.search') }}?query=${query}`);
+            const response = await fetch(`{{ route('api.kontak.search') }}?query=${query}`);
 
             if (!response.ok) throw new Error('Network response was not ok');
 
