@@ -676,4 +676,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     Route::get('/settings', function () {
         return view('admin.settings');
     })->name('settings');
+
+    Route::get('/settings', function () {
+        return view('admin.settings');
+    })->name('settings.index');
 });
