@@ -125,6 +125,9 @@ Route::get('/kontak/search', [KontakController::class, 'search'])->name('api.sea
      // TAMBAHKAN ROUTE INI
     Route::get('/wallet/search', [WalletController::class, 'search'])->name('wallet.search');
 
+    Route::get('/settings', function () {
+        return view('admin.settings');
+    })->name('settings');
     
   
 // =========================================================================
@@ -306,9 +309,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])
 
        
           // TAMBAHKAN ROUTE INI UNTUK HALAMAN PENGATURAN
-    Route::get('/settings', function () {
-        return view('admin.settings');
-    })->name('settings');
+    
 
     Route::get('/settings', function () {
         return view('admin.settings');
