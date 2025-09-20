@@ -128,51 +128,76 @@ class ActivityLogController extends Controller
     }
 
     /**
-     * Mengambil 5 log aktivitas terbaru untuk notifikasi header.
-     * Method ini dipanggil oleh ActivityNotificationComposer.
+     * ✅ DIPERBARUI: Mengambil 5 log aktivitas terbaru untuk notifikasi header
+     * yang lebih jelas, rinci, dan bisa diklik, sekarang dengan data koordinat.
      */
     public function getHeaderNotifications()
     {
         $allActivities = collect([]);
+        $limit = 5; // Batas pengambilan data untuk setiap jenis aktivitas
 
-        // 1. Ambil 5 pendaftaran pengguna terbaru
-        $userRegistrations = User::latest()->take(5)->get();
+        // 1. Ambil pendaftaran pengguna terbaru
+        $userRegistrations = User::latest()->take($limit)->get();
         foreach ($userRegistrations as $user) {
-            $allActivities->push((object)[
-                'causer' => $user,
-                'description' => 'Mendaftar sebagai ' . $user->role,
-                'created_at' => $user->created_at,
-            ]);
+            if ($user && $user->id_pengguna) {
+                $allActivities->push((object)[
+                    'icon' => 'fa-solid fa-user-plus text-blue-500',
+                    'title' => 'Pengguna baru: ' . ($user->nama_lengkap ?? 'N/A'),
+                    'details' => 'Mendaftar sebagai ' . $user->role,
+                    'url' => route('admin.customers.edit', $user->id_pengguna),
+                    'created_at' => $user->created_at,
+                    'latitude' => $user->latitude,
+                    'longitude' => $user->longitude,
+                ]);
+            }
         }
 
-        // 2. Ambil 5 pesanan terbaru
-        $newOrders = Pesanan::with('pembeli')->latest()->take(5)->get();
+        // 2. Ambil pesanan terbaru
+        $newOrders = Pesanan::with('pembeli')->latest()->take($limit)->get();
         foreach ($newOrders as $order) {
-            $allActivities->push((object)[
-                'causer' => $order->pembeli,
-                'description' => 'Membuat pesanan baru',
-                'created_at' => $order->created_at,
-            ]);
+            if ($order && $order->resi) {
+                $allActivities->push((object)[
+                    'icon' => 'fa-solid fa-box text-green-500',
+                    'title' => 'Pesanan baru dari ' . (optional($order->pembeli)->nama_lengkap ?? $order->sender_name),
+                    'details' => 'Total: Rp ' . number_format($order->total_harga_barang, 0, ',', '.'),
+                    'url' => route('admin.pesanan.show', $order->resi),
+                    'created_at' => $order->created_at,
+                    'latitude' => $order->latitude,
+                    'longitude' => $order->longitude,
+                ]);
+            }
         }
         
-        // 3. Ambil 5 top up terbaru
-        $topUps = TopUp::with('customer')->latest()->take(5)->get();
+        // 3. Ambil top up terbaru
+        $topUps = TopUp::with('customer')->latest()->take($limit)->get();
         foreach ($topUps as $topUp) {
-            $allActivities->push((object)[
-                'causer' => $topUp->customer,
-                'description' => 'Melakukan top up saldo',
-                'created_at' => $topUp->created_at,
-            ]);
+            if ($topUp) {
+                $allActivities->push((object)[
+                    'icon' => 'fa-solid fa-wallet text-orange-500',
+                    'title' => 'Request Top Up dari ' . (optional($topUp->customer)->nama_lengkap ?? 'N/A'),
+                    'details' => 'Jumlah: Rp ' . number_format($topUp->amount, 0, ',', '.'),
+                    'url' => route('admin.saldo.requests.index'), // Mengarah ke halaman daftar request
+                    'created_at' => $topUp->created_at,
+                    'latitude' => $topUp->latitude,
+                    'longitude' => $topUp->longitude,
+                ]);
+            }
         }
         
-        // 4. Ambil 5 scan paket terbaru
-        $spxScans = ScannedPackage::with('user')->latest()->take(5)->get();
+        // 4. Ambil scan paket terbaru
+        $spxScans = ScannedPackage::with('user')->latest()->take($limit)->get();
         foreach ($spxScans as $scan) {
-            $allActivities->push((object)[
-                'causer' => $scan->user,
-                'description' => 'Melakukan scan resi ' . $scan->resi_number,
-                'created_at' => $scan->created_at,
-            ]);
+            if ($scan) {
+                $allActivities->push((object)[
+                    'icon' => 'fa-solid fa-barcode text-purple-500',
+                    'title' => 'Scan Resi oleh ' . (optional($scan->user)->nama_lengkap ?? 'N/A'),
+                    'details' => 'Resi: ' . $scan->resi_number,
+                    'url' => route('admin.spx_scans.index'), // Mengarah ke halaman daftar scan
+                    'created_at' => $scan->created_at,
+                    'latitude' => $scan->latitude,
+                    'longitude' => $scan->longitude,
+                ]);
+            }
         }
 
         // Urutkan semua aktivitas yang terkumpul dan ambil 5 yang paling baru
