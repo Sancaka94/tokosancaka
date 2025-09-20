@@ -19,22 +19,34 @@
 
     <!-- Slider (jika ada) -->
     @if(!empty($slides))
+    {{-- ✅ DIKEMBALIKAN: Kode slider dikembalikan ke versi semula dengan efek blur --}}
     <div x-data="{ activeSlide: 0, slides: {{ json_encode($slides) }} }"
          x-init="if (slides.length > 1) { setInterval(() => { activeSlide = (activeSlide + 1) % slides.length }, 5000) }"
-         class="relative w-full rounded-xl shadow-lg overflow-hidden aspect-[16/6]">
+         class="relative w-full rounded-xl shadow-lg overflow-hidden">
         
-        <!-- Track Slider -->
-        <div class="flex transition-transform duration-700 ease-in-out h-full" :style="`transform: translateX(-${activeSlide * 100}%);`">
-            <template x-for="(slide, index) in slides" :key="index">
-                <div class="w-full flex-shrink-0 h-full">
-                    <img :src="slide.img" :alt="slide.alt ?? 'Informasi'" class="w-full h-full object-cover">
-                </div>
-            </template>
+        <!-- Wrapper slider -->
+        <div class="relative w-full overflow-hidden">
+            <!-- Track -->
+            <div class="flex transition-transform duration-700 ease-in-out"
+                 :style="`transform: translateX(-${activeSlide * 100}%);`">
+                <!-- Slide -->
+                <template x-for="(slide, index) in slides" :key="index">
+                    <div class="w-full flex-shrink-0 flex justify-center relative">
+                        <!-- Latar belakang blur -->
+                        <div class="absolute inset-0 blur-lg scale-110 opacity-30"
+                             :style="`background-image:url('${slide.img}'); background-size:cover; background-position:center;`"
+                             aria-hidden="true">
+                        </div>
+                        <!-- Gambar utama -->
+                        <img :src="slide.img" :alt="slide.alt ?? 'Informasi'" class="relative max-w-full h-auto z-10">
+                    </div>
+                </template>
+            </div>
         </div>
 
         <!-- Tombol Navigasi -->
         <template x-if="slides.length > 1">
-            <div class="absolute inset-0 flex justify-between items-center px-4 z-10">
+            <div class="absolute inset-0 flex justify-between items-center px-4 z-20">
                 <button @click="activeSlide = (activeSlide - 1 + slides.length) % slides.length"
                         class="bg-white/60 hover:bg-white text-gray-800 rounded-full w-10 h-10 flex items-center justify-center shadow-md transition">
                     &#10094;
@@ -48,7 +60,7 @@
 
         <!-- Indikator -->
         <template x-if="slides.length > 1">
-            <div class="absolute bottom-4 left-0 w-full flex justify-center gap-2 z-10">
+            <div class="absolute bottom-4 left-0 w-full flex justify-center gap-2 z-20">
                 <template x-for="(slide, index) in slides" :key="index">
                     <button @click="activeSlide = index"
                             :class="{'bg-white scale-125': activeSlide === index, 'bg-white/50': activeSlide !== index}"
@@ -58,6 +70,7 @@
         </template>
     </div>
     @endif
+
 
     <!-- Kartu Statistik -->
     <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -208,7 +221,6 @@
 @endsection
 
 @push('scripts')
-{{-- Skrip Anda yang sudah ada tidak diubah dan tetap di sini --}}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/laravel-echo@1.15.3/dist/echo.iife.js"></script>
@@ -257,6 +269,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const userId = {{ Auth::id() }};
     if (typeof window.Echo !== 'undefined' && userId) {
         try {
+            // Pastikan Anda sudah mengkonfigurasi Echo di bootstrap.js
             window.Echo.private(`customer-saldo.${userId}`)
                 .listen('SaldoUpdated', (e) => {
                     if (saldoElement && e.formattedSaldo) {
@@ -281,3 +294,4 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 @endpush
+
