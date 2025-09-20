@@ -14,7 +14,7 @@
             
             {{-- Saldo & Tombol Top Up (Mobile) --}}
             <li class="flex md:hidden items-center space-x-2">
-                <span class="font-semibold text-xs sm:text-sm text-gray-700 dark:text-gray-200">
+                <span class="fas fa-wallet font-semibold text-xs sm:text-sm text-gray-700 dark:text-gray-200">
                     <a class="text-green-600 dark:text-green-400">Saldo Anda: </a> <strong>Rp {{ number_format($saldo ?? 0, 0, ',', '.') }}</strong>
                 </span>
                 <a href="{{ route('customer.topup.create') }}" class="inline-flex items-center justify-center w-8 h-8 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-full hover:bg-indigo-700 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-indigo-500">
