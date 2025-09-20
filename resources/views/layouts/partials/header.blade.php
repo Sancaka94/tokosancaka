@@ -76,7 +76,7 @@
                     <p class="text-sm text-gray-600 dark:text-gray-400">Masuk sebagai</p>
                     <p class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{{ Auth::user()->name }}</p>
                 </div>
-                <a href="{{ route('admin.settings') }}" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">Profil</a>
+                <a href="{{ route('admin.settings.profile') }}" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">Profil</a>
                 <div class="border-t border-gray-100 dark:border-gray-700 my-1"></div>
                 <form method="POST" action="{{ route('logout') }}" x-data>
                     @csrf
