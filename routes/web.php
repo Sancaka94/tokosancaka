@@ -64,7 +64,7 @@ use App\Http\Controllers\Api\KontakController;
 
 use App\Http\Controllers\Admin\WalletController;
 
-
+use App\Http\Controllers\Customer\KontakController;
 
 
 
@@ -112,7 +112,7 @@ Route::get('/api/contacts/search', [PesananController::class, 'searchKontak'])->
 
 Route::get('/kontak/search', [KontakController::class, 'search'])->name('api.search.kontak');
 
-       
+Route::get('/kontak/search', [KontakController::class, 'search'])->name('kontak.search');     
   
 // =========================================================================
 
@@ -126,7 +126,7 @@ Route::get('/pondok', [PondokController::class, 'index'])->name('pondok.index');
 
 Route::get('/api/cari-alamat', [CustomerOrderController::class, 'searchAddressApi'])->name('api.address.search');
 
- Route::get('/{resi}/cetak_thermal', [AdminPesananController::class, 'cetakResiThermal'])->name('cetak_thermal');
+Route::get('/{resi}/cetak_thermal', [AdminPesananController::class, 'cetakResiThermal'])->name('cetak_thermal');
 
 
 
