@@ -111,23 +111,7 @@ Route::get('/api/contacts/search', [PesananController::class, 'searchKontak'])->
 
 Route::get('/kontak/search', [KontakController::class, 'search'])->name('api.search.kontak');
 
-        // TAMBAHKAN ROUTE INI JIKA BELUM ADA
-        Route::get('/wallet', [WalletController::class, 'index'])->name('wallet.index');
-        
-        // Anda mungkin juga memerlukan route lain untuk wallet
-        Route::post('/wallet/topup', [WalletController::class, 'topup'])->name('wallet.topup');
-        Route::get('/wallet/search', [WalletController::class, 'search'])->name('wallet.search');
-
-
-    // Route untuk halaman profil. Ganti view() dengan controller jika perlu.
-    Route::get('/user/profile', function () {
-        return view('profile.show'); // Arahkan ke view profil Anda
-    })->name('profile.show');
-
-     // TAMBAHKAN ROUTE INI
-    Route::get('/wallet/search', [WalletController::class, 'search'])->name('wallet.search');
-
-    Route::view('/setting', 'admin.setting')->name('settings');
+       
   
 // =========================================================================
 
@@ -310,9 +294,23 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])
           // TAMBAHKAN ROUTE INI UNTUK HALAMAN PENGATURAN
     
 
-    Route::get('/settings', function () {
-        return view('admin.settings');
-    })->name('settings.index');
+    // TAMBAHKAN ROUTE INI JIKA BELUM ADA
+        Route::get('/wallet', [WalletController::class, 'index'])->name('wallet.index');
+        
+        // Anda mungkin juga memerlukan route lain untuk wallet
+        Route::post('/wallet/topup', [WalletController::class, 'topup'])->name('wallet.topup');
+        Route::get('/wallet/search', [WalletController::class, 'search'])->name('wallet.search');
+
+
+    // Route untuk halaman profil. Ganti view() dengan controller jika perlu.
+    Route::get('/user/profile', function () {
+        return view('profile.show'); // Arahkan ke view profil Anda
+    })->name('profile.show');
+
+     // TAMBAHKAN ROUTE INI
+    Route::get('/wallet/search', [WalletController::class, 'search'])->name('wallet.search');
+
+    Route::view('/setting', 'admin.setting')->name('settings');
 
      // --- MANAJEMEN WILAYAH TERINTEGRASI ---
 
