@@ -204,7 +204,7 @@ $(document).ready(function() {
 
         searchTimeout = setTimeout(function() {
             $.ajax({
-                url: "{{ route('admin.wallet.liveSearch') }}",
+                url: "{{ route('admin.wallet.search') }}",
                 type: "GET",
                 data: {'search': query},
                 success: function(data) {
