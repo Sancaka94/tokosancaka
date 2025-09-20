@@ -119,7 +119,7 @@
             <a class="block px-3 py-2 text-base font-medium text-gray-700 transition-colors duration-150 rounded-md hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700" href="#">
                 Pesanan
             </a>
-             <a class="block px-3 py-2 text-base font-medium text-gray-700 transition-colors duration-150 rounded-md hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700 {{ request()->routeIs('customer.laporan.index') ? 'bg-gray-100 dark:bg-gray-700' : '' }}" href="{{ route('customer.laporan-keuangan') }}">
+             <a class="block px-3 py-2 text-base font-medium text-gray-700 transition-colors duration-150 rounded-md hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700 {{ request()->routeIs('customer.laporan.index') ? 'bg-gray-100 dark:bg-gray-700' : '' }}" href="{{ route('customer.laporan.index') }}">
                 Laporan Keuangan
             </a>
         </div>
