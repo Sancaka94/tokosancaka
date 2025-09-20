@@ -339,7 +339,7 @@ $cod_fee       = (int)($expeditionParts[5] ?? 0);
 $shipping_cost = $cost;
             
 
-            $type = $parts[0];
+            $type = $$expeditionParts[0];
 
             
 
