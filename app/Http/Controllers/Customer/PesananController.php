@@ -182,9 +182,7 @@ class PesananController extends Controller
 
                 'height'             => 'nullable|numeric|min:0',
 
-    
-
-                'service_type'       => 'required|string|in:express,instant',
+                'service_type'       => 'required|string|in:regular,express,sameday,instant,cargo',
 
                 'expedition'         => 'required|string',
 
@@ -309,6 +307,8 @@ class PesananController extends Controller
                 'longitude'            => $request->longitude ?? null,
 
                 'item_type'            => $request->item_type,
+
+                
 
             ];
 
