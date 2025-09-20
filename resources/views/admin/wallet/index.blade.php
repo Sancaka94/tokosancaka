@@ -28,7 +28,7 @@
     <!-- Form Top Up Saldo -->
     <div class="bg-gray-50 dark:bg-gray-700/50 p-6 rounded-lg border dark:border-gray-700 mb-8">
         <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4">Formulir Top Up Saldo</h3>
-        <form action="{{ route('wallet.topup') }}" method="POST">
+        <form action="{{ route('admin.wallet.topup') }}" method="POST">
             @csrf
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <!-- Pilihan Pelanggan dengan AJAX Search -->
