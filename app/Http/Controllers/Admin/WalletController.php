@@ -1,10 +1,14 @@
 <?php
 
-namespace App\Http\Controllers;
+// ✅ PERBAIKAN: Menyesuaikan namespace dengan lokasi file.
+namespace App\Http\Controllers\Admin;
 
-use App\Models\User; // Pastikan model Anda bernama 'User' atau 'Pengguna'
+use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class WalletController extends Controller
 {
@@ -13,8 +17,8 @@ class WalletController extends Controller
      */
     public function index(Request $request)
     {
-        // Memulai query pada model User, filter hanya untuk pelanggan
-        $query = User::where('role', '!=', 'admin');
+        // ✅ PERBAIKAN: Memfilter agar hanya menampilkan pelanggan di tabel utama.
+        $query = User::where('role', 'pelanggan');
 
         // Menerapkan fitur pencarian untuk tabel utama
         if ($request->has('search') && $request->search != '') {
@@ -27,33 +31,43 @@ class WalletController extends Controller
         }
 
         // Mengurutkan berdasarkan nama_lengkap dan melakukan paginasi
-        $pelanggan = $query->orderBy('nama_lengkap', 'asc')->paginate(20);
+        $pelanggan = $query->orderBy('nama_lengkap', 'asc')->paginate(10);
 
         return view('admin.wallet.index', compact('pelanggan'));
     }
 
     /**
      * Menangani pencarian pelanggan via AJAX untuk dropdown Select2.
-     * Ini membuat form top up sangat cepat dan efisien.
      */
     public function search(Request $request)
     {
-        $searchTerm = $request->input('q');
+        // ✅ PERBAIKAN: Menggunakan 'term' sesuai dengan parameter yang dikirim oleh Select2 dari view.
+        $searchTerm = $request->input('term');
         
         if (!$searchTerm) {
-            return response()->json([]);
+            return response()->json(['results' => []]);
         }
 
-        $users = User::where('role', '!=', 'admin')
-                    ->where(function ($query) use ($searchTerm) {
-                        $query->where('nama_lengkap', 'like', '%' . $searchTerm . '%')
-                              ->orWhere('email', 'like', '%' . $searchTerm . '%');
-                    })
-                    ->select('id', 'nama_lengkap', 'email', 'balance')
-                    ->limit(15) // Batasi hasil pencarian untuk performa
-                    ->get();
+        $users = User::where('role', 'pelanggan') // Filter hanya untuk pelanggan
+                     ->where('status', 'Aktif')
+                     ->where(function ($query) use ($searchTerm) {
+                         $query->where('nama_lengkap', 'like', '%' . $searchTerm . '%')
+                               ->orWhere('email', 'like', '%' . $searchTerm . '%');
+                     })
+                     ->select('id', 'nama_lengkap', 'email', 'balance')
+                     ->limit(15) // Batasi hasil pencarian untuk performa
+                     ->get();
+        
+        // ✅ PERBAIKAN: Memformat data agar sesuai dengan yang diharapkan oleh 'processResults' di Select2.
+        $formattedUsers = $users->map(function ($user) {
+            return [
+                'id' => $user->id,
+                'text' => $user->nama_lengkap . ' (Email: ' . $user->email . ')',
+                'item' => $user // Menyimpan data asli untuk templating
+            ];
+        });
 
-        return response()->json($users);
+        return response()->json(['results' => $formattedUsers]);
     }
 
     /**
@@ -81,8 +95,8 @@ class WalletController extends Controller
 
         $formattedAmount = number_format($validated['amount'], 0, ',', '.');
         
-        // Menggunakan nama_lengkap pada pesan sukses
-        return redirect()->route('wallet.index')
+        // ✅ PERBAIKAN: Mengarahkan kembali ke route admin yang benar.
+        return redirect()->route('admin.wallet.index')
                          ->with('success', "Berhasil menambahkan saldo Rp {$formattedAmount} ke akun {$pelanggan->nama_lengkap}.");
     }
 }

@@ -35,12 +35,14 @@
                 <div>
                     <label for="user_id" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Pilih Pelanggan</label>
                     <select id="user_id" name="user_id" class="w-full" required></select>
+                    @error('user_id') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                 </div>
 
                 <!-- Jumlah Top Up -->
                 <div>
                     <label for="amount" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Jumlah Top Up (Rp)</label>
                     <input type="number" id="amount" name="amount" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600" placeholder="e.g., 50000" min="1000" required>
+                    @error('amount') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                 </div>
 
                 <!-- Tombol Submit -->
@@ -50,8 +52,6 @@
                     </button>
                 </div>
             </div>
-             @error('user_id') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
-             @error('amount') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
         </form>
     </div>
 
@@ -120,15 +120,16 @@ $(document).ready(function() {
             url: '{{ route('admin.wallet.search') }}',
             dataType: 'json',
             delay: 250, // Menunggu 250ms setelah user berhenti mengetik
-            processResults: function (data) {
+            data: function (params) {
+                // Mengirim parameter pencarian sebagai 'term'
                 return {
-                    results: $.map(data, function (item) {
-                        return {
-                            id: item.id,
-                            text: `${item.nama_lengkap} (Email: ${item.email})`,
-                            item: item // Menyimpan data asli
-                        }
-                    })
+                    term: params.term 
+                };
+            },
+            processResults: function (data) {
+                // Data sudah diformat di controller, jadi langsung return
+                return {
+                    results: data.results
                 };
             },
             cache: true
@@ -150,15 +151,19 @@ $(document).ready(function() {
                 "<div class='select2-result-repository__description text-sm text-gray-500'></div>" +
             "</div>"
         );
-
-        $container.find(".select2-result-repository__title").text(repo.item.nama_lengkap);
-        $container.find(".select2-result-repository__description").text("Email: " + repo.item.email + " - Saldo: Rp " + new Intl.NumberFormat('id-ID').format(repo.item.balance));
+        
+        // 'repo.item' berisi data asli dari controller
+        if (repo.item) {
+            $container.find(".select2-result-repository__title").text(repo.item.nama_lengkap);
+            $container.find(".select2-result-repository__description").text("Email: " + repo.item.email + " - Saldo: Rp " + new Intl.NumberFormat('id-ID').format(repo.item.balance));
+        }
 
         return $container;
     }
 
     function formatRepoSelection (repo) {
         // Tampilan setelah item dipilih
+        // 'repo.text' berisi teks yang sudah diformat dari controller
         return repo.text || "-- Ketik nama atau email pelanggan --";
     }
 });
