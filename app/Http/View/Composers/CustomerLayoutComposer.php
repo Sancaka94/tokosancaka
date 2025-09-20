@@ -1,6 +1,5 @@
 <?php
 
-// ✅ DI sempurnakan: Namespace disesuaikan dengan standar (app/View/Composers)
 namespace App\View\Composers;
 
 use Illuminate\View\View;
@@ -16,18 +15,16 @@ class CustomerLayoutComposer
      */
     public function compose(View $view)
     {
-        // ✅ DI sempurnakan: Logika diperluas untuk mencakup semua peran non-admin
         if (Auth::check() && Auth::user()->role !== 'Admin') {
             $user = Auth::user();
 
-            // 1. Mengambil saldo pengguna (logika Anda sudah benar)
+            // 1. Mengambil saldo pengguna
             $saldo = $user->saldo ?? 0;
 
-            // ✅ DI sempurnakan: 2. Mengambil notifikasi yang belum dibaca
-            // Asumsi: Anda menggunakan sistem notifikasi bawaan Laravel.
+            // 2. Mengambil notifikasi yang belum dibaca
             $notifications = $user->unreadNotifications ?? collect();
 
-            // ✅ DI sempurnakan: Mengirim semua data yang dibutuhkan ke view
+            // Mengirim semua data yang dibutuhkan ke view
             $view->with([
                 'saldo' => $saldo,
                 'notifications' => $notifications

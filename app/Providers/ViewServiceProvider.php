@@ -1,36 +1,47 @@
-<?php
-
-namespace App\Providers; // <-- Pastikan namespace ini benar
-
-use Illuminate\Support\Facades\View;
-use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Facades\DB;
-use App\Http\View\Composers\CustomerTopbarComposer;
-
-// Pastikan nama kelas ini benar
-class ViewServiceProvider extends ServiceProvider 
-{
-    /**
-     * Register any application services.
-     */
-    public function register(): void
-    {
-        //
-    }
-
-    /**
-     * Bootstrap any application services.
-     */
-    public function boot(): void
-    {
-        // Ganti 'layouts.admin' jika nama layout Anda berbeda
-        View::composer('layouts.admin', function ($view) {
-            $pendaftaranBaruCount = DB::table('registration_requests')->count();
-            $view->with('pendaftaranBaru', $pendaftaranBaruCount);
-        });
-        
-        // ✅ PERBAIKAN: Mendaftarkan composer ke view topbar customer
-        // Ganti path 'layouts.partials.customer.topbar' jika lokasi file topbar Anda berbeda
-        View::composer('layouts.partials.customer.topbar', CustomerTopbarComposer::class);
-    }
+<?php
+
+namespace App\Providers;
+
+use Illuminate\Support\Facades\View;
+use Illuminate\Support\ServiceProvider;
+use App\View\Composers\CustomerLayoutComposer; // ✅ 1. Import composer customer yang benar
+use Illuminate\Support\Facades\DB;
+
+class ViewServiceProvider extends ServiceProvider
+{
+    /**
+     * Register any application services.
+     *
+     * @return void
+     */
+    public function register(): void
+    {
+        // Tidak perlu ada perubahan di sini.
+    }
+
+    /**
+     * Bootstrap any application services.
+     *
+     * @return void
+     */
+    public function boot(): void
+    {
+        // Composer untuk Admin Layout (misal: notifikasi pendaftaran baru)
+        View::composer('layouts.admin', function ($view) {
+            try {
+                // Mengambil jumlah pengguna yang statusnya belum aktif
+                $pendaftaranBaruCount = DB::table('Pengguna')->where('status', 'Tidak Aktif')->count();
+                $view->with('pendaftaranBaruCount', $pendaftaranBaruCount);
+            } catch (\Exception $e) {
+                // Mencegah error jika tabel belum ada saat migrasi
+                $view->with('pendaftaranBaruCount', 0);
+            }
+        });
+        
+        // ✅ 2. DI sempurnakan: Menghubungkan composer ke layout customer UTAMA.
+        // Ini adalah cara yang paling benar dan akan memperbaiki error 'Undefined variable'.
+        // Semua view yang menggunakan 'layouts.customer' akan otomatis menerima data saldo & notifikasi.
+        View::composer('layouts.customer', CustomerLayoutComposer::class);
+    }
 }
+
