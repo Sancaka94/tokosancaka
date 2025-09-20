@@ -674,6 +674,6 @@ Route::get('/kontak/search', [KontakController::class, 'search'])->name('api.sea
 Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () {
     // Settings
     Route::get('/settings', function () {
-        return view('admin.setting');
+        return view('admin.settings');
     })->name('settings.index');
 });
