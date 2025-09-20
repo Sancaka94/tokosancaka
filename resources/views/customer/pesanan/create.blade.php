@@ -261,9 +261,10 @@ document.addEventListener('DOMContentLoaded', function () {
         return 'Rp ' + (parseInt(angka, 10) || 0).toLocaleString('id-ID'); 
     }
 
-    // --- FUNGSI PENCARIAN KONTAK ---
+    // --- FUNGSI PENCARIAN KONTAK DARI DATABASE ---
     function setupContactSearch(prefix) {
-        const searchInput = document.getElementById(`${prefix}_contact_search`);
+        const nameInput = document.getElementById(`${prefix}_name`);
+        const phoneInput = document.getElementById(`${prefix}_phone`);
         const resultsContainer = document.getElementById(`${prefix}_contact_results`);
         const contactType = (prefix === 'sender') ? 'Pengirim' : 'Penerima';
 
@@ -272,12 +273,19 @@ document.addEventListener('DOMContentLoaded', function () {
                 resultsContainer.classList.add('hidden');
                 return;
             }
+            console.log(`[${prefix}] Mencari kontak dengan query: "${query}", tipe: "${contactType}"`);
+
             try {
-                const url = `{{ route('customer.kontak.search') }}?search=${encodeURIComponent(query)}&tipe=${contactType}`;
+                const url = `{{ route('api.contacts.search') }}?search=${encodeURIComponent(query)}&tipe=${contactType}`;
                 const response = await fetch(url);
-                if (!response.ok) throw new Error('Server error');
-                const contacts = await response.json();
                 
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error(`[${prefix}] Error dari server:`, errorText);
+                    throw new Error(`Server error: ${response.statusText}`);
+                }
+                
+                const contacts = await response.json();
                 resultsContainer.innerHTML = '';
                 resultsContainer.classList.remove('hidden');
 
@@ -288,11 +296,28 @@ document.addEventListener('DOMContentLoaded', function () {
                         resultDiv.innerHTML = `<div class="font-semibold">${contact.nama}</div><div class="text-xs text-gray-500">${contact.no_hp}</div>`;
                         
                         resultDiv.addEventListener('click', () => {
+                            console.log(`[${prefix}] Kontak dipilih:`, contact);
+                            document.getElementById(`${prefix}_id`).value = contact.id || '';
                             document.getElementById(`${prefix}_name`).value = contact.nama || '';
                             document.getElementById(`${prefix}_phone`).value = contact.no_hp || '';
                             document.getElementById(`${prefix}_address`).value = contact.alamat || '';
-                            document.getElementById(`${prefix}_address_search`).value = [contact.village, contact.district, contact.regency, contact.postal_code].filter(Boolean).join(', ');
+                            
+                            document.getElementById(`${prefix}_province`).value = contact.province || '';
+                            document.getElementById(`${prefix}_regency`).value = contact.regency || '';
+                            document.getElementById(`${prefix}_district`).value = contact.district || '';
+                            document.getElementById(`${prefix}_village`).value = contact.village || '';
+                            document.getElementById(`${prefix}_postal_code`).value = contact.postal_code || '';
+                            
+                            const kiriminAjaSearchString = [contact.village, contact.district, contact.regency, contact.postal_code].filter(Boolean).join(', ');
+                            const addressSearchInput = document.getElementById(`${prefix}_address_search`);
+                            addressSearchInput.value = kiriminAjaSearchString;
+
                             resultsContainer.classList.add('hidden');
+
+                            if (kiriminAjaSearchString) {
+                                // Panggil pencarian alamat dengan data kontak untuk pencocokan
+                                performAddressSearch(prefix, kiriminAjaSearchString, contact);
+                            }
                         });
                         resultsContainer.appendChild(resultDiv);
                     });
@@ -300,20 +325,45 @@ document.addEventListener('DOMContentLoaded', function () {
                     resultsContainer.innerHTML = '<div class="p-3 text-gray-500">Kontak tidak ditemukan.</div>';
                 }
             } catch (error) {
-                console.error(`Gagal mencari kontak:`, error);
-                resultsContainer.innerHTML = `<div class="p-3 text-red-500">Gagal memuat data.</div>`;
+                console.error(`[${prefix}] Gagal melakukan pencarian kontak:`, error);
+                resultsContainer.classList.remove('hidden');
+                resultsContainer.innerHTML = `<div class="p-3 text-red-500">Gagal memuat data. Periksa koneksi atau log server.</div>`;
             }
         };
-        searchInput.addEventListener('input', debounce(() => performSearch(searchInput.value), 400));
+
+        nameInput.addEventListener('input', debounce(() => performSearch(nameInput.value), 400));
+        phoneInput.addEventListener('input', debounce(() => performSearch(phoneInput.value), 400));
+    }
+    
+    // --- FUNGSI UNTUK MEMILIH ALAMAT DAN UPDATE UI ---
+    function selectAddress(prefix, item) {
+        const searchInput = document.getElementById(`${prefix}_address_search`);
+        const resultsContainer = document.getElementById(`${prefix}_address_results`);
+        const checkIcon = document.getElementById(`${prefix}_address_check`);
+
+        searchInput.value = item.full_address;
+        const parts = item.full_address.split(',').map(s => s.trim());
+        document.getElementById(`${prefix}_village`).value = parts[0] || '';
+        document.getElementById(`${prefix}_district`).value = parts[1] || '';
+        document.getElementById(`${prefix}_regency`).value = parts[2] || '';
+        document.getElementById(`${prefix}_province`).value = parts[3] || '';
+        document.getElementById(`${prefix}_postal_code`).value = parts[4] || '';
+        document.getElementById(`${prefix}_district_id`).value = item.district_id;
+        document.getElementById(`${prefix}_subdistrict_id`).value = item.subdistrict_id;
+
+        resultsContainer.classList.add('hidden');
+        checkIcon.classList.remove('hidden');
     }
 
-    // --- FUNGSI PENCARIAN ALAMAT ---
-    async function performAddressSearch(prefix, query) {
+    // --- FUNGSI PENCARIAN ALAMAT ONGKIR (KIRIMIN AJA API) ---
+    async function performAddressSearch(prefix, query, contactToMatch = null) {
         const resultsContainer = document.getElementById(`${prefix}_address_results`);
+        
         if (query.length < 3) { 
             resultsContainer.classList.add('hidden'); 
             return; 
         }
+
         try {
             const response = await fetch(`{{ route('api.address.search') }}?search=${encodeURIComponent(query)}`);
             if (!response.ok) throw new Error('Network response error');
@@ -323,11 +373,42 @@ document.addEventListener('DOMContentLoaded', function () {
             resultsContainer.classList.remove('hidden');
 
             if (data && data.length > 0) {
+                // --- BARU: Logika untuk "auto-enter" jika ada kecocokan persis dari data kontak ---
+                if (contactToMatch) {
+                    const exactMatch = data.find(item => {
+                        const normalizedApiAddress = item.full_address.toLowerCase();
+                        const village = (contactToMatch.village || '').toLowerCase();
+                        const district = (contactToMatch.district || '').toLowerCase();
+                        const regency = (contactToMatch.regency || '').toLowerCase().replace('kabupaten ', '').replace('kota ', '');
+                        const postalCode = (contactToMatch.postal_code || '');
+
+                        // Memastikan semua bagian dari kontak ada di dalam hasil API
+                        return village && district && regency && postalCode &&
+                               normalizedApiAddress.includes(village) &&
+                               normalizedApiAddress.includes(district) &&
+                               normalizedApiAddress.includes(regency) &&
+                               normalizedApiAddress.includes(postalCode);
+                    });
+
+                    if (exactMatch) {
+                        selectAddress(prefix, exactMatch); // Auto-select kecocokan persis
+                        return; // Hentikan proses, jangan tampilkan dropdown
+                    }
+                }
+
+                // Fallback jika tidak ada `contactToMatch` atau tidak ada kecocokan persis
+                if (data.length === 1) {
+                    selectAddress(prefix, data[0]);
+                    return;
+                }
+
                 data.forEach(item => {
                     const resultDiv = document.createElement('div');
                     resultDiv.className = 'p-3 border-b hover:bg-gray-100 cursor-pointer text-sm';
                     resultDiv.innerHTML = `<div class="font-semibold">${item.full_address}</div>`;
-                    resultDiv.addEventListener('click', () => selectAddress(prefix, item));
+                    resultDiv.addEventListener('click', () => {
+                        selectAddress(prefix, item);
+                    });
                     resultsContainer.appendChild(resultDiv);
                 });
             } else {
@@ -338,19 +419,28 @@ document.addEventListener('DOMContentLoaded', function () {
             resultsContainer.innerHTML = '<div class="p-3 text-red-500">Gagal memuat data alamat.</div>';
         }
     }
-
-    // --- FUNGSI MEMILIH ALAMAT ---
-    function selectAddress(prefix, item) {
-        document.getElementById(`${prefix}_address_search`).value = item.full_address;
-        document.getElementById(`${prefix}_district_id`).value = item.district_id;
-        document.getElementById(`${prefix}_subdistrict_id`).value = item.subdistrict_id;
-        document.getElementById(`${prefix}_address_check`).classList.remove('hidden');
-        document.getElementById(`${prefix}_address_results`).classList.add('hidden');
+    
+    // --- SETUP PENCARIAN ALAMAT ---
+    function setupAddressSearch(prefix) {
+        const searchInput = document.getElementById(`${prefix}_address_search`);
+        const checkIcon = document.getElementById(`${prefix}_address_check`);
+        
+        searchInput.addEventListener('input', debounce(() => {
+            checkIcon.classList.add('hidden');
+            // Saat user mengetik manual, tidak ada `contactToMatch`
+            performAddressSearch(prefix, searchInput.value, null);
+        }, 400));
     }
     
+    // --- INISIALISASI ---
+    setupContactSearch('sender');
+    setupContactSearch('receiver');
+    setupAddressSearch('sender');
+    setupAddressSearch('receiver');
+
     // --- FUNGSI CEK ONGKIR ---
     async function runCekOngkir() {
-        const requiredFields = { '#sender_subdistrict_id': 'Alamat Pengirim', '#receiver_subdistrict_id': 'Alamat Penerima', '#item_price': 'Harga Barang', '#weight': 'Berat', '#service_type': 'Jenis Layanan' };
+        const requiredFields = { '#sender_subdistrict_id': 'Alamat Pengirim', '#receiver_subdistrict_id': 'Alamat Penerima', '#item_price': 'Harga Barang', '#weight': 'Berat', '#service_type': 'Jenis Layanan', '#ansuransi': 'Asuransi' };
         let missing = Object.keys(requiredFields).filter(s => !document.querySelector(s).value);
         if (missing.length > 0) {
             Swal.fire('Data Belum Lengkap', 'Harap lengkapi: ' + missing.map(s => requiredFields[s]).join(', '), 'warning');
@@ -374,30 +464,38 @@ document.addEventListener('DOMContentLoaded', function () {
             ongkirModalBody.innerHTML = '';
             let results = (res.results || []).concat((res.result || []).flatMap(v => v.costs.map(c => ({...c, service: v.name, service_name: `${v.name.toUpperCase()} - ${c.service_type}`, cost: c.price.total_price, etd: c.estimation || '-', setting: c.setting || {}, insurance: c.price.insurance_fee || 0, cod: c.cod }))));
             if (results.length === 0) {
-                ongkirModalBody.innerHTML = '<div class="bg-yellow-100 text-yellow-800 p-4 rounded-md text-center">Layanan pengiriman tidak ditemukan.</div>';
+                ongkirModalBody.innerHTML = '<div class="bg-yellow-100 text-yellow-800 p-4 rounded-md text-center">Layanan pengiriman tidak ditemukan. Cek kembali alamat dan jenis layanan.</div>';
                 return;
             }
 
             results.sort((a, b) => a.cost - b.cost).forEach(item => {
-                const value = `${document.getElementById('service_type').value}-${item.service}-${item.service_type}-${item.cost}-${item.insurance}-${item.setting?.cod_fee_amount || 0}`;
+                const isCod = item.cod;
+                const insuranceFee = item.insurance || 0;
+                const codFee = item.setting?.cod_fee_amount || 0;
+                const value = `${document.getElementById('service_type').value}-${item.service}-${item.service_type}-${item.cost}-${insuranceFee}-${codFee}`;
                 let details = `<small class="text-gray-500 block">Estimasi: ${item.etd}</small>`;
-                if (item.insurance > 0) details += `<small class="text-gray-500 block">Asuransi: ${formatRupiah(item.insurance)}</small>`;
-                if (item.cod) details += `<small class="text-green-600 font-bold block">COD Tersedia</small>`;
+                if (document.getElementById('ansuransi').value == 'iya' && insuranceFee > 0) details += `<small class="text-gray-500 block">Asuransi: ${formatRupiah(insuranceFee)}</small>`;
+                if (isCod && codFee > 0) details += `<small class="text-gray-500 block">Biaya COD: ${formatRupiah(codFee)}</small>`;
+                if (isCod) details += `<small class="text-green-600 font-bold block">COD Tersedia</small>`;
                 
                 const card = document.createElement('div');
                 card.className = 'border rounded-lg mb-3 shadow-sm';
                 card.innerHTML = `
                     <div class="p-4 flex justify-between items-center">
                         <div class="flex items-center">
-                            <img src="/storage/logo-ekspedisi/${item.service.toLowerCase().replace(/\s+/g, '')}.png" class="w-16 h-auto mr-4 object-contain" onerror="this.src='https://placehold.co/100x40?text=${item.service}'">
-                            <div><h6 class="font-bold text-gray-800">${item.service_name}</h6>${details}</div>
+                            <img src="{{ asset('storage/logo-ekspedisi/') }}/${item.service.toLowerCase().replace(/\s+/g, '')}.png" class="w-16 h-auto mr-4 object-contain" onerror="this.src='https://placehold.co/100x40?text=${item.service}'">
+                            <div>
+                                <h6 class="font-bold text-gray-800">${item.service_name}</h6>
+                                ${details}
+                            </div>
                         </div>
                         <div class="text-right">
                             <small class="text-gray-500">Ongkir</small>
                             <strong class="block text-lg text-red-600">${formatRupiah(item.cost)}</strong>
-                            <button type="button" class="select-ongkir-btn mt-1 bg-indigo-600 text-white px-3 py-1 rounded-md hover:bg-indigo-700 text-sm" data-value="${value}" data-display="${item.service_name}" data-cod-supported="${item.cod}">Pilih</button>
+                            <button type="button" class="select-ongkir-btn mt-1 bg-indigo-600 text-white px-3 py-1 rounded-md hover:bg-indigo-700 text-sm" data-value="${value}" data-display="${item.service_name}" data-cod-supported="${isCod}">Pilih</button>
                         </div>
-                    </div>`;
+                    </div>
+                `;
                 ongkirModalBody.appendChild(card);
             });
         } catch (error) {
@@ -407,20 +505,13 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // --- EVENT LISTENERS ---
-    setupContactSearch('sender');
-    setupContactSearch('receiver');
-    ['sender', 'receiver'].forEach(prefix => {
-        const searchInput = document.getElementById(`${prefix}_address_search`);
-        searchInput.addEventListener('input', debounce(() => {
-            document.getElementById(`${prefix}_address_check`).classList.add('hidden');
-            performAddressSearch(prefix, searchInput.value);
-        }, 400));
-    });
     document.getElementById('selected_expedition_display').addEventListener('click', runCekOngkir);
+
     ongkirModalEl.addEventListener('click', function(e) {
         if (e.target.classList.contains('select-ongkir-btn')) {
             document.getElementById('expedition').value = e.target.dataset.value;
             document.getElementById('selected_expedition_display').value = e.target.dataset.display;
+            
             const codOptions = document.querySelectorAll('.cod-payment-option');
             if (e.target.dataset.codSupported === 'true') {
                 codOptions.forEach(opt => opt.style.display = 'flex');
@@ -435,27 +526,60 @@ document.addEventListener('DOMContentLoaded', function () {
             ongkirModalEl.classList.add('hidden');
         }
     });
+
     document.getElementById('paymentMethodButton').addEventListener('click', () => paymentModalEl.classList.remove('hidden'));
+
     document.querySelectorAll('.payment-option').forEach(item => {
         item.addEventListener('click', function() {
             document.getElementById('payment_method').value = this.dataset.value;
             document.getElementById('selectedPaymentName').textContent = this.dataset.label;
             document.getElementById('selectedPaymentLogo').src = this.querySelector('img').src;
+            
+            document.querySelectorAll('.payment-option').forEach(opt => opt.classList.remove('bg-indigo-50'));
+            this.classList.add('bg-indigo-50');
+            
             paymentModalEl.classList.add('hidden');
         });
     });
-    document.querySelectorAll('.close-modal-btn').forEach(btn => btn.addEventListener('click', () => {
-        ongkirModalEl.classList.add('hidden');
-        paymentModalEl.classList.add('hidden');
-    }));
+
+    document.querySelectorAll('.close-modal-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            ongkirModalEl.classList.add('hidden');
+            paymentModalEl.classList.add('hidden');
+        });
+    });
+
+    document.querySelectorAll('input, select, textarea').forEach(el => {
+        if(el.type !== 'hidden' && !el.classList.contains('select-ongkir-btn')){
+             el.addEventListener('change', () => {
+                 document.getElementById('expedition').value = '';
+                 document.getElementById('selected_expedition_display').value = '';
+                 document.getElementById('selected_expedition_display').placeholder = 'Data berubah, klik untuk cek ulang';
+             });
+        }
+    });
+
     document.getElementById('confirmBtn').addEventListener('click', (e) => {
         e.preventDefault();
         const form = document.getElementById('orderForm');
-        if (!form.checkValidity()) {
+        const expedition = document.getElementById('expedition').value;
+        const paymentMethod = document.getElementById('payment_method').value;
+
+        if (!form.checkValidity() || !expedition || !paymentMethod) {
             form.reportValidity();
-            Swal.fire('Peringatan', 'Harap lengkapi semua field yang wajib diisi.', 'warning');
+            let missingFields = [];
+            if (!expedition) missingFields.push('Ekspedisi');
+            if (!paymentMethod) missingFields.push('Metode Pembayaran');
+
+            let message = 'Harap lengkapi semua field yang wajib diisi.';
+            if (missingFields.length > 0) {
+                message += ` Anda belum memilih: ${missingFields.join(', ')}.`;
+            }
+
+            Swal.fire('Peringatan', message, 'warning');
             return;
         }
+
         Swal.fire({
             title: 'Konfirmasi Pesanan',
             text: "Apakah semua data sudah benar?",
@@ -467,14 +591,32 @@ document.addEventListener('DOMContentLoaded', function () {
             cancelButtonText: 'Batal'
         }).then((result) => {
             if (result.isConfirmed) {
-                document.getElementById('confirmBtn').disabled = true;
-                document.getElementById('confirmBtn').innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>Memproses...`;
+                const confirmBtn = document.getElementById('confirmBtn');
+                confirmBtn.disabled = true;
+                confirmBtn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>Memproses...`;
                 form.submit();
             }
         });
     });
+
     document.querySelectorAll('.cod-payment-option').forEach(opt => opt.style.display = 'none');
+
+    document.addEventListener('click', function(event) {
+        if (!event.target.closest('#sender_address_search, #sender_address_results')) {
+            document.getElementById('sender_address_results').classList.add('hidden');
+        }
+        if (!event.target.closest('#receiver_address_search, #receiver_address_results')) {
+            document.getElementById('receiver_address_results').classList.add('hidden');
+        }
+        if (!event.target.closest('#sender_name, #sender_contact_results, #sender_phone')) {
+            document.getElementById('sender_contact_results').classList.add('hidden');
+        }
+        if (!event.target.closest('#receiver_name, #receiver_contact_results, #receiver_phone')) {
+            document.getElementById('receiver_contact_results').classList.add('hidden');
+        }
+    });
 });
 </script>
 @endpush
+
 
