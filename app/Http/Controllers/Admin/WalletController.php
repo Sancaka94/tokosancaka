@@ -15,9 +15,9 @@ class WalletController extends Controller
      */
     public function index()
     {
-        // ✅ PERBAIKAN: Menampilkan semua pengguna di tabel awal sesuai permintaan.
-        $users = User::orderBy('nama_lengkap', 'asc')->paginate(15);
-        return view('admin.wallet.index', compact('users'));
+        // ✅ FIX: Menyesuaikan nama variabel dari '$users' menjadi '$pengguna' agar cocok dengan view.
+        $pengguna = User::orderBy('nama_lengkap', 'asc')->paginate(15);
+        return view('admin.wallet.index', compact('pengguna'));
     }
 
     /**
