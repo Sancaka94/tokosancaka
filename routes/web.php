@@ -117,7 +117,10 @@ Route::get('/kontak/search', [KontakController::class, 'search'])->name('api.sea
     // Route untuk memproses form top up dari halaman wallet
     Route::post('/wallet/topup', [WalletController::class, 'topup'])->name('wallet.topup');
 
-
+    // Route untuk halaman profil. Ganti view() dengan controller jika perlu.
+    Route::get('/user/profile', function () {
+        return view('profile.show'); // Arahkan ke view profil Anda
+    })->name('profile.show');
 // =========================================================================
 
 // == PUBLIC & AUTHENTICATION ROUTES
