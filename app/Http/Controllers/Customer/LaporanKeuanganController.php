@@ -5,10 +5,10 @@ namespace App\Http\Controllers\Customer;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB; // ✅ 1. Import DB Facade untuk query gabungan
+use Illuminate\Support\Facades\DB;
 use App\Models\Transaction;
 use Carbon\Carbon;
-use Illuminate\Pagination\LengthAwarePaginator; // ✅ 2. Import untuk paginasi manual
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class LaporanKeuanganController extends Controller
 {
@@ -56,15 +56,28 @@ class LaporanKeuanganController extends Controller
         
         $results = $transactionsQuery->get();
 
-        // ✅ FIX: Konversi string tanggal menjadi objek Carbon setelah diambil dari DB.
-        // Ini akan memperbaiki error "Call to a member function format() on string" di view.
+        // Konversi string tanggal menjadi objek Carbon
         $results->transform(function ($item) {
             $item->created_at = Carbon::parse($item->created_at);
             return $item;
         });
 
-        // --- Perhitungan Ulang Total Pemasukan & Pengeluaran Berdasarkan Hasil Gabungan ---
-        // Ini memastikan angka di ringkasan cocok dengan data yang ditampilkan di tabel.
+        // ✅ PENYEMPURNAAN: Menghitung sisa saldo berjalan untuk setiap transaksi
+        $runningBalance = $saldoSaatIni;
+        $results->transform(function ($item) use (&$runningBalance) {
+            // Saldo yang ditampilkan adalah saldo SETELAH transaksi ini terjadi.
+            $item->running_balance = $runningBalance;
+
+            // Hitung mundur saldo untuk transaksi SEBELUMNYA (yang lebih lama).
+            if ($item->type === 'topup') {
+                $runningBalance -= (float)$item->amount; // Kurangi karena ini pemasukan
+            } else { // 'withdrawal' or 'payment'
+                $runningBalance += (float)$item->amount; // Tambah karena ini pengeluaran
+            }
+            return $item;
+        });
+
+        // --- Perhitungan Total Pemasukan & Pengeluaran Berdasarkan Hasil Gabungan ---
         $totalPemasukan = $results->where('type', 'topup')->sum('amount');
         $totalPengeluaran = $results->whereIn('type', ['withdrawal', 'payment'])->sum('amount');
         
