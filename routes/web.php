@@ -121,6 +121,10 @@ Route::get('/kontak/search', [KontakController::class, 'search'])->name('api.sea
     Route::get('/user/profile', function () {
         return view('profile.show'); // Arahkan ke view profil Anda
     })->name('profile.show');
+
+     // TAMBAHKAN ROUTE INI
+    Route::get('/wallet/search', [WalletController::class, 'search'])->name('wallet.search');
+
 // =========================================================================
 
 // == PUBLIC & AUTHENTICATION ROUTES
