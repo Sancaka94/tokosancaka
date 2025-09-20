@@ -12,6 +12,7 @@ use App\Models\Setting;
 use App\Models\Store;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
+use App\Http\View\Composers\CustomerLayoutComposer;
 
 class DashboardController extends Controller
 {
