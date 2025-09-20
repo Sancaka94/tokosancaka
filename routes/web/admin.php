@@ -451,11 +451,6 @@ Route::prefix('customer-to-seller')->name('customer-to-seller.')->group(function
     Route::post('/{user}', [CustomerController::class, 'storeStore'])->name('store');
 
 });
-
-Route::get('/settings', function () {
-        return view('admin.settings');
-    })->name('settings');   
-
     
 
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
