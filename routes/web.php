@@ -308,7 +308,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])
           // TAMBAHKAN ROUTE INI UNTUK HALAMAN PENGATURAN
     Route::get('/settings', function () {
         return view('admin.settings');
-    })->name('settings');
+    })->name('settings.index');
 
      // --- MANAJEMEN WILAYAH TERINTEGRASI ---
 
