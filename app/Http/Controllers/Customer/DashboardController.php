@@ -24,15 +24,15 @@ class DashboardController extends Controller
         $customerId = $customer->id_pengguna;
 
         // --- PENGAMBILAN DATA STATISTIK ---
-        // ✅ DI sempurnakan: Mengambil saldo langsung dari data user, lebih akurat dan efisien.
         $saldo = $customer->saldo;
         
         $semuaPesananQuery = Pesanan::where('id_pengguna_pembeli', $customerId);
 
         $totalPesanan = (clone $semuaPesananQuery)->count();
         $pesananSelesai = (clone $semuaPesananQuery)->where('status_pesanan', 'Tiba di Tujuan')->count();
-        // ✅ DI sempurnakan: Menggunakan status pembayaran untuk pending
-        $pesananPending = (clone $semuaPesananQuery)->where('status_pembayaran', 'Belum Dibayar')->count();
+        
+        // ✅ FIX: Menggunakan kolom 'status_pesanan' yang benar, bukan 'status_pembayaran'.
+        $pesananPending = (clone $semuaPesananQuery)->whereIn('status_pesanan', ['pending', 'Menunggu Pembayaran'])->count();
         
         $recentOrders = (clone $semuaPesananQuery)->latest('tanggal_pesanan')->take(5)->get();
         
@@ -69,7 +69,6 @@ class DashboardController extends Controller
      */
     private function getOrderChartData($customerId)
     {
-        // ✅ DI sempurnakan: Satu query untuk mengambil semua data, jauh lebih cepat.
         $orderData = Pesanan::where('id_pengguna_pembeli', $customerId)
             ->where('tanggal_pesanan', '>=', Carbon::now()->subDays(6)->startOfDay())
             ->select(DB::raw('DATE(tanggal_pesanan) as date'), DB::raw('count(*) as count'))
@@ -93,7 +92,6 @@ class DashboardController extends Controller
      */
     private function getSpxScanChartData($customerId)
     {
-        // ✅ DI sempurnakan: Satu query untuk mengambil semua data.
         $spxData = ScannedPackage::where('user_id', $customerId)
             ->where('created_at', '>=', Carbon::now()->subDays(6)->startOfDay())
             ->select(DB::raw('DATE(created_at) as date'), DB::raw('count(*) as count'))
@@ -119,7 +117,6 @@ class DashboardController extends Controller
      */
     public function showSellerRegistrationForm()
     {
-        // Pengecekan relasi 'store' pada user
         if (Auth::user()->store) {
             return redirect()->route('customer.dashboard')->with('info', 'Anda sudah terdaftar sebagai seller.');
         }
@@ -136,7 +133,6 @@ class DashboardController extends Controller
             'description' => ['required', 'string', 'min:20'],
         ]);
 
-        // 1. Buat toko baru
         Store::create([
             'user_id' => Auth::id(),
             'name' => $request->name,
@@ -144,7 +140,6 @@ class DashboardController extends Controller
             'description' => $request->description,
         ]);
 
-        // 2. Update role user dari 'Pelanggan' menjadi 'Seller'
         $user = Auth::user();
         $user->role = 'Seller';
         $user->save();

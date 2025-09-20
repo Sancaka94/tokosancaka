@@ -19,7 +19,6 @@
 
     <!-- Slider (jika ada) -->
     @if(!empty($slides))
-    {{-- ✅ DIKEMBALIKAN: Kode slider dikembalikan ke versi semula dengan efek blur --}}
     <div x-data="{ activeSlide: 0, slides: {{ json_encode($slides) }} }"
          x-init="if (slides.length > 1) { setInterval(() => { activeSlide = (activeSlide + 1) % slides.length }, 5000) }"
          class="relative w-full rounded-xl shadow-lg overflow-hidden">
