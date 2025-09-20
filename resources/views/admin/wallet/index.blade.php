@@ -58,7 +58,7 @@
     <!-- Judul dan Form Pencarian Tabel -->
     <div class="flex flex-col md:flex-row items-center justify-between mb-4">
         <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4 md:mb-0">Daftar Saldo Pelanggan</h2>
-        <form action="{{ route('wallet.index') }}" method="GET">
+        <form action="{{ route('admin.wallet.index') }}" method="GET">
             <div class="flex items-center">
                 <input type="text" name="search" placeholder="Cari nama atau email..." class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-l-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600" value="{{ request('search') }}">
                 <button type="submit" class="p-2.5 text-sm font-medium text-white bg-indigo-600 rounded-r-lg border border-indigo-600 hover:bg-indigo-700">
