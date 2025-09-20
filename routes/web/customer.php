@@ -114,7 +114,7 @@ Route::middleware([EnsureProfileIsSetup::class])->group(function () {
 
         Route::get('/{invoice_number}', [CustomerPesananController::class, 'checkout'])->name('checkout');
 
-        Route::get('/kontak/search', [KontakController::class, 'search'])->name('kontak.search');  
+         
 
     });
 

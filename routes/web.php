@@ -230,7 +230,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Pelanggan|Seller'])
 
         require __DIR__.'/web/customer.php';
 
-        
+        Route::get('/kontak/search', [KontakController::class, 'search'])->name('kontak.search'); 
 
         // Customer Chat
 
@@ -627,7 +627,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Pelanggan|Seller'])
 
 
 
-        
+        Route::get('/kontak/search', [KontakController::class, 'search'])->name('kontak.search'); 
 
         // Chat Pelanggan
 
