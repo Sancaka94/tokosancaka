@@ -125,6 +125,11 @@ Route::get('/kontak/search', [KontakController::class, 'search'])->name('api.sea
      // TAMBAHKAN ROUTE INI
     Route::get('/wallet/search', [WalletController::class, 'search'])->name('wallet.search');
 
+    
+Route::get('/admin/settings', function () {
+    return view('admin.settings');
+})->name('admin.settings');
+
 // =========================================================================
 
 // == PUBLIC & AUTHENTICATION ROUTES
