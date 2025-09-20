@@ -70,6 +70,7 @@
                         @forelse ($transactions as $tx)
                             <tr>
                                 <td class="whitespace-nowrap px-6 py-4 text-sm text-slate-500">
+                                    {{-- Kode ini aman karena controller sudah memastikan $tx->created_at adalah objek Carbon --}}
                                     <div>{{ $tx->created_at->format('d M Y') }}</div>
                                     <div class="text-xs text-slate-400">{{ $tx->created_at->format('H:i') }} WIB</div>
                                 </td>
@@ -99,12 +100,22 @@
                             </tr>
                         @endforelse
                     </tbody>
+                    {{-- Menampilkan Saldo Awal hanya jika ada filter tanggal yang aktif --}}
+                    @if($startDate && $endDate)
+                    <tfoot class="bg-slate-50 border-t-2 border-slate-300">
+                        <tr>
+                            <td colspan="3" class="px-6 py-3 text-right text-sm font-semibold text-slate-600">Saldo Awal Periode (sebelum {{ \Carbon\Carbon::parse($startDate)->format('d M Y') }})</td>
+                            <td class="px-6 py-3 text-right text-sm font-bold text-slate-800">Rp {{ number_format($saldoAwal, 0, ',', '.') }}</td>
+                        </tr>
+                    </tfoot>
+                    @endif
                 </table>
             </div>
             
             @if ($transactions->hasPages())
                 <div class="border-t border-slate-200 bg-white px-4 py-3 sm:px-6">
-                    {{ $transactions->links() }}
+                    {{-- Menambahkan appends agar filter tetap aktif saat paginasi --}}
+                    {{ $transactions->appends(request()->query())->links() }}
                 </div>
             @endif
         </div>
