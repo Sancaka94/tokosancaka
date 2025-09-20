@@ -198,7 +198,7 @@ class PesananController extends Controller
 
             
 
-             $subtotal = $validatedData['item_price'];
+            $subtotal = $validatedData['item_price'];
 
     
 
@@ -326,12 +326,17 @@ class PesananController extends Controller
 
             $pesanan = Pesanan::create($pesananData);
 
-    
+    // 👇 Ganti kode lama dengan blok ini 👇
+$expeditionParts = explode('-', $validatedData['expedition']);
 
-            $expedition = $request->expedition; 
+$type          = $expeditionParts[0] ?? 'unknown';
+$service       = $expeditionParts[1] ?? null;
+$service_type  = $expeditionParts[2] ?? null;
+$cost          = (int)($expeditionParts[3] ?? 0);
+$ansuransi_fee = (int)($expeditionParts[4] ?? 0);
+$cod_fee       = (int)($expeditionParts[5] ?? 0);
 
-            $parts = explode('-', $expedition);
-
+$shipping_cost = $cost;
             
 
             $type = $parts[0];
@@ -370,7 +375,7 @@ class PesananController extends Controller
 
                 $cod_fee      = isset($parts[4]) ? (int)$parts[4] : 0;
 
-              $ansuransi_fee      =  0;
+                $ansuransi_fee      =  0;
 
                 $adminfee      = isset($parts[5]) ? (int)$parts[5] : 0;
 
