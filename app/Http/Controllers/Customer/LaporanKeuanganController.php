@@ -3,50 +3,79 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request; // ✅ 1. Tambahkan Request untuk menerima input filter
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB; // ✅ 1. Import DB Facade untuk query gabungan
 use App\Models\Transaction;
-use Carbon\Carbon; // ✅ 2. Tambahkan Carbon untuk memanipulasi tanggal
+use Carbon\Carbon;
+use Illuminate\Pagination\LengthAwarePaginator; // ✅ 2. Import untuk paginasi manual
 
 class LaporanKeuanganController extends Controller
 {
     /**
      * Menampilkan halaman laporan keuangan yang disempurnakan dengan filter tanggal.
+     * Menggabungkan data dari tabel 'transactions' dan 'Pesanan' untuk riwayat yang lengkap.
      */
-    public function index(Request $request) // ✅ 3. Terima objek Request
+    public function index(Request $request)
     {
-        // Dapatkan pengguna yang sedang terautentikasi
         $user = Auth::user();
+        $userId = $user->id_pengguna;
 
-        // Ambil saldo saat ini langsung dari tabel pengguna (ini adalah total saldo, tidak terpengaruh filter)
+        // Saldo saat ini tetap diambil langsung dari user, ini adalah sumber paling akurat.
         $saldoSaatIni = $user->saldo;
 
-        // ✅ 4. Siapkan query dasar untuk transaksi pengguna
-        $transactionQuery = Transaction::where('user_id', $user->id_pengguna);
+        // --- Filter Tanggal ---
+        $startDate = $request->filled('start_date') ? Carbon::parse($request->input('start_date'))->startOfDay() : null;
+        $endDate = $request->filled('end_date') ? Carbon::parse($request->input('end_date'))->endOfDay() : null;
 
-        // ✅ 5. Terapkan filter tanggal jika ada input dari pengguna
-        if ($request->filled('start_date') && $request->filled('end_date')) {
-            $startDate = Carbon::parse($request->input('start_date'))->startOfDay();
-            $endDate = Carbon::parse($request->input('end_date'))->endOfDay();
-            $transactionQuery->whereBetween('created_at', [$startDate, $endDate]);
+        // --- Query untuk Riwayat Transaksi ---
+
+        // 1. Data dari tabel 'transactions' (Top up / Pengurangan oleh Admin)
+        $generalTransactions = DB::table('transactions')
+            ->where('user_id', $userId)
+            ->select('created_at', 'description', 'type', 'amount');
+
+        // 2. Data dari tabel 'Pesanan' (Pembayaran untuk pesanan)
+        $orderPayments = DB::table('Pesanan')
+            ->where('id_pengguna_pembeli', $userId)
+            ->select(
+                'tanggal_pesanan as created_at',
+                DB::raw("CONCAT('Pembayaran Pesanan #', nomor_invoice) as description"),
+                DB::raw("'payment' as type"),
+                'total_harga_barang as amount'
+            );
+
+        // Terapkan filter tanggal ke setiap sub-query jika ada
+        if ($startDate && $endDate) {
+            $generalTransactions->whereBetween('created_at', [$startDate, $endDate]);
+            $orderPayments->whereBetween('tanggal_pesanan', [$startDate, $endDate]);
         }
 
-        // ✅ 6. Lakukan perhitungan berdasarkan query yang sudah difilter
-        // Mengkloning query agar filter tidak tumpang tindih untuk perhitungan yang berbeda.
-        $totalPemasukan = (clone $transactionQuery)->where('type', 'topup')->sum('amount');
-        $totalPengeluaran = (clone $transactionQuery)->whereIn('type', ['withdrawal', 'payment'])->sum('amount');
+        // Gabungkan kedua sumber data dan urutkan berdasarkan tanggal terbaru
+        $transactionsQuery = $generalTransactions->unionAll($orderPayments)->orderBy('created_at', 'desc');
         
-        // ✅ 7. Ambil riwayat transaksi yang sudah difilter dengan paginasi
-        //    withQueryString() penting agar filter tanggal tetap aktif saat berpindah halaman.
-        $transactions = (clone $transactionQuery)->latest()->paginate(15)->withQueryString();
+        $results = $transactionsQuery->get();
 
-        // ✅ 8. Kirim semua data, termasuk tanggal filter, ke view
-        return view('customer.laporan.index', [
+        // --- Perhitungan Ulang Total Pemasukan & Pengeluaran Berdasarkan Hasil Gabungan ---
+        // Ini memastikan angka di ringkasan cocok dengan data yang ditampilkan di tabel.
+        $totalPemasukan = $results->where('type', 'topup')->sum('amount');
+        $totalPengeluaran = $results->whereIn('type', ['withdrawal', 'payment'])->sum('amount');
+        
+        // Paginasi Manual dari hasil query gabungan
+        $currentPage = LengthAwarePaginator::resolveCurrentPage();
+        $perPage = 15;
+        $currentPageResults = $results->slice(($currentPage - 1) * $perPage, $perPage)->all();
+        $transactions = new LengthAwarePaginator($currentPageResults, count($results), $perPage, $currentPage, [
+            'path' => LengthAwarePaginator::resolveCurrentPath(),
+        ]);
+        
+        // Kirim semua data, termasuk tanggal filter, ke view
+        return view('customer.laporan-keuangan', [
             'saldo'             => $saldoSaatIni,
             'totalPemasukan'    => $totalPemasukan,
             'totalPengeluaran'  => $totalPengeluaran,
             'transactions'      => $transactions,
-            'startDate'         => $request->input('start_date'), // Untuk mengisi kembali nilai di form filter
+            'startDate'         => $request->input('start_date'),
             'endDate'           => $request->input('end_date'),
         ]);
     }
