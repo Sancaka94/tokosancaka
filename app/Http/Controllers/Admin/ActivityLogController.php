@@ -41,7 +41,6 @@ class ActivityLogController extends Controller
                     'device' => $this->parseUserAgent($agent, $user->user_agent),
                     'latitude' => $user->latitude,
                     'longitude' => $user->longitude,
-                    // ✅ TAMBAHAN: Membuat URL Google Maps jika koordinat ada
                     'maps_url' => ($user->latitude && $user->longitude) ? "https://www.google.com/maps?q={$user->latitude},{$user->longitude}" : null,
                 ]);
             }
@@ -63,7 +62,6 @@ class ActivityLogController extends Controller
                     'device' => $this->parseUserAgent($agent, $order->user_agent),
                     'latitude' => $order->latitude,
                     'longitude' => $order->longitude,
-                    // ✅ TAMBAHAN: Membuat URL Google Maps jika koordinat ada
                     'maps_url' => ($order->latitude && $order->longitude) ? "https://www.google.com/maps?q={$order->latitude},{$order->longitude}" : null,
                 ]);
             }
@@ -85,7 +83,6 @@ class ActivityLogController extends Controller
                     'device' => $this->parseUserAgent($agent, $topUp->user_agent),
                     'latitude' => $topUp->latitude,
                     'longitude' => $topUp->longitude,
-                    // ✅ TAMBAHAN: Membuat URL Google Maps jika koordinat ada
                     'maps_url' => ($topUp->latitude && $topUp->longitude) ? "https://www.google.com/maps?q={$topUp->latitude},{$topUp->longitude}" : null,
                 ]);
             }
@@ -109,7 +106,6 @@ class ActivityLogController extends Controller
                     'device' => $this->parseUserAgent($agent, $scan->user_agent),
                     'latitude' => $scan->latitude,
                     'longitude' => $scan->longitude,
-                    // ✅ TAMBAHAN: Membuat URL Google Maps jika koordinat ada
                     'maps_url' => ($scan->latitude && $scan->longitude) ? "https://www.google.com/maps?q={$scan->latitude},{$scan->longitude}" : null,
                 ]);
             }
@@ -131,12 +127,12 @@ class ActivityLogController extends Controller
     }
 
     /**
-     * Mengambil log aktivitas terbaru untuk notifikasi header.
+     * ✅ DIPERBARUI: Mengambil 5 log aktivitas PALING BARU SECARA KESELURUHAN untuk notifikasi header.
      */
     public function getHeaderNotifications()
     {
         $allActivities = collect([]);
-        $limit = 5;
+        $limit = 5; // Batas pengambilan data untuk setiap jenis aktivitas
 
         // 1. Ambil pendaftaran pengguna terbaru
         $userRegistrations = User::latest()->take($limit)->get();
@@ -148,7 +144,6 @@ class ActivityLogController extends Controller
                     'details' => 'Mendaftar sebagai ' . $user->role,
                     'url' => route('admin.customers.edit', $user->id_pengguna),
                     'created_at' => $user->created_at,
-                    // ✅ TAMBAHAN: Membuat URL Google Maps jika koordinat ada
                     'maps_url' => ($user->latitude && $user->longitude) ? "https://www.google.com/maps?q={$user->latitude},{$user->longitude}" : null,
                 ]);
             }
@@ -164,7 +159,6 @@ class ActivityLogController extends Controller
                     'details' => 'Total: Rp ' . number_format($order->total_harga_barang, 0, ',', '.'),
                     'url' => route('admin.pesanan.show', $order->resi),
                     'created_at' => $order->created_at,
-                    // ✅ TAMBAHAN: Membuat URL Google Maps jika koordinat ada
                     'maps_url' => ($order->latitude && $order->longitude) ? "https://www.google.com/maps?q={$order->latitude},{$order->longitude}" : null,
                 ]);
             }
@@ -180,7 +174,6 @@ class ActivityLogController extends Controller
                     'details' => 'Jumlah: Rp ' . number_format($topUp->amount, 0, ',', '.'),
                     'url' => route('admin.saldo.requests.index'),
                     'created_at' => $topUp->created_at,
-                    // ✅ TAMBAHAN: Membuat URL Google Maps jika koordinat ada
                     'maps_url' => ($topUp->latitude && $topUp->longitude) ? "https://www.google.com/maps?q={$topUp->latitude},{$topUp->longitude}" : null,
                 ]);
             }
@@ -196,13 +189,13 @@ class ActivityLogController extends Controller
                     'details' => 'Resi: ' . $scan->resi_number,
                     'url' => route('admin.spx_scans.index'),
                     'created_at' => $scan->created_at,
-                    // ✅ TAMBAHAN: Membuat URL Google Maps jika koordinat ada
                     'maps_url' => ($scan->latitude && $scan->longitude) ? "https://www.google.com/maps?q={$scan->latitude},{$scan->longitude}" : null,
                 ]);
             }
         }
 
-        return $allActivities->sortByDesc('created_at');
+        // Urutkan semua aktivitas yang terkumpul dan AMBIL 5 YANG PALING BARU
+        return $allActivities->sortByDesc('created_at')->take(5);
     }
 
     /**
@@ -234,3 +227,4 @@ class ActivityLogController extends Controller
         return "$browserStr on $platformStr";
     }
 }
+
