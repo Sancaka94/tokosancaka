@@ -1,7 +1,7 @@
 <?php
 
 // ✅ 1. Namespace ini sekarang sudah pasti benar sesuai lokasi file.
-namespace App\View\Composers;
+namespace App\Http\View\Composers;
 
 use Illuminate\View\View;
 use Illuminate\Support\Facades\Auth;
