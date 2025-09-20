@@ -29,7 +29,7 @@
         border-radius: 0 0 0.5rem 0.5rem;
     }
     .select2-container--default .select2-results__option--highlighted[aria-selected] {
-        background-color: #4f46e5;
+        background-color: #ffffffff;
     }
     .dark .select2-container--default .select2-selection--single {
         background-color: #374151;
