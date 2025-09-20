@@ -4,7 +4,7 @@ namespace App\Providers;
 
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
-use App\View\Composers\CustomerLayoutComposer; // ✅ 1. Import composer customer yang benar
+use App\Http\View\Composers\CustomerLayoutComposer;
 use Illuminate\Support\Facades\DB;
 
 class ViewServiceProvider extends ServiceProvider
