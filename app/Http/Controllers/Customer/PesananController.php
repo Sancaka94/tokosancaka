@@ -30,6 +30,8 @@ use Illuminate\Support\Facades\Http;
 
 use App\Models\Kontak;
 
+use Illuminate\Support\Facades\Log; // ✅ 1. Menambahkan 'use' statement untuk Log
+
 
 
 class PesananController extends Controller
@@ -1608,31 +1610,41 @@ $senderWa = preg_replace('/^0/', '62', $validatedData['sender_phone']);
 
     
     /**
-     * ✅ DITAMBAHKAN & DISEMPURNAKAN: Menangani pencarian kontak via AJAX.
-     * Fungsi ini akan merespons permintaan dari JavaScript di halaman create pesanan.
+     * ✅ DIPERBARUI: Menggunakan kode baru Anda yang lebih canggih.
+     * Termasuk logging dan filter yang lebih baik untuk 'tipe' kontak.
      */
     public function searchKontak(Request $request)
     {
+        Log::info('API Search Kontak dipanggil dengan:', $request->all());
+
         $request->validate([
-            'search' => 'required|string|min:3',
-            'tipe'   => 'required|string|in:Pengirim,Penerima',
+            'search' => 'required|string|min:2',
+            'tipe'   => 'nullable|in:Pengirim,Penerima',
         ]);
 
         $searchTerm = $request->input('search');
-        $tipeKontak = $request->input('tipe');
+        $tipe = $request->input('tipe');
 
-        $kontaks = Kontak::where('tipe', $tipeKontak)
-            ->where(function ($query) use ($searchTerm) {
-                $query->where('nama', 'like', "%{$searchTerm}%")
-                      ->orWhere('no_hp', 'like', "%{$searchTerm}%");
-            })
-            ->select('id', 'nama', 'no_hp', 'alamat', 'province', 'regency', 'district', 'village', 'postal_code')
-            ->limit(10)
-            ->get();
+        $query = Kontak::query();
+
+        $query->where(function ($q) use ($searchTerm) {
+            $q->where(DB::raw('LOWER(nama)'), 'LIKE', '%' . strtolower($searchTerm) . '%')
+              ->orWhere('no_hp', 'LIKE', "%{$searchTerm}%");
+        });
+
+        if ($tipe) {
+            $query->where(function ($q) use ($tipe) {
+                $q->where('tipe', $tipe)
+                  ->orWhere('tipe', 'Keduanya');
+            });
+        }
+
+        Log::info('SQL Query untuk Pencarian Kontak:', ['sql' => $query->toSql(), 'bindings' => $query->getBindings()]);
+        $kontaks = $query->limit(10)->get();
+        Log::info('Kontak yang ditemukan:', ['count' => $kontaks->count()]);
 
         return response()->json($kontaks);
     }
-
 
 
 
