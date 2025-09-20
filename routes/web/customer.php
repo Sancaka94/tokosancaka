@@ -114,6 +114,8 @@ Route::middleware([EnsureProfileIsSetup::class])->group(function () {
 
         Route::get('/{invoice_number}', [CustomerPesananController::class, 'checkout'])->name('checkout');
 
+        Route::get('/kontak/search', [KontakController::class, 'search'])->name('kontak.search');  
+
     });
 
     Route::get('/pesanan/status', [CustomerOrderController::class, 'status'])->name('pesanan.status');
@@ -204,4 +206,3 @@ Route::middleware([EnsureProfileIsSetup::class])->group(function () {
 
 });
 
-Route::get('/kontak/search', [KontakController::class, 'search'])->name('kontak.search');  
