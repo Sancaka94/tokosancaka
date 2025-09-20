@@ -111,7 +111,10 @@ Route::get('/api/contacts/search', [PesananController::class, 'searchKontak'])->
 
 Route::get('/kontak/search', [KontakController::class, 'search'])->name('api.search.kontak');
 
-
+ Route::get('/wallet', function () {
+        // Ini hanya contoh, arahkan ke controller yang benar
+        return 'Halaman Wallet/Top Up'; 
+        })->name('wallet.index');
 
 
 // =========================================================================
@@ -290,10 +293,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])
 
         require __DIR__.'/web/admin.php';
 
-        Route::get('/wallet', function () {
-        // Ini hanya contoh, arahkan ke controller yang benar
-        return 'Halaman Wallet/Top Up'; 
-        })->name('wallet.index');
+       
         
 
      // --- MANAJEMEN WILAYAH TERINTEGRASI ---
