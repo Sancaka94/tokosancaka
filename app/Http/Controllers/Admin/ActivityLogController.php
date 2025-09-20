@@ -127,18 +127,13 @@ class ActivityLogController extends Controller
     }
 
     /**
-     * ✅ LENGKAP & DIPERBAIKI: Mengambil data dari 4 sumber (pendaftaran, pesanan, top up, scan)
-     * lalu mengurutkannya untuk menampilkan 5 notifikasi PALING BARU SECARA KESELURUHAN.
-     *
-     * Catatan: Jika satu jenis aktivitas (misalnya, scan) terjadi sangat sering,
-     * kemungkinan 5 notifikasi teratas semuanya adalah aktivitas scan. Ini adalah perilaku yang benar.
+     * ✅ DIPERBARUI: Mengambil 5 log aktivitas terbaru dari setiap kategori,
+     * lalu mengurutkan semuanya tanpa memotongnya lagi.
      */
     public function getHeaderNotifications()
     {
         $allActivities = collect([]);
         $limit = 5; // Batas pengambilan data awal untuk setiap jenis aktivitas agar efisien
-
-        // --- TAHAP 1: Mengumpulkan 5 aktivitas terbaru dari SETIAP KATEGORI ---
 
         // 1. Mengambil data PENDAFTARAN pengguna terbaru
         $userRegistrations = User::latest()->take($limit)->get();
@@ -200,8 +195,8 @@ class ActivityLogController extends Controller
             }
         }
 
-        // --- TAHAP 2: Mengurutkan semua data yang terkumpul dan mengambil HANYA 5 yang paling baru ---
-        return $allActivities->sortByDesc('created_at')->take(5);
+        // Urutkan semua aktivitas yang terkumpul (hingga 20 notifikasi) dan kembalikan semuanya.
+        return $allActivities->sortByDesc('created_at');
     }
 
     /**
