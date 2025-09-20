@@ -111,11 +111,13 @@ Route::get('/api/contacts/search', [PesananController::class, 'searchKontak'])->
 
 Route::get('/kontak/search', [KontakController::class, 'search'])->name('api.search.kontak');
 
-   // Route ini yang menyebabkan error karena belum terdaftar
-    Route::get('/wallet', [WalletController::class, 'index'])->name('wallet.index');
+        // TAMBAHKAN ROUTE INI JIKA BELUM ADA
+        Route::get('/wallet', [WalletController::class, 'index'])->name('wallet.index');
+        
+        // Anda mungkin juga memerlukan route lain untuk wallet
+        Route::post('/wallet/topup', [WalletController::class, 'topup'])->name('wallet.topup');
+        Route::get('/wallet/search', [WalletController::class, 'search'])->name('wallet.search');
 
-    // Route untuk memproses form top up dari halaman wallet
-    Route::post('/wallet/topup', [WalletController::class, 'topup'])->name('wallet.topup');
 
     // Route untuk halaman profil. Ganti view() dengan controller jika perlu.
     Route::get('/user/profile', function () {
