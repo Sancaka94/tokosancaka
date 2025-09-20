@@ -56,6 +56,13 @@ class LaporanKeuanganController extends Controller
         
         $results = $transactionsQuery->get();
 
+        // ✅ FIX: Konversi string tanggal menjadi objek Carbon setelah diambil dari DB.
+        // Ini akan memperbaiki error "Call to a member function format() on string" di view.
+        $results->transform(function ($item) {
+            $item->created_at = Carbon::parse($item->created_at);
+            return $item;
+        });
+
         // --- Perhitungan Ulang Total Pemasukan & Pengeluaran Berdasarkan Hasil Gabungan ---
         // Ini memastikan angka di ringkasan cocok dengan data yang ditampilkan di tabel.
         $totalPemasukan = $results->where('type', 'topup')->sum('amount');
