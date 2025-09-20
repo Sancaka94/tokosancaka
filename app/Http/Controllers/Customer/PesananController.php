@@ -188,8 +188,6 @@ class PesananController extends Controller
 
                 'payment_method'     => 'required|string',
 
-    
-
                 'kelengkapan'        => 'nullable|array',
 
                 'save_sender'        => 'nullable',
