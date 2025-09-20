@@ -61,7 +61,7 @@
                                         <div class="mt-1 flex justify-between items-center">
                                             <p class="text-xs text-gray-400 dark:text-gray-500">{{ $notification->created_at->diffForHumans() }}</p>
                                             
-                                            {{-- ✅ TAMBAHAN: Link Lacak Lokasi --}}
+                                            {{-- Link Lacak Lokasi --}}
                                             @if($notification->maps_url)
                                                 <a href="{{ $notification->maps_url }}" target="_blank" rel="noopener noreferrer" class="text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 font-semibold flex items-center gap-1">
                                                     <i class="fa-solid fa-location-dot fa-fw"></i>
