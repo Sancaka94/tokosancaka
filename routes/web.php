@@ -126,11 +126,7 @@ Route::get('/kontak/search', [KontakController::class, 'search'])->name('api.sea
     Route::get('/wallet/search', [WalletController::class, 'search'])->name('wallet.search');
 
     
-   // TAMBAHKAN ROUTE INI UNTUK HALAMAN PENGATURAN
-    Route::get('/settings', function () {
-        return view('admin.settings');
-    })->name('settings');
-
+  
 // =========================================================================
 
 // == PUBLIC & AUTHENTICATION ROUTES
@@ -291,6 +287,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
     Route::get('/wilayah/district/{district}/villages', [WilayahController::class, 'getDesa'])->name('wilayah.desa');
 
+     // TAMBAHKAN ROUTE INI UNTUK HALAMAN PENGATURAN
+    Route::get('/settings', function () {
+        return view('admin.settings');
+    })->name('settings');
 
     
 });
