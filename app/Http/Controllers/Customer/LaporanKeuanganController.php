@@ -70,7 +70,7 @@ class LaporanKeuanganController extends Controller
         ]);
         
         // Kirim semua data, termasuk tanggal filter, ke view
-        return view('customer.laporan-keuangan', [
+        return view('customer.laporan.index', [
             'saldo'             => $saldoSaatIni,
             'totalPemasukan'    => $totalPemasukan,
             'totalPengeluaran'  => $totalPengeluaran,
