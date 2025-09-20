@@ -677,3 +677,10 @@ Route::prefix('admin')
         // route setting
         Route::view('/settings', 'admin.settings')->name('settings');
     });
+
+Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () {
+    // Settings
+    Route::get('/settings', function () {
+        return view('admin.setting');
+    })->name('settings.index');
+});
