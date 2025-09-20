@@ -273,8 +273,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- FUNGSI PENCARIAN KONTAK DARI DATABASE ---
     function setupContactSearch(prefix) {
-        const nameInput = document.getElementById(`${prefix}_name`);
-        const phoneInput = document.getElementById(`${prefix}_phone`);
         const searchInput = document.getElementById(`${prefix}_contact_search`);
         const resultsContainer = document.getElementById(`${prefix}_contact_results`);
 
@@ -284,8 +282,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
             try {
-                // ✅ Menggunakan route customer yang benar
-                const url = `{{ route('customer.kontak.search') }}?search=${encodeURIComponent(query)}`;
+                const url = `{{ route('customer.kontak.search') }}?search=${encodeURIComponent(query)}&tipe=${prefix === 'sender' ? 'Pengirim' : 'Penerima'}`;
                 const response = await fetch(url);
                 if (!response.ok) throw new Error('Server error');
                 
@@ -303,7 +300,6 @@ document.addEventListener('DOMContentLoaded', function () {
                             document.getElementById(`${prefix}_name`).value = contact.nama || '';
                             document.getElementById(`${prefix}_phone`).value = contact.no_hp || '';
                             document.getElementById(`${prefix}_address`).value = contact.alamat || '';
-                            
                             resultsContainer.classList.add('hidden');
                         });
                         resultsContainer.appendChild(resultDiv);
@@ -318,7 +314,6 @@ document.addEventListener('DOMContentLoaded', function () {
         };
         searchInput.addEventListener('input', debounce(() => performSearch(searchInput.value), 400));
     }
-
     // --- FUNGSI PENCARIAN ALAMAT ONGKIR ---
     async function performAddressSearch(prefix, query) {
         const resultsContainer = document.getElementById(`${prefix}_address_results`);
