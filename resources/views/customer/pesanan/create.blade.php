@@ -1,1929 +1,563 @@
-{{-- resources/views/customer/pesanan/create.blade.php --}}
-
-
+{{--
+    File: resources/views/customer/pesanan/create.blade.php
+    Deskripsi: Halaman pembuatan pesanan untuk pelanggan,
+    disempurnakan dengan fitur dari panel admin.
+--}}
 
 @extends('layouts.customer')
 
-
-
 @section('title', 'Buat Pesanan Baru')
-
 @section('page-title', 'Buat Pesanan Baru')
 
-
-
 @push('styles')
-
+{{-- Font Awesome untuk ikon --}}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <style>
-
-    /* Style kustom untuk scrollbar di hasil pencarian agar lebih ramping */
-
-    .search-result-container::-webkit-scrollbar {
-
-        width: 5px;
-
+    /* Style untuk hasil pencarian custom, karena butuh absolute positioning */
+    .search-results-container {
+        position: absolute;
+        z-index: 1000;
+        width: 100%;
+        max-height: 250px;
+        overflow-y: auto;
+        background-color: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 0 0 0.5rem 0.5rem; /* rounded bottom */
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        margin-top: -1px; /* Nempel dengan input */
     }
-
-    .search-result-container::-webkit-scrollbar-track {
-
-        background: #f1f5f9;
-
+    .modal-body-scroll {
+        max-height: 70vh;
+        overflow-y: auto;
     }
-
-    .search-result-container::-webkit-scrollbar-thumb {
-
-        background: #94a3b8;
-
-        border-radius: 10px;
-
-    }
-
 </style>
-
 @endpush
-
-
 
 @section('content')
-
 <div class="max-w-7xl mx-auto">
-
-    <form id="orderForm" x-data="{ paymentMethod: '{{ old('payment_method', 'Potong Saldo') }}' }" action="{{ route('customer.pesanan.store') }}" method="POST"> 
-
+    <form id="orderForm" action="{{ route('customer.pesanan.store') }}" method="POST">
         @csrf
-
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-            
-
             <!-- Kolom Kiri: Pengirim & Penerima -->
-
             <div class="lg:col-span-2 space-y-8">
 
-
-
-    <!-- Informasi Pengirim -->
-
-            <div class="bg-white p-6 rounded-lg shadow-md">
-
-                <div class="flex justify-between items-center border-b pb-4 mb-6">
-
-                    <h3 class="text-xl font-semibold text-gray-800">Informasi Pengirim</h3>
-
-                    <div id="search_sender_container" class="relative w-1/2">
-
-                        <input type="search" id="search_sender" class="w-full pl-10 pr-4 py-2 border rounded-lg text-sm" placeholder="Cari dari kontak...">
-
-                        <div class="absolute top-0 left-0 inline-flex items-center p-2 h-full text-gray-400">
-
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-
-                            </svg>
-
+                <!-- Informasi Pengirim -->
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div class="flex justify-between items-center border-b pb-4 mb-6">
+                        <h3 class="text-xl font-semibold text-gray-800">
+                            <i class="fas fa-arrow-up-from-bracket text-red-500 mr-2"></i>Informasi Pengirim
+                        </h3>
+                        <div class="relative w-1/2">
+                            <input type="search" id="sender_contact_search" class="w-full pl-10 pr-4 py-2 border rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500" placeholder="Cari dari kontak pengirim...">
+                             <div class="absolute top-0 left-0 inline-flex items-center p-2 h-full text-gray-400">
+                                <i class="fas fa-search"></i>
+                            </div>
+                            <div id="sender_contact_results" class="search-results-container hidden"></div>
                         </div>
-
-                        <div id="sender_results" class="search-result-container absolute z-10 w-full bg-white border rounded-b-lg mt-1 hidden shadow-lg max-h-48 overflow-y-auto"></div>
-
                     </div>
-
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-                    <div>
-
-                        <label for="sender_name" class="block mb-2 text-sm font-medium text-gray-700">Nama Pengirim</label>
-
-                        <input type="text" id="sender_name" name="sender_name" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5"
-
-                               value="{{ old('sender_name', auth()->user()->nama_lengkap) }}" required>
-
-                    </div>
-
-                    <div>
-
-                        <label for="sender_phone" class="block mb-2 text-sm font-medium text-gray-700">Nomor HP</label>
-
-                        <input type="tel" id="sender_phone" name="sender_phone" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5"
-
-                               value="{{ old('sender_phone', auth()->user()->no_wa) }}" required>
-
-                    </div>
-
-                    <div>
-
-                        <label for="sender_province" class="block mb-2 text-sm font-medium text-gray-700">Provinsi</label>
-
-                        <input type="text" id="sender_province" name="sender_province" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" value="{{ old('sender_phone', auth()->user()->province) }}" required>
-
-                    </div>
-
-                    <div>
-
-                        <label for="sender_regency" class="block mb-2 text-sm font-medium text-gray-700">Kabupaten/Kota</label>
-
-                        <input type="text" id="sender_regency" name="sender_regency" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" value="{{ old('sender_phone', auth()->user()->regency) }}" required>
-
-                    </div>
-
-                    <div>
-
-                        <label for="sender_district" class="block mb-2 text-sm font-medium text-gray-700">Kecamatan</label>
-
-                        <input type="text" id="sender_district" name="sender_district" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" value="{{ old('sender_phone', auth()->user()->district) }}" required>
-
-                    </div>
-
-                    <div>
-
-                        <label for="sender_village" class="block mb-2 text-sm font-medium text-gray-700">Desa/Kelurahan</label>
-
-                        <input type="text" id="sender_village" name="sender_village" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" value="{{ old('sender_phone', auth()->user()->village) }}" required>
-
-                    </div>
-
-                    <div>
-
-                        <label for="sender_postal_code" class="block mb-2 text-sm font-medium text-gray-700">Kode Pos</label>
-
-                        <input type="text" id="sender_postal_code" name="sender_postal_code" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" value="{{ old('sender_phone', auth()->user()->postal_code) }}" required>
-
-                    </div>
-
-                    <div class="md:col-span-2">
-
-                        <label for="sender_address" class="block mb-2 text-sm font-medium text-gray-700">Alamat Lengkap</label>
-
-                        <textarea id="sender_address" name="sender_address" rows="3" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required>{{ old('sender_address', auth()->user()->address_detail) }}</textarea>
-
-                    </div>
-
-                    <div class="md:col-span-2">
-
-                        <label class="flex items-center text-sm text-gray-600">
-
-                            <input type="checkbox" name="save_sender" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-2"> Simpan/Perbarui data pengirim ini
-
-                        </label>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-        
-
-            <!-- Informasi Penerima -->
-
-            <div class="bg-white p-6 rounded-lg shadow-md">
-
-                <div class="flex justify-between items-center border-b pb-4 mb-6">
-
-                    <h3 class="text-xl font-semibold text-gray-800">Informasi Penerima</h3>
-
-                    <div id="search_receiver_container" class="relative w-1/2">
-
-                        <input type="search" id="search_receiver" class="w-full pl-10 pr-4 py-2 border rounded-lg text-sm" placeholder="Cari dari kontak...">
-
-                        <div class="absolute top-0 left-0 inline-flex items-center p-2 h-full text-gray-400">
-
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-
-                            </svg>
-
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label for="sender_name" class="block mb-2 text-sm font-medium text-gray-700">Nama Pengirim</label>
+                            <input type="text" id="sender_name" name="sender_name" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" value="{{ old('sender_name', auth()->user()->nama_lengkap) }}" required autocomplete="off">
                         </div>
-
-                        <div id="receiver_results" class="search-result-container absolute z-10 w-full bg-white border rounded-b-lg mt-1 hidden shadow-lg max-h-48 overflow-y-auto"></div>
-
+                        <div>
+                            <label for="sender_phone" class="block mb-2 text-sm font-medium text-gray-700">Nomor HP</label>
+                            <input type="tel" id="sender_phone" name="sender_phone" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" value="{{ old('sender_phone', auth()->user()->no_wa) }}" required autocomplete="off">
+                        </div>
+                        <div class="md:col-span-2 relative">
+                            <label for="sender_address_search" class="block mb-2 text-sm font-medium text-gray-700">Cari Alamat Ongkir (Kec/Kel/Kodepos)</label>
+                            <div class="relative">
+                                <input type="text" id="sender_address_search" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pr-8" placeholder="Ketik untuk mencari alamat..." autocomplete="off">
+                                <i id="sender_address_check" class="fas fa-check-circle text-green-500 absolute top-1/2 right-3 transform -translate-y-1/2 hidden"></i>
+                            </div>
+                            <div id="sender_address_results" class="search-results-container hidden"></div>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label for="sender_address" class="block mb-2 text-sm font-medium text-gray-700">Detail Alamat Lengkap Pengirim</label>
+                            <textarea id="sender_address" name="sender_address" rows="3" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" placeholder="Contoh: Jl. Pahlawan No. 12, RT 01/RW 05" required>{{ old('sender_address', auth()->user()->address_detail) }}</textarea>
+                        </div>
+                         <div class="md:col-span-2">
+                              <label class="flex items-center text-sm text-gray-600"><input type="checkbox" name="save_sender" value="1" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-2"> Simpan/Perbarui data pengirim ini</label>
+                         </div>
                     </div>
-
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-                    <div>
-
-                        <label for="receiver_name" class="block mb-2 text-sm font-medium text-gray-700">Nama Penerima</label>
-
-                        <input type="text" id="receiver_name" name="receiver_name" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required>
-
+                <!-- Informasi Penerima -->
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div class="flex justify-between items-center border-b pb-4 mb-6">
+                        <h3 class="text-xl font-semibold text-gray-800">
+                            <i class="fas fa-map-marker-alt text-green-500 mr-2"></i>Informasi Penerima
+                        </h3>
+                         <div class="relative w-1/2">
+                            <input type="search" id="receiver_contact_search" class="w-full pl-10 pr-4 py-2 border rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500" placeholder="Cari dari kontak penerima...">
+                             <div class="absolute top-0 left-0 inline-flex items-center p-2 h-full text-gray-400">
+                                <i class="fas fa-search"></i>
+                            </div>
+                            <div id="receiver_contact_results" class="search-results-container hidden"></div>
+                        </div>
                     </div>
-
-                    <div>
-
-                        <label for="receiver_phone" class="block mb-2 text-sm font-medium text-gray-700">Nomor HP</label>
-
-                        <input type="tel" id="receiver_phone" name="receiver_phone" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required>
-
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label for="receiver_name" class="block mb-2 text-sm font-medium text-gray-700">Nama Penerima</label>
+                            <input type="text" id="receiver_name" name="receiver_name" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required autocomplete="off">
+                        </div>
+                        <div>
+                            <label for="receiver_phone" class="block mb-2 text-sm font-medium text-gray-700">Nomor HP</label>
+                            <input type="tel" id="receiver_phone" name="receiver_phone" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required autocomplete="off">
+                        </div>
+                        <div class="md:col-span-2 relative">
+                            <label for="receiver_address_search" class="block mb-2 text-sm font-medium text-gray-700">Cari Alamat Ongkir (Kec/Kel/Kodepos)</label>
+                            <div class="relative">
+                                <input type="text" id="receiver_address_search" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pr-8" placeholder="Ketik untuk mencari alamat..." autocomplete="off">
+                                <i id="receiver_address_check" class="fas fa-check-circle text-green-500 absolute top-1/2 right-3 transform -translate-y-1/2 hidden"></i>
+                            </div>
+                            <div id="receiver_address_results" class="search-results-container hidden"></div>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label for="receiver_address" class="block mb-2 text-sm font-medium text-gray-700">Alamat Penerima Lengkap</label>
+                            <textarea id="receiver_address" name="receiver_address" rows="3" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" placeholder="Contoh: Jl. Merdeka No. 45, RT 02/RW 03" required></textarea>
+                        </div>
+                          <div class="md:col-span-2">
+                                <label class="flex items-center text-sm text-gray-600"><input type="checkbox" name="save_receiver" value="1" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-2"> Simpan data penerima ini</label>
+                          </div>
                     </div>
-
-                    <div>
-
-                        <label for="receiver_province" class="block mb-2 text-sm font-medium text-gray-700">Provinsi</label>
-
-                        <input type="text" id="receiver_province" name="receiver_province" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required>
-
-                    </div>
-
-                    <div>
-
-                        <label for="receiver_regency" class="block mb-2 text-sm font-medium text-gray-700">Kabupaten/Kota</label>
-
-                        <input type="text" id="receiver_regency" name="receiver_regency" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required>
-
-                    </div>
-
-                    <div>
-
-                        <label for="receiver_district" class="block mb-2 text-sm font-medium text-gray-700">Kecamatan</label>
-
-                        <input type="text" id="receiver_district" name="receiver_district" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required>
-
-                    </div>
-
-                    <div>
-
-                        <label for="receiver_village" class="block mb-2 text-sm font-medium text-gray-700">Desa/Kelurahan</label>
-
-                        <input type="text" id="receiver_village" name="receiver_village" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required>
-
-                    </div>
-
-                    <div>
-
-                        <label for="receiver_postal_code" class="block mb-2 text-sm font-medium text-gray-700">Kode Pos</label>
-
-                        <input type="text" id="receiver_postal_code" name="receiver_postal_code" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required>
-
-                    </div>
-
-                    <div class="md:col-span-2">
-
-                        <label for="receiver_address" class="block mb-2 text-sm font-medium text-gray-700">Alamat Lengkap</label>
-
-                        <textarea id="receiver_address" name="receiver_address" rows="3" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required></textarea>
-
-                    </div>
-
-                    <div class="md:col-span-2">
-
-                        <label class="flex items-center text-sm text-gray-600">
-
-                            <input type="checkbox" name="save_receiver" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-2"> Simpan data penerima ini
-
-                        </label>
-
-                    </div>
-
                 </div>
-
             </div>
-
-        </div>
-
-
-
-
 
             <!-- Kolom Kanan: Detail Paket & Pembayaran -->
-
             <div class="lg:col-span-1 space-y-8">
-
-                <!-- Detail Paket -->
-
-                <div class="bg-white p-6 rounded-lg shadow-md">
-
-                    <h3 class="text-xl font-semibold text-gray-800 border-b pb-4 mb-6">Detail Paket</h3>
-
-                    <div class="mt-4">
-
-                        <label for="item_description" class="block mb-2 text-sm font-medium text-gray-700">Deskripsi Barang</label>
-
-                        <input type="text" id="item_description" name="item_description" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required>
-
-                    </div>
-
-                    <div class="col-12">
-
-                        <label class="block mb-2 text-sm font-medium text-gray-700">Harga Barang</label>
-
-                        <input type="number" name="item_price" id="item_price" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required>
-
-                    </div>
-
-                    <div class="mt-4">
-
-                        <label for="weight" class="block mb-2 text-sm font-medium text-gray-700">Berat (gram)</label>
-
-                        <input type="number" id="weight" name="weight" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required>
-
-                    </div>
-
-                    <div class="grid grid-cols-3 gap-4 mt-4">
-
-                        <div><label for="length" class="block mb-2 text-sm font-medium text-gray-700">P (cm)</label><input type="number" id="length" name="length" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5"></div>
-
-                        <div><label for="width" class="block mb-2 text-sm font-medium text-gray-700">L (cm)</label><input type="number" id="width" name="width" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5"></div>
-
-                        <div><label for="height" class="block mb-2 text-sm font-medium text-gray-700">T (cm)</label><input type="number" id="height" name="height" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5"></div>
-
-                    </div>
-
-                    <div class="col-12 mb-2">
-
-                            <label class="block mb-2 text-sm font-medium text-gray-700">Jenis Barang</label>
-
-                            <select name="item_type" id="item_type" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5">
-
-                                <option value="">Pilih Jenis Barang</option>
-
-                                <option value="1">Peralatan Elektronik & Gadget</option>
-
-                                <option value="2">Pakaian</option>
-
-                                <option value="3">Pecah Belah</option>
-
-                                <option value="4">Dokumen</option>
-
-                                <option value="5">Peralatan Rumah Tangga</option>
-
-                                <option value="6">Aksesoris</option>
-
-                                <option value="7">Lain-lain</option>
-
-                                <option value="8">Dokumen Berharga</option>
-
-                                <option value="9">Peralatan Kesehatan & Kecantikan</option>
-
-                                <option value="10">Peralatan Olahraga & Hiburan</option>
-
-                                <option value="11">Perlengkapan Mobil & Motor</option>
-
-                            </select>
-
-                        </div>
-
-                    <div>
-
-                        <label for="service_type" class="block mb-2 text-sm font-medium text-gray-700">Jenis Layanan</label>
-
-                        <select id="service_type" name="service_type" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5">
-
-                            <option value="">Pilih Jenis Layanan</option>
-
-                            <option value="express">Express</option>
-
-                            <option value="instant">Instant</option>
-
-                        </select>
-
-                    </div>
-
-                    <div>
-
-                        <label for="ansuransi" class="block mb-2 text-sm font-medium text-gray-700">Ansuransi</label>
-
-                        <select id="ansuransi" name="ansuransi" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5">
-
-                            <option value="">Pilih Ansuransi</option>
-
-                            <option value="iya">Iya</option>
-
-                            <option value="tidak">Tidak</option>
-
-                        </select>
-
-                    </div>
-
-                   
-
-                      <div class="col-span-12">
-
-                            <label class="block mb-2 text-sm font-medium text-gray-700">Pilih Ekspedisi</label>
-
-                            <input 
-
-                                type="text" 
-
-                                id="selected_expedition_display" 
-
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
-
-                                placeholder="Pilih Jenis Layanan Dahulu..." 
-
-                                readonly
-
-                            >
-
-                            <input type="hidden" name="expedition" id="expedition" required>
-
-                        </div>
-
-                        
-
-                        <div class="col-span-12 mt-4">
-
-                            <label class="block mb-2 text-sm font-medium text-gray-700">Metode Pembayaran</label>
-
-                            <div 
-
-                                id="paymentMethodButton" 
-
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md flex justify-between items-center cursor-pointer hover:ring-2 hover:ring-blue-500"
-
-                            >
-
-                                <div class="flex items-center">
-
-                                    <img 
-
-                                        id="selectedPaymentLogo" 
-
-                                        src="https://placehold.co/32x32/EFEFEF/333333?text=?" 
-
-                                        alt="Logo Pembayaran" 
-
-                                        class="w-8 h-8 mr-2 rounded"
-
-                                    >
-
-                                    <span id="selectedPaymentName" class="text-gray-700">Pilih Pembayaran...</span>
-
-                                </div>
-
-                                <i class="fas fa-chevron-down text-gray-400"></i>
-
-                            </div>
-
-                            <input type="hidden" name="payment_method" id="payment_method" required>
-
-                        </div>
-
-                </div>
-
-                
-
-                <!-- Aksi -->
-
-                <div class="bg-white p-6 rounded-lg shadow-md">
-
+                <div class="bg-white p-6 rounded-lg shadow-md sticky top-8">
+                    <h3 class="text-xl font-semibold text-gray-800 border-b pb-4 mb-6">
+                        <i class="fas fa-box-open text-yellow-500 mr-2"></i>Detail Paket
+                    </h3>
                     <div class="space-y-4">
-
-                        <button type="button" id="confirmBtn" class="w-full text-white bg-indigo-600 hover:bg-indigo-700 font-medium rounded-lg text-sm px-5 py-3 text-center">
-
-                            Lanjutkan ke Rincian
-
-                        </button>
-
+                        <div>
+                            <label for="item_description" class="block mb-2 text-sm font-medium text-gray-700">Deskripsi Barang</label>
+                            <input type="text" id="item_description" name="item_description" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required>
+                        </div>
+                        <div>
+                            <label for="item_price" class="block mb-2 text-sm font-medium text-gray-700">Harga Barang (Rp)</label>
+                            <input type="number" name="item_price" id="item_price" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required min="1">
+                        </div>
+                        <div>
+                            <label for="weight" class="block mb-2 text-sm font-medium text-gray-700">Berat (gram)</label>
+                            <input type="number" id="weight" name="weight" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required min="1">
+                        </div>
+                        <div class="grid grid-cols-3 gap-4">
+                            <div><label for="length" class="block mb-2 text-sm font-medium text-gray-700">P (cm)</label><input type="number" id="length" name="length" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5"></div>
+                            <div><label for="width" class="block mb-2 text-sm font-medium text-gray-700">L (cm)</label><input type="number" id="width" name="width" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5"></div>
+                            <div><label for="height" class="block mb-2 text-sm font-medium text-gray-700">T (cm)</label><input type="number" id="height" name="height" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5"></div>
+                        </div>
+                         <div>
+                            <label for="item_type" class="block mb-2 text-sm font-medium text-gray-700">Jenis Barang</label>
+                            <select name="item_type" id="item_type" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required>
+                                <option value="" disabled selected>Pilih...</option>
+                                <option value="1">Elektronik</option><option value="2">Pakaian</option><option value="3">Pecah Belah</option><option value="4">Dokumen</option><option value="5">Rumah Tangga</option><option value="6">Aksesoris</option><option value="7">Lainnya</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="service_type" class="block mb-2 text-sm font-medium text-gray-700">Jenis Layanan</label>
+                            <select name="service_type" id="service_type" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required>
+                                <option value="" disabled selected>Pilih...</option>
+                                <option value="regular">Regular</option><option value="express">Express</option><option value="sameday">Sameday</option>
+                                <option value="instant">Instant</option><option value="cargo">Cargo</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="ansuransi" class="block mb-2 text-sm font-medium text-gray-700">Asuransi</label>
+                            <select name="ansuransi" id="ansuransi" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required>
+                                <option value="tidak" selected>Tidak</option><option value="iya">Iya</option>
+                            </select>
+                        </div>
+                        <hr/>
+                        <div>
+                            <label for="selected_expedition_display" class="block mb-2 text-sm font-medium text-gray-700">Pilih Ekspedisi</label>
+                            <input type="text" id="selected_expedition_display" class="cursor-pointer bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 text-center font-semibold" placeholder="Lengkapi data & klik di sini" readonly required>
+                        </div>
+                        <div>
+                            <label for="paymentMethodButton" class="block mb-2 text-sm font-medium text-gray-700">Metode Pembayaran</label>
+                            <div id="paymentMethodButton" class="cursor-pointer bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg w-full p-2.5 flex justify-between items-center">
+                                <div class="flex items-center"><img id="selectedPaymentLogo" src="https://cdn-icons-png.flaticon.com/512/2331/2331941.png" alt="Logo" class="w-6 h-6 mr-2"><span id="selectedPaymentName">Pilih...</span></div><i class="fas fa-chevron-down text-gray-400"></i>
+                            </div>
+                        </div>
+                        <div class="pt-4">
+                            <button type="button" id="confirmBtn" class="w-full text-white bg-indigo-600 hover:bg-indigo-700 font-medium rounded-lg text-sm px-5 py-3 text-center">
+                                Buat Pesanan
+                            </button>
+                        </div>
                     </div>
-
                 </div>
-
             </div>
-
         </div>
 
+        {{-- Hidden fields untuk data API --}}
+        <input type="hidden" name="sender_lat" id="sender_lat"><input type="hidden" name="sender_lng" id="sender_lng">
+        <input type="hidden" name="sender_province" id="sender_province"><input type="hidden" name="sender_regency" id="sender_regency">
+        <input type="hidden" name="sender_district" id="sender_district"><input type="hidden" name="sender_village" id="sender_village">
+        <input type="hidden" name="sender_postal_code" id="sender_postal_code">
+        <input type="hidden" name="sender_district_id" id="sender_district_id" required>
+        <input type="hidden" name="sender_subdistrict_id" id="sender_subdistrict_id" required>
+        <input type="hidden" name="receiver_lat" id="receiver_lat"><input type="hidden" name="receiver_lng" id="receiver_lng">
+        <input type="hidden" name="receiver_province" id="receiver_province"><input type="hidden" name="receiver_regency" id="receiver_regency">
+        <input type="hidden" name="receiver_district" id="receiver_district"><input type="hidden" name="receiver_village" id="receiver_village">
+        <input type="hidden" name="receiver_postal_code" id="receiver_postal_code">
+        <input type="hidden" name="receiver_district_id" id="receiver_district_id" required>
+        <input type="hidden" name="receiver_subdistrict_id" id="receiver_subdistrict_id" required>
+        <input type="hidden" name="expedition" id="expedition" required>
+        <input type="hidden" name="payment_method" id="payment_method" required>
     </form>
-
 </div>
 
-
-
-<!-- Modal Konfirmasi Pesanan -->
-
-<div id="confirmationModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 z-50 hidden flex items-center justify-center">
-
-    <div class="p-5 border w-full max-w-lg shadow-lg rounded-md bg-white">
-
-        <div class="mt-3">
-
-            <h3 class="text-xl leading-6 font-medium text-gray-900 text-center">Konfirmasi Rincian Pesanan</h3>
-
-            <div class="mt-4 px-7 py-3 bg-gray-50 rounded-lg">
-
-                <h4 class="font-semibold text-gray-700 mb-2">Rincian Berat & Biaya</h4>
-
-                <div id="modal_cost_summary" class="space-y-2 text-sm text-gray-600">
-
-                    {{-- Rincian akan diisi oleh JavaScript --}}
-
-                </div>
-
-            </div>
-
-            <div class="mt-4 text-center text-sm text-gray-500">
-
-                <p>Pastikan semua data sudah benar sebelum melanjutkan.</p>
-
-            </div>
-
-            <div class="items-center px-4 py-3 mt-4 flex justify-end gap-3 bg-gray-50 rounded-b-md">
-
-                <button id="closeModalBtn" type="button" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">
-
-                    Batal
-
-                </button>
-
-                <button id="cekOngkirBtn" type="button" class="inline-flex items-center justify-center px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-md">
-
-                    <i class="fab fa-whatsapp w-5 h-5 mr-2"></i>
-
-                    Cek Ongkir WA
-
-                </button>
-
-                <button id="submitOrderBtn" type="button" class="inline-flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md">
-
-                    <i class="fas fa-paper-plane w-5 h-5 mr-2"></i>
-
-                    Simpan Data
-
-                </button>
-
-            </div>
-
+<!-- Modal Pilihan Ekspedisi -->
+<div id="ongkirModal" class="fixed inset-0 bg-gray-800 bg-opacity-60 z-50 hidden flex items-center justify-center">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4">
+        <div class="p-4 border-b flex justify-between items-center">
+            <h5 class="text-lg font-semibold"><i class="fas fa-shipping-fast mr-2 text-indigo-600"></i>Pilihan Ekspedisi</h5>
+            <button type="button" class="close-modal-btn text-gray-500 hover:text-gray-800">&times;</button>
         </div>
-
-    </div>
-
-</div>
-
-
-
-<div id="ongkirModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-
-    <!-- Modal Content -->
-
-    <div class="bg-white rounded-lg shadow-lg w-full max-w-2xl mx-4 max-h-[90vh] flex flex-col overflow-hidden">
-
-        <!-- Header -->
-
-        <div class="flex justify-between items-center p-4 border-b">
-
-            <h3 class="text-lg font-semibold flex items-center gap-2">
-
-                <i class="fas fa-shipping-fast"></i> Pilihan Ekspedisi
-
-            </h3>
-
-            <button class="text-gray-500 hover:text-gray-700" onclick="closeModalss('ongkirModal')">
-
-                &times;
-
-            </button>
-
-        </div>
-
-
-
-        <!-- Body -->
-
-        <div id="ongkirModalBody" class="p-5 text-center overflow-y-auto">
-
-            <div class="flex flex-col items-center">
-
-                <svg class="animate-spin h-10 w-10 text-red-500 mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-
-                </svg>
-
-                <p class="text-gray-500 mt-2">Memuat tarif pengiriman...</p>
-
-            </div>
-
-        </div>
-
-
-
-        <!-- Footer -->
-
+        <div id="ongkirModalBody" class="p-6 modal-body-scroll"></div>
         <div class="p-4 border-t text-right">
-
-            <button class="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300" onclick="closeModalss('ongkirModal')">Tutup</button>
-
+            <button type="button" class="close-modal-btn px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Tutup</button>
         </div>
-
     </div>
-
 </div>
 
-
-
-
-
-{{-- MODAL METODE PEMBAYARAN --}}
-
-<div id="paymentMethodModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-
-    <div class="bg-white rounded-lg shadow-lg w-full max-w-2xl mx-4 overflow-hidden">
-
-        <!-- Header -->
-
-        <div class="flex justify-between items-center p-4 border-b">
-
-            <h3 class="text-lg font-semibold flex items-center gap-2">
-
-                <i class="fas fa-credit-card"></i> Pilih Metode Pembayaran
-
-            </h3>
-
-            <button class="text-gray-500 hover:text-gray-700" onclick="closeModalss('paymentMethodModal')">&times;</button>
-
+<!-- Modal Metode Pembayaran -->
+<div id="paymentMethodModal" class="fixed inset-0 bg-gray-800 bg-opacity-60 z-50 hidden flex items-center justify-center">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+        <div class="p-4 border-b flex justify-between items-center">
+            <h5 class="text-lg font-semibold"><i class="fas fa-credit-card mr-2 text-indigo-600"></i>Pilih Metode Pembayaran</h5>
+            <button type="button" class="close-modal-btn text-gray-500 hover:text-gray-800">&times;</button>
         </div>
-
-
-
-        <!-- Body -->
-
-        <div class="p-4 max-h-[400px] overflow-y-auto">
-
-            <ul class="flex flex-col gap-2 max-h-[400px] overflow-y-auto">
-
-    <li class="flex items-center gap-3 p-3 border rounded hover:bg-gray-100 cursor-pointer"
-
-        data-value="Potong Saldo" onclick="selectPayment(this)">
-
-        <img src="https://uxwing.com/wp-content/themes/uxwing/download/banking-finance/cash-icon.png" class="w-8 h-8 rounded">
-
-        <span>
-
-            Potong Saldo (Tersedia Rp {{ number_format(Auth::user()->saldo, 0, ',', '.') }})
-
-        </span>
-
-    </li>
-
-    <li class="flex items-center gap-3 p-3 border rounded hover:bg-gray-100 cursor-pointer"
-
-        data-value="cash" onclick="selectPayment(this)">
-
-        <img src="https://uxwing.com/wp-content/themes/uxwing/download/banking-finance/cash-icon.png" class="w-8 h-8 rounded">
-
-        <span>
-
-            CASH
-
-        </span>
-
-    </li>
-
-     <li class="flex items-center gap-3 p-3 border rounded hover:bg-gray-100 cursor-pointer"
-
-        data-value="CODBARANG" onclick="selectPayment(this)">
-
-        <img src="{{ asset('public/assets/cod.png') }}" class="w-8 h-8 rounded">
-
-        <span>COD BARANG (Bayar di Tempat)</span>
-
-    </li>
-
-    <li class="flex items-center gap-3 p-3 border rounded hover:bg-gray-100 cursor-pointer"
-
-        data-value="COD" onclick="selectPayment(this)">
-
-        <img src="{{ asset('public/assets/cod.png') }}" class="w-8 h-8 rounded">
-
-        <span>COD (Bayar di Tempat)</span>
-
-    </li>
-
-    <li class="flex items-center gap-3 p-3 border rounded hover:bg-gray-100 cursor-pointer"
-
-        data-value="PERMATAVA" onclick="selectPayment(this)">
-
-        <img src="{{ asset('public/assets/permata.webp') }}" class="w-8 h-8 rounded">
-
-        <span>Permata Virtual Account</span>
-
-    </li>
-
-    <li class="flex items-center gap-3 p-3 border rounded hover:bg-gray-100 cursor-pointer"
-
-        data-value="BNIVA" onclick="selectPayment(this)">
-
-        <img src="{{ asset('public/assets/bni.webp') }}" class="w-8 h-8 rounded">
-
-        <span>BNI Virtual Account</span>
-
-    </li>
-
-    <li class="flex items-center gap-3 p-3 border rounded hover:bg-gray-100 cursor-pointer"
-
-        data-value="BRIVA" onclick="selectPayment(this)">
-
-        <img src="{{ asset('public/assets/bri.webp') }}" class="w-8 h-8 rounded">
-
-        <span>BRI Virtual Account</span>
-
-    </li>
-
-    <li class="flex items-center gap-3 p-3 border rounded hover:bg-gray-100 cursor-pointer"
-
-        data-value="MANDIRIVA" onclick="selectPayment(this)">
-
-        <img src="{{ asset('public/assets/mandiri.webp') }}" class="w-8 h-8 rounded">
-
-        <span>Mandiri Virtual Account</span>
-
-    </li>
-
-    <li class="flex items-center gap-3 p-3 border rounded hover:bg-gray-100 cursor-pointer"
-
-        data-value="BCAVA" onclick="selectPayment(this)">
-
-        <img src="{{ asset('public/assets/bca.webp') }}" class="w-8 h-8 rounded">
-
-        <span>BCA Virtual Account</span>
-
-    </li>
-
-    <li class="flex items-center gap-3 p-3 border rounded hover:bg-gray-100 cursor-pointer"
-
-        data-value="ALFAMART" onclick="selectPayment(this)">
-
-        <img src="{{ asset('public/assets/alfamart.webp') }}" class="w-8 h-8 rounded">
-
-        <span>Alfamart</span>
-
-    </li>
-
-    <li class="flex items-center gap-3 p-3 border rounded hover:bg-gray-100 cursor-pointer"
-
-        data-value="INDOMARET" onclick="selectPayment(this)">
-
-        <img src="{{ asset('public/assets/indomaret.webp') }}" class="w-8 h-8 rounded">
-
-        <span>Indomaret</span>
-
-    </li>
-
-    <li class="flex items-center gap-3 p-3 border rounded hover:bg-gray-100 cursor-pointer"
-
-        data-value="OVO" onclick="selectPayment(this)">
-
-        <img src="{{ asset('public/assets/ovo.webp') }}" class="w-8 h-8 rounded">
-
-        <span>OVO</span>
-
-    </li>
-
-    <li class="flex items-center gap-3 p-3 border rounded hover:bg-gray-100 cursor-pointer"
-
-        data-value="DANA" onclick="selectPayment(this)">
-
-        <img src="{{ asset('public/assets/dana.webp') }}" class="w-8 h-8 rounded">
-
-        <span>DANA</span>
-
-    </li>
-
-    <li class="flex items-center gap-3 p-3 border rounded hover:bg-gray-100 cursor-pointer"
-
-        data-value="SHOPEEPAY" onclick="selectPayment(this)">
-
-        <img src="{{ asset('public/assets/shopeepay.webp') }}" class="w-8 h-8 rounded">
-
-        <span>ShopeePay</span>
-
-    </li>
-
-    <li class="flex items-center gap-3 p-3 border rounded hover:bg-gray-100 cursor-pointer"
-
-        data-value="QRIS" onclick="selectPayment(this)">
-
-        <img src="{{ asset('public/assets/qris2.png') }}" class="w-8 h-8 rounded">
-
-        <span>QRIS</span>
-
-    </li>
-
-</ul>
-
-
-
+        <div class="modal-body-scroll">
+            <ul id="paymentOptionsList" class="divide-y">
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="Potong Saldo" data-label="Potong Saldo"><img src="https://cdn-icons-png.flaticon.com/512/1086/1086060.png" class="w-8 h-8 mr-4">Potong Saldo (Tersedia: Rp {{ number_format(Auth::user()->saldo ?? 0) }})</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50 cod-payment-option" data-value="COD" data-label="COD Ongkir"><img src="{{ asset('public/assets/cod.png') }}" class="w-8 h-8 mr-4">COD Ongkir</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50 cod-payment-option" data-value="CODBARANG" data-label="COD Barang + Ongkir"><img src="{{ asset('public/assets/cod.png') }}" class="w-8 h-8 mr-4">COD Barang + Ongkir</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="PERMATAVA" data-label="Permata VA"><img src="{{ asset('public/assets/permata.webp') }}" class="w-8 h-8 mr-4">Permata VA</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="BNIVA" data-label="BNI VA"><img src="{{ asset('public/assets/bni.webp') }}" class="w-8 h-8 mr-4">BNI VA</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="BRIVA" data-label="BRI VA"><img src="{{ asset('public/assets/bri.webp') }}" class="w-8 h-8 mr-4">BRI VA</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="MANDIRIVA" data-label="Mandiri VA"><img src="{{ asset('public/assets/mandiri.webp') }}" class="w-8 h-8 mr-4">Mandiri VA</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="BCAVA" data-label="BCA VA"><img src="{{ asset('public/assets/bca.webp') }}" class="w-8 h-8 mr-4">BCA VA</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="ALFAMART" data-label="Alfamart"><img src="{{ asset('public/assets/alfamart.webp') }}" class="w-8 h-8 mr-4">Alfamart</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="INDOMARET" data-label="Indomaret"><img src="{{ asset('public/assets/indomaret.webp') }}" class="w-8 h-8 mr-4">Indomaret</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="OVO" data-label="OVO"><img src="{{ asset('public/assets/ovo.webp') }}" class="w-8 h-8 mr-4">OVO</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="DANA" data-label="DANA"><img src="{{ asset('public/assets/dana.webp') }}" class="w-8 h-8 mr-4">DANA</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="SHOPEEPAY" data-label="ShopeePay"><img src="{{ asset('public/assets/shopeepay.webp') }}" class="w-8 h-8 mr-4">ShopeePay</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="QRIS" data-label="QRIS"><img src="{{ asset('public/assets/qris2.png') }}" class="w-8 h-8 mr-4">QRIS</li>
+            </ul>
         </div>
-
-
-
-        <!-- Footer -->
-
-        <div class="p-4 border-t text-right">
-
-            <button class="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300" onclick="closeModalss('paymentMethodModal')">Tutup</button>
-
+         <div class="p-4 border-t text-right">
+            <button type="button" class="close-modal-btn px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Tutup</button>
         </div>
-
     </div>
-
 </div>
-
-
-
 @endsection
 
-
-
 @push('scripts')
-
- <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
- <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
- <script>
-
-    function openModalss(id) {
-
-        document.getElementById(id).classList.remove('hidden');
-
-    }
-
-
-
-    function closeModalss(id) {
-
-        document.getElementById(id).classList.add('hidden');
-
-    }
-
-
-
-    document.getElementById('paymentMethodButton').addEventListener('click', function() {
-
-        openModalss('paymentMethodModal');
-
-    });
-
-
-
-    function selectPayment(el) {
-
-        const name = el.querySelector('span').innerText;
-
-        const logo = el.querySelector('img').src;
-
-        const value = el.getAttribute('data-value');
-
-
-
-        document.getElementById('selectedPaymentName').innerText = name;
-
-        document.getElementById('selectedPaymentLogo').src = logo;
-
-        document.getElementById('payment_method').value = value;
-
-
-
-        closeModalss('paymentMethodModal');
-
-    }
-
-    
-
-   function runCekOngkir() {
-
-    let serviceType = $('#service_type').val();
-
-    let weight = parseInt($('#weight').val()) || 0;
-
-    let price = parseInt($('#item_price').val()) || 0;
-
-    let length = parseInt($('#length').val()) || 0;
-
-    let width = parseInt($('#width').val()) || 0;
-
-    let height = parseInt($('#height').val()) || 0;
-
-    let receiver_village = $('#receiver_village').val();
-
-    let ansuransi = $('#ansuransi').val();
-
-
-
-    if (weight <= 0 || price <= 0 || !serviceType || !receiver_village) {
-
-        Swal.fire({
-
-            icon: 'warning',
-
-            title: 'Data Belum Lengkap',
-
-            text: 'Harap lengkapi informasi Pengirim, Penerima, Harga, Berat, dan Jenis Layanan terlebih dahulu.'
-
-        });
-
-        return;
-
-    }
-
-
-
-    openModalss('ongkirModal');
-
-
-
-    $.ajax({
-
-        url: "{{ route('kirimaja.cekongkir') }}",
-
-        type: "GET",
-
-        data: {
-
-            sender_province: $('#sender_province').val(),
-
-            sender_regency: $('#sender_regency').val(),
-
-            sender_district: $('#sender_district').val(),
-
-            sender_village: $('#sender_village').val(),
-
-            receiver_province: $('#receiver_province').val(),
-
-            receiver_regency: $('#receiver_regency').val(),
-
-            receiver_district: $('#receiver_district').val(),
-
-            receiver_village: $('#receiver_village').val(),
-
-            weight: weight,
-
-            length: length,
-
-            width: width,
-
-            height: height,
-
-            service: serviceType,
-
-            price: price,
-
-            ansuransi: ansuransi,
-
-            item_type: $('#item_type').val(),
-
-            _token: "{{ csrf_token() }}"
-
-        },
-
-        success: function (res) {
-
-            const ongkirModalBody = $('#ongkirModalBody');
-
-            ongkirModalBody.empty();
-
-
-
-            function formatRupiah(angka) { 
-
-                return 'Rp ' + parseInt(angka, 10).toLocaleString('id-ID'); 
-
-            }
-
-
-
-            let groupedResults = {}; 
-
-
-
-             if (res.results) {
-
-                res.results.forEach(function(item) {
-
-                    let optionValue = `express-${item.service}-${item.service_type}-${item.cost}`;
-
-                    let details = `Estimasi: ${item.etd} hari`;
-
-                    let isCod = false;
-
-            
-
-                    if (item.setting && item.setting.cod_fee_amount) {
-
-                        optionValue += `-${item.setting.cod_fee_amount}`;
-
-                        details += ` | Biaya COD: ${formatRupiah(item.setting.cod_fee_amount)}`;
-
-                        isCod = true;
-
-                    }
-
-            
-
-                    if (item.insurance) {
-
-                        optionValue += `-${item.insurance}`;
-
-                        details += ` | Asuransi: ${formatRupiah(item.insurance)}`;
-
-                    }
-
-            
-
-                    let groupName = 'Regular';
-
-                    const serviceNameLower = item.service_name.toLowerCase();
-
-                    if (serviceNameLower.includes('instant')) {
-
-                        groupName = 'Instant';
-
-                    } else if (serviceNameLower.includes('cargo')) {
-
-                        groupName = 'Cargo';
-
-                    }
-
-            
-
-                    if (!groupedResults[groupName]) groupedResults[groupName] = [];
-
-                    groupedResults[groupName].push({
-
-                        service: item.service,
-
-                        name: item.service_name,
-
-                        price: item.cost,
-
-                        details: details,
-
-                        value: optionValue,
-
-                        cod_supported: isCod
-
-                    });
-
-                });
-
-            }
-
-            
-
-            if (res.result) {
-
-                res.result.forEach(function(vendor) {
-
-                    vendor.costs.forEach(function(cost) {
-
-                        let groupName = 'Regular'; // default regular
-
-                        const vendorNameLower = vendor.name.toLowerCase();
-
-                        if (vendorNameLower.includes('instant')) {
-
-                            groupName = 'Instant';
-
-                        } else if (vendorNameLower.includes('cargo')) {
-
-                            groupName = 'Cargo';
-
-                        }
-
-            
-
-                        if (!groupedResults[groupName]) groupedResults[groupName] = [];
-
-                         groupedResults[groupName].push({
-
-                            service: vendor.name,
-
-                            name: `${vendor.name.toUpperCase()} - ${cost.service_type}`,
-
-                            price: cost.price.total_price,
-
-                            details: `Estimasi: ${cost.estimation ?? '-'}`,
-
-                            value: `instant-${vendor.name}-${cost.service_type}-${cost.price.total_price}-0-${cost.price.admin_fee}`,
-
-                            cod_supported: false
-
-                        });
-
-                    });
-
-                });
-
-            }
-
-
-
-            // Buat tombol grup (Tailwind)
-
-            let groupButtonsHtml = '<div class="flex flex-wrap gap-2 mb-4">';
-
-            for (const group in groupedResults) {
-
-                groupButtonsHtml += `<button type="button" class="px-4 py-2 text-sm font-medium rounded-lg border border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white transition group-button" data-group="${group}">${group}</button>`;
-
-            }
-
-            groupButtonsHtml += '</div>';
-
-            ongkirModalBody.html(groupButtonsHtml + '<div id="group-items"></div>');
-
-
-
-            let groupItemsContainer = $('#group-items');
-
-            const firstGroup = Object.keys(groupedResults)[0];
-
-            displayGroupItems(firstGroup);
-
-
-
-            ongkirModalBody.on('click', '.group-button', function() {
-
-                const group = $(this).data('group');
-
-                displayGroupItems(group);
-
-            });
-
-
-
-            function displayGroupItems(group) {
-
-                groupItemsContainer.html(''); 
-
-                const items = groupedResults[group];
-
-                if (!items || items.length === 0) {
-
-                    groupItemsContainer.html('<div class="p-4 bg-yellow-100 text-yellow-800 rounded-lg">Tidak ada layanan untuk grup ini.</div>');
-
-                    return;
-
-                }
-
-
-
-                items.sort((a, b) => a.price - b.price);
-
-
-
-                 items.forEach(item => {
-
-                    let ekspedisi = item.service ? item.service.toLowerCase() : 'default';
-
-                    let logoPath = `/storage/logo-ekspedisi/${ekspedisi}.png`;
-
-                
-
-                    groupItemsContainer.append(`
-
-                        <div class="card mb-2 shadow-sm">
-
-                            <div class="card-body d-flex justify-content-between align-items-center p-2">
-
-                                <div class="d-flex align-items-center">
-
-                                    <img src="${logoPath}" alt="${ekspedisi}" class="me-2" style="width:40px;height:auto;">
-
-                                    <div>
-
-                                        <h6 class="card-title mb-1 fw-bold">${item.name}</h6>
-
-                                        <small class="text-muted">${item.details}</small>
-
-                                    </div>
-
-                                </div>
-
-                                <div class="text-end">
-
-                                    <strong class="d-block fs-5 text-danger">${formatRupiah(item.price)}</strong>
-
-                                    <button type="button" class="btn btn-sm btn-danger mt-1 select-ongkir-btn"
-
-                                        data-value="${item.value}"
-
-                                        data-display="${item.name} - ${formatRupiah(item.price)}"
-
-                                        data-cod-supported="${item.cod_supported}">
-
-                                        <i class="fas fa-check-circle me-1"></i>Pilih
-
-                                    </button>
-
-                                </div>
-
-                            </div>
-
-                        </div>
-
-                    `);
-
-                });
-
-            }
-
-        },
-
-        error: function () { 
-
-            $('#ongkirModalBody').html('<div class="p-4 bg-red-100 text-red-800 rounded-lg">Gagal mengambil data ongkir. Silakan coba lagi.</div>'); 
-
-        }
-
-    });
-
-}
-
-
-
-
-
-$('#selected_expedition_display').on('click', runCekOngkir);
-
-
-
-$(document).on('click', '.select-ongkir-btn', function() {
-
-    $('#expedition').val($(this).data('value'));
-
-    $('#selected_expedition_display').val($(this).data('display'));
-
-
-
-    if ($(this).data('cod-supported')) {
-
-        $('#codPaymentOption').removeClass('hidden'); 
-
-    } else {
-
-        if ($('#payment_method').val() === 'COD') {
-
-            $('#payment_method').val('');
-
-            $('#selectedPaymentName').text('Pilih Pembayaran...');
-
-            $('#selectedPaymentLogo').attr('src', 'https://placehold.co/32x32/EFEFEF/333333?text=?');
-
-        }
-
-        $('#codPaymentOption').addClass('hidden'); 
-
-    }
-
-
-
-    closeModalss('ongkirModal');
-
-});
-
-
-
-</script>
-
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-
-
-
-document.getElementById('confirmBtn').addEventListener('click', function () {
-
-    Swal.fire({
-
-        title: 'Apakah Anda yakin?',
-
-        text: "Data akan dilanjutkan ke rincian.",
-
-        icon: 'question',
-
-        showCancelButton: true,
-
-        confirmButtonText: 'Ya, lanjutkan',
-
-        cancelButtonText: 'Batal',
-
-        reverseButtons: true
-
-    }).then((result) => {
-
-        if (result.isConfirmed) {
-
-            document.getElementById('orderForm').submit();
-
-        }
-
-    });
-
-});
-
-</script>
-
-<script>
-
-    $(document).ready(function () {
-
-        $('select[name="payment_method"] option[value="COD"]').hide();
-
-        
-
-        $('#service_type').on('change', function () {
-
-            let serviceType = $(this).val();
-
-
-
-            let sender_province   = $('#sender_province').val();
-
-            let sender_regency    = $('#sender_regency').val();
-
-            let sender_district   = $('#sender_district').val();
-
-            let sender_village    = $('#sender_village').val();
-
-            let sender_postal     = $('#sender_postal_code').val();
-
-            let sender_address    = $('#sender_address').val();
-
-
-
-            let receiver_province = $('#receiver_province').val();
-
-            let receiver_regency  = $('#receiver_regency').val();
-
-            let receiver_district = $('#receiver_district').val();
-
-            let receiver_village  = $('#receiver_village').val();
-
-            let receiver_postal   = $('#receiver_postal_code').val();
-
-            let receiver_address  = $('#receiver_address').val();
-
-
-
-            // ambil value dari paket
-
-            let weight      = $('#weight').val();
-
-            let length      = $('#length').val();
-
-            let width       = $('#width').val();
-
-            let height      = $('#height').val();
-
-            let price       = $('#item_price').val();
-
-
-
-            let payment     = $('#payment_method').val();
-
-            let item_type     = $('#item_type').val();
-
- 
-
-            // validasi field wajib
-
-            if (!weight || !serviceType || !price) {
-
-                alert("Lengkapi data pengirim, penerima,harga paket, dan berat paket terlebih dahulu.");
-
-                $(this).val(""); // reset select
-
-                return;
-
-            }
-
-
-
-            // AJAX request
-
-            $.ajax({
-
-                url: "{{ route('kirimaja.cekongkir') }}",
-
-                type: "GET",
-
-                data: {
-
-                    sender_province: sender_province,
-
-                    sender_regency: sender_regency,
-
-                    sender_district: sender_district,
-
-                    sender_village: sender_village,
-
-                    sender_postal: sender_postal,
-
-                    sender_address: sender_address,
-
-
-
-                    receiver_province: receiver_province,
-
-                    receiver_regency: receiver_regency,
-
-                    receiver_district: receiver_district,
-
-                    receiver_village: receiver_village,
-
-                    receiver_postal: receiver_postal,
-
-                    receiver_address: receiver_address,
-
-
-
-                    weight: weight,
-
-                    length: length,
-
-                    width: width,
-
-                    height: height,
-
-                    service: serviceType,
-
-                    price: price,
-
-                    item_type:item_type,
-
-                    _token: "{{ csrf_token() }}"
-
-                },
-
-                beforeSend: function () {
-
-                    $('#expedition').html('<option>Loading...</option>');
-
-                },
-
-                success: function (res) {
-
-                    $('#expedition').empty().append('<option value="">Pilih Ekspedisi</option>');
-
-
-
-                    function formatRupiah(angka) {
-
-                        return 'Rp' + parseInt(angka, 10).toLocaleString('id-ID');
-
-                    }
-
-                    
-
-                    if (res.results) {
-
-                        let groups = {};
-
-                    
-
-                        res.results.forEach(function (item) {
-
-                            let optionValue = `express-${item.service}-${item.service_type}-${item.cost}`;
-
-                            let optionText  = `${item.service_name} - ${formatRupiah(item.cost)} (ETD: ${item.etd} hari)`;
-
-                    
-
-                            if (item.cod && item.setting && item.setting.cod_fee_amount) {
-
-                                optionValue += `-${item.setting.cod_fee_amount}_${item.setting.cod_fee}`;
-
-                                optionText  += ` | COD Fee: ${formatRupiah(item.setting.cod_fee_amount)}`;
-
-                            }
-
-                    
-
-                            if (item && item.insurance) {
-
-                                optionValue += `-${item.insurance}`;
-
-                                optionText  += ` | Insurance: ${formatRupiah(item.insurance)}`;
-
-                            }
-
-                    
-
-                            if (!groups[item.group]) {
-
-                                groups[item.group] = [];
-
-                            }
-
-                            groups[item.group].push({ value: optionValue, text: optionText });
-
-                        });
-
-                    
-
-                        $('#expedition').empty();
-
-                    
-
-                        for (const groupName in groups) {
-
-                            let formattedGroup = groupName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()); // ganti _ jadi spasi & kapitalisasi
-
-                            let $optgroup = $(`<optgroup label="${formattedGroup}"></optgroup>`);
-
-                    
-
-                            groups[groupName].forEach(option => {
-
-                                $optgroup.append(`<option value="${option.value}">${option.text}</option>`);
-
-                            });
-
-                    
-
-                            $('#expedition').append($optgroup);
-
-                        }
-
-                    }
-
-
-
-                    
-
-                    if (res.result) {
-
-                        res.result.forEach(function (vendor) {
-
-                            vendor.costs.forEach(function (cost) {
-
-                                let optionValue = `instant-${vendor.name}-${cost.service_type}-${cost.price.total_price}`;
-
-                                let optionText  = `${vendor.name.toUpperCase()} - ${cost.service_type} : ${formatRupiah(cost.price.total_price)} (ETA: ${cost.estimation ?? '-'})`;
-
-                    
-
-                                $('#expedition').append(
-
-                                    `<option value="${optionValue}">${optionText}</option>`
-
-                                );
-
-                            });
-
-                        });
-
-                    }
-
-
-
-
-
-
-
-                    if (serviceType === "express") {
-
-                        $('select[name="payment_method"] option[value="COD"]').show();
-
-                    } else {
-
-                        $('select[name="payment_method"]').val(""); 
-
-                        $('select[name="payment_method"] option[value="COD"]').hide();
-
-                    }
-
-                },
-
-                error: function () {
-
-                    alert("Gagal mengambil ongkir. Coba lagi.");
-
-                    $('#expedition').html('<option value="">Error</option>');
-
-                }
-
-            });
-
-        });
-
-
-
-        // default hide COD option
-
-        $('select[name="payment_method"] option[value="COD"]').hide();
-
-    });
-
-</script>
-
-<script>
-
 document.addEventListener('DOMContentLoaded', function () {
+    const ongkirModalEl = document.getElementById('ongkirModal');
+    const paymentModalEl = document.getElementById('paymentMethodModal');
+    let searchTimeout = null;
 
-    // --- FUNGSI PENCARIAN KONTAK ---
+    // --- HELPER FUNCTIONS ---
+    const debounce = (func, delay) => {
+        return (...args) => { clearTimeout(searchTimeout); searchTimeout = setTimeout(() => func.apply(this, args), delay); };
+    };
+    function formatRupiah(angka) { 
+        return 'Rp ' + (parseInt(angka, 10) || 0).toLocaleString('id-ID'); 
+    }
 
-    async function searchKontak(query, resultsContainerId) {
+    // --- FUNGSI PENCARIAN KONTAK DARI DATABASE ---
+    function setupContactSearch(prefix) {
+        const nameInput = document.getElementById(`${prefix}_name`);
+        const phoneInput = document.getElementById(`${prefix}_phone`);
+        const searchInput = document.getElementById(`${prefix}_contact_search`);
+        const resultsContainer = document.getElementById(`${prefix}_contact_results`);
 
-        const resultsContainer = document.getElementById(resultsContainerId);
-
-        if (query.length < 2) {
-
-            resultsContainer.classList.add('hidden');
-
-            return;
-
-        }
-
-
-
-        try {
-
-            const response = await fetch(`{{ route('api.kontak.search') }}?query=${query}`);
-
-            if (!response.ok) throw new Error('Network response was not ok');
-
-            const kontaks = await response.json();
-
-            
-
-            resultsContainer.innerHTML = '';
-
-            if (kontaks.length > 0) {
-
-                kontaks.forEach(kontak => {
-
-                    const item = document.createElement('div');
-
-                    item.className = 'p-2 border-b hover:bg-gray-100 cursor-pointer text-sm';
-
-                    item.textContent = `${kontak.nama} - ${kontak.no_hp}`;
-
-                    item.addEventListener('click', () => {
-
-                        if (resultsContainerId === 'sender_results') {
-
-                            document.getElementById('sender_name').value = kontak.nama;
-
-                            document.getElementById('sender_phone').value = kontak.no_hp;
-
-                            document.getElementById('sender_address').value = kontak.alamat;
-
-                        } else {
-
-                            document.getElementById('receiver_name').value = kontak.nama;
-
-                            document.getElementById('receiver_phone').value = kontak.no_hp;
-
-                            document.getElementById('receiver_address').value = kontak.alamat;
-
-                        }
-
-                        resultsContainer.classList.add('hidden');
-
-                    });
-
-                    resultsContainer.appendChild(item);
-
-                });
-
+        const performSearch = async (query) => {
+            if (query.length < 3) {
+                resultsContainer.classList.add('hidden');
+                return;
+            }
+            try {
+                // ✅ Menggunakan route customer yang benar
+                const url = `{{ route('customer.kontak.search') }}?search=${encodeURIComponent(query)}`;
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('Server error');
+                
+                const contacts = await response.json();
+                resultsContainer.innerHTML = '';
                 resultsContainer.classList.remove('hidden');
 
-            } else {
-
-                resultsContainer.classList.add('hidden');
-
+                if (contacts && contacts.length > 0) {
+                    contacts.forEach(contact => {
+                        const resultDiv = document.createElement('div');
+                        resultDiv.className = 'p-3 border-b hover:bg-gray-100 cursor-pointer text-sm';
+                        resultDiv.innerHTML = `<div class="font-semibold">${contact.nama}</div><div class="text-xs text-gray-500">${contact.no_hp}</div>`;
+                        
+                        resultDiv.addEventListener('click', () => {
+                            document.getElementById(`${prefix}_name`).value = contact.nama || '';
+                            document.getElementById(`${prefix}_phone`).value = contact.no_hp || '';
+                            document.getElementById(`${prefix}_address`).value = contact.alamat || '';
+                            
+                            resultsContainer.classList.add('hidden');
+                        });
+                        resultsContainer.appendChild(resultDiv);
+                    });
+                } else {
+                    resultsContainer.innerHTML = '<div class="p-3 text-gray-500">Kontak tidak ditemukan.</div>';
+                }
+            } catch (error) {
+                console.error(`Gagal melakukan pencarian kontak:`, error);
+                resultsContainer.innerHTML = `<div class="p-3 text-red-500">Gagal memuat data.</div>`;
             }
-
-        } catch (error) {
-
-            console.error('Pencarian gagal:', error);
-
-        }
-
+        };
+        searchInput.addEventListener('input', debounce(() => performSearch(searchInput.value), 400));
     }
 
+    // --- FUNGSI PENCARIAN ALAMAT ONGKIR ---
+    async function performAddressSearch(prefix, query) {
+        const resultsContainer = document.getElementById(`${prefix}_address_results`);
+        if (query.length < 3) { 
+            resultsContainer.classList.add('hidden'); 
+            return; 
+        }
+        try {
+            const response = await fetch(`{{ route('api.address.search') }}?search=${encodeURIComponent(query)}`);
+            if (!response.ok) throw new Error('Network response error');
+            const data = await response.json();
+            
+            resultsContainer.innerHTML = '';
+            resultsContainer.classList.remove('hidden');
 
+            if (data && data.length > 0) {
+                data.forEach(item => {
+                    const resultDiv = document.createElement('div');
+                    resultDiv.className = 'p-3 border-b hover:bg-gray-100 cursor-pointer text-sm';
+                    resultDiv.innerHTML = `<div class="font-semibold">${item.full_address}</div>`;
+                    resultDiv.addEventListener('click', () => selectAddress(prefix, item));
+                    resultsContainer.appendChild(resultDiv);
+                });
+            } else {
+                resultsContainer.innerHTML = '<div class="p-3 text-gray-500">Alamat tidak ditemukan.</div>';
+            }
+        } catch (error) {
+            console.error('Address search failed:', error);
+            resultsContainer.innerHTML = '<div class="p-3 text-red-500">Gagal memuat data alamat.</div>';
+        }
+    }
 
-    document.getElementById('search_sender').addEventListener('keyup', (e) => searchKontak(e.target.value, 'sender_results'));
+    // --- FUNGSI UNTUK MEMILIH ALAMAT ---
+    function selectAddress(prefix, item) {
+        document.getElementById(`${prefix}_address_search`).value = item.full_address;
+        const parts = item.full_address.split(',').map(s => s.trim());
+        // Mengisi hidden fields
+        document.getElementById(`${prefix}_district_id`).value = item.district_id;
+        document.getElementById(`${prefix}_subdistrict_id`).value = item.subdistrict_id;
+        // Tampilkan checkmark
+        document.getElementById(`${prefix}_address_check`).classList.remove('hidden');
+        document.getElementById(`${prefix}_address_results`).classList.add('hidden');
+    }
 
-    document.getElementById('search_receiver').addEventListener('keyup', (e) => searchKontak(e.target.value, 'receiver_results'));
+    // --- Inisialisasi Pencarian Kontak & Alamat ---
+    ['sender', 'receiver'].forEach(prefix => {
+        setupContactSearch(prefix);
+        const searchInput = document.getElementById(`${prefix}_address_search`);
+        const checkIcon = document.getElementById(`${prefix}_address_check`);
+        searchInput.addEventListener('input', debounce(() => {
+            checkIcon.classList.add('hidden');
+            performAddressSearch(prefix, searchInput.value);
+        }, 400));
+    });
 
+     // --- INISIALISASI ---
+    setupContactSearch('sender');
+    setupContactSearch('receiver');
+    setupAddressSearch('sender');
+    setupAddressSearch('receiver');
 
+    // --- FUNGSI CEK ONGKIR ---
+    async function runCekOngkir() {
+        const requiredFields = { '#sender_subdistrict_id': 'Alamat Pengirim', '#receiver_subdistrict_id': 'Alamat Penerima', '#item_price': 'Harga Barang', '#weight': 'Berat', '#service_type': 'Jenis Layanan', '#ansuransi': 'Asuransi' };
+        let missing = Object.keys(requiredFields).filter(s => !document.querySelector(s).value);
+        if (missing.length > 0) {
+            Swal.fire('Data Belum Lengkap', 'Harap lengkapi: ' + missing.map(s => requiredFields[s]).join(', '), 'warning');
+            return;
+        }
+
+        const ongkirModalBody = document.getElementById('ongkirModalBody');
+        ongkirModalBody.innerHTML = `<div class="text-center p-5"><i class="fas fa-spinner fa-spin text-3xl text-indigo-600"></i><p class="mt-2 text-gray-500">Memuat tarif...</p></div>`;
+        ongkirModalEl.classList.remove('hidden');
+
+        try {
+            const formData = new FormData(document.getElementById('orderForm'));
+            const params = new URLSearchParams(formData).toString();
+            const response = await fetch(`{{ route('kirimaja.cekongkir') }}?${params}`);
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Gagal mengambil data ongkir');
+            }
+            const res = await response.json();
+
+            ongkirModalBody.innerHTML = '';
+            let results = (res.results || []).concat((res.result || []).flatMap(v => v.costs.map(c => ({...c, service: v.name, service_name: `${v.name.toUpperCase()} - ${c.service_type}`, cost: c.price.total_price, etd: c.estimation || '-', setting: c.setting || {}, insurance: c.price.insurance_fee || 0, cod: c.cod }))));
+            if (results.length === 0) {
+                ongkirModalBody.innerHTML = '<div class="bg-yellow-100 text-yellow-800 p-4 rounded-md text-center">Layanan pengiriman tidak ditemukan. Cek kembali alamat dan jenis layanan.</div>';
+                return;
+            }
+
+            results.sort((a, b) => a.cost - b.cost).forEach(item => {
+                const isCod = item.cod;
+                const insuranceFee = item.insurance || 0;
+                const codFee = item.setting?.cod_fee_amount || 0;
+                const value = `${document.getElementById('service_type').value}-${item.service}-${item.service_type}-${item.cost}-${insuranceFee}-${codFee}`;
+                let details = `<small class="text-gray-500 block">Estimasi: ${item.etd}</small>`;
+                if (document.getElementById('ansuransi').value == 'iya' && insuranceFee > 0) details += `<small class="text-gray-500 block">Asuransi: ${formatRupiah(insuranceFee)}</small>`;
+                if (isCod && codFee > 0) details += `<small class="text-gray-500 block">Biaya COD: ${formatRupiah(codFee)}</small>`;
+                if (isCod) details += `<small class="text-green-600 font-bold block">COD Tersedia</small>`;
+                
+                const card = document.createElement('div');
+                card.className = 'border rounded-lg mb-3 shadow-sm';
+                card.innerHTML = `
+                    <div class="p-4 flex justify-between items-center">
+                        <div class="flex items-center">
+                            <img src="{{ asset('storage/logo-ekspedisi/') }}/${item.service.toLowerCase().replace(/\s+/g, '')}.png" class="w-16 h-auto mr-4 object-contain" onerror="this.src='https://placehold.co/100x40?text=${item.service}'">
+                            <div>
+                                <h6 class="font-bold text-gray-800">${item.service_name}</h6>
+                                ${details}
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <small class="text-gray-500">Ongkir</small>
+                            <strong class="block text-lg text-red-600">${formatRupiah(item.cost)}</strong>
+                            <button type="button" class="select-ongkir-btn mt-1 bg-indigo-600 text-white px-3 py-1 rounded-md hover:bg-indigo-700 text-sm" data-value="${value}" data-display="${item.service_name}" data-cod-supported="${isCod}">Pilih</button>
+                        </div>
+                    </div>
+                `;
+                ongkirModalBody.appendChild(card);
+            });
+        } catch (error) {
+            console.error('Cek Ongkir failed:', error);
+            ongkirModalBody.innerHTML = `<div class="bg-red-100 text-red-800 p-4 rounded-md text-center">${error.message}</div>`;
+        }
+    }
+
+    // --- EVENT LISTENERS ---
+    document.getElementById('selected_expedition_display').addEventListener('click', runCekOngkir);
+
+    ongkirModalEl.addEventListener('click', function(e) {
+        if (e.target.classList.contains('select-ongkir-btn')) {
+            document.getElementById('expedition').value = e.target.dataset.value;
+            document.getElementById('selected_expedition_display').value = e.target.dataset.display;
+            
+            const codOptions = document.querySelectorAll('.cod-payment-option');
+            if (e.target.dataset.codSupported === 'true') {
+                codOptions.forEach(opt => opt.style.display = 'flex');
+            } else {
+                if (['COD', 'CODBARANG'].includes(document.getElementById('payment_method').value)) {
+                    document.getElementById('payment_method').value = '';
+                    document.getElementById('selectedPaymentName').textContent = 'Pilih...';
+                    document.getElementById('selectedPaymentLogo').src = 'https://cdn-icons-png.flaticon.com/512/2331/2331941.png';
+                }
+                codOptions.forEach(opt => opt.style.display = 'none');
+            }
+            ongkirModalEl.classList.add('hidden');
+        }
+    });
+
+    document.getElementById('paymentMethodButton').addEventListener('click', () => paymentModalEl.classList.remove('hidden'));
+
+    document.querySelectorAll('.payment-option').forEach(item => {
+        item.addEventListener('click', function() {
+            document.getElementById('payment_method').value = this.dataset.value;
+            document.getElementById('selectedPaymentName').textContent = this.dataset.label;
+            document.getElementById('selectedPaymentLogo').src = this.querySelector('img').src;
+            
+            document.querySelectorAll('.payment-option').forEach(opt => opt.classList.remove('bg-indigo-50'));
+            this.classList.add('bg-indigo-50');
+            
+            paymentModalEl.classList.add('hidden');
+        });
+    });
+
+    document.querySelectorAll('.close-modal-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            ongkirModalEl.classList.add('hidden');
+            paymentModalEl.classList.add('hidden');
+        });
+    });
+
+    document.querySelectorAll('input, select, textarea').forEach(el => {
+        if(el.type !== 'hidden' && !el.classList.contains('select-ongkir-btn')){
+             el.addEventListener('change', () => {
+                 document.getElementById('expedition').value = '';
+                 document.getElementById('selected_expedition_display').value = '';
+                 document.getElementById('selected_expedition_display').placeholder = 'Data berubah, klik untuk cek ulang';
+             });
+        }
+    });
+
+    document.getElementById('confirmBtn').addEventListener('click', (e) => {
+        e.preventDefault();
+        const form = document.getElementById('orderForm');
+        const expedition = document.getElementById('expedition').value;
+        const paymentMethod = document.getElementById('payment_method').value;
+
+        if (!form.checkValidity() || !expedition || !paymentMethod) {
+            form.reportValidity();
+            let missingFields = [];
+            if (!expedition) missingFields.push('Ekspedisi');
+            if (!paymentMethod) missingFields.push('Metode Pembayaran');
+
+            let message = 'Harap lengkapi semua field yang wajib diisi.';
+            if (missingFields.length > 0) {
+                message += ` Anda belum memilih: ${missingFields.join(', ')}.`;
+            }
+
+            Swal.fire('Peringatan', message, 'warning');
+            return;
+        }
+
+        Swal.fire({
+            title: 'Konfirmasi Pesanan',
+            text: "Apakah semua data sudah benar?",
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#4f46e5',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Ya, Buat Pesanan',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const confirmBtn = document.getElementById('confirmBtn');
+                confirmBtn.disabled = true;
+                confirmBtn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>Memproses...`;
+                form.submit();
+            }
+        });
+    });
+
+    document.querySelectorAll('.cod-payment-option').forEach(opt => opt.style.display = 'none');
 
     document.addEventListener('click', function(event) {
-
-        if (!document.getElementById('search_sender_container').contains(event.target)) {
-
-            document.getElementById('sender_results').classList.add('hidden');
-
+        if (!event.target.closest('#sender_address_search, #sender_address_results')) {
+            document.getElementById('sender_address_results').classList.add('hidden');
         }
-
-        if (!document.getElementById('search_receiver_container').contains(event.target)) {
-
-             document.getElementById('receiver_results').classList.add('hidden');
-
+        if (!event.target.closest('#receiver_address_search, #receiver_address_results')) {
+            document.getElementById('receiver_address_results').classList.add('hidden');
         }
-
+        if (!event.target.closest('#sender_name, #sender_contact_results, #sender_phone')) {
+            document.getElementById('sender_contact_results').classList.add('hidden');
+        }
+        if (!event.target.closest('#receiver_name, #receiver_contact_results, #receiver_phone')) {
+            document.getElementById('receiver_contact_results').classList.add('hidden');
+        }
     });
-
-
-
-    // Data & Element References
-
-    const allExpeditions = {'JNE': 'JNE', 'J&T Express': 'J&T Express', 'J&T Cargo': 'J&T Cargo', 'Wahana Express': 'Wahana Express', 'POS Indonesia': 'POS Indonesia', 'SAP Express': 'SAP Express', 'Indah Cargo': 'Indah Cargo', 'Lion Parcel': 'Lion Parcel', 'ID Express': 'ID Express', 'SPX Express': 'SPX Express', 'NCS': 'NCS', 'Sentral Cargo': 'Sentral Cargo', 'Sancaka Express': 'Sancaka Express'};
-
-    const cargoAndMotorExpeditions = ['J&T Cargo', 'Indah Cargo', 'Sancaka Cargo'];
-
-    
-
-    const serviceTypeSelect = document.getElementById('service_type');
-
-    const expeditionSelect = document.getElementById('expedition');
-
-    const motorcycleChecklist = document.getElementById('motorcycle_checklist');
-
-    const openModalBtn = document.getElementById('openConfirmationModalBtn');
-
-    const modal = document.getElementById('confirmationModal');
-
-    const closeModalBtn = document.getElementById('closeModalBtn');
-
-    const submitOrderBtn = document.getElementById('submitOrderBtn');
-
-    const orderForm = document.getElementById('orderForm');
-
-    const cekOngkirBtn = document.getElementById('cekOngkirBtn');
-
-    const modalCostSummary = document.getElementById('modal_cost_summary');
-
-
-
-
-
-    function calculateAndShowSummary() {
-
-        const weight = parseFloat(document.getElementById('weight').value) || 0;
-
-        const length = parseFloat(document.getElementById('length').value) || 0;
-
-        const width = parseFloat(document.getElementById('width').value) || 0;
-
-        const height = parseFloat(document.getElementById('height').value) || 0;
-
-        const selectedExpedition = expeditionSelect.value;
-
-        const totalBiaya = parseFloat(document.getElementById('total_harga_barang').value) || 0;
-
-
-
-        if (weight <= 0 || totalBiaya <= 0) {
-
-            modalCostSummary.innerHTML = '<p class="text-red-500">Berat dan Total Biaya wajib diisi.</p>';
-
-            return false;
-
-        }
-
-
-
-        let divisor = 6000;
-
-        if (selectedExpedition === 'Indah Cargo') divisor = 5000;
-
-
-
-        const volumetricWeight = (length * width * height) / divisor;
-
-        const actualWeightInKg = weight / 1000;
-
-        const chargeableWeight = Math.max(actualWeightInKg, volumetricWeight);
-
-
-
-        modalCostSummary.innerHTML = `
-
-            <div class="flex justify-between"><span>Berat Asli:</span> <span class="font-medium">${actualWeightInKg.toFixed(2)} kg</span></div>
-
-            <div class="flex justify-between"><span>Berat Volume:</span> <span class="font-medium">${volumetricWeight.toFixed(2)} kg</span></div>
-
-            <div class="flex justify-between"><span>Total Berat Dikenakan:</span> <span class="font-medium">${chargeableWeight.toFixed(2)} kg</span></div>
-
-            <div class="flex justify-between text-base font-semibold pt-3 border-t mt-2"><span>Total Biaya:</span> <span class="text-indigo-600">Rp ${totalBiaya.toLocaleString('id-ID')}</span></div>
-
-        `;
-
-        return true;
-
-    }
-
-
-
-    function sendToWhatsApp() {
-
-        const data = new FormData(orderForm);
-
-        let checklistItems = '';
-
-        if (serviceTypeSelect.value === 'motor') {
-
-            const checkedItems = Array.from(document.querySelectorAll('input[name="kelengkapan[]"]:checked')).map(cb => cb.value);
-
-            checklistItems = `*--- KELENGKAPAN MOTOR ---*\n${checkedItems.map(item => `- ✅ ${item}`).join('\n')}\n\n`;
-
-        }
-
-        const message = `
-
-Halo Sancaka Express,
-
-Saya ingin melakukan pengecekan ongkos kirim dengan detail sebagai berikut:
-
-*--- DATA PENGIRIM ---*
-
-👤 *Nama:* ${data.get('sender_name')}
-
-📞 *No. HP:* ${data.get('sender_phone')}
-
-🏠 *Alamat:* ${data.get('sender_address')}
-
-*--- DATA PENERIMA ---*
-
-� *Nama:* ${data.get('receiver_name')}
-
-📞 *No. HP:* ${data.get('receiver_phone')}
-
-🏠 *Alamat:* ${data.get('receiver_address')}
-
-*--- DETAIL PAKET ---*
-
-🚚 *Layanan:* ${data.get('service_type')}
-
-✈️ *Ekspedisi:* ${data.get('expedition')}
-
-📦 *Isi Paket:* ${data.get('item_description')}
-
-⚖️ *Berat Asli:* ${data.get('weight')} gram
-
-📐 *Dimensi:* ${data.get('length')} x ${data.get('width')} x ${data.get('height')} cm
-
-${checklistItems}*--- PEMBAYARAN ---*
-
-💰 *Metode:* ${data.get('payment_method')}
-
-Mohon informasikan estimasi biayanya. Terima kasih.
-
-        `.trim();
-
-        const phoneNumber = '6285745808809';
-
-        const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
-
-        window.open(whatsappUrl, '_blank');
-
-    }
-
-
-
-    
-
-    openModalBtn.addEventListener('click', () => {
-
-        if (orderForm.checkValidity()) {
-
-            if (calculateAndShowSummary()) {
-
-                modal.classList.remove('hidden');
-
-            }
-
-        } else {
-
-            orderForm.reportValidity();
-
-        }
-
-    });
-
-
-
-    closeModalBtn.addEventListener('click', () => modal.classList.add('hidden'));
-
-    
-
-    submitOrderBtn.addEventListener('click', () => {
-
-        orderForm.submit();
-
-    });
-
-
-
-    cekOngkirBtn.addEventListener('click', sendToWhatsApp);
-
-
-
 });
-
 </script>
-
 @endpush
+
