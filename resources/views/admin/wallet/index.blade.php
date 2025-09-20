@@ -23,7 +23,8 @@
                     <select id="user_id" name="user_id" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" required>
                         <option value="" disabled selected>-- Cari dan pilih nama pelanggan --</option>
                         @foreach($pelanggan as $user)
-                            <option value="{{ $user->id }}">{{ $user->name }} - (ID: {{ $user->id }})</option>
+                            {{-- PERBAIKAN: Menggunakan 'nama_lengkap' --}}
+                            <option value="{{ $user->id }}">{{ $user->nama_lengkap }} - (ID: {{ $user->id }})</option>
                         @endforeach
                     </select>
                 </div>
@@ -42,7 +43,7 @@
                 </div>
             </div>
              @error('user_id') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
-             @error('amount') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+             @error('amount') <p class="text-red-500 text-xs mt-1">{{ $message }}</p @enderror
         </form>
     </div>
 
@@ -63,7 +64,8 @@
                     <td class="py-4 px-6 font-medium text-gray-900 whitespace-nowrap dark:text-white">
                         {{ $user->id }}
                     </td>
-                    <td class="py-4 px-6">{{ $user->name }}</td>
+                    {{-- PERBAIKAN: Menggunakan 'nama_lengkap' --}}
+                    <td class="py-4 px-6">{{ $user->nama_lengkap }}</td>
                     <td class="py-4 px-6">{{ $user->email }}</td>
                     <td class="py-4 px-6 text-right font-bold text-green-600 dark:text-green-400">
                         Rp {{ number_format($user->balance, 0, ',', '.') }}
@@ -86,3 +88,4 @@
     </div>
 </div>
 @endsection
+
