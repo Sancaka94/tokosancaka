@@ -41,7 +41,7 @@ class LaporanKeuanganController extends Controller
         $transactions = (clone $transactionQuery)->latest()->paginate(15)->withQueryString();
 
         // ✅ 8. Kirim semua data, termasuk tanggal filter, ke view
-        return view('customer.laporan-keuangan', [
+        return view('customer.laporan.index', [
             'saldo'             => $saldoSaatIni,
             'totalPemasukan'    => $totalPemasukan,
             'totalPengeluaran'  => $totalPengeluaran,
