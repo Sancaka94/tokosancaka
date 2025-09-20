@@ -21,7 +21,6 @@ class LaporanKeuanganController extends Controller
         $user = Auth::user();
         $userId = $user->id_pengguna;
 
-        // Saldo saat ini tetap diambil langsung dari user, ini adalah sumber paling akurat.
         $saldoSaatIni = $user->saldo;
 
         // --- Filter Tanggal ---
@@ -30,12 +29,12 @@ class LaporanKeuanganController extends Controller
 
         // --- Query untuk Riwayat Transaksi ---
 
-        // 1. Data dari tabel 'transactions' (Top up / Pengurangan oleh Admin)
+        // 1. Data dari tabel 'transactions'
         $generalTransactions = DB::table('transactions')
             ->where('user_id', $userId)
             ->select('created_at', 'description', 'type', 'amount');
 
-        // 2. Data dari tabel 'Pesanan' (Pembayaran untuk pesanan)
+        // 2. Data dari tabel 'Pesanan'
         $orderPayments = DB::table('Pesanan')
             ->where('id_pengguna_pembeli', $userId)
             ->select(
@@ -45,51 +44,67 @@ class LaporanKeuanganController extends Controller
                 'total_harga_barang as amount'
             );
 
+        // --- Query untuk Saldo Awal Periode ---
+        // ✅ FIX: Hitung saldo awal SEBELUM tanggal mulai filter.
+        $saldoAwalPemasukan = DB::table('transactions')
+            ->where('user_id', $userId)
+            ->where('type', 'topup')
+            ->when($startDate, fn($q) => $q->where('created_at', '<', $startDate))
+            ->sum('amount');
+        
+        $saldoAwalPengeluaran = DB::table('transactions')
+            ->where('user_id', $userId)
+            ->whereIn('type', ['withdrawal', 'payment'])
+            ->when($startDate, fn($q) => $q->where('created_at', '<', $startDate))
+            ->sum('amount');
+
+        $saldoAwalPengeluaranPesanan = DB::table('Pesanan')
+            ->where('id_pengguna_pembeli', $userId)
+            ->when($startDate, fn($q) => $q->where('tanggal_pesanan', '<', $startDate))
+            ->sum('total_harga_barang');
+
+        $saldoAwal = $saldoAwalPemasukan - ($saldoAwalPengeluaran + $saldoAwalPengeluaranPesanan);
+
         // Terapkan filter tanggal ke setiap sub-query jika ada
         if ($startDate && $endDate) {
             $generalTransactions->whereBetween('created_at', [$startDate, $endDate]);
             $orderPayments->whereBetween('tanggal_pesanan', [$startDate, $endDate]);
         }
 
-        // Gabungkan kedua sumber data dan urutkan berdasarkan tanggal terbaru
-        $transactionsQuery = $generalTransactions->unionAll($orderPayments)->orderBy('created_at', 'desc');
-        
-        $results = $transactionsQuery->get();
+        // Gabungkan kedua sumber data dan urutkan berdasarkan tanggal (dari yang paling lama)
+        // ✅ FIX: Diurutkan dari ASC (lama ke baru) untuk menghitung maju.
+        $results = $generalTransactions->unionAll($orderPayments)->orderBy('created_at', 'asc')->get();
 
         // Konversi string tanggal menjadi objek Carbon
-        $results->transform(function ($item) {
-            $item->created_at = Carbon::parse($item->created_at);
-            return $item;
-        });
-
-        // ✅ PENYEMPURNAAN: Menghitung sisa saldo berjalan untuk setiap transaksi
-        $runningBalance = $saldoSaatIni;
+        $results->transform(fn($item) => $item->created_at = Carbon::parse($item->created_at));
+        
+        // ✅ FIX: Menghitung sisa saldo berjalan MAJU dari saldo awal.
+        $runningBalance = $saldoAwal;
         $results->transform(function ($item) use (&$runningBalance) {
-            // Saldo yang ditampilkan adalah saldo SETELAH transaksi ini terjadi.
-            $item->running_balance = $runningBalance;
-
-            // Hitung mundur saldo untuk transaksi SEBELUMNYA (yang lebih lama).
             if ($item->type === 'topup') {
-                $runningBalance -= (float)$item->amount; // Kurangi karena ini pemasukan
-            } else { // 'withdrawal' or 'payment'
-                $runningBalance += (float)$item->amount; // Tambah karena ini pengeluaran
+                $runningBalance += (float)$item->amount;
+            } else {
+                $runningBalance -= (float)$item->amount;
             }
+            $item->running_balance = $runningBalance;
             return $item;
         });
+        
+        // Balik urutan koleksi agar yang terbaru ada di atas.
+        $results = $results->reverse();
 
         // --- Perhitungan Total Pemasukan & Pengeluaran Berdasarkan Hasil Gabungan ---
         $totalPemasukan = $results->where('type', 'topup')->sum('amount');
         $totalPengeluaran = $results->whereIn('type', ['withdrawal', 'payment'])->sum('amount');
         
-        // Paginasi Manual dari hasil query gabungan
+        // Paginasi Manual
         $currentPage = LengthAwarePaginator::resolveCurrentPage();
         $perPage = 15;
-        $currentPageResults = $results->slice(($currentPage - 1) * $perPage, $perPage)->all();
+        $currentPageResults = $results->slice(($currentPage - 1) * $perPage, $perPage)->values();
         $transactions = new LengthAwarePaginator($currentPageResults, count($results), $perPage, $currentPage, [
             'path' => LengthAwarePaginator::resolveCurrentPath(),
         ]);
         
-        // Kirim semua data, termasuk tanggal filter, ke view
         return view('customer.laporan.index', [
             'saldo'             => $saldoSaatIni,
             'totalPemasukan'    => $totalPemasukan,
@@ -100,4 +115,3 @@ class LaporanKeuanganController extends Controller
         ]);
     }
 }
-
