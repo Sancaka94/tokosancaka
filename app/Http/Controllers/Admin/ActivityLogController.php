@@ -127,14 +127,20 @@ class ActivityLogController extends Controller
     }
 
     /**
-     * ✅ DIPERBARUI: Mengambil 5 log aktivitas PALING BARU SECARA KESELURUHAN untuk notifikasi header.
+     * ✅ LENGKAP & DIPERBAIKI: Mengambil data dari 4 sumber (pendaftaran, pesanan, top up, scan)
+     * lalu mengurutkannya untuk menampilkan 5 notifikasi PALING BARU SECARA KESELURUHAN.
+     *
+     * Catatan: Jika satu jenis aktivitas (misalnya, scan) terjadi sangat sering,
+     * kemungkinan 5 notifikasi teratas semuanya adalah aktivitas scan. Ini adalah perilaku yang benar.
      */
     public function getHeaderNotifications()
     {
         $allActivities = collect([]);
-        $limit = 5; // Batas pengambilan data untuk setiap jenis aktivitas
+        $limit = 5; // Batas pengambilan data awal untuk setiap jenis aktivitas agar efisien
 
-        // 1. Ambil pendaftaran pengguna terbaru
+        // --- TAHAP 1: Mengumpulkan 5 aktivitas terbaru dari SETIAP KATEGORI ---
+
+        // 1. Mengambil data PENDAFTARAN pengguna terbaru
         $userRegistrations = User::latest()->take($limit)->get();
         foreach ($userRegistrations as $user) {
             if ($user && $user->id_pengguna) {
@@ -149,7 +155,7 @@ class ActivityLogController extends Controller
             }
         }
 
-        // 2. Ambil pesanan terbaru
+        // 2. Mengambil data PESANAN terbaru
         $newOrders = Pesanan::with('pembeli')->latest()->take($limit)->get();
         foreach ($newOrders as $order) {
             if ($order && $order->resi) {
@@ -164,7 +170,7 @@ class ActivityLogController extends Controller
             }
         }
         
-        // 3. Ambil top up terbaru
+        // 3. Mengambil data TOP UP SALDO terbaru
         $topUps = TopUp::with('customer')->latest()->take($limit)->get();
         foreach ($topUps as $topUp) {
             if ($topUp) {
@@ -179,7 +185,7 @@ class ActivityLogController extends Controller
             }
         }
         
-        // 4. Ambil scan paket terbaru
+        // 4. Mengambil data SCAN PAKET terbaru
         $spxScans = ScannedPackage::with('user')->latest()->take($limit)->get();
         foreach ($spxScans as $scan) {
              if ($scan) {
@@ -194,7 +200,7 @@ class ActivityLogController extends Controller
             }
         }
 
-        // Urutkan semua aktivitas yang terkumpul dan AMBIL 5 YANG PALING BARU
+        // --- TAHAP 2: Mengurutkan semua data yang terkumpul dan mengambil HANYA 5 yang paling baru ---
         return $allActivities->sortByDesc('created_at')->take(5);
     }
 
