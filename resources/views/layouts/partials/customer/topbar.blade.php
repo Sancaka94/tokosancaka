@@ -15,7 +15,7 @@
             {{-- ✅ DITAMBAHKAN: Saldo & Tombol Top Up untuk Mobile --}}
             <li class="flex md:hidden items-center space-x-2">
                 <span class="font-semibold text-xs sm:text-sm text-gray-700">
-                    Rp {{ number_format($saldo ?? 0, 0, ',', '.') }}
+                    <p>Saldo Anda </p>{{ number_format($saldo ?? 0, 0, ',', '.') }}
                 </span>
                 <a href="{{ route('customer.topup.create') }}" class="inline-flex items-center justify-center w-8 h-8 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-full hover:bg-indigo-700 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     <i class="fas fa-plus"></i>
@@ -26,7 +26,7 @@
             <li class="hidden md:flex items-center space-x-2">
                 <i class="fas fa-wallet text-gray-500"></i>
                 <span class="font-semibold text-sm text-gray-700">
-                    Rp {{ number_format($saldo ?? 0, 0, ',', '.') }}
+                    <p>Saldo Anda </p>Rp {{ number_format($saldo ?? 0, 0, ',', '.') }}
                 </span>
                 <a href="{{ route('customer.topup.create') }}" class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 border border-transparent rounded-lg hover:bg-indigo-700 transition-colors duration-150">
                     <i class="fas fa-plus mr-1"></i>
