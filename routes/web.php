@@ -111,10 +111,11 @@ Route::get('/api/contacts/search', [PesananController::class, 'searchKontak'])->
 
 Route::get('/kontak/search', [KontakController::class, 'search'])->name('api.search.kontak');
 
- Route::get('/wallet', function () {
-        // Ini hanya contoh, arahkan ke controller yang benar
-        return 'Halaman Wallet/Top Up'; 
-        })->name('wallet.index');
+    // Route ini yang menyebabkan error karena belum terdaftar
+    Route::get('/wallet', [WalletController::class, 'index'])->name('wallet.index');
+
+    // Route untuk memproses form top up dari halaman wallet
+    Route::post('/wallet/topup', [WalletController::class, 'topup'])->name('wallet.topup');
 
 
 // =========================================================================
