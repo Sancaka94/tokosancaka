@@ -452,7 +452,9 @@ Route::prefix('customer-to-seller')->name('customer-to-seller.')->group(function
 
 });
 
-    
+Route::get('/settings', function () {
+        return view('admin.settings');
+    })->name('settings');   
 
     
 
