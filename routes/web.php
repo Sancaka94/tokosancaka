@@ -287,10 +287,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
     Route::get('/wilayah/district/{district}/villages', [WilayahController::class, 'getDesa'])->name('wilayah.desa');
 
-     // TAMBAHKAN ROUTE INI UNTUK HALAMAN PENGATURAN
-    Route::get('/settings', function () {
-        return view('admin.settings');
-    })->name('settings');
+   
 
     
 });
@@ -308,7 +305,10 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])
         require __DIR__.'/web/admin.php';
 
        
-        
+          // TAMBAHKAN ROUTE INI UNTUK HALAMAN PENGATURAN
+    Route::get('/settings', function () {
+        return view('admin.settings');
+    })->name('settings');
 
      // --- MANAJEMEN WILAYAH TERINTEGRASI ---
 
