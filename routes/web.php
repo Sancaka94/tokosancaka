@@ -675,5 +675,5 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     // Settings
     Route::get('/settings', function () {
         return view('admin.settings');
-    })->name('settings.index');
+    })->name('settings');
 });
