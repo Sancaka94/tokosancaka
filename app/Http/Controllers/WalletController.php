@@ -2,71 +2,88 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
+use App\Models\User; // Pastikan model Anda bernama 'User' atau 'Pengguna'
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class WalletController extends Controller
 {
     /**
-     * Menampilkan halaman utama wallet yang berisi daftar semua pelanggan.
-     * Admin dapat melihat saldo dan melakukan top up dari halaman ini.
+     * Menampilkan halaman utama wallet dengan fitur pencarian.
      */
-    public function index()
+    public function index(Request $request)
     {
-        // Mengambil semua pengguna yang bukan admin, diurutkan berdasarkan nama
-        // Anda bisa menyesuaikan query ini, misalnya: ->where('role', 'pelanggan')
-        $pelanggan = User::where('role', '!=', 'admin')
-                         ->orderBy('name', 'asc')
-                         ->paginate(20); // Menggunakan paginate untuk data yang banyak
+        // Memulai query pada model User, filter hanya untuk pelanggan
+        $query = User::where('role', '!=', 'admin');
 
-        return view('admin.wallet.index', [
-            'pelanggan' => $pelanggan
-        ]);
+        // Menerapkan fitur pencarian untuk tabel utama
+        if ($request->has('search') && $request->search != '') {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                // Mencari berdasarkan nama_lengkap ATAU email
+                $q->where('nama_lengkap', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        // Mengurutkan berdasarkan nama_lengkap dan melakukan paginasi
+        $pelanggan = $query->orderBy('nama_lengkap', 'asc')->paginate(20);
+
+        return view('admin.wallet.index', compact('pelanggan'));
     }
 
     /**
-     * Memproses permintaan penambahan saldo (top up) untuk pelanggan.
+     * Menangani pencarian pelanggan via AJAX untuk dropdown Select2.
+     * Ini membuat form top up sangat cepat dan efisien.
+     */
+    public function search(Request $request)
+    {
+        $searchTerm = $request->input('q');
+        
+        if (!$searchTerm) {
+            return response()->json([]);
+        }
+
+        $users = User::where('role', '!=', 'admin')
+                    ->where(function ($query) use ($searchTerm) {
+                        $query->where('nama_lengkap', 'like', '%' . $searchTerm . '%')
+                              ->orWhere('email', 'like', '%' . $searchTerm . '%');
+                    })
+                    ->select('id', 'nama_lengkap', 'email', 'balance')
+                    ->limit(15) // Batasi hasil pencarian untuk performa
+                    ->get();
+
+        return response()->json($users);
+    }
+
+    /**
+     * Memproses permintaan penambahan saldo (top up).
      */
     public function topup(Request $request)
     {
-        // 1. Validasi input dari form
+        // Validasi input dari form
         $validated = $request->validate([
             'user_id' => 'required|exists:users,id',
-            'amount' => 'required|numeric|min:1000', // Minimal top up 1,000
+            'amount' => 'required|numeric|min:1000',
         ]);
 
-        // 2. Cari pengguna berdasarkan ID
         $pelanggan = User::find($validated['user_id']);
 
-        if (!$pelanggan) {
-            return back()->with('error', 'Pelanggan tidak ditemukan.');
-        }
-
-        // 3. Lakukan penambahan saldo dalam database transaction
-        //    Ini memastikan jika ada error, prosesnya akan dibatalkan (rollback)
         try {
+            // Menggunakan transaksi database untuk memastikan keamanan data
             DB::transaction(function () use ($pelanggan, $validated) {
-                // Gunakan increment untuk operasi yang aman dari race condition
                 $pelanggan->increment('balance', $validated['amount']);
-
-                // (Opsional) Anda bisa mencatat transaksi ini ke tabel lain
-                // Transaction::create([
-                //     'user_id' => $pelanggan->id,
-                //     'amount' => $validated['amount'],
-                //     'type' => 'topup',
-                //     'description' => 'Top up saldo oleh admin.'
-                // ]);
             });
-
         } catch (\Exception $e) {
-            // Jika terjadi error selama transaksi
-            return back()->with('error', 'Gagal melakukan top up. Terjadi kesalahan: ' . $e->getMessage());
+            // Menangani jika terjadi error saat update database
+            return back()->with('error', 'Gagal melakukan top up. Terjadi kesalahan teknis.');
         }
 
-        // 4. Kembalikan ke halaman index dengan pesan sukses
         $formattedAmount = number_format($validated['amount'], 0, ',', '.');
+        
+        // Menggunakan nama_lengkap pada pesan sukses
         return redirect()->route('wallet.index')
-                         ->with('success', "Berhasil menambahkan saldo sebesar Rp {$formattedAmount} ke akun {$pelanggan->name}.");
+                         ->with('success', "Berhasil menambahkan saldo Rp {$formattedAmount} ke akun {$pelanggan->nama_lengkap}.");
     }
 }
+
