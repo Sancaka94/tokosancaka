@@ -67,43 +67,42 @@ class PesananController extends Controller
     {
         DB::beginTransaction();
         try {
+            // 1. Validasi semua input dari form
             $validatedData = $this->_validateOrderRequest($request);
             
+            // 2. Simpan atau perbarui kontak jika dicentang
             $this->_saveOrUpdateKontak($validatedData, 'sender', 'Pengirim');
             $this->_saveOrUpdateKontak($validatedData, 'receiver', 'Penerima');
 
             $validatedData['sender_phone'] = $this->_sanitizePhoneNumber($validatedData['sender_phone']);
             $validatedData['receiver_phone'] = $this->_sanitizePhoneNumber($validatedData['receiver_phone']);
             
-            // Kalkulasi total biaya menggunakan helper method
+            // 3. Kalkulasi total biaya berdasarkan metode pembayaran
             $calculation = $this->_calculateTotalPaid($validatedData);
             $total_paid = $calculation['total_paid'];
             $cod_value = $calculation['cod_value'];
             
+            // 4. Siapkan data dan buat entri pesanan awal di database
             $pesananData = $this->_preparePesananData($validatedData, $total_paid, $request->ip(), $request->userAgent());
             $pesanan = Pesanan::create($pesananData);
 
+            // 5. Proses logika pembayaran spesifik
             // === LOGIKA UTAMA UNTUK POTONG SALDO ===
             if ($validatedData['payment_method'] === 'Potong Saldo') {
                 $customer = User::findOrFail($validatedData['customer_id']);
                 
-                // 1. Cek Saldo
                 if ($customer->saldo < $total_paid) {
                     throw new Exception('Saldo pelanggan tidak mencukupi untuk melakukan transaksi ini.');
                 }
                 
-                // 2. Kurangi Saldo
                 $customer->decrement('saldo', $total_paid);
                 
-                // 3. Update data pesanan dengan info pelanggan
                 $pesanan->customer_id = $customer->id;
                 $pesanan->sender_name = $customer->nama_lengkap;
-                
-                // Perbarui juga data pengirim yang akan dikirim ke API KiriminAja
-                $validatedData['sender_name'] = $customer->nama_lengkap;
+                $validatedData['sender_name'] = $customer->nama_lengkap; // Update untuk payload API
             }
-            // === AKHIR LOGIKA POTONG SALDO ===
             
+            // 6. Proses pembuatan order ke API Ekspedisi atau Payment Gateway
             if (in_array($validatedData['payment_method'], ['COD', 'CODBARANG', 'Potong Saldo'])) {
                 $senderAddressData = $this->_getAddressData($request, 'sender');
                 $receiverAddressData = $this->_getAddressData($request, 'receiver');
@@ -114,7 +113,6 @@ class PesananController extends Controller
                     throw new Exception($kiriminResponse['text'] ?? ($kiriminResponse['errors'][0]['text'] ?? 'Gagal membuat order di sistem ekspedisi.'));
                 }
                 
-                // 4. Update status pesanan
                 $pesanan->status = 'Menunggu Pickup';
                 $pesanan->status_pesanan = 'Menunggu Pickup';
                 $pesanan->resi = $kiriminResponse['result']['awb_no'] ?? ($kiriminResponse['results'][0]['awb'] ?? null);
@@ -129,20 +127,23 @@ class PesananController extends Controller
                 $pesanan->payment_url = $response['data']['checkout_url'];
             }
             
+            // 7. Simpan finalisasi data pesanan
             $pesanan->price = $total_paid;
             $pesanan->save();
             DB::commit();
 
+            // 8. Kirim notifikasi WhatsApp
             $waStatus = $this->_sendWhatsappNotification($pesanan, $validatedData, $calculation, $total_paid);
-            
             $notifMessage = 'Pesanan baru dengan resi ' . ($pesanan->resi ?? $pesanan->nomor_invoice) . ' berhasil dibuat!';
             $notifMessage .= ' ' . $waStatus['message'];
             
+            // 9. Arahkan pengguna ke halaman sukses atau pembayaran
             if (!empty($pesanan->payment_url)) {
                 return redirect()->away($pesanan->payment_url);
             }
             
             return redirect()->route('admin.pesanan.index')->with('success', $notifMessage);
+
         } catch (ValidationException $e) {
             DB::rollBack();
             return redirect()->back()->withErrors($e->errors())->withInput();
@@ -153,29 +154,20 @@ class PesananController extends Controller
         }
     }
 
-    // ... sisa method lainnya tidak berubah ...
+    // ... sisa method lainnya (show, edit, update, dll) tidak berubah ...
 
-    /**
-     * Menampilkan detail spesifik pesanan.
-     */
     public function show($resi)
     {
         $order = Pesanan::where('resi', $resi)->firstOrFail();
         return view('admin.pesanan.show', compact('order'));
     }
 
-    /**
-     * Menampilkan form untuk mengedit pesanan.
-     */
     public function edit($resi)
     {
         $order = Pesanan::where('resi', $resi)->firstOrFail();
         return view('admin.pesanan.edit', compact('order'));
     }
 
-    /**
-     * Memperbarui data pesanan di database.
-     */
     public function update(Request $request, $resi)
     {
         $validatedData = $request->validate([
@@ -195,9 +187,6 @@ class PesananController extends Controller
         return redirect()->route('admin.pesanan.index')->with('success', 'Pesanan ' . $resi . ' berhasil diperbarui.');
     }
 
-    /**
-     * Menghapus pesanan dari database.
-     */
     public function destroy($resi)
     {
         $order = Pesanan::where('resi', $resi)->firstOrFail();
@@ -205,9 +194,6 @@ class PesananController extends Controller
         return redirect()->route('admin.pesanan.index')->with('success', 'Pesanan ' . $resi . ' berhasil dihapus.');
     }
 
-    /**
-     * API endpoint untuk mencari alamat via KiriminAja.
-     */
     public function searchAddressApi(Request $request, KiriminAjaService $kirimaja)
     {
         $request->validate(['search' => 'required|string|min:3']);
@@ -220,9 +206,6 @@ class PesananController extends Controller
         }
     }
     
-    /**
-     * API endpoint untuk mencari kontak.
-     */
     public function searchKontak(Request $request)
     {
         $request->validate([
@@ -243,9 +226,6 @@ class PesananController extends Controller
         return response()->json($query->limit(10)->get());
     }
     
-    /**
-     * API endpoint untuk cek ongkos kirim.
-     */
     public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
     {
         try {
@@ -270,18 +250,12 @@ class PesananController extends Controller
         }
     }
 
-    /**
-     * API endpoint untuk menghitung pesanan baru yang belum dilihat.
-     */
     public function count()
     {
         $count = Pesanan::where('status', 'baru')->where('telah_dilihat', false)->count();
         return response()->json(['count' => $count]);
     }
 
-    /**
-     * Mencetak resi thermal.
-     */
     public function cetakResiThermal(string $resi)
     {
         $pesanan = Pesanan::where('resi', $resi)->firstOrFail();
@@ -370,8 +344,16 @@ class PesananController extends Controller
             $nomorInvoice = 'SCK-' . date('Ymd') . '-'. strtoupper(Str::random(6));
         } while (Pesanan::where('nomor_invoice', $nomorInvoice)->exists());
 
+        // PERBAIKAN: Menggunakan 'only' untuk keamanan dan stabilitas
         return array_merge(
-            collect($validatedData)->except(['save_sender', 'save_receiver', 'pengirim_id', 'penerima_id'])->all(),
+            collect($validatedData)->only([
+                'sender_name', 'sender_phone', 'sender_address', 'sender_province', 'sender_regency', 
+                'sender_district', 'sender_village', 'sender_postal_code', 'receiver_name', 
+                'receiver_phone', 'receiver_address', 'receiver_province', 'receiver_regency', 
+                'receiver_district', 'receiver_village', 'receiver_postal_code', 'item_description', 
+                'item_price', 'weight', 'length', 'width', 'height', 'service_type', 'expedition', 
+                'payment_method', 'ansuransi', 'item_type', 'customer_id'
+            ])->all(),
             [
                 'nomor_invoice' => $nomorInvoice,
                 'price' => $total,
@@ -437,6 +419,10 @@ class PesananController extends Controller
                 'insurance_amount' => ($data['ansuransi'] == 'iya') ? (int)$data['item_price'] : 0, 'cod' => $cod_value
             ]]
         ];
+
+        // PERBAIKAN: Menambahkan log untuk payload API
+        Log::info('KiriminAja Create Order Payload:', $payload);
+
         return $kirimaja->createExpressOrder($payload);
     }
 
@@ -466,6 +452,8 @@ class PesananController extends Controller
             'expired_time'   => time() + (24 * 60 * 60),
             'signature'      => hash_hmac('sha256', $merchantCode . $pesanan->nomor_invoice . $total, $privateKey),
         ];
+        
+        Log::info('Tripay Create Transaction Payload:', $payload);
 
         $baseUrl = config('tripay.mode') === 'production' ? 'https://tripay.co.id/api/transaction/create' : 'https://tripay.co.id/api-sandbox/transaction/create';
         
@@ -533,8 +521,13 @@ TEXT;
         $senderWa = '62' . substr($this->_sanitizePhoneNumber($data['sender_phone']), 1);
         $receiverWa = '62' . substr($this->_sanitizePhoneNumber($data['receiver_phone']), 1);
         
-        $senderStatus = FonnteService::sendMessage($senderWa, $message);
-        $receiverStatus = FonnteService::sendMessage($receiverWa, $message);
+        try {
+            $senderStatus = FonnteService::sendMessage($senderWa, $message);
+            $receiverStatus = FonnteService::sendMessage($receiverWa, $message);
+        } catch (Exception $e) {
+            Log::error('Fonnte Service sendMessage failed: ' . $e->getMessage());
+            return ['success' => false, 'message' => 'Gagal mengirim notifikasi WA.'];
+        }
         
         $allSuccess = ($senderStatus['success'] ?? false) && ($receiverStatus['success'] ?? false);
         
