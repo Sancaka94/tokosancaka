@@ -32,11 +32,11 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.08);
             display: flex;
             flex-direction: column;
-            font-size: 9pt;
+            font-size: 8pt; /* Ukuran font diperkecil */
         }
         .barcode { width: 100%; height: 50px; }
-        .label { font-weight: 600; font-size: 10px; color: #374151; }
-        .value { font-weight: 500; font-size: 11px; }
+        .label { font-weight: 600; font-size: 8px; color: #374151; } /* Ukuran font diperkecil */
+        .value { font-weight: 500; font-size: 9px; } /* Ukuran font diperkecil */
         @media print {
             body { background: none; }
             .no-print { display: none; }
@@ -44,8 +44,8 @@
                 margin: 0;
                 border: none;
                 border-radius: 0;
-                width: 100mm; /* Menetapkan lebar cetak */
-                min-height: 150mm; /* Menetapkan tinggi cetak */
+                width: 100mm;
+                min-height: 150mm;
                 box-shadow: none;
                 page-break-after: always;
             }
