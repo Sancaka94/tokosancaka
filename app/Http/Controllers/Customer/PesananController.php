@@ -296,7 +296,7 @@ class PesananController extends Controller
             if (!empty($pesanan->payment_url)) return redirect()->away($pesanan->payment_url);
             
             // Perbaikan: Menggunakan ID pesanan, bukan nomor resi yang bisa kosong
-            event(new AdminNotificationEvent('Pesanan Baru Diterima!', Auth::user()->nama_lengkap . ' telah membuat pesanan baru.', route('admin.pesanan.show', $pesanan->id)));
+            event(new AdminNotificationEvent('Pesanan Baru Diterima!', Auth::user()->nama_lengkap . ' telah membuat pesanan baru.', route('customer.pesanan.show', $pesanan->id)));
             
             return redirect()->route('customer.pesanan.index')->with('success', 'Pesanan berhasil dibuat!');
         } catch (ValidationException $e) {
@@ -582,7 +582,7 @@ TEXT;
     {
         $order = session('order');
         if (!$order) return redirect()->route('home');
-        return view('pesanan_customer.success', ['order' => $order]);
+        return view('pesanan.customer.success', ['order' => $order]);
     }
     
     /**
@@ -603,7 +603,7 @@ TEXT;
                             ->where('id_pengguna_pembeli', auth()->id())
                             ->firstOrFail();
 
-        return view('admin.pesanan.cetak_thermal', compact('pesanan'));
+        return view('customer.pesanan.cetak_thermal', compact('pesanan'));
     }
 
     /**
