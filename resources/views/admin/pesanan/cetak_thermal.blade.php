@@ -1,21 +1,26 @@
-@extends('layouts.print')
-
-@section('content')
-<style>
-    .resi-container { width: 100mm; font-size: 11px; }
-    .resi-top { height: 100mm; border-bottom: 1px dashed #000; padding: 5px; }
-    .resi-bottom { height: 50mm; padding: 5px; }
-    .resi-header { display: flex; justify-content: space-between; align-items: center; }
-    .resi-header .logo { height: 25px; }
-    .resi-title { text-align: center; margin: 5px 0; font-size: 14px; font-weight: bold; }
-    .barcode { text-align: center; margin: 5px 0; }
-    .resi-info { display: flex; justify-content: space-between; margin-top: 10px; }
-    .resi-info div { width: 48%; }
-    .table-small { width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 10px; }
-    .table-small td { border: 1px solid #000; padding: 2px; vertical-align: top; }
-    .barcode2d { text-align: center; margin: 10px 0; }
-    .small { font-size: 10px; text-align: center; }
-</style>
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Cetak Resi - {{ $pesanan->no_resi ?? 'Sancaka Express' }}</title>
+    <style>
+        body { font-family: Arial, sans-serif; font-size: 11px; margin: 0; padding: 0; }
+        .resi-container { width: 100mm; margin: auto; }
+        .resi-top { height: 100mm; border-bottom: 1px dashed #000; padding: 5px; }
+        .resi-bottom { height: 50mm; padding: 5px; }
+        .resi-header { display: flex; justify-content: space-between; align-items: center; }
+        .resi-header .logo { height: 25px; }
+        .resi-title { text-align: center; margin: 5px 0; font-size: 14px; font-weight: bold; }
+        .barcode { text-align: center; margin: 5px 0; }
+        .resi-info { display: flex; justify-content: space-between; margin-top: 10px; }
+        .resi-info div { width: 48%; }
+        .table-small { width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 10px; }
+        .table-small td { border: 1px solid #000; padding: 2px; vertical-align: top; }
+        .barcode2d { text-align: center; margin: 10px 0; }
+        .small { font-size: 10px; text-align: center; }
+    </style>
+</head>
+<body onload="window.print()">
 
 <div class="resi-container">
     <!-- Bagian Atas (100mm x 100mm) -->
@@ -86,4 +91,6 @@
         </p>
     </div>
 </div>
-@endsection
+
+</body>
+</html>
