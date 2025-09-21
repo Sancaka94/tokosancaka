@@ -88,7 +88,7 @@
 
             </button>
 
-            <a href="{{ route('admin.pesanan.create') }}" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700">
+            <a href="{{ route('admin.pesanan.create') }}" class="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-700">
 
                 <i class="fas fa-plus me-2"></i>Tambah Pesanan
 
@@ -104,7 +104,7 @@
 
     <div class="flex flex-wrap gap-2 mb-4 border-b pb-4">
 
-        <a href="{{ route('admin.pesanan.index', request()->except('status', 'page')) }}" class="px-3 py-1 text-sm font-medium rounded-full {{ !request('status') ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600 hover:bg-gray-300' }}">Semua</a>
+        <a href="{{ route('admin.pesanan.index', request()->except('status', 'page')) }}" class="px-3 py-1 text-sm font-medium rounded-full {{ !request('status') ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-600 hover:bg-gray-300' }}">Semua</a>
 
         <a href="{{ route('admin.pesanan.index', array_merge(request()->query(), ['status' => 'Menunggu Pickup', 'page' => 1])) }}" class="px-3 py-1 text-sm font-medium rounded-full {{ request('status') == 'Menunggu Pickup' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600 hover:bg-gray-300' }}">Menunggu Pickup</a>
 
