@@ -114,7 +114,12 @@ class PesananController extends Controller
                 $customer->saldo -= $total_paid;
                 $customer->save();
                 
+                // Set ID dan perbarui nama pengirim pada pesanan dengan nama pelanggan
                 $pesanan->customer_id = $customer->id;
+                $pesanan->sender_name = $customer->nama_lengkap;
+                
+                // Perbarui juga data yang akan dikirim ke KiriminAja agar konsisten
+                $validatedData['sender_name'] = $customer->nama_lengkap;
             }
             
             if (in_array($validatedData['payment_method'], ['COD', 'CODBARANG', 'Potong Saldo'])) {
