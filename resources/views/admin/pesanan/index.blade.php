@@ -134,17 +134,17 @@
 
         <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">No</th>
 
-        <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Transaksi</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider"><strong>Transaksi</strong></th>
 
-        <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Alamat</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider"><strong>Alamat</strong></th>
 
-        <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Ekspedisi & Ongkir</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider"><strong>Ekspedisi & Ongkir</strong></th>
 
-        <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Isi Paket</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider"><strong>Isi Paket</strong></th>
 
-        <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Status</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider"><strong>Status</strong></th>
 
-        <th class="px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider sticky-col">Aksi</th>
+        <th class="px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider sticky-col"><strong>Aksi</strong></th>
 
     </tr>
 
