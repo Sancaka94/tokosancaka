@@ -124,7 +124,7 @@
 
         <!-- Barcode Resi -->
         <div class="text-center mt-2">
-            <p class="font-bold text-sm tracking-wide">RESI SANCAKA</p>
+            <p class="font-bold text-sm tracking-wide"><strong>RESI SANCAKA</strong></p>
             <svg id="barcodeSancaka" class="barcode"></svg>
         </div>
 
@@ -132,7 +132,7 @@
         <div class="grid grid-cols-2 gap-3 mt-2 border-b border-dashed border-gray-400 pb-2">
             <!-- Kolom Kiri: Pengirim & Rincian Paket -->
             <div class="pr-2">
-                <p class="label">PENGIRIM:</p>
+                <p class="label"><strong>PENGIRIM:</strong></p>
                 <p class="value">{{ $pesanan->sender_name }}</p>
                 <p class="text-xs">{{ $pesanan->sender_phone }}</p>
                 <p class="text-xs leading-snug mt-1">
@@ -148,7 +148,7 @@
                 
                 {{-- Rincian Paket --}}
                 <div class="mt-2 pt-2">
-                    <p class="label">Rincian Paket:</p>
+                    <p class="label"><strong>Rincian Paket:</strong></p>
                     <p class="value">- Berat: {{ $pesanan->weight }} gr</p>
                     <p class="value">- Dimensi: {{ $pesanan->length ?? 0 }}x{{ $pesanan->width ?? 0 }}x{{ $pesanan->height ?? 0 }} cm</p>
                     <p class="value">- Layanan: {{ strtoupper($pesanan->service_type) }}</p><br><br>
@@ -160,7 +160,7 @@
 
             <!-- Kolom Kanan: Penerima & Barcode 2D -->
             <div class="pl-2">
-                <p class="label">PENERIMA:</p>
+                <p class="label"><strong>PENERIMA:</strong></p>
                 <p class="value">{{ $pesanan->nama_pembeli }}</p>
                 <p class="text-xs">{{ $pesanan->telepon_pembeli }}</p>
                 <p class="text-xs leading-snug mt-1">
