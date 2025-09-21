@@ -286,17 +286,13 @@ class PesananController extends Controller
      * @param string $resi
      * @return \Illuminate\Http\Response
      */
-    public function cetak_thermal(string $resi)
-    {
-        // Cari pesanan berdasarkan resi, atau tampilkan halaman error 404 jika tidak ditemukan
-        $order = Pesanan::where('resi', $resi)->firstOrFail();
+  public function cetakResiThermal(string $resi)
+{
+    $order = Pesanan::where('resi', $resi)->firstOrFail();
+    $pdf = PDF::loadView('admin.pesanan.thermal_print', compact('order'));
+    return $pdf->stream('resi-' . $resi . '.pdf');
+}
 
-        // Buat PDF dari view Blade yang baru
-        $pdf = PDF::loadView('admin.pesanan.thermal_print', compact('order'));
-
-        // Unduh atau tampilkan PDF di browser
-        return $pdf->stream('resi-' . $resi . '.pdf');
-    }
 
     private function _validateOrderRequest(Request $request): array
     {
