@@ -128,7 +128,7 @@
 
         <table class="table min-w-full divide-y divide-gray-200">
 
-          <thead class="bg-purple-100">
+          <thead class="bg-red-100">
 
     <tr>
 
