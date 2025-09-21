@@ -54,7 +54,8 @@ class PesananController extends Controller
      */
     public function create()
     {
-        $customers = User::where('role', 'user')->orderBy('nama_lengkap', 'asc')->get();
+        // Menghapus filter 'where('role', 'user')' untuk mengambil semua pengguna
+        $customers = User::orderBy('nama_lengkap', 'asc')->get();
         return view('admin.pesanan.create', compact('customers'));
     }
 
