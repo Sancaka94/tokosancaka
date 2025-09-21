@@ -189,6 +189,31 @@
         </div>
         @endif
 
+        {{-- Tambahan detail bawah --}}
+<div class="mt-2 border-t-2 border-dashed border-black pt-2 text-xs">
+    <p class="font-bold">Ekspedisi: {{ strtoupper(explode('-', $pesanan->expedition)[1] ?? '') }}</p>
+
+    <p class="font-bold mt-1">Rincian Paket:</p>
+    <p>- Berat: {{ $pesanan->weight }} gr</p>
+    <p>- Dimensi: {{ $pesanan->length ?? 0 }}x{{ $pesanan->width ?? 0 }}x{{ $pesanan->height ?? 0 }} cm</p>
+    <p>- Layanan: {{ strtoupper($pesanan->service_type) }}</p>
+
+    <p class="font-bold mt-1">Pengirim:</p>
+    <p>{{ $pesanan->sender_name }} ({{ $pesanan->sender_phone }})</p>
+
+    <p class="font-bold mt-1">Penerima:</p>
+    <p>{{ $pesanan->nama_pembeli }} ({{ $pesanan->telepon_pembeli }})</p>
+
+    <p class="font-bold mt-1">No Resi:</p>
+    <p>{{ $pesanan->resi }}</p>
+
+    {{-- Barcode 2D (QR Code) --}}
+    <div class="flex justify-center mt-2">
+        <div id="qrcode"></div>
+    </div>
+</div>
+
+
         <!-- Footer -->
         <div class="mt-auto pt-3 text-center text-xs border-t border-dashed border-gray-400">
             <p>Terima kasih telah menggunakan <span class="font-semibold">Sancaka Express</span>.</p>
@@ -218,5 +243,16 @@
             }
         });
     </script>
+
+    {{-- Script QR Code --}}
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
+<script>
+    new QRCode(document.getElementById("qrcode"), {
+        text: "{{ $pesanan->resi }}",
+        width: 100,
+        height: 100
+    });
+</script>
+
 </body>
 </html>
