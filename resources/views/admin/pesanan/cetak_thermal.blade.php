@@ -295,6 +295,14 @@ $logoPath = strtolower(str_replace(' ', '', $expeditionName));
         </div>
 
 
+        <div class="text-center mt-2">
+
+            <p class="font-bold">RESI SANCAKA</p>
+
+            <svg id="barcodeSancaka" class="barcode"></svg>
+
+        </div>
+
 
         <div class="grid grid-cols-3 text-center mt-1 pb-1 border-b-2 border-black border-dashed">
 
@@ -321,17 +329,6 @@ $logoPath = strtolower(str_replace(' ', '', $expeditionName));
             </div>
 
         @endif
-
-        
-
-        <div class="text-center mt-2">
-
-            <p class="font-bold">RESI SANCAKA</p>
-
-            <svg id="barcodeSancaka" class="barcode"></svg>
-
-        </div>
-
 
 
         @if($pesanan->resi_aktual)
