@@ -245,8 +245,8 @@
 <script>
     new QRCode(document.getElementById("qrcode"), {
         text: "https://tokosancaka.com/tracking/search?resi={{ $pesanan->resi }}",
-        width: 50,
-        height: 50
+        width: 100,
+        height: 100
     });
 </script>
 
