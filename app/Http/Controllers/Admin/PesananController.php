@@ -626,8 +626,11 @@ TEXT;
         $messages[] = 'Gagal mengirim notifikasi WA ke pengirim: ' . ($senderStatus['message'] ?? 'Tidak ada pesan kesalahan.');
     }
 
-    // 🔥 Auto detect format pesan
-    $separator = ($request->ajax() || $request->wantsJson()) ? "\n" : "<br>";
+   // --- Auto-detect request type tanpa mengubah signature fungsi ---
+    $req = request(); // helper global Laravel
+    $isAjaxOrJson = ($req->ajax() || $req->wantsJson() || $req->expectsJson() || str_contains($req->header('Accept', ''), '/json'));
+
+    $separator = $isAjaxOrJson ? "\n" : "<br>";
 
     return [
         'success' => $allSuccess,
