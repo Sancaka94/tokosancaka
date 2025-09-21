@@ -234,7 +234,7 @@
                     $logoPath = strtolower(str_replace(' ', '', $expeditionName));
                 @endphp
                 
-            <img src="{{ asset('storage/logo-ekspedisi/' . $logoPath . '.png') }}" alt="{{ $expeditionName }} Logo" class="w-10 h-auto mr-2">
+            <img src="{{ asset('storage/logo-ekspedisi/' . $logoPath . '.png') }}" alt="{{ $expeditionName }} Logo" class="w-35 h-auto mr-2">
                     
 
 
