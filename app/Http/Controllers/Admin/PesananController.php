@@ -289,7 +289,7 @@ class PesananController extends Controller
   public function cetakResiThermal(string $resi)
 {
     $order = Pesanan::where('resi', $resi)->firstOrFail();
-    $pdf = PDF::loadView('admin.pesanan.thermal_print', compact('order'));
+    $pdf = PDF::loadView('admin.pesanan.cetak_thermal', compact('order'));
     return $pdf->stream('resi-' . $resi . '.pdf');
 }
 
