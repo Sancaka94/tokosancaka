@@ -66,9 +66,13 @@
             $backUrl = route('customer.pesanan.index');
         }
     }
+     
+    $waMessage = urlencode("Halo " . $pesanan->nama_pembeli . ", pesanan Anda dengan resi " . $pesanan->resi . " dari " . $pesanan->sender_name . " telah berhasil dibuat. Anda dapat melihat detail resi di sini: " . route('admin.pesanan.cetak_thermal', ['resi' => $pesanan->resi]));
+    $waPhone = preg_replace('/^0/', '62', $pesanan->telepon_pembeli);
         @endphp
 
         <button onclick="window.print()" class="bg-indigo-600 text-white px-5 py-2 rounded-md shadow hover:bg-indigo-700 transition">🖨 Cetak Resi</button>
+        <a href="https://wa.me/{{ $waPhone }}?text={{ $waMessage }}" target="_blank" class="ml-2 bg-green-600 text-white px-5 py-2 rounded-md shadow hover:bg-green-700 transition">📱 Kirim WA</a>
         <a href="{{ $backUrl }}" class="ml-2 bg-gray-200 text-gray-800 px-5 py-2 rounded-md shadow hover:bg-gray-300 transition">⬅ Kembali</a>
     </div>
 
