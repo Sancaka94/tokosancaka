@@ -59,15 +59,17 @@
     <!-- Toolbar -->
     <div class="no-print p-3 text-center bg-white border-b border-gray-200 shadow-sm sticky top-0 z-10">
         @php
-            $backUrl = route('home');
-            if (Auth::check()) {
-                if (Auth::user()->hasRole('Admin')) {
-                    $backUrl = route('admin.pesanan.index');
-                } elseif (Auth::user()->hasRole('Pelanggan')) {
-                    $backUrl = route('customer.pesanan.index');
-                }
-            }
+    $backUrl = url()->previous();
+
+    if (Auth::check()) {
+        if (Auth::user()->hasRole('Admin')) {
+            $backUrl = route('admin.pesanan.index');
+        } elseif (Auth::user()->hasRole('Pelanggan')) {
+            $backUrl = route('customer.pesanan.index');
+        }
+    }
         @endphp
+
         <button onclick="window.print()" class="bg-indigo-600 text-white px-5 py-2 rounded-md shadow hover:bg-indigo-700 transition">🖨 Cetak Resi</button>
         <a href="{{ $backUrl }}" class="ml-2 bg-gray-200 text-gray-800 px-5 py-2 rounded-md shadow hover:bg-gray-300 transition">⬅ Kembali</a>
     </div>
