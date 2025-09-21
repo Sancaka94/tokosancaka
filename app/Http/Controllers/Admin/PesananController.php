@@ -543,7 +543,7 @@ Semoga Paket Kakak
 aman dan selamat sampai tujuan. ✅
 
 Kak {NAMA_TUJUAN} bisa cek resi dengan klik link berikut:
-https://tokosancaka.com/tracking/{NOMOR_INVOICE}
+https://tokosancaka.com/tracking/search?resi={NOMOR_INVOICE}
 
 *Manajemen Sancaka*
 TEXT;
