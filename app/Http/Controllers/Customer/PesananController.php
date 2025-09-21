@@ -297,11 +297,24 @@ class PesananController extends Controller
 
             DB::commit();
 
-            if (!empty($pesanan->payment_url)) return redirect()->away($pesanan->payment_url);
-            
-            event(new AdminNotificationEvent('Pesanan Baru Diterima!', Auth::user()->nama_lengkap . ' telah membuat pesanan baru.', route('admin.pesanan.show', ['resi' => $pesanan->resi])));
-            
-            return redirect()->route('customer.pesanan.index')->with('success', 'Pesanan berhasil dibuat!');
+if (!empty($pesanan->payment_url)) {
+    return redirect()->away($pesanan->payment_url);
+}
+
+// Tentukan URL untuk notifikasi admin
+$url = $pesanan->resi 
+    ? route('admin.pesanan.show', ['resi' => $pesanan->resi]) 
+    : route('admin.pesanan.index'); // fallback kalau resi belum ada
+
+event(new AdminNotificationEvent(
+    'Pesanan Baru Diterima!',
+    Auth::user()->nama_lengkap . ' telah membuat pesanan baru.',
+    $url
+));
+
+return redirect()->route('customer.pesanan.index')
+    ->with('success', 'Pesanan berhasil dibuat!');
+
         } catch (ValidationException $e) {
             DB::rollBack();
             return redirect()->back()->withErrors($e->errors())->withInput();
