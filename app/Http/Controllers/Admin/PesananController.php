@@ -27,7 +27,7 @@ class PesananController extends Controller
         \App\Models\Pesanan::where('status', 'baru')
                          ->where('telah_dilihat', false)
                          ->update(['telah_dilihat' => true]);
-                                     
+                                         
         $query = Pesanan::query();
         if ($request->filled('search')) {
             $search = $request->input('search');
@@ -126,6 +126,9 @@ class PesananController extends Controller
             $pesanan->price = $total_paid;
             $pesanan->save();
             DB::commit();
+
+            // Kirim notifikasi WA setelah pesanan berhasil dibuat
+            $this->_sendWhatsAppMessage($pesanan);
 
             if (!empty($pesanan->payment_url)) return redirect()->away($pesanan->payment_url);
             
@@ -275,8 +278,8 @@ class PesananController extends Controller
     public function count()
     {
         $count = \App\Models\Pesanan::where('status', 'baru')
-                                     ->where('telah_dilihat', false)
-                                     ->count();
+                                   ->where('telah_dilihat', false)
+                                   ->count();
         return response()->json(['count' => $count]);
     }
 
@@ -286,13 +289,58 @@ class PesananController extends Controller
      * @param string $resi
      * @return \Illuminate\Http\Response
      */
-public function cetakResiThermal(string $resi)
-{
-    $pesanan = Pesanan::where('resi', $resi)->firstOrFail();
-    return view('admin.pesanan.cetak_thermal', compact('pesanan'));
-}
+    public function cetakResiThermal(string $resi)
+    {
+        $pesanan = Pesanan::where('resi', $resi)->firstOrFail();
+        return view('admin.pesanan.cetak_thermal', compact('pesanan'));
+    }
 
+    /**
+     * Mengirim notifikasi WhatsApp kepada pengirim dan penerima.
+     * @param Pesanan $pesanan
+     * @return void
+     */
+    private function _sendWhatsAppMessage(Pesanan $pesanan): void
+    {
+        // Ambil URL dan kunci API dari file konfigurasi
+        $api_url = config('services.fonte.api_url'); 
+        $api_key = config('services.fonte.api_key'); 
+        
+        // Pesan untuk penerima
+        $messageReceiver = "Halo " . $pesanan->nama_pembeli . ", pesanan Anda dengan resi *" . $pesanan->resi . "* dari " . $pesanan->sender_name . " telah berhasil dibuat. Anda dapat melacak pesanan di: " . route('pelacakan.index', ['resi' => $pesanan->resi]);
 
+        // Pesan untuk pengirim
+        $messageSender = "Halo " . $pesanan->sender_name . ", pesanan Anda untuk " . $pesanan->nama_pembeli . " dengan resi *" . $pesanan->resi . "* telah berhasil dibuat. Anda dapat melacak pesanan di: " . route('pelacakan.index', ['resi' => $pesanan->resi]);
+
+        $receiverPhone = $this->_sanitizePhoneNumber($pesanan->telepon_pembeli);
+        $senderPhone = $this->_sanitizePhoneNumber($pesanan->sender_phone);
+
+        // Kirim pesan ke penerima
+        try {
+            Http::withHeaders([
+                'Authorization' => 'Bearer ' . $api_key,
+            ])->post($api_url, [
+                'phone' => $receiverPhone,
+                'message' => $messageReceiver,
+            ]);
+            Log::info("WA message sent to receiver for order: " . $pesanan->nomor_invoice);
+        } catch (Exception $e) {
+            Log::error("Failed to send WA to receiver: " . $e->getMessage());
+        }
+
+        // Kirim pesan ke pengirim
+        try {
+            Http::withHeaders([
+                'Authorization' => 'Bearer ' . $api_key,
+            ])->post($api_url, [
+                'phone' => $senderPhone,
+                'message' => $messageSender,
+            ]);
+            Log::info("WA message sent to sender for order: " . $pesanan->nomor_invoice);
+        } catch (Exception $e) {
+            Log::error("Failed to send WA to sender: " . $e->getMessage());
+        }
+    }
 
     private function _validateOrderRequest(Request $request): array
     {
@@ -454,9 +502,9 @@ public function cetakResiThermal(string $resi)
         $merchantCode = config('tripay.merchant_code'); $mode = config('tripay.mode');
         
         $payload = [
-            'method'         => $validatedData['payment_method'],
-            'merchant_ref'   => $pesanan->nomor_invoice,
-            'amount'         => $total,
+            'method'      => $validatedData['payment_method'],
+            'merchant_ref'      => $pesanan->nomor_invoice,
+            'amount'      => $total,
             'customer_name'  => $validatedData['receiver_name'],
             'customer_email' => 'tokosancaka@gmail.com', // Ganti dengan email valid jika ada
             'customer_phone' => $validatedData['receiver_phone'],
