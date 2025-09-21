@@ -27,7 +27,7 @@ class PesananController extends Controller
         \App\Models\Pesanan::where('status', 'baru')
                          ->where('telah_dilihat', false)
                          ->update(['telah_dilihat' => true]);
-                                 
+                                     
         $query = Pesanan::query();
         if ($request->filled('search')) {
             $search = $request->input('search');
@@ -282,6 +282,22 @@ class PesananController extends Controller
 
     // --- HELPER METHODS ---
 
+    /**
+     * @param string $resi
+     * @return \Illuminate\Http\Response
+     */
+    public function cetak_thermal(string $resi)
+    {
+        // Cari pesanan berdasarkan resi, atau tampilkan halaman error 404 jika tidak ditemukan
+        $order = Pesanan::where('resi', $resi)->firstOrFail();
+
+        // Buat PDF dari view Blade yang baru
+        $pdf = PDF::loadView('admin.pesanan.thermal_print', compact('order'));
+
+        // Unduh atau tampilkan PDF di browser
+        return $pdf->stream('resi-' . $resi . '.pdf');
+    }
+
     private function _validateOrderRequest(Request $request): array
     {
         return $request->validate([
@@ -478,4 +494,3 @@ class PesananController extends Controller
         return $phone;
     }
 }
-
