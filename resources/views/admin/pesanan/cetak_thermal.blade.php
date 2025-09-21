@@ -153,7 +153,8 @@
                     <p class="value">- Dimensi: {{ $pesanan->length ?? 0 }}x{{ $pesanan->width ?? 0 }}x{{ $pesanan->height ?? 0 }} cm</p>
                     <p class="value">- Layanan: {{ strtoupper($pesanan->service_type) }}</p><br><br>
 
-                    <p class="label"><strong>Nomor Resi: {{ $pesanan->resi }} </strong></p>
+                    <p class="label"><strong>Nomor Resi:</strong></p>
+                    <p class="label"><strong>{{ $pesanan->resi }}</strong></p>
                 </div>
             </div>
 
@@ -235,15 +236,20 @@
         });
     </script>
 
-    {{-- Script QR Code --}}
+   {{-- Barcode 2D (QR Code) --}}
+<div class="flex justify-center mt-2">
+    <div id="qrcode"></div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
 <script>
     new QRCode(document.getElementById("qrcode"), {
-        text: "{{ $pesanan->resi }}",
-        width: 100,
-        height: 100
+        text: "https://tokosancaka.com/tracking/search?resi={{ $pesanan->resi }}",
+        width: 50,
+        height: 50
     });
 </script>
+
 
 </body>
 </html>
