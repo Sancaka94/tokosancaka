@@ -108,7 +108,10 @@ Deskripsi: Halaman daftar pesanan untuk pelanggan dengan tampilan rinci.
                     @if ($order->status_pesanan === 'Menunggu Pembayaran' && $order->payment_url)
                         <a href="{{ $order->payment_url }}" target="_blank" class="mt-2 text-indigo-600 hover:text-indigo-900 font-semibold text-sm">Bayar Sekarang</a>
                     @elseif ($order->resi)
-                        <a href="{{ route('customer.pesanan.show', ['order' => $order->id]) }}" class="mt-2 text-indigo-600 hover:text-indigo-900 font-semibold text-sm">Lacak Paket</a>
+                        <a href="{{ route('customer.pesanan.track', ['resi' => $order->resi]) }}"
+                        class="mt-2 text-indigo-600 hover:text-indigo-900 font-semibold text-sm">
+                        Lacak Paket
+                        </a>
                     @endif
                 </div>
             </div>
