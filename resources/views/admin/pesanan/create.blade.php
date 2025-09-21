@@ -143,10 +143,30 @@
                         </div>
                          <div>
                             <label for="item_type" class="block mb-2 text-sm font-medium text-gray-700">Jenis Barang</label>
-                            <select name="item_type" id="item_type" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required>
-                                <option value="" disabled selected>Pilih...</option>
-                                <option value="1">Elektronik</option><option value="2">Pakaian</option><option value="3">Pecah Belah</option><option value="4">Dokumen</option><option value="5">RT</option><option value="6">Aksesoris</option><option value="7">Lainnya</option>
-                            </select>
+
+<select name="item_type" id="item_type"
+    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5"
+    required>
+    <option value="" disabled selected>Pilih...</option>
+    <option value="ELEKTRONIK">Elektronik</option>
+    <option value="PAKAIAN">Pakaian</option>
+    <option value="PECAH_BELAH">Pecah Belah</option>
+    <option value="DOKUMEN">Dokumen</option>
+    <option value="RT">Peralatan Rumah Tangga</option>
+    <option value="AKSESORIS">Aksesoris</option>
+    <option value="KOSMETIK">Kosmetik & Perawatan</option>
+    <option value="MAKANAN">Makanan / Minuman</option>
+    <option value="BUKU">Buku & Alat Tulis</option>
+    <option value="MAINAN">Mainan / Hobi</option>
+    <option value="OBAT">Obat-obatan / Suplemen</option>
+    <option value="SPAREPART">Sparepart / Komponen</option>
+    <option value="ALAT_OLAHRAGA">Alat Olahraga</option>
+    <option value="ALAT_MUSIK">Alat Musik</option>
+    <option value="PERHIASAN">Perhiasan / Jam Tangan</option>
+    <option value="ALAT_KESEHATAN">Alat Kesehatan</option>
+    <option value="LAINNYA">Lainnya</option>
+</select>
+
                         </div>
                         <div>
                             <label for="service_type" class="block mb-2 text-sm font-medium text-gray-700">Jenis Layanan</label>
