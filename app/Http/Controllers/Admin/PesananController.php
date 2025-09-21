@@ -296,6 +296,23 @@ class PesananController extends Controller
         return view('admin.pesanan.cetak_thermal', compact('pesanan'));
     }
 
+    private function _validateOrderRequest(Request $request)
+{
+    return $request->validate([
+        'sender_name'       => 'required|string|max:255',
+        'sender_phone'      => 'required|string|max:20',
+        'sender_address'    => 'required|string',
+        'nama_pembeli'      => 'required|string|max:255',
+        'telepon_pembeli'   => 'required|string|max:20',
+        'alamat_pengiriman' => 'required|string',
+        'weight'            => 'required|numeric|min:1',
+        'service_type'      => 'required|string',
+        'expedition'        => 'required|string',
+        'price'             => 'nullable|numeric|min:0',
+    ]);
+}
+
+
     /**
      * Mengirim notifikasi WhatsApp kepada pengirim dan penerima.
      * @param Pesanan $pesanan
