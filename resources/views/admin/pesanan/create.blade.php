@@ -46,10 +46,16 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div class="md:col-span-2">
                             <label for="customer_id" class="block mb-2 text-sm font-medium text-gray-700">Pelanggan (Jika Potong Saldo)</label>
-                            <select id="customer_id" name="id_pengguna_pembeli" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5">
+                            {{-- PERUBAHAN: name diubah ke customer_id dan ditambahkan data-* attributes --}}
+                            <select id="customer_id" name="customer_id" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5">
                                 <option value="">-- Umum / Tanpa Potong Saldo --</option>
                                 @foreach($customers as $customer)
-                                    <option value="{{ $customer->id }}">{{ $customer->nama_lengkap }} (Saldo: Rp {{ number_format($customer->saldo ?? 0) }})</option>
+                                    <option value="{{ $customer->id }}"
+                                            data-nama="{{ $customer->nama_lengkap }}"
+                                            data-telepon="{{ $customer->no_hp ?? '' }}"
+                                            data-alamat="{{ $customer->alamat ?? '' }}">
+                                        {{ $customer->nama_lengkap }} (Saldo: Rp {{ number_format($customer->saldo ?? 0) }})
+                                    </option>
                                 @endforeach
                             </select>
                         </div>
@@ -148,23 +154,23 @@
     class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5"
     required>
     <option value="" disabled selected>Pilih...</option>
-    <option value="ELEKTRONIK">Elektronik</option>
-    <option value="PAKAIAN">Pakaian</option>
-    <option value="PECAH_BELAH">Pecah Belah</option>
-    <option value="DOKUMEN">Dokumen</option>
-    <option value="RT">Peralatan Rumah Tangga</option>
-    <option value="AKSESORIS">Aksesoris</option>
-    <option value="KOSMETIK">Kosmetik & Perawatan</option>
-    <option value="MAKANAN">Makanan / Minuman</option>
-    <option value="BUKU">Buku & Alat Tulis</option>
-    <option value="MAINAN">Mainan / Hobi</option>
-    <option value="OBAT">Obat-obatan / Suplemen</option>
-    <option value="SPAREPART">Sparepart / Komponen</option>
-    <option value="ALAT_OLAHRAGA">Alat Olahraga</option>
-    <option value="ALAT_MUSIK">Alat Musik</option>
-    <option value="PERHIASAN">Perhiasan / Jam Tangan</option>
-    <option value="ALAT_KESEHATAN">Alat Kesehatan</option>
-    <option value="LAINNYA">Lainnya</option>
+    <option value="1">Elektronik</option>
+    <option value="2">Pakaian</option>
+    <option value="3">Pecah Belah</option>
+    <option value="4">Dokumen</option>
+    <option value="5">Peralatan Rumah Tangga</option>
+    <option value="6">Aksesoris</option>
+    <option value="7">Kosmetik & Perawatan</option>
+    <option value="8">Makanan / Minuman</option>
+    <option value="9">Buku & Alat Tulis</option>
+    <option value="10">Mainan / Hobi</option>
+    <option value="11">Obat-obatan / Suplemen</option>
+    <option value="12">Sparepart / Komponen</option>
+    <option value="13">Alat Olahraga</option>
+    <option value="14">Alat Musik</option>
+    <option value="15">Perhiasan / Jam Tangan</option>
+    <option value="16">Alat Kesehatan</option>
+    <option value="17">Lainnya</option>
 </select>
 
                         </div>
@@ -467,6 +473,24 @@ document.addEventListener('DOMContentLoaded', function () {
     setupContactSearch('receiver');
     setupAddressSearch('sender');
     setupAddressSearch('receiver');
+
+    // --- PERUBAHAN BARU: EVENT LISTENER UNTUK DROPDOWN PELANGGAN ---
+    document.getElementById('customer_id').addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        const senderNameInput = document.getElementById('sender_name');
+        const senderPhoneInput = document.getElementById('sender_phone');
+        const senderAddressInput = document.getElementById('sender_address');
+
+        if (this.value) { // Jika pelanggan dipilih (bukan opsi "Umum")
+            senderNameInput.value = selectedOption.getAttribute('data-nama') || '';
+            senderPhoneInput.value = selectedOption.getAttribute('data-telepon') || '';
+            senderAddressInput.value = selectedOption.getAttribute('data-alamat') || '';
+        } else { // Jika opsi "-- Umum --" dipilih
+            senderNameInput.value = '';
+            senderPhoneInput.value = '';
+            senderAddressInput.value = '';
+        }
+    });
 
     // --- FUNGSI CEK ONGKIR ---
     async function runCekOngkir() {
