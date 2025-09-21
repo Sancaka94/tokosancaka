@@ -376,7 +376,7 @@ public function cetakResiThermal(string $resi)
     {
         do {
             $tanggal = date('Ymd');
-            $nomorInvoice = 'SCK-' . $tanggal . '-' . strtoupper(Str::random(4));
+            $nomorInvoice = 'SCK-' . $tanggal . '-' .'SANCAKA'. strtoupper(Str::random(4));
         } while (Pesanan::where('nomor_invoice', $nomorInvoice)->exists());
 
         return array_merge(
