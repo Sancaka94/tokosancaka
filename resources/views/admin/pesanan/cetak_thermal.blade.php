@@ -183,11 +183,11 @@
 
         <!-- Detail Order -->
         <div class="grid grid-cols-3 gap-2 text-center mt-2 border-b border-dashed border-gray-400 pb-2">
-            <div><p class="label">ORDER ID</p><p class="value">{{ $pesanan->nomor_invoice }}</p></div>
-            <div><p class="label">BERAT</p><p class="value">{{ $pesanan->weight }} gr</p></div>
-            <div><p class="label">VOLUME</p><p class="value">{{ $pesanan->length ?? 0 }}x{{ $pesanan->width ?? 0 }}x{{ $pesanan->height ?? 0 }} cm</p></div>
-            <div><p class="label">LAYANAN</p><p class="value">{{ strtoupper($pesanan->service_type) }}</p></div>
-            <div><p class="label">EKSPEDISI</p><p class="value">{{ strtoupper(explode('-', $pesanan->expedition)[1]) }}</p></div>
+            <div><p class="label"><strong>ORDER ID</strong></p><p class="value">{{ $pesanan->nomor_invoice }}</p></div>
+            <div><p class="label"><strong>BERAT</strong></p><p class="value">{{ $pesanan->weight }} gr</p></div>
+            <div><p class="label"><strong>VOLUME</strong></p><p class="value">{{ $pesanan->length ?? 0 }}x{{ $pesanan->width ?? 0 }}x{{ $pesanan->height ?? 0 }} cm</p></div>
+            <div><p class="label"><strong>LAYANAN</strong></p><p class="value">{{ strtoupper($pesanan->service_type) }}</p></div>
+            <div><p class="label"><strong>EKSPEDISI</strong></p><p class="value">{{ strtoupper(explode('-', $pesanan->expedition)[1]) }}</p></div>
         </div>
 
         <!-- COD -->
