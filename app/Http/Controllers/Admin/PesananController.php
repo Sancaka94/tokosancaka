@@ -458,7 +458,7 @@ public function cetakResiThermal(string $resi)
             'merchant_ref'   => $pesanan->nomor_invoice,
             'amount'         => $total,
             'customer_name'  => $validatedData['receiver_name'],
-            'customer_email' => 'customer@example.com', // Ganti dengan email valid jika ada
+            'customer_email' => 'tokosancaka@gmail.com', // Ganti dengan email valid jika ada
             'customer_phone' => $validatedData['receiver_phone'],
             'order_items'    => $orderItemsPayload,
             'expired_time'   => time() + (24 * 60 * 60),
