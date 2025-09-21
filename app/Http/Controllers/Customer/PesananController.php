@@ -209,12 +209,9 @@ class PesananController extends Controller
             $ansuransi_fee = (int) $ansuransi_fee;
             $cod_fee = (int) $cod_fee;
 
-            // ====================================================================
-            // LOGIKA DIPERBAIKI: Kalkulasi total_paid berdasarkan metode pembayaran
-            // ====================================================================
             $total_paid = 0;
             $cod_value = 0;
-
+            
             if ($validatedData['payment_method'] === 'CODBARANG') {
                 $total_paid = (int)$validatedData['item_price'] + $shipping_cost + $cod_fee;
                 if ($validatedData['ansuransi'] == 'iya') {
@@ -233,7 +230,6 @@ class PesananController extends Controller
                     $total_paid += $ansuransi_fee;
                 }
             }
-            // ====================================================================
 
             $pesananData = $this->_preparePesananData($validatedData, $total_paid, $request->ip(), $request->userAgent());
             $pesanan = Pesanan::create($pesananData);
@@ -241,13 +237,24 @@ class PesananController extends Controller
             // Logika Potong Saldo
             if ($validatedData['payment_method'] === 'Potong Saldo' || $validatedData['payment_method'] === 'cash') {
                 $customer = Auth::user();
-                $totalNonCod = $total_paid;
-                if ($customer->saldo < $totalNonCod) {
-                    DB::rollBack();
-                    throw new \Exception('Saldo Anda tidak mencukupi untuk pembayaran ini.');
+                $total_to_charge = $shipping_cost;
+                if ($validatedData['ansuransi'] == 'iya') {
+                    $total_to_charge += $ansuransi_fee;
                 }
-                $customer->saldo -= $totalNonCod;
-                $customer->save();
+                // Jika cash, total yang dibayarkan adalah ongkir+asuransi
+                if ($validatedData['payment_method'] === 'cash') {
+                    $pesanan->status = 'Menunggu Pembayaran'; // atau status yang sesuai untuk pembayaran di tempat
+                    $pesanan->status_pesanan = 'Menunggu Pembayaran'; // atau status yang sesuai
+                    $pesanan->price = $total_to_charge; // set total_paid sesuai yang dibayarkan
+                    $pesanan->save();
+                } else {
+                    if ($customer->saldo < $total_to_charge) {
+                        DB::rollBack();
+                        throw new \Exception('Saldo Anda tidak mencukupi untuk pembayaran ini.');
+                    }
+                    $customer->saldo -= $total_to_charge;
+                    $customer->save();
+                }
             }
 
             if (in_array($validatedData['payment_method'], ['COD', 'CODBARANG', 'Potong Saldo', 'cash'])) {
@@ -264,10 +271,7 @@ class PesananController extends Controller
                 $pesanan->status_pesanan = 'Menunggu Pickup';
                 $pesanan->resi = $kiriminResponse['result']['awb_no'] ?? ($kiriminResponse['results'][0]['awb'] ?? null);
             } else {
-                // LOGIKA DIPERBAIKI: Gunakan total_paid yang sudah dihitung dengan benar
                 $tripay_amount = $total_paid;
-
-                // LOGIKA DIPERBAIKI: Kirim pilihan asuransi ke fungsi payload
                 $orderItemsPayload = $this->_prepareOrderItemsPayload($shipping_cost, $ansuransi_fee, $validatedData['ansuransi']);
                 
                 $response = $this->_createTripayTransaction($validatedData, $pesanan, $tripay_amount, $orderItemsPayload);
@@ -295,8 +299,7 @@ class PesananController extends Controller
 
             if (!empty($pesanan->payment_url)) return redirect()->away($pesanan->payment_url);
             
-            // Perbaikan: Menggunakan ID pesanan, bukan nomor resi yang bisa kosong
-            event(new AdminNotificationEvent('Pesanan Baru Diterima!', Auth::user()->nama_lengkap . ' telah membuat pesanan baru.', route('customer.pesanan.show', $pesanan->id)));
+            event(new AdminNotificationEvent('Pesanan Baru Diterima!', Auth::user()->nama_lengkap . ' telah membuat pesanan baru.', route('admin.pesanan.show', $pesanan->id)));
             
             return redirect()->route('customer.pesanan.index')->with('success', 'Pesanan berhasil dibuat!');
         } catch (ValidationException $e) {
@@ -582,7 +585,7 @@ TEXT;
     {
         $order = session('order');
         if (!$order) return redirect()->route('home');
-        return view('pesanan.customer.success', ['order' => $order]);
+        return view('pesanan_customer.success', ['order' => $order]);
     }
     
     /**
