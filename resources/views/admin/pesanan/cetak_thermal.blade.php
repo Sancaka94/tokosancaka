@@ -151,7 +151,9 @@
                     <p class="label">Rincian Paket:</p>
                     <p class="value">- Berat: {{ $pesanan->weight }} gr</p>
                     <p class="value">- Dimensi: {{ $pesanan->length ?? 0 }}x{{ $pesanan->width ?? 0 }}x{{ $pesanan->height ?? 0 }} cm</p>
-                    <p class="value">- Layanan: {{ strtoupper($pesanan->service_type) }}</p>
+                    <p class="value">- Layanan: {{ strtoupper($pesanan->service_type) }}</p><br><br>
+
+                    <p class="label">Nomor Resi: {{ $pesanan->resi }} </p>
                 </div>
             </div>
 
