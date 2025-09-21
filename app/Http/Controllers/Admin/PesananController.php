@@ -286,12 +286,12 @@ class PesananController extends Controller
      * @param string $resi
      * @return \Illuminate\Http\Response
      */
-  public function cetakResiThermal(string $resi)
+public function cetakResiThermal(string $resi)
 {
-    $order = Pesanan::where('resi', $resi)->firstOrFail();
-    $pdf = PDF::loadView('admin.pesanan.cetak_thermal', compact('order'));
-    return $pdf->stream('resi-' . $resi . '.pdf');
+    $pesanan = Pesanan::where('resi', $resi)->firstOrFail();
+    return view('admin.pesanan.cetak_thermal', compact('pesanan'));
 }
+
 
 
     private function _validateOrderRequest(Request $request): array
