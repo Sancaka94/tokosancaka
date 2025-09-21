@@ -509,9 +509,40 @@ class PesananController extends Controller
      * @param Pesanan $pesanan
      * @return array
      */
-    private function _sendWhatsappNotification(Pesanan $pesanan, array $validatedData, int $shipping_cost, int $ansuransi_fee, int $cod_fee, int $total_paid): array
-    {
-        $messageTemplate = <<<TEXT
+   
+    private function _sendWhatsappNotification(
+    Pesanan $pesanan,
+    array $validatedData,
+    int $shipping_cost,
+    int $ansuransi_fee,
+    int $cod_fee,
+    int $total_paid
+): array {
+    // Build rincian biaya dinamis
+    $rincianBiaya = [];
+
+    if ($shipping_cost > 0) {
+        $rincianBiaya[] = "- Ongkir: Rp " . number_format($shipping_cost, 0, ',', '.');
+    }
+
+    if (!empty($validatedData['item_price']) && $validatedData['item_price'] > 0) {
+        $rincianBiaya[] = "- Nilai Barang: Rp " . number_format($validatedData['item_price'], 0, ',', '.');
+    }
+
+    if ($ansuransi_fee > 0) {
+        $rincianBiaya[] = "- Asuransi: Rp " . number_format($ansuransi_fee, 0, ',', '.');
+    }
+
+    if ($cod_fee > 0) {
+        $rincianBiaya[] = "- COD Fee: Rp " . number_format($cod_fee, 0, ',', '.');
+    }
+
+    // Kalau semua kosong, kasih tanda tidak ada biaya tambahan
+    $rincianBiayaText = !empty($rincianBiaya)
+        ? implode("\n", $rincianBiaya)
+        : "- Tidak ada rincian biaya tambahan";
+
+    $messageTemplate = <<<TEXT
 *Terimakasih Ya Kak Atas Orderannya 🙏*
 
 Berikut adalah Nomor Order ID dan Invoice:
@@ -522,10 +553,7 @@ Berikut adalah Nomor Order ID dan Invoice:
 
 ----------------------------------------
 *Rincian Biaya:*
-- Ongkir: Rp {ONGKIR}
-- Nilai Barang: Rp {NILAI_BARANG}
-- Asuransi: Rp {ASURANSI}
-- COD Fee: Rp {COD_FEE}
+{RINCIAN_BIAYA}
 ----------------------------------------
 *Total Bayar: Rp {TOTAL_BAYAR}*
 
@@ -547,62 +575,64 @@ https://tokosancaka.com/tracking/search?resi={NOMOR_INVOICE}
 
 *Manajemen Sancaka*
 TEXT;
-        $message = str_replace(
-            [
-                '{NOMOR_INVOICE}', '{SENDER_NAME}', '{SENDER_PHONE}', '{RECEIVER_NAME}', '{RECEIVER_PHONE}',
-                '{ONGKIR}', '{NILAI_BARANG}', '{ASURANSI}', '{COD_FEE}', '{TOTAL_BAYAR}',
-                '{DESKRIPSI}', '{BERAT}', '{PANJANG}', '{LEBAR}', '{TINGGI}', '{EKSPEDISI}', '{LAYANAN}'
-            ],
-            [
-                $pesanan->nomor_invoice,
-                $validatedData['sender_name'],
-                $validatedData['sender_phone'],
-                $validatedData['receiver_name'],
-                $validatedData['receiver_phone'],
-                number_format($shipping_cost, 0, ',', '.'),
-                number_format($validatedData['item_price'], 0, ',', '.'),
-                number_format($ansuransi_fee, 0, ',', '.'),
-                number_format($cod_fee, 0, ',', '.'),
-                number_format($total_paid, 0, ',', '.'),
-                $validatedData['item_description'],
-                $validatedData['weight'],
-                $validatedData['length'] ?? 1,
-                $validatedData['width'] ?? 1,
-                $validatedData['height'] ?? 1,
-                $validatedData['expedition'],
-                $validatedData['service_type'],
-            ],
-            $messageTemplate
-        );
 
-        $receiverMessage = str_replace('{NAMA_TUJUAN}', $validatedData['receiver_name'], $message);
-        $receiverWa = preg_replace('/^0/', '62', $validatedData['receiver_phone']);
-        $senderMessage = str_replace('{NAMA_TUJUAN}', $validatedData['sender_name'], $message);
-        $senderWa = preg_replace('/^0/', '62', $validatedData['sender_phone']);
+    $message = str_replace(
+        [
+            '{NOMOR_INVOICE}', '{SENDER_NAME}', '{SENDER_PHONE}', '{RECEIVER_NAME}', '{RECEIVER_PHONE}',
+            '{RINCIAN_BIAYA}', '{TOTAL_BAYAR}', '{DESKRIPSI}', '{BERAT}',
+            '{PANJANG}', '{LEBAR}', '{TINGGI}', '{EKSPEDISI}', '{LAYANAN}'
+        ],
+        [
+            $pesanan->nomor_invoice,
+            $validatedData['sender_name'],
+            $validatedData['sender_phone'],
+            $validatedData['receiver_name'],
+            $validatedData['receiver_phone'],
+            $rincianBiayaText,
+            number_format($total_paid, 0, ',', '.'),
+            $validatedData['item_description'],
+            $validatedData['weight'],
+            $validatedData['length'] ?? 1,
+            $validatedData['width'] ?? 1,
+            $validatedData['height'] ?? 1,
+            $validatedData['expedition'],
+            $validatedData['service_type'],
+        ],
+        $messageTemplate
+    );
 
-        $receiverStatus = FonnteService::sendMessage($receiverWa, $receiverMessage);
-        $senderStatus = FonnteService::sendMessage($senderWa, $senderMessage);
+    $receiverMessage = str_replace('{NAMA_TUJUAN}', $validatedData['receiver_name'], $message);
+    $receiverWa = preg_replace('/^0/', '62', $validatedData['receiver_phone']);
+    $senderMessage = str_replace('{NAMA_TUJUAN}', $validatedData['sender_name'], $message);
+    $senderWa = preg_replace('/^0/', '62', $validatedData['sender_phone']);
 
-        $messages = [];
-        $allSuccess = true;
+    $receiverStatus = FonnteService::sendMessage($receiverWa, $receiverMessage);
+    $senderStatus = FonnteService::sendMessage($senderWa, $senderMessage);
 
-        if ($receiverStatus['success'] ?? false) {
-            $messages[] = 'Notifikasi WA ke penerima berhasil dikirim.';
-        } else {
-            $allSuccess = false;
-            $messages[] = 'Gagal mengirim notifikasi WA ke penerima: ' . ($receiverStatus['message'] ?? 'Tidak ada pesan kesalahan.');
-        }
+    $messages = [];
+    $allSuccess = true;
 
-        if ($senderStatus['success'] ?? false) {
-            $messages[] = 'Notifikasi WA ke pengirim berhasil dikirim.';
-        } else {
-            $allSuccess = false;
-            $messages[] = 'Gagal mengirim notifikasi WA ke pengirim: ' . ($senderStatus['message'] ?? 'Tidak ada pesan kesalahan.');
-        }
-        
-        return [
-            'success' => $allSuccess,
-            'message' => implode(' ', $messages)
-        ];
+    if ($receiverStatus['success'] ?? false) {
+        $messages[] = 'Notifikasi WA ke penerima berhasil dikirim.';
+    } else {
+        $allSuccess = false;
+        $messages[] = 'Gagal mengirim notifikasi WA ke penerima: ' . ($receiverStatus['message'] ?? 'Tidak ada pesan kesalahan.');
     }
+
+    if ($senderStatus['success'] ?? false) {
+        $messages[] = 'Notifikasi WA ke pengirim berhasil dikirim.';
+    } else {
+        $allSuccess = false;
+        $messages[] = 'Gagal mengirim notifikasi WA ke pengirim: ' . ($senderStatus['message'] ?? 'Tidak ada pesan kesalahan.');
+    }
+
+    // 🔥 Auto detect format pesan
+    $separator = ($request->ajax() || $request->wantsJson()) ? "\n" : "<br>";
+
+    return [
+        'success' => $allSuccess,
+        'message' => implode($separator, $messages)
+    ];
+}
+
 }
