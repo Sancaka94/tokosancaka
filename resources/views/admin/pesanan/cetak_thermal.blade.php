@@ -224,7 +224,13 @@ $logoPath = strtolower(str_replace(' ', '', $expeditionName));
 
         </div>
 
+         <div class="text-center mt-2">
 
+            <p class="font-bold">RESI SANCAKA</p>
+
+            <svg id="barcodeSancaka" class="barcode"></svg>
+
+        </div>
 
         <div class="grid grid-cols-2 gap-2 mt-1 pb-1 border-b-2 border-dashed border-black">
 
@@ -293,16 +299,6 @@ $logoPath = strtolower(str_replace(' ', '', $expeditionName));
 
 
         </div>
-
-
-        <div class="text-center mt-2">
-
-            <p class="font-bold">RESI SANCAKA</p>
-
-            <svg id="barcodeSancaka" class="barcode"></svg>
-
-        </div>
-
 
         <div class="grid grid-cols-3 text-center mt-1 pb-1 border-b-2 border-black border-dashed">
 
