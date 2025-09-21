@@ -1,5 +1,3 @@
-{{-- resources/views/admin/pesanan/cetak_thermal.blade.php --}}
-
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -46,8 +44,8 @@
                 margin: 0;
                 border: none;
                 border-radius: 0;
-                width: 100%;
-                min-height: auto;
+                width: 100mm; /* Menetapkan lebar cetak */
+                min-height: 150mm; /* Menetapkan tinggi cetak */
                 box-shadow: none;
                 page-break-after: always;
             }
@@ -90,7 +88,7 @@
                 'LION PARCEL' => 'https://kiriminaja.com/assets/home-v4/lion.png',
                 'ID EXPRESS' => 'https://assets.bukalapak.com/beagle/images/courier_logo/id-express.png',
                 'SPX EXPRESS' => 'https://images.seeklogo.com/logo-png/49/1/spx-express-indonesia-logo-png_seeklogo-499970.png',
-                'NCS' => 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjxj3iyyZEjK2L4A4yCIr_E-4W3hF2lk_yb-t0Oj2oFPErCPCMHie5LHqps02xMb6sNa-Gqz5NSX_P_hzWlYpUpJUlCD4iN6_QxiSG9fzY4bsZ9XvLFDn7HCiORtNvIlPfuQbSSdW96p7x7uN8ek3FWyHW9c2bznrFBQkoLd5A9sVAFVKWLfUhT3Dxh/s320/GKL41_NCS%20Kurir%20-%20Koleksilogo.com.jpg',
+                'NCS' => 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjxj3iyyZEjK2L4A4yCIr_E-4W3hF2lk_yb-t0Oj2oFPErCPCMHie5LHqps02xMb6sNa-Gqz5NSX_P_hzWlYpUpJUlCD4iN6_QxiSG9fzY4bsZ9XvLFDn7HCiORtNvIlPfuQbSSdW96p7x7uN8ek3FWyHW9c2bznrFBQkoLd5A9sVAFVKWLhUhT3Dxh/s320/GKL41_NCS%20Kurir%20-%20Koleksilogo.com.jpg',
                 'SENTRAL CARGO' => 'https://kiriminaja.com/assets/home-v4/central-cargo.png',
                 'SICEPAT' => 'https://kiriminaja.com/assets/home-v4/sicepat.png',
                 'NINJA XPRESS' => 'https://kiriminaja.com/assets/home-v4/ninja.png',
