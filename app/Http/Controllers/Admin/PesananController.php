@@ -129,11 +129,11 @@ class PesananController extends Controller
             DB::commit();
 
             // Kirim notifikasi WA setelah pesanan berhasil dibuat
-            $this->_sendWhatsappNotification($pesanan, $validatedData, $shipping_cost, $ansuransi_fee, $cod_fee, $total_paid);
+            $waStatusMessage = $this->_sendWhatsappNotification($pesanan, $validatedData, $shipping_cost, $ansuransi_fee, $cod_fee, $total_paid);
             
             if (!empty($pesanan->payment_url)) return redirect()->away($pesanan->payment_url);
             
-            return redirect()->route('admin.pesanan.index')->with('success', 'Pesanan baru dengan resi ' . $pesanan->resi . ' berhasil dibuat!');
+            return redirect()->route('admin.pesanan.index')->with('success', 'Pesanan baru dengan resi ' . $pesanan->resi . ' berhasil dibuat! ' . $waStatusMessage);
         } catch (ValidationException $e) {
             DB::rollBack();
             return redirect()->back()->withErrors($e->errors())->withInput();
@@ -299,9 +299,9 @@ class PesananController extends Controller
     /**
      * Mengirim notifikasi WhatsApp kepada pengirim dan penerima.
      * @param Pesanan $pesanan
-     * @return void
+     * @return string
      */
-    private function _sendWhatsappNotification(Pesanan $pesanan, array $validatedData, int $shipping_cost, int $ansuransi_fee, int $cod_fee, int $total_paid)
+    private function _sendWhatsappNotification(Pesanan $pesanan, array $validatedData, int $shipping_cost, int $ansuransi_fee, int $cod_fee, int $total_paid): string
     {
         $messageTemplate = <<<TEXT
 *Terimakasih Ya Kak Atas Orderannya 🙏*
@@ -339,7 +339,6 @@ https://tokosancaka.com/tracking/{NOMOR_INVOICE}
 
 *Manajemen Sancaka*
 TEXT;
-
         $message = str_replace(
             [
                 '{NOMOR_INVOICE}', '{SENDER_NAME}', '{SENDER_PHONE}', '{RECEIVER_NAME}', '{RECEIVER_PHONE}',
@@ -370,282 +369,23 @@ TEXT;
 
         $receiverMessage = str_replace('{NAMA_TUJUAN}', $validatedData['receiver_name'], $message);
         $receiverWa = preg_replace('/^0/', '62', $validatedData['receiver_phone']);
-        FonnteService::sendMessage($receiverWa, $receiverMessage);
-
         $senderMessage = str_replace('{NAMA_TUJUAN}', $validatedData['sender_name'], $message);
         $senderWa = preg_replace('/^0/', '62', $validatedData['sender_phone']);
-        FonnteService::sendMessage($senderWa, $senderMessage);
-    }
-    
-    private function _validateOrderRequest(Request $request): array
-    {
-        return $request->validate([
-            'sender_name' => 'required|string|max:255', 'sender_phone' => 'required|string|min:9|max:20', 'sender_address' => 'required|string',
-            'sender_province' => 'required|string|max:100', 'sender_regency' => 'required|string|max:100', 'sender_district' => 'required|string|max:100',
-            'sender_village' => 'required|string|max:100', 'sender_postal_code' => 'required|string|max:10', 'receiver_name' => 'required|string|max:255',
-            'receiver_phone' => 'required|string|min:9|max:20', 'receiver_address' => 'required|string', 'receiver_province' => 'required|string|max:100',
-            'receiver_regency' => 'required|string|max:100', 'receiver_district' => 'required|string|max:100', 'receiver_village' => 'required|string|max:100',
-            'receiver_postal_code' => 'required|string|max:10', 'item_description' => 'required|string|max:255', 'item_price' => 'required|numeric|min:1000',
-            'weight' => 'required|numeric|min:1', 'service_type' => 'required|string|in:regular,express,sameday,instant,cargo', 'expedition' => 'required|string',
-            'payment_method' => 'required|string', 'ansuransi' => 'required|string|in:iya,tidak', 'pengirim_id' => 'nullable|integer|exists:kontaks,id',
-            'penerima_id' => 'nullable|integer|exists:kontaks,id', 'length' => 'nullable|numeric|min:0', 'width' => 'nullable|numeric|min:0',
-            'height' => 'nullable|numeric|min:0', 'item_type' => 'required|integer', 'save_sender' => 'nullable', 'save_receiver' => 'nullable',
-            'sender_district_id' => 'required|integer', 'sender_subdistrict_id' => 'required|integer',
-            'receiver_district_id' => 'required|integer', 'receiver_subdistrict_id' => 'required|integer',
-        ]);
-    }
-    
-    private function _getAddressData(Request $request, string $type): array
-    {
-        $prefix = $type;
-        $village = $request->input("{$prefix}_village");
-        $district = $request->input("{$prefix}_district");
-        $regency = $request->input("{$prefix}_regency");
-        $province = $request->input("{$prefix}_province");
-        $lat = $request->input("{$prefix}_lat");
-        $lng = $request->input("{$prefix}_lng");
+
+        $receiverStatus = FonnteService::sendMessage($receiverWa, $receiverMessage);
+        $senderStatus = FonnteService::sendMessage($senderWa, $senderMessage);
+
+        $success = true;
+        $message = '';
+        if (!$receiverStatus) {
+            $success = false;
+            $message .= 'Gagal mengirim notifikasi WA ke penerima. ';
+        }
+        if (!$senderStatus) {
+            $success = false;
+            $message .= 'Gagal mengirim notifikasi WA ke pengirim.';
+        }
         
-        $kirimajaAddr = [
-            'district_id' => $request->input("{$prefix}_district_id"),
-            'subdistrict_id' => $request->input("{$prefix}_subdistrict_id"),
-            'postal_code' => $request->input("{$prefix}_postal_code")
-        ];
-        
-        if ((!$lat || !$lng) && $village) {
-             $fullAddressForGeocode = implode(', ', array_filter([$village, $district, $regency, $province]));
-            if ($geo = $this->geocode($fullAddressForGeocode)) {
-                $lat = $geo['lat'];
-                $lng = $geo['lng'];
-            }
-        }
-
-        return ['lat' => $lat, 'lng' => $lng, 'kirimaja_data' => $kirimajaAddr];
-    }
-
-    private function geocode(string $address): ?array
-    {
-        $url = "https://nominatim.openstreetmap.org/search?q=" . urlencode($address) . "&format=json&limit=1";
-        try {
-            $response = Http::withHeaders(['User-Agent' => 'YourAppName/1.0 (your-contact@example.com)'])->get($url)->json();
-            if (!empty($response[0])) {
-                return ['lat' => (float) $response[0]['lat'], 'lng' => (float) $response[0]['lon']];
-            }
-        } catch (\Throwable $e) {
-            return null;
-        }
-        return null;
-    }
-
-    private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
-    {
-        if (!empty($data["save_{$prefix}"])) {
-            Kontak::updateOrCreate(
-                ['no_hp' => $this->_sanitizePhoneNumber($data["{$prefix}_phone"])],
-                [
-                    'nama'        => $data["{$prefix}_name"],
-                    'alamat'      => $data["{$prefix}_address"],
-                    'province'    => $data["{$prefix}_province"],
-                    'regency'     => $data["{$prefix}_regency"],
-                    'district'    => $data["{$prefix}_district"],
-                    'village'     => $data["{$prefix}_village"],
-                    'postal_code' => $data["{$prefix}_postal_code"],
-                    'tipe'        => $tipe,
-                ]
-            );
-        }
-    }
-    
-    private function _preparePesananData(array $validatedData, int $total, string $ip, string $userAgent): array
-    {
-        do {
-            $tanggal = date('Ymd');
-            $nomorInvoice = 'SCK-' . $tanggal . '-' .'SANCAKA'. strtoupper(Str::random(4));
-        } while (Pesanan::where('nomor_invoice', $nomorInvoice)->exists());
-
-        return array_merge(
-            collect($validatedData)->only([
-                'sender_name', 'sender_phone', 'sender_address',
-                'sender_province', 'sender_regency', 'sender_district',
-                'sender_village', 'sender_postal_code', 'receiver_name',
-                'receiver_phone', 'receiver_address', 'receiver_province',
-                'receiver_regency', 'receiver_district', 'receiver_village',
-                'receiver_postal_code', 'item_description', 'weight',
-                'service_type', 'expedition', 'payment_method', 'item_type'
-            ])->all(),
-            [
-                'nama_pembeli' => $validatedData['receiver_name'],
-                'telepon_pembeli' => $validatedData['receiver_phone'],
-                'alamat_pengiriman' => $validatedData['receiver_address'],
-                'total_harga_barang' => $validatedData['item_price'],
-                'length' => $validatedData['length'] ?? 1,
-                'width' => $validatedData['width'] ?? 1,
-                'height' => $validatedData['height'] ?? 1,
-                'status_pesanan' => 'Menunggu Pembayaran',
-                'tanggal_pesanan' => now(),
-                'status' => 'Menunggu Pembayaran',
-                'tujuan' => $validatedData['receiver_regency'],
-                'kontak_pengirim_id' => $validatedData['pengirim_id'] ?? null,
-                'kontak_penerima_id' => $validatedData['penerima_id'] ?? null,
-                'ip_address' => $ip,
-                'user_agent' => $userAgent,
-                'nomor_invoice' => $nomorInvoice,
-                'price' => $total,
-            ]
-        );
-    }
-    
-    private function _createKiriminAjaOrder(array $data, Pesanan $pesanan, KiriminAjaService $kirimaja, array $senderData, array $receiverData, int $cod_value): array
-    {
-        list($serviceGroup, $courier, $service_type, $shipping_cost) = array_pad(explode('-', $data['expedition']), 4, null);
-        if (in_array($serviceGroup, ['instant', 'sameday'])) { 
-            // Logika untuk instant/sameday (jika ada)
-            return []; // Placeholder
-        } else {
-            $schedule = $kirimaja->getSchedules();
-            $payload = [
-                'address' => $data['sender_address'], 'phone' => $data['sender_phone'], 'name' => $data['sender_name'],
-                'kecamatan_id' => $senderData['kirimaja_data']['district_id'], 'kelurahan_id' => $senderData['kirimaja_data']['subdistrict_id'],
-                'zipcode' => $senderData['kirimaja_data']['postal_code'], 'schedule' => $schedule['clock'], 'platform_name' => 'YourPlatformName.COM',
-                'packages' => [[
-                    'order_id' => $pesanan->nomor_invoice, 'item_name' => $data['item_description'], 'package_type_id' => (int)$data['item_type'],
-                    'destination_name' => $data['receiver_name'], 'destination_phone' => $data['receiver_phone'], 'destination_address' => $data['receiver_address'],
-                    'destination_kecamatan_id' => $receiverData['kirimaja_data']['district_id'], 'destination_kelurahan_id' => $receiverData['kirimaja_data']['subdistrict_id'],
-                    'destination_zipcode' => $receiverData['kirimaja_data']['postal_code'],
-                    'weight' => $data['weight'], 'width' => $data['width'] ?? 1, 'height' => $data['height'] ?? 1, 'length' => $data['length'] ?? 1,
-                    'item_value' => (int)$data['item_price'], 'shipping_cost' => (int)$shipping_cost, 'service' => $courier, 'service_type' => $service_type,
-                    'insurance_amount' => ($data['ansuransi'] == 'iya') ? (int)$data['item_price'] : 0, 'cod' => $cod_value
-                ]]
-            ];
-            return $kirimaja->createExpressOrder($payload);
-        }
-    }
-
-    private function _prepareOrderItemsPayload(int $shipping_cost, int $ansuransi_fee, string $ansuransi_choice): array
-    {
-        $payload = [];
-        $payload[] = ['sku' => 'SHIPPING', 'name' => 'Ongkos Kirim', 'price' => $shipping_cost, 'quantity' => 1];
-        
-        if ($ansuransi_choice == 'iya' && $ansuransi_fee > 0) {
-            $payload[] = ['sku' => 'INSURANCE', 'name' => 'Biaya Asuransi', 'price' => $ansuransi_fee, 'quantity' => 1];
-        }
-        return $payload;
-    }
-
-    private function _createTripayTransaction(array $validatedData, Pesanan $pesanan, int $total, array $orderItemsPayload): array
-    {
-        $apiKey = config('tripay.api_key'); $privateKey = config('tripay.private_key');
-        $merchantCode = config('tripay.merchant_code'); $mode = config('tripay.mode');
-        
-        $payload = [
-            'method'      => $validatedData['payment_method'],
-            'merchant_ref'      => $pesanan->nomor_invoice,
-            'amount'      => $total,
-            'customer_name'  => $validatedData['receiver_name'],
-            'customer_email' => 'tokosancaka@gmail.com', // Ganti dengan email valid jika ada
-            'customer_phone' => $validatedData['receiver_phone'],
-            'order_items'    => $orderItemsPayload,
-            'expired_time'   => time() + (24 * 60 * 60),
-            'signature'      => hash_hmac('sha256', $merchantCode . $pesanan->nomor_invoice . $total, $privateKey),
-        ];
-
-        Log::channel('daily')->info('Tripay Request Payload:', $payload);
-
-        $baseUrl = $mode === 'production' ? 'https://tripay.co.id/api/transaction/create' : 'https://tripay.co.id/api-sandbox/transaction/create';
-        
-        try {
-            $response = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])->post($baseUrl, $payload);
-            return $response->json();
-        } catch (Exception $e) {
-            Log::channel('daily')->error('Tripay API Connection Failed: ' . $e->getMessage());
-            return ['success' => false, 'message' => 'Tidak dapat terhubung ke server pembayaran.'];
-        }
-    }
-    
-    private function _sanitizePhoneNumber(string $phone): string
-    {
-        $phone = preg_replace('/[^0-9]/', '', $phone);
-        if (Str::startsWith($phone, '62')) {
-            return '0' . substr($phone, 2);
-        }
-        if (!Str::startsWith($phone, '0')) {
-            return '0' . $phone;
-        }
-        return $phone;
-    }
-
-    private function _sendWhatsappNotification(Pesanan $pesanan, array $validatedData, int $shipping_cost, int $ansuransi_fee, int $cod_fee, int $total_paid)
-    {
-        $messageTemplate = <<<TEXT
-*Terimakasih Ya Kak Atas Orderannya 🙏*
-
-Berikut adalah Nomor Order ID dan Invoice:
-*{NOMOR_INVOICE}*
-
-📦 Dari: *{SENDER_NAME}* ( {SENDER_PHONE} )
-➡️ Ke: *{RECEIVER_NAME}* ( {RECEIVER_PHONE} )
-
-----------------------------------------
-*Rincian Biaya:*
-- Ongkir: Rp {ONGKIR}
-- Nilai Barang: Rp {NILAI_BARANG}
-- Asuransi: Rp {ASURANSI}
-- COD Fee: Rp {COD_FEE}
-----------------------------------------
-*Total Bayar: Rp {TOTAL_BAYAR}*
-
-----------------------------------------
-*Detail Paket:*
-Deskripsi Barang: {DESKRIPSI}
-Berat: {BERAT} Gram
-Dimensi: {PANJANG} x {LEBAR} x {TINGGI} cm
-Ekspedisi: {EKSPEDISI}
-Layanan: {LAYANAN}
-----------------------------------------
-
-Semoga Paket Kakak
-*{SENDER_NAME} ➡️ {RECEIVER_NAME}*
-aman dan selamat sampai tujuan. ✅
-
-Kak {NAMA_TUJUAN} bisa cek resi dengan klik link berikut:
-https://tokosancaka.com/tracking/{NOMOR_INVOICE}
-
-*Manajemen Sancaka*
-TEXT;
-
-        $message = str_replace(
-            [
-                '{NOMOR_INVOICE}', '{SENDER_NAME}', '{SENDER_PHONE}', '{RECEIVER_NAME}', '{RECEIVER_PHONE}',
-                '{ONGKIR}', '{NILAI_BARANG}', '{ASURANSI}', '{COD_FEE}', '{TOTAL_BAYAR}',
-                '{DESKRIPSI}', '{BERAT}', '{PANJANG}', '{LEBAR}', '{TINGGI}', '{EKSPEDISI}', '{LAYANAN}'
-            ],
-            [
-                $pesanan->nomor_invoice,
-                $validatedData['sender_name'],
-                $validatedData['sender_phone'],
-                $validatedData['receiver_name'],
-                $validatedData['receiver_phone'],
-                number_format($shipping_cost, 0, ',', '.'),
-                number_format($validatedData['item_price'], 0, ',', '.'),
-                number_format($ansuransi_fee, 0, ',', '.'),
-                number_format($cod_fee, 0, ',', '.'),
-                number_format($total_paid, 0, ',', '.'),
-                $validatedData['item_description'],
-                $validatedData['weight'],
-                $validatedData['length'] ?? 1,
-                $validatedData['width'] ?? 1,
-                $validatedData['height'] ?? 1,
-                $validatedData['expedition'],
-                $validatedData['service_type'],
-            ],
-            $messageTemplate
-        );
-
-        $receiverMessage = str_replace('{NAMA_TUJUAN}', $validatedData['receiver_name'], $message);
-        $receiverWa = preg_replace('/^0/', '62', $validatedData['receiver_phone']);
-        FonnteService::sendMessage($receiverWa, $receiverMessage);
-
-        $senderMessage = str_replace('{NAMA_TUJUAN}', $validatedData['sender_name'], $message);
-        $senderWa = preg_replace('/^0/', '62', $validatedData['sender_phone']);
-        FonnteService::sendMessage($senderWa, $senderMessage);
+        return $success ? 'Notifikasi WA berhasil dikirim.' : $message;
     }
 }
