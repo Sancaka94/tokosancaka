@@ -18,6 +18,7 @@ use Carbon\Carbon;
 use App\Exports\PesanansExport;
 use Maatwebsite\Excel\Facades\Excel;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Services\FonnteService;
 
 
 class PesananController extends Controller
@@ -128,8 +129,8 @@ class PesananController extends Controller
             DB::commit();
 
             // Kirim notifikasi WA setelah pesanan berhasil dibuat
-            $this->_sendWhatsAppMessage($pesanan);
-
+            $this->_sendWhatsappNotification($pesanan, $validatedData, $shipping_cost, $ansuransi_fee, $cod_fee, $total_paid);
+            
             if (!empty($pesanan->payment_url)) return redirect()->away($pesanan->payment_url);
             
             return redirect()->route('admin.pesanan.index')->with('success', 'Pesanan baru dengan resi ' . $pesanan->resi . ' berhasil dibuat!');
@@ -300,48 +301,82 @@ class PesananController extends Controller
      * @param Pesanan $pesanan
      * @return void
      */
-    private function _sendWhatsAppMessage(Pesanan $pesanan): void
+    private function _sendWhatsappNotification(Pesanan $pesanan, array $validatedData, int $shipping_cost, int $ansuransi_fee, int $cod_fee, int $total_paid)
     {
-        // Ambil URL dan kunci API dari file konfigurasi
-        $api_url = config('services.fonte.api_url'); 
-        $api_key = config('services.fonte.api_key'); 
-        
-        // Pesan untuk penerima
-        $messageReceiver = "Halo " . $pesanan->nama_pembeli . ", pesanan Anda dengan resi *" . $pesanan->resi . "* dari " . $pesanan->sender_name . " telah berhasil dibuat. Anda dapat melacak pesanan di: " . route('pelacakan.index', ['resi' => $pesanan->resi]);
+        $messageTemplate = <<<TEXT
+*Terimakasih Ya Kak Atas Orderannya 🙏*
 
-        // Pesan untuk pengirim
-        $messageSender = "Halo " . $pesanan->sender_name . ", pesanan Anda untuk " . $pesanan->nama_pembeli . " dengan resi *" . $pesanan->resi . "* telah berhasil dibuat. Anda dapat melacak pesanan di: " . route('pelacakan.index', ['resi' => $pesanan->resi]);
+Berikut adalah Nomor Order ID dan Invoice:
+*{NOMOR_INVOICE}*
 
-        $receiverPhone = $this->_sanitizePhoneNumber($pesanan->telepon_pembeli);
-        $senderPhone = $this->_sanitizePhoneNumber($pesanan->sender_phone);
+📦 Dari: *{SENDER_NAME}* ( {SENDER_PHONE} )
+➡️ Ke: *{RECEIVER_NAME}* ( {RECEIVER_PHONE} )
 
-        // Kirim pesan ke penerima
-        try {
-            Http::withHeaders([
-                'Authorization' => 'Bearer ' . $api_key,
-            ])->post($api_url, [
-                'phone' => $receiverPhone,
-                'message' => $messageReceiver,
-            ]);
-            Log::info("WA message sent to receiver for order: " . $pesanan->nomor_invoice);
-        } catch (Exception $e) {
-            Log::error("Failed to send WA to receiver: " . $e->getMessage());
-        }
+----------------------------------------
+*Rincian Biaya:*
+- Ongkir: Rp {ONGKIR}
+- Nilai Barang: Rp {NILAI_BARANG}
+- Asuransi: Rp {ASURANSI}
+- COD Fee: Rp {COD_FEE}
+----------------------------------------
+*Total Bayar: Rp {TOTAL_BAYAR}*
 
-        // Kirim pesan ke pengirim
-        try {
-            Http::withHeaders([
-                'Authorization' => 'Bearer ' . $api_key,
-            ])->post($api_url, [
-                'phone' => $senderPhone,
-                'message' => $messageSender,
-            ]);
-            Log::info("WA message sent to sender for order: " . $pesanan->nomor_invoice);
-        } catch (Exception $e) {
-            Log::error("Failed to send WA to sender: " . $e->getMessage());
-        }
+----------------------------------------
+*Detail Paket:*
+Deskripsi Barang: {DESKRIPSI}
+Berat: {BERAT} Gram
+Dimensi: {PANJANG} x {LEBAR} x {TINGGI} cm
+Ekspedisi: {EKSPEDISI}
+Layanan: {LAYANAN}
+----------------------------------------
+
+Semoga Paket Kakak
+*{SENDER_NAME} ➡️ {RECEIVER_NAME}*
+aman dan selamat sampai tujuan. ✅
+
+Kak {NAMA_TUJUAN} bisa cek resi dengan klik link berikut:
+https://tokosancaka.com/tracking/{NOMOR_INVOICE}
+
+*Manajemen Sancaka*
+TEXT;
+
+        $message = str_replace(
+            [
+                '{NOMOR_INVOICE}', '{SENDER_NAME}', '{SENDER_PHONE}', '{RECEIVER_NAME}', '{RECEIVER_PHONE}',
+                '{ONGKIR}', '{NILAI_BARANG}', '{ASURANSI}', '{COD_FEE}', '{TOTAL_BAYAR}',
+                '{DESKRIPSI}', '{BERAT}', '{PANJANG}', '{LEBAR}', '{TINGGI}', '{EKSPEDISI}', '{LAYANAN}'
+            ],
+            [
+                $pesanan->nomor_invoice,
+                $validatedData['sender_name'],
+                $validatedData['sender_phone'],
+                $validatedData['receiver_name'],
+                $validatedData['receiver_phone'],
+                number_format($shipping_cost, 0, ',', '.'),
+                number_format($validatedData['item_price'], 0, ',', '.'),
+                number_format($ansuransi_fee, 0, ',', '.'),
+                number_format($cod_fee, 0, ',', '.'),
+                number_format($total_paid, 0, ',', '.'),
+                $validatedData['item_description'],
+                $validatedData['weight'],
+                $validatedData['length'] ?? 1,
+                $validatedData['width'] ?? 1,
+                $validatedData['height'] ?? 1,
+                $validatedData['expedition'],
+                $validatedData['service_type'],
+            ],
+            $messageTemplate
+        );
+
+        $receiverMessage = str_replace('{NAMA_TUJUAN}', $validatedData['receiver_name'], $message);
+        $receiverWa = preg_replace('/^0/', '62', $validatedData['receiver_phone']);
+        FonnteService::sendMessage($receiverWa, $receiverMessage);
+
+        $senderMessage = str_replace('{NAMA_TUJUAN}', $validatedData['sender_name'], $message);
+        $senderWa = preg_replace('/^0/', '62', $validatedData['sender_phone']);
+        FonnteService::sendMessage($senderWa, $senderMessage);
     }
-
+    
     private function _validateOrderRequest(Request $request): array
     {
         return $request->validate([
@@ -536,5 +571,81 @@ class PesananController extends Controller
             return '0' . $phone;
         }
         return $phone;
+    }
+
+    private function _sendWhatsappNotification(Pesanan $pesanan, array $validatedData, int $shipping_cost, int $ansuransi_fee, int $cod_fee, int $total_paid)
+    {
+        $messageTemplate = <<<TEXT
+*Terimakasih Ya Kak Atas Orderannya 🙏*
+
+Berikut adalah Nomor Order ID dan Invoice:
+*{NOMOR_INVOICE}*
+
+📦 Dari: *{SENDER_NAME}* ( {SENDER_PHONE} )
+➡️ Ke: *{RECEIVER_NAME}* ( {RECEIVER_PHONE} )
+
+----------------------------------------
+*Rincian Biaya:*
+- Ongkir: Rp {ONGKIR}
+- Nilai Barang: Rp {NILAI_BARANG}
+- Asuransi: Rp {ASURANSI}
+- COD Fee: Rp {COD_FEE}
+----------------------------------------
+*Total Bayar: Rp {TOTAL_BAYAR}*
+
+----------------------------------------
+*Detail Paket:*
+Deskripsi Barang: {DESKRIPSI}
+Berat: {BERAT} Gram
+Dimensi: {PANJANG} x {LEBAR} x {TINGGI} cm
+Ekspedisi: {EKSPEDISI}
+Layanan: {LAYANAN}
+----------------------------------------
+
+Semoga Paket Kakak
+*{SENDER_NAME} ➡️ {RECEIVER_NAME}*
+aman dan selamat sampai tujuan. ✅
+
+Kak {NAMA_TUJUAN} bisa cek resi dengan klik link berikut:
+https://tokosancaka.com/tracking/{NOMOR_INVOICE}
+
+*Manajemen Sancaka*
+TEXT;
+
+        $message = str_replace(
+            [
+                '{NOMOR_INVOICE}', '{SENDER_NAME}', '{SENDER_PHONE}', '{RECEIVER_NAME}', '{RECEIVER_PHONE}',
+                '{ONGKIR}', '{NILAI_BARANG}', '{ASURANSI}', '{COD_FEE}', '{TOTAL_BAYAR}',
+                '{DESKRIPSI}', '{BERAT}', '{PANJANG}', '{LEBAR}', '{TINGGI}', '{EKSPEDISI}', '{LAYANAN}'
+            ],
+            [
+                $pesanan->nomor_invoice,
+                $validatedData['sender_name'],
+                $validatedData['sender_phone'],
+                $validatedData['receiver_name'],
+                $validatedData['receiver_phone'],
+                number_format($shipping_cost, 0, ',', '.'),
+                number_format($validatedData['item_price'], 0, ',', '.'),
+                number_format($ansuransi_fee, 0, ',', '.'),
+                number_format($cod_fee, 0, ',', '.'),
+                number_format($total_paid, 0, ',', '.'),
+                $validatedData['item_description'],
+                $validatedData['weight'],
+                $validatedData['length'] ?? 1,
+                $validatedData['width'] ?? 1,
+                $validatedData['height'] ?? 1,
+                $validatedData['expedition'],
+                $validatedData['service_type'],
+            ],
+            $messageTemplate
+        );
+
+        $receiverMessage = str_replace('{NAMA_TUJUAN}', $validatedData['receiver_name'], $message);
+        $receiverWa = preg_replace('/^0/', '62', $validatedData['receiver_phone']);
+        FonnteService::sendMessage($receiverWa, $receiverMessage);
+
+        $senderMessage = str_replace('{NAMA_TUJUAN}', $validatedData['sender_name'], $message);
+        $senderWa = preg_replace('/^0/', '62', $validatedData['sender_phone']);
+        FonnteService::sendMessage($senderWa, $senderMessage);
     }
 }

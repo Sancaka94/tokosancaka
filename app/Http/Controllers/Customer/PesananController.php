@@ -538,7 +538,7 @@ Berikut adalah Nomor Order ID dan Invoice:
 ----------------------------------------
 *Detail Paket:*
 Deskripsi Barang: {DESKRIPSI}
-Berat: {BERAT} Kg
+Berat: {BERAT} Gram
 Dimensi: {PANJANG} x {LEBAR} x {TINGGI} cm
 Ekspedisi: {EKSPEDISI}
 Layanan: {LAYANAN}
