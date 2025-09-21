@@ -206,7 +206,7 @@
         @endif
 
         <!-- Footer -->
-        <div class="mt-auto pt-3 text-center text-xs border-t border-dashed border-gray-400">
+        <div class="mt-auto pt-3 text-center text-xs">
             <p>Terima kasih telah menggunakan <span class="font-semibold">Sancaka Express</span>.</p>
             <p class="font-bold mt-1">{{ \Carbon\Carbon::parse($pesanan->created_at)->format('d M Y H:i') }}</p>
         </div>
