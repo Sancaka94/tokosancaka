@@ -299,7 +299,7 @@ class PesananController extends Controller
 
             if (!empty($pesanan->payment_url)) return redirect()->away($pesanan->payment_url);
             
-            event(new AdminNotificationEvent('Pesanan Baru Diterima!', Auth::user()->nama_lengkap . ' telah membuat pesanan baru.', route('admin.pesanan.show', $pesanan->id)));
+            event(new AdminNotificationEvent('Pesanan Baru Diterima!', Auth::user()->nama_lengkap . ' telah membuat pesanan baru.', route('admin.pesanan.show', ['resi' => $pesanan->resi])));
             
             return redirect()->route('customer.pesanan.index')->with('success', 'Pesanan berhasil dibuat!');
         } catch (ValidationException $e) {
