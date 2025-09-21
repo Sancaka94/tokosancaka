@@ -235,8 +235,6 @@
                 @endphp
                 
             <img src="{{ asset('storage/logo-ekspedisi/' . $logoPath . '.png') }}" alt="{{ $expeditionName }} Logo" class="w-200 h-auto mr-2">
-                    
-
 
             <div class="font-bold text-gray-800">{{ $courier }}</div>
 
