@@ -211,7 +211,13 @@ $logoPath = strtolower(str_replace(' ', '', $expeditionName));
 @endphp
 
 
+        <div class="text-center mt-2">
 
+            <p class="font-bold">RESI SANCAKA</p>
+
+            <svg id="barcodeSancaka" class="barcode"></svg>
+
+        </div>
 
 
         <div class="flex justify-between items-start pb-1 border-b-2 border-dashed border-black">
@@ -221,14 +227,6 @@ $logoPath = strtolower(str_replace(' ', '', $expeditionName));
             <img src="https://tokosancaka.biz.id/storage/uploads/sancaka.png" alt="Sancaka Express" class="h-10" onerror="this.style.display='none'">
 
             <img src="{{ asset('storage/logo-ekspedisi/' . $logoPath . '.png') }}" alt="{{ $expeditionName }} Logo" class="w-200 h-auto mr-2">
-
-        </div>
-
-         <div class="text-center mt-2">
-
-            <p class="font-bold">RESI SANCAKA</p>
-
-            <svg id="barcodeSancaka" class="barcode"></svg>
 
         </div>
 
