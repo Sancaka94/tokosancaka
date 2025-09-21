@@ -201,10 +201,11 @@ $partnerKey = strtoupper(explode('-', $pesanan->expedition)[1]);
 $partnerLogoUrl = $partnerLogos[$partnerKey] ?? 'https://placehold.co/150x50/e2e8f0/334155?text=' . urlencode($partnerKey);
 
 
-$expeditionParts = explode('-', $order->expedition);
+$expeditionParts = explode('-', $pesanan->expedition);
 $expeditionName = $expeditionParts[1] ?? 'POSINDONESIA';
 $expeditionService = $expeditionParts[2] ?? 'Regular';
 $logoPath = strtolower(str_replace(' ', '', $expeditionName));
+
                
 
 @endphp
