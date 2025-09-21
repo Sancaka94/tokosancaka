@@ -74,14 +74,16 @@ Deskripsi: Halaman daftar pesanan untuk pelanggan dengan tampilan rinci.
             <div class="md:col-span-2 p-4 border-t md:border-t-0 md:border-l border-slate-200">
                  <div class="md:hidden text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Ekspedisi & Ongkir</div>
                 @php
-                    $expeditionName = strtok($order->expedition, '-');
+                    $expeditionParts = explode('-', $order->expedition);
+                    $expeditionName = $expeditionParts[1] ?? 'POSINDONESIA';
+                    $expeditionService = $expeditionParts[2] ?? 'Regular';
                     $logoPath = strtolower(str_replace(' ', '', $expeditionName));
                 @endphp
                 <div class="flex items-center mb-1">
                     <img src="{{ asset('storage/logo-ekspedisi/' . $logoPath . '.png') }}" alt="{{ $expeditionName }} Logo" class="w-10 h-auto mr-2">
                     <span class="font-bold text-sm">{{ $expeditionName }}</span>
                 </div>
-                <div class="text-xs text-slate-600">{{ $order->service_type }}</div>
+                <div class="text-xs text-slate-600">{{ $expeditionService }}</div>
                 <div class="text-sm text-slate-600 mt-2">Ongkir: <span class="font-bold text-red-600">Rp {{ number_format($order->price ?? 0, 0, ',', '.') }}</span></div>
                 <div class="text-xs text-slate-500 break-all">Resi: {{ $order->resi ?? 'Menunggu' }}</div>
             </div>
