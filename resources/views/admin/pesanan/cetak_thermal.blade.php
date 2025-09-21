@@ -128,8 +128,9 @@
             <svg id="barcodeSancaka" class="barcode"></svg>
         </div>
 
-        <!-- Pengirim & Penerima -->
+        <!-- Pengirim & Penerima serta Detail Paket & Barcode 2D -->
         <div class="grid grid-cols-2 gap-3 mt-2 border-b border-dashed border-gray-400 pb-2">
+            <!-- Kolom Kiri: Pengirim & Rincian Paket -->
             <div class="pr-2">
                 <p class="label">PENGIRIM:</p>
                 <p class="value">{{ $pesanan->sender_name }}</p>
@@ -144,7 +145,17 @@
                         $pesanan->sender_postal_code,
                     ])) }}
                 </p>
+                
+                {{-- Rincian Paket --}}
+                <div class="mt-2 border-t border-dashed border-gray-400 pt-2">
+                    <p class="label">Rincian Paket:</p>
+                    <p class="value">- Berat: {{ $pesanan->weight }} gr</p>
+                    <p class="value">- Dimensi: {{ $pesanan->length ?? 0 }}x{{ $pesanan->width ?? 0 }}x{{ $pesanan->height ?? 0 }} cm</p>
+                    <p class="value">- Layanan: {{ strtoupper($pesanan->service_type) }}</p>
+                </div>
             </div>
+
+            <!-- Kolom Kanan: Penerima & Barcode 2D -->
             <div>
                 <p class="label">PENERIMA:</p>
                 <p class="value">{{ $pesanan->nama_pembeli }}</p>
@@ -159,6 +170,11 @@
                         $pesanan->receiver_postal_code,
                     ])) }}
                 </p>
+
+                {{-- Barcode 2D (QR Code) --}}
+                <div class="flex justify-center mt-4">
+                    <div id="qrcode"></div>
+                </div>
             </div>
         </div>
 
@@ -186,31 +202,6 @@
             <svg id="barcodeAktual" class="barcode"></svg>
         </div>
         @endif
-
-        {{-- Tambahan detail bawah --}}
-<div class="mt-2 border-t-2 border-dashed border-black pt-2 text-xs">
-    <p class="font-bold">Ekspedisi: {{ strtoupper(explode('-', $pesanan->expedition)[1] ?? '') }}</p>
-
-    <p class="font-bold mt-1">Rincian Paket:</p>
-    <p>- Berat: {{ $pesanan->weight }} gr</p>
-    <p>- Dimensi: {{ $pesanan->length ?? 0 }}x{{ $pesanan->width ?? 0 }}x{{ $pesanan->height ?? 0 }} cm</p>
-    <p>- Layanan: {{ strtoupper($pesanan->service_type) }}</p>
-
-    <p class="font-bold mt-1">Pengirim:</p>
-    <p>{{ $pesanan->sender_name }} ({{ $pesanan->sender_phone }})</p>
-
-    <p class="font-bold mt-1">Penerima:</p>
-    <p>{{ $pesanan->nama_pembeli }} ({{ $pesanan->telepon_pembeli }})</p>
-
-    <p class="font-bold mt-1">No Resi:</p>
-    <p>{{ $pesanan->resi }}</p>
-
-    {{-- Barcode 2D (QR Code) --}}
-    <div class="flex justify-center mt-2">
-        <div id="qrcode"></div>
-    </div>
-</div>
-
 
         <!-- Footer -->
         <div class="mt-auto pt-3 text-center text-xs border-t border-dashed border-gray-400">
