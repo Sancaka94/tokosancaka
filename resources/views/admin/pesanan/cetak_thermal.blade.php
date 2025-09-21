@@ -32,11 +32,11 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.08);
             display: flex;
             flex-direction: column;
-            font-size: 8pt; /* Ukuran font diperkecil */
+            font-size: 8pt;
         }
         .barcode { width: 100%; height: 50px; }
-        .label { font-weight: 600; font-size: 8px; color: #374151; } /* Ukuran font diperkecil */
-        .value { font-weight: 500; font-size: 9px; } /* Ukuran font diperkecil */
+        .label { font-weight: 600; font-size: 8px; color: #374151; }
+        .value { font-weight: 500; font-size: 9px; }
         @media print {
             body { background: none; }
             .no-print { display: none; }
@@ -147,7 +147,7 @@
                 </p>
                 
                 {{-- Rincian Paket --}}
-                <div class="mt-2 border-t border-dashed border-gray-400 pt-2">
+                <div class="mt-2 pt-2">
                     <p class="label">Rincian Paket:</p>
                     <p class="value">- Berat: {{ $pesanan->weight }} gr</p>
                     <p class="value">- Dimensi: {{ $pesanan->length ?? 0 }}x{{ $pesanan->width ?? 0 }}x{{ $pesanan->height ?? 0 }} cm</p>
@@ -156,7 +156,7 @@
             </div>
 
             <!-- Kolom Kanan: Penerima & Barcode 2D -->
-            <div>
+            <div class="pl-2">
                 <p class="label">PENERIMA:</p>
                 <p class="value">{{ $pesanan->nama_pembeli }}</p>
                 <p class="text-xs">{{ $pesanan->telepon_pembeli }}</p>
