@@ -196,8 +196,6 @@ $partnerLogos = [
 
 $partnerLogos = array_change_key_case($partnerLogos, CASE_UPPER);
 
-
-
 $partnerKey = strtoupper(explode('-', $pesanan->expedition)[1]);
 
 $partnerLogoUrl = $partnerLogos[$partnerKey] ?? 'https://placehold.co/150x50/e2e8f0/334155?text=' . urlencode($partnerKey);
@@ -214,7 +212,7 @@ $partnerLogoUrl = $partnerLogos[$partnerKey] ?? 'https://placehold.co/150x50/e2e
 
             <img src="https://tokosancaka.biz.id/storage/uploads/sancaka.png" alt="Sancaka Express" class="h-10" onerror="this.style.display='none'">
 
-            <img src="{{ $partnerLogoUrl }}" alt="{{ $partnerKey }}" class="h-10 object-contain">
+            <img src="{{ asset('storage/logo-ekspedisi/' . $logoPath . '.png') }}" alt="{{ $expeditionName }} Logo" class="w-200 h-auto mr-2">
 
         </div>
 
