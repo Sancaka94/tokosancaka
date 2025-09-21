@@ -25,15 +25,16 @@ class PesananController extends Controller
     {
         // Tandai pesanan 'baru' sebagai 'telah_dilihat'
         Pesanan::where('status', 'baru')
-                 ->where('telah_dilihat', false)
-                 ->update(['telah_dilihat' => true]);
-                                  
+             ->where('telah_dilihat', false)
+             ->update(['telah_dilihat' => true]);
+                       
         $query = Pesanan::query();
 
         if ($request->filled('search')) {
             $search = $request->input('search');
             $query->where(function($q) use ($search) {
                 $q->where('resi', 'like', "%{$search}%")
+                  ->orWhere('nomor_invoice', 'like', "%{$search}%")
                   ->orWhere('sender_name', 'like', "%{$search}%")
                   ->orWhere('receiver_name', 'like', "%{$search}%")
                   ->orWhere('sender_phone', 'like', "%{$search}%")
@@ -54,7 +55,7 @@ class PesananController extends Controller
      */
     public function create()
     {
-        // Menghapus filter 'where('role', 'user')' untuk mengambil semua pengguna
+        // Mengambil semua pengguna untuk pilihan dropdown 'Potong Saldo'
         $customers = User::orderBy('nama_lengkap', 'asc')->get();
         return view('admin.pesanan.create', compact('customers'));
     }
@@ -74,54 +75,34 @@ class PesananController extends Controller
             $validatedData['sender_phone'] = $this->_sanitizePhoneNumber($validatedData['sender_phone']);
             $validatedData['receiver_phone'] = $this->_sanitizePhoneNumber($validatedData['receiver_phone']);
             
-            list($serviceGroup, $courier, $service, $shipping_cost, $ansuransi_fee, $cod_fee) = array_pad(explode('-', $validatedData['expedition']), 6, 0);
-            
-            $shipping_cost = (int) $shipping_cost;
-            $ansuransi_fee = (int) $ansuransi_fee;
-            $cod_fee = (int) $cod_fee;
-
-            $total_paid = 0;
-            $cod_value = 0;
-
-            if ($validatedData['payment_method'] === 'CODBARANG') {
-                $total_paid = (int)$validatedData['item_price'] + $shipping_cost + $cod_fee;
-                if ($validatedData['ansuransi'] == 'iya') {
-                    $total_paid += $ansuransi_fee;
-                }
-                $cod_value = $total_paid;
-            } elseif ($validatedData['payment_method'] === 'COD') {
-                $total_paid = $shipping_cost + $cod_fee;
-                if ($validatedData['ansuransi'] == 'iya') {
-                    $total_paid += $ansuransi_fee;
-                }
-                $cod_value = $total_paid;
-            } else { // Termasuk 'Potong Saldo' dan metode Tripay
-                $total_paid = $shipping_cost;
-                if ($validatedData['ansuransi'] == 'iya') {
-                    $total_paid += $ansuransi_fee;
-                }
-            }
+            // Kalkulasi total biaya menggunakan helper method
+            $calculation = $this->_calculateTotalPaid($validatedData);
+            $total_paid = $calculation['total_paid'];
+            $cod_value = $calculation['cod_value'];
             
             $pesananData = $this->_preparePesananData($validatedData, $total_paid, $request->ip(), $request->userAgent());
             $pesanan = Pesanan::create($pesananData);
 
+            // === LOGIKA UTAMA UNTUK POTONG SALDO ===
             if ($validatedData['payment_method'] === 'Potong Saldo') {
                 $customer = User::findOrFail($validatedData['customer_id']);
                 
+                // 1. Cek Saldo
                 if ($customer->saldo < $total_paid) {
                     throw new Exception('Saldo pelanggan tidak mencukupi untuk melakukan transaksi ini.');
                 }
                 
-                $customer->saldo -= $total_paid;
-                $customer->save();
+                // 2. Kurangi Saldo
+                $customer->decrement('saldo', $total_paid);
                 
-                // Set ID dan perbarui nama pengirim pada pesanan dengan nama pelanggan
+                // 3. Update data pesanan dengan info pelanggan
                 $pesanan->customer_id = $customer->id;
                 $pesanan->sender_name = $customer->nama_lengkap;
                 
-                // Perbarui juga data yang akan dikirim ke KiriminAja agar konsisten
+                // Perbarui juga data pengirim yang akan dikirim ke API KiriminAja
                 $validatedData['sender_name'] = $customer->nama_lengkap;
             }
+            // === AKHIR LOGIKA POTONG SALDO ===
             
             if (in_array($validatedData['payment_method'], ['COD', 'CODBARANG', 'Potong Saldo'])) {
                 $senderAddressData = $this->_getAddressData($request, 'sender');
@@ -129,22 +110,20 @@ class PesananController extends Controller
                 
                 $kiriminResponse = $this->_createKiriminAjaOrder($validatedData, $pesanan, $kirimaja, $senderAddressData, $receiverAddressData, $cod_value);
                 
-                if ($kiriminResponse['status'] !== true) {
+                if (($kiriminResponse['status'] ?? false) !== true) {
                     throw new Exception($kiriminResponse['text'] ?? ($kiriminResponse['errors'][0]['text'] ?? 'Gagal membuat order di sistem ekspedisi.'));
                 }
                 
+                // 4. Update status pesanan
                 $pesanan->status = 'Menunggu Pickup';
                 $pesanan->status_pesanan = 'Menunggu Pickup';
                 $pesanan->resi = $kiriminResponse['result']['awb_no'] ?? ($kiriminResponse['results'][0]['awb'] ?? null);
             } else { // Logika untuk pembayaran online via Tripay
-                $tripay_amount = $total_paid;
-                $orderItemsPayload = $this->_prepareOrderItemsPayload($shipping_cost, $ansuransi_fee, $validatedData['ansuransi']);
-                $response = $this->_createTripayTransaction($validatedData, $pesanan, $tripay_amount, $orderItemsPayload);
+                $orderItemsPayload = $this->_prepareOrderItemsPayload($calculation['shipping_cost'], $calculation['ansuransi_fee'], $validatedData['ansuransi']);
+                $response = $this->_createTripayTransaction($validatedData, $pesanan, $total_paid, $orderItemsPayload);
 
-                Log::channel('daily')->info('Tripay Response: ', $response ?? ['message' => 'No response from Tripay']);
-                
                 if (empty($response['success'])) {
-                    throw new Exception('Gagal membuat transaksi pembayaran online. Pesan dari Server: ' . ($response['message'] ?? 'Tidak ada pesan.'));
+                    throw new Exception('Gagal membuat transaksi pembayaran. Pesan: ' . ($response['message'] ?? 'Tidak ada pesan.'));
                 }
 
                 $pesanan->payment_url = $response['data']['checkout_url'];
@@ -154,12 +133,14 @@ class PesananController extends Controller
             $pesanan->save();
             DB::commit();
 
-            $waStatus = $this->_sendWhatsappNotification($pesanan, $validatedData, $shipping_cost, $ansuransi_fee, $cod_fee, $total_paid);
+            $waStatus = $this->_sendWhatsappNotification($pesanan, $validatedData, $calculation, $total_paid);
             
             $notifMessage = 'Pesanan baru dengan resi ' . ($pesanan->resi ?? $pesanan->nomor_invoice) . ' berhasil dibuat!';
             $notifMessage .= ' ' . $waStatus['message'];
             
-            if (!empty($pesanan->payment_url)) return redirect()->away($pesanan->payment_url);
+            if (!empty($pesanan->payment_url)) {
+                return redirect()->away($pesanan->payment_url);
+            }
             
             return redirect()->route('admin.pesanan.index')->with('success', $notifMessage);
         } catch (ValidationException $e) {
@@ -171,6 +152,8 @@ class PesananController extends Controller
             return redirect()->back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage())->withInput();
         }
     }
+
+    // ... sisa method lainnya tidak berubah ...
 
     /**
      * Menampilkan detail spesifik pesanan.
@@ -272,9 +255,6 @@ class PesananController extends Controller
                 'item_price' => 'required|numeric', 'weight' => 'required|numeric',
                 'service_type' => 'required|string',
             ]);
-
-            $senderData = $this->_getAddressData($request, 'sender');
-            $receiverData = $this->_getAddressData($request, 'receiver');
             
             $category = $request->service_type === 'cargo' ? 'trucking' : 'regular';
             $options = $kirimaja->getExpressPricing(
@@ -405,10 +385,42 @@ class PesananController extends Controller
             ]
         );
     }
+
+    private function _calculateTotalPaid(array $validatedData): array
+    {
+        list(,,,, $shipping_cost, $ansuransi_fee, $cod_fee) = array_pad(explode('-', $validatedData['expedition']), 6, 0);
+
+        $shipping_cost = (int) $shipping_cost;
+        $ansuransi_fee = (int) $ansuransi_fee;
+        $cod_fee = (int) $cod_fee;
+        $total_paid = 0;
+        $cod_value = 0;
+
+        if ($validatedData['payment_method'] === 'CODBARANG') {
+            $total_paid = (int)$validatedData['item_price'] + $shipping_cost + $cod_fee;
+            if ($validatedData['ansuransi'] == 'iya') {
+                $total_paid += $ansuransi_fee;
+            }
+            $cod_value = $total_paid;
+        } elseif ($validatedData['payment_method'] === 'COD') {
+            $total_paid = $shipping_cost + $cod_fee;
+            if ($validatedData['ansuransi'] == 'iya') {
+                $total_paid += $ansuransi_fee;
+            }
+            $cod_value = $total_paid;
+        } else { // Termasuk 'Potong Saldo' dan metode Tripay
+            $total_paid = $shipping_cost;
+            if ($validatedData['ansuransi'] == 'iya') {
+                $total_paid += $ansuransi_fee;
+            }
+        }
+        
+        return compact('total_paid', 'cod_value', 'shipping_cost', 'ansuransi_fee', 'cod_fee');
+    }
     
     private function _createKiriminAjaOrder(array $data, Pesanan $pesanan, KiriminAjaService $kirimaja, array $senderData, array $receiverData, int $cod_value): array
     {
-        list($serviceGroup, $courier, $service_type) = array_pad(explode('-', $data['expedition']), 3, null);
+        list(,$courier, $service_type) = array_pad(explode('-', $data['expedition']), 3, null);
         
         $schedule = $kirimaja->getSchedules();
         $payload = [
@@ -448,7 +460,7 @@ class PesananController extends Controller
             'merchant_ref'   => $pesanan->nomor_invoice,
             'amount'         => $total,
             'customer_name'  => $data['receiver_name'],
-            'customer_email' => 'customer@example.com', // Ganti dengan email valid jika ada
+            'customer_email' => 'customer@sancakacargo.com', // Ganti dengan email valid jika ada
             'customer_phone' => $data['receiver_phone'],
             'order_items'    => $orderItems,
             'expired_time'   => time() + (24 * 60 * 60),
@@ -474,12 +486,12 @@ class PesananController extends Controller
         return Str::startsWith($phone, '0') ? $phone : '0' . $phone;
     }
 
-    private function _sendWhatsappNotification(Pesanan $pesanan, array $data, int $shipping, int $insurance, int $cod_fee, int $total): array
+    private function _sendWhatsappNotification(Pesanan $pesanan, array $data, array $calculation, int $total): array
     {
-        $rincian = ["- Ongkir: Rp " . number_format($shipping, 0, ',', '.')];
+        $rincian = ["- Ongkir: Rp " . number_format($calculation['shipping_cost'], 0, ',', '.')];
         if ($data['item_price'] > 0) $rincian[] = "- Nilai Barang: Rp " . number_format($data['item_price'], 0, ',', '.');
-        if ($insurance > 0) $rincian[] = "- Asuransi: Rp " . number_format($insurance, 0, ',', '.');
-        if ($cod_fee > 0) $rincian[] = "- COD Fee: Rp " . number_format($cod_fee, 0, ',', '.');
+        if ($calculation['ansuransi_fee'] > 0) $rincian[] = "- Asuransi: Rp " . number_format($calculation['ansuransi_fee'], 0, ',', '.');
+        if ($calculation['cod_fee'] > 0) $rincian[] = "- COD Fee: Rp " . number_format($calculation['cod_fee'], 0, ',', '.');
         $rincianText = implode("\n", $rincian);
 
         $messageTemplate = <<<TEXT
@@ -514,7 +526,7 @@ TEXT;
         
         $message = str_replace(
             ['{INVOICE}', '{RESI}', '{SENDER_NAME}', '{SENDER_PHONE}', '{RECEIVER_NAME}', '{RECEIVER_PHONE}', '{RINCIAN}', '{TOTAL}', '{DESKRIPSI}', '{BERAT}', '{EKSPEDISI}', '{LAYANAN}'],
-            [$pesanan->nomor_invoice, $pesanan->resi ?? 'N/A', $data['sender_name'], $data['sender_phone'], $data['receiver_name'], $data['receiver_phone'], $rincianText, number_format($total, 0, ',', '.'), $data['item_description'], $data['weight'], $data['expedition'], $data['service_type']],
+            [$pesanan->nomor_invoice, $pesanan->resi ?? $pesanan->nomor_invoice, $data['sender_name'], $data['sender_phone'], $data['receiver_name'], $data['receiver_phone'], $rincianText, number_format($total, 0, ',', '.'), $data['item_description'], $data['weight'], $data['expedition'], $data['service_type']],
             $messageTemplate
         );
 
@@ -528,7 +540,7 @@ TEXT;
         
         return [
             'success' => $allSuccess,
-            'message' => "Notifikasi WA Pengirim: " . ($senderStatus['message'] ?? 'Gagal') . " | Penerima: " . ($receiverStatus['message'] ?? 'Gagal')
+            'message' => "WA Pengirim: " . ($senderStatus['message'] ?? 'Gagal') . " | Penerima: " . ($receiverStatus['message'] ?? 'Gagal')
         ];
     }
 }
