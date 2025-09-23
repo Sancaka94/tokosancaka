@@ -83,21 +83,15 @@ class PesananController extends Controller
             
             // 3. Kalkulasi semua biaya berdasarkan metode pembayaran yang dipilih
             $calculation = $this->_calculateTotalPaid($validatedData);
-            $total_paid = $calculation['total_paid']; // Biaya ongkir murni untuk disimpan di DB
+            $total_paid = $calculation['total_paid']; // Biaya ongkir murni
             $cod_value = $calculation['cod_value'];   // Total yang harus ditagih kurir jika COD/CODBARANG
             
             // 4. Siapkan data dan buat entri pesanan awal di database
-            // Di sini, 'price' diisi dengan $total_paid (ongkir murni) agar tampilan di tabel admin konsisten
+            // Di sini, 'price' diisi dengan $total_paid (ongkir murni) untuk sementara
             $pesananData = $this->_preparePesananData($validatedData, $total_paid, $request->ip(), $request->userAgent());
             $pesanan = Pesanan::create($pesananData);
 
             // 5. Proses logika pembayaran spesifik
-            
-            // LOGIC POINT: Admin bisa memotong saldo semua pengguna
-            // Jika metode pembayaran adalah 'Potong Saldo', sistem akan:
-            // 1. Mencari pengguna berdasarkan customer_id.
-            // 2. Memeriksa apakah saldo mencukupi untuk membayar ongkos kirim.
-            // 3. Mengurangi saldo pengguna sebesar total ongkos kirim.
             if ($validatedData['payment_method'] === 'Potong Saldo') {
                 $customer = User::findOrFail($validatedData['customer_id']);
                 
@@ -117,7 +111,6 @@ class PesananController extends Controller
                 $senderAddressData = $this->_getAddressData($request, 'sender');
                 $receiverAddressData = $this->_getAddressData($request, 'receiver');
                 
-                // Mengirim $cod_value dan $shipping_cost ke API KiriminAja
                 $kiriminResponse = $this->_createKiriminAjaOrder($validatedData, $pesanan, $kirimaja, $senderAddressData, $receiverAddressData, $cod_value, $calculation['shipping_cost']);
                 
                 if (($kiriminResponse['status'] ?? false) !== true) {
@@ -139,14 +132,18 @@ class PesananController extends Controller
             }
             
             // 7. Simpan finalisasi data pesanan
-            $pesanan->price = $total_paid; // Memastikan kolom price di DB adalah ongkir
+            // PERBAIKAN LOGIKA: Simpan nilai yang benar ke kolom 'price'
+            if ($cod_value > 0) {
+                // Untuk COD/CODBARANG, 'price' adalah total tagihan yang harus diterima kurir
+                $pesanan->price = $cod_value;
+            } else {
+                // Untuk metode lain, 'price' adalah total ongkos kirim
+                $pesanan->price = $total_paid;
+            }
             $pesanan->save();
             DB::commit();
 
-            // 8. LOGIC POINT: Pengiriman Notifikasi WA Lengkap
-            // Menentukan total yang akan ditampilkan di notifikasi.
-            // Jika ini adalah pesanan COD/CODBARANG, tampilkan total yang harus dibayar penerima ($cod_value).
-            // Jika tidak, tampilkan total ongkos kirim yang sudah dibayar ($total_paid).
+            // 8. Kirim notifikasi WhatsApp
             $notification_total = ($cod_value > 0) ? $cod_value : $total_paid;
             $waStatus = $this->_sendWhatsappNotification($pesanan, $validatedData, $calculation, $notification_total);
             $notifMessage = 'Pesanan baru dengan resi ' . ($pesanan->resi ?? $pesanan->nomor_invoice) . ' berhasil dibuat!';
@@ -169,8 +166,7 @@ class PesananController extends Controller
         }
     }
 
-    // ... sisa method lainnya (show, edit, update, dll) tidak berubah ...
-
+    // ... sisa method tidak berubah ...
     public function show($resi)
     {
         $order = Pesanan::where('resi', $resi)->firstOrFail();
