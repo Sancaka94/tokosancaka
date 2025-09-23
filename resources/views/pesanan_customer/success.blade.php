@@ -172,13 +172,12 @@
 
                             @elseif ($order->status === 'Menunggu Pickup')
 
-                                <a href="{{ route('lacak.index', ['resi' => $order->resi]) }}" 
-
-                                   class="btn btn-info btn-lg w-100 mb-2">
-
-                                    <i class="fas fa-truck me-2"></i> Lacak Pesanan
-
+                                <a href="https://tokosancaka.com/tracking?resi={{ $order->resi }}" 
+                                    target="_blank"
+                                    class="btn btn-info btn-lg w-100 mb-2">
+                                <i class="fas fa-truck me-2"></i> Lacak Pesanan
                                 </a>
+
 
                             @endif
 
