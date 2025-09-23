@@ -186,7 +186,7 @@
                             </div>
                         </div>
 
-                        {{-- PERBAIKAN: Dropdown pelanggan dipindahkan ke sini --}}
+                        {{-- Dropdown pelanggan dipindahkan ke sini --}}
                         <div id="customer-selection-wrapper" class="hidden">
                             <label for="customer_id" class="block mb-2 text-sm font-medium text-gray-700">Pelanggan (Wajib diisi)</label>
                             <select id="customer_id" name="customer_id" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5">
@@ -296,8 +296,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const debounce = (func, delay) => {
         return (...args) => { clearTimeout(searchTimeout); searchTimeout = setTimeout(() => func.apply(this, args), delay); };
     };
-    function formatRupiah(angka) { 
-        return 'Rp ' + (parseInt(angka, 10) || 0).toLocaleString('id-ID'); 
+    function formatRupiah(angka) {
+        return 'Rp ' + (parseInt(angka, 10) || 0).toLocaleString('id-ID');
     }
 
     // --- FUNGSI PENCARIAN KONTAK DARI DATABASE ---
@@ -317,13 +317,13 @@ document.addEventListener('DOMContentLoaded', function () {
             try {
                 const url = `{{ route('api.contacts.search') }}?search=${encodeURIComponent(query)}&tipe=${contactType}`;
                 const response = await fetch(url);
-                
+
                 if (!response.ok) {
                     const errorText = await response.text();
                     console.error(`[${prefix}] Error dari server:`, errorText);
                     throw new Error(`Server error: ${response.statusText}`);
                 }
-                
+
                 const contacts = await response.json();
                 resultsContainer.innerHTML = '';
                 resultsContainer.classList.remove('hidden');
@@ -333,20 +333,20 @@ document.addEventListener('DOMContentLoaded', function () {
                         const resultDiv = document.createElement('div');
                         resultDiv.className = 'p-3 border-b hover:bg-gray-100 cursor-pointer text-sm';
                         resultDiv.innerHTML = `<div class="font-semibold">${contact.nama}</div><div class="text-xs text-gray-500">${contact.no_hp}</div>`;
-                        
+
                         resultDiv.addEventListener('click', () => {
                             console.log(`[${prefix}] Kontak dipilih:`, contact);
                             document.getElementById(`${prefix}_id`).value = contact.id || '';
                             document.getElementById(`${prefix}_name`).value = contact.nama || '';
                             document.getElementById(`${prefix}_phone`).value = contact.no_hp || '';
                             document.getElementById(`${prefix}_address`).value = contact.alamat || '';
-                            
+
                             document.getElementById(`${prefix}_province`).value = contact.province || '';
                             document.getElementById(`${prefix}_regency`).value = contact.regency || '';
                             document.getElementById(`${prefix}_district`).value = contact.district || '';
                             document.getElementById(`${prefix}_village`).value = contact.village || '';
                             document.getElementById(`${prefix}_postal_code`).value = contact.postal_code || '';
-                            
+
                             const kiriminAjaSearchString = [contact.village, contact.district, contact.regency, contact.postal_code].filter(Boolean).join(', ');
                             const addressSearchInput = document.getElementById(`${prefix}_address_search`);
                             addressSearchInput.value = kiriminAjaSearchString;
@@ -373,7 +373,7 @@ document.addEventListener('DOMContentLoaded', function () {
         nameInput.addEventListener('input', debounce(() => performSearch(nameInput.value), 400));
         phoneInput.addEventListener('input', debounce(() => performSearch(phoneInput.value), 400));
     }
-    
+
     // --- FUNGSI UNTUK MEMILIH ALAMAT DAN UPDATE UI ---
     function selectAddress(prefix, item) {
         const searchInput = document.getElementById(`${prefix}_address_search`);
@@ -397,22 +397,22 @@ document.addEventListener('DOMContentLoaded', function () {
     // --- FUNGSI PENCARIAN ALAMAT ONGKIR (KIRIMIN AJA API) ---
     async function performAddressSearch(prefix, query, contactToMatch = null) {
         const resultsContainer = document.getElementById(`${prefix}_address_results`);
-        
-        if (query.length < 3) { 
-            resultsContainer.classList.add('hidden'); 
-            return; 
+
+        if (query.length < 3) {
+            resultsContainer.classList.add('hidden');
+            return;
         }
 
         try {
             const response = await fetch(`{{ route('api.address.search') }}?search=${encodeURIComponent(query)}`);
             if (!response.ok) throw new Error('Network response error');
             const data = await response.json();
-            
+
             resultsContainer.innerHTML = '';
             resultsContainer.classList.remove('hidden');
 
             if (data && data.length > 0) {
-                // --- BARU: Logika untuk "auto-enter" jika ada kecocokan persis dari data kontak ---
+                // --- Logika untuk "auto-enter" jika ada kecocokan persis dari data kontak ---
                 if (contactToMatch) {
                     const exactMatch = data.find(item => {
                         const normalizedApiAddress = item.full_address.toLowerCase();
@@ -458,42 +458,18 @@ document.addEventListener('DOMContentLoaded', function () {
             resultsContainer.innerHTML = '<div class="p-3 text-red-500">Gagal memuat data alamat.</div>';
         }
     }
-    
+
     // --- SETUP PENCARIAN ALAMAT ---
     function setupAddressSearch(prefix) {
         const searchInput = document.getElementById(`${prefix}_address_search`);
         const checkIcon = document.getElementById(`${prefix}_address_check`);
-        
+
         searchInput.addEventListener('input', debounce(() => {
             checkIcon.classList.add('hidden');
             // Saat user mengetik manual, tidak ada `contactToMatch`
             performAddressSearch(prefix, searchInput.value, null);
         }, 400));
     }
-    
-    // --- INISIALISASI ---
-    setupContactSearch('sender');
-    setupContactSearch('receiver');
-    setupAddressSearch('sender');
-    setupAddressSearch('receiver');
-
-    // --- Event listener untuk dropdown pelanggan ---
-    document.getElementById('customer_id').addEventListener('change', function() {
-        const selectedOption = this.options[this.selectedIndex];
-        const senderNameInput = document.getElementById('sender_name');
-        const senderPhoneInput = document.getElementById('sender_phone');
-        const senderAddressInput = document.getElementById('sender_address');
-
-        if (this.value) { // Jika pelanggan dipilih (bukan opsi "Umum")
-            senderNameInput.value = selectedOption.getAttribute('data-nama') || '';
-            senderPhoneInput.value = selectedOption.getAttribute('data-telepon') || '';
-            senderAddressInput.value = selectedOption.getAttribute('data-alamat') || '';
-        } else { // Jika opsi "-- Umum --" dipilih
-            senderNameInput.value = '';
-            senderPhoneInput.value = '';
-            senderAddressInput.value = '';
-        }
-    });
 
     // --- FUNGSI CEK ONGKIR ---
     async function runCekOngkir() {
@@ -534,7 +510,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (document.getElementById('ansuransi').value == 'iya' && insuranceFee > 0) details += `<small class="text-gray-500 block">Asuransi: ${formatRupiah(insuranceFee)}</small>`;
                 if (isCod && codFee > 0) details += `<small class="text-gray-500 block">Biaya COD: ${formatRupiah(codFee)}</small>`;
                 if (isCod) details += `<small class="text-green-600 font-bold block">COD Tersedia</small>`;
-                
+
                 const card = document.createElement('div');
                 card.className = 'border rounded-lg mb-3 shadow-sm';
                 card.innerHTML = `
@@ -561,18 +537,41 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // --- EVENT LISTENERS ---
+    // --- INISIALISASI & EVENT LISTENERS ---
+    setupContactSearch('sender');
+    setupContactSearch('receiver');
+    setupAddressSearch('sender');
+    setupAddressSearch('receiver');
+
+    document.getElementById('customer_id').addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        const senderNameInput = document.getElementById('sender_name');
+        const senderPhoneInput = document.getElementById('sender_phone');
+        const senderAddressInput = document.getElementById('sender_address');
+
+        if (this.value) { // Jika pelanggan dipilih
+            senderNameInput.value = selectedOption.getAttribute('data-nama') || '';
+            senderPhoneInput.value = selectedOption.getAttribute('data-telepon') || '';
+            senderAddressInput.value = selectedOption.getAttribute('data-alamat') || '';
+        } else { // Jika opsi default dipilih
+            senderNameInput.value = '';
+            senderPhoneInput.value = '';
+            senderAddressInput.value = '';
+        }
+    });
+
     document.getElementById('selected_expedition_display').addEventListener('click', runCekOngkir);
 
     ongkirModalEl.addEventListener('click', function(e) {
         if (e.target.classList.contains('select-ongkir-btn')) {
             document.getElementById('expedition').value = e.target.dataset.value;
             document.getElementById('selected_expedition_display').value = e.target.dataset.display;
-            
+
             const codOptions = document.querySelectorAll('.cod-payment-option');
             if (e.target.dataset.codSupported === 'true') {
                 codOptions.forEach(opt => opt.style.display = 'flex');
             } else {
+                // If current payment is COD, reset it because it's no longer supported
                 if (['COD', 'CODBARANG'].includes(document.getElementById('payment_method').value)) {
                     document.getElementById('payment_method').value = '';
                     document.getElementById('selectedPaymentName').textContent = 'Pilih...';
@@ -595,11 +594,11 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('payment_method').value = paymentValue;
             document.getElementById('selectedPaymentName').textContent = this.dataset.label;
             document.getElementById('selectedPaymentLogo').src = this.querySelector('img').src;
-            
+
             document.querySelectorAll('.payment-option').forEach(opt => opt.classList.remove('bg-indigo-50'));
             this.classList.add('bg-indigo-50');
-            
-            // PERBAIKAN: Logika untuk menampilkan/menyembunyikan dan mewajibkan pilihan pelanggan
+
+            // Logika untuk menampilkan/menyembunyikan dan mewajibkan pilihan pelanggan
             if (paymentValue === 'Potong Saldo') {
                 customerSelectionWrapper.classList.remove('hidden');
                 customerSelect.setAttribute('required', 'required');
@@ -608,7 +607,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 customerSelect.removeAttribute('required');
                 customerSelect.value = ''; // Reset pilihan jika metode lain dipilih
             }
-
             paymentModalEl.classList.add('hidden');
         });
     });
@@ -620,6 +618,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
+    // Reset pilihan ekspedisi jika data relevan berubah
     document.querySelectorAll('input, select, textarea').forEach(el => {
         if(el.type !== 'hidden' && !el.classList.contains('select-ongkir-btn')){
              el.addEventListener('change', () => {
@@ -630,21 +629,23 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    // --- Form Submission Handler ---
     document.getElementById('confirmBtn').addEventListener('click', (e) => {
         e.preventDefault();
         const form = document.getElementById('orderForm');
-        const expedition = document.getElementById('expedition').value;
         const paymentMethod = document.getElementById('payment_method').value;
         const customerId = document.getElementById('customer_id').value;
+        const expedition = document.getElementById('expedition').value;
 
-        // PERBAIKAN: Menambahkan pengecekan eksplisit untuk Potong Saldo
+        // 1. Validasi khusus untuk Potong Saldo (ini yang memunculkan alert Anda)
         if (paymentMethod === 'Potong Saldo' && !customerId) {
             Swal.fire('Peringatan', 'Anda harus memilih pelanggan jika menggunakan metode Potong Saldo.', 'warning');
-            return; 
+            return; // Berhenti jika tidak valid
         }
 
+        // 2. Validasi umum untuk semua field
         if (!form.checkValidity() || !expedition || !paymentMethod) {
-            form.reportValidity();
+            form.reportValidity(); // Tampilkan bubble validasi HTML5
             let missingFields = [];
             if (!expedition) missingFields.push('Ekspedisi');
             if (!paymentMethod) missingFields.push('Metode Pembayaran');
@@ -655,9 +656,10 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             Swal.fire('Peringatan', message, 'warning');
-            return;
+            return; // Berhenti jika tidak valid
         }
 
+        // 3. Jika semua valid, baru munculkan konfirmasi akhir
         Swal.fire({
             title: 'Konfirmasi Pesanan',
             text: "Apakah semua data sudah benar?",
@@ -672,13 +674,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 const confirmBtn = document.getElementById('confirmBtn');
                 confirmBtn.disabled = true;
                 confirmBtn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>Memproses...`;
-                form.submit();
+                form.submit(); // Form di-submit HANYA setelah semua pengecekan berhasil
             }
         });
     });
 
+    // Sembunyikan opsi COD secara default
     document.querySelectorAll('.cod-payment-option').forEach(opt => opt.style.display = 'none');
 
+    // Sembunyikan dropdown hasil pencarian jika klik di luar
     document.addEventListener('click', function(event) {
         if (!event.target.closest('#sender_address_search, #sender_address_results')) {
             document.getElementById('sender_address_results').classList.add('hidden');
@@ -694,46 +698,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 });
-
-document.addEventListener('DOMContentLoaded', function () {
-    const paymentOptions = document.querySelectorAll('.payment-option');
-    const paymentMethodInput = document.getElementById('payment_method');
-    const customerWrapper = document.getElementById('customer-selection-wrapper');
-    const customerSelect = document.getElementById('customer_id');
-
-    paymentOptions.forEach(option => {
-        option.addEventListener('click', () => {
-            const value = option.dataset.value;
-            const label = option.dataset.label;
-
-            paymentMethodInput.value = value;
-            document.getElementById('selectedPaymentName').innerText = label;
-            document.getElementById('selectedPaymentLogo').src = option.querySelector('img').src;
-
-            if (value === 'Potong Saldo') {
-                customerWrapper.classList.remove('hidden');
-                customerSelect.setAttribute('required', 'required');
-            } else {
-                customerWrapper.classList.add('hidden');
-                customerSelect.removeAttribute('required');
-                customerSelect.value = '';
-            }
-
-            document.getElementById('paymentMethodModal').classList.add('hidden');
-        });
-    });
-
-    // Konfirmasi sebelum submit
-    document.getElementById('confirmBtn').addEventListener('click', function () {
-        const paymentMethod = paymentMethodInput.value;
-        if (paymentMethod === 'Potong Saldo' && !customerSelect.value) {
-            Swal.fire('Pilih Pelanggan!', 'Anda harus memilih pelanggan untuk Potong Saldo.', 'warning');
-            return;
-        }
-        document.getElementById('orderForm').submit();
-    });
-});
-
 </script>
 @endpush
 
