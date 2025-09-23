@@ -209,11 +209,18 @@
 
                                         {{-- Cetak Thermal --}}
 
-                                        <a href="{{ route('cetak_thermal', ['resi' => $order->resi]) }}" target="_blank" class="btn btn-primary w-100">
+@if (!empty($order->resi))
+    <a href="{{ route('cetak_thermal', ['resi' => $order->resi]) }}" 
+       target="_blank" 
+       class="btn btn-primary w-100">
+        <i class="fas fa-print me-2"></i>Cetak Resi
+    </a>
+@else
+    <button class="btn btn-primary w-100" disabled>
+        <i class="fas fa-print me-2"></i>Cetak Resi (Resi belum tersedia)
+    </button>
+@endif
 
-                                            <i class="fas fa-print me-2"></i>Cetak Resi
-
-                                        </a>
 
                                     </div>
 
