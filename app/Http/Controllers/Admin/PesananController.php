@@ -25,20 +25,20 @@ class PesananController extends Controller
     {
         // Tandai pesanan 'baru' sebagai 'telah_dilihat'
         Pesanan::where('status', 'baru')
-             ->where('telah_dilihat', false)
-             ->update(['telah_dilihat' => true]);
-                       
+            ->where('telah_dilihat', false)
+            ->update(['telah_dilihat' => true]);
+                    
         $query = Pesanan::query();
 
         if ($request->filled('search')) {
             $search = $request->input('search');
             $query->where(function($q) use ($search) {
                 $q->where('resi', 'like', "%{$search}%")
-                  ->orWhere('nomor_invoice', 'like', "%{$search}%")
-                  ->orWhere('sender_name', 'like', "%{$search}%")
-                  ->orWhere('receiver_name', 'like', "%{$search}%")
-                  ->orWhere('sender_phone', 'like', "%{$search}%")
-                  ->orWhere('receiver_phone', 'like', "%{$search}%");
+                    ->orWhere('nomor_invoice', 'like', "%{$search}%")
+                    ->orWhere('sender_name', 'like', "%{$search}%")
+                    ->orWhere('receiver_name', 'like', "%{$search}%")
+                    ->orWhere('sender_phone', 'like', "%{$search}%")
+                    ->orWhere('receiver_phone', 'like', "%{$search}%");
             });
         }
 
@@ -77,17 +77,23 @@ class PesananController extends Controller
             $validatedData['sender_phone'] = $this->_sanitizePhoneNumber($validatedData['sender_phone']);
             $validatedData['receiver_phone'] = $this->_sanitizePhoneNumber($validatedData['receiver_phone']);
             
-            // 3. Kalkulasi total biaya berdasarkan metode pembayaran
+            // 3. Kalkulasi semua biaya berdasarkan metode pembayaran yang dipilih
             $calculation = $this->_calculateTotalPaid($validatedData);
-            $total_paid = $calculation['total_paid'];
-            $cod_value = $calculation['cod_value'];
+            $total_paid = $calculation['total_paid']; // Biaya ongkir murni untuk disimpan di DB
+            $cod_value = $calculation['cod_value'];   // Total yang harus ditagih kurir jika COD/CODBARANG
             
             // 4. Siapkan data dan buat entri pesanan awal di database
+            // Di sini, 'price' diisi dengan $total_paid (ongkir murni) agar tampilan di tabel admin konsisten
             $pesananData = $this->_preparePesananData($validatedData, $total_paid, $request->ip(), $request->userAgent());
             $pesanan = Pesanan::create($pesananData);
 
             // 5. Proses logika pembayaran spesifik
-            // === LOGIKA UTAMA UNTUK POTONG SALDO ===
+            
+            // LOGIC POINT: Admin bisa memotong saldo semua pengguna
+            // Jika metode pembayaran adalah 'Potong Saldo', sistem akan:
+            // 1. Mencari pengguna berdasarkan customer_id.
+            // 2. Memeriksa apakah saldo mencukupi untuk membayar ongkos kirim.
+            // 3. Mengurangi saldo pengguna sebesar total ongkos kirim.
             if ($validatedData['payment_method'] === 'Potong Saldo') {
                 $customer = User::findOrFail($validatedData['customer_id']);
                 
@@ -107,6 +113,7 @@ class PesananController extends Controller
                 $senderAddressData = $this->_getAddressData($request, 'sender');
                 $receiverAddressData = $this->_getAddressData($request, 'receiver');
                 
+                // Mengirim $cod_value dan $shipping_cost ke API KiriminAja
                 $kiriminResponse = $this->_createKiriminAjaOrder($validatedData, $pesanan, $kirimaja, $senderAddressData, $receiverAddressData, $cod_value, $calculation['shipping_cost']);
                 
                 if (($kiriminResponse['status'] ?? false) !== true) {
@@ -128,12 +135,16 @@ class PesananController extends Controller
             }
             
             // 7. Simpan finalisasi data pesanan
-            $pesanan->price = $total_paid;
+            $pesanan->price = $total_paid; // Memastikan kolom price di DB adalah ongkir
             $pesanan->save();
             DB::commit();
 
-            // 8. Kirim notifikasi WhatsApp
-            $waStatus = $this->_sendWhatsappNotification($pesanan, $validatedData, $calculation, $total_paid);
+            // 8. LOGIC POINT: Pengiriman Notifikasi WA Lengkap
+            // Menentukan total yang akan ditampilkan di notifikasi.
+            // Jika ini adalah pesanan COD/CODBARANG, tampilkan total yang harus dibayar penerima ($cod_value).
+            // Jika tidak, tampilkan total ongkos kirim yang sudah dibayar ($total_paid).
+            $notification_total = ($cod_value > 0) ? $cod_value : $total_paid;
+            $waStatus = $this->_sendWhatsappNotification($pesanan, $validatedData, $calculation, $notification_total);
             $notifMessage = 'Pesanan baru dengan resi ' . ($pesanan->resi ?? $pesanan->nomor_invoice) . ' berhasil dibuat!';
             $notifMessage .= ' ' . $waStatus['message'];
             
@@ -216,7 +227,7 @@ class PesananController extends Controller
         $query = Kontak::query()
             ->where(function ($q) use ($request) {
                 $q->where(DB::raw('LOWER(nama)'), 'LIKE', '%' . strtolower($request->input('search')) . '%')
-                  ->orWhere('no_hp', 'LIKE', "%{$request->input('search')}%");
+                    ->orWhere('no_hp', 'LIKE', "%{$request->input('search')}%");
             });
 
         if ($request->filled('tipe')) {
@@ -297,8 +308,8 @@ class PesananController extends Controller
         if ((!$lat || !$lng) && $request->filled("{$type}_village")) {
              $fullAddress = implode(', ', array_filter([$request->input("{$type}_village"), $request->input("{$type}_district"), $request->input("{$type}_regency"), $request->input("{$type}_province")]));
              if ($geo = $this->geocode($fullAddress)) {
-                 $lat = $geo['lat'];
-                 $lng = $geo['lng'];
+                  $lat = $geo['lat'];
+                  $lng = $geo['lng'];
              }
         }
         return ['lat' => $lat, 'lng' => $lng, 'kirimaja_data' => $kirimajaAddr];
@@ -344,7 +355,6 @@ class PesananController extends Controller
             $nomorInvoice = 'SCK-' . date('Ymd') . '-'. strtoupper(Str::random(6));
         } while (Pesanan::where('nomor_invoice', $nomorInvoice)->exists());
 
-        // PERBAIKAN: Menggunakan 'only' untuk keamanan dan stabilitas
         return array_merge(
             collect($validatedData)->only([
                 'sender_name', 'sender_phone', 'sender_address', 'sender_province', 'sender_regency', 
@@ -356,7 +366,7 @@ class PesananController extends Controller
             ])->all(),
             [
                 'nomor_invoice' => $nomorInvoice,
-                'price' => $total,
+                'price' => $total, // Di sini price diisi dengan ongkir murni
                 'status' => 'Menunggu Pembayaran',
                 'status_pesanan' => 'Menunggu Pembayaran',
                 'tanggal_pesanan' => now(),
@@ -368,32 +378,40 @@ class PesananController extends Controller
         );
     }
 
+    /**
+     * Menghitung semua komponen biaya berdasarkan pilihan ekspedisi dan metode pembayaran.
+     */
     private function _calculateTotalPaid(array $validatedData): array
     {
+        // LOGIC POINT: Mengurai semua biaya dari API KiriminAja
+        // Method ini memecah string 'expedition' untuk mendapatkan semua komponen biaya.
         list(,,,, $shipping_cost, $ansuransi_fee, $cod_fee) = array_pad(explode('-', $validatedData['expedition']), 7, 0);
 
         $shipping_cost = (int) $shipping_cost;
         $ansuransi_fee = (int) $ansuransi_fee;
         $cod_fee = (int) $cod_fee;
-        $total_paid = 0;
         $cod_value = 0;
 
+        // 'total_paid' dihitung sebagai biaya pengiriman murni (ongkir + asuransi).
+        // Nilai ini yang akan disimpan di database kolom 'price' dan ditampilkan sebagai 'Ongkir' di tabel.
+        $total_paid = $shipping_cost;
+        if ($validatedData['ansuransi'] == 'iya') {
+            $total_paid += $ansuransi_fee;
+        }
+
+        // LOGIC POINT: Kalkulasi Nilai COD & CODBARANG
+        // 'cod_value' adalah jumlah total yang harus ditagih kurir kepada penerima.
+        // Untuk CODBARANG, ini adalah: Nilai Barang + Ongkir + COD Fee + Asuransi.
+        // Untuk COD, ini adalah: Ongkir + COD Fee + Asuransi.
         if ($validatedData['payment_method'] === 'CODBARANG') {
-            $total_paid = (int)$validatedData['item_price'] + $shipping_cost + $cod_fee;
+            $cod_value = (int)$validatedData['item_price'] + $shipping_cost + $cod_fee;
             if ($validatedData['ansuransi'] == 'iya') {
-                $total_paid += $ansuransi_fee;
+                $cod_value += $ansuransi_fee;
             }
-            $cod_value = $total_paid;
         } elseif ($validatedData['payment_method'] === 'COD') {
-            $total_paid = $shipping_cost + $cod_fee;
+            $cod_value = $shipping_cost + $cod_fee;
             if ($validatedData['ansuransi'] == 'iya') {
-                $total_paid += $ansuransi_fee;
-            }
-            $cod_value = $total_paid;
-        } else { // Termasuk 'Potong Saldo' dan metode Tripay
-            $total_paid = $shipping_cost;
-            if ($validatedData['ansuransi'] == 'iya') {
-                $total_paid += $ansuransi_fee;
+                $cod_value += $ansuransi_fee;
             }
         }
         
@@ -421,7 +439,6 @@ class PesananController extends Controller
             ]]
         ];
 
-        // PERBAIKAN: Menambahkan log untuk payload API
         Log::info('KiriminAja Create Order Payload:', $payload);
 
         return $kirimaja->createExpressOrder($payload);
