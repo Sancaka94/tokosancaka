@@ -107,7 +107,7 @@ class PesananController extends Controller
                 $senderAddressData = $this->_getAddressData($request, 'sender');
                 $receiverAddressData = $this->_getAddressData($request, 'receiver');
                 
-                $kiriminResponse = $this->_createKiriminAjaOrder($validatedData, $pesanan, $kirimaja, $senderAddressData, $receiverAddressData, $cod_value);
+                $kiriminResponse = $this->_createKiriminAjaOrder($validatedData, $pesanan, $kirimaja, $senderAddressData, $receiverAddressData, $cod_value, $calculation['shipping_cost']);
                 
                 if (($kiriminResponse['status'] ?? false) !== true) {
                     throw new Exception($kiriminResponse['text'] ?? ($kiriminResponse['errors'][0]['text'] ?? 'Gagal membuat order di sistem ekspedisi.'));
@@ -400,7 +400,7 @@ class PesananController extends Controller
         return compact('total_paid', 'cod_value', 'shipping_cost', 'ansuransi_fee', 'cod_fee');
     }
     
-    private function _createKiriminAjaOrder(array $data, Pesanan $pesanan, KiriminAjaService $kirimaja, array $senderData, array $receiverData, int $cod_value): array
+    private function _createKiriminAjaOrder(array $data, Pesanan $pesanan, KiriminAjaService $kirimaja, array $senderData, array $receiverData, int $cod_value, int $shipping_cost): array
     {
         list(,$courier, $service_type) = array_pad(explode('-', $data['expedition']), 3, null);
         
