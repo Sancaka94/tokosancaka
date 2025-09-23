@@ -47,10 +47,11 @@
                         </h3>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div class="md:col-span-2">
-                            <label for="customer_id" class="block mb-2 text-sm font-medium text-gray-700">Pelanggan (Jika Potong Saldo)</label>
+                        {{-- PERBAIKAN: Wrapper untuk dropdown pelanggan kini disembunyikan secara default --}}
+                        <div id="customer-selection-wrapper" class="md:col-span-2 hidden">
+                            <label for="customer_id" class="block mb-2 text-sm font-medium text-gray-700">Pelanggan (Wajib diisi untuk Potong Saldo)</label>
                             <select id="customer_id" name="customer_id" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5">
-                                <option value="">-- Umum / Tanpa Potong Saldo --</option>
+                                <option value="">-- Pilih Pelanggan --</option>
                                 @foreach($customers as $customer)
                                     <option value="{{ $customer->id }}"
                                             data-nama="{{ $customer->nama_lengkap }}"
@@ -589,6 +590,7 @@ document.addEventListener('DOMContentLoaded', function () {
         item.addEventListener('click', function() {
             const paymentValue = this.dataset.value;
             const customerSelect = document.getElementById('customer_id');
+            const customerSelectionWrapper = document.getElementById('customer-selection-wrapper');
 
             document.getElementById('payment_method').value = paymentValue;
             document.getElementById('selectedPaymentName').textContent = this.dataset.label;
@@ -597,11 +599,14 @@ document.addEventListener('DOMContentLoaded', function () {
             document.querySelectorAll('.payment-option').forEach(opt => opt.classList.remove('bg-indigo-50'));
             this.classList.add('bg-indigo-50');
             
-            // PERBAIKAN: Menambahkan logika validasi dinamis untuk Potong Saldo
+            // PERBAIKAN: Logika untuk menampilkan/menyembunyikan dan mewajibkan pilihan pelanggan
             if (paymentValue === 'Potong Saldo') {
+                customerSelectionWrapper.classList.remove('hidden');
                 customerSelect.setAttribute('required', 'required');
             } else {
+                customerSelectionWrapper.classList.add('hidden');
                 customerSelect.removeAttribute('required');
+                customerSelect.value = ''; // Reset pilihan jika metode lain dipilih
             }
 
             paymentModalEl.classList.add('hidden');
