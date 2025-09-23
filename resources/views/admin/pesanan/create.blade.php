@@ -291,6 +291,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const ongkirModalEl = document.getElementById('ongkirModal');
     const paymentModalEl = document.getElementById('paymentMethodModal');
     let searchTimeout = null;
+    let selectedPenggunaId = ''; // VARIABEL UNTUK MENYIMPAN ID PENGGUNA
 
     // --- HELPER FUNCTIONS ---
     const debounce = (func, delay) => {
@@ -312,7 +313,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 resultsContainer.classList.add('hidden');
                 return;
             }
-            console.log(`[${prefix}] Mencari kontak dengan query: "${query}", tipe: "${contactType}"`);
+            // console.log(`[${prefix}] Mencari kontak dengan query: "${query}", tipe: "${contactType}"`);
 
             try {
                 const url = `{{ route('api.contacts.search') }}?search=${encodeURIComponent(query)}&tipe=${contactType}`;
@@ -335,7 +336,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         resultDiv.innerHTML = `<div class="font-semibold">${contact.nama}</div><div class="text-xs text-gray-500">${contact.no_hp}</div>`;
 
                         resultDiv.addEventListener('click', () => {
-                            console.log(`[${prefix}] Kontak dipilih:`, contact);
+                            // console.log(`[${prefix}] Kontak dipilih:`, contact);
                             document.getElementById(`${prefix}_id`).value = contact.id || '';
                             document.getElementById(`${prefix}_name`).value = contact.nama || '';
                             document.getElementById(`${prefix}_phone`).value = contact.no_hp || '';
@@ -354,7 +355,6 @@ document.addEventListener('DOMContentLoaded', function () {
                             resultsContainer.classList.add('hidden');
 
                             if (kiriminAjaSearchString) {
-                                // Panggil pencarian alamat dengan data kontak untuk pencocokan
                                 performAddressSearch(prefix, kiriminAjaSearchString, contact);
                             }
                         });
@@ -412,7 +412,6 @@ document.addEventListener('DOMContentLoaded', function () {
             resultsContainer.classList.remove('hidden');
 
             if (data && data.length > 0) {
-                // --- Logika untuk "auto-enter" jika ada kecocokan persis dari data kontak ---
                 if (contactToMatch) {
                     const exactMatch = data.find(item => {
                         const normalizedApiAddress = item.full_address.toLowerCase();
@@ -421,7 +420,6 @@ document.addEventListener('DOMContentLoaded', function () {
                         const regency = (contactToMatch.regency || '').toLowerCase().replace('kabupaten ', '').replace('kota ', '');
                         const postalCode = (contactToMatch.postal_code || '');
 
-                        // Memastikan semua bagian dari kontak ada di dalam hasil API
                         return village && district && regency && postalCode &&
                                normalizedApiAddress.includes(village) &&
                                normalizedApiAddress.includes(district) &&
@@ -430,12 +428,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     });
 
                     if (exactMatch) {
-                        selectAddress(prefix, exactMatch); // Auto-select kecocokan persis
-                        return; // Hentikan proses, jangan tampilkan dropdown
+                        selectAddress(prefix, exactMatch);
+                        return;
                     }
                 }
 
-                // Fallback jika tidak ada `contactToMatch` atau tidak ada kecocokan persis
                 if (data.length === 1) {
                     selectAddress(prefix, data[0]);
                     return;
@@ -466,7 +463,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
         searchInput.addEventListener('input', debounce(() => {
             checkIcon.classList.add('hidden');
-            // Saat user mengetik manual, tidak ada `contactToMatch`
             performAddressSearch(prefix, searchInput.value, null);
         }, 400));
     }
@@ -544,6 +540,10 @@ document.addEventListener('DOMContentLoaded', function () {
     setupAddressSearch('receiver');
 
     document.getElementById('id_pengguna').addEventListener('change', function() {
+        // PERBAIKAN: Simpan nilai yang dipilih ke dalam variabel
+        selectedPenggunaId = this.value;
+        console.log('ID Pengguna DIPERBARUI & DISIMPAN:', `'${selectedPenggunaId}'`);
+
         const selectedOption = this.options[this.selectedIndex];
         const senderNameInput = document.getElementById('sender_name');
         const senderPhoneInput = document.getElementById('sender_phone');
@@ -571,7 +571,6 @@ document.addEventListener('DOMContentLoaded', function () {
             if (e.target.dataset.codSupported === 'true') {
                 codOptions.forEach(opt => opt.style.display = 'flex');
             } else {
-                // If current payment is COD, reset it because it's no longer supported
                 if (['COD', 'CODBARANG'].includes(document.getElementById('payment_method').value)) {
                     document.getElementById('payment_method').value = '';
                     document.getElementById('selectedPaymentName').textContent = 'Pilih...';
@@ -598,14 +597,14 @@ document.addEventListener('DOMContentLoaded', function () {
             document.querySelectorAll('.payment-option').forEach(opt => opt.classList.remove('bg-indigo-50'));
             this.classList.add('bg-indigo-50');
 
-            // Logika untuk menampilkan/menyembunyikan dan mewajibkan pilihan pelanggan
             if (paymentValue === 'Potong Saldo') {
                 penggunaSelectionWrapper.classList.remove('hidden');
                 penggunaSelect.setAttribute('required', 'required');
             } else {
                 penggunaSelectionWrapper.classList.add('hidden');
                 penggunaSelect.removeAttribute('required');
-                penggunaSelect.value = ''; // Reset pilihan jika metode lain dipilih
+                penggunaSelect.value = '';
+                selectedPenggunaId = ''; // PERBAIKAN: Reset juga variabel yang disimpan
             }
             paymentModalEl.classList.add('hidden');
         });
@@ -618,7 +617,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // Reset pilihan ekspedisi jika data relevan berubah
     document.querySelectorAll('input, select, textarea').forEach(el => {
         if(el.type !== 'hidden' && !el.classList.contains('select-ongkir-btn')){
              el.addEventListener('change', () => {
@@ -634,22 +632,21 @@ document.addEventListener('DOMContentLoaded', function () {
         e.preventDefault();
         const form = document.getElementById('orderForm');
         const paymentMethod = document.getElementById('payment_method').value;
-        const penggunaId = document.getElementById('id_pengguna').value;
         const expedition = document.getElementById('expedition').value;
-
-        // --- UNTUK DEBUGGING ---
-        console.log('Metode Pembayaran yang terbaca:', paymentMethod);
-        console.log('ID Pengguna yang terbaca:', `'${penggunaId}'`); // Diberi kutip agar string kosong terlihat jelas
         
-        // 1. Validasi khusus untuk Potong Saldo
+        // PERBAIKAN: Gunakan nilai dari variabel yang sudah disimpan, bukan query DOM lagi
+        const penggunaId = selectedPenggunaId;
+
+        console.log('Metode Pembayaran yang terbaca:', paymentMethod);
+        console.log('ID Pengguna yang terbaca DARI VARIABEL:', `'${penggunaId}'`);
+        
         if (paymentMethod === 'Potong Saldo' && !penggunaId) {
             Swal.fire('Peringatan', 'Anda harus memilih pelanggan jika menggunakan metode Potong Saldo.', 'warning');
-            return; // Berhenti jika tidak valid
+            return;
         }
 
-        // 2. Validasi umum untuk semua field
         if (!form.checkValidity() || !expedition || !paymentMethod) {
-            form.reportValidity(); // Tampilkan bubble validasi HTML5
+            form.reportValidity();
             let missingFields = [];
             if (!expedition) missingFields.push('Ekspedisi');
             if (!paymentMethod) missingFields.push('Metode Pembayaran');
@@ -660,10 +657,9 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             Swal.fire('Peringatan', message, 'warning');
-            return; // Berhenti jika tidak valid
+            return;
         }
 
-        // 3. Jika semua valid, baru munculkan konfirmasi akhir
         Swal.fire({
             title: 'Konfirmasi Pesanan',
             text: "Apakah semua data sudah benar?",
@@ -678,15 +674,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 const confirmBtn = document.getElementById('confirmBtn');
                 confirmBtn.disabled = true;
                 confirmBtn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>Memproses...`;
-                form.submit(); // Form di-submit HANYA setelah semua pengecekan berhasil
+                form.submit();
             }
         });
     });
 
-    // Sembunyikan opsi COD secara default
     document.querySelectorAll('.cod-payment-option').forEach(opt => opt.style.display = 'none');
 
-    // Sembunyikan dropdown hasil pencarian jika klik di luar
     document.addEventListener('click', function(event) {
         if (!event.target.closest('#sender_address_search, #sender_address_results')) {
             document.getElementById('sender_address_results').classList.add('hidden');
