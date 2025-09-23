@@ -594,6 +594,18 @@ document.addEventListener('DOMContentLoaded', function () {
             
             document.querySelectorAll('.payment-option').forEach(opt => opt.classList.remove('bg-indigo-50'));
             this.classList.add('bg-indigo-50');
+
+             // --- PERBAIKAN DITAMBAHKAN DI SINI ---
+        const paymentValue = this.dataset.value;
+        const customerSelect = document.getElementById('customer_id');
+
+        if (paymentValue === 'Potong Saldo') {
+            // Jika memilih 'Potong Saldo', buat dropdown pelanggan menjadi WAJIB
+            customerSelect.setAttribute('required', 'required');
+        } else {
+            // Jika memilih metode lain, hapus status WAJIB
+            customerSelect.removeAttribute('required');
+        }
             
             paymentModalEl.classList.add('hidden');
         });
