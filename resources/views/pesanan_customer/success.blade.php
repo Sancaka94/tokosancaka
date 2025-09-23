@@ -209,7 +209,7 @@
 
                                         {{-- Cetak Thermal --}}
 
-                                        <a href="{{ route('admin.pesanan.cetak_thermal', ['resi' => $order->resi]) }}" target="_blank" class="btn btn-primary w-100">
+                                        <a href="{{ route('cetak_thermal', $result['resi']) }}" target="_blank" class="btn btn-primary w-100">
 
                                             <i class="fas fa-print me-2"></i>Cetak Resi
 
