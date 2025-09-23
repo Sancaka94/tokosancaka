@@ -325,7 +325,7 @@ if ($validatedData['payment_method'] === 'Potong Saldo') {
             'height' => 'nullable|numeric|min:0', 'item_type' => 'required|integer', 'save_sender' => 'nullable', 'save_receiver' => 'nullable',
             'sender_district_id' => 'required|integer', 'sender_subdistrict_id' => 'required|integer',
             'receiver_district_id' => 'required|integer', 'receiver_subdistrict_id' => 'required|integer',
-            'customer_id' => 'required_if:payment_method,Potong Saldo|nullable|exists:users,id',
+            'id_pengguna' => 'required_if:payment_method,Potong Saldo|nullable|exists:users,id',
         ]);
     }
     
