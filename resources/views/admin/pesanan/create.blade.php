@@ -32,222 +32,203 @@
 @include('layouts.partials.notifications')
 
 <div class="max-w-7xl mx-auto">
+    <form id="orderForm" action="{{ route('admin.pesanan.store') }}" method="POST">
+        @csrf
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-    <!-- LANGKAH 1: PEMILIHAN PENGGUNA -->
-    <div id="pra-pesanan-wrapper" class="bg-white p-6 rounded-lg shadow-md mb-8">
-        <h3 class="text-xl font-semibold text-gray-800 border-b pb-4 mb-6">
-            <i class="fas fa-user-check text-indigo-600 mr-2"></i>Langkah 1: Pilih Atas Nama Siapa Pesanan Dibuat
-        </h3>
-        <div class="space-y-4">
-            <div>
-                <label for="pilih_pengguna_awal" class="block mb-2 text-sm font-medium text-gray-700">Pilih Pelanggan</label>
-                <select id="pilih_pengguna_awal" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5">
-                    <option value="">-- Pilih Pelanggan untuk Memulai --</option>
-                    @foreach($customers as $customer)
-                        <option value="{{ $customer->id }}"
-                                data-nama="{{ $customer->nama_lengkap }}"
-                                data-telepon="{{ $customer->no_hp ?? '' }}"
-                                data-alamat="{{ $customer->alamat ?? '' }}"
-                                data-saldo="{{ number_format($customer->saldo ?? 0) }}">
-                            {{ $customer->nama_lengkap }}
-                        </option>
-                    @endforeach
-                </select>
+            <!-- Kolom Kiri: Pengirim & Penerima -->
+            <div class="lg:col-span-2 space-y-8">
+
+                <!-- Informasi Pengirim -->
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div class="flex justify-between items-center border-b pb-4 mb-6">
+                        <h3 class="text-xl font-semibold text-gray-800">
+                            <i class="fas fa-arrow-up-from-bracket text-red-500 mr-2"></i>Informasi Pengirim
+                        </h3>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="md:col-span-2">
+                            <label for="customer_id" class="block mb-2 text-sm font-medium text-gray-700">Pelanggan (Jika Potong Saldo)</label>
+                            <select id="customer_id" name="customer_id" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5">
+                                <option value="">-- Umum / Tanpa Potong Saldo --</option>
+                                @foreach($customers as $customer)
+                                    <option value="{{ $customer->id }}"
+                                            data-nama="{{ $customer->nama_lengkap }}"
+                                            data-telepon="{{ $customer->no_hp ?? '' }}"
+                                            data-alamat="{{ $customer->alamat ?? '' }}">
+                                        {{ $customer->nama_lengkap }} (Saldo: Rp {{ number_format($customer->saldo ?? 0) }})
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="relative">
+                            <label for="sender_name" class="block mb-2 text-sm font-medium text-gray-700">Nama Pengirim</label>
+                            <input type="text" id="sender_name" name="sender_name" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required autocomplete="off">
+                            <div id="sender_contact_results" class="search-results-container hidden"></div>
+                        </div>
+                        <div class="relative">
+                            <label for="sender_phone" class="block mb-2 text-sm font-medium text-gray-700">Nomor HP</label>
+                            <input type="tel" id="sender_phone" name="sender_phone" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required autocomplete="off">
+                        </div>
+                        <div class="md:col-span-2 relative">
+                            <label for="sender_address_search" class="block mb-2 text-sm font-medium text-gray-700">Cari Alamat Ongkir (Kec/Kel/Kodepos)</label>
+                            <div class="relative">
+                                <input type="text" id="sender_address_search" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pr-8" placeholder="Ketik untuk mencari alamat..." autocomplete="off">
+                                <i id="sender_address_check" class="fas fa-check-circle text-green-500 absolute top-1/2 right-3 transform -translate-y-1/2 hidden"></i>
+                            </div>
+                            <div id="sender_address_results" class="search-results-container hidden"></div>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label for="sender_address" class="block mb-2 text-sm font-medium text-gray-700">Detail Alamat Lengkap Pengirim</label>
+                            <textarea id="sender_address" name="sender_address" rows="3" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" placeholder="Contoh: Jl. Pahlawan No. 12, RT 01/RW 05, (Patokan: Sebelah Kantor Pos)" required></textarea>
+                        </div>
+                          <div class="md:col-span-2">
+                                <label class="flex items-center text-sm text-gray-600"><input type="checkbox" name="save_sender" value="1" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-2"> Simpan data pengirim ini</label>
+                          </div>
+                    </div>
+                </div>
+
+                <!-- Informasi Penerima -->
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div class="flex justify-between items-center border-b pb-4 mb-6">
+                        <h3 class="text-xl font-semibold text-gray-800">
+                            <i class="fas fa-map-marker-alt text-green-500 mr-2"></i>Informasi Penerima
+                        </h3>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="relative">
+                            <label for="receiver_name" class="block mb-2 text-sm font-medium text-gray-700">Nama Penerima</label>
+                            <input type="text" id="receiver_name" name="receiver_name" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required autocomplete="off">
+                            <div id="receiver_contact_results" class="search-results-container hidden"></div>
+                        </div>
+                        <div class="relative">
+                            <label for="receiver_phone" class="block mb-2 text-sm font-medium text-gray-700">Nomor HP</label>
+                            <input type="tel" id="receiver_phone" name="receiver_phone" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required autocomplete="off">
+                        </div>
+                        <div class="md:col-span-2 relative">
+                            <label for="receiver_address_search" class="block mb-2 text-sm font-medium text-gray-700">Cari Alamat Ongkir (Kec/Kel/Kodepos)</label>
+                            <div class="relative">
+                                <input type="text" id="receiver_address_search" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pr-8" placeholder="Ketik untuk mencari alamat..." autocomplete="off">
+                                <i id="receiver_address_check" class="fas fa-check-circle text-green-500 absolute top-1/2 right-3 transform -translate-y-1/2 hidden"></i>
+                            </div>
+                            <div id="receiver_address_results" class="search-results-container hidden"></div>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label for="receiver_address" class="block mb-2 text-sm font-medium text-gray-700">Alamat Penerima Lengkap</label>
+                            <textarea id="receiver_address" name="receiver_address" rows="3" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" placeholder="Contoh: Jl. Pahlawan No. 12, RT 01/RW 05, (Patokan: Sebelah Kantor Pos)" required></textarea>
+                        </div>
+                          <div class="md:col-span-2">
+                                <label class="flex items-center text-sm text-gray-600"><input type="checkbox" name="save_receiver" value="1" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-2"> Simpan data penerima ini</label>
+                          </div>
+                    </div>
+                </div>
+
             </div>
-            <div id="saldo-display" class="text-sm text-gray-600 h-5"></div>
-            <div>
-                <button type="button" id="lanjutkan-btn" class="w-full text-white bg-indigo-600 hover:bg-indigo-700 font-medium rounded-lg text-sm px-5 py-3 text-center disabled:bg-gray-400" disabled>
-                    Selanjutnya
-                </button>
+
+            <!-- Kolom Kanan: Detail Paket & Pembayaran -->
+            <div class="lg:col-span-1 space-y-8">
+                <div class="bg-white p-6 rounded-lg shadow-md sticky top-8">
+                    <h3 class="text-xl font-semibold text-gray-800 border-b pb-4 mb-6">
+                        <i class="fas fa-box-open text-yellow-500 mr-2"></i>Detail Paket
+                    </h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label for="item_description" class="block mb-2 text-sm font-medium text-gray-700">Deskripsi Barang</label>
+                            <input type="text" id="item_description" name="item_description" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required>
+                        </div>
+                        <div>
+                            <label for="item_price" class="block mb-2 text-sm font-medium text-gray-700">Harga Barang (Rp)</label>
+                            <input type="number" name="item_price" id="item_price" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required min="1">
+                        </div>
+                        <div>
+                            <label for="weight" class="block mb-2 text-sm font-medium text-gray-700">Berat (gram)</label>
+                            <input type="number" id="weight" name="weight" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required min="1">
+                        </div>
+                        <div class="grid grid-cols-3 gap-4">
+                            <div><label for="length" class="block mb-2 text-sm font-medium text-gray-700">P (cm)</label><input type="number" id="length" name="length" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5"></div>
+                            <div><label for="width" class="block mb-2 text-sm font-medium text-gray-700">L (cm)</label><input type="number" id="width" name="width" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5"></div>
+                            <div><label for="height" class="block mb-2 text-sm font-medium text-gray-700">T (cm)</label><input type="number" id="height" name="height" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5"></div>
+                        </div>
+                         <div>
+                            <label for="item_type" class="block mb-2 text-sm font-medium text-gray-700">Jenis Barang</label>
+
+<select name="item_type" id="item_type"
+    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5"
+    required>
+    <option value="" disabled selected>Pilih...</option>
+    <option value="1">Elektronik</option>
+    <option value="2">Pakaian</option>
+    <option value="3">Pecah Belah</option>
+    <option value="4">Dokumen</option>
+    <option value="5">Peralatan Rumah Tangga</option>
+    <option value="6">Aksesoris</option>
+    <option value="7">Kosmetik & Perawatan</option>
+    <option value="8">Makanan / Minuman</option>
+    <option value="9">Buku & Alat Tulis</option>
+    <option value="10">Mainan / Hobi</option>
+    <option value="11">Obat-obatan / Suplemen</option>
+    <option value="12">Sparepart / Komponen</option>
+    <option value="13">Alat Olahraga</option>
+    <option value="14">Alat Musik</option>
+    <option value="15">Perhiasan / Jam Tangan</option>
+    <option value="16">Alat Kesehatan</option>
+    <option value="17">Lainnya</option>
+</select>
+
+                        </div>
+                        <div>
+                            <label for="service_type" class="block mb-2 text-sm font-medium text-gray-700">Jenis Layanan</label>
+                            <select name="service_type" id="service_type" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required>
+                                <option value="" disabled selected>Pilih...</option>
+                                <option value="regular">Regular</option><option value="express">Express</option><option value="sameday">Sameday</option>
+                                <option value="instant">Instant</option><option value="cargo">Cargo</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="ansuransi" class="block mb-2 text-sm font-medium text-gray-700">Asuransi</label>
+                            <select name="ansuransi" id="ansuransi" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required>
+                                <option value="tidak" selected>Tidak</option><option value="iya">Iya</option>
+                            </select>
+                        </div>
+                        <hr/>
+                        <div>
+                            <label for="selected_expedition_display" class="block mb-2 text-sm font-medium text-gray-700">Pilih Ekspedisi</label>
+                            <input type="text" id="selected_expedition_display" class="cursor-pointer bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 text-center font-semibold" placeholder="Lengkapi data & klik di sini" readonly required>
+                        </div>
+                        <div>
+                            <label for="paymentMethodButton" class="block mb-2 text-sm font-medium text-gray-700">Metode Pembayaran</label>
+                            <div id="paymentMethodButton" class="cursor-pointer bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg w-full p-2.5 flex justify-between items-center">
+                                <div class="flex items-center"><img id="selectedPaymentLogo" src="https://cdn-icons-png.flaticon.com/512/2331/2331941.png" alt="Logo" class="w-6 h-6 mr-2"><span id="selectedPaymentName">Pilih...</span></div><i class="fas fa-chevron-down text-gray-400"></i>
+                            </div>
+                        </div>
+                        <div class="pt-4">
+                            <button type="button" id="confirmBtn" class="w-full text-white bg-indigo-600 hover:bg-indigo-700 font-medium rounded-lg text-sm px-5 py-3 text-center">
+                                Buat Pesanan
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- LANGKAH 2: FORM PESANAN UTAMA (HIDDEN BY DEFAULT) -->
-    <div id="form-pesanan-wrapper" class="hidden">
-        <form id="orderForm" action="{{ route('admin.pesanan.store') }}" method="POST">
-            @csrf
-            <input type="hidden" name="id_pengguna" id="id_pengguna_hidden">
-
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <!-- Kolom Kiri: Pengirim & Penerima -->
-                <div class="lg:col-span-2 space-y-8">
-                    <!-- Informasi Pengirim -->
-                    <div class="bg-white p-6 rounded-lg shadow-md">
-                        <div class="flex justify-between items-center border-b pb-4 mb-6">
-                            <h3 class="text-xl font-semibold text-gray-800">
-                                <i class="fas fa-arrow-up-from-bracket text-red-500 mr-2"></i>Informasi Pengirim (Otomatis Terisi)
-                            </h3>
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div class="relative">
-                                <label for="sender_name" class="block mb-2 text-sm font-medium text-gray-700">Nama Pengirim</label>
-                                <input type="text" id="sender_name" name="sender_name" class="bg-gray-200 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required readonly>
-                            </div>
-                            <div class="relative">
-                                <label for="sender_phone" class="block mb-2 text-sm font-medium text-gray-700">Nomor HP</label>
-                                <input type="tel" id="sender_phone" name="sender_phone" class="bg-gray-200 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required readonly>
-                            </div>
-                            <div class="md:col-span-2 relative">
-                                <label for="sender_address_search" class="block mb-2 text-sm font-medium text-gray-700">Cari Alamat Ongkir (Kec/Kel/Kodepos)</label>
-                                <div class="relative">
-                                    <input type="text" id="sender_address_search" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pr-8" placeholder="Ketik untuk mencari alamat..." autocomplete="off">
-                                    <i id="sender_address_check" class="fas fa-check-circle text-green-500 absolute top-1/2 right-3 transform -translate-y-1/2 hidden"></i>
-                                </div>
-                                <div id="sender_address_results" class="search-results-container hidden"></div>
-                            </div>
-                            <div class="md:col-span-2">
-                                <label for="sender_address" class="block mb-2 text-sm font-medium text-gray-700">Detail Alamat Lengkap Pengirim</label>
-                                <textarea id="sender_address" name="sender_address" rows="3" class="bg-gray-200 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" placeholder="Contoh: Jl. Pahlawan No. 12, RT 01/RW 05, (Patokan: Sebelah Kantor Pos)" required readonly></textarea>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Informasi Penerima -->
-                    <div class="bg-white p-6 rounded-lg shadow-md">
-                        <div class="flex justify-between items-center border-b pb-4 mb-6">
-                            <h3 class="text-xl font-semibold text-gray-800">
-                                <i class="fas fa-map-marker-alt text-green-500 mr-2"></i>Informasi Penerima
-                            </h3>
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div class="relative">
-                                <label for="receiver_name" class="block mb-2 text-sm font-medium text-gray-700">Nama Penerima</label>
-                                <input type="text" id="receiver_name" name="receiver_name" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required autocomplete="off">
-                                <div id="receiver_contact_results" class="search-results-container hidden"></div>
-                            </div>
-                            <div class="relative">
-                                <label for="receiver_phone" class="block mb-2 text-sm font-medium text-gray-700">Nomor HP</label>
-                                <input type="tel" id="receiver_phone" name="receiver_phone" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required autocomplete="off">
-                            </div>
-                            <div class="md:col-span-2 relative">
-                                <label for="receiver_address_search" class="block mb-2 text-sm font-medium text-gray-700">Cari Alamat Ongkir (Kec/Kel/Kodepos)</label>
-                                <div class="relative">
-                                    <input type="text" id="receiver_address_search" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pr-8" placeholder="Ketik untuk mencari alamat..." autocomplete="off">
-                                    <i id="receiver_address_check" class="fas fa-check-circle text-green-500 absolute top-1/2 right-3 transform -translate-y-1/2 hidden"></i>
-                                </div>
-                                <div id="receiver_address_results" class="search-results-container hidden"></div>
-                            </div>
-                            <div class="md:col-span-2">
-                                <label for="receiver_address" class="block mb-2 text-sm font-medium text-gray-700">Alamat Penerima Lengkap</label>
-                                <textarea id="receiver_address" name="receiver_address" rows="3" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" placeholder="Contoh: Jl. Pahlawan No. 12, RT 01/RW 05, (Patokan: Sebelah Kantor Pos)" required></textarea>
-                            </div>
-                            <div class="md:col-span-2">
-                                <label class="flex items-center text-sm text-gray-600"><input type="checkbox" name="save_receiver" value="1" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-2"> Simpan data penerima ini</label>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Kolom Kanan: Detail Paket & Pembayaran -->
-                <div class="lg:col-span-1 space-y-8">
-                    <div class="bg-white p-6 rounded-lg shadow-md sticky top-8">
-                        
-                        <!-- PENAMBAHAN: Info Pelanggan Terpilih -->
-                        <div id="info-pelanggan-terpilih" class="mb-4 p-3 bg-indigo-50 border border-indigo-200 rounded-lg">
-                            <h4 id="nama-pelanggan-display" class="font-semibold text-gray-800"></h4>
-                            <p id="saldo-pelanggan-display" class="text-sm text-gray-600 font-medium"></p>
-                        </div>
-                        
-                        <h3 class="text-xl font-semibold text-gray-800 border-b pb-4 mb-6">
-                            <i class="fas fa-box-open text-yellow-500 mr-2"></i>Detail Paket
-                        </h3>
-                        <div class="space-y-4">
-                            <div>
-                                <label for="item_description" class="block mb-2 text-sm font-medium text-gray-700">Deskripsi Barang</label>
-                                <input type="text" id="item_description" name="item_description" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required>
-                            </div>
-                            <div>
-                                <label for="item_price" class="block mb-2 text-sm font-medium text-gray-700">Harga Barang (Rp)</label>
-                                <input type="number" name="item_price" id="item_price" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required min="1">
-                            </div>
-                            <div>
-                                <label for="weight" class="block mb-2 text-sm font-medium text-gray-700">Berat (gram)</label>
-                                <input type="number" id="weight" name="weight" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required min="1">
-                            </div>
-                            <div class="grid grid-cols-3 gap-4">
-                                <div><label for="length" class="block mb-2 text-sm font-medium text-gray-700">P (cm)</label><input type="number" id="length" name="length" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5"></div>
-                                <div><label for="width" class="block mb-2 text-sm font-medium text-gray-700">L (cm)</label><input type="number" id="width" name="width" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5"></div>
-                                <div><label for="height" class="block mb-2 text-sm font-medium text-gray-700">T (cm)</label><input type="number" id="height" name="height" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5"></div>
-                            </div>
-                            <div>
-                                <label for="item_type" class="block mb-2 text-sm font-medium text-gray-700">Jenis Barang</label>
-                                <select name="item_type" id="item_type" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required>
-                                    <option value="" disabled selected>Pilih...</option>
-                                    <option value="1">Elektronik</option>
-                                    <option value="2">Pakaian</option>
-                                    <option value="3">Pecah Belah</option>
-                                    <option value="4">Dokumen</option>
-                                    <option value="5">Peralatan Rumah Tangga</option>
-                                    <option value="6">Aksesoris</option>
-                                    <option value="7">Kosmetik & Perawatan</option>
-                                    <option value="8">Makanan / Minuman</option>
-                                    <option value="9">Buku & Alat Tulis</option>
-                                    <option value="10">Mainan / Hobi</option>
-                                    <option value="11">Obat-obatan / Suplemen</option>
-                                    <option value="12">Sparepart / Komponen</option>
-                                    <option value="13">Alat Olahraga</option>
-                                    <option value="14">Alat Musik</option>
-                                    <option value="15">Perhiasan / Jam Tangan</option>
-                                    <option value="16">Alat Kesehatan</option>
-                                    <option value="17">Lainnya</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label for="service_type" class="block mb-2 text-sm font-medium text-gray-700">Jenis Layanan</label>
-                                <select name="service_type" id="service_type" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required>
-                                    <option value="" disabled selected>Pilih...</option>
-                                    <option value="regular">Regular</option><option value="express">Express</option><option value="sameday">Sameday</option>
-                                    <option value="instant">Instant</option><option value="cargo">Cargo</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label for="ansuransi" class="block mb-2 text-sm font-medium text-gray-700">Asuransi</label>
-                                <select name="ansuransi" id="ansuransi" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required>
-                                    <option value="tidak" selected>Tidak</option><option value="iya">Iya</option>
-                                </select>
-                            </div>
-                            <hr/>
-                            <div>
-                                <label for="selected_expedition_display" class="block mb-2 text-sm font-medium text-gray-700">Pilih Ekspedisi</label>
-                                <input type="text" id="selected_expedition_display" class="cursor-pointer bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 text-center font-semibold" placeholder="Lengkapi data & klik di sini" readonly required>
-                            </div>
-                            <div>
-                                <label for="paymentMethodButton" class="block mb-2 text-sm font-medium text-gray-700">Metode Pembayaran</label>
-                                <div id="paymentMethodButton" class="cursor-pointer bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg w-full p-2.5 flex justify-between items-center">
-                                    <div class="flex items-center"><img id="selectedPaymentLogo" src="https://cdn-icons-png.flaticon.com/512/2331/2331941.png" alt="Logo" class="w-6 h-6 mr-2"><span id="selectedPaymentName">Pilih...</span></div><i class="fas fa-chevron-down text-gray-400"></i>
-                                </div>
-                            </div>
-
-                            <div class="pt-4">
-                                <button type="button" id="confirmBtn" class="w-full text-white bg-indigo-600 hover:bg-indigo-700 font-medium rounded-lg text-sm px-5 py-3 text-center">
-                                    Buat Pesanan
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {{-- Hidden fields untuk data API --}}
-            <input type="hidden" name="pengirim_id" id="sender_id">
-            <input type="hidden" name="sender_lat" id="sender_lat"><input type="hidden" name="sender_lng" id="sender_lng">
-            <input type="hidden" name="sender_province" id="sender_province" ><input type="hidden" name="sender_regency" id="sender_regency" >
-            <input type="hidden" name="sender_district" id="sender_district" ><input type="hidden" name="sender_village" id="sender_village" >
-            <input type="hidden" name="sender_postal_code" id="sender_postal_code" >
-            <input type="hidden" name="sender_district_id" id="sender_district_id" required>
-            <input type="hidden" name="sender_subdistrict_id" id="sender_subdistrict_id" required>
-            <input type="hidden" name="penerima_id" id="receiver_id">
-            <input type="hidden" name="receiver_lat" id="receiver_lat"><input type="hidden" name="receiver_lng" id="receiver_lng">
-            <input type="hidden" name="receiver_province" id="receiver_province" ><input type="hidden" name="receiver_regency" id="receiver_regency" >
-            <input type="hidden" name="receiver_district" id="receiver_district" ><input type="hidden" name="receiver_village" id="receiver_village" >
-            <input type="hidden" name="receiver_postal_code" id="receiver_postal_code" >
-            <input type="hidden" name="receiver_district_id" id="receiver_district_id" required>
-            <input type="hidden" name="receiver_subdistrict_id" id="receiver_subdistrict_id" required>
-            <input type="hidden" name="expedition" id="expedition" required>
-            <input type="hidden" name="payment_method" id="payment_method" required>
-        </form>
-    </div>
+        {{-- Hidden fields untuk data API --}}
+        <input type="hidden" name="pengirim_id" id="sender_id">
+        <input type="hidden" name="sender_lat" id="sender_lat"><input type="hidden" name="sender_lng" id="sender_lng">
+        <input type="hidden" name="sender_province" id="sender_province" ><input type="hidden" name="sender_regency" id="sender_regency" >
+        <input type="hidden" name="sender_district" id="sender_district" ><input type="hidden" name="sender_village" id="sender_village" >
+        <input type="hidden" name="sender_postal_code" id="sender_postal_code" >
+        <input type="hidden" name="sender_district_id" id="sender_district_id" required>
+        <input type="hidden" name="sender_subdistrict_id" id="sender_subdistrict_id" required>
+        <input type="hidden" name="penerima_id" id="receiver_id">
+        <input type="hidden" name="receiver_lat" id="receiver_lat"><input type="hidden" name="receiver_lng" id="receiver_lng">
+        <input type="hidden" name="receiver_province" id="receiver_province" ><input type="hidden" name="receiver_regency" id="receiver_regency" >
+        <input type="hidden" name="receiver_district" id="receiver_district" ><input type="hidden" name="receiver_village" id="receiver_village" >
+        <input type="hidden" name="receiver_postal_code" id="receiver_postal_code" >
+        <input type="hidden" name="receiver_district_id" id="receiver_district_id" required>
+        <input type="hidden" name="receiver_subdistrict_id" id="receiver_subdistrict_id" required>
+        <input type="hidden" name="expedition" id="expedition" required>
+        <input type="hidden" name="payment_method" id="payment_method" required>
+    </form>
 </div>
 
 <!-- Modal Pilihan Ekspedisi -->
@@ -288,7 +269,7 @@
                 <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="INDOMARET" data-label="Indomaret"><img src="{{ asset('public/assets/indomaret.webp') }}" class="w-8 h-8 mr-4">Indomaret</li>
                 <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="OVO" data-label="OVO"><img src="{{ asset('public/assets/ovo.webp') }}" class="w-8 h-8 mr-4">OVO</li>
                 <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="DANA" data-label="DANA"><img src="{{ asset('public/assets/dana.webp') }}" class="w-8 h-8 mr-4">DANA</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="SHOPEEPAY" data-label="ShopeePay"><img src="{{ asset('public/assets/shopee-pay.webp') }}" class="w-8 h-8 mr-4">ShopeePay</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="SHOPEEPAY" data-label="ShopeePay"><img src="{{ asset('public/assets/shopeepay.webp') }}" class="w-8 h-8 mr-4">ShopeePay</li>
                 <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="QRIS" data-label="QRIS"><img src="{{ asset('public/assets/qris2.png') }}" class="w-8 h-8 mr-4">QRIS</li>
             </ul>
         </div>
@@ -303,71 +284,22 @@
 @push('scripts')
 {{-- SweetAlert2 untuk notifikasi --}}
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-{{-- jQuery (diperlukan untuk event listener yang andal) --}}
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
 
 <script>
-$(document).ready(function() {
-    // --- Variabel Global ---
-    const ongkirModalEl = $('#ongkirModal');
-    const paymentModalEl = $('#paymentMethodModal');
+document.addEventListener('DOMContentLoaded', function () {
+    const ongkirModalEl = document.getElementById('ongkirModal');
+    const paymentModalEl = document.getElementById('paymentMethodModal');
     let searchTimeout = null;
-
-    // --- LOGIKA BARU UNTUK ALUR PEMILIHAN PENGGUNA ---
-    const praPesananWrapper = $('#pra-pesanan-wrapper');
-    const formPesananWrapper = $('#form-pesanan-wrapper');
-    const pilihPenggunaAwal = $('#pilih_pengguna_awal');
-    const saldoDisplay = $('#saldo-display');
-    const namaPelangganDisplay = $('#nama-pelanggan-display');
-    const saldoPelangganDisplay = $('#saldo-pelanggan-display');
-    const lanjutkanBtn = $('#lanjutkan-btn');
-
-    // Menggunakan event listener change dari jQuery yang lebih andal
-    pilihPenggunaAwal.on('change', function() {
-        const selectedOption = $(this).find('option:selected');
-        const penggunaId = $(this).val();
-
-        if (penggunaId) {
-            saldoDisplay.text(`Saldo Pelanggan: Rp ${selectedOption.data('saldo')}`);
-            lanjutkanBtn.prop('disabled', false); // Aktifkan tombol
-        } else {
-            saldoDisplay.text('');
-            lanjutkanBtn.prop('disabled', true); // Nonaktifkan tombol
-        }
-    });
-
-    lanjutkanBtn.on('click', function() {
-        const selectedOption = pilihPenggunaAwal.find('option:selected');
-        const penggunaId = pilihPenggunaAwal.val();
-
-        if (penggunaId) {
-            // Isi data ke form utama
-            $('#id_pengguna_hidden').val(penggunaId);
-            $('#sender_name').val(selectedOption.data('nama') || '');
-            $('#sender_phone').val(selectedOption.data('telepon') || '');
-            $('#sender_address').val(selectedOption.data('alamat') || '');
-            
-            // Perbarui tampilan saldo di info box
-            namaPelangganDisplay.text(`Pelanggan: ${selectedOption.data('nama')}`);
-            saldoPelangganDisplay.text(`Sisa Saldo: Rp ${selectedOption.data('saldo')}`);
-
-            // Tampilkan form utama, sembunyikan form awal
-            praPesananWrapper.hide();
-            formPesananWrapper.show();
-        }
-    });
-
 
     // --- HELPER FUNCTIONS ---
     const debounce = (func, delay) => {
         return (...args) => { clearTimeout(searchTimeout); searchTimeout = setTimeout(() => func.apply(this, args), delay); };
     };
-    function formatRupiah(angka) {
-        return 'Rp ' + (parseInt(angka, 10) || 0).toLocaleString('id-ID');
+    function formatRupiah(angka) { 
+        return 'Rp ' + (parseInt(angka, 10) || 0).toLocaleString('id-ID'); 
     }
 
-    // --- FUNGSI PENCARIAN KONTAK (TETAP SAMA) ---
+    // --- FUNGSI PENCARIAN KONTAK DARI DATABASE ---
     function setupContactSearch(prefix) {
         const nameInput = document.getElementById(`${prefix}_name`);
         const phoneInput = document.getElementById(`${prefix}_phone`);
@@ -379,13 +311,18 @@ $(document).ready(function() {
                 resultsContainer.classList.add('hidden');
                 return;
             }
+            console.log(`[${prefix}] Mencari kontak dengan query: "${query}", tipe: "${contactType}"`);
 
             try {
                 const url = `{{ route('api.contacts.search') }}?search=${encodeURIComponent(query)}&tipe=${contactType}`;
                 const response = await fetch(url);
+                
                 if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error(`[${prefix}] Error dari server:`, errorText);
                     throw new Error(`Server error: ${response.statusText}`);
                 }
+                
                 const contacts = await response.json();
                 resultsContainer.innerHTML = '';
                 resultsContainer.classList.remove('hidden');
@@ -395,15 +332,28 @@ $(document).ready(function() {
                         const resultDiv = document.createElement('div');
                         resultDiv.className = 'p-3 border-b hover:bg-gray-100 cursor-pointer text-sm';
                         resultDiv.innerHTML = `<div class="font-semibold">${contact.nama}</div><div class="text-xs text-gray-500">${contact.no_hp}</div>`;
+                        
                         resultDiv.addEventListener('click', () => {
+                            console.log(`[${prefix}] Kontak dipilih:`, contact);
                             document.getElementById(`${prefix}_id`).value = contact.id || '';
                             document.getElementById(`${prefix}_name`).value = contact.nama || '';
                             document.getElementById(`${prefix}_phone`).value = contact.no_hp || '';
                             document.getElementById(`${prefix}_address`).value = contact.alamat || '';
+                            
+                            document.getElementById(`${prefix}_province`).value = contact.province || '';
+                            document.getElementById(`${prefix}_regency`).value = contact.regency || '';
+                            document.getElementById(`${prefix}_district`).value = contact.district || '';
+                            document.getElementById(`${prefix}_village`).value = contact.village || '';
+                            document.getElementById(`${prefix}_postal_code`).value = contact.postal_code || '';
+                            
                             const kiriminAjaSearchString = [contact.village, contact.district, contact.regency, contact.postal_code].filter(Boolean).join(', ');
-                            document.getElementById(`${prefix}_address_search`).value = kiriminAjaSearchString;
+                            const addressSearchInput = document.getElementById(`${prefix}_address_search`);
+                            addressSearchInput.value = kiriminAjaSearchString;
+
                             resultsContainer.classList.add('hidden');
+
                             if (kiriminAjaSearchString) {
+                                // Panggil pencarian alamat dengan data kontak untuk pencocokan
                                 performAddressSearch(prefix, kiriminAjaSearchString, contact);
                             }
                         });
@@ -414,19 +364,22 @@ $(document).ready(function() {
                 }
             } catch (error) {
                 console.error(`[${prefix}] Gagal melakukan pencarian kontak:`, error);
-                resultsContainer.innerHTML = `<div class="p-3 text-red-500">Gagal memuat data.</div>`;
+                resultsContainer.classList.remove('hidden');
+                resultsContainer.innerHTML = `<div class="p-3 text-red-500">Gagal memuat data. Periksa koneksi atau log server.</div>`;
             }
         };
 
-        if (nameInput && phoneInput) { // Pastikan elemen ada sebelum menambah listener
-            nameInput.addEventListener('input', debounce(() => performSearch(nameInput.value), 400));
-            phoneInput.addEventListener('input', debounce(() => performSearch(phoneInput.value), 400));
-        }
+        nameInput.addEventListener('input', debounce(() => performSearch(nameInput.value), 400));
+        phoneInput.addEventListener('input', debounce(() => performSearch(phoneInput.value), 400));
     }
-
-    // --- FUNGSI ALAMAT (TETAP SAMA) ---
+    
+    // --- FUNGSI UNTUK MEMILIH ALAMAT DAN UPDATE UI ---
     function selectAddress(prefix, item) {
-        document.getElementById(`${prefix}_address_search`).value = item.full_address;
+        const searchInput = document.getElementById(`${prefix}_address_search`);
+        const resultsContainer = document.getElementById(`${prefix}_address_results`);
+        const checkIcon = document.getElementById(`${prefix}_address_check`);
+
+        searchInput.value = item.full_address;
         const parts = item.full_address.split(',').map(s => s.trim());
         document.getElementById(`${prefix}_village`).value = parts[0] || '';
         document.getElementById(`${prefix}_district`).value = parts[1] || '';
@@ -435,28 +388,65 @@ $(document).ready(function() {
         document.getElementById(`${prefix}_postal_code`).value = parts[4] || '';
         document.getElementById(`${prefix}_district_id`).value = item.district_id;
         document.getElementById(`${prefix}_subdistrict_id`).value = item.subdistrict_id;
-        document.getElementById(`${prefix}_address_results`).classList.add('hidden');
-        document.getElementById(`${prefix}_address_check`).classList.remove('hidden');
+
+        resultsContainer.classList.add('hidden');
+        checkIcon.classList.remove('hidden');
     }
 
+    // --- FUNGSI PENCARIAN ALAMAT ONGKIR (KIRIMIN AJA API) ---
     async function performAddressSearch(prefix, query, contactToMatch = null) {
         const resultsContainer = document.getElementById(`${prefix}_address_results`);
-        if (query.length < 3) {
-            resultsContainer.classList.add('hidden');
-            return;
+        
+        if (query.length < 3) { 
+            resultsContainer.classList.add('hidden'); 
+            return; 
         }
+
         try {
             const response = await fetch(`{{ route('api.address.search') }}?search=${encodeURIComponent(query)}`);
             if (!response.ok) throw new Error('Network response error');
             const data = await response.json();
+            
             resultsContainer.innerHTML = '';
             resultsContainer.classList.remove('hidden');
+
             if (data && data.length > 0) {
+                // --- BARU: Logika untuk "auto-enter" jika ada kecocokan persis dari data kontak ---
+                if (contactToMatch) {
+                    const exactMatch = data.find(item => {
+                        const normalizedApiAddress = item.full_address.toLowerCase();
+                        const village = (contactToMatch.village || '').toLowerCase();
+                        const district = (contactToMatch.district || '').toLowerCase();
+                        const regency = (contactToMatch.regency || '').toLowerCase().replace('kabupaten ', '').replace('kota ', '');
+                        const postalCode = (contactToMatch.postal_code || '');
+
+                        // Memastikan semua bagian dari kontak ada di dalam hasil API
+                        return village && district && regency && postalCode &&
+                               normalizedApiAddress.includes(village) &&
+                               normalizedApiAddress.includes(district) &&
+                               normalizedApiAddress.includes(regency) &&
+                               normalizedApiAddress.includes(postalCode);
+                    });
+
+                    if (exactMatch) {
+                        selectAddress(prefix, exactMatch); // Auto-select kecocokan persis
+                        return; // Hentikan proses, jangan tampilkan dropdown
+                    }
+                }
+
+                // Fallback jika tidak ada `contactToMatch` atau tidak ada kecocokan persis
+                if (data.length === 1) {
+                    selectAddress(prefix, data[0]);
+                    return;
+                }
+
                 data.forEach(item => {
                     const resultDiv = document.createElement('div');
                     resultDiv.className = 'p-3 border-b hover:bg-gray-100 cursor-pointer text-sm';
                     resultDiv.innerHTML = `<div class="font-semibold">${item.full_address}</div>`;
-                    resultDiv.addEventListener('click', () => selectAddress(prefix, item));
+                    resultDiv.addEventListener('click', () => {
+                        selectAddress(prefix, item);
+                    });
                     resultsContainer.appendChild(resultDiv);
                 });
             } else {
@@ -467,31 +457,56 @@ $(document).ready(function() {
             resultsContainer.innerHTML = '<div class="p-3 text-red-500">Gagal memuat data alamat.</div>';
         }
     }
-
+    
+    // --- SETUP PENCARIAN ALAMAT ---
     function setupAddressSearch(prefix) {
         const searchInput = document.getElementById(`${prefix}_address_search`);
+        const checkIcon = document.getElementById(`${prefix}_address_check`);
+        
         searchInput.addEventListener('input', debounce(() => {
-            document.getElementById(`${prefix}_address_check`).classList.add('hidden');
+            checkIcon.classList.add('hidden');
+            // Saat user mengetik manual, tidak ada `contactToMatch`
             performAddressSearch(prefix, searchInput.value, null);
         }, 400));
     }
     
-    // Inisialisasi hanya untuk pencarian alamat penerima sekarang
+    // --- INISIALISASI ---
+    setupContactSearch('sender');
+    setupContactSearch('receiver');
     setupAddressSearch('sender');
     setupAddressSearch('receiver');
-    setupContactSearch('receiver');
 
-    // --- FUNGSI CEK ONGKIR (TETAP SAMA) ---
+    // --- Event listener untuk dropdown pelanggan ---
+    document.getElementById('customer_id').addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        const senderNameInput = document.getElementById('sender_name');
+        const senderPhoneInput = document.getElementById('sender_phone');
+        const senderAddressInput = document.getElementById('sender_address');
+
+        if (this.value) { // Jika pelanggan dipilih (bukan opsi "Umum")
+            senderNameInput.value = selectedOption.getAttribute('data-nama') || '';
+            senderPhoneInput.value = selectedOption.getAttribute('data-telepon') || '';
+            senderAddressInput.value = selectedOption.getAttribute('data-alamat') || '';
+        } else { // Jika opsi "-- Umum --" dipilih
+            senderNameInput.value = '';
+            senderPhoneInput.value = '';
+            senderAddressInput.value = '';
+        }
+    });
+
+    // --- FUNGSI CEK ONGKIR ---
     async function runCekOngkir() {
-        const requiredFields = { '#sender_subdistrict_id': 'Alamat Pengirim', '#receiver_subdistrict_id': 'Alamat Penerima', '#item_price': 'Harga Barang', '#weight': 'Berat' };
+        const requiredFields = { '#sender_subdistrict_id': 'Alamat Pengirim', '#receiver_subdistrict_id': 'Alamat Penerima', '#item_price': 'Harga Barang', '#weight': 'Berat', '#service_type': 'Jenis Layanan', '#ansuransi': 'Asuransi' };
         let missing = Object.keys(requiredFields).filter(s => !document.querySelector(s).value);
         if (missing.length > 0) {
             Swal.fire('Data Belum Lengkap', 'Harap lengkapi: ' + missing.map(s => requiredFields[s]).join(', '), 'warning');
             return;
         }
-        const ongkirModalBody = $('#ongkirModalBody');
-        ongkirModalBody.html(`<div class="text-center p-5"><i class="fas fa-spinner fa-spin text-3xl text-indigo-600"></i><p class="mt-2 text-gray-500">Memuat tarif...</p></div>`);
-        ongkirModalEl.show();
+
+        const ongkirModalBody = document.getElementById('ongkirModalBody');
+        ongkirModalBody.innerHTML = `<div class="text-center p-5"><i class="fas fa-spinner fa-spin text-3xl text-indigo-600"></i><p class="mt-2 text-gray-500">Memuat tarif...</p></div>`;
+        ongkirModalEl.classList.remove('hidden');
+
         try {
             const formData = new FormData(document.getElementById('orderForm'));
             const params = new URLSearchParams(formData).toString();
@@ -501,71 +516,140 @@ $(document).ready(function() {
                 throw new Error(errorData.message || 'Gagal mengambil data ongkir');
             }
             const res = await response.json();
-            ongkirModalBody.empty();
+
+            ongkirModalBody.innerHTML = '';
             let results = (res.results || []).concat((res.result || []).flatMap(v => v.costs.map(c => ({...c, service: v.name, service_name: `${v.name.toUpperCase()} - ${c.service_type}`, cost: c.price.total_price, etd: c.estimation || '-', setting: c.setting || {}, insurance: c.price.insurance_fee || 0, cod: c.cod }))));
             if (results.length === 0) {
-                ongkirModalBody.html('<div class="bg-yellow-100 text-yellow-800 p-4 rounded-md text-center">Layanan pengiriman tidak ditemukan.</div>');
+                ongkirModalBody.innerHTML = '<div class="bg-yellow-100 text-yellow-800 p-4 rounded-md text-center">Layanan pengiriman tidak ditemukan. Cek kembali alamat dan jenis layanan.</div>';
                 return;
             }
+
             results.sort((a, b) => a.cost - b.cost).forEach(item => {
-                 const card = document.createElement('div');
-                 card.className = 'border rounded-lg mb-3 shadow-sm';
-                 const value = `${$('#service_type').val()}-${item.service}-${item.service_type}-${item.cost}-${item.insurance || 0}-${item.setting?.cod_fee_amount || 0}`;
-                 card.innerHTML = `<div class="p-4 flex justify-between items-center"><div><h6 class="font-bold">${item.service_name}</h6><small>${item.etd}</small></div><div><strong>${formatRupiah(item.cost)}</strong><button type="button" class="select-ongkir-btn mt-1 bg-indigo-600 text-white px-3 py-1 rounded-md text-sm" data-value="${value}" data-display="${item.service_name}" data-cod-supported="${item.cod}">Pilih</button></div></div>`;
-                 ongkirModalBody.append(card);
+                const isCod = item.cod;
+                const insuranceFee = item.insurance || 0;
+                const codFee = item.setting?.cod_fee_amount || 0;
+                const value = `${document.getElementById('service_type').value}-${item.service}-${item.service_type}-${item.cost}-${insuranceFee}-${codFee}`;
+                let details = `<small class="text-gray-500 block">Estimasi: ${item.etd}</small>`;
+                if (document.getElementById('ansuransi').value == 'iya' && insuranceFee > 0) details += `<small class="text-gray-500 block">Asuransi: ${formatRupiah(insuranceFee)}</small>`;
+                if (isCod && codFee > 0) details += `<small class="text-gray-500 block">Biaya COD: ${formatRupiah(codFee)}</small>`;
+                if (isCod) details += `<small class="text-green-600 font-bold block">COD Tersedia</small>`;
+                
+                const card = document.createElement('div');
+                card.className = 'border rounded-lg mb-3 shadow-sm';
+                card.innerHTML = `
+                    <div class="p-4 flex justify-between items-center">
+                        <div class="flex items-center">
+                            <img src="{{ asset('storage/logo-ekspedisi/') }}/${item.service.toLowerCase().replace(/\s+/g, '')}.png" class="w-16 h-auto mr-4 object-contain" onerror="this.src='https://placehold.co/100x40?text=${item.service}'">
+                            <div>
+                                <h6 class="font-bold text-gray-800">${item.service_name}</h6>
+                                ${details}
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <small class="text-gray-500">Ongkir</small>
+                            <strong class="block text-lg text-red-600">${formatRupiah(item.cost)}</strong>
+                            <button type="button" class="select-ongkir-btn mt-1 bg-indigo-600 text-white px-3 py-1 rounded-md hover:bg-indigo-700 text-sm" data-value="${value}" data-display="${item.service_name}" data-cod-supported="${isCod}">Pilih</button>
+                        </div>
+                    </div>
+                `;
+                ongkirModalBody.appendChild(card);
             });
         } catch (error) {
-            ongkirModalBody.html(`<div class="bg-red-100 text-red-800 p-4 rounded-md text-center">${error.message}</div>`);
+            console.error('Cek Ongkir failed:', error);
+            ongkirModalBody.innerHTML = `<div class="bg-red-100 text-red-800 p-4 rounded-md text-center">${error.message}</div>`;
         }
     }
-    $('#selected_expedition_display').on('click', runCekOngkir);
-    
-    // --- EVENT LISTENERS LAINNYA ---
-    ongkirModalEl.on('click', '.select-ongkir-btn', function() {
-        $('#expedition').val($(this).data('value'));
-        $('#selected_expedition_display').val($(this).data('display'));
-        const codSupported = $(this).data('cod-supported');
-        const codOptions = $('.cod-payment-option');
-        if (codSupported) {
-            codOptions.show();
-        } else {
-            if (['COD', 'CODBARANG'].includes($('#payment_method').val())) {
-                $('#payment_method').val('');
-                $('#selectedPaymentName').text('Pilih...');
-                $('#selectedPaymentLogo').attr('src', 'https://cdn-icons-png.flaticon.com/512/2331/2331941.png');
+
+    // --- EVENT LISTENERS ---
+    document.getElementById('selected_expedition_display').addEventListener('click', runCekOngkir);
+
+    ongkirModalEl.addEventListener('click', function(e) {
+        if (e.target.classList.contains('select-ongkir-btn')) {
+            document.getElementById('expedition').value = e.target.dataset.value;
+            document.getElementById('selected_expedition_display').value = e.target.dataset.display;
+            
+            const codOptions = document.querySelectorAll('.cod-payment-option');
+            if (e.target.dataset.codSupported === 'true') {
+                codOptions.forEach(opt => opt.style.display = 'flex');
+            } else {
+                if (['COD', 'CODBARANG'].includes(document.getElementById('payment_method').value)) {
+                    document.getElementById('payment_method').value = '';
+                    document.getElementById('selectedPaymentName').textContent = 'Pilih...';
+                    document.getElementById('selectedPaymentLogo').src = 'https://cdn-icons-png.flaticon.com/512/2331/2331941.png';
+                }
+                codOptions.forEach(opt => opt.style.display = 'none');
             }
-            codOptions.hide();
+            ongkirModalEl.classList.add('hidden');
         }
-        ongkirModalEl.hide();
     });
 
-    $('#paymentMethodButton').on('click', () => paymentModalEl.show());
+    document.getElementById('paymentMethodButton').addEventListener('click', () => paymentModalEl.classList.remove('hidden'));
 
-    $('.payment-option').on('click', function() {
-        $('#payment_method').val($(this).data('value'));
-        $('#selectedPaymentName').text($(this).data('label'));
-        $('#selectedPaymentLogo').attr('src', $(this).find('img').attr('src'));
-        paymentModalEl.hide();
+    document.querySelectorAll('.payment-option').forEach(item => {
+        item.addEventListener('click', function() {
+            const paymentValue = this.dataset.value;
+            const customerSelect = document.getElementById('customer_id');
+
+            document.getElementById('payment_method').value = paymentValue;
+            document.getElementById('selectedPaymentName').textContent = this.dataset.label;
+            document.getElementById('selectedPaymentLogo').src = this.querySelector('img').src;
+            
+            document.querySelectorAll('.payment-option').forEach(opt => opt.classList.remove('bg-indigo-50'));
+            this.classList.add('bg-indigo-50');
+            
+            // PERBAIKAN: Menambahkan logika validasi dinamis untuk Potong Saldo
+            if (paymentValue === 'Potong Saldo') {
+                customerSelect.setAttribute('required', 'required');
+            } else {
+                customerSelect.removeAttribute('required');
+            }
+
+            paymentModalEl.classList.add('hidden');
+        });
     });
 
-    $('.close-modal-btn').on('click', () => {
-        ongkirModalEl.hide();
-        paymentModalEl.hide();
+    document.querySelectorAll('.close-modal-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            ongkirModalEl.classList.add('hidden');
+            paymentModalEl.classList.add('hidden');
+        });
     });
 
-    // --- Form Submission Handler ---
-    $('#confirmBtn').on('click', function(e) {
+    document.querySelectorAll('input, select, textarea').forEach(el => {
+        if(el.type !== 'hidden' && !el.classList.contains('select-ongkir-btn')){
+             el.addEventListener('change', () => {
+                  document.getElementById('expedition').value = '';
+                  document.getElementById('selected_expedition_display').value = '';
+                  document.getElementById('selected_expedition_display').placeholder = 'Data berubah, klik untuk cek ulang';
+             });
+        }
+    });
+
+    document.getElementById('confirmBtn').addEventListener('click', (e) => {
         e.preventDefault();
         const form = document.getElementById('orderForm');
-        
-        if (!form.checkValidity() || !$('#expedition').val() || !$('#payment_method').val()) {
+        const expedition = document.getElementById('expedition').value;
+        const paymentMethod = document.getElementById('payment_method').value;
+        const customerId = document.getElementById('customer_id').value;
+
+        // PERBAIKAN: Menambahkan pengecekan eksplisit untuk Potong Saldo
+        if (paymentMethod === 'Potong Saldo' && !customerId) {
+            Swal.fire('Peringatan', 'Anda harus memilih pelanggan jika menggunakan metode Potong Saldo.', 'warning');
+            return; 
+        }
+
+        if (!form.checkValidity() || !expedition || !paymentMethod) {
             form.reportValidity();
             let missingFields = [];
-            if (!$('#expedition').val()) missingFields.push('Ekspedisi');
-            if (!$('#payment_method').val()) missingFields.push('Metode Pembayaran');
+            if (!expedition) missingFields.push('Ekspedisi');
+            if (!paymentMethod) missingFields.push('Metode Pembayaran');
+
+            let message = 'Harap lengkapi semua field yang wajib diisi.';
             if (missingFields.length > 0) {
-                 Swal.fire('Peringatan', `Anda belum memilih: ${missingFields.join(', ')}.`, 'warning');
+                message += ` Anda belum memilih: ${missingFields.join(', ')}.`;
             }
+
+            Swal.fire('Peringatan', message, 'warning');
             return;
         }
 
@@ -580,10 +664,29 @@ $(document).ready(function() {
             cancelButtonText: 'Batal'
         }).then((result) => {
             if (result.isConfirmed) {
-                $(this).prop('disabled', true).html(`<i class="fas fa-spinner fa-spin mr-2"></i>Memproses...`);
+                const confirmBtn = document.getElementById('confirmBtn');
+                confirmBtn.disabled = true;
+                confirmBtn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>Memproses...`;
                 form.submit();
             }
         });
+    });
+
+    document.querySelectorAll('.cod-payment-option').forEach(opt => opt.style.display = 'none');
+
+    document.addEventListener('click', function(event) {
+        if (!event.target.closest('#sender_address_search, #sender_address_results')) {
+            document.getElementById('sender_address_results').classList.add('hidden');
+        }
+        if (!event.target.closest('#receiver_address_search, #receiver_address_results')) {
+            document.getElementById('receiver_address_results').classList.add('hidden');
+        }
+        if (!event.target.closest('#sender_name, #sender_contact_results, #sender_phone')) {
+            document.getElementById('sender_contact_results').classList.add('hidden');
+        }
+        if (!event.target.closest('#receiver_name, #receiver_contact_results, #receiver_phone')) {
+            document.getElementById('receiver_contact_results').classList.add('hidden');
+        }
     });
 });
 </script>
