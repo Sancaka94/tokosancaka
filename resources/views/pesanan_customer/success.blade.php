@@ -1,10 +1,9 @@
 <div class="container py-5">
-
     <div class="row justify-content-center">
         <div class="col-lg-7">
 
             <div class="card border-0 shadow-lg rounded-4 overflow-hidden">
-                <div class="card-body text-center px-4 py-5">
+                <div class="card-body text-center p-5">
 
                     @if(session('order'))
                         @php
@@ -16,7 +15,7 @@
                                 $receiverPhone = '62' . substr($receiverPhone, 1);
                             }
 
-                            $trackingLink = route('tracking.index') . '?resi=' . $order->resi;
+                            $trackingLink = "https://tokosancaka.com/tracking?resi={$order->resi}";
                             $whatsappMessage = "Halo Kak *{$order->receiver_name}*,\n\nKabar baik! Paket untuk Anda dari *{$order->sender_name}* telah kami terima dan akan segera diproses. 📦✨\n\nBerikut adalah detail pengiriman Anda:\nNomor Resi: *{$order->resi}*\n\nAnda dapat melacak posisi paket Anda secara real-time melalui link di bawah ini:\n{$trackingLink}\n\nTerima kasih telah mempercayakan pengiriman Anda kepada Sancaka Express! 🙏";
                         @endphp
 
@@ -54,7 +53,7 @@
 
                                 @if ($paymentMethod === 'QRIS')
                                     <div class="text-center my-3">
-                                        <img src="{{ $order->payment_url }}" alt="QRIS Payment" class="img-fluid shadow-sm rounded" style="max-width: 280px;">
+                                        <img src="{{ $order->payment_url }}" alt="QRIS Payment" class="img-fluid rounded shadow-sm" style="max-width: 280px;">
                                         <p class="mt-2 text-muted">Scan QRIS untuk melakukan pembayaran</p>
                                     </div>
 
@@ -79,19 +78,21 @@
 
                             @elseif ($order->status === 'Menunggu Pickup')
 
-@if (!empty($order->resi))
-    <a href="https://tokosancaka.com/tracking?resi={{ $order->resi }}" 
-       target="_blank"
-       class="btn btn-info btn-lg w-100 mb-2 shadow-sm">
-        <i class="fas fa-truck me-2"></i> Lacak Pesanan
-    </a>
-@else
-    <a href="https://tokosancaka.com/tracking?invoice={{ $order->nomor_invoice }}" 
-       target="_blank"
-       class="btn btn-secondary btn-lg w-100 mb-2 shadow-sm">
-        <i class="fas fa-file-invoice me-2"></i> Lacak Pesanan (Invoice)
-    </a>
-@endif
+                                @if (!empty($order->resi))
+                                    {{-- Tracking berdasarkan Resi --}}
+                                    <a href="https://tokosancaka.com/tracking?resi={{ $order->resi }}" 
+                                       target="_blank"
+                                       class="btn btn-info btn-lg w-100 mb-2 shadow-sm">
+                                        <i class="fas fa-truck me-2"></i> Lacak Pesanan
+                                    </a>
+                                @else
+                                    {{-- Tracking berdasarkan Invoice --}}
+                                    <a href="https://tokosancaka.com/tracking?invoice={{ $order->nomor_invoice }}" 
+                                       target="_blank"
+                                       class="btn btn-secondary btn-lg w-100 mb-2 shadow-sm">
+                                        <i class="fas fa-file-invoice me-2"></i> Lacak Pesanan (Invoice)
+                                    </a>
+                                @endif
 
                             @endif
                         </div>
