@@ -435,8 +435,14 @@ class PesananController extends Controller
     
     private function _createKiriminAjaOrder(array $data, Pesanan $pesanan, KiriminAjaService $kirimaja, array $senderData, array $receiverData, int $cod_value): array
     {
-        list($serviceGroup, $courier, $service_type, $shipping_cost) = array_pad(explode('-', $data['expedition']), 4, null);
-        
+        // PERBAIKAN: Mengurai string 'expedition' secara eksplisit untuk menghindari kesalahan indeks
+        $expeditionParts = explode('-', $data['expedition']);
+        $serviceGroup = $expeditionParts[0] ?? null;
+        $courier = $expeditionParts[1] ?? null;
+        $service_type = $expeditionParts[2] ?? null;
+        // Mengambil ongkos kirim dari indeks ke-4 (posisi ke-5), sesuai dengan logika _calculateTotalPaid
+        $shipping_cost = $expeditionParts[4] ?? 0; 
+
         if (in_array($serviceGroup, ['instant', 'sameday'])) { 
             $payload = [
                 'service' => $courier,
