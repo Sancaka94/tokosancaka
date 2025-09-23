@@ -303,53 +303,58 @@
 @push('scripts')
 {{-- SweetAlert2 untuk notifikasi --}}
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+{{-- jQuery (diperlukan untuk event listener yang andal) --}}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
 
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    const ongkirModalEl = document.getElementById('ongkirModal');
-    const paymentModalEl = document.getElementById('paymentMethodModal');
+$(document).ready(function() {
+    // --- Variabel Global ---
+    const ongkirModalEl = $('#ongkirModal');
+    const paymentModalEl = $('#paymentMethodModal');
     let searchTimeout = null;
 
     // --- LOGIKA BARU UNTUK ALUR PEMILIHAN PENGGUNA ---
-    const praPesananWrapper = document.getElementById('pra-pesanan-wrapper');
-    const formPesananWrapper = document.getElementById('form-pesanan-wrapper');
-    const pilihPenggunaAwal = document.getElementById('pilih_pengguna_awal');
-    const saldoDisplay = document.getElementById('saldo-display');
-    const namaPelangganDisplay = document.getElementById('nama-pelanggan-display');
-    const saldoPelangganDisplay = document.getElementById('saldo-pelanggan-display');
-    const lanjutkanBtn = document.getElementById('lanjutkan-btn');
+    const praPesananWrapper = $('#pra-pesanan-wrapper');
+    const formPesananWrapper = $('#form-pesanan-wrapper');
+    const pilihPenggunaAwal = $('#pilih_pengguna_awal');
+    const saldoDisplay = $('#saldo-display');
+    const namaPelangganDisplay = $('#nama-pelanggan-display');
+    const saldoPelangganDisplay = $('#saldo-pelanggan-display');
+    const lanjutkanBtn = $('#lanjutkan-btn');
 
-    pilihPenggunaAwal.addEventListener('change', function() {
-        const selectedOption = this.options[this.selectedIndex];
-        const penggunaId = this.value;
+    // Menggunakan event listener change dari jQuery yang lebih andal
+    pilihPenggunaAwal.on('change', function() {
+        const selectedOption = $(this).find('option:selected');
+        const penggunaId = $(this).val();
 
         if (penggunaId) {
-            saldoDisplay.textContent = `Saldo Pelanggan: Rp ${selectedOption.dataset.saldo}`;
-            lanjutkanBtn.disabled = false; // Aktifkan tombol
+            saldoDisplay.text(`Saldo Pelanggan: Rp ${selectedOption.data('saldo')}`);
+            lanjutkanBtn.prop('disabled', false); // Aktifkan tombol
         } else {
-            saldoDisplay.textContent = '';
-            lanjutkanBtn.disabled = true; // Nonaktifkan tombol
+            saldoDisplay.text('');
+            lanjutkanBtn.prop('disabled', true); // Nonaktifkan tombol
         }
     });
 
-    lanjutkanBtn.addEventListener('click', function() {
-        const selectedOption = pilihPenggunaAwal.options[pilihPenggunaAwal.selectedIndex];
-        const penggunaId = pilihPenggunaAwal.value;
+    lanjutkanBtn.on('click', function() {
+        const selectedOption = pilihPenggunaAwal.find('option:selected');
+        const penggunaId = pilihPenggunaAwal.val();
 
         if (penggunaId) {
             // Isi data ke form utama
-            document.getElementById('id_pengguna_hidden').value = penggunaId;
-            document.getElementById('sender_name').value = selectedOption.dataset.nama || '';
-            document.getElementById('sender_phone').value = selectedOption.dataset.telepon || '';
-            document.getElementById('sender_address').value = selectedOption.dataset.alamat || '';
+            $('#id_pengguna_hidden').val(penggunaId);
+            $('#sender_name').val(selectedOption.data('nama') || '');
+            $('#sender_phone').val(selectedOption.data('telepon') || '');
+            $('#sender_address').val(selectedOption.data('alamat') || '');
             
             // Perbarui tampilan saldo di info box
-            namaPelangganDisplay.textContent = `Pelanggan: ${selectedOption.dataset.nama}`;
-            saldoPelangganDisplay.textContent = `Sisa Saldo: Rp ${selectedOption.dataset.saldo}`;
+            namaPelangganDisplay.text(`Pelanggan: ${selectedOption.data('nama')}`);
+            saldoPelangganDisplay.text(`Sisa Saldo: Rp ${selectedOption.data('saldo')}`);
 
             // Tampilkan form utama, sembunyikan form awal
-            praPesananWrapper.classList.add('hidden');
-            formPesananWrapper.classList.remove('hidden');
+            praPesananWrapper.hide();
+            formPesananWrapper.show();
         }
     });
 
@@ -478,16 +483,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- FUNGSI CEK ONGKIR (TETAP SAMA) ---
     async function runCekOngkir() {
-        // ... (kode cek ongkir tidak berubah, jadi disingkat untuk kejelasan)
         const requiredFields = { '#sender_subdistrict_id': 'Alamat Pengirim', '#receiver_subdistrict_id': 'Alamat Penerima', '#item_price': 'Harga Barang', '#weight': 'Berat' };
         let missing = Object.keys(requiredFields).filter(s => !document.querySelector(s).value);
         if (missing.length > 0) {
             Swal.fire('Data Belum Lengkap', 'Harap lengkapi: ' + missing.map(s => requiredFields[s]).join(', '), 'warning');
             return;
         }
-        const ongkirModalBody = document.getElementById('ongkirModalBody');
-        ongkirModalBody.innerHTML = `<div class="text-center p-5"><i class="fas fa-spinner fa-spin text-3xl text-indigo-600"></i><p class="mt-2 text-gray-500">Memuat tarif...</p></div>`;
-        ongkirModalEl.classList.remove('hidden');
+        const ongkirModalBody = $('#ongkirModalBody');
+        ongkirModalBody.html(`<div class="text-center p-5"><i class="fas fa-spinner fa-spin text-3xl text-indigo-600"></i><p class="mt-2 text-gray-500">Memuat tarif...</p></div>`);
+        ongkirModalEl.show();
         try {
             const formData = new FormData(document.getElementById('orderForm'));
             const params = new URLSearchParams(formData).toString();
@@ -497,78 +501,68 @@ document.addEventListener('DOMContentLoaded', function () {
                 throw new Error(errorData.message || 'Gagal mengambil data ongkir');
             }
             const res = await response.json();
-            ongkirModalBody.innerHTML = '';
+            ongkirModalBody.empty();
             let results = (res.results || []).concat((res.result || []).flatMap(v => v.costs.map(c => ({...c, service: v.name, service_name: `${v.name.toUpperCase()} - ${c.service_type}`, cost: c.price.total_price, etd: c.estimation || '-', setting: c.setting || {}, insurance: c.price.insurance_fee || 0, cod: c.cod }))));
             if (results.length === 0) {
-                ongkirModalBody.innerHTML = '<div class="bg-yellow-100 text-yellow-800 p-4 rounded-md text-center">Layanan pengiriman tidak ditemukan.</div>';
+                ongkirModalBody.html('<div class="bg-yellow-100 text-yellow-800 p-4 rounded-md text-center">Layanan pengiriman tidak ditemukan.</div>');
                 return;
             }
             results.sort((a, b) => a.cost - b.cost).forEach(item => {
                  const card = document.createElement('div');
                  card.className = 'border rounded-lg mb-3 shadow-sm';
-                 const value = `${document.getElementById('service_type').value}-${item.service}-${item.service_type}-${item.cost}-${item.insurance || 0}-${item.setting?.cod_fee_amount || 0}`;
+                 const value = `${$('#service_type').val()}-${item.service}-${item.service_type}-${item.cost}-${item.insurance || 0}-${item.setting?.cod_fee_amount || 0}`;
                  card.innerHTML = `<div class="p-4 flex justify-between items-center"><div><h6 class="font-bold">${item.service_name}</h6><small>${item.etd}</small></div><div><strong>${formatRupiah(item.cost)}</strong><button type="button" class="select-ongkir-btn mt-1 bg-indigo-600 text-white px-3 py-1 rounded-md text-sm" data-value="${value}" data-display="${item.service_name}" data-cod-supported="${item.cod}">Pilih</button></div></div>`;
-                 ongkirModalBody.appendChild(card);
+                 ongkirModalBody.append(card);
             });
         } catch (error) {
-            ongkirModalBody.innerHTML = `<div class="bg-red-100 text-red-800 p-4 rounded-md text-center">${error.message}</div>`;
+            ongkirModalBody.html(`<div class="bg-red-100 text-red-800 p-4 rounded-md text-center">${error.message}</div>`);
         }
     }
-    document.getElementById('selected_expedition_display').addEventListener('click', runCekOngkir);
+    $('#selected_expedition_display').on('click', runCekOngkir);
     
     // --- EVENT LISTENERS LAINNYA ---
-    ongkirModalEl.addEventListener('click', function(e) {
-        if (e.target.classList.contains('select-ongkir-btn')) {
-            document.getElementById('expedition').value = e.target.dataset.value;
-            document.getElementById('selected_expedition_display').value = e.target.dataset.display;
-            const codOptions = document.querySelectorAll('.cod-payment-option');
-            if (e.target.dataset.codSupported === 'true') {
-                codOptions.forEach(opt => opt.style.display = 'flex');
-            } else {
-                if (['COD', 'CODBARANG'].includes(document.getElementById('payment_method').value)) {
-                    document.getElementById('payment_method').value = '';
-                    document.getElementById('selectedPaymentName').textContent = 'Pilih...';
-                    document.getElementById('selectedPaymentLogo').src = 'https://cdn-icons-png.flaticon.com/512/2331/2331941.png';
-                }
-                codOptions.forEach(opt => opt.style.display = 'none');
+    ongkirModalEl.on('click', '.select-ongkir-btn', function() {
+        $('#expedition').val($(this).data('value'));
+        $('#selected_expedition_display').val($(this).data('display'));
+        const codSupported = $(this).data('cod-supported');
+        const codOptions = $('.cod-payment-option');
+        if (codSupported) {
+            codOptions.show();
+        } else {
+            if (['COD', 'CODBARANG'].includes($('#payment_method').val())) {
+                $('#payment_method').val('');
+                $('#selectedPaymentName').text('Pilih...');
+                $('#selectedPaymentLogo').attr('src', 'https://cdn-icons-png.flaticon.com/512/2331/2331941.png');
             }
-            ongkirModalEl.classList.add('hidden');
+            codOptions.hide();
         }
+        ongkirModalEl.hide();
     });
 
-    document.getElementById('paymentMethodButton').addEventListener('click', () => paymentModalEl.classList.remove('hidden'));
+    $('#paymentMethodButton').on('click', () => paymentModalEl.show());
 
-    document.querySelectorAll('.payment-option').forEach(item => {
-        item.addEventListener('click', function() {
-            document.getElementById('payment_method').value = this.dataset.value;
-            document.getElementById('selectedPaymentName').textContent = this.dataset.label;
-            document.getElementById('selectedPaymentLogo').src = this.querySelector('img').src;
-            paymentModalEl.classList.add('hidden');
-        });
+    $('.payment-option').on('click', function() {
+        $('#payment_method').val($(this).data('value'));
+        $('#selectedPaymentName').text($(this).data('label'));
+        $('#selectedPaymentLogo').attr('src', $(this).find('img').attr('src'));
+        paymentModalEl.hide();
     });
 
-    document.querySelectorAll('.close-modal-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            ongkirModalEl.classList.add('hidden');
-            paymentModalEl.classList.add('hidden');
-        });
+    $('.close-modal-btn').on('click', () => {
+        ongkirModalEl.hide();
+        paymentModalEl.hide();
     });
 
-    // --- Form Submission Handler (VALIDASI DISESUAIKAN) ---
-    document.getElementById('confirmBtn').addEventListener('click', (e) => {
+    // --- Form Submission Handler ---
+    $('#confirmBtn').on('click', function(e) {
         e.preventDefault();
         const form = document.getElementById('orderForm');
-        const paymentMethod = document.getElementById('payment_method').value;
-        const expedition = document.getElementById('expedition').value;
-        const penggunaId = document.getElementById('id_pengguna_hidden').value;
-
-        // Validasi utama sekarang hanya checkValidity dan pilihan ekspedisi/pembayaran
-        // karena id_pengguna sudah pasti ada jika form ini terlihat.
-        if (!form.checkValidity() || !expedition || !paymentMethod) {
+        
+        if (!form.checkValidity() || !$('#expedition').val() || !$('#payment_method').val()) {
             form.reportValidity();
             let missingFields = [];
-            if (!expedition) missingFields.push('Ekspedisi');
-            if (!paymentMethod) missingFields.push('Metode Pembayaran');
+            if (!$('#expedition').val()) missingFields.push('Ekspedisi');
+            if (!$('#payment_method').val()) missingFields.push('Metode Pembayaran');
             if (missingFields.length > 0) {
                  Swal.fire('Peringatan', `Anda belum memilih: ${missingFields.join(', ')}.`, 'warning');
             }
@@ -586,9 +580,7 @@ document.addEventListener('DOMContentLoaded', function () {
             cancelButtonText: 'Batal'
         }).then((result) => {
             if (result.isConfirmed) {
-                const confirmBtn = document.getElementById('confirmBtn');
-                confirmBtn.disabled = true;
-                confirmBtn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>Memproses...`;
+                $(this).prop('disabled', true).html(`<i class="fas fa-spinner fa-spin mr-2"></i>Memproses...`);
                 form.submit();
             }
         });
