@@ -412,11 +412,15 @@ class PesananController extends Controller
 
     private function _calculateTotalPaid(array $validatedData): array
     {
-        list(,,,, $shipping_cost, $ansuransi_fee, $cod_fee) = array_pad(explode('-', $validatedData['expedition']), 7, 0);
+        // PERBAIKAN: Mengurai biaya dari string dengan lebih andal, dari belakang.
+        $parts = explode('-', $validatedData['expedition']);
+        $count = count($parts);
 
-        $shipping_cost = (int) $shipping_cost;
-        $ansuransi_fee = (int) $ansuransi_fee;
-        $cod_fee = (int) $cod_fee;
+        // Mengambil 3 nilai terakhir sebagai biaya, yang posisinya selalu konsisten.
+        $cod_fee       = ($count > 2) ? (int)end($parts) : 0;
+        $ansuransi_fee = ($count > 3) ? (int)$parts[$count - 2] : 0;
+        $shipping_cost = ($count > 4) ? (int)$parts[$count - 3] : 0;
+        
         $cod_value = 0;
 
         $total_paid_ongkir = $shipping_cost;
@@ -435,13 +439,14 @@ class PesananController extends Controller
     
     private function _createKiriminAjaOrder(array $data, Pesanan $pesanan, KiriminAjaService $kirimaja, array $senderData, array $receiverData, int $cod_value): array
     {
-        // PERBAIKAN: Mengurai string 'expedition' secara eksplisit untuk menghindari kesalahan indeks
+        // PERBAIKAN: Mengurai string 'expedition' dengan logika yang sama seperti _calculateTotalPaid
         $expeditionParts = explode('-', $data['expedition']);
+        $count = count($expeditionParts);
+
         $serviceGroup = $expeditionParts[0] ?? null;
-        $courier = $expeditionParts[1] ?? null;
+        $courier      = $expeditionParts[1] ?? null;
         $service_type = $expeditionParts[2] ?? null;
-        // Mengambil ongkos kirim dari indeks ke-4 (posisi ke-5), sesuai dengan logika _calculateTotalPaid
-        $shipping_cost = $expeditionParts[4] ?? 0; 
+        $shipping_cost = ($count > 4) ? (int)$expeditionParts[$count - 3] : 0;
 
         if (in_array($serviceGroup, ['instant', 'sameday'])) { 
             $payload = [
