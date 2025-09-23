@@ -55,6 +55,11 @@
                 </select>
             </div>
             <div id="saldo-display" class="text-sm text-gray-600 h-5"></div>
+            <div>
+                <button type="button" id="lanjutkan-btn" class="w-full text-white bg-indigo-600 hover:bg-indigo-700 font-medium rounded-lg text-sm px-5 py-3 text-center disabled:bg-gray-400" disabled>
+                    Selanjutnya
+                </button>
+            </div>
         </div>
     </div>
 
@@ -312,11 +317,24 @@ document.addEventListener('DOMContentLoaded', function () {
     const saldoDisplay = document.getElementById('saldo-display');
     const namaPelangganDisplay = document.getElementById('nama-pelanggan-display');
     const saldoPelangganDisplay = document.getElementById('saldo-pelanggan-display');
-
+    const lanjutkanBtn = document.getElementById('lanjutkan-btn');
 
     pilihPenggunaAwal.addEventListener('change', function() {
         const selectedOption = this.options[this.selectedIndex];
         const penggunaId = this.value;
+
+        if (penggunaId) {
+            saldoDisplay.textContent = `Saldo Pelanggan: Rp ${selectedOption.dataset.saldo}`;
+            lanjutkanBtn.disabled = false; // Aktifkan tombol
+        } else {
+            saldoDisplay.textContent = '';
+            lanjutkanBtn.disabled = true; // Nonaktifkan tombol
+        }
+    });
+
+    lanjutkanBtn.addEventListener('click', function() {
+        const selectedOption = pilihPenggunaAwal.options[pilihPenggunaAwal.selectedIndex];
+        const penggunaId = pilihPenggunaAwal.value;
 
         if (penggunaId) {
             // Isi data ke form utama
@@ -325,24 +343,16 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('sender_phone').value = selectedOption.dataset.telepon || '';
             document.getElementById('sender_address').value = selectedOption.dataset.alamat || '';
             
-            // Perbarui tampilan saldo di kedua tempat
-            saldoDisplay.textContent = `Saldo Pelanggan: Rp ${selectedOption.dataset.saldo}`;
+            // Perbarui tampilan saldo di info box
             namaPelangganDisplay.textContent = `Pelanggan: ${selectedOption.dataset.nama}`;
             saldoPelangganDisplay.textContent = `Sisa Saldo: Rp ${selectedOption.dataset.saldo}`;
-
 
             // Tampilkan form utama, sembunyikan form awal
             praPesananWrapper.classList.add('hidden');
             formPesananWrapper.classList.remove('hidden');
-        } else {
-            // Jika memilih "-- Pilih --", sembunyikan lagi form utama
-            formPesananWrapper.classList.add('hidden');
-            praPesananWrapper.classList.remove('hidden');
-            saldoDisplay.textContent = '';
-            namaPelangganDisplay.textContent = '';
-            saldoPelangganDisplay.textContent = '';
         }
     });
+
 
     // --- HELPER FUNCTIONS ---
     const debounce = (func, delay) => {
@@ -464,7 +474,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Inisialisasi hanya untuk pencarian alamat penerima sekarang
     setupAddressSearch('sender');
     setupAddressSearch('receiver');
-    setupContactSearch('receiver'); // Pencarian kontak pengirim tidak lagi diperlukan
+    setupContactSearch('receiver');
 
     // --- FUNGSI CEK ONGKIR (TETAP SAMA) ---
     async function runCekOngkir() {
