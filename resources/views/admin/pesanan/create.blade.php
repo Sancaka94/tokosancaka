@@ -186,10 +186,10 @@
                             </div>
                         </div>
 
-                        {{-- Dropdown pelanggan dipindahkan ke sini --}}
-                        <div id="customer-selection-wrapper" class="hidden">
-                            <label for="customer_id" class="block mb-2 text-sm font-medium text-gray-700">Pelanggan (Wajib diisi)</label>
-                            <select id="customer_id" name="customer_id" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5">
+                        {{-- Dropdown pelanggan --}}
+                        <div id="pengguna-selection-wrapper" class="hidden">
+                            <label for="id_pengguna" class="block mb-2 text-sm font-medium text-gray-700">Pelanggan (Wajib diisi)</label>
+                            <select id="id_pengguna" name="id_pengguna" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5">
                                 <option value="">-- Pilih Pelanggan --</option>
                                 @foreach($customers as $customer)
                                     <option value="{{ $customer->id }}"
@@ -543,7 +543,7 @@ document.addEventListener('DOMContentLoaded', function () {
     setupAddressSearch('sender');
     setupAddressSearch('receiver');
 
-    document.getElementById('customer_id').addEventListener('change', function() {
+    document.getElementById('id_pengguna').addEventListener('change', function() {
         const selectedOption = this.options[this.selectedIndex];
         const senderNameInput = document.getElementById('sender_name');
         const senderPhoneInput = document.getElementById('sender_phone');
@@ -588,8 +588,8 @@ document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.payment-option').forEach(item => {
         item.addEventListener('click', function() {
             const paymentValue = this.dataset.value;
-            const customerSelect = document.getElementById('customer_id');
-            const customerSelectionWrapper = document.getElementById('customer-selection-wrapper');
+            const penggunaSelect = document.getElementById('id_pengguna');
+            const penggunaSelectionWrapper = document.getElementById('pengguna-selection-wrapper');
 
             document.getElementById('payment_method').value = paymentValue;
             document.getElementById('selectedPaymentName').textContent = this.dataset.label;
@@ -600,12 +600,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // Logika untuk menampilkan/menyembunyikan dan mewajibkan pilihan pelanggan
             if (paymentValue === 'Potong Saldo') {
-                customerSelectionWrapper.classList.remove('hidden');
-                customerSelect.setAttribute('required', 'required');
+                penggunaSelectionWrapper.classList.remove('hidden');
+                penggunaSelect.setAttribute('required', 'required');
             } else {
-                customerSelectionWrapper.classList.add('hidden');
-                customerSelect.removeAttribute('required');
-                customerSelect.value = ''; // Reset pilihan jika metode lain dipilih
+                penggunaSelectionWrapper.classList.add('hidden');
+                penggunaSelect.removeAttribute('required');
+                penggunaSelect.value = ''; // Reset pilihan jika metode lain dipilih
             }
             paymentModalEl.classList.add('hidden');
         });
@@ -634,11 +634,15 @@ document.addEventListener('DOMContentLoaded', function () {
         e.preventDefault();
         const form = document.getElementById('orderForm');
         const paymentMethod = document.getElementById('payment_method').value;
-        const customerId = document.getElementById('customer_id').value;
+        const penggunaId = document.getElementById('id_pengguna').value;
         const expedition = document.getElementById('expedition').value;
 
-        // 1. Validasi khusus untuk Potong Saldo (ini yang memunculkan alert Anda)
-        if (paymentMethod === 'Potong Saldo' && !customerId) {
+        // --- UNTUK DEBUGGING ---
+        console.log('Metode Pembayaran yang terbaca:', paymentMethod);
+        console.log('ID Pengguna yang terbaca:', `'${penggunaId}'`); // Diberi kutip agar string kosong terlihat jelas
+        
+        // 1. Validasi khusus untuk Potong Saldo
+        if (paymentMethod === 'Potong Saldo' && !penggunaId) {
             Swal.fire('Peringatan', 'Anda harus memilih pelanggan jika menggunakan metode Potong Saldo.', 'warning');
             return; // Berhenti jika tidak valid
         }
