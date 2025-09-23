@@ -694,6 +694,46 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 });
+
+document.addEventListener('DOMContentLoaded', function () {
+    const paymentOptions = document.querySelectorAll('.payment-option');
+    const paymentMethodInput = document.getElementById('payment_method');
+    const customerWrapper = document.getElementById('customer-selection-wrapper');
+    const customerSelect = document.getElementById('customer_id');
+
+    paymentOptions.forEach(option => {
+        option.addEventListener('click', () => {
+            const value = option.dataset.value;
+            const label = option.dataset.label;
+
+            paymentMethodInput.value = value;
+            document.getElementById('selectedPaymentName').innerText = label;
+            document.getElementById('selectedPaymentLogo').src = option.querySelector('img').src;
+
+            if (value === 'Potong Saldo') {
+                customerWrapper.classList.remove('hidden');
+                customerSelect.setAttribute('required', 'required');
+            } else {
+                customerWrapper.classList.add('hidden');
+                customerSelect.removeAttribute('required');
+                customerSelect.value = '';
+            }
+
+            document.getElementById('paymentMethodModal').classList.add('hidden');
+        });
+    });
+
+    // Konfirmasi sebelum submit
+    document.getElementById('confirmBtn').addEventListener('click', function () {
+        const paymentMethod = paymentMethodInput.value;
+        if (paymentMethod === 'Potong Saldo' && !customerSelect.value) {
+            Swal.fire('Pilih Pelanggan!', 'Anda harus memilih pelanggan untuk Potong Saldo.', 'warning');
+            return;
+        }
+        document.getElementById('orderForm').submit();
+    });
+});
+
 </script>
 @endpush
 
