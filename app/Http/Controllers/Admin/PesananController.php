@@ -90,21 +90,21 @@ class PesananController extends Controller
             $pesananData = $this->_preparePesananData($validatedData, $total_paid_ongkir, $request->ip(), $request->userAgent());
             $pesanan = Pesanan::create($pesananData);
 
-            // 5. Proses logika pembayaran spesifik
+           // 5. Proses logika pembayaran spesifik (disesuaikan untuk Customer)
 if ($validatedData['payment_method'] === 'Potong Saldo') {
-    $pengguna = User::findOrFail($validatedData['id_pengguna']);
+    // Mengambil data pengguna yang sedang login saat ini
+    $customer = Auth::user(); 
     
-    if ($pengguna->saldo < $total_paid_ongkir) {
-        throw new Exception('Saldo pengguna tidak mencukupi untuk melakukan transaksi ini.');
+    // Memeriksa apakah saldo pengguna mencukupi untuk membayar ongkos kirim
+    if ($customer->saldo < $total_paid_ongkir) {
+        throw new Exception('Saldo Anda tidak mencukupi untuk melakukan transaksi ini.');
     }
     
-    // Potong saldo
-    $pengguna->decrement('saldo', $total_paid_ongkir);
+    // INI BAGIAN UTAMANYA: Memotong saldo pengguna dari database
+    $customer->decrement('saldo', $total_paid_ongkir);
 
-    // Tandai di pesanan (opsional kalau ingin simpan siapa yang bayar)
-    $pesanan->id_pengguna = $pengguna->id;
-    $pesanan->sender_name = $pengguna->nama_lengkap;
-    $validatedData['sender_name'] = $pengguna->nama_lengkap;
+    // Menandai pesanan ini sebagai milik pengguna yang saldonya dipotong
+    $pesanan->customer_id = $customer->id;
 }
 
             
@@ -325,7 +325,8 @@ if ($validatedData['payment_method'] === 'Potong Saldo') {
             'height' => 'nullable|numeric|min:0', 'item_type' => 'required|integer', 'save_sender' => 'nullable', 'save_receiver' => 'nullable',
             'sender_district_id' => 'required|integer', 'sender_subdistrict_id' => 'required|integer',
             'receiver_district_id' => 'required|integer', 'receiver_subdistrict_id' => 'required|integer',
-            'id_pengguna' => 'required_if:payment_method,Potong Saldo|nullable|exists:users,id',
+            'customer_id' => 'required_if:payment_method,Potong Saldo|nullable|exists:users,id',
+
         ]);
     }
     
