@@ -34,6 +34,9 @@
 @endpush
 
 @section('content')
+
+@include('layouts.partials.notifications')
+
 <div class="max-w-7xl mx-auto">
     <form id="orderForm" action="{{ route('customer.pesanan.store') }}" method="POST">
         @csrf
