@@ -370,7 +370,7 @@ class PesananController extends Controller
 
     private function _calculateTotalPaid(array $validatedData): array
     {
-        list(,,,, $shipping_cost, $ansuransi_fee, $cod_fee) = array_pad(explode('-', $validatedData['expedition']), 6, 0);
+        list(,,,, $shipping_cost, $ansuransi_fee, $cod_fee) = array_pad(explode('-', $validatedData['expedition']), 7, 0);
 
         $shipping_cost = (int) $shipping_cost;
         $ansuransi_fee = (int) $ansuransi_fee;
