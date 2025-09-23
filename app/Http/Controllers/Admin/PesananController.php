@@ -92,20 +92,19 @@ class PesananController extends Controller
 
            // 5. Proses logika pembayaran spesifik (disesuaikan untuk Customer)
 if ($validatedData['payment_method'] === 'Potong Saldo') {
-    // Mengambil data pengguna yang sedang login saat ini
-    $customer = Auth::user(); 
-    
-    // Memeriksa apakah saldo pengguna mencukupi untuk membayar ongkos kirim
-    if ($customer->saldo < $total_paid_ongkir) {
-        throw new Exception('Saldo Anda tidak mencukupi untuk melakukan transaksi ini.');
+    $customer = User::find($validatedData['customer_id']); // gunakan ID dari form
+    if (!$customer) {
+        throw new Exception('Pelanggan tidak ditemukan.');
     }
-    
-    // INI BAGIAN UTAMANYA: Memotong saldo pengguna dari database
-    $customer->decrement('saldo', $total_paid_ongkir);
 
-    // Menandai pesanan ini sebagai milik pengguna yang saldonya dipotong
+    if ($customer->saldo < $total_paid_ongkir) {
+        throw new Exception('Saldo pelanggan tidak mencukupi.');
+    }
+
+    $customer->decrement('saldo', $total_paid_ongkir);
     $pesanan->customer_id = $customer->id;
 }
+
 
             
             // 6. Proses pembuatan order ke API Ekspedisi atau Payment Gateway

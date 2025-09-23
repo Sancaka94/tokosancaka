@@ -187,20 +187,18 @@
                         </div>
 
                         {{-- PERBAIKAN: Dropdown pelanggan dipindahkan ke sini --}}
-                        <div id="customer-selection-wrapper" class="hidden">
-                            <label for="customer_id" class="block mb-2 text-sm font-medium text-gray-700">Pelanggan (Wajib diisi)</label>
-                            <select id="customer_id" name="customer_id" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5">
+                        <div id="customer-selection-wrapper" class="@if(old('payment_method') !== 'Potong Saldo') d-none @endif">
+                            <label for="customer_id" class="form-label">Pilih Pelanggan</label>
+                                <select id="customer_id" name="customer_id" class="form-select">
                                 <option value="">-- Pilih Pelanggan --</option>
-                                @foreach($customers as $customer)
-                                    <option value="{{ $customer->id }}"
-                                            data-nama="{{ $customer->nama_lengkap }}"
-                                            data-telepon="{{ $customer->no_hp ?? '' }}"
-                                            data-alamat="{{ $customer->alamat ?? '' }}">
-                                        {{ $customer->nama_lengkap }} (Saldo: Rp {{ number_format($customer->saldo ?? 0) }})
-                                    </option>
-                                @endforeach
-                            </select>
+        @foreach($customers as $c)
+            <option value="{{ $c->id }}" @selected(old('customer_id') == $c->id)>
+                {{ $c->nama_lengkap }} (Saldo: Rp{{ number_format($c->saldo,0,',','.') }})
+            </option>
+        @endforeach
+                                </select>
                         </div>
+
 
                         <div class="pt-4">
                             <button type="button" id="confirmBtn" class="w-full text-white bg-indigo-600 hover:bg-indigo-700 font-medium rounded-lg text-sm px-5 py-3 text-center">
