@@ -47,21 +47,6 @@
                         </h3>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {{-- PERBAIKAN: Wrapper untuk dropdown pelanggan kini disembunyikan secara default --}}
-                        <div id="customer-selection-wrapper" class="md:col-span-2 hidden">
-                            <label for="customer_id" class="block mb-2 text-sm font-medium text-gray-700">Pelanggan (Wajib diisi untuk Potong Saldo)</label>
-                            <select id="customer_id" name="customer_id" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5">
-                                <option value="">-- Pilih Pelanggan --</option>
-                                @foreach($customers as $customer)
-                                    <option value="{{ $customer->id }}"
-                                            data-nama="{{ $customer->nama_lengkap }}"
-                                            data-telepon="{{ $customer->no_hp ?? '' }}"
-                                            data-alamat="{{ $customer->alamat ?? '' }}">
-                                        {{ $customer->nama_lengkap }} (Saldo: Rp {{ number_format($customer->saldo ?? 0) }})
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
                         <div class="relative">
                             <label for="sender_name" class="block mb-2 text-sm font-medium text-gray-700">Nama Pengirim</label>
                             <input type="text" id="sender_name" name="sender_name" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required autocomplete="off">
@@ -152,30 +137,28 @@
                         </div>
                          <div>
                             <label for="item_type" class="block mb-2 text-sm font-medium text-gray-700">Jenis Barang</label>
-
-<select name="item_type" id="item_type"
-    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5"
-    required>
-    <option value="" disabled selected>Pilih...</option>
-    <option value="1">Elektronik</option>
-    <option value="2">Pakaian</option>
-    <option value="3">Pecah Belah</option>
-    <option value="4">Dokumen</option>
-    <option value="5">Peralatan Rumah Tangga</option>
-    <option value="6">Aksesoris</option>
-    <option value="7">Kosmetik & Perawatan</option>
-    <option value="8">Makanan / Minuman</option>
-    <option value="9">Buku & Alat Tulis</option>
-    <option value="10">Mainan / Hobi</option>
-    <option value="11">Obat-obatan / Suplemen</option>
-    <option value="12">Sparepart / Komponen</option>
-    <option value="13">Alat Olahraga</option>
-    <option value="14">Alat Musik</option>
-    <option value="15">Perhiasan / Jam Tangan</option>
-    <option value="16">Alat Kesehatan</option>
-    <option value="17">Lainnya</option>
-</select>
-
+                            <select name="item_type" id="item_type"
+                                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5"
+                                required>
+                                <option value="" disabled selected>Pilih...</option>
+                                <option value="1">Elektronik</option>
+                                <option value="2">Pakaian</option>
+                                <option value="3">Pecah Belah</option>
+                                <option value="4">Dokumen</option>
+                                <option value="5">Peralatan Rumah Tangga</option>
+                                <option value="6">Aksesoris</option>
+                                <option value="7">Kosmetik & Perawatan</option>
+                                <option value="8">Makanan / Minuman</option>
+                                <option value="9">Buku & Alat Tulis</option>
+                                <option value="10">Mainan / Hobi</option>
+                                <option value="11">Obat-obatan / Suplemen</option>
+                                <option value="12">Sparepart / Komponen</option>
+                                <option value="13">Alat Olahraga</option>
+                                <option value="14">Alat Musik</option>
+                                <option value="15">Perhiasan / Jam Tangan</option>
+                                <option value="16">Alat Kesehatan</option>
+                                <option value="17">Lainnya</option>
+                            </select>
                         </div>
                         <div>
                             <label for="service_type" class="block mb-2 text-sm font-medium text-gray-700">Jenis Layanan</label>
@@ -202,6 +185,23 @@
                                 <div class="flex items-center"><img id="selectedPaymentLogo" src="https://cdn-icons-png.flaticon.com/512/2331/2331941.png" alt="Logo" class="w-6 h-6 mr-2"><span id="selectedPaymentName">Pilih...</span></div><i class="fas fa-chevron-down text-gray-400"></i>
                             </div>
                         </div>
+
+                        {{-- PERBAIKAN: Dropdown pelanggan dipindahkan ke sini --}}
+                        <div id="customer-selection-wrapper" class="hidden">
+                            <label for="customer_id" class="block mb-2 text-sm font-medium text-gray-700">Pelanggan (Wajib diisi)</label>
+                            <select id="customer_id" name="customer_id" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5">
+                                <option value="">-- Pilih Pelanggan --</option>
+                                @foreach($customers as $customer)
+                                    <option value="{{ $customer->id }}"
+                                            data-nama="{{ $customer->nama_lengkap }}"
+                                            data-telepon="{{ $customer->no_hp ?? '' }}"
+                                            data-alamat="{{ $customer->alamat ?? '' }}">
+                                        {{ $customer->nama_lengkap }} (Saldo: Rp {{ number_format($customer->saldo ?? 0) }})
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
                         <div class="pt-4">
                             <button type="button" id="confirmBtn" class="w-full text-white bg-indigo-600 hover:bg-indigo-700 font-medium rounded-lg text-sm px-5 py-3 text-center">
                                 Buat Pesanan
