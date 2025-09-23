@@ -111,6 +111,8 @@
 
 @section('content')
 {{-- Gunakan class 'main-content-padding' untuk memberi ruang dari header --}}
+@include('layouts.partials.notifications')
+
 <div class="container main-content-padding">
     <div class="row justify-content-center">
         <div class="col-lg-8 col-md-10">
