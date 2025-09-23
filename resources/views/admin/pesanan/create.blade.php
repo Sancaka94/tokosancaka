@@ -49,6 +49,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div class="md:col-span-2">
                             <label for="customer_id" class="block mb-2 text-sm font-medium text-gray-700">Pelanggan (Jika Potong Saldo)</label>
+                            {{-- PERUBAHAN: name diubah ke customer_id dan ditambahkan data-* attributes --}}
                             <select id="customer_id" name="customer_id" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5">
                                 <option value="">-- Umum / Tanpa Potong Saldo --</option>
                                 @foreach($customers as $customer)
@@ -82,9 +83,9 @@
                             <label for="sender_address" class="block mb-2 text-sm font-medium text-gray-700">Detail Alamat Lengkap Pengirim</label>
                             <textarea id="sender_address" name="sender_address" rows="3" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" placeholder="Contoh: Jl. Pahlawan No. 12, RT 01/RW 05, (Patokan: Sebelah Kantor Pos)" required></textarea>
                         </div>
-                          <div class="md:col-span-2">
-                                <label class="flex items-center text-sm text-gray-600"><input type="checkbox" name="save_sender" value="1" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-2"> Simpan data pengirim ini</label>
-                          </div>
+                         <div class="md:col-span-2">
+                              <label class="flex items-center text-sm text-gray-600"><input type="checkbox" name="save_sender" value="1" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-2"> Simpan data pengirim ini</label>
+                         </div>
                     </div>
                 </div>
 
@@ -476,7 +477,7 @@ document.addEventListener('DOMContentLoaded', function () {
     setupAddressSearch('sender');
     setupAddressSearch('receiver');
 
-    // --- Event listener untuk dropdown pelanggan ---
+    // --- PERUBAHAN BARU: EVENT LISTENER UNTUK DROPDOWN PELANGGAN ---
     document.getElementById('customer_id').addEventListener('change', function() {
         const selectedOption = this.options[this.selectedIndex];
         const senderNameInput = document.getElementById('sender_name');
@@ -587,23 +588,25 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.querySelectorAll('.payment-option').forEach(item => {
         item.addEventListener('click', function() {
-            const paymentValue = this.dataset.value;
-            const customerSelect = document.getElementById('customer_id');
-
-            document.getElementById('payment_method').value = paymentValue;
+            document.getElementById('payment_method').value = this.dataset.value;
             document.getElementById('selectedPaymentName').textContent = this.dataset.label;
             document.getElementById('selectedPaymentLogo').src = this.querySelector('img').src;
             
             document.querySelectorAll('.payment-option').forEach(opt => opt.classList.remove('bg-indigo-50'));
             this.classList.add('bg-indigo-50');
-            
-            // PERBAIKAN: Menambahkan logika validasi dinamis untuk Potong Saldo
-            if (paymentValue === 'Potong Saldo') {
-                customerSelect.setAttribute('required', 'required');
-            } else {
-                customerSelect.removeAttribute('required');
-            }
 
+             // --- PERBAIKAN DITAMBAHKAN DI SINI ---
+        const paymentValue = this.dataset.value;
+        const customerSelect = document.getElementById('customer_id');
+
+        if (paymentValue === 'Potong Saldo') {
+            // Jika memilih 'Potong Saldo', buat dropdown pelanggan menjadi WAJIB
+            customerSelect.setAttribute('required', 'required');
+        } else {
+            // Jika memilih metode lain, hapus status WAJIB
+            customerSelect.removeAttribute('required');
+        }
+            
             paymentModalEl.classList.add('hidden');
         });
     });
@@ -618,9 +621,9 @@ document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('input, select, textarea').forEach(el => {
         if(el.type !== 'hidden' && !el.classList.contains('select-ongkir-btn')){
              el.addEventListener('change', () => {
-                  document.getElementById('expedition').value = '';
-                  document.getElementById('selected_expedition_display').value = '';
-                  document.getElementById('selected_expedition_display').placeholder = 'Data berubah, klik untuk cek ulang';
+                 document.getElementById('expedition').value = '';
+                 document.getElementById('selected_expedition_display').value = '';
+                 document.getElementById('selected_expedition_display').placeholder = 'Data berubah, klik untuk cek ulang';
              });
         }
     });
@@ -630,13 +633,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const form = document.getElementById('orderForm');
         const expedition = document.getElementById('expedition').value;
         const paymentMethod = document.getElementById('payment_method').value;
-        const customerId = document.getElementById('customer_id').value;
-
-        // PERBAIKAN: Menambahkan pengecekan eksplisit untuk Potong Saldo
-        if (paymentMethod === 'Potong Saldo' && !customerId) {
-            Swal.fire('Peringatan', 'Anda harus memilih pelanggan jika menggunakan metode Potong Saldo.', 'warning');
-            return; 
-        }
 
         if (!form.checkValidity() || !expedition || !paymentMethod) {
             form.reportValidity();
