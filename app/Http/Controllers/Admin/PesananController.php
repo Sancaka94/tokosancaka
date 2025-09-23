@@ -15,6 +15,10 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Exception;
+use App\Exports\PesanansExport;
+use Maatwebsite\Excel\Facades\Excel;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 
 class PesananController extends Controller
 {
@@ -203,6 +207,96 @@ class PesananController extends Controller
         $order = Pesanan::where('resi', $resi)->firstOrFail();
         $order->delete();
         return redirect()->route('admin.pesanan.index')->with('success', 'Pesanan ' . $resi . ' berhasil dihapus.');
+    }
+
+    public function showScanForm($resi)
+    {
+        $pesanan = Pesanan::where('resi', $resi)->firstOrFail();
+        return view('admin.pesanan.scan-aktual', compact('pesanan'));
+    }
+
+    /**
+     * Memperbarui resi aktual dan status pesanan.
+     */
+    public function updateResiAktual(Request $request, $resi)
+    {
+        $request->validate([
+            'jasa_ekspedisi_aktual' => 'required|string',
+            'resi_aktual' => 'required|string',
+            'total_ongkir' => 'nullable|numeric|min:0',
+        ]);
+
+        $pesanan = Pesanan::where('resi', $resi)->firstOrFail();
+
+        $pesanan->jasa_ekspedisi_aktual = $request->input('jasa_ekspedisi_aktual');
+        $pesanan->resi_aktual = $request->input('resi_aktual');
+        $pesanan->total_ongkir = $request->input('total_ongkir');
+        $pesanan->status = 'Diproses';
+        $pesanan->status_pesanan = 'Diproses';
+
+        $pesanan->save();
+
+        return redirect()->route('admin.pesanan.index')->with('success', 'Resi aktual dan ongkir berhasil diperbarui!');
+    }
+
+    public function riwayatScan(Request $request)
+    {
+        $query = Pesanan::whereNotNull('resi_aktual');
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function($q) use ($search) {
+                $q->where('resi', 'like', "%{$search}%")->orWhere('resi_aktual', 'like', "%{$search}%");
+            });
+        }
+        if ($request->filled('range')) {
+            switch ($request->input('range')) {
+                case 'harian': $query->whereDate('updated_at', Carbon::today()); break;
+                case 'mingguan': $query->whereBetween('updated_at', [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()]); break;
+                case 'bulanan': $query->whereMonth('updated_at', Carbon::now()->month)->whereYear('updated_at', Carbon::now()->year); break;
+            }
+        }
+        $perPage = $request->input('per_page', 10);
+        $scannedOrders = $query->latest('updated_at')->paginate($perPage);
+        $scannedOrders->appends($request->all());
+        return view('admin.pesanan.riwayat-scan', compact('scannedOrders'));
+    }
+
+    public function updateStatus(Request $request, $resi)
+    {
+        $request->validate(['status' => 'required|string|in:Terkirim,Batal']);
+        $pesanan = Pesanan::where('resi', $resi)->firstOrFail();
+        $pesanan->update([
+            'status' => $request->status,
+            'status_pesanan' => $request->status,
+        ]);
+        return redirect()->back()->with('success', 'Status pesanan ' . $resi . ' berhasil diubah menjadi "' . $request->status . '".');
+    }
+
+    public function exportExcel() 
+    {
+        return Excel::download(new PesanansExport(Pesanan::all()), 'semua-pesanan.xlsx');
+    }
+
+    public function exportPdf() 
+    {
+        $orders = Pesanan::all();
+        $pdf = PDF::loadView('admin.pesanan.pdf', ['orders' => $orders]);
+        return $pdf->download('semua-pesanan.pdf');
+    }
+
+    public function exportExcelRiwayat(Request $request) 
+    {
+        $query = Pesanan::whereNotNull('resi_aktual');
+        $pesanansToExport = $query->get();
+        return Excel::download(new PesanansExport($pesanansToExport), 'riwayat-scan.xlsx');
+    }
+
+    public function exportPdfRiwayat(Request $request) 
+    {
+        $query = Pesanan::whereNotNull('resi_aktual');
+        $orders = $query->get();
+        $pdf = PDF::loadView('admin.pesanan.pdf', ['orders' => $orders]);
+        return $pdf->download('riwayat-scan.pdf');
     }
 
     public function searchAddressApi(Request $request, KiriminAjaService $kirimaja)
