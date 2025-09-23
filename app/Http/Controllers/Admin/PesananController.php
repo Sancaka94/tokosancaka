@@ -416,7 +416,8 @@ class PesananController extends Controller
                 'destination_zipcode' => $receiverData['kirimaja_data']['postal_code'],
                 'weight' => $data['weight'], 'width' => $data['width'] ?? 1, 'height' => $data['height'] ?? 1, 'length' => $data['length'] ?? 1,
                 'item_value' => (int)$data['item_price'], 'service' => $courier, 'service_type' => $service_type,
-                'insurance_amount' => ($data['ansuransi'] == 'iya') ? (int)$data['item_price'] : 0, 'cod' => $cod_value
+                'insurance_amount' => ($data['ansuransi'] == 'iya') ? (int)$data['item_price'] : 0, 'cod' => $cod_value,
+                'shipping_cost' => $shipping_cost
             ]]
         ];
 
