@@ -20,9 +20,11 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 use App\Http\Controllers\Api\KontakController;
 
+use App\Http\Controllers\KontakController;
 
 
-class ApiKontakController extends Controller
+
+class KontakController extends Controller
 
 {
 
