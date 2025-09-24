@@ -69,7 +69,7 @@ class PesananController extends Controller
      */
     public function store(Request $request, KiriminAjaService $kirimaja)
     {
-         dd($request->all()); // cek data dari form
+         
 
         
         try {
