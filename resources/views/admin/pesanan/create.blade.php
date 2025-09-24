@@ -199,9 +199,10 @@
                             <select id="customer_id" name="customer_id" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5">
                                 <option value="">-- Pilih Pelanggan --</option>
                                 @foreach($customers as $customer)
-                                    <option value="{{ $customer->id }}">
+                                    <option value="{{ $customer->id_pengguna }}">
                                         {{ $customer->nama_lengkap }} (Saldo: Rp {{ number_format($customer->saldo ?? 0) }})
                                     </option>
+
                                 @endforeach
                             </select>
                         </div>
