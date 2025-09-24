@@ -58,10 +58,7 @@
                             <select id="customer_id" name="customer_id" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5">
                                 <option value="">-- Pilih Pelanggan --</option>
                                 @foreach($customers as $customer)
-                                    <option value="{{ $customer->id }}"
-                                            data-nama="{{ $customer->nama_lengkap }}"
-                                            data-telepon="{{ $customer->no_hp ?? '' }}"
-                                            data-alamat="{{ $customer->alamat ?? '' }}">
+                                    <option value="{{ $customer->id }}">
                                         {{ $customer->nama_lengkap }} (Saldo: Rp {{ number_format($customer->saldo ?? 0) }})
                                     </option>
                                 @endforeach
@@ -264,20 +261,20 @@
                 {{-- Opsi Potong Saldo khusus Admin --}}
                 <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="Potong Saldo" data-label="Potong Saldo"><img src="https://cdn-icons-png.flaticon.com/512/1086/1086060.png" class="w-8 h-8 mr-4">Potong Saldo</li>
 
-                {{-- Opsi dari KiriminAja --}}
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50 cod-payment-option" data-value="COD" data-label="COD Ongkir"><img src="{{ asset('public/assets/cod.png') }}" class="w-8 h-8 mr-4">COD Ongkir</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50 cod-payment-option" data-value="CODBARANG" data-label="COD Barang + Ongkir"><img src="{{ asset('public/assets/cod.png') }}" class="w-8 h-8 mr-4">COD Barang + Ongkir</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="PERMATAVA" data-label="Permata VA"><img src="{{ asset('public/assets/permata.webp') }}" class="w-8 h-8 mr-4">Permata VA</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="BNIVA" data-label="BNI VA"><img src="{{ asset('public/assets/bni.webp') }}" class="w-8 h-8 mr-4">BNI VA</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="BRIVA" data-label="BRI VA"><img src="{{ asset('public/assets/bri.webp') }}" class="w-8 h-8 mr-4">BRI VA</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="MANDIRIVA" data-label="Mandiri VA"><img src="{{ asset('public/assets/mandiri.webp') }}" class="w-8 h-8 mr-4">Mandiri VA</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="BCAVA" data-label="BCA VA"><img src="{{ asset('public/assets/bca.webp') }}" class="w-8 h-8 mr-4">BCA VA</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="ALFAMART" data-label="Alfamart"><img src="{{ asset('public/assets/alfamart.webp') }}" class="w-8 h-8 mr-4">Alfamart</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="INDOMARET" data-label="Indomaret"><img src="{{ asset('public/assets/indomaret.webp') }}" class="w-8 h-8 mr-4">Indomaret</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="OVO" data-label="OVO"><img src="{{ asset('public/assets/ovo.webp') }}" class="w-8 h-8 mr-4">OVO</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="DANA" data-label="DANA"><img src="{{ asset('public/assets/dana.webp') }}" class="w-8 h-8 mr-4">DANA</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="SHOPEEPAY" data-label="ShopeePay"><img src="{{ asset('public/assets/shopeepay.webp') }}" class="w-8 h-8 mr-4">ShopeePay</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="QRIS" data-label="QRIS"><img src="{{ asset('public/assets/qris2.png') }}" class="w-8 h-8 mr-4">QRIS</li>
+                {{-- PERBAIKAN PATH GAMBAR: Menggunakan asset('storage/...') --}}
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50 cod-payment-option" data-value="COD" data-label="COD Ongkir"><img src="{{ asset('storage/payments/cod.png') }}" class="w-8 h-8 mr-4">COD Ongkir</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50 cod-payment-option" data-value="CODBARANG" data-label="COD Barang + Ongkir"><img src="{{ asset('storage/payments/cod.png') }}" class="w-8 h-8 mr-4">COD Barang + Ongkir</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="PERMATAVA" data-label="Permata VA"><img src="{{ asset('storage/payments/permata.webp') }}" class="w-8 h-8 mr-4">Permata VA</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="BNIVA" data-label="BNI VA"><img src="{{ asset('storage/payments/bni.webp') }}" class="w-8 h-8 mr-4">BNI VA</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="BRIVA" data-label="BRI VA"><img src="{{ asset('storage/payments/bri.webp') }}" class="w-8 h-8 mr-4">BRI VA</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="MANDIRIVA" data-label="Mandiri VA"><img src="{{ asset('storage/payments/mandiri.webp') }}" class="w-8 h-8 mr-4">Mandiri VA</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="BCAVA" data-label="BCA VA"><img src="{{ asset('storage/payments/bca.webp') }}" class="w-8 h-8 mr-4">BCA VA</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="ALFAMART" data-label="Alfamart"><img src="{{ asset('storage/payments/alfamart.webp') }}" class="w-8 h-8 mr-4">Alfamart</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="INDOMARET" data-label="Indomaret"><img src="{{ asset('storage/payments/indomaret.webp') }}" class="w-8 h-8 mr-4">Indomaret</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="OVO" data-label="OVO"><img src="{{ asset('storage/payments/ovo.webp') }}" class="w-8 h-8 mr-4">OVO</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="DANA" data-label="DANA"><img src="{{ asset('storage/payments/dana.webp') }}" class="w-8 h-8 mr-4">DANA</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="SHOPEEPAY" data-label="ShopeePay"><img src="{{ asset('storage/payments/shopeepay.webp') }}" class="w-8 h-8 mr-4">ShopeePay</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="QRIS" data-label="QRIS"><img src="{{ asset('storage/payments/qris2.png') }}" class="w-8 h-8 mr-4">QRIS</li>
             </ul>
         </div>
          <div class="p-4 border-t text-right">
@@ -308,46 +305,15 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function checkFormValidity() {
-    // 1. Memberi judul agar mudah ditemukan di console
-    console.log('%c--- Memeriksa Validitas Form ---', 'color: orange; font-weight: bold;');
-    
-    const form = document.getElementById('orderForm');
-    const paymentMethod = document.getElementById('payment_method').value;
-    const customerId = document.getElementById('customer_id').value;
-    const expedition = document.getElementById('expedition').value;
-
-    // 2. Memeriksa validitas dasar dari HTML (apakah field 'required' sudah diisi)
-    let isFormValid = form.checkValidity();
-    console.log(`- Validitas Bawaan HTML5 (form.checkValidity()): ${isFormValid}`);
-
-    // 3. Memeriksa apakah Ekspedisi sudah dipilih
-    if (!expedition) {
-        console.log('- Kondisi Gagal: Ekspedisi belum dipilih.');
-        isFormValid = false;
-    } else {
-        console.log(`- Kondisi Lolos: Ekspedisi sudah dipilih.`);
+        const form = document.getElementById('orderForm');
+        const paymentMethod = document.getElementById('payment_method').value;
+        const customerId = document.getElementById('customer_id').value;
+        const expedition = document.getElementById('expedition').value;
+        let isFormValid = form.checkValidity();
+        if (!expedition || !paymentMethod) isFormValid = false;
+        if (paymentMethod === 'Potong Saldo' && !customerId) isFormValid = false;
+        confirmBtn.disabled = !isFormValid;
     }
-
-    // 4. Memeriksa apakah Metode Pembayaran sudah dipilih
-    if (!paymentMethod) {
-        console.log('- Kondisi Gagal: Metode Pembayaran belum dipilih.');
-        isFormValid = false;
-    } else {
-         console.log(`- Kondisi Lolos: Metode Pembayaran sudah dipilih.`);
-    }
-
-    // 5. Pengecekan khusus untuk "Potong Saldo"
-    if (paymentMethod === 'Potong Saldo' && !customerId) {
-        console.log("- Kondisi Gagal: 'Potong Saldo' dipilih tapi Pelanggan kosong.");
-        isFormValid = false;
-    } else {
-        console.log('- Kondisi Lolos: Validasi Pelanggan untuk Potong Saldo.');
-    }
-
-    // 6. Memberi kesimpulan akhir
-    console.log(`%cHasil Akhir: Tombol akan ${isFormValid ? 'DIAKTIFKAN' : 'DINONAKTIFKAN'}`, `font-weight: bold; color: ${isFormValid ? 'green' : 'red'};`);
-    confirmBtn.disabled = !isFormValid;
-}
 
     // --- FUNGSI PENCARIAN KONTAK DARI DATABASE ---
     function setupContactSearch(prefix) {
@@ -476,21 +442,11 @@ document.addEventListener('DOMContentLoaded', function () {
     setupAddressSearch('sender');
     setupAddressSearch('receiver');
 
-    // --- Event listener untuk dropdown pelanggan ---
+    // --- REVISI FINAL: Event listener untuk dropdown pelanggan ---
     document.getElementById('customer_id').addEventListener('change', function() {
-        const selectedOption = this.options[this.selectedIndex];
-        const senderNameInput = document.getElementById('sender_name');
-        const senderPhoneInput = document.getElementById('sender_phone');
-        const senderAddressInput = document.getElementById('sender_address');
-        if (this.value) {
-            senderNameInput.value = selectedOption.getAttribute('data-nama') || '';
-            senderPhoneInput.value = selectedOption.getAttribute('data-telepon') || '';
-            senderAddressInput.value = selectedOption.getAttribute('data-alamat') || '';
-        } else {
-            senderNameInput.value = '';
-            senderPhoneInput.value = '';
-            senderAddressInput.value = '';
-        }
+        // Hapus semua logika auto-fill. Fungsi dropdown ini sekarang HANYA untuk memilih pelanggan.
+        // Interaksi yang kompleks menyebabkan bug di mana nilainya ter-reset.
+        // Dengan menyederhanakannya, bug ini dapat dihindari.
         checkFormValidity();
     });
 
@@ -593,7 +549,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 customerContainer.style.display = 'none';
                 customerSelect.removeAttribute('required');
                 customerSelect.value = '';
-                customerSelect.dispatchEvent(new Event('change')); 
+                // Hapus dispatchEvent karena event listener customer_id sudah disederhanakan
             }
             paymentModalEl.classList.add('hidden');
             checkFormValidity();
@@ -626,7 +582,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const customerSelect = document.getElementById('customer_id');
         const expedition = document.getElementById('expedition').value;
 
-        // PERBAIKAN FINAL: Validasi yang lebih jelas dan menyorot field error
         if (paymentMethod === 'Potong Saldo' && !customerId) {
             Swal.fire({
                 icon: 'error',
