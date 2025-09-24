@@ -308,15 +308,46 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function checkFormValidity() {
-        const form = document.getElementById('orderForm');
-        const paymentMethod = document.getElementById('payment_method').value;
-        const customerId = document.getElementById('customer_id').value;
-        const expedition = document.getElementById('expedition').value;
-        let isFormValid = form.checkValidity();
-        if (!expedition || !paymentMethod) isFormValid = false;
-        if (paymentMethod === 'Potong Saldo' && !customerId) isFormValid = false;
-        confirmBtn.disabled = !isFormValid;
+    // 1. Memberi judul agar mudah ditemukan di console
+    console.log('%c--- Memeriksa Validitas Form ---', 'color: orange; font-weight: bold;');
+    
+    const form = document.getElementById('orderForm');
+    const paymentMethod = document.getElementById('payment_method').value;
+    const customerId = document.getElementById('customer_id').value;
+    const expedition = document.getElementById('expedition').value;
+
+    // 2. Memeriksa validitas dasar dari HTML (apakah field 'required' sudah diisi)
+    let isFormValid = form.checkValidity();
+    console.log(`- Validitas Bawaan HTML5 (form.checkValidity()): ${isFormValid}`);
+
+    // 3. Memeriksa apakah Ekspedisi sudah dipilih
+    if (!expedition) {
+        console.log('- Kondisi Gagal: Ekspedisi belum dipilih.');
+        isFormValid = false;
+    } else {
+        console.log(`- Kondisi Lolos: Ekspedisi sudah dipilih.`);
     }
+
+    // 4. Memeriksa apakah Metode Pembayaran sudah dipilih
+    if (!paymentMethod) {
+        console.log('- Kondisi Gagal: Metode Pembayaran belum dipilih.');
+        isFormValid = false;
+    } else {
+         console.log(`- Kondisi Lolos: Metode Pembayaran sudah dipilih.`);
+    }
+
+    // 5. Pengecekan khusus untuk "Potong Saldo"
+    if (paymentMethod === 'Potong Saldo' && !customerId) {
+        console.log("- Kondisi Gagal: 'Potong Saldo' dipilih tapi Pelanggan kosong.");
+        isFormValid = false;
+    } else {
+        console.log('- Kondisi Lolos: Validasi Pelanggan untuk Potong Saldo.');
+    }
+
+    // 6. Memberi kesimpulan akhir
+    console.log(`%cHasil Akhir: Tombol akan ${isFormValid ? 'DIAKTIFKAN' : 'DINONAKTIFKAN'}`, `font-weight: bold; color: ${isFormValid ? 'green' : 'red'};`);
+    confirmBtn.disabled = !isFormValid;
+}
 
     // --- FUNGSI PENCARIAN KONTAK DARI DATABASE ---
     function setupContactSearch(prefix) {
