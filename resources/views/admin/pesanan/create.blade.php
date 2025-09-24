@@ -276,7 +276,7 @@
                 <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="DANA" data-label="DANA"><img src="{{ asset('public/assets/dana.webp') }}" class="w-8 h-8 mr-4">DANA</li>
                 <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="SHOPEEPAY" data-label="ShopeePay"><img src="{{ asset('public/assets/shopeepay.webp') }}" class="w-8 h-8 mr-4">ShopeePay</li>
                 <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="QRIS" data-label="QRIS"><img src="{{ asset('public/assets/qris2.png') }}" class="w-8 h-8 mr-4">QRIS</li>
-            </ul>  
+            </ul>         
         </div>
          <div class="p-4 border-t text-right">
             <button type="button" class="close-modal-btn px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Tutup</button>
@@ -306,46 +306,50 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function checkFormValidity() {
-    // 1. Memberi judul agar mudah ditemukan di console
-    console.log('%c--- Memeriksa Validitas Form ---', 'color: orange; font-weight: bold;');
-    
-    const form = document.getElementById('orderForm');
-    const paymentMethod = document.getElementById('payment_method').value;
-    const customerId = document.getElementById('customer_id').value;
-    const expedition = document.getElementById('expedition').value;
+        // Gunakan setTimeout untuk memastikan value dropdown sudah terupdate di DOM
+        // sebelum validasi dijalankan. Ini mengatasi race condition.
+        setTimeout(() => {
+            // 1. Memberi judul agar mudah ditemukan di console
+            console.log('%c--- Memeriksa Validitas Form ---', 'color: orange; font-weight: bold;');
+            
+            const form = document.getElementById('orderForm');
+            const paymentMethod = document.getElementById('payment_method').value;
+            const customerId = document.getElementById('customer_id').value;
+            const expedition = document.getElementById('expedition').value;
 
-    // 2. Memeriksa validitas dasar dari HTML (apakah field 'required' sudah diisi)
-    let isFormValid = form.checkValidity();
-    console.log(`- Validitas Bawaan HTML5 (form.checkValidity()): ${isFormValid}`);
+            // 2. Memeriksa validitas dasar dari HTML (apakah field 'required' sudah diisi)
+            let isFormValid = form.checkValidity();
+            console.log(`- Validitas Bawaan HTML5 (form.checkValidity()): ${isFormValid}`);
 
-    // 3. Memeriksa apakah Ekspedisi sudah dipilih
-    if (!expedition) {
-        console.log('- Kondisi Gagal: Ekspedisi belum dipilih.');
-        isFormValid = false;
-    } else {
-        console.log(`- Kondisi Lolos: Ekspedisi sudah dipilih.`);
+            // 3. Memeriksa apakah Ekspedisi sudah dipilih
+            if (!expedition) {
+                console.log('- Kondisi Gagal: Ekspedisi belum dipilih.');
+                isFormValid = false;
+            } else {
+                console.log(`- Kondisi Lolos: Ekspedisi sudah dipilih.`);
+            }
+
+            // 4. Memeriksa apakah Metode Pembayaran sudah dipilih
+            if (!paymentMethod) {
+                console.log('- Kondisi Gagal: Metode Pembayaran belum dipilih.');
+                isFormValid = false;
+            } else {
+                 console.log(`- Kondisi Lolos: Metode Pembayaran sudah dipilih.`);
+            }
+
+            // 5. Pengecekan khusus untuk "Potong Saldo"
+            if (paymentMethod === 'Potong Saldo' && !customerId) {
+                console.log("- Kondisi Gagal: 'Potong Saldo' dipilih tapi Pelanggan kosong.");
+                isFormValid = false;
+            } else {
+                console.log('- Kondisi Lolos: Validasi Pelanggan untuk Potong Saldo.');
+            }
+
+            // 6. Memberi kesimpulan akhir
+            console.log(`%cHasil Akhir: Tombol akan ${isFormValid ? 'DIAKTIFKAN' : 'DINONAKTIFKAN'}`, `font-weight: bold; color: ${isFormValid ? 'green' : 'red'};`);
+            confirmBtn.disabled = !isFormValid;
+        }, 0); // Delay 0ms, cukup untuk memindahkan ke antrian eksekusi berikutnya
     }
-
-    // 4. Memeriksa apakah Metode Pembayaran sudah dipilih
-    if (!paymentMethod) {
-        console.log('- Kondisi Gagal: Metode Pembayaran belum dipilih.');
-        isFormValid = false;
-    } else {
-         console.log(`- Kondisi Lolos: Metode Pembayaran sudah dipilih.`);
-    }
-
-    // 5. Pengecekan khusus untuk "Potong Saldo"
-    if (paymentMethod === 'Potong Saldo' && !customerId) {
-        console.log("- Kondisi Gagal: 'Potong Saldo' dipilih tapi Pelanggan kosong.");
-        isFormValid = false;
-    } else {
-        console.log('- Kondisi Lolos: Validasi Pelanggan untuk Potong Saldo.');
-    }
-
-    // 6. Memberi kesimpulan akhir
-    console.log(`%cHasil Akhir: Tombol akan ${isFormValid ? 'DIAKTIFKAN' : 'DINONAKTIFKAN'}`, `font-weight: bold; color: ${isFormValid ? 'green' : 'red'};`);
-    confirmBtn.disabled = !isFormValid;
-}
 
     // --- FUNGSI PENCARIAN KONTAK DARI DATABASE ---
     function setupContactSearch(prefix) {
@@ -683,3 +687,4 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 @endpush
+
