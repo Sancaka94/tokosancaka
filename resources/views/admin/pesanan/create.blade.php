@@ -310,101 +310,59 @@ document.addEventListener('DOMContentLoaded', function () {
         };
     };
     
-    function debounce(func, delay) {
-    let timer;
-    return function (...args) {
-        clearTimeout(timer);
-        timer = setTimeout(() => func.apply(this, args), delay);
-    };
-}
+    // --- FUNGSI PENCARIAN & PEMILIHAN ---
+    function setupContactSearch(prefix) {
+        const nameInput = document.getElementById(`${prefix}_name`);
+        const phoneInput = document.getElementById(`${prefix}_phone`);
+        const resultsContainer = document.getElementById(`${prefix}_contact_results`);
+        
 
-// --- Fungsi pencarian & pemilihan kontak ---
-function setupContactSearch(prefix) {
-    const nameInput = document.getElementById(`${prefix}_name`);
-    const phoneInput = document.getElementById(`${prefix}_phone`);
-    const resultsContainer = document.getElementById(`${prefix}_contact_results`);
-    const contactType = (prefix === 'sender') ? 'Pengirim' : 'Penerima';
+        const performSearch = async (query) => {
+            if (query.length < 3) { resultsContainer.classList.add('hidden'); return; }
+            try {
+                const url = `{{ route('api.contacts.search') }}?search=${encodeURIComponent(query)}`;
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
+                const contacts = await response.json();
+                resultsContainer.innerHTML = '';
+                resultsContainer.classList.remove('hidden');
 
-    // Pastikan dropdown tetap visible saat diklik
-    resultsContainer.addEventListener('click', (event) => event.stopPropagation());
-
-    const performSearch = async (query) => {
-        if (query.length < 2) { 
-            resultsContainer.classList.add('hidden'); 
-            return; 
-        }
-
-        try {
-            const url = `{{ route('api.contacts.search') }}?search=${encodeURIComponent(query)}&tipe=${contactType}`;
-            const response = await fetch(url);
-            if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
-            const contacts = await response.json();
-
-            resultsContainer.innerHTML = '';
-            resultsContainer.classList.remove('hidden');
-
-            if (contacts && contacts.length > 0) {
-                contacts.forEach(contact => {
-                    const resultDiv = document.createElement('div');
-                    resultDiv.className = 'p-3 border-b hover:bg-gray-100 cursor-pointer text-sm';
-                    resultDiv.innerHTML = `
-                        <div class="font-semibold">${contact.nama}</div>
-                        <div class="text-xs text-gray-500">${contact.no_hp || '-'}</div>
-                        <div class="text-xs text-gray-400">${contact.alamat || ''}</div>
-                    `;
-
-                    resultDiv.addEventListener('click', (event) => {
-                        event.stopPropagation(); // penting supaya dropdown tidak langsung hilang
-                        document.getElementById(`${prefix}_id`).value = contact.id || '';
-                        document.getElementById(`${prefix}_name`).value = contact.nama || '';
-                        document.getElementById(`${prefix}_phone`).value = contact.no_hp || '';
-                        document.getElementById(`${prefix}_address_search`).value = contact.alamat || '';
-                        document.getElementById(`${prefix}_address`).value = contact.alamat || '';
-                        document.getElementById(`${prefix}_province`).value = contact.province || '';
-                        document.getElementById(`${prefix}_regency`).value = contact.regency || '';
-                        document.getElementById(`${prefix}_district`).value = contact.district || '';
-                        document.getElementById(`${prefix}_village`).value = contact.village || '';
-                        document.getElementById(`${prefix}_postal_code`).value = contact.postal_code || '';
-                        resultsContainer.classList.add('hidden');
-
-                        // Optional: jalankan fungsi alamat otomatis atau validasi
-                        if (typeof performAddressSearch === 'function') {
+                if (contacts && contacts.length > 0) {
+                    contacts.forEach(contact => {
+                        const resultDiv = document.createElement('div');
+                        resultDiv.className = 'p-3 border-b hover:bg-gray-100 cursor-pointer text-sm';
+                        resultDiv.innerHTML = `<div class="font-semibold">${contact.nama}</div><div class="text-xs text-gray-500">${contact.no_hp}</div>`;
+                        resultDiv.addEventListener('click', () => {
+                            document.getElementById(`${prefix}_id`).value = contact.id || '';
+                            document.getElementById(`${prefix}_name`).value = contact.nama || '';
+                            document.getElementById(`${prefix}_phone`).value = contact.no_hp || '';
+                            document.getElementById(`${prefix}_address`).value = contact.alamat || '';
+                            document.getElementById(`${prefix}_province`).value = contact.province || '';
+                            document.getElementById(`${prefix}_regency`).value = contact.regency || '';
+                            document.getElementById(`${prefix}_district`).value = contact.district || '';
+                            document.getElementById(`${prefix}_village`).value = contact.village || '';
+                            document.getElementById(`${prefix}_postal_code`).value = contact.postal_code || '';
                             const kiriminAjaSearchString = [contact.village, contact.district, contact.regency, contact.postal_code].filter(Boolean).join(', ');
+                            document.getElementById(`${prefix}_address_search`).value = kiriminAjaSearchString;
+                            resultsContainer.classList.add('hidden');
                             if (kiriminAjaSearchString) performAddressSearch(prefix, kiriminAjaSearchString, contact);
-                        }
-                        if (typeof runValidityChecks === 'function') runValidityChecks();
+                            runValidityChecks();
+                        });
+                        resultsContainer.appendChild(resultDiv);
                     });
-
-                    resultsContainer.appendChild(resultDiv);
-                });
-            } else {
-                resultsContainer.innerHTML = '<div class="p-3 text-gray-500">Kontak tidak ditemukan.</div>';
+                } else {
+                    resultsContainer.innerHTML = '<div class="p-3 text-gray-500">Kontak tidak ditemukan.</div>';
+                }
+            } catch (error) {
+                console.error(`[${prefix}] Gagal melakukan pencarian kontak:`, error);
+                resultsContainer.classList.remove('hidden');
+                resultsContainer.innerHTML = `<div class="p-3 text-red-500">Gagal memuat data.</div>`;
             }
-
-        } catch (error) {
-            console.error(`[${prefix}] Gagal melakukan pencarian kontak:`, error);
-            resultsContainer.classList.remove('hidden');
-            resultsContainer.innerHTML = `<div class="p-3 text-red-500">Gagal memuat data.</div>`;
-        }
-    };
-
-    const debouncedSearch = debounce(performSearch, 400);
-
-    nameInput.addEventListener('input', () => debouncedSearch(nameInput.value));
-    phoneInput.addEventListener('input', () => debouncedSearch(phoneInput.value));
-}
-
-// --- Setup untuk sender & receiver ---
-document.addEventListener('DOMContentLoaded', () => {
-    setupContactSearch('sender');
-    setupContactSearch('receiver');
-
-    // klik di luar dropdown => sembunyikan semua hasil
-    document.addEventListener('click', () => {
-        document.getElementById('sender_contact_results').classList.add('hidden');
-        document.getElementById('receiver_contact_results').classList.add('hidden');
-    });
-});
+        };
+        const debouncedSearch = debounce(performSearch, 400);
+        nameInput.addEventListener('input', () => debouncedSearch(nameInput.value));
+        phoneInput.addEventListener('input', () => debouncedSearch(phoneInput.value));
+    }
     
     function selectAddress(prefix, item) {
         document.getElementById(`${prefix}_address_search`).value = item.full_address;
