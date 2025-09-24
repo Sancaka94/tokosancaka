@@ -52,18 +52,6 @@
                         </h3>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        
-                        <div id="customer_container" class="md:col-span-2" style="display: none;">
-                            <label for="customer_id" class="block mb-2 text-sm font-medium text-gray-700">Pelanggan (Wajib untuk Potong Saldo)</label>
-                            <select id="customer_id" name="customer_id" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5">
-                                <option value="">-- Pilih Pelanggan --</option>
-                                @foreach($customers as $customer)
-                                    <option value="{{ $customer->id }}">
-                                        {{ $customer->nama_lengkap }} (Saldo: Rp {{ number_format($customer->saldo ?? 0) }})
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
 
                         <div class="relative">
                             <label for="sender_name" class="block mb-2 text-sm font-medium text-gray-700">Nama Pengirim</label>
@@ -205,6 +193,19 @@
                                 <div class="flex items-center"><img id="selectedPaymentLogo" src="https://cdn-icons-png.flaticon.com/512/2331/2331941.png" alt="Logo" class="w-6 h-6 mr-2"><span id="selectedPaymentName">Pilih...</span></div><i class="fas fa-chevron-down text-gray-400"></i>
                             </div>
                         </div>
+
+                         <div id="customer_container" class="md:col-span-2" style="display: none;">
+                            <label for="customer_id" class="block mb-2 text-sm font-medium text-gray-700">Pelanggan (Wajib untuk Potong Saldo)</label>
+                            <select id="customer_id" name="customer_id" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5">
+                                <option value="">-- Pilih Pelanggan --</option>
+                                @foreach($customers as $customer)
+                                    <option value="{{ $customer->id }}">
+                                        {{ $customer->nama_lengkap }} (Saldo: Rp {{ number_format($customer->saldo ?? 0) }})
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        
                         <div class="pt-4">
                             <button type="button" id="confirmBtn" class="w-full text-white bg-indigo-600 hover:bg-indigo-700 font-medium rounded-lg text-sm px-5 py-3 text-center" disabled>
                                 Buat Pesanan
