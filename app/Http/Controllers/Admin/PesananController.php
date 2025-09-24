@@ -91,8 +91,8 @@ class PesananController extends Controller
             $pesanan = Pesanan::create($pesananData);
 
            // 5. Proses logika pembayaran spesifik (disesuaikan untuk Customer)
-if ($validatedData['payment_method'] === 'Potong Saldo') {
-    $customer = User::find($validatedData['customer_id']); // gunakan ID dari form
+            if ($validatedData['payment_method'] === 'Potong Saldo') {
+    $customer = User::find($validatedData['customer_id']);
     if (!$customer) {
         throw new Exception('Pelanggan tidak ditemukan.');
     }
@@ -103,6 +103,16 @@ if ($validatedData['payment_method'] === 'Potong Saldo') {
 
     $customer->decrement('saldo', $total_paid_ongkir);
     $pesanan->customer_id = $customer->id;
+    $pesanan->save();
+
+    // 🔍 DEBUG DI SINI
+    dd([
+        'customer_id' => $customer->id,
+        'saldo_sebelum' => $customer->getOriginal('saldo'),
+        'potong' => $total_paid_ongkir,
+        'saldo_sesudah' => $customer->saldo,
+        'pesanan_id' => $pesanan->id,
+    ]);
 }
 
 
