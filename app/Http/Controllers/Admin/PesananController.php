@@ -606,6 +606,33 @@ private function _getAddressData(Request $request, string $type): array
 
     private function _sendWhatsappNotification(Pesanan $pesanan, array $validatedData, int $shipping_cost, int $ansuransi_fee, int $cod_fee, int $total_paid)
     {
+        // 1. Bangun string "Detail Paket" secara kondisional
+        $detailPaket = "*Detail Paket:*\n";
+        $detailPaket .= "Deskripsi Barang: " . ($validatedData['item_description'] ?? '-') . "\n";
+        $detailPaket .= "Berat: " . ($validatedData['weight'] ?? 0) . " Gram\n";
+    
+        if (!empty($validatedData['length']) && !empty($validatedData['width']) && !empty($validatedData['height'])) {
+            $detailPaket .= "Dimensi: {$validatedData['length']} x {$validatedData['width']} x {$validatedData['height']} cm\n";
+        }
+        
+        $expeditionParts = explode('-', $validatedData['expedition']);
+        $expeditionName = $expeditionParts[1] ?? $validatedData['expedition'];
+        
+        $detailPaket .= "Ekspedisi: " . ucwords($expeditionName) . "\n";
+        $detailPaket .= "Layanan: " . ucwords($validatedData['service_type']);
+    
+        // 2. Bangun string "Rincian Biaya" secara kondisional
+        $rincianBiaya = "*Rincian Biaya:*\n";
+        $rincianBiaya .= "- Ongkir: Rp " . number_format($shipping_cost, 0, ',', '.') . "\n";
+        $rincianBiaya .= "- Nilai Barang: Rp " . number_format($validatedData['item_price'], 0, ',', '.');
+        if ($ansuransi_fee > 0) {
+            $rincianBiaya .= "\n- Asuransi: Rp " . number_format($ansuransi_fee, 0, ',', '.');
+        }
+        if ($cod_fee > 0) {
+            $rincianBiaya .= "\n- COD Fee: Rp " . number_format($cod_fee, 0, ',', '.');
+        }
+        
+        // 3. Definisikan template utama pesan dengan placeholder baru
         $messageTemplate = <<<TEXT
 *Terimakasih Ya Kak Atas Orderannya 🙏*
 
@@ -616,92 +643,41 @@ Berikut adalah Nomor Order ID dan Invoice:
 ➡️ Ke: *{RECEIVER_NAME}* ( {RECEIVER_PHONE} )
 
 ----------------------------------------
-*Rincian Biaya:*
-- Ongkir: Rp {ONGKIR}
-- Nilai Barang: Rp {NILAI_BARANG}
-- Asuransi: Rp {ASURANSI}
-- COD Fee: Rp {COD_FEE}
+{DETAIL_PAKET}
+----------------------------------------
+{RINCIAN_BIAYA}
 ----------------------------------------
 *Total Bayar: Rp {TOTAL_BAYAR}*
-
 ----------------------------------------
-$output = "*Detail Paket:*\n";
 
-if (!empty($request->deskripsi)) {
-    $output .= "Deskripsi Barang: {$request->deskripsi}\n";
-}
-
-if (!empty($request->berat)) {
-    $output .= "Berat: {$request->berat} Gram\n";
-}
-
-if (!empty($request->panjang) && !empty($request->lebar) && !empty($request->tinggi)) {
-    $output .= "Dimensi: {$request->panjang} x {$request->lebar} x {$request->tinggi} cm\n";
-}
-
-if (!empty($request->ekspedisi)) {
-    $output .= "Ekspedisi: {$request->ekspedisi}\n";
-}
-
-if (!empty($request->layanan)) {
-    $output .= "Layanan: {$request->layanan}\n";
-}
-
-$output .= "----------------------------------------\n";
-$output .= "Rincian Biaya:\n";
-
-if (!empty($request->ongkir)) {
-    $output .= "- Ongkir: Rp " . number_format($request->ongkir, 0, ',', '.') . "\n";
-}
-
-if (!empty($request->nilai_barang)) {
-    $output .= "- Nilai Barang: Rp " . number_format($request->nilai_barang, 0, ',', '.') . "\n";
-}
-
-if (!empty($request->asuransi)) {
-    $output .= "- Asuransi: Rp " . number_format($request->asuransi, 0, ',', '.') . "\n";
-}
-
-if (!empty($request->cod_fee)) {
-    $output .= "- COD Fee: Rp " . number_format($request->cod_fee, 0, ',', '.') . "\n";
-}
-
-----------------------------------------
 
 Semoga Paket Kakak aman dan selamat sampai tujuan. ✅
 
 Cek resi dengan klik link berikut:
-https://tokosancaka.com/tracking/search?resi={RESI}
+https://tokosancaka.com/tracking/search?resi={RESI}&invoice={NOMOR_INVOICE}
 
 *Manajemen Sancaka*
 TEXT;
         
+        // 4. Ganti semua placeholder dengan data yang sudah disiapkan
         $message = str_replace(
             [
-                '{NOMOR_INVOICE}', '{RESI}', '{SENDER_NAME}', '{SENDER_PHONE}', '{RECEIVER_NAME}', '{RECEIVER_PHONE}',
-                '{ONGKIR}', '{NILAI_BARANG}', '{ASURANSI}', '{COD_FEE}', '{TOTAL_BAYAR}',
-                '{DESKRIPSI}', '{BERAT}', '{PANJANG}', '{LEBAR}', '{TINGGI}', '{EKSPEDISI}', '{LAYANAN}'
+                '{NOMOR_INVOICE}', '{RESI}', '{SENDER_NAME}', '{SENDER_PHONE}', 
+                '{RECEIVER_NAME}', '{RECEIVER_PHONE}', '{TOTAL_BAYAR}',
+                '{RINCIAN_BIAYA}', '{DETAIL_PAKET}'
             ],
             [
                 $pesanan->nomor_invoice, $pesanan->resi ?? $pesanan->nomor_invoice,
                 $validatedData['sender_name'], $validatedData['sender_phone'],
                 $validatedData['receiver_name'], $validatedData['receiver_phone'],
-                number_format($shipping_cost, 0, ',', '.'),
-                number_format($validatedData['item_price'], 0, ',', '.'),
-                number_format($ansuransi_fee, 0, ',', '.'),
-                number_format($cod_fee, 0, ',', '.'),
                 number_format($total_paid, 0, ',', '.'),
-                $validatedData['item_description'],
-                $validatedData['weight'],
-                $validatedData['length'] ?? 1,
-                $validatedData['width'] ?? 1,
-                $validatedData['height'] ?? 1,
-                $validatedData['expedition'],
-                $validatedData['service_type'],
+                $rincianBiaya,
+                $detailPaket
             ],
             $messageTemplate
         );
-
+    
+        // Sanitasi nomor telepon dan kirim pesan
         $senderWa = '62' . substr($this->_sanitizePhoneNumber($validatedData['sender_phone']), 1);
         $receiverWa = '62' . substr($this->_sanitizePhoneNumber($validatedData['receiver_phone']), 1);
         
