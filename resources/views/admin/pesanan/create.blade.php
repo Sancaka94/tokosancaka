@@ -481,6 +481,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- Event listener untuk dropdown pelanggan ---
     document.getElementById('customer_id').addEventListener('change', function() {
+        // --- INI REVISI PERTAMA ---
+        console.log(`%c[EVENT: CHANGE] Customer dropdown diubah. Nilai baru: "${this.value}"`, "color: blue; font-weight: bold;");
+        
         const selectedOption = this.options[this.selectedIndex];
         const senderNameInput = document.getElementById('sender_name');
         const senderPhoneInput = document.getElementById('sender_phone');
@@ -643,7 +646,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const paymentMethod = document.getElementById('payment_method').value;
         const customerId = document.getElementById('customer_id').value;
 
-        console.log("--- DEBUGGING SAAT KLIK BUAT PESANAN ---");
+        // --- INI REVISI KEDUA ---
+        console.log("%c--- DEBUGGING SAAT KLIK BUAT PESANAN ---", "background: #222; color: #bada55");
         console.log("Metode Pembayaran yang terbaca:", `"${paymentMethod}"`);
         console.log("Customer ID yang terbaca:", `"${customerId}"`);
         
