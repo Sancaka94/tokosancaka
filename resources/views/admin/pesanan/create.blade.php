@@ -651,16 +651,22 @@ document.addEventListener('DOMContentLoaded', function () {
         console.log("Metode Pembayaran yang terbaca:", `"${paymentMethod}"`);
         console.log("Customer ID yang terbaca:", `"${customerId}"`);
         
-        // Cek kondisi spesifik yang menyebabkan peringatan
+        // PERBAIKAN FINAL: Validasi yang lebih jelas dan menyorot field error
         if (paymentMethod === 'Potong Saldo' && !customerId) {
-            console.error("VALIDASI GAGAL: Metode 'Potong Saldo' dipilih TAPI Customer ID kosong.");
-            Swal.fire('Peringatan', 'Anda harus memilih pelanggan jika menggunakan metode Potong Saldo.', 'warning');
-            return; // Hentikan eksekusi
-        }
-
-        if (paymentMethod === 'Potong Saldo' && !customerId) {
-            Swal.fire('Peringatan', 'Anda harus memilih pelanggan jika menggunakan metode Potong Saldo.', 'warning');
-            return; 
+            Swal.fire({
+                icon: 'error',
+                title: 'Pelanggan Belum Dipilih',
+                text: 'Anda harus memilih pelanggan dari daftar untuk metode Potong Saldo.',
+                didOpen: () => {
+                    customerSelect.focus();
+                    customerSelect.style.border = '2px solid red';
+                    customerSelect.style.borderRadius = '0.5rem';
+                }
+            });
+            customerSelect.addEventListener('change', () => {
+                 customerSelect.style.border = '';
+            }, { once: true });
+            return;
         }
 
         if (!form.checkValidity() || !expedition || !paymentMethod) {
