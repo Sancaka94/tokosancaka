@@ -194,7 +194,7 @@
                             </div>
                         </div>
 
-                         <div id="customer_container" class="md:col-span-2" style="display: none;">
+                         <div id="customer_container" class="md:col-span-2 hidden">
                             <label for="customer_id" class="block mb-2 text-sm font-medium text-gray-700">Pelanggan (Wajib untuk Potong Saldo)</label>
                             <select id="customer_id" name="customer_id" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5">
                                 <option value="">-- Pilih Pelanggan --</option>
@@ -294,23 +294,22 @@
 document.addEventListener('DOMContentLoaded', function () {
     const ongkirModalEl = document.getElementById('ongkirModal');
     const paymentModalEl = document.getElementById('paymentMethodModal');
-    const confirmBtn = document.getElementById('confirmBtn');
-    let searchTimeout = null;
+    let runValidityChecks = () => {}; // Placeholder function
 
-    // --- HELPER FUNCTIONS ---
+    // --- HELPER FUNCTIONS (accessible by all) ---
     function formatRupiah(angka) { 
         return 'Rp ' + (parseInt(angka, 10) || 0).toLocaleString('id-ID'); 
     }
     
-    function debounce(func, wait) {
+    const debounce = (func, wait) => {
         let timeout;
         return function(...args) {
             clearTimeout(timeout);
             timeout = setTimeout(() => func.apply(this, args), wait);
         };
-    }
+    };
     
-    // --- FUNGSI PENCARIAN KONTAK DARI DATABASE ---
+    // --- FUNGSI PENCARIAN & PEMILIHAN ---
     function setupContactSearch(prefix) {
         const nameInput = document.getElementById(`${prefix}_name`);
         const phoneInput = document.getElementById(`${prefix}_phone`);
@@ -346,6 +345,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             document.getElementById(`${prefix}_address_search`).value = kiriminAjaSearchString;
                             resultsContainer.classList.add('hidden');
                             if (kiriminAjaSearchString) performAddressSearch(prefix, kiriminAjaSearchString, contact);
+                            runValidityChecks();
                         });
                         resultsContainer.appendChild(resultDiv);
                     });
@@ -363,7 +363,6 @@ document.addEventListener('DOMContentLoaded', function () {
         phoneInput.addEventListener('input', () => debouncedSearch(phoneInput.value));
     }
     
-    // --- FUNGSI UNTUK MEMILIH ALAMAT DAN UPDATE UI ---
     function selectAddress(prefix, item) {
         document.getElementById(`${prefix}_address_search`).value = item.full_address;
         const parts = item.full_address.split(',').map(s => s.trim());
@@ -376,9 +375,9 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById(`${prefix}_subdistrict_id`).value = item.subdistrict_id;
         document.getElementById(`${prefix}_address_results`).classList.add('hidden');
         document.getElementById(`${prefix}_address_check`).classList.remove('hidden');
+        runValidityChecks();
     }
 
-    // --- FUNGSI PENCARIAN ALAMAT ONGKIR (KIRIMIN AJA API) ---
     async function performAddressSearch(prefix, query, contactToMatch = null) {
         const resultsContainer = document.getElementById(`${prefix}_address_results`);
         if (query.length < 3) { resultsContainer.classList.add('hidden'); return; }
@@ -421,7 +420,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
     
-    // --- SETUP PENCARIAN ALAMAT ---
     function setupAddressSearch(prefix) {
         const searchInput = document.getElementById(`${prefix}_address_search`);
         const debouncedSearch = debounce(() => {
@@ -431,13 +429,6 @@ document.addEventListener('DOMContentLoaded', function () {
         searchInput.addEventListener('input', debouncedSearch);
     }
     
-    // --- INISIALISASI ---
-    setupContactSearch('sender');
-    setupContactSearch('receiver');
-    setupAddressSearch('sender');
-    setupAddressSearch('receiver');
-
-    // --- FUNGSI CEK ONGKIR ---
     async function runCekOngkir() {
         const requiredFields = { '#sender_subdistrict_id': 'Alamat Pengirim', '#receiver_subdistrict_id': 'Alamat Penerima', '#item_price': 'Harga Barang', '#weight': 'Berat', '#service_type': 'Jenis Layanan', '#ansuransi': 'Asuransi' };
         let missing = Object.keys(requiredFields).filter(s => !document.querySelector(s).value);
@@ -494,7 +485,12 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // --- EVENT LISTENERS MODALS & GLOBAL ---
+    // --- INISIALISASI & EVENT LISTENERS ---
+    setupContactSearch('sender');
+    setupContactSearch('receiver');
+    setupAddressSearch('sender');
+    setupAddressSearch('receiver');
+
     document.getElementById('selected_expedition_display').addEventListener('click', runCekOngkir);
 
     ongkirModalEl.addEventListener('click', function(e) {
@@ -513,6 +509,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 codOptions.forEach(opt => opt.style.display = 'none');
             }
             ongkirModalEl.classList.add('hidden');
+            runValidityChecks();
         }
     });
 
@@ -528,15 +525,17 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('selectedPaymentLogo').src = this.querySelector('img').src;
             document.querySelectorAll('.payment-option').forEach(opt => opt.classList.remove('bg-indigo-50'));
             this.classList.add('bg-indigo-50');
+            
             if (paymentValue === 'Potong Saldo') {
-                customerContainer.style.display = 'block';
+                customerContainer.classList.remove('hidden');
                 customerSelect.setAttribute('required', 'required');
             } else {
-                customerContainer.style.display = 'none';
+                customerContainer.classList.add('hidden');
                 customerSelect.removeAttribute('required');
                 customerSelect.value = '';
             }
             paymentModalEl.classList.add('hidden');
+            runValidityChecks();
         });
     });
 
@@ -563,7 +562,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
     
-    // --- START: Validity + Potong Saldo check logic (paste di dalam DOMContentLoaded) ---
+    // --- START: Validity + Potong Saldo check logic ---
     (function() {
         const form = document.getElementById('orderForm');
         const confirmBtn = document.getElementById('confirmBtn');
@@ -572,34 +571,22 @@ document.addEventListener('DOMContentLoaded', function () {
         const customerSelect = document.getElementById('customer_id');
 
         function debugLog(line, msg) {
-            // meniru format log yang dikirim: "create:1082 --- Memeriksa Validitas Form ---"
             console.log(`create:${line} - ${msg}`);
         }
 
-        function runValidityChecks() {
+        // Assign the function to the outer-scoped variable so other parts of the script can call it
+        runValidityChecks = function() {
             debugLog(1082, 'Memeriksa Validitas Form');
 
-            // 1) Validitas HTML5
             const html5Valid = form.checkValidity();
             debugLog(1091, `Validitas Bawaan HTML5 (form.checkValidity()): ${html5Valid}`);
 
-            // 2) Ekspedisi dipilih?
             const expeditionChosen = expeditionInput && expeditionInput.value && expeditionInput.value.trim() !== '';
-            if (expeditionChosen) {
-                debugLog(1098, 'Kondisi Lolos: Ekspedisi sudah dipilih.');
-            } else {
-                debugLog(1098, 'Kondisi Gagal: Ekspedisi belum dipilih.');
-            }
+            debugLog(1098, `Kondisi Ekspedisi: ${expeditionChosen ? 'Lolos' : 'Gagal'}`);
 
-            // 3) Metode pembayaran dipilih?
             const paymentChosen = paymentMethodInput && paymentMethodInput.value && paymentMethodInput.value.trim() !== '';
-            if (paymentChosen) {
-                debugLog(1106, 'Kondisi Lolos: Metode Pembayaran sudah dipilih.');
-            } else {
-                debugLog(1106, 'Kondisi Gagal: Metode Pembayaran belum dipilih.');
-            }
+            debugLog(1106, `Kondisi Metode Pembayaran: ${paymentChosen ? 'Lolos' : 'Gagal'}`);
 
-            // 4) Kondisi khusus: Potong Saldo -> customer harus ada
             let potongSaldoFailsCustomer = false;
             if (paymentChosen && paymentMethodInput.value === 'Potong Saldo') {
                 const customerChosen = customerSelect && customerSelect.value && customerSelect.value.trim() !== '';
@@ -611,7 +598,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
 
-            // 5) Kesimpulan -> tombol aktif atau tidak
             const allOk = html5Valid && expeditionChosen && paymentChosen && !potongSaldoFailsCustomer;
             if (!allOk) {
                 confirmBtn.disabled = true;
@@ -624,41 +610,34 @@ document.addEventListener('DOMContentLoaded', function () {
                 confirmBtn.removeAttribute('title');
                 debugLog(1118, 'Hasil Akhir: Tombol AKTIF');
             }
-        }
+        };
 
-        // Jalankan pertama kali
         runValidityChecks();
 
-        // Pasang listener ke elemen penting supaya validasi berjalan realtime
         const watchEls = Array.from(document.querySelectorAll('input, select, textarea'));
         watchEls.forEach(el => {
-            // skip hidden inputs
             if (el.type === 'hidden') return;
-            el.addEventListener('input', debounce(runValidityChecks, 200));
+            const debouncedCheck = debounce(runValidityChecks, 200);
+            el.addEventListener('input', debouncedCheck);
             el.addEventListener('change', runValidityChecks);
             el.addEventListener('blur', runValidityChecks);
         });
 
-        // Jika form di-submit via tombol confirm, lakukan final check sebelum submit (double-safety)
         confirmBtn.addEventListener('click', function(e) {
-            // jalankan sekali lagi
+            e.preventDefault();
             runValidityChecks();
 
             if (confirmBtn.disabled) {
-                e.preventDefault();
-                // user-friendly message
                 Swal.fire({
                     icon: 'warning',
                     title: 'Data Belum Lengkap',
                     text: (paymentMethodInput.value === 'Potong Saldo' && (!customerSelect.value || customerSelect.value === '')) 
                             ? 'Anda harus memilih pelanggan jika menggunakan metode Potong Saldo.' 
-                            : 'Harap lengkapi form yang wajib diisi.'
+                            : 'Harap lengkapi semua field yang wajib diisi, termasuk memilih ekspedisi dan metode pembayaran.'
                 });
-                return false;
+                return;
             }
             
-            // Jika valid, lanjutkan dengan konfirmasi submit
-            e.preventDefault(); // Hentikan submit asli untuk menampilkan Swal
             Swal.fire({
                 title: 'Konfirmasi Pesanan',
                 text: "Apakah semua data sudah benar?",
@@ -676,18 +655,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             });
         });
-
-        // Debounce helper (jika belum ada di file)
-        function debounce(func, wait) {
-            let timeout;
-            return function(...args) {
-                clearTimeout(timeout);
-                timeout = setTimeout(() => func.apply(this, args), wait);
-            };
-        }
     })();
-    // --- END: Validity + Potong Saldo check logic ---
-
 });
 </script>
 @endpush
