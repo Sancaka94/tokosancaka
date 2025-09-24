@@ -24,6 +24,11 @@
         max-height: 70vh;
         overflow-y: auto;
     }
+    /* Style untuk tombol yang non-aktif */
+    #confirmBtn:disabled {
+        background-color: #9ca3af; /* gray-400 */
+        cursor: not-allowed;
+    }
 </style>
 @endpush
 
@@ -204,7 +209,7 @@
                             </div>
                         </div>
                         <div class="pt-4">
-                            <button type="button" id="confirmBtn" class="w-full text-white bg-indigo-600 hover:bg-indigo-700 font-medium rounded-lg text-sm px-5 py-3 text-center">
+                            <button type="button" id="confirmBtn" class="w-full text-white bg-indigo-600 hover:bg-indigo-700 font-medium rounded-lg text-sm px-5 py-3 text-center" disabled>
                                 Buat Pesanan
                             </button>
                         </div>
@@ -259,20 +264,20 @@
                 {{-- Opsi Potong Saldo khusus Admin --}}
                 <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="Potong Saldo" data-label="Potong Saldo"><img src="https://cdn-icons-png.flaticon.com/512/1086/1086060.png" class="w-8 h-8 mr-4">Potong Saldo</li>
 
-                {{-- Opsi dari KiriminAja --}}
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50 cod-payment-option" data-value="COD" data-label="COD Ongkir"><img src="{{ asset('assets/cod.png') }}" class="w-8 h-8 mr-4">COD Ongkir</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50 cod-payment-option" data-value="CODBARANG" data-label="COD Barang + Ongkir"><img src="{{ asset('assets/cod.png') }}" class="w-8 h-8 mr-4">COD Barang + Ongkir</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="PERMATAVA" data-label="Permata VA"><img src="{{ asset('assets/permata.webp') }}" class="w-8 h-8 mr-4">Permata VA</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="BNIVA" data-label="BNI VA"><img src="{{ asset('assets/bni.webp') }}" class="w-8 h-8 mr-4">BNI VA</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="BRIVA" data-label="BRI VA"><img src="{{ asset('assets/bri.webp') }}" class="w-8 h-8 mr-4">BRI VA</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="MANDIRIVA" data-label="Mandiri VA"><img src="{{ asset('assets/mandiri.webp') }}" class="w-8 h-8 mr-4">Mandiri VA</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="BCAVA" data-label="BCA VA"><img src="{{ asset('assets/bca.webp') }}" class="w-8 h-8 mr-4">BCA VA</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="ALFAMART" data-label="Alfamart"><img src="{{ asset('assets/alfamart.webp') }}" class="w-8 h-8 mr-4">Alfamart</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="INDOMARET" data-label="Indomaret"><img src="{{ asset('assets/indomaret.webp') }}" class="w-8 h-8 mr-4">Indomaret</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="OVO" data-label="OVO"><img src="{{ asset('assets/ovo.webp') }}" class="w-8 h-8 mr-4">OVO</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="DANA" data-label="DANA"><img src="{{ asset('assets/dana.webp') }}" class="w-8 h-8 mr-4">DANA</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="SHOPEEPAY" data-label="ShopeePay"><img src="{{ asset('assets/shopeepay.webp') }}" class="w-8 h-8 mr-4">ShopeePay</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="QRIS" data-label="QRIS"><img src="{{ asset('assets/qris2.png') }}" class="w-8 h-8 mr-4">QRIS</li>
+                {{-- PERBAIKAN PATH GAMBAR: Menggunakan asset('storage/...') --}}
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50 cod-payment-option" data-value="COD" data-label="COD Ongkir"><img src="{{ asset('storage/payments/cod.png') }}" class="w-8 h-8 mr-4">COD Ongkir</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50 cod-payment-option" data-value="CODBARANG" data-label="COD Barang + Ongkir"><img src="{{ asset('storage/payments/cod.png') }}" class="w-8 h-8 mr-4">COD Barang + Ongkir</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="PERMATAVA" data-label="Permata VA"><img src="{{ asset('storage/payments/permata.webp') }}" class="w-8 h-8 mr-4">Permata VA</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="BNIVA" data-label="BNI VA"><img src="{{ asset('storage/payments/bni.webp') }}" class="w-8 h-8 mr-4">BNI VA</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="BRIVA" data-label="BRI VA"><img src="{{ asset('storage/payments/bri.webp') }}" class="w-8 h-8 mr-4">BRI VA</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="MANDIRIVA" data-label="Mandiri VA"><img src="{{ asset('storage/payments/mandiri.webp') }}" class="w-8 h-8 mr-4">Mandiri VA</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="BCAVA" data-label="BCA VA"><img src="{{ asset('storage/payments/bca.webp') }}" class="w-8 h-8 mr-4">BCA VA</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="ALFAMART" data-label="Alfamart"><img src="{{ asset('storage/payments/alfamart.webp') }}" class="w-8 h-8 mr-4">Alfamart</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="INDOMARET" data-label="Indomaret"><img src="{{ asset('storage/payments/indomaret.webp') }}" class="w-8 h-8 mr-4">Indomaret</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="OVO" data-label="OVO"><img src="{{ asset('storage/payments/ovo.webp') }}" class="w-8 h-8 mr-4">OVO</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="DANA" data-label="DANA"><img src="{{ asset('storage/payments/dana.webp') }}" class="w-8 h-8 mr-4">DANA</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="SHOPEEPAY" data-label="ShopeePay"><img src="{{ asset('storage/payments/shopeepay.webp') }}" class="w-8 h-8 mr-4">ShopeePay</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="QRIS" data-label="QRIS"><img src="{{ asset('storage/payments/qris2.png') }}" class="w-8 h-8 mr-4">QRIS</li>
             </ul>
         </div>
          <div class="p-4 border-t text-right">
@@ -291,6 +296,7 @@
 document.addEventListener('DOMContentLoaded', function () {
     const ongkirModalEl = document.getElementById('ongkirModal');
     const paymentModalEl = document.getElementById('paymentMethodModal');
+    const confirmBtn = document.getElementById('confirmBtn');
     let searchTimeout = null;
 
     // --- HELPER FUNCTIONS ---
@@ -299,6 +305,26 @@ document.addEventListener('DOMContentLoaded', function () {
     };
     function formatRupiah(angka) { 
         return 'Rp ' + (parseInt(angka, 10) || 0).toLocaleString('id-ID'); 
+    }
+
+    // --- PERBAIKAN: Fungsi untuk memeriksa validitas form dan mengatur tombol ---
+    function checkFormValidity() {
+        const form = document.getElementById('orderForm');
+        const paymentMethod = document.getElementById('payment_method').value;
+        const customerId = document.getElementById('customer_id').value;
+        const expedition = document.getElementById('expedition').value;
+
+        let isFormValid = form.checkValidity(); // Cek validitas HTML5 built-in (untuk field required biasa)
+
+        if (!expedition || !paymentMethod) {
+            isFormValid = false;
+        }
+
+        if (paymentMethod === 'Potong Saldo' && !customerId) {
+            isFormValid = false;
+        }
+
+        confirmBtn.disabled = !isFormValid;
     }
 
     // --- FUNGSI PENCARIAN KONTAK DARI DATABASE ---
@@ -313,18 +339,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 resultsContainer.classList.add('hidden');
                 return;
             }
-            console.log(`[${prefix}] Mencari kontak dengan query: "${query}", tipe: "${contactType}"`);
-
             try {
                 const url = `{{ route('api.contacts.search') }}?search=${encodeURIComponent(query)}&tipe=${contactType}`;
                 const response = await fetch(url);
-                
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error(`[${prefix}] Error dari server:`, errorText);
-                    throw new Error(`Server error: ${response.statusText}`);
-                }
-                
+                if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
                 const contacts = await response.json();
                 resultsContainer.innerHTML = '';
                 resultsContainer.classList.remove('hidden');
@@ -336,28 +354,22 @@ document.addEventListener('DOMContentLoaded', function () {
                         resultDiv.innerHTML = `<div class="font-semibold">${contact.nama}</div><div class="text-xs text-gray-500">${contact.no_hp}</div>`;
                         
                         resultDiv.addEventListener('click', () => {
-                            console.log(`[${prefix}] Kontak dipilih:`, contact);
                             document.getElementById(`${prefix}_id`).value = contact.id || '';
                             document.getElementById(`${prefix}_name`).value = contact.nama || '';
                             document.getElementById(`${prefix}_phone`).value = contact.no_hp || '';
                             document.getElementById(`${prefix}_address`).value = contact.alamat || '';
-                            
                             document.getElementById(`${prefix}_province`).value = contact.province || '';
                             document.getElementById(`${prefix}_regency`).value = contact.regency || '';
                             document.getElementById(`${prefix}_district`).value = contact.district || '';
                             document.getElementById(`${prefix}_village`).value = contact.village || '';
                             document.getElementById(`${prefix}_postal_code`).value = contact.postal_code || '';
-                            
                             const kiriminAjaSearchString = [contact.village, contact.district, contact.regency, contact.postal_code].filter(Boolean).join(', ');
-                            const addressSearchInput = document.getElementById(`${prefix}_address_search`);
-                            addressSearchInput.value = kiriminAjaSearchString;
-
+                            document.getElementById(`${prefix}_address_search`).value = kiriminAjaSearchString;
                             resultsContainer.classList.add('hidden');
-
                             if (kiriminAjaSearchString) {
-                                // Panggil pencarian alamat dengan data kontak untuk pencocokan
                                 performAddressSearch(prefix, kiriminAjaSearchString, contact);
                             }
+                            checkFormValidity();
                         });
                         resultsContainer.appendChild(resultDiv);
                     });
@@ -367,7 +379,7 @@ document.addEventListener('DOMContentLoaded', function () {
             } catch (error) {
                 console.error(`[${prefix}] Gagal melakukan pencarian kontak:`, error);
                 resultsContainer.classList.remove('hidden');
-                resultsContainer.innerHTML = `<div class="p-3 text-red-500">Gagal memuat data. Periksa koneksi atau log server.</div>`;
+                resultsContainer.innerHTML = `<div class="p-3 text-red-500">Gagal memuat data.</div>`;
             }
         };
 
@@ -377,11 +389,7 @@ document.addEventListener('DOMContentLoaded', function () {
     
     // --- FUNGSI UNTUK MEMILIH ALAMAT DAN UPDATE UI ---
     function selectAddress(prefix, item) {
-        const searchInput = document.getElementById(`${prefix}_address_search`);
-        const resultsContainer = document.getElementById(`${prefix}_address_results`);
-        const checkIcon = document.getElementById(`${prefix}_address_check`);
-
-        searchInput.value = item.full_address;
+        document.getElementById(`${prefix}_address_search`).value = item.full_address;
         const parts = item.full_address.split(',').map(s => s.trim());
         document.getElementById(`${prefix}_village`).value = parts[0] || '';
         document.getElementById(`${prefix}_district`).value = parts[1] || '';
@@ -390,65 +398,45 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById(`${prefix}_postal_code`).value = parts[4] || '';
         document.getElementById(`${prefix}_district_id`).value = item.district_id;
         document.getElementById(`${prefix}_subdistrict_id`).value = item.subdistrict_id;
-
-        resultsContainer.classList.add('hidden');
-        checkIcon.classList.remove('hidden');
+        document.getElementById(`${prefix}_address_results`).classList.add('hidden');
+        document.getElementById(`${prefix}_address_check`).classList.remove('hidden');
+        checkFormValidity();
     }
 
     // --- FUNGSI PENCARIAN ALAMAT ONGKIR (KIRIMIN AJA API) ---
     async function performAddressSearch(prefix, query, contactToMatch = null) {
         const resultsContainer = document.getElementById(`${prefix}_address_results`);
-        
-        if (query.length < 3) { 
-            resultsContainer.classList.add('hidden'); 
-            return; 
-        }
+        if (query.length < 3) { resultsContainer.classList.add('hidden'); return; }
 
         try {
             const response = await fetch(`{{ route('api.address.search') }}?search=${encodeURIComponent(query)}`);
             if (!response.ok) throw new Error('Network response error');
             const data = await response.json();
-            
             resultsContainer.innerHTML = '';
             resultsContainer.classList.remove('hidden');
 
             if (data && data.length > 0) {
-                // --- BARU: Logika untuk "auto-enter" jika ada kecocokan persis dari data kontak ---
                 if (contactToMatch) {
                     const exactMatch = data.find(item => {
                         const normalizedApiAddress = item.full_address.toLowerCase();
                         const village = (contactToMatch.village || '').toLowerCase();
                         const district = (contactToMatch.district || '').toLowerCase();
-                        const regency = (contactToMatch.regency || '').toLowerCase().replace('kabupaten ', '').replace('kota ', '');
+                        const regency = (contactToMatch.regency || '').toLowerCase().replace(/kabupaten |kota /g, '');
                         const postalCode = (contactToMatch.postal_code || '');
-
-                        // Memastikan semua bagian dari kontak ada di dalam hasil API
                         return village && district && regency && postalCode &&
                                normalizedApiAddress.includes(village) &&
                                normalizedApiAddress.includes(district) &&
                                normalizedApiAddress.includes(regency) &&
                                normalizedApiAddress.includes(postalCode);
                     });
-
-                    if (exactMatch) {
-                        selectAddress(prefix, exactMatch); // Auto-select kecocokan persis
-                        return; // Hentikan proses, jangan tampilkan dropdown
-                    }
+                    if (exactMatch) { selectAddress(prefix, exactMatch); return; }
                 }
-
-                // Fallback jika tidak ada `contactToMatch` atau tidak ada kecocokan persis
-                if (data.length === 1) {
-                    selectAddress(prefix, data[0]);
-                    return;
-                }
-
+                if (data.length === 1) { selectAddress(prefix, data[0]); return; }
                 data.forEach(item => {
                     const resultDiv = document.createElement('div');
                     resultDiv.className = 'p-3 border-b hover:bg-gray-100 cursor-pointer text-sm';
                     resultDiv.innerHTML = `<div class="font-semibold">${item.full_address}</div>`;
-                    resultDiv.addEventListener('click', () => {
-                        selectAddress(prefix, item);
-                    });
+                    resultDiv.addEventListener('click', () => selectAddress(prefix, item));
                     resultsContainer.appendChild(resultDiv);
                 });
             } else {
@@ -463,11 +451,8 @@ document.addEventListener('DOMContentLoaded', function () {
     // --- SETUP PENCARIAN ALAMAT ---
     function setupAddressSearch(prefix) {
         const searchInput = document.getElementById(`${prefix}_address_search`);
-        const checkIcon = document.getElementById(`${prefix}_address_check`);
-        
         searchInput.addEventListener('input', debounce(() => {
-            checkIcon.classList.add('hidden');
-            // Saat user mengetik manual, tidak ada `contactToMatch`
+            document.getElementById(`${prefix}_address_check`).classList.add('hidden');
             performAddressSearch(prefix, searchInput.value, null);
         }, 400));
     }
@@ -485,15 +470,16 @@ document.addEventListener('DOMContentLoaded', function () {
         const senderPhoneInput = document.getElementById('sender_phone');
         const senderAddressInput = document.getElementById('sender_address');
 
-        if (this.value) { // Jika pelanggan dipilih (bukan opsi "Umum")
+        if (this.value) {
             senderNameInput.value = selectedOption.getAttribute('data-nama') || '';
             senderPhoneInput.value = selectedOption.getAttribute('data-telepon') || '';
             senderAddressInput.value = selectedOption.getAttribute('data-alamat') || '';
-        } else { // Jika opsi "-- Umum --" dipilih
+        } else {
             senderNameInput.value = '';
             senderPhoneInput.value = '';
             senderAddressInput.value = '';
         }
+        checkFormValidity();
     });
 
     // --- FUNGSI CEK ONGKIR ---
@@ -522,7 +508,7 @@ document.addEventListener('DOMContentLoaded', function () {
             ongkirModalBody.innerHTML = '';
             let results = (res.results || []).concat((res.result || []).flatMap(v => v.costs.map(c => ({...c, service: v.name, service_name: `${v.name.toUpperCase()} - ${c.service_type}`, cost: c.price.total_price, etd: c.estimation || '-', setting: c.setting || {}, insurance: c.price.insurance_fee || 0, cod: c.cod }))));
             if (results.length === 0) {
-                ongkirModalBody.innerHTML = '<div class="bg-yellow-100 text-yellow-800 p-4 rounded-md text-center">Layanan pengiriman tidak ditemukan. Cek kembali alamat dan jenis layanan.</div>';
+                ongkirModalBody.innerHTML = '<div class="bg-yellow-100 text-yellow-800 p-4 rounded-md text-center">Layanan pengiriman tidak ditemukan.</div>';
                 return;
             }
 
@@ -582,6 +568,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 codOptions.forEach(opt => opt.style.display = 'none');
             }
             ongkirModalEl.classList.add('hidden');
+            checkFormValidity();
         }
     });
 
@@ -593,7 +580,6 @@ document.addEventListener('DOMContentLoaded', function () {
             const customerContainer = document.getElementById('customer_container');
             const customerSelect = document.getElementById('customer_id');
 
-            // Update UI tombol pembayaran
             document.getElementById('payment_method').value = paymentValue;
             document.getElementById('selectedPaymentName').textContent = this.dataset.label;
             document.getElementById('selectedPaymentLogo').src = this.querySelector('img').src;
@@ -601,21 +587,18 @@ document.addEventListener('DOMContentLoaded', function () {
             this.classList.add('bg-indigo-50');
             
             if (paymentValue === 'Potong Saldo') {
-                customerContainer.style.display = 'block'; // Tampilkan dropdown pelanggan
-                customerSelect.setAttribute('required', 'required'); // Wajibkan untuk diisi
+                customerContainer.style.display = 'block';
+                customerSelect.setAttribute('required', 'required');
             } else {
-                customerContainer.style.display = 'none'; // Sembunyikan dropdown
-                customerSelect.removeAttribute('required'); // Hapus kewajiban
-                customerSelect.value = ''; // KOSONGKAN nilai untuk mencegah terkirim secara tidak sengaja
-                
-                // Panggil event 'change' secara manual untuk mereset data pengirim jika perlu
+                customerContainer.style.display = 'none';
+                customerSelect.removeAttribute('required');
+                customerSelect.value = '';
                 customerSelect.dispatchEvent(new Event('change')); 
             }
-
             paymentModalEl.classList.add('hidden');
+            checkFormValidity();
         });
     });
-
 
     document.querySelectorAll('.close-modal-btn').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -624,47 +607,26 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    document.querySelectorAll('input, select, textarea').forEach(el => {
-        if(el.type !== 'hidden' && !el.classList.contains('select-ongkir-btn')){
-             el.addEventListener('change', () => {
-                  document.getElementById('expedition').value = '';
-                  document.getElementById('selected_expedition_display').value = '';
-                  document.getElementById('selected_expedition_display').placeholder = 'Data berubah, klik untuk cek ulang';
-             });
-        }
+    document.querySelectorAll('#orderForm input, #orderForm select, #orderForm textarea').forEach(el => {
+        el.addEventListener('input', () => {
+             // Reset ekspedisi jika field relevan berubah
+             if(!el.closest('.sticky') && el.id !== 'customer_id' && el.name !== 'save_sender' && el.name !== 'save_receiver'){
+                 document.getElementById('expedition').value = '';
+                 document.getElementById('selected_expedition_display').value = '';
+                 document.getElementById('selected_expedition_display').placeholder = 'Data berubah, cek ulang ongkir';
+             }
+             checkFormValidity();
+        });
     });
 
-    document.getElementById('confirmBtn').addEventListener('click', (e) => {
+    confirmBtn.addEventListener('click', (e) => {
         e.preventDefault();
         const form = document.getElementById('orderForm');
-        const expedition = document.getElementById('expedition').value;
-        const paymentMethod = document.getElementById('payment_method').value;
-        const customerId = document.getElementById('customer_id').value;
 
-        // --- TAMBAHAN DEBUGGING ---
-        console.log('--- Tombol Buat Pesanan Diklik ---');
-        console.log('Metode Pembayaran:', paymentMethod);
-        console.log('Customer ID Terpilih:', `"${customerId}"`); // Diberi kutip untuk melihat string kosong
-        console.log('Apakah Customer ID kosong? (evaluasi !customerId):', !customerId);
-        // --- AKHIR TAMBAHAN DEBUGGING ---
-
-        if (paymentMethod === 'Potong Saldo' && !customerId) {
-            Swal.fire('Peringatan', 'Anda harus memilih pelanggan jika menggunakan metode Potong Saldo.', 'warning');
-            return; 
-        }
-
-        if (!form.checkValidity() || !expedition || !paymentMethod) {
+        // Pengecekan terakhir sebelum submit (seharusnya tombol sudah valid)
+        if (!form.checkValidity()) {
             form.reportValidity();
-            let missingFields = [];
-            if (!expedition) missingFields.push('Ekspedisi');
-            if (!paymentMethod) missingFields.push('Metode Pembayaran');
-
-            let message = 'Harap lengkapi semua field yang wajib diisi.';
-            if (missingFields.length > 0) {
-                message += ` Anda belum memilih: ${missingFields.join(', ')}.`;
-            }
-
-            Swal.fire('Peringatan', message, 'warning');
+            Swal.fire('Peringatan', 'Harap lengkapi semua field yang wajib diisi.', 'warning');
             return;
         }
 
@@ -679,7 +641,6 @@ document.addEventListener('DOMContentLoaded', function () {
             cancelButtonText: 'Batal'
         }).then((result) => {
             if (result.isConfirmed) {
-                const confirmBtn = document.getElementById('confirmBtn');
                 confirmBtn.disabled = true;
                 confirmBtn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>Memproses...`;
                 form.submit();
@@ -703,5 +664,10 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('receiver_contact_results').classList.add('hidden');
         }
     });
+
+    // Jalankan pengecekan awal saat halaman dimuat
+    checkFormValidity();
 });
 </script>
+@endpush
+
