@@ -69,8 +69,12 @@ class PesananController extends Controller
      */
     public function store(Request $request, KiriminAjaService $kirimaja)
     {
-        DB::beginTransaction();
+         dd($request->all()); // cek data dari form
+
+        
         try {
+
+            DB::beginTransaction();
             // 1. Validasi semua input dari form
             $validatedData = $this->_validateOrderRequest($request);
             
@@ -91,8 +95,8 @@ class PesananController extends Controller
             $pesanan = Pesanan::create($pesananData);
 
            // 5. Proses logika pembayaran spesifik (disesuaikan untuk Customer)
-            if ($validatedData['payment_method'] === 'Potong Saldo') {
-    $customer = User::find($validatedData['customer_id']);
+if ($validatedData['payment_method'] === 'Potong Saldo') {
+    $customer = User::find($validatedData['customer_id']); // gunakan ID dari form
     if (!$customer) {
         throw new Exception('Pelanggan tidak ditemukan.');
     }
@@ -103,16 +107,6 @@ class PesananController extends Controller
 
     $customer->decrement('saldo', $total_paid_ongkir);
     $pesanan->customer_id = $customer->id;
-    $pesanan->save();
-
-    // 🔍 DEBUG DI SINI
-    dd([
-        'customer_id' => $customer->id,
-        'saldo_sebelum' => $customer->getOriginal('saldo'),
-        'potong' => $total_paid_ongkir,
-        'saldo_sesudah' => $customer->saldo,
-        'pesanan_id' => $pesanan->id,
-    ]);
 }
 
 
