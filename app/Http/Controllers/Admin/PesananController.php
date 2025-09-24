@@ -334,40 +334,80 @@ if ($validatedData['payment_method'] === 'Potong Saldo') {
     }
     
     private function geocode(string $address): ?array
-    {
-        try {
-            $response = Http::withHeaders(['User-Agent' => 'SancakaCargo/1.0'])->get("https://nominatim.openstreetmap.org/search", [
+{
+    try {
+        $response = Http::timeout(10)
+            ->withHeaders([
+                'User-Agent' => 'SancakaCargo/1.0 (admin@tokosancaka.com)',
+            ])
+            ->get("https://nominatim.openstreetmap.org/search", [
                 'q' => $address,
                 'format' => 'json',
-                'limit' => 1
-            ])->json();
-            return !empty($response[0]) ? ['lat' => (float) $response[0]['lat'], 'lng' => (float) $response[0]['lon']] : null;
-        } catch (Exception $e) {
-            Log::error("Geocoding failed: " . $e->getMessage());
-            return null;
+                'limit' => 1,
+                'countrycodes' => 'id'
+            ]);
+
+        $json = $response->json();
+        return !empty($json[0])
+            ? ['lat' => (float) $json[0]['lat'], 'lng' => (float) $json[0]['lon']]
+            : null;
+
+    } catch (\Exception $e) {
+        Log::error("Geocoding failed: " . $e->getMessage(), ['address' => $address]);
+        return null;
+    }
+}
+
+private function _getAddressData(Request $request, string $type): array
+{
+    $lat = $request->input("{$type}_lat");
+    $lng = $request->input("{$type}_lng");
+
+    $kirimajaAddr = [
+        'district_id' => $request->input("{$type}_district_id"),
+        'subdistrict_id' => $request->input("{$type}_subdistrict_id"),
+        'postal_code' => $request->input("{$type}_postal_code"),
+    ];
+
+    // jika lat/lng kosong → coba geocode
+    if ((!$lat || !$lng)) {
+        // 1. coba full address (lebih akurat)
+        if ($request->filled("{$type}_address")) {
+            $full = $request->input("{$type}_address") . ', ' . $request->input("{$type}_regency") . ', Indonesia';
+            if ($geo = $this->geocode($full)) {
+                $lat = $geo['lat'];
+                $lng = $geo['lng'];
+            }
+        }
+
+        // 2. kalau gagal, fallback ke village,district,regency,province,postal
+        if ((!$lat || !$lng)) {
+            $parts = [
+                $request->input("{$type}_village"),
+                $request->input("{$type}_district"),
+                $request->input("{$type}_regency"),
+                $request->input("{$type}_province"),
+                $request->input("{$type}_postal_code"),
+            ];
+            $query = implode(', ', array_filter($parts)) . ', Indonesia';
+            if ($geo = $this->geocode($query)) {
+                $lat = $geo['lat'];
+                $lng = $geo['lng'];
+            }
         }
     }
 
-    private function _getAddressData(Request $request, string $type): array
-    {
-        $lat = $request->input("{$type}_lat");
-        $lng = $request->input("{$type}_lng");
-        
-        $kirimajaAddr = [
-            'district_id' => $request->input("{$type}_district_id"),
-            'subdistrict_id' => $request->input("{$type}_subdistrict_id"),
-            'postal_code' => $request->input("{$type}_postal_code")
-        ];
-        
-        if ((!$lat || !$lng) && $request->filled("{$type}_village")) {
-             $fullAddress = implode(', ', array_filter([$request->input("{$type}_village"), $request->input("{$type}_district"), $request->input("{$type}_regency"), $request->input("{$type}_province")]));
-             if ($geo = $this->geocode($fullAddress)) {
-                  $lat = $geo['lat'];
-                  $lng = $geo['lng'];
-             }
-        }
-        return ['lat' => $lat, 'lng' => $lng, 'kirimaja_data' => $kirimajaAddr];
-    }
+    // log biar gampang debug
+    Log::info("Geocode result for {$type}", [
+        'lat' => $lat,
+        'lng' => $lng,
+        'address' => $request->input("{$type}_address"),
+        'parts' => $request->only("{$type}_village","{$type}_district","{$type}_regency","{$type}_province","{$type}_postal_code")
+    ]);
+
+    return ['lat' => $lat, 'lng' => $lng, 'kirimaja_data' => $kirimajaAddr];
+}
+
 
     private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
     {
