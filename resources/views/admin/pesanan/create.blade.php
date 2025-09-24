@@ -644,8 +644,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 text: "Apakah semua data sudah benar?",
                 icon: 'question',
                 showCancelButton: true,
-                confirmButtonColor: '#4f46e5',
-                cancelButtonColor: '#6b7280',
+                confirmButtonColor: '#ff0000ff',
+                cancelButtonColor: '#0be628ff',
                 confirmButtonText: 'Ya, Buat Pesanan',
                 cancelButtonText: 'Batal'
             }).then((result) => {
