@@ -331,7 +331,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     contacts.forEach(contact => {
                         const resultDiv = document.createElement('div');
                         resultDiv.className = 'p-3 border-b hover:bg-gray-100 cursor-pointer text-sm';
-                        resultDiv.innerHTML = `<div class="font-semibold">${contact.nama}</div><div class="text-xs text-gray-500">${contact.no_hp}</div>`;
+                        resultDiv.innerHTML = `
+                            <div class="font-semibold">${contact.nama}</div>
+                            <div class="text-xs text-gray-500">${contact.no_hp}</div>
+                            <div class="text-xs text-gray-400 truncate">${contact.alamat || '-'}</div>`;
+
                         resultDiv.addEventListener('click', () => {
                             document.getElementById(`${prefix}_id`).value = contact.id || '';
                             document.getElementById(`${prefix}_name`).value = contact.nama || '';
