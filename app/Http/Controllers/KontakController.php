@@ -18,7 +18,6 @@ use Maatwebsite\Excel\Facades\Excel;
 
 use Barryvdh\DomPDF\Facade\Pdf;
 
-use App\Http\Controllers\Api\KontakController;
 
 
 class KontakController extends Controller
