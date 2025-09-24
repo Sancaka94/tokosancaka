@@ -11,7 +11,7 @@ use App\Imports\KontaksImport;
 use Maatwebsite\Excel\Facades\Excel;
 use Barryvdh\DomPDF\Facade\Pdf;
 
-class KontakController extends Controller
+class ApiKontakController extends Controller
 {
     /**
      * Menampilkan daftar kontak dengan fitur pencarian dan filter.
