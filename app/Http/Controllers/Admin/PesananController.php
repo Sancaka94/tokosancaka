@@ -96,7 +96,8 @@ class PesananController extends Controller
 
            // 5. Proses logika pembayaran spesifik (disesuaikan untuk Customer)
 if ($validatedData['payment_method'] === 'Potong Saldo') {
-    $customer = User::find($validatedData['customer_id']); // gunakan ID dari form
+    $customer = User::where('id_pengguna', $validatedData['customer_id'])->first();
+
     if (!$customer) {
         throw new Exception('Pelanggan tidak ditemukan.');
     }
@@ -106,8 +107,11 @@ if ($validatedData['payment_method'] === 'Potong Saldo') {
     }
 
     $customer->decrement('saldo', $total_paid_ongkir);
-    $pesanan->customer_id = $customer->id;
+
+    // simpan relasi sesuai kolom di tabel pesanan
+    $pesanan->customer_id = $customer->id_pengguna; // atau $customer->getKey() kalau primaryKey diset di model
 }
+
 
 
             
@@ -328,8 +332,12 @@ if ($validatedData['payment_method'] === 'Potong Saldo') {
             'height' => 'nullable|numeric|min:0', 'item_type' => 'required|integer', 'save_sender' => 'nullable', 'save_receiver' => 'nullable',
             'sender_district_id' => 'required|integer', 'sender_subdistrict_id' => 'required|integer',
             'receiver_district_id' => 'required|integer', 'receiver_subdistrict_id' => 'required|integer',
-            'customer_id' => 'required_if:payment_method,Potong Saldo|nullable|exists:users,id',
-
+            'customer_id' => 'required_if:payment_method,Potong Saldo|nullable|exists:Pengguna,id_pengguna',
+            'sender_lat' => 'nullable|numeric', 'sender_lng' => 'nullable|numeric',
+            'receiver_lat' => 'nullable|numeric', 'receiver_lng' => 'nullable|numeric',
+            'sender_note' => 'nullable|string|max:255', 'receiver_note' => 'nullable|string|max:255',
+            'item_type' => 'required|integer|exists:package_types,id',
+            
         ]);
     }
     
