@@ -604,39 +604,58 @@ private function _getAddressData(Request $request, string $type): array
         return Str::startsWith($phone, '0') ? $phone : '0' . $phone;
     }
 
-    private function _sendWhatsappNotification(Pesanan $pesanan, array $validatedData, int $shipping_cost, int $ansuransi_fee, int $cod_fee, int $total_paid)
-    {
-        // 1. Bangun string "Detail Paket" secara kondisional
-        $detailPaket = "*Detail Paket:*\n";
-        $detailPaket .= "Deskripsi Barang: " . ($validatedData['item_description'] ?? '-') . "\n";
-        $detailPaket .= "Berat: " . ($validatedData['weight'] ?? 0) . " Gram\n";
+    private function _sendWhatsappNotification(Pesanan $pesanan, array $validatedData, int $shipping_cost, int $ansuransi_fee, int $cod_fee, int $total_paid, KiriminAjaService $kirimaja)
+{
+    // 1️⃣ Hitung berat volumetrik via KirimAja jika dimensi tersedia
+    $weightToUse = $validatedData['weight'] ?? 0;
+    if (!empty($validatedData['length']) && !empty($validatedData['width']) && !empty($validatedData['height'])) {
+        try {
+            $response = $kirimaja->calculateVolumetricWeight(
+                $validatedData['length'],
+                $validatedData['width'],
+                $validatedData['height'],
+                $validatedData['weight']
+            );
+            $weightToUse = $response['charged_weight'] ?? $weightToUse;
+        } catch (\Exception $e) {
+            Log::error('KiriminAja Volumetric Calculation Failed: ' . $e->getMessage());
+            // fallback ke berat aktual
+        }
+    }
+
+    // Format berat
+    $beratFormatted = number_format($weightToUse, 0, ',', '.') . " Gram";
+    if ($weightToUse >= 1000) {
+        $beratFormatted .= " (" . number_format($weightToUse / 1000, 2, ',', '.') . " Kg)";
+    }
+
+    // 2️⃣ Bangun string "Detail Paket"
+    $detailPaket = "*Detail Paket:*\n";
+    $detailPaket .= "Deskripsi Barang: " . ($validatedData['item_description'] ?? '-') . "\n";
+    $detailPaket .= "Total Berat: " . $beratFormatted . "\n";
     
-        if (!empty($validatedData['length']) && !empty($validatedData['width']) && !empty($validatedData['height'])) {
-            $detailPaket .= "Dimensi: {$validatedData['length']} x {$validatedData['width']} x {$validatedData['height']} cm\n";
-        }
-        
-        $expeditionParts = explode('-', $validatedData['expedition']);
-        $expeditionName = $expeditionParts[1] ?? $validatedData['expedition'];
-        
-        $detailPaket .= "Ekspedisi: " . ucwords($expeditionName) . "\n";
-        $detailPaket .= "Layanan: " . ucwords($validatedData['service_type']);
-    
-        // 2. Bangun string "Rincian Biaya" secara kondisional
-        $rincianBiaya = "*Rincian Biaya:*\n";
-        $rincianBiaya .= "- Ongkir: Rp " . number_format($shipping_cost, 0, ',', '.') . "\n";
-        $rincianBiaya .= "- Nilai Barang: Rp " . number_format($validatedData['item_price'], 0, ',', '.');
-        if ($ansuransi_fee > 0) {
-            $rincianBiaya .= "\n- Asuransi: Rp " . number_format($ansuransi_fee, 0, ',', '.');
-        }
-        if ($cod_fee > 0) {
-            $rincianBiaya .= "\n- COD Fee: Rp " . number_format($cod_fee, 0, ',', '.');
-        }
-        
-        // 3. Definisikan template utama pesan dengan placeholder baru
-        $messageTemplate = <<<TEXT
+
+    if (!empty($validatedData['length']) && !empty($validatedData['width']) && !empty($validatedData['height'])) {
+        $detailPaket .= "Dimensi: {$validatedData['length']} x {$validatedData['width']} x {$validatedData['height']} cm\n";
+    }
+
+    $expeditionParts = explode('-', $validatedData['expedition']);
+    $expeditionName = $expeditionParts[1] ?? $validatedData['expedition'];
+    $detailPaket .= "Ekspedisi: " . ucwords($expeditionName) . "\n";
+    $detailPaket .= "Layanan: " . ucwords($validatedData['service_type']);
+
+    // 3️⃣ Bangun rincian biaya
+    $rincianBiaya = "*Rincian Biaya:*\n";
+    $rincianBiaya .= "- Ongkir: Rp " . number_format($shipping_cost, 0, ',', '.') . "\n";
+    $rincianBiaya .= "- Nilai Barang: Rp " . number_format($validatedData['item_price'], 0, ',', '.');
+    if ($ansuransi_fee > 0) $rincianBiaya .= "\n- Asuransi: Rp " . number_format($ansuransi_fee, 0, ',', '.');
+    if ($cod_fee > 0) $rincianBiaya .= "\n- COD Fee: Rp " . number_format($cod_fee, 0, ',', '.');
+
+    // 4️⃣ Template pesan
+    $messageTemplate = <<<TEXT
 *Terimakasih Ya Kak Atas Orderannya 🙏*
 
-Berikut adalah Nomor Order ID dan Invoice:
+Berikut adalah Nomor Order ID / Nomor Invoice Kakak:
 *{NOMOR_INVOICE}*
 
 📦 Dari: *{SENDER_NAME}* ( {SENDER_PHONE} )
@@ -654,39 +673,28 @@ Berikut adalah Nomor Order ID dan Invoice:
 Semoga Paket Kakak aman dan selamat sampai tujuan. ✅
 
 Cek resi dengan klik link berikut:
-https://tokosancaka.com/tracking/search?resi={RESI}&invoice={NOMOR_INVOICE}
+https://tokosancaka.com/tracking/search?resi={NOMOR_INVOICE}
 
 *Manajemen Sancaka*
 TEXT;
-        
-        // 4. Ganti semua placeholder dengan data yang sudah disiapkan
-        $message = str_replace(
-            [
-                '{NOMOR_INVOICE}', '{RESI}', '{SENDER_NAME}', '{SENDER_PHONE}', 
-                '{RECEIVER_NAME}', '{RECEIVER_PHONE}', '{TOTAL_BAYAR}',
-                '{RINCIAN_BIAYA}', '{DETAIL_PAKET}'
-            ],
-            [
-                $pesanan->nomor_invoice, $pesanan->resi ?? $pesanan->nomor_invoice,
-                $validatedData['sender_name'], $validatedData['sender_phone'],
-                $validatedData['receiver_name'], $validatedData['receiver_phone'],
-                number_format($total_paid, 0, ',', '.'),
-                $rincianBiaya,
-                $detailPaket
-            ],
-            $messageTemplate
-        );
-    
-        // Sanitasi nomor telepon dan kirim pesan
-        $senderWa = '62' . substr($this->_sanitizePhoneNumber($validatedData['sender_phone']), 1);
-        $receiverWa = '62' . substr($this->_sanitizePhoneNumber($validatedData['receiver_phone']), 1);
-        
-        try {
-            FonnteService::sendMessage($senderWa, $message);
-            FonnteService::sendMessage($receiverWa, $message);
-        } catch (Exception $e) {
-            Log::error('Fonnte Service sendMessage failed: ' . $e->getMessage());
-        }
+
+    $message = str_replace(
+        ['{NOMOR_INVOICE}','{SENDER_NAME}','{SENDER_PHONE}','{RECEIVER_NAME}','{RECEIVER_PHONE}','{TOTAL_BAYAR}','{RINCIAN_BIAYA}','{DETAIL_PAKET}'],
+        [$pesanan->nomor_invoice,$validatedData['sender_name'],$validatedData['sender_phone'],$validatedData['receiver_name'],$validatedData['receiver_phone'],number_format($total_paid,0,',','.'),$rincianBiaya,$detailPaket],
+        $messageTemplate
+    );
+
+    // 5️⃣ Kirim WA
+    $senderWa = '62' . substr($this->_sanitizePhoneNumber($validatedData['sender_phone']), 1);
+    $receiverWa = '62' . substr($this->_sanitizePhoneNumber($validatedData['receiver_phone']), 1);
+
+    try {
+        FonnteService::sendMessage($senderWa, $message);
+        FonnteService::sendMessage($receiverWa, $message);
+    } catch (\Exception $e) {
+        Log::error('Fonnte Service sendMessage failed: ' . $e->getMessage());
     }
+}
+
 }
 
