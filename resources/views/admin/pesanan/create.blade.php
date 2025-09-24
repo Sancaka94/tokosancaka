@@ -643,6 +643,17 @@ document.addEventListener('DOMContentLoaded', function () {
         const paymentMethod = document.getElementById('payment_method').value;
         const customerId = document.getElementById('customer_id').value;
 
+        console.log("--- DEBUGGING SAAT KLIK BUAT PESANAN ---");
+        console.log("Metode Pembayaran yang terbaca:", `"${paymentMethod}"`);
+        console.log("Customer ID yang terbaca:", `"${customerId}"`);
+        
+        // Cek kondisi spesifik yang menyebabkan peringatan
+        if (paymentMethod === 'Potong Saldo' && !customerId) {
+            console.error("VALIDASI GAGAL: Metode 'Potong Saldo' dipilih TAPI Customer ID kosong.");
+            Swal.fire('Peringatan', 'Anda harus memilih pelanggan jika menggunakan metode Potong Saldo.', 'warning');
+            return; // Hentikan eksekusi
+        }
+
         if (paymentMethod === 'Potong Saldo' && !customerId) {
             Swal.fire('Peringatan', 'Anda harus memilih pelanggan jika menggunakan metode Potong Saldo.', 'warning');
             return; 
