@@ -337,7 +337,7 @@ if ($validatedData['payment_method'] === 'Potong Saldo') {
             'receiver_lat' => 'nullable|numeric', 'receiver_lng' => 'nullable|numeric',
             'sender_note' => 'nullable|string|max:255', 'receiver_note' => 'nullable|string|max:255',
             'item_type' => 'required|integer|exists:package_types,id',
-            
+
         ]);
     }
     
@@ -625,12 +625,47 @@ Berikut adalah Nomor Order ID dan Invoice:
 *Total Bayar: Rp {TOTAL_BAYAR}*
 
 ----------------------------------------
-*Detail Paket:*
-Deskripsi Barang: {DESKRIPSI}
-Berat: {BERAT} Gram
-Dimensi: {PANJANG} x {LEBAR} x {TINGGI} cm
-Ekspedisi: {EKSPEDISI}
-Layanan: {LAYANAN}
+$output = "*Detail Paket:*\n";
+
+if (!empty($request->deskripsi)) {
+    $output .= "Deskripsi Barang: {$request->deskripsi}\n";
+}
+
+if (!empty($request->berat)) {
+    $output .= "Berat: {$request->berat} Gram\n";
+}
+
+if (!empty($request->panjang) && !empty($request->lebar) && !empty($request->tinggi)) {
+    $output .= "Dimensi: {$request->panjang} x {$request->lebar} x {$request->tinggi} cm\n";
+}
+
+if (!empty($request->ekspedisi)) {
+    $output .= "Ekspedisi: {$request->ekspedisi}\n";
+}
+
+if (!empty($request->layanan)) {
+    $output .= "Layanan: {$request->layanan}\n";
+}
+
+$output .= "----------------------------------------\n";
+$output .= "Rincian Biaya:\n";
+
+if (!empty($request->ongkir)) {
+    $output .= "- Ongkir: Rp " . number_format($request->ongkir, 0, ',', '.') . "\n";
+}
+
+if (!empty($request->nilai_barang)) {
+    $output .= "- Nilai Barang: Rp " . number_format($request->nilai_barang, 0, ',', '.') . "\n";
+}
+
+if (!empty($request->asuransi)) {
+    $output .= "- Asuransi: Rp " . number_format($request->asuransi, 0, ',', '.') . "\n";
+}
+
+if (!empty($request->cod_fee)) {
+    $output .= "- COD Fee: Rp " . number_format($request->cod_fee, 0, ',', '.') . "\n";
+}
+
 ----------------------------------------
 
 Semoga Paket Kakak aman dan selamat sampai tujuan. ✅
