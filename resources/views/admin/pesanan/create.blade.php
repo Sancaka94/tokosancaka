@@ -476,9 +476,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- REVISI FINAL: Event listener untuk dropdown pelanggan ---
     document.getElementById('customer_id').addEventListener('change', function() {
-        // Hapus semua logika auto-fill. Fungsi dropdown ini sekarang HANYA untuk memilih pelanggan.
-        // Interaksi yang kompleks menyebabkan bug di mana nilainya ter-reset.
-        // Dengan menyederhanakannya, bug ini dapat dihindari.
+        // Fungsi dropdown ini sekarang HANYA untuk memilih pelanggan dan memvalidasi form.
         checkFormValidity();
     });
 
@@ -581,7 +579,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 customerContainer.style.display = 'none';
                 customerSelect.removeAttribute('required');
                 customerSelect.value = '';
-                // Hapus dispatchEvent karena event listener customer_id sudah disederhanakan
             }
             paymentModalEl.classList.add('hidden');
             checkFormValidity();
@@ -595,12 +592,17 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
+    // General listener for all form elements EXCEPT the customer dropdown
     document.querySelectorAll('#orderForm input, #orderForm select, #orderForm textarea').forEach(el => {
+        // We give the customer_id dropdown its own dedicated 'change' listener to avoid conflicts.
+        if (el.id === 'customer_id') {
+            return; 
+        }
         el.addEventListener('input', () => {
-             if(!el.closest('.sticky') && el.id !== 'customer_id' && el.name !== 'save_sender' && el.name !== 'save_receiver'){
-                 document.getElementById('expedition').value = '';
-                 document.getElementById('selected_expedition_display').value = '';
-                 document.getElementById('selected_expedition_display').placeholder = 'Data berubah, cek ulang ongkir';
+             if(!el.closest('.sticky') && el.name !== 'save_sender' && el.name !== 'save_receiver'){
+                   document.getElementById('expedition').value = '';
+                   document.getElementById('selected_expedition_display').value = '';
+                   document.getElementById('selected_expedition_display').placeholder = 'Data berubah, cek ulang ongkir';
              }
              checkFormValidity();
         });
@@ -681,4 +683,3 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 @endpush
-
