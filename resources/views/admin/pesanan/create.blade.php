@@ -310,59 +310,87 @@ document.addEventListener('DOMContentLoaded', function () {
         };
     };
     
-    // --- FUNGSI PENCARIAN & PEMILIHAN ---
     function setupContactSearch(prefix) {
-        const nameInput = document.getElementById(`${prefix}_name`);
-        const phoneInput = document.getElementById(`${prefix}_phone`);
-        const resultsContainer = document.getElementById(`${prefix}_contact_results`);
-        const contactType = (prefix === 'sender') ? 'Pengirim' : 'Penerima';
+    const nameInput = document.getElementById(`${prefix}_name`);
+    const phoneInput = document.getElementById(`${prefix}_phone`);
+    const resultsContainer = document.getElementById(`${prefix}_contact_results`);
 
-        const performSearch = async (query) => {
-            if (query.length < 3) { resultsContainer.classList.add('hidden'); return; }
-            try {
-                const url = `{{ route('api.contacts.search') }}?search=${encodeURIComponent(query)}&tipe=${contactType}`;
-                const response = await fetch(url);
-                if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
-                const contacts = await response.json();
-                resultsContainer.innerHTML = '';
-                resultsContainer.classList.remove('hidden');
+    const defaultType = (prefix === 'sender') ? 'Pengirim' : (prefix === 'receiver' ? 'Penerima' : null);
 
-                if (contacts && contacts.length > 0) {
-                    contacts.forEach(contact => {
-                        const resultDiv = document.createElement('div');
-                        resultDiv.className = 'p-3 border-b hover:bg-gray-100 cursor-pointer text-sm';
-                        resultDiv.innerHTML = `<div class="font-semibold">${contact.nama}</div><div class="text-xs text-gray-500">${contact.no_hp}</div>`;
-                        resultDiv.addEventListener('click', () => {
-                            document.getElementById(`${prefix}_id`).value = contact.id || '';
-                            document.getElementById(`${prefix}_name`).value = contact.nama || '';
-                            document.getElementById(`${prefix}_phone`).value = contact.no_hp || '';
-                            document.getElementById(`${prefix}_address`).value = contact.alamat || '';
-                            document.getElementById(`${prefix}_province`).value = contact.province || '';
-                            document.getElementById(`${prefix}_regency`).value = contact.regency || '';
-                            document.getElementById(`${prefix}_district`).value = contact.district || '';
-                            document.getElementById(`${prefix}_village`).value = contact.village || '';
-                            document.getElementById(`${prefix}_postal_code`).value = contact.postal_code || '';
-                            const kiriminAjaSearchString = [contact.village, contact.district, contact.regency, contact.postal_code].filter(Boolean).join(', ');
-                            document.getElementById(`${prefix}_address_search`).value = kiriminAjaSearchString;
-                            resultsContainer.classList.add('hidden');
-                            if (kiriminAjaSearchString) performAddressSearch(prefix, kiriminAjaSearchString, contact);
-                            runValidityChecks();
-                        });
-                        resultsContainer.appendChild(resultDiv);
-                    });
-                } else {
-                    resultsContainer.innerHTML = '<div class="p-3 text-gray-500">Kontak tidak ditemukan.</div>';
-                }
-            } catch (error) {
-                console.error(`[${prefix}] Gagal melakukan pencarian kontak:`, error);
-                resultsContainer.classList.remove('hidden');
-                resultsContainer.innerHTML = `<div class="p-3 text-red-500">Gagal memuat data.</div>`;
+    const performSearch = async (query) => {
+        if (query.length < 2) {
+            resultsContainer.classList.add('hidden');
+            return;
+        }
+
+        try {
+            // Pencarian kontak
+            const url = `{{ route('api.contacts.search') }}?search=${encodeURIComponent(query)}`;
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
+            let contacts = await response.json();
+
+            // Prioritaskan tipe default di atas
+            if (defaultType) {
+                contacts.sort((a, b) => {
+                    if (a.tipe === defaultType && b.tipe !== defaultType) return -1;
+                    if (a.tipe !== defaultType && b.tipe === defaultType) return 1;
+                    return 0;
+                });
             }
-        };
-        const debouncedSearch = debounce(performSearch, 400);
-        nameInput.addEventListener('input', () => debouncedSearch(nameInput.value));
-        phoneInput.addEventListener('input', () => debouncedSearch(phoneInput.value));
-    }
+
+            resultsContainer.innerHTML = '';
+            resultsContainer.classList.remove('hidden');
+
+            if (contacts.length > 0) {
+                contacts.forEach(contact => {
+                    const resultDiv = document.createElement('div');
+                    resultDiv.className = 'p-3 border-b hover:bg-gray-100 cursor-pointer text-sm';
+                    resultDiv.innerHTML = `
+                        <div class="font-semibold">${contact.nama}</div>
+                        <div class="text-xs text-gray-500">${contact.no_hp}</div>
+                        <div class="text-xs text-gray-400">${contact.alamat || ''}</div>
+                    `;
+                    resultDiv.addEventListener('click', async () => {
+                        // Isi semua field kontak
+                        const fields = ['id','name','phone','address','province','regency','district','village','postal_code'];
+                        fields.forEach(f => {
+                            const el = document.getElementById(`${prefix}_${f}`);
+                            if (el) el.value = contact[f] || '';
+                        });
+
+                        // Update input alamat
+                        const addrSearchEl = document.getElementById(`${prefix}_address_search`);
+                        const kiriminAjaSearchString = [contact.village, contact.district, contact.regency, contact.postal_code]
+                                                        .filter(Boolean).join(', ');
+                        if (addrSearchEl) addrSearchEl.value = kiriminAjaSearchString;
+
+                        // Jika ada fungsi pencarian alamat tambahan (API KiriminAja, dsb.)
+                        if (kiriminAjaSearchString) {
+                            await performAddressSearch(prefix, kiriminAjaSearchString, contact);
+                        }
+
+                        resultsContainer.classList.add('hidden');
+                        runValidityChecks();
+                    });
+                    resultsContainer.appendChild(resultDiv);
+                });
+            } else {
+                resultsContainer.innerHTML = '<div class="p-3 text-gray-500">Kontak tidak ditemukan.</div>';
+            }
+
+        } catch (error) {
+            console.error(`[${prefix}] Gagal melakukan pencarian kontak:`, error);
+            resultsContainer.classList.remove('hidden');
+            resultsContainer.innerHTML = `<div class="p-3 text-red-500">Gagal memuat data.</div>`;
+        }
+    };
+
+    const debouncedSearch = debounce(performSearch, 400);
+    nameInput.addEventListener('input', () => debouncedSearch(nameInput.value));
+    phoneInput.addEventListener('input', () => debouncedSearch(phoneInput.value));
+}
+
     
     function selectAddress(prefix, item) {
         document.getElementById(`${prefix}_address_search`).value = item.full_address;
