@@ -22,7 +22,7 @@ use App\Http\Controllers\Api\KontakController;
 
 
 
-class KontakController extends Controller
+class ApiKontakController extends Controller
 
 {
 
