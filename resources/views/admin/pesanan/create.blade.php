@@ -75,7 +75,7 @@
                             <textarea id="sender_address" name="sender_address" rows="3" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" placeholder="Contoh: Jl. Pahlawan No. 12, RT 01/RW 05, (Patokan: Sebelah Kantor Pos)" required></textarea>
                         </div>
                           <div class="md:col-span-2">
-                                <label class="flex items-center text-sm text-gray-600"><input type="checkbox" name="save_sender" value="1" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-2"> Simpan data pengirim ini</label>
+                                <label class="flex items-center text-sm text-gray-600"><input type="checkbox" name="save_sender" value="1" class="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500 mr-2"> Simpan data pengirim ini</label>
                           </div>
                     </div>
                 </div>
@@ -110,7 +110,7 @@
                             <textarea id="receiver_address" name="receiver_address" rows="3" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" placeholder="Contoh: Jl. Pahlawan No. 12, RT 01/RW 05, (Patokan: Sebelah Kantor Pos)" required></textarea>
                         </div>
                           <div class="md:col-span-2">
-                                <label class="flex items-center text-sm text-gray-600"><input type="checkbox" name="save_receiver" value="1" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-2"> Simpan data penerima ini</label>
+                                <label class="flex items-center text-sm text-gray-600"><input type="checkbox" name="save_receiver" value="1" class="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500 mr-2"> Simpan data penerima ini</label>
                           </div>
                     </div>
                 </div>
@@ -208,7 +208,7 @@
                         </div>
                         
                         <div class="pt-4">
-                            <button type="button" id="confirmBtn" class="w-full text-white bg-indigo-600 hover:bg-indigo-700 font-medium rounded-lg text-sm px-5 py-3 text-center" disabled>
+                            <button type="button" id="confirmBtn" class="w-full text-white bg-red-600 hover:bg-red-700 font-medium rounded-lg text-sm px-5 py-3 text-center" disabled>
                                 Buat Pesanan
                             </button>
                         </div>
@@ -241,7 +241,7 @@
 <div id="ongkirModal" class="fixed inset-0 bg-gray-800 bg-opacity-60 z-50 hidden flex items-center justify-center">
     <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4">
         <div class="p-4 border-b flex justify-between items-center">
-            <h5 class="text-lg font-semibold"><i class="fas fa-shipping-fast mr-2 text-indigo-600"></i>Pilihan Ekspedisi</h5>
+            <h5 class="text-lg font-semibold"><i class="fas fa-shipping-fast mr-2 text-red-600"></i>Pilihan Ekspedisi</h5>
             <button type="button" class="close-modal-btn text-gray-500 hover:text-gray-800">&times;</button>
         </div>
         <div id="ongkirModalBody" class="p-6 modal-body-scroll"></div>
@@ -255,7 +255,7 @@
 <div id="paymentMethodModal" class="fixed inset-0 bg-gray-800 bg-opacity-60 z-50 hidden flex items-center justify-center">
     <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
         <div class="p-4 border-b flex justify-between items-center">
-            <h5 class="text-lg font-semibold"><i class="fas fa-credit-card mr-2 text-indigo-600"></i>Pilih Metode Pembayaran</h5>
+            <h5 class="text-lg font-semibold"><i class="fas fa-credit-card mr-2 text-red-600"></i>Pilih Metode Pembayaran</h5>
             <button type="button" class="close-modal-btn text-gray-500 hover:text-gray-800">&times;</button>
         </div>
         <div class="modal-body-scroll">
@@ -438,7 +438,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
         const ongkirModalBody = document.getElementById('ongkirModalBody');
-        ongkirModalBody.innerHTML = `<div class="text-center p-5"><i class="fas fa-spinner fa-spin text-3xl text-indigo-600"></i><p class="mt-2 text-gray-500">Memuat tarif...</p></div>`;
+        ongkirModalBody.innerHTML = `<div class="text-center p-5"><i class="fas fa-spinner fa-spin text-3xl text-red-600"></i><p class="mt-2 text-gray-500">Memuat tarif...</p></div>`;
         ongkirModalEl.classList.remove('hidden');
         try {
             const formData = new FormData(document.getElementById('orderForm'));
@@ -475,7 +475,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         <div class="text-right">
                             <small class="text-gray-500">Ongkir</small>
                             <strong class="block text-lg text-red-600">${formatRupiah(item.cost)}</strong>
-                            <button type="button" class="select-ongkir-btn mt-1 bg-indigo-600 text-white px-3 py-1 rounded-md hover:bg-indigo-700 text-sm" data-value="${value}" data-display="${item.service_name}" data-cod-supported="${isCod}">Pilih</button>
+                            <button type="button" class="select-ongkir-btn mt-1 bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 text-sm" data-value="${value}" data-display="${item.service_name}" data-cod-supported="${isCod}">Pilih</button>
                         </div>
                     </div>`;
                 ongkirModalBody.appendChild(card);
@@ -524,8 +524,8 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('payment_method').value = paymentValue;
             document.getElementById('selectedPaymentName').textContent = this.dataset.label;
             document.getElementById('selectedPaymentLogo').src = this.querySelector('img').src;
-            document.querySelectorAll('.payment-option').forEach(opt => opt.classList.remove('bg-indigo-50'));
-            this.classList.add('bg-indigo-50');
+            document.querySelectorAll('.payment-option').forEach(opt => opt.classList.remove('bg-red-50'));
+            this.classList.add('bg-red-50');
             
             if (paymentValue === 'Potong Saldo') {
                 customerContainer.classList.remove('hidden');
