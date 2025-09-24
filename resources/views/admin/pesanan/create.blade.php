@@ -47,10 +47,12 @@
                         </h3>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div class="md:col-span-2">
-                            <label for="customer_id" class="block mb-2 text-sm font-medium text-gray-700">Pelanggan (Jika Potong Saldo)</label>
+                        
+                        <!-- PERUBAHAN 1: Kontainer Pelanggan (disembunyikan by default) -->
+                        <div id="customer_container" class="md:col-span-2" style="display: none;">
+                            <label for="customer_id" class="block mb-2 text-sm font-medium text-gray-700">Pelanggan (Wajib untuk Potong Saldo)</label>
                             <select id="customer_id" name="customer_id" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5">
-                                <option value="">-- Umum / Tanpa Potong Saldo --</option>
+                                <option value="">-- Pilih Pelanggan --</option>
                                 @foreach($customers as $customer)
                                     <option value="{{ $customer->id }}"
                                             data-nama="{{ $customer->nama_lengkap }}"
@@ -61,6 +63,7 @@
                                 @endforeach
                             </select>
                         </div>
+
                         <div class="relative">
                             <label for="sender_name" class="block mb-2 text-sm font-medium text-gray-700">Nama Pengirim</label>
                             <input type="text" id="sender_name" name="sender_name" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required autocomplete="off">
@@ -584,29 +587,37 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     document.getElementById('paymentMethodButton').addEventListener('click', () => paymentModalEl.classList.remove('hidden'));
-
+    
+    // PERUBAHAN 2: Logika pemilihan metode pembayaran yang lebih aman
     document.querySelectorAll('.payment-option').forEach(item => {
         item.addEventListener('click', function() {
             const paymentValue = this.dataset.value;
+            const customerContainer = document.getElementById('customer_container');
             const customerSelect = document.getElementById('customer_id');
 
+            // Update UI tombol pembayaran
             document.getElementById('payment_method').value = paymentValue;
             document.getElementById('selectedPaymentName').textContent = this.dataset.label;
             document.getElementById('selectedPaymentLogo').src = this.querySelector('img').src;
-            
             document.querySelectorAll('.payment-option').forEach(opt => opt.classList.remove('bg-indigo-50'));
             this.classList.add('bg-indigo-50');
             
-            // PERBAIKAN: Menambahkan logika validasi dinamis untuk Potong Saldo
             if (paymentValue === 'Potong Saldo') {
-                customerSelect.setAttribute('required', 'required');
+                customerContainer.style.display = 'block'; // Tampilkan dropdown pelanggan
+                customerSelect.setAttribute('required', 'required'); // Wajibkan untuk diisi
             } else {
-                customerSelect.removeAttribute('required');
+                customerContainer.style.display = 'none'; // Sembunyikan dropdown
+                customerSelect.removeAttribute('required'); // Hapus kewajiban
+                customerSelect.value = ''; // KOSONGKAN nilai untuk mencegah terkirim secara tidak sengaja
+                
+                // Panggil event 'change' secara manual untuk mereset data pengirim jika perlu
+                customerSelect.dispatchEvent(new Event('change')); 
             }
 
             paymentModalEl.classList.add('hidden');
         });
     });
+
 
     document.querySelectorAll('.close-modal-btn').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -632,7 +643,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const paymentMethod = document.getElementById('payment_method').value;
         const customerId = document.getElementById('customer_id').value;
 
-        // PERBAIKAN: Menambahkan pengecekan eksplisit untuk Potong Saldo
         if (paymentMethod === 'Potong Saldo' && !customerId) {
             Swal.fire('Peringatan', 'Anda harus memilih pelanggan jika menggunakan metode Potong Saldo.', 'warning');
             return; 
@@ -691,4 +701,3 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 @endpush
-
