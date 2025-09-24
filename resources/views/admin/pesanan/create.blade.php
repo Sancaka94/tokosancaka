@@ -298,9 +298,16 @@ document.addEventListener('DOMContentLoaded', function () {
     let searchTimeout = null;
 
     // --- HELPER FUNCTIONS ---
-    // (Fungsi formatRupiah tetap sama)
     function formatRupiah(angka) { 
         return 'Rp ' + (parseInt(angka, 10) || 0).toLocaleString('id-ID'); 
+    }
+    
+    function debounce(func, wait) {
+        let timeout;
+        return function(...args) {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), wait);
+        };
     }
     
     // --- FUNGSI PENCARIAN KONTAK DARI DATABASE ---
