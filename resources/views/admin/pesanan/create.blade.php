@@ -26,7 +26,7 @@
     }
     /* Style untuk tombol yang non-aktif */
     #confirmBtn:disabled {
-        background-color: #9ca3af; /* gray-400 */
+        background-color: #bebebeff; /* gray-400 */
         cursor: not-allowed;
     }
 </style>
