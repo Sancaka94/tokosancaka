@@ -112,42 +112,25 @@ class CheckoutController extends Controller
             $category 
         );
 
-        $storeLat = $store->latitude;
-        $storeLng = $store->longitude;
-        $userLat  = $user->latitude;
-        $userLng  = $user->longitude;
+        $finalWeight = (int) max(1000, $totalWeight);
+$itemValue   = (int) collect($cart)->sum(fn($item) => $item['price'] * $item['quantity']);
 
-        if (!$storeLat || !$storeLng) {
-            $geo = $this->geocode($storeSearch);
-            if ($geo) {
-                $storeLat = $geo['lat'];
-                $storeLng = $geo['lng'];
-            }
-        }
+$storeLat = (float) $storeLat;
+$storeLng = (float) $storeLng;
+$userLat  = (float) $userLat;
+$userLng  = (float) $userLng;
 
-        if (!$userLat || !$userLng) {
-            $geo = $this->geocode($userSearch);
-            if ($geo) {
-                $userLat = $geo['lat'];
-                $userLng = $geo['lng'];
-            }
-        }
-        
-    
-        $instantOptions = null;
-        if ($storeLat && $storeLng && $userLat && $userLng) {
-            $instantOptions = $kiriminAja->getInstantPricing(
-                $storeLat,
-                $storeLng,
-                $store->address_detail,
-                $userLat,
-                $userLng,
-                $user->address_detail,
-                $finalWeight,
-                $itemValue
-            );
-            
-        }
+$instantOptions = $kiriminAja->getInstantPricing(
+    $storeLat,
+    $storeLng,
+    $store->address_detail,
+    $userLat,
+    $userLng,
+    $user->address_detail,
+    $finalWeight,
+    $itemValue
+);
+
         
     
         return view('checkout.index', compact('cart', 'expressOptions', 'instantOptions'));
@@ -553,7 +536,7 @@ $finalWeight = max(1000, $totalWeight);
                     } else {
 
                           Log::error('KiriminAja Instant Response: ', $kiriminResponse);
-                          
+
                             DB::rollBack();
                         
                             if (!empty($kiriminResponse['errors'])) {
