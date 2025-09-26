@@ -54,7 +54,7 @@
             </div>
         @endif
         
-        <form action="{{ route('checkout.store') }}" method="POST">
+        <form id="checkout-form" action="{{ route('checkout.store') }}" method="POST">
             @csrf
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 
@@ -129,7 +129,7 @@
                                             data-cost="{{ $option['cost'] }}"
                                             data-insurance="{{ $option['insurance'] }}"
                                             data-cod="{{ $option['cod'] ? 'true' : 'false' }}"
-                                            {{ $i === 0 ? 'checked' : '' }}
+                                            {{ $loop->parent->first && $loop->first ? 'checked' : '' }}
                                         >
                                         <div class="ml-4 flex justify-between w-full items-center">
                                             <div class="flex items-center gap-3">
@@ -166,37 +166,37 @@
                                  @endphp
                                
                                 @foreach($instantSorted as $option)
-    @php
-        $logoName = strtolower(str_replace(' ', '', $option['courier_name'])) . '.png';
-    @endphp
-    <label class="flex items-center border border-gray-200 p-4 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:bg-blue-50 has-[:checked]:border-blue-500">
-        <input type="radio" 
-               name="shipping_method" 
-               value="instant-{{ $option['courier_name'] }}-{{ $option['service_type'] }}-{{$option['price']}}-0" 
-               class="form-radio h-5 w-5 text-blue-600"
-               data-cost="{{ $option['price'] }}"
-               data-insurance="0"
-               data-cod="false">
-        <div class="ml-4 flex justify-between w-full items-center">
-            <div class="flex items-center gap-3">
-                <img src="{{ asset('storage/logo-ekspedisi/'.$logoName) }}" 
-                     alt="{{ strtoupper($option['courier_name']) }}" 
-                     class="w-8 h-8 object-contain">
-                <div>
-                    <span class="text-sm font-medium text-gray-900">
-                        {{ strtoupper($option['courier_name']) }} - {{ strtoupper($option['service_type']) }}
-                    </span>
-                    @if($option['estimation'])
-                        <span class="block text-xs text-gray-500">Est: {{ $option['estimation'] }}</span>
-                    @endif
-                </div>
-            </div>
-            <span class="text-sm font-medium text-gray-900">
-                Rp{{ number_format($option['price'], 0, ',', '.') }}
-            </span>
-        </div>
-    </label>
-@endforeach
+                                    @php
+                                        $logoName = strtolower(str_replace(' ', '', $option['courier_name'])) . '.png';
+                                    @endphp
+                                    <label class="flex items-center border border-gray-200 p-4 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:bg-blue-50 has-[:checked]:border-blue-500">
+                                        <input type="radio" 
+                                               name="shipping_method" 
+                                               value="instant-{{ $option['courier_name'] }}-{{ $option['service_type'] }}-{{$option['price']}}-0" 
+                                               class="form-radio h-5 w-5 text-blue-600"
+                                               data-cost="{{ $option['price'] }}"
+                                               data-insurance="0"
+                                               data-cod="false">
+                                        <div class="ml-4 flex justify-between w-full items-center">
+                                            <div class="flex items-center gap-3">
+                                                <img src="{{ asset('storage/logo-ekspedisi/'.$logoName) }}" 
+                                                     alt="{{ strtoupper($option['courier_name']) }}" 
+                                                     class="w-8 h-8 object-contain">
+                                                <div>
+                                                    <span class="text-sm font-medium text-gray-900">
+                                                        {{ strtoupper($option['courier_name']) }} - {{ strtoupper($option['service_type']) }}
+                                                    </span>
+                                                    @if($option['estimation'])
+                                                        <span class="block text-xs text-gray-500">Est: {{ $option['estimation'] }}</span>
+                                                    @endif
+                                                </div>
+                                            </div>
+                                            <span class="text-sm font-medium text-gray-900">
+                                                Rp{{ number_format($option['price'], 0, ',', '.') }}
+                                            </span>
+                                        </div>
+                                    </label>
+                                @endforeach
 
                                 @endif
                         </div>
@@ -264,7 +264,7 @@
                            </div>
                         </div>
 
-                        <!-- REVISI: Penambahan Syarat & Ketentuan -->
+                        <!-- Syarat & Ketentuan -->
                         <div class="mt-6 border-t pt-6">
                             <div class="relative flex items-start">
                                 <div class="flex h-6 items-center">
@@ -305,89 +305,89 @@
         </div>
         <div class="p-2">
             <ul id="paymentOptionsList" class="max-h-[60vh] overflow-y-auto space-y-2 p-4">
-                 <li id="codPaymentOption" class="cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" 
+                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" 
                      data-value="cash" 
                      data-label="CASH" 
                      data-img="https://uxwing.com/wp-content/themes/uxwing/download/banking-finance/cash-icon.png">
                      <img src="https://uxwing.com/wp-content/themes/uxwing/download/banking-finance/cash-icon.png" class="h-8 w-8 object-contain mr-4">
                      <span class="text-sm font-medium text-gray-900">CASH</span>
                  </li>
-                 <li id="codPaymentOption" class="cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" 
+                 <li id="codPaymentOption" class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" 
                      data-value="cod" 
                      data-label="COD" 
                      data-img="{{ asset('storage/payments/cod.png') }}">
                      <img src="{{ asset('storage/payments/cod.png') }}" class="h-8 w-8 object-contain mr-4">
                      <span class="text-sm font-medium text-gray-900">COD (Cash on Delivery)</span>
                  </li>
-                <li class="cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="PERMATAVA" data-label="Permata Virtual Account" data-img="{{ asset('storage/payments/permata.webp') }}">
+                <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="PERMATAVA" data-label="Permata Virtual Account" data-img="{{ asset('storage/payments/permata.webp') }}">
                     <img src="{{ asset('storage/payments/permata.webp') }}" class="h-8 w-8 object-contain mr-4">
                     <span class="text-sm font-medium text-gray-900">Permata Virtual Account</span>
                 </li>
-                 <li class="cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="BNIVA" data-label="BNI Virtual Account" data-img="{{ asset('storage/payments/bni.webp') }}">
+                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="BNIVA" data-label="BNI Virtual Account" data-img="{{ asset('storage/payments/bni.webp') }}">
                     <img src="{{ asset('storage/payments/bni.webp') }}" class="h-8 w-8 object-contain mr-4">
                     <span class="text-sm font-medium text-gray-900">BNI Virtual Account</span>
                 </li>
-                <li class="cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="BRIVA" data-label="BRI Virtual Account" data-img="{{ asset('storage/payments/bri.webp') }}">
+                <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="BRIVA" data-label="BRI Virtual Account" data-img="{{ asset('storage/payments/bri.webp') }}">
                     <img src="{{ asset('storage/payments/bri.webp') }}" class="h-8 w-8 object-contain mr-4">
                     <span class="text-sm font-medium text-gray-900">BRI Virtual Account</span>
                 </li>
-                <li class="cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="MANDIRIVA" data-label="Mandiri Virtual Account" data-img="{{ asset('storage/payments/mandiri.webp') }}">
+                <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="MANDIRIVA" data-label="Mandiri Virtual Account" data-img="{{ asset('storage/payments/mandiri.webp') }}">
                     <img src="{{ asset('storage/payments/mandiri.webp') }}" class="h-8 w-8 object-contain mr-4">
                     <span class="text-sm font-medium text-gray-900">Mandiri Virtual Account</span>
                 </li>
-                <li class="cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="BCAVA" data-label="BCA Virtual Account" data-img="{{ asset('storage/payments/bca.webp') }}">
+                <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="BCAVA" data-label="BCA Virtual Account" data-img="{{ asset('storage/payments/bca.webp') }}">
                     <img src="{{ asset('storage/payments/bca.webp') }}" class="h-8 w-8 object-contain mr-4">
                     <span class="text-sm font-medium text-gray-900">BCA Virtual Account</span>
                 </li>
-                 <li class="cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="MUAMALATVA" data-label="Muamalat Virtual Account" data-img="{{ asset('storage/payments/muamalat.png') }}">
+                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="MUAMALATVA" data-label="Muamalat Virtual Account" data-img="{{ asset('storage/payments/muamalat.png') }}">
                     <img src="{{ asset('storage/payments/muamalat.png') }}" class="h-8 w-8 object-contain mr-4">
                     <span class="text-sm font-medium text-gray-900">Muamalat Virtual Account</span>
                 </li>
-                 <li class="cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="CIMBVA" data-label="CIMB Niaga Virtual Account" data-img="{{ asset('storage/payments/cimb.svg') }}">
+                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="CIMBVA" data-label="CIMB Niaga Virtual Account" data-img="{{ asset('storage/payments/cimb.svg') }}">
                     <img src="{{ asset('storage/payments/cimb.svg') }}" class="h-8 w-8 object-contain mr-4">
                     <span class="text-sm font-medium text-gray-900">CIMB Niaga Virtual Account</span>
                 </li>
-                 <li class="cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="BSIVA" data-label="BSI Virtual Account" data-img="{{ asset('storage/payments/bsi.png') }}">
+                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="BSIVA" data-label="BSI Virtual Account" data-img="{{ asset('storage/payments/bsi.png') }}">
                     <img src="{{ asset('storage/payments/bsi.png') }}" class="h-8 w-8 object-contain mr-4">
                     <span class="text-sm font-medium text-gray-900">BSI Virtual Account</span>
                 </li>
-                 <li class="cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="OCBCVA" data-label="OCBC NISP Virtual Account" data-img="{{ asset('storage/payments/ocbc.png') }}">
+                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="OCBCVA" data-label="OCBC NISP Virtual Account" data-img="{{ asset('storage/payments/ocbc.png') }}">
                     <img src="{{ asset('storage/payments/ocbc.png') }}" class="h-8 w-8 object-contain mr-4">
                     <span class="text-sm font-medium text-gray-900">OCBC NISP Virtual Account</span>
                 </li>
-                 <li class="cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="DANAMONVA" data-label="Danamon Virtual Account" data-img="{{ asset('storage/payments/danamon.png') }}">
+                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="DANAMONVA" data-label="Danamon Virtual Account" data-img="{{ asset('storage/payments/danamon.png') }}">
                     <img src="{{ asset('storage/payments/danamon.png') }}" class="h-8 w-8 object-contain mr-4">
                     <span class="text-sm font-medium text-gray-900">Danamon Virtual Account</span>
                 </li>
-                 <li class="cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="OTHERBANKVA" data-label="Other Bank Virtual Account" data-img="{{ asset('storage/payments/other.png') }}">
+                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="OTHERBANKVA" data-label="Other Bank Virtual Account" data-img="{{ asset('storage/payments/other.png') }}">
                     <img src="{{ asset('storage/payments/other.png') }}" class="h-8 w-8 object-contain mr-4">
                     <span class="text-sm font-medium text-gray-900">Other Bank Virtual Account</span>
                 </li>
-                <li class="cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="ALFAMART" data-label="Alfamart" data-img="{{ asset('storage/payments/alfamart.webp') }}">
+                <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="ALFAMART" data-label="Alfamart" data-img="{{ asset('storage/payments/alfamart.webp') }}">
                     <img src="{{ asset('storage/payments/alfamart.webp') }}" class="h-8 w-8 object-contain mr-4">
                     <span class="text-sm font-medium text-gray-900">Alfamart</span>
                 </li>
-                <li class="cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="INDOMARET" data-label="Indomaret" data-img="{{ asset('storage/payments/indomaret.webp') }}">
+                <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="INDOMARET" data-label="Indomaret" data-img="{{ asset('storage/payments/indomaret.webp') }}">
                     <img src="{{ asset('storage/payments/indomaret.webp') }}" class="h-8 w-8 object-contain mr-4">
                     <span class="text-sm font-medium text-gray-900">Indomaret</span>
                 </li>
-                 <li class="cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="ALFAMIDI" data-label="Alfamidi" data-img="{{ asset('storage/payments/Alfamidi.png') }}">
+                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="ALFAMIDI" data-label="Alfamidi" data-img="{{ asset('storage/payments/Alfamidi.png') }}">
                     <img src="{{ asset('storage/payments/Alfamidi.png') }}" class="h-8 w-8 object-contain mr-4">
                     <span class="text-sm font-medium text-gray-900">Alfamidi</span>
                 </li>
-                <li class="cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="OVO" data-label="OVO" data-img="{{ asset('storage/payments/ovo.webp') }}">
+                <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="OVO" data-label="OVO" data-img="{{ asset('storage/payments/ovo.webp') }}">
                     <img src="{{ asset('storage/payments/ovo.webp') }}" class="h-8 w-8 object-contain mr-4">
                     <span class="text-sm font-medium text-gray-900">OVO</span>
                 </li>
-                <li class="cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="QRIS" data-label="QRIS" data-img="{{ asset('storage/payments/qris2.png') }}">
+                <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="QRIS" data-label="QRIS" data-img="{{ asset('storage/payments/qris2.png') }}">
                     <img src="{{ asset('storage/payments/qris2.png') }}" class="h-8 w-8 object-contain mr-4">
                     <span class="text-sm font-medium text-gray-900">QRIS</span>
                 </li>
-                <li class="cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="DANA" data-label="DANA" data-img="{{ asset('storage/payments/dana.webp') }}">
+                <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="DANA" data-label="DANA" data-img="{{ asset('storage/payments/dana.webp') }}">
                     <img src="{{ asset('storage/payments/dana.webp') }}" class="h-8 w-8 object-contain mr-4">
                     <span class="text-sm font-medium text-gray-900">DANA</span>
                 </li>
-                <li class="cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="SHOPEEPAY" data-label="ShopeePay" data-img="{{ asset('storage/payments/shopeepay.webp') }}">
+                <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="SHOPEEPAY" data-label="ShopeePay" data-img="{{ asset('storage/payments/shopeepay.webp') }}">
                     <img src="{{ asset('storage/payments/shopeepay.webp') }}" class="h-8 w-8 object-contain mr-4">
                     <span class="text-sm font-medium text-gray-900">ShopeePay</span>
                 </li>
@@ -395,12 +395,12 @@
         </div>
         <div class="flex justify-end p-4 border-t bg-gray-50 rounded-b-lg space-x-4">
             <button type="button" id="backButton" class="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">Kembali</button>
-            <button type="button" id="continueButton" class="px-4 py-2 bg-blue-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-blue-700">Lanjutkan Pembayaran</button>
+            <button type="button" id="continueButton" class="px-4 py-2 bg-blue-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-blue-700">Lanjutkan</button>
         </div>
     </div>
 </div>
 
-<!-- REVISI: Modal Syarat & Ketentuan -->
+<!-- Modal Syarat & Ketentuan -->
 <div id="terms-modal" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50 hidden">
     <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 transform transition-all">
         <div class="flex justify-between items-center p-4 border-b">
@@ -412,39 +412,31 @@
         <div id="terms-content" class="p-6 text-sm text-gray-600 max-h-[60vh] overflow-y-auto space-y-4">
             <p class="font-bold">Selamat datang di Sancaka Marketplace!</p>
             <p>Dengan melakukan transaksi di platform kami, Anda dianggap telah membaca, memahami, dan menyetujui seluruh isi dalam Syarat & Ketentuan ini. Mohon dibaca dengan saksama.</p>
-            
             <div>
                 <h4 class="font-semibold text-gray-800">1. Definisi</h4>
                 <p>Sancaka Marketplace adalah platform jual beli online yang mempertemukan Penjual dan Pembeli. Setiap produk yang terdaftar merupakan tanggung jawab Penjual sepenuhnya.</p>
             </div>
-            
             <div>
                 <h4 class="font-semibold text-gray-800">2. Proses Pemesanan</h4>
                 <p>Pastikan alamat pengiriman dan nomor telepon yang Anda cantumkan sudah benar dan aktif. Kesalahan penulisan alamat yang mengakibatkan kegagalan pengiriman berada di luar tanggung jawab kami. Pilihlah metode pengiriman dan pembayaran yang sesuai. Pesanan akan diproses setelah pembayaran berhasil diverifikasi.</p>
             </div>
-
             <div>
                 <h4 class="font-semibold text-gray-800">3. Pembayaran</h4>
                 <p>Semua transaksi wajib dilakukan melalui metode pembayaran resmi yang tersedia di Sancaka Marketplace. Kami tidak bertanggung jawab atas transaksi yang dilakukan di luar platform. Biaya tambahan seperti biaya penanganan COD atau biaya administrasi bank mungkin berlaku tergantung metode yang dipilih.</p>
             </div>
-
             <div>
                 <h4 class="font-semibold text-gray-800">4. Pengiriman</h4>
                 <p>Estimasi waktu pengiriman yang ditampilkan adalah perkiraan dari pihak ekspedisi. Keterlambatan yang disebabkan oleh kurir, kondisi cuaca, atau keadaan kahar (force majeure) berada di luar kendali kami. Pembeli wajib melakukan pengecekan kondisi produk saat diterima. Jika terdapat kerusakan, segera dokumentasikan dan hubungi kami dalam waktu 1x24 jam.</p>
             </div>
-
             <div>
                 <h4 class="font-semibold text-gray-800">5. Kebijakan Pengembalian (Return & Refund)</h4>
                 <p>Pengembalian produk hanya dapat dilakukan jika produk yang diterima tidak sesuai dengan deskripsi, rusak, atau cacat produksi. Klaim pengembalian wajib menyertakan video unboxing tanpa jeda sebagai bukti. Produk pengganti atau pengembalian dana akan diproses setelah produk yang dikembalikan kami terima dan verifikasi.</p>
             </div>
-
              <div>
                 <h4 class="font-semibold text-gray-800">6. Privasi dan Keamanan</h4>
                 <p>Kami menjaga kerahasiaan data pribadi Anda sesuai dengan kebijakan privasi yang berlaku. Data Anda hanya akan digunakan untuk keperluan pemrosesan pesanan dan tidak akan disebarluaskan kepada pihak ketiga tanpa persetujuan Anda.</p>
             </div>
-
             <p class="font-bold pt-4 border-t">Dengan menekan tombol "Setuju", Anda mengonfirmasi bahwa Anda telah membaca dan menerima semua poin di atas tanpa paksaan dari pihak manapun.</p>
-
         </div>
         <div class="flex justify-end p-4 border-t bg-gray-50 rounded-b-lg">
             <button type="button" id="terms-agree-button" class="px-6 py-2 bg-blue-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-blue-700" disabled>Setuju</button>
@@ -457,7 +449,6 @@
 document.addEventListener('DOMContentLoaded', function () {
     const subtotal = {{ $subtotal }};
     const codFeePercentage = 0.03;
-
     let shippingCost = 0;
     let insuranceCost = 0;
     let isCodPayment = false;
@@ -470,7 +461,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const paymentMethodInput = document.getElementById('payment_method');
     const codPaymentOption = document.getElementById("codPaymentOption");
 
-    // Modal elements
     const paymentModal = document.getElementById('paymentModal');
     const paymentMethodButton = document.getElementById('paymentMethodButton');
     const closeModalButton = document.getElementById('closeModalButton');
@@ -478,7 +468,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const continueButton = document.getElementById('continueButton');
     const paymentOptionsList = document.getElementById('paymentOptionsList');
 
-    // REVISI: Elemen untuk Syarat & Ketentuan
     const termsCheckbox = document.getElementById('terms-and-conditions');
     const submitButton = document.getElementById('submit-button');
     const termsModal = document.getElementById('terms-modal');
@@ -486,6 +475,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const termsContent = document.getElementById('terms-content');
     const termsAgreeButton = document.getElementById('terms-agree-button');
     const termsModalClose = document.getElementById('terms-modal-close');
+    const checkoutForm = document.getElementById('checkout-form');
 
     function formatRupiah(num) {
         return 'Rp' + new Intl.NumberFormat('id-ID').format(num || 0);
@@ -493,7 +483,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function updateTotal() {
         let codAddCost = 0;
-
         if (isCodPayment && isCodSupportedByCourier) {
             const baseTotal = subtotal + shippingCost + insuranceCost;
             codAddCost = Math.ceil(baseTotal * codFeePercentage);
@@ -502,9 +491,7 @@ document.addEventListener('DOMContentLoaded', function () {
         } else {
             codFeeRow.style.display = 'none';
         }
-
         const grandTotal = subtotal + shippingCost + insuranceCost + codAddCost;
-        
         ongkirEl.innerText = formatRupiah(shippingCost);
         totalEl.innerText = formatRupiah(grandTotal);
     }
@@ -512,7 +499,6 @@ document.addEventListener('DOMContentLoaded', function () {
     function handleShippingChange() {
         const selectedShipping = document.querySelector('input[name="shipping_method"]:checked');
         if (!selectedShipping) return;
-
         shippingCost = parseInt(selectedShipping.dataset.cost || 0, 10);
         insuranceCost = parseInt(selectedShipping.dataset.insurance || 0, 10);
         isCodSupportedByCourier = selectedShipping.dataset.cod === 'true';
@@ -522,7 +508,7 @@ document.addEventListener('DOMContentLoaded', function () {
         } else {
             codPaymentOption.style.display = 'none';
             if(isCodPayment) {
-                const defaultPayment = document.querySelector('#paymentOptionsList li[data-value="PERMATAVA"]');
+                const defaultPayment = document.querySelector('.payment-option[data-value="PERMATAVA"]');
                 if (defaultPayment) {
                     defaultPayment.click();
                 }
@@ -531,7 +517,6 @@ document.addEventListener('DOMContentLoaded', function () {
         updateTotal();
     }
 
-    // --- Payment Modal Logic ---
     function openPaymentModal() { paymentModal.classList.remove('hidden'); }
     function closePaymentModal() { paymentModal.classList.add('hidden'); }
 
@@ -539,52 +524,43 @@ document.addEventListener('DOMContentLoaded', function () {
     closeModalButton.addEventListener('click', closePaymentModal);
     backButton.addEventListener('click', closePaymentModal);
     continueButton.addEventListener('click', closePaymentModal);
-    paymentModal.addEventListener('click', (event) => {
-        if (event.target === paymentModal) {
-            closePaymentModal();
-        }
-    });
-
-    // --- REVISI: Logika Modal Syarat & Ketentuan ---
+    
     function openTermsModal() { termsModal.classList.remove('hidden'); }
     function closeTermsModal() { termsModal.classList.add('hidden'); }
-
-    // Buka modal saat checkbox atau link diklik
-    termsCheckbox.addEventListener('click', function(e) {
-        e.preventDefault(); // Mencegah checkbox langsung tercentang
-        if (!this.checked) {
-           openTermsModal();
+    
+    // REVISI LOGIKA CHECKBOX
+    termsCheckbox.addEventListener('change', function() {
+        if (this.checked) {
+            openTermsModal();
+        } else {
+            submitButton.disabled = true;
         }
     });
+
     termsLink.addEventListener('click', openTermsModal);
 
-    // Aktifkan tombol setuju jika sudah scroll ke bawah
     termsContent.addEventListener('scroll', function() {
-        // Cek jika (tinggi total konten - posisi scroll) <= tinggi area yg terlihat
-        const isScrolledToBottom = this.scrollHeight - this.scrollTop <= this.clientHeight + 1; // +1 untuk toleransi
+        const isScrolledToBottom = this.scrollHeight - this.scrollTop <= this.clientHeight + 1;
         termsAgreeButton.disabled = !isScrolledToBottom;
     });
 
-    // Aksi saat tombol setuju diklik
     termsAgreeButton.addEventListener('click', function() {
         termsCheckbox.checked = true;
         submitButton.disabled = false;
         closeTermsModal();
     });
 
-    // Aksi saat modal ditutup tanpa setuju
     termsModalClose.addEventListener('click', function() {
         termsCheckbox.checked = false;
         submitButton.disabled = true;
         closeTermsModal();
     });
 
-    // --- Event Listeners ---
     document.querySelectorAll('input[name="shipping_method"]').forEach(radio => {
         radio.addEventListener('change', handleShippingChange);
     });
 
-    paymentOptionsList.querySelectorAll('li').forEach(item => {
+    paymentOptionsList.querySelectorAll('.payment-option').forEach(item => {
         item.addEventListener('click', function () {
             const paymentValue = this.dataset.value;
             paymentMethodInput.value = paymentValue;
@@ -602,7 +578,13 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // --- Initialization ---
+    checkoutForm.addEventListener('submit', function(e) {
+        if (!termsCheckbox.checked) {
+            e.preventDefault();
+            alert('Anda harus menyetujui Syarat & Ketentuan untuk melanjutkan.');
+        }
+    });
+    
     const initialPayment = document.querySelector(`#paymentOptionsList li[data-value="${paymentMethodInput.value}"]`);
     if(initialPayment) {
         initialPayment.classList.add('bg-blue-100', 'border-blue-500');
@@ -617,10 +599,8 @@ document.addEventListener('DOMContentLoaded', function () {
     groupButtons.forEach(button => {
         button.addEventListener('click', () => {
             const group = button.dataset.group;
-
             groupButtons.forEach(b => b.classList.remove('bg-blue-500', 'text-white'));
             button.classList.add('bg-blue-500', 'text-black');
-
             groupOptions.forEach(div => {
                 div.classList.toggle('hidden', div.dataset.group !== group);
             });
@@ -628,3 +608,4 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 </script>
 @endsection
+
