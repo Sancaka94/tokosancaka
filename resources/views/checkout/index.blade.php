@@ -84,7 +84,7 @@
                         <h2 class="text-lg font-bold text-gray-900 mb-4">Pilih Metode Pengiriman</h2>
                         <div class="space-y-4">
                          
-                    @php
+                   @php
 $expressResults = collect($expressOptions['results'] ?? []);
 
 $expressResults = $expressResults->map(function($option) {
@@ -109,8 +109,17 @@ $expressResults = $expressResults->map(function($option) {
 
 // Kelompokkan berdasarkan grup
 $expressGrouped = $expressResults->groupBy('group');
+
+// Pastikan urutannya sesuai keinginan
+$groupOrder = ['Regular', 'Same Day', 'One Day', 'Instant', 'Cargo', 'Trucking'];
+$expressGrouped = collect($groupOrder)
+    ->mapWithKeys(function($key) use ($expressGrouped) {
+        return [$key => $expressGrouped->get($key, collect())];
+    });
+
 $firstGroup = $expressGrouped->keys()->first();
 @endphp
+
 
 
 <div class="flex gap-2 mb-4">
