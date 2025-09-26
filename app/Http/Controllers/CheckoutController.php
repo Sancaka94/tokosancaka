@@ -117,10 +117,11 @@ class CheckoutController extends Controller
             $category 
         );
 
-        $storeLat = $store->latitude;
-        $storeLng = $store->longitude;
-        $userLat  = $user->latitude;
-        $userLng  = $user->longitude;
+        $storeLat = $storeLat ? (float) $storeLat : null;
+        $storeLng = $storeLng ? (float) $storeLng : null;
+        $userLat  = $userLat ? (float) $userLat : null;
+        $userLng  = $userLng ? (float) $userLng : null;
+
 
         if (!$storeLat || !$storeLng) {
             $geo = $this->geocode($storeSearch);
