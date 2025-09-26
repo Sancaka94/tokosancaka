@@ -87,12 +87,16 @@ $expressResults = collect($expressOptions['results'] ?? []);
 $expressResults = $expressResults->map(function($option) {
     $serviceNameLower = strtolower($option['service_name'] ?? '');
 
-    if (str_contains($serviceNameLower, 'cargo')) {
+    if (str_contains($serviceNameLower, 'trucking')) {
+        $option['group'] = 'Trucking';
+    } elseif (str_contains($serviceNameLower, 'cargo')) {
         $option['group'] = 'Cargo';
     } elseif (str_contains($serviceNameLower, 'instan') || str_contains($serviceNameLower, 'instant')) {
         $option['group'] = 'Instant';
-    } elseif (str_contains($serviceNameLower, 'same day') || str_contains($serviceNameLower, 'day')) {
+    } elseif (str_contains($serviceNameLower, 'same day')) {
         $option['group'] = 'Same Day';
+    } elseif (str_contains($serviceNameLower, 'one day') || str_contains($serviceNameLower, 'next day')) {
+        $option['group'] = 'One Day';
     } else {
         $option['group'] = 'Regular';
     }
