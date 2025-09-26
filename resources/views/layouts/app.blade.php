@@ -520,6 +520,8 @@
                             </button>
                         </div>
                     </form>
+
+                    <pre>{{ print_r($instantOptions, true) }}</pre>
                     <!-- Hasil -->
                     <div id="cost-results-container" class="mt-4"></div>
                 </div>
