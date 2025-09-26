@@ -21,23 +21,30 @@ use Illuminate\Support\Str;
 
 class CheckoutController extends Controller
 {
-    public function geocode($address)
-    {
-        $url = "https://nominatim.openstreetmap.org/search?q=" . urlencode($address) . "&format=json&limit=1";
 
-        $response = Http::withHeaders([
-            'User-Agent' => 'MyLaravelApp/1.0 (support@tokosancaka.com)'
-        ])->get($url)->json();
+    public function geocode($address){
+        S
+    $url = "https://nominatim.openstreetmap.org/search";
 
-        if (!empty($response[0])) {
-            return [
-                'lat' => (float) $response[0]['lat'],
-                'lng' => (float) $response[0]['lon'],
-            ];
-        }
+    $response = Http::withHeaders([
+        'User-Agent' => 'MyLaravelApp/1.0 (support@tokosancaka.com)',
+        'Accept'     => 'application/json',
+    ])->get($url, [
+        'q'      => $address,
+        'format' => 'json',
+        'limit'  => 1,
+    ]);
 
-        return null;
+    if ($response->successful() && !empty($response[0])) {
+        return [
+            'lat' => (float) $response[0]['lat'],
+            'lng' => (float) $response[0]['lon'],
+        ];
     }
+
+    return null;
+}
+
 
 
     /**
