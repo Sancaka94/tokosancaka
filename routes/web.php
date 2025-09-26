@@ -98,7 +98,9 @@ Route::get('/', function () {
 
 })->name('home'); // <-- TAMBAHKAN INI
 
-
+Route::get('/privacy-policy', function () {
+    return view('privacy-policy');
+})->name('privacy.policy');
 
 Route::get('/admin/import/wordpress', [ImportController::class, 'showForm'])->name('admin.import.wordpress.form');
 
