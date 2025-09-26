@@ -551,6 +551,9 @@ $finalWeight = max(1000, $totalWeight);
                     if ($kiriminResponse['status'] === true) {
                         // Success
                     } else {
+
+                          Log::error('KiriminAja Instant Response: ', $kiriminResponse);
+                          
                             DB::rollBack();
                         
                             if (!empty($kiriminResponse['errors'])) {
