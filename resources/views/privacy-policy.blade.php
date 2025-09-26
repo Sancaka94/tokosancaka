@@ -104,21 +104,49 @@
                         layanan pelanggan.
                     </p>
 
-                    <h5 class="fw-bold mt-4">12. Perubahan Kebijakan</h5>
+                    <h5 class="fw-bold mt-4">12. Proses Delivery</h5>
+                    <p>
+                        Estimasi pengiriman ditentukan oleh pihak ekspedisi. Data alamat yang Anda berikan akan digunakan untuk 
+                        memastikan pesanan sampai dengan benar. Kami tidak bertanggung jawab atas kesalahan pengiriman akibat 
+                        informasi alamat yang tidak lengkap atau salah.
+                    </p>
+
+                    <h5 class="fw-bold mt-4">13. Pembatalan Pesanan (Cancel)</h5>
+                    <p>
+                        Pesanan dapat dibatalkan sebelum status berubah menjadi "Diproses". Setelah pesanan diproses atau dikirim, 
+                        pembatalan tidak dapat dilakukan. Untuk bantuan pembatalan, hubungi layanan pelanggan segera setelah pemesanan.
+                    </p>
+
+                    <h5 class="fw-bold mt-4">14. Kebijakan Pengembalian & Refund</h5>
+                    <p>
+                        Anda berhak mengajukan refund atau pengembalian barang apabila:
+                    </p>
+                    <ul>
+                        <li>Produk yang diterima rusak atau cacat produksi</li>
+                        <li>Produk tidak sesuai dengan deskripsi atau pesanan</li>
+                        <li>Produk hilang dalam proses pengiriman (setelah konfirmasi resmi dari ekspedisi)</li>
+                    </ul>
+                    <p>
+                        Proses refund akan dilakukan ke metode pembayaran yang sama dengan yang digunakan saat transaksi. 
+                        Waktu pencairan refund mengikuti kebijakan bank atau penyedia pembayaran masing-masing.
+                    </p>
+
+                    <h5 class="fw-bold mt-4">15. Perubahan Kebijakan</h5>
                     <p>
                         Kami dapat memperbarui Kebijakan Privasi ini dari waktu ke waktu. Versi terbaru akan ditampilkan di situs web, 
                         dan perubahan berlaku sejak tanggal dipublikasikan.
                     </p>
 
-                    <h5 class="fw-bold mt-4">13. Persetujuan</h5>
+                    <h5 class="fw-bold mt-4">16. Persetujuan</h5>
                     <p>
                         Dengan menggunakan layanan kami, Anda menyatakan telah membaca, memahami, dan menyetujui seluruh isi Kebijakan Privasi ini.
                     </p>
 
-                    <h5 class="fw-bold mt-4">14. Kontak Kami</h5>
+                    <h5 class="fw-bold mt-4">17. Kontak Kami</h5>
                     <p>
-                        Jika Anda memiliki pertanyaan, keluhan, atau permintaan terkait data pribadi, silakan hubungi kami melalui halaman 
-                        kontak resmi di <strong>Sancaka Express, Sancaka Store, Toko Sancaka, dan Sancaka Marketplace</strong>.
+                        Jika Anda memiliki pertanyaan, keluhan, atau permintaan terkait data pribadi, pengiriman, pembatalan, atau refund, 
+                        silakan hubungi kami melalui halaman kontak resmi di 
+                        <strong>Sancaka Express, Sancaka Store, Toko Sancaka, dan Sancaka Marketplace</strong>.
                     </p>
 
                     <p class="mt-4 text-center text-muted">
