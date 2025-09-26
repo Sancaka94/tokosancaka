@@ -139,20 +139,31 @@ class CheckoutController extends Controller
         }
         
     
-        $instantOptions = null;
-        if ($storeLat && $storeLng && $userLat && $userLng) {
-            $instantOptions = $kiriminAja->getInstantPricing(
-                $storeLat,
-                $storeLng,
-                $store->address_detail,
-                $userLat,
-                $userLng,
-                $user->address_detail,
-                $finalWeight,
-                $itemValue
-            );
-            
-        }
+       $instantOptions = null;
+if ($storeLat && $storeLng && $userLat && $userLng) {
+
+    // Debug payload sebelum request
+    dd([
+        'storeLat'    => $storeLat,
+        'storeLng'    => $storeLng,
+        'userLat'     => $userLat,
+        'userLng'     => $userLng,
+        'finalWeight' => $finalWeight,
+        'itemValue'   => $itemValue,
+    ]);
+
+    $instantOptions = $kiriminAja->getInstantPricing(
+        $storeLat,
+        $storeLng,
+        $store->address_detail ?? '',
+        $userLat,
+        $userLng,
+        $user->address_detail ?? '',
+        $finalWeight,
+        $itemValue
+    );
+}
+
         
     
         return view('checkout.index', compact('cart', 'expressOptions', 'instantOptions'));
