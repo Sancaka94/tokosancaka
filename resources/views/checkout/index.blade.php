@@ -151,9 +151,9 @@
                             {{-- Debugging KiriminAja Instant --}}
                             <pre>{{ print_r($instantOptions, true) }}</pre>
 
-                           @if($instantOptions && isset($instantOptions['results']))
+                           @if($instantOptions && isset($instantOptions['result']))
                                  @php
-                                     $instantSorted = collect($instantOptions['results'])
+                                     $instantSorted = collect($instantOptions['result'])
                                          ->flatMap(function($courier) {
                                              return collect($courier['costs'])->map(function($cost) use ($courier) {
                                                  return [
