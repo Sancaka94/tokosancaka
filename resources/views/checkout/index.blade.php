@@ -91,6 +91,8 @@ $expressResults = $expressResults->map(function($option) {
         $option['group'] = 'Cargo';
     } elseif (str_contains($serviceNameLower, 'instan') || str_contains($serviceNameLower, 'instant')) {
         $option['group'] = 'Instant';
+    } elseif (str_contains($serviceNameLower, 'same day') || str_contains($serviceNameLower, 'day')) {
+        $option['group'] = 'Same Day';
     } else {
         $option['group'] = 'Regular';
     }
