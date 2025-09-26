@@ -412,30 +412,88 @@
         <div id="terms-content" class="p-6 text-sm text-gray-600 max-h-[60vh] overflow-y-auto space-y-4">
             <p class="font-bold">Selamat datang di Sancaka Marketplace!</p>
             <p>Dengan melakukan transaksi di platform kami, Anda dianggap telah membaca, memahami, dan menyetujui seluruh isi dalam Syarat & Ketentuan ini. Mohon dibaca dengan saksama.</p>
+            
             <div>
                 <h4 class="font-semibold text-gray-800">1. Definisi</h4>
                 <p>Sancaka Marketplace adalah platform jual beli online yang mempertemukan Penjual dan Pembeli. Setiap produk yang terdaftar merupakan tanggung jawab Penjual sepenuhnya.</p>
             </div>
             <div>
                 <h4 class="font-semibold text-gray-800">2. Proses Pemesanan</h4>
-                <p>Pastikan alamat pengiriman dan nomor telepon yang Anda cantumkan sudah benar dan aktif. Kesalahan penulisan alamat yang mengakibatkan kegagalan pengiriman berada di luar tanggung jawab kami. Pilihlah metode pengiriman dan pembayaran yang sesuai. Pesanan akan diproses setelah pembayaran berhasil diverifikasi.</p>
+                <p>Pastikan alamat pengiriman dan nomor telepon yang Anda cantumkan sudah benar dan aktif. Kesalahan penulisan alamat yang mengakibatkan kegagalan pengiriman berada di luar tanggung jawab kami.</p>
             </div>
             <div>
                 <h4 class="font-semibold text-gray-800">3. Pembayaran</h4>
-                <p>Semua transaksi wajib dilakukan melalui metode pembayaran resmi yang tersedia di Sancaka Marketplace. Kami tidak bertanggung jawab atas transaksi yang dilakukan di luar platform. Biaya tambahan seperti biaya penanganan COD atau biaya administrasi bank mungkin berlaku tergantung metode yang dipilih.</p>
+                <p>Semua transaksi wajib dilakukan melalui metode pembayaran resmi. Biaya tambahan seperti COD atau biaya administrasi bank mungkin berlaku tergantung metode yang dipilih.</p>
             </div>
             <div>
                 <h4 class="font-semibold text-gray-800">4. Pengiriman</h4>
-                <p>Estimasi waktu pengiriman yang ditampilkan adalah perkiraan dari pihak ekspedisi. Keterlambatan yang disebabkan oleh kurir, kondisi cuaca, atau keadaan kahar (force majeure) berada di luar kendali kami. Pembeli wajib melakukan pengecekan kondisi produk saat diterima. Jika terdapat kerusakan, segera dokumentasikan dan hubungi kami dalam waktu 1x24 jam.</p>
+                <p>Estimasi waktu pengiriman adalah perkiraan ekspedisi. Keterlambatan akibat kurir, cuaca, atau force majeure berada di luar kendali kami. Periksa kondisi produk saat diterima.</p>
             </div>
             <div>
                 <h4 class="font-semibold text-gray-800">5. Kebijakan Pengembalian (Return & Refund)</h4>
-                <p>Pengembalian produk hanya dapat dilakukan jika produk yang diterima tidak sesuai dengan deskripsi, rusak, atau cacat produksi. Klaim pengembalian wajib menyertakan video unboxing tanpa jeda sebagai bukti. Produk pengganti atau pengembalian dana akan diproses setelah produk yang dikembalikan kami terima dan verifikasi.</p>
+                <p>Pengembalian hanya berlaku jika produk rusak, cacat, atau tidak sesuai deskripsi. Klaim wajib menyertakan video unboxing tanpa jeda sebagai bukti.</p>
             </div>
-             <div>
-                <h4 class="font-semibold text-gray-800">6. Privasi dan Keamanan</h4>
-                <p>Kami menjaga kerahasiaan data pribadi Anda sesuai dengan kebijakan privasi yang berlaku. Data Anda hanya akan digunakan untuk keperluan pemrosesan pesanan dan tidak akan disebarluaskan kepada pihak ketiga tanpa persetujuan Anda.</p>
+            <div>
+                <h4 class="font-semibold text-gray-800">6. Asuransi & Kerusakan Barang</h4>
+                <p>Pembeli dapat memilih layanan asuransi pengiriman. Klaim hanya dapat diproses apabila pembeli menggunakan layanan dengan asuransi.</p>
             </div>
+            <div>
+                <h4 class="font-semibold text-gray-800">7. Kesalahan Pemesanan</h4>
+                <p>Pembeli wajib memastikan detail produk sudah sesuai sebelum checkout. Kesalahan pemesanan bukan tanggung jawab penjual maupun marketplace.</p>
+            </div>
+            <div>
+                <h4 class="font-semibold text-gray-800">8. Tanggung Jawab Penjual</h4>
+                <p>Penjual wajib memastikan produk asli, layak, dan sesuai deskripsi. Penjual dilarang menjual produk ilegal atau palsu.</p>
+            </div>
+            <div>
+                <h4 class="font-semibold text-gray-800">9. Privasi dan Keamanan</h4>
+                <p>Data pribadi pembeli dijaga sesuai kebijakan privasi. Data tidak akan dibagikan kepada pihak ketiga tanpa persetujuan.</p>
+            </div>
+            <div>
+                <h4 class="font-semibold text-gray-800">10. Produk Digital</h4>
+                <p>Untuk produk digital (e-book, software, lisensi), tidak ada pengembalian atau refund setelah produk diterima kecuali terdapat kerusakan file.</p>
+            </div>
+            <div>
+                <h4 class="font-semibold text-gray-800">11. Garansi Produk</h4>
+                <p>Beberapa produk mungkin memiliki garansi resmi dari penjual atau distributor. Pembeli wajib menyimpan bukti transaksi untuk klaim garansi.</p>
+            </div>
+            <div>
+                <h4 class="font-semibold text-gray-800">12. Kewajiban Pembeli</h4>
+                <p>Pembeli wajib memberikan informasi yang benar saat bertransaksi, menjaga etika dalam komunikasi, dan tidak melakukan penipuan.</p>
+            </div>
+            <div>
+                <h4 class="font-semibold text-gray-800">13. Kewajiban Penjual</h4>
+                <p>Penjual wajib mengirimkan produk sesuai pesanan, memberikan nomor resi valid, serta menjaga kualitas layanan kepada pembeli.</p>
+            </div>
+            <div>
+                <h4 class="font-semibold text-gray-800">14. Larangan</h4>
+                <p>Dilarang memperjualbelikan barang terlarang, berbahaya, atau yang melanggar hukum. Pelanggaran dapat mengakibatkan pemblokiran akun.</p>
+            </div>
+            <div>
+                <h4 class="font-semibold text-gray-800">15. Penyelesaian Sengketa</h4>
+                <p>Jika terjadi perselisihan, pembeli dan penjual wajib berusaha menyelesaikan secara musyawarah. Marketplace dapat menjadi mediator bila diperlukan.</p>
+            </div>
+            <div>
+                <h4 class="font-semibold text-gray-800">16. Force Majeure</h4>
+                <p>Kami tidak bertanggung jawab atas keterlambatan atau kegagalan layanan yang diakibatkan oleh kejadian di luar kendali seperti bencana alam, perang, atau kebijakan pemerintah.</p>
+            </div>
+            <div>
+                <h4 class="font-semibold text-gray-800">17. Perubahan Harga</h4>
+                <p>Harga produk dapat berubah sewaktu-waktu sesuai kebijakan penjual. Harga yang berlaku adalah harga saat checkout dilakukan.</p>
+            </div>
+            <div>
+                <h4 class="font-semibold text-gray-800">18. Perubahan Syarat & Ketentuan</h4>
+                <p>Sancaka Marketplace berhak memperbarui Syarat & Ketentuan kapan saja. Perubahan akan diumumkan melalui platform.</p>
+            </div>
+            <div>
+                <h4 class="font-semibold text-gray-800">19. Hukum yang Berlaku</h4>
+                <p>Syarat & Ketentuan ini tunduk pada hukum yang berlaku di Indonesia. Setiap sengketa akan diselesaikan di wilayah hukum Republik Indonesia.</p>
+            </div>
+            <div>
+                <h4 class="font-semibold text-gray-800">20. Kontak & Layanan Pelanggan</h4>
+                <p>Untuk pertanyaan, klaim, atau bantuan, pembeli dapat menghubungi layanan pelanggan melalui kontak resmi yang tersedia di platform.</p>
+            </div>
+            
             <p class="font-bold pt-4 border-t">Dengan menekan tombol "Setuju", Anda mengonfirmasi bahwa Anda telah membaca dan menerima semua poin di atas tanpa paksaan dari pihak manapun.</p>
         </div>
         <div class="flex justify-end p-4 border-t bg-gray-50 rounded-b-lg">
@@ -443,6 +501,7 @@
         </div>
     </div>
 </div>
+
 
 
 <script>
