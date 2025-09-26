@@ -148,6 +148,9 @@
                                 </div>
                             @endforeach
 
+                            {{-- Debugging KiriminAja Instant --}}
+                            <pre>{{ print_r($instantOptions, true) }}</pre>
+
                            @if($instantOptions && isset($instantOptions['results']))
                                  @php
                                      $instantSorted = collect($instantOptions['results'])
