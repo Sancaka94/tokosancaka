@@ -23,7 +23,7 @@ class CheckoutController extends Controller
 {
 
     public function geocode($address){
-        S
+        
     $url = "https://nominatim.openstreetmap.org/search";
 
     $response = Http::withHeaders([
