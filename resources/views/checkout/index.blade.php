@@ -208,7 +208,7 @@
                         <div class="w-full">
                             <button type="button" id="paymentMethodButton" class="flex items-center justify-between w-full border border-gray-200 p-4 rounded-lg cursor-pointer hover:bg-gray-50 focus:outline-none">
                                 <div class="flex items-center">
-                                    <img id="paymentMethodImg" src="{{ asset('storage/payments/permata.webp') }}" alt="Permata Logo" class="h-8 w-8 object-contain mr-4">
+                                    <img id="paymentMethodImg" src="{{ asset('public/assets/permata.webp') }}" alt="Permata Logo" class="h-8 w-8 object-contain mr-4">
                                     <span id="paymentMethodLabel" class="text-sm font-medium text-gray-900">Permata Virtual Account</span>
                                 </div>
                                 <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -315,68 +315,68 @@
                  <li id="codPaymentOption" class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" 
                      data-value="cod" 
                      data-label="COD" 
-                     data-img="{{ asset('storage/payments/cod.png') }}">
-                     <img src="{{ asset('storage/payments/cod.png') }}" class="h-8 w-8 object-contain mr-4">
+                     data-img="{{ asset('public/assets/cod.png') }}">
+                     <img src="{{ asset('public/assets/cod.png') }}" class="h-8 w-8 object-contain mr-4">
                      <span class="text-sm font-medium text-gray-900">COD (Cash on Delivery)</span>
                  </li>
                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="PERMATAVA" data-label="Permata Virtual Account" data-img="{{ asset('storage/payments/permata.webp') }}">
-                    <img src="{{ asset('storage/payments/permata.webp') }}" class="h-8 w-8 object-contain mr-4">
+                    <img src="{{ asset('public/assets/permata.webp') }}" class="h-8 w-8 object-contain mr-4">
                     <span class="text-sm font-medium text-gray-900">Permata Virtual Account</span>
                 </li>
                  <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="BNIVA" data-label="BNI Virtual Account" data-img="{{ asset('storage/payments/bni.webp') }}">
-                    <img src="{{ asset('storage/payments/bni.webp') }}" class="h-8 w-8 object-contain mr-4">
+                    <img src="{{ asset('public/assets/bni.webp') }}" class="h-8 w-8 object-contain mr-4">
                     <span class="text-sm font-medium text-gray-900">BNI Virtual Account</span>
                 </li>
                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="BRIVA" data-label="BRI Virtual Account" data-img="{{ asset('storage/payments/bri.webp') }}">
-                    <img src="{{ asset('storage/payments/bri.webp') }}" class="h-8 w-8 object-contain mr-4">
+                    <img src="{{ asset('public/assets/bri.webp') }}" class="h-8 w-8 object-contain mr-4">
                     <span class="text-sm font-medium text-gray-900">BRI Virtual Account</span>
                 </li>
                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="MANDIRIVA" data-label="Mandiri Virtual Account" data-img="{{ asset('storage/payments/mandiri.webp') }}">
-                    <img src="{{ asset('storage/payments/mandiri.webp') }}" class="h-8 w-8 object-contain mr-4">
+                    <img src="{{ asset('public/assets/mandiri.webp') }}" class="h-8 w-8 object-contain mr-4">
                     <span class="text-sm font-medium text-gray-900">Mandiri Virtual Account</span>
                 </li>
                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="BCAVA" data-label="BCA Virtual Account" data-img="{{ asset('storage/payments/bca.webp') }}">
-                    <img src="{{ asset('storage/payments/bca.webp') }}" class="h-8 w-8 object-contain mr-4">
+                    <img src="{{ asset('public/assets/bca.webp') }}" class="h-8 w-8 object-contain mr-4">
                     <span class="text-sm font-medium text-gray-900">BCA Virtual Account</span>
                 </li>
                  <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="MUAMALATVA" data-label="Muamalat Virtual Account" data-img="{{ asset('storage/payments/muamalat.png') }}">
-                    <img src="{{ asset('storage/payments/muamalat.png') }}" class="h-8 w-8 object-contain mr-4">
+                    <img src="{{ asset('public/assets/muamalat.png') }}" class="h-8 w-8 object-contain mr-4">
                     <span class="text-sm font-medium text-gray-900">Muamalat Virtual Account</span>
                 </li>
                  <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="CIMBVA" data-label="CIMB Niaga Virtual Account" data-img="{{ asset('storage/payments/cimb.svg') }}">
-                    <img src="{{ asset('storage/payments/cimb.svg') }}" class="h-8 w-8 object-contain mr-4">
+                    <img src="{{ asset('public/assets/cimb.svg') }}" class="h-8 w-8 object-contain mr-4">
                     <span class="text-sm font-medium text-gray-900">CIMB Niaga Virtual Account</span>
                 </li>
                  <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="BSIVA" data-label="BSI Virtual Account" data-img="{{ asset('storage/payments/bsi.png') }}">
-                    <img src="{{ asset('storage/payments/bsi.png') }}" class="h-8 w-8 object-contain mr-4">
+                    <img src="{{ asset('public/assets/bsi.png') }}" class="h-8 w-8 object-contain mr-4">
                     <span class="text-sm font-medium text-gray-900">BSI Virtual Account</span>
                 </li>
                  <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="OCBCVA" data-label="OCBC NISP Virtual Account" data-img="{{ asset('storage/payments/ocbc.png') }}">
-                    <img src="{{ asset('storage/payments/ocbc.png') }}" class="h-8 w-8 object-contain mr-4">
+                    <img src="{{ asset('public/assets/ocbc.png') }}" class="h-8 w-8 object-contain mr-4">
                     <span class="text-sm font-medium text-gray-900">OCBC NISP Virtual Account</span>
                 </li>
                  <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="DANAMONVA" data-label="Danamon Virtual Account" data-img="{{ asset('storage/payments/danamon.png') }}">
-                    <img src="{{ asset('storage/payments/danamon.png') }}" class="h-8 w-8 object-contain mr-4">
+                    <img src="{{ asset('public/assets/danamon.png') }}" class="h-8 w-8 object-contain mr-4">
                     <span class="text-sm font-medium text-gray-900">Danamon Virtual Account</span>
                 </li>
                  <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="OTHERBANKVA" data-label="Other Bank Virtual Account" data-img="{{ asset('storage/payments/other.png') }}">
-                    <img src="{{ asset('storage/payments/other.png') }}" class="h-8 w-8 object-contain mr-4">
+                    <img src="{{ asset('public/assets/other.png') }}" class="h-8 w-8 object-contain mr-4">
                     <span class="text-sm font-medium text-gray-900">Other Bank Virtual Account</span>
                 </li>
                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="ALFAMART" data-label="Alfamart" data-img="{{ asset('storage/payments/alfamart.webp') }}">
-                    <img src="{{ asset('storage/payments/alfamart.webp') }}" class="h-8 w-8 object-contain mr-4">
+                    <img src="{{ asset('public/assets/alfamart.webp') }}" class="h-8 w-8 object-contain mr-4">
                     <span class="text-sm font-medium text-gray-900">Alfamart</span>
                 </li>
                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="INDOMARET" data-label="Indomaret" data-img="{{ asset('storage/payments/indomaret.webp') }}">
-                    <img src="{{ asset('storage/payments/indomaret.webp') }}" class="h-8 w-8 object-contain mr-4">
+                    <img src="{{ asset('public/assets/indomaret.webp') }}" class="h-8 w-8 object-contain mr-4">
                     <span class="text-sm font-medium text-gray-900">Indomaret</span>
                 </li>
                  <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="ALFAMIDI" data-label="Alfamidi" data-img="{{ asset('storage/payments/Alfamidi.png') }}">
-                    <img src="{{ asset('storage/payments/Alfamidi.png') }}" class="h-8 w-8 object-contain mr-4">
+                    <img src="{{ asset('public/assets/Alfamidi.png') }}" class="h-8 w-8 object-contain mr-4">
                     <span class="text-sm font-medium text-gray-900">Alfamidi</span>
                 </li>
                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="OVO" data-label="OVO" data-img="{{ asset('storage/payments/ovo.webp') }}">
-                    <img src="{{ asset('storage/payments/ovo.webp') }}" class="h-8 w-8 object-contain mr-4">
+                    <img src="{{ asset('public/assets/ovo.webp') }}" class="h-8 w-8 object-contain mr-4">
                     <span class="text-sm font-medium text-gray-900">OVO</span>
                 </li>
                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="QRIS" data-label="QRIS" data-img="{{ asset('storage/payments/qris2.png') }}">
@@ -384,11 +384,11 @@
                     <span class="text-sm font-medium text-gray-900">QRIS</span>
                 </li>
                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="DANA" data-label="DANA" data-img="{{ asset('storage/payments/dana.webp') }}">
-                    <img src="{{ asset('storage/payments/dana.webp') }}" class="h-8 w-8 object-contain mr-4">
+                    <img src="{{ asset('public/assets/dana.webp') }}" class="h-8 w-8 object-contain mr-4">
                     <span class="text-sm font-medium text-gray-900">DANA</span>
                 </li>
                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="SHOPEEPAY" data-label="ShopeePay" data-img="{{ asset('storage/payments/shopeepay.webp') }}">
-                    <img src="{{ asset('storage/payments/shopeepay.webp') }}" class="h-8 w-8 object-contain mr-4">
+                    <img src="{{ asset('public/assets/shopeepay.webp') }}" class="h-8 w-8 object-contain mr-4">
                     <span class="text-sm font-medium text-gray-900">ShopeePay</span>
                 </li>
             </ul>
