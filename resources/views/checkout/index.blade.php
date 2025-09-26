@@ -81,22 +81,28 @@
                         <h2 class="text-lg font-bold text-gray-900 mb-4">Pilih Metode Pengiriman</h2>
                         <div class="space-y-4">
                          
-                        @php
-    $expressResults = collect($expressOptions['results'] ?? []);
+                    @php
+$expressResults = collect($expressOptions['results'] ?? []);
 
-    $expressResults = $expressResults->map(function($option) {
-        $serviceNameLower = strtolower($option['service_name'] ?? '');
-        if (str_contains($serviceNameLower, 'cargo')) {
-            $option['group'] = 'Cargo';
-        } else {
-            $option['group'] = 'Regular';
-        }
-        return $option;
-    });
+$expressResults = $expressResults->map(function($option) {
+    $serviceNameLower = strtolower($option['service_name'] ?? '');
 
-    $expressGrouped = $expressResults->groupBy('group');
-    $firstGroup = $expressGrouped->keys()->first();
+    if (str_contains($serviceNameLower, 'cargo')) {
+        $option['group'] = 'Cargo';
+    } elseif (str_contains($serviceNameLower, 'instan') || str_contains($serviceNameLower, 'instant')) {
+        $option['group'] = 'Instant';
+    } else {
+        $option['group'] = 'Regular';
+    }
+
+    return $option;
+});
+
+// Kelompokkan berdasarkan grup
+$expressGrouped = $expressResults->groupBy('group');
+$firstGroup = $expressGrouped->keys()->first();
 @endphp
+
 
 <div class="flex gap-2 mb-4">
     {{-- Button dari express (Regular & Cargo) --}}
