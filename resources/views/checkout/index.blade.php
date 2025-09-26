@@ -81,15 +81,12 @@
                         <h2 class="text-lg font-bold text-gray-900 mb-4">Pilih Metode Pengiriman</h2>
                         <div class="space-y-4">
                          
-                           @php
+                        @php
     $expressResults = collect($expressOptions['results'] ?? []);
 
-    // Tambahkan grouping untuk express
     $expressResults = $expressResults->map(function($option) {
         $serviceNameLower = strtolower($option['service_name'] ?? '');
-        if (str_contains($serviceNameLower, 'instant')) {
-            $option['group'] = 'Instant';
-        } elseif (str_contains($serviceNameLower, 'cargo')) {
+        if (str_contains($serviceNameLower, 'cargo')) {
             $option['group'] = 'Cargo';
         } else {
             $option['group'] = 'Regular';
@@ -97,133 +94,123 @@
         return $option;
     });
 
-    // Masukkan data dari instantOptions biar ikut di group Instant
-    if($instantOptions && isset($instantOptions['result'])) {
-        $instantResults = collect($instantOptions['result'])
-            ->flatMap(function($courier) {
-                return collect($courier['costs'])->map(function($cost) use ($courier) {
-                    return [
-                        'service' => $courier['name'],
-                        'service_type' => $cost['service_type'],
-                        'service_name' => strtoupper($courier['name']).' - '.strtoupper($cost['service_type']),
-                        'cost' => $cost['price']['total_price'],
-                        'insurance' => 0,
-                        'cod' => false,
-                        'group' => 'Instant',
-                    ];
-                });
-            });
-
-        $expressResults = $expressResults->merge($instantResults);
-    }
-
     $expressGrouped = $expressResults->groupBy('group');
     $firstGroup = $expressGrouped->keys()->first();
 @endphp
 
+<div class="flex gap-2 mb-4">
+    {{-- Button dari express (Regular & Cargo) --}}
+    @foreach($expressGrouped as $group => $options)
+        <button type="button" 
+            class="px-4 py-2 rounded-lg border hover:bg-gray-100 group-button" 
+            data-group="{{ $group }}">
+            {{ \Illuminate\Support\Str::of($group)->replace('_', ' ')->title() }}
+        </button>
+    @endforeach
+
+    {{-- Tambahkan tombol khusus Instant --}}
+    @if($instantOptions && isset($instantOptions['result']))
+        <button type="button" 
+            class="px-4 py-2 rounded-lg border hover:bg-gray-100 group-button" 
+            data-group="Instant">
+            Instant
+        </button>
+    @endif
+</div>
+
+{{-- Group Regular & Cargo --}}
+@foreach($expressGrouped as $group => $options)
+    <div class="express-group-options {{ $loop->first ? '' : 'hidden' }}" data-group="{{ $group }}">
+        @php
+            $sortedOptions = collect($options)->sortBy('cost')->values();
+        @endphp
+
+        @foreach($sortedOptions as $i => $option)
+            @php
+                $logoName = strtolower(str_replace(' ', '', $option['service'])) . '.png';
+            @endphp
+            <label class="flex items-center border border-gray-200 p-4 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:bg-blue-50 has-[:checked]:border-blue-500 mb-2">
+                <input 
+                    type="radio" 
+                    name="shipping_method" 
+                    value="express-{{ $option['service'] }}-{{ $option['service_type'] }}-{{ $option['cost'] }}-{{ $option['insurance'] }}" 
+                    class="form-radio h-5 w-5 text-blue-600"
+                    data-cost="{{ $option['cost'] }}"
+                    data-insurance="{{ $option['insurance'] }}"
+                    data-cod="{{ $option['cod'] ? 'true' : 'false' }}"
+                    {{ $loop->parent->first && $loop->first ? 'checked' : '' }}
+                >
+                <div class="ml-4 flex justify-between w-full items-center">
+                    <div class="flex items-center gap-3">
+                        <img src="{{ asset('storage/logo-ekspedisi/'.$logoName) }}" 
+                             alt="{{ $option['service_name'] }}" 
+                             class="w-8 h-8 object-contain">
+                        <span class="text-sm font-medium text-gray-900">{{ $option['service_name'] }}</span>
+                    </div>
+                    <span class="text-sm font-medium text-gray-900">
+                        Rp{{ number_format($option['cost'], 0, ',', '.') }}
+                    </span>
+                </div>
+            </label>
+        @endforeach
+    </div>
+@endforeach
+
+{{-- Group Instant --}}
+@if($instantOptions && isset($instantOptions['result']))
+    @php
+        $instantSorted = collect($instantOptions['result'])
+            ->flatMap(function($courier) {
+                return collect($courier['costs'])->map(function($cost) use ($courier) {
+                    return [
+                        'courier_name' => $courier['name'],
+                        'service_type' => $cost['service_type'],
+                        'estimation' => $cost['estimation'],
+                        'price' => $cost['price']['total_price'],
+                    ];
+                });
+            })
+            ->sortBy('price')
+            ->values();
+    @endphp
+
+    <div class="express-group-options hidden" data-group="Instant">
+        @foreach($instantSorted as $option)
+            @php
+                $logoName = strtolower(str_replace(' ', '', $option['courier_name'])) . '.png';
+            @endphp
+            <label class="flex items-center border border-gray-200 p-4 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:bg-blue-50 has-[:checked]:border-blue-500 mb-2">
+                <input type="radio" 
+                       name="shipping_method" 
+                       value="instant-{{ $option['courier_name'] }}-{{ $option['service_type'] }}-{{$option['price']}}-0" 
+                       class="form-radio h-5 w-5 text-blue-600"
+                       data-cost="{{ $option['price'] }}"
+                       data-insurance="0"
+                       data-cod="false">
+                <div class="ml-4 flex justify-between w-full items-center">
+                    <div class="flex items-center gap-3">
+                        <img src="{{ asset('storage/logo-ekspedisi/'.$logoName) }}" 
+                             alt="{{ strtoupper($option['courier_name']) }}" 
+                             class="w-8 h-8 object-contain">
+                        <div>
+                            <span class="text-sm font-medium text-gray-900">
+                                {{ strtoupper($option['courier_name']) }} - {{ strtoupper($option['service_type']) }}
+                            </span>
+                            @if($option['estimation'])
+                                <span class="block text-xs text-gray-500">Est: {{ $option['estimation'] }}</span>
+                            @endif
+                        </div>
+                    </div>
+                    <span class="text-sm font-medium text-gray-900">
+                        Rp{{ number_format($option['price'], 0, ',', '.') }}
+                    </span>
+                </div>
+            </label>
+        @endforeach
+    </div>
+@endif
+
                            
-                            <div class="flex gap-2 mb-4">
-                                @foreach($expressGrouped as $group => $options)
-                                    <button type="button" 
-                                        class="px-4 py-2 rounded-lg border hover:bg-gray-100 group-button" 
-                                        data-group="{{ $group }}">
-                                        {{ \Illuminate\Support\Str::of($group)->replace('_', ' ')->title() }}
-                                    </button>
-                                @endforeach
-                            </div>
-                            
-                            @foreach($expressGrouped as $group => $options)
-                                <div class="express-group-options {{ $loop->first ? '' : 'hidden' }}" data-group="{{ $group }}">
-                                    @php
-                                        $sortedOptions = collect($options)->sortBy('cost')->values();
-                                    @endphp
-                            
-                                   @foreach($sortedOptions as $i => $option)
-                                    @php
-                                        $logoName = strtolower(str_replace(' ', '', $option['service'])) . '.png';
-                                    @endphp
-                                    <label class="flex items-center border border-gray-200 p-4 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:bg-blue-50 has-[:checked]:border-blue-500 mb-2">
-                                        <input 
-                                            type="radio" 
-                                            name="shipping_method" 
-                                            value="express-{{ $option['service'] }}-{{ $option['service_type'] }}-{{ $option['cost'] }}-{{ $option['insurance'] }}" 
-                                            class="form-radio h-5 w-5 text-blue-600"
-                                            data-cost="{{ $option['cost'] }}"
-                                            data-insurance="{{ $option['insurance'] }}"
-                                            data-cod="{{ $option['cod'] ? 'true' : 'false' }}"
-                                            {{ $loop->parent->first && $loop->first ? 'checked' : '' }}
-                                        >
-                                        <div class="ml-4 flex justify-between w-full items-center">
-                                            <div class="flex items-center gap-3">
-                                                <img src="{{ asset('storage/logo-ekspedisi/'.$logoName) }}" 
-                                                     alt="{{ $option['service_name'] }}" 
-                                                     class="w-8 h-8 object-contain">
-                                                <span class="text-sm font-medium text-gray-900">{{ $option['service_name'] }}</span>
-                                            </div>
-                                            <span class="text-sm font-medium text-gray-900">
-                                                Rp{{ number_format($option['cost'], 0, ',', '.') }}
-                                            </span>
-                                        </div>
-                                    </label>
-                                @endforeach
-
-                                </div>
-                            @endforeach
-
-                         
-                        
-
-                           @if($instantOptions && isset($instantOptions['result']))
-                                 @php
-                                     $instantSorted = collect($instantOptions['result'])
-                                         ->flatMap(function($courier) {
-                                             return collect($courier['costs'])->map(function($cost) use ($courier) {
-                                                 return [
-                                                     'courier_name' => $courier['name'],
-                                                     'service_type' => $cost['service_type'],
-                                                     'estimation' => $cost['estimation'],
-                                                     'price' => $cost['price']['total_price'],
-                                                 ];
-                                             });
-                                         })
-                                         ->sortBy('price')
-                                         ->values();
-                                 @endphp
-                               
-                                @foreach($instantSorted as $option)
-                                    @php
-                                        $logoName = strtolower(str_replace(' ', '', $option['courier_name'])) . '.png';
-                                    @endphp
-                                    <label class="flex items-center border border-gray-200 p-4 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:bg-blue-50 has-[:checked]:border-blue-500">
-                                        <input type="radio" 
-                                               name="shipping_method" 
-                                               value="instant-{{ $option['courier_name'] }}-{{ $option['service_type'] }}-{{$option['price']}}-0" 
-                                               class="form-radio h-5 w-5 text-blue-600"
-                                               data-cost="{{ $option['price'] }}"
-                                               data-insurance="0"
-                                               data-cod="false">
-                                        <div class="ml-4 flex justify-between w-full items-center">
-                                            <div class="flex items-center gap-3">
-                                                <img src="{{ asset('storage/logo-ekspedisi/'.$logoName) }}" 
-                                                     alt="{{ strtoupper($option['courier_name']) }}" 
-                                                     class="w-8 h-8 object-contain">
-                                                <div>
-                                                    <span class="text-sm font-medium text-gray-900">
-                                                        {{ strtoupper($option['courier_name']) }} - {{ strtoupper($option['service_type']) }}
-                                                    </span>
-                                                    @if($option['estimation'])
-                                                        <span class="block text-xs text-gray-500">Est: {{ $option['estimation'] }}</span>
-                                                    @endif
-                                                </div>
-                                            </div>
-                                            <span class="text-sm font-medium text-gray-900">
-                                                Rp{{ number_format($option['price'], 0, ',', '.') }}
-                                            </span>
-                                        </div>
-                                    </label>
-                                @endforeach
-
-                                @endif
                         </div>
                     </div>
 
