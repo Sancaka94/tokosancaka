@@ -148,9 +148,9 @@
                                 </div>
                             @endforeach
 
-                           @if($instantOptions && isset($instantOptions['result']))
+                           @if($instantOptions && isset($instantOptions['results']))
                                  @php
-                                     $instantSorted = collect($instantOptions['result'])
+                                     $instantSorted = collect($instantOptions['results'])
                                          ->flatMap(function($courier) {
                                              return collect($courier['costs'])->map(function($cost) use ($courier) {
                                                  return [
