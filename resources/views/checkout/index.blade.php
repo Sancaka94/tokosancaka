@@ -111,7 +111,7 @@ $expressResults = $expressResults->map(function($option) {
 $expressGrouped = $expressResults->groupBy('group');
 
 // Pastikan urutannya sesuai keinginan
-$groupOrder = ['Regular', 'Same Day', 'One Day', 'Instant', 'Cargo', 'Trucking'];
+$groupOrder = ['Regular', 'One Day', 'Instant', 'Cargo', 'Trucking'];
 $expressGrouped = collect($groupOrder)
     ->mapWithKeys(function($key) use ($expressGrouped) {
         return [$key => $expressGrouped->get($key, collect())];
