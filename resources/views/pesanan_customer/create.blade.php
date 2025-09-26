@@ -330,6 +330,9 @@
 @endpush
 
 @section('content')
+
+@include('layouts.partials.notifications')
+
 <div class="container main-content-container">
     
     <!-- Stepper/Progres Indikator -->
