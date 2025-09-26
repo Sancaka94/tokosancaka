@@ -167,6 +167,14 @@
                         <li class="nav-item">
                             <a class="nav-link" href="#layanan">Layanan</a>
                         </li>
+
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->is('privacy-policy') ? 'active fw-bold' : '' }}" 
+                                href="{{ route('privacy.policy') }}">
+                                    Privacy Policy
+                            </a>
+                        </li>
+
                         
                         <li class="nav-item dropdown mega-dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="megaMenuServices" role="button" data-bs-toggle="dropdown" aria-expanded="false">
