@@ -295,9 +295,15 @@ class CheckoutController extends Controller
                     if ($geo) {
                         $storeLat = $geo['lat'];
                         $storeLng = $geo['lng'];
-                        $pesanan->latitude = $storeLat;
-                    $pesanan->longitude = $storeLng;
-                       $pesanan->save();
+                        
+                        // -- REVISI --
+                        // Update latitude dan longitude ke model Store, bukan Pesanan.
+                        $storeToUpdate = \App\Models\Store::find($store->id);
+                        if ($storeToUpdate) {
+                            $storeToUpdate->latitude = $storeLat;
+                            $storeToUpdate->longitude = $storeLng;
+                            $storeToUpdate->save();
+                        }
                     }
                 }
             
