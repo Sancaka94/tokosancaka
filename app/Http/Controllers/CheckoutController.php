@@ -488,22 +488,31 @@ class CheckoutController extends Controller
                     
                     $storeLat = $store->latitude;
                     $storeLng = $store->longitude;
-    
-                    if (!$storeLat || !$storeLng) {
-                        $geo = $this->geocode($storeSearch);
-                        if ($geo) {
-                            $storeLat = $geo['lat'];
-                            $storeLng = $geo['lng'];
-                        }
-                    }
-                    
-                     if (!$userLat || !$userLng) {
-                            $geo = $this->geocode($userSearch);
-                            if ($geo) {
-                                $userLat = $geo['lat'];
-                                $userLng = $geo['lng'];
-                            }
-                        }
+
+                    // tambahkan inisialisasi di sini
+                    $userLat = $user->latitude ?? null;
+                    $userLng = $user->longitude ?? null;
+
+if (!$storeLat || !$storeLng) {
+    $geo = $this->geocode($storeSearch);
+    if ($geo) {
+        $storeLat = $geo['lat'];
+        $storeLng = $geo['lng'];
+    }
+}
+
+if (!$userLat || !$userLng) {
+    $geo = $this->geocode($userSearch);
+    if ($geo) {
+        $userLat = $geo['lat'];
+        $userLng = $geo['lng'];
+    }
+}
+
+$totalWeight = collect($cart)->sum(fn($item) => $item['weight'] * $item['quantity']);
+$finalWeight = max(1000, $totalWeight);
+
+
                 
                     $schedule = $kiriminAja->getSchedules();
                     
@@ -521,13 +530,13 @@ class CheckoutController extends Controller
                                         'destination_lat' => $userLat,
                                         'destination_long' => $userLng,
                                         'destination_address' => $order->shipping_address,
-                                         'destination_address_note' => $request->receiver_note ?? '-',
+                                        'destination_address_note' => $request->receiver_note ?? '-',
                                         'origin_name' => $order->store->name ?? 'Toko Penjual',
                                         'origin_phone' => $order->store->user->no_wa ?? '-',
                                         'origin_lat' => $storeLat,
                                         'origin_long' => $storeLng,
                                         'origin_address' => $order->store->address_detail,
-                                         'origin_address_note' => $request->sender_note ?? '-',
+                                        'origin_address_note' => $request->sender_note ?? '-',
                                         'shipping_price' => (int) $shipping_cost,
                                         'item' => [
                                             'name' => 'Pesanan ' . $order->invoice_number,
