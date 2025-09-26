@@ -132,14 +132,6 @@ $firstGroup = $expressGrouped->keys()->first();
         </button>
     @endforeach
 
-    {{-- Tambahkan tombol khusus Instant --}}
-    @if($instantOptions && isset($instantOptions['result']))
-        <button type="button" 
-            class="px-4 py-2 rounded-lg border hover:bg-gray-100 group-button" 
-            data-group="Instant">
-            Instant
-        </button>
-    @endif
 </div>
 
 {{-- Group Regular & Cargo --}}
