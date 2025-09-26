@@ -80,25 +80,47 @@
                    <div class="bg-white rounded-xl shadow-md p-6">
                         <h2 class="text-lg font-bold text-gray-900 mb-4">Pilih Metode Pengiriman</h2>
                         <div class="space-y-4">
-                            {{-- EXPRESS --}}
+                         
                            @php
-                            $expressResults = collect($expressOptions['results'] ?? []);
-                        
-                            $expressResults = $expressResults->map(function($option) {
-                                $serviceNameLower = strtolower($option['service_name'] ?? '');
-                                if (str_contains($serviceNameLower, 'instant')) {
-                                    $option['group'] = 'Instant';
-                                } elseif (str_contains($serviceNameLower, 'cargo')) {
-                                    $option['group'] = 'Cargo';
-                                } else {
-                                    $option['group'] = 'Regular';
-                                }
-                                return $option;
-                            });
-                        
-                            $expressGrouped = $expressResults->groupBy('group');
-                            $firstGroup = $expressGrouped->keys()->first();
-                           @endphp
+    $expressResults = collect($expressOptions['results'] ?? []);
+
+    // Tambahkan grouping untuk express
+    $expressResults = $expressResults->map(function($option) {
+        $serviceNameLower = strtolower($option['service_name'] ?? '');
+        if (str_contains($serviceNameLower, 'instant')) {
+            $option['group'] = 'Instant';
+        } elseif (str_contains($serviceNameLower, 'cargo')) {
+            $option['group'] = 'Cargo';
+        } else {
+            $option['group'] = 'Regular';
+        }
+        return $option;
+    });
+
+    // Masukkan data dari instantOptions biar ikut di group Instant
+    if($instantOptions && isset($instantOptions['result'])) {
+        $instantResults = collect($instantOptions['result'])
+            ->flatMap(function($courier) {
+                return collect($courier['costs'])->map(function($cost) use ($courier) {
+                    return [
+                        'service' => $courier['name'],
+                        'service_type' => $cost['service_type'],
+                        'service_name' => strtoupper($courier['name']).' - '.strtoupper($cost['service_type']),
+                        'cost' => $cost['price']['total_price'],
+                        'insurance' => 0,
+                        'cod' => false,
+                        'group' => 'Instant',
+                    ];
+                });
+            });
+
+        $expressResults = $expressResults->merge($instantResults);
+    }
+
+    $expressGrouped = $expressResults->groupBy('group');
+    $firstGroup = $expressGrouped->keys()->first();
+@endphp
+
                            
                             <div class="flex gap-2 mb-4">
                                 @foreach($expressGrouped as $group => $options)
@@ -148,7 +170,7 @@
                                 </div>
                             @endforeach
 
-                            {{-- Debugging KiriminAja Instant --}}
+                         
                         
 
                            @if($instantOptions && isset($instantOptions['result']))
