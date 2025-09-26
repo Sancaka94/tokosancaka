@@ -143,16 +143,6 @@ class CheckoutController extends Controller
        $instantOptions = null;
 if ($storeLat && $storeLng && $userLat && $userLng) {
 
-    // Debug payload sebelum request
-    dd([
-        'storeLat'    => $storeLat,
-        'storeLng'    => $storeLng,
-        'userLat'     => $userLat,
-        'userLng'     => $userLng,
-        'finalWeight' => $finalWeight,
-        'itemValue'   => $itemValue,
-    ]);
-
     $instantOptions = $kiriminAja->getInstantPricing(
         $storeLat,
         $storeLng,
