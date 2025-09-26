@@ -961,13 +961,20 @@ class CheckoutController extends Controller
                                     $pesanan->resi = $kiriminResponse['pickup_number'];
                                 }
     
-$parts = explode('-', $validatedData['expedition']);
+                                // -- BLOK KODE YANG ERROR DAN DIREVISI --
+                                // Variabel-variabel yang dibutuhkan untuk pesan notifikasi
+                                $shipping_cost_formatted = number_format($cost);
+                                $ansuransi_fee_formatted = number_format($ansuransi_fee);
+                                $cod_fee_formatted = number_format($cod_fee);
+                                $total_harga_barang_formatted = number_format($pesanan->item_price ?? 0);
+                                $total_bayar_formatted = number_format($pesanan->price ?? 0);
+                                $resi_display = $pesanan->resi ?? '-';
 
-$layanan = $parts[0] ?? null; 
-$vendor  = strtoupper($parts[1] ?? '');
-$service = strtoupper($parts[2] ?? '');
-
-$service_display = trim($vendor . ' ' . $service);
+                                // Logika untuk mendapatkan nama layanan ekspedisi yang akan ditampilkan
+                                $expedition_parts = explode('-', $pesanan->expedition);
+                                $exp_vendor = strtoupper($expedition_parts[1] ?? '');
+                                $exp_service_type = strtoupper($expedition_parts[2] ?? '');
+                                $service_display = trim($exp_vendor . ' ' . $exp_service_type);
 
 $messageTemplate = <<<TEXT
 *Terimakasih Ya Kak Atas Orderannya 🙏*
@@ -975,29 +982,32 @@ $messageTemplate = <<<TEXT
 Berikut adalah Nomor Order ID dan Invoice:
 *{$pesanan->nomor_invoice}*
 
-📦 Dari: *{$pesanan->sender_name}* ( {$pesanan->sender_phone} )  
+📦 Dari: *{$pesanan->sender_name}* ( {$pesanan->sender_phone} )
 ➡️ Ke: *{$pesanan->receiver_name}* ( {$pesanan->receiver_phone} )
 
 ----------------------------------------
-*Rincian Biaya:* - Ongkir: Rp {$shipping_cost}  
-- Nilai Barang: Rp {$pesanan->total_harga_barang}  
-- Asuransi: Rp {$ansuransi_fee}  
-- COD Fee: Rp {$cod_fee ?? 0}  
+*Rincian Biaya:*
+- Ongkir: Rp {$shipping_cost_formatted}
+- Nilai Barang: Rp {$total_harga_barang_formatted}
+- Asuransi: Rp {$ansuransi_fee_formatted}
+- COD Fee: Rp {$cod_fee_formatted}
 ----------------------------------------
-*Total Bayar: Rp {$pesanan->price}* ✅ *Telah Terbayar Lunas*
+*Total Bayar: Rp {$total_bayar_formatted}* ✅ *Telah Terbayar Lunas*
 
 ----------------------------------------
-*Detail Paket:* Deskripsi Barang: {$pesanan->item_description}  
-Berat: {$pesanan->weight} Gram  
-Dimensi: {$pesanan->length} x {$pesanan->width} x {$pesanan->height} cm  
-Ekspedisi: {$service_display}  
-Layanan: {$pesanan->service_type}  
-Resi: *{$pesanan->resi ?? '-'}* ----------------------------------------
+*Detail Paket:*
+Deskripsi Barang: {$pesanan->item_description}
+Berat: {$pesanan->weight} Gram
+Dimensi: {$pesanan->length} x {$pesanan->width} x {$pesanan->height} cm
+Ekspedisi: {$service_display}
+Layanan: {$pesanan->service_type}
+Resi: *{$resi_display}*
+----------------------------------------
 
-Semoga Paket Kakak  
+Semoga Paket Kakak
 *{$pesanan->sender_name} ➡️ {$pesanan->receiver_name}* aman dan selamat sampai tujuan. ✅
 
-Kak {NAMA_TUJUAN} bisa cek resi dengan klik link berikut:  
+Kak {NAMA_TUJUAN} bisa cek resi dengan klik link berikut:
 https://tokosancaka.com/tracking/search?resi={$pesanan->nomor_invoice}
 
 *Manajemen Sancaka*
