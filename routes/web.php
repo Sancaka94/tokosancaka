@@ -102,6 +102,10 @@ Route::get('/privacy-policy', function () {
     return view('privacy-policy');
 })->name('privacy.policy');
 
+Route::get('/terms-and-conditions', function () {
+    return view('terms');
+})->name('terms.conditions');
+
 Route::get('/admin/import/wordpress', [ImportController::class, 'showForm'])->name('admin.import.wordpress.form');
 
 Route::post('/admin/import/wordpress', [ImportController::class, 'handleImport'])->name('admin.import.wordpress.handle');
