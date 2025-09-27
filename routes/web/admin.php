@@ -78,7 +78,11 @@ use App\Http\Controllers\Admin\KontakController as AdminKontakController;
 
 */
 
+// route custom harus ditulis sebelum resource
+Route::post('admin/posts/generate-content', [PostController::class, 'generateContent'])
+    ->name('posts.generateContent');
 
+Route::resource('admin/posts', PostController::class);
 
 Route::get('/email', [ImapController::class, 'index'])->name('imap.index');
 
