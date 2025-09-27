@@ -180,6 +180,8 @@ class PostController extends Controller
 
     {
 
+        dd($result);
+
         $request->validate([
 
             'title' => 'required|string|max:255',
@@ -360,7 +362,7 @@ Website: tokosancaka.biz.id , tokosancaka.com , sancaka.biz.id </p>
 
     {
 
-        dd($result); // ✅ cek isi array hasil dari Gemini di sini
+         // ✅ cek isi array hasil dari Gemini di sini
 
         $apiKey = env('GEMINI_API_KEY');
 
