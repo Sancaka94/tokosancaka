@@ -23,8 +23,8 @@ class PostController extends Controller
      */
     public function index(Request $request)
     {
-        dd($request->all()); 
         
+
         $query = Post::with('author', 'category')->latest();
 
         $query->when($request->filled('search'), function ($q) use ($request) {
@@ -203,7 +203,7 @@ PROMPT;
         }
 
         $model = config('services.gemini.model', 'gemini-1.5-flash-latest');
-        $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}";
+        $url = "https://generativelanguage.googleapis.com/v1/models/{$model}:generateContent?key={$apiKey}";
         $response = Http::post($url, [
             'contents' => [[
                 'parts' => [['text' => $prompt]]
