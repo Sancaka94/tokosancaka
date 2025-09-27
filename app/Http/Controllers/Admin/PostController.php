@@ -187,9 +187,8 @@ Website: tokosancaka.biz.id , tokosancaka.com , sancaka.biz.id </p>
 
         $model = 'gemini-1.5-flash-latest';
         
-        // PERBAIKAN: Memastikan URL adalah string yang bersih tanpa format Markdown.
-        $url = "[https://generativelanguage.googleapis.com/v1beta/models/](https://generativelanguage.googleapis.com/v1beta/models/){$model}:generateContent?key={$apiKey}";
-        
+        $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}";
+
         $response = Http::post($url, [
             'contents' => [[
                 'parts' => [['text' => $prompt]]
