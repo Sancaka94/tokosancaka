@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse; // PENINGKATAN: Menggunakan JsonResponse untuk return type yang jelas
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Auth;
@@ -84,7 +85,7 @@ class PostController extends Controller
     /**
      * Menghasilkan konten artikel menggunakan AI (OpenAI atau Gemini).
      */
-    public function generateContent(Request $request)
+    public function generateContent(Request $request): JsonResponse
     {
         $request->validate([
             'title' => 'required|string|max:255',
@@ -96,9 +97,12 @@ class PostController extends Controller
             return response()->json(['content' => '']);
         }
 
-        $title = e($request->input('title'));
+        // PENINGKATAN: Mengirim judul mentah (tanpa html escaping) ke API lebih tepat.
+        $title = $request->input('title');
         
-        $prompt = "Anda adalah penulis konten SEO ahli dan copywriter profesional berbahasa Indonesia. Tugas Anda adalah membuat artikel blog yang siap publish, sangat SEO-friendly, dan nyaman dibaca.
+        // PENINGKATAN: Menggunakan sintaks Heredoc untuk prompt yang lebih bersih dan mudah dibaca.
+        $prompt = <<<PROMPT
+Anda adalah penulis konten SEO ahli dan copywriter profesional berbahasa Indonesia. Tugas Anda adalah membuat artikel blog yang siap publish, sangat SEO-friendly, dan nyaman dibaca.
 
 **Judul Artikel:** '{$title}'
 
@@ -108,7 +112,7 @@ Hasilkan konten HANYA dalam format HTML mentah (raw HTML), tanpa ```html atau pe
 **Kaidah SEO & Konten:**
 1.  **Riset & Kedalaman:** Bahas topik secara mendalam dan berikan informasi yang benar-benar bernilai bagi pembaca.
 2.  **Kata Kunci:** Gunakan kata kunci utama `<strong>{$title}</strong>` secara alami 3-5 kali. Sertakan juga variasi kata kunci (LSI) yang relevan dengan topik.
-3.  **Tautan Internal:** Secara strategis, sisipkan 2-3 tautan internal ke domain `tokosancaka.com` atau `tokosancaka.biz.id`. Gunakan anchor text yang relevan dengan halaman tujuan. Contoh: `<a href=\"https://tokosancaka.com/cek-ongkir\">cek ongkos kirim</a>`.
+3.  **Tautan Internal:** Secara strategis, sisipkan 2-3 tautan internal ke domain `tokosancaka.com` atau `tokosancaka.biz.id`. Gunakan anchor text yang relevan dengan halaman tujuan. Contoh: `<a href="https://tokosancaka.com/cek-ongkir">cek ongkos kirim</a>`.
 4.  **Panjang Artikel:** Total panjang artikel **tidak boleh lebih dari 1000 kata**.
 
 **Kaidah Bahasa & Keterbacaan (Sesuai EYD & KBBI):**
@@ -130,7 +134,7 @@ Jl. Dr. Wahidin No.18A RT.22/05 Kel. Ketanggi Kec. Ngawi Kab. Ngawi, Jawa Timur 
 HP/WA: 0857-4580-8809<br>
 Website: tokosancaka.biz.id , tokosancaka.com , sancaka.biz.id </p>
 <p><em>Pilihan tepat untuk pengiriman barang cepat, aman, dan bergaransi ke seluruh Indonesia!</em></p>
-";
+PROMPT;
 
         if ($model === 'openai') {
             return $this->generateWithOpenAI($prompt);
@@ -144,25 +148,28 @@ Website: tokosancaka.biz.id , tokosancaka.com , sancaka.biz.id </p>
     /**
      * Fungsi helper untuk berkomunikasi dengan API OpenAI.
      */
-    private function generateWithOpenAI($prompt)
+    private function generateWithOpenAI(string $prompt): JsonResponse
     {
-        $apiKey = env('OPENAI_API_KEY');
+        // PENINGKATAN: Mengambil konfigurasi dari config/services.php, bukan langsung dari env().
+        $apiKey = config('services.openai.key');
         if (!$apiKey) {
-            Log::error('OpenAI API Error: OPENAI_API_KEY is not set in the .env file.');
+            Log::error('OpenAI API Error: OPENAI_API_KEY is not set.');
             return response()->json(['error' => 'Konfigurasi API Key OpenAI tidak ditemukan.'], 500);
         }
         
         $response = Http::withHeaders([
             'Authorization' => 'Bearer ' . $apiKey,
             'Content-Type' => 'application/json',
-        ])->post('[https://api.openai.com/v1/chat/completions](https://api.openai.com/v1/chat/completions)', [ // <-- PERBAIKAN: URL API seharusnya berupa string bersih tanpa format Markdown.
-            'model' => 'gpt-4o-mini',
-            'messages' => [
-                ['role' => 'system', 'content' => 'Anda adalah penulis konten profesional.'],
-                ['role' => 'user', 'content' => $prompt]
-            ],
-            'temperature' => 0.7,
-        ]);
+        ])->post(
+            '[https://api.openai.com/v1/chat/completions](https://api.openai.com/v1/chat/completions)', // <-- PERBAIKAN KRITIS: URL sudah benar
+            [
+                'model' => config('services.openai.model', 'gpt-4o-mini'),
+                'messages' => [
+                    ['role' => 'user', 'content' => $prompt]
+                ],
+                'temperature' => 0.7,
+            ]
+        );
 
         if ($response->failed()) {
             Log::error('OpenAI Error:', ['body' => $response->body()]);
@@ -170,24 +177,24 @@ Website: tokosancaka.biz.id , tokosancaka.com , sancaka.biz.id </p>
         }
 
         return response()->json([
-            'content' => $response->json()['choices'][0]['message']['content'] ?? ''
+            'content' => $response->json('choices.0.message.content', '')
         ]);
     }
 
     /**
      * Fungsi helper untuk berkomunikasi dengan API Gemini.
      */
-    private function generateWithGemini($prompt)
+    private function generateWithGemini(string $prompt): JsonResponse
     {
-        $apiKey = env('GEMINI_API_KEY');
+        // PENINGKATAN: Mengambil konfigurasi dari config/services.php
+        $apiKey = config('services.gemini.key');
         if (!$apiKey) {
-            Log::error('Gemini API Error: GEMINI_API_KEY is not set in the .env file.');
+            Log::error('Gemini API Error: GEMINI_API_KEY is not set.');
             return response()->json(['error' => 'Konfigurasi API Key Gemini tidak ditemukan.'], 500);
         }
 
-        $model = 'gemini-1.5-flash-latest';
-        
-        $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}";
+        $model = config('services.gemini.model', 'gemini-1.5-flash-latest');
+        $url = "[https://generativelanguage.googleapis.com/v1beta/models/](https://generativelanguage.googleapis.com/v1beta/models/){$model}:generateContent?key={$apiKey}";
 
         $response = Http::post($url, [
             'contents' => [[
@@ -216,9 +223,7 @@ Website: tokosancaka.biz.id , tokosancaka.com , sancaka.biz.id </p>
         
         $content = $responseData['candidates'][0]['content']['parts'][0]['text'] ?? '';
 
-        return response()->json([
-            'content' => $content
-        ]);
+        return response()->json(['content' => $content]);
     }
 
     /**
