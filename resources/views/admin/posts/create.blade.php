@@ -119,7 +119,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const titleInput = document.getElementById('title');
     const generateButton = document.getElementById('generate-btn');
     const loadingIndicator = document.getElementById('loading-indicator');
-    const titleError = document.getElementById('title-error'); // PERBAIKAN 1
+    const titleError = document.getElementById('title-error');
     
     // Logika untuk Toggle Switch 3 pilihan
     const aiModelInput = document.getElementById('ai-model-input');
@@ -149,14 +149,12 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // PERBAIKAN 3: Menggunakan async/await untuk fetch
     generateButton.addEventListener('click', async function() {
         const title = titleInput.value.trim();
         const selectedModel = aiModelInput.value;
 
         if (selectedModel === 'none') return;
 
-        // PERBAIKAN 1: Mengganti alert() dengan notifikasi
         if (title.length < 10) {
             titleError.classList.remove('hidden');
             return;
@@ -181,21 +179,30 @@ document.addEventListener('DOMContentLoaded', function () {
                 })
             });
 
-            const data = await response.json();
+            // PERBAIKAN: Memeriksa tipe konten sebelum mem-parsing JSON
+            const contentType = response.headers.get("content-type");
+            if (contentType && contentType.indexOf("application/json") !== -1) {
+                const data = await response.json();
+                if (!response.ok) {
+                    // Melempar error agar ditangkap oleh blok catch
+                    throw new Error(data.error || 'Terjadi kesalahan pada server.');
+                }
 
-            if (!response.ok) {
-                // Melempar error agar ditangkap oleh blok catch
-                throw new Error(data.error || 'Terjadi kesalahan pada server.');
-            }
-
-            if (data.content) {
-                tinymce.get('content').setContent(data.content);
+                if (data.content) {
+                    tinymce.get('content').setContent(data.content);
+                } else {
+                    // Ini menangani kasus jika server merespons JSON tapi tanpa 'content'
+                    throw new Error(data.error || 'Gagal mendapatkan konten dari server.');
+                }
             } else {
-                tinymce.get('content').setContent('<p style="color: red;"><strong>Error:</strong> ' + (data.error || 'Gagal mendapatkan konten dari server.') + '</p>');
+                // Jika respons bukan JSON (kemungkinan halaman error HTML)
+                const errorText = await response.text();
+                console.error("Server returned non-JSON response:", errorText);
+                throw new Error('Server tidak merespons dengan format JSON. Kemungkinan besar terjadi error di server. Periksa tab Network di browser Anda untuk detail.');
             }
 
         } catch (error) {
-            console.error('Error:', error);
+            console.error('Error Object:', error);
             let errorMessage = error.message || 'Terjadi kesalahan saat menghubungi server. Silakan periksa konsol untuk detail.';
             tinymce.get('content').setContent('<p style="color: red;"><strong>Error:</strong> ' + errorMessage + '</p>');
         } finally {
@@ -206,3 +213,4 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 @endpush
+
