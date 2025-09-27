@@ -177,8 +177,7 @@ PROMPT;
             return response()->json(['error' => 'Gagal menghubungi OpenAI. Periksa log untuk detail.'], 500);
         }
 
-        return response()->json([
-            'content' => $response->json('choices.0.message.content', '')
+        dd($response->json());
         ]);
     }
 
@@ -223,7 +222,7 @@ PROMPT;
         
         $content = $responseData['candidates'][0]['content']['parts'][0]['text'] ?? '';
 
-        return response()->json(['content' => $content]);
+        dd($response->json());
     }
 
     /**
