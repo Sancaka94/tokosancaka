@@ -178,7 +178,7 @@ PROMPT;
         }
 
         dd($response->json());
-        ]);
+        
     }
 
     /**
