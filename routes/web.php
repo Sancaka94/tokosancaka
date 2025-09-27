@@ -66,6 +66,7 @@ use App\Http\Controllers\Admin\WalletController;
 
 use App\Http\Controllers\Customer\KontakController as CustomerKontakController;
 
+use App\Http\Controllers\Admin\PostController;
 
 
 /*
@@ -431,6 +432,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])
 
 
  
+    Route::post('/admin/posts/generate-content', [PostController::class, 'generateContent'])->name('posts.generateContent');
 
         
 
