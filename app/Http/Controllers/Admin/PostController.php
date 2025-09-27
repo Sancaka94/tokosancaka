@@ -178,49 +178,50 @@ Website: tokosancaka.biz.id , tokosancaka.com , sancaka.biz.id </p>
      * Fungsi helper untuk berkomunikasi dengan API Gemini.
      */
     private function generateWithGemini($prompt)
-    {
-        $apiKey = env('GEMINI_API_KEY');
-        if (!$apiKey) {
-            Log::error('Gemini API Error: GEMINI_API_KEY is not set in the .env file.');
-            return response()->json(['error' => 'Konfigurasi API Key Gemini tidak ditemukan.'], 500);
-        }
-
-        $model = 'gemini-1.5-flash-latest';
-        
-        // PERBAIKAN: Memastikan URL adalah string yang bersih tanpa format Markdown.
-        $url = "[https://generativelanguage.googleapis.com/v1beta/models/](https://generativelanguage.googleapis.com/v1beta/models/){$model}:generateContent?key={$apiKey}";
-        
-        $response = Http::post($url, [
-            'contents' => [[
-                'parts' => [['text' => $prompt]]
-            ]],
-            'generationConfig' => [
-                'temperature' => 0.7,
-            ]
-        ]);
-
-        if ($response->failed()) {
-            Log::error('Gemini API HTTP Error:', ['status' => $response->status(), 'body' => $response->body()]);
-            return response()->json(['error' => 'Gagal menghubungi Gemini. Periksa log untuk detail.'], 500);
-        }
-
-        $responseData = $response->json();
-        
-        if (empty($responseData['candidates'])) {
-            Log::error('Gemini API Logic Error: Response did not contain candidates.', ['body' => $responseData]);
-            $errorMessage = 'Tidak ada konten yang dihasilkan oleh AI.';
-            if (isset($responseData['promptFeedback']['blockReason'])) {
-                 $errorMessage = 'Permintaan diblokir karena alasan: ' . $responseData['promptFeedback']['blockReason'];
-            }
-            return response()->json(['error' => $errorMessage], 422);
-        }
-        
-        $content = $responseData['candidates'][0]['content']['parts'][0]['text'] ?? '';
-
-        return response()->json([
-            'content' => $content
-        ]);
+{
+    $apiKey = env('GEMINI_API_KEY');
+    if (!$apiKey) {
+        Log::error('Gemini API Error: GEMINI_API_KEY is not set in the .env file.');
+        return response()->json(['error' => 'Konfigurasi API Key Gemini tidak ditemukan.'], 500);
     }
+
+    $model = 'gemini-1.5-flash-latest';
+    
+    // FIX: URL harus plain string, jangan pakai format markdown
+    $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}";
+    
+    $response = Http::post($url, [
+        'contents' => [[
+            'parts' => [['text' => $prompt]]
+        ]],
+        'generationConfig' => [
+            'temperature' => 0.7,
+        ]
+    ]);
+
+    if ($response->failed()) {
+        Log::error('Gemini API HTTP Error:', ['status' => $response->status(), 'body' => $response->body()]);
+        return response()->json(['error' => 'Gagal menghubungi Gemini. Periksa log untuk detail.'], 500);
+    }
+
+    $responseData = $response->json();
+    
+    if (empty($responseData['candidates'])) {
+        Log::error('Gemini API Logic Error: Response did not contain candidates.', ['body' => $responseData]);
+        $errorMessage = 'Tidak ada konten yang dihasilkan oleh AI.';
+        if (isset($responseData['promptFeedback']['blockReason'])) {
+            $errorMessage = 'Permintaan diblokir karena alasan: ' . $responseData['promptFeedback']['blockReason'];
+        }
+        return response()->json(['error' => $errorMessage], 422);
+    }
+    
+    $content = $responseData['candidates'][0]['content']['parts'][0]['text'] ?? '';
+
+    return response()->json([
+        'content' => $content
+    ]);
+}
+
 
     /**
      * Menyimpan post baru ke dalam database.
