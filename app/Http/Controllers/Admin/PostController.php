@@ -376,24 +376,14 @@ Website: tokosancaka.biz.id , tokosancaka.com , sancaka.biz.id </p>
 
         $model = 'gemini-2.5-flash-preview-05-20';
 
-        
-
-        $response = Http::post("https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}", [
-
+        $response = Http::retry(3, 2000)->post("https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}", [
             'contents' => [[
-
                 'parts' => [['text' => $prompt]]
-
             ]],
-
             'generationConfig' => [
-
                 'temperature' => 0.7,
-
             ]
-
         ]);
-
 
 
         if ($response->failed()) {
