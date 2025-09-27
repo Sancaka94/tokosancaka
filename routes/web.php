@@ -119,9 +119,11 @@ Route::get('/api/contacts/search', [PesananController::class, 'searchKontak'])->
 
 Route::get('/kontak/search', [KontakController::class, 'search'])->name('api.search.kontak');
 
-Route::post('/admin/posts/generate-content', [PostController::class, 'generateContent'])->name('posts.generateContent');
+// route custom harus ditulis sebelum resource
+Route::post('admin/posts/generate-content', [PostController::class, 'generateContent'])
+    ->name('posts.generateContent');
 
-  
+Route::resource('admin/posts', PostController::class);
 // =========================================================================
 
 // == PUBLIC & AUTHENTICATION ROUTES
