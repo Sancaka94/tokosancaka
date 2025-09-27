@@ -350,4 +350,3 @@ Website: tokosancaka.biz.id , tokosancaka.com , sancaka.biz.id </p>
         return $slug;
     }
 }
-

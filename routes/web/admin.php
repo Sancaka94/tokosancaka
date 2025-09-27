@@ -82,6 +82,7 @@ use App\Http\Controllers\Admin\KontakController as AdminKontakController;
 Route::post('admin/posts/generate-content', [PostController::class, 'generateContent'])
     ->name('posts.generateContent');
 
+
 Route::resource('admin/posts', PostController::class);
 
 Route::get('/email', [ImapController::class, 'index'])->name('imap.index');
