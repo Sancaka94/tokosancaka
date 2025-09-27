@@ -24,6 +24,14 @@
             </div>
         @endif
 
+         {{-- 🔍 Tempat debug --}}
+    @if(session('debug'))
+        <div class="mb-4 p-3 bg-yellow-100 border border-yellow-400 text-yellow-800 rounded">
+            <strong>Debug Data:</strong>
+            <pre>{{ print_r(session('debug'), true) }}</pre>
+        </div>
+    @endif
+
         <form action="{{ route('admin.posts.store') }}" method="POST" enctype="multipart/form-data">
             @csrf
 
