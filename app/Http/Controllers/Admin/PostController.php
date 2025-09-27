@@ -22,10 +22,8 @@ class PostController extends Controller
      */
     public function index(Request $request)
     {
-        // Memulai query builder dengan eager loading untuk optimasi
         $query = Post::with('author', 'category')->latest();
 
-        // -- LOGIKA FILTER (Menggunakan 'when' agar lebih ringkas) --
         $query->when($request->filled('search'), function ($q) use ($request) {
             $searchTerm = $request->input('search');
             $q->where(function ($subQuery) use ($searchTerm) {
@@ -46,14 +44,10 @@ class PostController extends Controller
             $q->whereDate('created_at', $request->input('date'));
         });
 
-        // Eksekusi query dengan paginasi
         $posts = $query->paginate(10);
-
-        // Mengambil data untuk mengisi dropdown filter di view
         $categories = Category::all();
         $authors = User::all();
 
-        // Kirim semua data yang diperlukan ke view
         return view('admin.posts.index', compact('posts', 'categories', 'authors'));
     }
 
@@ -80,14 +74,10 @@ class PostController extends Controller
     }
 
     /**
-     * PERBAIKAN: Menambahkan method show() yang hilang.
      * Menampilkan detail satu post.
      */
     public function show(Post $post)
     {
-        // Method ini akan memuat view 'admin.posts.show' dan mengirimkan
-        // data post yang dipilih. Anda perlu membuat file view-nya di
-        // resources/views/admin/posts/show.blade.php
         return view('admin.posts.show', compact('post'));
     }
 
@@ -96,7 +86,6 @@ class PostController extends Controller
      */
     public function generateContent(Request $request)
     {
-        // PERBAIKAN 1: Menghapus `dd($result)` yang menghentikan eksekusi kode.
         $request->validate([
             'title' => 'required|string|max:255',
             'model' => 'required|in:openai,gemini,none'
@@ -198,7 +187,10 @@ Website: tokosancaka.biz.id , tokosancaka.com , sancaka.biz.id </p>
 
         $model = 'gemini-1.5-flash-latest';
         
-        $response = Http::post("[https://generativelanguage.googleapis.com/v1beta/models/](https://generativelanguage.googleapis.com/v1beta/models/){$model}:generateContent?key={$apiKey}", [
+        // PERBAIKAN: Memastikan URL adalah string yang bersih tanpa format Markdown.
+        $url = "[https://generativelanguage.googleapis.com/v1beta/models/](https://generativelanguage.googleapis.com/v1beta/models/){$model}:generateContent?key={$apiKey}";
+        
+        $response = Http::post($url, [
             'contents' => [[
                 'parts' => [['text' => $prompt]]
             ]],
@@ -252,7 +244,6 @@ Website: tokosancaka.biz.id , tokosancaka.com , sancaka.biz.id </p>
             'user_id' => Auth::id(),
             'category_id' => $request->category_id,
             'title' => $request->title,
-            // PERBAIKAN 2: Membuat slug yang lebih SEO-friendly dan unik.
             'slug' => $this->generateUniqueSlug($request->title),
             'content' => $request->content,
             'featured_image' => $imagePath,
@@ -291,7 +282,6 @@ Website: tokosancaka.biz.id , tokosancaka.com , sancaka.biz.id </p>
         $post->update([
             'category_id' => $request->category_id,
             'title' => $request->title,
-            // PERBAIKAN 2: Slug juga diperbarui jika judul berubah.
             'slug' => $this->generateUniqueSlug($request->title, $post->id),
             'content' => $request->content,
             'featured_image' => $imagePath,
@@ -316,11 +306,7 @@ Website: tokosancaka.biz.id , tokosancaka.com , sancaka.biz.id </p>
     }
 
     /**
-     * PERBAIKAN 2 (Lanjutan): Fungsi helper untuk membuat slug yang unik.
-     *
-     * @param string $title
-     * @param int|null $excludeId
-     * @return string
+     * Fungsi helper untuk membuat slug yang unik.
      */
     private function generateUniqueSlug(string $title, int $excludeId = null): string
     {
@@ -328,19 +314,15 @@ Website: tokosancaka.biz.id , tokosancaka.com , sancaka.biz.id </p>
         $originalSlug = $slug;
         $counter = 1;
 
-        // Query untuk memeriksa apakah slug sudah ada
         $query = Post::where('slug', $slug);
 
-        // Jika sedang update, kecualikan post yang sedang diedit dari pengecekan
         if ($excludeId) {
             $query->where('id', '!=', $excludeId);
         }
 
-        // Jika slug sudah ada, tambahkan angka di belakangnya sampai menjadi unik
         while ($query->exists()) {
             $slug = $originalSlug . '-' . $counter;
             $counter++;
-            // Update query untuk memeriksa slug yang baru
             $query = Post::where('slug', $slug);
             if ($excludeId) {
                 $query->where('id', '!=', $excludeId);
@@ -350,3 +332,4 @@ Website: tokosancaka.biz.id , tokosancaka.com , sancaka.biz.id </p>
         return $slug;
     }
 }
+
