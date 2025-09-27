@@ -374,7 +374,7 @@ Website: tokosancaka.biz.id , tokosancaka.com , sancaka.biz.id </p>
 
         // Updated to a newer, recommended model.
 
-        $model = 'gemini-1.5-flash-latest';
+        $model = 'gemini-2.5-flash-preview-05-20';
 
         
 
