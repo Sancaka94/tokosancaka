@@ -157,19 +157,20 @@ PROMPT;
             return response()->json(['error' => 'Konfigurasi API Key OpenAI tidak ditemukan.'], 500);
         }
         
-        $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . $apiKey,
-            'Content-Type' => 'application/json',
-        ])->post(
-            '[https://api.openai.com/v1/chat/completions](https://api.openai.com/v1/chat/completions)', // <-- PERBAIKAN KRITIS: URL sudah benar
-            [
-                'model' => config('services.openai.model', 'gpt-4o-mini'),
-                'messages' => [
-                    ['role' => 'user', 'content' => $prompt]
-                ],
-                'temperature' => 0.7,
-            ]
-        );
+       $response = Http::withHeaders([
+    'Authorization' => 'Bearer ' . $apiKey,
+    'Content-Type' => 'application/json',
+])->post(
+    'https://api.openai.com/v1/chat/completions', // ✅ bersih, tanpa markdown
+    [
+        'model' => config('services.openai.model', 'gpt-4o-mini'),
+        'messages' => [
+            ['role' => 'user', 'content' => $prompt]
+        ],
+        'temperature' => 0.7,
+    ]
+);
+
 
         if ($response->failed()) {
             Log::error('OpenAI Error:', ['body' => $response->body()]);
