@@ -23,6 +23,8 @@ class PostController extends Controller
      */
     public function index(Request $request)
     {
+        dd($request->all()); 
+        
         $query = Post::with('author', 'category')->latest();
 
         $query->when($request->filled('search'), function ($q) use ($request) {
@@ -237,7 +239,7 @@ PROMPT;
         'status' => $response->status(),
         'body'   => $response->body(),
     ]);
-    
+
     }
 
     /**
