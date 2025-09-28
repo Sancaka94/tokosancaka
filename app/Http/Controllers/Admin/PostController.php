@@ -130,7 +130,7 @@ class PostController extends Controller
 public function show(Post $post)
 {
     // Anda perlu membuat file view ini di resources/views/post-detail.blade.php
-    return view('admin.post-detail', compact('post'));
+    return view('admin.posts.post-detail', compact('post'));
 }
 
     /**
