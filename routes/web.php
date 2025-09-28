@@ -3,6 +3,7 @@
 
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\File;
 
 use App\Http\Middleware\RoleMiddleware;
 
@@ -667,3 +668,18 @@ Route::middleware(['auth', RoleMiddleware::class . ':Seller|Admin'])
     });
 
 Route::get('/kontak/search', [KontakController::class, 'search'])->name('api.search.kontak');
+
+
+
+Route::get('/controllers-list', function () {
+    // Cari semua file Controller di folder app/Http/Controllers
+    $files = File::allFiles(app_path('Http/Controllers'));
+
+    // Ambil hanya nama file tanpa ekstensi
+    $controllers = collect($files)->map(function ($file) {
+        return $file->getFilenameWithoutExtension();
+    });
+
+    // Kirim ke view
+    return view('controllers-list', compact('controllers'));
+});
