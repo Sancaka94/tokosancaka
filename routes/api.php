@@ -84,6 +84,7 @@ Route::post('/couriers/{id}/location', [CourierController::class, 'updateLocatio
 Route::get('/wilayah/provinces', [PublicApiController::class, 'getProvinces'])->name('api.wilayah.provinces');
 Route::get('/wilayah/kabupaten/{province}', [PublicApiController::class, 'getKabupaten'])->name('api.wilayah.kabupaten');
 Route::get('/wilayah/kecamatan/{regency}', [PublicApiController::class, 'getKecamatan'])->name('api.wilayah.kecamatan');
+Route::get('/kodepos/by-district/{district}', [PublicApiController::class, 'getDesaByDistrict'])->name('api.kodepos.by-district');
 Route::get('/kodepos/public-search', [PublicApiController::class, 'searchKodePos'])->name('api.kodepos.public.search');
 
 // Data Wilayah (dari LocationController)
