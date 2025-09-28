@@ -554,18 +554,6 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/payment/finish', [PaymentController::class, 'finishPage'])->name('payment.finish');
 
-    
-
-    Route::get('/customer/seller/register', [SellerRegisterController::class, 'create'])
-
-     ->name('customer.seller.register.form');
-
-
-
-Route::post('/customer/seller/register', [SellerRegisterController::class, 'store'])
-
-     ->name('customer.seller.register.submit');
-
 
 
 });
