@@ -14,7 +14,7 @@
         <div class="flex flex-wrap items-start justify-end -mb-3">
             <a href="{{ route('admin.posts.index') }}" class="inline-flex px-5 py-3 text-white bg-gray-500 hover:bg-gray-600 rounded-md ml-6 mb-3">
                 <i class="fas fa-arrow-left mr-2"></i>
-                Kembali ke Semua Postingan
+                Kembali
             </a>
         </div>
     </div>
@@ -49,7 +49,7 @@
                     <h3 class="text-lg font-semibold mb-2 text-gray-700 dark:text-gray-300">Tags:</h3>
                     <div class="flex flex-wrap gap-2">
                         @foreach($post->tags as $tag)
-                            <span class="bg-blue-100 text-blue-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded dark:bg-blue-200 dark:text-blue-800">{{ $tag->name }}</span>
+                            <span class="bg-red-100 text-red-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded dark:bg-red-200 dark:text-red-800">{{ $tag->name }}</span>
                         @endforeach
                     </div>
                 </div>
