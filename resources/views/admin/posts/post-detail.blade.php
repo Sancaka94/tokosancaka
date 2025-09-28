@@ -12,7 +12,7 @@
             <h2 class="text-gray-600 dark:text-gray-400 ml-0.5">Detail lengkap untuk postingan ini.</h2>
         </div>
         <div class="flex flex-wrap items-start justify-end -mb-3">
-            <a href="{{ route('admin.posts.index') }}" class="inline-flex px-5 py-3 text-white bg-gray-500 hover:bg-gray-600 rounded-md ml-6 mb-3">
+            <a href="{{ route('admin.posts.index') }}" class="inline-flex px-5 py-3 text-white bg-red-500 hover:bg-red-700 rounded-md ml-6 mb-3">
                 <i class="fas fa-arrow-left mr-2"></i>
                 Kembali
             </a>
