@@ -271,6 +271,8 @@ Route::middleware(['auth', RoleMiddleware::class . ':Pelanggan|Seller'])
 
 Route::prefix('admin')->name('admin.')->group(function () {
 
+    Route::get('/post/{post:slug}', [PostController::class, 'show'])->name('post-detail');
+
     Route::get('/wilayah', [WilayahController::class, 'index'])->name('wilayah.index');
 
     Route::get('/api/contacts/search', [AdminKontakController::class, 'search'])->name('api.contacts.search');
