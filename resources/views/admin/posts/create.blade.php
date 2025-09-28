@@ -32,7 +32,7 @@
 
             <!-- PERUBAHAN: Desain Toggle Switch dengan 3 Pilihan -->
 
-            <div class="mb-6 p-4 bg-purple-50 dark:bg-gray-700 rounded-lg">
+            <div class="mb-6 p-4 bg-red-50 dark:bg-gray-700 rounded-lg">
 
                 <div class="flex items-center justify-between">
 
@@ -40,7 +40,7 @@
 
                     <div id="ai-toggle-container" class="relative flex w-72 items-center rounded-full bg-gray-200 dark:bg-gray-600 p-1">
 
-                        <div id="ai-toggle-slider" class="absolute h-8 w-1/3 transform rounded-full bg-purple-600 shadow-md transition-transform"></div>
+                        <div id="ai-toggle-slider" class="absolute h-8 w-1/3 transform rounded-full bg-red-600 shadow-md transition-transform"></div>
 
                         <button type="button" data-model="none" class="ai-choice-btn relative z-10 w-1/3 py-1 text-sm font-bold text-white">None</button>
 
@@ -78,7 +78,7 @@
 
                             <div id="generate-btn-container" class="hidden">
 
-                                <button type="button" id="generate-btn" class="px-4 py-2 bg-purple-600 text-white font-semibold rounded-md hover:bg-purple-700 whitespace-nowrap">
+                                <button type="button" id="generate-btn" class="px-4 py-2 bg-red-600 text-white font-semibold rounded-md hover:bg-red-700 whitespace-nowrap">
 
                                     <i class="fas fa-magic mr-2"></i>Generate
 
@@ -98,7 +98,7 @@
 
                         <label for="content" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Konten</label>
 
-                        <div id="loading-indicator" class="hidden my-2 text-sm text-red-700 font-semibold flex items-center space-x-2"><i class="fas fa-spinner fa-spin mr-2"></i>Menghasilkan artikel, mohon tunggu...</div>
+                        <div id="loading-indicator" class="hidden my-2 text-sm text-red-500 font-semibold flex items-center space-x-2"><i class="fas fa-spinner fa-spin mr-2"></i>Menghasilkan artikel, mohon tunggu...</div>
 
                         <textarea name="content" id="content" rows="20" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm">{{ old('content') }}</textarea>
 
@@ -152,7 +152,7 @@
 
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Gambar Unggulan</label>
 
-                        <input id="featured_image" name="featured_image" type="file" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100 dark:file:bg-gray-700 dark:file:text-gray-300">
+                        <input id="featured_image" name="featured_image" type="file" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100 dark:file:bg-gray-700 dark:file:text-gray-300">
 
                     </div>
 
@@ -164,7 +164,7 @@
 
                 <a href="{{ route('admin.posts.index') }}" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md">Batal</a>
 
-                <button type="submit" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-md">Simpan Postingan</button>
+                <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md">Simpan Postingan</button>
 
             </div>
 
