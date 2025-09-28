@@ -671,15 +671,24 @@ Route::get('/kontak/search', [KontakController::class, 'search'])->name('api.sea
 
 
 
+use Illuminate\Support\Facades\File;
+
 Route::get('/controllers-list', function () {
-    // Cari semua file Controller di folder app/Http/Controllers
     $files = File::allFiles(app_path('Http/Controllers'));
 
-    // Ambil hanya nama file tanpa ekstensi
     $controllers = collect($files)->map(function ($file) {
-        return $file->getFilenameWithoutExtension();
+        // Ambil path relatif dari folder Controllers
+        $relativePath = str_replace(app_path('Http/Controllers') . '/', '', $file->getPathname());
+
+        // Ubah menjadi namespace Laravel (App\Http\Controllers\...)
+        $class = 'App\\Http\\Controllers\\' . str_replace(
+            ['/', '.php'],
+            ['\\', ''],
+            $relativePath
+        );
+
+        return $class;
     });
 
-    // Kirim ke view
     return view('controllers-list', compact('controllers'));
 });

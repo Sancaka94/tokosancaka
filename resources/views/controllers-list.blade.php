@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Daftar Controller</title>
+    <title>Daftar Semua Controller</title>
 </head>
 <body>
     <h1>Daftar Semua Controller</h1>
