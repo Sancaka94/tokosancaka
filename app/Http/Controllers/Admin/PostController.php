@@ -208,69 +208,48 @@ class PostController extends Controller
 
         $prompt = "Anda adalah penulis konten SEO ahli dan copywriter profesional berbahasa Indonesia. Tugas Anda adalah membuat artikel blog yang siap publish, sangat SEO-friendly, dan nyaman dibaca.
 
-
-
 **Judul Artikel:** '{$title}'
-
-
 
 **Instruksi Utama:**
 
-Hasilkan konten HANYA dalam format HTML mentah (raw HTML), tanpa \`\`\`html atau pembungkus markdown lainnya. Konten harus bisa langsung disalin ke editor WYSIWYG.
-
-
+Hasilkan konten HANYA dalam format HTML mentah (raw HTML), tanpa ``` html atau pembungkus markdown lainnya. Konten harus bisa langsung disalin ke editor WYSIWYG, jangan ada lambang atau icon dan jangan ada ** ** *** **** **
 
 **Kaidah SEO & Konten:**
 
 1.  **Riset & Kedalaman:** Bahas topik secara mendalam dan berikan informasi yang benar-benar bernilai bagi pembaca.
-
-2.  **Kata Kunci:** Gunakan kata kunci utama `<strong>{$title}</strong>` secara alami 3-5 kali. Sertakan juga variasi kata kunci (LSI) yang relevan dengan topik.
-
-3.  **Tautan Internal:** Secara strategis, sisipkan 2-3 tautan internal ke domain `tokosancaka.com` atau `tokosancaka.biz.id`. Gunakan anchor text yang relevan dengan halaman tujuan. Contoh: `<a href=\"https://tokosancaka.com/cek-ongkir\">cek ongkos kirim</a>`.
-
+2.  **Kata Kunci:** Gunakan kata kunci utama <strong>{$title}</strong> secara alami 3-5 kali. Sertakan juga variasi kata kunci (LSI) yang relevan dengan topik.
+3.  **Tautan Internal:** Sisipkan 2-3 tautan internal ke domain tokosancaka.com atau tokosancaka.biz.id. Gunakan anchor text yang relevan. Contoh: <a href=\"https://tokosancaka.com/cek-ongkir\">cek ongkos kirim</a>.
 4.  **Panjang Artikel:** Total panjang artikel **tidak boleh lebih dari 1000 kata**.
-
-
 
 **Kaidah Bahasa & Keterbacaan (Sesuai EYD & KBBI):**
 
-1.  **Gaya Bahasa:** Gunakan bahasa Indonesia yang baik dan benar sesuai kaidah Ejaan Yang Disempurnakan (EYD) dan Kamus Besar Bahasa Indonesia (KBBI). Hindari kalimat yang terlalu rumit.
-
-2.  **Paragraf Pendek:** Buat paragraf yang singkat, idealnya terdiri dari 2-4 kalimat, agar mudah dibaca di perangkat mobile.
-
-3.  **Struktur Jelas:** Gunakan subjudul untuk memecah konten menjadi bagian-bagian yang logis dan mudah diikuti.
-
-
+1.  **Gaya Bahasa:** Gunakan bahasa Indonesia yang baik dan benar sesuai kaidah EYD & KBBI. Hindari kalimat yang terlalu rumit.
+2.  **Paragraf Pendek:** Gunakan paragraf singkat 2-4 kalimat agar nyaman dibaca di perangkat mobile.
+3.  **Struktur Jelas:** Gunakan subjudul untuk memecah konten menjadi bagian logis dan mudah diikuti.
 
 **Persyaratan Format HTML:**
 
-* **Paragraf:** Gunakan tag `<p>` untuk semua paragraf.
-
-* **Subjudul:** Gunakan tag `<h2>` untuk semua subjudul.
-
-* **Penekanan:** Gunakan `<strong>` untuk menekankan poin atau kata kunci penting.
-
-* **Daftar:** Jika ada daftar, gunakan `<ul>` dan `<li>`.
-
+* **Paragraf:** Gunakan tag <p> untuk semua paragraf.
+* **Subjudul:** Gunakan tag <h2> untuk semua subjudul.
+* **Penekanan:** Gunakan <strong> untuk menekankan poin atau kata kunci penting.
+* **Daftar:** Jika ada daftar, gunakan <ul> dan <li>.
 * **Informasi Kontak (Wajib di Akhir):** Tambahkan blok ini persis di akhir artikel, setelah paragraf penutup.
+* **Hindari:** Jangan gunakan tag <div>, <span>, atau tag HTML lain yang tidak disebutkan.
+* **Tagar & Kalimat Penguat:** Sebelum paragraf penutup, buat satu kalimat tambahan yang menguatkan topik <strong>{$title}</strong>, lalu sisipkan minimal 100 keyword/tagar terkait <strong>{$title}</strong> dalam satu paragraf, dipisahkan dengan koma, agar SEO lebih optimal.
 
-
+**Blok Informasi Kontak (Wajib Ditambahkan di Akhir Artikel):**
 
 <hr>
 
 <p><strong>Sancaka Express – Ekspedisi Cepat, Aman, dan Terpercaya di Indonesia</strong><br>
-
 CV. Sancaka Karya Hutama<br>
-
 Jl. Dr. Wahidin No.18A RT.22/05 Kel. Ketanggi Kec. Ngawi Kab. Ngawi, Jawa Timur 63211<br>
-
 HP/WA: 0857-4580-8809<br>
-
 Website: tokosancaka.biz.id , tokosancaka.com , sancaka.biz.id </p>
 
 <p><em>Pilihan tepat untuk pengiriman barang cepat, aman, dan bergaransi ke seluruh Indonesia!</em></p>
-
 ";
+        // --- AKHIR PROMPT DIPERBARUI ---
 
 
 
