@@ -1,154 +1,1 @@
-<?php
-
-namespace App\Models;
-
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
-use Spatie\Permission\Traits\HasRoles;
-use Illuminate\Database\Eloquent\Relations\HasOne; // <-- DITAMBAHKAN
-
-class User extends Authenticatable
-{
-    use HasFactory, Notifiable, HasRoles, SoftDeletes;
-
-    /**
-     * Nama tabel kustom Anda.
-     */
-    protected $table = 'Pengguna';
-
-    /**
-     * Primary key kustom Anda.
-     */
-    protected $primaryKey = 'id_pengguna';
-
-    /**
-     * Nonaktifkan timestamps 'created_at' dan 'updated_at' bawaan Laravel.
-     */
-    public $timestamps = false;
-
-    /**
-     * Atribut yang dapat diisi secara massal (mass assignable).
-     */
-    protected $fillable = [
-        'nama_lengkap',
-        'email',
-        'password',
-        'no_wa',
-        'store_name',
-        'province',
-        'regency',
-        'district',
-        'village',
-        'postal_code',
-        'address_detail',
-        'bank_name',
-        'bank_account_name',
-        'bank_account_number',
-        'store_logo_path',
-        'setup_token',
-        'profile_setup_at',
-        'role',
-        'saldo',
-        'status',
-        'is_verified',
-        'reset_token',
-        'token_expiry',
-        'ip_address',
-        'user_agent',
-        'latitude',
-        'longitude',
-        'last_seen_at',
-    ];
-
-    /**
-     * Atribut yang harus disembunyikan saat serialisasi.
-     */
-    protected $hidden = [
-        'password_hash',
-        'remember_token',
-        'setup_token',
-        'reset_token',
-    ];
-
-    /**
-     * Tipe data kustom untuk atribut.
-     */
-    protected function casts(): array
-    {
-        return [
-            'created_at' => 'datetime',
-            'profile_setup_at' => 'datetime',
-            'token_expiry' => 'datetime',
-            'is_verified' => 'boolean',
-            'saldo' => 'decimal:2',
-        ];
-    }
-
-    // --- Fungsi Otentikasi ---
-    public function setPasswordAttribute($value)
-    {
-        if (!empty($value)) {
-            $this->attributes['password_hash'] = Hash::make($value);
-        }
-    }
-
-    public function getAuthPassword()
-    {
-        return $this->password_hash;
-    }
-
-    public function getAuthIdentifierName()
-    {
-        return 'id_pengguna';
-    }
-
-
-    // --- Relasi Database ---
-
-    /**
-     * Relasi ke tabel 'stores'. Ini yang akan memperbaiki error Anda.
-     */
-    public function store(): HasOne
-    {
-        return $this->hasOne(Store::class, 'user_id', 'id_pengguna');
-    }
-
-    public function posts()
-    {
-        return $this->hasMany(Post::class, 'user_id', 'id_pengguna');
-    }
-
-    public function toko()
-    {
-        return $this->hasOne(Toko::class, 'id_pengguna_pemilik', 'id_pengguna');
-    }
-
-    public function pesanans()
-    {
-        return $this->hasMany(Pesanan::class, 'id_pengguna_pembeli', 'id_pengguna');
-    }
-
-    public function topUps()
-    {
-        return $this->hasMany(TopUp::class, 'customer_id', 'id_pengguna');
-    }
-    
-    public function getCurrentBalance()
-    {
-        $totalPemasukan = DB::table('top_ups')
-                            ->where('customer_id', $this->id_pengguna)
-                            ->where('status', 'success')
-                            ->sum('amount');
-        
-        $totalPengeluaran = DB::table('pesanan')
-                                ->where('id_pengguna_pembeli', $this->id_pengguna)
-                                ->whereIn('status_pesanan', ['Selesai', 'Terkirim', 'Diproses'])
-                                ->sum('total_harga_barang');
-
-        return $totalPemasukan - $totalPengeluaran;
-    }
-}
+<?phpnamespace App\Models;use Illuminate\Database\Eloquent\Factories\HasFactory;use Illuminate\Foundation\Auth\User as Authenticatable;use Illuminate\Notifications\Notifiable;use Illuminate\Database\Eloquent\SoftDeletes;use Illuminate\Support\Facades\DB;use Illuminate\Support\Facades\Hash;use Spatie\Permission\Traits\HasRoles;use Illuminate\Database\Eloquent\Relations\HasOne; // <-- DITAMBAHKANuse Laravel\Sanctum\HasApiTokens; // 1. Tambahkan baris import iniclass User extends Authenticatable{    use HasFactory, Notifiable, HasRoles, SoftDeletes, HasApiTokens;    /**     * Nama tabel kustom Anda.     */    protected $table = 'Pengguna';    /**     * Primary key kustom Anda.     */    protected $primaryKey = 'id_pengguna';    /**     * Nonaktifkan timestamps 'created_at' dan 'updated_at' bawaan Laravel.     */    public $timestamps = false;    /**     * Atribut yang dapat diisi secara massal (mass assignable).     */    protected $fillable = [        'nama_lengkap',        'email',        'password',        'no_wa',        'store_name',        'province',        'regency',        'district',        'village',        'postal_code',        'address_detail',        'bank_name',        'bank_account_name',        'bank_account_number',        'store_logo_path',        'setup_token',        'profile_setup_at',        'role',        'saldo',        'status',        'is_verified',        'reset_token',        'token_expiry',        'ip_address',        'user_agent',        'latitude',        'longitude',        'last_seen_at',    ];    /**     * Atribut yang harus disembunyikan saat serialisasi.     */    protected $hidden = [        'password_hash',        'remember_token',        'setup_token',        'reset_token',    ];    /**     * Tipe data kustom untuk atribut.     */    protected function casts(): array    {        return [            'created_at' => 'datetime',            'profile_setup_at' => 'datetime',            'token_expiry' => 'datetime',            'is_verified' => 'boolean',            'saldo' => 'decimal:2',        ];    }    // --- Fungsi Otentikasi ---    public function setPasswordAttribute($value)    {        if (!empty($value)) {            $this->attributes['password_hash'] = Hash::make($value);        }    }    public function getAuthPassword()    {        return $this->password_hash;    }    public function getAuthIdentifierName()    {        return 'id_pengguna';    }    // --- Relasi Database ---    /**     * Relasi ke tabel 'stores'. Ini yang akan memperbaiki error Anda.     */    public function store(): HasOne    {        return $this->hasOne(Store::class, 'user_id', 'id_pengguna');    }    public function posts()    {        return $this->hasMany(Post::class, 'user_id', 'id_pengguna');    }    public function toko()    {        return $this->hasOne(Toko::class, 'id_pengguna_pemilik', 'id_pengguna');    }    public function pesanans()    {        return $this->hasMany(Pesanan::class, 'id_pengguna_pembeli', 'id_pengguna');    }    public function topUps()    {        return $this->hasMany(TopUp::class, 'customer_id', 'id_pengguna');    }        public function getCurrentBalance()    {        $totalPemasukan = DB::table('top_ups')                            ->where('customer_id', $this->id_pengguna)                            ->where('status', 'success')                            ->sum('amount');                $totalPengeluaran = DB::table('pesanan')                                ->where('id_pengguna_pembeli', $this->id_pengguna)                                ->whereIn('status_pesanan', ['Selesai', 'Terkirim', 'Diproses'])                                ->sum('total_harga_barang');        return $totalPemasukan - $totalPengeluaran;    }}
