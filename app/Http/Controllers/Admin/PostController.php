@@ -124,7 +124,14 @@ class PostController extends Controller
 
     }
 
-
+    /**
+ * Menampilkan detail satu postingan.
+ */
+public function show(Post $post)
+{
+    // Anda perlu membuat file view ini di resources/views/post-detail.blade.php
+    return view('post-detail', compact('post'));
+}
 
     /**
 
