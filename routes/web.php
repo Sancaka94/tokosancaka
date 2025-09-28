@@ -671,7 +671,7 @@ Route::get('/kontak/search', [KontakController::class, 'search'])->name('api.sea
 
 
 
-use Illuminate\Support\Facades\File;
+
 
 Route::get('/controllers-list', function () {
     $files = File::allFiles(app_path('Http/Controllers'));
