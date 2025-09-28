@@ -73,7 +73,7 @@
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <div class="flex items-center justify-center space-x-4">
                                 <!-- Tombol Lihat -->
-                                <a href="{{ route('post-detail', $post->slug) }}" target="_blank" class="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-200" title="Lihat Postingan">
+                                <a href="{{ route('admin.posts-detail', $post->slug) }}" target="_blank" class="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-200" title="Lihat Postingan">
                                     <i class="fas fa-eye text-lg"></i>
                                 </a>
                                 <!-- Tombol Edit -->
