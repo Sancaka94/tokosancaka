@@ -98,7 +98,7 @@
 
                         <label for="content" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Konten</label>
 
-                        <div id="loading-indicator" class="hidden my-2 text-sm text-red-500"><i class="fas fa-spinner fa-spin mr-2"></i>Menghasilkan artikel, mohon tunggu...</div>
+                        <div id="loading-indicator" class="hidden my-2 text-sm text-red-700 font-semibold flex items-center space-x-2"><i class="fas fa-spinner fa-spin mr-2"></i>Menghasilkan artikel, mohon tunggu...</div>
 
                         <textarea name="content" id="content" rows="20" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm">{{ old('content') }}</textarea>
 
