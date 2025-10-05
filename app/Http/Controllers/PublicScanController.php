@@ -1,116 +1,1 @@
-<?php
-
-namespace App\Http\Controllers;
-
-use Illuminate\Http\Request;
-use App\Models\Kontak; // Asumsi Anda punya model Kontak
-use App\Models\ScannedPackage; // Asumsi Anda punya model ScannedPackage
-use App\Models\SuratJalan; // Asumsi Anda punya model SuratJalan
-use Carbon\Carbon;
-use Illuminate\Support\Str;
-
-class PublicScanController extends Controller
-{
-    // Menampilkan halaman scan utama
-    public function show()
-    {
-        // Tidak ada data yang dikirim, ini memperbaiki error '$customer' undefined
-        return view('public.scan-spx');
-    }
-
-    // Mencari kontak berdasarkan nama atau no_hp
-    public function searchKontak(Request $request)
-    {
-        $query = $request->input('query');
-        $kontaks = Kontak::where('nama', 'LIKE', "%{$query}%")
-                         ->orWhere('no_hp', 'LIKE', "%{$query}%")
-                         ->take(5)
-                         ->get();
-        return response()->json($kontaks);
-    }
-
-    // Mendaftarkan kontak baru
-    public function registerKontak(Request $request)
-    {
-        $validated = $request->validate([
-            'nama' => 'required|string|max:255',
-            'no_hp' => 'required|string|unique:kontaks,no_hp',
-            'alamat' => 'required|string',
-        ]);
-
-        $kontak = Kontak::create($validated);
-
-        return response()->json(['success' => true, 'data' => $kontak]);
-    }
-
-    // Menangani dan menyimpan resi yang di-scan
-    public function handleScan(Request $request)
-    {
-        $validated = $request->validate([
-            'kontak_id' => 'required|exists:kontaks,id',
-            'resi' => 'required|string|unique:scanned_packages,resi_number',
-        ]);
-
-        $package = ScannedPackage::create([
-            'kontak_id' => $validated['kontak_id'],
-            'resi_number' => $validated['resi'],
-            // tambahkan field lain jika perlu
-        ]);
-
-        $kontak = Kontak::find($validated['kontak_id']);
-
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'nomor_resi' => $package->resi_number,
-                'nama_pengirim' => $kontak->nama,
-                'waktu_scan' => Carbon::now()->format('H:i:s'),
-            ]
-        ]);
-    }
-
-    // Membuat surat jalan
-    public function createSuratJalan(Request $request)
-    {
-        $validated = $request->validate([
-            'kontak_id' => 'required|exists:kontaks,id',
-            'resi_list' => 'required|array',
-        ]);
-
-        $kontak = Kontak::find($validated['kontak_id']);
-        $kodeUnik = 'SJL-' . now()->format('Ymd') . '-' . strtoupper(Str::random(6));
-
-        $suratJalan = SuratJalan::create([
-            'kontak_id' => $kontak->id,
-            'kode_surat_jalan' => $kodeUnik,
-            'jumlah_paket' => count($validated['resi_list']),
-        ]);
-
-        // Update paket-paket yang di-scan dengan ID surat jalan
-        ScannedPackage::whereIn('resi_number', $validated['resi_list'])
-                      ->update(['surat_jalan_id' => $suratJalan->id]);
-
-       return response()->json([
-            'success' => true,
-            'kode_surat_jalan' => $kodeUnik,
-            'customer_name' => $kontak->nama,
-            'package_count' => $suratJalan->jumlah_paket,
-            'created_at' => $suratJalan->created_at->format('d-m-Y H:i'),
-            'pdf_url' => route('surat.jalan.pdf') 
-                        . '?resi=' . implode(',', $validated['resi_list']) 
-                        . '&kode=' . $kodeUnik,
-        ]);
-    }
-    
-    // Fungsi untuk download PDF (perlu implementasi view PDF)
-    public function downloadSuratJalan($kode)
-    {
-        // Logika untuk generate dan download PDF, misalnya menggunakan DomPDF
-        // $suratJalan = SuratJalan::where('kode_surat_jalan', $kode)->firstOrFail();
-        // $pdf = PDF::loadView('pdf.surat_jalan', compact('suratJalan'));
-        // return $pdf->stream('surat-jalan-'.$kode.'.pdf');
-        return "Halaman PDF untuk Surat Jalan: " . $kode; // Placeholder
-    }
-    
-
-}
+<?phpnamespace App\Http\Controllers;use Illuminate\Http\Request;use App\Models\Kontak; // Asumsi Anda punya model Kontakuse App\Models\ScannedPackage; // Asumsi Anda punya model ScannedPackageuse App\Models\SuratJalan; // Asumsi Anda punya model SuratJalanuse Carbon\Carbon;use Illuminate\Support\Str;class PublicScanController extends Controller{    // Menampilkan halaman scan utama    public function show()    {        // Tidak ada data yang dikirim, ini memperbaiki error '$customer' undefined        return view('public.scan-spx');    }    // Mencari kontak berdasarkan nama atau no_hp    public function searchKontak(Request $request)    {        $query = $request->input('query');        $kontaks = Kontak::where('nama', 'LIKE', "%{$query}%")                         ->orWhere('no_hp', 'LIKE', "%{$query}%")                         ->take(5)                         ->get();        return response()->json($kontaks);    }    // Mendaftarkan kontak baru    public function registerKontak(Request $request)    {        $validated = $request->validate([            'nama' => 'required|string|max:255',            'no_hp' => 'required|string|unique:kontaks,no_hp',            'alamat' => 'required|string',        ]);                // ✅ SOLUSI: Tambahkan nilai default untuk kolom yang tidak boleh null        // untuk menghindari error dari database saat membuat record baru.        $validated['tipe'] = 'Pengirim';        $validated['province'] = '';        $validated['regency'] = '';        $validated['district'] = '';        $validated['village'] = '';        $validated['postal_code'] = '';        $kontak = Kontak::create($validated);        return response()->json(['success' => true, 'data' => $kontak]);    }    // Menangani dan menyimpan resi yang di-scan    public function handleScan(Request $request)    {        $validated = $request->validate([            'kontak_id' => 'required|exists:kontaks,id',            'resi' => 'required|string|unique:scanned_packages,resi_number',        ]);        $package = ScannedPackage::create([            'kontak_id' => $validated['kontak_id'],            'resi_number' => $validated['resi'],            // tambahkan field lain jika perlu        ]);        $kontak = Kontak::find($validated['kontak_id']);        return response()->json([            'success' => true,            'data' => [                'nomor_resi' => $package->resi_number,                'nama_pengirim' => $kontak->nama,                'waktu_scan' => Carbon::now()->format('H:i:s'),            ]        ]);    }    // Membuat surat jalan    public function createSuratJalan(Request $request)    {        $validated = $request->validate([            'kontak_id' => 'required|exists:kontaks,id',            'resi_list' => 'required|array',        ]);        $kontak = Kontak::find($validated['kontak_id']);        $kodeUnik = 'SJL-' . now()->format('Ymd') . '-' . strtoupper(Str::random(6));        $suratJalan = SuratJalan::create([            'kontak_id' => $kontak->id,            'kode_surat_jalan' => $kodeUnik,            'jumlah_paket' => count($validated['resi_list']),        ]);        // Update paket-paket yang di-scan dengan ID surat jalan        ScannedPackage::whereIn('resi_number', $validated['resi_list'])                      ->update(['surat_jalan_id' => $suratJalan->id]);       return response()->json([            'success' => true,            'kode_surat_jalan' => $kodeUnik,            'customer_name' => $kontak->nama,            'package_count' => $suratJalan->jumlah_paket,            'created_at' => $suratJalan->created_at->format('d-m-Y H:i'),            'pdf_url' => route('surat.jalan.pdf')                         . '?resi=' . implode(',', $validated['resi_list'])                         . '&kode=' . $kodeUnik,        ]);    }        // Fungsi untuk download PDF (perlu implementasi view PDF)    public function downloadSuratJalan($kode)    {        // Logika untuk generate dan download PDF, misalnya menggunakan DomPDF        // $suratJalan = SuratJalan::where('kode_surat_jalan', $kode)->firstOrFail();        // $pdf = PDF::loadView('pdf.surat_jalan', compact('suratJalan'));        // return $pdf->stream('surat-jalan-'.$kode.'.pdf');        return "Halaman PDF untuk Surat Jalan: " . $kode; // Placeholder    }    }
