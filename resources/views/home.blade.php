@@ -1150,7 +1150,7 @@ width: 22px;
 
                     <div class="partner-logo-card">
 
-                        <img src="https://assets.bukalapak.com/beagle/images/courier_logo/id-express.png" alt="Logo ID Express" onerror="this.src='https://placehold.co/150x60/CCCCCC/333333?text=Logo+Error';">
+                        <img src="https://kiriminaja.com/assets/home-v4/id-express.png" alt="Logo ID Express" onerror="this.src='https://placehold.co/150x60/CCCCCC/333333?text=Logo+Error';">
 
                     </div>
 
