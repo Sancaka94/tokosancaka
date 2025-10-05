@@ -122,7 +122,7 @@ Route::get('/api/contacts/search', [PesananController::class, 'searchKontak'])->
 
 Route::get('/kontak/search', [KontakController::class, 'search'])->name('api.search.kontak');
 
-
+Route::get('/kontak/search', [KontakController::class, 'search'])->name('kontak.search');
 
 
 // =========================================================================
