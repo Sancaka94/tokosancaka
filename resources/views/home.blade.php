@@ -1464,42 +1464,6 @@ width: 22px;
 
             </div>
 
-            <!-- Gambar 2 -->
-
-            <div class="col-6 col-md-4 col-lg-3">
-
-                <div class="trust-logo-card">
-
-                    <img src="https://tokosancaka.com/storage/uploads/pengertian-oss.jpg.webp" class="img-fluid" alt="Logo Terdaftar">
-
-                </div>
-
-            </div>
-
-            <!-- Gambar 3 -->
-
-            <div class="col-6 col-md-4 col-lg-3">
-
-                <div class="trust-logo-card">
-
-                    <img src="https://tokosancaka.com/storage/uploads/djki.png" class="img-fluid" alt="Sertifikat Keanggotaan">
-
-                </div>
-
-            </div>
-
-            <!-- Gambar 4 -->
-
-            <div class="col-6 col-md-4 col-lg-3">
-
-                <div class="trust-logo-card">
-
-                    <img src="https://tokosancaka.com/storage/uploads/pupr.png" class="img-fluid" alt="Mitra Resmi">
-
-                </div>
-
-            </div>
-
         </div>
 
     </div>
