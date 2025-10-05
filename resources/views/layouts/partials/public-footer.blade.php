@@ -10,6 +10,7 @@
                     Solusi pengiriman terpercaya untuk kebutuhan personal dan bisnis Anda.
                     Cepat, aman, dan dapat diandalkan.
                 </p>
+                <img src="https://tokosancaka.com/storage/uploads/sectigo.png" alt="Sectigo Secure" style="max-width: 120px; margin-top: 15px;">
             </div>
 
             {{-- Navigasi --}}
