@@ -48,15 +48,15 @@
 
                 <h5>Ikuti Kami</h5>
 
-<a href="https://www.facebook.com/sancakakarya.hutama" class="text-white fs-4 me-2">
+<a href="https://www.facebook.com/sancakakarya.hutama" class="text-white fs-4">
     <i class="fab fa-facebook"></i>
 </a>
 
-<a href="https://www.instagram.com/cvsancakakaryahutama" class="text-white fs-4 me-2">
+<a href="https://www.instagram.com/cvsancakakaryahutama" class="text-white fs-4">
     <i class="fab fa-instagram"></i>
 </a>
 
-<a href="https://www.tiktok.com/@sancaka.legal" class="text-white fs-4 me-2">
+<a href="https://www.tiktok.com/@sancaka.legal" class="text-white fs-4">
     <i class="fab fa-tiktok"></i>
 </a>
 
