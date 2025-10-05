@@ -54,6 +54,8 @@
 
                 <a href="https://www.tiktok.com/@sancaka.legal" class="text-white fs-4"><i class="fab fa-tiktok"></i></a>
 
+                <a href="https://wa.me/628819435180" class="text-white fs-4"><i class="fab fa-whatsapp"></i></a>
+
             </div>
 
         </div>
