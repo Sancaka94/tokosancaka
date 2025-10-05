@@ -435,11 +435,29 @@
                 </div>
                 <div class="col-md-5 col-lg-4">
                     <div class="text-center text-md-end">
-                        <ul class="list-unstyled list-inline">
-                            <li class="list-inline-item"><a href="#" class="btn-floating btn-sm text-white" style="font-size: 23px;"><i class="fab fa-facebook"></i></a></li>
-                            <li class="list-inline-item"><a href="#" class="btn-floating btn-sm text-white" style="font-size: 23px;"><i class="fab fa-instagram"></i></a></li>
-                            <li class="list-inline-item"><a href="#" class="btn-floating btn-sm text-white" style="font-size: 23px;"><i class="fab fa-twitter"></i></a></li>
-                        </ul>
+                        <ul class="list-unstyled list-inline mb-0">
+    <li class="list-inline-item">
+        <a href="https://www.facebook.com/sancakakarya.hutama" target="_blank" class="text-white" style="font-size: 23px;">
+            <i class="fab fa-facebook"></i>
+        </a>
+    </li>
+    <li class="list-inline-item">
+        <a href="https://www.instagram.com/cvsancakakaryahutama" target="_blank" class="text-white" style="font-size: 23px;">
+            <i class="fab fa-instagram"></i>
+        </a>
+    </li>
+    <li class="list-inline-item">
+        <a href="https://www.tiktok.com/@sancaka.legal" target="_blank" class="text-white" style="font-size: 23px;">
+            <i class="fab fa-tiktok"></i>
+        </a>
+    </li>
+    <li class="list-inline-item">
+        <a href="https://wa.me/628819435180" target="_blank" class="text-white" style="font-size: 23px;">
+            <i class="fab fa-whatsapp"></i>
+        </a>
+    </li>
+</ul>
+
                     </div>
                 </div>
             </div>
