@@ -20,8 +20,8 @@ class KontakController extends Controller
     public function search(Request $request)
     {
         try {
-            // ✅ DIPERBAIKI: Mengambil parameter 'query' yang dikirim oleh JavaScript.
-            $searchTerm = $request->input('query');
+            // jQuery UI Autocomplete mengirimkan query pencarian dalam parameter 'term'
+            $searchTerm = $request->input('term');
 
             // Jangan lakukan pencarian jika query terlalu pendek
             if (strlen($searchTerm) < 2) {
