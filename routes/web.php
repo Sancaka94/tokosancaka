@@ -108,7 +108,7 @@ Route::get('/terms-and-conditions', function () {
     return view('terms');
 })->name('terms.conditions');
 
-Route::get('/kontak/search', [KontakController::class, 'search'])->name('kontak.search');
+
 
 Route::get('/admin/import/wordpress', [ImportController::class, 'showForm'])->name('admin.import.wordpress.form');
 
@@ -121,6 +121,15 @@ Route::get('/api/contacts/search', [KontakController::class, 'search'])->name('a
 Route::get('/api/contacts/search', [PesananController::class, 'searchKontak'])->name('api.contacts.search');
 
 Route::get('/kontak/search', [KontakController::class, 'search'])->name('api.search.kontak');
+
+
+// == API & PUBLIC SEARCH ROUTES ==
+// This is the main public search route used by the SPX Scan page's JavaScript.
+Route::get('/kontak/search', [KontakController::class, 'search'])->name('kontak.search');
+// This route is likely used for searching contacts when creating an order (pesanan).
+Route::get('/api/contacts/search', [PesananController::class, 'searchKontak'])->name('api.contacts.search');
+
+
 
 
 // =========================================================================
