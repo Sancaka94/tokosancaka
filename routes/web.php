@@ -123,14 +123,6 @@ Route::get('/api/contacts/search', [PesananController::class, 'searchKontak'])->
 Route::get('/kontak/search', [KontakController::class, 'search'])->name('api.search.kontak');
 
 
-// == API & PUBLIC SEARCH ROUTES ==
-// This is the main public search route used by the SPX Scan page's JavaScript.
-Route::get('/kontak/search', [KontakController::class, 'search'])->name('kontak.search');
-
-// This route is likely used for searching contacts when creating an order (pesanan).
-Route::get('/api/contacts/search', [PesananController::class, 'searchKontak'])->name('api.contacts.search');
-
-
 
 
 // =========================================================================
