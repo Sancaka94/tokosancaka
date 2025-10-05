@@ -108,6 +108,8 @@ Route::get('/terms-and-conditions', function () {
     return view('terms');
 })->name('terms.conditions');
 
+Route::get('/kontak/search', [KontakController::class, 'search'])->name('kontak.search');
+
 Route::get('/admin/import/wordpress', [ImportController::class, 'showForm'])->name('admin.import.wordpress.form');
 
 Route::post('/admin/import/wordpress', [ImportController::class, 'handleImport'])->name('admin.import.wordpress.handle');
@@ -580,8 +582,6 @@ Route::middleware('auth')->group(function () {
 // DANA Notification Webhook
 
 Route::post('/dana/notification', [DanaController::class, 'handleNotification'])->name('dana.payment.notify');
-
-
 
 Route::post('/callback/tripay', [CheckoutController::class, 'TripayCallback'])->name('payment.callback.tripay');
 
