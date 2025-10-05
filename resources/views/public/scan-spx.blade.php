@@ -350,7 +350,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         resiInput.focus();
 
-        showAlert(`Halo <strong>${kontak.nama}</strong>, SILAHKAN SCAN RESI SPX KAK <strong>${kontak.nama}</strong> DIBAWAH INI.`, 'success');
+        showAlert(`Halo <strong>${kontak.nama}</strong>, SILAHKAN SCAN RESI SPX KAKAK DIBAWAH INI.`, 'success');
 
     };
 
