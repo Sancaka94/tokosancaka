@@ -26,7 +26,7 @@
 
                 <ul class="navbar-nav ms-auto align-items-lg-center">
 
-                    <li class="nav-item"><a class="nav-link" href="/">Beranda</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/">Home</a></li>
 
                     <li class="nav-item"><a class="nav-link" href="#">Layanan</a></li>
 
