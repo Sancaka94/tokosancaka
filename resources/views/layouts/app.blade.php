@@ -353,7 +353,7 @@
                                                 @endif
                                             @endforeach
                                             <li><hr class="my-2"></li>
-                                            <li><a href="#"><i class="fa-solid {{ $rekanan['SANCAKA EXPRESS'] }} me-2"></i>SANCAKA EXPRESS</a></li>
+                                            <li><a href="#"><i class="fa-solid {{ $rekanan['SANCAKA EXPRESS'] }} me-2"></i><strong>SANCAKA EXPRESS</strong></a></li>
                                         </ul>
                                     </div>
                                     <div class="col-lg-3 col-md-6">
@@ -382,7 +382,7 @@
                                 <li><a class="dropdown-item" href="{{ route('login') }}"><i class="fa-solid fa-right-to-bracket me-2"></i> Login</a></li>
                                 <li><a class="dropdown-item" href="{{ route('register') }}"><i class="fa-solid fa-user-plus me-2"></i>Daftar Akun Baru</a></li>
                                 <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="{{ route('pesanan.public.create') }}"><i class="fas fa-shipping-fast me-2"></i>Order via Sancaka Express</a></li>
+                                <li><a class="dropdown-item" href="{{ route('pesanan.public.create') }}"><i class="fas fa-shipping-fast me-2"></i>Order via <strong>Sancaka Express</strong></a></li>
                                 <li><a class="dropdown-item" href="{{ route('scan.spx.show') }}"><i class="fas fa-barcode me-2"></i> Input Resi SPX Express</a></li>
                             </ul>
                         </div>
@@ -403,7 +403,7 @@
         <div class="container text-center text-md-start">
             <div class="row text-center text-md-start">
                 <div class="col-md-3 col-lg-3 col-xl-3 mx-auto mt-3">
-                    <h5 class="text-uppercase mb-4 fw-bold text-white">Sancaka Express</h5>
+                    <h5 class="text-uppercase mb-4 fw-bold text-white"><strong>Sancaka Express</strong></h5>
                     <p class="text-white-50">Solusi pengiriman terpercaya untuk semua kebutuhan personal dan bisnis Anda. Cepat, aman, dan dapat diandalkan.</p>
                     <img src="https://tokosancaka.com/storage/uploads/sectigo.png" alt="Sectigo Secure" style="max-width: 120px; margin-top: 15px;">
                 </div>
@@ -430,7 +430,7 @@
             <div class="row align-items-center">
                 <div class="col-md-7 col-lg-8">
                     <p class="text-center text-md-start text-white-50">
-                        &copy; {{ date('Y') }} Sancaka Express & Toko Sancaka All Rights Reserved.
+                        &copy; {{ date('Y') }} <strong>Sancaka Express</strong> & Toko Sancaka All Rights Reserved.
                     </p>
                 </div>
                 <div class="col-md-5 col-lg-4">
@@ -473,7 +473,7 @@
                         <h5 class="modal-title fw-bold text-dark" id="cekOngkirModalLabel">
                             <i class="fa-solid fa-truck-fast text-danger me-2"></i> Cek Ongkos Kirim
                         </h5>
-                        <p class="text-muted small mb-0">Didukung oleh <span class="fw-semibold text-danger">Sancaka Express</span></p>
+                        <p class="text-muted small mb-0">Didukung oleh <span class="fw-semibold text-danger"><strong>Sancaka Express</strong></span></p>
                     </div>
                     <button type="button" class="btn-close position-absolute end-0 top-0 m-3" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
@@ -553,7 +553,7 @@
             <div class="modal-content rounded-4 border-0 shadow-lg">
                 <div class="modal-header bg-gradient text-white rounded-top-4" style="background: linear-gradient(90deg, #ff4d4d, #b30000);">
                     <h5 class="modal-title fw-bold" id="tutorialModalLabel">
-                        <span class="fw-semibold">🎉 Selamat Datang di Sancaka Express</span>!
+                        <span class="fw-semibold">🎉 Selamat Datang di <strong>Sancaka Express</strong></span>!
                     </h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Tutup"></button>
                 </div>
