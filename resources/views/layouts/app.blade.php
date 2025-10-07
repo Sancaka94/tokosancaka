@@ -379,11 +379,11 @@
                                 <i class="fa-solid fa-user me-1"></i> Login / Order
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="mainDropdown">
-                                <li><a class="dropdown-item" href="{{ route('login') }}"><i class="fa-solid fa-right-to-bracket me-2"></i> Login</a></li>
-                                <li><a class="dropdown-item" href="{{ route('register') }}"><i class="fa-solid fa-user-plus me-2"></i> Daftar Akun Baru</a></li>
+                                <li><a class="dropdown-item" href="{{ route('login') }}"><i class="fa-solid fa-right-to-bracket me-2"></i>Login</a></li>
+                                <li><a class="dropdown-item" href="{{ route('register') }}"><i class="fa-solid fa-user-plus me-2"></i>Daftar Akun Baru</a></li>
                                 <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="{{ route('pesanan.public.create') }}"><i class="fas fa-shipping-fast me-2"></i> Order via Sancaka Express</a></li>
-                                <li><a class="dropdown-item" href="{{ route('scan.spx.show') }}"><i class="fas fa-barcode me-2"></i> Input Resi SPX Express</a></li>
+                                <li><a class="dropdown-item" href="{{ route('pesanan.public.create') }}"><i class="fas fa-shipping-fast me-2"></i>Order via Sancaka Express</a></li>
+                                <li><a class="dropdown-item" href="{{ route('scan.spx.show') }}"><i class="fas fa-barcode me-2"></i>Input Resi SPX Express</a></li>
                             </ul>
                         </div>
                     </div>

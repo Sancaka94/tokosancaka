@@ -16,14 +16,6 @@
 
     }
 
-    
-
-    .hero-section {
-
-        /* Placeholder for hero styles if needed */
-
-    }
-
 
 
     .action-bar .action-card {
