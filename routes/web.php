@@ -69,6 +69,8 @@ use App\Http\Controllers\Customer\KontakController as CustomerKontakController;
 
 use App\Http\Controllers\Admin\PostController;
 
+use App\Http\Controllers\PelangganController;
+
 
 /*
 
@@ -288,8 +290,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
     Route::get('/wilayah/district/{district}/villages', [WilayahController::class, 'getDesa'])->name('wilayah.desa');
 
-   
-
+    Route::resource('pelanggan', PelangganController::class);
     
 });
 
