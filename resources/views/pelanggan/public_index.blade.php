@@ -3,55 +3,64 @@
 @section('title', 'Daftar Pelanggan')
 
 @section('content')
-<div class="bg-white p-6 rounded-lg shadow-md">
-    <h1 class="text-2xl font-bold mb-6 text-center text-gray-800">Daftar Pelanggan</h1>
-    
-    <!-- Header: Search -->
-    <div class="flex justify-center mb-6">
-        <form action="{{ route('pelanggan.public.index') }}" method="GET" class="relative w-full md:w-1/2">
-            <input type="text" name="search" class="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Cari Nama, ID, atau No. WA..." value="{{ request('search') }}">
-            <div class="absolute top-0 left-0 inline-flex items-center p-2 h-full text-gray-400">
-                <i class="fa-solid fa-search"></i>
+<div class="card shadow-sm">
+    <div class="card-body">
+        <h1 class="card-title text-center fs-2 mb-5">Daftar Pelanggan</h1>
+        
+        <!-- Header: Search -->
+        <div class="row justify-content-center mb-4">
+            <div class="col-md-8">
+                <form action="{{ route('pelanggan.public.index') }}" method="GET">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fa-solid fa-search"></i></span>
+                        <input type="text" name="search" class="form-control" placeholder="Cari Nama, ID, atau No. WA..." value="{{ request('search') }}">
+                        <button class="btn btn-primary" type="submit">Cari</button>
+                    </div>
+                </form>
             </div>
-        </form>
-    </div>
+        </div>
 
-    <!-- Tabel Data Pelanggan -->
-    <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-                <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID Pelanggan</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Pelanggan</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No. WA</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Alamat</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Keterangan</th>
-                </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-                @forelse ($pelanggans as $pelanggan)
-                <tr>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ $pelanggan->id_pelanggan }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{{ $pelanggan->nama_pelanggan }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $pelanggan->nomor_wa ?? '-' }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $pelanggan->alamat }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $pelanggan->keterangan ?? '-' }}</td>
-                </tr>
-                @empty
-                <tr>
-                    <td colspan="5" class="text-center py-10 text-gray-500">
-                        <i class="fa-solid fa-folder-open fa-2x mb-2"></i>
-                        <p>Data pelanggan tidak ditemukan.</p>
-                    </td>
-                </tr>
-                @endforelse
-            </tbody>
-        </table>
-    </div>
+        <!-- Tabel Data Pelanggan -->
+        <div class="table-responsive">
+            <table class="table table-striped table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th scope="col">ID Pelanggan</th>
+                        <th scope="col">Nama Pelanggan</th>
+                        <th scope="col">No. WA</th>
+                        <th scope="col">Alamat</th>
+                        <th scope="col">Keterangan</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse ($pelanggans as $pelanggan)
+                    <tr>
+                        <td><strong>{{ $pelanggan->id_pelanggan }}</strong></td>
+                        <td>{{ $pelanggan->nama_pelanggan }}</td>
+                        <td>{{ $pelanggan->nomor_wa ?? '-' }}</td>
+                        <td>{{ $pelanggan->alamat }}</td>
+                        <td>{{ $pelanggan->keterangan ?? '-' }}</td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="5" class="text-center py-5">
+                            <div class="text-muted">
+                                <i class="fa-solid fa-folder-open fa-3x mb-3"></i>
+                                <p class="fs-5">Data pelanggan tidak ditemukan.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
 
-    <!-- Paginasi -->
-    <div class="mt-6">
-        {{ $pelanggans->appends(request()->query())->links() }}
+        <!-- Paginasi -->
+        @if ($pelanggans->hasPages())
+        <div class="d-flex justify-content-center mt-4">
+            {{ $pelanggans->appends(request()->query())->links() }}
+        </div>
+        @endif
     </div>
 </div>
 @endsection
