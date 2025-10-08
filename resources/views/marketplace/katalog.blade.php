@@ -110,10 +110,14 @@
                                     @endif
                                     <div class="text-xs text-gray-500 mt-2">Terjual {{ $product->sold_count }}</div>
                                     <div class="mt-auto pt-3">
-                                        <form action="{{ route('cart.add', $product) }}" method="POST">
+                                        @if($product->stock > 0)
+                                        <form action="{{ route('customer.cart.add', $product) }}" method="POST">
                                             @csrf
                                             <button type="submit" class="w-full bg-red-500 text-white font-bold py-2 rounded-md text-sm hover:bg-red-600 transition-colors">+ Keranjang</button>
                                         </form>
+                                        @else
+                                        <button class="w-full bg-gray-300 text-gray-500 font-bold py-2 rounded-md text-sm cursor-not-allowed">Stok Habis</button>
+                                        @endif
                                     </div>
                                 </div>
                             </div>
@@ -151,10 +155,14 @@
                             @endif
                             <div class="text-xs text-gray-500 mt-2">Terjual {{ $product->sold_count }}</div>
                             <div class="mt-auto pt-3">
-                                <form action="{{ route('cart.add', $product) }}" method="POST">
+                                @if($product->stock > 0)
+                                <form action="{{ route('customer.cart.add', $product) }}" method="POST">
                                     @csrf
                                     <button type="submit" class="w-full bg-red-500 text-white font-bold py-2 rounded-md text-sm hover:bg-red-600 transition-colors">+ Keranjang</button>
                                 </form>
+                                @else
+                                <button class="w-full bg-gray-300 text-gray-500 font-bold py-2 rounded-md text-sm cursor-not-allowed">Stok Habis</button>
+                                @endif
                             </div>
                         </div>
                     </div>
