@@ -40,7 +40,7 @@ use App\Http\Controllers\PublicPelangganController;
 use App\Http\Controllers\Admin\MarketplaceController as AdminMarketplaceController;
 use App\Http\Controllers\Admin\BannerController;
 use App\Http\Controllers\Customer\MarketplaceController as CustomerMarketplaceController;
-
+use App\Http\Controllers\Customer\CartController; // Pastikan path ini benar
 
 /*
 
@@ -99,6 +99,12 @@ Route::get('/kontak/search', [KontakController::class, 'search'])->name('api.sea
 Route::get('/kontak/search', [KontakController::class, 'search'])->name('kontak.search');
 
 Route::get('/marketplace', [CustomerMarketplaceController::class, 'index'])->name('katalog.index');
+
+// == RUTE KERANJANG BELANJA ==
+// Rute ini akan menangani permintaan POST saat tombol "+ Keranjang" diklik
+Route::post('/cart/add/{product}', [CartController::class, 'add'])->name('cart.add');
+// Rute ini untuk menampilkan halaman keranjang belanja
+Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
 
 
 // =========================================================================
