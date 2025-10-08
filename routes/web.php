@@ -3,75 +3,43 @@
 
 
 use Illuminate\Support\Facades\Route;
-
-
 use App\Http\Middleware\RoleMiddleware;
-
 use App\Http\Controllers\Admin\ChatController as AdminChatController;
-
 use App\Http\Controllers\Admin\EmailController;
-
 use App\Http\Controllers\Admin\SpxScanController;
-
 use App\Http\Controllers\CheckoutController;
-
 use App\Http\Controllers\CourierController;
-
 use App\Http\Controllers\CustomerChatController;
-
 use App\Http\Controllers\Customer\ProfileController;
-
 use App\Http\Controllers\DanaController;
-
 use App\Http\Controllers\PaymentController;
-
 use App\Http\Controllers\ProfileSetupController;
-
 use App\Http\Controllers\Customer\ProfileController as CustomerProfileController;
-
 use App\Http\Controllers\Admin\ImapController; // Pastikan path controller ini benar
-
 use App\Http\Controllers\Admin\LaporanKeuanganController;
-
 use App\Http\Controllers\Admin\CoaController; // Pastikan use statement ini ada
-
 use App\Http\Controllers\PondokController;
-
 use App\Http\Controllers\WilayahController;
-
 use App\Http\Controllers\SellerRegisterController;
-
 use App\Http\Controllers\CustomerOrderController;
-
 use App\Services\KiriminAjaService;
-
 use Illuminate\Http\Request;
-
 use App\Http\Controllers\CekOngkirController;
-
 use App\Http\Controllers\TrackingController; 
-
 use App\Http\Controllers\Admin\PesananController as AdminPesananController;
-
 use App\Http\Controllers\Admin\ImportController;
-
 use App\Http\Controllers\BlogController;
-
 use App\Http\Controllers\KodePosController;
-
 use App\Http\Controllers\Admin\PesananController;
-
 use App\Http\Controllers\Api\KontakController;
-
 use App\Http\Controllers\Admin\WalletController;
-
 use App\Http\Controllers\Customer\KontakController as CustomerKontakController;
-
 use App\Http\Controllers\Admin\PostController;
-
 use App\Http\Controllers\PelangganController;
-
 use App\Http\Controllers\PublicPelangganController;
+use App\Http\Controllers\Admin\MarketplaceController as AdminMarketplaceController;
+use App\Http\Controllers\Admin\BannerController;
+use App\Http\Controllers\Customer\MarketplaceController as CustomerMarketplaceController;
 
 
 /*
@@ -302,6 +270,12 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/export-excel', [PelangganController::class, 'exportExcel'])->name('export.excel');
         Route::get('/export-pdf', [PelangganController::class, 'exportPdf'])->name('export.pdf');
     });
+    
+    // Rute untuk Manajemen Produk Marketplace (CRUD)
+    Route::resource('marketplace', AdminMarketplaceController::class);
+
+    // Rute untuk Manajemen Banner (CRUD)
+    Route::resource('banners', BannerController::class);
     
 });
 

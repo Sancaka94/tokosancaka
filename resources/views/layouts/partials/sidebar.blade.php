@@ -362,6 +362,18 @@
         </a>
 
 
+        {{-- ====================================================== --}}
+        {{-- == ✅ LINK BARU DITAMBAHKAN DI SINI == --}}
+        {{-- ====================================================== --}}
+        <a href="{{ route('admin.marketplace.index') }}" class="sidebar-link flex items-center px-4 py-2.5 text-sm font-medium rounded-lg hover:bg-gray-700 hover:text-white {{ request()->routeIs('admin.marketplace.*') ? 'bg-gray-700 text-white' : '' }}">
+            <i class="fa-solid fa-store fa-fw w-5 h-5 mr-3"></i>
+            <span>Produk Marketplace</span>
+        </a>
+        {{-- ====================================================== --}}
+        {{-- == AKHIR DARI PENAMBAHAN LINK == --}}
+        {{-- ====================================================== --}}
+
+
 
         {{-- ====================================================================== --}}
 
