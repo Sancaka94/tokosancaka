@@ -291,6 +291,13 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::get('/wilayah/district/{district}/villages', [WilayahController::class, 'getDesa'])->name('wilayah.desa');
 
     Route::resource('pelanggan', PelangganController::class);
+
+     // Rute spesifik untuk fungsionalitas Import & Export
+    Route::prefix('pelanggan')->name('pelanggan.')->group(function () {
+        Route::post('/import-excel', [PelangganController::class, 'importExcel'])->name('import.excel');
+        Route::get('/export-excel', [PelangganController::class, 'exportExcel'])->name('export.excel');
+        Route::get('/export-pdf', [PelangganController::class, 'exportPdf'])->name('export.pdf');
+    });
     
 });
 
