@@ -6,34 +6,25 @@
 <style>
     /* Custom styles untuk tombol navigasi Swiper agar lebih terlihat */
     .swiper-button-next, .swiper-button-prev {
-        color: black;
-        background-color: rgba(255, 255, 255, 0.8);
-        width: 38px;
-        height: 38px;
-        border-radius: 50%;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.15);
-        transition: background-color 0.3s;
+        color: black; background-color: rgba(255, 255, 255, 0.8); width: 38px; height: 38px;
+        border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.15); transition: background-color 0.3s;
     }
-    .swiper-button-next:hover, .swiper-button-prev:hover {
-        background-color: white;
-    }
-    .swiper-button-next::after, .swiper-button-prev::after {
-        font-size: 16px;
-        font-weight: bold;
-    }
-    /* Menargetkan tombol navigasi flash sale secara spesifik */
-    .flash-sale-nav {
-        top: 50%;
-        transform: translateY(-50%);
-    }
-    .swiper-pagination-bullet-active {
-        background-color: #ef4444 !important;
-    }
+    .swiper-button-next:hover, .swiper-button-prev:hover { background-color: white; }
+    .swiper-button-next::after, .swiper-button-prev::after { font-size: 16px; font-weight: bold; }
+    .flash-sale-nav { top: 50%; transform: translateY(-50%); }
+    .swiper-pagination-bullet-active { background-color: #ef4444 !important; }
 </style>
 @endpush
 
 @section('content')
 <div class="container mx-auto py-6 px-4">
+
+    <!-- Notifikasi Sukses -->
+    @if(session('success'))
+        <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6 rounded-md shadow-sm" role="alert">
+            <p>{{ session('success') }}</p>
+        </div>
+    @endif
 
     <!-- Hero Section -->
     <section class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8">
@@ -98,32 +89,38 @@
         </div>
         <div class="bg-white p-4 rounded-b-lg shadow-sm">
             <div class="relative">
-                <!-- Tambahkan class 'overflow-hidden' agar slider tidak meluber keluar container -->
                 <div class="swiper flashSaleSwiper overflow-hidden">
                     <div class="swiper-wrapper">
                         @foreach ($flashSaleProducts as $product)
-                        <!-- Pastikan slide menggunakan 'h-full' agar tingginya seragam -->
                         <div class="swiper-slide h-full py-2">
-                            <a href="#" class="block border rounded-lg overflow-hidden group h-full flex flex-col bg-white text-left transition-shadow duration-300 hover:shadow-md">
-                                <div class="relative">
-                                    <!-- 'aspect-square' membuat gambar selalu persegi dan rapi -->
-                                    <div class="aspect-square bg-gray-100">
+                            <div class="border rounded-lg overflow-hidden h-full flex flex-col bg-white text-left transition-shadow duration-300 hover:shadow-md">
+                                <a href="#">
+                                    <div class="aspect-square bg-gray-100 relative">
                                         <img src="{{ $product->image_url ? asset($product->image_url) : 'https://placehold.co/400' }}" alt="{{ $product->name }}" class="w-full h-full object-contain p-2">
+                                        @if($product->discount_percentage > 0)
+                                        <span class="absolute top-2 left-2 bg-red-100 text-red-600 text-xs font-bold px-2 py-0.5 rounded-full">{{ $product->discount_percentage }}%</span>
+                                        @endif
                                     </div>
-                                    <span class="absolute top-2 left-2 bg-red-100 text-red-600 text-xs font-bold px-2 py-0.5 rounded-full">50%</span>
-                                </div>
+                                </a>
                                 <div class="p-3 flex flex-col flex-grow">
                                     <h3 class="text-sm font-medium text-gray-800 leading-tight h-10">{{ Str::limit($product->name, 45) }}</h3>
                                     <p class="text-base font-bold text-red-600 mt-2">Rp{{ number_format($product->price) }}</p>
-                                    <s class="text-xs text-gray-400">Rp{{ number_format($product->price * 2) }}</s>
-                                    <div class="mt-auto pt-2 text-xs text-gray-500">Terjual {{ rand(10, 100) }}</div>
+                                    @if($product->original_price > $product->price)
+                                    <s class="text-xs text-gray-400">Rp{{ number_format($product->original_price) }}</s>
+                                    @endif
+                                    <div class="text-xs text-gray-500 mt-2">Terjual {{ $product->sold_count }}</div>
+                                    <div class="mt-auto pt-3">
+                                        <form action="{{ route('cart.add', $product) }}" method="POST">
+                                            @csrf
+                                            <button type="submit" class="w-full bg-red-500 text-white font-bold py-2 rounded-md text-sm hover:bg-red-600 transition-colors">+ Keranjang</button>
+                                        </form>
+                                    </div>
                                 </div>
-                            </a>
+                            </div>
                         </div>
                         @endforeach
                     </div>
                 </div>
-                <!-- Tombol Navigasi untuk Flash Sale -->
                 <div class="swiper-button-next flash-sale-next flash-sale-nav"></div>
                 <div class="swiper-button-prev flash-sale-prev flash-sale-nav"></div>
             </div>
@@ -137,20 +134,30 @@
             <h2 class="text-base font-semibold text-center text-gray-700 mb-4">REKOMENDASI UNTUKMU</h2>
             <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                 @forelse ($products as $product)
-                    <a href="#" class="bg-white border rounded-lg overflow-hidden group hover:shadow-lg transition-shadow flex flex-col text-left">
-                        <div class="h-40 bg-white">
-                            <img src="{{ $product->image_url ? asset($product->image_url) : 'https://placehold.co/400' }}" alt="{{ $product->name }}" class="w-full h-full object-contain p-2">
-                        </div>
+                    <div class="bg-white border rounded-lg overflow-hidden group hover:shadow-lg transition-shadow flex flex-col text-left">
+                        <a href="#">
+                            <div class="aspect-square bg-white relative">
+                                <img src="{{ $product->image_url ? asset($product->image_url) : 'https://placehold.co/400' }}" alt="{{ $product->name }}" class="w-full h-full object-contain p-2">
+                                @if($product->discount_percentage > 0)
+                                <span class="absolute top-2 left-2 bg-red-100 text-red-600 text-xs font-bold px-2 py-0.5 rounded-full">{{ $product->discount_percentage }}%</span>
+                                @endif
+                            </div>
+                        </a>
                         <div class="p-3 flex flex-col flex-grow">
                             <h3 class="text-sm font-medium text-gray-800 leading-tight h-10">{{ Str::limit($product->name, 45) }}</h3>
                             <p class="text-base font-bold text-red-600 mt-2">Rp{{ number_format($product->price) }}</p>
+                            @if($product->original_price > $product->price)
+                            <s class="text-xs text-gray-400">Rp{{ number_format($product->original_price) }}</s>
+                            @endif
+                            <div class="text-xs text-gray-500 mt-2">Terjual {{ $product->sold_count }}</div>
                             <div class="mt-auto pt-3">
-                                <button class="w-full bg-red-500 text-white font-bold py-2 rounded-md text-sm hover:bg-red-600 transition-colors">
-                                    + Keranjang
-                                </button>
+                                <form action="{{ route('cart.add', $product) }}" method="POST">
+                                    @csrf
+                                    <button type="submit" class="w-full bg-red-500 text-white font-bold py-2 rounded-md text-sm hover:bg-red-600 transition-colors">+ Keranjang</button>
+                                </form>
                             </div>
                         </div>
-                    </a>
+                    </div>
                 @empty
                     <div class="col-span-full text-center py-16">
                         <p class="text-gray-500">Belum ada produk untuk ditampilkan.</p>
@@ -167,25 +174,14 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     new Swiper(".heroSwiper", { 
-        loop: true, 
-        effect: "fade",
-        autoplay: { delay: 4000, disableOnInteraction: false }, 
+        loop: true, effect: "fade", autoplay: { delay: 4000, disableOnInteraction: false }, 
         pagination: { el: ".swiper-pagination", clickable: true },
         navigation: { nextEl: ".swiper-button-next", prevEl: ".swiper-button-prev" }
     });
     new Swiper(".flashSaleSwiper", { 
-        slidesPerView: 2.2, 
-        spaceBetween: 10, 
-        // Menambahkan navigasi ke Flash Sale Swiper
-        navigation: {
-            nextEl: ".flash-sale-next",
-            prevEl: ".flash-sale-prev",
-        },
-        breakpoints: { 
-            640: { slidesPerView: 3.2, spaceBetween: 15 }, 
-            768: { slidesPerView: 4.2, spaceBetween: 15 }, 
-            1024: { slidesPerView: 5.2, spaceBetween: 15 }
-        }
+        slidesPerView: 2.2, spaceBetween: 10, 
+        navigation: { nextEl: ".flash-sale-next", prevEl: ".flash-sale-prev" },
+        breakpoints: { 640: { slidesPerView: 3.2, spaceBetween: 15 }, 768: { slidesPerView: 4.2, spaceBetween: 15 }, 1024: { slidesPerView: 5.2, spaceBetween: 15 } }
     });
 });
 </script>
