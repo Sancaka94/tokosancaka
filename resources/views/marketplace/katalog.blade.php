@@ -97,15 +97,17 @@
             <h2 class="text-lg font-bold text-white tracking-wide">FLASH SALE</h2>
         </div>
         <div class="bg-white p-4 rounded-b-lg shadow-sm">
-            <!-- Wrapper relative untuk tombol navigasi -->
             <div class="relative">
-                <div class="swiper flashSaleSwiper">
+                <!-- Tambahkan class 'overflow-hidden' agar slider tidak meluber keluar container -->
+                <div class="swiper flashSaleSwiper overflow-hidden">
                     <div class="swiper-wrapper">
                         @foreach ($flashSaleProducts as $product)
-                        <div class="swiper-slide h-auto">
-                            <a href="#" class="block border rounded-lg overflow-hidden group h-full flex flex-col bg-white text-left">
+                        <!-- Pastikan slide menggunakan 'h-full' agar tingginya seragam -->
+                        <div class="swiper-slide h-full py-2">
+                            <a href="#" class="block border rounded-lg overflow-hidden group h-full flex flex-col bg-white text-left transition-shadow duration-300 hover:shadow-md">
                                 <div class="relative">
-                                    <div class="h-40 bg-gray-100">
+                                    <!-- 'aspect-square' membuat gambar selalu persegi dan rapi -->
+                                    <div class="aspect-square bg-gray-100">
                                         <img src="{{ $product->image_url ? asset($product->image_url) : 'https://placehold.co/400' }}" alt="{{ $product->name }}" class="w-full h-full object-contain p-2">
                                     </div>
                                     <span class="absolute top-2 left-2 bg-red-100 text-red-600 text-xs font-bold px-2 py-0.5 rounded-full">50%</span>
