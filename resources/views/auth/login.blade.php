@@ -327,7 +327,7 @@
 
         'SAP Express' => 'https://kiriminaja.com/assets/home-v4/sap.png',
 
-        'ID Express' => 'https://assets.bukalapak.com/beagle/images/courier_logo/id-express.png',
+        'ID Express' => 'https://kiriminaja.com/assets/home-v4/id-express.png',
 
         'J&T Cargo' => 'https://i.pinimg.com/736x/22/cf/92/22cf92368c1f901d17e38e99061f4849.jpg',
 
