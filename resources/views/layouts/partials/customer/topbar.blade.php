@@ -7,17 +7,7 @@
         </button>
 
         {{-- Bagian kiri bisa untuk search bar atau kosong --}}
-        <div class="flex-1">
-
-        <a href="{{ route('customer.cart.index') }}" class="text-gray-600 hover:text-red-600 relative">
-                <i class="fas fa-shopping-cart"></i>
-                @php $cartCount = count((array) session('cart')) @endphp
-                @if($cartCount > 0)
-                    <span class="absolute -top-2 -right-2 bg-red-600 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">{{ $cartCount }}</span>
-                @endif
-        </a>
-
-        </div>
+        <div class="flex-1"></div>
 
         {{-- Bagian Kanan Topbar --}}
         <ul class="flex items-center flex-shrink-0 space-x-2 sm:space-x-4">
@@ -82,6 +72,14 @@
                     </div>
                 </div>
             </li>
+
+            <a href="{{ route('customer.cart.index') }}" class="text-gray-600 hover:text-red-600 relative">
+                <i class="fas fa-shopping-cart"></i>
+                @php $cartCount = count((array) session('cart')) @endphp
+                @if($cartCount > 0)
+                    <span class="absolute -top-2 -right-2 bg-red-600 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">{{ $cartCount }}</span>
+                @endif
+            </a>
 
             <!-- Menu Profil Pengguna -->
             <li class="relative">
