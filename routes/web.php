@@ -41,7 +41,7 @@ use App\Http\Controllers\Admin\MarketplaceController as AdminMarketplaceControll
 use App\Http\Controllers\Admin\BannerController;
 use App\Http\Controllers\Customer\MarketplaceController as CustomerMarketplaceController;
 use App\Http\Controllers\Customer\CartController; // Pastikan path ini benar
-use App\Http\Controllers\Customer\CheckoutController as CustomerCheckoutController;
+
 
 /*
 
