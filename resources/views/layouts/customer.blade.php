@@ -24,6 +24,9 @@
     <!-- AlpineJS -->
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 
+    <!-- di dalam <head> -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css">
+
     <style>
         body { font-family: 'Inter', sans-serif; }
         [x-cloak] { display: none !important; }
@@ -120,6 +123,8 @@
         </div>
     </div>
 
+    
+
     {{-- Kode JavaScript dan SweetAlert Anda tetap dipertahankan --}}
     <script>
         const chatButton = document.getElementById('chatButton');
@@ -184,6 +189,10 @@
             confirmButtonColor: '#dc2626',
         });
     </script>
+
+    <!-- sebelum </body> -->
+    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+    
     @endif
     @stack('scripts')
 </body>
