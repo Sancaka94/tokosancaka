@@ -9,33 +9,65 @@ use App\Http\Controllers\Controller;
 class CartController extends Controller
 {
     /**
+     * Menampilkan halaman keranjang.
+     */
+    public function index()
+    {
+        $cart = session()->get('cart', []);
+        return view('customer.cart.index', compact('cart'));
+    }
+
+    /**
      * Menambahkan produk ke dalam keranjang (session).
      */
     public function add(Request $request, Marketplace $product)
     {
         $cart = session()->get('cart', []);
+        $quantity = $request->input('quantity', 1);
 
         if(isset($cart[$product->id])) {
-            $cart[$product->id]['quantity']++;
+            $cart[$product->id]['quantity'] += $quantity;
         } else {
             $cart[$product->id] = [
                 "name" => $product->name,
-                "quantity" => 1,
+                "quantity" => $quantity,
                 "price" => $product->price,
                 "image_url" => $product->image_url
             ];
         }
 
         session()->put('cart', $cart);
-        return redirect()->back()->with('success', 'Produk berhasil ditambahkan ke keranjang!');
+        return redirect()->route('cart.index')->with('success', 'Produk berhasil ditambahkan ke keranjang!');
     }
 
     /**
-     * Menampilkan halaman keranjang.
+     * Memperbarui kuantitas produk di keranjang.
      */
-    public function index()
+    public function update(Request $request)
     {
-        $cart = session()->get('cart', []);
-        return view('cart.index', compact('cart'));
+        if($request->id && $request->quantity){
+            $cart = session()->get('cart');
+            $cart[$request->id]["quantity"] = $request->quantity;
+            session()->put('cart', $cart);
+            return redirect()->back()->with('success', 'Kuantitas berhasil diperbarui.');
+        }
+        return redirect()->back()->with('error', 'Gagal memperbarui kuantitas.');
+    }
+
+    /**
+     * Menghapus produk dari keranjang.
+     */
+    public function remove(Request $request)
+    {
+        if($request->id) {
+            $cart = session()->get('cart');
+            if(isset($cart[$request->id])) {
+                unset($cart[$request->id]);
+                session()->put('cart', $cart);
+            }
+            return redirect()->back()->with('success', 'Produk berhasil dihapus dari keranjang.');
+        }
+        return redirect()->back()->with('error', 'Gagal menghapus produk.');
     }
 }
+
