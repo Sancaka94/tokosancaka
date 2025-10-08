@@ -21,6 +21,11 @@
         font-size: 16px;
         font-weight: bold;
     }
+    /* Menargetkan tombol navigasi flash sale secara spesifik */
+    .flash-sale-nav {
+        top: 50%;
+        transform: translateY(-50%);
+    }
     .swiper-pagination-bullet-active {
         background-color: #ef4444 !important;
     }
@@ -92,27 +97,33 @@
             <h2 class="text-lg font-bold text-white tracking-wide">FLASH SALE</h2>
         </div>
         <div class="bg-white p-4 rounded-b-lg shadow-sm">
-            <div class="swiper flashSaleSwiper">
-                <div class="swiper-wrapper">
-                    @foreach ($flashSaleProducts as $product)
-                    <div class="swiper-slide h-auto">
-                        <a href="#" class="block border rounded-lg overflow-hidden group h-full flex flex-col bg-white text-left">
-                            <div class="relative">
-                                <div class="h-40 bg-gray-100">
-                                    <img src="{{ $product->image_url ? asset($product->image_url) : 'https://placehold.co/400' }}" alt="{{ $product->name }}" class="w-full h-full object-contain p-2">
+            <!-- Wrapper relative untuk tombol navigasi -->
+            <div class="relative">
+                <div class="swiper flashSaleSwiper">
+                    <div class="swiper-wrapper">
+                        @foreach ($flashSaleProducts as $product)
+                        <div class="swiper-slide h-auto">
+                            <a href="#" class="block border rounded-lg overflow-hidden group h-full flex flex-col bg-white text-left">
+                                <div class="relative">
+                                    <div class="h-40 bg-gray-100">
+                                        <img src="{{ $product->image_url ? asset($product->image_url) : 'https://placehold.co/400' }}" alt="{{ $product->name }}" class="w-full h-full object-contain p-2">
+                                    </div>
+                                    <span class="absolute top-2 left-2 bg-red-100 text-red-600 text-xs font-bold px-2 py-0.5 rounded-full">50%</span>
                                 </div>
-                                <span class="absolute top-2 left-2 bg-red-100 text-red-600 text-xs font-bold px-2 py-0.5 rounded-full">50%</span>
-                            </div>
-                            <div class="p-3 flex flex-col flex-grow">
-                                <h3 class="text-sm font-medium text-gray-800 leading-tight h-10">{{ Str::limit($product->name, 45) }}</h3>
-                                <p class="text-base font-bold text-red-600 mt-2">Rp{{ number_format($product->price) }}</p>
-                                <s class="text-xs text-gray-400">Rp{{ number_format($product->price * 2) }}</s>
-                                <div class="mt-auto pt-2 text-xs text-gray-500">Terjual {{ rand(10, 100) }}</div>
-                            </div>
-                        </a>
+                                <div class="p-3 flex flex-col flex-grow">
+                                    <h3 class="text-sm font-medium text-gray-800 leading-tight h-10">{{ Str::limit($product->name, 45) }}</h3>
+                                    <p class="text-base font-bold text-red-600 mt-2">Rp{{ number_format($product->price) }}</p>
+                                    <s class="text-xs text-gray-400">Rp{{ number_format($product->price * 2) }}</s>
+                                    <div class="mt-auto pt-2 text-xs text-gray-500">Terjual {{ rand(10, 100) }}</div>
+                                </div>
+                            </a>
+                        </div>
+                        @endforeach
                     </div>
-                    @endforeach
                 </div>
+                <!-- Tombol Navigasi untuk Flash Sale -->
+                <div class="swiper-button-next flash-sale-next flash-sale-nav"></div>
+                <div class="swiper-button-prev flash-sale-prev flash-sale-nav"></div>
             </div>
         </div>
     </section>
@@ -163,6 +174,11 @@ document.addEventListener('DOMContentLoaded', function () {
     new Swiper(".flashSaleSwiper", { 
         slidesPerView: 2.2, 
         spaceBetween: 10, 
+        // Menambahkan navigasi ke Flash Sale Swiper
+        navigation: {
+            nextEl: ".flash-sale-next",
+            prevEl: ".flash-sale-prev",
+        },
         breakpoints: { 
             640: { slidesPerView: 3.2, spaceBetween: 15 }, 
             768: { slidesPerView: 4.2, spaceBetween: 15 }, 
