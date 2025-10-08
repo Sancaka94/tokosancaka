@@ -115,6 +115,7 @@ Route::prefix('customer')->name('customer.')->group(function () {
        // INI ADALAH PERBAIKANNYA: Rute untuk halaman checkout
     Route::get('/checkout', [CustomerCheckoutController::class, 'index'])->name('checkout.index');
     Route::post('/checkout', [CheckoutController::class, 'process'])->name('checkout.process');
+    Route::get('/marketplace', [CustomerMarketplaceController::class, 'index'])->name('marketplace.index');
 
 });
 
