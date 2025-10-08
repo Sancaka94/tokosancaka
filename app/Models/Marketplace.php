@@ -24,7 +24,9 @@ class Marketplace extends Model
     protected $fillable = [
         'name',
         'price',
+        'original_price', // Ditambahkan
         'stock',
+        'sold_count',     // Ditambahkan
         'description',
         'image_url',
         'is_flash_sale',
@@ -38,5 +40,20 @@ class Marketplace extends Model
     protected $casts = [
         'is_flash_sale' => 'boolean',
         'price' => 'float',
+        'original_price' => 'float', // Ditambahkan
     ];
+
+    /**
+     * Accessor untuk menghitung persentase diskon secara dinamis.
+     *
+     * @return int
+     */
+    public function getDiscountPercentageAttribute()
+    {
+        if ($this->original_price > 0 && $this->price < $this->original_price) {
+            return round((($this->original_price - $this->price) / $this->original_price) * 100);
+        }
+        return 0;
+    }
 }
+
