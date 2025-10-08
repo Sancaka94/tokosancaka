@@ -106,6 +106,10 @@ Route::post('/cart/add/{product}', [CartController::class, 'add'])->name('cart.a
 // Rute ini untuk menampilkan halaman keranjang belanja
 Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
 
+Route::prefix('customer')->name('customer.')->group(function () {
+    Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
+});
+
 
 // =========================================================================
 
