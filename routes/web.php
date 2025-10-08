@@ -41,6 +41,7 @@ use App\Http\Controllers\Admin\MarketplaceController as AdminMarketplaceControll
 use App\Http\Controllers\Admin\BannerController;
 use App\Http\Controllers\Customer\MarketplaceController as CustomerMarketplaceController;
 use App\Http\Controllers\Customer\CartController; // Pastikan path ini benar
+use App\Http\Controllers\Customer\CheckoutController as CustomerCheckoutController;
 
 
 /*
@@ -114,7 +115,7 @@ Route::prefix('customer')->name('customer.')->group(function () {
     Route::delete('/cart/remove', [CartController::class, 'remove'])->name('cart.remove');
        // INI ADALAH PERBAIKANNYA: Rute untuk halaman checkout
     Route::get('/checkout', [CustomerCheckoutController::class, 'index'])->name('checkout.index');
-    Route::post('/checkout', [CheckoutController::class, 'process'])->name('checkout.process');
+    Route::post('/checkout', [CustomerCheckoutController::class, 'process'])->name('checkout.process');
     Route::get('/marketplace', [CustomerMarketplaceController::class, 'index'])->name('marketplace.index');
 
 });
