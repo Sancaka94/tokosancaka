@@ -90,13 +90,7 @@
 
         </a>
 
-        <a href="{{ route('cart.index') }}" class="text-gray-600 hover:text-red-600 relative">
-                <i class="fas fa-shopping-cart"></i>
-                @php $cartCount = count((array) session('cart')) @endphp
-                @if($cartCount > 0)
-                    <span class="absolute -top-2 -right-2 bg-red-600 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">{{ $cartCount }}</span>
-                @endif
-        </a>
+        
 
         <a href="{{ route('customer.pesanan.index') }}" class="flex items-center px-4 py-2.5 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors duration-200 {{ request()->routeIs('customer.pesanan.index') ? 'bg-gray-900 text-white' : '' }}">
 
