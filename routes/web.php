@@ -98,6 +98,8 @@ Route::get('/kontak/search', [KontakController::class, 'search'])->name('api.sea
 
 Route::get('/kontak/search', [KontakController::class, 'search'])->name('kontak.search');
 
+Route::get('/marketplace', [CustomerMarketplaceController::class, 'index'])->name('katalog.index');
+
 
 // =========================================================================
 
@@ -276,7 +278,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
     // Rute untuk Manajemen Banner (CRUD)
     Route::resource('banners', BannerController::class);
-    
+
 });
 
 
