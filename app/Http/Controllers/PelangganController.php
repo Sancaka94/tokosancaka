@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Pelanggan;
+use App\Models\Pelanggan; // Tambahkan baris ini
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -17,16 +17,11 @@ class PelangganController extends Controller
 
         // Logika Pencarian
         if ($request->has('search') && $request->search != '') {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('nama_pelanggan', 'like', '%' . $search . '%')
-                  ->orWhere('nomor_wa', 'like', '%' . $search . '%')
-                  ->orWhere('id_pelanggan', 'like', '%' . $search . '%');
-            });
+            $query->where('nama_pelanggan', 'like', '%' . $request->search . '%')
+                  ->orWhere('nomor_wa', 'like', '%' . $request->search . '%');
         }
 
-        $pelanggans = $query->latest()->paginate(10); // Ambil 10 data per halaman
-
+        $pelanggans = $query->latest()->paginate(10);
         return view('admin.pelanggan.index', compact('pelanggans'));
     }
 
@@ -36,36 +31,29 @@ class PelangganController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'id_pelanggan' => 'required|string|max:50|unique:pelanggans,id_pelanggan',
+            'id_pelanggan' => 'required|unique:pelanggans,id_pelanggan',
             'nama_pelanggan' => 'required|string|max:255',
             'nomor_wa' => 'nullable|string|max:20',
             'alamat' => 'required|string',
-            'keterangan' => 'nullable|string',
+            'keterangan' => 'nullable|string|max:255',
         ]);
 
         if ($validator->fails()) {
-            return redirect()->route('admin.pelanggan.index')
-                        ->withErrors($validator)
-                        ->withInput();
+            return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        Pelanggan::create($request->all());
-
-        return redirect()->route('admin.pelanggan.index')->with('success', 'Pelanggan baru berhasil ditambahkan.');
+        $pelanggan = Pelanggan::create($request->all());
+        return response()->json($pelanggan, 201);
     }
 
     /**
-     * Mengambil data satu pelanggan untuk modal edit (JSON).
+     * Mengambil data pelanggan untuk diedit.
      */
     public function show($id)
     {
-        $pelanggan = Pelanggan::find($id);
-        if (!$pelanggan) {
-            return response()->json(['error' => 'Pelanggan tidak ditemukan'], 404);
-        }
+        $pelanggan = Pelanggan::findOrFail($id);
         return response()->json($pelanggan);
     }
-
 
     /**
      * Memperbarui data pelanggan.
@@ -75,22 +63,19 @@ class PelangganController extends Controller
         $pelanggan = Pelanggan::findOrFail($id);
 
         $validator = Validator::make($request->all(), [
-            'id_pelanggan' => 'required|string|max:50|unique:pelanggans,id_pelanggan,' . $pelanggan->id,
+            'id_pelanggan' => 'required|unique:pelanggans,id_pelanggan,' . $pelanggan->id,
             'nama_pelanggan' => 'required|string|max:255',
             'nomor_wa' => 'nullable|string|max:20',
             'alamat' => 'required|string',
-            'keterangan' => 'nullable|string',
+            'keterangan' => 'nullable|string|max:255',
         ]);
 
         if ($validator->fails()) {
-            return redirect()->route('admin.pelanggan.index')
-                        ->withErrors($validator)
-                        ->withInput();
+            return response()->json(['errors' => $validator->errors()], 422);
         }
 
         $pelanggan->update($request->all());
-
-        return redirect()->route('admin.pelanggan.index')->with('success', 'Data pelanggan berhasil diperbarui.');
+        return response()->json($pelanggan);
     }
 
     /**
@@ -100,8 +85,7 @@ class PelangganController extends Controller
     {
         $pelanggan = Pelanggan::findOrFail($id);
         $pelanggan->delete();
-
-        return redirect()->route('admin.pelanggan.index')->with('success', 'Data pelanggan berhasil dihapus.');
+        return response()->json(['success' => 'Data pelanggan berhasil dihapus.']);
     }
 }
 
