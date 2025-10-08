@@ -57,8 +57,17 @@
 
         <!-- Paginasi -->
         @if ($pelanggans->hasPages())
-        <div class="d-flex justify-content-center mt-4">
-            {{ $pelanggans->appends(request()->query())->links() }}
+        <div class="d-flex flex-column align-items-center mt-4">
+            {{-- Info jumlah data --}}
+            <div class="mb-2 text-muted">
+                Menampilkan {{ $pelanggans->firstItem() }} - {{ $pelanggans->lastItem() }}
+                dari total {{ $pelanggans->total() }} pelanggan
+            </div>
+
+            {{-- Tombol pagination --}}
+            <div>
+                {{ $pelanggans->appends(request()->query())->links('pagination::bootstrap-5') }}
+            </div>
         </div>
         @endif
     </div>
