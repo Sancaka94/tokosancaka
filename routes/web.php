@@ -71,6 +71,8 @@ use App\Http\Controllers\Admin\PostController;
 
 use App\Http\Controllers\PelangganController;
 
+use App\Http\Controllers\PublicPelangganController;
+
 
 /*
 
@@ -110,6 +112,8 @@ Route::get('/terms-and-conditions', function () {
     return view('terms');
 })->name('terms.conditions');
 
+// Rute untuk menampilkan daftar pelanggan ke publik
+Route::get('/pelanggan', [PublicPelangganController::class, 'index'])->name('pelanggan.public.index');
 
 
 Route::get('/admin/import/wordpress', [ImportController::class, 'showForm'])->name('admin.import.wordpress.form');
