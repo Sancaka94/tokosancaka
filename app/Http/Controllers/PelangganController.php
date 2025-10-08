@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Pelanggan; // Tambahkan baris ini
+use App\Models\Pelanggan;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Imports\PelangganImport;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Validator;
 
 class PelangganController extends Controller
@@ -17,8 +20,12 @@ class PelangganController extends Controller
 
         // Logika Pencarian
         if ($request->has('search') && $request->search != '') {
-            $query->where('nama_pelanggan', 'like', '%' . $request->search . '%')
-                  ->orWhere('nomor_wa', 'like', '%' . $request->search . '%');
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('id_pelanggan', 'like', '%' . $search . '%')
+                  ->orWhere('nama_pelanggan', 'like', '%' . $search . '%')
+                  ->orWhere('nomor_wa', 'like', '%' . $search . '%');
+            });
         }
 
         $pelanggans = $query->latest()->paginate(10);
@@ -26,15 +33,15 @@ class PelangganController extends Controller
     }
 
     /**
-     * Menyimpan data pelanggan baru.
+     * Menyimpan data pelanggan baru ke database.
      */
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'id_pelanggan' => 'required|unique:pelanggans,id_pelanggan',
+            'id_pelanggan' => 'required|string|max:255|unique:pelanggans,id_pelanggan',
             'nama_pelanggan' => 'required|string|max:255',
-            'nomor_wa' => 'nullable|string|max:20',
             'alamat' => 'required|string',
+            'nomor_wa' => 'nullable|string|max:20',
             'keterangan' => 'nullable|string|max:255',
         ]);
 
@@ -42,50 +49,84 @@ class PelangganController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $pelanggan = Pelanggan::create($request->all());
+        $pelanggan = Pelanggan::create($validator->validated());
         return response()->json($pelanggan, 201);
     }
 
     /**
-     * Mengambil data pelanggan untuk diedit.
+     * Mengambil data satu pelanggan untuk form edit.
      */
-    public function show($id)
+    public function show(Pelanggan $pelanggan)
     {
-        $pelanggan = Pelanggan::findOrFail($id);
         return response()->json($pelanggan);
     }
 
     /**
-     * Memperbarui data pelanggan.
+     * Memperbarui data pelanggan di database.
      */
-    public function update(Request $request, $id)
+    public function update(Request $request, Pelanggan $pelanggan)
     {
-        $pelanggan = Pelanggan::findOrFail($id);
-
         $validator = Validator::make($request->all(), [
-            'id_pelanggan' => 'required|unique:pelanggans,id_pelanggan,' . $pelanggan->id,
+            'id_pelanggan' => 'required|string|max:255|unique:pelanggans,id_pelanggan,' . $pelanggan->id,
             'nama_pelanggan' => 'required|string|max:255',
-            'nomor_wa' => 'nullable|string|max:20',
             'alamat' => 'required|string',
+            'nomor_wa' => 'nullable|string|max:20',
             'keterangan' => 'nullable|string|max:255',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
-
-        $pelanggan->update($request->all());
+        
+        $pelanggan->update($validator->validated());
         return response()->json($pelanggan);
     }
 
     /**
-     * Menghapus data pelanggan.
+     * Menghapus data pelanggan dari database.
      */
-    public function destroy($id)
+    public function destroy(Pelanggan $pelanggan)
     {
-        $pelanggan = Pelanggan::findOrFail($id);
         $pelanggan->delete();
         return response()->json(['success' => 'Data pelanggan berhasil dihapus.']);
+    }
+
+    /**
+     * Mengimpor data pelanggan dari file Excel.
+     */
+    public function importExcel(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:xlsx,xls,csv'
+        ]);
+
+        try {
+            Excel::import(new PelangganImport, $request->file('file'));
+            return redirect()->route('admin.pelanggan.index')->with('success', 'Data pelanggan berhasil diimpor!');
+        } catch (\Exception $e) {
+            return redirect()->route('admin.pelanggan.index')->withErrors(['error' => 'Gagal mengimpor file. Pesan: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Mengekspor data pelanggan ke file Excel.
+     */
+    public function exportExcel()
+    {
+        // Logika untuk export Excel (membutuhkan class PelangganExport)
+        // Jika belum ada, Anda bisa membuatnya dengan: php artisan make:export PelangganExport --model=Pelanggan
+        // Untuk sementara kita kembalikan redirect dengan pesan.
+        return redirect()->back()->with('success', 'Fitur Export Excel akan segera tersedia.');
+    }
+
+    /**
+     * Mengekspor data pelanggan ke file PDF.
+     */
+    public function exportPdf()
+    {
+        $pelanggans = Pelanggan::all();
+        $pdf = Pdf::loadView('admin.pelanggan.pdf', ['pelanggans' => $pelanggans]);
+        return $pdf->download('daftar-pelanggan-' . date('Y-m-d') . '.pdf');
     }
 }
 
