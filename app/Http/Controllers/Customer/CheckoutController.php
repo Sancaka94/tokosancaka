@@ -20,7 +20,7 @@ class CheckoutController extends Controller
 
         return view('customer.checkout.index', compact('cart'));
     }
-}
+
     /**
      * Proses checkout (logika pembayaran bisa ditambahkan di sini).
      */
