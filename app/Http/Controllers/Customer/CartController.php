@@ -37,8 +37,8 @@ class CartController extends Controller
         }
 
         session()->put('cart', $cart);
-        // DIUBAH: Mengarahkan ke halaman keranjang setelah berhasil menambahkan produk.
-        return redirect()->route('cart.index')->with('success', 'Produk berhasil ditambahkan ke keranjang!');
+        // Mengarahkan ke halaman keranjang setelah berhasil menambahkan produk.
+        return redirect()->route('customer.cart.index')->with('success', 'Produk berhasil ditambahkan ke keranjang!');
     }
 
     /**
@@ -48,9 +48,11 @@ class CartController extends Controller
     {
         if($request->id && $request->quantity){
             $cart = session()->get('cart');
-            $cart[$request->id]["quantity"] = $request->quantity;
-            session()->put('cart', $cart);
-            return redirect()->back()->with('success', 'Kuantitas berhasil diperbarui.');
+            if(isset($cart[$request->id])) {
+                $cart[$request->id]["quantity"] = $request->quantity;
+                session()->put('cart', $cart);
+                return redirect()->back()->with('success', 'Kuantitas berhasil diperbarui.');
+            }
         }
         return redirect()->back()->with('error', 'Gagal memperbarui kuantitas.');
     }
