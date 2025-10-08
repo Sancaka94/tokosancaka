@@ -66,9 +66,16 @@
                         <span class="text-lg font-bold text-gray-800">Total</span>
                         <span class="text-xl font-bold text-red-600">Rp{{ number_format($total) }}</span>
                     </div>
-                    <button class="w-full mt-6 bg-red-600 text-white font-bold py-3 rounded-lg hover:bg-red-700 transition-colors">
-                        Lanjutkan ke Checkout
-                    </button>
+                    <a href="{{ route('customer.checkout.index') }}"
+                        class="block w-full mt-6 bg-red-600 text-white font-bold py-3 rounded-lg text-center hover:bg-red-700 transition-colors">
+                            Lanjutkan ke Checkout
+                    </a>
+
+                    <a href="{{ route('customer.marketplace.index') }}"
+                        class="block w-full mt-6 bg-green-600 text-white font-bold py-3 rounded-lg text-center hover:bg-green-700 transition-colors">
+                            Lanjutkan Belanja
+                    </a>
+
                 </div>
             </div>
 
