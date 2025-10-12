@@ -2447,7 +2447,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
             const result = await response.json();
-
+            console.log('Hasil API Ongkir:', result); // 🔍 Tambahkan di sini
 
 
             if (response.ok && result.success) {
