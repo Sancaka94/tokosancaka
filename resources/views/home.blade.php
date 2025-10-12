@@ -2384,134 +2384,137 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 
-       const shippingForm = document.getElementById('shipping-form');
+    // Form submit handler
+
+    const shippingForm = document.getElementById('shipping-form');
+
     const costResultsContainer = document.getElementById('cost-results-container');
+
     const submitButton = document.getElementById('submit-button');
 
-    if (!shippingForm) return; // cegah error jika element tidak ditemukan
 
-    shippingForm.addEventListener('submit', async function (event) {
+
+    shippingForm.addEventListener('submit', async function(event) {
+
         event.preventDefault();
 
         submitButton.disabled = true;
+
         submitButton.innerHTML = `
+
             <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+
             Sedang menghitung ongkos kirim...
+
         `;
 
         costResultsContainer.innerHTML = '';
 
+
+
         const formData = new FormData(this);
 
-        // Checkbox asuransi
-        if (document.getElementById('insurance')?.checked) {
+        if (document.getElementById('insurance').checked) {
+
             formData.set('insurance', 'on');
+
         } else {
+
             formData.delete('insurance');
+
         }
 
+
+
         try {
+
             const response = await fetch("{{ route('api.ongkir.cost.check') }}", {
+
                 method: 'POST',
+
                 body: formData,
+
                 headers: {
+
                     'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
+
                     'Accept': 'application/json',
+
                 }
+
             });
 
+
+
             const result = await response.json();
-            console.log('📦 Hasil API Ongkir:', result);
+            console.log('Hasil API Ongkir:', result); // 🔍 Tambahkan di sini
+
 
             if (response.ok && result.success) {
+
                 displayResults(result);
+
             } else {
+
                 throw new Error(result.message || 'Terjadi kesalahan.');
+
             }
 
         } catch (error) {
+
             costResultsContainer.innerHTML = `
+
                 <div class="alert alert-danger" role="alert">
+
                     <strong>Error!</strong> ${error.message}
+
                 </div>
+
             `;
+
         } finally {
+
             submitButton.disabled = false;
-            submitButton.innerHTML = 'Cek Ongkir';
+
+            submitButton.innerHTML = 'Cek Harga';
+
         }
+
     });
 
-    // ✅ Menampilkan hasil ongkir (instan + express cargo)
+
+
+    // Render hasil ongkir
+
     function displayResults(result) {
+
         const { final_weight, data } = result;
-        const instantServices = data?.instant || [];
-        const expressCargoServices = data?.express_cargo || [];
+
+        const instantServices = data.instant || [];
+
+        const expressCargoServices = data.express_cargo || [];
+
+
 
         let html = '';
 
-        // Berat total
+
+
         if (final_weight) {
+
             html += `
+
                 <div class="alert alert-info">
-                    <strong>Total Berat:</strong> ${(final_weight / 1000).toFixed(2)} kg 
-                    (${final_weight.toLocaleString('id-ID')} gram)
+
+                    <strong>Total Berat:</strong> ${(final_weight / 1000).toFixed(2)} kg (${final_weight.toLocaleString('id-ID')} gram)
+
                 </div>
+
             `;
+
         }
 
-        // ✅ Jika tidak ada layanan sama sekali
-        if (instantServices.length === 0 && expressCargoServices.length === 0) {
-            html += `
-                <div class="alert alert-warning">
-                    Tidak ada layanan pengiriman yang tersedia untuk rute ini.
-                </div>
-            `;
-            costResultsContainer.innerHTML = html;
-            return;
-        }
 
-        // ✅ Layanan Instan
-        if (instantServices.length > 0) {
-            html += `
-                <h5 class="mt-3"><i class="bi bi-lightning-charge text-danger"></i> Layanan Instan</h5>
-                <div class="list-group mb-3">
-                    ${instantServices.map(service => `
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <strong>${service.service}</strong><br>
-                                <small>${service.description || ''}</small>
-                            </div>
-                            <span class="badge bg-success fs-6">
-                                Rp ${service.cost.toLocaleString('id-ID')}
-                            </span>
-                        </div>
-                    `).join('')}
-                </div>
-            `;
-        }
-
-        // ✅ Layanan Express / Cargo
-        if (expressCargoServices.length > 0) {
-            html += `
-                <h5 class="mt-3"><i class="bi bi-truck text-primary"></i> Layanan Express & Cargo</h5>
-                <div class="list-group">
-                    ${expressCargoServices.map(service => `
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <strong>${service.service}</strong><br>
-                                <small>${service.description || ''}</small>
-                            </div>
-                            <span class="badge bg-primary fs-6">
-                                Rp ${service.cost.toLocaleString('id-ID')}
-                            </span>
-                        </div>
-                    `).join('')}
-                </div>
-            `;
-        }
-
-        costResultsContainer.innerHTML = html;
-    }
 
         html += `
 
