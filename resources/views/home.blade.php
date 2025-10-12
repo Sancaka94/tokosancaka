@@ -2384,136 +2384,170 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 
-    // Form submit handler
+   // Form submit handler
+const shippingForm = document.getElementById('shipping-form');
+const costResultsContainer = document.getElementById('cost-results-container');
+const submitButton = document.getElementById('submit-button');
 
-    const shippingForm = document.getElementById('shipping-form');
+shippingForm.addEventListener('submit', async function (event) {
+    event.preventDefault();
 
-    const costResultsContainer = document.getElementById('cost-results-container');
+    // Tombol loading
+    submitButton.disabled = true;
+    submitButton.innerHTML = `
+        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+        Sedang menghitung ongkos kirim...
+    `;
+    costResultsContainer.innerHTML = '';
 
-    const submitButton = document.getElementById('submit-button');
+    const formData = new FormData(this);
 
+    // Cek apakah asuransi dipilih
+    if (document.getElementById('insurance')?.checked) {
+        formData.set('insurance', 'on');
+    } else {
+        formData.delete('insurance');
+    }
 
+    try {
+        // Kirim request ke API Laravel
+        const response = await fetch("{{ route('api.ongkir.cost.check') }}", {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
+                'Accept': 'application/json',
+            }
+        });
 
-    shippingForm.addEventListener('submit', async function(event) {
+        // Ambil hasil response
+        const result = await response.json();
+        console.log('📦 Hasil API Ongkir:', result);
 
-        event.preventDefault();
+        if (response.ok && result.success) {
+            displayResults(result);
+        } else {
+            throw new Error(result.message || 'Terjadi kesalahan saat mengambil data ongkir.');
+        }
+    } catch (error) {
+        costResultsContainer.innerHTML = `
+            <div class="alert alert-danger" role="alert">
+                <strong>Error!</strong> ${error.message}
+            </div>
+        `;
+        console.error('❌ Error API Ongkir:', error);
+    } finally {
+        // Kembalikan tombol
+        submitButton.disabled = false;
+        submitButton.innerHTML = 'Cek Harga';
+    }
+});
 
-        submitButton.disabled = true;
+// Fungsi untuk menampilkan hasil ongkir
+function displayResults(result) {
+    const { final_weight, data } = result;
+    const instantServices = data.instant || [];
+    const expressCargoServices = data.express_cargo || [];
 
-        submitButton.innerHTML = `
+    let html = '';
 
-            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+    // Menampilkan total berat
+    if (final_weight) {
+        html += `
+            <div class="alert alert-info">
+                <strong>Total Berat:</strong> ${(final_weight / 1000).toFixed(2)} kg (${final_weight.toLocaleString('id-ID')} gram)
+            </div>
+        `;
+    }
 
-            Sedang menghitung ongkos kirim...
-
+    // ⚡ Bagian Instan (GoSend, Grab, Borzo)
+    if (instantServices.length > 0) {
+        html += `
+            <h5 class="mt-3">⚡ Layanan Instan</h5>
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped">
+                    <thead>
+                        <tr>
+                            <th>Nama Layanan</th>
+                            <th>Tipe</th>
+                            <th>Estimasi</th>
+                            <th>Harga</th>
+                        </tr>
+                    </thead>
+                    <tbody>
         `;
 
-        costResultsContainer.innerHTML = '';
-
-
-
-        const formData = new FormData(this);
-
-        if (document.getElementById('insurance').checked) {
-
-            formData.set('insurance', 'on');
-
-        } else {
-
-            formData.delete('insurance');
-
-        }
-
-
-
-        try {
-
-            const response = await fetch("{{ route('api.ongkir.cost.check') }}", {
-
-                method: 'POST',
-
-                body: formData,
-
-                headers: {
-
-                    'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
-
-                    'Accept': 'application/json',
-
-                }
-
-            });
-
-
-
-            const result = await response.json();
-            console.log('Hasil API Ongkir:', result); // 🔍 Tambahkan di sini
-
-
-            if (response.ok && result.success) {
-
-                displayResults(result);
-
+        instantServices.forEach(service => {
+            // Kalau API kamu punya struktur seperti `service.name` dan `service.costs`
+            if (service.costs && service.costs.length > 0) {
+                service.costs.forEach(c => {
+                    html += `
+                        <tr>
+                            <td>${service.name}</td>
+                            <td>${c.service_type}</td>
+                            <td>${c.estimation || '-'}</td>
+                            <td>Rp ${c.price?.total_price?.toLocaleString('id-ID') || '-'}</td>
+                        </tr>
+                    `;
+                });
             } else {
-
-                throw new Error(result.message || 'Terjadi kesalahan.');
-
+                html += `
+                    <tr>
+                        <td>${service.name || '-'}</td>
+                        <td>-</td>
+                        <td>-</td>
+                        <td>-</td>
+                    </tr>
+                `;
             }
+        });
 
-        } catch (error) {
+        html += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+    } else {
+        html += `<p class="text-muted">Tidak ada layanan instan tersedia.</p>`;
+    }
 
-            costResultsContainer.innerHTML = `
+    // 🚛 Bagian Express Cargo
+    if (expressCargoServices.length > 0) {
+        html += `
+            <h5 class="mt-4">🚛 Layanan Express / Cargo</h5>
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped">
+                    <thead>
+                        <tr>
+                            <th>Ekspedisi</th>
+                            <th>Layanan</th>
+                            <th>Estimasi</th>
+                            <th>Harga</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
 
-                <div class="alert alert-danger" role="alert">
-
-                    <strong>Error!</strong> ${error.message}
-
-                </div>
-
-            `;
-
-        } finally {
-
-            submitButton.disabled = false;
-
-            submitButton.innerHTML = 'Cek Harga';
-
-        }
-
-    });
-
-
-
-    // Render hasil ongkir
-
-    function displayResults(result) {
-
-        const { final_weight, data } = result;
-
-        const instantServices = data.instant || [];
-
-        const expressCargoServices = data.express_cargo || [];
-
-
-
-        let html = '';
-
-
-
-        if (final_weight) {
-
+        expressCargoServices.forEach(item => {
             html += `
-
-                <div class="alert alert-info">
-
-                    <strong>Total Berat:</strong> ${(final_weight / 1000).toFixed(2)} kg (${final_weight.toLocaleString('id-ID')} gram)
-
-                </div>
-
+                <tr>
+                    <td>${item.expedition_name || '-'}</td>
+                    <td>${item.service_name || '-'}</td>
+                    <td>${item.etd || '-'}</td>
+                    <td>Rp ${item.total_price?.toLocaleString('id-ID') || '-'}</td>
+                </tr>
             `;
+        });
 
-        }
+        html += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
 
+    costResultsContainer.innerHTML = html;
+}
 
 
         html += `
