@@ -2384,171 +2384,134 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 
-   // Form submit handler
-const shippingForm = document.getElementById('shipping-form');
-const costResultsContainer = document.getElementById('cost-results-container');
-const submitButton = document.getElementById('submit-button');
+       const shippingForm = document.getElementById('shipping-form');
+    const costResultsContainer = document.getElementById('cost-results-container');
+    const submitButton = document.getElementById('submit-button');
 
-shippingForm.addEventListener('submit', async function (event) {
-    event.preventDefault();
+    if (!shippingForm) return; // cegah error jika element tidak ditemukan
 
-    // Tombol loading
-    submitButton.disabled = true;
-    submitButton.innerHTML = `
-        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-        Sedang menghitung ongkos kirim...
-    `;
-    costResultsContainer.innerHTML = '';
+    shippingForm.addEventListener('submit', async function (event) {
+        event.preventDefault();
 
-    const formData = new FormData(this);
+        submitButton.disabled = true;
+        submitButton.innerHTML = `
+            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+            Sedang menghitung ongkos kirim...
+        `;
 
-    // Cek apakah asuransi dipilih
-    if (document.getElementById('insurance')?.checked) {
-        formData.set('insurance', 'on');
-    } else {
-        formData.delete('insurance');
-    }
+        costResultsContainer.innerHTML = '';
 
-    try {
-        // Kirim request ke API Laravel
-        const response = await fetch("{{ route('api.ongkir.cost.check') }}", {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
-                'Accept': 'application/json',
-            }
-        });
+        const formData = new FormData(this);
 
-        // Ambil hasil response
-        const result = await response.json();
-        console.log('📦 Hasil API Ongkir:', result);
-
-        if (response.ok && result.success) {
-            displayResults(result);
+        // Checkbox asuransi
+        if (document.getElementById('insurance')?.checked) {
+            formData.set('insurance', 'on');
         } else {
-            throw new Error(result.message || 'Terjadi kesalahan saat mengambil data ongkir.');
+            formData.delete('insurance');
         }
-    } catch (error) {
-        costResultsContainer.innerHTML = `
-            <div class="alert alert-danger" role="alert">
-                <strong>Error!</strong> ${error.message}
-            </div>
-        `;
-        console.error('❌ Error API Ongkir:', error);
-    } finally {
-        // Kembalikan tombol
-        submitButton.disabled = false;
-        submitButton.innerHTML = 'Cek Harga';
-    }
-});
 
-// Fungsi untuk menampilkan hasil ongkir
-function displayResults(result) {
-    const { final_weight, data } = result;
-    const instantServices = data.instant || [];
-    const expressCargoServices = data.express_cargo || [];
+        try {
+            const response = await fetch("{{ route('api.ongkir.cost.check') }}", {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
+                    'Accept': 'application/json',
+                }
+            });
 
-    let html = '';
+            const result = await response.json();
+            console.log('📦 Hasil API Ongkir:', result);
 
-    // Menampilkan total berat
-    if (final_weight) {
-        html += `
-            <div class="alert alert-info">
-                <strong>Total Berat:</strong> ${(final_weight / 1000).toFixed(2)} kg (${final_weight.toLocaleString('id-ID')} gram)
-            </div>
-        `;
-    }
-
-    // ⚡ Bagian Instan (GoSend, Grab, Borzo)
-    if (instantServices.length > 0) {
-        html += `
-            <h5 class="mt-3">⚡ Layanan Instan</h5>
-            <div class="table-responsive">
-                <table class="table table-bordered table-striped">
-                    <thead>
-                        <tr>
-                            <th>Nama Layanan</th>
-                            <th>Tipe</th>
-                            <th>Estimasi</th>
-                            <th>Harga</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-        `;
-
-        instantServices.forEach(service => {
-            // Kalau API kamu punya struktur seperti `service.name` dan `service.costs`
-            if (service.costs && service.costs.length > 0) {
-                service.costs.forEach(c => {
-                    html += `
-                        <tr>
-                            <td>${service.name}</td>
-                            <td>${c.service_type}</td>
-                            <td>${c.estimation || '-'}</td>
-                            <td>Rp ${c.price?.total_price?.toLocaleString('id-ID') || '-'}</td>
-                        </tr>
-                    `;
-                });
+            if (response.ok && result.success) {
+                displayResults(result);
             } else {
-                html += `
-                    <tr>
-                        <td>${service.name || '-'}</td>
-                        <td>-</td>
-                        <td>-</td>
-                        <td>-</td>
-                    </tr>
-                `;
+                throw new Error(result.message || 'Terjadi kesalahan.');
             }
-        });
 
-        html += `
-                    </tbody>
-                </table>
-            </div>
-        `;
-    } else {
-        html += `<p class="text-muted">Tidak ada layanan instan tersedia.</p>`;
-    }
-
-    // 🚛 Bagian Express Cargo
-    if (expressCargoServices.length > 0) {
-        html += `
-            <h5 class="mt-4">🚛 Layanan Express / Cargo</h5>
-            <div class="table-responsive">
-                <table class="table table-bordered table-striped">
-                    <thead>
-                        <tr>
-                            <th>Ekspedisi</th>
-                            <th>Layanan</th>
-                            <th>Estimasi</th>
-                            <th>Harga</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-        `;
-
-        expressCargoServices.forEach(item => {
-            html += `
-                <tr>
-                    <td>${item.expedition_name || '-'}</td>
-                    <td>${item.service_name || '-'}</td>
-                    <td>${item.etd || '-'}</td>
-                    <td>Rp ${item.total_price?.toLocaleString('id-ID') || '-'}</td>
-                </tr>
+        } catch (error) {
+            costResultsContainer.innerHTML = `
+                <div class="alert alert-danger" role="alert">
+                    <strong>Error!</strong> ${error.message}
+                </div>
             `;
-        });
+        } finally {
+            submitButton.disabled = false;
+            submitButton.innerHTML = 'Cek Ongkir';
+        }
+    });
 
-        html += `
-                    </tbody>
-                </table>
-            </div>
-        `;
+    // ✅ Menampilkan hasil ongkir (instan + express cargo)
+    function displayResults(result) {
+        const { final_weight, data } = result;
+        const instantServices = data?.instant || [];
+        const expressCargoServices = data?.express_cargo || [];
+
+        let html = '';
+
+        // Berat total
+        if (final_weight) {
+            html += `
+                <div class="alert alert-info">
+                    <strong>Total Berat:</strong> ${(final_weight / 1000).toFixed(2)} kg 
+                    (${final_weight.toLocaleString('id-ID')} gram)
+                </div>
+            `;
+        }
+
+        // ✅ Jika tidak ada layanan sama sekali
+        if (instantServices.length === 0 && expressCargoServices.length === 0) {
+            html += `
+                <div class="alert alert-warning">
+                    Tidak ada layanan pengiriman yang tersedia untuk rute ini.
+                </div>
+            `;
+            costResultsContainer.innerHTML = html;
+            return;
+        }
+
+        // ✅ Layanan Instan
+        if (instantServices.length > 0) {
+            html += `
+                <h5 class="mt-3"><i class="bi bi-lightning-charge text-danger"></i> Layanan Instan</h5>
+                <div class="list-group mb-3">
+                    ${instantServices.map(service => `
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>${service.service}</strong><br>
+                                <small>${service.description || ''}</small>
+                            </div>
+                            <span class="badge bg-success fs-6">
+                                Rp ${service.cost.toLocaleString('id-ID')}
+                            </span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        // ✅ Layanan Express / Cargo
+        if (expressCargoServices.length > 0) {
+            html += `
+                <h5 class="mt-3"><i class="bi bi-truck text-primary"></i> Layanan Express & Cargo</h5>
+                <div class="list-group">
+                    ${expressCargoServices.map(service => `
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>${service.service}</strong><br>
+                                <small>${service.description || ''}</small>
+                            </div>
+                            <span class="badge bg-primary fs-6">
+                                Rp ${service.cost.toLocaleString('id-ID')}
+                            </span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        costResultsContainer.innerHTML = html;
     }
-
-    costResultsContainer.innerHTML = html;
-}
-
 
         html += `
 
