@@ -132,8 +132,12 @@ class PublicScanController extends Controller
         // 1. Siapkan data untuk notifikasi sesuai dengan constructor event yang baru.
         $title = "Scan Resi Baru";
         $message = "Resi '{$package->resi_number}' dari '{$kontak->nama}' telah di-scan.";
-        // Ganti URL ini dengan route yang sesuai di panel admin Anda
-        $url = route('scanned.packages.show', $package->id);
+        
+        // SOLUSI: Mengarahkan ke halaman tracking publik yang sudah ada di ScanController.
+        // Pastikan Anda memiliki route bernama 'track.package' yang mengarah ke ScanController@trackSpxPackage.
+        $url = route('track.package', ['resi' => $package->resi_number]);
+        // -------------------------
+
 
         // 2. Panggil/kirim event AdminNotificationEvent dengan data yang sudah disiapkan.
         broadcast(new AdminNotificationEvent($title, $message, $url))->toOthers();
