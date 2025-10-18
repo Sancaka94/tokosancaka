@@ -127,17 +127,13 @@ class PublicScanController extends Controller
 
         $kontak = Kontak::find($validated['kontak_id']);
 
-        // --- PERBAIKAN UTAMA ADA DI SINI ---
-        
-        // 1. Siapkan data untuk notifikasi sesuai dengan constructor event yang baru.
-        $title = "Scan Resi Baru";
+          // --- PERUBAHAN DI SINI ---
+        // Menyiapkan data untuk notifikasi
+        $title = 'Scan Resi Baru';
         $message = "Resi '{$package->resi_number}' dari '{$kontak->nama}' telah di-scan.";
-        
-        // SOLUSI: Mengarahkan ke halaman tracking publik yang sudah ada di ScanController.
-        // Pastikan Anda memiliki route bernama 'track.package' yang mengarah ke ScanController@trackSpxPackage.
-        $url = route('track.package', ['resi' => $package->resi_number]);
+        // URL diubah menjadi statis ke halaman daftar scan SPX.
+        $url = url('admin/spx-scans');
         // -------------------------
-
 
         // 2. Panggil/kirim event AdminNotificationEvent dengan data yang sudah disiapkan.
         broadcast(new AdminNotificationEvent($title, $message, $url))->toOthers();
