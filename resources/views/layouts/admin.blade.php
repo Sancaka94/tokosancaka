@@ -98,9 +98,6 @@
         </div>
     </div>
     
-      <!-- Tombol & Modal Chat (Global) -->
-    <!-- ... (kode modal chat Anda tidak diubah) ... -->
-    
     {{-- SweetAlert Scripts --}}
     @if(session('success'))
     <script>
@@ -121,6 +118,49 @@
     @if(strtolower(Auth::user()->role) === 'admin')
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+
+            // ======================================================================
+            // == BAGIAN BARU: Fungsi untuk Notifikasi Browser & Meminta Izin ==
+            // ======================================================================
+            function requestNotificationPermission() {
+                if ('Notification' in window) {
+                    if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+                        Notification.requestPermission().then(permission => {
+                            if (permission === 'granted') {
+                                console.log('Izin notifikasi browser diberikan.');
+                                new Notification('Terima Kasih!', {
+                                    body: 'Anda akan menerima notifikasi di sini.',
+                                    icon: 'https://tokosancaka.biz.id/storage/uploads/sancaka.png'
+                                });
+                            }
+                        });
+                    }
+                }
+            }
+            
+            function showBrowserNotification(title, message, url) {
+                if (!('Notification' in window) || Notification.permission !== 'granted') {
+                    return; // Jangan lakukan apa-apa jika tidak diizinkan
+                }
+
+                const notification = new Notification(title, {
+                    body: message,
+                    icon: 'https://tokosancaka.biz.id/storage/uploads/sancaka.png' // Icon notifikasi
+                });
+
+                // Jika ada URL, buat notifikasi bisa diklik
+                if (url) {
+                    notification.onclick = function() {
+                        window.open(url, '_blank');
+                    };
+                }
+            }
+            
+            // Meminta izin saat halaman pertama kali dimuat
+            requestNotificationPermission();
+
+            // ======================================================================
+
             if (window.EchoInitialized) return;
 
             if (typeof window.Echo !== 'undefined' && typeof window.Pusher !== 'undefined') {
@@ -143,11 +183,15 @@
                         .on('pusher:subscription_error', (status) => console.error("Subscription to 'admin-notifications' failed. Status:", status))
                         
                         // ======================================================================
-                        // == BAGIAN YANG DITAMBAHKAN (SESUAI PANDUAN) ==
+                        // == PERUBAHAN: Memanggil KEDUA jenis notifikasi ==
                         // ======================================================================
                         .listen('AdminNotificationEvent', (e) => {
-                            console.log('Notifikasi diterima:', e); // Untuk debugging
+                            console.log('Notifikasi diterima:', e);
 
+                            // 1. Tampilkan Notifikasi Browser (Pojok Kanan Bawah)
+                            showBrowserNotification(e.title, e.message, e.url);
+
+                            // 2. Tampilkan Notifikasi Pop-up (Tengah Layar)
                             Swal.fire({
                                 title: e.title || 'Notifikasi Baru',
                                 text: e.message,
@@ -155,10 +199,9 @@
                                 showCancelButton: true,
                                 confirmButtonText: 'Lihat Detail',
                                 cancelButtonText: 'Tutup',
-                                confirmButtonColor: '#ff0000ff', // Warna Indigo
-                                cancelButtonColor: '#00bd09ff',  // Warna Abu-abu
+                                confirmButtonColor: '#4f46e5',
+                                cancelButtonColor: '#6b7280',
                             }).then((result) => {
-                                // Jika tombol "Lihat Detail" diklik dan ada URL
                                 if (result.isConfirmed && e.url) {
                                     window.location.href = e.url;
                                 }
