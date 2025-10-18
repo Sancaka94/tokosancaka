@@ -1,36 +1,47 @@
-<?php
-
-use Illuminate\Support\Facades\Broadcast;
-
-/*
-|--------------------------------------------------------------------------
-| Broadcast Channels
-|--------------------------------------------------------------------------
-|
-| Here you may register all of the event broadcasting channels that your
-| application supports. The given channel authorization callbacks are
-| used to check if an authenticated user can listen to the channel.
-|
-*/
-
-Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
-    // PERBAIKAN FINAL: Membandingkan dengan 'id_pengguna'
-    return (int) $user->id_pengguna === (int) $id;
-});
-
-Broadcast::channel('admin-notifications', function ($user) {
-    return strtolower($user->role) === 'admin';
-});
-
-// ✅ Tambahkan ini: Otorisasi untuk channel saldo pelanggan
-Broadcast::channel('customer-saldo.{userId}', function ($user, $userId) {
-    // Pastikan ID pengguna yang sedang login sama dengan ID di nama channel.
-    // Sesuaikan 'id_pengguna' jika nama primary key di model User Anda berbeda.
-    return (int) $user->id_pengguna === (int) $userId;
-
-});
-
-Broadcast::channel('surat-jalan-created', function () {
-    return true; // Channel publik, semua orang bisa mendengarkan
-
+<?php
+
+use Illuminate\Support\Facades\Broadcast;
+
+/*
+|--------------------------------------------------------------------------
+| Broadcast Channels
+|--------------------------------------------------------------------------
+|
+| Di sini Anda dapat mendaftarkan semua channel event broadcasting yang
+| didukung oleh aplikasi Anda. Callback otorisasi channel yang diberikan
+| digunakan untuk memeriksa apakah pengguna yang diautentikasi dapat 
+| mendengarkan channel tersebut.
+|
+*/
+
+// Channel default untuk notifikasi per-user model.
+// Ini memungkinkan notifikasi dikirim ke user tertentu.
+Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
+    // Dikembalikan untuk menggunakan 'id_pengguna' secara eksplisit.
+    return (int) $user->id_pengguna === (int) $id;
 });
+
+// Channel privat untuk notifikasi yang hanya ditujukan untuk admin.
+Broadcast::channel('admin-notifications', function ($user) {
+    // Memeriksa apakah kolom 'role' pada user adalah 'admin'.
+    // Menggunakan strtolower untuk membuat pengecekan tidak case-sensitive.
+    // Ditambahkan pengecekan `isset($user->role)` untuk menghindari error jika kolom role tidak ada.
+    return isset($user->role) && strtolower($user->role) === 'admin';
+});
+
+// Channel privat untuk update saldo spesifik per pelanggan.
+// Hanya user yang bersangkutan yang bisa mendengarkan channel ini.
+Broadcast::channel('customer-saldo.{userId}', function ($user, $userId) {
+    // Memastikan user yang sedang login hanya bisa mengakses channel saldonya sendiri.
+    // Dikembalikan untuk menggunakan 'id_pengguna' secara eksplisit.
+    return (int) $user->id_pengguna === (int) $userId;
+});
+
+// Channel yang dapat diakses oleh semua user yang terotentikasi.
+// Berguna untuk notifikasi umum, seperti saat surat jalan baru dibuat.
+// Callback yang mengembalikan `true` akan mengizinkan semua user yang login
+// untuk mendengarkan channel ini.
+Broadcast::channel('surat-jalan-created', function ($user) {
+    return true; 
+});
+
