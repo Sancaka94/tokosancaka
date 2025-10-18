@@ -133,7 +133,7 @@ class PublicScanController extends Controller
         $title = "Scan Resi Baru";
         $message = "Resi '{$package->resi_number}' dari '{$kontak->nama}' telah di-scan.";
         // Ganti URL ini dengan route yang sesuai di panel admin Anda
-        $url = route('admin.dashboard'); // Contoh: route('scanned.packages.show', $package->id)
+        $url = route('scanned.packages.show', $package->id);
 
         // 2. Panggil/kirim event AdminNotificationEvent dengan data yang sudah disiapkan.
         broadcast(new AdminNotificationEvent($title, $message, $url))->toOthers();
