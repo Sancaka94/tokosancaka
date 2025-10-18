@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Broadcast;
+use Illuminate\Support\Facades\Log;
 
 /*
 |--------------------------------------------------------------------------
@@ -21,10 +22,20 @@ Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
     return (int) $user->id_pengguna === (int) $id;
 });
 
+// Channel privat untuk notifikasi yang hanya ditujukan untuk admin.
 Broadcast::channel('admin-notifications', function ($user) {
-    // Tambahkan log ini untuk debugging
-    \Illuminate\Support\Facades\Log::info('Mencoba otorisasi channel admin untuk user:', $user->toArray());
-    
+    // --- LANGKAH DEBUGGING ---
+    // Log ini akan mencatat data pengguna yang mencoba terhubung ke channel.
+    // Periksa hasilnya di file `storage/logs/laravel.log`.
+    Log::info('Percobaan otorisasi channel admin:', [
+        'user_id' => $user ? $user->id_pengguna : 'Guest (Tidak Login)',
+        'user_role' => $user->role ?? 'Role tidak ditemukan'
+    ]);
+    // -------------------------
+
+    // Memeriksa apakah kolom 'role' pada user adalah 'admin'.
+    // Menggunakan strtolower untuk membuat pengecekan tidak case-sensitive.
+    // Ditambahkan pengecekan `isset($user->role)` untuk menghindari error jika kolom role tidak ada.
     return isset($user->role) && strtolower($user->role) === 'admin';
 });
 
