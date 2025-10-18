@@ -21,11 +21,10 @@ Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
     return (int) $user->id_pengguna === (int) $id;
 });
 
-// Channel privat untuk notifikasi yang hanya ditujukan untuk admin.
 Broadcast::channel('admin-notifications', function ($user) {
-    // Memeriksa apakah kolom 'role' pada user adalah 'admin'.
-    // Menggunakan strtolower untuk membuat pengecekan tidak case-sensitive.
-    // Ditambahkan pengecekan `isset($user->role)` untuk menghindari error jika kolom role tidak ada.
+    // Tambahkan log ini untuk debugging
+    \Illuminate\Support\Facades\Log::info('Mencoba otorisasi channel admin untuk user:', $user->toArray());
+    
     return isset($user->role) && strtolower($user->role) === 'admin';
 });
 
