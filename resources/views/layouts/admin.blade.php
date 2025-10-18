@@ -98,6 +98,9 @@
         </div>
     </div>
     
+      <!-- Tombol & Modal Chat (Global) -->
+    <!-- ... (kode modal chat Anda tidak diubah) ... -->
+    
     {{-- SweetAlert Scripts --}}
     @if(session('success'))
     <script>
@@ -114,10 +117,12 @@
     @auth
     <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/laravel-echo@1.15.3/dist/echo.iife.js"></script>
+    
     @if(strtolower(Auth::user()->role) === 'admin')
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             if (window.EchoInitialized) return;
+
             if (typeof window.Echo !== 'undefined' && typeof window.Pusher !== 'undefined') {
                 try {
                     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
@@ -129,11 +134,38 @@
                         authEndpoint: '/broadcasting/auth',
                         auth: { headers: { 'X-CSRF-TOKEN': csrfToken } },
                     });
+                    
                     window.EchoInitialized = true;
                     console.log("Laravel Echo initialized for admin.");
+
                     window.Echo.private('admin-notifications')
-                         .on('pusher:subscription_succeeded', () => console.log("Subscribed to 'admin-notifications' channel!"))
-                         .on('pusher:subscription_error', (status) => console.error("Subscription to 'admin-notifications' failed. Status:", status));
+                        .on('pusher:subscription_succeeded', () => console.log("Subscribed to 'admin-notifications' channel!"))
+                        .on('pusher:subscription_error', (status) => console.error("Subscription to 'admin-notifications' failed. Status:", status))
+                        
+                        // ======================================================================
+                        // == BAGIAN YANG DITAMBAHKAN (SESUAI PANDUAN) ==
+                        // ======================================================================
+                        .listen('AdminNotificationEvent', (e) => {
+                            console.log('Notifikasi diterima:', e); // Untuk debugging
+
+                            Swal.fire({
+                                title: e.title || 'Notifikasi Baru',
+                                text: e.message,
+                                icon: 'info',
+                                showCancelButton: true,
+                                confirmButtonText: 'Lihat Detail',
+                                cancelButtonText: 'Tutup',
+                                confirmButtonColor: '#ff0000ff', // Warna Indigo
+                                cancelButtonColor: '#00bd09ff',  // Warna Abu-abu
+                            }).then((result) => {
+                                // Jika tombol "Lihat Detail" diklik dan ada URL
+                                if (result.isConfirmed && e.url) {
+                                    window.location.href = e.url;
+                                }
+                            });
+                        });
+                        // ======================================================================
+
                 } catch (error) { console.error("Failed to initialize Echo:", error); }
             } else { console.error("Echo or Pusher.js not found."); }
         });
