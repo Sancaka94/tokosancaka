@@ -178,6 +178,7 @@ No. WA Pengirim: *{NO_HP_PENGIRIM}*
 Alamat Pengirim: *{ALAMAT_PENGIRIM}*
 
 *Daftar Resi:*
+
 {DAFTAR_RESI}
 
 *Mohon segera proses untuk input ke system SPX.*
