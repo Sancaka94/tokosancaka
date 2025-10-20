@@ -28,7 +28,7 @@
                 <span class="font-semibold text-sm text-gray-700 dark:text-gray-200">
                     <a class="text-green-600 dark:text-green-400">Saldo Anda: </a> <strong>Rp {{ number_format($saldo ?? 0, 0, ',', '.') }}</strong>
                 </span>
-                <a href="{{ route('customer.topup.create') }}" class="inline-flex items-center px-3 py-1 text-xs font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 transition-colors duration-150">
+                <a href="{{ route('customer.topup.create') }}" class="inline-flex items-center px-3 py-1 text-xs font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 transition-colors duration-150">
                     <i class="fas fa-plus mr-1"></i>
                     Top Up
                 </a>
