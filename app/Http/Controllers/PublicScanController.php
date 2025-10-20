@@ -155,24 +155,31 @@ class PublicScanController extends Controller
             return;
         }
 
+        // PERUBAHAN: Dapatkan waktu input dan format dalam Bahasa Indonesia
+        Carbon::setLocale('id');
+        $timestamp = $suratJalan->created_at->setTimezone('Asia/Jakarta')->translatedFormat('l, d F Y - H:i');
+
         // PERUBAHAN: Template diubah menjadi notifikasi untuk admin
         $messageTemplate = <<<TEXT
-*Surat Jalan Baru Dibuat* ℹ️
+⚠ *Surat Jalan Baru Dibuat* ⚠
 
 Telah dibuat surat jalan baru oleh *{NAMA_PENGIRIM}*.
 
 Rincian:
+Waktu Input: *{WAKTU_INPUT}*
 Nomor Surat Jalan: *{KODE_SURAT_JALAN}*
 Jumlah Paket: *{JUMLAH_PAKET}*
+No. WA Pengirim: *{NO_HP_PENGIRIM}*
+Alamat Pengirim: *{ALAMAT_PENGIRIM}*
 
-Mohon segera proses untuk pickup.
+*Mohon segera proses untuk input ke system SPX.*
 
 *Notifikasi Sistem Sancaka*
 TEXT;
 
         $message = str_replace(
-            ['{NAMA_PENGIRIM}', '{KODE_SURAT_JALAN}', '{JUMLAH_PAKET}'],
-            [$kontak->nama, $suratJalan->kode_surat_jalan, $suratJalan->jumlah_paket],
+            ['{WAKTU_INPUT}', '{NAMA_PENGIRIM}', '{KODE_SURAT_JALAN}', '{JUMLAH_PAKET}', '{NO_HP_PENGIRIM}', '{ALAMAT_PENGIRIM}'],
+            [$timestamp, $kontak->nama, $suratJalan->kode_surat_jalan, $suratJalan->jumlah_paket, $kontak->no_hp, $kontak->alamat],
             $messageTemplate
         );
 
@@ -187,4 +194,3 @@ TEXT;
         }
     }
 }
-
