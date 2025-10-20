@@ -3,48 +3,40 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
-use App\Models\Marketplace; // Menggunakan model Marketplace
+use App\Models\Marketplace;
 use App\Models\Banner;
 use App\Models\Setting;
-use App\Models\Category; // Impor model Category
+use App\Models\Category;
 use Illuminate\Http\Request;
 
 class MarketplaceController extends Controller
 {
-    /**
-     * Menampilkan halaman utama katalog marketplace untuk customer.
-     */
     public function index()
     {
-        // 1. Mengambil produk untuk Flash Sale dari tabel 'marketplaces'
         $flashSaleProducts = Marketplace::where('is_flash_sale', true)
-            ->where('stock', '>', 0) // Hanya tampilkan produk yang masih ada stok
+            ->where('stock', '>', 0)
             ->latest()
             ->take(10)
             ->get();
 
-        // 2. Mengambil produk rekomendasi dari tabel 'marketplaces'
         $products = Marketplace::where('is_flash_sale', false)
-            ->where('stock', '>', 0) // Hanya tampilkan produk yang masih ada stok
+            ->where('stock', '>', 0)
             ->latest()
-            ->paginate(15); // Menampilkan 15 produk per halaman
+            ->paginate(15);
             
-        // 3. (Asumsi) Logika untuk banner dan settings tetap sama
         $banners = Banner::where('is_active', true)->orderBy('order', 'asc')->get();
         $settings = Setting::pluck('value', 'key')->all();
 
-        // 4. PERBAIKAN: Mengambil data Kategori khusus untuk marketplace
-        // Asumsi: Tabel 'categories' Anda memiliki kolom 'type' untuk membedakan
-        // antara kategori 'marketplace' dan 'blog'.
-        $categories = Category::where('type', 'marketplace')->take(10)->get();
+        // --- PERBAIKAN DI SINI ---
+        // Menghapus ->take(10) agar semua kategori marketplace diambil dari database.
+        $categories = Category::where('type', 'marketplace')->get();
 
-        // 5. Mengirim SEMUA data yang dibutuhkan ke view
         return view('marketplace.katalog', compact(
             'products', 
             'flashSaleProducts', 
             'banners', 
             'settings', 
-            'categories' // Variabel categories sekarang berisi data yang benar
+            'categories'
         ));
     }
 }
