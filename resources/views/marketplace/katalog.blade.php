@@ -61,23 +61,24 @@
     <section class="bg-white p-5 rounded-lg shadow-sm mb-8">
         <h2 class="text-base font-semibold mb-4 text-gray-700">Kategori Pilihan</h2>
         <div class="grid grid-cols-5 md:grid-cols-10 gap-x-2 gap-y-4 text-center">
-            @php
-                $categories = [
-                    ['name' => 'Elektronik', 'icon' => 'fa-mobile-alt'], ['name' => 'Fashion', 'icon' => 'fa-tshirt'],
-                    ['name' => 'Rumah', 'icon' => 'fa-home'], ['name' => 'Kesehatan', 'icon' => 'fa-heartbeat'],
-                    ['name' => 'Tagihan', 'icon' => 'fa-receipt'], ['name' => 'Voucher', 'icon' => 'fa-ticket-alt'],
-                    ['name' => 'Travel', 'icon' => 'fa-plane'], ['name' => 'Keuangan', 'icon' => 'fa-gem'],
-                    ['name' => 'Hobi', 'icon' => 'fa-gamepad'], ['name' => 'Lainnya', 'icon' => 'fa-th-large'],
-                ];
-            @endphp
-            @foreach ($categories as $category)
-                <a href="#" class="flex flex-col items-center space-y-2 text-gray-600 hover:text-red-500 transition-colors group">
+            
+            {{-- PERUBAHAN DIMULAI DI SINI --}}
+            {{-- Blok @php dihapus, dan sekarang kita looping data $categories dari controller --}}
+            @forelse ($categories as $category)
+                {{-- Arahkan link ke halaman kategori berdasarkan slug-nya --}}
+                <a href="{{ route('categories.show', $category->slug) }}" class="flex flex-col items-center space-y-2 text-gray-600 hover:text-red-500 transition-colors group">
                     <div class="w-12 h-12 flex items-center justify-center">
-                        <i class="fas {{ $category['icon'] }} text-2xl text-gray-500 group-hover:text-red-500 transition-colors"></i>
+                        {{-- Ambil ikon dari properti 'icon' milik objek $category --}}
+                        <i class="fas {{ $category->icon }} text-2xl text-gray-500 group-hover:text-red-500 transition-colors"></i>
                     </div>
-                    <span class="text-xs font-medium">{{ $category['name'] }}</span>
+                     {{-- Ambil nama dari properti 'name' milik objek $category --}}
+                    <span class="text-xs font-medium">{{ $category->name }}</span>
                 </a>
-            @endforeach
+            @empty
+                <p class="col-span-full text-center text-gray-500">Tidak ada kategori untuk ditampilkan.</p>
+            @endforelse
+            {{-- AKHIR DARI PERUBAHAN --}}
+
         </div>
     </section>
 
@@ -194,4 +195,3 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 @endpush
-
