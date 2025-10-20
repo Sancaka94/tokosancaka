@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Marketplace; // Menggunakan model Marketplace
 use App\Models\Banner;
 use App\Models\Setting;
-use App\Models\Category; // PERBAIKAN: Impor model Category
+use App\Models\Category; // Impor model Category
 use Illuminate\Http\Request;
 
 class MarketplaceController extends Controller
@@ -33,8 +33,10 @@ class MarketplaceController extends Controller
         $banners = Banner::where('is_active', true)->orderBy('order', 'asc')->get();
         $settings = Setting::pluck('value', 'key')->all();
 
-        // 4. PERBAIKAN: Mengambil data Kategori dari database
-        $categories = Category::take(10)->get();
+        // 4. PERBAIKAN: Mengambil data Kategori khusus untuk marketplace
+        // Asumsi: Tabel 'categories' Anda memiliki kolom 'type' untuk membedakan
+        // antara kategori 'marketplace' dan 'blog'.
+        $categories = Category::where('type', 'marketplace')->take(10)->get();
 
         // 5. Mengirim SEMUA data yang dibutuhkan ke view
         return view('marketplace.katalog', compact(
@@ -42,7 +44,8 @@ class MarketplaceController extends Controller
             'flashSaleProducts', 
             'banners', 
             'settings', 
-            'categories' // PERBAIKAN: Menambahkan variabel categories
+            'categories' // Variabel categories sekarang berisi data yang benar
         ));
     }
 }
+
