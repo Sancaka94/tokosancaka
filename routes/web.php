@@ -42,6 +42,8 @@ use App\Http\Controllers\Admin\BannerController;
 use App\Http\Controllers\Customer\MarketplaceController as CustomerMarketplaceController;
 use App\Http\Controllers\Customer\CartController; // Pastikan path ini benar
 use App\Http\Controllers\Customer\CheckoutController as CustomerCheckoutController;
+use App\Http\Controllers\Customer\CategoryController; // Tambahkan ini di atas
+
 
 
 /*
@@ -85,6 +87,8 @@ Route::get('/terms-and-conditions', function () {
 // Rute untuk menampilkan daftar pelanggan ke publik
 Route::get('/pelanggan', [PublicPelangganController::class, 'index'])->name('pelanggan.public.index');
 
+// Rute untuk menampilkan produk berdasarkan kategori
+Route::get('/category/{category:slug}', [CategoryController::class, 'show'])->name('categories.show');
 
 Route::get('/admin/import/wordpress', [ImportController::class, 'showForm'])->name('admin.import.wordpress.form');
 
