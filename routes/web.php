@@ -88,7 +88,7 @@ Route::get('/terms-and-conditions', function () {
 Route::get('/pelanggan', [PublicPelangganController::class, 'index'])->name('pelanggan.public.index');
 
 // Rute untuk menampilkan produk berdasarkan kategori
-Route::get('/category/{category:slug}', [CategoryController::class, 'show'])->name('categories.show');
+Route::get('/marketplace/category/{category:slug}', [CategoryController::class, 'show'])->name('marketplace.categories.show');
 
 Route::get('/admin/import/wordpress', [ImportController::class, 'showForm'])->name('admin.import.wordpress.form');
 

@@ -68,7 +68,7 @@
                 <div class="swiper-slide">
                     <div class="grid grid-cols-5 md:grid-cols-10 gap-x-2 gap-y-4 text-center">
                         @foreach ($chunk as $category)
-                        <a href="{{ route('categories.show', $category->slug) }}" class="flex flex-col items-center space-y-2 text-gray-600 hover:text-red-500 transition-colors group">
+                        <a href="{{ route('marketplace.categories.show', $category->slug) }}" class="flex flex-col items-center space-y-2 text-gray-600 hover:text-red-500 transition-colors group">
                             <div class="w-12 h-12 flex items-center justify-center">
                                 <i class="fas {{ $category->icon ?? 'fa-tag' }} text-2xl text-gray-500 group-hover:text-red-500 transition-colors"></i>
                             </div>
