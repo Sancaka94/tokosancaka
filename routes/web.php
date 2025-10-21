@@ -44,6 +44,7 @@ use App\Http\Controllers\Customer\CartController; // Pastikan path ini benar
 use App\Http\Controllers\Customer\CheckoutController as CustomerCheckoutController;
 use App\Http\Controllers\Customer\CategoryController; // Tambahkan ini di atas
 use App\Http\Controllers\EtalaseController;
+use App\Http\Controllers\ProductController; // Pastikan controller ini ada
 
 
 /*
@@ -87,7 +88,11 @@ Route::get('/terms-and-conditions', function () {
 // Rute untuk menampilkan halaman kategori di etalase publik
 Route::get('/etalase/category/{category:slug}', [EtalaseController::class, 'showCategory'])->name('public.categories.show');
 
-Route::get('/products/{product:slug}', [ProductController::class, 'show'])->name('products.show');
+// == ETALASE & MARKETPLACE ROUTES ==
+Route::get('/etalase', [EtalaseController::class, 'index'])->name('etalase.index');
+Route::get('/etalase/category/{category:slug}', [EtalaseController::class, 'showCategory'])->name('public.categories.show');
+Route::get('/products/{product:slug}', [EtalaseController::class, 'show'])->name('products.show'); // Menggunakan EtalaseController
+Route::get('/toko/{name}', [EtalaseController::class, 'profileToko'])->name('toko.profile');
 
 
 // Rute untuk menampilkan daftar pelanggan ke publik
