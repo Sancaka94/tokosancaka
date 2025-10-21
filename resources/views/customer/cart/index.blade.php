@@ -162,7 +162,7 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Error:', error);
             // PERBAIKAN: Jika error adalah SyntaxError, langsung arahkan ke halaman login tanpa alert.
             if (error instanceof SyntaxError) {
-                window.location.href = "{{ route('redirect.cart') }}";
+                window.location.href = "{{ route('customer.cart') }}";
             } else {
                 alert('Terjadi kesalahan. Silakan coba lagi.');
             }
@@ -253,7 +253,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error('Error:', error);
                 // PERBAIKAN: Jika error adalah SyntaxError, langsung arahkan ke halaman login tanpa alert.
                 if (error instanceof SyntaxError) {
-                    window.location.href = "{{ route('redirect.cart') }}";
+                    window.location.href = "{{ route('customer.cart') }}";
                 } else {
                     alert('Gagal menghapus item. Silakan coba lagi.');
                 }
