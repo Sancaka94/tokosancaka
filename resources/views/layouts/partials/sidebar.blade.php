@@ -427,7 +427,7 @@
 
                     <li>
 
-                        <a href="{{ route('admin.categories.index, ['type' => 'blog']) }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-gray-700 {{ request()->routeIs('admin.categories.*') ? 'text-white' : 'text-gray-400' }}">
+                        <a href="{{ route('admin.categories.index', ['type' => 'blog']) }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-gray-700 {{ request()->routeIs('admin.categories.*') ? 'text-white' : 'text-gray-400' }}">
 
                             Kategori
 
