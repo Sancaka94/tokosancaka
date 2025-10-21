@@ -14,17 +14,19 @@
 
         </div>
 
-        <div class="flex flex-wrap items-start justify-end -mb-3">
-
-            <a href="{{ route('admin.categories.create') }}" class="inline-flex px-5 py-3 text-white bg-red-600 hover:bg-red-700 focus:bg-red-700 rounded-md ml-6 mb-3">
-
-                <i class="fas fa-plus mr-2"></i>
-
-                Tambah Kategori Baru
-
+        <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+        {{-- Mengubah judul agar lebih spesifik --}}
+        <h2 class="text-xl font-semibold text-gray-800">Daftar Kategori Produk Marketplace</h2>
+        <div class="flex items-center gap-4">
+            {{-- PERBAIKAN: Menambahkan link baru ke halaman kategori etalase --}}
+            <a href="{{ route('admin.categories.etalase.index') }}" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 whitespace-nowrap">
+                Kategori Etalase
             </a>
-
+            <a href="{{ route('admin.categories.create') }}" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 whitespace-nowrap">
+                Tambah Kategori Baru
+            </a>
         </div>
+    </div>
 
     </div>
 
