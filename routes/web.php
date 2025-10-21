@@ -328,11 +328,6 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])
 
         require __DIR__.'/web/admin.php';
 
-    // PERBAIKAN: Gunakan Route::resource untuk mendaftarkan semua rute CRUD,
-    // dan kecualikan method 'show' yang tidak kita gunakan.
-    Route::resource('categories', CategoryController::class)->except(['show']);
-
-
        
           // TAMBAHKAN ROUTE INI UNTUK HALAMAN PENGATURAN
     
