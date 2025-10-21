@@ -1,70 +1,36 @@
 @extends('layouts.admin')
 
-
-
 @section('title', 'Tambah Kategori Baru')
-
-
+@section('page-title', 'Tambah Kategori')
 
 @section('content')
-
-<main class="p-6 sm:p-10 space-y-6">
-
-    <div class="flex flex-col space-y-6 md:space-y-0 md:flex-row justify-between">
-
-        <div class="mr-6">
-
-            <h1 class="text-4xl font-semibold mb-2 text-gray-800 dark:text-gray-200">Tambah Kategori Baru</h1>
-
-            <h2 class="text-gray-600 dark:text-gray-400 ml-0.5">Buat kategori baru untuk dikelompokkan pada postingan.</h2>
-
+<div class="bg-white p-6 rounded-lg shadow-md max-w-lg mx-auto">
+    <form action="{{ route('admin.categories.store') }}" method="POST">
+        @csrf
+        <div class="space-y-4">
+            <div>
+                <label for="name" class="block text-sm font-medium text-gray-700">Nama Kategori</label>
+                <input type="text" name="name" id="name" value="{{ old('name') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('name') border-red-500 @enderror" required>
+                @error('name') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
+            </div>
+            <div>
+                <label for="type" class="block text-sm font-medium text-gray-700">Tipe Kategori</label>
+                <select name="type" id="type" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
+                    <option value="" disabled selected>-- Pilih Tipe --</option>
+                    <option value="marketplace" {{ old('type') == 'marketplace' ? 'selected' : '' }}>Marketplace</option>
+                    <option value="blog" {{ old('type') == 'blog' ? 'selected' : '' }}>Blog</option>
+                </select>
+            </div>
+            <div>
+                <label for="icon" class="block text-sm font-medium text-gray-700">Ikon (Contoh: fa-mobile-alt)</label>
+                <input type="text" name="icon" id="icon" value="{{ old('icon') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="fa-tag">
+                <p class="mt-1 text-xs text-gray-500">Gunakan class dari <a href="https://fontawesome.com/v5/search" target="_blank" class="text-indigo-600 hover:underline">Font Awesome 5</a>.</p>
+            </div>
         </div>
-
-    </div>
-
-
-
-    <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-6">
-
-        <form action="{{ route('admin.categories.store') }}" method="POST">
-
-            @csrf
-
-            <div class="space-y-4">
-
-                <div>
-
-                    <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nama Kategori</label>
-
-                    <input type="text" name="name" id="name" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600" required>
-
-                </div>
-
-                <div>
-
-                    <label for="slug" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Slug</label>
-
-                    <input type="text" name="slug" id="slug" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600">
-
-                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">Opsional. Jika dikosongkan, slug akan dibuat otomatis dari nama.</p>
-
-                </div>
-
-            </div>
-
-            <div class="mt-6 flex justify-end space-x-3">
-
-                <a href="{{ route('admin.categories.index') }}" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md">Batal</a>
-
-                <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md">Simpan Kategori</button>
-
-            </div>
-
-        </form>
-
-    </div>
-
-</main>
-
+        <div class="mt-6 flex justify-end gap-3">
+            <a href="{{ route('admin.categories.index') }}" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium">Batal</a>
+            <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700">Simpan</button>
+        </div>
+    </form>
+</div>
 @endsection
-

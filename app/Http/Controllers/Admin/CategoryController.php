@@ -10,22 +10,19 @@ use Illuminate\Support\Facades\Auth;
 
 class CategoryController extends Controller
 {
-    /**
-     * Menampilkan daftar semua kategori, dengan filter berdasarkan tipe.
-     */
+    
     public function index(Request $request)
-    {
-        $query = Category::withCount(['posts', 'products']); // Menghitung relasi ke post dan produk
-
-        // Filter berdasarkan tipe jika ada parameter di URL
-        if ($request->filled('type')) {
-            $query->where('type', $request->type);
-        }
-
-        $categories = $query->latest()->paginate(15)->withQueryString();
-        
-        return view('admin.categories.index', compact('categories'));
+{
+    $query = Category::query();
+    
+    // Tambahkan filter di halaman admin
+    if ($request->filled('type')) {
+        $query->where('type', $request->type);
     }
+
+    $categories = $query->latest()->paginate(15);
+    return view('admin.categories.index', compact('categories'));
+}
 
     /**
      * Menampilkan form untuk membuat kategori baru.
@@ -133,6 +130,6 @@ class CategoryController extends Controller
         // Dalam kasus ini, kita bisa arahkan saja ke halaman edit.
         return redirect()->route('admin.categories.edit', $category);
     }
-    
+
 }
 
