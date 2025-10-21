@@ -30,16 +30,16 @@
         <div class="p-5 bg-white rounded-2xl shadow-md">
             <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
                 @forelse ($products as $product)
-                    {{-- PERBAIKAN: Mengirim slug produk secara eksplisit untuk parameter route --}}
-                    <a href="" class="bg-white border rounded-xl overflow-hidden group hover:shadow-2xl transition-all duration-300 flex flex-col">
-                        <div>
+                    <div class="bg-white border rounded-xl overflow-hidden group hover:shadow-2xl transition-all duration-300 flex flex-col">
+                        {{-- Link ke halaman detail produk --}}
+                        <a href="{{ route('products.show', $product->slug) }}">
                             <div class="h-48 bg-gray-50 relative">
                                @php
                                     $imageUrl = $product->image_url ? asset('storage/' . $product->image_url) : 'https://placehold.co/400x400/EFEFEF/333333?text=N/A';
                                 @endphp
                                 <img src="{{ $imageUrl }}" alt="{{ $product->name }}" class="w-full h-full object-fill group-hover:scale-105 transition-transform">
                             </div>
-                        </div>
+                        </a>
                         <div class="p-4 flex flex-col flex-grow">
                             <h3 class="text-sm font-semibold text-gray-800 mb-1 h-10">{{ Str::limit($product->name, 50) }}</h3>
                             
@@ -59,9 +59,21 @@
                                 <span class="text-xs font-bold text-red-600 bg-red-100 px-1.5 py-0.5 rounded">{{ round($product->discount_percentage) }}%</span>
                             </div>
                             @endif
-                            {{-- Anda bisa menambahkan tombol keranjang di sini jika perlu --}}
+
+                            {{-- PERBAIKAN: Menambahkan tombol dan form "Masukan Keranjang" --}}
+                            <div class="mt-auto pt-3">
+                                <form action="{{ route('cart.add', ['product' => $product->id]) }}" method="POST">
+                                    @csrf
+                                    <input type="hidden" name="product_id" value="{{ $product->id }}">
+                                    <input type="hidden" name="quantity" value="1">
+                                    <button type="submit" class="w-full bg-red-500 text-white font-bold py-2.5 rounded-lg text-sm hover:bg-red-600 transition-colors flex items-center justify-center gap-2">
+                                        <i class="fas fa-cart-plus"></i>
+                                        <span>Keranjang</span>
+                                    </button>
+                                </form>
+                            </div>
                         </div>
-                    </a>
+                    </div>
                 @empty
                     <div class="col-span-full text-center py-20">
                         <i class="fas fa-box-open text-6xl text-gray-300 mb-4"></i>
@@ -73,8 +85,6 @@
             <div class="text-center mt-10">{{ $products->links() }}</div>
         </div>
     </section>
-
-    {{-- Anda bisa menambahkan bagian lain seperti Flash Sale atau Kategori lagi di sini jika mau --}}
 
 </div>
 @endsection
