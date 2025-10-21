@@ -4,11 +4,12 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Product;
+use App\Models\Category; // PERBAIKAN: Impor model Category
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Yajra\DataTables\Facades\DataTables;
-use Exception; // Import Exception class
+use Exception;
 
 class ProductController extends Controller
 {
@@ -27,17 +28,22 @@ class ProductController extends Controller
     {
         if ($request->ajax()) {
             try {
-                $data = Product::select('*'); 
+                // PERBAIKAN: Menggunakan eager loading untuk relasi kategori
+                $data = Product::with('category')->select('products.*'); 
                 return DataTables::of($data)
                     ->addIndexColumn()
                     ->addColumn('image', function ($row) {
                         $url = $row->image_url
-                            ? route('storage.show', ['path' => $row->image_url])
+                            ? asset('storage/' . $row->image_url) // Path yang benar untuk storage link
                             : 'https://placehold.co/80x80/EFEFEF/333333?text=N/A';
                         return '<img src="' . e($url) . '" alt="' . e($row->name) . '" class="rounded" width="60" />';
                     })
                     ->editColumn('price', function ($row) {
                         return 'Rp' . number_format($row->price, 0, ',', '.');
+                    })
+                    // PERBAIKAN: Menampilkan nama kategori dari relasi
+                    ->addColumn('category_name', function ($row) {
+                        return $row->category->name ?? 'N/A';
                     })
                     ->addColumn('status_badge', function ($row) {
                         $color = $row->status == 'active' ? 'bg-success' : 'bg-secondary';
@@ -72,7 +78,8 @@ class ProductController extends Controller
      */
     public function create()
     {
-        $categories = Product::select('category')->distinct()->pluck('category');
+        // PERBAIKAN: Mengambil data object Category dari database
+        $categories = Category::orderBy('name')->get();
         return view('admin.products.create', compact('categories'));
     }
 
@@ -81,15 +88,15 @@ class ProductController extends Controller
      */
    public function store(Request $request)
     {
+        // PERBAIKAN: Mengubah validasi dari 'category' menjadi 'category_id'
         $validated = $request->validate([
             'name'          => 'required|string|max:255',
             'description'   => 'nullable|string',
             'price'         => 'required|numeric|min:0',
             'stock'         => 'required|integer|min:0',
             'weight'        => 'required|integer|min:0',
-            'category'      => 'required|string|max:255',
+            'category_id'   => 'required|exists:categories,id', // Validasi ke tabel categories
             'product_image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
-    
             'store_name'    => 'required|string|max:255',
             'seller_city'   => 'required|string|max:255',
             'seller_wa'     => 'nullable|string|max:20',
@@ -108,13 +115,11 @@ class ProductController extends Controller
         
         if (!empty($request->seller_wa)) {
             $wa = preg_replace('/[^0-9]/', '', $request->seller_wa); 
-    
             if (Str::startsWith($wa, '0')) {
                 $wa = '62' . substr($wa, 1);
             } elseif (!Str::startsWith($wa, '62')) {
                 $wa = '62' . $wa;
             }
-    
             $validated['seller_wa'] = $wa;
         }
     
@@ -127,7 +132,6 @@ class ProductController extends Controller
 
     /**
      * Menampilkan form untuk mengedit produk.
-     * ✅ DIPERBAIKI: Mengganti Route Model Binding untuk memberikan pesan error yang lebih baik.
      */
     public function edit($id)
     {
@@ -135,13 +139,13 @@ class ProductController extends Controller
         if (!$product) {
             return redirect()->route('admin.products.index')->with('error', 'Produk tidak ditemukan.');
         }
-        $categories = Product::select('category')->distinct()->pluck('category');
+        // PERBAIKAN: Mengambil data object Category dari database
+        $categories = Category::orderBy('name')->get();
         return view('admin.products.edit', compact('product', 'categories'));
     }
 
     /**
      * Memperbarui data produk di database.
-     * ✅ DIPERBAIKI: Mengganti Route Model Binding untuk memberikan pesan error yang lebih baik.
      */
     public function update(Request $request, $id)
     {
@@ -150,6 +154,7 @@ class ProductController extends Controller
             return redirect()->route('admin.products.index')->with('error', 'Produk tidak ditemukan.');
         }
     
+        // PERBAIKAN: Mengubah validasi dari 'category' menjadi 'category_id'
         $validated = $request->validate([
             'name'          => 'required|string|max:255',
             'description'   => 'nullable|string',
@@ -157,14 +162,12 @@ class ProductController extends Controller
             'original_price'=> 'nullable|numeric|min:0|gt:price',
             'stock'         => 'required|integer|min:0',
             'weight'        => 'required|integer|min:0',
-            'category'      => 'required|string|max:255',
+            'category_id'   => 'required|exists:categories,id', // Validasi ke tabel categories
             'product_image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
             'status'        => 'required|in:active,inactive',
             'tags'          => 'nullable|string',
             'is_new'        => 'nullable|boolean',
             'is_bestseller' => 'nullable|boolean',
-    
-            // Tambahan field penjual
             'store_name'    => 'required|string|max:255',
             'seller_city'   => 'required|string|max:255',
             'seller_wa'     => 'nullable|string|max:20',
@@ -172,17 +175,13 @@ class ProductController extends Controller
         ]);
     
         if ($request->hasFile('product_image')) {
-            if ($product->image_url) {
-                Storage::disk('public')->delete($product->image_url);
-            }
+            if ($product->image_url) Storage::disk('public')->delete($product->image_url);
             $path = $request->file('product_image')->store('products', 'public');
             $validated['image_url'] = $path;
         }
     
         if ($request->hasFile('seller_logo')) {
-            if ($product->seller_logo) {
-                Storage::disk('public')->delete($product->seller_logo);
-            }
+            if ($product->seller_logo) Storage::disk('public')->delete($product->seller_logo);
             $logoPath = $request->file('seller_logo')->store('seller_logos', 'public');
             $validated['seller_logo'] = $logoPath;
         }
@@ -192,14 +191,12 @@ class ProductController extends Controller
         }
         
         if (!empty($request->seller_wa)) {
-            $wa = preg_replace('/[^0-9]/', '', $request->seller_wa); // ambil angka saja
-    
+            $wa = preg_replace('/[^0-9]/', '', $request->seller_wa);
             if (Str::startsWith($wa, '0')) {
                 $wa = '62' . substr($wa, 1);
             } elseif (!Str::startsWith($wa, '62')) {
                 $wa = '62' . $wa;
             }
-    
             $validated['seller_wa'] = $wa;
         }
     
@@ -219,7 +216,6 @@ class ProductController extends Controller
 
     /**
      * Menghapus produk dari database.
-     * ✅ DIPERBAIKI: Mengganti Route Model Binding untuk memberikan pesan error yang lebih baik.
      */
     public function destroy($id)
     {
@@ -245,10 +241,7 @@ class ProductController extends Controller
             return redirect()->route('admin.products.index')->with('error', 'Produk tidak ditemukan.');
         }
 
-        $validated = $request->validate([
-            'stock' => 'required|integer|min:1',
-        ]);
-
+        $validated = $request->validate([ 'stock' => 'required|integer|min:1' ]);
         $product->stock += $validated['stock'];
         $product->save();
 
