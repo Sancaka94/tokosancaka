@@ -328,8 +328,9 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])
 
         require __DIR__.'/web/admin.php';
 
-    // Rute baru untuk menampilkan halaman kategori etalase
-    Route::get('categories/etalase', [\App\Http\Controllers\Admin\CategoryController::class, 'etalaseIndex'])->name('categories.etalase.index');
+    // PERBAIKAN: Gunakan Route::resource untuk mendaftarkan semua rute CRUD,
+    // dan kecualikan method 'show' yang tidak kita gunakan.
+    Route::resource('categories', CategoryController::class)->except(['show']);
 
 
        
