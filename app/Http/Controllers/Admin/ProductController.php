@@ -4,26 +4,74 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Product;
-use App\Models\Category; // Impor model Category
+use App\Models\Category; // PERBAIKAN: Impor model Category
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Yajra\DataTables\Facades\DataTables;
+use Exception;
 
 class ProductController extends Controller
 {
     /**
-     * Menampilkan halaman daftar produk.
+     * Menampilkan halaman manajemen produk.
      */
-    public function index(Request $request)
+    public function index()
     {
-        $query = Product::with('category'); 
+        // View ini akan memanggil route getData() via AJAX
+        return view('admin.products.index');
+    }
 
-        if ($request->filled('search')) {
-            $query->where('name', 'like', '%' . $request->search . '%');
+    /**
+     * Menyediakan data untuk Yajra DataTables.
+     */
+    public function getData(Request $request)
+    {
+        if ($request->ajax()) {
+            try {
+                // Menggunakan eager loading untuk relasi kategori agar lebih efisien
+                $data = Product::with('category')->select('products.*'); 
+                return DataTables::of($data)
+                    ->addIndexColumn()
+                    ->addColumn('image', function ($row) {
+                        $url = $row->image_url
+                            ? asset('storage/' . $row->image_url)
+                            : 'https://placehold.co/80x80/EFEFEF/333333?text=N/A';
+                        return '<img src="' . e($url) . '" alt="' . e($row->name) . '" class="rounded" width="60" />';
+                    })
+                    ->editColumn('price', function ($row) {
+                        return 'Rp' . number_format($row->price, 0, ',', '.');
+                    })
+                    // Menampilkan nama kategori dari relasi
+                    ->addColumn('category_name', function ($row) {
+                        return $row->category->name ?? 'N/A';
+                    })
+                    ->addColumn('status_badge', function ($row) {
+                        $color = $row->status == 'active' ? 'bg-success' : 'bg-secondary';
+                        return '<span class="badge ' . e($color) . '">' . e(ucfirst($row->status)) . '</span>';
+                    })
+                    ->addColumn('action', function($row){
+                        $editUrl = route('admin.products.edit', $row->id);
+                        $deleteUrl = route('admin.products.destroy', $row->id);
+                        $outOfStockUrl = route('admin.products.outOfStock', $row->id);
+
+                        $actionBtn = '<div class="d-flex justify-content-center gap-2">';
+                        $actionBtn .= '<button type="button" onclick="openRestockModal('.$row->id.', \''.e($row->name).'\')" class="btn btn-success btn-circle btn-sm" title="Restock"><i class="fas fa-plus"></i></button>';
+                        $actionBtn .= '<a href="'.e($editUrl).'" class="btn btn-warning btn-circle btn-sm" title="Edit"><i class="fas fa-pen-to-square"></i></a>';
+                        $actionBtn .= '<form action="'.e($outOfStockUrl).'" method="POST" class="d-inline" onsubmit="return confirm(\'Anda yakin ingin menandai produk ini habis?\');">'.csrf_field().method_field('PATCH').'<button type="submit" class="btn btn-secondary btn-circle btn-sm" title="Tandai Habis"><i class="fas fa-box-open"></i></button></form>';
+                        $actionBtn .= '<form action="'.e($deleteUrl).'" method="POST" class="d-inline" onsubmit="return confirm(\'Anda yakin ingin menghapus produk ini?\');">'.csrf_field().method_field('DELETE').'<button type="submit" class="btn btn-danger btn-circle btn-sm" title="Hapus"><i class="fas fa-trash"></i></button></form>';
+                        $actionBtn .= '</div>';
+                        
+                        return $actionBtn;
+                    })
+                    ->rawColumns(['action', 'image', 'status_badge'])
+                    ->make(true);
+
+            } catch (Exception $e) {
+                \Log::error('DataTables Error: ' . $e->getMessage());
+                return response()->json(['error' => 'Could not process data.', 'message' => $e->getMessage()], 500);
+            }
         }
-
-        $products = $query->latest()->paginate(10);
-        return view('admin.products.index', compact('products'));
     }
 
     /**
@@ -31,7 +79,7 @@ class ProductController extends Controller
      */
     public function create()
     {
-        // PERBAIKAN: Mengambil kategori yang tipenya 'marketplace' saja.
+        // PERBAIKAN: Mengambil data Kategori dari tabel 'categories' yang tipenya 'marketplace'
         $categories = Category::where('type', 'marketplace')->orderBy('name')->get();
         return view('admin.products.create', compact('categories'));
     }
@@ -39,53 +87,59 @@ class ProductController extends Controller
     /**
      * Menyimpan produk baru ke database.
      */
-    public function store(Request $request)
+   public function store(Request $request)
     {
-        $validatedData = $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'product_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
-            'price' => 'required|numeric|min:0',
-            'original_price' => 'nullable|numeric|min:0',
-            'stock' => 'required|integer|min:0',
-            'weight' => 'required|integer|min:0',
-            'sku' => 'required|string|max:255|unique:products,sku',
-            'category_id' => 'required|exists:categories,id',
-            'tags' => 'nullable|string',
-            'store_name' => 'nullable|string|max:255',
-            'seller_city' => 'nullable|string|max:255',
-            'seller_wa' => 'nullable|string|max:20',
-            'seller_logo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-            'status' => 'required|in:active,inactive',
+        $validated = $request->validate([
+            'name'          => 'required|string|max:255',
+            'description'   => 'nullable|string',
+            'price'         => 'required|numeric|min:0',
+            'stock'         => 'required|integer|min:0',
+            'weight'        => 'required|integer|min:0',
+            'category_id'   => 'required|exists:categories,id', // Validasi ke category_id
+            'product_image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'store_name'    => 'required|string|max:255',
+            'seller_city'   => 'required|string|max:255',
+            'seller_wa'     => 'nullable|string|max:20',
+            'seller_logo'   => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ]);
-
-        $data = $validatedData;
-        $data['slug'] = Str::slug($request->name . '-' . Str::random(5));
-        
-        $data['is_new'] = $request->has('is_new');
-        $data['is_bestseller'] = $request->has('is_bestseller');
-
+    
         if ($request->hasFile('product_image')) {
             $path = $request->file('product_image')->store('products', 'public');
-            $data['image_url'] = $path;
+            $validated['image_url'] = $path;
         }
-
+    
         if ($request->hasFile('seller_logo')) {
-            $path = $request->file('seller_logo')->store('seller_logos', 'public');
-            $data['seller_logo'] = $path;
+            $logoPath = $request->file('seller_logo')->store('seller_logos', 'public');
+            $validated['seller_logo'] = $logoPath;
         }
-
-        Product::create($data);
-
+        
+        if (!empty($request->seller_wa)) {
+            $wa = preg_replace('/[^0-9]/', '', $request->seller_wa); 
+            if (Str::startsWith($wa, '0')) {
+                $wa = '62' . substr($wa, 1);
+            } elseif (!Str::startsWith($wa, '62')) {
+                $wa = '62' . $wa;
+            }
+            $validated['seller_wa'] = $wa;
+        }
+    
+        $validated['slug'] = Str::slug($validated['name']) . '-' . uniqid();
+    
+        Product::create($validated);
+    
         return redirect()->route('admin.products.index')->with('success', 'Produk baru berhasil ditambahkan.');
     }
 
     /**
      * Menampilkan form untuk mengedit produk.
      */
-    public function edit(Product $product)
+    public function edit($id)
     {
-        // PERBAIKAN: Mengirim data kategori 'marketplace' ke halaman edit juga.
+        $product = Product::find($id);
+        if (!$product) {
+            return redirect()->route('admin.products.index')->with('error', 'Produk tidak ditemukan.');
+        }
+        // PERBAIKAN: Mengambil data Kategori dari tabel 'categories' yang tipenya 'marketplace'
         $categories = Category::where('type', 'marketplace')->orderBy('name')->get();
         return view('admin.products.edit', compact('product', 'categories'));
     }
@@ -93,72 +147,120 @@ class ProductController extends Controller
     /**
      * Memperbarui data produk di database.
      */
-    public function update(Request $request, Product $product)
+    public function update(Request $request, $id)
     {
-        $validatedData = $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'product_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
-            'price' => 'required|numeric|min:0',
-            'original_price' => 'nullable|numeric|min:0',
-            'stock' => 'required|integer|min:0',
-            'weight' => 'required|integer|min:0',
-            'sku' => 'required|string|max:255|unique:products,sku,' . $product->id,
-            'category_id' => 'required|exists:categories,id',
-            'tags' => 'nullable|string',
-            'store_name' => 'nullable|string|max:255',
-            'seller_city' => 'nullable|string|max:255',
-            'seller_wa' => 'nullable|string|max:20',
-            'seller_logo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-            'status' => 'required|in:active,inactive',
+        $product = Product::find($id);
+        if (!$product) {
+            return redirect()->route('admin.products.index')->with('error', 'Produk tidak ditemukan.');
+        }
+    
+        $validated = $request->validate([
+            'name'          => 'required|string|max:255',
+            'description'   => 'nullable|string',
+            'price'         => 'required|numeric|min:0',
+            'original_price'=> 'nullable|numeric|min:0|gt:price',
+            'stock'         => 'required|integer|min:0',
+            'weight'        => 'required|integer|min:0',
+            'category_id'   => 'required|exists:categories,id', // Validasi ke category_id
+            'product_image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'status'        => 'required|in:active,inactive',
+            'tags'          => 'nullable|string',
+            'is_new'        => 'nullable|boolean',
+            'is_bestseller' => 'nullable|boolean',
+            'store_name'    => 'required|string|max:255',
+            'seller_city'   => 'required|string|max:255',
+            'seller_wa'     => 'nullable|string|max:20',
+            'seller_logo'   => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ]);
-
-        $data = $validatedData;
-        
-        if ($request->name !== $product->name) {
-            $data['slug'] = Str::slug($request->name . '-' . Str::random(5));
-        }
-        
-        $data['is_new'] = $request->has('is_new');
-        $data['is_bestseller'] = $request->has('is_bestseller');
-
+    
         if ($request->hasFile('product_image')) {
-            if ($product->image_url) {
-                Storage::disk('public')->delete($product->image_url);
-            }
+            if ($product->image_url) Storage::disk('public')->delete($product->image_url);
             $path = $request->file('product_image')->store('products', 'public');
-            $data['image_url'] = $path;
+            $validated['image_url'] = $path;
         }
-
+    
         if ($request->hasFile('seller_logo')) {
-            if ($product->seller_logo) {
-                Storage::disk('public')->delete($product->seller_logo);
-            }
-            $path = $request->file('seller_logo')->store('seller_logos', 'public');
-            $data['seller_logo'] = $path;
+            if ($product->seller_logo) Storage::disk('public')->delete($product->seller_logo);
+            $logoPath = $request->file('seller_logo')->store('seller_logos', 'public');
+            $validated['seller_logo'] = $logoPath;
         }
-
-        $product->update($data);
-
+    
+        if ($request->name !== $product->name) {
+            $validated['slug'] = Str::slug($validated['name']) . '-' . uniqid();
+        }
+        
+        if (!empty($request->seller_wa)) {
+            $wa = preg_replace('/[^0-9]/', '', $request->seller_wa);
+            if (Str::startsWith($wa, '0')) {
+                $wa = '62' . substr($wa, 1);
+            } elseif (!Str::startsWith($wa, '62')) {
+                $wa = '62' . $wa;
+            }
+            $validated['seller_wa'] = $wa;
+        }
+    
+        $validated['is_new'] = $request->has('is_new');
+        $validated['is_bestseller'] = $request->has('is_bestseller');
+    
+        if (!empty($request->tags)) {
+            $validated['tags'] = json_encode(array_map('trim', explode(',', $request->tags)));
+        } else {
+            $validated['tags'] = null;
+        }
+    
+        $product->update($validated);
+    
         return redirect()->route('admin.products.index')->with('success', 'Produk berhasil diperbarui.');
     }
 
     /**
      * Menghapus produk dari database.
      */
-    public function destroy(Product $product)
+    public function destroy($id)
     {
+        $product = Product::find($id);
+        if (!$product) {
+            return redirect()->route('admin.products.index')->with('error', 'Produk tidak ditemukan.');
+        }
+
         if ($product->image_url) {
             Storage::disk('public')->delete($product->image_url);
         }
+        $product->delete();
+        return redirect()->route('admin.products.index')->with('success', 'Produk berhasil dihapus.');
+    }
 
-        if ($product->seller_logo) {
-            Storage::disk('public')->delete($product->seller_logo);
+    /**
+     * Menambahkan stok untuk produk tertentu.
+     */
+    public function restock(Request $request, $id)
+    {
+        $product = Product::find($id);
+        if (!$product) {
+            return redirect()->route('admin.products.index')->with('error', 'Produk tidak ditemukan.');
         }
 
-        $product->delete();
+        $validated = $request->validate([ 'stock' => 'required|integer|min:1' ]);
+        $product->stock += $validated['stock'];
+        $product->save();
 
-        return redirect()->route('admin.products.index')->with('success', 'Produk berhasil dihapus.');
+        return redirect()->route('admin.products.index')->with('success', 'Stok untuk produk ' . e($product->name) . ' berhasil ditambahkan.');
+    }
+
+    /**
+     * Menandai produk sebagai habis (stok = 0).
+     */
+    public function markAsOutOfStock($id)
+    {
+        $product = Product::find($id);
+        if (!$product) {
+            return redirect()->route('admin.products.index')->with('error', 'Produk tidak ditemukan.');
+        }
+
+        $product->stock = 0;
+        $product->save();
+
+        return redirect()->route('admin.products.index')->with('success', 'Stok untuk produk ' . e($product->name) . ' telah diatur menjadi 0.');
     }
 }
 
