@@ -108,5 +108,18 @@ class CategoryController extends Controller
         $category->delete();
         return redirect()->route('admin.categories.index')->with('success', 'Kategori berhasil dihapus.');
     }
+
+    /**
+     * Menampilkan halaman khusus untuk kategori etalase.
+     */
+    public function etalaseIndex()
+    {
+        // Logika ini akan menampilkan kategori dengan tipe 'marketplace'
+        // menggunakan view yang Anda tentukan.
+        $categories = Category::where('type', 'marketplace')->latest()->paginate(15);
+        
+        // Pastikan file view ini ada
+        return view('admin.categories.etalase.index', compact('categories'));
+    }
 }
 
