@@ -121,5 +121,18 @@ class CategoryController extends Controller
         // Pastikan file view ini ada
         return view('admin.categories.etalase.index', compact('categories'));
     }
+
+        /**
+     * Menampilkan detail satu kategori.
+     * (Catatan: Method ini tidak benar-benar dibutuhkan untuk alur CRUD saat ini,
+     * karena semua info sudah ada di halaman 'edit' atau 'index'.)
+     */
+    public function show(Category $category)
+    {
+        // Biasanya, method ini akan mengarahkan ke halaman detail.
+        // Dalam kasus ini, kita bisa arahkan saja ke halaman edit.
+        return redirect()->route('admin.categories.edit', $category);
+    }
+    
 }
 
