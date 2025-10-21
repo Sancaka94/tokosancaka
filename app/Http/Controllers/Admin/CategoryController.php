@@ -6,16 +6,24 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Auth; // Import the Auth facade
+use Illuminate\Support\Facades\Auth;
 
 class CategoryController extends Controller
 {
     /**
-     * Menampilkan daftar semua kategori.
+     * Menampilkan daftar semua kategori, dengan filter berdasarkan tipe.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $categories = Category::withCount('posts')->latest()->paginate(10);
+        $query = Category::withCount(['posts', 'products']); // Menghitung relasi ke post dan produk
+
+        // Filter berdasarkan tipe jika ada parameter di URL
+        if ($request->filled('type')) {
+            $query->where('type', $request->type);
+        }
+
+        $categories = $query->latest()->paginate(15)->withQueryString();
+        
         return view('admin.categories.index', compact('categories'));
     }
 
@@ -33,16 +41,24 @@ class CategoryController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:255|unique:categories',
-            'slug' => 'nullable|string|max:255|unique:categories',
+            'name' => 'required|string|max:255|unique:categories,name',
+            'type' => 'required|string|in:marketplace,blog', // Tipe kategori yang diizinkan
+            'icon' => 'nullable|string|max:255',
         ]);
 
-        // When creating a category, associate it with the logged-in user
-        Category::create([
+        $data = [
             'name' => $request->name,
-            'slug' => $request->slug ?? Str::slug($request->name),
-            'user_id' => Auth::id(), // Get the ID of the currently authenticated user
-        ]);
+            'slug' => Str::slug($request->name),
+            'type' => $request->type,
+            'icon' => $request->icon,
+        ];
+
+        // Hanya tambahkan user_id jika tipenya adalah 'blog'
+        if ($request->type === 'blog') {
+            $data['user_id'] = Auth::id();
+        }
+
+        Category::create($data);
 
         return redirect()->route('admin.categories.index')->with('success', 'Kategori berhasil ditambahkan.');
     }
@@ -62,12 +78,15 @@ class CategoryController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255|unique:categories,name,' . $category->id,
-            'slug' => 'nullable|string|max:255|unique:categories,slug,' . $category->id,
+            'type' => 'required|string|in:marketplace,blog',
+            'icon' => 'nullable|string|max:255',
         ]);
 
         $category->update([
             'name' => $request->name,
-            'slug' => $request->slug ?? Str::slug($request->name),
+            'slug' => Str::slug($request->name),
+            'type' => $request->type,
+            'icon' => $request->icon,
         ]);
 
         return redirect()->route('admin.categories.index')->with('success', 'Kategori berhasil diperbarui.');
@@ -78,12 +97,16 @@ class CategoryController extends Controller
      */
     public function destroy(Category $category)
     {
-        // Optional: Add a check to ensure only the user who created the category can delete it
-        // if ($category->user_id !== Auth::id()) {
-        //     abort(403, 'Unauthorized action.');
-        // }
+        // Opsi: Cek jika kategori masih digunakan sebelum menghapus
+        if ($category->type === 'marketplace' && $category->products()->count() > 0) {
+            return back()->with('error', 'Kategori tidak dapat dihapus karena masih digunakan oleh produk.');
+        }
+        if ($category->type === 'blog' && $category->posts()->count() > 0) {
+            return back()->with('error', 'Kategori tidak dapat dihapus karena masih digunakan oleh post.');
+        }
         
         $category->delete();
         return redirect()->route('admin.categories.index')->with('success', 'Kategori berhasil dihapus.');
     }
 }
+
