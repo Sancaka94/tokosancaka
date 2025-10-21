@@ -39,11 +39,15 @@
         <div class="lg:col-span-2 rounded-2xl overflow-hidden shadow-lg h-[200px] md:h-[300px] lg:h-[420px]" data-aos="fade-right">
             <div class="swiper heroSwiper w-full h-full">
                 <div class="swiper-wrapper">
-                    @foreach($banners as $banner)
+                    @forelse($banners as $banner)
                         <div class="swiper-slide">
                             <img src="{{ asset('storage/' . $banner->image) }}" class="w-full h-full object-fill" alt="{{ $banner->title ?? 'Promo Banner' }}">
                         </div>
-                    @endforeach
+                    @empty
+                        <div class="swiper-slide">
+                            <img src="https://placehold.co/800x420/e2e8f0/94a3b8?text=Sancaka+Express" class="w-full h-full object-fill" alt="Default Banner">
+                        </div>
+                    @endforelse
                 </div>
                 <div class="swiper-button-next"></div>
                 <div class="swiper-button-prev"></div>
@@ -53,18 +57,18 @@
     
         <!-- Side Banners -->
       <div class="grid grid-rows-2 gap-6 h-[400px] sm:h-[250px] md:h-[300px] lg:h-[420px]" data-aos="fade-left">
-    @if(isset($settings['banner_2']))
-    <div class="rounded-2xl overflow-hidden shadow-lg">
-        <img src="{{ asset('storage/' . $settings['banner_2']) }}" class="w-full h-full object-fill" alt="Banner 2">
-    </div>
-    @endif
+        @if(isset($settings['banner_2']))
+        <div class="rounded-2xl overflow-hidden shadow-lg">
+            <img src="{{ asset('storage/' . $settings['banner_2']) }}" class="w-full h-full object-fill" alt="Banner 2">
+        </div>
+        @endif
 
-    @if(isset($settings['banner_3']))
-    <div class="rounded-2xl overflow-hidden shadow-lg">
-        <img src="{{ asset('storage/' . $settings['banner_3']) }}" class="w-full h-full object-fill" alt="Banner 3">
+        @if(isset($settings['banner_3']))
+        <div class="rounded-2xl overflow-hidden shadow-lg">
+            <img src="{{ asset('storage/' . $settings['banner_3']) }}" class="w-full h-full object-fill" alt="Banner 3">
+        </div>
+        @endif
     </div>
-    @endif
-</div>
     </section>
 
     <!-- PERBAIKAN: Kategori sekarang dinamis dan menggunakan slider -->
@@ -82,7 +86,7 @@
                 <div class="swiper-slide">
                     <div class="grid grid-cols-5 md:grid-cols-10 gap-x-4 gap-y-6 text-center">
                         @foreach ($chunk as $category)
-                        {{-- Pastikan Anda memiliki route bernama 'public.categories.show' --}}
+                        {{-- Menggunakan route etalase publik yang benar --}}
                         <a href="{{ route('public.categories.show', $category->slug) }}" class="flex flex-col items-center space-y-2 text-gray-600 hover:text-red-500 transition-colors group">
                             <div class="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center group-hover:bg-red-100 transition-colors">
                                 <i class="fas {{ $category->icon ?? 'fa-tag' }} text-3xl text-gray-500 group-hover:text-red-500 transition-colors"></i>
@@ -105,6 +109,7 @@
         <div class="swiper-button-prev category-prev !text-gray-600 !bg-white !shadow-md !w-10 !h-10"></div>
     </section>
     <!-- AKHIR DARI PERBAIKAN -->
+
 
     <!-- Flash Sale Section -->
     @if($flashSaleProducts->isNotEmpty())
@@ -236,7 +241,7 @@ document.addEventListener('DOMContentLoaded', function () {
         },
     });
 
-    // PERBAIKAN: Inisialisasi Swiper untuk Kategori
+    // Initialize Categories Swiper
     new Swiper(".categoriesSwiper", {
         loop: false,
         slidesPerView: 1,
@@ -249,3 +254,4 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 @endpush
+
