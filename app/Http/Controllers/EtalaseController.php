@@ -60,7 +60,6 @@ class EtalaseController extends Controller
         $banners = BannerEtalase::all();
         $settings = Setting::whereIn('key', ['banner_2','banner_3'])->pluck('value','key');
                             
-        // PERBAIKAN: Mengarahkan ke view 'etalase.index' yang benar
         return view('etalase.index', compact('products', 'flashSaleProducts', 'banners', 'settings', 'categories'));
     }
 
@@ -108,20 +107,23 @@ class EtalaseController extends Controller
             ->where('price', '<', DB::raw('original_price'))
             ->orderBy('discount_percentage', 'desc')->limit(8)->get();
             
-        $allCategories = Product::whereNotNull('category')->where('category', '!=', '')
+        // PERBAIKAN: Mengganti nama variabel menjadi $categories
+        $categories = Product::whereNotNull('category')->where('category', '!=', '')
             ->distinct()->pluck('category')->map(function ($name) {
+                // Anda bisa menambahkan iconMap di sini jika diperlukan
                 return (object)['name' => ucfirst(strtolower($name)), 'slug' => Str::slug($name), 'icon' => 'fa-tag'];
             });
 
         $category = (object)['name' => $categoryName, 'slug' => $categorySlug, 'icon' => 'fa-tag'];
 
+        // PERBAIKAN: Memanggil variabel 'categories' dengan benar di dalam compact()
         return view('etalase.category-show', compact(
             'category', 
             'products', 
             'banners', 
             'settings', 
             'flashSaleProducts',
-            'allCategories as categories'
+            'categories'
         ));
     }
 }
