@@ -3,7 +3,8 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\Marketplace as Product; // Menggunakan model Marketplace sebagai Product
+// PERBAIKAN: Menggunakan model Marketplace dan mengalias-kannya sebagai Product.
+use App\Models\Marketplace as Product;
 
 class CartController extends Controller
 {
@@ -13,11 +14,12 @@ class CartController extends Controller
     public function index()
     {
         $cart = session()->get('cart', []);
-        return view('cart.index', compact('cart')); // Pastikan path view sudah benar
+        // Pastikan path view ini sesuai dengan struktur Anda, misalnya 'customer.cart.index'
+        return view('cart.index', compact('cart'));
     }
 
     /**
-     * Menambahkan produk ke keranjang.
+     * Menambahkan produk ke keranjang menggunakan Route Model Binding.
      */
     public function add(Request $request, Product $product)
     {
@@ -35,17 +37,18 @@ class CartController extends Controller
         if (isset($cart[$id])) {
             $cart[$id]['quantity'] += $quantity;
         } else {
-            // Jika belum ada, tambahkan item baru
+            // Jika belum ada, tambahkan item baru dari objek $product yang sudah benar
             $cart[$id] = [
-                "name" => $product->name,
-                "quantity" => $quantity,
-                "price" => $product->price,
+                "name"      => $product->name,
+                "quantity"  => (int)$quantity,
+                "price"     => $product->price,
                 "image_url" => $product->image_url,
             ];
         }
 
         session()->put('cart', $cart);
 
+        // Arahkan ke halaman keranjang untuk melihat hasilnya
         return redirect()->route('cart.index')->with('success', 'Produk berhasil ditambahkan ke keranjang!');
     }
 
@@ -56,25 +59,23 @@ class CartController extends Controller
     {
         $id = $request->input('id');
         $quantity = $request->input('quantity');
-        
+
         if ($id && $quantity) {
             $cart = session()->get('cart');
-            $product = Product::find($id);
+            $product = Product::find($id); // Mencari dari model Marketplace
 
             if (!$product) {
                  return response()->json(['success' => false, 'message' => 'Produk tidak ditemukan.'], 404);
             }
 
-            // Validasi stok saat update
             if ($product->stock < $quantity) {
                 return response()->json(['success' => false, 'message' => 'Stok tidak mencukupi.'], 422);
             }
 
             if (isset($cart[$id])) {
-                $cart[$id]['quantity'] = $quantity;
+                $cart[$id]['quantity'] = (int)$quantity;
                 session()->put('cart', $cart);
 
-                // PERBAIKAN: Mengembalikan respons JSON yang dibutuhkan oleh JavaScript
                 return response()->json([
                     'success' => true,
                     'subtotal' => $cart[$id]['price'] * $quantity
@@ -93,16 +94,22 @@ class CartController extends Controller
         $id = $request->input('id');
 
         if ($id) {
-            $cart = session()->get('cart');
+            $cart = session()->get('cart', []);
             if (isset($cart[$id])) {
                 unset($cart[$id]);
                 session()->put('cart', $cart);
 
-                // PERBAIKAN: Mengembalikan respons JSON
                 return response()->json(['success' => true]);
             }
         }
 
-        return response()->json(['success' => false, 'message' => 'Produk tidak ditemukan.'], 404);
+        // Jika ID tidak ada di keranjang, kirim respons error
+        return response()->json([
+            'success' => false, 
+            'message' => 'Produk tidak ditemukan di dalam sesi keranjang.',
+            'requested_id' => $id,
+            'cart_keys' => array_keys($cart ?? [])
+        ], 404);
     }
 }
+
