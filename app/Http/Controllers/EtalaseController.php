@@ -87,11 +87,21 @@ class EtalaseController extends Controller
         
         $banners = BannerEtalase::all();
         $settings = Setting::whereIn('key', ['banner_2','banner_3'])->pluck('value','key');
-
-        // PERBAIKAN: Mengambil semua kategori untuk ditampilkan di view
         $categories = Category::where('type', 'marketplace')->get();
 
-        // PERBAIKAN: Menambahkan 'categories' ke data yang dikirim
-        return view('etalase.category-show', compact('category', 'products', 'banners', 'settings', 'categories'));
+        // --- PERBAIKAN DI SINI ---
+        // Menambahkan logika untuk mengambil data Flash Sale
+        $flashSaleProducts = Product::with('store')->where('status', 'active')
+            ->where('stock', '>', 0)
+            ->whereNotNull('original_price')
+            ->where('price', '<', DB::raw('original_price'))
+            ->orderBy('discount_percentage', 'desc')
+            ->limit(8)
+            ->get();
+        // --- AKHIR DARI PERBAIKAN ---
+
+        // Menambahkan 'flashSaleProducts' ke data yang dikirim ke view
+        return view('etalase.category-show', compact('category', 'products', 'banners', 'settings', 'categories', 'flashSaleProducts'));
     }
 }
+
