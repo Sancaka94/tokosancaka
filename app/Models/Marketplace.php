@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo; // Impor BelongsTo untuk relasi
 
 class Marketplace extends Model
 {
@@ -23,10 +24,12 @@ class Marketplace extends Model
      */
     protected $fillable = [
         'name',
+        'slug',
+        'category_id', // Penting untuk relasi
         'price',
-        'original_price', // Ditambahkan
+        'original_price',
         'stock',
-        'sold_count',     // Ditambahkan
+        'sold_count',
         'description',
         'image_url',
         'is_flash_sale',
@@ -40,8 +43,17 @@ class Marketplace extends Model
     protected $casts = [
         'is_flash_sale' => 'boolean',
         'price' => 'float',
-        'original_price' => 'float', // Ditambahkan
+        'original_price' => 'float',
     ];
+
+    /**
+     * PERBAIKAN: Menambahkan relasi ke model Category.
+     * Ini akan menyelesaikan error "undefined relationship".
+     */
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(Category::class, 'category_id');
+    }
 
     /**
      * Accessor untuk menghitung persentase diskon secara dinamis.
