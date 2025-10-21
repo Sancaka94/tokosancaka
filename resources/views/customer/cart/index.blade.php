@@ -34,7 +34,6 @@
                                 @php $total += $details['price'] * $details['quantity'] @endphp
                                 <tr class="border-b" id="row-{{ $id }}">
                                     <td class="p-4 flex items-center gap-4">
-                                        {{-- PERBAIKAN: Cara memanggil gambar --}}
                                         <img src="{{ $details['image_url'] ? asset('storage/' . $details['image_url']) : 'https://placehold.co/80x80/e2e8f0/94a3b8?text=Produk' }}" alt="{{ $details['name'] }}" class="w-16 h-16 object-cover rounded-md">
                                         <div>
                                             <p class="font-semibold text-gray-800">{{ $details['name'] }}</p>
@@ -42,16 +41,19 @@
                                     </td>
                                     <td class="p-4 text-gray-700">Rp{{ number_format($details['price']) }}</td>
                                     <td class="p-4">
-                                        {{-- PERBAIKAN: Menambahkan class dan data-id untuk JavaScript --}}
-                                        <input type="number" value="{{ $details['quantity'] }}" min="1" 
-                                               class="w-20 text-center border rounded-md p-1 quantity-input" 
-                                               data-id="{{ $id }}">
+                                        {{-- PERBAIKAN: Menambahkan tombol + dan - untuk kuantitas --}}
+                                        <div class="flex items-center justify-center">
+                                            <button class="px-2 py-1 border rounded-l-md hover:bg-gray-100 quantity-change" data-id="{{ $id }}" data-action="minus">-</button>
+                                            <input type="number" value="{{ $details['quantity'] }}" min="1" 
+                                                   class="w-16 text-center border-t border-b p-1 quantity-input" 
+                                                   data-id="{{ $id }}">
+                                            <button class="px-2 py-1 border rounded-r-md hover:bg-gray-100 quantity-change" data-id="{{ $id }}" data-action="plus">+</button>
+                                        </div>
                                     </td>
                                     <td class="p-4 text-gray-800 font-semibold subtotal" id="subtotal-{{ $id }}">
                                         Rp{{ number_format($details['price'] * $details['quantity']) }}
                                     </td>
                                     <td class="p-4">
-                                        {{-- PERBAIKAN: Menambahkan class dan data-id untuk JavaScript --}}
                                         <button class="text-red-500 hover:text-red-700 remove-from-cart" data-id="{{ $id }}">
                                             <i class="fas fa-trash"></i>
                                         </button>
@@ -83,8 +85,9 @@
                         class="block w-full mt-6 bg-red-600 text-white font-bold py-3 rounded-lg text-center hover:bg-red-700 transition-colors">
                             Lanjutkan ke Checkout
                     </a>
+                    {{-- PERBAIKAN: Mengubah style tombol --}}
                     <a href="{{ route('katalog.index') }}"
-                        class="block w-full mt-4 bg-gray-200 text-gray-700 font-bold py-3 rounded-lg text-center hover:bg-gray-300 transition-colors">
+                        class="block w-full mt-4 bg-blue-600 text-white font-bold py-3 rounded-lg text-center hover:bg-blue-700 transition-colors">
                             Lanjutkan Belanja
                     </a>
                 </div>
@@ -110,7 +113,6 @@
 document.addEventListener('DOMContentLoaded', function() {
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-    // Fungsi untuk update total
     function updateTotal() {
         let total = 0;
         document.querySelectorAll('.subtotal').forEach(function(el) {
@@ -121,28 +123,56 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('cart-total').innerText = formattedTotal;
     }
 
-    // Event listener untuk update kuantitas
-    document.querySelectorAll('.quantity-input').forEach(function(input) {
-        input.addEventListener('change', function() {
-            const id = this.getAttribute('data-id');
-            const quantity = this.value;
+    function updateCart(id, quantity) {
+        fetch("{{ route('customer.cart.update') }}", {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken
+            },
+            body: JSON.stringify({ id: id, quantity: quantity })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if(data.success) {
+                document.getElementById('subtotal-' + id).innerText = 'Rp' + new Intl.NumberFormat('id-ID').format(data.subtotal);
+                updateTotal();
+            } else {
+                // Jika gagal, kembalikan kuantitas ke nilai semula (opsional)
+                alert(data.message || 'Gagal memperbarui kuantitas.');
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    }
 
-            fetch("{{ route('customer.cart.update') }}", {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken
-                },
-                body: JSON.stringify({ id: id, quantity: quantity })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if(data.success) {
-                    document.getElementById('subtotal-' + id).innerText = 'Rp' + new Intl.NumberFormat('id-ID').format(data.subtotal);
-                    updateTotal();
-                }
-            })
-            .catch(error => console.error('Error:', error));
+    // Event listener untuk input manual kuantitas
+    document.querySelectorAll('.quantity-input').forEach(function(input) {
+        let debounceTimer;
+        input.addEventListener('input', function() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                const id = this.getAttribute('data-id');
+                const quantity = this.value;
+                updateCart(id, quantity);
+            }, 500); // Tunggu 500ms setelah user berhenti mengetik
+        });
+    });
+    
+    // Event listener untuk tombol +/-
+    document.querySelectorAll('.quantity-change').forEach(function(button){
+        button.addEventListener('click', function(){
+            const id = this.dataset.id;
+            const action = this.dataset.action;
+            const input = document.querySelector(`.quantity-input[data-id="${id}"]`);
+            let currentValue = parseInt(input.value);
+
+            if(action === 'plus') {
+                input.value = currentValue + 1;
+            } else if(action === 'minus' && currentValue > 1) {
+                input.value = currentValue - 1;
+            }
+            // Memicu event input secara manual untuk menjalankan update
+            input.dispatchEvent(new Event('input'));
         });
     });
 
@@ -167,7 +197,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 if(data.success) {
                     document.getElementById('row-' + id).remove();
                     updateTotal();
-                    // Jika keranjang jadi kosong, muat ulang halaman untuk menampilkan pesan "Keranjang Kosong"
                     if(document.querySelectorAll('tbody tr').length === 0) {
                         window.location.reload();
                     }
@@ -179,3 +208,4 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 @endpush
+
