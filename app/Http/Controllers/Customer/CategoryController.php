@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
+use App\Models\Banner; // 1. Impor model Banner
 use Illuminate\Http\Request;
 
 class CategoryController extends Controller
@@ -14,13 +15,16 @@ class CategoryController extends Controller
     public function show(Category $category)
     {
         // Memuat produk yang berelasi dengan kategori ini
-        // 'load' lebih efisien daripada memanggil $category->products secara langsung
-        $category->load('products');
+        $products = $category->products()->paginate(12);
+        
+        // 2. Mengambil data banner yang aktif
+        $banners = Banner::where('is_active', true)->orderBy('order', 'asc')->get();
 
-        // Mengirim data kategori dan produknya ke view
+        // 3. Mengirim semua data (kategori, produk, dan banner) ke view
         return view('customer.categories.show', [
             'category' => $category,
-            'products' => $category->products()->paginate(12) // Mengambil produk dengan paginasi
+            'products' => $products,
+            'banners' => $banners, // Variabel banner sekarang tersedia di view
         ]);
     }
 }
