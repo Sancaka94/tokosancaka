@@ -32,7 +32,7 @@
                 @forelse ($products as $product)
                     <div class="bg-white border rounded-xl overflow-hidden group hover:shadow-2xl transition-all duration-300 flex flex-col">
                         {{-- Link ke halaman detail produk --}}
-                        <a href="{{ route('products.show', $product->slug) }}">
+                        <a href="">
                             <div class="h-48 bg-gray-50 relative">
                                @php
                                     $imageUrl = $product->image_url ? asset('storage/' . $product->image_url) : 'https://placehold.co/400x400/EFEFEF/333333?text=N/A';
