@@ -76,5 +76,14 @@ class Marketplace extends Model
         }
         return 0;
     }
+
+    /**
+     * PERBAIKAN: Memberitahu Laravel untuk menggunakan 'slug' saat membuat URL.
+     * Ini akan secara otomatis menyelesaikan masalah "Missing parameter".
+     */
+    public function getRouteKeyName()
+    {
+        return 'slug';
+    }
 }
 
