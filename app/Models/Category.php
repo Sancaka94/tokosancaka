@@ -4,38 +4,36 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany; // Impor HasMany
 
 class Category extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
     protected $fillable = [
         'name',
         'slug',
-        'icon', // Untuk ikon kategori marketplace
-        'type', // Untuk membedakan tipe (e.g., 'marketplace', 'blog')
-        'user_id' // Untuk kategori blog
+        'icon',
+        'type',
+        'user_id'
     ];
 
     /**
-     * Mendefinisikan relasi one-to-many ke model Post (untuk Blog).
+     * Relasi ke model Post (untuk Blog).
      */
-    public function posts()
+    public function posts(): HasMany
     {
         return $this->hasMany(Post::class);
     }
 
     /**
-     * Mendefinisikan relasi one-to-many ke model Product (untuk Marketplace).
+     * PERBAIKAN: Relasi ini sekarang menunjuk ke model Marketplace.
+     * Sebelumnya kemungkinan menunjuk ke model Product yang salah.
      */
-    public function products()
+    public function products(): HasMany
     {
-        return $this->hasMany(Product::class);
+        // Menghubungkan Category dengan Marketplace melalui foreign key 'category_id'
+        return $this->hasMany(Marketplace::class, 'category_id');
     }
 }
 
