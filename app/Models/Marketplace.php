@@ -25,10 +25,12 @@ class Marketplace extends Model
     protected $fillable = [
         'name',
         'slug',
-        'category_id', // Penting untuk relasi
+        'category_id',      // Penting untuk relasi kategori
+        'store_id',         // Penting untuk relasi toko
         'price',
         'original_price',
         'stock',
+        'status',
         'sold_count',
         'description',
         'image_url',
@@ -47,12 +49,19 @@ class Marketplace extends Model
     ];
 
     /**
-     * PERBAIKAN: Menambahkan relasi ke model Category.
-     * Ini akan menyelesaikan error "undefined relationship".
+     * Mendefinisikan relasi ke model Category.
      */
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class, 'category_id');
+    }
+
+    /**
+     * Mendefinisikan relasi ke model Store.
+     */
+    public function store(): BelongsTo
+    {
+        return $this->belongsTo(Store::class, 'store_id');
     }
 
     /**
