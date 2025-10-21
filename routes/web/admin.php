@@ -111,6 +111,8 @@ Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dash
 
 Route::resource('roles', RoleController::class)->except(['show']);
 
+// Rute baru untuk menampilkan halaman kategori etalase
+Route::get('categories/etalase', [CategoryController::class, 'etalaseIndex'])->name('admin.categories.etalase.index');
 
 
 // Profile & Notifications
