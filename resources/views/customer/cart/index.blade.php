@@ -148,10 +148,11 @@ document.addEventListener('DOMContentLoaded', function() {
             body: body
         })
         .then(response => {
-            if (response.headers.get("content-type")?.includes("application/json")) {
+            if (response.ok && response.headers.get("content-type")?.includes("application/json")) {
                 return response.json();
             }
-            throw new SyntaxError("Bukan respons JSON, kemungkinan sesi berakhir.");
+            // Jika response tidak OK atau bukan JSON, lemparkan error
+            throw new Error("Respons server tidak valid. Kemungkinan sesi Anda telah berakhir.");
         })
         .then(data => {
             if(!data.success) {
@@ -160,13 +161,9 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .catch(error => {
             console.error('Error:', error);
-            // PERBAIKAN: Jika sesi berakhir, muat ulang halaman saat ini.
-            if (error instanceof SyntaxError) {
-                alert('Sesi Anda telah berakhir. Halaman akan dimuat ulang untuk login.');
-                window.location.reload();
-            } else {
-                alert('Terjadi kesalahan. Silakan coba lagi.');
-            }
+            // Muat ulang halaman untuk mengarahkan pengguna ke halaman login jika sesi berakhir
+            alert('Sesi Anda mungkin telah berakhir. Halaman akan dimuat ulang.');
+            window.location.reload();
         })
         .finally(() => {
             if (row) row.style.opacity = '1';
@@ -231,10 +228,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 body: body
             })
             .then(response => {
-                if (response.headers.get("content-type")?.includes("application/json")) {
+                if (response.ok && response.headers.get("content-type")?.includes("application/json")) {
                     return response.json();
                 }
-                throw new SyntaxError("Bukan respons JSON, kemungkinan sesi berakhir.");
+                throw new Error("Respons server tidak valid. Kemungkinan sesi Anda telah berakhir.");
             })
             .then(data => {
                 if(data.success) {
@@ -252,17 +249,11 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .catch(error => {
                 console.error('Error:', error);
-                // PERBAIKAN: Jika sesi berakhir, muat ulang halaman saat ini.
-                if (error instanceof SyntaxError) {
-                    alert('Sesi Anda telah berakhir. Halaman akan dimuat ulang untuk login.');
-                    window.location.reload();
-                } else {
-                    alert('Gagal menghapus item. Silakan coba lagi.');
-                }
+                alert('Sesi Anda mungkin telah berakhir. Halaman akan dimuat ulang.');
+                window.location.reload();
             });
         });
     });
 });
 </script>
 @endpush
-
