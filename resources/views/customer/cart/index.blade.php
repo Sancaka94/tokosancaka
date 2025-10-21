@@ -133,37 +133,41 @@ document.addEventListener('DOMContentLoaded', function() {
         const row = document.getElementById('row-' + id);
         if (row) row.style.opacity = '0.5';
         
-        // PERBAIKAN: Menggunakan URLSearchParams untuk mengirim data sebagai form-urlencoded
         const body = new URLSearchParams();
         body.append('_method', 'PATCH');
         body.append('id', id);
         body.append('quantity', quantity);
 
         fetch("{{ route('customer.cart.update') }}", {
-            method: 'POST', // Selalu gunakan POST untuk AJAX form spoofing
+            method: 'POST',
             headers: {
                 'X-CSRF-TOKEN': csrfToken,
                 'Accept': 'application/json',
-                'Content-Type': 'application/x-www-form-urlencoded', // Set Content-Type
+                'Content-Type': 'application/x-www-form-urlencoded',
             },
             body: body
         })
         .then(response => {
-            if (!response.ok) {
-                // Coba parse error JSON jika ada, jika tidak, lempar error umum
-                return response.json().then(err => { throw err; });
+            if (response.headers.get("content-type")?.includes("application/json")) {
+                return response.json();
             }
-            return response.json();
+            // Jika bukan JSON, berarti ada error (kemungkinan redirect ke login)
+            throw new SyntaxError("Bukan respons JSON");
         })
         .then(data => {
             if(!data.success) {
                 alert(data.message || 'Gagal memperbarui kuantitas.');
             }
-            // Biarkan updateTotal yang menangani pembaruan tampilan
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Terjadi kesalahan. Silakan coba lagi.');
+            // PERBAIKAN: Jika error adalah SyntaxError, muat ulang halaman
+            if (error instanceof SyntaxError) {
+                alert('Sesi Anda mungkin telah berakhir. Halaman akan dimuat ulang.');
+                window.location.reload();
+            } else {
+                alert('Terjadi kesalahan. Silakan coba lagi.');
+            }
         })
         .finally(() => {
             if (row) row.style.opacity = '1';
@@ -174,7 +178,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.quantity-input').forEach(function(input) {
         let debounceTimer;
         input.addEventListener('input', function() {
-            updateTotal(); // Update tampilan segera
+            updateTotal();
             clearTimeout(debounceTimer);
             debounceTimer = setTimeout(() => {
                 const id = this.getAttribute('data-id');
@@ -182,7 +186,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (quantity > 0) {
                     updateCartOnServer(id, quantity);
                 }
-            }, 800); // Debounce untuk update ke server
+            }, 800);
         });
     });
     
@@ -200,8 +204,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 input.value = currentValue - 1;
             }
             
-            updateTotal(); // Update tampilan segera
-            // Memicu event input untuk debounce update ke server
+            updateTotal();
             input.dispatchEvent(new Event('input', { bubbles: true }));
         });
     });
@@ -228,7 +231,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 },
                 body: body
             })
-            .then(response => response.json())
+            .then(response => {
+                if (response.headers.get("content-type")?.includes("application/json")) {
+                    return response.json();
+                }
+                throw new SyntaxError("Bukan respons JSON");
+            })
             .then(data => {
                 if(data.success) {
                     row.style.opacity = '0';
@@ -245,7 +253,12 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('Gagal menghapus item. Silakan coba lagi.');
+                if (error instanceof SyntaxError) {
+                    alert('Sesi Anda mungkin telah berakhir. Halaman akan dimuat ulang.');
+                    window.location.reload();
+                } else {
+                    alert('Gagal menghapus item. Silakan coba lagi.');
+                }
             });
         });
     });
