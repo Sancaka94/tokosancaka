@@ -123,16 +123,28 @@ document.addEventListener('DOMContentLoaded', function() {
     function updateCart(id, quantity) {
         const row = document.getElementById('row-' + id);
         if (row) row.style.opacity = '0.5';
+        
+        // PERBAIKAN: Menggunakan FormData untuk mengirim data
+        const formData = new FormData();
+        formData.append('_method', 'PATCH'); // Memberitahu Laravel ini adalah request PATCH
+        formData.append('id', id);
+        formData.append('quantity', quantity);
 
         fetch("{{ route('customer.cart.update') }}", {
-            method: 'PATCH',
+            method: 'POST', // Selalu gunakan POST untuk AJAX form
             headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json',
             },
-            body: JSON.stringify({ id: id, quantity: quantity })
+            body: formData
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                // Jika response bukan JSON, akan gagal di sini dan masuk ke catch
+                return response.json(); 
+            }
+            return response.json();
+        })
         .then(data => {
             if(data.success) {
                 document.getElementById('subtotal-' + id).innerText = 'Rp' + new Intl.NumberFormat('id-ID').format(data.subtotal);
@@ -143,7 +155,8 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Terjadi kesalahan. Silakan coba lagi.');
+            // Menampilkan pesan error yang lebih umum jika terjadi kesalahan parse JSON
+            alert('Terjadi kesalahan. Server mungkin tidak merespons dengan benar. Silakan coba lagi.');
         })
         .finally(() => {
             if (row) row.style.opacity = '1';
@@ -161,11 +174,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (quantity > 0) {
                     updateCart(id, quantity);
                 }
-            }, 500); // Tunggu 500ms setelah user berhenti mengetik
+            }, 500);
         });
     });
     
-    // PERBAIKAN: Event listener untuk tombol +/- yang memanggil updateCart secara langsung
+    // Event listener untuk tombol +/-
     document.querySelectorAll('.quantity-change').forEach(function(button){
         button.addEventListener('click', function(){
             const id = this.dataset.id;
@@ -178,8 +191,6 @@ document.addEventListener('DOMContentLoaded', function() {
             } else if(action === 'minus' && currentValue > 1) {
                 input.value = currentValue - 1;
             }
-            
-            // Panggil fungsi updateCart secara langsung, tanpa debounce
             updateCart(id, input.value);
         });
     });
@@ -191,23 +202,32 @@ document.addEventListener('DOMContentLoaded', function() {
             if(!confirm('Anda yakin ingin menghapus item ini dari keranjang?')) return;
             
             const id = this.getAttribute('data-id');
+            
+            // PERBAIKAN: Menggunakan FormData untuk menghapus
+            const formData = new FormData();
+            formData.append('_method', 'DELETE');
+            formData.append('id', id);
 
             fetch("{{ route('customer.cart.remove') }}", {
-                method: 'DELETE',
+                method: 'POST', // Selalu gunakan POST
                 headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json',
                 },
-                body: JSON.stringify({ id: id })
+                body: formData
             })
             .then(response => response.json())
             .then(data => {
                 if(data.success) {
-                    document.getElementById('row-' + id).remove();
-                    updateTotal();
-                    if(document.querySelectorAll('tbody tr').length === 0) {
-                        window.location.reload();
-                    }
+                    const row = document.getElementById('row-' + id);
+                    row.style.opacity = '0';
+                    setTimeout(() => {
+                        row.remove();
+                        updateTotal();
+                        if(document.querySelectorAll('tbody tr').length === 0) {
+                            window.location.reload();
+                        }
+                    }, 300);
                 } else {
                     alert(data.message || 'Gagal menghapus item.');
                 }
