@@ -328,6 +328,10 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])
 
         require __DIR__.'/web/admin.php';
 
+    // Rute baru untuk menampilkan halaman kategori etalase
+    Route::get('categories/etalase', [\App\Http\Controllers\Admin\CategoryController::class, 'etalaseIndex'])->name('categories.etalase.index');
+
+
        
           // TAMBAHKAN ROUTE INI UNTUK HALAMAN PENGATURAN
     
