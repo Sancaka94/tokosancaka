@@ -11,11 +11,51 @@
     }
     .swiper-button-next:hover, .swiper-button-prev:hover { background-color: rgba(0, 0, 0, 0.5); }
     .swiper-button-next::after, .swiper-button-prev::after { font-size: 18px; font-weight: bold; }
+    .swiper-pagination-bullet-active { background-color: #ef4444 !important; }
 </style>
 @endpush
 
 @section('content')
 <div class="container mx-auto py-6 px-4">
+
+    <!-- PERBAIKAN: Menambahkan Hero Section Banner -->
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
+        <!-- Main Carousel -->
+        <div class="lg:col-span-2 rounded-2xl overflow-hidden shadow-lg h-[200px] md:h-[300px] lg:h-[420px]" data-aos="fade-right">
+            <div class="swiper heroSwiper w-full h-full">
+                <div class="swiper-wrapper">
+                    @forelse($banners as $banner)
+                        <div class="swiper-slide">
+                            <img src="{{ asset('storage/' . $banner->image) }}" class="w-full h-full object-fill" alt="{{ $banner->title ?? 'Promo Banner' }}">
+                        </div>
+                    @empty
+                        <div class="swiper-slide">
+                             <img src="https://placehold.co/800x420/e2e8f0/94a3b8?text=Sancaka+Express" class="w-full h-full object-fill" alt="Default Banner">
+                        </div>
+                    @endforelse
+                </div>
+                <div class="swiper-button-next"></div>
+                <div class="swiper-button-prev"></div>
+                <div class="swiper-pagination"></div>
+            </div>
+        </div>
+    
+        <!-- Side Banners -->
+        <div class="grid grid-rows-2 gap-6 h-[400px] sm:h-[250px] md:h-[300px] lg:h-[420px]" data-aos="fade-left">
+            @if(isset($settings['banner_2']))
+            <div class="rounded-2xl overflow-hidden shadow-lg">
+                <img src="{{ asset('storage/' . $settings['banner_2']) }}" class="w-full h-full object-fill" alt="Banner 2">
+            </div>
+            @endif
+
+            @if(isset($settings['banner_3']))
+            <div class="rounded-2xl overflow-hidden shadow-lg">
+                <img src="{{ asset('storage/' . $settings['banner_3']) }}" class="w-full h-full object-fill" alt="Banner 3">
+            </div>
+            @endif
+        </div>
+    </section>
+    <!-- AKHIR DARI PERBAIKAN -->
 
     <!-- Header Halaman Kategori -->
     <div class="bg-white p-5 rounded-2xl shadow-md mb-8 border-l-8 border-red-500" data-aos="fade-down">
@@ -31,7 +71,6 @@
             <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
                 @forelse ($products as $product)
                     <div class="bg-white border rounded-xl overflow-hidden group hover:shadow-2xl transition-all duration-300 flex flex-col">
-                        {{-- Link ke halaman detail produk --}}
                         <a href="">
                             <div class="h-48 bg-gray-50 relative">
                                @php
@@ -60,11 +99,9 @@
                             </div>
                             @endif
 
-                            {{-- PERBAIKAN: Menambahkan tombol dan form "Masukan Keranjang" --}}
                             <div class="mt-auto pt-3">
-                                <form action="{{ route('cart.add', ['product' => $product->id]) }}" method="POST">
+                                <form action="{{ route('cart.add', $product) }}" method="POST">
                                     @csrf
-                                    <input type="hidden" name="product_id" value="{{ $product->id }}">
                                     <input type="hidden" name="quantity" value="1">
                                     <button type="submit" class="w-full bg-red-500 text-white font-bold py-2.5 rounded-lg text-sm hover:bg-red-600 transition-colors flex items-center justify-center gap-2">
                                         <i class="fas fa-cart-plus"></i>
@@ -88,4 +125,20 @@
 
 </div>
 @endsection
+
+@push('scripts')
+{{-- PERBAIKAN: Menambahkan script untuk Hero Swiper --}}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Inisialisasi Hero Swiper
+    new Swiper(".heroSwiper", {
+        loop: true,
+        effect: "fade",
+        autoplay: { delay: 4000, disableOnInteraction: false },
+        pagination: { el: ".swiper-pagination", clickable: true },
+        navigation: { nextEl: ".swiper-button-next", prevEl: ".swiper-button-prev" },
+    });
+});
+</script>
+@endpush
 
