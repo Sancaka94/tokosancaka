@@ -29,8 +29,11 @@ class CartController extends Controller
 
         // Validasi stok
         $newQuantity = ($cart[$id]['quantity'] ?? 0) + $quantity;
+        
+        // PERBAIKAN: Menambahkan pesan error yang lebih detail
         if ($product->stock < $newQuantity) {
-            return back()->with('error', "Stok produk tidak mencukupi. Stok tersedia: {$product->stock}");
+            $errorMessage = "Stok produk tidak mencukupi. Stok tersedia: {$product->stock}, Anda mencoba menambahkan {$newQuantity}.";
+            return back()->with('error', $errorMessage);
         }
 
         // Jika produk sudah ada, tambahkan kuantitasnya
