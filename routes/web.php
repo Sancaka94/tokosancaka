@@ -43,7 +43,7 @@ use App\Http\Controllers\Customer\MarketplaceController as CustomerMarketplaceCo
 use App\Http\Controllers\Customer\CartController; // Pastikan path ini benar
 use App\Http\Controllers\Customer\CheckoutController as CustomerCheckoutController;
 use App\Http\Controllers\Customer\CategoryController; // Tambahkan ini di atas
-
+use App\Http\Controllers\EtalaseController;
 
 
 /*
