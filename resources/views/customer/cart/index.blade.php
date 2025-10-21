@@ -6,7 +6,13 @@
 <div class="container mx-auto py-10 px-4">
     <h1 class="text-3xl font-bold text-gray-800 mb-6">Keranjang Belanja Anda</h1>
 
-    @if(!empty($cart))
+    @if(session('success'))
+        <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-4 rounded-md" role="alert">
+            {{ session('success') }}
+        </div>
+    @endif
+
+    @if($cart && count($cart) > 0)
         <div class="flex flex-col lg:flex-row gap-8">
             
             <!-- Daftar Item Keranjang -->
@@ -17,7 +23,7 @@
                             <tr>
                                 <th class="p-4 font-semibold text-sm text-gray-600 uppercase">Produk</th>
                                 <th class="p-4 font-semibold text-sm text-gray-600 uppercase">Harga</th>
-                                <th class="p-4 font-semibold text-sm text-gray-600 uppercase">Kuantitas</th>
+                                <th class="p-4 font-semibold text-sm text-gray-600 uppercase text-center">Kuantitas</th>
                                 <th class="p-4 font-semibold text-sm text-gray-600 uppercase">Subtotal</th>
                                 <th class="p-4 font-semibold text-sm text-gray-600 uppercase"></th>
                             </tr>
@@ -26,20 +32,27 @@
                             @php $total = 0 @endphp
                             @foreach($cart as $id => $details)
                                 @php $total += $details['price'] * $details['quantity'] @endphp
-                                <tr class="border-b">
+                                <tr class="border-b" id="row-{{ $id }}">
                                     <td class="p-4 flex items-center gap-4">
-                                        <img src="{{ $details['image_url'] ? asset($details['image_url']) : 'https://placehold.co/80' }}" alt="{{ $details['name'] }}" class="w-16 h-16 object-cover rounded-md">
+                                        {{-- PERBAIKAN: Cara memanggil gambar --}}
+                                        <img src="{{ $details['image_url'] ? asset('storage/' . $details['image_url']) : 'https://placehold.co/80x80/e2e8f0/94a3b8?text=Produk' }}" alt="{{ $details['name'] }}" class="w-16 h-16 object-cover rounded-md">
                                         <div>
                                             <p class="font-semibold text-gray-800">{{ $details['name'] }}</p>
                                         </div>
                                     </td>
                                     <td class="p-4 text-gray-700">Rp{{ number_format($details['price']) }}</td>
                                     <td class="p-4">
-                                        <input type="number" value="{{ $details['quantity'] }}" class="w-20 text-center border rounded-md p-1">
+                                        {{-- PERBAIKAN: Menambahkan class dan data-id untuk JavaScript --}}
+                                        <input type="number" value="{{ $details['quantity'] }}" min="1" 
+                                               class="w-20 text-center border rounded-md p-1 quantity-input" 
+                                               data-id="{{ $id }}">
                                     </td>
-                                    <td class="p-4 text-gray-800 font-semibold">Rp{{ number_format($details['price'] * $details['quantity']) }}</td>
+                                    <td class="p-4 text-gray-800 font-semibold subtotal" id="subtotal-{{ $id }}">
+                                        Rp{{ number_format($details['price'] * $details['quantity']) }}
+                                    </td>
                                     <td class="p-4">
-                                        <button class="text-red-500 hover:text-red-700">
+                                        {{-- PERBAIKAN: Menambahkan class dan data-id untuk JavaScript --}}
+                                        <button class="text-red-500 hover:text-red-700 remove-from-cart" data-id="{{ $id }}">
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </td>
@@ -56,7 +69,7 @@
                     <h2 class="text-xl font-bold text-gray-800 border-b pb-4 mb-4">Ringkasan Pesanan</h2>
                     <div class="flex justify-between mb-2">
                         <span class="text-gray-600">Subtotal</span>
-                        <span class="font-semibold text-gray-800">Rp{{ number_format($total) }}</span>
+                        <span class="font-semibold text-gray-800" id="cart-subtotal">Rp{{ number_format($total) }}</span>
                     </div>
                     <div class="flex justify-between mb-4">
                         <span class="text-gray-600">Ongkos Kirim</span>
@@ -64,18 +77,16 @@
                     </div>
                     <div class="border-t pt-4 flex justify-between items-center">
                         <span class="text-lg font-bold text-gray-800">Total</span>
-                        <span class="text-xl font-bold text-red-600">Rp{{ number_format($total) }}</span>
+                        <span class="text-xl font-bold text-red-600" id="cart-total">Rp{{ number_format($total) }}</span>
                     </div>
                     <a href="{{ route('customer.checkout.index') }}"
                         class="block w-full mt-6 bg-red-600 text-white font-bold py-3 rounded-lg text-center hover:bg-red-700 transition-colors">
                             Lanjutkan ke Checkout
                     </a>
-
-                    <a href="{{ route('customer.marketplace.index') }}"
-                        class="block w-full mt-6 bg-green-600 text-white font-bold py-3 rounded-lg text-center hover:bg-green-700 transition-colors">
+                    <a href="{{ route('katalog.index') }}"
+                        class="block w-full mt-4 bg-gray-200 text-gray-700 font-bold py-3 rounded-lg text-center hover:bg-gray-300 transition-colors">
                             Lanjutkan Belanja
                     </a>
-
                 </div>
             </div>
 
@@ -92,3 +103,79 @@
     @endif
 </div>
 @endsection
+
+@push('scripts')
+{{-- PERBAIKAN: Menambahkan script AJAX untuk update dan remove item --}}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+    // Fungsi untuk update total
+    function updateTotal() {
+        let total = 0;
+        document.querySelectorAll('.subtotal').forEach(function(el) {
+            total += parseFloat(el.innerText.replace(/[^0-9]/g, ''));
+        });
+        const formattedTotal = 'Rp' + new Intl.NumberFormat('id-ID').format(total);
+        document.getElementById('cart-subtotal').innerText = formattedTotal;
+        document.getElementById('cart-total').innerText = formattedTotal;
+    }
+
+    // Event listener untuk update kuantitas
+    document.querySelectorAll('.quantity-input').forEach(function(input) {
+        input.addEventListener('change', function() {
+            const id = this.getAttribute('data-id');
+            const quantity = this.value;
+
+            fetch("{{ route('customer.cart.update') }}", {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken
+                },
+                body: JSON.stringify({ id: id, quantity: quantity })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if(data.success) {
+                    document.getElementById('subtotal-' + id).innerText = 'Rp' + new Intl.NumberFormat('id-ID').format(data.subtotal);
+                    updateTotal();
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        });
+    });
+
+    // Event listener untuk hapus item
+    document.querySelectorAll('.remove-from-cart').forEach(function(button) {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            if(!confirm('Anda yakin ingin menghapus item ini dari keranjang?')) return;
+            
+            const id = this.getAttribute('data-id');
+
+            fetch("{{ route('customer.cart.remove') }}", {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken
+                },
+                body: JSON.stringify({ id: id })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if(data.success) {
+                    document.getElementById('row-' + id).remove();
+                    updateTotal();
+                    // Jika keranjang jadi kosong, muat ulang halaman untuk menampilkan pesan "Keranjang Kosong"
+                    if(document.querySelectorAll('tbody tr').length === 0) {
+                        window.location.reload();
+                    }
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        });
+    });
+});
+</script>
+@endpush
