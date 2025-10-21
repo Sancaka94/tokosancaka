@@ -7,7 +7,7 @@
     /* Custom styles for Swiper navigation buttons */
     .swiper-button-next, .swiper-button-prev {
         color: white; background-color: rgba(0, 0, 0, 0.3); width: 40px; height: 40px;
-        border-radius: 50%; transition: background-color 0.3s;
+        border-radius: 50%; transition: background-color: 0.3s;
     }
     .swiper-button-next:hover, .swiper-button-prev:hover { background-color: rgba(0, 0, 0, 0.5); }
     .swiper-button-next::after, .swiper-button-prev::after { font-size: 18px; font-weight: bold; }
@@ -99,9 +99,11 @@
                             </div>
                             @endif
 
+                            {{-- PERBAIKAN: Menyesuaikan form Add to Cart --}}
                             <div class="mt-auto pt-3">
-                                <form action="{{ route('cart.add', $product) }}" method="POST">
+                                <form action="{{ route('cart.add', ['product' => $product->id]) }}" method="POST">
                                     @csrf
+                                    <input type="hidden" name="product_id" value="{{ $product->id }}">
                                     <input type="hidden" name="quantity" value="1">
                                     <button type="submit" class="w-full bg-red-500 text-white font-bold py-2.5 rounded-lg text-sm hover:bg-red-600 transition-colors flex items-center justify-center gap-2">
                                         <i class="fas fa-cart-plus"></i>
