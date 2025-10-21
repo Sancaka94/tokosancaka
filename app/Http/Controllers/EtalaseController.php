@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Product;
 use App\Models\Setting;
 use App\Models\BannerEtalase;
+use App\Models\Category; // 1. Impor model Category
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -16,7 +17,6 @@ class EtalaseController extends Controller
     public function index(Request $request)
     {
         // --- Logika untuk Produk Utama (dengan filter & paginasi) ---
-        // ✅ DIPERBAIKI: Menambahkan with('store') untuk mengambil data toko
         $query = Product::with('store.user')->where('status', 'active')->where('stock', '>', 0);
 
         if ($request->filled('search')) {
@@ -26,7 +26,6 @@ class EtalaseController extends Controller
         $products = $query->latest()->paginate(10)->withQueryString();
 
         // --- Logika untuk Produk Flash Sale ---
-        // ✅ DIPERBAIKI: Menambahkan with('store') untuk mengambil data toko
         $flashSaleProducts = Product::with('store')->where('status', 'active')
             ->where('stock', '>', 0)
             ->whereNotNull('original_price')
@@ -39,7 +38,11 @@ class EtalaseController extends Controller
         $settings = Setting::whereIn('key', ['banner_2','banner_3'])
                             ->pluck('value','key');
                             
-        return view('etalase.index', compact('products', 'flashSaleProducts', 'banners', 'settings'));
+        // 2. PERBAIKAN: Mengambil data Kategori untuk marketplace
+        $categories = Category::where('type', 'marketplace')->get();
+                            
+        // 3. PERBAIKAN: Menambahkan 'categories' ke data yang dikirim ke view
+        return view('etalase.index', compact('products', 'flashSaleProducts', 'banners', 'settings', 'categories'));
     }
 
     /**
@@ -51,22 +54,21 @@ class EtalaseController extends Controller
             abort(404);
         }
         
-         // ✅ DIPERBAIKI: Memuat relasi produk -> toko -> pengguna
         $product->load('store.user');
 
-        $relatedProducts = Product::with('store')->where('category', $product->category)
-                                        ->where('id', '!=', $product->id)
-                                        ->where('status', 'active')
-                                        ->where('stock', '>', 0)
-                                        ->inRandomOrder()
-                                        ->limit(4)->get();
-                                        
+        // Mengambil produk terkait berdasarkan category_id
+        $relatedProducts = Product::with('store')->where('category_id', $product->category_id)
+                                    ->where('id', '!=', $product->id)
+                                    ->where('status', 'active')
+                                    ->where('stock', '>', 0)
+                                    ->inRandomOrder()
+                                    ->limit(4)->get();
+                                    
         return view('etalase.show', compact('product', 'relatedProducts'));
     }
     
     public function profileToko($name)
     {
-        // ✅ DIPERBAIKI: Menambahkan with('store') untuk mengambil data toko
         $products = Product::with('store')->where('store_name', $name)->paginate(12);
     
         return view('etalase.toko', compact('products', 'name'));
