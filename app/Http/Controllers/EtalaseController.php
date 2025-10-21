@@ -33,29 +33,89 @@ class EtalaseController extends Controller
             ->limit(8)
             ->get();
             
-        $categoryNames = Product::whereNotNull('category')
-                                ->where('category', '!=', '')
-                                ->distinct()
-                                ->pluck('category');
+        // PERBAIKAN: Membuat daftar kategori langsung dari iconMap
+        // PERBAIKAN: Daftar kategori lengkap (gabungan Tokopedia, Shopee, dan Jasa)
+$iconMap = [
+    // --- JASA & PROFESIONAL ---
+    'PERIZINAN' => 'fa-file-contract',
+    'KONSULTASI' => 'fa-comments-dollar',
+    'KEUANGAN' => 'fa-coins',
+    'LEGALITAS' => 'fa-scale-balanced',
+    'KONSTRUKSI' => 'fa-building',
+    'TEKNOLOGI' => 'fa-microchip',
+    'DESAIN' => 'fa-pencil-ruler',
+    'PELATIHAN' => 'fa-chalkboard-teacher',
+    'DOKUMEN' => 'fa-folder-open',
+    'MARKETING' => 'fa-bullhorn',
+    'JASA PENGIRIMAN' => 'fa-truck-fast',
+    'JASA FOTOGRAFI' => 'fa-camera-retro',
+    'JASA PERCETAKAN' => 'fa-print',
+    'FREELANCER DIGITAL' => 'fa-laptop-code',
 
-        $categories = $categoryNames->map(function ($name) {
-            $iconMap = [
-                'PERIZINAN' => 'fa-file-contract', 'KONSULTASI' => 'fa-comments-dollar', 'KEUANGAN' => 'fa-coins',
-                'KONSTRUKSI' => 'fa-building', 'TEKNOLOGI' => 'fa-microchip', 'DESAIN' => 'fa-pencil-ruler',
-                'PELATIHAN' => 'fa-chalkboard-teacher', 'DOKUMEN' => 'fa-folder-open', 'LEGALITAS' => 'fa-scale-balanced',
-                'MARKETING' => 'fa-bullhorn', 'BAHAN BANGUNAN' => 'fa-hammer', 'PERALATAN KANTOR' => 'fa-briefcase',
-                'ELEKTRONIK' => 'fa-tv', 'KENDARAAN' => 'fa-truck', 'PROPERTI' => 'fa-house', 'FASHION' => 'fa-shirt',
-                'MAKANAN & MINUMAN' => 'fa-utensils', 'PERALATAN RUMAH TANGGA' => 'fa-blender', 'PERTANIAN' => 'fa-leaf',
-                'PERIKANAN' => 'fa-fish', 'PETERNAKAN' => 'fa-cow', 'KERAJINAN' => 'fa-hand-sparkles',
-                'OBAT & KESEHATAN' => 'fa-briefcase-medical', 'ALAT TULIS' => 'fa-pen-nib', 'LAINNYA' => 'fa-ellipsis-h',
-            ];
+    // --- PRODUK FISIK (LAYAK TOKOPEDIA/SHOPEE) ---
+    'FASHION PRIA' => 'fa-user-tie',
+    'FASHION WANITA' => 'fa-person-dress',
+    'FASHION MUSLIM' => 'fa-mosque',
+    'ANAK & BAYI' => 'fa-baby',
+    'KECANTIKAN' => 'fa-heart',
+    'OBAT & KESEHATAN' => 'fa-briefcase-medical',
+    'ELEKTRONIK' => 'fa-tv',
+    'HANDPHONE & AKSESORIS' => 'fa-mobile-screen',
+    'KOMPUTER & AKSESORIS' => 'fa-desktop',
+    'KAMERA' => 'fa-camera',
+    'GAMING' => 'fa-gamepad',
 
+    // --- RUMAH & GAYA HIDUP ---
+    'PROPERTI' => 'fa-house',
+    'PERALATAN RUMAH TANGGA' => 'fa-blender',
+    'BAHAN BANGUNAN' => 'fa-hammer',
+    'PERALATAN KANTOR' => 'fa-briefcase',
+    'DEKORASI RUMAH' => 'fa-couch',
+    'DAPUR & MASAK' => 'fa-utensils',
+    'MAKANAN & MINUMAN' => 'fa-bowl-food',
+    'ALAT TULIS' => 'fa-pen-nib',
+    'HOBI & KOLEKSI' => 'fa-guitar',
+    'BUKU & ALAT BELAJAR' => 'fa-book-open',
+
+    // --- OTOMOTIF ---
+    'KENDARAAN' => 'fa-truck',
+    'AKSESORIS MOTOR' => 'fa-motorcycle',
+    'AKSESORIS MOBIL' => 'fa-car',
+
+    // --- PERTANIAN & PERIKANAN ---
+    'PERTANIAN' => 'fa-leaf',
+    'PERIKANAN' => 'fa-fish',
+    'PETERNAKAN' => 'fa-cow',
+    'PERKEBUNAN' => 'fa-seedling',
+
+    // --- PRODUK LOKAL & UMKM ---
+    'KERAJINAN' => 'fa-hand-sparkles',
+    'PRODUK UMKM' => 'fa-store',
+    'SOUVENIR' => 'fa-gift',
+    'FASHION ETNIK' => 'fa-feather-pointed',
+    'BATIK' => 'fa-shirt',
+
+    // --- HIBURAN & DIGITAL ---
+    'TIKET & EVENT' => 'fa-ticket',
+    'MUSIK & FILM' => 'fa-music',
+    'VOUCHER & GAME' => 'fa-ticket-simple',
+    'E-WALLET & PULSA' => 'fa-wallet',
+
+    // --- LAINNYA ---
+    'HEWAN PELIHARAAN' => 'fa-paw',
+    'TANAMAN HIAS' => 'fa-seedling',
+    'SPAREPART' => 'fa-gears',
+    'LAINNYA' => 'fa-ellipsis-h',
+];
+
+
+        $categories = collect($iconMap)->map(function ($icon, $name) {
             return (object)[
                 'name' => ucfirst(strtolower($name)),
                 'slug' => Str::slug($name),
-                'icon' => $iconMap[strtoupper($name)] ?? 'fa-tag',
+                'icon' => $icon,
             ];
-        });
+        })->values(); // `values()` untuk mereset key menjadi numerik
 
         $banners = BannerEtalase::all();
         $settings = Setting::whereIn('key', ['banner_2','banner_3'])->pluck('value','key');
@@ -83,7 +143,7 @@ class EtalaseController extends Controller
      */
     public function profileToko($name)
     {
-        $products = Product::with('store')->where('store_name', $name)->where('status', 'active')->paginate(12);
+        $products = Product::with('store')->where('store_name', 'like', $name)->where('status', 'active')->paginate(12);
         $store = $products->first()->store ?? null;
         return view('etalase.toko', compact('products', 'name', 'store'));
     }
@@ -107,16 +167,14 @@ class EtalaseController extends Controller
             ->where('price', '<', DB::raw('original_price'))
             ->orderBy('discount_percentage', 'desc')->limit(8)->get();
             
-        // PERBAIKAN: Mengganti nama variabel menjadi $categories
-        $categories = Product::whereNotNull('category')->where('category', '!=', '')
-            ->distinct()->pluck('category')->map(function ($name) {
-                // Anda bisa menambahkan iconMap di sini jika diperlukan
-                return (object)['name' => ucfirst(strtolower($name)), 'slug' => Str::slug($name), 'icon' => 'fa-tag'];
-            });
+        // PERBAIKAN: Menggunakan logika yang sama seperti di method index
+        $iconMap = [ 'PERIZINAN' => 'fa-file-contract', /* ... sisa iconMap ... */ 'LAINNYA' => 'fa-ellipsis-h', ];
+        $categories = collect($iconMap)->map(function ($icon, $name) {
+            return (object)['name' => ucfirst(strtolower($name)), 'slug' => Str::slug($name), 'icon' => $icon];
+        })->values();
 
-        $category = (object)['name' => $categoryName, 'slug' => $categorySlug, 'icon' => 'fa-tag'];
+        $category = (object)['name' => $categoryName, 'slug' => $categorySlug, 'icon' => $iconMap[strtoupper($categoryName)] ?? 'fa-tag'];
 
-        // PERBAIKAN: Memanggil variabel 'categories' dengan benar di dalam compact()
         return view('etalase.category-show', compact(
             'category', 
             'products', 
