@@ -105,6 +105,14 @@
                         <input type="text" name="tags" id="tags" value="{{ old('tags', is_array($product->tags) ? implode(', ', $product->tags) : $product->tags) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
                     </div>
                 </div>
+
+                <div class="flex justify-end">
+                    <a href="{{ route('admin.products.index') }}" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium mr-2">Batal</a>
+                    <button id="submit-button" type="submit" form="product-form" class="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-700 flex items-center">
+                    <span id="button-text">Perbarui Produk</span>
+                    <span id="button-spinner" class="spinner ml-2 hidden" role="status" aria-hidden="true"></span>
+                    </button>
+                </div>
             </div>
             
             {{-- Informasi Penjual & Status (Lengkap) --}}
@@ -112,13 +120,6 @@
 
         </div>
     </div>
-    <div class="flex justify-end">
-    <a href="{{ route('admin.products.index') }}" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium mr-2">Batal</a>
-    <button id="submit-button" type="submit" form="product-form" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 flex items-center">
-        <span id="button-text">Perbarui Produk</span>
-        <span id="button-spinner" class="spinner ml-2 hidden" role="status" aria-hidden="true"></span>
-    </button>
-</div>
 </form>
 @endsection
 
