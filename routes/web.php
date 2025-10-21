@@ -84,6 +84,10 @@ Route::get('/terms-and-conditions', function () {
     return view('terms');
 })->name('terms.conditions');
 
+// Rute untuk menampilkan halaman kategori di etalase publik
+Route::get('/etalase/category/{category:slug}', [EtalaseController::class, 'showCategory'])->name('public.categories.show');
+
+
 // Rute untuk menampilkan daftar pelanggan ke publik
 Route::get('/pelanggan', [PublicPelangganController::class, 'index'])->name('pelanggan.public.index');
 
