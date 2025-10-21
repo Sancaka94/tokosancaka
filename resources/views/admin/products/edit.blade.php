@@ -8,7 +8,7 @@
     /* Style untuk form, tidak diubah */
     .image-uploader { border: 2px dashed #d1d5db; border-radius: 0.5rem; padding: 2rem; text-align: center; cursor: pointer; transition: border-color 0.3s ease; }
     .image-uploader:hover, .image-uploader.dragging { border-color: #4f46e5; }
-    .image-preview { margin-top: 1rem; max-width: 100%; max-height: 300px; border-radius: 0.5rem; display: block; } /* Diubah agar gambar lama tampil */
+    .image-preview { margin-top: 1rem; max-width: 100%; max-height: 300px; border-radius: 0.5rem; display: block; }
     .spinner { display: inline-block; width: 1rem; height: 1rem; vertical-align: text-bottom; border: .2em solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spinner-border .75s linear infinite; }
     @keyframes spinner-border { to { transform: rotate(360deg); } }
     .dropzone--over { outline: 2px dashed #6366f1; background-color: #eef2ff; }
@@ -20,7 +20,7 @@
 
 <form id="product-form" action="{{ route('admin.products.update', $product->id) }}" method="POST" enctype="multipart/form-data">
     @csrf
-    @method('PUT') {{-- Method untuk update --}}
+    @method('PUT')
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         <div class="lg:col-span-2 space-y-6">
@@ -106,7 +106,7 @@
                 </div>
             </div>
             
-            {{-- PERBAIKAN: Melengkapi form Informasi Penjual --}}
+            {{-- Informasi Penjual --}}
             <div class="bg-white p-6 rounded-lg shadow-md">
                 <h2 class="text-lg font-semibold text-gray-800 mb-4">Informasi Penjual</h2>
                 <div class="space-y-4">
@@ -143,7 +143,7 @@
                 </div>
             </div>
 
-            {{-- PERBAIKAN: Melengkapi form Status & Label --}}
+            {{-- Status & Label --}}
             <div class="bg-white p-6 rounded-lg shadow-md">
                 <h2 class="text-lg font-semibold text-gray-800 mb-4">Status & Label</h2>
                 <div class="space-y-4">
@@ -183,8 +183,6 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    // PERBAIKAN: Melengkapi semua script
-    
     // Script untuk Image Uploader Utama
     const uploader = document.getElementById('image-uploader');
     const fileInput = document.getElementById('product_image');
