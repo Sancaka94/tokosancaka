@@ -35,7 +35,7 @@ class ProductController extends Controller
                     ->addIndexColumn()
                     ->addColumn('image', function ($row) {
                         $url = $row->image_url
-                            ? asset('storage/' . $row->image_url)
+                            ? asset('storage/' . $row->image_url) // Path yang benar untuk storage link
                             : 'https://placehold.co/80x80/EFEFEF/333333?text=N/A';
                         return '<img src="' . e($url) . '" alt="' . e($row->name) . '" class="rounded" width="60" />';
                     })
