@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Product;
 use App\Models\Setting;
 use App\Models\BannerEtalase;
-use App\Models\Category; // 1. Impor model Category
+use App\Models\Category;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -38,10 +38,8 @@ class EtalaseController extends Controller
         $settings = Setting::whereIn('key', ['banner_2','banner_3'])
                             ->pluck('value','key');
                             
-        // 2. PERBAIKAN: Mengambil data Kategori untuk marketplace
         $categories = Category::where('type', 'marketplace')->get();
                             
-        // 3. PERBAIKAN: Menambahkan 'categories' ke data yang dikirim ke view
         return view('etalase.index', compact('products', 'flashSaleProducts', 'banners', 'settings', 'categories'));
     }
 
@@ -56,7 +54,6 @@ class EtalaseController extends Controller
         
         $product->load('store.user');
 
-        // Mengambil produk terkait berdasarkan category_id
         $relatedProducts = Product::with('store')->where('category_id', $product->category_id)
                                     ->where('id', '!=', $product->id)
                                     ->where('status', 'active')
@@ -73,4 +70,30 @@ class EtalaseController extends Controller
     
         return view('etalase.toko', compact('products', 'name'));
     }
+
+    /**
+     * PERBAIKAN: Method baru untuk menampilkan produk berdasarkan kategori di etalase publik.
+     */
+    public function showCategory(Category $category, Request $request)
+    {
+        // Memastikan hanya kategori marketplace yang bisa diakses
+        if ($category->type !== 'marketplace') {
+            abort(404);
+        }
+
+        // Mengambil produk dari kategori yang dipilih
+        $products = $category->products()
+                             ->with('store')
+                             ->where('status', 'active')
+                             ->where('stock', '>', 0)
+                             ->latest()
+                             ->paginate(12);
+        
+        // Mengambil data lain yang mungkin dibutuhkan oleh layout (e.g., banner)
+        $banners = BannerEtalase::all();
+        $settings = Setting::whereIn('key', ['banner_2','banner_3'])->pluck('value','key');
+
+        return view('etalase.category-show', compact('category', 'products', 'banners', 'settings'));
+    }
 }
+
