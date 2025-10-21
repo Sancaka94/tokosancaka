@@ -104,7 +104,7 @@ Route::post('/update-settings-markerplace', [SettingController::class, 'updateSe
 Route::get('/surat-jalan/{kode_surat_jalan}/download', [SpxScanController::class, 'downloadSuratJalan'])->name('suratjalan.download');
 
 
-
+Route::resource('categories', CategoryController::class);
 
 
 Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
