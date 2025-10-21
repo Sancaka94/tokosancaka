@@ -283,10 +283,10 @@
         </div>
 
 
-        {{-- PERBAIKAN: Menambahkan link Manajemen Kategori sebagai menu utama --}}
-        <a href="{{ route('admin.categories.index') }}" class="sidebar-link flex items-center px-4 py-2.5 text-sm font-medium rounded-lg hover:bg-gray-700 hover:text-white {{ request()->routeIs('admin.categories.*') ? 'bg-gray-700 text-white' : '' }}">
+        {{-- PERBAIKAN: Link Manajemen Kategori sekarang menyertakan filter tipe marketplace --}}
+        <a href="{{ route('admin.categories.etalase.index', ['type' => 'marketplace']) }}" class="sidebar-link flex items-center px-4 py-2.5 text-sm font-medium rounded-lg hover:bg-gray-700 hover:text-white {{ request()->routeIs('admin.categories.*') && request('type') == 'marketplace' ? 'bg-gray-700 text-white' : '' }}">
             <i class="fa-solid fa-tags fa-fw w-5 h-5 mr-3"></i>
-            <span>Manajemen Kategori Etalase</span>
+            <span>Kategori Produk Etalase</span>
         </a>
 
 
