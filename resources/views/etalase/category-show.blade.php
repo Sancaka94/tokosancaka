@@ -31,7 +31,7 @@
             <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
                 @forelse ($products as $product)
                     {{-- PERBAIKAN: Mengirim slug produk secara eksplisit untuk parameter route --}}
-                    <a href="{{ route('products.show', $product->slug) }}" class="bg-white border rounded-xl overflow-hidden group hover:shadow-2xl transition-all duration-300 flex flex-col">
+                    <a href="" class="bg-white border rounded-xl overflow-hidden group hover:shadow-2xl transition-all duration-300 flex flex-col">
                         <div>
                             <div class="h-48 bg-gray-50 relative">
                                @php
