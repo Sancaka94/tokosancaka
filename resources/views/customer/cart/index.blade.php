@@ -32,7 +32,7 @@
                             @php $total = 0 @endphp
                             @foreach($cart as $id => $details)
                                 @php $total += $details['price'] * $details['quantity'] @endphp
-                                <tr class="border-b" id="row-{{ $id }}">
+                                <tr class="border-b transition-opacity duration-300" id="row-{{ $id }}">
                                     <td class="p-4 flex items-center gap-4">
                                         <img src="{{ $details['image_url'] ? asset('storage/' . $details['image_url']) : 'https://placehold.co/80x80/e2e8f0/94a3b8?text=Produk' }}" alt="{{ $details['name'] }}" class="w-16 h-16 object-cover rounded-md">
                                         <div>
@@ -41,7 +41,6 @@
                                     </td>
                                     <td class="p-4 text-gray-700">Rp{{ number_format($details['price']) }}</td>
                                     <td class="p-4">
-                                        {{-- PERBAIKAN: Menambahkan tombol + dan - untuk kuantitas --}}
                                         <div class="flex items-center justify-center">
                                             <button class="px-2 py-1 border rounded-l-md hover:bg-gray-100 quantity-change" data-id="{{ $id }}" data-action="minus">-</button>
                                             <input type="number" value="{{ $details['quantity'] }}" min="1" 
@@ -85,7 +84,6 @@
                         class="block w-full mt-6 bg-red-600 text-white font-bold py-3 rounded-lg text-center hover:bg-red-700 transition-colors">
                             Lanjutkan ke Checkout
                     </a>
-                    {{-- PERBAIKAN: Mengubah style tombol --}}
                     <a href="{{ route('katalog.index') }}"
                         class="block w-full mt-4 bg-blue-600 text-white font-bold py-3 rounded-lg text-center hover:bg-blue-700 transition-colors">
                             Lanjutkan Belanja
@@ -108,7 +106,6 @@
 @endsection
 
 @push('scripts')
-{{-- PERBAIKAN: Menambahkan script AJAX untuk update dan remove item --}}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
@@ -124,6 +121,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function updateCart(id, quantity) {
+        const row = document.getElementById('row-' + id);
+        if (row) row.style.opacity = '0.5';
+
         fetch("{{ route('customer.cart.update') }}", {
             method: 'PATCH',
             headers: {
@@ -138,11 +138,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('subtotal-' + id).innerText = 'Rp' + new Intl.NumberFormat('id-ID').format(data.subtotal);
                 updateTotal();
             } else {
-                // Jika gagal, kembalikan kuantitas ke nilai semula (opsional)
                 alert(data.message || 'Gagal memperbarui kuantitas.');
             }
         })
-        .catch(error => console.error('Error:', error));
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Terjadi kesalahan. Silakan coba lagi.');
+        })
+        .finally(() => {
+            if (row) row.style.opacity = '1';
+        });
     }
 
     // Event listener untuk input manual kuantitas
@@ -153,12 +158,14 @@ document.addEventListener('DOMContentLoaded', function() {
             debounceTimer = setTimeout(() => {
                 const id = this.getAttribute('data-id');
                 const quantity = this.value;
-                updateCart(id, quantity);
+                if (quantity > 0) {
+                    updateCart(id, quantity);
+                }
             }, 500); // Tunggu 500ms setelah user berhenti mengetik
         });
     });
     
-    // Event listener untuk tombol +/-
+    // PERBAIKAN: Event listener untuk tombol +/- yang memanggil updateCart secara langsung
     document.querySelectorAll('.quantity-change').forEach(function(button){
         button.addEventListener('click', function(){
             const id = this.dataset.id;
@@ -171,8 +178,9 @@ document.addEventListener('DOMContentLoaded', function() {
             } else if(action === 'minus' && currentValue > 1) {
                 input.value = currentValue - 1;
             }
-            // Memicu event input secara manual untuk menjalankan update
-            input.dispatchEvent(new Event('input'));
+            
+            // Panggil fungsi updateCart secara langsung, tanpa debounce
+            updateCart(id, input.value);
         });
     });
 
@@ -200,6 +208,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     if(document.querySelectorAll('tbody tr').length === 0) {
                         window.location.reload();
                     }
+                } else {
+                    alert(data.message || 'Gagal menghapus item.');
                 }
             })
             .catch(error => console.error('Error:', error));
