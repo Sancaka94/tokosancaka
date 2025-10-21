@@ -86,10 +86,14 @@
                         <input type="text" name="sku" id="sku" value="{{ old('sku') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('sku') border-red-500 @enderror" required>
                         @error('sku') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
                     </div>
+
+                    {{-- PERBAIKAN UTAMA: Mengganti input text menjadi dropdown select --}}
                     <div>
                         <label for="category_id" class="block text-sm font-medium text-gray-700">Kategori</label>
+                        {{-- Pastikan nama input adalah 'category_id' agar sesuai dengan database --}}
                         <select name="category_id" id="category_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('category_id') border-red-500 @enderror" required>
                             <option value="">-- Pilih Kategori --</option>
+                            {{-- Looping variabel $categories yang dikirim dari controller --}}
                             @foreach($categories as $category)
                                 <option value="{{ $category->id }}" {{ old('category_id') == $category->id ? 'selected' : '' }}>
                                     {{ $category->name }}
@@ -98,6 +102,7 @@
                         </select>
                         @error('category_id') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
                     </div>
+
                     <div>
                         <label for="tags" class="block text-sm font-medium text-gray-700">Tags (pisahkan koma)</label>
                         <input type="text" name="tags" id="tags" value="{{ old('tags') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
@@ -105,7 +110,7 @@
                 </div>
             </div>
             
-            {{-- PERBAIKAN: Melengkapi form Informasi Penjual --}}
+            {{-- Melengkapi form Informasi Penjual --}}
             <div class="bg-white p-6 rounded-lg shadow-md">
                 <h2 class="text-lg font-semibold text-gray-800 mb-4">Informasi Penjual</h2>
                 <div class="space-y-4">
@@ -142,7 +147,7 @@
                 </div>
             </div>
 
-            {{-- PERBAIKAN: Melengkapi form Status & Label --}}
+            {{-- Melengkapi form Status & Label --}}
             <div class="bg-white p-6 rounded-lg shadow-md">
                 <h2 class="text-lg font-semibold text-gray-800 mb-4">Status & Label</h2>
                 <div class="space-y-4">
@@ -181,8 +186,6 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    // PERBAIKAN: Melengkapi semua script yang dibutuhkan
-    
     // Script untuk Image Uploader Utama
     const uploader = document.getElementById('image-uploader');
     const fileInput = document.getElementById('product_image');
