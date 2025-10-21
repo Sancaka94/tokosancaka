@@ -151,8 +151,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (response.headers.get("content-type")?.includes("application/json")) {
                 return response.json();
             }
-            // Jika bukan JSON, berarti ada error (kemungkinan redirect ke login)
-            throw new SyntaxError("Bukan respons JSON");
+            throw new SyntaxError("Bukan respons JSON, kemungkinan sesi berakhir.");
         })
         .then(data => {
             if(!data.success) {
@@ -161,10 +160,9 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .catch(error => {
             console.error('Error:', error);
-            // PERBAIKAN: Jika error adalah SyntaxError, muat ulang halaman
+            // PERBAIKAN: Jika error adalah SyntaxError, langsung arahkan ke halaman login tanpa alert.
             if (error instanceof SyntaxError) {
-                alert('Sesi Anda mungkin telah berakhir. Halaman akan dimuat ulang.');
-                window.location.reload();
+                window.location.href = "{{ route('login') }}";
             } else {
                 alert('Terjadi kesalahan. Silakan coba lagi.');
             }
@@ -235,7 +233,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (response.headers.get("content-type")?.includes("application/json")) {
                     return response.json();
                 }
-                throw new SyntaxError("Bukan respons JSON");
+                throw new SyntaxError("Bukan respons JSON, kemungkinan sesi berakhir.");
             })
             .then(data => {
                 if(data.success) {
@@ -253,9 +251,9 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .catch(error => {
                 console.error('Error:', error);
+                // PERBAIKAN: Jika error adalah SyntaxError, langsung arahkan ke halaman login tanpa alert.
                 if (error instanceof SyntaxError) {
-                    alert('Sesi Anda mungkin telah berakhir. Halaman akan dimuat ulang.');
-                    window.location.reload();
+                    window.location.href = "{{ route('login') }}";
                 } else {
                     alert('Gagal menghapus item. Silakan coba lagi.');
                 }
