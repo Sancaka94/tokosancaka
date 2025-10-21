@@ -112,51 +112,58 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function updateTotal() {
         let total = 0;
-        document.querySelectorAll('.subtotal').forEach(function(el) {
-            total += parseFloat(el.innerText.replace(/[^0-9]/g, ''));
+        document.querySelectorAll('tbody tr').forEach(row => {
+            const priceText = row.querySelector('td:nth-child(2)').innerText.replace(/[^0-9]/g, '');
+            const quantity = row.querySelector('.quantity-input').value;
+            const price = parseFloat(priceText);
+            
+            if (!isNaN(price) && quantity > 0) {
+                const subtotal = price * quantity;
+                row.querySelector('.subtotal').innerText = 'Rp' + new Intl.NumberFormat('id-ID').format(subtotal);
+                total += subtotal;
+            }
         });
+
         const formattedTotal = 'Rp' + new Intl.NumberFormat('id-ID').format(total);
         document.getElementById('cart-subtotal').innerText = formattedTotal;
         document.getElementById('cart-total').innerText = formattedTotal;
     }
 
-    function updateCart(id, quantity) {
+    function updateCartOnServer(id, quantity) {
         const row = document.getElementById('row-' + id);
         if (row) row.style.opacity = '0.5';
         
-        // PERBAIKAN: Menggunakan FormData untuk mengirim data
-        const formData = new FormData();
-        formData.append('_method', 'PATCH'); // Memberitahu Laravel ini adalah request PATCH
-        formData.append('id', id);
-        formData.append('quantity', quantity);
+        // PERBAIKAN: Menggunakan URLSearchParams untuk mengirim data sebagai form-urlencoded
+        const body = new URLSearchParams();
+        body.append('_method', 'PATCH');
+        body.append('id', id);
+        body.append('quantity', quantity);
 
         fetch("{{ route('customer.cart.update') }}", {
-            method: 'POST', // Selalu gunakan POST untuk AJAX form
+            method: 'POST', // Selalu gunakan POST untuk AJAX form spoofing
             headers: {
                 'X-CSRF-TOKEN': csrfToken,
                 'Accept': 'application/json',
+                'Content-Type': 'application/x-www-form-urlencoded', // Set Content-Type
             },
-            body: formData
+            body: body
         })
         .then(response => {
             if (!response.ok) {
-                // Jika response bukan JSON, akan gagal di sini dan masuk ke catch
-                return response.json(); 
+                // Coba parse error JSON jika ada, jika tidak, lempar error umum
+                return response.json().then(err => { throw err; });
             }
             return response.json();
         })
         .then(data => {
-            if(data.success) {
-                document.getElementById('subtotal-' + id).innerText = 'Rp' + new Intl.NumberFormat('id-ID').format(data.subtotal);
-                updateTotal();
-            } else {
+            if(!data.success) {
                 alert(data.message || 'Gagal memperbarui kuantitas.');
             }
+            // Biarkan updateTotal yang menangani pembaruan tampilan
         })
         .catch(error => {
             console.error('Error:', error);
-            // Menampilkan pesan error yang lebih umum jika terjadi kesalahan parse JSON
-            alert('Terjadi kesalahan. Server mungkin tidak merespons dengan benar. Silakan coba lagi.');
+            alert('Terjadi kesalahan. Silakan coba lagi.');
         })
         .finally(() => {
             if (row) row.style.opacity = '1';
@@ -167,14 +174,15 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.quantity-input').forEach(function(input) {
         let debounceTimer;
         input.addEventListener('input', function() {
+            updateTotal(); // Update tampilan segera
             clearTimeout(debounceTimer);
             debounceTimer = setTimeout(() => {
                 const id = this.getAttribute('data-id');
                 const quantity = this.value;
                 if (quantity > 0) {
-                    updateCart(id, quantity);
+                    updateCartOnServer(id, quantity);
                 }
-            }, 500);
+            }, 800); // Debounce untuk update ke server
         });
     });
     
@@ -191,7 +199,10 @@ document.addEventListener('DOMContentLoaded', function() {
             } else if(action === 'minus' && currentValue > 1) {
                 input.value = currentValue - 1;
             }
-            updateCart(id, input.value);
+            
+            updateTotal(); // Update tampilan segera
+            // Memicu event input untuk debounce update ke server
+            input.dispatchEvent(new Event('input', { bubbles: true }));
         });
     });
 
@@ -202,24 +213,24 @@ document.addEventListener('DOMContentLoaded', function() {
             if(!confirm('Anda yakin ingin menghapus item ini dari keranjang?')) return;
             
             const id = this.getAttribute('data-id');
+            const row = document.getElementById('row-' + id);
             
-            // PERBAIKAN: Menggunakan FormData untuk menghapus
-            const formData = new FormData();
-            formData.append('_method', 'DELETE');
-            formData.append('id', id);
+            const body = new URLSearchParams();
+            body.append('_method', 'DELETE');
+            body.append('id', id);
 
             fetch("{{ route('customer.cart.remove') }}", {
-                method: 'POST', // Selalu gunakan POST
+                method: 'POST',
                 headers: {
                     'X-CSRF-TOKEN': csrfToken,
                     'Accept': 'application/json',
+                    'Content-Type': 'application/x-www-form-urlencoded',
                 },
-                body: formData
+                body: body
             })
             .then(response => response.json())
             .then(data => {
                 if(data.success) {
-                    const row = document.getElementById('row-' + id);
                     row.style.opacity = '0';
                     setTimeout(() => {
                         row.remove();
@@ -232,7 +243,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     alert(data.message || 'Gagal menghapus item.');
                 }
             })
-            .catch(error => console.error('Error:', error));
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Gagal menghapus item. Silakan coba lagi.');
+            });
         });
     });
 });
