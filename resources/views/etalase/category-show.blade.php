@@ -24,9 +24,9 @@
         <div class="p-5 bg-white rounded-2xl shadow-md">
             <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
                 @forelse ($products as $product)
-                    {{-- PERBAIKAN UTAMA ADA DI SINI --}}
-                    {{-- Mengirim seluruh objek $product, bukan hanya $product->slug --}}
-                    <a href="{{ route('products.show', $product) }}" class="bg-white border rounded-xl overflow-hidden group hover:shadow-2xl transition-all duration-300 flex flex-col">
+                    {{-- PERBAIKAN: Mengirim $product->slug secara eksplisit --}}
+                    {{-- Ini untuk mengatasi error "Missing Parameter" karena adanya perbedaan model --}}
+                    <a href="{{ route('products.show', $product->slug) }}" class="bg-white border rounded-xl overflow-hidden group hover:shadow-2xl transition-all duration-300 flex flex-col">
                         <div>
                             <div class="h-48 bg-gray-50 relative">
                                @php
@@ -72,3 +72,4 @@
     </section>
 </div>
 @endsection
+
