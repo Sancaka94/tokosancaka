@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-// PERBAIKAN: Menggunakan model Marketplace dan mengalias-kannya sebagai Product.
-use App\Models\Marketplace as Product;
+// PERBAIKAN: Menggunakan model Product yang benar, bukan Marketplace.
+use App\Models\Product;
 
 class CartController extends Controller
 {
@@ -30,7 +30,6 @@ class CartController extends Controller
         // Validasi stok
         $newQuantity = ($cart[$id]['quantity'] ?? 0) + $quantity;
         
-        // PERBAIKAN: Menambahkan pesan error yang lebih detail
         if ($product->stock < $newQuantity) {
             $errorMessage = "Stok produk tidak mencukupi. Stok tersedia: {$product->stock}, Anda mencoba menambahkan {$newQuantity}.";
             return back()->with('error', $errorMessage);
@@ -65,7 +64,7 @@ class CartController extends Controller
 
         if ($id && $quantity) {
             $cart = session()->get('cart');
-            $product = Product::find($id); // Mencari dari model Marketplace
+            $product = Product::find($id); // Mencari dari model Product (tabel products)
 
             if (!$product) {
                  return response()->json(['success' => false, 'message' => 'Produk tidak ditemukan.'], 404);
