@@ -160,9 +160,10 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .catch(error => {
             console.error('Error:', error);
-            // PERBAIKAN: Jika error adalah SyntaxError, langsung arahkan ke halaman login tanpa alert.
+            // PERBAIKAN: Jika sesi berakhir, muat ulang halaman saat ini.
             if (error instanceof SyntaxError) {
-                window.location.href = "{{ route('customer.cart') }}";
+                alert('Sesi Anda telah berakhir. Halaman akan dimuat ulang untuk login.');
+                window.location.reload();
             } else {
                 alert('Terjadi kesalahan. Silakan coba lagi.');
             }
@@ -251,9 +252,10 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .catch(error => {
                 console.error('Error:', error);
-                // PERBAIKAN: Jika error adalah SyntaxError, langsung arahkan ke halaman login tanpa alert.
+                // PERBAIKAN: Jika sesi berakhir, muat ulang halaman saat ini.
                 if (error instanceof SyntaxError) {
-                    window.location.href = "{{ route('customer.cart') }}";
+                    alert('Sesi Anda telah berakhir. Halaman akan dimuat ulang untuk login.');
+                    window.location.reload();
                 } else {
                     alert('Gagal menghapus item. Silakan coba lagi.');
                 }
