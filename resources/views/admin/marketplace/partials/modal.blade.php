@@ -30,6 +30,19 @@
                         <label for="name" class="block text-sm font-medium text-gray-700">Nama Produk</label>
                         <input type="text" id="name" name="name" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" required>
                     </div>
+
+                    <!-- PERBAIKAN: Menambahkan Dropdown Kategori -->
+                    <div>
+                        <label for="category_id" class="block text-sm font-medium text-gray-700">Kategori Produk</label>
+                        <select id="category_id" name="category_id" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" required>
+                            <option value="" disabled selected>-- Pilih Kategori --</option>
+                            {{-- Looping data $categories yang dikirim dari controller --}}
+                            @foreach($categories as $category)
+                                <option value="{{ $category->id }}">{{ $category->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
                     <div>
                         <label for="price" class="block text-sm font-medium text-gray-700">Harga</label>
                         <div class="relative mt-1">
@@ -43,14 +56,15 @@
                         <label for="stock" class="block text-sm font-medium text-gray-700">Stok</label>
                         <input type="number" id="stock" name="stock" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" placeholder="0" required>
                     </div>
-                    <div>
-                        <label for="description" class="block text-sm font-medium text-gray-700">Deskripsi</label>
-                        <textarea id="description" name="description" rows="4" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"></textarea>
-                    </div>
+                   
                 </div>
 
                 <!-- Kolom Kanan -->
                 <div class="space-y-4">
+                     <div>
+                        <label for="description" class="block text-sm font-medium text-gray-700">Deskripsi</label>
+                        <textarea id="description" name="description" rows="4" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+                    </div>
                     <div>
                         <label for="image" class="block text-sm font-medium text-gray-700">Gambar Produk</label>
                         <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
@@ -76,7 +90,7 @@
                         </div>
                         <div class="ml-3 text-sm">
                             <label for="is_flash_sale" class="font-medium text-gray-700">Jadikan Flash Sale?</label>
-                            <p class="text-gray-500">Produk ini akan ditampilkan di bagian Flash Sale pada halaman katalog.</p>
+                            <p class="text-gray-500">Produk ini akan ditampilkan di bagian Flash Sale.</p>
                         </div>
                     </div>
                 </div>
@@ -89,4 +103,3 @@
         </form>
     </div>
 </div>
-

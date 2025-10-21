@@ -12,14 +12,29 @@
     
     <!-- Header: Search and Actions -->
     <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-        <form id="searchForm" action="{{ route('admin.marketplace.index') }}" method="GET" class="relative w-full md:w-1/3">
-            <input type="text" name="search" id="searchInput" class="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Cari Produk..." value="{{ request('search') }}">
-            <div class="absolute top-0 left-0 inline-flex items-center p-2 h-full text-gray-400">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+        {{-- Form sekarang berisi filter dan pencarian --}}
+        <form id="filterForm" action="{{ route('admin.marketplace.index') }}" method="GET" class="flex flex-col md:flex-row items-center gap-4 w-full md:w-2/3">
+            {{-- Filter Kategori --}}
+            <div class="w-full md:w-1/2">
+                <select name="category_filter" id="categoryFilter" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="all">Semua Kategori</option>
+                    @foreach($categories as $category)
+                        <option value="{{ $category->id }}" {{ request('category_filter') == $category->id ? 'selected' : '' }}>
+                            {{ $category->name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            {{-- Kolom Pencarian --}}
+            <div class="relative w-full md:w-1/2">
+                <input type="text" name="search" id="searchInput" class="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Cari Produk..." value="{{ request('search') }}">
+                <div class="absolute top-0 left-0 inline-flex items-center p-2 h-full text-gray-400">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                </div>
             </div>
         </form>
         <div class="flex items-center gap-2 w-full md:w-auto justify-end">
-            <button type="button" onclick="openAddModal()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700">Tambah Produk</button>
+            <button type="button" onclick="openAddModal()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 whitespace-nowrap">Tambah Produk</button>
         </div>
     </div>
 
@@ -40,6 +55,7 @@
                 <tr>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gambar</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Produk</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kategori</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Harga</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stok</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Flash Sale</th>
@@ -59,7 +75,7 @@
 </div>
 
 <!-- Modal Tambah/Edit -->
-@include('admin.marketplace.partials.modal')
+@include('admin.marketplace.partials.modal', ['categories' => $categories])
 
 @endsection
 
@@ -68,7 +84,6 @@
 // ======================================================================
 // == PENGELOLAAN MODAL DAN FORM
 // ======================================================================
-
 const modal = document.getElementById('productModal');
 const form = document.getElementById('productForm');
 const modalTitle = document.getElementById('modalTitle');
@@ -77,22 +92,19 @@ const submitButton = document.getElementById('submitButton');
 const errorContainer = document.getElementById('error-container');
 const errorList = document.getElementById('error-list');
 
-// Fungsi untuk membuka modal
 function openModal(id) {
     document.getElementById(id).classList.remove('hidden');
 }
 
-// Fungsi untuk menutup modal
 function closeModal(id) {
     document.getElementById(id).classList.add('hidden');
-    form.reset(); // Reset form saat modal ditutup
+    form.reset();
     resetErrors();
-    // Reset preview gambar
+    document.getElementById('image-preview').src = '';
     document.getElementById('image-preview').classList.add('hidden');
     document.getElementById('image-placeholder').classList.remove('hidden');
 }
 
-// Fungsi untuk membuka modal tambah produk
 function openAddModal() {
     form.reset();
     form.action = "{{ route('admin.marketplace.store') }}";
@@ -103,7 +115,6 @@ function openAddModal() {
     openModal('productModal');
 }
 
-// Fungsi untuk menampilkan preview gambar
 function previewImage(event) {
     const reader = new FileReader();
     reader.onload = function(){
@@ -118,10 +129,8 @@ function previewImage(event) {
 // ======================================================================
 // == FUNGSI CRUD (CREATE, READ, UPDATE, DELETE) DENGAN FETCH API
 // ======================================================================
-
-// Fungsi untuk membuka modal edit produk
 async function editProduct(id) {
-    openAddModal(); // Buka modal dengan form kosong terlebih dahulu
+    openAddModal(); // Menggunakan kembali modal tambah
     modalTitle.innerText = 'Edit Produk';
     submitButton.innerText = 'Perbarui';
     form.action = `/admin/marketplace/${id}`;
@@ -133,20 +142,21 @@ async function editProduct(id) {
         if (!response.ok) throw new Error('Gagal mengambil data produk.');
         const product = await response.json();
 
-        // Mengisi form dengan data yang ada, memberikan nilai default jika null
+        // Mengisi form dengan data
         document.getElementById('name').value = product.name || '';
+        document.getElementById('category_id').value = product.category_id || '';
         document.getElementById('price').value = product.price || '';
         document.getElementById('stock').value = product.stock || '';
         document.getElementById('description').value = product.description || '';
         document.getElementById('is_flash_sale').checked = product.is_flash_sale;
 
-        // Tampilkan preview gambar jika ada
         const imagePreview = document.getElementById('image-preview');
         if (product.image_url) {
-            imagePreview.src = product.image_url;
+            imagePreview.src = `/storage/${product.image_url}`;
             imagePreview.classList.remove('hidden');
             document.getElementById('image-placeholder').classList.add('hidden');
         } else {
+            imagePreview.src = '';
             imagePreview.classList.add('hidden');
             document.getElementById('image-placeholder').classList.remove('hidden');
         }
@@ -158,21 +168,18 @@ async function editProduct(id) {
     }
 }
 
-// Event listener untuk submit form (tambah & edit)
 form.addEventListener('submit', async function(e) {
     e.preventDefault();
     const formData = new FormData(this);
     const url = this.action;
-    const method = formMethod.value === 'PUT' ? 'POST' : 'POST'; // Laravel handle PUT via _method field
     
-    // Untuk method PUT, tambahkan _method ke formData
     if (formMethod.value === 'PUT') {
         formData.append('_method', 'PUT');
     }
 
     try {
         const response = await fetch(url, {
-            method: 'POST', // Selalu POST, method asli dihandle oleh _method
+            method: 'POST',
             body: formData,
             headers: {
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
@@ -180,33 +187,29 @@ form.addEventListener('submit', async function(e) {
             }
         });
 
-        if (response.status === 422) { // Error validasi
-            const result = await response.json();
-            displayErrors(result.errors);
-            return;
-        }
+        const result = await response.json();
 
         if (!response.ok) {
-            throw new Error('Terjadi kesalahan saat menyimpan data.');
+            if (response.status === 422) {
+                displayErrors(result.errors);
+            } else {
+                throw new Error(result.message || 'Terjadi kesalahan saat menyimpan data.');
+            }
+            return;
         }
         
-        // Jika berhasil, muat ulang tabel dan tutup modal
-        await loadTable();
+        await loadTable(window.location.href); // Muat ulang tabel dengan filter saat ini
         closeModal('productModal');
-        // Tambahkan notifikasi sukses (opsional)
-        alert('Data berhasil disimpan!');
+        alert(result.message || 'Data berhasil disimpan!');
 
     } catch (error) {
         console.error('Error:', error);
-        alert('Gagal menyimpan data.');
+        alert(error.message);
     }
 });
 
-// Fungsi untuk menghapus produk
 async function deleteProduct(id) {
-    if (!confirm('Apakah Anda yakin ingin menghapus produk ini?')) {
-        return;
-    }
+    if (!confirm('Apakah Anda yakin ingin menghapus produk ini?')) return;
 
     try {
         const response = await fetch(`/admin/marketplace/${id}`, {
@@ -217,73 +220,73 @@ async function deleteProduct(id) {
             }
         });
 
-        if (!response.ok) {
-            throw new Error('Gagal menghapus produk.');
-        }
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || 'Gagal menghapus produk.');
 
-        // Hapus baris dari tabel secara visual
-        document.getElementById(`product-${id}`).remove();
+        document.getElementById(`product-row-${id}`).remove();
         alert('Produk berhasil dihapus.');
 
     } catch (error) {
         console.error('Error:', error);
-        alert('Gagal menghapus produk.');
+        alert(error.message);
     }
 }
 
-
 // ======================================================================
-// == PENCARIAN & PAGINASI DINAMIS
+// == PENCARIAN, PAGINASI & FILTER DINAMIS
 // ======================================================================
-
 const searchInput = document.getElementById('searchInput');
+const categoryFilter = document.getElementById('categoryFilter');
 const tableBody = document.getElementById('product-table-body');
 const paginationLinks = document.getElementById('pagination-links');
+const filterForm = document.getElementById('filterForm');
 
-// Fungsi untuk memuat ulang data tabel (untuk paginasi dan pencarian)
-async function loadTable(url = "{{ route('admin.marketplace.index') }}") {
+async function loadTable(url) {
     try {
         const response = await fetch(url, {
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            }
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
         });
         const html = await response.text();
+        
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = html;
         
-        tableBody.innerHTML = tempDiv.querySelector('#product-table-body').innerHTML;
-        paginationLinks.innerHTML = tempDiv.querySelector('#pagination-links').innerHTML;
+        tableBody.innerHTML = tempDiv.querySelector('#product-table-body')?.innerHTML || '<tr><td colspan="7" class="text-center p-4">Tidak ada data ditemukan.</td></tr>';
+        paginationLinks.innerHTML = tempDiv.querySelector('#pagination-links')?.innerHTML || '';
 
     } catch (error) {
         console.error('Gagal memuat data tabel:', error);
     }
 }
 
-// Event listener untuk input pencarian (dengan debounce)
+function handleFilterChange() {
+    const params = new URLSearchParams(new FormData(filterForm)).toString();
+    const searchUrl = `{{ route('admin.marketplace.index') }}?${params}`;
+    window.history.pushState({}, '', searchUrl); // Update URL di browser
+    loadTable(searchUrl);
+}
+
 let searchTimeout;
-searchInput.addEventListener('keyup', function() {
+searchInput.addEventListener('keyup', () => {
     clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(() => {
-        const searchUrl = `{{ route('admin.marketplace.index') }}?search=${this.value}`;
-        loadTable(searchUrl);
-    }, 300); // Tunggu 300ms setelah user berhenti mengetik
+    searchTimeout = setTimeout(handleFilterChange, 300);
 });
 
-// Event listener untuk link paginasi (menggunakan event delegation)
+categoryFilter.addEventListener('change', handleFilterChange);
+
 paginationLinks.addEventListener('click', function(e) {
     e.preventDefault();
-    if (e.target.tagName === 'A') {
-        const paginationUrl = e.target.href;
-        loadTable(paginationUrl);
+    const link = e.target.closest('a');
+    if (link) {
+        const url = link.href;
+        window.history.pushState({}, '', url);
+        loadTable(url);
     }
 });
-
 
 // ======================================================================
 // == PENANGANAN ERROR VALIDASI
 // ======================================================================
-
 function displayErrors(errors) {
     errorList.innerHTML = '';
     for (const field in errors) {
@@ -300,7 +303,5 @@ function resetErrors() {
     errorContainer.classList.add('hidden');
     errorList.innerHTML = '';
 }
-
 </script>
 @endpush
-
