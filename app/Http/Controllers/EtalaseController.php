@@ -16,7 +16,6 @@ class EtalaseController extends Controller
      */
     public function index(Request $request)
     {
-        // --- Logika untuk Produk Utama (dengan filter & paginasi) ---
         $query = Product::with('store.user')->where('status', 'active')->where('stock', '>', 0);
 
         if ($request->filled('search')) {
@@ -25,7 +24,6 @@ class EtalaseController extends Controller
 
         $products = $query->latest()->paginate(10)->withQueryString();
 
-        // --- Logika untuk Produk Flash Sale ---
         $flashSaleProducts = Product::with('store')->where('status', 'active')
             ->where('stock', '>', 0)
             ->whereNotNull('original_price')
@@ -72,16 +70,14 @@ class EtalaseController extends Controller
     }
 
     /**
-     * PERBAIKAN: Method baru untuk menampilkan produk berdasarkan kategori di etalase publik.
+     * Menampilkan produk berdasarkan kategori di etalase publik.
      */
     public function showCategory(Category $category, Request $request)
     {
-        // Memastikan hanya kategori marketplace yang bisa diakses
         if ($category->type !== 'marketplace') {
             abort(404);
         }
 
-        // Mengambil produk dari kategori yang dipilih
         $products = $category->products()
                              ->with('store')
                              ->where('status', 'active')
@@ -89,11 +85,13 @@ class EtalaseController extends Controller
                              ->latest()
                              ->paginate(12);
         
-        // Mengambil data lain yang mungkin dibutuhkan oleh layout (e.g., banner)
         $banners = BannerEtalase::all();
         $settings = Setting::whereIn('key', ['banner_2','banner_3'])->pluck('value','key');
 
-        return view('etalase.category-show', compact('category', 'products', 'banners', 'settings'));
+        // PERBAIKAN: Mengambil semua kategori untuk ditampilkan di view
+        $categories = Category::where('type', 'marketplace')->get();
+
+        // PERBAIKAN: Menambahkan 'categories' ke data yang dikirim
+        return view('etalase.category-show', compact('category', 'products', 'banners', 'settings', 'categories'));
     }
 }
-
