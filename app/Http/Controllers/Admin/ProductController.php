@@ -140,7 +140,7 @@ class ProductController extends Controller
             return redirect()->route('admin.products.index')->with('error', 'Produk tidak ditemukan.');
         }
         // PERBAIKAN: Mengambil data Kategori dari tabel 'categories' yang tipenya 'marketplace'
-        $categories = Category::where('type', 'marketplace')->orderBy('name')->get();
+        $categories = Category::where('type', 'product')->orderBy('name')->get();
         return view('admin.products.edit', compact('product', 'categories'));
     }
 
