@@ -41,7 +41,8 @@ class Product extends Model
         'sold_count',
         'width',
         'height',
-        'length'
+        'length',
+        'attributes_data',
     ];
 
     /**

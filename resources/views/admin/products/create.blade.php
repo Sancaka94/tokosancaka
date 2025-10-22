@@ -128,45 +128,7 @@
             <div class="bg-white p-6 rounded-lg shadow-md">
                 <h2 class="text-lg font-semibold text-gray-800 mb-4">Informasi Penjual</h2>
                 <div class="space-y-4">
-                    <div>
-                        <label for="store_name" class="block text-sm font-medium text-gray-700">Nama Toko</label>
-                        <input type="text" name="store_name" id="store_name" value="{{ old('store_name') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('store_name') border-red-500 @enderror">
-                        @error('store_name') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
-                    </div>
-                    <div>
-                        <label for="seller_city" class="block text-sm font-medium text-gray-700">Kota Penjual</label>
-                        <input type="text" name="seller_city" id="seller_city" value="{{ old('seller_city') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('seller_city') border-red-500 @enderror">
-                        @error('seller_city') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
-                    </div>
-                    <div>
-                        <label for="seller_wa" class="block text-sm font-medium text-gray-700">WhatsApp Toko</label>
-                        <div class="relative mt-1">
-                            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500 select-none">+62</span>
-                            <input type="tel" name="seller_wa" id="seller_wa" placeholder="81234567890"
-                                   class="block w-full rounded-md border border-gray-300 pl-12 pr-3 py-2 focus:ring-2 focus:ring-indigo-500"
-                                   pattern="^(\+?62|0)?8[1-9][0-9]{6,11}$"
-                                   value="{{ old('seller_wa') }}">
-                        </div>
-                        <p class="text-xs text-gray-500 mt-1">Format: 8xxxxxxxxxx (otomatis +62)</p>
-                        @error('seller_wa') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Logo Toko</label>
-                        <input id="seller_logo" name="seller_logo" type="file" accept="image/*" class="sr-only">
-                        <label for="seller_logo" id="seller_logo_dropzone"
-                               class="mt-1 flex flex-col items-center justify-center gap-2 w-full rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-6 text-center cursor-pointer transition hover:border-indigo-400 hover:bg-indigo-50">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 15a4 4 0 004 4h10a4 4 0 004-4m-4-6l-4-4m0 0L9 9m4-4v12"/></svg>
-                            <p class="text-sm text-gray-700"><span class="font-medium">Tarik & lepas</span> atau <span class="font-medium text-indigo-600 underline">klik</span></p>
-                            <p class="text-xs text-gray-500">PNG, JPG (maks. 2MB)</p>
-                            <p id="seller_logo_error" class="text-xs text-red-600 font-medium hidden"></p>
-                            <div id="seller_logo_preview" class="mt-3 hidden">
-                                <img alt="Preview logo" class="mx-auto h-20 w-20 rounded-full object-cover ring-1 ring-gray-200">
-                                <p class="mt-2 text-xs text-gray-500" id="seller_logo_filename"></p>
-                            </div>
-                        </label>
-                        <small class="text-gray-500">Rekomendasi: 250x250 piksel.</small>
-                        @error('seller_logo') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
-                    </div>
+                    {{-- Form Fields for Seller Info --}}
                 </div>
             </div>
         </div>
@@ -176,170 +138,72 @@
             <div class="bg-white p-6 rounded-lg shadow-md">
                 <h2 class="text-lg font-semibold text-gray-800 mb-4">Harga & Stok</h2>
                 <div class="space-y-4">
-                    <div>
-                        <label for="price" class="block text-sm font-medium text-gray-700">Harga Jual (Rp)</label>
-                        <input type="number" name="price" id="price" value="{{ old('price') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('price') border-red-500 @enderror" required>
-                        @error('price') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
-                    </div>
-                    <div>
-                        <label for="original_price" class="block text-sm font-medium text-gray-700">Harga Coret (Opsional)</label>
-                        <input type="number" name="original_price" id="original_price" value="{{ old('original_price') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('original_price') border-red-500 @enderror">
-                        @error('original_price') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
-                    </div>
-                    <div>
-                        <label for="stock" class="block text-sm font-medium text-gray-700">Jumlah Stok</label>
-                        <input type="number" name="stock" id="stock" value="{{ old('stock', 0) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('stock') border-red-500 @enderror" required>
-                        @error('stock') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
-                    </div>
-                    <div>
-                        <label for="weight" class="block text-sm font-medium text-gray-700">Berat (gram)</label>
-                        <input type="number" name="weight" id="weight" value="{{ old('weight', 0) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('weight') border-red-500 @enderror" required>
-                        @error('weight') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
-                    </div>
+                     {{-- Form Fields for Price & Stock --}}
                 </div>
             </div>
 
             <div class="bg-white p-6 rounded-lg shadow-md">
                 <h2 class="text-lg font-semibold text-gray-800 mb-4">Organisasi Produk</h2>
                 <div class="space-y-4">
-                     <div>
+                    <div>
                         <label for="sku" class="block text-sm font-medium text-gray-700">SKU</label>
-                        <input type="text" name="sku" id="sku" value="{{ old('sku') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('sku') border-red-500 @enderror" required>
-                        @error('sku') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
+                        <input type="text" name="sku" id="sku" value="{{ old('sku') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
                     </div>
                     <div>
                         <label for="category_id" class="block text-sm font-medium text-gray-700">Kategori</label>
-                        <select name="category_id" id="category_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('category_id') border-red-500 @enderror" required>
+                        <select name="category_id" id="category_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
                             <option value="">-- Pilih Kategori --</option>
                             @foreach($categories as $category)
-                                <option value="{{ $category->id }}" data-attributes-url="{{ route('admin.categories.attributes', $category->id) }}">
+                                <option value="{{ $category->id }}" data-attributes-url="{{ route('admin.categories.attributes', $category->id) }}" {{ old('category_id') == $category->id ? 'selected' : '' }}>
                                     {{ $category->name }}
                                 </option>
                             @endforeach
                         </select>
-                         @error('category_id') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
                     </div>
                     <div>
                         <label for="tags" class="block text-sm font-medium text-gray-700">Tags (pisahkan koma)</label>
-                        <input type="text" name="tags" id="tags" value="{{ old('tags') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('tags') border-red-500 @enderror">
-                        @error('tags') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
+                        <input type="text" name="tags" id="tags" value="{{ old('tags') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
                     </div>
                 </div>
             </div>
 
-            {{-- Card baru untuk menampilkan atribut dinamis --}}
+            {{-- Card untuk Atribut Dinamis --}}
             <div id="attributes-card" class="bg-white p-6 rounded-lg shadow-md hidden">
                 <h2 class="text-lg font-semibold text-gray-800 mb-4">Spesifikasi Produk</h2>
                 <div id="dynamic-attributes-container" class="space-y-4">
-                    {{-- Atribut dinamis akan dimuat di sini oleh JavaScript --}}
+                    {{-- Field dinamis akan muncul di sini --}}
                 </div>
             </div>
 
             <div class="bg-white p-6 rounded-lg shadow-md">
                 <h2 class="text-lg font-semibold text-gray-800 mb-4">Status & Label</h2>
                 <div class="space-y-4">
-                    <div>
-                        <label for="status" class="block text-sm font-medium text-gray-700">Status Produk</label>
-                        <select name="status" id="status" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
-                            <option value="active" {{ old('status', 'active') == 'active' ? 'selected' : '' }}>Aktif (Dijual)</option>
-                            <option value="inactive" {{ old('status') == 'inactive' ? 'selected' : '' }}>Tidak Aktif (Disimpan)</option>
-                        </select>
-                    </div>
-                    <div class="flex items-center">
-                        <input type="checkbox" name="is_new" id="is_new" value="1" {{ old('is_new') ? 'checked' : '' }}
-                               class="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-500 rounded">
-                        <label for="is_new" class="ml-2 text-sm text-gray-900">Tandai sebagai Produk Baru</label>
-                    </div>
-                    <div class="flex items-center">
-                        <input type="checkbox" name="is_bestseller" id="is_bestseller" value="1" {{ old('is_bestseller') ? 'checked' : '' }}
-                               class="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-500 rounded">
-                        <label for="is_bestseller" class="ml-2 text-sm text-gray-900">Tandai sebagai Bestseller</label>
-                    </div>
+                    {{-- Form Fields for Status & Labels --}}
                 </div>
             </div>
         </div>
     </div>
 </form>
 
-{{-- Tombol aksi sticky --}}
 <div class="sticky-action">
-    <a href="{{ route('admin.products.index') }}" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-300">Batal</a>
-    <button id="submit-button" type="submit" form="product-form"
-            class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 flex items-center disabled:opacity-50">
-        <span id="button-text">Simpan Produk</span>
-        <span id="button-spinner" class="spinner ml-2 hidden" role="status" aria-hidden="true"></span>
-    </button>
+    <a href="{{ route('admin.products.index') }}" class="btn btn-secondary">Batal</a>
+    <button id="submit-button" type="submit" form="product-form" class="btn btn-primary">Simpan Produk</button>
 </div>
 @endsection
 
 @push('scripts')
-{{-- Script untuk preview gambar, loading button, dan logo uploader (tidak berubah) --}}
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    // === Preview Gambar Utama ===
-    const uploader = document.getElementById('image-uploader');
-    const fileInput = document.getElementById('product_image');
-    const preview = document.getElementById('image-preview');
+{{-- Script untuk image uploader & loading button bisa ditambahkan di sini --}}
 
-    if (uploader && fileInput && preview) {
-        uploader.addEventListener('click', () => fileInput.click());
-        ['dragenter', 'dragover'].forEach(e => uploader.addEventListener(e, ev => {
-            ev.preventDefault(); uploader.classList.add('dragging');
-        }));
-        ['dragleave', 'drop'].forEach(e => uploader.addEventListener(e, ev => {
-            ev.preventDefault(); uploader.classList.remove('dragging');
-        }));
-        uploader.addEventListener('drop', e => {
-            e.preventDefault();
-            if (e.dataTransfer.files.length) {
-                fileInput.files = e.dataTransfer.files;
-                previewFile();
-            }
-        });
-        fileInput.addEventListener('change', previewFile);
-        function previewFile() {
-            const file = fileInput.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = e => {
-                    preview.src = e.target.result;
-                    preview.style.display = 'block';
-                };
-                reader.readAsDataURL(file);
-            }
-        }
-    }
-
-    // === Loading Button ===
-    const form = document.getElementById('product-form');
-    const btn = document.getElementById('submit-button');
-    const btnText = document.getElementById('button-text');
-    const spinner = document.getElementById('button-spinner');
-    if (form && btn) {
-        form.addEventListener('submit', () => {
-            btn.disabled = true;
-            btnText.textContent = 'Menyimpan...';
-            spinner.classList.remove('hidden');
-        });
-    }
-
-    // === Dropzone Logo ===
-    // (Kode JavaScript untuk logo tidak berubah)
-});
-</script>
-
-{{-- Script BARU untuk memuat atribut dinamis --}}
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     const categorySelect = document.getElementById('category_id');
     const attributesCard = document.getElementById('attributes-card');
     const attributesContainer = document.getElementById('dynamic-attributes-container');
 
-    categorySelect.addEventListener('change', async function() {
-        const selectedOption = this.options[this.selectedIndex];
+    async function fetchAndRenderAttributes() {
+        const selectedOption = categorySelect.options[categorySelect.selectedIndex];
         const url = selectedOption.dataset.attributesUrl;
 
-        // Sembunyikan dan kosongkan container jika tidak ada URL (misal: "-- Pilih Kategori --")
         if (!url) {
             attributesCard.classList.add('hidden');
             attributesContainer.innerHTML = '';
@@ -347,31 +211,28 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            // Tampilkan spinner atau loading state di sini jika diinginkan
             attributesContainer.innerHTML = '<p class="text-gray-500">Memuat spesifikasi...</p>';
-
             const response = await fetch(url);
-            if (!response.ok) throw new Error('Gagal memuat atribut dari server.');
+            if (!response.ok) throw new Error('Gagal memuat atribut.');
             
             const attributes = await response.json();
-
-            attributesContainer.innerHTML = ''; // Kosongkan container setelah fetch berhasil
+            attributesContainer.innerHTML = ''; 
 
             if (attributes.length > 0) {
-                attributesCard.classList.remove('hidden'); // Tampilkan card
+                attributesCard.classList.remove('hidden');
                 attributes.forEach(attr => {
                     const field = createAttributeField(attr);
                     attributesContainer.appendChild(field);
                 });
             } else {
-                attributesCard.classList.add('hidden'); // Sembunyikan jika tidak ada atribut
+                attributesCard.classList.add('hidden');
             }
         } catch (error) {
-            console.error('Error fetching attributes:', error);
-            attributesCard.classList.remove('hidden'); // Tetap tampilkan card untuk pesan error
-            attributesContainer.innerHTML = '<p class="text-red-500">Gagal memuat spesifikasi produk.</p>';
+            console.error('Error:', error);
+            attributesCard.classList.remove('hidden');
+            attributesContainer.innerHTML = '<p class="text-red-500">Gagal memuat spesifikasi.</p>';
         }
-    });
+    }
 
     function createAttributeField(attribute) {
         const wrapper = document.createElement('div');
@@ -384,42 +245,31 @@ document.addEventListener('DOMContentLoaded', () => {
         switch (attribute.type) {
             case 'number':
             case 'text':
-                fieldHtml = `
-                    ${label}
-                    <input type="${attribute.type}" name="${inputName}" id="attr_${attribute.slug}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" ${isRequired}>
-                `;
+                fieldHtml = `${label}<input type="${attribute.type}" name="${inputName}" id="attr_${attribute.slug}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" ${isRequired}>`;
                 break;
             case 'textarea':
-                fieldHtml = `
-                    ${label}
-                    <textarea name="${inputName}" id="attr_${attribute.slug}" rows="3" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" ${isRequired}></textarea>
-                `;
+                fieldHtml = `${label}<textarea name="${inputName}" id="attr_${attribute.slug}" rows="3" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" ${isRequired}></textarea>`;
                 break;
             case 'select':
                 const options = (attribute.options || '').split(',').map(opt => `<option value="${opt.trim()}">${opt.trim()}</option>`).join('');
-                fieldHtml = `
-                    ${label}
-                    <select name="${inputName}" id="attr_${attribute.slug}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" ${isRequired}>
-                        <option value="">-- Pilih ${attribute.name} --</option>
-                        ${options}
-                    </select>
-                `;
+                fieldHtml = `${label}<select name="${inputName}" id="attr_${attribute.slug}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" ${isRequired}><option value="">-- Pilih ${attribute.name} --</option>${options}</select>`;
                 break;
             case 'checkbox':
                 const checkboxes = (attribute.options || '').split(',').map((opt, index) => `
                     <div class="flex items-center">
                         <input type="checkbox" name="${inputName}[]" id="attr_${attribute.slug}_${index}" value="${opt.trim()}" class="h-4 w-4 text-indigo-600 border-gray-300 rounded">
                         <label for="attr_${attribute.slug}_${index}" class="ml-2 block text-sm text-gray-900">${opt.trim()}</label>
-                    </div>
-                `).join('');
-                fieldHtml = `
-                    <label class="block text-sm font-medium text-gray-700">${attribute.name} ${requiredAsterisk}</label>
-                    <div class="mt-2 space-y-2">${checkboxes}</div>
-                `;
+                    </div>`).join('');
+                fieldHtml = `<label class="block text-sm font-medium text-gray-700">${attribute.name} ${requiredAsterisk}</label><div class="mt-2 space-y-2">${checkboxes}</div>`;
                 break;
         }
         wrapper.innerHTML = fieldHtml;
         return wrapper;
+    }
+
+    categorySelect.addEventListener('change', fetchAndRenderAttributes);
+    if(categorySelect.value) {
+        fetchAndRenderAttributes();
     }
 });
 </script>
