@@ -6,8 +6,8 @@
 @push('styles')
 <style>
     /* =============================
-       STYLE TAMBAH PRODUK - FIXED
-       ============================= */
+        STYLE TAMBAH PRODUK - FIXED
+        ============================= */
 
     .image-uploader {
         border: 2px dashed #d1d5db;
@@ -55,8 +55,8 @@
     }
 
     /* =============================
-       FIX LAYOUT SCROLLING
-       ============================= */
+        FIX LAYOUT SCROLLING
+        ============================= */
     html, body {
         height: 100%;
         overflow: hidden;
@@ -320,3 +320,4 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 @endpush
+
