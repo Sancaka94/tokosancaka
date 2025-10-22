@@ -322,12 +322,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // === 3. Dropzone Logo ===
     const dz = document.getElementById('seller_logo_dropzone');
     const input = document.getElementById('seller_logo');
-    const previewWrap = document.getElementById('seller_logo_preview');
-    const errorEl = document.getElementById('seller_logo_error');
-    if (dz && input) {
-        dz.addEventListener('click', () => input.click());
-        // (Sisa logika dropzone...)
-    }
+    // ... (sisa logika dropzone bisa ditambahkan di sini jika diperlukan)
 
     // === 4. Atribut Dinamis ===
     const categorySelect = document.getElementById('category_id');
