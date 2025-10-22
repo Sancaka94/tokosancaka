@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Attribute;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str; // PERBAIKAN: Import class Str untuk membuat slug
 
 class CategoryAttributeController extends Controller
 {
@@ -25,24 +26,19 @@ class CategoryAttributeController extends Controller
         return view('admin.category-attributes.index', compact('categories', 'selectedCategory', 'attributes'));
     }
 
-    /**
-     * PERBAIKAN:
-     * 1. Method signature diubah untuk menerima Model Category langsung dari URL (Route Model Binding).
-     * 2. Validasi untuk 'category_id' dihapus karena tidak lagi diperlukan.
-     */
     public function store(Request $request, Category $category)
     {
         $request->validate([
-            // 'category_id' => 'required|exists:categories,id', // <-- Dihapus
             'name' => 'required|string|max:255',
             'type' => 'required|string|in:text,number,textarea,checkbox,select',
-            'options' => 'nullable|string|max:65535', // Menggunakan max untuk TEXT
+            'options' => 'nullable|string|max:65535',
             'is_required' => 'nullable|boolean',
         ]);
 
-        // Langsung menggunakan variabel $category yang didapat dari URL
+        // PERBAIKAN: Menambahkan 'slug' saat membuat atribut baru
         $category->attributes()->create([
             'name' => $request->name,
+            'slug' => Str::slug($request->name), // Membuat slug dari nama atribut
             'type' => $request->type,
             'options' => $request->options,
             'is_required' => $request->has('is_required'),
@@ -62,12 +58,14 @@ class CategoryAttributeController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'type' => 'required|string|in:text,number,textarea,checkbox,select',
-            'options' => 'nullable|string|max:65535', // Menggunakan max untuk TEXT
+            'options' => 'nullable|string|max:65535',
             'is_required' => 'nullable|boolean',
         ]);
 
+        // PERBAIKAN: Menambahkan 'slug' saat memperbarui atribut
         $attribute->update([
             'name' => $request->name,
+            'slug' => Str::slug($request->name), // Membuat slug dari nama atribut
             'type' => $request->type,
             'options' => $request->options,
             'is_required' => $request->has('is_required'),
