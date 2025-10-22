@@ -98,7 +98,8 @@
                     </div>
                     
                     @php
-                        $attributesData = json_decode($product->attributes_data, true) ?? [];
+                        // Memastikan data atribut di-decode dengan benar
+                        $attributesData = is_string($product->attributes_data) ? json_decode($product->attributes_data, true) : ($product->attributes_data ?? []);
                     @endphp
 
                     @if (!empty($attributesData) && $product->category && $product->category->attributes->isNotEmpty())
@@ -145,11 +146,11 @@
                         
                         <div class="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <button type="submit" name="action" class="w-full flex items-center justify-center gap-2 px-6 py-3.5 border border-blue-600 text-blue-600 dark:border-blue-500 dark:text-blue-500 font-semibold rounded-lg shadow-sm hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors duration-200">
+                                <button type="submit" name="action" value="add_to_cart" class="w-full flex items-center justify-center gap-2 px-6 py-3.5 border border-blue-600 text-blue-600 dark:border-blue-500 dark:text-blue-500 font-semibold rounded-lg shadow-sm hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors duration-200">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
                                     Masukkan Keranjang
                                 </button>
-                                 <button type="submit" name="action" value="buy" class="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors duration-200">
+                                 <button type="submit" name="action" value="buy_now" class="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors duration-200">
                                     Beli Sekarang
                                 </button>
                             </div>
