@@ -25,7 +25,7 @@
                 <li><a href="{{ route('etalase.index') }}" class="hover:text-blue-600">Sancaka</a></li>
                 <li><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-right"><path d="m9 18 6-6-6-6"/></svg></li>
                 @if($product->category)
-                <li><a href="{{ route('etalase.category-show', $product->category->slug) }}" class="hover:text-blue-600">{{ $product->category->name }}</a></li>
+                <li><a href="{{ route('etalase.category.show', $product->category->slug) }}" class="hover:text-blue-600">{{ $product->category->name }}</a></li>
                 <li><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-right"><path d="m9 18 6-6-6-6"/></svg></li>
                 @endif
                 <li class="font-medium text-gray-700 dark:text-gray-300 truncate">{{ $product->name }}</li>
@@ -51,10 +51,9 @@
                         <div>
                             <img src="{{ $imageUrl }}" alt="Thumbnail 1" class="thumbnail-img w-full h-auto object-cover rounded-lg cursor-pointer transition-all duration-200 hover:opacity-80 thumbnail-active" onclick="changeImage(this)" onerror="this.onerror=null;this.src='https://placehold.co/100x100/E2E8F0/4A5568?text=N/A';">
                         </div>
-                        {{-- LENGKAPI: Loop untuk gambar tambahan dari relasi 'images' --}}
                         @if($product->images && is_array(json_decode($product->images)))
                             @foreach(json_decode($product->images) as $index => $imagePath)
-                                @if($loop->index < 4) {{-- Batasi hingga 4 thumbnail tambahan --}}
+                                @if($loop->index < 4)
                                 <div>
                                     <img src="{{ asset('storage/' . $imagePath) }}"
                                          alt="Thumbnail {{ $index + 2 }}" 
@@ -98,7 +97,6 @@
                     </div>
                     
                     @php
-                        // Memastikan data atribut di-decode dengan benar
                         $attributesData = is_string($product->attributes_data) ? json_decode($product->attributes_data, true) : ($product->attributes_data ?? []);
                     @endphp
 
@@ -261,4 +259,3 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 @endpush
-
