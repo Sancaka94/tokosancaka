@@ -329,14 +329,10 @@ Route::post('posts/generate-content', [PostController::class, 'generateContent']
 
 // Rute kustom didefinisikan sebelum resource route
 
-Route::get('products/data', [AdminProductController::class, 'getData'])->name('products.data');
-
-Route::post('products/{product}/restock', [AdminProductController::class, 'restock'])->name('products.restock');
-
-Route::patch('products/{product}/mark-as-out-of-stock', [AdminProductController::class, 'markAsOutOfStock'])->name('products.outOfStock');
-
-Route::resource('products', \App\Http\Controllers\Admin\ProductController::class)->names('admin.products');
-
+  Route::get('products/data', [AdminProductController::class, 'getData'])->name('products.data');
+    Route::post('products/{product}/restock', [AdminProductController::class, 'restock'])->name('products.restock');
+    Route::patch('products/{product}/mark-as-out-of-stock', [AdminProductController::class, 'markAsOutOfStock'])->name('products.outOfStock');
+    Route::resource('products', AdminProductController::class)->names('products');
 
 
 
