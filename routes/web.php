@@ -315,15 +315,38 @@ Route::prefix('admin')->name('admin.')->group(function () {
     // Rute untuk Manajemen Banner (CRUD)
     Route::resource('banners', BannerController::class);
 
-       // --- RUTE BARU UNTUK PENGATURAN ATRIBUT ---
-    Route::get('category-attributes', [CategoryAttributeController::class, 'index'])->name('category-attributes.index');
-    Route::post('category-attributes', [CategoryAttributeController::class, 'store'])->name('category-attributes.store');
-    Route::delete('category-attributes/{attribute}', [CategoryAttributeController::class, 'destroy'])->name('category-attributes.destroy');
-
-     // Rute baru untuk edit dan update
-        Route::get('/{attribute}/edit', [App\Http\Controllers\Admin\CategoryAttributeController::class, 'edit'])->name('edit');
-        Route::put('/{attribute}', [App\Http\Controllers\Admin\CategoryAttributeController::class, 'update'])->name('update');
-    
+// ================================================================
+    // == PERBAIKAN: STRUKTUR RUTE UNTUK ATRIBUT KATEGORI ==
+    // ================================================================
+    // Grup ini memastikan semua URL diawali dengan '/category-attributes'
+    // dan semua nama rute diawali dengan 'category-attributes.'
+    Route::prefix('category-attributes')->name('category-attributes.')->group(function () {
+        
+        // Menampilkan halaman utama (daftar atribut)
+        // URL: /admin/category-attributes
+        // Nama Rute: admin.category-attributes.index
+        Route::get('/', [CategoryAttributeController::class, 'index'])->name('index');
+        
+        // Menyimpan atribut baru untuk kategori tertentu
+        // URL: /admin/category-attributes/{category}
+        // Nama Rute: admin.category-attributes.store
+        Route::post('/{category}', [CategoryAttributeController::class, 'store'])->name('store');
+        
+        // Menampilkan form untuk mengedit atribut
+        // URL: /admin/category-attributes/{attribute}/edit
+        // Nama Rute: admin.category-attributes.edit
+        Route::get('/{attribute}/edit', [CategoryAttributeController::class, 'edit'])->name('edit');
+        
+        // Menyimpan perubahan pada atribut yang diedit
+        // URL: /admin/category-attributes/{attribute}
+        // Nama Rute: admin.category-attributes.update
+        Route::put('/{attribute}', [CategoryAttributeController::class, 'update'])->name('update');
+        
+        // Menghapus atribut
+        // URL: /admin/category-attributes/{attribute}
+        // Nama Rute: admin.category-attributes.destroy
+        Route::delete('/{attribute}', [CategoryAttributeController::class, 'destroy'])->name('destroy');
+    });
 
 });
 
