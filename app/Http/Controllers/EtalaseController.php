@@ -62,7 +62,7 @@ class EtalaseController extends Controller
         $settings = Setting::whereIn('key', ['banner_2','banner_3'])->pluck('value','key');
         $categories = Category::where('type', 'product')->orderBy('name')->get();
 
-        return view('etalase.category', compact('category', 'products', 'banners', 'settings', 'categories'));
+        return view('etalase.category-show', compact('category', 'products', 'banners', 'settings', 'categories'));
     }
     
     /**
