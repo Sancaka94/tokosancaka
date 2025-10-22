@@ -338,15 +338,6 @@ Route::patch('products/{product}/mark-as-out-of-stock', [AdminProductController:
 Route::resource('products', AdminProductController::class);
 
 
-  // --- MANAJEMEN PRODUK ---
-    // PERBAIKAN: Rute kustom untuk 'restock' dan 'outOfStock'
-    Route::post('products/{product}/restock', [ProductController::class, 'restock'])->name('products.restock');
-    Route::patch('products/{product}/out-of-stock', [ProductController::class, 'outOfStock'])->name('products.outOfStock');
-    Route::get('products-data', [ProductController::class, 'getData'])->name('products.data'); // Untuk DataTables
-    Route::resource('products', ProductController::class); // Rute resource standar
-
-
-
 
 // Fallback for uploaded post images
 
