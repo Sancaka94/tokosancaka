@@ -94,7 +94,7 @@ Route::get('/etalase', [EtalaseController::class, 'index'])->name('etalase.index
 Route::get('/etalase/category/{category:slug}', [EtalaseController::class, 'showCategory'])->name('public.categories.show');
 Route::get('/products/{product:slug}', [EtalaseController::class, 'show'])->name('products.show'); // Menggunakan EtalaseController
 Route::get('/toko/{name}', [EtalaseController::class, 'profileToko'])->name('toko.profile');
-
+Route::get('/etalase/kategori/{slug}', [EtalaseController::class, 'showCategory'])->name('etalase.category-show');
 
 // Rute untuk menampilkan daftar pelanggan ke publik
 Route::get('/pelanggan', [PublicPelangganController::class, 'index'])->name('pelanggan.public.index');
