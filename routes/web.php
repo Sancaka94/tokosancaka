@@ -45,6 +45,7 @@ use App\Http\Controllers\Customer\CheckoutController as CustomerCheckoutControll
 use App\Http\Controllers\Customer\CategoryController; // Tambahkan ini di atas
 use App\Http\Controllers\EtalaseController;
 use App\Http\Controllers\ProductController; // Pastikan controller ini ada
+use App\Http\Controllers\Admin\CategoryAttributeController; // Import controller baru
 
 
 /*
@@ -313,6 +314,12 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
     // Rute untuk Manajemen Banner (CRUD)
     Route::resource('banners', BannerController::class);
+
+       // --- RUTE BARU UNTUK PENGATURAN ATRIBUT ---
+    Route::get('category-attributes', [CategoryAttributeController::class, 'index'])->name('category-attributes.index');
+    Route::post('category-attributes', [CategoryAttributeController::class, 'store'])->name('category-attributes.store');
+    Route::delete('category-attributes/{attribute}', [CategoryAttributeController::class, 'destroy'])->name('category-attributes.destroy');
+
 
 });
 
