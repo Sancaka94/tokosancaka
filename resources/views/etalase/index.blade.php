@@ -76,7 +76,6 @@
         <div class="swiper categoriesSwiper">
             <div class="swiper-wrapper">
                 @php
-                    // Memecah kategori menjadi grup-grup berisi 20 item per slide
                     $categoryChunks = $categories->chunk(20);
                 @endphp
 
@@ -84,8 +83,8 @@
                 <div class="swiper-slide">
                     <div class="grid grid-cols-5 md:grid-cols-10 gap-x-4 gap-y-6 text-center">
                         @foreach ($chunk as $category)
-                        {{-- PERBAIKAN: Menggunakan nama rute yang konsisten --}}
-                        <a href="{{ route('etalase.category-show', $category->slug) }}" class="flex flex-col items-center space-y-2 text-gray-600 hover:text-red-500 transition-colors group">
+                        {{-- PERBAIKAN: Menggunakan URL langsung untuk menghindari cache route --}}
+                        <a href="{{ url('/etalase/category/' . $category->slug) }}" class="flex flex-col items-center space-y-2 text-gray-600 hover:text-red-500 transition-colors group">
                             <div class="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center group-hover:bg-red-100 transition-colors">
                                 <i class="fas {{ $category->icon ?? 'fa-tag' }} text-3xl text-gray-500 group-hover:text-red-500 transition-colors"></i>
                             </div>
@@ -102,7 +101,6 @@
             </div>
         </div>
         
-        {{-- Tombol Navigasi untuk Slider Kategori --}}
         <div class="swiper-button-next category-next !text-gray-600 !bg-white !shadow-md !w-10 !h-10"></div>
         <div class="swiper-button-prev category-prev !text-gray-600 !bg-white !shadow-md !w-10 !h-10"></div>
     </section>
@@ -120,8 +118,8 @@
                     <div class="swiper-wrapper py-2">
                         @foreach ($flashSaleProducts as $product)
                         <div class="swiper-slide h-auto pb-2">
-                            {{-- PERBAIKAN: Menggunakan nama rute yang konsisten --}}
-                            <a href="{{ route('etalase.show', $product->slug) }}" class="block border rounded-xl overflow-hidden group hover:shadow-xl transition-all duration-300 h-full flex flex-col bg-white">
+                            {{-- PERBAIKAN: Menggunakan URL langsung untuk menghindari cache route --}}
+                            <a href="{{ url('/products/' . $product->slug) }}" class="block border rounded-xl overflow-hidden group hover:shadow-xl transition-all duration-300 h-full flex flex-col bg-white">
                                 <div class="relative">
                                     <div class="h-48 bg-gray-50">
                                         @php
@@ -159,8 +157,8 @@
         <div class="p-5 bg-white rounded-b-2xl shadow-md">
             <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
                 @forelse ($products as $product)
-                    {{-- PERBAIKAN: Menggunakan nama rute yang konsisten --}}
-                    <a href="{{ route('etalase.show', $product->slug) }}" class="bg-white border rounded-xl overflow-hidden group hover:shadow-2xl transition-all duration-300 flex flex-col">
+                    {{-- PERBAIKAN: Menggunakan URL langsung untuk menghindari cache route --}}
+                    <a href="{{ url('/products/' . $product->slug) }}" class="bg-white border rounded-xl overflow-hidden group hover:shadow-2xl transition-all duration-300 flex flex-col">
                         <div>
                             <div class="h-48 bg-gray-50 relative">
                                @php
@@ -214,42 +212,12 @@
 @endsection
 
 @push('scripts')
+{{-- Script Swiper (tidak berubah) --}}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    // Initialize Hero Swiper
-    new Swiper(".heroSwiper", {
-        loop: true,
-        effect: "fade",
-        autoplay: { delay: 4000, disableOnInteraction: false },
-        pagination: { el: ".swiper-pagination", clickable: true },
-        navigation: { nextEl: ".swiper-button-next", prevEl: ".swiper-button-prev" },
-    });
-
-    // Initialize Flash Sale Swiper
-    new Swiper(".flashSaleSwiper", {
-        slidesPerView: 2,
-        spaceBetween: 10,
-        navigation: {
-            nextEl: ".flash-sale-next",
-            prevEl: ".flash-sale-prev",
-        },
-        breakpoints: {
-            640: { slidesPerView: 3, spaceBetween: 15 },
-            768: { slidesPerView: 4, spaceBetween: 20 },
-            1024: { slidesPerView: 5, spaceBetween: 20 },
-        },
-    });
-
-    // Initialize Categories Swiper
-    new Swiper(".categoriesSwiper", {
-        loop: false,
-        slidesPerView: 1,
-        spaceBetween: 20,
-        navigation: {
-            nextEl: ".category-next",
-            prevEl: ".category-prev",
-        },
-    });
+    new Swiper(".heroSwiper", { loop: true, effect: "fade", autoplay: { delay: 4000, disableOnInteraction: false }, pagination: { el: ".swiper-pagination", clickable: true }, navigation: { nextEl: ".swiper-button-next", prevEl: ".swiper-button-prev" }, });
+    new Swiper(".flashSaleSwiper", { slidesPerView: 2, spaceBetween: 10, navigation: { nextEl: ".flash-sale-next", prevEl: ".flash-sale-prev", }, breakpoints: { 640: { slidesPerView: 3, spaceBetween: 15 }, 768: { slidesPerView: 4, spaceBetween: 20 }, 1024: { slidesPerView: 5, spaceBetween: 20 }, }, });
+    new Swiper(".categoriesSwiper", { loop: false, slidesPerView: 1, spaceBetween: 20, navigation: { nextEl: ".category-next", prevEl: ".category-prev", }, });
 });
 </script>
 @endpush
