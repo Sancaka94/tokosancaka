@@ -217,7 +217,7 @@
                     <h2 class="text-lg font-semibold text-gray-800">Varian Produk (Opsional)</h2>
                     <button type="button" id="add-variant-group" class="btn btn-sm btn-outline-primary">Tambah Varian</button>
                 </div>
-                <p class="text-sm text-gray-600 mb-4">Tambahkan varian jika produk Anda memiliki pilihan seperti warna atau ukuran. Ini akan menonaktifkan input stok utama.</p>
+                <p class="text-sm text-gray-600 mb-6">Tambahkan varian jika produk Anda memiliki pilihan seperti warna atau ukuran. Ini akan menonaktifkan input stok utama.</p>
                 <div id="variant-groups-container" class="space-y-6">
                     {{-- Grup varian dinamis akan ditambahkan di sini --}}
                 </div>
