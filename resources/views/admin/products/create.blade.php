@@ -238,11 +238,9 @@
         </div>
     </div>
 </form>
-@endsection
 
-@section('footer')
-{{-- Tombol Aksi dibuat sticky di bagian bawah area konten --}}
-<div class="sticky bottom-0 z-10 flex justify-end bg-white p-4 rounded-lg shadow-md border-t">
+{{-- Tombol Aksi dipindahkan ke sini, di dalam @section('content') --}}
+<div class="sticky bottom-0 z-10 flex justify-end bg-white p-4 shadow-md border-t -mx-6 -mb-24 px-6">
     <a href="{{ route('admin.products.index') }}" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium mr-2 hover:bg-gray-300">Batal</a>
     <button id="submit-button" type="submit" form="product-form" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 flex items-center disabled:opacity-50">
         <span id="button-text">Simpan Produk</span>
@@ -250,6 +248,8 @@
     </button>
 </div>
 @endsection
+
+{{-- Section 'footer' tidak lagi digunakan --}}
 
 @push('scripts')
 <script>
