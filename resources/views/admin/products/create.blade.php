@@ -99,8 +99,16 @@
             <div class="bg-white p-6 rounded-lg shadow-md">
                 <h2 class="text-lg font-semibold text-gray-800 mb-4">Informasi Produk</h2>
                 <div class="space-y-4">
-                    <x-input label="Nama Produk" name="name" required />
-                    <x-textarea label="Deskripsi" name="description" rows="6" />
+                    <div>
+                        <label for="name" class="block text-sm font-medium text-gray-700">Nama Produk</label>
+                        <input type="text" name="name" id="name" value="{{ old('name') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('name') border-red-500 @enderror" required>
+                        @error('name') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label for="description" class="block text-sm font-medium text-gray-700">Deskripsi</label>
+                        <textarea name="description" id="description" rows="6" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('description') border-red-500 @enderror">{{ old('description') }}</textarea>
+                        @error('description') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
+                    </div>
                 </div>
             </div>
 
@@ -120,8 +128,16 @@
             <div class="bg-white p-6 rounded-lg shadow-md">
                 <h2 class="text-lg font-semibold text-gray-800 mb-4">Informasi Penjual</h2>
                 <div class="space-y-4">
-                    <x-input label="Nama Toko" name="store_name" />
-                    <x-input label="Kota Penjual" name="seller_city" />
+                     <div>
+                        <label for="store_name" class="block text-sm font-medium text-gray-700">Nama Toko</label>
+                        <input type="text" name="store_name" id="store_name" value="{{ old('store_name') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('store_name') border-red-500 @enderror">
+                        @error('store_name') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label for="seller_city" class="block text-sm font-medium text-gray-700">Kota Penjual</label>
+                        <input type="text" name="seller_city" id="seller_city" value="{{ old('seller_city') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('seller_city') border-red-500 @enderror">
+                        @error('seller_city') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
+                    </div>
                     <div>
                         <label for="seller_wa" class="block text-sm font-medium text-gray-700">WhatsApp Toko</label>
                         <div class="relative mt-1">
@@ -132,6 +148,7 @@
                                    value="{{ old('seller_wa') }}">
                         </div>
                         <p class="text-xs text-gray-500 mt-1">Format: 8xxxxxxxxxx (otomatis +62)</p>
+                         @error('seller_wa') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
                     </div>
 
                     {{-- Logo Toko --}}
@@ -155,6 +172,7 @@
                             </div>
                         </label>
                         <small class="text-gray-500">Rekomendasi: 250x250 piksel.</small>
+                         @error('seller_logo') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
                     </div>
                 </div>
             </div>
@@ -162,48 +180,82 @@
 
         {{-- Kolom Kanan --}}
         <div class="space-y-6">
-            <x-card title="Harga & Stok">
-                <x-input type="number" label="Harga Jual (Rp)" name="price" required />
-                <x-input type="number" label="Harga Coret (Opsional)" name="original_price" />
-                <x-input type="number" label="Jumlah Stok" name="stock" value="0" required />
-                <x-input type="number" label="Berat (gram)" name="weight" value="0" required />
-            </x-card>
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4">Harga & Stok</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label for="price" class="block text-sm font-medium text-gray-700">Harga Jual (Rp)</label>
+                        <input type="number" name="price" id="price" value="{{ old('price') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('price') border-red-500 @enderror" required>
+                        @error('price') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label for="original_price" class="block text-sm font-medium text-gray-700">Harga Coret (Opsional)</label>
+                        <input type="number" name="original_price" id="original_price" value="{{ old('original_price') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('original_price') border-red-500 @enderror">
+                        @error('original_price') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label for="stock" class="block text-sm font-medium text-gray-700">Jumlah Stok</label>
+                        <input type="number" name="stock" id="stock" value="{{ old('stock', 0) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('stock') border-red-500 @enderror" required>
+                        @error('stock') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label for="weight" class="block text-sm font-medium text-gray-700">Berat (gram)</label>
+                        <input type="number" name="weight" id="weight" value="{{ old('weight', 0) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('weight') border-red-500 @enderror" required>
+                        @error('weight') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
+                    </div>
+                </div>
+            </div>
 
-            <x-card title="Organisasi Produk">
-                <x-input label="SKU" name="sku" required />
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Kategori</label>
-                    <select name="category_id" id="category_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
-                        <option value="">-- Pilih Kategori --</option>
-                        @foreach($categories as $category)
-                            <option value="{{ $category->id }}" {{ old('category_id') == $category->id ? 'selected' : '' }}>
-                                {{ $category->name }}
-                            </option>
-                        @endforeach
-                    </select>
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4">Organisasi Produk</h2>
+                <div class="space-y-4">
+                     <div>
+                        <label for="sku" class="block text-sm font-medium text-gray-700">SKU</label>
+                        <input type="text" name="sku" id="sku" value="{{ old('sku') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('sku') border-red-500 @enderror" required>
+                        @error('sku') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label for="category_id" class="block text-sm font-medium text-gray-700">Kategori</label>
+                        <select name="category_id" id="category_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('category_id') border-red-500 @enderror" required>
+                            <option value="">-- Pilih Kategori --</option>
+                            @foreach($categories as $category)
+                                <option value="{{ $category->id }}" {{ old('category_id') == $category->id ? 'selected' : '' }}>
+                                    {{ $category->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                         @error('category_id') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label for="tags" class="block text-sm font-medium text-gray-700">Tags (pisahkan koma)</label>
+                        <input type="text" name="tags" id="tags" value="{{ old('tags') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('tags') border-red-500 @enderror">
+                        @error('tags') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
+                    </div>
                 </div>
-                <x-input label="Tags (pisahkan koma)" name="tags" />
-            </x-card>
+            </div>
 
-            <x-card title="Status & Label">
-                <div>
-                    <label for="status" class="block text-sm font-medium text-gray-700">Status Produk</label>
-                    <select name="status" id="status" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
-                        <option value="active" {{ old('status', 'active') == 'active' ? 'selected' : '' }}>Aktif (Dijual)</option>
-                        <option value="inactive" {{ old('status') == 'inactive' ? 'selected' : '' }}>Tidak Aktif (Disimpan)</option>
-                    </select>
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4">Status & Label</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label for="status" class="block text-sm font-medium text-gray-700">Status Produk</label>
+                        <select name="status" id="status" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                            <option value="active" {{ old('status', 'active') == 'active' ? 'selected' : '' }}>Aktif (Dijual)</option>
+                            <option value="inactive" {{ old('status') == 'inactive' ? 'selected' : '' }}>Tidak Aktif (Disimpan)</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" name="is_new" id="is_new" value="1" {{ old('is_new') ? 'checked' : '' }}
+                               class="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-500 rounded">
+                        <label for="is_new" class="ml-2 text-sm text-gray-900">Tandai sebagai Produk Baru</label>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" name="is_bestseller" id="is_bestseller" value="1" {{ old('is_bestseller') ? 'checked' : '' }}
+                               class="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-500 rounded">
+                        <label for="is_bestseller" class="ml-2 text-sm text-gray-900">Tandai sebagai Bestseller</label>
+                    </div>
                 </div>
-                <div class="flex items-center">
-                    <input type="checkbox" name="is_new" id="is_new" value="1" {{ old('is_new') ? 'checked' : '' }}
-                           class="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-500 rounded">
-                    <label for="is_new" class="ml-2 text-sm text-gray-900">Tandai sebagai Produk Baru</label>
-                </div>
-                <div class="flex items-center">
-                    <input type="checkbox" name="is_bestseller" id="is_bestseller" value="1" {{ old('is_bestseller') ? 'checked' : '' }}
-                           class="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-500 rounded">
-                    <label for="is_bestseller" class="ml-2 text-sm text-gray-900">Tandai sebagai Bestseller</label>
-                </div>
-            </x-card>
+            </div>
         </div>
     </div>
 </form>
