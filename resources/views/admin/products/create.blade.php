@@ -213,7 +213,7 @@
 
             {{-- Varian Produk (BARU) --}}
             <div class="bg-white p-6 rounded-lg shadow-md">
-                <div class="flex justify-between items-center mb-4">
+                <div class="flex justify-between items-center mb-8">
                     <h2 class="text-lg font-semibold text-gray-800">Varian Produk (Opsional)</h2>
                     <button type="button" id="add-variant-group" class="btn btn-sm btn-outline-primary">Tambah Varian</button>
                 </div>
