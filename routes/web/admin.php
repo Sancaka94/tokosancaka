@@ -335,7 +335,7 @@ Route::post('products/{product}/restock', [AdminProductController::class, 'resto
 
 Route::patch('products/{product}/mark-as-out-of-stock', [AdminProductController::class, 'markAsOutOfStock'])->name('products.outOfStock');
 
-Route::resource('products', AdminProductController::class);
+Route::resource('products', AdminProductController::class)->names('admin.products');
 
 
 
