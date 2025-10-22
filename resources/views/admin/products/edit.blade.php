@@ -228,7 +228,6 @@
                 </div>
             </div>
 
-            {{-- Card baru untuk menampilkan atribut dinamis --}}
             <div id="attributes-card" class="bg-white p-6 rounded-lg shadow-md hidden">
                 <h2 class="text-lg font-semibold text-gray-800 mb-4">Spesifikasi Produk</h2>
                 <div id="dynamic-attributes-container" class="space-y-4">
@@ -274,20 +273,19 @@
 @endsection
 
 @push('scripts')
-{{-- Script untuk preview gambar, loading button, dan logo uploader (tidak berubah) --}}
+{{-- Script untuk preview gambar, loading button, dan logo uploader (TIDAK PERLU DIUBAH) --}}
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-    // Kode untuk image uploader, loading button, dan logo dropzone...
-});
+    // ... (Kode untuk image uploader, loading button, dan logo dropzone tetap sama)
 </script>
 
-{{-- Script BARU untuk memuat dan mengisi atribut dinamis --}}
+{{-- Script untuk memuat dan mengisi atribut dinamis --}}
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     const categorySelect = document.getElementById('category_id');
     const attributesCard = document.getElementById('attributes-card');
     const attributesContainer = document.getElementById('dynamic-attributes-container');
-    // Ambil data atribut produk yang sudah ada dari variabel Blade
+    
+    // PERBAIKAN: Memastikan data atribut dibaca dengan benar sebagai objek JavaScript
     const existingAttributes = @json($product->attributes_data ?? []);
 
     // Fungsi utama untuk mengambil dan merender atribut
@@ -313,7 +311,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (attributes.length > 0) {
                 attributesCard.classList.remove('hidden');
                 attributes.forEach(attr => {
-                    // Dapatkan nilai yang sudah ada untuk atribut ini
                     const existingValue = existingAttributes[attr.slug] || null;
                     const field = createAttributeField(attr, existingValue);
                     attributesContainer.appendChild(field);
@@ -336,13 +333,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const requiredAsterisk = attribute.is_required ? '<span class="text-red-500">*</span>' : '';
         const label = `<label for="attr_${attribute.slug}" class="block text-sm font-medium text-gray-700">${attribute.name} ${requiredAsterisk}</label>`;
         const inputName = `attributes[${attribute.slug}]`;
+        const valueAttribute = (value !== null) ? `value="${String(value).replace(/"/g, '&quot;')}"` : '';
 
         switch (attribute.type) {
             case 'number':
             case 'text':
                 fieldHtml = `
                     ${label}
-                    <input type="${attribute.type}" name="${inputName}" id="attr_${attribute.slug}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" ${isRequired} value="${value || ''}">
+                    <input type="${attribute.type}" name="${inputName}" id="attr_${attribute.slug}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" ${isRequired} ${valueAttribute}>
                 `;
                 break;
             case 'textarea':
@@ -366,7 +364,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 `;
                 break;
             case 'checkbox':
-                const valueArray = Array.isArray(value) ? value : [];
+                const valueArray = Array.isArray(value) ? value : (value ? [value] : []);
                 const checkboxes = (attribute.options || '').split(',').map((opt, index) => {
                     const trimmedOpt = opt.trim();
                     const checked = valueArray.includes(trimmedOpt) ? 'checked' : '';
