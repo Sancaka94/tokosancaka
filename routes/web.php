@@ -86,13 +86,6 @@ Route::get('/terms-and-conditions', function () {
     return view('terms');
 })->name('terms.conditions');
 
-// Etalase & Produk
-Route::get('/etalase', [EtalaseController::class, 'index'])->name('etalase.index');
-Route::get('/etalase/category/{category:slug}', [EtalaseController::class, 'showCategory'])->name('etalase.category.show');
-Route::get('/products/{product:slug}', [EtalaseController::class, 'show'])->name('etalase.show');
-Route::get('/toko/{name}', [EtalaseController::class, 'profileToko'])->name('toko.profile');
-
-
 // Rute untuk menampilkan halaman kategori di etalase publik
 Route::get('/etalase/category/{category:slug}', [EtalaseController::class, 'showCategory'])->name('public.categories.show');
 
