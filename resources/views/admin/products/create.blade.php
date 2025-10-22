@@ -34,7 +34,9 @@
                     </div>
                     <div>
                         <label for="description" class="block text-sm font-medium text-gray-700">Deskripsi</label>
-                        <textarea name="description" id="description" rows="6" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">{{ old('description') }}</textarea>
+                        <textarea name="description" id="description" rows="6" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('description') border-red-500 @enderror">{{ old('description') }}</textarea>
+                        {{-- PERBAIKAN: Menambahkan @error untuk deskripsi --}}
+                        @error('description') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
                     </div>
                 </div>
             </div>
@@ -64,15 +66,20 @@
                     </div>
                     <div>
                         <label for="original_price" class="block text-sm font-medium text-gray-700">Harga Coret (Opsional)</label>
-                        <input type="number" name="original_price" id="original_price" value="{{ old('original_price') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                        <input type="number" name="original_price" id="original_price" value="{{ old('original_price') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('original_price') border-red-500 @enderror">
+                        @error('original_price') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
                     </div>
                     <div>
                         <label for="stock" class="block text-sm font-medium text-gray-700">Jumlah Stok</label>
-                        <input type="number" name="stock" id="stock" value="{{ old('stock', 0) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
+                        <input type="number" name="stock" id="stock" value="{{ old('stock', 0) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('stock') border-red-500 @enderror" required>
+                        {{-- PERBAIKAN: Menambahkan @error untuk stok --}}
+                        @error('stock') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
                     </div>
                      <div>
                         <label for="weight" class="block text-sm font-medium text-gray-700">Berat (gram)</label>
-                        <input type="number" name="weight" id="weight" value="{{ old('weight', 0) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
+                        <input type="number" name="weight" id="weight" value="{{ old('weight', 0) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('weight') border-red-500 @enderror" required>
+                        {{-- PERBAIKAN: Menambahkan @error untuk berat --}}
+                        @error('weight') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
                     </div>
                 </div>
             </div>
@@ -87,10 +94,9 @@
                         @error('sku') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
                     </div>
 
-                    {{-- PERBAIKAN UTAMA: Mengganti input text menjadi dropdown select --}}
+                    {{-- Ini sudah benar: Mengganti input text menjadi dropdown select --}}
                     <div>
                         <label for="category_id" class="block text-sm font-medium text-gray-700">Kategori</label>
-                        {{-- Pastikan nama input adalah 'category_id' agar sesuai dengan database --}}
                         <select name="category_id" id="category_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('category_id') border-red-500 @enderror" required>
                             <option value="">-- Pilih Kategori --</option>
                             {{-- Looping variabel $categories yang dikirim dari controller --}}
@@ -105,7 +111,8 @@
 
                     <div>
                         <label for="tags" class="block text-sm font-medium text-gray-700">Tags (pisahkan koma)</label>
-                        <input type="text" name="tags" id="tags" value="{{ old('tags') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                        <input type="text" name="tags" id="tags" value="{{ old('tags') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('tags') border-red-500 @enderror">
+                        @error('tags') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
                     </div>
                 </div>
             </div>
@@ -116,19 +123,25 @@
                 <div class="space-y-4">
                     <div>
                         <label for="store_name" class="block text-sm font-medium text-gray-700">Nama Toko</label>
-                        <input type="text" name="store_name" id="store_name" value="{{ old('store_name') }}" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <input type="text" name="store_name" id="store_name" value="{{ old('store_name') }}" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 @error('store_name') border-red-500 @enderror">
+                        {{-- PERBAIKAN: Menambahkan @error --}}
+                        @error('store_name') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
                     </div>
                     <div>
                         <label for="seller_city" class="block text-sm font-medium text-gray-700">Kota Penjual</label>
-                        <input type="text" name="seller_city" id="seller_city" value="{{ old('seller_city') }}" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <input type="text" name="seller_city" id="seller_city" value="{{ old('seller_city') }}" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 @error('seller_city') border-red-500 @enderror">
+                        {{-- PERBAIKAN: Menambahkan @error --}}
+                        @error('seller_city') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
                     </div>
                     <div>
                         <label for="seller_wa" class="block text-sm font-medium text-gray-700">WhatsApp Toko</label>
                         <div class="relative mt-1">
                             <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500 select-none">+62</span>
-                            <input type="tel" name="seller_wa" id="seller_wa" inputmode="numeric" placeholder="81234567890" value="{{ old('seller_wa') }}" pattern="^(\+?62|0)?8[1-9][0-9]{6,11}$" class="block w-full rounded-md border border-gray-300 pl-12 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" aria-describedby="seller_wa_help">
+                            <input type="tel" name="seller_wa" id="seller_wa" inputmode="numeric" placeholder="81234567890" value="{{ old('seller_wa') }}" pattern="^(\+?62|0)?8[1-9][0-9]{6,11}$" class="block w-full rounded-md border border-gray-300 pl-12 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 @error('seller_wa') border-red-500 @enderror" aria-describedby="seller_wa_help">
                         </div>
                         <p id="seller_wa_help" class="mt-1 text-xs text-gray-500">Format: 8xxxxxxxxxx (kami tambahkan +62 otomatis).</p>
+                        {{-- PERBAIKAN: Menambahkan @error --}}
+                        @error('seller_wa') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Logo Toko</label>
@@ -137,12 +150,18 @@
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 15a4 4 0 004 4h10a4 4 0 004-4m-4-6l-4-4m0 0L9 9m4-4v12"/></svg>
                             <div class="text-sm text-gray-700"><span class="font-medium">Tarik & lepas</span> atau <span class="font-medium text-indigo-600 underline">klik</span></div>
                             <p class="text-xs text-gray-500">PNG, JPG (maks. 2MB)</p>
+                            
+                            {{-- PERBAIKAN: Menambahkan elemen untuk pesan error (pengganti alert) --}}
+                            <p id="seller_logo_error" class="text-xs text-red-600 font-medium hidden"></p>
+
                             <div id="seller_logo_preview" class="mt-3 hidden">
                                 <img alt="Preview logo" class="mx-auto h-20 w-20 rounded-full object-cover ring-1 ring-gray-200">
                                 <p class="mt-2 text-xs text-gray-500" id="seller_logo_filename"></p>
                             </div>
                         </label>
                         <small>Rekomendasi : 250x250 pixel</small>
+                        {{-- PERBAIKAN: Menambahkan @error --}}
+                        @error('seller_logo') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
                     </div>
                 </div>
             </div>
@@ -159,11 +178,13 @@
                         </select>
                     </div>
                     <div class="flex items-center">
-                        <input type="checkbox" name="is_new" id="is_new" value="1" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                        {{-- PERBAIKAN: Menambahkan old() helper untuk checkbox --}}
+                        <input type="checkbox" name="is_new" id="is_new" value="1" {{ old('is_new') ? 'checked' : '' }} class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
                         <label for="is_new" class="ml-2 block text-sm text-gray-900">Tandai sebagai Produk Baru</label>
                     </div>
                     <div class="flex items-center">
-                        <input type="checkbox" name="is_bestseller" id="is_bestseller" value="1" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                        {{-- PERBAIKAN: Menambahkan old() helper untuk checkbox --}}
+                        <input type="checkbox" name="is_bestseller" id="is_bestseller" value="1" {{ old('is_bestseller') ? 'checked' : '' }} class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
                         <label for="is_bestseller" class="ml-2 block text-sm text-gray-900">Tandai sebagai Bestseller</label>
                     </div>
                 </div>
@@ -186,7 +207,7 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    // Script untuk Image Uploader Utama
+    // Script untuk Image Uploader Utama (Tidak diubah, sudah baik)
     const uploader = document.getElementById('image-uploader');
     const fileInput = document.getElementById('product_image');
     const preview = document.getElementById('image-preview');
@@ -207,7 +228,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Script untuk Tombol Submit
+    // Script untuk Tombol Submit (Tidak diubah, sudah baik)
     const productForm = document.getElementById('product-form');
     const submitButton = document.getElementById('submit-button');
     const buttonText = document.getElementById('button-text');
@@ -220,14 +241,18 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Script untuk Logo Toko Dropzone
+    // PERBAIKAN: Script untuk Logo Toko Dropzone
     (function(){
         const dz = document.getElementById('seller_logo_dropzone');
         const input = document.getElementById('seller_logo');
         const previewWrap = document.getElementById('seller_logo_preview');
         const previewImg = previewWrap.querySelector('img');
         const previewName = document.getElementById('seller_logo_filename');
-        if(!dz || !input) return;
+        
+        // PERBAIKAN: Menambahkan elemen error
+        const errorEl = document.getElementById('seller_logo_error');
+        
+        if(!dz || !input || !previewWrap || !errorEl) return;
 
         dz.addEventListener('click', () => input.click());
         ['dragenter','dragover'].forEach(evt => {
@@ -243,14 +268,33 @@ document.addEventListener('DOMContentLoaded', function () {
         input.addEventListener('change', (e) => { handleFiles(e.target.files); });
 
         function handleFiles(files){
+            // Reset error dan preview setiap kali ada file baru
+            errorEl.classList.add('hidden');
+            errorEl.textContent = '';
+            previewWrap.classList.add('hidden');
+            previewImg.src = '';
+            previewName.textContent = '';
+            
             const file = files[0];
             if(!file) return;
+
+            // PERBAIKAN: Mengganti alert() dengan pesan error inline
             if(!file.type.startsWith('image/')){
-                alert('File harus berupa gambar (PNG/JPG/JPEG).'); input.value = ''; return;
+                errorEl.textContent = 'File harus berupa gambar (PNG/JPG/JPEG).';
+                errorEl.classList.remove('hidden');
+                input.value = ''; // Hapus file dari input
+                return;
             }
-            if(file.size > 2 * 1024 * 1024){
-                alert('Ukuran maksimum 2MB.'); input.value = ''; return;
+            
+            // PERBAIKAN: Mengganti alert() dengan pesan error inline
+            if(file.size > 2 * 1024 * 1024){ // 2MB
+                errorEl.textContent = 'Ukuran maksimum file adalah 2MB.';
+                errorEl.classList.remove('hidden');
+                input.value = ''; // Hapus file dari input
+                return;
             }
+            
+            // Jika valid, tampilkan preview
             const reader = new FileReader();
             reader.onload = (ev) => {
                 previewImg.src = ev.target.result;
@@ -263,4 +307,3 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 @endpush
-
