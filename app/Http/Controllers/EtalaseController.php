@@ -33,8 +33,8 @@ class EtalaseController extends Controller
             ->limit(8)
             ->get();
             
-        // PERBAIKAN: Menghapus filter where('is_active', true) karena kolom tidak ada
-        $categories = Category::orderBy('name')->get();
+        // PERBAIKAN: Menambahkan filter 'where' untuk hanya mengambil kategori produk
+        $categories = Category::where('type', 'product')->orderBy('name')->get();
 
         $banners = BannerEtalase::all();
         $settings = Setting::whereIn('key', ['banner_2','banner_3'])->pluck('value','key');
@@ -72,7 +72,7 @@ class EtalaseController extends Controller
      */
     public function showCategory($categorySlug)
     {
-        $category = Category::where('slug', $categorySlug)->firstOrFail();
+        $category = Category::where('slug', $categorySlug)->where('type', 'product')->firstOrFail();
 
         $products = Product::with('store')
             ->where('category_id', $category->id)
@@ -89,11 +89,9 @@ class EtalaseController extends Controller
             ->where('price', '<', DB::raw('original_price'))
             ->orderBy('discount_percentage', 'desc')->limit(8)->get();
             
-        // Pastikan controller hanya mengambil kategori dengan tipe 'product'
         $categories = Category::where('type', 'product')->orderBy('name')->get();
 
-
-        return view('etalase.category-show', compact(
+        return view('etalase.category', compact(
             'category', 
             'products', 
             'banners', 
@@ -103,4 +101,3 @@ class EtalaseController extends Controller
         ));
     }
 }
-
