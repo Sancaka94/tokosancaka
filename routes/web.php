@@ -320,6 +320,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::post('category-attributes', [CategoryAttributeController::class, 'store'])->name('category-attributes.store');
     Route::delete('category-attributes/{attribute}', [CategoryAttributeController::class, 'destroy'])->name('category-attributes.destroy');
 
+     // Rute baru untuk edit dan update
+        Route::get('/{attribute}/edit', [App\Http\Controllers\Admin\CategoryAttributeController::class, 'edit'])->name('edit');
+        Route::put('/{attribute}', [App\Http\Controllers\Admin\CategoryAttributeController::class, 'update'])->name('update');
+    
 
 });
 
