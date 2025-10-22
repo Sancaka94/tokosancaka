@@ -35,5 +35,10 @@ class Category extends Model
         // Menghubungkan Category dengan Marketplace melalui foreign key 'category_id'
         return $this->hasMany(Marketplace::class, 'category_id');
     }
+
+     public function attributes()
+    {
+        return $this->hasMany(Attribute::class);
+    }
 }
 
