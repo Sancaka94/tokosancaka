@@ -1,5 +1,3 @@
-{{-- resources/views/marketplace/index.blade.php --}}
-
 @extends('layouts.marketplace')
 
 @section('title', 'Sancaka Marketplace - Diskon Gila-gilaan, Harga Paling Murah!')
@@ -56,7 +54,7 @@
         </div>
     
         <!-- Side Banners -->
-      <div class="grid grid-rows-2 gap-6 h-[400px] sm:h-[250px] md:h-[300px] lg:h-[420px]" data-aos="fade-left">
+       <div class="grid grid-rows-2 gap-6 h-[400px] sm:h-[250px] md:h-[300px] lg:h-[420px]" data-aos="fade-left">
         @if(isset($settings['banner_2']))
         <div class="rounded-2xl overflow-hidden shadow-lg">
             <img src="{{ asset('storage/' . $settings['banner_2']) }}" class="w-full h-full object-fill" alt="Banner 2">
@@ -71,7 +69,7 @@
     </div>
     </section>
 
-    <!-- PERBAIKAN: Kategori sekarang dinamis dan menggunakan slider -->
+    <!-- Kategori Pilihan -->
     <section class="bg-white p-6 rounded-2xl shadow-md mb-10 relative" data-aos="fade-up">
         <h2 class="text-xl font-bold mb-5 text-gray-800">Kategori Pilihan</h2>
         
@@ -86,8 +84,8 @@
                 <div class="swiper-slide">
                     <div class="grid grid-cols-5 md:grid-cols-10 gap-x-4 gap-y-6 text-center">
                         @foreach ($chunk as $category)
-                        {{-- Menggunakan route etalase publik yang benar --}}
-                        <a href="{{ route('public.categories.show', $category->slug) }}" class="flex flex-col items-center space-y-2 text-gray-600 hover:text-red-500 transition-colors group">
+                        {{-- PERBAIKAN: Menggunakan route etalase yang benar --}}
+                        <a href="{{ route('etalase.category.show', $category->slug) }}" class="flex flex-col items-center space-y-2 text-gray-600 hover:text-red-500 transition-colors group">
                             <div class="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center group-hover:bg-red-100 transition-colors">
                                 <i class="fas {{ $category->icon ?? 'fa-tag' }} text-3xl text-gray-500 group-hover:text-red-500 transition-colors"></i>
                             </div>
@@ -108,7 +106,6 @@
         <div class="swiper-button-next category-next !text-gray-600 !bg-white !shadow-md !w-10 !h-10"></div>
         <div class="swiper-button-prev category-prev !text-gray-600 !bg-white !shadow-md !w-10 !h-10"></div>
     </section>
-    <!-- AKHIR DARI PERBAIKAN -->
 
 
     <!-- Flash Sale Section -->
@@ -123,7 +120,8 @@
                     <div class="swiper-wrapper py-2">
                         @foreach ($flashSaleProducts as $product)
                         <div class="swiper-slide h-auto pb-2">
-                            <a href="{{ route('products.show', $product->slug) }}" class="block border rounded-xl overflow-hidden group hover:shadow-xl transition-all duration-300 h-full flex flex-col bg-white">
+                            {{-- PERBAIKAN: Menggunakan route etalase yang benar --}}
+                            <a href="{{ route('etalase.show', $product->slug) }}" class="block border rounded-xl overflow-hidden group hover:shadow-xl transition-all duration-300 h-full flex flex-col bg-white">
                                 <div class="relative">
                                     <div class="h-48 bg-gray-50">
                                         @php
@@ -161,7 +159,8 @@
         <div class="p-5 bg-white rounded-b-2xl shadow-md">
             <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
                 @forelse ($products as $product)
-                    <a href="{{ route('products.show', $product->slug) }}" class="bg-white border rounded-xl overflow-hidden group hover:shadow-2xl transition-all duration-300 flex flex-col">
+                    {{-- PERBAIKAN: Menggunakan route etalase yang benar --}}
+                    <a href="{{ route('etalase.show', $product->slug) }}" class="bg-white border rounded-xl overflow-hidden group hover:shadow-2xl transition-all duration-300 flex flex-col">
                         <div>
                             <div class="h-48 bg-gray-50 relative">
                                @php
@@ -254,4 +253,3 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 @endpush
-
