@@ -4,6 +4,9 @@
 @section('page-title', 'Pengaturan Atribut Kategori')
 
 @section('content')
+{{-- PERBAIKAN: Menambahkan partial untuk menampilkan notifikasi sukses/gagal --}}
+@include('layouts.partials.notifications')
+
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
     
     {{-- Kolom Kiri: Filter dan Form Tambah --}}
@@ -31,7 +34,9 @@
                 @csrf
                 <div>
                     <label for="name" class="block text-sm font-medium text-gray-700">Nama Atribut</label>
-                    <input type="text" name="name" id="name" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
+                    <input type="text" name="name" id="name" value="{{ old('name') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('name') border-red-500 @enderror" required>
+                    {{-- PERBAIKAN: Menampilkan pesan error validasi --}}
+                    @error('name') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
                 </div>
                 <div>
                     <label for="type" class="block text-sm font-medium text-gray-700">Tipe Input</label>
@@ -43,11 +48,12 @@
                         <option value="select">Pilihan Tunggal (Select)</option>
                     </select>
                 </div>
-                {{-- PERBAIKAN: Field 'options' yang akan ditampilkan/disembunyikan --}}
                 <div id="options-container" class="hidden">
                     <label for="options" class="block text-sm font-medium text-gray-700">Pilihan (pisahkan dengan koma)</label>
-                    <input type="text" name="options" id="options" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="Contoh: SHM, HGB, Girik">
+                    <input type="text" name="options" id="options" value="{{ old('options') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('options') border-red-500 @enderror" placeholder="Contoh: SHM, HGB, Girik">
                     <p class="mt-1 text-xs text-gray-500">Hanya diisi untuk tipe Checkbox atau Select.</p>
+                    {{-- PERBAIKAN: Menampilkan pesan error validasi --}}
+                    @error('options') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
                 </div>
                 <div class="flex items-center">
                     <input type="checkbox" name="is_required" id="is_required" value="1" class="h-4 w-4 text-indigo-600 border-gray-300 rounded">
@@ -112,7 +118,6 @@
 @endsection
 
 @push('scripts')
-{{-- PERBAIKAN: Menambahkan script untuk menampilkan/menyembunyikan field 'options' --}}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const typeSelect = document.getElementById('type');
