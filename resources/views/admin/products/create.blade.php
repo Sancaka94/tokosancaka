@@ -52,6 +52,55 @@
                 @error('product_image') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
                 <img id="image-preview" src="#" alt="Pratinjau Gambar" class="image-preview"/>
             </div>
+
+            {{-- PERBAIKAN: Memindahkan form Informasi Penjual ke kolom kiri --}}
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4">Informasi Penjual</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label for="store_name" class="block text-sm font-medium text-gray-700">Nama Toko</label>
+                        <input type="text" name="store_name" id="store_name" value="{{ old('store_name') }}" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 @error('store_name') border-red-500 @enderror">
+                        {{-- PERBAIKAN: Menambahkan @error --}}
+                        @error('store_name') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label for="seller_city" class="block text-sm font-medium text-gray-700">Kota Penjual</label>
+                        <input type="text" name="seller_city" id="seller_city" value="{{ old('seller_city') }}" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 @error('seller_city') border-red-500 @enderror">
+                        {{-- PERBAIKAN: Menambahkan @error --}}
+                        @error('seller_city') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label for="seller_wa" class="block text-sm font-medium text-gray-700">WhatsApp Toko</label>
+                        <div class="relative mt-1">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500 select-none">+62</span>
+                            <input type="tel" name="seller_wa" id="seller_wa" inputmode="numeric" placeholder="81234567890" value="{{ old('seller_wa') }}" pattern="^(\+?62|0)?8[1-9][0-9]{6,11}$" class="block w-full rounded-md border border-gray-300 pl-12 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 @error('seller_wa') border-red-500 @enderror" aria-describedby="seller_wa_help">
+                        </div>
+                        <p id="seller_wa_help" class="mt-1 text-xs text-gray-500">Format: 8xxxxxxxxxx (kami tambahkan +62 otomatis).</p>
+                        {{-- PERBAIKAN: Menambahkan @error --}}
+                        @error('seller_wa') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Logo Toko</label>
+                        <input id="seller_logo" name="seller_logo" type="file" accept="image/*" class="sr-only">
+                        <label for="seller_logo" id="seller_logo_dropzone" class="mt-1 flex flex-col items-center justify-center gap-2 w-full rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-6 text-center cursor-pointer transition hover:border-indigo-400 hover:bg-indigo-50">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 15a4 4 0 004 4h10a4 4 0 004-4m-4-6l-4-4m0 0L9 9m4-4v12"/></svg>
+                            <div class="text-sm text-gray-700"><span class="font-medium">Tarik & lepas</span> atau <span class="font-medium text-indigo-600 underline">klik</span></div>
+                            <p class="text-xs text-gray-500">PNG, JPG (maks. 2MB)</p>
+                            
+                            {{-- PERBAIKAN: Menambahkan elemen untuk pesan error (pengganti alert) --}}
+                            <p id="seller_logo_error" class="text-xs text-red-600 font-medium hidden"></p>
+
+                            <div id="seller_logo_preview" class="mt-3 hidden">
+                                <img alt="Preview logo" class="mx-auto h-20 w-20 rounded-full object-cover ring-1 ring-gray-200">
+                                <p class="mt-2 text-xs text-gray-500" id="seller_logo_filename"></p>
+                            </div>
+                        </label>
+                        <small>Rekomendasi : 250x250 pixel</small>
+                        {{-- PERBAIKAN: Menambahkan @error --}}
+                        @error('seller_logo') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div class="space-y-6">
@@ -117,54 +166,8 @@
                 </div>
             </div>
             
-            {{-- Melengkapi form Informasi Penjual --}}
-            <div class="bg-white p-6 rounded-lg shadow-md">
-                <h2 class="text-lg font-semibold text-gray-800 mb-4">Informasi Penjual</h2>
-                <div class="space-y-4">
-                    <div>
-                        <label for="store_name" class="block text-sm font-medium text-gray-700">Nama Toko</label>
-                        <input type="text" name="store_name" id="store_name" value="{{ old('store_name') }}" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 @error('store_name') border-red-500 @enderror">
-                        {{-- PERBAIKAN: Menambahkan @error --}}
-                        @error('store_name') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
-                    </div>
-                    <div>
-                        <label for="seller_city" class="block text-sm font-medium text-gray-700">Kota Penjual</label>
-                        <input type="text" name="seller_city" id="seller_city" value="{{ old('seller_city') }}" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 @error('seller_city') border-red-500 @enderror">
-                        {{-- PERBAIKAN: Menambahkan @error --}}
-                        @error('seller_city') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
-                    </div>
-                    <div>
-                        <label for="seller_wa" class="block text-sm font-medium text-gray-700">WhatsApp Toko</label>
-                        <div class="relative mt-1">
-                            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500 select-none">+62</span>
-                            <input type="tel" name="seller_wa" id="seller_wa" inputmode="numeric" placeholder="81234567890" value="{{ old('seller_wa') }}" pattern="^(\+?62|0)?8[1-9][0-9]{6,11}$" class="block w-full rounded-md border border-gray-300 pl-12 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 @error('seller_wa') border-red-500 @enderror" aria-describedby="seller_wa_help">
-                        </div>
-                        <p id="seller_wa_help" class="mt-1 text-xs text-gray-500">Format: 8xxxxxxxxxx (kami tambahkan +62 otomatis).</p>
-                        {{-- PERBAIKAN: Menambahkan @error --}}
-                        @error('seller_wa') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Logo Toko</label>
-                        <input id="seller_logo" name="seller_logo" type="file" accept="image/*" class="sr-only">
-                        <label for="seller_logo" id="seller_logo_dropzone" class="mt-1 flex flex-col items-center justify-center gap-2 w-full rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-6 text-center cursor-pointer transition hover:border-indigo-400 hover:bg-indigo-50">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 15a4 4 0 004 4h10a4 4 0 004-4m-4-6l-4-4m0 0L9 9m4-4v12"/></svg>
-                            <div class="text-sm text-gray-700"><span class="font-medium">Tarik & lepas</span> atau <span class="font-medium text-indigo-600 underline">klik</span></div>
-                            <p class="text-xs text-gray-500">PNG, JPG (maks. 2MB)</p>
-                            
-                            {{-- PERBAIKAN: Menambahkan elemen untuk pesan error (pengganti alert) --}}
-                            <p id="seller_logo_error" class="text-xs text-red-600 font-medium hidden"></p>
-
-                            <div id="seller_logo_preview" class="mt-3 hidden">
-                                <img alt="Preview logo" class="mx-auto h-20 w-20 rounded-full object-cover ring-1 ring-gray-200">
-                                <p class="mt-2 text-xs text-gray-500" id="seller_logo_filename"></p>
-                            </div>
-                        </label>
-                        <small>Rekomendasi : 250x250 pixel</small>
-                        {{-- PERBAIKAN: Menambahkan @error --}}
-                        @error('seller_logo') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
-                    </div>
-                </div>
-            </div>
+            {{-- PERBAIKAN: Form Informasi Penjual dipindahkan ke kolom kiri --}}
+            {{-- <div class="bg-white p-6 rounded-lg shadow-md"> ... </div> --}}
 
             {{-- Melengkapi form Status & Label --}}
             <div class="bg-white p-6 rounded-lg shadow-md">
@@ -307,3 +310,4 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 @endpush
+
