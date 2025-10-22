@@ -79,8 +79,10 @@ class ProductController extends Controller
      */
     public function create()
     {
-        // PERBAIKAN: Mengambil data Kategori dari tabel 'categories' yang tipenya 'marketplace'
-        $categories = Category::where('type', 'marketplace')->orderBy('name')->get();
+       // 2. Ambil semua kategori yang tipenya 'product' dari database
+        $categories = Category::where('type', 'product')->orderBy('name')->get();
+        
+        // 3. Kirim variabel $categories ke view
         return view('admin.products.create', compact('categories'));
     }
 
