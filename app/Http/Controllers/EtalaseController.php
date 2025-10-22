@@ -91,7 +91,7 @@ class EtalaseController extends Controller
             
         $categories = Category::where('type', 'product')->orderBy('name')->get();
 
-        return view('etalase.category', compact(
+        return view('etalase.category-show', compact(
             'category', 
             'products', 
             'banners', 
