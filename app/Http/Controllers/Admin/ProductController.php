@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Product;
-use App\Models\Category; // PERBAIKAN: Impor model Category
+use App\Models\Category;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -18,7 +18,6 @@ class ProductController extends Controller
      */
     public function index()
     {
-        // View ini akan memanggil route getData() via AJAX
         return view('admin.products.index');
     }
 
@@ -29,20 +28,16 @@ class ProductController extends Controller
     {
         if ($request->ajax()) {
             try {
-                // Menggunakan eager loading untuk relasi kategori agar lebih efisien
-                $data = Product::with('category')->select('products.*'); 
+                $data = Product::with('category')->select('products.*');
                 return DataTables::of($data)
                     ->addIndexColumn()
                     ->addColumn('image', function ($row) {
-                        $url = $row->image_url
-                            ? asset('storage/' . $row->image_url) // Path yang benar untuk storage link
-                            : 'https://placehold.co/80x80/EFEFEF/333333?text=N/A';
+                        $url = $row->image_url ? asset('storage/' . $row->image_url) : 'https://placehold.co/80x80/EFEFEF/333333?text=N/A';
                         return '<img src="' . e($url) . '" alt="' . e($row->name) . '" class="rounded" width="60" />';
                     })
                     ->editColumn('price', function ($row) {
                         return 'Rp' . number_format($row->price, 0, ',', '.');
                     })
-                    // Menampilkan nama kategori dari relasi
                     ->addColumn('category_name', function ($row) {
                         return $row->category->name ?? 'N/A';
                     })
@@ -53,6 +48,7 @@ class ProductController extends Controller
                     ->addColumn('action', function($row){
                         $editUrl = route('admin.products.edit', $row->id);
                         $deleteUrl = route('admin.products.destroy', $row->id);
+                        // PERBAIKAN: Menambahkan URL untuk outOfStock
                         $outOfStockUrl = route('admin.products.outOfStock', $row->id);
 
                         $actionBtn = '<div class="d-flex justify-content-center gap-2">';
@@ -79,17 +75,14 @@ class ProductController extends Controller
      */
     public function create()
     {
-       // 2. Ambil semua kategori yang tipenya 'product' dari database
         $categories = Category::where('type', 'product')->orderBy('name')->get();
-        
-        // 3. Kirim variabel $categories ke view
         return view('admin.products.create', compact('categories'));
     }
 
     /**
      * Menyimpan produk baru ke database.
      */
-   public function store(Request $request)
+    public function store(Request $request)
     {
         $validated = $request->validate([
             'name'          => 'required|string|max:255',
@@ -97,12 +90,13 @@ class ProductController extends Controller
             'price'         => 'required|numeric|min:0',
             'stock'         => 'required|integer|min:0',
             'weight'        => 'required|integer|min:0',
-            'category_id'   => 'required|exists:categories,id', // Validasi ke category_id
+            'category_id'   => 'required|exists:categories,id',
             'product_image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
             'store_name'    => 'required|string|max:255',
             'seller_city'   => 'required|string|max:255',
             'seller_wa'     => 'nullable|string|max:20',
             'seller_logo'   => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'attributes'    => 'nullable|array',
         ]);
     
         if ($request->hasFile('product_image')) {
@@ -126,6 +120,7 @@ class ProductController extends Controller
         }
     
         $validated['slug'] = Str::slug($validated['name']) . '-' . uniqid();
+        $validated['attributes_data'] = json_encode($request->input('attributes', []));
     
         Product::create($validated);
     
@@ -135,27 +130,18 @@ class ProductController extends Controller
     /**
      * Menampilkan form untuk mengedit produk.
      */
-    public function edit($id)
+    public function edit(Product $product)
     {
-        $product = Product::find($id);
-        if (!$product) {
-            return redirect()->route('admin.products.index')->with('error', 'Produk tidak ditemukan.');
-        }
-        // PERBAIKAN: Mengambil data Kategori dari tabel 'categories' yang tipenya 'marketplace'
         $categories = Category::where('type', 'product')->orderBy('name')->get();
+        $product->attributes_data = json_decode($product->attributes_data, true) ?? [];
         return view('admin.products.edit', compact('product', 'categories'));
     }
 
     /**
      * Memperbarui data produk di database.
      */
-    public function update(Request $request, $id)
+    public function update(Request $request, Product $product)
     {
-        $product = Product::find($id);
-        if (!$product) {
-            return redirect()->route('admin.products.index')->with('error', 'Produk tidak ditemukan.');
-        }
-    
         $validated = $request->validate([
             'name'          => 'required|string|max:255',
             'description'   => 'nullable|string',
@@ -163,7 +149,7 @@ class ProductController extends Controller
             'original_price'=> 'nullable|numeric|min:0|gt:price',
             'stock'         => 'required|integer|min:0',
             'weight'        => 'required|integer|min:0',
-            'category_id'   => 'required|exists:categories,id', // Validasi ke category_id
+            'category_id'   => 'required|exists:categories,id',
             'product_image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
             'status'        => 'required|in:active,inactive',
             'tags'          => 'nullable|string',
@@ -173,6 +159,7 @@ class ProductController extends Controller
             'seller_city'   => 'required|string|max:255',
             'seller_wa'     => 'nullable|string|max:20',
             'seller_logo'   => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'attributes'    => 'nullable|array',
         ]);
     
         if ($request->hasFile('product_image')) {
@@ -209,6 +196,8 @@ class ProductController extends Controller
         } else {
             $validated['tags'] = null;
         }
+
+        $validated['attributes_data'] = json_encode($request->input('attributes', []));
     
         $product->update($validated);
     
@@ -218,13 +207,8 @@ class ProductController extends Controller
     /**
      * Menghapus produk dari database.
      */
-    public function destroy($id)
+    public function destroy(Product $product)
     {
-        $product = Product::find($id);
-        if (!$product) {
-            return redirect()->route('admin.products.index')->with('error', 'Produk tidak ditemukan.');
-        }
-
         if ($product->image_url) {
             Storage::disk('public')->delete($product->image_url);
         }
@@ -233,46 +217,33 @@ class ProductController extends Controller
     }
 
     /**
+     * PERBAIKAN: Method yang hilang ditambahkan di sini.
      * Menambahkan stok untuk produk tertentu.
      */
-    public function restock(Request $request, $id)
+    public function restock(Request $request, Product $product)
     {
-        $product = Product::find($id);
-        if (!$product) {
-            return redirect()->route('admin.products.index')->with('error', 'Produk tidak ditemukan.');
-        }
-
-        $validated = $request->validate([ 'stock' => 'required|integer|min:1' ]);
-        $product->stock += $validated['stock'];
-        $product->save();
-
+        $validated = $request->validate(['stock' => 'required|integer|min:1']);
+        $product->increment('stock', $validated['stock']); // Cara lebih efisien
         return redirect()->route('admin.products.index')->with('success', 'Stok untuk produk ' . e($product->name) . ' berhasil ditambahkan.');
     }
 
     /**
+     * PERBAIKAN: Method yang hilang ditambahkan di sini.
      * Menandai produk sebagai habis (stok = 0).
      */
-    public function markAsOutOfStock($id)
+    public function outOfStock(Product $product)
     {
-        $product = Product::find($id);
-        if (!$product) {
-            return redirect()->route('admin.products.index')->with('error', 'Produk tidak ditemukan.');
-        }
-
         $product->stock = 0;
         $product->save();
-
         return redirect()->route('admin.products.index')->with('success', 'Stok untuk produk ' . e($product->name) . ' telah diatur menjadi 0.');
     }
 
-          /**
-     * PERBAIKAN: Method baru untuk menyediakan data atribut via API.
-     * Method ini dipindahkan ke sini agar lebih logis dan pasti ditemukan.
+    /**
+     * Menyediakan data atribut untuk kategori tertentu via API.
      */
-    public function getAttributesForCategory(Category $category)
+    public function getAttributes(Category $category)
     {
         return response()->json($category->attributes);
     }
-    
 }
 
