@@ -166,6 +166,7 @@ Route::post('customers/{customer}/add-saldo', [CustomerController::class, 'addSa
 Route::resource('customers', CustomerController::class);
 
      // Produk
+    Route::get('/products/data', [ProductController::class, 'getData'])->name('products.data');
     Route::get('/products', [AdminProductController::class, 'index'])->name('products.index');
     Route::get('/products/create', [AdminProductController::class, 'create'])->name('products.create');
     Route::post('/products', [AdminProductController::class, 'store'])->name('products.store');
