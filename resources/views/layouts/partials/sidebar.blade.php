@@ -579,7 +579,12 @@
 
                     <li><a href="{{ route('admin.settings.banners.index') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-gray-700 {{ request()->routeIs('admin.settings.banners.index') ? 'text-white' : 'text-gray-400' }}">Pengaturan Marketplace</a></li>
 
-                    
+                    {{-- PERBAIKAN: Menambahkan link baru untuk atribut kategori --}}
+                    <li>
+                        <a href="{{ route('admin.category-attributes.index') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-gray-700 {{ request()->routeIs('admin.category-attributes.*') ? 'text-white' : 'text-gray-400' }}">
+                            Atribut Kategori
+                        </a>
+                    </li>
 
                 </ul>
 
