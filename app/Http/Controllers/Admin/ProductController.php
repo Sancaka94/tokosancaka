@@ -50,10 +50,10 @@ class ProductController extends Controller
                         return '<span class="badge ' . e($color) . '">' . e(ucfirst($row->status)) . '</span>';
                     })
                     ->addColumn('action', function($row){
-                        // PERBAIKAN: Menggunakan $row->id karena route model binding
-                        $editUrl = route('admin.products.edit', $row->id);
-                        $deleteUrl = route('admin.products.destroy', $row->id);
-                        $outOfStockUrl = route('admin.products.outOfStock', $row->id);
+                        // PERBAIKAN: Menghapus prefix 'admin.' agar sesuai dengan rute Anda
+                        $editUrl = route('products.edit', $row->id);
+                        $deleteUrl = route('products.destroy', $row->id);
+                        $outOfStockUrl = route('products.outOfStock', $row->id);
 
                         $actionBtn = '<div class="d-flex justify-content-center gap-2">';
                         // Menambahkan tombol restock
@@ -165,7 +165,8 @@ class ProductController extends Controller
         });
 
         if ($product) {
-            return redirect()->route('admin.products.index')->with('success', 'Produk baru berhasil ditambahkan.');
+            // PERBAIKAN: Menghapus prefix 'admin.'
+            return redirect()->route('products.index')->with('success', 'Produk baru berhasil ditambahkan.');
         } else {
             return back()->with('error', 'Gagal menyimpan produk.')->withInput();
         }
@@ -273,7 +274,8 @@ class ProductController extends Controller
             }
         });
     
-        return redirect()->route('admin.products.index')->with('success', 'Produk berhasil diperbarui.');
+        // PERBAIKAN: Menghapus prefix 'admin.'
+        return redirect()->route('products.index')->with('success', 'Produk berhasil diperbarui.');
     }
 
 
@@ -300,7 +302,8 @@ class ProductController extends Controller
             Storage::disk('public')->delete($product->image_url);
         }
         $product->delete();
-        return redirect()->route('admin.products.index')->with('success', 'Produk berhasil dihapus.');
+        // PERBAIKAN: Menghapus prefix 'admin.'
+        return redirect()->route('products.index')->with('success', 'Produk berhasil dihapus.');
     }
 
     /**
@@ -313,7 +316,8 @@ class ProductController extends Controller
         $product->stock += $validated['stock'];
         $product->save();
 
-        return redirect()->route('admin.products.index')->with('success', 'Stok untuk produk ' . e($product->name) . ' berhasil ditambahkan.');
+        // PERBAIKAN: Menghapus prefix 'admin.'
+        return redirect()->route('products.index')->with('success', 'Stok untuk produk ' . e($product->name) . ' berhasil ditambahkan.');
     }
 
     /**
@@ -325,7 +329,8 @@ class ProductController extends Controller
         $product->stock = 0;
         $product->save();
 
-        return redirect()->route('admin.products.index')->with('success', 'Stok untuk produk ' . e($product->name) . ' telah diatur menjadi 0.');
+        // PERBAIKAN: Menghapus prefix 'admin.'
+        return redirect()->route('products.index')->with('success', 'Stok untuk produk ' . e($product->name) . ' telah diatur menjadi 0.');
     }
 
     
