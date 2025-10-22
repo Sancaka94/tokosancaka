@@ -12,6 +12,27 @@
     .spinner { display: inline-block; width: 1rem; height: 1rem; vertical-align: text-bottom; border: .2em solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spinner-border .75s linear infinite; }
     @keyframes spinner-border { to { transform: rotate(360deg); } }
     .dropzone--over { outline: 2px dashed #6366f1; background-color: #eef2ff; }
+
+    /*
+    PERBAIKAN: Menghilangkan 2 scrollbar.
+    Ini adalah tebakan untuk selector container di layouts.admin.
+    Tujuannya adalah untuk mematikan scrollbar 'dalam' dan membiarkan
+    halaman tumbuh secara alami, sehingga hanya scrollbar 'luar' (browser)
+    yang muncul.
+    */
+    /* Coba targetkan wrapper konten utama yang mungkin menyebabkan scroll */
+    /* Sesuaikan selector ini jika Anda tahu nama class/id yang tepat dari layouts.admin */
+    .main-content, .content-wrapper, .page-content, main, .content {
+        height: auto !important;
+        overflow-y: visible !important;
+        overflow: visible !important;
+    }
+    
+    /* Pastikan body dan html mengizinkan scroll penuh */
+    html, body {
+        height: auto !important;
+        overflow: auto !important;
+    }
 </style>
 @endpush
 
@@ -196,19 +217,20 @@
     </div>
 </form>
 
-{{-- PERBAIKAN: Memindahkan footer ke dalam section content agar tidak terpotong --}}
-<div class="flex justify-end mt-6 bg-white p-4 rounded-lg shadow-md">
+{{-- PERBAIKAN: Tombol footer dipindahkan KELUAR dari form dan DARI DALAM @section('content') --}}
+{{-- <div class="flex justify-end mt-6 bg-white p-4 rounded-lg shadow-md"> ... </div> --}}
+
+@endsection
+
+{{-- PERBAIKAN: Tombol-tombol dikembalikan ke section footer --}}
+@section('footer')
+<div class="flex justify-end bg-white p-4 rounded-lg shadow-md">
     <a href="{{ route('admin.products.index') }}" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium mr-2">Batal</a>
     <button id="submit-button" type="submit" form="product-form" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 flex items-center">
         <span id="button-text">Simpan Produk</span>
         <span id="button-spinner" class="spinner ml-2 hidden" role="status" aria-hidden="true"></span>
     </button>
 </div>
-
-@endsection
-
-{{-- PERBAIKAN: Section footer dikosongkan/dihapus karena sudah dipindah --}}
-@section('footer')
 @endsection
 
 @push('scripts')
