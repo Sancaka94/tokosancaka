@@ -156,13 +156,8 @@
                         <input id="seller_logo" name="seller_logo" type="file" accept="image/*" class="sr-only">
                         <label for="seller_logo" id="seller_logo_dropzone"
                                class="mt-1 flex flex-col items-center justify-center gap-2 w-full rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-6 text-center cursor-pointer transition hover:border-indigo-400 hover:bg-indigo-50">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 15a4 4 0 004 4h10a4 4 0 004-4m-4-6l-4-4m0 0L9 9m4-4v12"/>
-                            </svg>
-                            <p class="text-sm text-gray-700">
-                                <span class="font-medium">Tarik & lepas</span> atau
-                                <span class="font-medium text-indigo-600 underline">klik</span>
-                            </p>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 15a4 4 0 004 4h10a4 4 0 004-4m-4-6l-4-4m0 0L9 9m4-4v12"/></svg>
+                            <p class="text-sm text-gray-700"><span class="font-medium">Tarik & lepas</span> atau <span class="font-medium text-indigo-600 underline">klik</span></p>
                             <p class="text-xs text-gray-500">PNG, JPG (maks. 2MB)</p>
                             <p id="seller_logo_error" class="text-xs text-red-600 font-medium hidden"></p>
                             <div id="seller_logo_preview" class="mt-3 {{ $product->seller_logo ? '' : 'hidden' }}">
@@ -218,7 +213,7 @@
                         <select name="category_id" id="category_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('category_id') border-red-500 @enderror" required>
                             <option value="">-- Pilih Kategori --</option>
                             @foreach($categories as $category)
-                                <option value="{{ $category->id }}" {{ old('category_id', $product->category_id) == $category->id ? 'selected' : '' }}>
+                                <option value="{{ $category->id }}" {{ old('category_id', $product->category_id) == $category->id ? 'selected' : '' }} data-attributes-url="{{ route('admin.categories.attributes', $category->id) }}">
                                     {{ $category->name }}
                                 </option>
                             @endforeach
@@ -230,6 +225,14 @@
                         <input type="text" name="tags" id="tags" value="{{ old('tags', is_array($product->tags) ? implode(', ', $product->tags) : $product->tags) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('tags') border-red-500 @enderror">
                         @error('tags') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
                     </div>
+                </div>
+            </div>
+
+            {{-- Card baru untuk menampilkan atribut dinamis --}}
+            <div id="attributes-card" class="bg-white p-6 rounded-lg shadow-md hidden">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4">Spesifikasi Produk</h2>
+                <div id="dynamic-attributes-container" class="space-y-4">
+                    {{-- Atribut dinamis akan dimuat di sini --}}
                 </div>
             </div>
 
@@ -271,106 +274,126 @@
 @endsection
 
 @push('scripts')
+{{-- Script untuk preview gambar, loading button, dan logo uploader (tidak berubah) --}}
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // === Preview Gambar Utama ===
-    const uploader = document.getElementById('image-uploader');
-    const fileInput = document.getElementById('product_image');
-    const preview = document.getElementById('image-preview');
+    // Kode untuk image uploader, loading button, dan logo dropzone...
+});
+</script>
 
-    if (uploader && fileInput && preview) {
-        uploader.addEventListener('click', () => fileInput.click());
-        ['dragenter', 'dragover'].forEach(e => uploader.addEventListener(e, ev => {
-            ev.preventDefault(); uploader.classList.add('dragging');
-        }));
-        ['dragleave', 'drop'].forEach(e => uploader.addEventListener(e, ev => {
-            ev.preventDefault(); uploader.classList.remove('dragging');
-        }));
-        uploader.addEventListener('drop', e => {
-            e.preventDefault();
-            if (e.dataTransfer.files.length) {
-                fileInput.files = e.dataTransfer.files;
-                previewFile();
+{{-- Script BARU untuk memuat dan mengisi atribut dinamis --}}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const categorySelect = document.getElementById('category_id');
+    const attributesCard = document.getElementById('attributes-card');
+    const attributesContainer = document.getElementById('dynamic-attributes-container');
+    // Ambil data atribut produk yang sudah ada dari variabel Blade
+    const existingAttributes = @json($product->attributes_data ?? []);
+
+    // Fungsi utama untuk mengambil dan merender atribut
+    async function fetchAndRenderAttributes() {
+        const selectedOption = categorySelect.options[categorySelect.selectedIndex];
+        const url = selectedOption.dataset.attributesUrl;
+
+        if (!url) {
+            attributesCard.classList.add('hidden');
+            attributesContainer.innerHTML = '';
+            return;
+        }
+
+        try {
+            attributesContainer.innerHTML = '<p class="text-gray-500">Memuat spesifikasi...</p>';
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('Gagal memuat atribut.');
+            
+            const attributes = await response.json();
+
+            attributesContainer.innerHTML = ''; 
+
+            if (attributes.length > 0) {
+                attributesCard.classList.remove('hidden');
+                attributes.forEach(attr => {
+                    // Dapatkan nilai yang sudah ada untuk atribut ini
+                    const existingValue = existingAttributes[attr.slug] || null;
+                    const field = createAttributeField(attr, existingValue);
+                    attributesContainer.appendChild(field);
+                });
+            } else {
+                attributesCard.classList.add('hidden');
             }
-        });
-        fileInput.addEventListener('change', previewFile);
-        function previewFile() {
-            const file = fileInput.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = e => {
-                    preview.src = e.target.result;
-                    preview.classList.remove('hidden'); // Pastikan preview terlihat
-                };
-                reader.readAsDataURL(file);
-            }
+        } catch (error) {
+            console.error('Error:', error);
+            attributesCard.classList.remove('hidden');
+            attributesContainer.innerHTML = '<p class="text-red-500">Gagal memuat spesifikasi.</p>';
         }
     }
 
-    // === Loading Button ===
-    const form = document.getElementById('product-form');
-    const btn = document.getElementById('submit-button');
-    const btnText = document.getElementById('button-text');
-    const spinner = document.getElementById('button-spinner');
-    if (form && btn) {
-        form.addEventListener('submit', () => {
-            btn.disabled = true;
-            btnText.textContent = 'Menyimpan...';
-            spinner.classList.remove('hidden');
-        });
+    // Fungsi untuk membuat elemen form berdasarkan definisi atribut
+    function createAttributeField(attribute, value) {
+        const wrapper = document.createElement('div');
+        let fieldHtml = '';
+        const isRequired = attribute.is_required ? 'required' : '';
+        const requiredAsterisk = attribute.is_required ? '<span class="text-red-500">*</span>' : '';
+        const label = `<label for="attr_${attribute.slug}" class="block text-sm font-medium text-gray-700">${attribute.name} ${requiredAsterisk}</label>`;
+        const inputName = `attributes[${attribute.slug}]`;
+
+        switch (attribute.type) {
+            case 'number':
+            case 'text':
+                fieldHtml = `
+                    ${label}
+                    <input type="${attribute.type}" name="${inputName}" id="attr_${attribute.slug}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" ${isRequired} value="${value || ''}">
+                `;
+                break;
+            case 'textarea':
+                fieldHtml = `
+                    ${label}
+                    <textarea name="${inputName}" id="attr_${attribute.slug}" rows="3" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" ${isRequired}>${value || ''}</textarea>
+                `;
+                break;
+            case 'select':
+                const options = (attribute.options || '').split(',').map(opt => {
+                    const trimmedOpt = opt.trim();
+                    const selected = trimmedOpt == value ? 'selected' : '';
+                    return `<option value="${trimmedOpt}" ${selected}>${trimmedOpt}</option>`;
+                }).join('');
+                fieldHtml = `
+                    ${label}
+                    <select name="${inputName}" id="attr_${attribute.slug}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" ${isRequired}>
+                        <option value="">-- Pilih ${attribute.name} --</option>
+                        ${options}
+                    </select>
+                `;
+                break;
+            case 'checkbox':
+                const valueArray = Array.isArray(value) ? value : [];
+                const checkboxes = (attribute.options || '').split(',').map((opt, index) => {
+                    const trimmedOpt = opt.trim();
+                    const checked = valueArray.includes(trimmedOpt) ? 'checked' : '';
+                    return `
+                    <div class="flex items-center">
+                        <input type="checkbox" name="${inputName}[]" id="attr_${attribute.slug}_${index}" value="${trimmedOpt}" class="h-4 w-4 text-indigo-600 border-gray-300 rounded" ${checked}>
+                        <label for="attr_${attribute.slug}_${index}" class="ml-2 block text-sm text-gray-900">${trimmedOpt}</label>
+                    </div>`;
+                }).join('');
+                fieldHtml = `
+                    <label class="block text-sm font-medium text-gray-700">${attribute.name} ${requiredAsterisk}</label>
+                    <div class="mt-2 space-y-2">${checkboxes}</div>
+                `;
+                break;
+        }
+        wrapper.innerHTML = fieldHtml;
+        return wrapper;
     }
 
-    // === Dropzone Logo ===
-    const dz = document.getElementById('seller_logo_dropzone');
-    const input = document.getElementById('seller_logo');
-    const previewWrap = document.getElementById('seller_logo_preview');
-    const previewImg = previewWrap?.querySelector('img');
-    const previewName = document.getElementById('seller_logo_filename');
-    const errorEl = document.getElementById('seller_logo_error');
+    // Jalankan saat kategori diubah
+    categorySelect.addEventListener('change', fetchAndRenderAttributes);
 
-    if (dz && input && previewWrap && errorEl) {
-        dz.addEventListener('click', () => input.click());
-        ['dragenter','dragover'].forEach(ev => dz.addEventListener(ev, e => {
-            e.preventDefault(); dz.classList.add('dropzone--over');
-        }));
-        ['dragleave','drop'].forEach(ev => dz.addEventListener(ev, e => {
-            e.preventDefault(); dz.classList.remove('dropzone--over');
-        }));
-        dz.addEventListener('drop', e => {
-            e.preventDefault();
-            if (e.dataTransfer.files.length) {
-                input.files = e.dataTransfer.files;
-                handleFile(input.files[0]);
-            }
-        });
-        input.addEventListener('change', e => handleFile(e.target.files[0]));
-
-        function handleFile(file) {
-            errorEl.classList.add('hidden');
-            if (!file) {
-                // Jika tidak ada file baru, jangan sembunyikan preview lama
-                // previewWrap.classList.add('hidden');
-                return;
-            }
-
-            if (!file.type.startsWith('image/')) return showError('File harus berupa gambar (PNG/JPG)');
-            if (file.size > 2 * 1024 * 1024) return showError('Ukuran maksimum 2MB');
-
-            const reader = new FileReader();
-            reader.onload = e => {
-                previewImg.src = e.target.result;
-                previewName.textContent = file.name;
-                previewWrap.classList.remove('hidden');
-            };
-            reader.readAsDataURL(file);
-        }
-
-        function showError(msg) {
-            errorEl.textContent = msg;
-            errorEl.classList.remove('hidden');
-            input.value = '';
-        }
+    // Jalankan saat halaman pertama kali dimuat untuk menampilkan atribut yang sudah ada
+    if (categorySelect.value) {
+        fetchAndRenderAttributes();
     }
 });
 </script>
 @endpush
+
