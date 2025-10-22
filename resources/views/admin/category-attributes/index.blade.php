@@ -29,11 +29,10 @@
         @if ($selectedCategory)
         <div class="bg-white p-6 rounded-lg shadow-md">
             <h2 class="text-lg font-semibold text-gray-800 mb-4">Tambah Atribut untuk: <span class="text-indigo-600">{{ $selectedCategory->name }}</span></h2>
-            {{-- PERBAIKAN: Mengubah action route agar tidak memerlukan parameter --}}
-            <form action="{{ route('admin.category-attributes.store') }}" method="POST" class="space-y-4">
+            {{-- PERBAIKAN: Mengirim parameter category_id ke dalam route() --}}
+            <form action="{{ route('admin.category-attributes.store', $selectedCategory->id) }}" method="POST" class="space-y-4">
                 @csrf
-                {{-- PERBAIKAN: Menambahkan hidden input untuk category_id agar lolos validasi --}}
-                <input type="hidden" name="category_id" value="{{ $selectedCategory->id }}">
+                {{-- Input tersembunyi untuk category_id tidak lagi diperlukan karena sudah ada di URL --}}
                 <div>
                     <label for="name" class="block text-sm font-medium text-gray-700">Nama Atribut</label>
                     <input type="text" name="name" id="name" value="{{ old('name') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('name') border-red-500 @enderror" required>
