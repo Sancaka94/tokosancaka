@@ -1,57 +1,104 @@
-<?php
-
-namespace App\Http\Controllers;
-
-use App\Models\Product; // Pastikan nama model Anda adalah 'Product'
-use Illuminate\Http\Request;
-
-class EtalaseController extends Controller
-{
-    /**
-     * Menampilkan halaman etalase utama.
-     */
-    public function index(Request $request)
-    {
-        // --- Logika untuk Produk Utama (dengan filter & paginasi) ---
-        $query = Product::where('status', 'active')->where('stock', '>', 0);
-
-        if ($request->filled('search')) {
-            $query->where('name', 'like', '%' . $request->search . '%');
-        }
-        // Anda bisa tambahkan filter lain di sini (kategori, harga, dll.)
-
-        $products = $query->latest()->paginate(10)->withQueryString();
-
-        // --- BARU: Logika untuk mengambil Produk Flash Sale ---
-        // Mengambil 8 produk dengan diskon tertinggi yang aktif dan stoknya ada.
-        $flashSaleProducts = Product::where('status', 'active')
-            ->where('stock', '>', 0)
-            ->whereNotNull('original_price')
-            ->where('price', '<', \DB::raw('original_price')) // Memastikan ada diskon
-            ->orderBy('discount_percentage', 'desc')
-            ->limit(8)
-            ->get();
-
-        // Kirim kedua data ke view
-        return view('etalase.index', compact('products', 'flashSaleProducts'));
-    }
-
-    /**
-     * Menampilkan halaman detail untuk satu produk.
-     */
-    public function show(Product $product)
-    {
-        if ($product->status !== 'active') {
-            abort(404);
-        }
-        
-        $relatedProducts = Product::where('category', $product->category)
-                                      ->where('id', '!=', $product->id)
-                                      ->where('status', 'active')
-                                      ->where('stock', '>', 0)
-                                      ->inRandomOrder()
-                                      ->limit(4)->get();
-                                      
-        return view('etalase.show', compact('product', 'relatedProducts'));
-    }
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Models\Product;
+use App\Models\Setting;
+use App\Models\BannerEtalase;
+use App\Models\Category;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+
+class EtalaseController extends Controller
+{
+    /**
+     * Menampilkan halaman etalase utama (homepage).
+     */
+    public function index(Request $request)
+    {
+        $query = Product::with(['category', 'store'])->where('status', 'active')->where('stock', '>', 0);
+
+        if ($request->filled('search')) {
+            $query->where('name', 'like', '%' . $request->search . '%');
+        }
+
+        $products = $query->latest()->paginate(10)->withQueryString();
+
+        $flashSaleProducts = Product::with(['category', 'store'])->where('status', 'active')
+            ->where('stock', '>', 0)
+            ->whereNotNull('original_price')
+            ->where('price', '<', DB::raw('original_price'))
+            ->orderBy('discount_percentage', 'desc')
+            ->limit(8)
+            ->get();
+            
+        $categories = Category::where('type', 'product')->orderBy('name')->get();
+        
+        // PERBAIKAN: Mengurutkan berdasarkan data terbaru jika kolom 'order' tidak ada
+        $banners = BannerEtalase::latest()->get(); 
+        
+        $settings = Setting::whereIn('key', ['banner_2','banner_3'])->pluck('value','key');
+                                
+        return view('etalase.index', compact('products', 'flashSaleProducts', 'banners', 'settings', 'categories'));
+    }
+
+    /**
+     * Menampilkan produk berdasarkan kategori.
+     */
+    public function showCategory($categorySlug)
+    {
+        $category = Category::where('slug', $categorySlug)->where('type', 'product')->firstOrFail();
+
+        $products = Product::with(['category', 'store'])
+            ->where('category_id', $category->id)
+            ->where('status', 'active')
+            ->where('stock', '>', 0)
+            ->latest()
+            ->paginate(12);
+        
+        // PERBAIKAN: Mengurutkan berdasarkan data terbaru jika kolom 'order' tidak ada
+        $banners = BannerEtalase::latest()->get();
+
+        $settings = Setting::whereIn('key', ['banner_2','banner_3'])->pluck('value','key');
+        $categories = Category::where('type', 'product')->orderBy('name')->get();
+
+        return view('etalase.category-show', compact('category', 'products', 'banners', 'settings', 'categories'));
+    }
+    
+    /**
+     * Menampilkan halaman detail produk.
+     */
+    public function show(Product $product)
+    {
+        if ($product->status !== 'active') {
+            abort(404);
+        }
+        $product->load(['category', 'store.user']);
+        $relatedProducts = Product::with(['category', 'store'])->where('category_id', $product->category_id)
+            ->where('id', '!=', $product->id)->where('status', 'active')
+            ->where('stock', '>', 0)->inRandomOrder()->limit(5)->get();
+            
+        return view('etalase.show', compact('product', 'relatedProducts'));
+    }
+
+    /**
+     * Menampilkan halaman profil toko.
+     */
+    public function profileToko($name)
+    {
+        // Menggunakan 'like' bisa berisiko jika ada nama toko yang mirip,
+        // pertimbangkan menggunakan slug atau ID unik jika memungkinkan di masa depan.
+        $products = Product::where('store_name', 'like', '%' . $name . '%')->where('status', 'active')->paginate(12);
+        
+        // Asumsi data toko diambil dari produk pertama yang ditemukan
+        $firstProduct = $products->first();
+        $store = $firstProduct ? (object)[
+            'name' => $firstProduct->store_name,
+            'city' => $firstProduct->seller_city,
+            'logo' => $firstProduct->seller_logo,
+        ] : null;
+
+        return view('etalase.toko', compact('products', 'name', 'store'));
+    }
 }
+
