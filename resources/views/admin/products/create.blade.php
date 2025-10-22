@@ -51,15 +51,22 @@
     }
 
     /*
-    FIX: Mengatasi masalah double scrollbar pada template admin.
-    Selector ini menargetkan kontainer konten utama yang kemungkinan memiliki
-    pengaturan 'overflow: auto' dan 'height' terbatas. Dengan mengaturnya kembali
-    ke 'visible' dan 'height: auto', kita membiarkan halaman tumbuh secara alami
-    sehingga hanya scrollbar browser utama yang muncul.
+    FIX v2: Mengatasi masalah double scrollbar & tombol yang tidak terlihat.
     */
+    /* 1. Mencegah scrollbar utama (di body) dan membiarkan layout admin
+          mengontrol penuh tinggi viewport. */
+    html, body {
+        height: 100%;
+        overflow: hidden;
+    }
+
+    /* 2. Menjadikan area konten utama sebagai satu-satunya area yang bisa di-scroll.
+          Container ini akan mengisi tinggi layar dan menampilkan scrollbar jika kontennya panjang.
+          Selector ini didasarkan pada file layout 'admin' Anda. */
     .main-content, .content-wrapper, .page-content, main, .content {
-        height: auto !important;
-        overflow-y: visible !important;
+        height: 100vh; /* Mengisi tinggi viewport. Sesuaikan (misal: calc(100vh - 60px)) jika ada header fix. */
+        overflow-y: auto; /* Hanya area ini yang akan punya scrollbar vertikal. */
+        padding-bottom: 96px; /* Memberi ruang di bagian bawah agar tidak terpotong oleh tombol sticky. */
     }
 </style>
 @endpush
@@ -133,7 +140,7 @@
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 15a4 4 0 004 4h10a4 4 0 004-4m-4-6l-4-4m0 0L9 9m4-4v12"/></svg>
                             <div class="text-sm text-gray-700"><span class="font-medium">Tarik & lepas</span> atau <span class="font-medium text-indigo-600 underline">klik</span></div>
                             <p class="text-xs text-gray-500">PNG, JPG (maks. 2MB)</p>
-                            
+
                             {{-- Elemen untuk menampilkan pesan error validasi di sisi client --}}
                             <p id="seller_logo_error" class="text-xs text-red-600 font-medium hidden"></p>
 
@@ -234,8 +241,8 @@
 @endsection
 
 @section('footer')
-{{-- Tombol aksi form diletakkan di footer agar posisinya tetap (sticky) --}}
-<div class="flex justify-end bg-white p-4 rounded-lg shadow-md">
+{{-- Tombol Aksi dibuat sticky di bagian bawah area konten --}}
+<div class="sticky bottom-0 z-10 flex justify-end bg-white p-4 rounded-lg shadow-md border-t">
     <a href="{{ route('admin.products.index') }}" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium mr-2 hover:bg-gray-300">Batal</a>
     <button id="submit-button" type="submit" form="product-form" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 flex items-center disabled:opacity-50">
         <span id="button-text">Simpan Produk</span>
@@ -310,7 +317,7 @@
             const errorEl = document.getElementById('seller_logo_error');
 
             if (!dz || !input || !previewWrap || !errorEl) return;
-            
+
             const previewImg = previewWrap.querySelector('img');
             const previewName = document.getElementById('seller_logo_filename');
 
@@ -349,7 +356,7 @@
                 errorEl.classList.add('hidden');
                 errorEl.textContent = '';
                 previewWrap.classList.add('hidden');
-                
+
                 const file = files[0];
                 if (!file) return;
 
@@ -359,14 +366,14 @@
                     input.value = ''; // Hapus file dari input jika tidak valid
                     return;
                 }
-                
+
                 // Validasi ukuran file (maks 2MB)
                 if (file.size > 2 * 1024 * 1024) {
                     showError('Ukuran maksimum file adalah 2MB.');
                     input.value = ''; // Hapus file dari input jika tidak valid
                     return;
                 }
-                
+
                 // Tampilkan preview jika file valid
                 const reader = new FileReader();
                 reader.onload = (ev) => {
@@ -376,12 +383,13 @@
                 };
                 reader.readAsDataURL(file);
             }
-            
+
             function showError(message) {
-                 errorEl.textContent = message;
-                 errorEl.classList.remove('hidden');
+                errorEl.textContent = message;
+                errorEl.classList.remove('hidden');
             }
         })();
     });
 </script>
 @endpush
+
