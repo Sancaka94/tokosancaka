@@ -33,7 +33,10 @@ class EtalaseController extends Controller
             ->get();
             
         $categories = Category::where('type', 'product')->orderBy('name')->get();
-        $banners = BannerEtalase::orderBy('order', 'asc')->get();
+        
+        // PERBAIKAN: Mengurutkan berdasarkan data terbaru jika kolom 'order' tidak ada
+        $banners = BannerEtalase::latest()->get(); 
+        
         $settings = Setting::whereIn('key', ['banner_2','banner_3'])->pluck('value','key');
                                 
         return view('etalase.index', compact('products', 'flashSaleProducts', 'banners', 'settings', 'categories'));
@@ -53,7 +56,9 @@ class EtalaseController extends Controller
             ->latest()
             ->paginate(12);
         
-        $banners = BannerEtalase::orderBy('order', 'asc')->get();
+        // PERBAIKAN: Mengurutkan berdasarkan data terbaru jika kolom 'order' tidak ada
+        $banners = BannerEtalase::latest()->get();
+
         $settings = Setting::whereIn('key', ['banner_2','banner_3'])->pluck('value','key');
         $categories = Category::where('type', 'product')->orderBy('name')->get();
 
