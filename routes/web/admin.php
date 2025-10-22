@@ -165,6 +165,19 @@ Route::post('customers/{customer}/add-saldo', [CustomerController::class, 'addSa
 
 Route::resource('customers', CustomerController::class);
 
+     // Produk
+    Route::get('/products', [ProductController::class, 'index'])->name('products.index');
+    Route::get('/products/create', [ProductController::class, 'create'])->name('products.create');
+    Route::post('/products', [ProductController::class, 'store'])->name('products.store');
+    Route::get('/products/{product}/edit', [ProductController::class, 'edit'])->name('products.edit');
+    Route::put('/products/{product}', [ProductController::class, 'update'])->name('products.update');
+    Route::delete('/products/{product}', [ProductController::class, 'destroy'])->name('products.destroy');
+
+    // Tambahkan ini 👇 untuk fitur restock
+    Route::post('/products/{product}/restock', [ProductController::class, 'restock'])->name('products.restock');
+
+    // Tambahkan juga route untuk mark as out of stock (biar tombol “habis” berfungsi)
+    Route::patch('/products/{product}/out-of-stock', [ProductController::class, 'markAsOutOfStock'])->name('products.outOfStock');
 
 
 // Rute Resource untuk Ekspedisi
