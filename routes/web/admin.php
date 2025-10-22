@@ -180,7 +180,7 @@ Route::resource('customers', CustomerController::class);
     // Tambahkan juga route untuk mark as out of stock (biar tombol “habis” berfungsi)
     Route::patch('/products/{product}/out-of-stock', [AdminProductController::class, 'markAsOutOfStock'])->name('products.outOfStock');
 
-    Route::resource('products', AdminProductController::class)->names('admin.products');
+    Route::resource('products', AdminProductController::class);
 // Rute Resource untuk Ekspedisi
 
 Route::resource('ekspedisi', EkspedisiController::class);
