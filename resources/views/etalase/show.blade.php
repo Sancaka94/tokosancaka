@@ -37,7 +37,7 @@
                 <!-- Product Images -->
                 <div class="image-gallery">
                     <div class="aspect-w-1 aspect-h-1 w-full overflow-hidden rounded-xl shadow-md mb-4">
-                        @php
+                         @php
                             $imageUrl = $product->image_url ? asset('storage/' . $product->image_url) : 'https://placehold.co/600x600/E2E8F0/4A5568?text=Image+Not+Found';
                         @endphp
                         <img id="main-product-image"
@@ -48,7 +48,6 @@
                     </div>
                     {{-- Thumbnails --}}
                     <div class="grid grid-cols-5 gap-2 sm:gap-3">
-                        {{-- Gambar utama sebagai thumbnail pertama --}}
                         <div>
                             <img src="{{ $imageUrl }}" alt="Thumbnail 1" class="thumbnail-img w-full h-auto object-cover rounded-lg cursor-pointer transition-all duration-200 hover:opacity-80 thumbnail-active" onclick="changeImage(this)" onerror="this.onerror=null;this.src='https://placehold.co/100x100/E2E8F0/4A5568?text=N/A';">
                         </div>
@@ -76,7 +75,6 @@
                     <div class="flex items-center space-x-4 mb-4 text-sm text-gray-500 dark:text-gray-400">
                         <div class="flex items-center">
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" class="text-yellow-400 mr-1"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
-                            {{-- LENGKAPI: Rating dan ulasan dinamis --}}
                             <span class="font-semibold text-gray-700 dark:text-gray-300">{{ number_format($product->rating ?? 5, 1) }}</span>
                             <span class="mx-2">|</span>
                             <span>{{ $product->reviews_count ?? rand(50, 200) }} Ulasan</span>
@@ -172,21 +170,18 @@
                 <div class="flex-grow">
                     <h3 class="text-lg font-bold text-gray-900 dark:text-white">{{ $product->store_name }}</h3>
                     <div class="flex items-center text-sm text-gray-500 dark:text-gray-400 mt-1">
-                        {{-- Logika status online/offline --}}
                         <span class="w-2.5 h-2.5 bg-gray-400 rounded-full mr-2"></span>
                         <span>Offline</span>
                     </div>
                 </div>
 
                 <div class="flex w-full sm:w-auto flex-col sm:flex-row gap-3 mt-4 sm:mt-0">
-                    {{-- Tombol Chat & Kunjungi Toko --}}
                     @if(Auth::check() && $product->seller_wa)
                         <a href="https://wa.me/{{ preg_replace('/^0/', '62', $product->seller_wa) }}" target="_blank" class="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg transition-colors hover:bg-gray-100 dark:hover:bg-gray-700">
                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 21 1.65-3.8a9 9 0 1 1 3.4 2.9l-5.05.9z"/></svg>
                             Chat Penjual
                         </a>
                     @endif
-                    {{-- LENGKAPI: Menggunakan route 'toko.profile' --}}
                     <a href="{{ route('toko.profile', ['name' => $product->store_name]) }}" class="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 7-4-4-4 4M17 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3"/><path d="M7 21h10"/><path d="M12 16v5"/></svg>
                         Kunjungi Toko
