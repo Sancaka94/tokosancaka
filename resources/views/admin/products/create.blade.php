@@ -50,6 +50,52 @@
         }
     }
 
+    /* Style tambahan untuk tombol varian */
+    .btn {
+        padding: 0.5rem 1rem;
+        border-radius: 0.375rem;
+        font-weight: 600;
+        transition: all 0.2s ease-in-out;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1.25;
+    }
+    .btn-primary {
+        background-color: #4f46e5;
+        color: white;
+        border: 1px solid transparent;
+    }
+    .btn-primary:hover {
+        background-color: #4338ca;
+    }
+    .btn-secondary {
+        background-color: #e5e7eb;
+        color: #374151;
+        border: 1px solid #d1d5db;
+    }
+    .btn-secondary:hover {
+        background-color: #d1d5db;
+    }
+    .btn-outline-primary {
+        background-color: transparent;
+        color: #4f46e5;
+        border: 1px solid #4f46e5;
+    }
+    .btn-outline-primary:hover {
+        background-color: #eef2ff;
+    }
+    .btn-sm {
+        padding: 0.25rem 0.75rem;
+        font-size: 0.875rem;
+    }
+    /* Mengubah cursor untuk input disabled */
+    input:disabled, textarea:disabled, select:disabled {
+        cursor: not-allowed;
+        background-color: #f3f4f6;
+    }
+
+
     /* =============================
         FIX LAYOUT SCROLLING
         ============================= */
@@ -164,6 +210,19 @@
                     </div>
                 </div>
             </div>
+
+            {{-- Varian Produk (BARU) --}}
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-semibold text-gray-800">Varian Produk (Opsional)</h2>
+                    <button type="button" id="add-variant-group" class="btn btn-sm btn-outline-primary">Tambah Varian</button>
+                </div>
+                <p class="text-sm text-gray-600 mb-4">Tambahkan varian jika produk Anda memiliki pilihan seperti warna atau ukuran. Ini akan menonaktifkan input stok utama.</p>
+                <div id="variant-groups-container" class="space-y-6">
+                    {{-- Grup varian dinamis akan ditambahkan di sini --}}
+                </div>
+            </div>
+
         </div>
 
         {{-- Kolom Kanan --}}
@@ -271,7 +330,7 @@
                     </div>
                     <div class="flex items-center">
                         <input type="checkbox" name="is_bestseller" id="is_bestseller" value="1" {{ old('is_bestseller') ? 'checked' : '' }} class="h-4 w-4 text-indigo-600 border-gray-300 rounded">
-                        <label for="is_bestseller" class="ml-2 block text-sm text-gray-900">Tandai sebagai Bestseller</Jutabel>
+                        <label for="is_bestseller" class="ml-2 block text-sm text-gray-900">Tandai sebagai Bestseller</label>
                     </div>
                 </div>
             </div>
@@ -343,6 +402,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const submitButton = document.getElementById('submit-button');
     if (form && submitButton) {
         form.addEventListener('submit', () => {
+            // Hanya nonaktifkan jika form valid (untuk browser modern)
+            if (typeof form.checkValidity === 'function' && !form.checkValidity()) {
+                return;
+            }
             submitButton.disabled = true;
             submitButton.innerHTML = `
                 <span class="spinner" role="status" aria-hidden="true"></span>
@@ -441,6 +504,79 @@ document.addEventListener('DOMContentLoaded', () => {
     if(categorySelect.value) {
         fetchAndRenderAttributes();
     }
+
+    // --- Script Varian Dinamis (BARU) ---
+    const variantContainer = document.getElementById('variant-groups-container');
+    const addVariantBtn = document.getElementById('add-variant-group');
+    const mainStockInput = document.getElementById('stock');
+    let variantIndex = 0;
+
+    if (addVariantBtn && variantContainer && mainStockInput) {
+        addVariantBtn.addEventListener('click', (e) => {
+            e.preventDefault(); // Mencegah form submit jika tombol ada di dalam form
+            variantContainer.appendChild(createVariantGroup(variantIndex));
+            variantIndex++;
+            toggleMainStock();
+        });
+    }
+
+    function createVariantGroup(index) {
+        const groupWrapper = document.createElement('div');
+        groupWrapper.classList.add('border', 'rounded-md', 'p-4', 'space-y-3', 'bg-gray-50');
+        groupWrapper.innerHTML = `
+            <div class="flex justify-between items-center">
+                <h3 class="font-semibold text-gray-700">Tipe Varian #${index + 1}</h3>
+                <button type="button" class="text-red-500 hover:text-red-700 remove-variant-group" title="Hapus Tipe Varian">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                </button>
+            </div>
+            <div>
+                <label for="variant_${index}_name" class="block text-sm font-medium text-gray-700">Nama Tipe Varian</label>
+                <input type="text" name="variants[${index}][name]" id="variant_${index}_name" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="Contoh: Warna, Ukuran" required>
+            </div>
+            <div>
+                <label for="variant_${index}_options" class="block text-sm font-medium text-gray-700">Pilihan Varian (pisahkan koma)</label>
+                <input type="text" name="variants[${index}][options]" id="variant_${index}_options" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="Contoh: Merah, Biru, Hijau" required>
+            </div>
+        `;
+        
+        groupWrapper.querySelector('.remove-variant-group').addEventListener('click', (e) => {
+            e.preventDefault();
+            groupWrapper.remove();
+            toggleMainStock();
+        });
+
+        return groupWrapper;
+    }
+
+    function toggleMainStock() {
+        if (!mainStockInput) return;
+
+        const warningId = 'stock-warning';
+        const warningEl = document.getElementById(warningId);
+
+        if (variantContainer.children.length > 0) {
+            mainStockInput.disabled = true;
+            mainStockInput.value = ''; // Kosongkan stok utama
+            if (!warningEl) {
+                mainStockInput.parentElement.insertAdjacentHTML('afterend', `
+                    <p id="${warningId}" class="mt-1 text-xs text-indigo-600">
+                        Stok utama dinonaktifkan. Anda perlu mengatur stok untuk tiap varian nanti setelah produk disimpan.
+                    </p>
+                `);
+            }
+        } else {
+            mainStockInput.disabled = false;
+            if (warningEl) {
+                warningEl.remove();
+            }
+        }
+    }
+    
+    // Panggil saat load untuk cek
+    toggleMainStock();
+
 });
 </script>
 @endpush
+
