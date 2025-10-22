@@ -4,7 +4,6 @@
 @section('page-title', 'Pengaturan Atribut Kategori')
 
 @section('content')
-{{-- PERBAIKAN: Menambahkan partial untuk menampilkan notifikasi sukses/gagal --}}
 @include('layouts.partials.notifications')
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -30,12 +29,14 @@
         @if ($selectedCategory)
         <div class="bg-white p-6 rounded-lg shadow-md">
             <h2 class="text-lg font-semibold text-gray-800 mb-4">Tambah Atribut untuk: <span class="text-indigo-600">{{ $selectedCategory->name }}</span></h2>
-            <form action="{{ route('admin.category-attributes.store', $selectedCategory->id) }}" method="POST" class="space-y-4">
+            {{-- PERBAIKAN: Mengubah action route agar tidak memerlukan parameter --}}
+            <form action="{{ route('admin.category-attributes.store') }}" method="POST" class="space-y-4">
                 @csrf
+                {{-- PERBAIKAN: Menambahkan hidden input untuk category_id agar lolos validasi --}}
+                <input type="hidden" name="category_id" value="{{ $selectedCategory->id }}">
                 <div>
                     <label for="name" class="block text-sm font-medium text-gray-700">Nama Atribut</label>
                     <input type="text" name="name" id="name" value="{{ old('name') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('name') border-red-500 @enderror" required>
-                    {{-- PERBAIKAN: Menampilkan pesan error validasi --}}
                     @error('name') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
                 </div>
                 <div>
@@ -52,7 +53,6 @@
                     <label for="options" class="block text-sm font-medium text-gray-700">Pilihan (pisahkan dengan koma)</label>
                     <input type="text" name="options" id="options" value="{{ old('options') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('options') border-red-500 @enderror" placeholder="Contoh: SHM, HGB, Girik">
                     <p class="mt-1 text-xs text-gray-500">Hanya diisi untuk tipe Checkbox atau Select.</p>
-                    {{-- PERBAIKAN: Menampilkan pesan error validasi --}}
                     @error('options') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
                 </div>
                 <div class="flex items-center">
