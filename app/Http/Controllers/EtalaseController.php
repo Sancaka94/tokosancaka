@@ -34,7 +34,6 @@ class EtalaseController extends Controller
             
         $categories = Category::where('type', 'product')->orderBy('name')->get();
         
-        // PERBAIKAN: Mengurutkan berdasarkan data terbaru jika kolom 'order' tidak ada
         $banners = BannerEtalase::latest()->get(); 
         
         $settings = Setting::whereIn('key', ['banner_2','banner_3'])->pluck('value','key');
@@ -56,7 +55,6 @@ class EtalaseController extends Controller
             ->latest()
             ->paginate(12);
         
-        // PERBAIKAN: Mengurutkan berdasarkan data terbaru jika kolom 'order' tidak ada
         $banners = BannerEtalase::latest()->get();
 
         $settings = Setting::whereIn('key', ['banner_2','banner_3'])->pluck('value','key');
@@ -73,6 +71,13 @@ class EtalaseController extends Controller
         if ($product->status !== 'active') {
             abort(404);
         }
+
+        // Periksa jika URL mengandung '/api/' dan lakukan redirect jika perlu
+        if (strpos(request()->getUri(), '/api/') !== false) {
+            $correctUrl = str_replace('/api', '', request()->getUri());
+            return redirect($correctUrl, 301); // 301 Moved Permanently
+        }
+        
         $product->load(['category', 'store.user']);
         $relatedProducts = Product::with(['category', 'store'])->where('category_id', $product->category_id)
             ->where('id', '!=', $product->id)->where('status', 'active')
@@ -101,4 +106,3 @@ class EtalaseController extends Controller
         return view('etalase.toko', compact('products', 'name', 'store'));
     }
 }
-
