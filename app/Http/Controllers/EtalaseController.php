@@ -92,7 +92,7 @@ class EtalaseController extends Controller
         // PERBAIKAN: Menghapus filter where('is_active', true) karena kolom tidak ada
         $categories = Category::orderBy('name')->get();
 
-        return view('marketplace.category', compact(
+        return view('etalase.category', compact(
             'category', 
             'products', 
             'banners', 
