@@ -33,9 +33,7 @@ class EtalaseController extends Controller
             ->get();
             
         $categories = Category::where('type', 'product')->orderBy('name')->get();
-        
         $banners = BannerEtalase::latest()->get(); 
-        
         $settings = Setting::whereIn('key', ['banner_2','banner_3'])->pluck('value','key');
                                 
         return view('etalase.index', compact('products', 'flashSaleProducts', 'banners', 'settings', 'categories'));
@@ -44,11 +42,13 @@ class EtalaseController extends Controller
     /**
      * Menampilkan produk berdasarkan kategori.
      */
-    public function showCategory($categorySlug)
+    public function showCategory(Category $category)
     {
-        $category = Category::where('slug', $categorySlug)->where('type', 'product')->firstOrFail();
+        if ($category->type !== 'product') {
+            abort(404);
+        }
 
-        $products = Product::with(['category', 'store'])
+        $products = Product::with(['store'])
             ->where('category_id', $category->id)
             ->where('status', 'active')
             ->where('stock', '>', 0)
@@ -56,11 +56,10 @@ class EtalaseController extends Controller
             ->paginate(12);
         
         $banners = BannerEtalase::latest()->get();
-
         $settings = Setting::whereIn('key', ['banner_2','banner_3'])->pluck('value','key');
-        $categories = Category::where('type', 'product')->orderBy('name')->get();
+        $allCategories = Category::where('type', 'product')->orderBy('name')->get();
 
-        return view('etalase.category-show', compact('category', 'products', 'banners', 'settings', 'categories'));
+        return view('etalase.category-show', compact('category', 'products', 'banners', 'settings', 'allCategories'));
     }
     
     /**
@@ -72,18 +71,21 @@ class EtalaseController extends Controller
             abort(404);
         }
 
-        // Periksa jika URL mengandung '/api/' dan lakukan redirect jika perlu
-        if (strpos(request()->getUri(), '/api/') !== false) {
-            $correctUrl = str_replace('/api', '', request()->getUri());
-            return redirect($correctUrl, 301); // 301 Moved Permanently
-        }
+        /**
+         * PERBAIKAN: Memuat relasi 'attributes' dari 'category'.
+         * Ini adalah kunci agar data spesifikasi bisa tampil di view.
+         */
+        $product->load(['category.attributes', 'store.user']);
         
-        $product->load(['category', 'store.user']);
         $relatedProducts = Product::with(['category', 'store'])->where('category_id', $product->category_id)
             ->where('id', '!=', $product->id)->where('status', 'active')
             ->where('stock', '>', 0)->inRandomOrder()->limit(5)->get();
+
+        $categories = Category::where('type', 'product')->orderBy('name')->get();
+        $banners = BannerEtalase::latest()->get(); 
+        $settings = Setting::whereIn('key', ['banner_2','banner_3'])->pluck('value','key');
             
-        return view('etalase.show', compact('product', 'relatedProducts'));
+        return view('etalase.show', compact('product', 'relatedProducts', 'categories', 'banners', 'settings'));
     }
 
     /**
@@ -91,11 +93,8 @@ class EtalaseController extends Controller
      */
     public function profileToko($name)
     {
-        // Menggunakan 'like' bisa berisiko jika ada nama toko yang mirip,
-        // pertimbangkan menggunakan slug atau ID unik jika memungkinkan di masa depan.
         $products = Product::where('store_name', 'like', '%' . $name . '%')->where('status', 'active')->paginate(12);
         
-        // Asumsi data toko diambil dari produk pertama yang ditemukan
         $firstProduct = $products->first();
         $store = $firstProduct ? (object)[
             'name' => $firstProduct->store_name,
@@ -106,3 +105,4 @@ class EtalaseController extends Controller
         return view('etalase.toko', compact('products', 'name', 'store'));
     }
 }
+
