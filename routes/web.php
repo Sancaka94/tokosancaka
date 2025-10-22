@@ -348,6 +348,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::delete('/{attribute}', [CategoryAttributeController::class, 'destroy'])->name('destroy');
     });
 
+        Route::get('categories/{category}/attributes', [ProductController::class, 'getAttributes'])->name('categories.attributes');
+
+
 });
 
 
