@@ -223,7 +223,7 @@
 @endsection
 
 {{-- PERBAIKAN: Tombol-tombol dikembalikan ke section footer --}}
-
+@section('footer')
 <div class="flex justify-end bg-white p-4 rounded-lg shadow-md">
     <a href="{{ route('admin.products.index') }}" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium mr-2">Batal</a>
     <button id="submit-button" type="submit" form="product-form" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 flex items-center">
@@ -231,7 +231,7 @@
         <span id="button-spinner" class="spinner ml-2 hidden" role="status" aria-hidden="true"></span>
     </button>
 </div>
-
+@endsection
 
 @push('scripts')
 <script>
