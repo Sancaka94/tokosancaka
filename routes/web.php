@@ -96,6 +96,12 @@ Route::get('/products/{product:slug}', [EtalaseController::class, 'show'])->name
 Route::get('/toko/{name}', [EtalaseController::class, 'profileToko'])->name('toko.profile');
 Route::get('/etalase/kategori/{slug}', [EtalaseController::class, 'showCategory'])->name('etalase.category-show');
 
+  // --- MANAJEMEN PRODUK ---
+    Route::post('products/{product}/restock', [AdminProductController::class, 'restock'])->name('products.restock');
+    Route::patch('products/{product}/out-of-stock', [AdminProductController::class, 'outOfStock'])->name('products.outOfStock');
+    Route::get('products-data', [AdminProductController::class, 'getData'])->name('products.data');
+    Route::resource('products', AdminProductController::class);
+    
 // Rute untuk menampilkan daftar pelanggan ke publik
 Route::get('/pelanggan', [PublicPelangganController::class, 'index'])->name('pelanggan.public.index');
 
