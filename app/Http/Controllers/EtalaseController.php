@@ -89,8 +89,9 @@ class EtalaseController extends Controller
             ->where('price', '<', DB::raw('original_price'))
             ->orderBy('discount_percentage', 'desc')->limit(8)->get();
             
-        // PERBAIKAN: Menghapus filter where('is_active', true) karena kolom tidak ada
-        $categories = Category::orderBy('name')->get();
+        // Pastikan controller hanya mengambil kategori dengan tipe 'product'
+        $categories = Category::where('type', 'product')->orderBy('name')->get();
+
 
         return view('etalase.category-show', compact(
             'category', 
