@@ -264,5 +264,15 @@ class ProductController extends Controller
 
         return redirect()->route('admin.products.index')->with('success', 'Stok untuk produk ' . e($product->name) . ' telah diatur menjadi 0.');
     }
+
+          /**
+     * PERBAIKAN: Method baru untuk menyediakan data atribut via API.
+     * Method ini dipindahkan ke sini agar lebih logis dan pasti ditemukan.
+     */
+    public function getAttributesForCategory(Category $category)
+    {
+        return response()->json($category->attributes);
+    }
+    
 }
 
