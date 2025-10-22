@@ -606,7 +606,13 @@ public function destroy(Product $product)
 
     }
 
-  
+     /**
+     * Menyediakan data atribut untuk kategori tertentu via API.
+     */
+    public function getAttributes(Category $category)
+    {
+        return response()->json($category->attributes);
+    }
 
 }
 
