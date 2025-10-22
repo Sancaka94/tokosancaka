@@ -18,7 +18,7 @@
 @section('content')
 <div class="container mx-auto py-6 px-4">
 
-    <!-- PERBAIKAN: Menambahkan Hero Section Banner -->
+    <!-- Hero Section Banner -->
     <section class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
         <!-- Main Carousel -->
         <div class="lg:col-span-2 rounded-2xl overflow-hidden shadow-lg h-[200px] md:h-[300px] lg:h-[420px]" data-aos="fade-right">
@@ -55,7 +55,6 @@
             @endif
         </div>
     </section>
-    <!-- AKHIR DARI PERBAIKAN -->
 
     <!-- Header Halaman Kategori -->
     <div class="bg-white p-5 rounded-2xl shadow-md mb-8 border-l-8 border-red-500" data-aos="fade-down">
@@ -71,7 +70,7 @@
             <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
                 @forelse ($products as $product)
                     <div class="bg-white border rounded-xl overflow-hidden group hover:shadow-2xl transition-all duration-300 flex flex-col">
-                        <a href="">
+                        <a href="{{ route('etalase.show', $product->slug) }}">
                             <div class="h-48 bg-gray-50 relative">
                                @php
                                     $imageUrl = $product->image_url ? asset('storage/' . $product->image_url) : 'https://placehold.co/400x400/EFEFEF/333333?text=N/A';
@@ -84,8 +83,8 @@
                             
                             <div class="flex items-center text-xs text-gray-500 mb-2">
                                 <i class="fas fa-store w-3 h-3 mr-1.5 text-gray-400"></i>
-                                @if ($product->store)
-                                    <span class="truncate">{{ $product->store->name }}</span>
+                                @if ($product->store_name)
+                                    <span class="truncate">{{ $product->store_name }}</span>
                                 @else
                                     <span class="truncate">{{ 'Toko Sancaka' }}</span>
                                 @endif
@@ -99,7 +98,6 @@
                             </div>
                             @endif
 
-                            {{-- PERBAIKAN: Menyesuaikan form Add to Cart --}}
                             <div class="mt-auto pt-3">
                                 <form action="{{ route('cart.add', ['product' => $product->id]) }}" method="POST">
                                     @csrf
@@ -129,7 +127,6 @@
 @endsection
 
 @push('scripts')
-{{-- PERBAIKAN: Menambahkan script untuk Hero Swiper --}}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     // Inisialisasi Hero Swiper
@@ -143,4 +140,3 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 @endpush
-
