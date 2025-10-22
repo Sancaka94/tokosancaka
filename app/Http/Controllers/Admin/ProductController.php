@@ -127,16 +127,6 @@ class ProductController extends Controller
     }
 
     /**
-     * Menampilkan form untuk mengedit produk.
-     */
-    public function edit(Product $product)
-    {
-        $categories = Category::where('type', 'product')->orderBy('name')->get();
-        $product->attributes_data = json_decode($product->attributes_data, true) ?? [];
-        return view('admin.products.edit', compact('product', 'categories'));
-    }
-
-    /**
      * Memperbarui data produk di database.
      */
     public function update(Request $request, Product $product)
@@ -203,6 +193,20 @@ class ProductController extends Controller
         return redirect()->route('admin.products.index')->with('success', 'Produk berhasil diperbarui.');
     }
 
+
+        /**
+     * Menampilkan form untuk mengedit produk.
+     */
+    public function edit($id)
+    {
+        $product = Product::find($id);
+        if (!$product) {
+            return redirect()->route('admin.products.index')->with('error', 'Produk tidak ditemukan.');
+        }
+        // PERBAIKAN: Mengambil data Kategori dari tabel 'categories' yang tipenya 'marketplace'
+        $categories = Category::where('type', 'product')->orderBy('name')->get();
+        return view('admin.products.edit', compact('product', 'categories'));
+    }
 
     /**
      * Menghapus produk dari database.
