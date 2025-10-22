@@ -28,7 +28,6 @@
             <!-- Form Tambah Atribut -->
             <div class="md:col-span-1 bg-white p-6 rounded-lg shadow-md">
                 <h3 class="text-lg font-semibold text-gray-800 mb-4">Tambah Atribut untuk: <span class="text-indigo-600">{{ $selectedCategory->name }}</span></h3>
-                {{-- PERBAIKAN: Action form disesuaikan agar menyertakan ID kategori --}}
                 <form action="{{ route('admin.category-attributes.store', $selectedCategory->id) }}" method="POST" class="space-y-6">
                     @csrf
                     <div>
@@ -81,14 +80,12 @@
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ $attribute->name }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $attribute->type }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $attribute->is_required ? 'Ya' : 'Tidak' }}</td>
-                                    {{-- PERBAIKAN: Mengganti link teks dengan ikon Edit dan Hapus --}}
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                         <div class="flex items-center space-x-4">
-                                            {{-- Tombol Edit (untuk pengembangan selanjutnya) --}}
-                                            <a href="#" class="text-indigo-600 hover:text-indigo-900" title="Edit">
+                                            {{-- PERBAIKAN: Mengarahkan link ke route edit yang baru --}}
+                                            <a href="{{ route('admin.category-attributes.edit', $attribute->id) }}" class="text-indigo-600 hover:text-indigo-900" title="Edit">
                                                 <i class="fas fa-edit"></i>
                                             </a>
-                                            {{-- Tombol Hapus --}}
                                             <form action="{{ route('admin.category-attributes.destroy', $attribute->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus atribut ini?');">
                                                 @csrf
                                                 @method('DELETE')
