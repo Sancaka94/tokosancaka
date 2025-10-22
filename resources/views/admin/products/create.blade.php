@@ -37,6 +37,7 @@
         display: inline-block;
         width: 1rem;
         height: 1rem;
+        vertical-align: text-bottom;
         border: 0.2em solid currentColor;
         border-right-color: transparent;
         border-radius: 50%;
@@ -49,11 +50,6 @@
         }
     }
 
-    .dropzone--over {
-        outline: 2px dashed #6366f1;
-        background-color: #eef2ff;
-    }
-
     /* =============================
         FIX LAYOUT SCROLLING
         ============================= */
@@ -62,11 +58,17 @@
         overflow: hidden;
     }
 
-    main.content, .main-content, .content-wrapper, .page-content {
-        height: calc(100vh - 60px); /* asumsi ada header tinggi 60px */
+    /* Penyesuaian 'content-wrapper' agar pas dengan layout AdminLTE Anda */
+    .content-wrapper {
+        height: calc(100vh - (3.5rem + 1px)); /* (tinggi navbar + border) */
         overflow-y: auto;
-        padding-bottom: 120px; /* agar tidak ketimpa tombol sticky */
+        padding-bottom: 100px; /* Ruang untuk sticky action */
     }
+    
+    .content {
+        padding-bottom: 100px; /* Fallback jika .content-wrapper tidak ada */
+    }
+
 
     /* Sticky footer button agar tidak menutupi input */
     .sticky-action {
@@ -80,6 +82,7 @@
         justify-content: flex-end;
         gap: 0.5rem;
         box-shadow: 0 -2px 6px rgba(0,0,0,0.05);
+        /* Ini akan menempel di bawah .content-wrapper */
     }
 </style>
 @endpush
@@ -87,6 +90,7 @@
 @section('content')
 @include('layouts.partials.notifications')
 
+{{-- Form harus berada di luar grid untuk sticky footer --}}
 <form id="product-form" action="{{ route('admin.products.store') }}" method="POST" enctype="multipart/form-data" novalidate>
     @csrf
 
@@ -114,12 +118,12 @@
 
             {{-- Gambar Produk --}}
             <div class="bg-white p-6 rounded-lg shadow-md">
-                <h2 class="text-lg font-semibold text-gray-800 mb-4">Gambar Produk</h2>
+                <h2 class="text-lg font-semibold text-gray-800 mb-4">Gambar Utama Produk</h2>
                 <div id="image-uploader" class="image-uploader" tabindex="0">
                     <p class="font-semibold text-indigo-600">Klik untuk upload</p>
-                    <p class="text-xs text-gray-500">atau seret file ke sini (PNG, JPG, GIF hingga 5MB)</p>
+                    <p class="text-xs text-gray-500">atau seret file ke sini (PNG, JPG, WEBP hingga 2MB)</p>
                 </div>
-                <input type="file" name="product_image" id="product_image" class="hidden" accept="image/*">
+                <input type="file" name="product_image" id="product_image" class="hidden" accept="image/png, image/jpeg, image/webp">
                 <img id="image-preview" alt="Pratinjau Gambar" class="image-preview" />
                 @error('product_image') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
             </div>
@@ -128,7 +132,36 @@
             <div class="bg-white p-6 rounded-lg shadow-md">
                 <h2 class="text-lg font-semibold text-gray-800 mb-4">Informasi Penjual</h2>
                 <div class="space-y-4">
-                    {{-- Form Fields for Seller Info --}}
+                    <div>
+                        <label for="store_name" class="block text-sm font-medium text-gray-700">Nama Toko</label>
+                        <input type="text" name="store_name" id="store_name" value="{{ old('store_name') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('store_name') border-red-500 @enderror" required>
+                        @error('store_name') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label for="seller_name" class="block text-sm font-medium text-gray-700">Nama Penjual (Opsional)</label>
+                        <input type="text" name="seller_name" id="seller_name" value="{{ old('seller_name') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('seller_name') border-red-500 @enderror">
+                    </div>
+                    <div>
+                        <label for="seller_city" class="block text-sm font-medium text-gray-700">Kota Penjual</label>
+                        <input type="text" name="seller_city" id="seller_city" value="{{ old('seller_city') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('seller_city') border-red-500 @enderror" required>
+                        @error('seller_city') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label for="seller_wa" class="block text-sm font-medium text-gray-700">WhatsApp Penjual (Opsional)</label>
+                        <input type="text" name="seller_wa" id="seller_wa" value="{{ old('seller_wa') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('seller_wa') border-red-500 @enderror" placeholder="Contoh: 628123456789">
+                        <p class="mt-1 text-xs text-gray-500">Gunakan format 62 (bukan 0). Akan diformat otomatis.</p>
+                        @error('seller_wa') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Logo Penjual (Opsional)</label>
+                        <div id="seller-logo-uploader" class="image-uploader mt-1" tabindex="0">
+                             <p class="font-semibold text-indigo-600">Klik untuk upload</p>
+                             <p class="text-xs text-gray-500">Logo (PNG, JPG, WEBP maks 1MB)</p>
+                        </div>
+                        <input type="file" name="seller_logo" id="seller_logo" class="hidden" accept="image/png, image/jpeg, image/webp">
+                        <img id="seller-logo-preview" alt="Pratinjau Logo" class="image-preview" />
+                        @error('seller_logo') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
+                    </div>
                 </div>
             </div>
         </div>
@@ -136,9 +169,55 @@
         {{-- Kolom Kanan --}}
         <div class="space-y-6">
             <div class="bg-white p-6 rounded-lg shadow-md">
-                <h2 class="text-lg font-semibold text-gray-800 mb-4">Harga & Stok</h2>
+                <h2 class="text-lg font-semibold text-gray-800 mb-4">Harga, Stok & Pengiriman</h2>
                 <div class="space-y-4">
-                     {{-- Form Fields for Price & Stock --}}
+                    <div>
+                        <label for="price" class="block text-sm font-medium text-gray-700">Harga Jual</label>
+                        <div class="relative mt-1">
+                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">Rp</span>
+                            <input type="number" name="price" id="price" value="{{ old('price') }}" class="pl-8 block w-full border-gray-300 rounded-md shadow-sm @error('price') border-red-500 @enderror" placeholder="100000" required>
+                        </div>
+                        @error('price') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label for="original_price" class="block text-sm font-medium text-gray-700">Harga Asli (Harga Coret)</label>
+                        <div class="relative mt-1">
+                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">Rp</span>
+                            <input type="number" name="original_price" id="original_price" value="{{ old('original_price') }}" class="pl-8 block w-full border-gray-300 rounded-md shadow-sm @error('original_price') border-red-500 @enderror" placeholder="120000">
+                        </div>
+                        <p class="mt-1 text-xs text-gray-500">Opsional. Isi untuk menampilkan diskon.</p>
+                        @error('original_price') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label for="stock" class="block text-sm font-medium text-gray-700">Stok</label>
+                        <input type="number" name="stock" id="stock" value="{{ old('stock', 0) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('stock') border-red-500 @enderror" required>
+                        @error('stock') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label for="weight" class="block text-sm font-medium text-gray-700">Berat</label>
+                        <div class="relative mt-1">
+                            <input type="number" name="weight" id="weight" value="{{ old('weight') }}" class="pr-12 block w-full border-gray-300 rounded-md shadow-sm @error('weight') border-red-500 @enderror" placeholder="100" required>
+                            <span class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500">gram</span>
+                        </div>
+                        @error('weight') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Dimensi Paket (Opsional)</label>
+                        <div class="grid grid-cols-3 gap-4 mt-1">
+                            <div>
+                                 <label for="length" class="text-xs text-gray-500">Panjang (cm)</label>
+                                 <input type="number" name="length" id="length" value="{{ old('length') }}" class="block w-full border-gray-300 rounded-md shadow-sm">
+                            </div>
+                            <div>
+                                 <label for="width" class="text-xs text-gray-500">Lebar (cm)</label>
+                                 <input type="number" name="width" id="width" value="{{ old('width') }}" class="block w-full border-gray-300 rounded-md shadow-sm">
+                            </div>
+                            <div>
+                                 <label for="height" class="text-xs text-gray-500">Tinggi (cm)</label>
+                                 <input type="number" name="height" id="height" value="{{ old('height') }}" class="block w-full border-gray-300 rounded-md shadow-sm">
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -146,8 +225,8 @@
                 <h2 class="text-lg font-semibold text-gray-800 mb-4">Organisasi Produk</h2>
                 <div class="space-y-4">
                     <div>
-                        <label for="sku" class="block text-sm font-medium text-gray-700">SKU</label>
-                        <input type="text" name="sku" id="sku" value="{{ old('sku') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
+                        <label for="sku" class="block text-sm font-medium text-gray-700">SKU (Stock Keeping Unit)</label>
+                        <input type="text" name="sku" id="sku" value="{{ old('sku') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="Opsional">
                     </div>
                     <div>
                         <label for="category_id" class="block text-sm font-medium text-gray-700">Kategori</label>
@@ -159,10 +238,11 @@
                                 </option>
                             @endforeach
                         </select>
+                        @error('category_id') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
                     </div>
                     <div>
                         <label for="tags" class="block text-sm font-medium text-gray-700">Tags (pisahkan koma)</label>
-                        <input type="text" name="tags" id="tags" value="{{ old('tags') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                        <input type="text" name="tags" id="tags" value="{{ old('tags') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="Contoh: baju, atasan, pria">
                     </div>
                 </div>
             </div>
@@ -178,24 +258,114 @@
             <div class="bg-white p-6 rounded-lg shadow-md">
                 <h2 class="text-lg font-semibold text-gray-800 mb-4">Status & Label</h2>
                 <div class="space-y-4">
-                    {{-- Form Fields for Status & Labels --}}
+                    <div>
+                        <label for="status" class="block text-sm font-medium text-gray-700">Status Produk</label>
+                        <select name="status" id="status" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
+                            <option value="active" {{ old('status', 'active') == 'active' ? 'selected' : '' }}>Aktif (Dijual)</option>
+                            <option value="inactive" {{ old('status') == 'inactive' ? 'selected' : '' }}>Nonaktif (Disimpan)</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" name="is_new" id="is_new" value="1" {{ old('is_new') ? 'checked' : '' }} class="h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                        <label for="is_new" class="ml-2 block text-sm text-gray-900">Tandai sebagai Produk Baru</label>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" name="is_bestseller" id="is_bestseller" value="1" {{ old('is_bestseller') ? 'checked' : '' }} class="h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                        <label for="is_bestseller" class="ml-2 block text-sm text-gray-900">Tandai sebagai Bestseller</Jutabel>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
+    
+    {{-- Tombol Aksi Sticky --}}
+    <div class="sticky-action">
+        <a href="{{ route('admin.products.index') }}" class="btn btn-secondary">Batal</a>
+        <button id="submit-button" type="submit" class="btn btn-primary flex items-center gap-2">Simpan Produk</button>
+    </div>
 </form>
 
-<div class="sticky-action">
-    <a href="{{ route('admin.products.index') }}" class="btn btn-secondary">Batal</a>
-    <button id="submit-button" type="submit" form="product-form" class="btn btn-primary">Simpan Produk</button>
-</div>
 @endsection
 
 @push('scripts')
-{{-- Script untuk image uploader & loading button bisa ditambahkan di sini --}}
-
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+
+    // --- Fungsi Reusable untuk Image Uploader ---
+    function setupImageUploader(uploaderId, inputId, previewId) {
+        const uploader = document.getElementById(uploaderId);
+        const input = document.getElementById(inputId);
+        const preview = document.getElementById(previewId);
+
+        if (!uploader || !input || !preview) return;
+
+        const openFileDialog = () => input.click();
+        uploader.addEventListener('click', openFileDialog);
+        uploader.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') openFileDialog();
+        });
+
+        // Drag and Drop
+        uploader.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploader.classList.add('dragging');
+        });
+        uploader.addEventListener('dragleave', () => uploader.classList.remove('dragging'));
+        uploader.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploader.classList.remove('dragging');
+            if (e.dataTransfer.files.length > 0) {
+                input.files = e.dataTransfer.files;
+                handleFileChange({ target: input });
+            }
+        });
+
+        const handleFileChange = (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    preview.src = event.target.result;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+        input.addEventListener('change', handleFileChange);
+    }
+
+    // Inisialisasi kedua uploader
+    setupImageUploader('image-uploader', 'product_image', 'image-preview');
+    setupImageUploader('seller-logo-uploader', 'seller_logo', 'seller-logo-preview');
+
+    // --- Form Submission Loading Spinner ---
+    const form = document.getElementById('product-form');
+    const submitButton = document.getElementById('submit-button');
+    if (form && submitButton) {
+        form.addEventListener('submit', () => {
+            submitButton.disabled = true;
+            submitButton.innerHTML = `
+                <span class="spinner" role="status" aria-hidden="true"></span>
+                Menyimpan...
+            `;
+        });
+    }
+
+    // --- WhatsApp Input Formatter ---
+    const waInput = document.getElementById('seller_wa');
+    if (waInput) {
+        waInput.addEventListener('input', (e) => {
+            let value = e.target.value.replace(/\D/g, ''); // Hapus non-digit
+            if (value.startsWith('0')) {
+                value = '62' + value.substring(1);
+            } else if (value.length > 0 && !value.startsWith('62')) {
+                value = '62' + value;
+            }
+            e.target.value = value;
+        });
+    }
+
+    // --- Script Atribut Dinamis (dari kode Anda) ---
     const categorySelect = document.getElementById('category_id');
     const attributesCard = document.getElementById('attributes-card');
     const attributesContainer = document.getElementById('dynamic-attributes-container');
@@ -212,6 +382,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             attributesContainer.innerHTML = '<p class="text-gray-500">Memuat spesifikasi...</p>';
+            attributesCard.classList.remove('hidden'); // Tampilkan card saat loading
             const response = await fetch(url);
             if (!response.ok) throw new Error('Gagal memuat atribut.');
             
@@ -219,17 +390,15 @@ document.addEventListener('DOMContentLoaded', () => {
             attributesContainer.innerHTML = ''; 
 
             if (attributes.length > 0) {
-                attributesCard.classList.remove('hidden');
                 attributes.forEach(attr => {
                     const field = createAttributeField(attr);
                     attributesContainer.appendChild(field);
                 });
             } else {
-                attributesCard.classList.add('hidden');
+                attributesContainer.innerHTML = '<p class="text-gray-500">Tidak ada spesifikasi tambahan untuk kategori ini.</p>';
             }
         } catch (error) {
             console.error('Error:', error);
-            attributesCard.classList.remove('hidden');
             attributesContainer.innerHTML = '<p class="text-red-500">Gagal memuat spesifikasi.</p>';
         }
     }
@@ -268,10 +437,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     categorySelect.addEventListener('change', fetchAndRenderAttributes);
+    // Jalankan juga saat load jika ada kategori yang sudah terpilih (misal: saat validasi error)
     if(categorySelect.value) {
         fetchAndRenderAttributes();
     }
 });
 </script>
 @endpush
-

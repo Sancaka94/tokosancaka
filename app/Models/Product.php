@@ -5,6 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany; // Import HasMany
+
+// Import model-model yang direlasikan
+use App\Models\Store;
+use App\Models\Category;
+use App\Models\Review;
+use App\Models\ProductVariant;
 
 class Product extends Model
 {
@@ -25,7 +32,7 @@ class Product extends Model
         'description',
         'image_url',
         'store_name',
-        'seller_name',
+        'seller_name', // Anda memiliki ini, mungkin 'seller_name' sama dengan 'store_name'?
         'seller_city',
         'seller_logo',
         'seller_wa',
@@ -54,6 +61,7 @@ class Product extends Model
         'tags' => 'array', // Memberitahu Laravel bahwa kolom 'tags' adalah JSON/array
         'is_new' => 'boolean',
         'is_bestseller' => 'boolean',
+        'attributes_data' => 'array', // DILENGKAPI: Menambahkan cast untuk attributes_data
     ];
     
     /**
@@ -74,9 +82,25 @@ class Product extends Model
     }
 
     /**
+     * Dapatkan semua ulasan untuk produk ini.
+     */
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(Review::class);
+    }
+
+    /**
+     * Dapatkan semua tipe varian untuk produk ini (misal: "Warna", "Ukuran").
+     */
+    public function variants(): HasMany
+    {
+        return $this->hasMany(ProductVariant::class);
+    }
+
+    /**
      * Menggunakan 'slug' untuk route model binding.
      */
-    public function getRouteKeyName()
+    public function getRouteKeyName(): string
     {
         return 'slug';
     }
