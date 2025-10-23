@@ -418,7 +418,8 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])
             Route::delete('/{id}', [WilayahController::class, 'destroy'])->name('destroy');
 
             
-
+                // ⬇️ Tambahkan ini
+    Route::post('/products/{product}/restock', [ProductController::class, 'restock'])->name('products.restock');
 
 
         });
