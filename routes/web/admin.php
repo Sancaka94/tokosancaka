@@ -179,6 +179,10 @@ Route::resource('customers', CustomerController::class);
 
     Route::resource('admin/products', ProductController::class)->names('admin.products');
 
+    Route::get('admin/products/{product}/edit', [ProductController::class, 'edit'])->name('admin.products.edit');
+    Route::put('admin/products/{product}', [ProductController::class, 'update'])->name('admin.products.update');
+
+
 // Pesanan
 
 Route::prefix('pesanan')->name('pesanan.')->group(function () {
