@@ -51,9 +51,9 @@ class ProductController extends Controller
                     })
                     ->addColumn('action', function($row){
                         // PERBAIKAN: Menghapus prefix 'admin.' agar sesuai dengan rute Anda
-                        $editUrl = route('products.edit', $row->id);
-                        $deleteUrl = route('products.destroy', $row->id);
-                        $outOfStockUrl = route('products.outOfStock', $row->id);
+                        $editUrl = route('admin.products.edit', $row->id);
+                        $deleteUrl = route('admin.products.destroy', $row->id);
+                        $outOfStockUrl = route('admin.products.outOfStock', $row->id);
 
                         $actionBtn = '<div class="d-flex justify-content-center gap-2">';
                         // Menambahkan tombol restock
