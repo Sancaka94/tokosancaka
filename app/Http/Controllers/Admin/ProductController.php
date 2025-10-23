@@ -279,18 +279,20 @@ class ProductController extends Controller
     }
 
 
-    /**
-     * Menampilkan form untuk mengedit produk.
-     * PERBAIKAN: Menggunakan Route Model Binding (Product $product)
-     */
-    public function edit(Product $product)
-    {
-        // PERBAIKAN: Memuat relasi varian dan opsinya
-        $product->load(['variants.options']);
-        
-        $categories = Category::where('type', 'product')->orderBy('name')->get();
-        return view('admin.products.edit', compact('product', 'categories'));
-    }
+// ...
+/**
+ * Menampilkan form untuk mengedit produk.
+ * PERBAIKAN: Menggunakan Route Model Binding (Product $product)
+ */
+public function edit(Product $product) // <-- INI PERBAIKANNYA
+{
+    // PERBAIKAN: Memuat relasi varian dan opsinya
+    $product->load(['variants.options']);
+    
+    $categories = Category::where('type', 'product')->orderBy('name')->get();
+    return view('admin.products.edit', compact('product', 'categories'));
+}
+// ...
 
     /**
      * Menghapus produk dari database.
