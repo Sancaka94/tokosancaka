@@ -169,7 +169,13 @@ Route::resource('customers', CustomerController::class);
 Route::get('products/data', [ProductController::class, 'getData'])->name('products.data');
 Route::post('products/{product}/restock', [ProductController::class, 'restock'])->name('products.restock');
 Route::patch('products/{product}/mark-as-out-of-stock', [ProductController::class, 'markAsOutOfStock'])->name('products.outOfStock');
+// route edit produk
+Route::get('/products/{id}/edit', [ProductController::class, 'edit'])
+    ->name('products.edit');
 
+// route restock produk
+Route::post('/products/{id}/restock', [ProductController::class, 'restock'])
+    ->name('products.restock');
 Route::resource('products', ProductController::class)->names('products');
 // Rute Resource untuk Ekspedisi
 
