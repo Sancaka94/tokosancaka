@@ -353,6 +353,15 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('categories/{category}/attributes', [ProductController::class, 'getAttributes'])->name('categories.attributes');
 
 
+                   // Route resource utama
+    Route::resource('products', ProductController::class);
+
+    // Route khusus tambahan
+    Route::post('/products/{product}/restock', [ProductController::class, 'restock'])->name('products.restock');
+    Route::patch('/products/{product}/out-of-stock', [ProductController::class, 'markAsOutOfStock'])->name('products.outOfStock');
+
+   
+
 });
 
 
@@ -417,14 +426,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])
 
             Route::delete('/{id}', [WilayahController::class, 'destroy'])->name('destroy');
 
-                // Route resource utama
-    Route::resource('products', ProductController::class);
-
-    // Route khusus tambahan
-    Route::post('/products/{product}/restock', [ProductController::class, 'restock'])->name('products.restock');
-    Route::patch('/products/{product}/out-of-stock', [ProductController::class, 'markAsOutOfStock'])->name('products.outOfStock');
-
-   
+ 
 
         });
 
