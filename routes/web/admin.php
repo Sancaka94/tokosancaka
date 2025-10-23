@@ -165,30 +165,19 @@ Route::post('customers/{customer}/add-saldo', [CustomerController::class, 'addSa
 
 Route::resource('customers', CustomerController::class);
 
-// Rute kustom (harus di atas 'resource' agar tidak tertimpa)
-Route::get('products/data', [ProductController::class, 'getData'])->name('products.data');
-Route::post('products/{product}/restock', [ProductController::class, 'restock'])->name('products.restock');
-Route::patch('products/{product}/mark-as-out-of-stock', [ProductController::class, 'markAsOutOfStock'])->name('products.outOfStock');
-// route edit produk
-Route::get('/products/{id}/edit', [ProductController::class, 'edit'])
-    ->name('products.edit');
+   // Rute untuk DataTables
+    Route::get('products/data', [ProductController::class, 'getData'])
+         ->name('products.data');
 
-// route restock produk
-Route::post('/products/{id}/restock', [ProductController::class, 'restock'])
-    ->name('products.restock');
-Route::resource('products', ProductController::class)->names('products');
-// Rute Resource untuk Ekspedisi
+    // Rute kustom untuk restock
+    Route::post('products/{product}/restock', [ProductController::class, 'restock'])
+         ->name('products.restock');
 
-Route::resource('ekspedisi', EkspedisiController::class);
+    // Rute kustom untuk tandai habis
+    Route::patch('products/{product}/mark-as-out-of-stock', [ProductController::class, 'markAsOutOfStock'])
+         ->name('products.outOfStock');
 
-Route::prefix('products')->name('products.')->group(function () {
-    Route::get('/', [ProductController::class, 'index'])->name('index');
-    Route::get('/create', [ProductController::class, 'create'])->name('create');
-    Route::post('/', [ProductController::class, 'store'])->name('store');
-    Route::get('/{product}/edit', [ProductController::class, 'edit'])->name('edit');
-    Route::put('/{product}', [ProductController::class, 'update'])->name('update');
-});
-
+    Route::resource('products', ProductController::class);
 // Pesanan
 
 Route::prefix('pesanan')->name('pesanan.')->group(function () {
