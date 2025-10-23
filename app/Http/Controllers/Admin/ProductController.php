@@ -166,7 +166,7 @@ class ProductController extends Controller
 
         if ($product) {
             // PERBAIKAN: Menghapus prefix 'admin.'
-            return redirect()->route('products.index')->with('success', 'Produk baru berhasil ditambahkan.');
+            return redirect()->route('admin.products.index')->with('success', 'Produk baru berhasil ditambahkan.');
         } else {
             return back()->with('error', 'Gagal menyimpan produk.')->withInput();
         }
@@ -275,7 +275,7 @@ class ProductController extends Controller
         });
     
         // PERBAIKAN: Menghapus prefix 'admin.'
-        return redirect()->route('products.index')->with('success', 'Produk berhasil diperbarui.');
+        return redirect()->route('admin.products.index')->with('success', 'Produk berhasil diperbarui.');
     }
 
 
@@ -289,7 +289,7 @@ class ProductController extends Controller
         $product->load(['variants.options']);
         
         $categories = Category::where('type', 'product')->orderBy('name')->get();
-        return view('products.edit', compact('product', 'categories'));
+        return view('admin.products.edit', compact('product', 'categories'));
     }
 
     /**
@@ -303,7 +303,7 @@ class ProductController extends Controller
         }
         $product->delete();
         // PERBAIKAN: Menghapus prefix 'admin.'
-        return redirect()->route('products.index')->with('success', 'Produk berhasil dihapus.');
+        return redirect()->route('admin.products.index')->with('success', 'Produk berhasil dihapus.');
     }
 
     /**
@@ -317,7 +317,7 @@ class ProductController extends Controller
         $product->save();
 
         // PERBAIKAN: Menghapus prefix 'admin.'
-        return redirect()->route('products.index')->with('success', 'Stok untuk produk ' . e($product->name) . ' berhasil ditambahkan.');
+        return redirect()->route('admin.products.index')->with('success', 'Stok untuk produk ' . e($product->name) . ' berhasil ditambahkan.');
     }
 
     /**
@@ -330,7 +330,7 @@ class ProductController extends Controller
         $product->save();
 
         // PERBAIKAN: Menghapus prefix 'admin.'
-        return redirect()->route('products.index')->with('success', 'Stok untuk produk ' . e($product->name) . ' telah diatur menjadi 0.');
+        return redirect()->route('admin.products.index')->with('success', 'Stok untuk produk ' . e($product->name) . ' telah diatur menjadi 0.');
     }
 
     
