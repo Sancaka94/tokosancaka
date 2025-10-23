@@ -129,7 +129,7 @@
 
 @section('content')
 @include('layouts.partials.notifications')
-
+@php dd($product); @endphp
 <form id="product-form" 
       action="{{ route('admin.products.update', $product->id) }}" 
       method="POST" 
