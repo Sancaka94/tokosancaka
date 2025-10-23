@@ -166,11 +166,11 @@ Route::post('customers/{customer}/add-saldo', [CustomerController::class, 'addSa
 Route::resource('customers', CustomerController::class);
 
 // Rute kustom (harus di atas 'resource' agar tidak tertimpa)
-Route::get('products/data', [AdminProductController::class, 'getData'])->name('products.data');
-Route::post('products/{product}/restock', [AdminProductController::class, 'restock'])->name('products.restock');
-Route::patch('products/{product}/mark-as-out-of-stock', [AdminProductController::class, 'markAsOutOfStock'])->name('products.outOfStock');
+Route::get('products/data', [ProductController::class, 'getData'])->name('products.data');
+Route::post('products/{product}/restock', [ProductController::class, 'restock'])->name('products.restock');
+Route::patch('products/{product}/mark-as-out-of-stock', [ProductController::class, 'markAsOutOfStock'])->name('products.outOfStock');
 
-Route::resource('products', AdminProductController::class)->names('products');
+Route::resource('products', ProductController::class)->names('products');
 // Rute Resource untuk Ekspedisi
 
 Route::resource('ekspedisi', EkspedisiController::class);
