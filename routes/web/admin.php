@@ -177,7 +177,8 @@ Route::resource('customers', CustomerController::class);
     Route::patch('products/{product}/mark-as-out-of-stock', [ProductController::class, 'markAsOutOfStock'])
          ->name('products.outOfStock');
 
-    Route::resource('products', ProductController::class);
+    Route::resource('admin/products', ProductController::class)->names('admin.products');
+
 // Pesanan
 
 Route::prefix('pesanan')->name('pesanan.')->group(function () {
