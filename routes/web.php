@@ -357,7 +357,11 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
 
 
-Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->name('admin.')->group(function () {
+Route::middleware(['auth', RoleMiddleware::class . ':Admin'])
+
+    ->prefix('admin')->name('admin.')
+
+    ->group(function () {
 
         // All general admin routes should go in this file
 
@@ -376,7 +380,9 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
 
 
     // Route untuk halaman profil. Ganti view() dengan controller jika perlu.
-    Route::get('/user/profile', function () {return view('profile.show'); // Arahkan ke view profil Anda})->name('profile.show');
+    Route::get('/user/profile', function () {
+        return view('profile.show'); // Arahkan ke view profil Anda
+    })->name('profile.show');
 
      // TAMBAHKAN ROUTE INI
     Route::get('/wallet/search', [WalletController::class, 'search'])->name('wallet.search');
@@ -491,13 +497,24 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
         });
 
 
+
+ 
+
+        
+
+        
+
     // Route untuk halaman daftar email (inbox)
 
     Route::get('/imap', [EmailController::class, 'index'])->name('imap.index');
 
+    
+
     // Route untuk menampilkan detail satu email
 
     Route::get('/imap/{id}', [EmailController::class, 'show'])->name('imap.show');
+
+
 
     // Route untuk menghapus email
 
@@ -545,6 +562,11 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
 
         Route::get('coa/import/template', [CoaController::class, 'downloadTemplate'])->name('coa.import.template');
 
+        
+
+   
+
+    
 
 });
 
