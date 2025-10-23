@@ -54,7 +54,7 @@ use App\Http\Controllers\Admin\LoginController;
 
 use App\Http\Controllers\Admin\KontakController as AdminKontakController;
 
-
+use App\Http\Controllers\Admin\ProductController;
 
 
 
