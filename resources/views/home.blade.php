@@ -302,11 +302,13 @@ width: 22px;
 
 @endpush
 
-
-
 @section('content')
 
-
+@if(isset($error_message))
+    <div class="alert alert-danger text-center">
+        {{ $error_message }}
+    </div>
+@endif
 
 <!-- Hero Section -->
 
