@@ -21,7 +21,7 @@ class ProductController extends Controller
      */
     public function index()
     {
-        return view('admin.products.index');
+        return view('products.index');
     }
 
     /**
@@ -81,7 +81,7 @@ class ProductController extends Controller
     public function create()
     {
         $categories = Category::where('type', 'product')->orderBy('name')->get();
-        return view('admin.products.create', compact('categories'));
+        return view('products.create', compact('categories'));
     }
 
     /**
@@ -166,7 +166,7 @@ class ProductController extends Controller
 
         if ($product) {
             // PERBAIKAN: Menghapus prefix 'admin.'
-            return redirect()->route('admin.products.index')->with('success', 'Produk baru berhasil ditambahkan.');
+            return redirect()->route('products.index')->with('success', 'Produk baru berhasil ditambahkan.');
         } else {
             return back()->with('error', 'Gagal menyimpan produk.')->withInput();
         }
