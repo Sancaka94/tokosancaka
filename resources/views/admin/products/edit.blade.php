@@ -129,7 +129,7 @@
 
 @section('content')
 @include('layouts.partials.notifications')
-
+dd($product);
 <form id="product-form" action="{{ route('admin.products.update', $product) }}" method="POST" enctype="multipart/form-data" novalidate>
 
     @csrf
