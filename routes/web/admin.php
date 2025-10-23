@@ -175,9 +175,9 @@ Route::resource('customers', CustomerController::class);
     Route::delete('/products/{product}', [AdminProductController::class, 'destroy'])->name('products.destroy');
 
     // Tambahkan ini 👇 untuk fitur restock
-    Route::post('/products/{product}/restock', [AdminProductController::class, 'restock'])->name('products.restock');
+    Route::post('/products/{product}/restock', [AdminProductController::class, 'restock'])->name('admin.products.restock');
                  // ⬇️ Tambahkan ini
-    Route::post('/products/{product}/restock', [ProductController::class, 'restock'])->name('products.restock');
+
 
 
     // Tambahkan juga route untuk mark as out of stock (biar tombol “habis” berfungsi)
