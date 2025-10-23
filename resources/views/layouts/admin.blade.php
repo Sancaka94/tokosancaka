@@ -50,6 +50,12 @@
 </head>
 <body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
 
+@if(isset($error_message))
+    <div class="alert alert-danger text-center">
+        {{ $error_message }}
+    </div>
+@endif
+
     <div x-data="{ sidebarOpen: window.innerWidth > 1024 ? true : false }" @resize.window="sidebarOpen = window.innerWidth > 1024 ? true : false" class="flex h-screen bg-gray-100 dark:bg-gray-800">
         
         @include('layouts.partials.sidebar')
