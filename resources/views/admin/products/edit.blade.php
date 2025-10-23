@@ -131,7 +131,7 @@
 @include('layouts.partials.notifications')
 
 <form id="product-form" 
-      action="{{ route('admin.products.update', $product) }}" 
+      action="{{ route('admin.products.update', ['product' => $product->id]) }}" 
       method="POST" 
       enctype="multipart/form-data" 
       novalidate>
