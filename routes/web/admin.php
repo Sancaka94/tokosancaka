@@ -177,6 +177,7 @@ Route::resource('customers', CustomerController::class);
     Route::patch('products/{product}/mark-as-out-of-stock', [ProductController::class, 'markAsOutOfStock'])
          ->name('products.outOfStock');
 
+    Route::resource('products', ProductController::class);
 
 // Pesanan
 
