@@ -130,11 +130,7 @@
 @section('content')
 @include('layouts.partials.notifications')
 
-<form id="product-form" 
-      action="{{ route('admin.products.update', $product->id) }}" 
-      method="POST" 
-      enctype="multipart/form-data" 
-      novalidate>
+<form id="product-form" action="{{ route('admin.products.update', $product) }}" method="POST" enctype="multipart/form-data" novalidate>
 
     @csrf
     @method('PUT')
