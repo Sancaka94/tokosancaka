@@ -178,11 +178,11 @@ Route::resource('customers', CustomerController::class);
          ->name('products.outOfStock');
 
       
-    Route::get('/products/{product}/{id}/edit', [ProductController::class, 'edit'])
+    Route::get('/{product}/{id}/edit', [ProductController::class, 'edit'])
          ->name('products.edit');
 
     // Dihapus: Menggunakan {id} dan bertentangan dengan rute kustom di atas
-     Route::post('/products/{product}/{id}/restock', [ProductController::class, 'restock'])
+     Route::post('/{product}/{id}/restock', [ProductController::class, 'restock'])
         ->name('products.restock');
 
     Route::resource('products', ProductController::class);
