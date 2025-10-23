@@ -165,25 +165,12 @@ Route::post('customers/{customer}/add-saldo', [CustomerController::class, 'addSa
 
 Route::resource('customers', CustomerController::class);
 
-     // Produk
-    Route::get('/products/data', [AdminProductController::class, 'getData'])->name('products.data');
-    Route::get('/products', [AdminProductController::class, 'index'])->name('products.index');
-    Route::get('/products/create', [AdminProductController::class, 'create'])->name('products.create');
-    Route::post('/products', [AdminProductController::class, 'store'])->name('products.store');
-    Route::get('/products/{product}/edit', [AdminProductController::class, 'edit'])->name('products.edit');
-    Route::put('/products/{product}', [AdminProductController::class, 'update'])->name('products.update');
-    Route::delete('/products/{product}', [AdminProductController::class, 'destroy'])->name('products.destroy');
+// Rute kustom (harus di atas 'resource' agar tidak tertimpa)
+Route::get('products/data', [AdminProductController::class, 'getData'])->name('products.data');
+Route::post('products/{product}/restock', [AdminProductController::class, 'restock'])->name('products.restock');
+Route::patch('products/{product}/mark-as-out-of-stock', [AdminProductController::class, 'markAsOutOfStock'])->name('products.outOfStock');
 
-    // Tambahkan ini 👇 untuk fitur restock
-    Route::post('/products/{product}/restock', [AdminProductController::class, 'restock'])->name('products.restock');
-                 // ⬇️ Tambahkan ini
-
-
-
-    // Tambahkan juga route untuk mark as out of stock (biar tombol “habis” berfungsi)
-    Route::patch('/products/{product}/out-of-stock', [AdminProductController::class, 'markAsOutOfStock'])->name('products.outOfStock');
-
-    Route::resource('products', AdminProductController::class);
+Route::resource('products', AdminProductController::class)->names('products');
 // Rute Resource untuk Ekspedisi
 
 Route::resource('ekspedisi', EkspedisiController::class);
