@@ -81,7 +81,7 @@ class ProductController extends Controller
     public function create()
     {
         $categories = Category::where('type', 'product')->orderBy('name')->get();
-        return view('products.create', compact('categories'));
+        return view('admin.products.create', compact('categories'));
     }
 
     /**
