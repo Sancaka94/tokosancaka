@@ -222,7 +222,7 @@
 
             // Membuat URL action yang benar
 
-            const url = `{{ route('admin.products.restock', ':id') }}`.replace(':id', productId);
+            const url = `{{ route('products.restock', ':id') }}`.replace(':id', productId);
             form.action = url;
 
             
