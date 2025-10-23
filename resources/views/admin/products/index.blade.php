@@ -244,56 +244,30 @@
                 columns: [
                     { data: 'DT_RowIndex', name: 'DT_RowIndex', orderable: false, searchable: false },
                     { 
-                        data: 'image', 
+                        data: 'image', // PERBAIKAN: Hanya panggil datanya
                         name: 'image', 
                         orderable: false, 
-                        searchable: false,
-                        render: function(data, type, row) {
-                            return `<img src="${data}" alt="${row.name}" class="product-image" />`;
-                        }
+                        searchable: false
+                        // PERBAIKAN: Hapus fungsi render, karena controller sudah mengirim HTML
                     },
                     { data: 'name', name: 'name' },
                     { data: 'category_name', name: 'category.name' }, 
                     { data: 'price', name: 'price' },
                     { data: 'stock', name: 'stock' },
                     { 
-                        data: 'status_badge', 
+                        data: 'status_badge', // PERBAIKAN: Hanya panggil datanya
                         name: 'status', 
                         orderable: false, 
-                        searchable: false,
-                        render: function(data, type, row) {
-                            const statusClass = row.status === 'active' ? 'active' : 'inactive';
-                            return `<span class="badge-status ${statusClass}">${row.status.charAt(0).toUpperCase() + row.status.slice(1)}</span>`;
-                        }
+                        searchable: false
+                        // PERBAIKAN: Hapus fungsi render, karena controller sudah mengirim HTML
                     },
                     { 
-                        data: 'action', 
+                        data: 'action', // PERBAIKAN: Hanya panggil datanya
                         name: 'action', 
                         orderable: false, 
-                        searchable: false,
-                        render: function(data, type, row) {
-                            const editUrl = `{{ route('admin.products.edit', ':id') }}`.replace(':id', row.id);
-                            const outOfStockUrl = `{{ route('admin.products.outOfStock', ':id') }}`.replace(':id', row.id);
-                            const deleteUrl = `{{ route('admin.products.destroy', ':id') }}`.replace(':id', row.id);
-
-                            let actionBtns = `
-                                <div class="action-buttons">
-                                    <button type="button" onclick="openRestockModal(${row.id}, '${row.name.replace(/'/g, "\\'")}')" class="btn-action btn-success" title="Restock"><i class="fas fa-plus"></i></button>
-                                    <a href="${editUrl}" class="btn-action btn-warning" title="Edit"><i class="fas fa-pen-to-square"></i></a>
-                                    <form action="${outOfStockUrl}" method="POST" class="d-inline" onsubmit="return confirm('Anda yakin ingin menandai produk ini habis?');">
-                                        @csrf
-                                        @method('PATCH')
-                                        <button type="submit" class="btn-action btn-secondary" title="Tandai Habis"><i class="fas fa-box-open"></i></button>
-                                    </form>
-                                    <form action="${deleteUrl}" method="POST" class="d-inline" onsubmit="return confirm('Anda yakin ingin menghapus produk ini?');">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="btn-action btn-danger" title="Hapus"><i class="fas fa-trash"></i></button>
-                                    </form>
-                                </div>
-                            `;
-                            return actionBtns;
-                        }
+                        searchable: false
+                        // PERBAIKAN: Hapus fungsi render, karena controller sudah mengirim HTML
+                        // dan fungsi openRestockModal() akan dipanggil dari HTML yang dikirim controller
                     },
                 ],
                 // Pastikan DataTables menggunakan class Bootstrap 5 untuk styling
@@ -314,6 +288,8 @@
             document.body.classList.remove('overflow-hidden'); // Mengizinkan scroll kembali
         }
 
+        // Fungsi ini sekarang akan dipanggil oleh tombol 'Restock'
+        // yang di-render oleh ProductController@getData
         function openRestockModal(productId, productName) {
             const form = document.getElementById('restockForm');
             const nameEl = document.getElementById('productName');
@@ -329,3 +305,4 @@
         }
     </script>
 @endpush
+
