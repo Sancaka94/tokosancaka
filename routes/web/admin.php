@@ -177,6 +177,14 @@ Route::resource('customers', CustomerController::class);
     Route::patch('products/{product}/mark-as-out-of-stock', [ProductController::class, 'markAsOutOfStock'])
          ->name('products.outOfStock');
 
+      
+    Route::get('/products/{id}/edit', [ProductController::class, 'edit'])
+         ->name('products.edit');
+
+    // Dihapus: Menggunakan {id} dan bertentangan dengan rute kustom di atas
+     Route::post('/products/{id}/restock', [ProductController::class, 'restock'])
+        ->name('products.restock');
+
     Route::resource('products', ProductController::class);
 
 // Pesanan
