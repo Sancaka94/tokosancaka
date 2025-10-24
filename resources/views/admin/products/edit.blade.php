@@ -1,12 +1,12 @@
 @extends('layouts.admin')
 
-@section('title', 'Edit Produk')
-@section('page-title', 'Edit Produk: ' . Str::limit($product->name, 40))
+@section('title', 'Edit Produk: ' . $product->name)
+@section('page-title', 'Edit Produk: ' . $product->name)
 
 @push('styles')
 <style>
     /* =============================
-        STYLE TAMBAH/EDIT PRODUK
+        STYLE EDIT PRODUK - FIXED
         ============================= */
 
     .image-uploader {
@@ -30,7 +30,11 @@
         max-width: 100%;
         max-height: 300px;
         border-radius: 0.5rem;
-        display: block; /* Tampilkan gambar yang sudah ada */
+        display: block; /* Tampilkan default jika ada gambar */
+        object-fit: contain; /* Agar gambar tidak terpotong */
+    }
+    .image-preview:not([src]) {
+        display: none; /* Sembunyikan jika tidak ada src */
     }
 
     .spinner {
@@ -89,9 +93,50 @@
         padding: 0.25rem 0.75rem;
         font-size: 0.875rem;
     }
+    /* Mengubah cursor untuk input disabled */
     input:disabled, textarea:disabled, select:disabled {
         cursor: not-allowed;
         background-color: #f3f4f6;
+    }
+
+    /* Gaya untuk tabel varian */
+    .variant-table-container {
+        overflow-x: auto;
+        border: 1px solid #e5e7eb;
+        border-radius: 0.375rem;
+        margin-top: 1rem;
+        padding: 0.5rem;
+    }
+    .variant-table {
+        width: 100%;
+        min-width: 600px; /* Minimal lebar tabel untuk mencegah terlalu sempit */
+        border-collapse: collapse;
+    }
+    .variant-table th, .variant-table td {
+        padding: 0.75rem 1rem;
+        border: 1px solid #e5e7eb;
+        text-align: left;
+        font-size: 0.875rem;
+    }
+    .variant-table th {
+        background-color: #f9fafb;
+        font-weight: 600;
+        color: #374151;
+        white-space: nowrap; /* Mencegah header wrap */
+    }
+    .variant-table input[type="number"],
+    .variant-table input[type="text"] {
+        width: 100%;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid #d1d5db;
+        border-radius: 0.25rem;
+        font-size: 0.875rem;
+    }
+    .variant-table td:last-child {
+        text-align: center;
+    }
+    .variant-table .text-red-500 {
+        cursor: pointer;
     }
 
     /* =============================
@@ -102,16 +147,18 @@
         overflow: hidden;
     }
 
+    /* Penyesuaian 'content-wrapper' agar pas dengan layout AdminLTE Anda */
     .content-wrapper {
         height: calc(100vh - (3.5rem + 1px)); /* (tinggi navbar + border) */
         overflow-y: auto;
         padding-bottom: 100px; /* Ruang untuk sticky action */
     }
-    
+
     .content {
-        padding-bottom: 100px;
+        padding-bottom: 100px; /* Fallback jika .content-wrapper tidak ada */
     }
 
+    /* Sticky footer button agar tidak menutupi input */
     .sticky-action {
         position: sticky;
         bottom: 0;
@@ -130,9 +177,7 @@
 @section('content')
 @include('layouts.partials.notifications')
 
-{{-- ✅ PERBAIKAN: Menggunakan $product (yang akan resolve ke slug) agar konsisten dengan Model --}}
-<form id="product-form" action="{{ route('admin.products.update', $product) }}" method="POST" enctype="multipart/form-data" novalidate>
-
+<form id="product-form" action="{{ route('admin.products.update', $product->slug) }}" method="POST" enctype="multipart/form-data" novalidate>
     @csrf
     @method('PUT')
 
@@ -160,26 +205,28 @@
 
             {{-- Gambar Produk --}}
             <div class="bg-white p-6 rounded-lg shadow-md">
-                <h2 class="text-lg font-semibold text-gray-800 mb-4">Ganti Gambar Produk (Opsional)</h2>
+                <h2 class="text-lg font-semibold text-gray-800 mb-4">Gambar Utama Produk</h2>
                 <div id="image-uploader" class="image-uploader" tabindex="0">
                     <p class="font-semibold text-indigo-600">Klik untuk upload</p>
                     <p class="text-xs text-gray-500">atau seret file ke sini (PNG, JPG, WEBP hingga 2MB)</p>
                 </div>
                 <input type="file" name="product_image" id="product_image" class="hidden" accept="image/png, image/jpeg, image/webp">
-                <img id="image-preview" 
-                     src="{{ $product->image_url ? asset('storage/' . $product->image_url) : '' }}" 
-                     alt="Pratinjau Gambar" 
-                     class="image-preview {{ $product->image_url ? '' : 'hidden' }}" />
+                @if($product->image)
+                    <img id="image-preview" src="{{ asset('storage/' . $product->image) }}" alt="Pratinjau Gambar Produk" class="image-preview" />
+                @else
+                    <img id="image-preview" alt="Pratinjau Gambar Produk" class="image-preview" />
+                @endif
                 @error('product_image') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
             </div>
 
-            {{-- Informasi Penjual (STANDARISASI) --}}
+            {{-- Informasi Penjual --}}
             <div class="bg-white p-6 rounded-lg shadow-md">
                 <h2 class="text-lg font-semibold text-gray-800 mb-4">Informasi Penjual</h2>
                 <div class="space-y-4">
                     <div>
                         <label for="store_name" class="block text-sm font-medium text-gray-700">Nama Toko</label>
-                        <input type="text" name="store_name" id="store_name" value="{{ old('store_name', $product->store_name) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('store_name') border-red-500 @enderror" required>
+                        <input type="text" name="store_name" id="store_name" value="{{ old('store_name', $product->store_name) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('store_name') border-red-500 @enderror">
+                        <p class="mt-1 text-xs text-gray-500">Kosongkan untuk menggunakan data admin default.</p>
                         @error('store_name') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
                     </div>
                     <div>
@@ -188,13 +235,14 @@
                     </div>
                     <div>
                         <label for="seller_city" class="block text-sm font-medium text-gray-700">Kota Penjual</label>
-                        <input type="text" name="seller_city" id="seller_city" value="{{ old('seller_city', $product->seller_city) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('seller_city') border-red-500 @enderror" required>
+                        <input type="text" name="seller_city" id="seller_city" value="{{ old('seller_city', $product->seller_city) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('seller_city') border-red-500 @enderror">
+                        <p class="mt-1 text-xs text-gray-500">Kosongkan untuk menggunakan data admin default.</p>
                         @error('seller_city') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
                     </div>
                     <div>
                         <label for="seller_wa" class="block text-sm font-medium text-gray-700">WhatsApp Penjual (Opsional)</label>
-                        <input type="text" name="seller_wa" id="seller_wa" value="{{ old('seller_wa', $product->seller_wa) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('seller_wa') border-red-500 @enderror" placeholder="Contoh: 628123456789">
-                        <p class="mt-1 text-xs text-gray-500">Gunakan format 62 (bukan 0). Akan diformat otomatis.</p>
+                        <input type="text" name="seller_wa" id="seller_wa" value="{{ old('seller_wa', $product->seller_wa ? ltrim($product->seller_wa, '62') : '') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('seller_wa') border-red-500 @enderror" placeholder="Contoh: 8123456789 (tanpa 0 atau 62)">
+                        <p class="mt-1 text-xs text-gray-500">Nomor akan diformat otomatis ke 62.</p>
                         @error('seller_wa') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
                     </div>
                     <div>
@@ -204,68 +252,42 @@
                              <p class="text-xs text-gray-500">Logo (PNG, JPG, WEBP maks 1MB)</p>
                         </div>
                         <input type="file" name="seller_logo" id="seller_logo" class="hidden" accept="image/png, image/jpeg, image/webp">
-                        <img id="seller-logo-preview" 
-                             src="{{ $product->seller_logo ? asset('storage/' . $product->seller_logo) : '' }}" 
-                             alt="Pratinjau Logo" 
-                             class="image-preview {{ $product->seller_logo ? '' : 'hidden' }}" />
+                        @if($product->seller_logo)
+                            <img id="seller-logo-preview" src="{{ asset('storage/' . $product->seller_logo) }}" alt="Pratinjau Logo Penjual" class="image-preview" />
+                        @else
+                            <img id="seller-logo-preview" alt="Pratinjau Logo Penjual" class="image-preview" />
+                        @endif
                         @error('seller_logo') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
                     </div>
                 </div>
             </div>
 
-            {{-- Varian Produk (DILENGKAPI) --}}
+            {{-- Varian Produk (BARU) --}}
             <div class="bg-white p-6 rounded-lg shadow-md">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-lg font-semibold text-gray-800">Varian Produk (Opsional)</h2>
                     <button type="button" id="add-variant-group" class="btn btn-sm btn-outline-primary">Tambah Varian</button>
                 </div>
                 <p class="text-sm text-gray-600 mb-4">Tambahkan varian jika produk Anda memiliki pilihan seperti warna atau ukuran. Ini akan menonaktifkan input stok utama.</p>
-                
-                {{-- Kontainer untuk varian yang sudah ada dan yang baru --}}
                 <div id="variant-groups-container" class="space-y-6">
-                    {{-- Load Varian yang Sudah Ada --}}
-                    @foreach($product->variants as $index => $variant)
-                    <div class="border rounded-md p-4 space-y-3 bg-gray-50 existing-variant-group">
-                        <div class="flex justify-between items-center">
-                            <h3 class="font-semibold text-gray-700">Tipe Varian: {{ $variant->name }}</h3>
-                            <button type="button" class="text-red-500 hover:text-red-700 remove-variant-group" title="Hapus Tipe Varian">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                            </button>
-                        </div>
-                        
-                        {{-- Input hidden untuk ID agar backend tahu mana yang diupdate --}}
-                        <input type="hidden" name="variants[{{ $index }}][id]" value="{{ $variant->id }}">
-                        
-                        <div>
-                            <label for="variant_{{ $index }}_name" class="block text-sm font-medium text-gray-700">Nama Tipe Varian</label>
-                            <input type="text" name="variants[{{ $index }}][name]" id="variant_{{ $index }}_name" 
-                                   value="{{ old("variants.$index.name", $variant->name) }}" 
-                                   class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="Contoh: Warna, Ukuran" required>
-                        </div>
-                        <div>
-                            @php
-                                // Konversi koleksi options menjadi string yang dipisahkan koma
-                                $optionsString = $variant->options->pluck('name')->implode(', ');
-                            @endphp
-                            <label for="variant_{{ $index }}_options" class="block text-sm font-medium text-gray-700">Pilihan Varian (pisahkan koma)</label>
-                            <input type="text" name="variants[{{ $index }}][options]" id="variant_{{ $index }}_options" 
-                                   value="{{ old("variants.$index.options", $optionsString) }}" 
-                                   class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="Contoh: Merah, Biru, Hijau" required>
-                        </div>
-                    </div>
-                    @endforeach
-                    {{-- Grup varian dinamis baru akan ditambahkan di sini --}}
+                    {{-- Grup varian dinamis akan ditambahkan di sini oleh JavaScript --}}
                 </div>
-            </div>
 
-            {{-- Card Baru untuk SKU Varian --}}
-            <div id="variant-sku-card" class="bg-white p-6 rounded-lg shadow-md hidden">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-lg font-semibold text-gray-800">Atur SKU Varian</h2>
-                    <button type="button" id="generate-sku-table" class="btn btn-sm btn-primary">Buat Kombinasi SKU</button>
-                </div>
-                <div id="variant-sku-container" class="overflow-x-auto">
-                    {{-- Tabel SKU akan muncul di sini --}}
+                {{-- Tabel untuk harga/stok varian --}}
+                <div id="variant-combinations-section" class="hidden">
+                    <h3 class="text-md font-semibold text-gray-700 mt-6 mb-3">Harga & Stok Kombinasi Varian</h3>
+                    <div class="variant-table-container">
+                        <table id="variant-combinations-table" class="variant-table">
+                            <thead>
+                                <tr id="variant-table-headers">
+                                    {{-- Headers dinamis akan ditambahkan di sini --}}
+                                </tr>
+                            </thead>
+                            <tbody id="variant-combinations-body">
+                                {{-- Rows dinamis akan ditambahkan di sini --}}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
@@ -296,6 +318,7 @@
                     <div>
                         <label for="stock" class="block text-sm font-medium text-gray-700">Stok</label>
                         <input type="number" name="stock" id="stock" value="{{ old('stock', $product->stock) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('stock') border-red-500 @enderror" required>
+                        {{-- Pesan warning stok akan ditambahkan oleh JS jika ada varian --}}
                         @error('stock') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
                     </div>
                     <div>
@@ -331,14 +354,14 @@
                 <div class="space-y-4">
                     <div>
                         <label for="sku" class="block text-sm font-medium text-gray-700">SKU (Stock Keeping Unit)</label>
-                        <input type="text" name="sku" id="sku" value="{{ old('sku', $product->sku) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="Opsional">
+                        <input type="text" name="sku" id="sku" value="{{ old('sku', $product->sku) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="Otomatis jika kosong">
                     </div>
                     <div>
                         <label for="category_id" class="block text-sm font-medium text-gray-700">Kategori</label>
                         <select name="category_id" id="category_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
                             <option value="">-- Pilih Kategori --</option>
                             @foreach($categories as $category)
-                                <option value="{{ $category->id }}" {{ old('category_id', $product->category_id) == $category->id ? 'selected' : '' }} data-attributes-url="{{ route('admin.categories.attributes', $category->id) }}">
+                                <option value="{{ $category->id }}" data-attributes-url="{{ route('admin.categories.attributes', $category->id) }}" {{ old('category_id', $product->category_id) == $category->id ? 'selected' : '' }}>
                                     {{ $category->name }}
                                 </option>
                             @endforeach
@@ -347,8 +370,7 @@
                     </div>
                     <div>
                         <label for="tags" class="block text-sm font-medium text-gray-700">Tags (pisahkan koma)</label>
-                        {{-- ✅ PERBAIKAN: Menggunakan implode untuk menampilkan tags array dengan benar --}}
-                        <input type="text" name="tags" id="tags" value="{{ old('tags', is_array($product->tags) ? implode(', ', $product->tags) : $product->tags) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="Contoh: baju, atasan, pria">
+                        <input type="text" name="tags" id="tags" value="{{ old('tags', $product->tags) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="Otomatis dari kategori jika kosong">
                     </div>
                 </div>
             </div>
@@ -357,7 +379,7 @@
             <div id="attributes-card" class="bg-white p-6 rounded-lg shadow-md hidden">
                 <h2 class="text-lg font-semibold text-gray-800 mb-4">Spesifikasi Produk</h2>
                 <div id="dynamic-attributes-container" class="space-y-4">
-                    {{-- Field dinamis akan muncul di sini --}}
+                    {{-- Field dinamis akan muncul di sini oleh JavaScript --}}
                 </div>
             </div>
 
@@ -383,14 +405,11 @@
             </div>
         </div>
     </div>
-    
-    {{-- Tombol Aksi Sticky (STANDARISASI) --}}
+
+    {{-- Tombol Aksi Sticky --}}
     <div class="sticky-action">
         <a href="{{ route('admin.products.index') }}" class="btn btn-secondary">Batal</a>
-        <button id="submit-button" type="submit" class="btn btn-primary flex items-center gap-2">
-            Perbarui Produk
-            <span class="spinner hidden" role="status" aria-hidden="true"></span>
-        </button>
+        <button id="submit-button" type="submit" class="btn btn-primary flex items-center gap-2">Update Produk</button>
     </div>
 </form>
 
@@ -399,6 +418,44 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+
+    // Data produk dari Blade ke JavaScript
+    const product = @json($product);
+    const existingAttributes = @json($product->productAttributes->keyBy('attribute_slug')->map(function($attr) {
+        // Handle checkbox values, which might be stored as a JSON array
+        if ($attr->attribute_type === 'checkbox' && is_string($attr->value)) {
+            try {
+                return JSON.parse($attr->value);
+            } catch (e) {
+                // If parsing fails, just return the string
+                return $attr->value;
+            }
+        }
+        return $attr->value;
+    }));
+    const existingVariantTypes = @json($product->productVariantTypes->sortBy('id')->values()->map(function($variantType) {
+        return [
+            'name' => $variantType->name,
+            'options' => $variantType->options->pluck('name')->implode(', ')
+        ];
+    }));
+    const existingVariantCombinations = @json($product->productVariants->mapWithKeys(function($variant) {
+        // Menggabungkan nama varian dan nilainya menjadi satu string kunci unik
+        $key = $variant->combination_string; // Example: "Warna:Merah;Ukuran:M"
+        return [
+            $key => [
+                'price' => $variant->price,
+                'stock' => $variant->stock,
+                'sku_code' => $variant->sku_code
+            ]
+        ];
+    }));
+
+    // console.log('Product Data:', product);
+    // console.log('Existing Attributes:', existingAttributes);
+    // console.log('Existing Variant Types:', existingVariantTypes);
+    // console.log('Existing Variant Combinations:', existingVariantCombinations);
+
 
     // --- Fungsi Reusable untuk Image Uploader ---
     function setupImageUploader(uploaderId, inputId, previewId) {
@@ -436,9 +493,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 reader.onload = (event) => {
                     preview.src = event.target.result;
                     preview.style.display = 'block';
-                    preview.classList.remove('hidden'); // Pastikan tidak hidden
                 };
                 reader.readAsDataURL(file);
+            } else {
+                // Jika tidak ada file baru dipilih, sembunyikan preview jika src kosong
+                if (!preview.getAttribute('src')) {
+                    preview.style.display = 'none';
+                }
             }
         };
         input.addEventListener('change', handleFileChange);
@@ -452,14 +513,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('product-form');
     const submitButton = document.getElementById('submit-button');
     if (form && submitButton) {
-        form.addEventListener('submit', () => {
+        form.addEventListener('submit', (e) => {
             if (typeof form.checkValidity === 'function' && !form.checkValidity()) {
+                form.reportValidity();
+                e.preventDefault();
                 return;
             }
             submitButton.disabled = true;
             submitButton.innerHTML = `
                 <span class="spinner" role="status" aria-hidden="true"></span>
-                Memperbarui...
+                Menyimpan...
             `;
         });
     }
@@ -467,29 +530,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- WhatsApp Input Formatter ---
     const waInput = document.getElementById('seller_wa');
     if (waInput) {
-        // Hapus '62' di awal jika ada, untuk konsistensi
-        if (waInput.value.startsWith('62')) {
-            waInput.value = waInput.value.substring(2);
-        }
-        
         waInput.addEventListener('input', (e) => {
-            let value = e.target.value.replace(/\D/g, ''); // Hapus non-digit
-            // Jangan tambahkan 62 di sini, biarkan controller yang menangani
-            // Ini agar user bisa mengedit '0812' atau '812'
-            e.target.value = value;
+            e.target.value = e.target.value.replace(/\D/g, '');
         });
     }
 
-    // --- Script Atribut Dinamis (Versi EDIT: Memuat data yang ada) ---
+    // --- Script Atribut Dinamis ---
     const categorySelect = document.getElementById('category_id');
     const attributesCard = document.getElementById('attributes-card');
     const attributesContainer = document.getElementById('dynamic-attributes-container');
-    // Ambil data atribut yang sudah tersimpan dari Blade
-    const existingAttributes = @json($product->attributes_data ?? []);
 
     async function fetchAndRenderAttributes() {
         const selectedOption = categorySelect.options[categorySelect.selectedIndex];
-        const url = selectedOption.dataset.attributesUrl;
+        const url = selectedOption ? selectedOption.dataset.attributesUrl : null;
 
         if (!url) {
             attributesCard.classList.add('hidden');
@@ -501,276 +554,375 @@ document.addEventListener('DOMContentLoaded', () => {
             attributesContainer.innerHTML = '<p class="text-gray-500">Memuat spesifikasi...</p>';
             attributesCard.classList.remove('hidden');
             const response = await fetch(url);
-            if (!response.ok) throw new Error('Gagal memuat atribut.');
-            
-            const attributes = await response.json();
-            attributesContainer.innerHTML = ''; 
+            if (!response.ok) throw new Error(`Gagal memuat atribut (status: ${response.status}).`);
 
-            if (attributes.length > 0) {
+            const attributes = await response.json();
+            attributesContainer.innerHTML = '';
+
+            if (attributes && attributes.length > 0) {
                 attributes.forEach(attr => {
-                    // Cek apakah ada nilai yang tersimpan untuk atribut ini
-                    const existingValue = existingAttributes[attr.slug] || null;
-                    const field = createAttributeField(attr, existingValue);
-                    attributesContainer.appendChild(field);
+                    if (typeof attr === 'object' && attr !== null && attr.slug) {
+                        const field = createAttributeField(attr);
+                        attributesContainer.appendChild(field);
+                        // Mengisi nilai yang sudah ada
+                        if (existingAttributes && existingAttributes[attr.slug] !== undefined) {
+                            fillAttributeValue(field, attr, existingAttributes[attr.slug]);
+                        }
+                    } else {
+                        console.warn('Data atribut tidak valid:', attr);
+                    }
                 });
             } else {
-                 attributesContainer.innerHTML = '<p class="text-gray-500">Tidak ada spesifikasi tambahan untuk kategori ini.</p>';
+                attributesContainer.innerHTML = '<p class="text-gray-500">Tidak ada spesifikasi tambahan untuk kategori ini.</p>';
             }
         } catch (error) {
-            console.error('Error:', error);
-            attributesContainer.innerHTML = '<p class="text-red-500">Gagal memuat spesifikasi.</p>';
+            console.error('Error fetching attributes:', error);
+            attributesContainer.innerHTML = `<p class="text-red-500">Gagal memuat spesifikasi. ${error.message}</p>`;
         }
     }
 
-    // Fungsi ini sekarang menerima 'value' untuk mengisi data yang ada
-    function createAttributeField(attribute, value) {
+    function createAttributeField(attribute) {
         const wrapper = document.createElement('div');
         let fieldHtml = '';
         const isRequired = attribute.is_required ? 'required' : '';
         const requiredAsterisk = attribute.is_required ? '<span class="text-red-500">*</span>' : '';
-        const label = `<label for="attr_${attribute.slug}" class="block text-sm font-medium text-gray-700">${attribute.name} ${requiredAsterisk}</label>`;
+        const attributeName = attribute.name || 'Atribut Tanpa Nama';
+        const label = `<label for="attr_${attribute.slug}" class="block text-sm font-medium text-gray-700">${attributeName} ${requiredAsterisk}</label>`;
         const inputName = `attributes[${attribute.slug}]`;
-        // Atur value attribute jika ada (dan bukan object/array)
-        const valueAttribute = (value !== null && typeof value !== 'object') ? `value="${String(value).replace(/"/g, '&quot;')}"` : '';
+        const optionsString = typeof attribute.options === 'string' ? attribute.options : '';
 
         switch (attribute.type) {
             case 'number':
             case 'text':
-                fieldHtml = `${label}<input type="${attribute.type}" name="${inputName}" id="attr_${attribute.slug}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" ${isRequired} ${valueAttribute}>`;
+                fieldHtml = `${label}<input type="${attribute.type}" name="${inputName}" id="attr_${attribute.slug}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" ${isRequired}>`;
                 break;
             case 'textarea':
-                // Untuk textarea, value ditaruh di dalam tag
-                fieldHtml = `${label}<textarea name="${inputName}" id="attr_${attribute.slug}" rows="3" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" ${isRequired}>${value || ''}</textarea>`;
+                fieldHtml = `${label}<textarea name="${inputName}" id="attr_${attribute.slug}" rows="3" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" ${isRequired}></textarea>`;
                 break;
             case 'select':
-                const options = (attribute.options || '').split(',').map(opt => {
-                    const trimmedOpt = opt.trim();
-                    // Tandai 'selected' jika value cocok
-                    const selected = trimmedOpt == value ? 'selected' : '';
-                    return `<option value="${trimmedOpt}" ${selected}>${trimmedOpt}</option>`;
-                }).join('');
-                fieldHtml = `${label}<select name="${inputName}" id="attr_${attribute.slug}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" ${isRequired}><option value="">-- Pilih ${attribute.name} --</option>${options}</select>`;
+                const options = optionsString.split(',')
+                                    .map(opt => opt.trim())
+                                    .filter(opt => opt)
+                                    .map(opt => `<option value="${opt}">${opt}</option>`)
+                                    .join('');
+                fieldHtml = `${label}<select name="${inputName}" id="attr_${attribute.slug}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" ${isRequired}><option value="">-- Pilih ${attributeName} --</option>${options}</select>`;
                 break;
             case 'checkbox':
-                // Handle jika value tersimpan adalah array (dari multiple checkbox)
-                const valueArray = Array.isArray(value) ? value : (value ? [value] : []);
-                const checkboxes = (attribute.options || '').split(',').map((opt, index) => {
-                    const trimmedOpt = opt.trim();
-                    // Tandai 'checked' jika value ada di dalam array
-                    const checked = valueArray.includes(trimmedOpt) ? 'checked' : '';
-                    return `<div class="flex items-center"><input type="checkbox" name="${inputName}[]" id="attr_${attribute.slug}_${index}" value="${trimmedOpt}" class="h-4 w-4 text-indigo-600 border-gray-300 rounded" ${checked}><label for="attr_${attribute.slug}_${index}" class="ml-2 block text-sm text-gray-900">${trimmedOpt}</label></div>`;
-                }).join('');
-                fieldHtml = `<label class="block text-sm font-medium text-gray-700">${attribute.name} ${requiredAsterisk}</label><div class="mt-2 space-y-2">${checkboxes}</div>`;
+                const checkboxes = optionsString.split(',')
+                                        .map(opt => opt.trim())
+                                        .filter(opt => opt)
+                                        .map((opt, index) => `
+                    <div class="flex items-center">
+                        <input type="checkbox" name="${inputName}[]" id="attr_${attribute.slug}_${index}" value="${opt}" class="h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                        <label for="attr_${attribute.slug}_${index}" class="ml-2 block text-sm text-gray-900">${opt}</label>
+                    </div>`).join('');
+                fieldHtml = `<label class="block text-sm font-medium text-gray-700">${attributeName} ${requiredAsterisk}</label><div class="mt-2 space-y-2">${checkboxes}</div>`;
                 break;
+            default:
+                console.warn(`Tipe atribut tidak dikenali: ${attribute.type} untuk ${attributeName}`);
+                fieldHtml = `${label}<input type="text" name="${inputName}" id="attr_${attribute.slug}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" ${isRequired} title="Tipe asli: ${attribute.type}">`;
         }
         wrapper.innerHTML = fieldHtml;
         return wrapper;
     }
 
-    categorySelect.addEventListener('change', fetchAndRenderAttributes);
-    // Jalankan saat load untuk memuat atribut dari kategori yang tersimpan
-    if (categorySelect.value) {
+    function fillAttributeValue(fieldElement, attribute, value) {
+        if (value === null || value === undefined) return;
+
+        const input = fieldElement.querySelector(`[name^="attributes[${attribute.slug}]"]`);
+
+        if (input) {
+            if (attribute.type === 'checkbox') {
+                // Value for checkbox can be an array or a string (JSON string)
+                let valuesToCheck = [];
+                if (Array.isArray(value)) {
+                    valuesToCheck = value;
+                } else if (typeof value === 'string') {
+                    try {
+                        valuesToCheck = JSON.parse(value);
+                        if (!Array.isArray(valuesToCheck)) valuesToCheck = [value]; // Fallback if not an array after parse
+                    } catch (e) {
+                        valuesToCheck = [value]; // If not JSON, treat as single string
+                    }
+                }
+
+                fieldElement.querySelectorAll(`input[type="checkbox"][name^="attributes[${attribute.slug}]"]`).forEach(checkbox => {
+                    if (valuesToCheck.includes(checkbox.value)) {
+                        checkbox.checked = true;
+                    }
+                });
+            } else if (input.type === 'textarea') {
+                input.value = value;
+            } else {
+                input.value = value;
+            }
+        }
+    }
+
+
+    if (categorySelect) {
+        categorySelect.addEventListener('change', fetchAndRenderAttributes);
+        // Panggil saat DOMContentLoaded untuk memuat atribut saat halaman dimuat
         fetchAndRenderAttributes();
     }
 
-    // --- Script Varian Dinamis (Versi EDIT) ---
+
+    // --- Script Varian Dinamis (BARU) ---
     const variantContainer = document.getElementById('variant-groups-container');
     const addVariantBtn = document.getElementById('add-variant-group');
     const mainStockInput = document.getElementById('stock');
-    const skuCard = document.getElementById('variant-sku-card');
-    const skuContainer = document.getElementById('variant-sku-container');
-    const generateSkuBtn = document.getElementById('generate-sku-table');
-    
-    // Mulai index dari jumlah varian yang sudah ada
-    let variantIndex = {{ $product->variants->count() }};
+    const mainPriceInput = document.getElementById('price');
+    const mainOriginalPriceInput = document.getElementById('original_price');
+    const variantCombinationsSection = document.getElementById('variant-combinations-section');
+    const variantCombinationsTable = document.getElementById('variant-combinations-table');
+    const variantTableHeaders = document.getElementById('variant-table-headers');
+    const variantTableBody = document.getElementById('variant-combinations-body');
 
-    if (addVariantBtn && variantContainer && mainStockInput) {
-        addVariantBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            // Gunakan index baru untuk varian baru
-            variantContainer.appendChild(createVariantGroup(variantIndex));
-            variantIndex++; // Increment index untuk varian baru berikutnya
-            toggleMainStock();
+    let variantIndex = 0; // Untuk ID unik saat menambahkan grup varian baru
+
+    // Array untuk menyimpan data tipe varian saat ini
+    let currentVariantTypes = []; // [{ name: 'Warna', options: ['Merah', 'Biru'] }, { name: 'Ukuran', options: ['S', 'M'] }]
+
+    // Fungsi untuk memperbarui `currentVariantTypes` dari input form
+    function updateCurrentVariantTypes() {
+        currentVariantTypes = [];
+        variantContainer.querySelectorAll('.border.rounded-md').forEach(groupWrapper => {
+            const nameInput = groupWrapper.querySelector('input[name$="[name]"]');
+            const optionsInput = groupWrapper.querySelector('input[name$="[options]"]');
+
+            if (nameInput && nameInput.value.trim() && optionsInput && optionsInput.value.trim()) {
+                currentVariantTypes.push({
+                    name: nameInput.value.trim(),
+                    options: optionsInput.value.split(',').map(o => o.trim()).filter(o => o !== '')
+                });
+            }
         });
+        generateVariantCombinations();
+        toggleMainStock();
     }
 
-    // Fungsi untuk membuat grup varian BARU (sama seperti create.blade.php)
-    function createVariantGroup(index) {
+    function createVariantGroup(index, variantTypeData = { name: '', options: '' }) {
         const groupWrapper = document.createElement('div');
         groupWrapper.classList.add('border', 'rounded-md', 'p-4', 'space-y-3', 'bg-gray-50');
         groupWrapper.innerHTML = `
             <div class="flex justify-between items-center">
-                <h3 class="font-semibold text-gray-700">Tipe Varian Baru #${index + 1}</h3>
+                <h3 class="font-semibold text-gray-700">Tipe Varian #${index + 1}</h3>
                 <button type="button" class="text-red-500 hover:text-red-700 remove-variant-group" title="Hapus Tipe Varian">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                 </button>
             </div>
             <div>
                 <label for="variant_${index}_name" class="block text-sm font-medium text-gray-700">Nama Tipe Varian</label>
-                <input type="text" name="variants[${index}][name]" id="variant_${index}_name" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm variant-name" placeholder="Contoh: Warna, Ukuran" required>
+                <input type="text" name="variant_types[${index}][name]" id="variant_${index}_name" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="Contoh: Warna, Ukuran" value="${variantTypeData.name}" required>
             </div>
             <div>
                 <label for="variant_${index}_options" class="block text-sm font-medium text-gray-700">Pilihan Varian (pisahkan koma)</label>
-                <input type="text" name="variants[${index}][options]" id="variant_${index}_options" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm variant-options" placeholder="Contoh: Merah, Biru, Hijau" required>
+                <input type="text" name="variant_types[${index}][options]" id="variant_${index}_options" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="Contoh: Merah, Biru, Hijau" value="${variantTypeData.options}" required>
             </div>
         `;
-        
-        // Listener untuk tombol hapus pada varian BARU
+
+        // Tambahkan event listener untuk menghapus grup varian
         groupWrapper.querySelector('.remove-variant-group').addEventListener('click', (e) => {
             e.preventDefault();
             groupWrapper.remove();
-            toggleMainStock();
+            updateCurrentVariantTypes(); // Perbarui dan generate ulang kombinasi
+        });
+
+        // Tambahkan event listener untuk input agar selalu mengupdate kombinasi
+        groupWrapper.querySelectorAll('input').forEach(input => {
+            input.addEventListener('input', updateCurrentVariantTypes);
         });
 
         return groupWrapper;
     }
 
-    // Tambahkan listener untuk tombol hapus pada varian LAMA (yang sudah ada)
-    document.querySelectorAll('.remove-variant-group').forEach(button => {
-        button.addEventListener('click', (e) => {
+    if (addVariantBtn && variantContainer && mainStockInput) {
+        addVariantBtn.addEventListener('click', (e) => {
             e.preventDefault();
-            // Dapatkan wrapper terdekat (bisa .existing-variant-group atau yg baru)
-            const groupWrapper = e.target.closest('.border.rounded-md');
-            if (groupWrapper) {
-                groupWrapper.remove();
-                toggleMainStock();
-            }
+            variantContainer.appendChild(createVariantGroup(variantIndex));
+            variantIndex++;
+            updateCurrentVariantTypes(); // Panggil ini setelah menambahkan
         });
-    });
+    }
+
+    // Fungsi untuk menghasilkan kombinasi varian
+    function generateVariantCombinations() {
+        variantTableHeaders.innerHTML = '';
+        variantTableBody.innerHTML = '';
+
+        if (currentVariantTypes.length === 0) {
+            variantCombinationsSection.classList.add('hidden');
+            return;
+        }
+
+        variantCombinationsSection.classList.remove('hidden');
+
+        // Tambahkan header untuk nama varian
+        currentVariantTypes.forEach(type => {
+            const th = document.createElement('th');
+            th.textContent = type.name;
+            variantTableHeaders.appendChild(th);
+        });
+
+        // Tambahkan header untuk harga, stok, SKU, dan aksi
+        const priceTh = document.createElement('th'); priceTh.textContent = 'Harga'; variantTableHeaders.appendChild(priceTh);
+        const stockTh = document.createElement('th'); stockTh.textContent = 'Stok'; variantTableHeaders.appendChild(stockTh);
+        const skuTh = document.createElement('th'); skuTh.textContent = 'SKU Varian (Opsional)'; variantTableHeaders.appendChild(skuTh);
+        const actionTh = document.createElement('th'); actionTh.textContent = 'Aksi'; variantTableHeaders.appendChild(actionTh);
+
+
+        const combinations = generateAllCombinations(currentVariantTypes);
+
+        combinations.forEach((combination, combIndex) => {
+            const tr = document.createElement('tr');
+            let combinationString = []; // Untuk kunci lookup di existingVariantCombinations
+
+            combination.forEach((variantOption, optionIndex) => {
+                const td = document.createElement('td');
+                td.textContent = variantOption;
+                tr.appendChild(td);
+
+                // Buat string kombinasi untuk lookup
+                combinationString.push(`${currentVariantTypes[optionIndex].name}:${variantOption}`);
+            });
+
+            const comboKey = combinationString.join(';'); // "Warna:Merah;Ukuran:S"
+            const existingComboData = existingVariantCombinations[comboKey] || { price: mainPriceInput.value, stock: 0, sku_code: '' }; // Default values
+
+            // Input Harga
+            const priceTd = document.createElement('td');
+            priceTd.innerHTML = `<div class="relative"><span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">Rp</span><input type="number" name="product_variants[${combIndex}][price]" class="pl-8" value="${existingComboData.price}" required></div>`;
+            tr.appendChild(priceTd);
+
+            // Input Stok
+            const stockTd = document.createElement('td');
+            stockTd.innerHTML = `<input type="number" name="product_variants[${combIndex}][stock]" value="${existingComboData.stock}" required>`;
+            tr.appendChild(stockTd);
+
+            // Input SKU Varian
+            const skuTd = document.createElement('td');
+            skuTd.innerHTML = `<input type="text" name="product_variants[${combIndex}][sku_code]" value="${existingComboData.sku_code}" placeholder="SKU Varian">`;
+            tr.appendChild(skuTd);
+
+            // Hidden inputs untuk menyimpan tipe dan nilai varian
+            combination.forEach((variantOption, optionIndex) => {
+                const hiddenInputType = document.createElement('input');
+                hiddenInputType.type = 'hidden';
+                hiddenInputType.name = `product_variants[${combIndex}][variant_options][${optionIndex}][type_name]`;
+                hiddenInputType.value = currentVariantTypes[optionIndex].name;
+                tr.appendChild(hiddenInputType);
+
+                const hiddenInputValue = document.createElement('input');
+                hiddenInputValue.type = 'hidden';
+                hiddenInputValue.name = `product_variants[${combIndex}][variant_options][${optionIndex}][value]`;
+                hiddenInputValue.value = variantOption;
+                tr.appendChild(hiddenInputValue);
+            });
+
+            // Aksi (Opsional: Hapus baris kombinasi, dll)
+            const actionTd = document.createElement('td');
+            // Untuk saat ini, tidak ada aksi langsung untuk menghapus kombinasi spesifik
+            // karena mereka dihasilkan secara otomatis dari tipe varian.
+            // Anda bisa menambahkan tombol untuk "reset" stok/harga, misalnya.
+            actionTd.innerHTML = '<span class="text-gray-400">N/A</span>';
+            tr.appendChild(actionTd);
+
+
+            variantTableBody.appendChild(tr);
+        });
+
+        // Sinkronkan stok/harga utama dengan nilai default dari varian pertama jika ada
+        if (combinations.length > 0) {
+            const firstCombinationData = existingVariantCombinations[generateCombinationKey(combinations[0], currentVariantTypes)] || { price: product.price, stock: 0 };
+            mainPriceInput.value = firstCombinationData.price !== undefined ? firstCombinationData.price : product.price;
+            mainOriginalPriceInput.value = product.original_price; // Tetap pakai original_price produk utama
+        } else {
+            // Jika tidak ada varian, kembalikan ke harga produk utama
+            mainPriceInput.value = product.price;
+            mainOriginalPriceInput.value = product.original_price;
+        }
+    }
+
+
+    // Fungsi rekursif untuk menghasilkan semua kombinasi
+    function generateAllCombinations(variantTypes) {
+        if (variantTypes.length === 0) {
+            return [];
+        }
+
+        function combine(arr) {
+            if (arr.length === 0) return [[]];
+            const first = arr[0];
+            const rest = arr.slice(1);
+            const subCombinations = combine(rest);
+            const result = [];
+            for (const item of first) {
+                for (const subCombo of subCombinations) {
+                    result.push([item, ...subCombo]);
+                }
+            }
+            return result;
+        }
+
+        const optionsPerType = variantTypes.map(type => type.options);
+        return combine(optionsPerType);
+    }
+
+    // Fungsi helper untuk generate combination key yang sama dengan di backend
+    function generateCombinationKey(combinationValues, variantTypes) {
+        return combinationValues.map((value, index) => `${variantTypes[index].name}:${value}`).join(';');
+    }
 
 
     function toggleMainStock() {
-        if (!mainStockInput) return;
+        if (!mainStockInput || !mainPriceInput || !mainOriginalPriceInput) return;
 
         const warningId = 'stock-warning';
-        let warningEl = document.getElementById(warningId);
-        const hasVariants = variantContainer.children.length > 0;
+        const existingWarning = document.getElementById(warningId);
+        if (existingWarning) existingWarning.remove();
 
-        // Tampilkan/sembunyikan card SKU
-        if (hasVariants) {
-            skuCard.classList.remove('hidden');
-        } else {
-            skuCard.classList.add('hidden');
-            skuContainer.innerHTML = ''; // Kosongkan tabel jika tidak ada varian
-        }
+        // Cek jika ada grup varian yang terdefinisi
+        const hasVariantGroups = variantContainer.children.length > 0;
 
-        // Nonaktifkan stok utama
-        if (hasVariants) {
+        if (hasVariantGroups) {
             mainStockInput.disabled = true;
-            if (!warningEl) {
+            mainStockInput.value = ''; // Kosongkan stok utama
+            mainPriceInput.disabled = true; // Nonaktifkan harga utama
+            mainOriginalPriceInput.disabled = true; // Nonaktifkan harga coret utama
+
+            if (mainStockInput.parentElement) {
                 mainStockInput.parentElement.insertAdjacentHTML('afterend', `
                     <p id="${warningId}" class="mt-1 text-xs text-indigo-600">
-                        Stok utama dinonaktifkan. Silakan atur stok di tabel "Atur SKU Varian".
+                        Input stok & harga utama dinonaktifkan. Anda mengatur stok & harga per kombinasi varian.
                     </p>
                 `);
             }
         } else {
             mainStockInput.disabled = false;
-            if (warningEl) {
-                warningEl.remove();
-            }
+            // Kembalikan stok dan harga utama ke nilai produk (jika tidak ada varian)
+            mainStockInput.value = product.stock;
+            mainPriceInput.disabled = false;
+            mainPriceInput.value = product.price;
+            mainOriginalPriceInput.disabled = false;
+            mainOriginalPriceInput.value = product.original_price;
         }
     }
-    
-    // Panggil saat load untuk cek
-    toggleMainStock();
 
-    // --- Logika Generate SKU Varian ---
-    if (generateSkuBtn) {
-        generateSkuBtn.addEventListener('click', () => {
-            const groups = [];
-            // Ambil semua grup varian yang ada di form
-            variantContainer.querySelectorAll('.border.rounded-md').forEach((groupEl, index) => {
-                const nameInput = groupEl.querySelector('input[name*="[name]"]');
-                const optionsInput = groupEl.querySelector('input[name*="[options]"]');
-                
-                if (nameInput && optionsInput && nameInput.value && optionsInput.value) {
-                    groups.push({
-                        name: nameInput.value,
-                        options: optionsInput.value.split(',').map(s => s.trim()).filter(Boolean)
-                    });
-                }
-            });
-
-            if (groups.length === 0) {
-                skuContainer.innerHTML = '<p class="text-gray-500">Silakan tambahkan Tipe Varian dan Pilihan Varian terlebih dahulu.</p>';
-                return;
-            }
-
-            // --- Cartesian Product Function ---
-            // (Menghitung semua kombinasi)
-            const cartesian = (args) => {
-                let r = [], max = args.length - 1;
-                function helper(arr, i) {
-                    for (let j = 0, l = args[i].length; j < l; j++) {
-                        let a = arr.slice(0); // Salin array
-                        a.push(args[i][j]);
-                        if (i == max)
-                            r.push(a);
-                        else
-                            helper(a, i + 1);
-                    }
-                }
-                helper([], 0);
-                return r;
-            };
-            // --- End of Cartesian Product ---
-
-            const optionGroups = groups.map(g => g.options);
-            const combinations = cartesian(optionGroups);
-            
-            // Buat header tabel
-            let tableHtml = `
-                <table class="min-w-full divide-y divide-gray-200 mt-4">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            ${groups.map(g => `<th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">${e(g.name)}</th>`).join('')}
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Harga</th>
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stok</th>
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SKU</th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-            `;
-
-            // Buat baris tabel
-            combinations.forEach((combo, comboIndex) => {
-                const skuIdentifier = combo.join('-'); // Contoh: Merah-XL
-                const priceInputName = `skus[${skuIdentifier}][price]`;
-                const stockInputName = `skus[${skuIdentifier}][stock]`;
-                const skuInputName = `skus[${skuIdentifier}][sku]`;
-
-                tableHtml += `
-                    <tr>
-                        ${combo.map(option => `<td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">${e(option)}</td>`).join('')}
-                        <td class="px-4 py-3 whitespace-nowrap text-sm">
-                            <input type="number" name="${e(priceInputName)}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="Harga" required>
-                        </td>
-                        <td class="px-4 py-3 whitespace-nowrap text-sm">
-                            <input type="number" name="${e(stockInputName)}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="Stok" required>
-                        </td>
-                        <td class="px-4 py-3 whitespace-nowrap text-sm">
-                            <input type="text" name="${e(skuInputName)}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="SKU Varian">
-                        </td>
-                    </tr>
-                `;
-            });
-
-            tableHtml += `</tbody></table>`;
-            skuContainer.innerHTML = tableHtml;
+    // Inisialisasi: Muat varian yang sudah ada
+    existingVariantTypes.forEach((variantType, index) => {
+        const groupWrapper = createVariantGroup(variantIndex, {
+            name: variantType.name,
+            options: variantType.options
         });
+        variantContainer.appendChild(groupWrapper);
+        variantIndex++; // Tingkatkan index untuk varian baru
+    });
 
-        // Helper untuk escaping HTML di JS
-        function e(str) {
-            if (!str) return '';
-            return String(str)
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#39;');
-        }
-    }
+    // Panggil updateCurrentVariantTypes setelah semua varian existing dimuat
+    updateCurrentVariantTypes();
+
+    // Pastikan toggleMainStock dipanggil terakhir setelah semua inisialisasi varian
+    toggleMainStock();
 
 });
 </script>
