@@ -50,14 +50,14 @@ class ProductController extends Controller
                         return '<span class="badge ' . e($color) . '">' . e(ucfirst($row->status)) . '</span>';
                     })
                     ->addColumn('action', function($row){
-                        // PERBAIKAN: Menghapus prefix 'admin.' agar sesuai dengan rute Anda
-                        $editUrl = route('admin.products.edit', $row->id);
-                        $deleteUrl = route('admin.products.destroy', $row->id);
-                        $outOfStockUrl = route('admin.products.outOfStock', $row->id);
+                        // ✅ PERBAIKAN: Menggunakan $row->slug agar sesuai dengan Route Model Binding
+                        $editUrl = route('admin.products.edit', $row->slug);
+                        $deleteUrl = route('admin.products.destroy', $row->slug);
+                        $outOfStockUrl = route('admin.products.outOfStock', $row->slug);
 
                         $actionBtn = '<div class="d-flex justify-content-center gap-2">';
-                        // Menambahkan tombol restock
-                        $actionBtn .= '<button type="button" onclick="openRestockModal('.$row->id.', \''.e($row->name).'\')" class="btn btn-success btn-circle btn-sm" title="Restock"><i class="fas fa-plus"></i></button>';
+                        // ✅ PERBAIKAN: Mengoper slug (sebagai string) ke JavaScript
+                        $actionBtn .= '<button type="button" onclick="openRestockModal(\''.e($row->slug).'\', \''.e($row->name).'\')" class="btn btn-success btn-circle btn-sm" title="Restock"><i class="fas fa-plus"></i></button>';
                         $actionBtn .= '<a href="'.e($editUrl).'" class="btn btn-warning btn-circle btn-sm" title="Edit"><i class="fas fa-pen-to-square"></i></a>';
                         $actionBtn .= '<form action="'.e($outOfStockUrl).'" method="POST" class="d-inline" onsubmit="return confirm(\'Anda yakin ingin menandai produk ini habis?\');">'.csrf_field().method_field('PATCH').'<button type="submit" class="btn btn-secondary btn-circle btn-sm" title="Tandai Habis"><i class="fas fa-box-open"></i></button></form>';
                         $actionBtn .= '<form action="'.e($deleteUrl).'" method="POST" class="d-inline" onsubmit="return confirm(\'Anda yakin ingin menghapus produk ini?\');">'.csrf_field().method_field('DELETE').'<button type="submit" class="btn btn-danger btn-circle btn-sm" title="Hapus"><i class="fas fa-trash"></i></button></form>';
@@ -130,7 +130,12 @@ class ProductController extends Controller
         }
     
         $validated['slug'] = Str::slug($validated['name']) . '-' . uniqid();
-        $validated['attributes_data'] = json_encode($request->input('attributes', []));
+        
+        // PERBAIKAN: Pastikan attributes_data di-handle oleh cast 'array' di Model
+        // $validated['attributes_data'] = json_encode($request->input('attributes', []));
+        // Seharusnya Model Product.php Anda sudah punya: protected $casts = ['attributes_data' => 'array'];
+        $validated['attributes_data'] = $request->input('attributes', []);
+
         
         // Jika ada varian, paksa stok utama jadi 0
         if ($request->has('variants')) {
@@ -233,12 +238,14 @@ class ProductController extends Controller
         $validated['is_bestseller'] = $request->has('is_bestseller');
     
         if (!empty($request->tags)) {
-            $validated['tags'] = json_encode(array_map('trim', explode(',', $request->tags)));
+             // PERBAIKAN: Model $casts array akan menangani ini
+            $validated['tags'] = array_map('trim', explode(',', $request->tags));
         } else {
             $validated['tags'] = null;
         }
 
-        $validated['attributes_data'] = json_encode($request->input('attributes', []));
+        // PERBAIKAN: Model $casts array akan menangani ini
+        $validated['attributes_data'] = $request->input('attributes', []);
 
         // Jika ada varian, paksa stok utama jadi 0
         if ($request->has('variants')) {
@@ -337,4 +344,3 @@ public function edit(Product $product) // <-- INI PERBAIKANNYA
 
     
 }
-
