@@ -110,7 +110,7 @@
         overflow-y: auto;
         padding-bottom: 100px; /* Ruang untuk sticky action */
     }
-    
+
     .content {
         padding-bottom: 100px; /* Fallback jika .content-wrapper tidak ada */
     }
@@ -223,7 +223,7 @@
                 </div>
                 <p class="text-sm text-gray-600 mb-4">Tambahkan varian jika produk Anda memiliki pilihan seperti warna atau ukuran. Ini akan menonaktifkan input stok utama.</p>
                 <div id="variant-groups-container" class="space-y-6">
-                    {{-- Grup varian dinamis akan ditambahkan di sini --}}
+                    {{-- Grup varian dinamis akan ditambahkan di sini oleh JavaScript --}}
                 </div>
             </div>
 
@@ -254,6 +254,7 @@
                     <div>
                         <label for="stock" class="block text-sm font-medium text-gray-700">Stok</label>
                         <input type="number" name="stock" id="stock" value="{{ old('stock', 0) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('stock') border-red-500 @enderror" required>
+                        {{-- Pesan warning stok akan ditambahkan oleh JS jika ada varian --}}
                         @error('stock') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
                     </div>
                     <div>
@@ -314,7 +315,7 @@
             <div id="attributes-card" class="bg-white p-6 rounded-lg shadow-md hidden">
                 <h2 class="text-lg font-semibold text-gray-800 mb-4">Spesifikasi Produk</h2>
                 <div id="dynamic-attributes-container" class="space-y-4">
-                    {{-- Field dinamis akan muncul di sini --}}
+                    {{-- Field dinamis akan muncul di sini oleh JavaScript --}}
                 </div>
             </div>
 
@@ -340,7 +341,7 @@
             </div>
         </div>
     </div>
-    
+
     {{-- Tombol Aksi Sticky --}}
     <div class="sticky-action">
         <a href="{{ route('admin.products.index') }}" class="btn btn-secondary">Batal</a>
@@ -405,13 +406,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('product-form');
     const submitButton = document.getElementById('submit-button');
     if (form && submitButton) {
-        form.addEventListener('submit', () => {
+        form.addEventListener('submit', (e) => { // Tambahkan event 'e'
             // Hanya nonaktifkan jika form valid (untuk browser modern)
             if (typeof form.checkValidity === 'function' && !form.checkValidity()) {
-                // Tampilkan pesan error bawaan browser
-                form.reportValidity(); 
+                // Tampilkan pesan error bawaan browser jika tidak valid
+                form.reportValidity();
+                e.preventDefault(); // Hentikan submit jika tidak valid
                 return;
             }
+            // Jika valid, lanjutkan disable tombol
             submitButton.disabled = true;
             submitButton.innerHTML = `
                 <span class="spinner" role="status" aria-hidden="true"></span>
@@ -425,7 +428,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (waInput) {
         waInput.addEventListener('input', (e) => {
             // Hanya izinkan angka, biarkan controller format ke 62
-            e.target.value = e.target.value.replace(/\D/g, ''); 
+            e.target.value = e.target.value.replace(/\D/g, '');
         });
     }
 
@@ -436,7 +439,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function fetchAndRenderAttributes() {
         const selectedOption = categorySelect.options[categorySelect.selectedIndex];
-        const url = selectedOption.dataset.attributesUrl;
+        // Pastikan selectedOption ada sebelum mengakses dataset
+        const url = selectedOption ? selectedOption.dataset.attributesUrl : null;
+
 
         if (!url) {
             attributesCard.classList.add('hidden');
@@ -448,22 +453,27 @@ document.addEventListener('DOMContentLoaded', () => {
             attributesContainer.innerHTML = '<p class="text-gray-500">Memuat spesifikasi...</p>';
             attributesCard.classList.remove('hidden'); // Tampilkan card saat loading
             const response = await fetch(url);
-            if (!response.ok) throw new Error('Gagal memuat atribut.');
-            
-            const attributes = await response.json();
-            attributesContainer.innerHTML = ''; 
+            if (!response.ok) throw new Error(`Gagal memuat atribut (status: ${response.status}). URL: ${url}`);
 
-            if (attributes.length > 0) {
+            const attributes = await response.json();
+            attributesContainer.innerHTML = '';
+
+            if (attributes && attributes.length > 0) { // Tambah pengecekan 'attributes'
                 attributes.forEach(attr => {
-                    const field = createAttributeField(attr);
-                    attributesContainer.appendChild(field);
+                    // Pastikan attr adalah object yang valid
+                    if (typeof attr === 'object' && attr !== null && attr.slug) {
+                         const field = createAttributeField(attr);
+                         attributesContainer.appendChild(field);
+                    } else {
+                        console.warn('Data atribut tidak valid:', attr);
+                    }
                 });
             } else {
                 attributesContainer.innerHTML = '<p class="text-gray-500">Tidak ada spesifikasi tambahan untuk kategori ini.</p>';
             }
         } catch (error) {
-            console.error('Error:', error);
-            attributesContainer.innerHTML = '<p class="text-red-500">Gagal memuat spesifikasi.</p>';
+            console.error('Error fetching attributes:', error);
+            attributesContainer.innerHTML = `<p class="text-red-500">Gagal memuat spesifikasi. ${error.message}</p>`;
         }
     }
 
@@ -472,8 +482,12 @@ document.addEventListener('DOMContentLoaded', () => {
         let fieldHtml = '';
         const isRequired = attribute.is_required ? 'required' : '';
         const requiredAsterisk = attribute.is_required ? '<span class="text-red-500">*</span>' : '';
-        const label = `<label for="attr_${attribute.slug}" class="block text-sm font-medium text-gray-700">${attribute.name} ${requiredAsterisk}</label>`;
+        // Tambahkan fallback jika name tidak ada
+        const attributeName = attribute.name || 'Atribut Tanpa Nama';
+        const label = `<label for="attr_${attribute.slug}" class="block text-sm font-medium text-gray-700">${attributeName} ${requiredAsterisk}</label>`;
         const inputName = `attributes[${attribute.slug}]`;
+        // Pastikan options adalah string sebelum split
+        const optionsString = typeof attribute.options === 'string' ? attribute.options : '';
 
         switch (attribute.type) {
             case 'number':
@@ -484,33 +498,51 @@ document.addEventListener('DOMContentLoaded', () => {
                 fieldHtml = `${label}<textarea name="${inputName}" id="attr_${attribute.slug}" rows="3" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" ${isRequired}></textarea>`;
                 break;
             case 'select':
-                const options = (attribute.options || '').split(',').map(opt => `<option value="${opt.trim()}">${opt.trim()}</option>`).join('');
-                fieldHtml = `${label}<select name="${inputName}" id="attr_${attribute.slug}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" ${isRequired}><option value="">-- Pilih ${attribute.name} --</option>${options}</select>`;
+                 // Filter opsi kosong setelah split
+                const options = optionsString.split(',')
+                                    .map(opt => opt.trim())
+                                    .filter(opt => opt) // Hapus string kosong
+                                    .map(opt => `<option value="${opt}">${opt}</option>`)
+                                    .join('');
+                fieldHtml = `${label}<select name="${inputName}" id="attr_${attribute.slug}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" ${isRequired}><option value="">-- Pilih ${attributeName} --</option>${options}</select>`;
                 break;
             case 'checkbox':
-                const checkboxes = (attribute.options || '').split(',').map((opt, index) => `
+                 // Filter opsi kosong setelah split
+                const checkboxes = optionsString.split(',')
+                                        .map(opt => opt.trim())
+                                        .filter(opt => opt) // Hapus string kosong
+                                        .map((opt, index) => `
                     <div class="flex items-center">
-                        <input type="checkbox" name="${inputName}[]" id="attr_${attribute.slug}_${index}" value="${opt.trim()}" class="h-4 w-4 text-indigo-600 border-gray-300 rounded">
-                        <label for="attr_${attribute.slug}_${index}" class="ml-2 block text-sm text-gray-900">${opt.trim()}</label>
+                        <input type="checkbox" name="${inputName}[]" id="attr_${attribute.slug}_${index}" value="${opt}" class="h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                        <label for="attr_${attribute.slug}_${index}" class="ml-2 block text-sm text-gray-900">${opt}</label>
                     </div>`).join('');
-                fieldHtml = `<label class="block text-sm font-medium text-gray-700">${attribute.name} ${requiredAsterisk}</label><div class="mt-2 space-y-2">${checkboxes}</div>`;
+                fieldHtml = `<label class="block text-sm font-medium text-gray-700">${attributeName} ${requiredAsterisk}</label><div class="mt-2 space-y-2">${checkboxes}</div>`;
                 break;
+            // Tambahkan default case jika tipe tidak dikenali
+            default:
+                 console.warn(`Tipe atribut tidak dikenali: ${attribute.type} untuk ${attributeName}`);
+                 fieldHtml = `${label}<input type="text" name="${inputName}" id="attr_${attribute.slug}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" ${isRequired} title="Tipe asli: ${attribute.type}">`;
         }
         wrapper.innerHTML = fieldHtml;
         return wrapper;
     }
 
-    categorySelect.addEventListener('change', fetchAndRenderAttributes);
-    // Jalankan juga saat load jika ada kategori yang sudah terpilih (misal: saat validasi error)
-    if(categorySelect.value) {
-        fetchAndRenderAttributes();
+    if (categorySelect) { // Pastikan elemen ada
+        categorySelect.addEventListener('change', fetchAndRenderAttributes);
+        // Jalankan juga saat load jika ada kategori yang sudah terpilih (misal: saat validasi error)
+        if(categorySelect.value) {
+            fetchAndRenderAttributes();
+        }
+    } else {
+        console.error("Elemen select kategori tidak ditemukan.");
     }
+
 
     // --- Script Varian Dinamis (BARU) ---
     const variantContainer = document.getElementById('variant-groups-container');
     const addVariantBtn = document.getElementById('add-variant-group');
     const mainStockInput = document.getElementById('stock');
-    let variantIndex = 0;
+    let variantIndex = 0; // Selalu mulai dari 0 untuk form create
 
     if (addVariantBtn && variantContainer && mainStockInput) {
         addVariantBtn.addEventListener('click', (e) => {
@@ -519,11 +551,18 @@ document.addEventListener('DOMContentLoaded', () => {
             variantIndex++;
             toggleMainStock();
         });
+    } else {
+        // Log jika elemen tidak ditemukan, membantu debugging
+        if (!addVariantBtn) console.error("Tombol 'Tambah Varian' tidak ditemukan.");
+        if (!variantContainer) console.error("Kontainer grup varian tidak ditemukan.");
+        if (!mainStockInput) console.error("Input stok utama tidak ditemukan.");
     }
+
 
     function createVariantGroup(index) {
         const groupWrapper = document.createElement('div');
         groupWrapper.classList.add('border', 'rounded-md', 'p-4', 'space-y-3', 'bg-gray-50');
+        // Pastikan name attribute menggunakan index yang benar
         groupWrapper.innerHTML = `
             <div class="flex justify-between items-center">
                 <h3 class="font-semibold text-gray-700">Tipe Varian #${index + 1}</h3>
@@ -540,41 +579,64 @@ document.addEventListener('DOMContentLoaded', () => {
                 <input type="text" name="variants[${index}][options]" id="variant_${index}_options" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="Contoh: Merah, Biru, Hijau" required>
             </div>
         `;
-        
+
         groupWrapper.querySelector('.remove-variant-group').addEventListener('click', (e) => {
             e.preventDefault();
             groupWrapper.remove();
             toggleMainStock();
+            // Re-index varian setelah dihapus (opsional tapi lebih rapi)
+            // updateVariantIndices();
         });
 
         return groupWrapper;
     }
 
+     // Fungsi untuk re-index (opsional)
+    /*
+    function updateVariantIndices() {
+        const groups = variantContainer.querySelectorAll('.border.rounded-md');
+        groups.forEach((group, newIndex) => {
+            group.querySelector('h3').textContent = `Tipe Varian #${newIndex + 1}`;
+            group.querySelectorAll('input, label').forEach(el => {
+                if (el.name) el.name = el.name.replace(/variants\[\d+\]/, `variants[${newIndex}]`);
+                if (el.id) el.id = el.id.replace(/variant_\d+_/, `variant_${newIndex}_`);
+                if (el.htmlFor) el.htmlFor = el.htmlFor.replace(/variant_\d+_/, `variant_${newIndex}_`);
+            });
+        });
+        variantIndex = groups.length; // Update index global
+    }
+    */
+
+
     function toggleMainStock() {
         if (!mainStockInput) return;
 
         const warningId = 'stock-warning';
-        const warningEl = document.getElementById(warningId);
+        // Hapus warning lama sebelum menambahkan yang baru
+        const existingWarning = document.getElementById(warningId);
+        if (existingWarning) existingWarning.remove();
 
-        if (variantContainer.children.length > 0) {
+
+        if (variantContainer && variantContainer.children.length > 0) { // Cek variantContainer dulu
             mainStockInput.disabled = true;
             mainStockInput.value = ''; // Kosongkan stok utama
-            if (!warningEl) {
+            // Pastikan elemen parent ada sebelum insertAdjacentHTML
+             if (mainStockInput.parentElement) {
                 mainStockInput.parentElement.insertAdjacentHTML('afterend', `
                     <p id="${warningId}" class="mt-1 text-xs text-indigo-600">
                         Stok utama dinonaktifkan. Anda perlu mengatur stok untuk tiap varian nanti setelah produk disimpan.
                     </p>
                 `);
+            } else {
+                 console.error("Parent element dari input stok tidak ditemukan.");
             }
         } else {
             mainStockInput.disabled = false;
-            if (warningEl) {
-                warningEl.remove();
-            }
+            // Tidak perlu menghapus lagi karena sudah dihapus di atas
         }
     }
-    
-    // Panggil saat load untuk cek
+
+    // Panggil saat load untuk cek kondisi awal
     toggleMainStock();
 
 });
