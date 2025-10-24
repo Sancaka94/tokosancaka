@@ -71,7 +71,7 @@ class ProductController extends Controller
                         }
                         return 'Rp' . number_format($displayPrice, 0, ',', '.');
                     })
-                    ->addColumn('category_name', function ($row) {
+                    ->addColumn('category_id', function ($row) {
                         // PERBAIKAN: Tambahkan is_object() check
                         return $row->category && is_object($row->category) ? e($row->category->name) : '<span class="text-danger">N/A</span>';
                     })
