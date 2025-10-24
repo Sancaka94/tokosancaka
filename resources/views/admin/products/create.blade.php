@@ -180,7 +180,9 @@
                 <div class="space-y-4">
                     <div>
                         <label for="store_name" class="block text-sm font-medium text-gray-700">Nama Toko</label>
-                        <input type="text" name="store_name" id="store_name" value="{{ old('store_name') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('store_name') border-red-500 @enderror" required>
+                        {{-- PERBAIKAN: Hapus 'required' --}}
+                        <input type="text" name="store_name" id="store_name" value="{{ old('store_name') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('store_name') border-red-500 @enderror">
+                        <p class="mt-1 text-xs text-gray-500">Kosongkan untuk menggunakan data admin default.</p>
                         @error('store_name') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
                     </div>
                     <div>
@@ -189,7 +191,9 @@
                     </div>
                     <div>
                         <label for="seller_city" class="block text-sm font-medium text-gray-700">Kota Penjual</label>
-                        <input type="text" name="seller_city" id="seller_city" value="{{ old('seller_city') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('seller_city') border-red-500 @enderror" required>
+                        {{-- PERBAIKAN: Hapus 'required' --}}
+                        <input type="text" name="seller_city" id="seller_city" value="{{ old('seller_city') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('seller_city') border-red-500 @enderror">
+                        <p class="mt-1 text-xs text-gray-500">Kosongkan untuk menggunakan data admin default.</p>
                         @error('seller_city') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
                     </div>
                     <div>
@@ -255,7 +259,7 @@
                     <div>
                         <label for="weight" class="block text-sm font-medium text-gray-700">Berat</label>
                         <div class="relative mt-1">
-                            <input type="number" name="weight" id="weight" value="{{ old('weight') }}" class="pr-12 block w-full border-gray-300 rounded-md shadow-sm @error('weight') border-red-500 @enderror" placeholder="100" required>
+                            <input type="number" name="weight" id="weight" value="{{ old('weight') }}" class="pr-12 block w-full border-gray-300 rounded-md shadow-sm @error('weight') border-red-500 @enderror" placeholder="100" required> {{-- Berat tetap wajib --}}
                             <span class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500">gram</span>
                         </div>
                         @error('weight') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
@@ -404,6 +408,8 @@ document.addEventListener('DOMContentLoaded', () => {
         form.addEventListener('submit', () => {
             // Hanya nonaktifkan jika form valid (untuk browser modern)
             if (typeof form.checkValidity === 'function' && !form.checkValidity()) {
+                // Tampilkan pesan error bawaan browser
+                form.reportValidity(); 
                 return;
             }
             submitButton.disabled = true;
@@ -574,3 +580,4 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 @endpush
+
