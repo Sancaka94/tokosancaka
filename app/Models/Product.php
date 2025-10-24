@@ -97,6 +97,12 @@ class Product extends Model
         return $this->hasMany(ProductVariant::class);
     }
 
-
+    /**
+     * Menggunakan 'slug' untuk route model binding.
+     */
+    public function getRouteKeyName(): string
+    {
+        return 'slug';
+    }
 }
 
