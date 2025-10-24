@@ -5,7 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\Category;
-use App\Models\Attribute; // Pastikan Model Attribute ada
+// Hapus use Attribute jika tidak digunakan langsung di sini
+// use App\Models\Attribute;
 use App\Models\ProductAttribute; // Pastikan Model ProductAttribute ada
 use App\Models\ProductVariantType; // Pastikan Model ProductVariantType ada
 use App\Models\ProductVariantOption; // Pastikan Model ProductVariantOption ada
@@ -43,7 +44,8 @@ class ProductController extends Controller
                 $categorySlug = $request->input('category_slug');
 
                 // Muat relasi 'category' dan 'productVariantTypes'
-                $data = Product::with(['category', 'productVariantTypes'])
+                // Juga muat relasi 'productVariants' untuk mendapatkan harga varian pertama (jika ada)
+                $data = Product::with(['category', 'productVariantTypes', 'productVariants'])
                         ->when($categorySlug, function ($query, $slug) {
                             $query->whereHas('category', function($q) use ($slug) {
                                 $q->where('slug', $slug);
@@ -54,22 +56,21 @@ class ProductController extends Controller
                 return DataTables::of($data)
                     ->addIndexColumn()
                     ->addColumn('image', function ($row) {
-                        // PERBAIKAN: Gunakan kolom image_url secara konsisten
+                        // Gunakan kolom image_url secara konsisten
                         $imageUrl = $row->image_url;
                         $url = $imageUrl ? asset('storage/' . $imageUrl) : 'https://placehold.co/80x80/EFEFEF/333333?text=N/A';
-                        return '<img src="' . e($url) . '" alt="' . e($row->name) . '" class="rounded" width="60" loading="lazy" />'; // Tambah lazy loading
+                        return '<img src="' . e($url) . '" alt="' . e($row->name) . '" class="rounded" width="60" loading="lazy" />';
                     })
                     ->editColumn('price', function ($row) {
-                         // Tampilkan harga varian pertama jika ada
+                         // Tampilkan harga varian pertama jika ada dan relasi dimuat
                         $displayPrice = $row->price;
-                        // Pastikan relasi productVariants dimuat jika ingin mengaksesnya di sini, atau gunakan pengecekan relasi
-                        // if($row->relationLoaded('productVariants') && $row->productVariants->isNotEmpty()){
-                        //      $displayPrice = $row->productVariants->first()->price ?? $row->price;
-                        // }
+                        if($row->relationLoaded('productVariants') && $row->productVariants->isNotEmpty()){
+                             $displayPrice = $row->productVariants->first()->price ?? $row->price;
+                        }
                         return 'Rp' . number_format($displayPrice, 0, ',', '.');
                     })
                     ->addColumn('category_name', function ($row) {
-                        return $row->category->name ?? '<span class="text-danger">N/A</span>'; // Tanda jika kategori tidak ada
+                        return $row->category->name ?? '<span class="text-danger">N/A</span>';
                     })
                     ->addColumn('has_variants', function($row) {
                          // Cek apakah relasi productVariantTypes (yang di-load) ada dan tidak kosong
@@ -82,9 +83,9 @@ class ProductController extends Controller
                     })
                     ->editColumn('stock', function ($row) {
                         // Tambahkan indikator varian
-                        $stockDisplay = $row->stock ?? 0; // Default 0 jika null
-                        if ($row->has_variants) { // Gunakan kolom virtual has_variants
-                            // Jika ada varian, tampilkan ikon (stok utama mungkin 0)
+                        $stockDisplay = $row->stock ?? 0;
+                        // Gunakan has_variants yang sudah dihitung
+                        if ($row->has_variants) {
                             $stockDisplay = ($row->stock ?? 0) . ' <i class="fas fa-code-branch variant-indicator" title="Produk ini memiliki varian"></i>';
                         }
                         return $stockDisplay;
@@ -102,7 +103,6 @@ class ProductController extends Controller
                              $actionBtn .= '<button type="button" onclick="openRestockModal(\''.e($restockUrl).'\', \''.e($row->name).'\')" class="btn btn-success btn-circle btn-sm" title="Restock"><i class="fas fa-plus"></i></button>';
                              $actionBtn .= '<form action="'.e($outOfStockUrl).'" method="POST" class="d-inline" onsubmit="return confirm(\'Anda yakin ingin menandai produk ini habis?\');">'.csrf_field().method_field('PATCH').'<button type="submit" class="btn btn-secondary btn-circle btn-sm" title="Tandai Habis"><i class="fas fa-box-open"></i></button></form>';
                         } else {
-                            // Placeholder atau tombol nonaktif jika ada varian
                              $actionBtn .= '<button type="button" class="btn btn-outline-secondary btn-circle btn-sm disabled" title="Atur stok via Edit Varian"><i class="fas fa-plus"></i></button>';
                              $actionBtn .= '<button type="button" class="btn btn-outline-secondary btn-circle btn-sm disabled" title="Atur stok via Edit Varian"><i class="fas fa-box-open"></i></button>';
                         }
@@ -112,7 +112,6 @@ class ProductController extends Controller
 
                         return $actionBtn;
                     })
-                    // Pastikan stock juga diraw
                     ->rawColumns(['action', 'image', 'status_badge', 'stock', 'category_name'])
                     ->make(true);
 
@@ -121,7 +120,7 @@ class ProductController extends Controller
                 return response()->json(['error' => 'Could not process data.', 'message' => $e->getMessage()], 500);
             }
         }
-         // Jika bukan AJAX, tampilkan view biasa (jika perlu)
+         // Fallback jika bukan AJAX
          $categories = Category::where('type', 'product')->orderBy('name')->get(['name', 'slug']);
          return view('admin.products.index', compact('categories'));
     }
@@ -141,20 +140,19 @@ class ProductController extends Controller
      */
     public function store(Request $request)
     {
-         // Gabungkan validasi dasar dan varian
         $baseRules = [
             'name'             => ['required', 'string', 'max:255', Rule::unique('products', 'name')],
             'description'      => 'nullable|string',
             'price'            => 'required|numeric|min:0',
-            'original_price'   => 'nullable|numeric|min:0|gte:price', // gte:price (>= price)
+            'original_price'   => 'nullable|numeric|min:0|gte:price',
             'weight'           => 'required|integer|min:0',
             'category_id'      => 'required|exists:categories,id',
-            'product_image'    => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048', // Validasi input file
-            'store_name'       => 'nullable|string|max:255', // Jadi nullable
-            'seller_city'      => 'nullable|string|max:255', // Jadi nullable
+            'product_image'    => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'store_name'       => 'nullable|string|max:255',
+            'seller_city'      => 'nullable|string|max:255',
             'seller_name'      => 'nullable|string|max:255',
             'seller_wa'        => 'nullable|string|max:20',
-            'seller_logo'      => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048', // Validasi input file
+            'seller_logo'      => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
             'sku'              => ['nullable', 'string', 'max:100', Rule::unique('products', 'sku')],
             'tags'             => 'nullable|string',
             'status'           => 'required|in:active,inactive',
@@ -163,16 +161,17 @@ class ProductController extends Controller
             'length'           => 'nullable|numeric|min:0',
             'width'            => 'nullable|numeric|min:0',
             'height'           => 'nullable|numeric|min:0',
-            'attributes'       => 'nullable|array', // Data atribut dari form dinamis
-            'attributes.*'     => 'nullable', // Bisa array (checkbox) atau string
-            'variant_types'    => 'nullable|array', // Data tipe varian dari form
+            'attributes'       => 'nullable|array',
+            'attributes.*'     => 'nullable',
+            'variant_types'    => 'nullable|array',
         ];
 
-        // Aturan validasi yang bergantung pada ada tidaknya varian
         $conditionalRules = [];
-        if ($request->has('variant_types') && !empty($request->variant_types)) {
+        $hasVariantsRequest = $request->has('variant_types') && !empty($request->variant_types);
+
+        if ($hasVariantsRequest) {
             $conditionalRules = [
-                'stock'            => 'nullable|integer|min:0', // Stok utama jadi opsional (akan di-set 0)
+                'stock'            => 'nullable|integer|min:0',
                 'variant_types.*.name' => 'required|string|max:255',
                 'variant_types.*.options' => 'required|string|max:1000',
                 'product_variants' => 'required|array|min:1',
@@ -192,22 +191,17 @@ class ProductController extends Controller
 
         $validated = $request->validate(array_merge($baseRules, $conditionalRules));
 
-        // --- Proses Data ---
-        $validatedDataForCreate = $validated; // Buat salinan untuk data create produk
+        $validatedDataForCreate = $validated;
         try {
             if ($request->hasFile('product_image')) {
-                // PERBAIKAN: Simpan ke 'image_url'
                 $validatedDataForCreate['image_url'] = $request->file('product_image')->store('products', 'public');
             }
-            // Hapus 'product_image' dari data create karena itu input file, bukan kolom DB
             unset($validatedDataForCreate['product_image']);
 
             if ($request->hasFile('seller_logo')) {
                 $validatedDataForCreate['seller_logo'] = $request->file('seller_logo')->store('seller_logos', 'public');
             }
-             // Hapus 'seller_logo' (input file) dari data create
             unset($validatedDataForCreate['seller_logo']);
-
 
             if (!empty($request->seller_wa)) {
                 $wa = preg_replace('/[^0-9]/', '', $request->seller_wa);
@@ -225,7 +219,7 @@ class ProductController extends Controller
 
             $validatedDataForCreate['slug'] = $this->generateUniqueSlug($validatedDataForCreate['name']);
 
-            if (empty($validatedDataForCreate['sku']) && !empty($validatedDataForCreate['category_id']) && !$request->has('variant_types')) {
+            if (empty($validatedDataForCreate['sku']) && !empty($validatedDataForCreate['category_id']) && !$hasVariantsRequest) {
                  $validatedDataForCreate['sku'] = $this->generateSku($validatedDataForCreate['name'], $validatedDataForCreate['category_id']);
             }
 
@@ -234,7 +228,8 @@ class ProductController extends Controller
                 $manualTags = array_map('trim', explode(',', $request->tags));
                 $manualTags = array_filter($manualTags);
             }
-            $categoryTag = Category::find($validatedDataForCreate['category_id'])->name ?? null;
+            $category = Category::find($validatedDataForCreate['category_id']);
+            $categoryTag = $category->name ?? null;
             $allTags = $manualTags;
             if ($categoryTag && !in_array($categoryTag, $allTags)) {
                 $allTags[] = $categoryTag;
@@ -244,31 +239,25 @@ class ProductController extends Controller
             $validatedDataForCreate['is_new'] = $request->has('is_new');
             $validatedDataForCreate['is_bestseller'] = $request->has('is_bestseller');
 
-            // Hapus data yang tidak relevan untuk tabel products sebelum create
+            // Hapus data relasi sebelum create product
+            $attributesInput = $request->input('attributes', []);
+            $variantTypesInput = $request->input('variant_types', []);
+            $productVariantsInput = $request->input('product_variants', []);
             unset($validatedDataForCreate['attributes']);
             unset($validatedDataForCreate['variant_types']);
             unset($validatedDataForCreate['product_variants']);
 
-
-            $hasVariants = $request->has('variant_types') && !empty($request->variant_types);
-            if ($hasVariants) {
+            if ($hasVariantsRequest) {
                 $validatedDataForCreate['stock'] = 0;
-                 $validatedDataForCreate['price'] = $request->product_variants[0]['price'] ?? $validatedDataForCreate['price'];
+                 $validatedDataForCreate['price'] = $productVariantsInput[0]['price'] ?? $validatedDataForCreate['price'];
             }
 
-
-            $product = DB::transaction(function () use ($validatedDataForCreate, $request, $hasVariants) {
-                // Buat Produk
+            $product = DB::transaction(function () use ($validatedDataForCreate, $attributesInput, $variantTypesInput, $productVariantsInput, $hasVariantsRequest) {
                 $product = Product::create($validatedDataForCreate);
-
-                // Simpan Atribut
-                $this->syncAttributes($product, $request->input('attributes', []));
-
-                // Simpan Varian jika ada
-                if ($hasVariants) {
-                    $this->syncVariantTypesAndCombinations($product, $request->variant_types, $request->product_variants);
+                $this->syncAttributes($product, $attributesInput);
+                if ($hasVariantsRequest) {
+                    $this->syncVariantTypesAndCombinations($product, $variantTypesInput, $productVariantsInput);
                 }
-
                 return $product;
             });
 
@@ -276,15 +265,10 @@ class ProductController extends Controller
 
         } catch (Exception $e) {
             Log::error('Error saving product: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
-            // Hapus file yang mungkin sudah terupload jika error
-             $imagePath = $validatedDataForCreate['image_url'] ?? null;
-             if ($imagePath && Storage::disk('public')->exists($imagePath)) {
-                 Storage::disk('public')->delete($imagePath);
-             }
-             $logoPath = $validatedDataForCreate['seller_logo'] ?? null;
-             if ($logoPath && Storage::disk('public')->exists($logoPath)) {
-                 Storage::disk('public')->delete($logoPath);
-             }
+            $imagePath = $validatedDataForCreate['image_url'] ?? null;
+            if ($imagePath && Storage::disk('public')->exists($imagePath)) { Storage::disk('public')->delete($imagePath); }
+            $logoPath = $validatedDataForCreate['seller_logo'] ?? null;
+            if ($logoPath && Storage::disk('public')->exists($logoPath)) { Storage::disk('public')->delete($logoPath); }
             return back()->with('error', 'Gagal menyimpan produk: ' . $e->getMessage())->withInput();
         }
     }
@@ -297,47 +281,50 @@ class ProductController extends Controller
     {
         $product->load([
             'category',
-            'productAttributes.attribute',
+            'productAttributes.attribute', // Muat relasi ke tabel attributes
             'productVariantTypes.options' => fn ($q) => $q->orderBy('id'),
             'productVariants.options' => fn ($q) => $q->orderBy('product_variant_type_id')->orderBy('id')
         ]);
 
         $product->tags = $this->decodeTags($product->tags);
 
+        // Siapkan data atribut yang ada untuk JavaScript [slug => value]
         $existingAttributesData = [];
         foreach($product->productAttributes as $pa) {
-            if ($pa->attribute) {
+            // Gunakan slug dari relasi attribute jika ada, jika tidak fallback ke slug di product_attributes
+            $slug = $pa->attribute->slug ?? $pa->attribute_slug;
+            if ($slug) {
                  $value = $pa->value;
-                 if ($pa->attribute->type === 'checkbox' && is_string($value)) {
+                 // Asumsikan tipe diambil dari relasi attribute
+                 $attributeType = $pa->attribute->type ?? $pa->attribute_type ?? 'text'; // Fallback type
+                 if ($attributeType === 'checkbox' && is_string($value)) {
                       try {
-                          $decodedValue = json_decode($value, true);
+                          $decodedValue = json_decode($value, true, 512, JSON_THROW_ON_ERROR);
                           $value = is_array($decodedValue) ? $decodedValue : [$value];
                       } catch (\JsonException $e) { $value = [$value]; }
                  }
-                $existingAttributesData[$pa->attribute->slug] = $value;
+                $existingAttributesData[$slug] = $value;
             }
         }
-         // Encode kembali untuk JS
         $product->existing_attributes_json = json_encode($existingAttributesData);
 
-
+        // Siapkan data tipe varian yang ada untuk JavaScript
         $product->existing_variant_types_json = $product->productVariantTypes->map(function($variantType) {
             return [ 'name' => $variantType->name, 'options' => $variantType->options->pluck('name')->implode(', ') ];
         })->toJson();
 
+        // Siapkan data kombinasi varian yang ada untuk JavaScript
         $product->existing_variant_combinations_json = $product->productVariants->mapWithKeys(function($variant) {
-             // Pastikan relasi options terload dan terurut
-            $key = $variant->options
-                        // ->sortBy('product_variant_type_id') // Urutkan berdasarkan tipe
+            // Pastikan relasi options terload dan terurut sesuai type_id lalu option_id
+             $key = $variant->options
+                        // ->sortBy('product_variant_type_id') // Tidak perlu sort jika query load sudah benar
                         ->map(function($option) {
-                            // Dapatkan nama tipe dari relasi option ke type
                             return ($option->productVariantType->name ?? 'UNKNOWN') . ':' . $option->name;
                         })
-                        ->sort() // Urutkan string mapKey
-                        ->implode(';'); // Gabungkan
+                        ->sort() // Sort berdasarkan string "TypeName:OptionName"
+                        ->implode(';');
             return [ $key => [ 'price' => $variant->price, 'stock' => $variant->stock, 'sku_code' => $variant->sku_code ]];
         })->toJson();
-
 
         $categories = Category::where('type', 'product')->orderBy('name')->get();
         return view('admin.products.edit', compact('product', 'categories'));
@@ -349,7 +336,6 @@ class ProductController extends Controller
      */
     public function update(Request $request, Product $product)
     {
-        // Gabungkan validasi dasar dan varian
         $baseRules = [
             'name'             => ['required', 'string', 'max:255', Rule::unique('products', 'name')->ignore($product->id)],
             'description'      => 'nullable|string',
@@ -357,12 +343,12 @@ class ProductController extends Controller
             'original_price'   => 'nullable|numeric|min:0|gte:price',
             'weight'           => 'required|integer|min:0',
             'category_id'      => 'required|exists:categories,id',
-            'product_image'    => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048', // Validasi input file
+            'product_image'    => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
             'store_name'       => 'nullable|string|max:255',
             'seller_city'      => 'nullable|string|max:255',
             'seller_name'      => 'nullable|string|max:255',
             'seller_wa'        => 'nullable|string|max:20',
-            'seller_logo'      => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048', // Validasi input file
+            'seller_logo'      => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
             'sku'              => ['nullable', 'string', 'max:100', Rule::unique('products', 'sku')->ignore($product->id)],
             'tags'             => 'nullable|string',
             'status'           => 'required|in:active,inactive',
@@ -377,9 +363,9 @@ class ProductController extends Controller
         ];
 
         $conditionalRules = [];
-        $hasVariants = $request->has('variant_types') && !empty($request->variant_types);
+        $hasVariantsRequest = $request->has('variant_types') && !empty($request->variant_types);
 
-        if ($hasVariants) {
+        if ($hasVariantsRequest) {
             $conditionalRules = [
                 'stock'            => 'nullable|integer|min:0',
                 'variant_types.*.name' => 'required|string|max:255',
@@ -387,8 +373,8 @@ class ProductController extends Controller
                 'product_variants' => 'required|array|min:1',
                 'product_variants.*.price' => 'required|numeric|min:0',
                 'product_variants.*.stock' => 'required|integer|min:0',
-                // Validasi unique SKU varian saat update lebih kompleks, perlu cek manual jika diperlukan
-                'product_variants.*.sku_code' => ['nullable', 'string', 'max:100'],
+                 // Unique rule for variant SKU needs careful handling on update, possibly manual check
+                 'product_variants.*.sku_code' => ['nullable', 'string', 'max:100'],
                 'product_variants.*.variant_options' => 'required|array|min:1',
                 'product_variants.*.variant_options.*.type_name' => 'required|string',
                 'product_variants.*.variant_options.*.value' => 'required|string',
@@ -402,19 +388,15 @@ class ProductController extends Controller
 
         $validated = $request->validate(array_merge($baseRules, $conditionalRules));
 
-         // --- Proses Data ---
-        $validatedDataForUpdate = $validated; // Buat salinan
+        $validatedDataForUpdate = $validated;
         try {
-            // PERBAIKAN: Simpan ke 'image_url' dan hapus file lama
             if ($request->hasFile('product_image')) {
                 if ($product->image_url && Storage::disk('public')->exists($product->image_url)) {
                     Storage::disk('public')->delete($product->image_url);
                 }
                 $validatedDataForUpdate['image_url'] = $request->file('product_image')->store('products', 'public');
             }
-             // Hapus input file dari data update
             unset($validatedDataForUpdate['product_image']);
-
 
             if ($request->hasFile('seller_logo')) {
                 if ($product->seller_logo && Storage::disk('public')->exists($product->seller_logo)) {
@@ -422,18 +404,16 @@ class ProductController extends Controller
                 }
                 $validatedDataForUpdate['seller_logo'] = $request->file('seller_logo')->store('seller_logos', 'public');
             }
-            // Hapus input file dari data update
             unset($validatedDataForUpdate['seller_logo']);
 
-             if ($request->filled('seller_wa')) {
+            if ($request->filled('seller_wa')) {
                 $wa = preg_replace('/[^0-9]/', '', $request->seller_wa);
                 if (!Str::startsWith($wa, '62')) {
                      $wa = '62' . ltrim($wa, '0');
                 }
                 $validatedDataForUpdate['seller_wa'] = $wa;
-            } else {
-                 $validatedDataForUpdate['seller_wa'] = null;
-            }
+            } else { $validatedDataForUpdate['seller_wa'] = null; }
+
             if (empty($validatedDataForUpdate['store_name'])) {
                 $validatedDataForUpdate['store_name'] = Auth::user()->store->name ?? config('app.default_store_name', 'Toko Sancaka Default');
             }
@@ -445,7 +425,7 @@ class ProductController extends Controller
                  $validatedDataForUpdate['slug'] = $this->generateUniqueSlug($validatedDataForUpdate['name'], $product->id);
             }
 
-            if (empty($validatedDataForUpdate['sku']) && empty($product->sku) && !$hasVariants && !empty($validatedDataForUpdate['category_id'])) {
+            if (empty($validatedDataForUpdate['sku']) && empty($product->sku) && !$hasVariantsRequest && !empty($validatedDataForUpdate['category_id'])) {
                  $validatedDataForUpdate['sku'] = $this->generateSku($validatedDataForUpdate['name'], $validatedDataForUpdate['category_id']);
             }
 
@@ -454,7 +434,8 @@ class ProductController extends Controller
                 $manualTags = array_map('trim', explode(',', $request->tags));
                 $manualTags = array_filter($manualTags);
             }
-            $categoryTag = Category::find($validatedDataForUpdate['category_id'])->name ?? null;
+            $category = Category::find($validatedDataForUpdate['category_id']);
+            $categoryTag = $category->name ?? null;
             $allTags = $manualTags;
             if ($categoryTag && !in_array($categoryTag, $allTags)) {
                 $allTags[] = $categoryTag;
@@ -464,33 +445,30 @@ class ProductController extends Controller
             $validatedDataForUpdate['is_new'] = $request->has('is_new');
             $validatedDataForUpdate['is_bestseller'] = $request->has('is_bestseller');
 
-            // Hapus data yang tidak relevan untuk tabel products sebelum update
+            // Pisahkan data relasi sebelum update product
+            $attributesInput = $request->input('attributes', []);
+            $variantTypesInput = $request->input('variant_types', []);
+            $productVariantsInput = $request->input('product_variants', []);
             unset($validatedDataForUpdate['attributes']);
             unset($validatedDataForUpdate['variant_types']);
             unset($validatedDataForUpdate['product_variants']);
 
-
-            if ($hasVariants) {
+            if ($hasVariantsRequest) {
                 $validatedDataForUpdate['stock'] = 0;
-                $validatedDataForUpdate['price'] = $request->product_variants[0]['price'] ?? $validatedDataForUpdate['price'];
+                $validatedDataForUpdate['price'] = $productVariantsInput[0]['price'] ?? $validatedDataForUpdate['price'];
             } else {
-                // Jika tidak ada varian (dihapus saat edit), kembalikan stok & harga utama
-                $validatedDataForUpdate['stock'] = $request->input('stock', $product->stock);
+                 // Ambil stok dari input jika varian dihapus
+                $validatedDataForUpdate['stock'] = $request->input('stock', $product->stock); // Ambil dari input atau data lama
                 $validatedDataForUpdate['price'] = $request->input('price', $product->price);
             }
 
-
-            DB::transaction(function () use ($product, $validatedDataForUpdate, $request, $hasVariants) {
-                // Update Produk
+            DB::transaction(function () use ($product, $validatedDataForUpdate, $attributesInput, $variantTypesInput, $productVariantsInput, $hasVariantsRequest) {
                 $product->update($validatedDataForUpdate);
-
-                // Sinkronisasi Atribut
-                $this->syncAttributes($product, $request->input('attributes', []));
-
-                 // Sinkronisasi Varian
-                if ($hasVariants) {
-                    $this->syncVariantTypesAndCombinations($product, $request->variant_types, $request->product_variants);
+                $this->syncAttributes($product, $attributesInput);
+                if ($hasVariantsRequest) {
+                    $this->syncVariantTypesAndCombinations($product, $variantTypesInput, $productVariantsInput);
                 } else {
+                     // Hapus varian jika tidak ada data dikirim
                      $product->productVariants()->each(fn($v) => $v->options()->detach());
                      $product->productVariants()->delete();
                      $product->productVariantTypes()->delete();
@@ -513,20 +491,12 @@ class ProductController extends Controller
     {
         DB::beginTransaction();
         try {
-            // Hapus gambar jika ada
-            $imageUrl = $product->image_url ?? $product->image; // Cek kedua kolom
-            if ($imageUrl && Storage::disk('public')->exists($imageUrl)) {
-                Storage::disk('public')->delete($imageUrl);
-            }
-            if ($product->seller_logo && Storage::disk('public')->exists($product->seller_logo)) {
-                Storage::disk('public')->delete($product->seller_logo);
-            }
+            $imageUrl = $product->image_url ?? $product->image;
+            if ($imageUrl && Storage::disk('public')->exists($imageUrl)) { Storage::disk('public')->delete($imageUrl); }
+            if ($product->seller_logo && Storage::disk('public')->exists($product->seller_logo)) { Storage::disk('public')->delete($product->seller_logo); }
 
-            // Hapus produk (relasi harusnya cascade jika foreign key diatur benar)
-            // Relasi pivot perlu di-detach manual jika tidak ada cascade
-            // $product->productVariants()->each(fn($v) => $v->options()->detach()); // Lakukan sebelum delete product jika tidak ada cascade
-
-            $product->delete(); // Ini akan memicu cascade jika diatur di migration
+            // Hapus produk (cascade harusnya menangani relasi)
+            $product->delete();
 
             DB::commit();
             return redirect()->route('admin.products.index')->with('success', 'Produk berhasil dihapus.');
@@ -542,20 +512,15 @@ class ProductController extends Controller
      */
     public function restock(Request $request, Product $product)
     {
-        // Validasi hanya untuk produk tanpa varian
         if ($product->productVariantTypes()->exists()) {
-             // Redirect ke halaman index dengan pesan error
              return redirect()->route('admin.products.index')->with('error', 'Gunakan halaman edit untuk restock produk dengan varian.');
         }
-
         $validated = $request->validate([ 'stock' => 'required|integer|min:1' ]);
-
         try {
             $product->increment('stock', $validated['stock']);
             return redirect()->route('admin.products.index')->with('success', 'Stok untuk produk ' . e($product->name) . ' berhasil ditambahkan.');
         } catch (Exception $e) {
              Log::error('Error restocking product ID ' . $product->id . ': ' . $e->getMessage());
-              // Redirect ke halaman index dengan pesan error
              return redirect()->route('admin.products.index')->with('error', 'Gagal restock produk: ' . $e->getMessage());
         }
     }
@@ -568,7 +533,6 @@ class ProductController extends Controller
         if ($product->productVariantTypes()->exists()) {
              return redirect()->route('admin.products.index')->with('error', 'Gunakan halaman edit untuk mengatur stok produk dengan varian.');
         }
-
         try {
             $product->stock = 0;
             $product->save();
@@ -581,10 +545,7 @@ class ProductController extends Controller
 
     // --- Helper Methods ---
 
-    /**
-     * Generate unique slug.
-     */
-     protected function generateUniqueSlug(string $name, int $ignoreId = null): string
+    protected function generateUniqueSlug(string $name, int $ignoreId = null): string
      {
          $slug = Str::slug($name);
          $originalSlug = $slug;
@@ -595,9 +556,6 @@ class ProductController extends Controller
          return $slug;
      }
 
-     /**
-     * Generate SKU otomatis.
-     */
      protected function generateSku(string $productName, int $categoryId): string
      {
         $category = Category::find($categoryId);
@@ -605,7 +563,6 @@ class ProductController extends Controller
         $productInitial = strtoupper(substr(preg_replace('/[^a-zA-Z0-9]/', '', $productName), 0, 3));
         $randomNum = mt_rand(100, 999);
         $sku = "{$categoryInitial}-{$productInitial}-{$randomNum}";
-        // Pastikan SKU unik (meskipun kemungkinannya kecil)
         while (Product::where('sku', $sku)->exists()) {
              $randomNum = mt_rand(100, 999);
              $sku = "{$categoryInitial}-{$productInitial}-{$randomNum}";
@@ -613,9 +570,6 @@ class ProductController extends Controller
         return $sku;
      }
 
-    /**
-     * Decode JSON tags menjadi string.
-     */
     protected function decodeTags($tags): string
     {
          if (is_string($tags)) {
@@ -627,9 +581,9 @@ class ProductController extends Controller
          return '';
     }
 
-
     /**
-     * Sinkronisasi atribut produk menggunakan updateOrCreate dan menghapus yang lama.
+     * Sinkronisasi atribut produk berdasarkan struktur tabel Anda (product_id, name, value).
+     * Menggunakan updateOrCreate dan menghapus yang lama.
      */
     protected function syncAttributes(Product $product, ?array $attributesData)
     {
@@ -638,40 +592,43 @@ class ProductController extends Controller
             return;
         }
 
-        $validAttributeModels = Attribute::where('category_id', $product->category_id)
+        $currentAttributeNames = []; // Lacak NAMA atribut yang disinkronkan
+
+        // Ambil info atribut valid dari tabel 'attributes' untuk mendapatkan tipe data
+        $validAttributesInfo = Attribute::where('category_id', $product->category_id)
                                     ->whereIn('slug', array_keys($attributesData))
                                     ->get()
                                     ->keyBy('slug'); // [slug => AttributeModel]
 
-        $currentAttributeSlugs = []; // PERBAIKAN: Lacak slug atribut yang disinkronkan
-
         foreach ($attributesData as $slug => $value) {
-            $attributeModel = $validAttributeModels->get($slug);
+            $attributeInfo = $validAttributesInfo->get($slug);
+            $attributeName = $attributeInfo->name ?? str_replace('_', ' ', Str::title($slug)); // Fallback name
 
             // Hanya proses jika slug valid dan value tidak kosong/null
-            if ($attributeModel && ($value !== null && $value !== '' && (!is_array($value) || !empty(array_filter($value))))) { // Cek array kosong juga
+            if ($attributeInfo && ($value !== null && $value !== '' && (!is_array($value) || !empty(array_filter($value)))))
+            {
+                // Proses value checkbox
                 $processedValue = is_array($value) ? json_encode(array_values(array_filter($value))) : $value;
 
-                $productAttribute = ProductAttribute::updateOrCreate(
+                // Gunakan updateOrCreate berdasarkan product_id dan name
+                ProductAttribute::updateOrCreate(
                     [
                         'product_id' => $product->id,
-                        // PERBAIKAN: Gunakan attribute_slug sebagai kunci kedua
-                        'attribute_slug' => $slug,
+                        'name' => $attributeName, // Gunakan 'name' sebagai kunci
                     ],
                     [
-                        // 'attribute_id' => $attributeModel->id, // Kolom ini mungkin tidak ada
                         'value' => $processedValue,
-                        // Simpan juga nama dan tipe saat itu untuk kemudahan tampilan (opsional)
-                        'attribute_name' => $attributeModel->name,
-                        'attribute_type' => $attributeModel->type,
+                        // Simpan slug dan tipe asli dari tabel attributes jika perlu
+                        'attribute_slug' => $slug,
+                        'attribute_type' => $attributeInfo->type ?? 'text', // Simpan tipe asli
                     ]
                 );
-                $currentAttributeSlugs[] = $slug; // PERBAIKAN: Lacak slug
+                $currentAttributeNames[] = $attributeName; // Lacak nama
             }
         }
 
-        // PERBAIKAN: Hapus ProductAttribute yang attribute_slug-nya tidak ada di $currentAttributeSlugs
-        $product->productAttributes()->whereNotIn('attribute_slug', $currentAttributeSlugs)->delete();
+        // Hapus ProductAttribute yang namanya tidak ada lagi di $attributesData
+        $product->productAttributes()->whereNotIn('name', $currentAttributeNames)->delete();
     }
 
 
@@ -681,23 +638,21 @@ class ProductController extends Controller
     protected function syncVariantTypesAndCombinations(Product $product, ?array $variantTypesData, ?array $productVariantsData)
     {
         if ($variantTypesData === null || $productVariantsData === null) {
-            // Hapus semua jika data tidak lengkap
-             $product->productVariants()->each(fn($v) => $v->options()->detach());
-             $product->productVariants()->delete();
-             $product->productVariantTypes()->delete();
-             return;
+            $product->productVariants()->each(fn($v) => $v->options()->detach());
+            $product->productVariants()->delete();
+            $product->productVariantTypes()->delete();
+            return;
         }
 
-        // === Langkah 1: Sinkronisasi Tipe Varian dan Opsi-nya ===
         $currentTypeIds = [];
-        $optionIdMap = []; // Map ['TipeNama:OpsiNama' => option_id]
+        $optionIdMap = [];
 
         foreach ($variantTypesData as $typeData) {
             $typeName = trim($typeData['name'] ?? '');
             $optionsInputRaw = trim($typeData['options'] ?? '');
             if (empty($typeName) || empty($optionsInputRaw)) continue;
 
-            $optionsInput = array_values(array_filter(array_unique(array_map('trim', explode(',', $optionsInputRaw))))); // Bersihkan opsi
+            $optionsInput = array_values(array_filter(array_unique(array_map('trim', explode(',', $optionsInputRaw)))));
             if (empty($optionsInput)) continue;
 
             $variantType = ProductVariantType::updateOrCreate(
@@ -705,7 +660,6 @@ class ProductController extends Controller
             );
             $currentTypeIds[] = $variantType->id;
 
-            // Sinkronisasi Opsi
             $currentOptionIds = [];
             foreach ($optionsInput as $optionName) {
                 $option = ProductVariantOption::updateOrCreate(
@@ -714,15 +668,11 @@ class ProductController extends Controller
                 $currentOptionIds[] = $option->id;
                 $optionIdMap[$typeName . ':' . $optionName] = $option->id;
             }
-            // Hapus opsi lama yang tidak ada di input baru untuk tipe ini
             $variantType->options()->whereNotIn('id', $currentOptionIds)->delete();
         }
-        // Hapus tipe varian lama yang tidak ada di input baru
-        $product->productVariantTypes()->whereNotIn('id', $currentTypeIds)->delete(); // Cascade akan hapus opsinya
+        $product->productVariantTypes()->whereNotIn('id', $currentTypeIds)->delete();
 
-        // === Langkah 2: Sinkronisasi Kombinasi Varian ===
         $currentVariantIds = [];
-
         foreach ($productVariantsData as $comboData) {
             $variantOptions = $comboData['variant_options'] ?? [];
             if (empty($variantOptions)) continue;
@@ -730,7 +680,6 @@ class ProductController extends Controller
             $combinationStringParts = [];
             $optionIdsForCombination = [];
 
-            // Urutkan opsi berdasarkan nama tipe
             usort($variantOptions, fn($a, $b) => strcmp($a['type_name'], $b['type_name']));
 
             foreach ($variantOptions as $optionDetail) {
@@ -743,17 +692,14 @@ class ProductController extends Controller
                      $optionIdsForCombination[] = $optionIdMap[$mapKey];
                  } else {
                       Log::warning("Opsi tidak ditemukan saat sinkronisasi: {$mapKey} for product ID: {$product->id}");
-                      continue 2; // Skip kombinasi ini
+                      continue 2;
                  }
             }
 
-            if (count($optionIdsForCombination) !== count($variantOptions)) continue; // Pastikan semua opsi valid
+            if (count($optionIdsForCombination) !== count($variantOptions)) continue;
 
-            // Buat string kombinasi yang terurut (setelah di-sort berdasarkan type_name di atas)
-            // sort($combinationStringParts); // Tidak perlu sort lagi karena sudah di-sort berdasarkan type_name
             $combinationString = implode(';', $combinationStringParts);
 
-            // Gunakan updateOrCreate untuk kombinasi
              $variant = ProductVariant::updateOrCreate(
                  ['product_id' => $product->id, 'combination_string' => $combinationString],
                  [
@@ -764,7 +710,6 @@ class ProductController extends Controller
              );
             $currentVariantIds[] = $variant->id;
 
-            // Sinkronisasi relasi pivot
             if ($variant) {
                 try {
                     $variant->options()->sync($optionIdsForCombination);
@@ -774,13 +719,12 @@ class ProductController extends Controller
                 }
             }
         }
-        // Hapus kombinasi varian lama yang tidak ada di input baru
          $variantsToDelete = ProductVariant::where('product_id', $product->id)->whereNotIn('id', $currentVariantIds)->get();
          foreach($variantsToDelete as $variantToDel) {
-            $variantToDel->options()->detach(); // Detach pivot dulu
-            $variantToDel->delete(); // Hapus varian
+            $variantToDel->options()->detach();
+            $variantToDel->delete();
          }
     }
 
-}
+} // End of ProductController class
 
