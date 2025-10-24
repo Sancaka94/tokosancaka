@@ -30,7 +30,7 @@
         max-width: 100%;
         max-height: 300px;
         border-radius: 0.5rem;
-        display: none;
+        display: none; /* Sembunyikan default */
     }
 
     .spinner {
@@ -194,8 +194,8 @@
                     </div>
                     <div>
                         <label for="seller_wa" class="block text-sm font-medium text-gray-700">WhatsApp Penjual (Opsional)</label>
-                        <input type="text" name="seller_wa" id="seller_wa" value="{{ old('seller_wa') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('seller_wa') border-red-500 @enderror" placeholder="Contoh: 628123456789">
-                        <p class="mt-1 text-xs text-gray-500">Gunakan format 62 (bukan 0). Akan diformat otomatis.</p>
+                        <input type="text" name="seller_wa" id="seller_wa" value="{{ old('seller_wa') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('seller_wa') border-red-500 @enderror" placeholder="Contoh: 8123456789 (tanpa 0 atau 62)">
+                        <p class="mt-1 text-xs text-gray-500">Nomor akan diformat otomatis ke 62.</p>
                         @error('seller_wa') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
                     </div>
                     <div>
@@ -213,11 +213,11 @@
 
             {{-- Varian Produk (BARU) --}}
             <div class="bg-white p-6 rounded-lg shadow-md">
-                <div class="flex justify-between items-center mb-8">
+                <div class="flex justify-between items-center mb-4"> {{-- Mengurangi margin bawah --}}
                     <h2 class="text-lg font-semibold text-gray-800">Varian Produk (Opsional)</h2>
                     <button type="button" id="add-variant-group" class="btn btn-sm btn-outline-primary">Tambah Varian</button>
                 </div>
-                <p class="text-sm text-gray-600 mb-6">Tambahkan varian jika produk Anda memiliki pilihan seperti warna atau ukuran. Ini akan menonaktifkan input stok utama.</p>
+                <p class="text-sm text-gray-600 mb-4">Tambahkan varian jika produk Anda memiliki pilihan seperti warna atau ukuran. Ini akan menonaktifkan input stok utama.</p>
                 <div id="variant-groups-container" class="space-y-6">
                     {{-- Grup varian dinamis akan ditambahkan di sini --}}
                 </div>
@@ -285,7 +285,7 @@
                 <div class="space-y-4">
                     <div>
                         <label for="sku" class="block text-sm font-medium text-gray-700">SKU (Stock Keeping Unit)</label>
-                        <input type="text" name="sku" id="sku" value="{{ old('sku') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="Opsional">
+                        <input type="text" name="sku" id="sku" value="{{ old('sku') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="Otomatis jika kosong"> {{-- Update Placeholder --}}
                     </div>
                     <div>
                         <label for="category_id" class="block text-sm font-medium text-gray-700">Kategori</label>
@@ -301,7 +301,7 @@
                     </div>
                     <div>
                         <label for="tags" class="block text-sm font-medium text-gray-700">Tags (pisahkan koma)</label>
-                        <input type="text" name="tags" id="tags" value="{{ old('tags') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="Contoh: baju, atasan, pria">
+                        <input type="text" name="tags" id="tags" value="{{ old('tags') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="Otomatis dari kategori jika kosong"> {{-- Update Placeholder --}}
                     </div>
                 </div>
             </div>
@@ -414,17 +414,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- WhatsApp Input Formatter ---
+    // --- WhatsApp Input Formatter (Lebih Sederhana) ---
     const waInput = document.getElementById('seller_wa');
     if (waInput) {
         waInput.addEventListener('input', (e) => {
-            let value = e.target.value.replace(/\D/g, ''); // Hapus non-digit
-            if (value.startsWith('0')) {
-                value = '62' + value.substring(1);
-            } else if (value.length > 0 && !value.startsWith('62')) {
-                value = '62' + value;
-            }
-            e.target.value = value;
+            // Hanya izinkan angka, biarkan controller format ke 62
+            e.target.value = e.target.value.replace(/\D/g, ''); 
         });
     }
 
@@ -579,4 +574,3 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 @endpush
-
