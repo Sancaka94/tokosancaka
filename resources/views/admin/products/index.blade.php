@@ -71,15 +71,30 @@
             border-radius: 0.375rem; /* Rounded-md */
             border: 1px solid #d1d5db; /* Gray-300 */
         }
+        /* Styling untuk scrollbar */
+        .table-responsive-custom {
+            overflow-x: auto; /* Scroll horizontal */
+            overflow-y: hidden; /* Cegah scroll vertikal ganda jika tidak perlu */
+            /* Anda bisa menambahkan styling scrollbar di sini jika diinginkan */
+            /* Contoh: */
+            /* scrollbar-width: thin; */
+            /* scrollbar-color: #a0aec0 #edf2f7; */ /* Warna thumb dan track */
+        }
+        /* Pastikan table wrapper tidak membatasi tinggi jika ingin scroll vertikal dari .content-wrapper */
+         .dataTables_wrapper {
+             /* Hapus atau sesuaikan jika ada style yang membatasi tinggi */
+         }
 
     </style>
 @endpush
 
 @section('content')
+{{-- Card container --}}
 <div class="bg-white p-4 sm:p-6 rounded-lg shadow-md">
+    {{-- Header: Judul dan Tombol Tambah --}}
     <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-3">
         <h2 class="text-xl font-semibold text-gray-800">Daftar Semua Produk</h2>
-        <a href="{{ route('admin.products.create') }}" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 text-sm font-medium inline-flex items-center gap-1 w-full sm:w-auto justify-center">
+        <a href="{{ route('admin.products.create') }}" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 text-sm font-medium inline-flex items-center gap-1 w-full sm:w-auto justify-center no-underline"> {{-- Tambah no-underline --}}
             <i class="fas fa-plus fa-sm"></i>
             Tambah Produk Baru
         </a>
@@ -93,25 +108,28 @@
         <label for="category-filter">Filter Kategori:</label>
         <select id="category-filter" name="category_filter" class="form-select form-select-sm">
             <option value="">Semua Kategori</option>
-            @foreach($categories as $category)
-                <option value="{{ $category->slug }}">{{ $category->name }}</option>
-            @endforeach
+            {{-- Pastikan variabel $categories dikirim dari controller --}}
+            @isset($categories)
+                @foreach($categories as $category)
+                    <option value="{{ $category->slug }}">{{ $category->name }}</option>
+                @endforeach
+            @endisset
         </select>
     </div>
 
-    {{-- Tabel Produk --}}
-    <div class="overflow-x-auto relative border rounded-md">
-        <table class="table table-bordered table-hover w-full" id="product-table" style="min-width: 900px;"> {{-- Tingkatkan min-width --}}
+    {{-- Tabel Produk Wrapper (untuk scroll horizontal) --}}
+    <div class="table-responsive-custom border rounded-md">
+        <table class="table table-bordered table-hover w-full mb-0" id="product-table" style="min-width: 900px;"> {{-- Hapus margin bawah default tabel --}}
             <thead class="bg-gray-50">
                 <tr>
-                    <th class="col-no">No</th>
-                    <th class="col-img">Gambar</th>
+                    <th class="col-no text-center">No</th>
+                    <th class="col-img text-center">Gambar</th>
                     <th class="col-name">Nama Produk</th>
-                    <th class="col-category">Kategori</th> {{-- Kolom Baru --}}
-                    <th class="col-price">Harga</th>
-                    <th class="col-stock">Stok</th>
-                    <th class="col-status">Status</th>
-                    <th class="col-action">Aksi</th>
+                    <th class="col-category">Kategori</th>
+                    <th class="col-price text-end">Harga</th> {{-- Rata kanan --}}
+                    <th class="col-stock text-center">Stok</th>
+                    <th class="col-status text-center">Status</th>
+                    <th class="col-action text-center">Aksi</th>
                 </tr>
             </thead>
             <tbody>
@@ -122,8 +140,8 @@
 </div>
 
 <!-- Modal Restock -->
-<div id="restockModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 z-50 hidden flex items-center justify-center">
-    <div class="relative p-5 border w-full max-w-md shadow-lg rounded-md bg-white mx-4">
+<div id="restockModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 z-50 hidden flex items-center justify-center p-4"> {{-- Tambah padding --}}
+    <div class="relative p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
         <form id="restockForm" action="#" method="POST">
             @csrf
             <h3 class="text-xl font-semibold mb-4 text-gray-900">Restock Produk</h3>
@@ -155,29 +173,36 @@
             var table = $('#product-table').DataTable({
                 processing: true,
                 serverSide: true,
-                // PERBAIKAN: Gunakan fungsi untuk ajax agar bisa mengirim data filter
                 ajax: {
                     url: "{{ route('admin.products.data') }}",
                     data: function (d) {
-                        // Tambahkan parameter category_slug dari dropdown filter
-                        d.category_slug = $('#category-filter').val();
+                        d.category_slug = $('#category-filter').val(); // Kirim slug kategori
+                    },
+                    // PERBAIKAN: Tambahkan error handling untuk Ajax
+                    error: function (xhr, error, thrown) {
+                        console.error("DataTables Ajax Error:", error, thrown);
+                        // Tampilkan pesan error yang lebih user-friendly jika perlu
+                        // Misalnya: $('#product-table_processing').html('Gagal memuat data. Coba lagi nanti.');
+                        alert('Gagal memuat data produk. Periksa console browser untuk detail.');
                     }
                 },
                 columns: [
                     { data: 'DT_RowIndex', name: 'DT_RowIndex', orderable: false, searchable: false, className: 'text-center' },
                     { data: 'image', name: 'image', orderable: false, searchable: false, className: 'text-center' },
                     { data: 'name', name: 'name' },
-                    { data: 'category_name', name: 'category.name' }, // Tambahkan kolom kategori
+                    { data: 'category_name', name: 'category.name', orderable: false, searchable: false }, // Kolom kategori
                     { data: 'price', name: 'price', className: 'text-end' },
                     {
                         data: 'stock',
                         name: 'stock',
                         className: 'text-center',
-                        // Tambahkan render function untuk indikator varian
+                        orderable: true, // Biarkan bisa diurutkan
+                        searchable: false,
                         render: function(data, type, row) {
-                            let stockDisplay = data;
-                            // Asumsikan controller mengirim 'has_variants' (boolean)
-                            if (row.has_variants) {
+                            // Cek tipe data sebelum menampilkan
+                            let stockDisplay = (typeof data !== 'undefined' && data !== null) ? data : 0;
+                            // Cek properti has_variants
+                            if (row && row.has_variants === true) { // Cek boolean true
                                 stockDisplay += ' <i class="fas fa-code-branch variant-indicator" title="Produk ini memiliki varian"></i>';
                             }
                             return stockDisplay;
@@ -186,10 +211,8 @@
                     { data: 'status_badge', name: 'status', orderable: false, searchable: false, className: 'text-center' },
                     { data: 'action', name: 'action', orderable: false, searchable: false, className: 'text-center' },
                 ],
-                // Optional: Atur bahasa jika perlu
-                // language: {
-                //     url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/id.json',
-                // }
+                // Optional: Atur bahasa
+                // language: { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/id.json' }
             });
 
             // Event listener untuk filter kategori
@@ -203,7 +226,7 @@
             const modal = document.getElementById(id);
             if (modal) {
                 modal.classList.remove('hidden');
-                modal.classList.add('flex'); // Gunakan flex untuk centering
+                modal.classList.add('flex');
                 const firstInput = modal.querySelector('input, select, textarea');
                 if(firstInput) firstInput.focus();
             }
@@ -223,9 +246,9 @@
             const stockInput = document.getElementById('stock_amount');
 
             if (form && nameEl && stockInput) {
-                form.action = formActionUrl;
+                form.action = formActionUrl; // Set action form
                 nameEl.textContent = productName;
-                stockInput.value = '';
+                stockInput.value = ''; // Kosongkan input
                 openModal('restockModal');
             } else {
                 console.error("Elemen modal restock tidak ditemukan.");
@@ -235,10 +258,10 @@
         // Tutup modal jika klik di luar area modal
         window.onclick = function(event) {
             const restockModal = document.getElementById('restockModal');
-            // Pastikan modal ada dan yang diklik adalah latar belakangnya
             if (restockModal && event.target == restockModal) {
                 closeModal('restockModal');
             }
         }
     </script>
 @endpush
+
