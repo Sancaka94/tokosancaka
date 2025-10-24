@@ -170,11 +170,11 @@ Route::resource('customers', CustomerController::class);
          ->name('products.data');
 
     // Rute kustom untuk restock
-    Route::post('products/{product}/restock', [ProductController::class, 'restock'])
+    Route::post('products/{id}/restock', [ProductController::class, 'restock'])
          ->name('products.restock');
 
     // Rute kustom untuk tandai habis
-    Route::patch('products/{product}/mark-as-out-of-stock', [ProductController::class, 'markAsOutOfStock'])
+    Route::patch('products/{id}/mark-as-out-of-stock', [ProductController::class, 'markAsOutOfStock'])
          ->name('products.outOfStock');
 
     Route::get('products/{id}/edit', [ProductController::class, 'edit'])->name('products.edit');
