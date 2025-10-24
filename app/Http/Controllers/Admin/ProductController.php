@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Http\Controllers\Admin;
+namespace App\Http/Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\Category;
 // Hapus use Attribute jika tidak digunakan langsung di sini
-use App\Models\Attribute;
+use App\Models\Attribute; // Pastikan Model Attribute ada (untuk get type)
 use App\Models\ProductAttribute; // Pastikan Model ProductAttribute ada
 use App\Models\ProductVariantType; // Pastikan Model ProductVariantType ada
 use App\Models\ProductVariantOption; // Pastikan Model ProductVariantOption ada
@@ -292,18 +292,25 @@ class ProductController extends Controller
         $existingAttributesData = [];
         foreach($product->productAttributes as $pa) {
             // Gunakan slug dari relasi attribute jika ada, jika tidak fallback ke slug di product_attributes
-            $slug = $pa->attribute->slug ?? $pa->attribute_slug;
+            // PERBAIKAN: Gunakan 'name' dari $pa karena tabel tidak punya relasi 'attribute' atau slug
+             $attributeName = $pa->name; // Ambil nama langsung dari product_attributes
+             // $slug = $pa->attribute->slug ?? $pa->attribute_slug; // Hapus ini
+             $slug = Str::slug($attributeName); // Buat slug dari nama untuk key JS
+
             if ($slug) {
                  $value = $pa->value;
-                 // Asumsikan tipe diambil dari relasi attribute
-                 $attributeType = $pa->attribute->type ?? $pa->attribute_type ?? 'text'; // Fallback type
+                 // Asumsikan tipe disimpan di product_attributes atau coba tebak
+                 // $attributeType = $pa->attribute->type ?? $pa->attribute_type ?? 'text'; // Hapus ini
+                 // Untuk sementara anggap text, perlu info tipe jika ingin handle checkbox
+                 $attributeType = $pa->attribute_type ?? 'text'; // Jika ada kolom tipe di product_attributes
+
                  if ($attributeType === 'checkbox' && is_string($value)) {
                       try {
                           $decodedValue = json_decode($value, true, 512, JSON_THROW_ON_ERROR);
                           $value = is_array($decodedValue) ? $decodedValue : [$value];
                       } catch (\JsonException $e) { $value = [$value]; }
                  }
-                $existingAttributesData[$slug] = $value;
+                $existingAttributesData[$slug] = $value; // Gunakan slug buatan sbg key
             }
         }
         $product->existing_attributes_json = json_encode($existingAttributesData);
@@ -319,6 +326,7 @@ class ProductController extends Controller
              $key = $variant->options
                         // ->sortBy('product_variant_type_id') // Tidak perlu sort jika query load sudah benar
                         ->map(function($option) {
+                            // Dapatkan nama tipe dari relasi option ke type
                             return ($option->productVariantType->name ?? 'UNKNOWN') . ':' . $option->name;
                         })
                         ->sort() // Sort berdasarkan string "TypeName:OptionName"
@@ -595,17 +603,19 @@ class ProductController extends Controller
         $currentAttributeNames = []; // Lacak NAMA atribut yang disinkronkan
 
         // Ambil info atribut valid dari tabel 'attributes' untuk mendapatkan tipe data
+        // Hanya perlu jika Anda ingin menyimpan tipe di product_attributes atau handle checkbox
         $validAttributesInfo = Attribute::where('category_id', $product->category_id)
                                     ->whereIn('slug', array_keys($attributesData))
                                     ->get()
                                     ->keyBy('slug'); // [slug => AttributeModel]
 
         foreach ($attributesData as $slug => $value) {
+             // Dapatkan nama dari Attribute model jika ada, jika tidak, buat dari slug
             $attributeInfo = $validAttributesInfo->get($slug);
-            $attributeName = $attributeInfo->name ?? str_replace('_', ' ', Str::title($slug)); // Fallback name
+            $attributeName = $attributeInfo->name ?? str_replace('-', ' ', Str::title($slug)); // Konversi slug ke nama Title Case
 
-            // Hanya proses jika slug valid dan value tidak kosong/null
-            if ($attributeInfo && ($value !== null && $value !== '' && (!is_array($value) || !empty(array_filter($value)))))
+            // Hanya proses jika nama atribut ada dan value tidak kosong/null
+            if (!empty($attributeName) && ($value !== null && $value !== '' && (!is_array($value) || !empty(array_filter($value)))))
             {
                 // Proses value checkbox
                 $processedValue = is_array($value) ? json_encode(array_values(array_filter($value))) : $value;
@@ -618,9 +628,9 @@ class ProductController extends Controller
                     ],
                     [
                         'value' => $processedValue,
-                        // Simpan slug dan tipe asli dari tabel attributes jika perlu
-                        'attribute_slug' => $slug,
-                        'attribute_type' => $attributeInfo->type ?? 'text', // Simpan tipe asli
+                        // PERBAIKAN: Hapus kolom yang tidak ada di tabel Anda
+                        // 'attribute_slug' => $slug,
+                        // 'attribute_type' => $attributeInfo->type ?? 'text',
                     ]
                 );
                 $currentAttributeNames[] = $attributeName; // Lacak nama
