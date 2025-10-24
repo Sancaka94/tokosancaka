@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Admin;
+namespace App\Http/Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Product;
@@ -317,16 +317,27 @@ class ProductController extends Controller
                 $existingAttributesData[$pa->attribute->slug] = $value;
             }
         }
+         // Encode kembali untuk JS
         $product->existing_attributes_json = json_encode($existingAttributesData);
+
 
         $product->existing_variant_types_json = $product->productVariantTypes->map(function($variantType) {
             return [ 'name' => $variantType->name, 'options' => $variantType->options->pluck('name')->implode(', ') ];
         })->toJson();
 
         $product->existing_variant_combinations_json = $product->productVariants->mapWithKeys(function($variant) {
-            $key = $variant->options->map(fn($option) => ($option->productVariantType->name ?? 'UNKNOWN') . ':' . $option->name)->sort()->implode(';');
+             // Pastikan relasi options terload dan terurut
+            $key = $variant->options
+                        // ->sortBy('product_variant_type_id') // Urutkan berdasarkan tipe
+                        ->map(function($option) {
+                            // Dapatkan nama tipe dari relasi option ke type
+                            return ($option->productVariantType->name ?? 'UNKNOWN') . ':' . $option->name;
+                        })
+                        ->sort() // Urutkan string mapKey
+                        ->implode(';'); // Gabungkan
             return [ $key => [ 'price' => $variant->price, 'stock' => $variant->stock, 'sku_code' => $variant->sku_code ]];
         })->toJson();
+
 
         $categories = Category::where('type', 'product')->orderBy('name')->get();
         return view('admin.products.edit', compact('product', 'categories'));
@@ -632,7 +643,7 @@ class ProductController extends Controller
                                     ->get()
                                     ->keyBy('slug'); // [slug => AttributeModel]
 
-        $currentAttributeIds = []; // Lacak ID atribut yang disinkronkan
+        $currentAttributeSlugs = []; // PERBAIKAN: Lacak slug atribut yang disinkronkan
 
         foreach ($attributesData as $slug => $value) {
             $attributeModel = $validAttributeModels->get($slug);
@@ -644,22 +655,23 @@ class ProductController extends Controller
                 $productAttribute = ProductAttribute::updateOrCreate(
                     [
                         'product_id' => $product->id,
-                        'attribute_id' => $attributeModel->id,
+                        // PERBAIKAN: Gunakan attribute_slug sebagai kunci kedua
+                        'attribute_slug' => $slug,
                     ],
                     [
-                        'attribute_slug' => $slug, // Tetap simpan slug
+                        // 'attribute_id' => $attributeModel->id, // Kolom ini mungkin tidak ada
                         'value' => $processedValue,
                         // Simpan juga nama dan tipe saat itu untuk kemudahan tampilan (opsional)
                         'attribute_name' => $attributeModel->name,
                         'attribute_type' => $attributeModel->type,
                     ]
                 );
-                $currentAttributeIds[] = $attributeModel->id; // Lacak ID dari tabel attributes
+                $currentAttributeSlugs[] = $slug; // PERBAIKAN: Lacak slug
             }
         }
 
-        // Hapus ProductAttribute yang attribute_id-nya tidak ada di $currentAttributeIds
-        $product->productAttributes()->whereNotIn('attribute_id', $currentAttributeIds)->delete();
+        // PERBAIKAN: Hapus ProductAttribute yang attribute_slug-nya tidak ada di $currentAttributeSlugs
+        $product->productAttributes()->whereNotIn('attribute_slug', $currentAttributeSlugs)->delete();
     }
 
 
