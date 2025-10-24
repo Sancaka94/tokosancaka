@@ -197,11 +197,10 @@ class ProductController extends Controller
         $validatedDataForCreate = $validated;
         try {
             if ($request->hasFile('product_image')) {
-                // Tambah Log
                 Log::info('Processing product image upload...');
                 $path = $request->file('product_image')->store('products', 'public');
                 if ($path) {
-                     $validatedDataForCreate['image_url'] = $path;
+                     $validatedDataForCreate['image_url'] = $path; // Use image_url
                      Log::info('Product image stored at: ' . $path);
                 } else {
                      Log::error('Failed to store product image.');
@@ -209,7 +208,7 @@ class ProductController extends Controller
             } else {
                 Log::info('No product image uploaded.');
             }
-            unset($validatedDataForCreate['product_image']); // Hapus input file
+            unset($validatedDataForCreate['product_image']);
 
             if ($request->hasFile('seller_logo')) {
                  Log::info('Processing seller logo upload...');
@@ -223,7 +222,7 @@ class ProductController extends Controller
             } else {
                  Log::info('No seller logo uploaded.');
             }
-            unset($validatedDataForCreate['seller_logo']); // Hapus input file
+            unset($validatedDataForCreate['seller_logo']);
 
 
             if (!empty($request->seller_wa)) {
@@ -262,6 +261,7 @@ class ProductController extends Controller
             $validatedDataForCreate['is_new'] = $request->has('is_new');
             $validatedDataForCreate['is_bestseller'] = $request->has('is_bestseller');
 
+            // Hapus data relasi sebelum create product
             $attributesInput = $request->input('attributes', []);
             $variantTypesInput = $request->input('variant_types', []);
             $productVariantsInput = $request->input('product_variants', []);
@@ -274,7 +274,7 @@ class ProductController extends Controller
                  $validatedDataForCreate['price'] = $productVariantsInput[0]['price'] ?? $validatedDataForCreate['price'];
             }
 
-            Log::info('Attempting to create product with data:', $validatedDataForCreate); // Log data sebelum create
+            Log::info('Attempting to create product with data:', $validatedDataForCreate);
 
             $product = DB::transaction(function () use ($validatedDataForCreate, $attributesInput, $variantTypesInput, $productVariantsInput, $hasVariantsRequest) {
                 $product = Product::create($validatedDataForCreate);
@@ -307,14 +307,9 @@ class ProductController extends Controller
      */
     public function edit(Product $product)
     {
-         // Load relasi dengan Eager Loading Constraints
         $product->load([
             'category',
-            'productAttributes' => function ($query) {
-                // Hanya load productAttributes yang relevan jika struktur DB memungkinkan
-                // Contoh: Jika ada kolom 'attribute_id', bisa load relasi ke 'attribute'
-                // $query->with('attribute');
-            },
+            'productAttributes', // Hanya load ini, tidak perlu relasi ke attribute
             'productVariantTypes.options' => fn ($q) => $q->orderBy('id'),
             'productVariants.options' => fn ($q) => $q->orderBy('product_variant_type_id')->orderBy('id')
         ]);
@@ -323,32 +318,36 @@ class ProductController extends Controller
 
         // Siapkan data atribut yang ada untuk JavaScript [slug => value]
         $existingAttributesData = [];
+        // Ambil info tipe dari tabel 'attributes' untuk konversi checkbox JSON
+        $attributeDefinitions = Attribute::where('category_id', $product->category_id)
+                                          ->get()
+                                          ->keyBy('name'); // Key by name for lookup
+
         foreach($product->productAttributes as $pa) {
-            // Coba ambil slug dari kolom attribute_slug jika ada, fallback ke generate dari name
-             $slug = $pa->attribute_slug ?? Str::slug($pa->name ?? ''); // Prioritaskan slug jika ada
+            $attributeName = $pa->name;
+            $slug = Str::slug($attributeName); // Buat slug dari nama
 
             if ($slug) {
-                 $value = $pa->value;
-                 // Ambil tipe dari kolom attribute_type jika ada, fallback ke text
-                 $attributeType = $pa->attribute_type ?? 'text';
+                $value = $pa->value;
+                $attributeInfo = $attributeDefinitions->get($attributeName);
+                $attributeType = $attributeInfo->type ?? 'text'; // Ambil tipe dari tabel attributes
 
-                 if ($attributeType === 'checkbox' && is_string($value)) {
-                      try {
-                          $decodedValue = json_decode($value, true, 512, JSON_THROW_ON_ERROR);
-                          $value = is_array($decodedValue) ? $decodedValue : [$value];
-                      } catch (\JsonException $e) { $value = [$value]; }
-                 }
+                if ($attributeType === 'checkbox' && is_string($value)) {
+                    try {
+                        $decodedValue = json_decode($value, true, 512, JSON_THROW_ON_ERROR);
+                        $value = is_array($decodedValue) ? $decodedValue : [$value];
+                    } catch (\JsonException $e) { $value = [$value]; }
+                }
                 $existingAttributesData[$slug] = $value;
             }
         }
         $product->existing_attributes_json = json_encode($existingAttributesData);
 
-        // Siapkan data tipe varian yang ada untuk JavaScript
+
         $product->existing_variant_types_json = $product->productVariantTypes->map(function($variantType) {
             return [ 'name' => $variantType->name, 'options' => $variantType->options->pluck('name')->implode(', ') ];
         })->toJson();
 
-        // Siapkan data kombinasi varian yang ada untuk JavaScript
         $product->existing_variant_combinations_json = $product->productVariants->mapWithKeys(function($variant) {
             $key = $variant->options->map(fn($option) => ($option->productVariantType->name ?? 'UNKNOWN') . ':' . $option->name)->sort()->implode(';');
             return [ $key => [ 'price' => $variant->price, 'stock' => $variant->stock, 'sku_code' => $variant->sku_code ]];
@@ -420,32 +419,29 @@ class ProductController extends Controller
             // Handle image update
             if ($request->hasFile('product_image')) {
                  Log::info('Processing product image update for product ID: ' . $product->id);
-                // Hapus gambar lama jika ada
-                $oldImage = $product->image_url; // Simpan path lama
+                $oldImage = $product->image_url;
                 if ($oldImage && Storage::disk('public')->exists($oldImage)) {
                     Log::info('Deleting old product image: ' . $oldImage);
                     Storage::disk('public')->delete($oldImage);
                 }
-                // Simpan gambar baru
                 $path = $request->file('product_image')->store('products', 'public');
                 if ($path) {
-                    $validatedDataForUpdate['image_url'] = $path;
+                    $validatedDataForUpdate['image_url'] = $path; // Use image_url
                     Log::info('New product image stored at: ' . $path);
                 } else {
                      Log::error('Failed to store updated product image for product ID: ' . $product->id);
-                     // Hapus key agar tidak menimpa dengan null jika gagal store
-                     unset($validatedDataForUpdate['image_url']);
+                     unset($validatedDataForUpdate['image_url']); // Jangan update jika gagal
                 }
             } else {
-                // Jika tidak ada file baru, pastikan image_url lama tidak terhapus oleh unset di bawah
-                // Ambil nilai lama jika tidak ada file baru
-                 $validatedDataForUpdate['image_url'] = $product->image_url;
+                 // JANGAN set $validatedDataForUpdate['image_url'] = $product->image_url di sini
+                 // Cukup unset key agar tidak menimpa data lama jika tidak ada file baru
+                 unset($validatedDataForUpdate['image_url']);
                  Log::info('No new product image uploaded for product ID: ' . $product->id . '. Keeping old: ' . $product->image_url);
             }
             unset($validatedDataForUpdate['product_image']); // Hapus input file
 
 
-            // Handle logo update
+            // Handle logo update (logika sama seperti image)
             if ($request->hasFile('seller_logo')) {
                  Log::info('Processing seller logo update for product ID: ' . $product->id);
                 $oldLogo = $product->seller_logo;
@@ -462,7 +458,8 @@ class ProductController extends Controller
                      unset($validatedDataForUpdate['seller_logo']);
                  }
             } else {
-                 $validatedDataForUpdate['seller_logo'] = $product->seller_logo; // Keep old logo if no new one
+                // Jangan kirim key 'seller_logo' jika tidak ada file baru
+                 unset($validatedDataForUpdate['seller_logo']);
                  Log::info('No new seller logo uploaded for product ID: ' . $product->id . '. Keeping old: ' . $product->seller_logo);
             }
             unset($validatedDataForUpdate['seller_logo']); // Hapus input file
@@ -522,7 +519,7 @@ class ProductController extends Controller
                 $validatedDataForUpdate['price'] = $request->input('price', $product->price);
             }
 
-            Log::info('Attempting to update product ID: ' . $product->id . ' with data:', $validatedDataForUpdate); // Log data sebelum update
+            Log::info('Attempting to update product ID: ' . $product->id . ' with data:', $validatedDataForUpdate);
 
             DB::transaction(function () use ($product, $validatedDataForUpdate, $attributesInput, $variantTypesInput, $productVariantsInput, $hasVariantsRequest) {
                 $updateResult = $product->update($validatedDataForUpdate);
