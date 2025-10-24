@@ -41,7 +41,8 @@
                 <div class="image-gallery">
                     <div class="aspect-w-1 aspect-h-1 w-full overflow-hidden rounded-xl shadow-md mb-4">
                          @php
-                             $imageUrl = $product->image_url ? asset('storage/' ( $product->image_url)) : 'https://placehold.co/600x600/E2E8F0/4A5568?text=Image+Not+Found';
+                             // ✅ PERBAIKAN SINTAKS: Menambahkan titik (.) untuk konkatenasi
+                             $imageUrl = $product->image_url ? asset('storage/' . $product->image_url) : 'https://placehold.co/600x600/E2E8F0/4A5568?text=Image+Not+Found';
                          @endphp
                         <img id="main-product-image"
                              src="{{ $imageUrl }}"
@@ -263,3 +264,4 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 @endpush
+
