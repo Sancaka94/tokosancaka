@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\Category;
-// Hapus use Attribute jika tidak digunakan langsung di sini
 use App\Models\Attribute; // Pastikan Model Attribute ada (untuk get type)
 use App\Models\ProductAttribute; // Pastikan Model ProductAttribute ada
 use App\Models\ProductVariantType; // Pastikan Model ProductVariantType ada
