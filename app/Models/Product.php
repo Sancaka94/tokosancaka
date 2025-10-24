@@ -5,13 +5,16 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany; // Import HasMany
+use Illuminate\Database\Eloquent\Relations\HasMany; // Pastikan HasMany di-import
 
 // Import model-model yang direlasikan
 use App\Models\Store;
 use App\Models\Category;
-use App\Models\Review;
-use App\Models\ProductVariant;
+use App\Models\Review; // Jika Anda menggunakan Review
+use App\Models\ProductAttribute; // Tambahkan ini
+use App\Models\ProductVariantType; // Tambahkan ini
+use App\Models\ProductVariant; // Tambahkan ini
+
 
 class Product extends Model
 {
@@ -27,29 +30,30 @@ class Product extends Model
         'slug',
         'store_id',
         'sku',
-        'category_id', // PERBAIKAN: Seharusnya 'category_id' bukan 'category'
+        'category_id', // Pastikan ini ada
+        //'category', // Hapus kolom 'category' jika tidak ada di DB
         'tags',
         'description',
-        'image_url',
+        'image', // Ganti image_url ke image jika nama kolom di DB adalah image
         'store_name',
-        'seller_name', // Anda memiliki ini, mungkin 'seller_name' sama dengan 'store_name'?
+        'seller_name',
         'seller_city',
         'seller_logo',
         'seller_wa',
         'price',
         'original_price',
-        'discount_percentage',
+        'discount_percentage', // Periksa apakah kolom ini ada
         'stock',
         'weight',
         'status',
         'is_new',
         'is_bestseller',
-        'rating',
-        'sold_count',
+        'rating', // Periksa apakah kolom ini ada
+        'sold_count', // Periksa apakah kolom ini ada
         'width',
         'height',
         'length',
-        'attributes_data',
+        // 'attributes_data', // Hapus jika Anda beralih ke tabel relasi
     ];
 
     /**
@@ -58,22 +62,22 @@ class Product extends Model
      * @var array<string, string>
      */
     protected $casts = [
-        'tags' => 'array', // Memberitahu Laravel bahwa kolom 'tags' adalah JSON/array
+        'tags' => 'array',
         'is_new' => 'boolean',
         'is_bestseller' => 'boolean',
-        'attributes_data' => 'array', // DILENGKAPI: Menambahkan cast untuk attributes_data
+        // 'attributes_data' => 'array', // Hapus jika tidak digunakan lagi
     ];
-    
+
     /**
      * Mendefinisikan relasi bahwa produk ini dimiliki oleh satu toko.
      */
     public function store(): BelongsTo
     {
-        return $this->belongsTo(Store::class, 'store_id', 'id');
+        // Pastikan foreign key 'store_id' ada di tabel products
+        return $this->belongsTo(Store::class, 'store_id');
     }
 
     /**
-     * PERBAIKAN: Memindahkan relasi category ke dalam class.
      * Mendefinisikan relasi bahwa produk ini dimiliki oleh satu kategori.
      */
     public function category(): BelongsTo
@@ -89,13 +93,38 @@ class Product extends Model
         return $this->hasMany(Review::class);
     }
 
+    // --- RELASI BARU YANG DITAMBAHKAN ---
+
     /**
-     * Dapatkan semua tipe varian untuk produk ini (misal: "Warna", "Ukuran").
+     * Mendapatkan semua atribut yang terkait dengan produk ini.
      */
-    public function variants(): HasMany
+    public function productAttributes(): HasMany
     {
+        // Nama relasi harus sama persis dengan yang dipanggil di Controller ('productAttributes')
+        // Foreign key defaultnya adalah 'product_id'
+        return $this->hasMany(ProductAttribute::class);
+    }
+
+    /**
+     * Mendapatkan semua tipe varian yang dimiliki produk ini (misal: Warna, Ukuran).
+     */
+    public function productVariantTypes(): HasMany
+    {
+        // Nama relasi harus sama persis ('productVariantTypes')
+        return $this->hasMany(ProductVariantType::class);
+    }
+
+    /**
+     * Mendapatkan semua kombinasi varian (SKU) yang dimiliki produk ini.
+     */
+    public function productVariants(): HasMany
+    {
+         // Nama relasi harus sama persis ('productVariants')
         return $this->hasMany(ProductVariant::class);
     }
+
+    // --- AKHIR RELASI BARU ---
+
 
     /**
      * Menggunakan 'slug' untuk route model binding.
@@ -104,5 +133,10 @@ class Product extends Model
     {
         return 'slug';
     }
-}
 
+    // OPSIONAL: Accessor untuk image_url jika kolom Anda adalah 'image'
+    // public function getImageUrlAttribute()
+    // {
+    //     return $this->image;
+    // }
+}
