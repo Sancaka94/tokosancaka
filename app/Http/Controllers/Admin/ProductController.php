@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\Category;
 // Hapus use Attribute jika tidak digunakan langsung di sini
-// use App\Models\Attribute;
+use App\Models\Attribute;
 use App\Models\ProductAttribute; // Pastikan Model ProductAttribute ada
 use App\Models\ProductVariantType; // Pastikan Model ProductVariantType ada
 use App\Models\ProductVariantOption; // Pastikan Model ProductVariantOption ada
