@@ -12,8 +12,8 @@
 @section('content')
 @include('layouts.partials.notifications')
 
-{{-- ✅ PERBAIKAN: Mengoper parameter [product => $product->slug] secara eksplisit --}}
-<form id="product-form" action="{{ route('admin.products.update', ['product' => $product->slug]) }}" method="POST" enctype="multipart/form-data" novalidate>
+{{-- ✅ PERBAIKAN: Mengoper parameter [product => $product->id] agar sesuai dengan route --}}
+<form id="product-form" action="{{ route('admin.products.update', ['product' => $product->id]) }}" method="POST" enctype="multipart/form-data" novalidate>
 
     @csrf
     @method('PUT')
@@ -137,6 +137,55 @@
                     </div>
                     @endforeach
                     {{-- Grup varian dinamis baru akan ditambahkan di sini --}}
+                </div>
+            </div>
+
+            {{-- DILENGKAPI: Card untuk mengelola SKU (Kombinasi Varian) --}}
+            <div id="variant-sku-card" class="bg-white p-6 rounded-lg shadow-md hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-semibold text-gray-800">Atur SKU Varian</h2>
+                    <button type="button" id="generate-sku-button" class="btn btn-sm btn-primary">Buat Kombinasi SKU</button>
+                </div>
+                <p class="text-sm text-gray-600 mb-4">
+                    Klik tombol di atas untuk membuat kombinasi SKU dari varian yang telah Anda tentukan.
+                    Harga dan stok yang diatur di sini akan menimpa harga dan stok utama produk.
+                </p>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Varian</th>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Harga</th>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stok</th>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SKU (Ops)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="variant-sku-table-body" class="bg-white divide-y divide-gray-200">
+                            {{-- Baris SKU akan di-generate oleh JS --}}
+                            {{-- 
+                                Contoh data SKU yang sudah ada (jika backend Anda menyediakannya)
+                                @if($product->skus && $product->skus->count() > 0)
+                                    @foreach($product->skus as $skuIndex => $sku)
+                                    <tr>
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                                            {{ $sku->options->pluck('name')->implode(' / ') }}
+                                            <input type="hidden" name="skus[{{ $skuIndex }}][id]" value="{{ $sku->id }}">
+                                        </td>
+                                        <td class="px-4 py-3 whitespace-nowrap">
+                                            <input type="number" name="skus[{{ $skuIndex }}][price]" class="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" value="{{ old("skus.$skuIndex.price", $sku->price) }}" placeholder="Harga Varian">
+                                        </td>
+                                        <td class="px-4 py-3 whitespace-nowrap">
+                                            <input type="number" name="skus[{{ $skuIndex }}][stock]" class="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" value="{{ old("skus.$skuIndex.stock", $sku->stock) }}" placeholder="Stok Varian">
+                                        </td>
+                                        <td class="px-4 py-3 whitespace-nowrap">
+                                            <input type="text" name="skus[{{ $skuIndex }}][sku]" class="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" value="{{ old("skus.$skuIndex.sku", $sku->sku) }}" placeholder="SKU Varian">
+                                        </td>
+                                    </tr>
+                                    @endforeach
+                                @endif
+                            --}}
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
@@ -537,6 +586,127 @@ document.addEventListener('DOMContentLoaded', () => {
     // Panggil saat load untuk cek
     toggleMainStock();
 
+    // --- DILENGKAPI: Script SKU Kombinasi Varian ---
+    const skuCard = document.getElementById('variant-sku-card');
+    const generateSkuBtn = document.getElementById('generate-sku-button');
+    const skuTableBody = document.getElementById('variant-sku-table-body');
+    // Ambil data SKU yang sudah ada. 
+    // Anda HARUS mengoper $product->skus dari controller dan menyesuaikan loop di HTML
+    // Untuk saat ini, kita anggap mulai dari 0
+    let skuRowIndex = skuTableBody.rows.length; 
+
+    // Tampilkan card SKU jika varian sudah ada
+    function toggleSkuCard() {
+        if (!variantContainer) return; // Pastikan container ada
+        
+        if (variantContainer.children.length > 0) {
+            skuCard.classList.remove('hidden');
+        } else {
+            skuCard.classList.add('hidden');
+            skuTableBody.innerHTML = ''; // Kosongkan tabel jika tidak ada varian
+        }
+    }
+
+    // Panggil saat menambah/menghapus grup varian
+    // Kita "menimpa" fungsi toggleMainStock agar sekalian memanggil toggleSkuCard
+    const originalToggleMainStock = toggleMainStock;
+    toggleMainStock = function() {
+        originalToggleMainStock();
+        toggleSkuCard();
+    };
+
+    // Panggil saat load
+    toggleMainStock(); 
+
+    // Event listener untuk tombol generate
+    if (generateSkuBtn) {
+        generateSkuBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            generateSkuCombinations();
+        });
+    }
+
+    function generateSkuCombinations() {
+        // 1. Kumpulkan semua grup varian dan opsinya
+        const variantGroups = [];
+        if (!variantContainer) return; // Exit jika container tidak ada
+        
+        const groupElements = variantContainer.querySelectorAll('.border.rounded-md');
+        
+        groupElements.forEach(groupEl => {
+            const groupNameInput = groupEl.querySelector('input[name*="[name]"]');
+            const optionsInput = groupEl.querySelector('input[name*="[options]"]');
+            
+            if (groupNameInput && optionsInput && optionsInput.value.trim() !== '') {
+                const groupName = groupNameInput.value.trim();
+                const options = optionsInput.value.split(',').map(s => s.trim()).filter(Boolean);
+                if (options.length > 0) {
+                    variantGroups.push({ name: groupName, options: options });
+                }
+            }
+        });
+
+        if (variantGroups.length === 0) {
+            alert('Silakan isi Tipe Varian dan Pilihan Varian terlebih dahulu.');
+            return;
+        }
+
+        // 2. Buat kombinasi (Cartesian Product)
+        const allOptions = variantGroups.map(g => g.options);
+        const combinations = allOptions.reduce((acc, currentOptions) => {
+            if (acc.length === 0) {
+                return currentOptions.map(opt => [opt]);
+            }
+            let newAcc = [];
+            acc.forEach(combo => {
+                currentOptions.forEach(opt => {
+                    newAcc.push([...combo, opt]);
+                });
+            });
+            return newAcc;
+        }, []);
+
+        // 3. Render ke tabel
+        renderSkuTable(combinations);
+    }
+
+    function renderSkuTable(combinations) {
+        // Kosongkan tabel.
+        // PENTING: Ini akan menghapus data yang sudah ada/diisi user.
+        // Jika Anda ingin mempertahankan data, logikanya harus lebih kompleks.
+        skuTableBody.innerHTML = '';
+        skuRowIndex = 0; // Reset index
+
+        combinations.forEach(combo => {
+            const row = document.createElement('tr');
+            const comboName = combo.join(' / ');
+            
+            // Simpan nama kombinasi untuk backend
+            const optionsHtml = combo.map(opt => 
+                `<input type="hidden" name="skus[${skuRowIndex}][options][]" value="${opt}">`
+            ).join('');
+
+            row.innerHTML = `
+                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                    ${comboName}
+                    ${optionsHtml}
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap">
+                    <input type="number" name="skus[${skuRowIndex}][price]" class="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" placeholder="Harga (Kosongkan = harga utama)">
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap">
+                    <input type="number" name="skus[${skuRowIndex}][stock]" class="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" placeholder="Stok" required>
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap">
+                    <input type="text" name="skus[${skuRowIndex}][sku]" class="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" placeholder="SKU (Opsional)">
+                </td>
+            `;
+            skuTableBody.appendChild(row);
+            skuRowIndex++;
+        });
+    }
+
 });
 </script>
 @endpush
+
