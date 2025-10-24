@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\Category;
+// Hapus use Attribute jika tidak digunakan langsung di sini
 use App\Models\Attribute; // Pastikan Model Attribute ada (untuk get type)
 use App\Models\ProductAttribute; // Pastikan Model ProductAttribute ada
 use App\Models\ProductVariantType; // Pastikan Model ProductVariantType ada
@@ -55,9 +56,11 @@ class ProductController extends Controller
                 return DataTables::of($data)
                     ->addIndexColumn()
                     ->addColumn('image', function ($row) {
-                        // Gunakan kolom image_url secara konsisten
-                        $imageUrl = $row->image_url;
-                        $url = $imageUrl ? asset('storage/' . $imageUrl) : 'https://placehold.co/80x80/EFEFEF/333333?text=N/A';
+                        // PERBAIKAN: Cek 'image_url' dan fallback ke 'image', lalu cek null
+                        $imageUrl = $row->image_url ?? $row->image; // Coba image_url dulu, fallback ke image
+                        $url = $imageUrl && Storage::disk('public')->exists($imageUrl)
+                               ? asset('storage/' . $imageUrl)
+                               : 'https://placehold.co/80x80/EFEFEF/333333?text=N/A'; // Tampilkan N/A jika null atau file tidak ada
                         return '<img src="' . e($url) . '" alt="' . e($row->name) . '" class="rounded" width="60" loading="lazy" />';
                     })
                     ->editColumn('price', function ($row) {
@@ -69,7 +72,8 @@ class ProductController extends Controller
                         return 'Rp' . number_format($displayPrice, 0, ',', '.');
                     })
                     ->addColumn('category_name', function ($row) {
-                        return $row->category->name ?? '<span class="text-danger">N/A</span>';
+                        // PERBAIKAN: Lebih eksplisit cek relasi category
+                        return $row->category ? e($row->category->name) : '<span class="text-danger">N/A</span>';
                     })
                     ->addColumn('has_variants', function($row) {
                          // Cek apakah relasi productVariantTypes (yang di-load) ada dan tidak kosong
@@ -611,7 +615,8 @@ class ProductController extends Controller
         foreach ($attributesData as $slug => $value) {
              // Dapatkan nama dari Attribute model jika ada, jika tidak, buat dari slug
             $attributeInfo = $validAttributesInfo->get($slug);
-            $attributeName = $attributeInfo->name ?? str_replace('-', ' ', Str::title($slug)); // Konversi slug ke nama Title Case
+            // Gunakan nama dari tabel attributes jika ada, jika tidak buat dari slug
+            $attributeName = $attributeInfo->name ?? str_replace('-', ' ', Str::title($slug));
 
             // Hanya proses jika nama atribut ada dan value tidak kosong/null
             if (!empty($attributeName) && ($value !== null && $value !== '' && (!is_array($value) || !empty(array_filter($value)))))
