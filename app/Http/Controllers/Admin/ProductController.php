@@ -103,6 +103,7 @@ class ProductController extends Controller
             'seller_wa'       => 'nullable|string|max:20',
             'seller_logo'     => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
             'attributes'      => 'nullable|array',
+            'sku'             => 'nullable|string|max:100|unique:products,sku', // DITAMBAHKAN
             // Validasi Varian BARU
             'variants'        => 'nullable|array',
             'variants.*.name' => 'required_with:variants|string|max:255',
@@ -131,11 +132,31 @@ class ProductController extends Controller
     
         $validated['slug'] = Str::slug($validated['name']) . '-' . uniqid();
         
-        // PERBAIKAN: Pastikan attributes_data di-handle oleh cast 'array' di Model
-        // $validated['attributes_data'] = json_encode($request->input('attributes', []));
-        // Seharusnya Model Product.php Anda sudah punya: protected $casts = ['attributes_data' => 'array'];
+        // PERBAIKAN: Hapus json_encode, biarkan Model (via $casts) yang menangani
         $validated['attributes_data'] = $request->input('attributes', []);
 
+        // --- LOGIKA SKU & TAGS OTOMATIS (BARU) ---
+        $category = Category::find($validated['category_id']);
+        
+        // 1. Auto-generate Tags
+        $tagsToSave = [];
+        if ($request->filled('tags')) {
+            $tagsToSave = array_map('trim', explode(',', $request->tags));
+        }
+        if ($category && !in_array($category->name, $tagsToSave)) {
+            $tagsToSave[] = $category->name; // Tambahkan nama kategori sebagai tag
+        }
+        $validated['tags'] = $tagsToSave; // Model akan auto-encode ke JSON
+
+        // 2. Auto-generate SKU
+        if (empty($request->sku)) {
+            $categoryPrefix = $category ? strtoupper(substr(Str::slug($category->name), 0, 3)) : 'GEN';
+            $namePrefix = strtoupper(substr(Str::slug($validated['name']), 0, 3));
+            $validated['sku'] = $categoryPrefix . '-' . $namePrefix . '-' . rand(100, 999);
+        } else {
+            $validated['sku'] = $request->sku; // Gunakan SKU dari input user
+        }
+        // --- AKHIR LOGIKA SKU & TAGS ---
         
         // Jika ada varian, paksa stok utama jadi 0
         if ($request->has('variants')) {
@@ -202,6 +223,7 @@ class ProductController extends Controller
             'seller_wa'       => 'nullable|string|max:20',
             'seller_logo'     => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
             'attributes'      => 'nullable|array',
+            'sku'             => 'nullable|string|max:100|unique:products,sku,' . $product->id, // DITAMBAHKAN
             // Validasi Varian BARU
             'variants'        => 'nullable|array',
             'variants.*.name' => 'required_with:variants|string|max:255',
@@ -237,15 +259,34 @@ class ProductController extends Controller
         $validated['is_new'] = $request->has('is_new');
         $validated['is_bestseller'] = $request->has('is_bestseller');
     
-        if (!empty($request->tags)) {
-             // PERBAIKAN: Model $casts array akan menangani ini
-            $validated['tags'] = array_map('trim', explode(',', $request->tags));
-        } else {
-            $validated['tags'] = null;
+        // --- LOGIKA SKU & TAGS OTOMATIS (BARU) ---
+        $category = Category::find($validated['category_id']);
+        
+        // 1. Auto-generate Tags (menggantikan logika lama)
+        $tagsToSave = [];
+        if ($request->filled('tags')) {
+            $tagsToSave = array_map('trim', explode(',', $request->tags));
         }
+        if ($category && !in_array($category->name, $tagsToSave)) {
+            $tagsToSave[] = $category->name; // Tambahkan nama kategori sebagai tag
+        }
+        $validated['tags'] = $tagsToSave; // Model akan auto-encode ke JSON
 
-        // PERBAIKAN: Model $casts array akan menangani ini
-        $validated['attributes_data'] = $request->input('attributes', []);
+        // 2. Auto-generate SKU (hanya jika SKU kosong)
+        if (empty($request->sku)) {
+            if (empty($product->sku)) { // Hanya buat baru jika field di DB juga kosong
+                $categoryPrefix = $category ? strtoupper(substr(Str::slug($category->name), 0, 3)) : 'GEN';
+                $namePrefix = strtoupper(substr(Str::slug($validated['name']), 0, 3));
+                $validated['sku'] = $categoryPrefix . '-' . $namePrefix . '-' . rand(100, 999);
+            }
+            // Jika user tidak isi, tapi di DB sudah ada, jangan lakukan apa-apa (biarkan nilai lama)
+        } else {
+            $validated['sku'] = $request->sku; // Gunakan SKU baru dari input user
+        }
+        
+        // PERBAIKAN: Hapus json_encode, biarkan Model (via $casts) yang menangani
+        $validated['attributes_data'] = $request->input('attributes', []); 
+        // --- AKHIR LOGIKA SKU & TAGS ---
 
         // Jika ada varian, paksa stok utama jadi 0
         if ($request->has('variants')) {
@@ -344,3 +385,4 @@ public function edit(Product $product) // <-- INI PERBAIKANNYA
 
     
 }
+
