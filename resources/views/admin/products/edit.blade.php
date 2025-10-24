@@ -5,132 +5,15 @@
 
 @push('styles')
 <style>
-    /* =============================
-        STYLE TAMBAH/EDIT PRODUK
-        ============================= */
-
-    .image-uploader {
-        border: 2px dashed #d1d5db;
-        border-radius: 0.5rem;
-        padding: 2rem;
-        text-align: center;
-        cursor: pointer;
-        transition: border-color 0.3s ease;
-        background-color: #fafafa;
-    }
-
-    .image-uploader:hover,
-    .image-uploader.dragging {
-        border-color: #4f46e5;
-        background-color: #f3f4ff;
-    }
-
-    .image-preview {
-        margin-top: 1rem;
-        max-width: 100%;
-        max-height: 300px;
-        border-radius: 0.5rem;
-        display: block; /* Tampilkan gambar yang sudah ada */
-    }
-
-    .spinner {
-        display: inline-block;
-        width: 1rem;
-        height: 1rem;
-        vertical-align: text-bottom;
-        border: 0.2em solid currentColor;
-        border-right-color: transparent;
-        border-radius: 50%;
-        animation: spinner-border .75s linear infinite;
-    }
-
-    @keyframes spinner-border {
-        to {
-            transform: rotate(360deg);
-        }
-    }
-
-    /* Style tambahan untuk tombol varian */
-    .btn {
-        padding: 0.5rem 1rem;
-        border-radius: 0.375rem;
-        font-weight: 600;
-        transition: all 0.2s ease-in-out;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        line-height: 1.25;
-    }
-    .btn-primary {
-        background-color: #4f46e5;
-        color: white;
-        border: 1px solid transparent;
-    }
-    .btn-primary:hover {
-        background-color: #4338ca;
-    }
-    .btn-secondary {
-        background-color: #e5e7eb;
-        color: #374151;
-        border: 1px solid #d1d5db;
-    }
-    .btn-secondary:hover {
-        background-color: #d1d5db;
-    }
-    .btn-outline-primary {
-        background-color: transparent;
-        color: #4f46e5;
-        border: 1px solid #4f46e5;
-    }
-    .btn-outline-primary:hover {
-        background-color: #eef2ff;
-    }
-    .btn-sm {
-        padding: 0.25rem 0.75rem;
-        font-size: 0.875rem;
-    }
-    input:disabled, textarea:disabled, select:disabled {
-        cursor: not-allowed;
-        background-color: #f3f4f6;
-    }
-
-    /* =============================
-        FIX LAYOUT SCROLLING
-        ============================= */
-    html, body {
-        height: 100%;
-        overflow: hidden;
-    }
-
-    .content-wrapper {
-        height: calc(100vh - (3.5rem + 1px)); /* (tinggi navbar + border) */
-        overflow-y: auto;
-        padding-bottom: 100px; /* Ruang untuk sticky action */
-    }
-    
-    .content {
-        padding-bottom: 100px;
-    }
-
-    .sticky-action {
-        position: sticky;
-        bottom: 0;
-        z-index: 10;
-        background-color: #fff;
-        border-top: 1px solid #e5e7eb;
-        padding: 1rem 1.5rem;
-        display: flex;
-        justify-content: flex-end;
-        gap: 0.5rem;
-        box-shadow: 0 -2px 6px rgba(0,0,0,0.05);
-    }
-</style>
+/* ... existing code ... */
+    </style>
 @endpush
 
 @section('content')
 @include('layouts.partials.notifications')
 
-<form id="product-form" action="{{ route('admin.products.update', $product) }}" method="POST" enctype="multipart/form-data" novalidate>
+{{-- ✅ PERBAIKAN: Mengoper parameter [product => $product->slug] secara eksplisit --}}
+<form id="product-form" action="{{ route('admin.products.update', ['product' => $product->slug]) }}" method="POST" enctype="multipart/form-data" novalidate>
 
     @csrf
     @method('PUT')
