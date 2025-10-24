@@ -72,8 +72,8 @@ class ProductController extends Controller
                         return 'Rp' . number_format($displayPrice, 0, ',', '.');
                     })
                     ->addColumn('category_name', function ($row) {
-                        // PERBAIKAN: Lebih eksplisit cek relasi category
-                        return $row->category ? e($row->category->name) : '<span class="text-danger">N/A</span>';
+                        // PERBAIKAN: Tambahkan is_object() check
+                        return $row->category && is_object($row->category) ? e($row->category->name) : '<span class="text-danger">N/A</span>';
                     })
                     ->addColumn('has_variants', function($row) {
                          // Cek apakah relasi productVariantTypes (yang di-load) ada dan tidak kosong
