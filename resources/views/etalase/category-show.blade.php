@@ -60,7 +60,7 @@
                 <div class="swiper-slide">
                     <div class="grid grid-cols-5 md:grid-cols-10 gap-x-4 gap-y-6 text-center">
                         @foreach ($chunk as $cat)
-                        <a href="{{ route('public.categories.show', $cat->slug) }}" class="flex flex-col items-center space-y-2 text-gray-600 hover:text-red-500 transition-colors group">
+                        <a href="{{ route('etalase.categories-show', $cat->slug) }}" class="flex flex-col items-center space-y-2 text-gray-600 hover:text-red-500 transition-colors group">
                             <div class="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center group-hover:bg-red-100"><i class="fas {{ $cat->icon ?? 'fa-tag' }} text-3xl text-gray-500 group-hover:text-red-500"></i></div>
                             <span class="text-sm font-medium">{{ $cat->name }}</span>
                         </a>
@@ -87,7 +87,7 @@
                     <div class="swiper-wrapper py-2">
                         @foreach ($flashSaleProducts as $product)
                         <div class="swiper-slide h-auto pb-2">
-                            <a href="{{ route('products.show', $product->slug) }}" class="block border rounded-xl overflow-hidden group hover:shadow-xl transition-all duration-300 h-full flex flex-col bg-white">
+                            <a href="{{ route('etalase.show', $product->slug) }}" class="block border rounded-xl overflow-hidden group hover:shadow-xl transition-all duration-300 h-full flex flex-col bg-white">
                                 <div class="relative">
                                     <div class="h-48 bg-gray-50"><img src="{{ $product->image_url ? asset('storage/' . $product->image_url) : 'https://placehold.co/400x400' }}" alt="{{ $product->name }}" class="w-full h-full object-fill group-hover:scale-105 transition-transform"></div>
                                     <span class="absolute top-2 left-2 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-full">{{ round($product->discount_percentage) }}%</span>
