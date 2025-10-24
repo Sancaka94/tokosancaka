@@ -24,10 +24,13 @@
             <ol class="flex items-center space-x-2">
                 <li><a href="{{ route('etalase.index') }}" class="hover:text-blue-600">Sancaka</a></li>
                 <li><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-right"><path d="m9 18 6-6-6-6"/></svg></li>
-                @if($product->category)
-                <li><a href="{{ route('etalase.category-show', $product->category->slug) }}" class="hover:text-blue-600">{{ $product->category->name }}</a></li>
+                
+                {{-- ✅ PERBAIKAN: Cek apakah $product->category adalah object --}}
+                @if($product->category && is_object($product->category))
+                <li><a href="{{ route('etalase.category.show', $product->category->slug) }}" class="hover:text-blue-600">{{ $product->category->name }}</a></li>
                 <li><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-right"><path d="m9 18 6-6-6-6"/></svg></li>
                 @endif
+                
                 <li class="font-medium text-gray-700 dark:text-gray-300 truncate">{{ $product->name }}</li>
             </ol>
         </nav>
@@ -38,8 +41,8 @@
                 <div class="image-gallery">
                     <div class="aspect-w-1 aspect-h-1 w-full overflow-hidden rounded-xl shadow-md mb-4">
                          @php
-                            $imageUrl = $product->image_url ? asset('storage/' . $product->image_url) : 'https://placehold.co/600x600/E2E8F0/4A5568?text=Image+Not+Found';
-                        @endphp
+                             $imageUrl = $product->image_url ? asset('storage/' ( $product->image_url)) : 'https://placehold.co/600x600/E2E8F0/4A5568?text=Image+Not+Found';
+                         @endphp
                         <img id="main-product-image"
                              src="{{ $imageUrl }}"
                              alt="{{ $product->name }}"
@@ -100,7 +103,8 @@
                         $attributesData = is_string($product->attributes_data) ? json_decode($product->attributes_data, true) : ($product->attributes_data ?? []);
                     @endphp
 
-                    @if (!empty($attributesData) && $product->category && $product->category->attributes->isNotEmpty())
+                    {{-- ✅ PERBAIKAN: Cek apakah $product->category adalah object --}}
+                    @if (!empty($attributesData) && $product->category && is_object($product->category) && $product->category->attributes->isNotEmpty())
                         <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
                             <h3 class="text-base font-semibold text-gray-900 dark:text-white mb-4">Spesifikasi Produk</h3>
                             <dl class="space-y-3">
@@ -177,7 +181,7 @@
                 <div class="flex w-full sm:w-auto flex-col sm:flex-row gap-3 mt-4 sm:mt-0">
                     @if(Auth::check() && $product->seller_wa)
                         <a href="https://wa.me/{{ preg_replace('/^0/', '62', $product->seller_wa) }}" target="_blank" class="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg transition-colors hover:bg-gray-100 dark:hover:bg-gray-700">
-                           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 21 1.65-3.8a9 9 0 1 1 3.4 2.9l-5.05.9z"/></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 21 1.65-3.8a9 9 0 1 1 3.4 2.9l-5.05.9z"/></svg>
                             Chat Penjual
                         </a>
                     @endif
