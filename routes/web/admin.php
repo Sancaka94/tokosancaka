@@ -178,8 +178,7 @@ Route::resource('customers', CustomerController::class);
          ->name('products.outOfStock');
 
 
-
-
+    Route::resource('products', ProductController::class);
 
 // Pesanan
 
