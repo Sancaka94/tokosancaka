@@ -261,7 +261,14 @@
 
                     <li><a href="{{ route('admin.customer-to-seller.index') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-gray-700 {{ request()->routeIs('admin.customer-to-seller.*') ? 'text-white' : 'text-gray-400' }}">Create Penjual</a></li>
 
-        
+                    {{-- ====================================================== --}}
+                      {{-- == ✅ LINK DATA PESANAN MASUK DITAMBAHKAN DI SINI == --}}
+                      {{-- ====================================================== --}}
+                      <li>
+                           <a href="{{ route('admin.orders.index') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-gray-700 {{ request()->routeIs('admin.orders.*') ? 'text-white' : 'text-gray-400' }}">
+                               Data Pesanan Masuk
+                           </a>
+                      </li>
 
                     <li><a href="{{ route('admin.products.index') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-gray-700 {{ request()->routeIs('admin.products.index') ? 'text-white' : 'text-gray-400' }}">Daftar Produk</a></li>
 
