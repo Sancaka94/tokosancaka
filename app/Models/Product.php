@@ -54,6 +54,7 @@ class Product extends Model
         'height',
         'length',
         'image_url',
+        'jenis_barang', // <-- DITAMBAHKAN: Pastikan kolom ini ada di DB Anda
         // 'attributes_data', // Hapus jika Anda beralih ke tabel relasi
     ];
 

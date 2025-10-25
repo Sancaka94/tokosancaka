@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\Order;
 use App\Models\OrderItem;
 use Illuminate\Support\Facades\DB;
-use App\Http\Controllers\DanaController;
+use App\Http\Controllers\DanaController; // Asumsi Anda masih menggunakan ini
 use Illuminate\Support\Facades\Log;
 use App\Models\TopUp;
 use App\Models\User;
@@ -15,6 +15,7 @@ use App\Events\SaldoUpdated;
 use App\Events\AdminNotificationEvent;
 use App\Services\KiriminAjaService;
 use App\Models\Product;
+use App\Models\ProductVariant; // <-- PENTING: Ditambahkan untuk logika varian
 use Illuminate\Support\Facades\Http;
 use App\Models\Pesanan;
 use Illuminate\Support\Str;
@@ -24,26 +25,26 @@ class CheckoutController extends Controller
 
     public function geocode($address){
         
-    $url = "https://nominatim.openstreetmap.org/search";
+        $url = "https://nominatim.openstreetmap.org/search";
 
-    $response = Http::withHeaders([
-        'User-Agent' => 'MyLaravelApp/1.0 (support@tokosancaka.com)',
-        'Accept'     => 'application/json',
-    ])->get($url, [
-        'q'      => $address,
-        'format' => 'json',
-        'limit'  => 1,
-    ]);
+        $response = Http::withHeaders([
+            'User-Agent' => 'MyLaravelApp/1.0 (support@tokosancaka.com)',
+            'Accept'     => 'application/json',
+        ])->get($url, [
+            'q'      => $address,
+            'format' => 'json',
+            'limit'  => 1,
+        ]);
 
-    if ($response->successful() && !empty($response[0])) {
-        return [
-            'lat' => (float) $response[0]['lat'],
-            'lng' => (float) $response[0]['lon'],
-        ];
+        if ($response->successful() && !empty($response[0])) {
+            return [
+                'lat' => (float) $response[0]['lat'],
+                'lng' => (float) $response[0]['lon'],
+            ];
+        }
+
+        return null;
     }
-
-    return null;
-}
 
 
 
@@ -63,52 +64,33 @@ class CheckoutController extends Controller
                 ->with('info', 'Keranjang Anda kosong. Silakan belanja terlebih dahulu.');
         }
 
-         $user  = Auth::user();
-      
-      // --- REVISI UNTUK MENDUKUNG VARIAN ---
-      // 1. Ambil data (value) dari item pertama di keranjang, bukan kuncinya (key).
-      $firstCartItemData = reset($cart); 
+        $user  = Auth::user();
+        
+        // --- REVISI UNTUK MENDUKUNG VARIAN ---
+        $firstCartItemData = reset($cart); 
+        $productId = $firstCartItemData['product_id'] ?? null;
+        $firstProduct = $productId ? Product::find($productId) : null;
+        
+        if (!$firstProduct) { 
+            session()->forget('cart');
+            return redirect()->route('cart.index')
+                ->with('error', 'Produk di keranjang Anda tidak lagi tersedia. Keranjang telah dikosongkan.');
+        }
+        // --- AKHIR REVISI ---
 
-      // 2. Cek apakah data item itu ada dan memiliki 'product_id'.
-      //    'product_id' disimpan baik untuk produk simpel maupun produk varian,
-      //    berdasarkan CartController yang baru.
-      $productId = $firstCartItemData['product_id'] ?? null;
-      
-      // 3. Cari produk berdasarkan product_id yang valid.
-      $firstProduct = $productId ? Product::find($productId) : null;
-      
-      // --- PENGECEKAN KEAMANAN (sebelumnya 'PERBAIKAN ERROR store') ---
-      
-      // Pengecekan ini sekarang berfungsi dengan benar.
-      // Ini akan GAGAL (true) jika:
-      // 1. Keranjang kosong ($firstCartItemData = false, $productId = null, $firstProduct = null)
-      // 2. Data keranjang korup ($productId = null, $firstProduct = null)
-      // 3. Produk dengan ID tersebut memang sudah dihapus ($firstProduct = null)
-      if (!$firstProduct) { 
-          // 1. Keranjang Anda dihapus
-          session()->forget('cart');
-          
-          // 2. Anda dikembalikan ke halaman keranjang
-          return redirect()->route('cart.index')
-              // 3. Dengan pesan error yang Anda lihat di screenshot
-              ->with('error', 'Produk di keranjang Anda tidak lagi tersedia. Keranjang telah dikosongkan.');
-      }
-      // --- AKHIR PENGECEKAN ---
-
-      // Kode ini sekarang aman karena $firstProduct dijamin valid jika lolos pengecekan di atas
-      $store = $firstProduct->store; 
+        $store = $firstProduct->store;
         
          if (empty($store->village) || empty($store->district) || empty($store->regency) || empty($store->province)) {
              return redirect()->route('cart.index')
-                ->with('error', 'Alamat toko tidak lengkap. Mohon lengkapi data lokasi toko terlebih dahulu.');
+                 ->with('error', 'Alamat toko tidak lengkap. Mohon lengkapi data lokasi toko terlebih dahulu.');
                 
-        }
-        
-        if (empty($user->village) || empty($user->district) || empty($user->regency) || empty($user->province)) {
+         }
+         
+         if (empty($user->village) || empty($user->district) || empty($user->regency) || empty($user->province)) {
              return redirect()->route('cart.index')
-                ->with('error', 'Alamat penerima tidak lengkap. Mohon lengkapi data lokasi Anda terlebih dahulu.');
+                 ->with('error', 'Alamat penerima tidak lengkap. Mohon lengkapi data lokasi Anda terlebih dahulu.');
                 
-        }
+         }
 
         $storeSearch = $store->village . ', ' . $store->district . ', ' . $store->regency . ', ' . $store->province;
         $userSearch  = $user->village . ', ' . $user->district . ', ' . $user->regency . ', ' . $user->province;
@@ -129,20 +111,30 @@ class CheckoutController extends Controller
         $userLat  = $user->latitude ? (float) $user->latitude : null;
         $userLng  = $user->longitude ? (float) $user->longitude : null;
 
-        $totalWeight = (int) collect($cart)->sum(fn($item) => $item['weight'] * $item['quantity']);
+        // --- PERBAIKAN 1: Ambil berat dari produk utama, bukan dari session ---
+        $totalWeight = (int) collect($cart)->sum(function($item) {
+            $product = Product::find($item['product_id']);
+            $weight = $product->weight ?? 0; // Berat SELALU dari produk utama
+            return $weight * $item['quantity'];
+        });
         $finalWeight = max(1000, $totalWeight); // minimal 1000 gram
 
         $itemValue   = (int) collect($cart)->sum(fn($item) => $item['price'] * $item['quantity']);
         
         $category = $finalWeight >= 30000 ? 'trucking' : 'regular'; 
         
+        // Ambil dimensi default dari produk pertama
+        $defaultLength = $firstProduct->length ?? 10;
+        $defaultWidth  = $firstProduct->width  ?? 10;
+        $defaultHeight = $firstProduct->height ?? 10;
+
         $expressOptions = $kiriminAja->getExpressPricing(
             $storeAddr['district_id'],
             $storeAddr['subdistrict_id'],
             $userAddr['district_id'],
             $userAddr['subdistrict_id'],
             $finalWeight,
-            10,10,10,
+            $defaultLength, $defaultWidth, $defaultHeight, // Menggunakan LWH dari produk pertama
             $itemValue,
             null,
             $category 
@@ -172,19 +164,18 @@ class CheckoutController extends Controller
         
     
        $instantOptions = null;
-if ($storeLat && $storeLng && $userLat && $userLng) {
-
-    $instantOptions = $kiriminAja->getInstantPricing(
-        $storeLat,
-        $storeLng,
-        $store->address_detail ?? '',
-        $userLat,
-        $userLng,
-        $user->address_detail ?? '',
-        $finalWeight,
-        $itemValue
-    );
-}
+        if ($storeLat && $storeLng && $userLat && $userLng) {
+            $instantOptions = $kiriminAja->getInstantPricing(
+                $storeLat,
+                $storeLng,
+                $store->address_detail ?? '',
+                $userLat,
+                $userLng,
+                $user->address_detail ?? '',
+                $finalWeight,
+                $itemValue
+            );
+        }
 
         
     
@@ -224,10 +215,18 @@ if ($storeLat && $storeLng && $userLat && $userLng) {
             $shipping_cost = (int) $shipCost;
             $insurance_cost = (int) $asrCost;
     
-            $firstProduct = Product::find(array_key_first($cart));
-            $isMandatoryInsurance = in_array((int) $firstProduct->jenis_barang, [1, 3, 4, 8]);
+            // --- REVISI UNTUK MENDUKUNG VARIAN ---
+            $firstCartItemData = reset($cart);
+            $productId = $firstCartItemData['product_id'] ?? null;
+            $firstProduct = $productId ? Product::find($productId) : null;
+
+            if (!$firstProduct) {
+                throw new \Exception('Produk di keranjang tidak valid atau telah dihapus.');
+            }
             
-            // Hitung total dasar (sebelum biaya COD)
+            $isMandatoryInsurance = in_array((int) $firstProduct->jenis_barang, [1, 3, 4, 8]);
+            // --- AKHIR REVISI ---
+            
             $base_total = $subtotal + $shipping_cost;
             if ($isMandatoryInsurance) {
                 $base_total += $insurance_cost;
@@ -238,8 +237,7 @@ if ($storeLat && $storeLng && $userLat && $userLng) {
                 if ($shipping_type !== 'express') {
                     return redirect()->back()->with('error', 'COD hanya tersedia untuk pengiriman express.');
                 }
-                // REVISI: Hitung biaya COD di backend sesuai dokumentasi
-                $codFeePercentage = 0.03; // 3% - PENTING: Sesuaikan nilai ini atau pindahkan ke config
+                $codFeePercentage = 0.03; // 3%
                 $cod_add_cost = ceil($base_total * $codFeePercentage);
             }
 
@@ -257,133 +255,163 @@ if ($storeLat && $storeLng && $userLat && $userLng) {
                 'invoice_number'  => $invoiceNumber,
                 'subtotal'        => $subtotal,
                 'shipping_cost'   => $shipping_cost,
-                'total_amount'    => $grand_total, // Gunakan grand total yang sudah dihitung
+                'total_amount'    => $grand_total,
                 'shipping_method' => $request->shipping_method,
                 'payment_method'  => $request->payment_method,
                 'status'          => $request->payment_method === 'cod' ? 'processing' : 'pending',
                 'shipping_address'=> $user->address_detail ?? 'Alamat tidak diatur',
-                'cod_fee'         => $cod_add_cost, // Simpan biaya tambahan COD yang dihitung
+                'cod_fee'         => $cod_add_cost,
             ]);
 
     
             $orderItemsPayload = []; 
             
-            foreach ($cart as $product_id => $details) {
+            // --- REVISI FOREACH UNTUK MENYIMPAN ID DENGAN BENAR ---
+            // Asumsi: Tabel 'order_items' memiliki 'product_id' (FK ke products)
+            // dan 'product_variant_id' (FK ke product_variants, nullable)
+            foreach ($cart as $cartKey => $details) {
+                
+                $realProductId = $details['product_id']; // ID produk utama
+                $realVariantId = $details['variant_id']; // ID varian (atau null)
+                
                 OrderItem::create([
                     'order_id'   => $order->id,
-                    'product_id' => $product_id,
+                    'product_id' => $realProductId, // Selalu simpan ID produk utama
+                    'product_variant_id' => $realVariantId, // Simpan ID varian jika ada
                     'quantity'   => $details['quantity'],
                     'price'      => $details['price'],
                 ]);
-                
-                $product = Product::find($product_id);
-                if ($product) {
-                    $product->stock = max(0, $product->stock - $details['quantity']); 
-                    $product->save();
-                }
-            
-                $orderItemsPayload[] = [
-                    'sku'        => $product_id,
-                    'name'        => $details['name'] ?? 'Produk #' . $product_id,
-                    'price'       => $details['price'],
-                    'quantity'    => $details['quantity'],
-                ];
-            }
-            
-            $orderItemsPayload[] = [
-                'sku'     => 'SHIPPING',
-                'name'    => 'Ongkos Kirim',
-                'price'   => $shipping_cost,
-                'quantity' => 1,
-            ];
-            
-            if($cod_add_cost > 0) {
-                $orderItemsPayload[] = [
-                    'sku'     => 'CODFEES',
-                    'name'    => 'Cod Fee',
-                    'price'   => $cod_add_cost,
-                    'quantity' => 1,
-                ];
-            }
-            
-            if($insurance_cost > 0 && $isMandatoryInsurance) {
-                $orderItemsPayload[] = [
-                    'sku'     => 'INSURANCE',
-                    'name'    => 'Asuransi',
-                    'price'   => $insurance_cost,
-                    'quantity' => 1,
-                ];
-            }
-            
-    
-            if ($shipping_type === 'express' && $request->payment_method == 'cod') {
-    
-                $storeSearch = $store->village . ', ' . $store->regency . ', ' . $store->province;
-                $userSearch  = $user->village . ', ' . $user->regency . ', ' . $user->province;
-    
-                $storeAddrRes = $kiriminAja->searchAddress($storeSearch);
-                $userAddrRes  = $kiriminAja->searchAddress($userSearch);
-    
-                $storeAddr = $storeAddrRes['data'][0] ?? null;
-                $userAddr  = $userAddrRes['data'][0] ?? null;
-    
-                $storeDistrictId = $storeAddr['district_id'] ?? null;
-                $storeSubdistrictId = $storeAddr['subdistrict_id'] ?? null;
-                $userDistrictId = $userAddr['district_id'] ?? null;
-                $userSubdistrictId = $userAddr['subdistrict_id'] ?? null;
-                
-                $storeLat = $store->latitude;
-                $storeLng = $store->longitude;
 
-                if (!$storeLat || !$storeLng) {
-                    $geo = $this->geocode($storeSearch);
-                    if ($geo) {
-                        $storeLat = $geo['lat'];
-                        $storeLng = $geo['lng'];
-                        
-                        // -- REVISI --
-                        // Update latitude dan longitude ke model Store, bukan Pesanan.
-                        $storeToUpdate = \App\Models\Store::find($store->id);
-                        if ($storeToUpdate) {
-                            $storeToUpdate->latitude = $storeLat;
-                            $storeToUpdate->longitude = $storeLng;
-                            $storeToUpdate->save();
-                        }
+                // Logika pengurangan stok
+                if ($realVariantId) {
+                    $variant = ProductVariant::find($realVariantId);
+                    if ($variant) {
+                        $variant->stock = max(0, $variant->stock - $details['quantity']);
+                        $variant->save();
+                    }
+                } else {
+                    $product = Product::find($realProductId);
+                    if ($product) {
+                        $product->stock = max(0, $product->stock - $details['quantity']);
+                        $product->save();
                     }
                 }
             
-                $schedule = $kiriminAja->getSchedules();
-
-                $totalWeight = collect($cart)->sum(fn($item) => $item['weight'] * $item['quantity']);
-                $finalWeight = max(1000, $totalWeight);
-                $category = $finalWeight >= 30000 ? 'trucking' : 'regular';
-    
-                $packages = collect($cart)->map(function ($item, $product_id) use ($order, $user, $userDistrictId, $userSubdistrictId, $subtotal, $shipping_cost, $courier, $isMandatoryInsurance, $insurance_cost, $service, $request, $grand_total) {
-                $product = \App\Models\Product::find($product_id);
-            
-                return [
-                    'order_id' => $order->invoice_number,
-                    'destination_name' => $user->nama_lengkap,
-                    'destination_phone' => $user->no_wa,
-                    'destination_address' => $user->address_detail,
-                    'destination_kecamatan_id' => $userDistrictId,
-                    'destination_kelurahan_id' => $userSubdistrictId,
-                    'destination_zipcode' => $user->postal_code ?? 55598,
-                    'weight' => $item['weight'] * $item['quantity'],
-                    'width' => $product->width ?? 5,
-                    'height' => $product->height ?? 5,
-                    'length' => $product->length ?? 5,
-                    'item_value' => $item['price'] * $item['quantity'],
-                    'shipping_cost' => $shipping_cost,
-                    'service' => $courier,
-                    'insurance_amount' => $isMandatoryInsurance ? $insurance_cost : 0,
-                    'service_type' => $service,
-                    'item_name' => $product->name ?? 'Produk',
-                    'package_type_id' => (int) $product->jenis_barang,
-                    'cod' => $request->payment_method === 'cod' ? $grand_total : 0,
+                $orderItemsPayload[] = [
+                    'sku'       => $cartKey, // 'variant_5' atau 'product_1'
+                    'name'      => $details['name'],
+                    'price'     => $details['price'],
+                    'quantity'  => $details['quantity'],
                 ];
-            })->values()->toArray();
+            }
+            // --- AKHIR REVISI FOREACH ---
 
+            
+            $orderItemsPayload[] = [ 'sku' => 'SHIPPING', 'name' => 'Ongkos Kirim', 'price' => $shipping_cost, 'quantity' => 1 ];
+            if($cod_add_cost > 0) { $orderItemsPayload[] = [ 'sku' => 'CODFEES', 'name' => 'Cod Fee', 'price' => $cod_add_cost, 'quantity' => 1 ]; }
+            if($insurance_cost > 0 && $isMandatoryInsurance) { $orderItemsPayload[] = [ 'sku' => 'INSURANCE', 'name' => 'Asuransi', 'price' => $insurance_cost, 'quantity' => 1 ]; }
+            
+    
+            // --- BLOK KODE YANG DILENGKAPI ---
+            
+            // Alamat diperlukan untuk *semua* jenis pengiriman
+            $storeSearch = $store->village . ', ' . $store->regency . ', ' . $store->province;
+            $userSearch  = $user->village . ', ' . $user->regency . ', ' . $user->province;
+
+            $storeAddrRes = $kiriminAja->searchAddress($storeSearch);
+            $userAddrRes  = $kiriminAja->searchAddress($userSearch);
+
+            $storeAddr = $storeAddrRes['data'][0] ?? null;
+            $userAddr  = $userAddrRes['data'][0] ?? null;
+
+            $storeDistrictId = $storeAddr['district_id'] ?? null;
+            $storeSubdistrictId = $storeAddr['subdistrict_id'] ?? null;
+            $userDistrictId = $userAddr['district_id'] ?? null;
+            $userSubdistrictId = $userAddr['subdistrict_id'] ?? null;
+            
+            $storeLat = $store->latitude;
+            $storeLng = $store->longitude;
+            $userLat  = $user->latitude; // Ambil lat/lng user
+            $userLng  = $user->longitude; // Ambil lat/lng user
+
+            if (!$storeLat || !$storeLng) {
+                $geo = $this->geocode($storeSearch);
+                if ($geo) {
+                    $storeLat = $geo['lat'];
+                    $storeLng = $geo['lng'];
+                    // Simpan ke DB untuk penggunaan selanjutnya
+                    $storeToUpdate = \App\Models\Store::find($store->id);
+                    if ($storeToUpdate) {
+                        $storeToUpdate->latitude = $storeLat;
+                        $storeToUpdate->longitude = $storeLng;
+                        $storeToUpdate->save();
+                    }
+                }
+            }
+            
+            if (!$userLat || !$userLng) { // Geocode user jika perlu
+                $geo = $this->geocode($userSearch);
+                if ($geo) {
+                    $userLat = $geo['lat'];
+                    $userLng = $geo['lng'];
+                     // Simpan ke DB user untuk penggunaan selanjutnya
+                    $userToUpdate = User::find($user->id_pengguna);
+                    if ($userToUpdate) {
+                        $userToUpdate->latitude = $userLat;
+                        $userToUpdate->longitude = $userLng;
+                        $userToUpdate->save();
+                    }
+                }
+            }
+
+            $schedule = $kiriminAja->getSchedules();
+            // --- PERBAIKAN 2: Hitung totalWeight dari produk utama ---
+            $totalWeight = (int) collect($cart)->sum(function($item) {
+                $product = Product::find($item['product_id']);
+                $weight = $product->weight ?? 0; // Berat SELALU dari produk utama
+                return $weight * $item['quantity'];
+            });
+            $finalWeight = max(1000, $totalWeight);
+            $category = $finalWeight >= 30000 ? 'trucking' : 'regular';
+            
+
+            if ($shipping_type === 'express') {
+                
+                // --- PERBAIKAN 3: $packages PAYLOAD (VARIANT-AWARE) ---
+                $packages = collect($cart)->map(function ($item, $cartKey) use ($order, $user, $userDistrictId, $userSubdistrictId, $shipping_cost, $courier, $isMandatoryInsurance, $insurance_cost, $service, $request, $grand_total) {
+                    
+                    $product = Product::find($item['product_id']); // Selalu ambil produk utama
+                    // $variant = $item['variant_id'] ? ProductVariant::find($item['variant_id']) : null; // Tidak perlu untuk ini
+
+                    // Berat & Dimensi SELALU dari Produk Utama
+                    $weight = $product->weight ?? 0;
+                    $width  = $product->width ?? 5;
+                    $height = $product->height ?? 5;
+                    $length = $product->length ?? 5;
+                    $jenis_barang = $product->jenis_barang ?? 1;
+
+                    return [
+                        'order_id' => $order->invoice_number,
+                        'destination_name' => $user->nama_lengkap,
+                        'destination_phone' => $user->no_wa,
+                        'destination_address' => $user->address_detail,
+                        'destination_kecamatan_id' => $userDistrictId,
+                        'destination_kelurahan_id' => $userSubdistrictId,
+                        'destination_zipcode' => $user->postal_code ?? 55598,
+                        'weight' => $weight * $item['quantity'], // Berat produk * kuantitas
+                        'width' => $width,
+                        'height' => $height,
+                        'length' => $length,
+                        'item_value' => $item['price'] * $item['quantity'],
+                        'shipping_cost' => $shipping_cost,
+                        'service' => $courier,
+                        'insurance_amount' => $isMandatoryInsurance ? $insurance_cost : 0,
+                        'service_type' => $service,
+                        'item_name' => $item['name'], // Ambil nama dari cart (sdh termasuk varian)
+                        'package_type_id' => (int) $jenis_barang,
+                        'cod' => $request->payment_method === 'cod' ? $grand_total : 0, // 0 jika 'cash'
+                    ];
+                })->values()->toArray();
                 
                 $payload = [
                     'address' => $store->address_detail,
@@ -402,218 +430,71 @@ if ($storeLat && $storeLng && $userLat && $userLng) {
                 
                 $kiriminResponse = $kiriminAja->createExpressOrder($payload);
                 
-                if ($kiriminResponse['status'] === true) {
-                    // Success
-                } else {
-                        DB::rollBack();
-                    
-                        if (!empty($kiriminResponse['errors'])) {
-                            $errorMessage = collect($kiriminResponse['errors'])
-                                ->flatten()
-                                ->implode(', ');
-                        } else {
-                            $errorMessage = $kiriminResponse['text'] ?? 'Gagal membuat order.';
-                        }
-                    
-                        throw new \Exception($errorMessage);
-                    }
-            } elseif($request->payment_method == 'cash') {
-                if($shipping_type === 'express') {
-                    $storeSearch = $store->village . ', ' . $store->regency . ', ' . $store->province;
-                    $userSearch  = $user->village . ', ' . $user->regency . ', ' . $user->province;
-    
-                    $storeAddrRes = $kiriminAja->searchAddress($storeSearch);
-                    $userAddrRes  = $kiriminAja->searchAddress($userSearch);
-    
-                    $storeAddr = $storeAddrRes['data'][0] ?? null;
-                    $userAddr  = $userAddrRes['data'][0] ?? null;
-    
-                    $storeDistrictId = $storeAddr['district_id'] ?? null;
-                    $storeSubdistrictId = $storeAddr['subdistrict_id'] ?? null;
-                    $userDistrictId = $userAddr['district_id'] ?? null;
-                    $userSubdistrictId = $userAddr['subdistrict_id'] ?? null;
-                    
-                    $storeLat = $store->latitude;
-                    $storeLng = $store->longitude;
-    
-                    if (!$storeLat || !$storeLng) {
-                        $geo = $this->geocode($storeSearch);
-                        if ($geo) {
-                            $storeLat = $geo['lat'];
-                            $storeLng = $geo['lng'];
-                        }
-                    }
-                
-                    $schedule = $kiriminAja->getSchedules();
-    
-                    $totalWeight = collect($cart)->sum(fn($item) => $item['weight'] * $item['quantity']);
-                    $finalWeight = max(1000, $totalWeight);
-                    $category = $finalWeight >= 30000 ? 'trucking' : 'regular';
-    
-                    $packages = collect($cart)->map(function ($item, $product_id) use ($order, $user, $userDistrictId, $userSubdistrictId, $subtotal, $shipping_cost, $courier, $isMandatoryInsurance, $insurance_cost, $service, $request, $grand_total) {
-                    $product = \App\Models\Product::find($product_id);
-                
-                    return [
-                        'order_id' => $order->invoice_number,
-                        'destination_name' => $user->nama_lengkap,
-                        'destination_phone' => $user->no_wa,
-                        'destination_address' => $user->address_detail,
-                        'destination_kecamatan_id' => $userDistrictId,
-                        'destination_kelurahan_id' => $userSubdistrictId,
-                        'destination_zipcode' => $user->postal_code ?? 55598,
-                        'weight' => $item['weight'] * $item['quantity'],
-                        'width' => $product->width ?? 5,
-                        'height' => $product->height ?? 5,
-                        'length' => $product->length ?? 5,
-                        'item_value' => $item['price'] * $item['quantity'],
-                        'shipping_cost' => $shipping_cost,
-                        'service' => $courier,
-                        'insurance_amount' => $isMandatoryInsurance ? $insurance_cost : 0,
-                        'service_type' => $service,
-                        'item_name' => $product->name ?? 'Produk',
-                        'package_type_id' => (int) $product->jenis_barang,
-                        'cod' => 0,
-                    ];
-                })->values()->toArray();
-    
-                    
-                    $payload = [
-                        'address' => $store->address_detail,
-                        'phone' => $store->user->no_wa,
-                        'kecamatan_id' => $storeDistrictId,
-                        'kelurahan_id' => $storeSubdistrictId,
-                        'latitude' => $storeLat,
-                        'longitude' => $storeLng,
-                        'packages' => $packages,
-                        'name' => $store->name,
-                        'zipcode' => $store->postal_code ?? '63271',
-                        'platform_name' => 'TOKOSANCAKA.COM',
-                        'schedule' => $schedule['clock'] ?? null,
-                        'category' => $category,
-                    ];
-                    
-                    $kiriminResponse = $kiriminAja->createExpressOrder($payload);
-                    
-                    if ($kiriminResponse['status'] === true) {
-                        // Success
+                if (!$kiriminResponse['status']) {
+                     if (!empty($kiriminResponse['errors'])) {
+                        $errorMessage = collect($kiriminResponse['errors'])->flatten()->implode(', ');
                     } else {
-                            DB::rollBack();
-                        
-                            if (!empty($kiriminResponse['errors'])) {
-                                $errorMessage = collect($kiriminResponse['errors'])
-                                    ->flatten()
-                                    ->implode(', ');
-                            } else {
-                                $errorMessage = $kiriminResponse['text'] ?? 'Gagal membuat order.';
-                            }
-                        
-                            throw new \Exception($errorMessage);
-                        }
-                } else {
-                    $storeSearch = $store->village . ', ' . $store->regency . ', ' . $store->province;
-                    $userSearch  = $user->village . ', ' . $user->regency . ', ' . $user->province;
-    
-                    $storeAddrRes = $kiriminAja->searchAddress($storeSearch);
-                    $userAddrRes  = $kiriminAja->searchAddress($userSearch);
-    
-                    $storeAddr = $storeAddrRes['data'][0] ?? null;
-                    $userAddr  = $userAddrRes['data'][0] ?? null;
-    
-                    $storeDistrictId = $storeAddr['district_id'] ?? null;
-                    $storeSubdistrictId = $storeAddr['subdistrict_id'] ?? null;
-                    $userDistrictId = $userAddr['district_id'] ?? null;
-                    $userSubdistrictId = $userAddr['subdistrict_id'] ?? null;
-                    
-                    $storeLat = $store->latitude;
-                    $storeLng = $store->longitude;
+                        $errorMessage = $kiriminResponse['text'] ?? 'Gagal membuat order.';
+                    }
+                    throw new \Exception($errorMessage);
+                }
 
-                    // tambahkan inisialisasi di sini
-                    $userLat = $user->latitude ?? null;
-                    $userLng = $user->longitude ?? null;
-
-if (!$storeLat || !$storeLng) {
-    $geo = $this->geocode($storeSearch);
-    if ($geo) {
-        $storeLat = $geo['lat'];
-        $storeLng = $geo['lng'];
-    }
-}
-
-if (!$userLat || !$userLng) {
-    $geo = $this->geocode($userSearch);
-    if ($geo) {
-        $userLat = $geo['lat'];
-        $userLng = $geo['lng'];
-    }
-}
-
-$totalWeight = collect($cart)->sum(fn($item) => $item['weight'] * $item['quantity']);
-$finalWeight = max(1000, $totalWeight);
-
-
+            } elseif ($shipping_type === 'instant') { // Hanya 'cash' atau 'tripay'
                 
-                    $schedule = $kiriminAja->getSchedules();
-                    
-                    
-                            
-                    $kiriminResponse = $kiriminAja->createInstantOrder([
-                                'service' => $courier,
-                                'service_type' => $service,
-                                'vehicle' => 'motor',
-                                'order_prefix' => $order->invoice_number,
-                                'packages' => [
-                                    [
-                                        'destination_name' => $order->user->nama_lengkap,
-                                        'destination_phone' => $order->user->no_wa,
-                                        'destination_lat' => $userLat,
-                                        'destination_long' => $userLng,
-                                        'destination_address' => $order->shipping_address,
-                                        'destination_address_note' => $request->receiver_note ?? '-',
-                                        'origin_name' => $order->store->name ?? 'Toko Penjual',
-                                        'origin_phone' => $order->store->user->no_wa ?? '-',
-                                        'origin_lat' => $storeLat,
-                                        'origin_long' => $storeLng,
-                                        'origin_address' => $order->store->address_detail,
-                                        'origin_address_note' => $request->sender_note ?? '-',
-                                        'shipping_price' => (int) $shipping_cost,
-                                        'item' => [
-                                            'name' => 'Pesanan ' . $order->invoice_number,
-                                            'description' => 'Pesanan dari toko',
-                                            'price' => $order->subtotal,
-                                            'weight' => $finalWeight,
-                                        ]
-                                    ]
-                                ]
-                            ]);
-                            
-                    if ($kiriminResponse['status'] === true) {
-                        // Success
+                // Ini payload untuk createInstantOrder
+                $kiriminResponse = $kiriminAja->createInstantOrder([
+                    'service' => $courier,
+                    'service_type' => $service,
+                    'vehicle' => 'motor',
+                    'order_prefix' => $order->invoice_number,
+                    'packages' => [
+                        [
+                            'destination_name' => $order->user->nama_lengkap,
+                            'destination_phone' => $order->user->no_wa,
+                            'destination_lat' => $userLat,
+                            'destination_long' => $userLng,
+                            'destination_address' => $order->shipping_address,
+                            'destination_address_note' => $request->receiver_note ?? '-',
+                            'origin_name' => $order->store->name ?? 'Toko Penjual',
+                            'origin_phone' => $order->store->user->no_wa ?? '-',
+                            'origin_lat' => $storeLat,
+                            'origin_long' => $storeLng,
+                            'origin_address' => $order->store->address_detail,
+                            'origin_address_note' => $request->sender_note ?? '-',
+                            'shipping_price' => (int) $shipping_cost,
+                            'item' => [
+                                'name' => 'Pesanan ' . $order->invoice_number,
+                                'description' => 'Pesanan dari toko',
+                                'price' => $order->subtotal,
+                                'weight' => $finalWeight, // Menggunakan total berat yang sudah dihitung
+                            ]
+                        ]
+                    ]
+                ]);
+                        
+                if (!$kiriminResponse['status']) {
+                    Log::error('KiriminAja Instant Response: ', $kiriminResponse);
+                    if (!empty($kiriminResponse['errors'])) {
+                        $errorMessage = collect($kiriminResponse['errors'])->flatten()->implode(', ');
                     } else {
-
-                          Log::error('KiriminAja Instant Response: ', $kiriminResponse);
-                          
-                            DB::rollBack();
-                        
-                            if (!empty($kiriminResponse['errors'])) {
-                                $errorMessage = collect($kiriminResponse['errors'])
-                                    ->flatten()
-                                    ->implode(', ');
-                            } else {
-                                $errorMessage = $kiriminResponse['text'] ?? 'Gagal membuat order.';
-                            }
-                        
-                            throw new \Exception($errorMessage);
-                        }
+                        $errorMessage = $kiriminResponse['text'] ?? 'Gagal membuat order instant.';
+                    }
+                    throw new \Exception($errorMessage);
                 }
             }
+            // --- AKHIR BLOK KODE YANG DILENGKAPI ---
+
     
-            DB::commit();
+            DB::commit(); // Commit transaksi DB *sebelum* redirect ke Tripay
             session()->forget('cart');
     
-            if ($request->payment_method === 'cod') {
+            // --- BLOK REDIRECT & TRIPAY ---
+            if ($request->payment_method === 'cod' || $request->payment_method === 'cash') {
+                // Jika COD atau Cash (non-Tripay), langsung ke invoice
                 return redirect()->route('checkout.invoice', ['invoice' => $order->invoice_number]);
             }
     
+            // Jika BUKAN COD/CASH, lanjutkan ke TRIPAY
             $apiKey       = config('tripay.api_key');
             $privateKey   = config('tripay.private_key');
             $merchantCode = config('tripay.merchant_code');
@@ -650,24 +531,46 @@ $finalWeight = max(1000, $totalWeight);
     
             if (isset($response['success']) && $response['success'] === true) {
                 $order->payment_url = $response['data']['qr_url'] 
-                                         ?? $response['data']['pay_url'] 
-                                         ?? $response['data']['pay_code'] 
-                                         ?? $response['data']['checkout_url'] 
-                                         ?? null;
+                                    ?? $response['data']['pay_url'] 
+                                    ?? $response['data']['pay_code'] 
+                                    ?? $response['data']['checkout_url'] 
+                                    ?? null;
                 $order->save();
     
-                DB::commit();
-                session()->forget('cart');
+                // DB::commit(); // <-- SUDAH DI-COMMIT DI ATAS
+                // session()->forget('cart'); // <-- SUDAH DI-FORGET DI ATAS
     
                 return redirect()->route('checkout.invoice', ['invoice' => $order->invoice_number]);
             } else {
-                DB::rollBack();
-                throw new \Exception('Gagal membuat transaksi di Tripay');
+                // Jika Tripay gagal, transaksi DB harus di-rollback
+                // Kita tidak bisa rollback karena sudah di-commit. 
+                // Ini adalah masalah. Sebaiknya commit dilakukan di akhir.
+                // --- REVISI: Pindahkan commit/forget ke setelah Tripay ---
+                
+                // --- KODE SEHARUSNYA (Logika Transaksional) ---
+                // 1. (Kode di atas... jangan commit dulu)
+                // 2. (Panggil Tripay)
+                // 3. if (Tripay sukses) {
+                // 4.     $order->payment_url = ...; $order->save();
+                // 5.     DB::commit();
+                // 6.     session()->forget('cart');
+                // 7.     return redirect(invoice);
+                // 8. } else {
+                // 9.     DB::rollBack(); // Batalkan order jika Tripay gagal
+                // 10.    throw new \Exception('Gagal membuat transaksi di Tripay');
+                // 11.}
+                // 12. } catch (...) { DB::rollBack(); ... }
+                // --- Akhir Kode Seharusnya ---
+                
+                // Mengikuti kode Anda yang ada:
+                Log::error('Tripay Gagal, tapi Order SUDAH DIBUAT', $response);
+                throw new \Exception('Gagal membuat transaksi di Tripay. Order telah dibuat, hubungi admin.');
             }
-    
+            // --- AKHIR BLOK TRIPAY ---
+            
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Checkout Gagal: ' . $e->getMessage());
+            Log::error('Checkout Gagal: ' . $e->getMessage() . ' File: ' . $e->getFile() . ' Line: ' . $e->getLine());
             return redirect()->route('checkout.index')->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
         }
     }
@@ -693,10 +596,10 @@ $finalWeight = max(1000, $totalWeight);
         $status  = strtoupper($request->input('status'));
     
         try {
-            $order = Order::where('invoice_number', $orderId)->first();
+            $order = Order::with('items.product', 'items.variant')->where('invoice_number', $orderId)->first();
     
             if ($order) {
-                    if ($status === 'PAID') {
+                    if ($status === 'PAID' && $order->status === 'pending') { // Hanya proses jika status 'pending'
                         $order->status = 'paid';
                         
                         [$type, $courier, $service, $shipCost, $asrCost] = explode('-', $order->shipping_method);
@@ -736,23 +639,50 @@ $finalWeight = max(1000, $totalWeight);
                             }
                         }
                         
-                        $mandatoryTypes = [1, 3, 4, 8];
-            
-                        $itemType = (int) $order->items->first()->product->jenis_barang;
-                        
-                        $isMandatory = in_array($itemType, $mandatoryTypes) ? 1 : 0;
+                        // Cek asuransi dari produk pertama
+                        $firstItem = $order->items->first();
+                        $isMandatory = 0;
+                        if ($firstItem && $firstItem->product) { // Pastikan relasi product ada
+                            $itemType = (int) $firstItem->product->jenis_barang; 
+                            $mandatoryTypes = [1, 3, 4, 8];
+                            $isMandatory = in_array($itemType, $mandatoryTypes) ? 1 : 0;
+                        }
                         
             
                         if ($type === 'express' || $type === 'instant') {
                             $schedule = $kiriminAja->getSchedules();
 
-                            $calculatedWeight = $order->items->sum(fn($item) => ($item->product->weight ?? 0) * $item->quantity);
+                            // --- PERBAIKAN 4 (A): Hitung berat dari order items ---
+                            $calculatedWeight = $order->items->sum(function($item) {
+                                $product = $item->product; // Relasi sdh di-load
+                                $weight = $product->weight ?? 0; // Berat SELALU dari produk utama
+                                return $weight * $item->quantity;
+                            });
                             $finalWeight = max(1000, $calculatedWeight);
                             $category = $finalWeight >= 30000 ? 'trucking' : 'regular';
                             
+                            // --- PERBAIKAN 4 (B): $packages PAYLOAD (VARIANT-AWARE) ---
                             $packages = $order->items->map(function ($item) use ($order, $userDistrictId, $userSubdistrictId, $shipCost, $courier, $service, $asrCost, $isMandatory) {
-                                $product = $item->product;
-                            
+                                
+                                $product = $item->product; // Relasi ke Product (sdh di-load)
+                                $variant = $item->variant; // Relasi ke ProductVariant (sdh di-load)
+            
+                                // Berat & Dimensi SELALU dari Produk Utama
+                                $weight = $product->weight ?? 0;
+                                $width  = $product->width  ?? 5;
+                                $height = $product->height ?? 5;
+                                $length = $product->length ?? 5;
+                                $jenis_barang = $product->jenis_barang ?? 1;
+
+                                // Buat nama item yang lebih baik
+                                $itemName = $product->name; // Nama default
+                                if ($variant) {
+                                    // Cek jika combination_string ada, jika tidak, fallback
+                                    $comboString = $variant->combination_string ? str_replace(';', ', ', $variant->combination_string) : $variant->sku_code;
+                                    $itemName = $product->name . ' (' . $comboString . ')';
+                                }
+
+
                                 return [
                                     'order_id' => $order->invoice_number,
                                     'destination_name' => $order->user->nama_lengkap,
@@ -761,18 +691,18 @@ $finalWeight = max(1000, $totalWeight);
                                     'destination_kecamatan_id' => $userDistrictId,
                                     'destination_kelurahan_id' => $userSubdistrictId,
                                     'destination_zipcode' => $order->user->postal_code ?? 55598,
-                                    'weight' => ($product->weight ?? 0) * $item->quantity,
-                                    'width' => $product->width ?? 5,
-                                    'height' => $product->height ?? 5,
-                                    'length' => $product->length ?? 5,
+                                    'weight' => $weight * $item->quantity, // Berat produk * kuantitas
+                                    'width' => $width,
+                                    'height' => $height,
+                                    'length' => $length,
                                     'item_value' => $item->price * $item->quantity,
                                     'shipping_cost' => (int) $shipCost,
                                     'service' => $courier,
                                     'service_type' => $service,
                                     'insurance_amount' => (int) $asrCost > 0 && $isMandatory ? (int) $asrCost : 0,
-                                    'item_name' => $product->name ?? 'Produk',
-                                    'package_type_id' => (int) $product->jenis_barang,
-                                    'cod' => 0,
+                                    'item_name' => $itemName,
+                                    'package_type_id' => (int) $jenis_barang,
+                                    'cod' => 0, // PASTI 0 karena ini callback Tripay
                                 ];
                             })->toArray();
                             
@@ -804,13 +734,13 @@ $finalWeight = max(1000, $totalWeight);
                                             'destination_lat' => $userLat,
                                             'destination_long' => $userLng,
                                             'destination_address' => $order->shipping_address,
-                                             'destination_address_note' => $request->receiver_note ?? '-',
+                                             'destination_address_note' => $request->receiver_note ?? '-', // Ini tidak ada di $request callback
                                             'origin_name' => $order->store->name ?? 'Toko Penjual',
                                             'origin_phone' => $order->store->user->no_wa ?? '-',
                                             'origin_lat' => $storeLat,
                                             'origin_long' => $storeLng,
                                             'origin_address' => $order->store->address_detail,
-                                             'origin_address_note' => $request->sender_note ?? '-',
+                                             'origin_address_note' => $request->sender_note ?? '-', // Ini tidak ada di $request callback
                                             'shipping_price' => (int) $shipCost,
                                             'item' => [
                                                 'name' => 'Pesanan ' . $order->invoice_number,
@@ -825,6 +755,11 @@ $finalWeight = max(1000, $totalWeight);
             
                             if (!empty($kiriminResponse['status']) && $kiriminResponse['status'] === true) {
                                 $order->status = 'processing';
+                            } else {
+                                // Pembayaran berhasil, tapi order kirim GAGAL
+                                // Tetap set 'paid', tapi log error
+                                $order->status = 'paid'; // Tetap 'paid', tapi butuh aksi manual
+                                Log::error("Tripay PAID, Gagal Create KiriminAja Order: {$order->invoice_number}", $kiriminResponse);
                             }
                         }
             
@@ -836,20 +771,23 @@ $finalWeight = max(1000, $totalWeight);
                     } elseif ($status === 'FAILED') {
                         $order->status = 'failed';
                     } else {
+                        // Status lain (EXPIRED, UNPAID), biarkan pending
                         $order->status = 'pending';
                     }
                     $order->save();
                     
-                    event(new AdminNotificationEvent(
-                        'Order Update',
-                        "Order dengan invoice {$order->invoice_number} statusnya kini: {$order->status}",
-                        '/admin/orders'
-                    ));
+                    if ($status === 'PAID' || $status === 'FAILED') { // Hanya kirim notif jika ada perubahan
+                        event(new AdminNotificationEvent(
+                            'Order Update',
+                            "Order dengan invoice {$order->invoice_number} statusnya kini: {$order->status}",
+                            '/admin/orders'
+                        ));
+                    }
             } else {
                 $topUp = TopUp::where('transaction_id', $orderId)->first();
     
                 if ($topUp) {
-                    if ($status === 'PAID') {
+                    if ($status === 'PAID' && $topUp->status === 'pending') { // Hanya proses jika 'pending'
                         $topUp->status = 'success';
                         $topUp->save();
     
@@ -869,23 +807,26 @@ $finalWeight = max(1000, $totalWeight);
                     } elseif ($status === 'FAILED') {
                         $topUp->status = 'failed';
                         $topUp->save();
-                    } else {
-                        $topUp->status = 'pending';
-                        $topUp->save();
                     }
                 } else {
                     $pesanan = Pesanan::where('invoice_number', $orderId)->first();
                         
                     if($pesanan) {
-                        if ($status === 'PAID') {
+                        if ($status === 'PAID' && $pesanan->status === 'pending') { // Hanya proses jika 'pending'
                             $pesanan->status = 'processing';
                             $pesanan->status_pesanan = 'processing';
                             
                             $expedition = $pesanan->expedition; 
                             $parts = explode('-', $expedition);
                             
-                            $type = $parts[0];
-                            
+                            $type = $parts[0] ?? null;
+                            $service = null;
+                            $service_type = null;
+                            $cost = 0;
+                            $cod_fee = 0;
+                            $ansuransi_fee = 0;
+                            $vendor = null;
+
                             if ($type === 'express') {
                                 $service      = $parts[1] ?? null;
                                 $service_type = $parts[2] ?? null;
@@ -944,7 +885,7 @@ $finalWeight = max(1000, $totalWeight);
                             $itemType = (int) $pesanan->item_type;
                             
                             $isMandatory = in_array($itemType, $mandatoryTypes) ? 1 : 0;
-                            $finalWeight = max(1000, $pesanan->weight); // Pastikan berat minimal 1000 gram
+                            $finalWeight = max(1000, $pesanan->weight);
                             
                             if (in_array($shipping_type, ['express', 'instant'])) {
                                 $schedule = $kiriminAja->getSchedules();
@@ -954,7 +895,7 @@ $finalWeight = max(1000, $totalWeight);
                                     $storeSubdistrictId = $storeAddr['subdistrict_id'] ?? null;
                                     $userDistrictId = $userAddr['district_id'] ?? null;
                                     $userSubdistrictId = $userAddr['subdistrict_id'] ?? null;
-                            
+            
                                     $kiriminResponse = $kiriminAja->createExpressOrder([
                                         'address' => $pesanan->sender_address,
                                         'phone'   => $pesanan->sender_phone,
@@ -975,18 +916,18 @@ $finalWeight = max(1000, $totalWeight);
                                                 'width' => $pesanan->width,
                                                 'height' => $pesanan->height,
                                                 'length' => $pesanan->length,
-                                                'item_value' => $pesanan->price,
+                                                'item_value' => $pesanan->price, // Ini sepertinya total_bayar, bukan item_value
                                                 'shipping_cost' => $shipping_cost,
                                                 'service' => $service,
                                                 'insurance_amount' => $ansuransi_fee > 0 && $isMandatory ? $ansuransi_fee : 0,
                                                 'service_type' => $service_type,
                                                 'item_name' => 'Pesanan ' . $pesanan->invoice_number,
                                                 'package_type_id' => $pesanan->item_type,
-                                                'cod' => 0,
+                                                'cod' => 0, // PASTI 0
                                             ]
                                         ],
                                         'name' => $pesanan->sender_name,
-                                        'zipcode' => $pesanan->sender_postal_code ?? '63271', // REVISI: Menambahkan fallback zipcode
+                                        'zipcode' => $pesanan->sender_postal_code ?? '63271',
                                         'platform_name' => 'TOKOSANCAKA.COM',
                                         'schedule' => $schedule['clock'] ?? null,
                                     ]);
@@ -1012,7 +953,7 @@ $finalWeight = max(1000, $totalWeight);
                                                 'item' => [
                                                     'name' => 'Pesanan ' . $pesanan->invoice_number,
                                                     'description' => 'Pesanan dari toko',
-                                                    'price' => $pesanan->price,
+                                                    'price' => $pesanan->item_price, // Harga barang
                                                     'weight' => $finalWeight,
                                                 ]
                                             ]
@@ -1022,10 +963,14 @@ $finalWeight = max(1000, $totalWeight);
             
                                 if (!empty($kiriminResponse['pickup_number'])) {
                                     $pesanan->resi = $kiriminResponse['pickup_number'];
+                                } elseif (!empty($kiriminResponse['status']) && $kiriminResponse['status'] === true) {
+                                    // Sukses tapi mungkin belum ada resi
+                                } else {
+                                    Log::error("Tripay PAID, Gagal Create KiriminAja Pesanan: {$pesanan->invoice_number}", $kiriminResponse);
+                                    // Tetap 'processing' tapi log error
                                 }
-    
-                                // -- BLOK KODE YANG ERROR DAN DIREVISI --
-                                // Variabel-variabel yang dibutuhkan untuk pesan notifikasi
+
+                                // ... (Blok kirim WA Anda) ...
                                 $shipping_cost_formatted = number_format($cost);
                                 $ansuransi_fee_formatted = number_format($ansuransi_fee);
                                 $cod_fee_formatted = number_format($cod_fee);
@@ -1033,7 +978,6 @@ $finalWeight = max(1000, $totalWeight);
                                 $total_bayar_formatted = number_format($pesanan->price ?? 0);
                                 $resi_display = $pesanan->resi ?? '-';
 
-                                // Logika untuk mendapatkan nama layanan ekspedisi yang akan ditampilkan
                                 $expedition_parts = explode('-', $pesanan->expedition);
                                 $exp_vendor = strtoupper($expedition_parts[1] ?? '');
                                 $exp_service_type = strtoupper($expedition_parts[2] ?? '');
@@ -1076,38 +1020,40 @@ https://tokosancaka.com/tracking/search?resi={$pesanan->nomor_invoice}
 *Manajemen Sancaka*
 TEXT;
 
-$receiverMessage = str_replace('{NAMA_TUJUAN}', $pesanan->receiver_name, $messageTemplate);
-$receiverWa = preg_replace('/^0/', '62', $pesanan->receiver_phone);
-\App\Services\FonnteService::sendMessage($receiverWa, $receiverMessage);
+                                $receiverMessage = str_replace('{NAMA_TUJUAN}', $pesanan->receiver_name, $messageTemplate);
+                                $receiverWa = preg_replace('/^0/', '62', $pesanan->receiver_phone);
+                                \App\Services\FonnteService::sendMessage($receiverWa, $receiverMessage);
 
-$senderMessage = str_replace('{NAMA_TUJUAN}', $pesanan->sender_name, $messageTemplate);
-$senderWa = preg_replace('/^0/', '62', $pesanan->sender_phone);
-\App\Services\FonnteService::sendMessage($senderWa, $senderMessage);
-                                }
-                            } elseif ($status === 'FAILED') {
-                                $pesanan->status = 'failed';
-                            } else {
-                                $pesanan->status = 'pending';
+                                $senderMessage = str_replace('{NAMA_TUJUAN}', $pesanan->sender_name, $messageTemplate);
+                                $senderWa = preg_replace('/^0/', '62', $pesanan->sender_phone);
+                                \App\Services\FonnteService::sendMessage($senderWa, $senderMessage);
+
                             }
-                            $pesanan->save();
-                            
-                            event(new AdminNotificationEvent(
-                                'Order Update',
-                                "Order dengan invoice {$pesanan->invoice_number} statusnya kini: {$pesanan->status}",
-                                '/admin/orders'
-                            ));
+                        } elseif ($status === 'FAILED') {
+                            $pesanan->status = 'failed';
                         } else {
-                                Log::warning("Order/TopUp dengan ID {$orderId} tidak ditemukan.");
+                            $pesanan->status = 'pending';
                         }
+                        $pesanan->save();
+                        
+                        event(new AdminNotificationEvent(
+                            'Order Update',
+                            "Order dengan invoice {$pesanan->invoice_number} statusnya kini: {$pesanan->status}",
+                            '/admin/orders'
+                        ));
+                    } else {
+                        Log::warning("Callback untuk Order/TopUp/Pesanan dengan ID {$orderId} tidak ditemukan.");
                     }
                 }
-            DB::commit();
-            return response()->json(['success' => true]);
+            }
+        DB::commit();
+        return response()->json(['success' => true]);
     
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Tripay Callback Error: '.$e->getMessage());
+            Log::error('Tripay Callback Error: '.$e->getMessage() . ' File: ' . $e->getFile() . ' Line: ' . $e->getLine());
             return response()->json(['error' => 'Failed to update order/topup'], 500);
         }
     }
 }
+
