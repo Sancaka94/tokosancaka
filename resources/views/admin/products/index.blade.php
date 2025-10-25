@@ -93,7 +93,11 @@
                 { data: 'DT_RowIndex', name: 'DT_RowIndex', orderable: false, searchable: false },
                 { data: 'image', name: 'image', orderable: false, searchable: false },
                 { data: 'name', name: 'name' }, // <-- DIUBAH (sebelumnya 'id')
-                { data: 'category', name: 'category', orderable: false, searchable: false }, // <-- DITAMBAHKAN
+                // --- PERUBAHAN DI SINI ---
+                // Kita gunakan 'category.name' untuk mengakses properti 'name' dari objek 'category'
+                // 'defaultContent' digunakan jika data kategori null/tidak ada
+                { data: 'category.name', name: 'category.name', defaultContent: 'Belum ada kategori', orderable: false, searchable: false },
+                // --- BATAS PERUBAHAN ---
                 { data: 'price', name: 'price' },
                 { data: 'stock', name: 'stock' },
                 { data: 'status_badge', name: 'status', orderable: false, searchable: false },
@@ -119,3 +123,4 @@
         }
     </script>
 @endpush
+
