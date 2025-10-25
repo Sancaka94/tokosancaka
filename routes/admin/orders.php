@@ -63,22 +63,14 @@ Route::get('/orders-report/pdf', [AdminOrderController::class, 'exportReport'])-
 // URL: /admin/chat/start?recipient={user_id}&sender={store_user_id}
 // Nama: admin.chat.start
 // Anda perlu membuat ChatController dan method startChat ini
-Route::get('/chat/start', function(Request $request) {
-    // Pastikan ChatController di-import jika digunakan
-    // use App\Http\Controllers\Admin\ChatController; 
-    
+Route::get('/chat/start', function(Illuminate\Http\Request $request) {
     // Logika untuk menampilkan halaman chat atau redirect ke chat yang ada
     // Contoh: return app(ChatController::class)->startChat($request); 
     $recipientId = $request->query('recipient');
     $senderId = $request->query('sender');
-    
-    // Implementasi logika chat di sini atau panggil controller
-    // Misalnya, redirect ke halaman chat dengan parameter:
-    // return redirect()->route('admin.chat.index', ['user' => $recipientId]); // Sesuaikan nama route chat Anda
-    
+    // Redirect atau tampilkan view chat di sini...
     return "Membuka chat antara User ID: {$recipientId} dan Sender ID: {$senderId}. (Implementasi Controller diperlukan)";
-
-})->name('chat.start'); // Nama disesuaikan
+})->name('admin.chat.start');
 
 ?>
 
