@@ -113,7 +113,7 @@
                 </div>
                 <h3 class="text-2xl font-bold text-gray-800">Hubungi Admin</h3>
                 <p class="text-gray-500 mt-2 mb-6">Anda akan diarahkan ke halaman chat untuk berbicara langsung dengan customer service kami.</p>
-                <a href="https://tokosancaka.biz.id/customer/chat" target="_blank" class="w-full block bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-semibold py-3 px-4 rounded-lg shadow-md hover:shadow-lg hover:from-cyan-600 hover:to-blue-600 transition-all duration-300 ease-in-out">
+                <a href="https://tokosancaka.com/customer/chat" target="_blank" class="w-full block bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-semibold py-3 px-4 rounded-lg shadow-md hover:shadow-lg hover:from-cyan-600 hover:to-blue-600 transition-all duration-300 ease-in-out">
                     Lanjutkan ke Chat
                 </a>
                 <button id="closeModalButton" class="w-full mt-3 bg-gray-100 text-gray-600 font-semibold py-3 px-4 rounded-lg hover:bg-gray-200 transition-colors duration-300">
