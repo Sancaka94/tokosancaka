@@ -143,6 +143,19 @@ class ChatController extends Controller
         }
     }
 
-    // Tambahkan method lain jika perlu...
+      public function start(Request $request)
+    {
+        $userId = $request->query('user_id');
+        if (!$userId) {
+            return redirect()->back()->with('error', 'User tidak ditemukan.');
+        }
+
+        $user = User::find($userId);
+        if (!$user) {
+            return redirect()->back()->with('error', 'Data penerima tidak ditemukan.');
+        }
+
+        return view('admin.chat.start', compact('user'));
+    }
 }
 
