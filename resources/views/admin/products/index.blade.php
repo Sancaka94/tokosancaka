@@ -33,6 +33,22 @@
         </div>
     @endif
 
+    <!-- --- [BARU] Filter Kategori --- -->
+    <div class="mb-4">
+        <label for="category_filter" class="block text-sm font-medium text-gray-700">Filter Berdasarkan Kategori:</label>
+        <select id="category_filter" name="category_filter" class="form-select mt-1 block w-full md:w-1/3 border-gray-300 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+            <option value="">Semua Kategori</option>
+            {{-- Asumsi variabel $categories dikirim dari Controller --}}
+            @isset($categories)
+                @foreach($categories as $category)
+                    <option value="{{ $category->id }}">{{ $category->name }}</option>
+                @endforeach
+            @endisset
+        </select>
+    </div>
+    <!-- --- [AKHIR] Filter Kategori --- -->
+
+
     {{-- Tabel akan diisi oleh DataTables --}}
     <div class="overflow-x-auto">
         <table class="table table-bordered product-table w-full" id="product-table">
@@ -41,7 +57,7 @@
                     <th class="w-10">No</th>
                     <th class="w-24">Gambar</th>
                     <th>Nama Produk</th>
-                    <th>Kategori</th> <!-- KOLOM BARU DITAMBAHKAN -->
+                    <th>Kategori</th>
                     <th>Harga</th>
                     <th class="w-20">Stok</th>
                     <th class="w-24">Status</th>
@@ -85,25 +101,37 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
-        $('#product-table').DataTable({
+        // Simpan instance DataTables ke dalam variabel
+        var table = $('#product-table').DataTable({
             processing: true,
             serverSide: true,
-            ajax: "{{ route('admin.products.data') }}", // Panggil route baru khusus JSON
+            // --- [PERUBAHAN] Ubah 'ajax' menjadi objek ---
+            ajax: {
+                url: "{{ route('admin.products.data') }}",
+                data: function(d) {
+                    // Tambahkan data filter kategori ke request
+                    d.category_id = $('#category_filter').val();
+                }
+            },
+            // --- [AKHIR PERUBAHAN] ---
             columns: [
                 { data: 'DT_RowIndex', name: 'DT_RowIndex', orderable: false, searchable: false },
                 { data: 'image', name: 'image', orderable: false, searchable: false },
-                { data: 'name', name: 'name' }, // <-- DIUBAH (sebelumnya 'id')
-                // --- PERUBAHAN DI SINI ---
-                // Kita gunakan 'category.name' untuk mengakses properti 'name' dari objek 'category'
-                // 'defaultContent' digunakan jika data kategori null/tidak ada
+                { data: 'name', name: 'name' },
                 { data: 'category.name', name: 'category.name', defaultContent: 'Belum ada kategori', orderable: false, searchable: false },
-                // --- BATAS PERUBAHAN ---
                 { data: 'price', name: 'price' },
                 { data: 'stock', name: 'stock' },
                 { data: 'status_badge', name: 'status', orderable: false, searchable: false },
                 { data: 'action', name: 'action', orderable: false, searchable: false },
             ]
         });
+
+        // --- [BARU] Tambahkan event listener untuk filter ---
+        $('#category_filter').on('change', function() {
+            // Muat ulang data tabel saat filter diubah
+            table.ajax.reload();
+        });
+        // --- [AKHIR BARU] ---
 
 
         // --- FUNGSI UNTUK MODAL ---
