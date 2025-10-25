@@ -1,123 +1,121 @@
+{{-- resources/views/admin/products/index.blade.php --}}
+
 @extends('layouts.admin')
 
 @section('title', 'Manajemen Produk')
 @section('page-title', 'Manajemen Produk')
 
 @push('styles')
-    {{-- CSS DataTables + Bootstrap --}}
+    {{-- CSS untuk DataTables --}}
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 @endpush
 
 @section('content')
-<div class="bg-white p-4 rounded shadow-sm">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="h5 fw-semibold mb-0">Daftar Semua Produk</h2>
-        <a href="{{ route('admin.products.create') }}" class="btn btn-primary btn-sm">
-            <i class="fa fa-plus me-1"></i> Tambah Produk Baru
+<div class="bg-white p-6 rounded-lg shadow-md">
+    <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-semibold">Daftar Semua Produk</h2>
+        <a href="{{ route('admin.products.create') }}" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 text-sm font-medium">
+            Tambah Produk Baru
         </a>
     </div>
 
     {{-- Notifikasi --}}
     @if (session('success'))
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <i class="fa fa-check-circle me-2"></i> {{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-4" role="alert">
+            <p>{{ session('success') }}</p>
         </div>
     @endif
 
-    {{-- Tabel Produk --}}
-    <div class="table-responsive">
-        <table class="table table-bordered table-striped align-middle" id="product-table" width="100%">
-            <thead class="table-light">
+    {{-- Tabel akan diisi oleh DataTables --}}
+    <div class="overflow-x-auto">
+        <table class="table table-bordered product-table w-full" id="product-table">
+            <thead class="bg-gray-50">
                 <tr>
-                    <th style="width:5%">No</th>
-                    <th style="width:10%">Gambar</th>
+                    <th class="w-10">No</th>
+                    <th class="w-24">Gambar</th>
                     <th>Nama Produk</th>
-                    <th>Kategori</th>
+                    <th>Kategori</th> <!-- KOLOM BARU DITAMBAHKAN -->
                     <th>Harga</th>
-                    <th>Stok</th>
-                    <th>Status</th>
-                    <th style="width:15%">Aksi</th>
+                    <th class="w-20">Stok</th>
+                    <th class="w-24">Status</th>
+                    <th class="w-48">Aksi</th>
                 </tr>
             </thead>
-            <tbody></tbody>
+            <tbody>
+                {{-- Isi tabel akan dimuat oleh JavaScript --}}
+            </tbody>
         </table>
     </div>
 </div>
 
-{{-- Modal Restock --}}
-<div id="restockModal" class="modal fade" tabindex="-1" aria-labelledby="restockLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <form id="restockForm" action="" method="POST">
-                @csrf
-                <div class="modal-header">
-                    <h5 class="modal-title" id="restockLabel">Restock Produk</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-
-                <div class="modal-body">
-                    <p>Anda akan menambahkan stok untuk produk: <strong id="productName"></strong></p>
-                    <div class="mb-3">
-                        <label for="stock" class="form-label">Jumlah Stok Baru</label>
-                        <input type="number" name="stock" id="stock" class="form-control" min="1" required>
-                    </div>
-                </div>
-
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-primary">Simpan Stok</button>
-                </div>
-            </form>
-        </div>
+<!-- Modal Restock -->
+<div id="restockModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 z-50 hidden">
+    <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+        <form id="restockForm" action="" method="POST">
+            @csrf
+            @method('POST') {{-- Method untuk restock adalah POST --}}
+            <h3 class="text-xl font-semibold mb-4">Restock Produk</h3>
+            <p class="mb-4">Anda akan menambahkan stok untuk produk: <strong id="productName"></strong></p>
+            <div>
+                <label for="stock" class="block text-sm font-medium text-gray-700">Jumlah Stok Baru</label>
+                <input type="number" name="stock" id="stock" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required min="1">
+            </div>
+            <div class="flex justify-end gap-3 mt-6">
+                <button type="button" onclick="closeModal('restockModal')" class="bg-gray-200 px-4 py-2 rounded-md">Batal</button>
+                <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-md">Simpan Stok</button>
+            </div>
+        </form>
     </div>
 </div>
 @endsection
 
 @push('scripts')
-    {{-- JS jQuery + DataTables + Bootstrap --}}
+    {{-- JavaScript untuk jQuery & DataTables --}}
     <script src="https://code.jquery.com/jquery-3.7.0.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+    <!-- Bootstrap Bundle JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
-        $(document).ready(function () {
-            const table = $('#product-table').DataTable({
-                processing: true,
-                serverSide: true,
-                ajax: "{{ route('admin.products.data') }}",
-                columns: [
-                    { data: 'DT_RowIndex', name: 'DT_RowIndex', orderable: false, searchable: false },
-                    { data: 'image', name: 'image', orderable: false, searchable: false },
-                    { data: 'name', name: 'name' },
-                    { data: 'category_name', name: 'category_name' },
-                    { data: 'price', name: 'price' },
-                    { data: 'stock', name: 'stock' },
-                    { data: 'status_badge', name: 'status', orderable: false, searchable: false },
-                    { data: 'action', name: 'action', orderable: false, searchable: false },
-                ],
-                order: [[2, 'asc']],
-                language: {
-                    search: "Cari:",
-                    lengthMenu: "Tampilkan _MENU_ data",
-                    info: "Menampilkan _START_ - _END_ dari _TOTAL_ data",
-                    paginate: { next: ">", previous: "<" },
-                    processing: "Memuat data..."
-                }
-            });
-
-            // Modal Restock
-            window.openRestockModal = function (productId, productName) {
-                const form = document.getElementById('restockForm');
-                const nameEl = document.getElementById('productName');
-                form.action = `{{ url('admin/products') }}/${productId}/restock`;
-                nameEl.textContent = productName;
-                const modal = new bootstrap.Modal(document.getElementById('restockModal'));
-                modal.show();
-            }
+        $('#product-table').DataTable({
+            processing: true,
+            serverSide: true,
+            ajax: "{{ route('admin.products.data') }}", // Panggil route baru khusus JSON
+            columns: [
+                { data: 'DT_RowIndex', name: 'DT_RowIndex', orderable: false, searchable: false },
+                { data: 'image', name: 'image', orderable: false, searchable: false },
+                { data: 'name', name: 'name' }, // <-- DIUBAH (sebelumnya 'id')
+                { data: 'category', name: 'category', orderable: false, searchable: false }, // <-- DITAMBAHKAN
+                { data: 'price', name: 'price' },
+                { data: 'stock', name: 'stock' },
+                { data: 'status_badge', name: 'status', orderable: false, searchable: false },
+                { data: 'action', name: 'action', orderable: false, searchable: false },
+            ]
         });
+
+
+        // --- FUNGSI UNTUK MODAL ---
+        function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+        function openRestockModal(productId, productName) {
+            const form = document.getElementById('restockForm');
+            const nameEl = document.getElementById('productName');
+            
+            // Membuat URL action yang benar
+            const url = `{{ url('admin/products') }}/${productId}/restock`;
+            form.action = url;
+            
+            nameEl.textContent = productName;
+            openModal('restockModal');
+        }
     </script>
 @endpush
