@@ -155,7 +155,7 @@ class ChatController extends Controller
             return redirect()->back()->with('error', 'Data penerima tidak ditemukan.');
         }
 
-        return view('admin.chat.start', compact('user'));
+        return view('admin.chat.index', compact('user'));
     }
 }
 
