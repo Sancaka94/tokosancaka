@@ -64,7 +64,8 @@ Route::get('/orders-report/pdf', [AdminOrderController::class, 'exportReport'])-
 // URL: /admin/chat/start?recipient={user_id}&sender={store_user_id}
 // Nama: admin.chat.start
 // Anda perlu membuat ChatController dan method startChat ini
-Route::get('/chat/start', [ChatController::class, 'startChat'])->name('admin.chat.start');
+Route::get('/chat/start', [ChatController::class, 'start'])->name('chat.start');
+
 
 ?>
 
