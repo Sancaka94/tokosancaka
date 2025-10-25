@@ -135,7 +135,7 @@ class CartController extends Controller
                     "image_url"  => $itemImageUrl, // Simpan URL gambar
                     // Anda bisa tambahkan data lain jika perlu, misal slug, weight
                     "slug"       => $product->slug,
-                    // "weight" => $variantId ? ($variant->weight ?? $product->weight) : $product->weight,
+                    "weight" => $variantId ? ($variant->weight ?? $product->weight) : $product->weight,
                 ];
             }
 
