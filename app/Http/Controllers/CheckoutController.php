@@ -7,17 +7,21 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\Order;
 use App\Models\OrderItem;
 use Illuminate\Support\Facades\DB;
-use App\Http\Controllers\DanaController;
 use Illuminate\Support\Facades\Log;
 use App\Models\TopUp;
-use App\Models\User;
+use App\Models\User; // Pastikan model User diimport
+use App\Models\Store; // Import model Store
 use App\Events\SaldoUpdated;
 use App\Events\AdminNotificationEvent;
 use App\Services\KiriminAjaService;
 use App\Models\Product;
+use App\Models\ProductVariant; // Import ProductVariant
 use Illuminate\Support\Facades\Http;
-use App\Models\Pesanan;
+use App\Models\Pesanan; // Asumsi model ini ada
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Route; // Pastikan Route facade diimport
+use Illuminate\Validation\ValidationException;
+use Illuminate\Validation\Rule; // Import Rule
 
 class CheckoutController extends Controller
 {
