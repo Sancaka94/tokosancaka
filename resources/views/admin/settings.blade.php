@@ -85,7 +85,7 @@
                     <!-- Form Update Profil -->
                     <div class="md:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg">
                         <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Informasi Profil</h3>
-                        {{-- [PERBAIKAN] Pastikan route ini ada dan mengarah ke method update profil di controller --}}
+                        {{-- Pastikan route ini ada dan mengarah ke method update profil di controller --}}
                         <form action="{{ route('admin.settings.profile.update') }}" method="POST" enctype="multipart/form-data" x-data="{ photoName: null, photoPreview: null }">
                             @csrf
                             @method('PUT') {{-- Gunakan PUT atau PATCH sesuai definisi route Anda --}}
@@ -96,13 +96,23 @@
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Foto Profil / Logo Toko</label>
                                     <div class="mt-1 flex items-center space-x-4">
                                         <span class="inline-block h-16 w-16 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-700">
-                                            {{-- [PERBAIKAN] Gunakan $user dan sesuaikan nama field (misal: store_logo_path atau photo_profile) --}}
+                                            {{-- [PERBAIKAN] Pindahkan logika PHP ke sini --}}
                                             @php
                                                 // Prioritaskan photo_profile jika ada, fallback ke store_logo_path
-                                                $profilePhotoPath = $user->photo_profile ?? $user->store_logo_path;
-                                                $profilePhotoUrl = $profilePhotoPath ? Storage::url($profilePhotoPath) : 'https://ui-avatars.com/api/?name=' . urlencode($user->nama_lengkap) . '&color=7F9CF5&background=EBF4FF';
+                                                // Pastikan $user tersedia (sudah dikirim dari controller)
+                                                if (isset($user)) {
+                                                    $profilePhotoPath = $user->photo_profile ?? $user->store_logo_path;
+                                                    // Gunakan Storage facade dengan benar
+                                                    $profilePhotoUrl = $profilePhotoPath && Illuminate\Support\Facades\Storage::disk('public')->exists($profilePhotoPath)
+                                                                        ? Illuminate\Support\Facades\Storage::url($profilePhotoPath)
+                                                                        : 'https://ui-avatars.com/api/?name=' . urlencode($user->nama_lengkap ?? 'User') . '&color=7F9CF5&background=EBF4FF';
+                                                } else {
+                                                    // Fallback jika $user tidak ada (seharusnya tidak terjadi)
+                                                    $profilePhotoUrl = 'https://ui-avatars.com/api/?name=Error&color=7F9CF5&background=EBF4FF';
+                                                }
                                             @endphp
                                             <template x-if="!photoPreview">
+                                                {{-- Tampilkan gambar yang sudah ada atau default avatar --}}
                                                 <img class="h-full w-full object-cover text-gray-300" src="{{ $profilePhotoUrl }}" alt="Profil">
                                             </template>
                                             <template x-if="photoPreview">
@@ -110,13 +120,18 @@
                                                 <span class="block w-full h-full bg-cover bg-no-repeat bg-center rounded-full" :style="'background-image: url(\'' + photoPreview + '\');'"></span>
                                             </template>
                                         </span>
-                                        {{-- [PERBAIKAN] Sesuaikan 'name' input jika perlu (misal 'store_logo_path') --}}
+                                        {{-- Sesuaikan 'name' input jika perlu (misal 'store_logo_path') --}}
                                         <input type="file" name="photo_profile" id="photo_profile" class="hidden" accept="image/jpeg,image/png,image/webp,image/jpg"
                                                @change="
-                                                   photoName = $event.target.files[0].name;
-                                                   const reader = new FileReader();
-                                                   reader.onload = (e) => { photoPreview = e.target.result; };
-                                                   reader.readAsDataURL($event.target.files[0]);
+                                                   if ($event.target.files.length > 0) { // Pastikan file dipilih
+                                                       photoName = $event.target.files[0].name;
+                                                       const reader = new FileReader();
+                                                       reader.onload = (e) => { photoPreview = e.target.result; };
+                                                       reader.readAsDataURL($event.target.files[0]);
+                                                   } else { // Jika batal pilih file
+                                                       photoPreview = null;
+                                                       photoName = null;
+                                                   }
                                                ">
                                         <label for="photo_profile" class="cursor-pointer py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
                                             Ganti Foto
@@ -125,43 +140,43 @@
                                      @error('photo_profile') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
                                 </div>
 
-                                {{-- [PERBAIKAN] Gunakan $user dan nama kolom dari tabel Pengguna --}}
+                                {{-- Gunakan $user dan nama kolom dari tabel Pengguna --}}
                                 <div>
                                     <label for="nama_lengkap" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nama Lengkap</label>
-                                    <input type="text" name="nama_lengkap" id="nama_lengkap" value="{{ old('nama_lengkap', $user->nama_lengkap) }}" required
+                                    <input type="text" name="nama_lengkap" id="nama_lengkap" value="{{ old('nama_lengkap', $user->nama_lengkap ?? '') }}" required {{-- Tambah default '' --}}
                                            class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                                      @error('nama_lengkap') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
                                 </div>
                                 <div>
                                     <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Alamat Email</label>
-                                    <input type="email" name="email" id="email" value="{{ old('email', $user->email) }}" required
+                                    <input type="email" name="email" id="email" value="{{ old('email', $user->email ?? '') }}" required {{-- Tambah default '' --}}
                                            class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                                      @error('email') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
                                 </div>
                                 <div>
                                     <label for="no_wa" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nomor WA</label>
-                                    <input type="text" name="no_wa" id="no_wa" value="{{ old('no_wa', $user->no_wa) }}"
+                                    <input type="text" name="no_wa" id="no_wa" value="{{ old('no_wa', $user->no_wa ?? '') }}" {{-- Tambah default '' --}}
                                            class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="Contoh: 08123456789">
                                     @error('no_wa') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
                                 </div>
 
-                                {{-- Tampilkan field Store Name & Logo hanya jika user adalah Seller --}}
-                                {{-- @if($user->role === 'Seller') --}}
-                                {{--
+                                {{-- Tampilkan field Store Name hanya jika user adalah Seller dan punya kolom store_name --}}
+                                {{-- @if($user->role === 'Seller' && isset($user->store_name))
                                 <div>
                                     <label for="store_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nama Toko</label>
                                     <input type="text" name="store_name" id="store_name" value="{{ old('store_name', $user->store_name) }}"
                                            class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                                     @error('store_name') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
                                 </div>
-                                --}}
-                                {{-- @endif --}}
+                                @endif --}}
 
+
+                                {{-- Alamat Detail jika diperlukan --}}
                                 {{--
                                 <div>
                                     <label for="address_detail" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Alamat Detail</label>
                                     <textarea name="address_detail" id="address_detail" rows="3"
-                                              class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">{{ old('address_detail', $user->address_detail) }}</textarea>
+                                              class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">{{ old('address_detail', $user->address_detail ?? '') }}</textarea>
                                      @error('address_detail') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
                                 </div>
                                 --}}
@@ -178,7 +193,7 @@
                     <!-- Form Update Password -->
                     <div class="md:col-span-1 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg">
                         <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Ubah Password</h3>
-                         {{-- [PERBAIKAN] Pastikan route ini ada dan mengarah ke method update password di controller --}}
+                         {{-- Pastikan route ini ada dan mengarah ke method update password di controller --}}
                         <form action="{{ route('admin.settings.password.update') }}" method="POST">
                             @csrf
                             @method('PUT') {{-- Gunakan PUT atau PATCH --}}
@@ -215,7 +230,7 @@
             {{--
             <div x-show="activeTab === 'slider'" x-cloak>
                  @php
-                     // [PERBAIKAN] Ambil data slider dari settings atau model terpisah
+                     // Ambil data slider dari settings atau model terpisah
                      // Contoh jika disimpan di settings table dengan key 'dashboard_slider' (format JSON)
                      $sliderJson = App\Models\Setting::where('key', 'dashboard_slider')->value('value') ?? '[]';
                      try {
@@ -229,7 +244,7 @@
                 <div x-data='{ slides: @json($slides) }' class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg">
                     <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Pengaturan Slider Informasi</h3>
                     <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">Atur gambar dan teks yang akan ditampilkan di slider dashboard admin.</p>
-                     <!-- [PERBAIKAN] Pastikan route ini ada dan mengarah ke method update slider di controller -->
+                     <!-- Pastikan route ini ada dan mengarah ke method update slider di controller -->
                     <form action="{{ route('admin.settings.slider.update') }}" method="POST">
                         @csrf
                         @method('PUT')
@@ -279,12 +294,12 @@
             {{--
              <div x-show="activeTab === 'customer'" x-cloak>
                  @php
-                     // [PERBAIKAN] Ambil data auto_freeze dari settings
+                     // Ambil data auto_freeze dari settings
                      $autoFreeze = (bool) App\Models\Setting::where('key', 'auto_freeze')->value('value');
                  @endphp
                  <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg">
                     <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Pengaturan Umum Pelanggan</h3>
-                     <!-- [PERBAIKAN] Pastikan route ini ada dan mengarah ke method update general settings di controller -->
+                     <!-- Pastikan route ini ada dan mengarah ke method update general settings di controller -->
                      <form action="{{ route('admin.settings.general.update') }}" method="POST">
                         @csrf
                         @method('PUT')
@@ -323,6 +338,12 @@
         button.addEventListener('click', function() {
             this.closest('.alert-dismissible').style.display = 'none';
         });
+    });
+
+    // Perbaiki script AlpineJS untuk preview foto profil
+    // Pastikan Alpine di-defer agar DOM siap
+    document.addEventListener('alpine:init', () => {
+        // Tidak perlu definisi khusus di sini jika x-data sudah inline
     });
 </script>
 @endpush
