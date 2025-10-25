@@ -65,7 +65,18 @@ class CheckoutController extends Controller
 
         $user  = Auth::user();
         $firstProduct = Product::find(array_key_first($cart));
-        $store = $firstProduct->store;
+        
+        // --- PERBAIKAN ERROR 'store' ---
+        if (!$firstProduct) {
+            // Jika produk tidak ditemukan (mungkin sudah dihapus atau ID-nya salah),
+            // bersihkan keranjang dan redirect kembali.
+            session()->forget('cart');
+            return redirect()->route('cart.index')
+                ->with('error', 'Produk di keranjang Anda tidak lagi tersedia. Keranjang telah dikosongkan.');
+        }
+        // --- AKHIR PERBAIKAN ---
+
+        $store = $firstProduct->store; // Baris ini sekarang aman
         
          if (empty($store->village) || empty($store->district) || empty($store->regency) || empty($store->province)) {
              return redirect()->route('cart.index')
