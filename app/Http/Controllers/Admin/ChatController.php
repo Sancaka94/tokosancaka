@@ -9,6 +9,7 @@ use App\Models\Message;      // Model untuk pesan chat
 use Illuminate\Support\Facades\Auth; // Untuk mendapatkan user yang login
 use Illuminate\Support\Facades\Log; // Untuk logging (opsional)
 use Illuminate\Database\Eloquent\ModelNotFoundException; // Untuk menangani error findOrFail
+use App\Models\Pengguna; // ⬅️ tambahkan baris ini
 
 class ChatController extends Controller
 {
