@@ -143,27 +143,15 @@ class ChatController extends Controller
             return response()->json(['status' => 'Gagal mengirim pesan.'], 500); // Kirim response error server
         }
     }
-
-    public function start(Request $request)
+    
+public function start(Request $request)
 {
-    $idPengguna = $request->query('id_pengguna');
+    $id_pengguna = $request->query('id_pengguna');
 
-    // Ambil data penerima berdasarkan id_pengguna
-    $receiver = Pengguna::where('id_pengguna', $idPengguna)->first();
-
-    if (!$receiver) {
-        return redirect()->route('admin.chat.index')->with('error', 'Pelanggan tidak ditemukan.');
-    }
-
-    // Ambil semua pengguna lain untuk daftar chat
-    $users = Pengguna::where('id_pengguna', '!=', auth()->user()->id_pengguna)->get();
-
-    // 👇 tambahkan agar view tahu siapa yang aktif
-    return view('admin.chat.index', [
-        'users' => $users,
-        'activeReceiver' => $receiver, // <- dikirim ke Blade
-    ]);
+    // Redirect ke halaman chat utama dengan parameter 'chat_with'
+    return redirect()->route('admin.chat.index', ['chat_with' => $id_pengguna]);
 }
+
 
 
 }

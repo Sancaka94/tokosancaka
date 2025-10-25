@@ -304,8 +304,8 @@
 
                                         {{-- Chat Penerima --}}
                                         <a href="{{ $customerUserId ? route('admin.chat.start', ['id_pengguna' => $customerUserId]) : '#' }}" target="_blank" class="btn-chat" title="Chat Penerima" @disabled(!$customerUserId)>
-                                             <i class="fas fa-comment fa-fw"></i>
-                                         </a>
+                                            <i class="fas fa-comment fa-fw"></i>
+                                        </a>
 
                                         {{-- Cancel/Hapus --}}
                                         <form action="{{ route('admin.orders.cancel', $invoice) }}" method="POST" onsubmit="return confirm('Anda yakin ingin membatalkan pesanan ini?')">
