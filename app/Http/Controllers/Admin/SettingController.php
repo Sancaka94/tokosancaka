@@ -7,7 +7,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Setting;
 use App\Models\BannerEtalase; // Pastikan model ini ada dan benar
-use App\Models\User; // Import model User
+use App\Models\User; // Import model User (Asumsi model Anda bernama User)
 use Illuminate\Support\Facades\Storage;
 use Exception;
 use Illuminate\Support\Facades\Log; // Ditambahkan untuk logging
@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Auth; // Untuk mendapatkan user yang login
 use Illuminate\Support\Facades\Http; // Untuk geocoding
 use App\Services\KiriminAjaService; // Import KiriminAjaService
 use Illuminate\Validation\ValidationException; // Untuk error validasi
+use Illuminate\Support\Facades\Route; // Make sure Route facade is imported
 
 class SettingController extends Controller
 {
@@ -26,7 +27,6 @@ class SettingController extends Controller
         try {
             $user = Auth::user(); // Ambil data user yang sedang login
             if (!$user) {
-                // Handle jika user tidak terautentikasi (seharusnya tidak terjadi jika ada middleware)
                  return redirect()->route('login')->with('error', 'Silakan login terlebih dahulu.');
             }
 
@@ -102,7 +102,7 @@ class SettingController extends Controller
             Log::info("Stored new banner image: " . $path);
             return back()->with('success', 'Banner berhasil ditambahkan');
         } catch (ValidationException $e) {
-            return back()->withErrors($e->errors())->withInput(); // Kembali dengan error validasi
+            return back()->withErrors($e->errors())->withInput();
         } catch (Exception $e) {
              Log::error('Failed to add banner: '.$e->getMessage());
             return back()->with('error', 'Gagal menambahkan banner: '.$e->getMessage());
@@ -130,7 +130,7 @@ class SettingController extends Controller
             }
             return back()->with('success', 'Banner berhasil diperbarui');
         } catch (ValidationException $e) {
-            return back()->withErrors($e->errors())->withInput()->with('edit_banner_id', $banner->id); // Kirim ID banner yg error
+            return back()->withErrors($e->errors())->withInput()->with('edit_banner_id', $banner->id);
         } catch (Exception $e) {
              Log::error('Failed to update banner: '.$e->getMessage());
             return back()->with('error', 'Gagal memperbarui banner: '.$e->getMessage())->with('edit_banner_id', $banner->id);
@@ -158,11 +158,10 @@ class SettingController extends Controller
     }
 
 
-    // --- [BARU] FUNGSI UNTUK ALAMAT ---
+    // --- FUNGSI UNTUK ALAMAT ---
 
     /**
       * Mencari alamat menggunakan KiriminAja API.
-      * Dipanggil via AJAX dari view.
       */
     public function searchAddressKiriminAja(Request $request, KiriminAjaService $kiriminAja)
     {
@@ -171,13 +170,11 @@ class SettingController extends Controller
 
         try {
             $result = $kiriminAja->searchAddress($query);
-            // Log::info('KiriminAja Search Result:', ['query' => $query, 'result' => $result]); // Debugging
 
             if ($result['status'] && !empty($result['data'])) {
-                // Ambil hanya data yang relevan untuk ditampilkan
                 $simplifiedResults = collect($result['data'])->map(function ($addr) {
                     return [
-                        'text' => $addr['label'] ?? implode(', ', array_filter([$addr['village'], $addr['subdistrict'], $addr['city'], $addr['province']])), // Teks tampilan
+                        'text' => $addr['label'] ?? implode(', ', array_filter([$addr['village'], $addr['subdistrict'], $addr['city'], $addr['province']])),
                         'village' => $addr['village'],
                         'subdistrict' => $addr['subdistrict'], // Kecamatan KiriminAja
                         'city' => $addr['city'],             // Kabupaten/Kota KiriminAja
@@ -186,7 +183,7 @@ class SettingController extends Controller
                         'district_id' => $addr['district_id'],    // ID Kecamatan KiriminAja
                         'subdistrict_id' => $addr['subdistrict_id'],// ID Kelurahan KiriminAja
                     ];
-                })->take(10); // Batasi hasil
+                })->take(10);
 
                 return response()->json(['success' => true, 'data' => $simplifiedResults]);
             } else {
@@ -200,7 +197,6 @@ class SettingController extends Controller
 
      /**
       * Mendapatkan koordinat (latitude, longitude) dari alamat.
-      * Dipanggil via AJAX dari view.
       */
      public function geocodeAddress(Request $request)
      {
@@ -219,7 +215,7 @@ class SettingController extends Controller
      /**
       * Fungsi helper untuk geocoding menggunakan Nominatim.
       */
-     private function geocode($address) { // Ubah jadi private
+     private function geocode($address) {
          $url = "https://nominatim.openstreetmap.org/search";
          try {
              $response = Http::timeout(10)->withHeaders([
@@ -229,24 +225,15 @@ class SettingController extends Controller
                  'q'      => $address,
                  'format' => 'json',
                  'limit'  => 1,
-                 'countrycodes' => 'id', // Fokus ke Indonesia
-                 'addressdetails' => 1 // Minta detail alamat
+                 'countrycodes' => 'id',
+                 'addressdetails' => 1
              ]);
 
              if ($response->successful() && $response->json() && !empty($response->json()[0])) {
                   $result = $response->json()[0];
-                  // Coba ambil nama desa/kec/kab/prov dari hasil geocoding jika diperlukan
-                  // $addressDetails = $result['address'] ?? [];
-                  // $village = $addressDetails['village'] ?? $addressDetails['suburb'] ?? null;
-                  // $district = $addressDetails['city_district'] ?? $addressDetails['county'] ?? null;
-                  // $regency = $addressDetails['city'] ?? $addressDetails['state_district'] ?? null;
-                  // $province = $addressDetails['state'] ?? null;
-                  // $postcode = $addressDetails['postcode'] ?? null;
-
                  return [
                      'lat' => (float) $result['lat'],
                      'lng' => (float) $result['lon'],
-                     // 'address' => $addressDetails // Kirim detail jika perlu konfirmasi
                  ];
              } else {
                   Log::warning('Geocoding failed or returned empty.', ['address' => $address, 'status' => $response->status(), 'body' => $response->body()]);
@@ -259,7 +246,6 @@ class SettingController extends Controller
 
     /**
      * Memperbarui alamat pengguna (yang sedang login).
-     * [CATATAN] Pastikan route yang mengarah ke sini (misal: admin.settings.address.update) menggunakan method POST/PUT/PATCH dan ada di web.php
      */
     public function updateAddress(Request $request)
     {
@@ -282,7 +268,7 @@ class SettingController extends Controller
                 throw new Exception("User not authenticated.");
             }
 
-            // Update data user
+            // [PENYESUAIAN] Update data user sesuai nama kolom di tabel Pengguna
             $user->province = $validated['province'];
             $user->regency = $validated['regency'];
             $user->district = $validated['district'];
@@ -291,6 +277,7 @@ class SettingController extends Controller
             $user->address_detail = $validated['address_detail'];
             $user->latitude = $validated['latitude'];
             $user->longitude = $validated['longitude'];
+            // Asumsi nama kolom KiriminAja ID sama
             $user->kiriminaja_district_id = $validated['kiriminaja_district_id'];
             $user->kiriminaja_subdistrict_id = $validated['kiriminaja_subdistrict_id'];
 
@@ -301,9 +288,9 @@ class SettingController extends Controller
                  if ($coordinates) {
                      $user->latitude = $coordinates['lat'];
                      $user->longitude = $coordinates['lng'];
-                     Log::info("Geocoded address during update for user {$user->id}.");
+                     Log::info("Geocoded address during update for user {$user->id_pengguna}."); // Gunakan id_pengguna
                  } else {
-                     Log::warning("Failed to geocode address during update for user {$user->id}. Saving without coordinates.", ['address' => $fullAddress]);
+                     Log::warning("Failed to geocode address during update for user {$user->id_pengguna}. Saving without coordinates.", ['address' => $fullAddress]); // Gunakan id_pengguna
                  }
             }
 
