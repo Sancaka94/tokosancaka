@@ -304,7 +304,6 @@
 
                                        {{-- Chat Penerima --}}
 @php
-    // Pastikan variabel customerUserId mengacu ke kolom id_pengguna, bukan id
     $customerUserId = $order->penerima->id_pengguna ?? null;
 @endphp
 
