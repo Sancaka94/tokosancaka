@@ -1260,15 +1260,25 @@ $senderWa = preg_replace('/^0/', '62', $pesanan->sender_phone);
             }
             // } // <-- Kurung kurawal ekstra dihapus dari sini
 
-            DB::commit();
+           DB::commit();
+
             return response()->json(['success' => true]);
 
-        } catch (\Exception $e) { // <-- Kurung kurawal 'try' dipindahkan ke sini
+   
+
+        } catch (\Exception $e) {
+
             DB::rollBack();
-            Log::error('Tripay Callback Error: '.$e->getMessage(). ' in file ' . $e->getFile() . ' on line ' . $e->getLine());
+
+            Log::error('Tripay Callback Error: '.$e->getMessage());
+
             return response()->json(['error' => 'Failed to update order/topup'], 500);
+
         }
+
     }
+
+
 
 }
 
