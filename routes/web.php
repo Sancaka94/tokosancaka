@@ -46,6 +46,7 @@ use App\Http\Controllers\Customer\CategoryController; // Tambahkan ini di atas
 use App\Http\Controllers\EtalaseController;
 use App\Http\Controllers\ProductController; // Pastikan controller ini ada
 use App\Http\Controllers\Admin\CategoryAttributeController; // Import controller baru
+use App\Http\Controllers\Admin\AdminOrderController;
 
 
 
@@ -494,7 +495,13 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])
 
 
 
- 
+        // ======================================================
+        // == ✅ INCLUDE ADMIN ORDER ROUTES HERE ==
+        // ======================================================
+        // This will define admin.orders.* routes like admin.orders.index, admin.orders.data, etc.
+        require __DIR__.'/admin/orders.php';
+        // ======================================================
+
 
         
 
