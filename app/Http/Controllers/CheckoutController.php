@@ -1,23 +1,28 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\HttpControllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Order;
 use App\Models\OrderItem;
 use Illuminate\Support\Facades\DB;
-use App\Http\Controllers\DanaController;
+// use App\Http\Controllers\DanaController; // Tidak terpakai di kode Anda
 use Illuminate\Support\Facades\Log;
 use App\Models\TopUp;
 use App\Models\User;
+use App\Models\Store; // Pastikan model Store diimport
 use App\Events\SaldoUpdated;
 use App\Events\AdminNotificationEvent;
 use App\Services\KiriminAjaService;
 use App\Models\Product;
+use App\Models\ProductVariant; // Import ProductVariant
 use Illuminate\Support\Facades\Http;
 use App\Models\Pesanan;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Route; // Pastikan Route facade diimport
+use Illuminate\Validation\ValidationException; // Import ValidationException
+use Illuminate\Validation\Rule; // Import Rule
 
 class CheckoutController extends Controller
 {
@@ -64,9 +69,35 @@ class CheckoutController extends Controller
         }
 
         $user  = Auth::user();
-        $firstProduct = Product::find(array_key_first($cart));
+        // --- PERBAIKAN: Ambil ID Produk dari VALUE item pertama ---
+        $firstCartItem = reset($cart); // Ambil elemen pertama dari array cart
+        $productIdFromCart = null;
 
-        $store = $firstProduct->store; // Baris ini sekarang aman
+        if ($firstCartItem && isset($firstCartItem['product_id'])) {
+             $productIdFromCart = $firstCartItem['product_id'];
+        }
+
+        // Jika tidak ada item valid di cart atau product_id tidak ada
+        if (!$productIdFromCart) {
+             session()->forget('cart');
+             return redirect()->route('cart.index')
+                 ->with('error', 'Data keranjang tidak valid. Keranjang telah dikosongkan.');
+        }
+
+        $firstProduct = Product::find($productIdFromCart); // Cari produk berdasarkan ID yang didapat dari value
+        // --- AKHIR PERBAIKAN ---
+        
+        // --- Pemeriksaan jika produk tidak ditemukan di DB ---
+        if (!$firstProduct) {
+            // Produk mungkin sudah dihapus dari DB setelah masuk keranjang
+            session()->forget('cart');
+            return redirect()->route('cart.index')
+                ->with('error', 'Produk di keranjang Anda tidak lagi tersedia. Keranjang telah dikosongkan.');
+        }
+        // --- AKHIR Pemeriksaan ---
+
+        $store = $firstProduct->store; // Baris ini sekarang seharusnya aman
+        
         
          if (empty($store->village) || empty($store->district) || empty($store->regency) || empty($store->province)) {
              return redirect()->route('cart.index')
