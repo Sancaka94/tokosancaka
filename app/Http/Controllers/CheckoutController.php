@@ -254,11 +254,11 @@ class CheckoutController extends Controller
              'shipping_phone' => 'required|string|max:20',
              'shipping_name' => 'required|string|max:100',
              // Anda mungkin perlu validasi ulang ID kecamatan/kelurahan jika user bisa memilih alamat baru
-             // 'shipping_district_id' => 'required|integer',
-             // 'shipping_subdistrict_id' => 'required|integer',
-             // 'shipping_postal_code' => 'required|string|max:10',
-             // 'shipping_latitude' => 'nullable|numeric',
-             // 'shipping_longitude' => 'nullable|numeric',
+             'shipping_district_id' => 'required|integer',
+             'shipping_subdistrict_id' => 'required|integer',
+             'shipping_postal_code' => 'required|string|max:10',
+             'shipping_latitude' => 'nullable|numeric',
+             'shipping_longitude' => 'nullable|numeric',
         ]);
 
         $cart = session()->get('cart', []);
