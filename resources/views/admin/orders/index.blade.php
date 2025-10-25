@@ -1,89 +1,107 @@
 {{-- Halaman ini adalah view untuk 'AdminOrderController@index' --}}
-{{-- Menggunakan layout admin Tailwind CSS --}}
-@extends('layouts.admin') {{-- Pastikan nama layout ini benar dan sudah menggunakan Tailwind --}}
+{{-- Menggunakan layout admin Tailwind CSS dan Pagination Server-Side --}}
+@extends('layouts.admin') {{-- Pastikan nama layout ini benar --}}
 
-{{-- Kirim CSS tambahan --}}
+@section('title', 'Data Pesanan Masuk')
+@section('page-title', 'Data Pesanan Masuk')
+
 @push('styles')
     <!-- CSS Toastr -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
-    <!-- CSS DataTables (Minimal diperlukan) -->
-    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
-
+    {{-- CSS Khusus untuk Sticky Column dan Styling Tabel --}}
     <style>
-        /* Styling dasar DataTables agar cocok Tailwind */
-        .dataTables_wrapper .dataTables_length select {
-            padding-right: 2rem; background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e"); background-position: right 0.5rem center; background-repeat: no-repeat; background-size: 1.5em 1.5em; -webkit-appearance: none; -moz-appearance: none; appearance: none; border-color: #d1d5db; /* gray-300 */
-            width: auto; /* Agar tidak terlalu lebar */ display: inline-block; /* Agar width auto bekerja */
-            @apply shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block sm:text-sm border-gray-300 rounded-md py-2 pl-3 pr-8; /* Class Tailwind untuk input */
+        /* Container tabel agar bisa scroll horizontal */
+        .table-container {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch; /* Scrolling halus di iOS */
         }
-        .dataTables_wrapper .dataTables_filter input {
-             @apply shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md py-2 px-3 ml-2; /* Class Tailwind untuk input */
-             display: inline-block; width: auto; /* Override DataTables default */
+        /* Styling untuk kolom sticky */
+        th.sticky-col, td.sticky-col {
+            position: -webkit-sticky; /* Safari */
+            position: sticky;
+            right: 0;                /* Menempel di kanan */
+            background-color: white; /* Background solid putih untuk sel data */
+            z-index: 10;             /* Di atas kolom lain */
+            border-left: 1px solid #e5e7eb; /* Garis pemisah kiri (gray-200) */
         }
-        .dataTables_wrapper .dataTables_paginate .paginate_button {
-            padding: 0.5em 1em; margin-left: 2px; border-radius: 0.375rem; border: 1px solid transparent; @apply focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500; /* Styling focus */
+        /* Background solid untuk header sticky */
+        thead th.sticky-col {
+            background-color: #f9fafb; /* gray-50 (sesuaikan dengan thead Anda) */
+            z-index: 11; /* Di atas sel data sticky */
         }
-        .dataTables_wrapper .dataTables_paginate .paginate_button.current,
-        .dataTables_wrapper .dataTables_paginate .paginate_button.current:hover {
-            background-color: #4f46e5 !important; color: white !important; border-color: #4f46e5 !important;
+         /* Pastikan link pagination tidak tertutup sticky column */
+        .pagination-container {
+             /* Beri padding kanan jika pagination diletakkan di bawah tabel */
+             /* padding-right: 180px; */ /* Sesuaikan dengan lebar kolom sticky + padding */
         }
-        .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
-            background-color: #e5e7eb !important; border-color: #d1d5db !important; color: black !important;
-        }
-         .dataTables_wrapper .dataTables_paginate .paginate_button.disabled,
-         .dataTables_wrapper .dataTables_paginate .paginate_button.disabled:hover {
-             color: #9ca3af !important; background-color: transparent !important; border-color: transparent !important; cursor: default;
-         }
-         /* Styling untuk Toastr (opsional) */
-         .toast { opacity: 0.95 !important; }
 
-        /* == CSS untuk Sticky Column Aksi == */
-        #orders-table th:last-child,
-        #orders-table td:last-child {
-            position: -webkit-sticky; /* Untuk Safari */
-            position: sticky;       /* Posisi sticky */
-            right: 0;               /* Tempel di paling kanan */
-            z-index: 10;            /* Pastikan di atas kolom lain saat scroll */
-            background-color: inherit; /* Warisi warna background dari row (biasanya putih atau abu-abu) */
+        /* Styling tambahan agar mirip contoh */
+        .table {
+             border-collapse: separate;
+             border-spacing: 0;
+             width: 100%; /* Pastikan tabel mengisi container */
         }
-        /* Beri background solid pada header sticky agar tidak transparan */
-        #orders-table thead th:last-child {
-            background-color: #f9fafb; /* gray-50 */
+        .table th, .table td {
+             border-bottom-width: 1px;
+             border-color: #e5e7eb; /* gray-200 */
+             white-space: nowrap; /* Default: jangan wrap text di sel */
+             padding: 0.75rem 1.5rem; /* Sesuaikan padding sel */
+             vertical-align: top; /* Ratakan konten ke atas */
         }
-        /* Beri border kiri pada kolom sticky agar ada pemisah visual saat scroll */
-         #orders-table th:last-child,
-         #orders-table td:last-child {
-             border-left: 1px solid #e5e7eb; /* gray-200 */
-         }
-         /* Pastikan container tabel bisa di-scroll horizontal */
-         .dataTables_wrapper {
-             overflow-x: auto;
-         }
-         /* == Akhir CSS Sticky Column == */
+         /* Kecuali kolom alamat bisa wrap */
+        .table td.address-col {
+             white-space: normal;
+        }
+        .table thead th {
+             border-top-width: 1px;
+             white-space: nowrap; /* Header jangan wrap */
+        }
+        /* Style untuk tombol filter status */
+        .filter-button {
+             @apply px-3 py-1 text-sm font-medium rounded-full transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 whitespace-nowrap;
+        }
+        .filter-button-active {
+             @apply bg-indigo-600 text-white focus:ring-indigo-500;
+        }
+        .filter-button-inactive {
+             @apply bg-gray-200 text-gray-700 hover:bg-gray-300 focus:ring-gray-400;
+        }
+        /* Styling tombol aksi agar tidak terlalu rapat */
+        .action-buttons div {
+             display: flex;
+             align-items: center;
+             gap: 0.5rem; /* Jarak antar ikon/tombol */
+             justify-content: flex-end; /* Ratakan ke kanan */
+        }
+        .action-buttons a, .action-buttons button {
+             @apply p-1 text-gray-500 hover:text-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-indigo-500 rounded; /* Styling dasar ikon aksi */
+        }
+        .action-buttons a[disabled], .action-buttons button[disabled] {
+            @apply opacity-50 cursor-not-allowed hover:text-gray-500; /* Styling disabled */
+        }
+        .action-buttons form {
+             display: inline-flex;
+             vertical-align: middle;
+        }
+        .action-buttons .btn-delete:hover {
+             @apply text-red-600; /* Warna hover khusus tombol delete */
+        }
+        .action-buttons .btn-track:hover {
+            @apply text-green-600; /* Warna hover tombol track */
+        }
+         .action-buttons .btn-print:hover {
+            @apply text-gray-800; /* Warna hover tombol print */
+        }
+         .action-buttons .btn-pdf:hover {
+            @apply text-red-600; /* Warna hover tombol pdf */
+        }
+         .action-buttons .btn-chat:hover {
+            @apply text-blue-600; /* Warna hover tombol chat */
+        }
 
-
-         /* Atur lebar kolom (sesuaikan jika perlu) */
-         #orders-table th:nth-child(1) { width: 5%; }  /* No */
-         #orders-table th:nth-child(2) { width: 15%; } /* Transaksi */
-         #orders-table th:nth-child(3) { width: 25%; } /* Alamat */
-         #orders-table th:nth-child(4) { width: 15%; } /* Ekspedisi */
-         #orders-table th:nth-child(5) { width: 15%; } /* Isi Paket */
-         #orders-table th:nth-child(6) { width: 10%; } /* Status */
-         /* Kolom Aksi dibuat sedikit lebih lebar untuk sticky */
-         #orders-table th:nth-child(7) { width: 15%; min-width: 180px; } /* Aksi, beri min-width */
-
-         #orders-table td { vertical-align: middle; } /* Vertically align cell content */
-         /* Beri class pada kolom action di JS agar bisa di-target spesifik */
-         #orders-table td.action-buttons .d-flex {
-             flex-wrap: nowrap !important; /* Paksa tombol tidak turun baris */
-             justify-content: flex-end; /* Ratakan tombol ke kanan dalam sel */
-         }
-         #orders-table td.action-buttons .btn { margin-right: 3px; } /* Jarak tombol aksi */
-         #orders-table td.action-buttons .btn:last-child { margin-right: 0; }
     </style>
 @endpush
 
-{{-- Konten Utama Halaman --}}
 @section('content')
 <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
@@ -93,51 +111,64 @@
     <!-- Card Utama -->
     <div class="bg-white shadow rounded-lg mb-6 overflow-hidden">
         {{-- Header Card: Pencarian dan Tombol Aksi --}}
-        <div class="px-6 py-4 border-b border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-4">
-
-            <!-- Formulir Pencarian Custom -->
-            <form id="search-form" class="w-full sm:w-1/2">
+        <div class="px-6 py-4 border-b border-gray-200 flex flex-col md:flex-row items-center justify-between gap-4">
+            {{-- Form Pencarian (menggunakan GET) --}}
+            <form action="{{ route('admin.orders.index') }}" method="GET" class="w-full md:w-1/3">
                 <div class="relative flex items-stretch w-full">
-                    <input type="text" id="search-query" class="block w-full px-4 py-2 text-sm text-gray-700 bg-gray-100 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Cari Resi, Invoice, Nama, atau No. HP..." aria-label="Search">
-                    <button class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-r-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" type="submit">
-                        <i class="fas fa-search fa-sm"></i>
-                    </button>
+                    <input type="text" name="search" class="block w-full px-4 py-2 pl-10 text-sm text-gray-700 bg-gray-100 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Cari Resi, Invoice, Nama..." value="{{ request('search') }}">
+                     <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
+                        <i class="fas fa-search"></i>
+                    </div>
                 </div>
+                 {{-- Hidden input untuk menjaga filter status saat search --}}
+                @if(request('status'))
+                    <input type="hidden" name="status" value="{{ request('status') }}">
+                @endif
             </form>
 
-            <!-- Tombol Aksi Kanan Atas -->
+            {{-- Tombol Aksi Kanan Atas --}}
             <div class="flex items-center gap-2 flex-shrink-0">
                 <button type="button" class="inline-flex items-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500" data-bs-toggle="modal" data-bs-target="#exportModal">
                     <i class="fas fa-download fa-sm mr-2 opacity-75"></i> Export Laporan
                 </button>
-                {{-- Tombol Tambah Pesanan (jika diperlukan) --}}
-                {{-- <a href="{{ route('admin.orders.create') }}" class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                    <i class="fas fa-plus fa-sm mr-2 opacity-75"></i> Tambah Pesanan
-                </a> --}}
+                 {{-- Tombol Tambah Pesanan (jika diperlukan) --}}
+                 {{-- <a href="{{ route('admin.orders.create') }}" class="...">...</a> --}}
             </div>
         </div>
 
-        {{-- Body Card: Tab Filter dan Tabel --}}
+        {{-- Body Card: Filter Tab dan Tabel --}}
         <div class="p-6">
+            {{-- Filter Status (link GET) --}}
+             <div class="flex flex-wrap gap-2 mb-4 border-b pb-4">
+                {{-- Tombol 'Semua' --}}
+                <a href="{{ route('admin.orders.index', request()->except('status', 'page')) }}" class="filter-button {{ !request('status') ? 'filter-button-active' : 'filter-button-inactive' }}">Semua</a>
+                {{-- Tombol Status Lain (sesuaikan 'status' dengan $statusMap di controller) --}}
+                @php
+                    // Ambil map status dari controller jika memungkinkan, atau definisikan di sini
+                    // Pastikan key cocok dengan 'data-status' di controller
+                    $statusFilters = [
+                        'pending' => 'Menunggu Bayar',
+                        'menunggu-pickup' => 'Menunggu Pickup',
+                        'diproses' => 'Diproses',
+                        'terkirim' => 'Terkirim',
+                        'selesai' => 'Selesai',
+                        'batal' => 'Batal',
+                    ];
+                @endphp
+                @foreach($statusFilters as $statusKey => $statusLabel)
+                    <a href="{{ route('admin.orders.index', array_merge(request()->query(), ['status' => $statusKey, 'page' => 1])) }}"
+                       class="filter-button {{ request('status') == $statusKey ? 'filter-button-active' : 'filter-button-inactive' }}">
+                        {{ $statusLabel }}
+                    </a>
+                @endforeach
+             </div>
 
-            <!-- Tab Filter Status (versi Tailwind) -->
-            <div class="border-b border-gray-200 mb-5">
-                <nav class="-mb-px flex space-x-6 overflow-x-auto" id="status-tabs" role="tablist">
-                    {{-- !! PENTING: Pastikan nilai `data-status` sesuai dengan $statusMap di Controller !! --}}
-                    <button data-status="" type="button" role="tab" class="whitespace-nowrap pb-3 px-1 border-b-2 font-medium text-sm text-indigo-600 border-indigo-500 focus:outline-none tab-link" aria-current="page">Semua</button>
-                    <button data-status="pending" type="button" role="tab" class="whitespace-nowrap pb-3 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 border-transparent hover:border-gray-300 focus:outline-none tab-link">Menunggu Bayar</button>
-                    <button data-status="menunggu-pickup" type="button" role="tab" class="whitespace-nowrap pb-3 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 border-transparent hover:border-gray-300 focus:outline-none tab-link">Menunggu Pickup</button>
-                    <button data-status="diproses" type="button" role="tab" class="whitespace-nowrap pb-3 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 border-transparent hover:border-gray-300 focus:outline-none tab-link">Diproses</button>
-                    <button data-status="terkirim" type="button" role="tab" class="whitespace-nowrap pb-3 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 border-transparent hover:border-gray-300 focus:outline-none tab-link">Terkirim</button>
-                    <button data-status="selesai" type="button" role="tab" class="whitespace-nowrap pb-3 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 border-transparent hover:border-gray-300 focus:outline-none tab-link">Selesai</button>
-                    <button data-status="batal" type="button" role="tab" class="whitespace-nowrap pb-3 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 border-transparent hover:border-gray-300 focus:outline-none tab-link">Batal</button>
-                </nav>
-            </div>
+             {{-- Notifikasi Sukses/Error --}}
+             @include('layouts.partials.notifications') {{-- Sesuaikan path jika perlu --}}
 
-            <!-- Tabel Data Pesanan -->
-            {{-- Div wrapper ini penting untuk scroll horizontal --}}
-            <div class="overflow-x-auto relative shadow-md sm:rounded-lg">
-                <table class="w-full text-sm text-left text-gray-500" id="orders-table"> {{-- Hapus min-w-full, ganti w-full --}}
+            {{-- Container Tabel untuk Scroll Horizontal --}}
+            <div class="table-container">
+                <table class="table w-full text-sm text-left text-gray-500">
                     <thead class="text-xs text-gray-700 uppercase bg-gray-50">
                         <tr>
                             <th scope="col" class="px-6 py-3">NO</th>
@@ -147,161 +178,221 @@
                             <th scope="col" class="px-6 py-3">ISI PAKET</th>
                             <th scope="col" class="px-6 py-3">STATUS</th>
                             {{-- Kolom Aksi (sticky) --}}
-                            <th scope="col" class="px-6 py-3 sticky right-0 bg-gray-50 border-l border-gray-200">AKSI</th>
+                            <th scope="col" class="px-6 py-3 sticky-col">AKSI</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
-                        {{-- Data akan diisi oleh DataTables --}}
+                        {{-- Loop data $orders dari controller --}}
+                        @forelse ($orders as $index => $order)
+                            <tr>
+                                {{-- No Urut (dari pagination) --}}
+                                <td class="px-6 py-4 align-top whitespace-nowrap">{{ $orders->firstItem() + $index }}</td>
+
+                                {{-- Transaksi --}}
+                                <td class="px-6 py-4 align-top whitespace-nowrap">
+                                     <div><strong>{{ strtoupper($order->payment_method ?? 'N/A') }}</strong></div>
+                                     <div class="font-medium text-gray-800">{{ $order->invoice_number }}</div>
+                                     <div class="text-xs text-gray-500">{{ Carbon::parse($order->created_at)->translatedFormat('d M Y, H:i') }}</div>
+                                </td>
+
+                                {{-- Alamat (dibuat bisa wrap) --}}
+                                <td class="px-6 py-4 align-top address-col">
+                                     <div class="mb-1">
+                                         <small class="text-gray-500">Dari:</small>
+                                         <strong class="text-blue-700">{{ $order->store->name ?? 'Toko N/A' }}</strong>
+                                         <div class="text-xs text-gray-600">
+                                             {{ $order->store->address_detail ?? 'Alamat N/A' }},
+                                             {{ implode(', ', array_filter([$order->store->village ?? null, $order->store->district ?? null, $order->store->regency ?? null])) ?: 'Wilayah N/A' }}
+                                         </div>
+                                     </div>
+                                     <div>
+                                         <small class="text-gray-500">Kepada:</small>
+                                         <strong class="text-red-700">{{ $order->user->nama_lengkap ?? 'Pembeli N/A' }}</strong> ({{ $order->user->no_wa ?? 'No WA N/A' }})
+                                         <div class="text-xs text-gray-600">
+                                             {{ $order->shipping_address ?? 'Alamat N/A' }},
+                                              {{ implode(', ', array_filter([$order->user->village ?? null, $order->user->district ?? null, $order->user->regency ?? null])) ?: 'Wilayah N/A' }}
+                                         </div>
+                                     </div>
+                                </td>
+
+                                {{-- Ekspedisi & Ongkir --}}
+                                <td class="px-6 py-4 align-top whitespace-nowrap">
+                                     {{-- Gunakan Helper untuk parsing (buat file App\Helpers\ShippingHelper.php jika belum) --}}
+                                    @php $shippingInfo = \App\Helpers\ShippingHelper::parseShippingMethod($order->shipping_method); @endphp
+                                    {{-- Tampilkan logo jika ada --}}
+                                    @if($shippingInfo['logo'])
+                                    <img src="{{ asset('storage/logo-ekspedisi/' . $shippingInfo['logo']) }}" alt="{{ $shippingInfo['courier_name'] }}" class="h-6 mb-1">
+                                    @else
+                                    <div class="font-bold text-gray-800">{{ $shippingInfo['courier_name'] }}</div>
+                                    @endif
+                                    <div><small>{{ $shippingInfo['service_name'] }} ({{ $shippingInfo['type'] }})</small></div>
+                                    <div class="font-semibold text-green-700">{{ $shippingInfo['cost_formatted'] }}</div>
+                                </td>
+
+                                {{-- Isi Paket --}}
+                                <td class="px-6 py-4 align-top"> {{-- Bisa wrap jika nama panjang --}}
+                                     @php
+                                         $firstItem = $order->items->first();
+                                         $itemName = '<span class="text-gray-400">N/A</span>'; // Default
+                                         $itemDetails = '';
+                                         if ($firstItem) {
+                                             $productName = $firstItem->product->name ?? '<span class="text-red-500">Produk Dihapus</span>';
+                                             $variantName = '';
+                                             if ($firstItem->variant) {
+                                                  $comboString = $firstItem->variant->combination_string ? str_replace(';', ', ', $firstItem->variant->combination_string) : $firstItem->variant->sku_code;
+                                                  $variantName = ' <span class="text-xs text-gray-500">(' . ($comboString ?: 'Varian N/A') . ')</span>';
+                                             }
+                                             $itemName = $productName . $variantName . ' x ' . $firstItem->quantity;
+                                             $totalItems = $order->items->count();
+                                             if ($totalItems > 1) { $itemName .= ' <span class="text-xs text-gray-500"> + ' . ($totalItems - 1) . ' item lain</span>'; }
+
+                                             $totalWeight = $order->items->sum(fn($item) => ($item->product->weight ?? 0) * $item->quantity);
+                                             $length = $firstItem->product->length ?? '-';
+                                             $width = $firstItem->product->width ?? '-';
+                                             $height = $firstItem->product->height ?? '-';
+                                             $itemDetails = "<span class='text-xs text-gray-500'>Berat: {$totalWeight} gr | Dimensi: {$length}x{$width}x{$height} cm</span>";
+                                         }
+                                     @endphp
+                                     <div class="font-semibold text-gray-800">{!! $itemName !!}</div>
+                                     <div class="mt-1">{!! $itemDetails !!}</div>
+                                </td>
+
+                                {{-- Status --}}
+                                <td class="px-6 py-4 align-top whitespace-nowrap">
+                                    {{-- Gunakan Helper untuk status (buat App\Helpers\OrderStatusHelper.php jika belum) --}}
+                                     @php
+                                         $status = $order->status;
+                                         $statusText = \App\Helpers\OrderStatusHelper::getStatusText($status); // Ambil teks status
+                                         $badgeClass = \App\Helpers\OrderStatusHelper::getStatusBadgeClass($status); // Ambil kelas badge
+                                     @endphp
+                                    <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full {{ $badgeClass }}">
+                                        {{ $statusText }}
+                                    </span>
+                                </td>
+
+                                {{-- Aksi (sticky) --}}
+                                <td class="px-6 py-4 align-top whitespace-nowrap text-sm font-medium sticky-col action-buttons">
+                                     <div> {{-- Container flex untuk tombol --}}
+                                        @php
+                                            $invoice = $order->invoice_number;
+                                            // Coba ambil resi dari tracking_number dulu, fallback ke resi
+                                            $resi = $order->tracking_number ?? $order->resi ?? null;
+                                            $customerUserId = $order->user_id;
+                                            // Tentukan apakah pesanan bisa dibatalkan
+                                            $canCancel = in_array($order->status, ['pending', 'paid', 'processing']); // Sesuaikan status
+                                        @endphp
+
+                                        {{-- Lacak --}}
+                                        <a href="{{ $resi ? 'https://tokosancaka.com/tracking/search?resi='.e($resi) : '#' }}" target="_blank" class="btn-track" title="Lacak Paket" @disabled(!$resi)>
+                                            <i class="fas fa-truck fa-fw"></i>
+                                        </a>
+
+                                        {{-- Detail --}}
+                                        <a href="{{ route('admin.orders.show', $invoice) }}" title="Detail Pesanan">
+                                            <i class="fas fa-eye fa-fw"></i>
+                                        </a>
+
+                                        {{-- Thermal --}}
+                                        <a href="{{ route('admin.orders.print.thermal', $invoice) }}" target="_blank" class="btn-print" title="Cetak Label Thermal">
+                                            <i class="fas fa-print fa-fw"></i>
+                                        </a>
+
+                                        {{-- Invoice PDF --}}
+                                         <a href="{{ route('admin.orders.invoice.pdf', $invoice) }}" target="_blank" class="btn-pdf" title="Unduh Faktur PDF">
+                                             <i class="fas fa-file-pdf fa-fw"></i>
+                                         </a>
+
+                                        {{-- Chat Penerima --}}
+                                        <a href="{{ $customerUserId ? route('admin.chat.start', ['user_id' => $customerUserId]) : '#' }}" target="_blank" class="btn-chat" title="Chat Penerima" @disabled(!$customerUserId)>
+                                             <i class="fas fa-comment fa-fw"></i>
+                                         </a>
+
+                                        {{-- Cancel/Hapus --}}
+                                        <form action="{{ route('admin.orders.cancel', $invoice) }}" method="POST" onsubmit="return confirm('Anda yakin ingin membatalkan pesanan ini?')">
+                                             @csrf @method('PATCH')
+                                             <button type="submit" class="btn-delete" title="Batalkan Pesanan" @disabled(!$canCancel)>
+                                                 <i class="fas fa-trash fa-fw"></i>
+                                             </button>
+                                         </form>
+                                     </div>
+                                </td>
+                            </tr>
+                        @empty
+                            {{-- Jika $orders kosong --}}
+                            <tr>
+                                <td colspan="7" class="text-center py-10 text-gray-500">
+                                    <i class="fas fa-box-open fa-3x mb-3 text-gray-400"></i><br>
+                                    Data pesanan tidak ditemukan.
+                                </td>
+                            </tr>
+                        @endforelse
                     </tbody>
                 </table>
+            </div> {{-- Akhir table-container --}}
+
+            {{-- Link Pagination (akan otomatis menggunakan styling Tailwind jika view pagination sudah di-publish) --}}
+            <div class="mt-6 pagination-container">
+                 {{ $orders->links() }}
             </div>
-        </div>
-    </div>
-</div>
+        </div> {{-- Akhir card body --}}
+    </div> {{-- Akhir card --}}
+</div> {{-- Akhir container --}}
 
 <!-- Modal Export Laporan (Struktur Bootstrap, Styling Tailwind) -->
-<div class="modal fade" id="exportModal" tabindex="-1" aria-labelledby="exportModalLabel" aria-hidden="true">
-    {{-- Konten Modal tidak diubah --}}
-     <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header border-b border-gray-200">
-                <h5 class="modal-title text-lg font-medium text-gray-900" id="exportModalLabel">Export Laporan Penjualan</h5>
-                <button type="button" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center" data-bs-dismiss="modal" aria-label="Close">
-                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
-                </button>
-            </div>
-            <form action="{{ route('admin.orders.report.pdf') }}" method="GET" target="_blank">
-                <div class="modal-body p-6 space-y-4">
-                    <div>
-                        <label for="start_date" class="block text-sm font-medium text-gray-700">Tanggal Mulai</label>
-                        <input type="date" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" id="start_date" name="start_date" value="{{ \Carbon\Carbon::now()->startOfMonth()->format('Y-m-d') }}" required>
-                    </div>
-                    <div>
-                        <label for="end_date" class="block text-sm font-medium text-gray-700">Tanggal Selesai</label>
-                        <input type="date" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" id="end_date" name="end_date" value="{{ \Carbon\Carbon::now()->endOfMonth()->format('Y-m-d') }}" required>
-                    </div>
-                </div>
-                <div class="modal-footer flex items-center justify-end p-6 border-t border-gray-200 rounded-b">
-                    <button type="button" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500" data-bs-dismiss="modal">Tutup</button>
-                    <button type="submit" class="ml-3 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">Export PDF</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
+@include('layouts.partials.modals.export', ['excel_route' => route('admin.pesanan.export.excel'), 'pdf_route' => route('admin.orders.report.pdf')]) {{-- Sesuaikan route PDF --}}
+
 @endsection
 
-{{-- JavaScript --}}
 @push('scripts')
-    <!-- jQuery (Harus ada SEBELUM DataTables) -->
+    <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-    
-    <!-- JavaScript DataTables -->
-    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-    {{-- Opsional: Bootstrap 5 JS (jika modal masih membutuhkannya) --}}
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script> 
-    
-    <!-- JavaScript Toastr -->
+    <!-- Bootstrap JS (Hanya jika modal masih pakai Bootstrap) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Toastr JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
-    
-    <!-- JavaScript Laravel Echo -->
+    <!-- Laravel Echo JS -->
     {{-- <script src="{{ mix('js/app.js') }}"></script> --}}
 
     <script>
         $(document).ready(function() {
-            console.log("Document ready, initializing DataTables...");
+            console.log("Document ready. Non-DataTables view.");
 
-            if (typeof $ === 'undefined' || typeof $.fn.DataTable === 'undefined') {
-                console.error("jQuery or DataTables is not loaded!");
-                alert("Error: Library tabel tidak termuat.");
-                return;
+            // Laravel Echo Listener (Hanya Notifikasi Toastr)
+            if (typeof Echo !== 'undefined') {
+                console.log('Laravel Echo siap, mendengarkan notifikasi...');
+                Echo.channel('admin-notifications') // Sesuaikan nama channel
+                    .listen('AdminNotificationEvent', (e) => { // Sesuaikan nama event
+                        console.log('Notifikasi diterima:', e);
+                        toastr.options = {
+                            "closeButton": true, "progressBar": true, "positionClass": "toast-top-right", "timeOut": "8000", // Lebih lama
+                         };
+                        // Tampilkan notifikasi, sarankan refresh manual
+                        toastr.info((e.message || 'Ada update pesanan!') + '<br><small>Refresh halaman untuk melihat perubahan.</small>', e.title || 'Notifikasi Pesanan');
+                        // Tidak ada reload tabel otomatis
+                    });
+            } else {
+                console.warn('Laravel Echo tidak terdefinisi.');
             }
 
-            var table;
-            try {
-                table = $('#orders-table').DataTable({
-                    processing: true,
-                    serverSide: true,
-                    responsive: false, // Matikan responsive default agar sticky bekerja
-                    scrollX: true,    // Aktifkan scroll horizontal DataTables
-                    order: [],
-                    ajax: {
-                        url: "{{ route('admin.orders.data') }}",
-                        type: "GET",
-                        data: function(d) {
-                            d.status = $('#status-tabs button.border-indigo-500').data('status') || '';
-                            d.search_query = $('#search-query').val();
-                            console.log("Sending AJAX data:", d);
-                            return d;
-                        },
-                        error: function(jqXHR, textStatus, errorThrown) {
-                             console.error("DataTables AJAX error:", textStatus, errorThrown, jqXHR.responseText);
-                             $('#orders-table tbody').html(
-                                 '<tr><td colspan="7" class="text-center text-red-500 py-4">Gagal memuat data.</td></tr>' // Perbaiki colspan
-                             );
-                        }
-                    },
-                    columns: [
-                        // ✅ PERBAIKAN: Tambahkan `className` untuk menargetkan kolom sticky
-                        { data: 'DT_RowIndex', name: 'DT_RowIndex', orderable: false, searchable: false, className: 'px-6 py-4 whitespace-nowrap text-sm text-gray-500' },
-                        { data: 'transaksi', name: 'transaksi', orderable: false, searchable: false, className: 'px-6 py-4 whitespace-nowrap text-sm text-gray-900' },
-                        { data: 'alamat', name: 'alamat', orderable: false, searchable: false, className: 'px-6 py-4 text-sm text-gray-500' }, // Hapus whitespace-nowrap
-                        { data: 'ekspedisi', name: 'ekspedisi', orderable: false, searchable: false, className: 'px-6 py-4 whitespace-nowrap text-sm text-gray-500' },
-                        { data: 'isi_paket', name: 'isi_paket', orderable: false, searchable: false, className: 'px-6 py-4 whitespace-nowrap text-sm text-gray-500' },
-                        { data: 'status_badge', name: 'status_badge', orderable: false, searchable: false, className: 'px-6 py-4 whitespace-nowrap text-sm text-gray-500' },
-                        { data: 'action', name: 'action', orderable: false, searchable: false,
-                          // ✅ PERBAIKAN: className untuk kolom Aksi (sticky)
-                          className: 'px-6 py-4 whitespace-nowrap text-sm font-medium sticky right-0 bg-white border-l border-gray-200 action-buttons'
-                        }
-                    ],
-                    language: {
-                        processing: "<span class='text-indigo-600'>Memuat data...</span>", // Styling loading
-                        search: "", // Hapus label search default
-                        searchPlaceholder: "Cari...",
-                        lengthMenu: "Tampilkan _MENU_",
-                        info: "Menampilkan _START_-_END_ dari _TOTAL_ data",
-                        infoEmpty: "Tidak ada data",
-                        infoFiltered: "(difilter dari _MAX_ total data)",
-                        zeroRecords: "Data tidak ditemukan",
-                        emptyTable: "Belum ada pesanan masuk",
-                        paginate: { first: "<i class='fas fa-angle-double-left'></i>", last: "<i class='fas fa-angle-double-right'></i>", next: "<i class='fas fa-angle-right'></i>", previous: "<i class='fas fa-angle-left'></i>" }
-                     },
-                     // ✅ PERBAIKAN: DOM layout DataTables agar lebih cocok Tailwind
-                     dom: "<'flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-4'<'flex items-center gap-2'l><'flex-1'f>>" + // Length menu & Filter
-                          "<'block w-full overflow-x-auto'tr>" + // Table (dengan overflow wrapper)
-                          "<'flex flex-col sm:flex-row sm:items-center sm:justify-between mt-4 gap-4'<'text-sm text-gray-500'i><'mt-2 sm:mt-0'p>>", // Info & Pagination
+            // Toastr Config
+            toastr.options = { "positionClass": "toast-top-right", "progressBar": true, "timeOut": "4000" };
 
-                    // Callback setelah tabel digambar
-                    drawCallback: function( settings ) {
-                        console.log("DataTables draw complete.");
-                        // Sembunyikan search default DataTables jika kita pakai custom search
-                        $('.dataTables_filter').hide();
-                        // Pastikan background kolom sticky di tbody sesuai saat redraw
-                         $('#orders-table tbody td:last-child').css('background-color', '#ffffff'); // Atur background putih solid
-                    }
-                });
-                console.log("DataTables initialized successfully.");
-            } catch (error) {
-                console.error("Error initializing DataTables:", error);
-                alert("Terjadi error saat menginisialisasi tabel data.");
-            }
-
-            // Event Listener Tab Filter (Tetap Sama)
-            $('#status-tabs').on('click', 'button.tab-link', function (e) { /* ... kode ... */ });
-
-            // Event Listener Form Pencarian Custom (Tetap Sama)
-            $('#search-form').on('submit', function(e) { /* ... kode ... */ });
-
-            // Laravel Echo (Kode Tetap Sama)
-            if (typeof Echo !== 'undefined') { /* ... kode ... */ } else { /* ... kode ... */ }
-
-            // Toastr Config (Tetap Sama)
-            toastr.options = { /* ... kode ... */ };
-
-            // Modal Init (Tetap Sama)
-            var exportModalElement = document.getElementById('exportModal'); /* ... kode ... */
+            // Inisialisasi/Handle Modal Bootstrap (jika masih digunakan)
+             try {
+                // Fungsi untuk membuka modal (dipanggil dari tombol export)
+                window.openModal = function(id) {
+                     var modalElement = document.getElementById(id);
+                     if (modalElement && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                         var modalInstance = bootstrap.Modal.getOrCreateInstance(modalElement);
+                         modalInstance.show();
+                     } else { console.error('Modal element or Bootstrap JS not found'); }
+                }
+                // Fungsi closeModal biasanya tidak perlu karena ada data-bs-dismiss
+             } catch(e) { console.error("Error setting up modal functions:", e); }
 
         }); // Akhir document ready
     </script>
-@endpush
 
+    {{-- Helper JS untuk Modal Bootstrap (jika diperlukan) --}}
+    {{-- <script> function openModal(id){...} </script> --}}
+@endpush
