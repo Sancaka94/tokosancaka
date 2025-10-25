@@ -39,7 +39,7 @@ thead th.sticky-col {
 .table {
     border-collapse: separate;
     border-spacing: 0;
-    width: 100%;
+    width: 85%;
 }
 .table th,
 .table td {
