@@ -376,6 +376,8 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])
         Route::post('/wallet/topup', [WalletController::class, 'topup'])->name('wallet.topup');
         Route::get('/wallet/search', [WalletController::class, 'search'])->name('wallet.search');
 
+Route::get('/chat/start', [ChatController::class, 'startChat'])->name('admin.chat.start');
+
 
     // Route untuk halaman profil. Ganti view() dengan controller jika perlu.
     Route::get('/user/profile', function () {
