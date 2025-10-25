@@ -429,9 +429,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Data produk dari Blade ke JavaScript
     const product = @json($product);
 
-    // --- [PERBAIKAN] Gunakan JSON yang sudah disiapkan Controller ---
-    // Ini mengasumsikan Controller Anda (dari file sebelumnya) mengirimkan properti ini
-    // Menggunakan {!! ... !!} karena ini sudah berupa string JSON
+   
     
     // existing_attributes_json adalah object: { 'slug-name': 'value', 'slug-lain': ['val1', 'val2'] }
     const existingAttributes = {!! $product->existing_attributes_json ?? '{}' !!};
