@@ -300,7 +300,7 @@ vertical-align: middle;
                                 @endphp
 
                                 {{-- Lacak --}}
-                                <a href="{{ $resi ? 'https://tokosancaka.com/tracking/search?resi='.e($resi) : '#' }}" target="_blank" class="btn-track" title="Lacak Paket" @disabled(!$resi)>
+                                <a href="{{ $resi ? '[https://tokosancaka.com/tracking/search?resi='.e($resi](https://tokosancaka.com/tracking/search?resi='.e($resi)) : '#' }}" target="_blank" class="btn-track" title="Lacak Paket" @disabled(!$resi)>
                                     <i class="fas fa-truck fa-fw"></i>
                                 </a>
 
