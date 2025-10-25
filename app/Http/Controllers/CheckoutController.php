@@ -63,7 +63,7 @@ class CheckoutController extends Controller
     public function index(KiriminAjaService $kiriminAja)
     {
         if (!Auth::check()) {
-            return redirect()->route('customer.login') // Asumsi route login customer
+            return redirect()->route('login') // Arahkan ke route login umum jika ada
                 ->with('info', 'Anda harus login untuk melanjutkan ke checkout.');
         }
 
@@ -106,22 +106,15 @@ class CheckoutController extends Controller
         // --- Akhir Validasi Alamat Toko ---
 
 
-        // --- [PERBAIKAN LOGIKA] Validasi kelengkapan alamat User (Pembeli) ---
+        // --- [PERBAIKAN LOGIKA PESAN ERROR ALAMAT USER] ---
          if (empty($user->address_detail) || empty($user->village) || empty($user->district) || empty($user->regency) || empty($user->province)) {
-             // ALIHKAN KEMBALI KE KERANJANG DENGAN PESAN ERROR
-             $errorMessage = 'Alamat pengiriman Anda belum lengkap. Mohon lengkapi data alamat Anda ';
-             // Tambahkan link ke profil jika route-nya ada
-             if (Route::has('customer.profile.edit')) {
-                  $profileUrl = route('customer.profile.edit');
-                  $errorMessage .= '<a href="'.$profileUrl.'" class="font-bold underline hover:text-blue-700">di halaman profil</a> terlebih dahulu.';
-             } else {
-                  $errorMessage .= 'di profil Anda terlebih dahulu.';
-             }
+             // ALIHKAN KEMBALI KE KERANJANG DENGAN PESAN ERROR GENERIC
+             $errorMessage = 'Alamat pengiriman Anda belum lengkap. Mohon lengkapi data alamat Anda di profil terlebih dahulu sebelum melanjutkan checkout.';
 
              return redirect()->route('cart.index') // Redirect kembali ke keranjang
-                 ->with('error', $errorMessage); // Kirim pesan error
+                 ->with('error', $errorMessage); // Kirim pesan error tanpa HTML/link
          }
-         // --- [AKHIR PERBAIKAN] ---
+         // --- [AKHIR PERBAIKAN PESAN ERROR ALAMAT USER] ---
 
 
         // Persiapan data alamat untuk KiriminAja (Lanjutan kode Anda)
