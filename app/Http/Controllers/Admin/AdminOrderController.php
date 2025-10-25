@@ -427,5 +427,23 @@ class AdminOrderController extends Controller
              return redirect()->route('admin.orders.index')->with('error', 'Gagal membuat Laporan PDF: ' . $e->getMessage());
          }
      }
+
+     public function start(Request $request)
+    {
+        $userId = $request->query('user_id');
+
+        if (!$userId) {
+            return redirect()->back()->with('error', 'User tidak ditemukan.');
+        }
+
+        $user = User::find($userId);
+
+        if (!$user) {
+            return redirect()->back()->with('error', 'Data penerima tidak ditemukan.');
+        }
+
+        // Tampilkan halaman chat admin dengan user tertentu
+        return view('admin.chat.start', compact('user'));
+    }
 }
 
