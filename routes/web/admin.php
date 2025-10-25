@@ -321,18 +321,6 @@ Route::put('/settings/slider', [AppSettingsController::class, 'updateSlider'])->
 Route::put('/settings/general', [AppSettingsController::class, 'updateGeneral'])->name('settings.general.update');
 
 
-Route::get('/settings', [SettingController::class, 'index'])->name('admin.settings.index');
-
-    // ... route settings lainnya (profile update, password update, address update, etc.) ...
-    Route::put('/settings/profile', [SettingController::class, 'updateProfile'])->name('admin.settings.profile.update');
-    Route::put('/settings/password', [SettingController::class, 'updatePassword'])->name('admin.settings.password.update');
-    Route::post('/settings/images', [SettingController::class, 'updateSettings'])->name('admin.settings.update');
-    Route::put('/settings/address', [SettingController::class, 'updateAddress'])->name('admin.settings.address.update');
-    Route::post('/settings/address/search', [SettingController::class, 'searchAddressKiriminAja'])->name('admin.settings.address.search');
-    Route::post('/settings/address/geocode', [SettingController::class, 'geocodeAddress'])->name('admin.settings.address.geocode');
-    Route::post('/settings/banners', [SettingController::class, 'storeBanner'])->name('admin.settings.banners.store');
-    Route::put('/settings/banners/{banner}', [SettingController::class, 'updateBanner'])->name('admin.settings.banners.update');
-    Route::delete('/settings/banners/{banner}', [SettingController::class, 'destroyBanner'])->name('admin.settings.banners.destroy');
 
 // Blog Content Management
 
