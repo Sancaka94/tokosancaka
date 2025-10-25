@@ -177,6 +177,7 @@
 @section('content')
 @include('layouts.partials.notifications')
 
+{{-- Form Anda sudah benar, enctype="multipart/form-data" sudah ada --}}
 <form id="product-form" action="{{ route('admin.products.update', $product->slug) }}" method="POST" enctype="multipart/form-data" novalidate>
     @csrf
     @method('PUT')
@@ -211,11 +212,15 @@
                     <p class="text-xs text-gray-500">atau seret file ke sini (PNG, JPG, WEBP hingga 2MB)</p>
                 </div>
                 <input type="file" name="product_image" id="product_image" class="hidden" accept="image/png, image/jpeg, image/webp">
-                @if($product->image)
-                    <img id="image-preview" src="{{ asset('storage/' . $product->image) }}" alt="Pratinjau Gambar Produk" class="image-preview" />
+                
+                {{-- [PERBAIKAN] Menggunakan $product->image_url --}}
+                @if($product->image_url)
+                    <img id="image-preview" src="{{ asset('storage/' . $product->image_url) }}" alt="Pratinjau Gambar Produk" class="image-preview" />
                 @else
                     <img id="image-preview" alt="Pratinjau Gambar Produk" class="image-preview" />
                 @endif
+                {{-- [AKHIR PERBAIKAN] --}}
+                
                 @error('product_image') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
             </div>
 
@@ -248,10 +253,12 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Logo Penjual (Opsional)</label>
                         <div id="seller-logo-uploader" class="image-uploader mt-1" tabindex="0">
-                             <p class="font-semibold text-indigo-600">Klik untuk upload</p>
-                             <p class="text-xs text-gray-500">Logo (PNG, JPG, WEBP maks 1MB)</p>
+                            <p class="font-semibold text-indigo-600">Klik untuk upload</p>
+                            <p class="text-xs text-gray-500">Logo (PNG, JPG, WEBP maks 1MB)</p>
                         </div>
                         <input type="file" name="seller_logo" id="seller_logo" class="hidden" accept="image/png, image/jpeg, image/webp">
+                        
+                        {{-- Bagian ini sudah benar --}}
                         @if($product->seller_logo)
                             <img id="seller-logo-preview" src="{{ asset('storage/' . $product->seller_logo) }}" alt="Pratinjau Logo Penjual" class="image-preview" />
                         @else
@@ -333,16 +340,16 @@
                         <label class="block text-sm font-medium text-gray-700">Dimensi Paket (Opsional)</label>
                         <div class="grid grid-cols-3 gap-4 mt-1">
                             <div>
-                                 <label for="length" class="text-xs text-gray-500">Panjang (cm)</label>
-                                 <input type="number" name="length" id="length" value="{{ old('length', $product->length) }}" class="block w-full border-gray-300 rounded-md shadow-sm">
+                                <label for="length" class="text-xs text-gray-500">Panjang (cm)</label>
+                                <input type="number" name="length" id="length" value="{{ old('length', $product->length) }}" class="block w-full border-gray-300 rounded-md shadow-sm">
                             </div>
                             <div>
-                                 <label for="width" class="text-xs text-gray-500">Lebar (cm)</label>
-                                 <input type="number" name="width" id="width" value="{{ old('width', $product->width) }}" class="block w-full border-gray-300 rounded-md shadow-sm">
+                                <label for="width" class="text-xs text-gray-500">Lebar (cm)</label>
+                                <input type="number" name="width" id="width" value="{{ old('width', $product->width) }}" class="block w-full border-gray-300 rounded-md shadow-sm">
                             </div>
                             <div>
-                                 <label for="height" class="text-xs text-gray-500">Tinggi (cm)</label>
-                                 <input type="number" name="height" id="height" value="{{ old('height', $product->height) }}" class="block w-full border-gray-300 rounded-md shadow-sm">
+                                <label for="height" class="text-xs text-gray-500">Tinggi (cm)</label>
+                                <input type="number" name="height" id="height" value="{{ old('height', $product->height) }}" class="block w-full border-gray-300 rounded-md shadow-sm">
                             </div>
                         </div>
                     </div>
@@ -421,35 +428,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Data produk dari Blade ke JavaScript
     const product = @json($product);
-    const existingAttributes = @json($product->productAttributes->keyBy('attribute_slug')->map(function($attr) {
-        // Handle checkbox values, which might be stored as a JSON array
-        if ($attr->attribute_type === 'checkbox' && is_string($attr->value)) {
-            try {
-                return JSON.parse($attr->value);
-            } catch (e) {
-                // If parsing fails, just return the string
-                return $attr->value;
-            }
-        }
-        return $attr->value;
-    }));
-    const existingVariantTypes = @json($product->productVariantTypes->sortBy('id')->values()->map(function($variantType) {
-        return [
-            'name' => $variantType->name,
-            'options' => $variantType->options->pluck('name')->implode(', ')
-        ];
-    }));
-    const existingVariantCombinations = @json($product->productVariants->mapWithKeys(function($variant) {
-        // Menggabungkan nama varian dan nilainya menjadi satu string kunci unik
-        $key = $variant->combination_string; // Example: "Warna:Merah;Ukuran:M"
-        return [
-            $key => [
-                'price' => $variant->price,
-                'stock' => $variant->stock,
-                'sku_code' => $variant->sku_code
-            ]
-        ];
-    }));
+
+    // --- [PERBAIKAN] Gunakan JSON yang sudah disiapkan Controller ---
+    // Ini mengasumsikan Controller Anda (dari file sebelumnya) mengirimkan properti ini
+    // Menggunakan {!! ... !!} karena ini sudah berupa string JSON
+    
+    // existing_attributes_json adalah object: { 'slug-name': 'value', 'slug-lain': ['val1', 'val2'] }
+    const existingAttributes = {!! $product->existing_attributes_json ?? '{}' !!};
+    
+    // existing_variant_types_json adalah array: [ { name: 'Warna', options: 'Merah, Biru' }, ... ]
+    const existingVariantTypes = {!! $product->existing_variant_types_json ?? '[]' !!};
+    
+    // existing_variant_combinations_json adalah object: { 'Warna:Merah;Ukuran:S': { price: 100, ... }, ... }
+    const existingVariantCombinations = {!! $product->existing_variant_combinations_json ?? '{}' !!};
+    // --- [AKHIR PERBAIKAN] ---
+
 
     // console.log('Product Data:', product);
     // console.log('Existing Attributes:', existingAttributes);
@@ -565,6 +558,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         const field = createAttributeField(attr);
                         attributesContainer.appendChild(field);
                         // Mengisi nilai yang sudah ada
+                        // [PERBAIKAN] Menggunakan existingAttributes[attr.slug]
                         if (existingAttributes && existingAttributes[attr.slug] !== undefined) {
                             fillAttributeValue(field, attr, existingAttributes[attr.slug]);
                         }
@@ -601,10 +595,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 break;
             case 'select':
                 const options = optionsString.split(',')
-                                    .map(opt => opt.trim())
-                                    .filter(opt => opt)
-                                    .map(opt => `<option value="${opt}">${opt}</option>`)
-                                    .join('');
+                                        .map(opt => opt.trim())
+                                        .filter(opt => opt)
+                                        .map(opt => `<option value="${opt}">${opt}</option>`)
+                                        .join('');
                 fieldHtml = `${label}<select name="${inputName}" id="attr_${attribute.slug}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" ${isRequired}><option value="">-- Pilih ${attributeName} --</option>${options}</select>`;
                 break;
             case 'checkbox':
@@ -612,10 +606,10 @@ document.addEventListener('DOMContentLoaded', () => {
                                         .map(opt => opt.trim())
                                         .filter(opt => opt)
                                         .map((opt, index) => `
-                    <div class="flex items-center">
-                        <input type="checkbox" name="${inputName}[]" id="attr_${attribute.slug}_${index}" value="${opt}" class="h-4 w-4 text-indigo-600 border-gray-300 rounded">
-                        <label for="attr_${attribute.slug}_${index}" class="ml-2 block text-sm text-gray-900">${opt}</label>
-                    </div>`).join('');
+                        <div class="flex items-center">
+                            <input type="checkbox" name="${inputName}[]" id="attr_${attribute.slug}_${index}" value="${opt}" class="h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                            <label for="attr_${attribute.slug}_${index}" class="ml-2 block text-sm text-gray-900">${opt}</label>
+                        </div>`).join('');
                 fieldHtml = `<label class="block text-sm font-medium text-gray-700">${attributeName} ${requiredAsterisk}</label><div class="mt-2 space-y-2">${checkboxes}</div>`;
                 break;
             default:
@@ -786,7 +780,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 combinationString.push(`${currentVariantTypes[optionIndex].name}:${variantOption}`);
             });
 
-            const comboKey = combinationString.join(';'); // "Warna:Merah;Ukuran:S"
+            // [PERBAIKAN] Menggunakan existingVariantCombinations
+            // const comboKey = combinationString.join(';'); // "Warna:Merah;Ukuran:S"
+            const comboKey = generateCombinationKey(combination, currentVariantTypes); // Gunakan helper
             const existingComboData = existingVariantCombinations[comboKey] || { price: mainPriceInput.value, stock: 0, sku_code: '' }; // Default values
 
             // Input Harga
@@ -801,7 +797,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Input SKU Varian
             const skuTd = document.createElement('td');
-            skuTd.innerHTML = `<input type="text" name="product_variants[${combIndex}][sku_code]" value="${existingComboData.sku_code}" placeholder="SKU Varian">`;
+            skuTd.innerHTML = `<input type="text" name="product_variants[${combIndex}][sku_code]" value="${existingComboData.sku_code || ''}" placeholder="SKU Varian">`; // Tambah || ''
             tr.appendChild(skuTd);
 
             // Hidden inputs untuk menyimpan tipe dan nilai varian
@@ -870,7 +866,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Fungsi helper untuk generate combination key yang sama dengan di backend
     function generateCombinationKey(combinationValues, variantTypes) {
-        return combinationValues.map((value, index) => `${variantTypes[index].name}:${value}`).join(';');
+        // [PERBAIKAN] Pastikan variantTypes tidak kosong sebelum di-map
+        if (!variantTypes || variantTypes.length === 0) return '';
+        return combinationValues.map((value, index) => `${variantTypes[index].name}:${value}`)
+            .sort() // Sortir untuk konsistensi
+            .join(';');
     }
 
 
@@ -909,10 +909,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Inisialisasi: Muat varian yang sudah ada
+    // [PERBAIKAN] Menggunakan existingVariantTypes dari JSON
     existingVariantTypes.forEach((variantType, index) => {
         const groupWrapper = createVariantGroup(variantIndex, {
             name: variantType.name,
-            options: variantType.options
+            options: variantType.options // 'options' di sini adalah string (Contoh: "Merah, Biru")
         });
         variantContainer.appendChild(groupWrapper);
         variantIndex++; // Tingkatkan index untuk varian baru
@@ -927,4 +928,3 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 @endpush
-
