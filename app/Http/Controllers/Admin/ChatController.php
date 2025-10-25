@@ -144,22 +144,22 @@ class ChatController extends Controller
         }
     }
 
-  public function start(Request $request)
+    public function start(Request $request)
     {
-        // Ambil dari query string
-        $userId = $request->query('user_id');
+        // Ambil id_pengguna dari query string
+        $idPengguna = $request->query('id_pengguna');
 
-        // Ganti ke kolom id_pengguna
-        $receiver = Pengguna::where('id_pengguna', $userId)->first();
+        // Ambil data penerima berdasarkan id_pengguna
+        $receiver = Pengguna::where('id_pengguna', $idPengguna)->first();
 
         if (!$receiver) {
             return redirect()->back()->with('error', 'Data penerima tidak ditemukan.');
         }
 
-        // Ambil semua pengguna lain (selain admin yang login)
+        // Ambil semua pengguna lain untuk daftar chat
         $users = Pengguna::where('id_pengguna', '!=', auth()->user()->id_pengguna)->get();
 
-        return view('admin.chat.index', compact('users', 'receiver'));
+        return view('admin.chat.index', compact('receiver', 'users'));
     }
 
 }
