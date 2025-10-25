@@ -79,7 +79,7 @@ class User extends Authenticatable
         'latitude',
         'longitude',
         'last_seen_at',
-        // 'created_at' // Biasanya tidak perlu di fillable jika dihandle otomatis
+        'created_at' // Biasanya tidak perlu di fillable jika dihandle otomatis
     ];
 
     /**
