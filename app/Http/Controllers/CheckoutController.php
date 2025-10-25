@@ -66,7 +66,7 @@ class CheckoutController extends Controller
         $user  = Auth::user();
         $firstProduct = Product::find(array_key_first($cart));
 
-        $store = $firstProduct->store; // Baris ini sekarang aman
+        
         
          if (empty($store->village) || empty($store->district) || empty($store->regency) || empty($store->province)) {
              return redirect()->route('cart.index')
