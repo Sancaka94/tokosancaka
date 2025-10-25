@@ -1,139 +1,147 @@
 {{-- Halaman ini adalah view untuk 'AdminOrderController@index' --}}
-{{-- Menggunakan layout admin Bootstrap 5 --}}
-@extends('layouts.admin') {{-- Pastikan nama layout ini benar --}}
+{{-- Menggunakan layout admin Tailwind CSS --}}
+@extends('layouts.admin') {{-- Pastikan nama layout ini benar dan sudah menggunakan Tailwind --}}
 
-{{-- Kirim CSS tambahan ke layout utama --}}
+{{-- Kirim CSS tambahan (jika perlu) --}}
 @push('styles')
-    <!-- CSS DataTables -->
-    <link href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" rel="stylesheet">
     <!-- CSS Toastr (untuk notifikasi real-time) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
-    
+    <!-- CSS DataTables Tailwind Adaptor (Opsional, tapi direkomendasikan) -->
+    {{-- <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/dt/dt-1.13.6/datatables.min.css"/> --}}
+    {{-- <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.tailwindcss.min.css"> --}}
     <style>
-        /* Style untuk tab filter status */
-        .nav-tabs .nav-link {
-            border: none;
-            border-bottom: 3px solid transparent;
-            color: #6c757d; /* Warna teks abu-abu */
+        /* Style tambahan jika diperlukan, misal untuk DataTables pagination agar lebih mirip Tailwind */
+        .dataTables_wrapper .dataTables_paginate .paginate_button {
+            padding: 0.5em 1em;
+            margin-left: 2px;
+            border-radius: 0.25rem;
+            border: 1px solid transparent;
         }
-        .nav-tabs .nav-link.active {
-            border-bottom-color: var(--bs-primary, #0d6efd); /* Warna border biru primary */
-            color: var(--bs-primary, #0d6efd); /* Warna teks biru primary */
-            font-weight: bold;
+        .dataTables_wrapper .dataTables_paginate .paginate_button.current, 
+        .dataTables_wrapper .dataTables_paginate .paginate_button.current:hover {
+            background-color: #4f46e5; /* Indigo-600 */
+            color: white !important;
+            border-color: #4f46e5; /* Indigo-600 */
         }
-        /* Style agar tombol aksi tidak 'wrap' jika tidak perlu */
-        #orders-table .d-flex {
-            flex-wrap: nowrap; /* Mencegah tombol turun baris */
-            gap: 0.25rem !important; /* Jarak antar tombol */
+        .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+            background-color: #e5e7eb; /* Gray-200 */
+            border-color: #d1d5db; /* Gray-300 */
+            color: black !important;
         }
-        /* Atur lebar kolom agar lebih rapi (sesuaikan jika perlu) */
-        #orders-table th:nth-child(1) { width: 5%; } /* No */
-        #orders-table th:nth-child(2) { width: 15%; } /* Transaksi */
-        #orders-table th:nth-child(3) { width: 25%; } /* Alamat */
-        #orders-table th:nth-child(4) { width: 15%; } /* Ekspedisi */
-        #orders-table th:nth-child(5) { width: 15%; } /* Isi Paket */
-        #orders-table th:nth-child(6) { width: 10%; } /* Status */
-        #orders-table th:nth-child(7) { width: 15%; } /* Aksi */
+         .dataTables_wrapper .dataTables_paginate .paginate_button.disabled, 
+         .dataTables_wrapper .dataTables_paginate .paginate_button.disabled:hover {
+             color: #9ca3af !important; /* Gray-400 */
+             background-color: transparent !important;
+             border-color: transparent !important;
+         }
+         /* Style untuk Toastr agar lebih cocok (opsional) */
+         .toast {
+            opacity: 0.95 !important;
+         }
     </style>
 @endpush
 
 {{-- Konten Utama Halaman --}}
 @section('content')
-<div class="container-fluid">
+<div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
     <!-- Judul Halaman -->
-    <h1 class="h3 mb-3 text-gray-800">Data Pesanan Masuk</h1>
+    <h1 class="text-2xl font-semibold text-gray-800 mb-6">Data Pesanan Masuk</h1>
 
     <!-- Card Utama -->
-    <div class="card shadow mb-4">
-        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+    <div class="bg-white shadow rounded-lg mb-6 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-4">
             
             <!-- Formulir Pencarian Custom -->
-            <form id="search-form" class="d-none d-sm-inline-block form-inline mr-auto my-2 my-md-0 w-50">
-                <div class="input-group">
-                    {{-- Input untuk memasukkan query pencarian --}}
-                    <input type="text" id="search-query" class="form-control bg-light border-0 small" placeholder="Cari Resi, Invoice, Nama, atau No. HP..." aria-label="Search" aria-describedby="basic-addon2">
-                    {{-- Tombol submit pencarian --}}
-                    <button class="btn btn-primary" type="submit">
-                        <i class="fas fa-search fa-sm"></i> {{-- Ikon pencarian Font Awesome --}}
+            <form id="search-form" class="w-full sm:w-1/2">
+                <div class="relative flex items-stretch w-full">
+                    {{-- Input pencarian dengan gaya Tailwind --}}
+                    <input type="text" id="search-query" class="block w-full px-4 py-2 text-sm text-gray-700 bg-gray-100 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Cari Resi, Invoice, Nama, atau No. HP..." aria-label="Search">
+                    {{-- Tombol submit pencarian dengan gaya Tailwind --}}
+                    <button class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-r-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" type="submit">
+                        <i class="fas fa-search fa-sm"></i>
                     </button>
                 </div>
             </form>
 
             <!-- Tombol Aksi Kanan Atas -->
-            <div class="d-flex gap-2">
+            <div class="flex items-center gap-2 flex-shrink-0">
                 <!-- Tombol Trigger Modal Export PDF -->
-                {{-- Tombol ini akan membuka popup (modal) untuk memilih rentang tanggal export --}}
-                <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#exportModal">
-                    <i class="fas fa-download fa-sm text-white-50"></i> Export Laporan
+                <button type="button" class="inline-flex items-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500" data-bs-toggle="modal" data-bs-target="#exportModal">
+                    <i class="fas fa-download fa-sm mr-2 opacity-75"></i> Export Laporan
                 </button>
                 
                 <!-- Tombol Tambah Pesanan (jika diperlukan) -->
-                {{-- Uncomment jika Anda punya route 'admin.orders.create' --}}
-                {{-- <a href="{{ route('admin.orders.create') }}" class="btn btn-primary">
-                    <i class="fas fa-plus fa-sm text-white-50"></i> Tambah Pesanan
+                {{-- <a href="{{ route('admin.orders.create') }}" class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    <i class="fas fa-plus fa-sm mr-2 opacity-75"></i> Tambah Pesanan
                 </a> --}}
             </div>
         </div>
 
-        <div class="card-body">
+        <div class="p-6">
             
-            <!-- Tab Filter Status -->
-            {{-- Tab ini digunakan untuk memfilter data pesanan berdasarkan status --}}
-            <ul class="nav nav-tabs mb-3" id="status-tabs" role="tablist">
-                <li class="nav-item" role="presentation">
-                    {{-- Tab 'Semua', data-status kosong akan mengambil semua data --}}
-                    <button class="nav-link active" data-status="" type="button" role="tab">Semua</button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    {{-- Tab 'Menunggu Bayar', data-status="pending" --}}
-                    <button class="nav-link" data-status="pending" type="button" role="tab">Menunggu Bayar</button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    {{-- Tab 'Menunggu Pickup', data-status="processing" --}}
-                    {{-- !! PENTING: Sesuaikan 'data-status' ini jika status di DB Anda berbeda (misal: 'paid', 'siap-pickup') --}}
-                    <button class="nav-link" data-status="processing" type="button" role="tab">Menunggu Pickup</button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    {{-- Tab 'Diproses', data-status="shipping" --}}
-                    {{-- !! PENTING: Sesuaikan 'data-status' ini jika status di DB Anda berbeda (misal: 'dikirim', 'on_delivery') --}}
-                    <button class="nav-link" data-status="shipping" type="button" role="tab">Diproses</button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    {{-- Tab 'Terkirim', data-status="delivered" --}}
-                    {{-- !! PENTING: Sesuaikan 'data-status' ini jika status di DB Anda berbeda (misal: 'selesai', 'completed') --}}
-                    <button class="nav-link" data-status="delivered" type="button" role="tab">Terkirim</button>
-                </li>
-                 <li class="nav-item" role="presentation">
-                    {{-- Tab 'Selesai', data-status="completed" --}}
-                    {{-- !! PENTING: Sesuaikan 'data-status' ini jika status di DB Anda berbeda (misal: 'selesai', 'completed') --}}
-                    <button class="nav-link" data-status="completed" type="button" role="tab">Selesai</button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    {{-- Tab 'Batal', data-status="cancelled" --}}
-                    {{-- !! PENTING: Sesuaikan 'data-status' ini jika status di DB Anda berbeda (misal: 'batal', 'failed') --}}
-                    <button class="nav-link" data-status="cancelled" type="button" role="tab">Batal</button>
-                </li>
-            </ul>
+            <!-- Tab Filter Status (versi Tailwind) -->
+            <div class="border-b border-gray-200 mb-5">
+                <nav class="-mb-px flex space-x-6 overflow-x-auto" id="status-tabs" role="tablist">
+                    {{-- Tab 'Semua' --}}
+                    <button data-status="" type="button" role="tab" class="whitespace-nowrap pb-3 px-1 border-b-2 font-medium text-sm text-indigo-600 border-indigo-500 focus:outline-none" aria-current="page">
+                        Semua
+                    </button>
+                    {{-- Tab 'Menunggu Bayar' --}}
+                    <button data-status="pending" type="button" role="tab" class="whitespace-nowrap pb-3 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 border-transparent hover:border-gray-300 focus:outline-none">
+                        Menunggu Bayar
+                    </button>
+                    {{-- Tab 'Menunggu Pickup' --}}
+                    <button data-status="processing" type="button" role="tab" class="whitespace-nowrap pb-3 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 border-transparent hover:border-gray-300 focus:outline-none">
+                        Menunggu Pickup
+                    </button>
+                    {{-- Tab 'Diproses' --}}
+                    <button data-status="shipping" type="button" role="tab" class="whitespace-nowrap pb-3 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 border-transparent hover:border-gray-300 focus:outline-none">
+                        Diproses
+                    </button>
+                    {{-- Tab 'Terkirim' --}}
+                    <button data-status="delivered" type="button" role="tab" class="whitespace-nowrap pb-3 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 border-transparent hover:border-gray-300 focus:outline-none">
+                        Terkirim
+                    </button>
+                     {{-- Tab 'Selesai' --}}
+                    <button data-status="completed" type="button" role="tab" class="whitespace-nowrap pb-3 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 border-transparent hover:border-gray-300 focus:outline-none">
+                        Selesai
+                    </button>
+                    {{-- Tab 'Batal' --}}
+                    <button data-status="cancelled" type="button" role="tab" class="whitespace-nowrap pb-3 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 border-transparent hover:border-gray-300 focus:outline-none">
+                        Batal
+                    </button>
+                </nav>
+            </div>
 
-            <!-- Tabel Data Pesanan -->
-            {{-- Tabel ini akan diisi secara dinamis oleh JavaScript menggunakan DataTables --}}
-            <div class="table-responsive">
-                <table class="table table-bordered table-hover" id="orders-table" width="100%" cellspacing="0">
-                    <thead>
-                        {{-- Header tabel, harus cocok dengan kolom di controller --}}
+            <!-- Tabel Data Pesanan (perlu styling Tailwind untuk DataTables) -->
+            <div class="overflow-x-auto">
+                {{-- DataTables akan menambahkan kelasnya sendiri, kita bisa override sedikit dengan style --}}
+                <table class="min-w-full divide-y divide-gray-200" id="orders-table" width="100%">
+                    <thead class="bg-gray-50">
                         <tr>
-                            <th>NO</th>
-                            <th>TRANSAKSI</th>
-                            <th>ALAMAT</th>
-                            <th>EKSPEDISI & ONGKIR</th>
-                            <th>ISI PAKET</th>
-                            <th>STATUS</th>
-                            <th>AKSI</th>
+                            {{-- Header Kolom --}}
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">NO</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">TRANSAKSI</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ALAMAT</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">EKSPEDISI & ONGKIR</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ISI PAKET</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">STATUS</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">AKSI</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        {{-- Data tabel akan dimuat di sini oleh DataTables --}}
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {{-- Data akan diisi oleh DataTables --}}
+                        {{-- Contoh struktur row (akan digenerate JS): --}}
+                        {{-- <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">1</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">...</td>
+                            <td class="px-6 py-4 text-sm text-gray-500">...</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">...</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">...</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">...</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">...</td>
+                        </tr> --}}
                     </tbody>
                 </table>
             </div>
@@ -141,34 +149,34 @@
     </div>
 </div>
 
-<!-- Modal untuk Export Laporan PDF -->
-{{-- Popup yang muncul saat tombol 'Export Laporan' diklik --}}
+<!-- Modal untuk Export Laporan PDF (versi Tailwind) -->
+{{-- Perlu Alpine.js atau stimulus/livewire untuk state show/hide, atau gunakan library modal Tailwind --}}
+{{-- Contoh sederhana dengan show/hide via JS (perlu ditambahkan event listener untuk tombol) --}}
+{{-- Atau, jika Anda masih memuat Bootstrap JS, modal lama mungkin masih berfungsi --}}
+{{-- Saya akan tetap gunakan data-bs-toggle/target Bootstrap agar lebih mudah --}}
 <div class="modal fade" id="exportModal" tabindex="-1" aria-labelledby="exportModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="exportModalLabel">Export Laporan Penjualan</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    <div class="modal-dialog"> {{-- Kelas Bootstrap masih digunakan untuk struktur dasar modal --}}
+        <div class="modal-content"> {{-- Kelas Bootstrap masih digunakan --}}
+            <div class="modal-header"> {{-- Kelas Bootstrap masih digunakan --}}
+                <h5 class="modal-title text-lg font-medium text-gray-900" id="exportModalLabel">Export Laporan Penjualan</h5>
+                <button type="button" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center" data-bs-dismiss="modal" aria-label="Close">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+                </button>
             </div>
-            {{-- Form ini akan mengirim request GET ke route 'admin.orders.report.pdf' saat disubmit --}}
-            <form action="{{ route('admin.orders.report.pdf') }}" method="GET" target="_blank"> {{-- target="_blank" agar PDF terbuka di tab baru --}}
-                <div class="modal-body">
-                    {{-- Input tanggal mulai --}}
-                    <div class="mb-3">
-                        <label for="start_date" class="form-label">Tanggal Mulai</label>
-                        {{-- Default value: awal bulan ini --}}
-                        <input type="date" class="form-control" id="start_date" name="start_date" value="{{ \Carbon\Carbon::now()->startOfMonth()->format('Y-m-d') }}" required>
+            <form action="{{ route('admin.orders.report.pdf') }}" method="GET" target="_blank">
+                <div class="modal-body p-6 space-y-4"> {{-- Padding dan spacing Tailwind --}}
+                    <div>
+                        <label for="start_date" class="block text-sm font-medium text-gray-700">Tanggal Mulai</label>
+                        <input type="date" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" id="start_date" name="start_date" value="{{ \Carbon\Carbon::now()->startOfMonth()->format('Y-m-d') }}" required>
                     </div>
-                    {{-- Input tanggal selesai --}}
-                    <div class="mb-3">
-                        <label for="end_date" class="form-label">Tanggal Selesai</label>
-                        {{-- Default value: akhir bulan ini --}}
-                        <input type="date" class="form-control" id="end_date" name="end_date" value="{{ \Carbon\Carbon::now()->endOfMonth()->format('Y-m-d') }}" required>
+                    <div>
+                        <label for="end_date" class="block text-sm font-medium text-gray-700">Tanggal Selesai</label>
+                        <input type="date" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" id="end_date" name="end_date" value="{{ \Carbon\Carbon::now()->endOfMonth()->format('Y-m-d') }}" required>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
-                    <button type="submit" class="btn btn-primary">Export PDF</button>
+                <div class="modal-footer flex items-center justify-end p-6 border-t border-gray-200 rounded-b"> {{-- Flexbox Tailwind --}}
+                    <button type="button" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500" data-bs-dismiss="modal">Tutup</button>
+                    <button type="submit" class="ml-3 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">Export PDF</button>
                 </div>
             </form>
         </div>
@@ -183,56 +191,50 @@
     
     <!-- JavaScript DataTables -->
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+    {{-- Anda mungkin perlu JS adaptor DataTables untuk Bootstrap/Tailwind jika styling default kurang pas --}}
+    {{-- <script src="https://cdn.datatables.net/1.13.6/js/dataTables.tailwindcss.min.js"></script> --}}
+    {{-- Jika masih pakai Bootstrap JS untuk modal, load juga --}}
+    {{-- <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script> --}} 
     
     <!-- JavaScript Toastr (untuk notifikasi) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
     
     <!-- JavaScript Laravel Echo (Jika Anda menggunakan real-time) -->
-    {{-- Pastikan Echo sudah di-setup di resources/js/bootstrap.js --}}
-    {{-- Jika Anda mengompilasi JS (npm run dev), uncomment baris di bawah --}}
     {{-- <script src="{{ mix('js/app.js') }}"></script> --}} 
 
     <script>
-        // Pastikan semua elemen DOM siap sebelum menjalankan script
         $(document).ready(function() {
             
             // 1. Inisialisasi DataTables
-            // Simpan instance DataTables ke variabel 'table' agar bisa diakses nanti
             var table = $('#orders-table').DataTable({
-                processing: true, // Tampilkan pesan "Memuat..." saat AJAX request
-                serverSide: true, // Proses sorting, searching, paging di sisi server (controller)
-                responsive: true, // Buat tabel responsif di layar kecil
-                order: [], // Kosongkan order default agar mengikuti order dari controller
+                processing: true,
+                serverSide: true,
+                responsive: true,
+                order: [],
                 ajax: {
-                    url: "{{ route('admin.orders.data') }}", // URL endpoint API DataTables
-                    type: "GET", // Metode HTTP
-                    // Fungsi untuk mengirim data tambahan (filter) ke server
+                    url: "{{ route('admin.orders.data') }}",
+                    type: "GET",
                     data: function(d) {
-                        // Ambil nilai 'data-status' dari tab yang sedang aktif
-                        d.status = $('#status-tabs .nav-link.active').data('status');
-                        // Ambil nilai dari input pencarian
+                        // Ambil status dari tab Tailwind yang aktif
+                        // Selector diubah untuk mencari border-indigo-500
+                        d.status = $('#status-tabs button[aria-current="page"]').data('status') || $('#status-tabs button.border-indigo-500').data('status') || ''; 
                         d.search_query = $('#search-query').val(); 
-                        return d; // Kirim objek data ini ke controller
+                        return d;
                     }
                 },
-                // Definisikan kolom tabel dan data source-nya
                 columns: [
-                    // Kolom nomor urut (otomatis dari DataTables)
                     { data: 'DT_RowIndex', name: 'DT_RowIndex', orderable: false, searchable: false }, 
-                    // Kolom data dari response JSON controller (nama 'data' harus cocok)
-                    { data: 'transaksi', name: 'transaksi', orderable: false, searchable: false }, // Tidak bisa di-sort/cari dari client
+                    { data: 'transaksi', name: 'transaksi', orderable: false, searchable: false }, 
                     { data: 'alamat', name: 'alamat', orderable: false, searchable: false },
                     { data: 'ekspedisi', name: 'ekspedisi', orderable: false, searchable: false },
                     { data: 'isi_paket', name: 'isi_paket', orderable: false, searchable: false },
                     { data: 'status_badge', name: 'status_badge', orderable: false, searchable: false },
-                    { data: 'action', name: 'action', orderable: false, searchable: false } // Kolom tombol aksi
+                    { data: 'action', name: 'action', orderable: false, searchable: false } 
                 ],
-                 // Pengaturan bahasa (opsional)
-                 language: {
+                 language: { // Sesuaikan bahasa jika perlu
                     processing: "Memuat data...",
-                    search: "_INPUT_", // Ganti label default search
-                    searchPlaceholder: "Cari...", // Tambahkan placeholder
+                    search: "_INPUT_", 
+                    searchPlaceholder: "Cari...", 
                     lengthMenu: "Tampilkan _MENU_ data",
                     info: "Menampilkan _START_-_END_ dari _TOTAL_ data",
                     infoEmpty: "Tidak ada data",
@@ -245,95 +247,68 @@
                         next: "<i class='fas fa-angle-right'></i>",
                         previous: "<i class='fas fa-angle-left'></i>"
                     }
-                }
+                },
+                // Tambahkan class Tailwind ke wrapper DataTables (opsional)
+                // drawCallback: function( settings ) {
+                //     $('#orders-table_wrapper').addClass('p-4'); 
+                // }
             });
 
-            // 2. Event Listener untuk Tab Filter Status
-            // Ketika tombol nav-link di dalam #status-tabs diklik
-            $('#status-tabs .nav-link').on('click', function (e) {
-                e.preventDefault(); // Mencegah pindah halaman jika link adalah <a>
+            // 2. Event Listener untuk Tab Filter Status (versi Tailwind)
+            $('#status-tabs button').on('click', function (e) {
+                e.preventDefault();
+                const currentButton = $(this);
                 
-                // Jangan lakukan apa-apa jika tab yang diklik sudah aktif
-                if ($(this).hasClass('active')) {
+                // Jangan lakukan apa-apa jika sudah aktif
+                if (currentButton.attr('aria-current') === 'page' || currentButton.hasClass('border-indigo-500')) {
                     return;
                 }
 
-                // Hapus kelas 'active' dari semua tombol tab
-                $('#status-tabs .nav-link').removeClass('active');
-                // Tambahkan kelas 'active' ke tombol tab yang baru saja diklik
-                $(this).addClass('active');
+                // Hapus styling aktif dari semua tombol
+                $('#status-tabs button').removeClass('text-indigo-600 border-indigo-500').addClass('text-gray-500 hover:text-gray-700 border-transparent hover:border-gray-300').removeAttr('aria-current');
                 
-                // Muat ulang data DataTables
-                // Fungsi 'ajax.data' akan otomatis terpanggil lagi dan mengirim
-                // nilai 'data-status' yang baru dari tab yang aktif
+                // Tambahkan styling aktif ke tombol yang diklik
+                currentButton.removeClass('text-gray-500 hover:text-gray-700 border-transparent hover:border-gray-300').addClass('text-indigo-600 border-indigo-500').attr('aria-current', 'page');
+                
+                // Muat ulang tabel
                 table.ajax.reload();
             });
 
-            // 3. Event Listener untuk Form Pencarian Custom
-            // Ketika form #search-form disubmit (baik dengan Enter atau klik tombol)
+            // 3. Event Listener untuk Form Pencarian Custom (tetap sama)
             $('#search-form').on('submit', function(e) {
-                e.preventDefault(); // Mencegah halaman reload
-                
-                // Muat ulang data DataTables
-                // Fungsi 'ajax.data' akan otomatis terpanggil lagi dan mengirim
-                // nilai 'search_query' yang baru dari input #search-query
+                e.preventDefault(); 
                 table.ajax.reload();
             });
 
 
-            // 4. Inisialisasi Laravel Echo (Real-time Notification)
-            // !! PENTING: Pastikan Anda sudah setup Laravel Echo di backend
-            // (misal: install Pusher/Reverb, setup .env, uncomment BroadcastServiceProvider)
-            // dan di frontend (install 'laravel-echo' & 'pusher-js', setup di resources/js/bootstrap.js)
-            // Jalankan `npm install && npm run dev` setelah setup frontend.
-            
-            // Cek apakah variabel 'Echo' tersedia (di-load dari file JS utama Anda, misal app.js)
+            // 4. Inisialisasi Laravel Echo (Real-time Notification - Kode tetap sama)
             if (typeof Echo !== 'undefined') {
-                console.log('Laravel Echo siap, mendengarkan notifikasi...'); // Pesan konfirmasi di console browser
-                
-                // Mulai mendengarkan di channel 'admin-notifications'
-                // Ganti 'admin-notifications' jika Anda menggunakan nama channel berbeda di Event Anda
+                console.log('Laravel Echo siap, mendengarkan notifikasi...'); 
                 Echo.channel('admin-notifications') 
-                    // Dengarkan event 'AdminNotificationEvent'
-                    // Ganti 'AdminNotificationEvent' jika nama class Event Anda berbeda (nama class saja, tanpa namespace)
                     .listen('AdminNotificationEvent', (e) => {
-                        // 'e' adalah objek data yang dikirim bersama event dari backend
-                        console.log('Notifikasi diterima:', e); // Tampilkan data event di console untuk debugging
-                        
-                        // Konfigurasi tampilan notifikasi Toastr
+                        console.log('Notifikasi diterima:', e); 
                         toastr.options = { 
-                            "closeButton": true,       // Tampilkan tombol close
-                            "progressBar": true,       // Tampilkan progress bar
-                            "positionClass": "toast-top-right", // Posisi di kanan atas
-                            "timeOut": "5000",         // Durasi tampil (5 detik)
+                            "closeButton": true,       
+                            "progressBar": true,       
+                            "positionClass": "toast-top-right", 
+                            "timeOut": "5000",         
                         };
-                        
-                        // Tampilkan notifikasi Toastr
-                        // Ambil 'message' dan 'title' dari data event 'e'
-                        // Pastikan Event Anda memiliki public property $message dan $title
-                        // Beri nilai default jika properti tidak ada
                         toastr.info(e.message || 'Ada data pesanan baru!', e.title || 'Notifikasi Pesanan');
-
-                        // Muat ulang tabel DataTables untuk menampilkan data terbaru
-                        // Parameter kedua 'false' mencegah reset ke halaman pertama
                         table.ajax.reload(null, false); 
                     });
-
             } else {
-                // Beri peringatan jika Echo tidak terdefinisi
                 console.warn('Laravel Echo tidak terdefinisi. Fitur notifikasi real-time tidak akan aktif.');
             }
             
-            // Akhir blok Echo
-            
-            
-            // Konfigurasi default untuk Toastr (opsional, bisa diatur di sini atau sebelum Echo)
+            // Konfigurasi default untuk Toastr (tetap sama)
             toastr.options = {
                 "positionClass": "toast-top-right",
                 "progressBar": true,
-                "timeOut": "3000", // Notifikasi standar hilang setelah 3 detik
+                "timeOut": "3000", 
             };
 
+            // Inisialisasi modal Bootstrap jika masih digunakan
+            // var exportModal = new bootstrap.Modal(document.getElementById('exportModal')); // Uncomment jika pakai Bootstrap JS
         });
     </script>
 @endpush
