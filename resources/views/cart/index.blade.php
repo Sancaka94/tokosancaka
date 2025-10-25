@@ -64,6 +64,18 @@
          .btn-shopee-solid:hover {
              background-color: #d73210; /* Slightly darker orange */
          }
+          button:disabled, a.disabled { /* Style for disabled buttons/links */
+             opacity: 0.6;
+             cursor: not-allowed;
+         }
+         input:disabled {
+            opacity: 0.7;
+             cursor: not-allowed;
+             background-color: #f3f4f6; /* gray-100 */
+         }
+         .dark input:disabled {
+             background-color: #4b5563; /* gray-600 */
+         }
     </style>
 @endpush
 
@@ -117,10 +129,17 @@
                         @endif
                     </div>
                     <ul role="list" class="divide-y divide-gray-200 dark:divide-gray-700">
-                        @php $totalWeight = 0; @endphp
+                        @php $totalWeight = 0; $grandTotal = 0; @endphp
                         @foreach($cart as $cartKey => $details)
+                            @php
+                                // Safely calculate subtotal and grand total
+                                $price = $details['price'] ?? 0;
+                                $quantity = $details['quantity'] ?? 0;
+                                $subtotal = $price * $quantity;
+                                $grandTotal += $subtotal;
+                            @endphp
                             {{-- Calculate total weight if available --}}
-                            {{-- @php $totalWeight += ($details['weight'] ?? 0) * $details['quantity']; @endphp --}}
+                            {{-- @php $totalWeight += ($details['weight'] ?? 0) * $quantity; @endphp --}}
                             <li class="flex flex-col sm:flex-row py-4 sm:py-6 px-4 sm:px-6 cart-item relative" data-id="{{ $cartKey }}">
                                 <div class="h-24 w-24 sm:h-28 sm:w-28 flex-shrink-0 overflow-hidden rounded-md border border-gray-200 dark:border-gray-700">
                                     <img src="{{ $details['image_url'] ? asset('storage/' . $details['image_url']) : 'https://placehold.co/112x112/EFEFEF/AAAAAA?text=N/A' }}"
@@ -141,24 +160,24 @@
                                                      <span>{{ $details['name'] ?? 'Nama Produk Tidak Tersedia' }}</span>
                                                  @endif
                                             </h3>
-                                            <p class="ml-4 item-subtotal">Rp{{ number_format(($details['price'] ?? 0) * ($details['quantity'] ?? 0), 0, ',', '.') }}</p>
+                                            <p class="ml-4 item-subtotal">Rp{{ number_format($subtotal, 0, ',', '.') }}</p>
                                         </div>
-                                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Rp{{ number_format($details['price'] ?? 0, 0, ',', '.') }} / item</p>
+                                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Rp{{ number_format($price, 0, ',', '.') }} / item</p>
                                     </div>
                                     <div class="flex flex-1 items-end justify-between text-sm mt-4">
                                         {{-- Update Kuantitas (AJAX) --}}
                                         <div class="flex items-center">
-                                            <button type="button" class="quantity-change px-2 py-1 border border-gray-300 rounded-l dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700" data-action="decrease" data-id="{{ $cartKey }}">
+                                            <button type="button" class="quantity-change px-2 py-1 border border-gray-300 rounded-l dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed" data-action="decrease" data-id="{{ $cartKey }}" {{ $quantity <= 1 ? 'disabled' : '' }}>
                                                 <i class="fas fa-minus text-xs"></i>
                                             </button>
                                             <input type="number"
                                                    class="quantity-input w-12 h-8 text-center text-sm border-t border-b border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-1 focus:ring-orange-500 dark:bg-gray-700 dark:text-white"
-                                                   value="{{ $details['quantity'] ?? 1 }}"
+                                                   value="{{ $quantity }}"
                                                    min="1"
-                                                   {{-- Tambahkan max stock jika tersedia --}}
-                                                   {{-- max="{{ $details['current_stock'] ?? 99 }}" --}}
+                                                   {{-- Assume max stock might be sent from controller index or use a high default --}}
+                                                   max="{{ $details['current_stock'] ?? 999 }}"
                                                    data-id="{{ $cartKey }}">
-                                            <button type="button" class="quantity-change px-2 py-1 border border-gray-300 rounded-r dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700" data-action="increase" data-id="{{ $cartKey }}">
+                                            <button type="button" class="quantity-change px-2 py-1 border border-gray-300 rounded-r dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed" data-action="increase" data-id="{{ $cartKey }}" {{ isset($details['current_stock']) && $quantity >= $details['current_stock'] ? 'disabled' : '' }}>
                                                 <i class="fas fa-plus text-xs"></i>
                                             </button>
                                             <span class="update-status ml-2 text-xs text-gray-500" data-id="{{ $cartKey }}"></span> {{-- Status update --}}
@@ -188,7 +207,7 @@
                         <div class="mt-6 space-y-4 border-b border-gray-200 dark:border-gray-700 pb-4">
                             <div class="flex items-center justify-between">
                                 <dt class="text-sm text-gray-600 dark:text-gray-400">Subtotal (<span id="total-items">{{ count($cart) }}</span> item)</dt>
-                                <dd class="text-sm font-medium text-gray-900 dark:text-white" id="subtotal-amount">Rp{{ number_format(array_sum(array_map(fn($item) => ($item['price'] ?? 0) * ($item['quantity'] ?? 0), $cart)), 0, ',', '.') }}</dd>
+                                <dd class="text-sm font-medium text-gray-900 dark:text-white" id="subtotal-amount">Rp{{ number_format($grandTotal, 0, ',', '.') }}</dd>
                             </div>
                            {{-- Add Shipping Estimation if needed --}}
                            {{-- <div class="flex items-center justify-between">
@@ -198,11 +217,11 @@
                         </div>
                         <div class="flex items-center justify-between border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
                             <dt class="text-base font-semibold text-gray-900 dark:text-white">Total Pesanan</dt>
-                            <dd class="text-base font-semibold text-gray-900 dark:text-white" id="total-amount">Rp{{ number_format(array_sum(array_map(fn($item) => ($item['price'] ?? 0) * ($item['quantity'] ?? 0), $cart)), 0, ',', '.') }}</dd>
+                            <dd class="text-base font-semibold text-gray-900 dark:text-white" id="total-amount">Rp{{ number_format($grandTotal, 0, ',', '.') }}</dd>
                         </div>
                         <div class="mt-6">
-                            {{-- Gunakan route dari group 'customer' --}}
-                            <a href="{{ route('customer.checkout.index') }}" class="flex w-full items-center justify-center rounded-md border border-transparent btn-shopee-solid px-6 py-3 text-base font-medium text-white shadow-sm hover:opacity-90 {{ empty($cart) ? 'opacity-50 pointer-events-none' : '' }}">
+                            {{-- [PERBAIKAN] Gunakan route 'checkout.index' (tanpa prefix customer) --}}
+                            <a href="{{ route('checkout.index') }}" class="flex w-full items-center justify-center rounded-md border border-transparent btn-shopee-solid px-6 py-3 text-base font-medium text-white shadow-sm hover:opacity-90 {{ empty($cart) ? 'opacity-50 pointer-events-none disabled' : '' }}">
                                 Lanjut ke Checkout
                             </a>
                         </div>
@@ -263,9 +282,34 @@ $(document).ready(function () {
         $('#total-amount').text(formatCurrency(total)); // Assuming no shipping/taxes for now
         $('#total-items').text(itemCount);
          // Disable checkout if cart is empty
-         // Gunakan route dari group 'customer'
-         $('a[href="{{ route('customer.checkout.index') }}"]').toggleClass('opacity-50 pointer-events-none', itemCount <= 0);
+         // [PERBAIKAN] Gunakan route 'checkout.index' (tanpa prefix customer)
+         $('a[href="{{ route('checkout.index') }}"]').toggleClass('opacity-50 pointer-events-none disabled', itemCount <= 0);
     }
+
+    // Function to update the state of +/- buttons for a specific item
+    function updateQuantityButtonsState(cartKey) {
+        const input = $(`.quantity-input[data-id="${cartKey}"]`);
+        const decreaseBtn = $(`.quantity-change[data-action="decrease"][data-id="${cartKey}"]`);
+        const increaseBtn = $(`.quantity-change[data-action="increase"][data-id="${cartKey}"]`);
+
+        if (!input.length || !decreaseBtn.length || !increaseBtn.length) return; // Exit if elements not found
+
+        try {
+            const currentVal = parseInt(input.val());
+            const minVal = parseInt(input.attr('min'));
+            const maxVal = parseInt(input.attr('max')); // Read max value
+
+            decreaseBtn.prop('disabled', currentVal <= minVal);
+            // Disable increase if maxVal is defined AND currentVal is >= maxVal
+            increaseBtn.prop('disabled', !isNaN(maxVal) && currentVal >= maxVal);
+
+        } catch (e) {
+            console.error("Error updating quantity buttons state:", e);
+            decreaseBtn.prop('disabled', true);
+            increaseBtn.prop('disabled', true);
+        }
+    }
+
 
     // Function to show item loader
     function showItemLoader(cartKey) {
@@ -294,21 +338,24 @@ $(document).ready(function () {
         const input = $(`.quantity-input[data-id="${cartKey}"]`);
         let currentVal = parseInt(input.val());
         const minVal = parseInt(input.attr('min'));
+        const maxVal = parseInt(input.attr('max')); // Read max value
+
+        if (isNaN(currentVal)) currentVal = minVal; // Default to min if input is invalid
 
         if (action === 'increase') {
-            // Check max stock if available before increasing
-            const maxVal = parseInt(input.attr('max'));
             if (!isNaN(maxVal) && currentVal >= maxVal) return; // Don't increase if at max
             currentVal++;
         } else if (action === 'decrease') {
             currentVal--;
         }
 
-        if (!isNaN(currentVal) && currentVal >= minVal) {
+        if (currentVal >= minVal) {
              input.val(currentVal);
+             updateQuantityButtonsState(cartKey); // Update button state immediately
              triggerUpdate(cartKey, currentVal); // Trigger AJAX update
-        } else if (!isNaN(currentVal) && currentVal < minVal) {
+        } else {
              input.val(minVal); // Reset to min if attempt to go below
+             updateQuantityButtonsState(cartKey);
              // Optionally trigger update if value changed to minVal
              // triggerUpdate(cartKey, minVal);
         }
@@ -323,18 +370,18 @@ $(document).ready(function () {
         const minVal = parseInt(input.attr('min'));
         const maxVal = parseInt(input.attr('max')); // Get max value if exists
 
-        // Basic validation on input
-        if (isNaN(quantity) || quantity < minVal) {
-            // Don't immediately reset if user might be deleting to type new number
-            // quantity = minVal;
-        } else if (!isNaN(maxVal) && quantity > maxVal) {
-            quantity = maxVal; // Cap at max value
-            input.val(quantity); // Update input immediately if exceeding max
+        // Immediate visual capping at max value
+        if (!isNaN(maxVal) && quantity > maxVal) {
+            quantity = maxVal;
+            input.val(quantity);
         }
+        // Don't reset immediately if below min, allow typing
+        // if (isNaN(quantity) || quantity < minVal) { }
 
+        updateQuantityButtonsState(cartKey); // Update button state while typing
 
         updateTimeout = setTimeout(() => {
-             // Final check before sending AJAX - ensure it's at least minVal
+             // Final validation before sending AJAX
              quantity = parseInt(input.val()); // Re-read the value
              if (isNaN(quantity) || quantity < minVal) {
                 quantity = minVal;
@@ -357,9 +404,9 @@ $(document).ready(function () {
         showItemLoader(cartKey);
 
         $.ajax({
-            // Gunakan route dari group 'customer' dan method PATCH
-            url: '{{ route('customer.cart.update') }}',
-            method: 'PATCH', // <--- UBAH METHOD KE PATCH
+            // [PERBAIKAN] Gunakan route 'cart.update' dan method POST
+            url: '{{ route('cart.update') }}',
+            method: 'POST', // <-- UBAH KE POST
             data: {
                 _token: '{{ csrf_token() }}',
                 id: cartKey, // Send cartKey as id
@@ -371,47 +418,65 @@ $(document).ready(function () {
                     updateSummary(response.total, $('.cart-item').length);
                     statusEl.text('Updated!').fadeIn().delay(1500).fadeOut();
                     inputEl.val(response.quantity); // Sync input value
-                    // Update max attribute if available from response (optional)
-                    // if (response.current_stock !== undefined) {
-                    //     inputEl.attr('max', response.current_stock);
-                    // }
+                    // Update max attribute based on current stock from response (if provided)
+                    if (response.current_stock !== undefined) {
+                        inputEl.attr('max', response.current_stock);
+                    }
+                    updateQuantityButtonsState(cartKey); // Update button states after success
                 } else {
                     statusEl.text('Error').addClass('text-red-500').fadeIn().delay(2000).fadeOut(function() { $(this).removeClass('text-red-500'); });
                     showGlobalError(response.message || 'Gagal memperbarui kuantitas.');
-                     // Optionally revert input value on failure
-                     // inputEl.val(response.previous_quantity ?? 1); // Need backend to send this
+                    // Optionally revert input value on failure if backend sends previous value
+                    // if (response.previous_quantity !== undefined) inputEl.val(response.previous_quantity);
+                    updateQuantityButtonsState(cartKey); // Update buttons even on app error
                 }
             },
             error: function (xhr) {
                 let errorMsg = 'Terjadi kesalahan.';
                  let removed = false;
                  let newTotal = 0;
-                 let itemCount = $('.cart-item').length; // Current count
+                 let itemCount = $('.cart-item').length;
 
                 if (xhr.responseJSON) {
                     errorMsg = xhr.responseJSON.message || errorMsg;
                     removed = xhr.responseJSON.removed || false;
-                    newTotal = xhr.responseJSON.total ?? 0; // Get total if item was removed
+                    newTotal = xhr.responseJSON.total ?? 0;
+                    // If stock error (422), maybe update max attr?
+                    if (xhr.status === 422 && errorMsg.includes('Stok tidak mencukupi')) {
+                         // Extract available stock from message if possible (requires consistent backend message)
+                         // Example: "Stok tidak mencukupi (tersisa: 5)."
+                         const match = errorMsg.match(/tersisa: (\d+)/);
+                         if (match && match[1]) {
+                             const maxStockFromServer = parseInt(match[1]);
+                             inputEl.attr('max', maxStockFromServer);
+                             // Set value only if current value exceeds new max
+                             if (parseInt(inputEl.val()) > maxStockFromServer) {
+                                inputEl.val(maxStockFromServer > 0 ? maxStockFromServer : 1); // Set value to max available or 1 if max is 0
+                             }
+                             quantity = parseInt(inputEl.val()); // Use possibly adjusted quantity
+                         } else {
+                              inputEl.attr('max', quantity); // Fallback to current quantity attempt
+                         }
+                    }
                 }
 
-                 statusEl.text('Error').addClass('text-red-500').fadeIn().delay(2000).fadeOut(function() { $(this).removeClass('text-red-500'); });
+                 statusEl.text('Error').addClass('text-red-500').fadeIn().delay(3000).fadeOut(function() { $(this).removeClass('text-red-500'); });
                  showGlobalError(errorMsg);
 
                  if (removed) {
                     $(`.cart-item[data-id="${cartKey}"]`).remove();
-                    itemCount = $('.cart-item').length; // Update count after removal
+                    itemCount = $('.cart-item').length;
                     updateSummary(newTotal, itemCount);
                     checkEmptyCart();
                  } else {
-                     // Try to revert quantity - find previous quantity from DOM maybe? Less reliable.
-                     // Or just leave it and let user correct.
+                    // Update button states based on possibly adjusted quantity/max
+                     updateQuantityButtonsState(cartKey);
                  }
             },
             complete: function() {
                  hideItemLoader(cartKey);
-                 // Re-evaluate button states after update attempt
-                 // (Need max stock info for accuracy)
-                 // updateQuantityButtonsState(cartKey); // Need a way to pass max stock
+                 // Ensure buttons state is correct after any AJAX completion
+                 updateQuantityButtonsState(cartKey);
             }
         });
     }
@@ -428,9 +493,9 @@ $(document).ready(function () {
         showItemLoader(cartKey);
 
         $.ajax({
-            // Gunakan route dari group 'customer' dan method DELETE
-            url: '{{ route('customer.cart.remove') }}',
-            method: 'DELETE', // <--- UBAH METHOD KE DELETE
+            // [PERBAIKAN] Gunakan route 'cart.remove' dan method POST
+            url: '{{ route('cart.remove') }}',
+            method: 'POST', // <-- UBAH KE POST
             data: {
                 _token: '{{ csrf_token() }}',
                 id: cartKey // Send cartKey as id
@@ -443,6 +508,7 @@ $(document).ready(function () {
                         checkEmptyCart();
                     });
                      // Show success notification if needed
+                     // showGlobalSuccess(response.message || 'Item dihapus.'); // Need a success function
                 } else {
                     hideItemLoader(cartKey);
                     showGlobalError(response.message || 'Gagal menghapus item.');
@@ -490,6 +556,12 @@ $(document).ready(function () {
 
     // Initial check in case cart becomes empty due to background changes
     checkEmptyCart();
+
+    // Initial setup for quantity buttons based on loaded values
+    $('.cart-item').each(function() {
+        const cartKey = $(this).data('id');
+        updateQuantityButtonsState(cartKey);
+    });
 
 });
 </script>
