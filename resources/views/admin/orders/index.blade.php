@@ -192,7 +192,7 @@
                                 <td class="px-6 py-4 align-top whitespace-nowrap">
                                      <div><strong>{{ strtoupper($order->payment_method ?? 'N/A') }}</strong></div>
                                      <div class="font-medium text-gray-800">{{ $order->invoice_number }}</div>
-                                     <div class="text-xs text-gray-500">{{ Carbon::parse($order->created_at)->translatedFormat('d M Y, H:i') }}</div>
+                                     <div class="text-xs text-gray-500">{{ \Carbon\Carbon::parse($order->created_at)->translatedFormat('d M Y, H:i') }}</div>
                                 </td>
 
                                 {{-- Alamat (dibuat bisa wrap) --}}
