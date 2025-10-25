@@ -297,7 +297,7 @@ vertical-align: middle;
                                 @endphp
 
                                 {{-- Lacak --}}
-                                <a href="{{ $resi ? '[https://tokosancaka.com/tracking/search?resi='.e($resi](https://tokosancaka.com/tracking/search?resi='.e($resi)) : '#' }}" target="_blank" class="btn-track" title="Lacak Paket" @disabled(!$resi)>
+                                <a href="{{ $resi ? 'https://tokosancaka.com/tracking/search?resi='.e($resi) : '#' }}" target="_blank" class="btn-track" title="Lacak Paket" @disabled(!$resi)>
                                     <i class="fas fa-truck fa-fw"></i>
                                 </a>
 
@@ -390,7 +390,7 @@ if (typeof Echo !== &#39;undefined&#39;) {
             console.log(&#39;Notifikasi diterima:&#39;, e);
             toastr.options = {
                 &quot;closeButton&quot;: true, &quot;progressBar&quot;: true, &quot;positionClass&quot;: &quot;toast-top-right&quot;, &quot;timeOut&quot;: &quot;8000&quot;,
-           };
+            };
             // Sarankan refresh manual saat ada notifikasi
             toastr.info((e.message || &#39;Ada update pesanan!&#39;) + &#39;<br>&lt;small&gt;Refresh halaman untuk melihat perubahan.&lt;/small&gt;&#39;, e.title || &#39;Notifikasi Pesanan&#39;);
         });
