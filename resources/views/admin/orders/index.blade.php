@@ -102,10 +102,10 @@ vertical-align: middle;
 @apply text-gray-800; / Warna hover tombol print /
 }
 .action-buttons .btn-pdf:hover {
-@apply text-red-600; / Warna hover tombol pdf /
+@apply text-red-600; 
 }
 .action-buttons .btn-chat:hover {
-@apply text-blue-600; / Warna hover tombol chat */
+@apply text-blue-600; 
 }
 </style>
 
