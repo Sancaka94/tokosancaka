@@ -299,15 +299,10 @@ vertical-align: middle;
                                     $canCancel = in_array($order->status, ['pending', 'paid', 'processing']); // Sesuaikan status
                                 @endphp
 
-                                {{-- Lacak Paket --}}
-<a href="{{ $resi ? 'https://tokosancaka.com/tracking/search?resi=' . e($resi) : '#' }}" 
-   target="_blank" 
-   class="btn-track" 
-   title="Lacak Paket" 
-   @disabled(!$resi)>
-    <i class="fas fa-truck fa-fw"></i>
-</a>
-
+                                {{-- Lacak --}}
+                                <a href="{{ $resi ? '[https://tokosancaka.com/tracking/search?resi='.e($resi](https://tokosancaka.com/tracking/search?resi='.e($resi)) : '#' }}" target="_blank" class="btn-track" title="Lacak Paket" @disabled(!$resi)>
+                                    <i class="fas fa-truck fa-fw"></i>
+                                </a>
 
                                 {{-- Detail --}}
                                 <a href="{{ route('admin.orders.show', $invoice) }}" title="Detail Pesanan">
