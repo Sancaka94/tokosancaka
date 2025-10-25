@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
         body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
-        .thumbnail-active { outline: 2px solid #ff2a00ff; outline-offset: 2px; } /* Shopee Orange */
+        .thumbnail-active { outline: 2px solid #EE4D2D; outline-offset: 2px; } /* Shopee Orange */
         input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         input[type=number] { -moz-appearance: textfield; }
 
@@ -29,12 +29,12 @@
             color: #1f2937; /* gray-800 */
         }
         .variant-option:hover {
-            border-color: #ff2a00ff;
-            color: #ff2a00ff;
+            border-color: #EE4D2D;
+            color: #EE4D2D;
         }
         .variant-option.active {
-            border-color: #ff2a00ff;
-            color: #ff2a00ff;
+            border-color: #EE4D2D;
+            color: #EE4D2D;
             background-color: rgba(238, 77, 45, 0.05); /* Light orange tint */
             position: relative; /* For the checkmark */
         }
@@ -46,7 +46,7 @@
              right: 0;
              width: 0;
              height: 0;
-             border-bottom: 12px solid #ff2a00ff;
+             border-bottom: 12px solid #EE4D2D;
              border-left: 12px solid transparent;
         }
          .variant-option.active::before {
@@ -74,15 +74,15 @@
             color: #e5e7eb; /* gray-200 */
         }
          .dark .variant-option:hover {
-             border-color: #1100ffff; /* orange-500 */
-             color: #1100ffff;
+             border-color: #F97316; /* orange-500 */
+             color: #F97316;
          }
         .dark .variant-option.active {
-            border-color: #1100ffff;
-            color: #1100ffff;
+            border-color: #F97316;
+            color: #F97316;
             background-color: rgba(249, 115, 22, 0.1); /* Light orange tint */
         }
-         .dark .variant-option.active::after { border-bottom-color: #1100ffff; }
+         .dark .variant-option.active::after { border-bottom-color: #F97316; }
          .dark .variant-option:disabled {
              background-color: #4b5563; /* gray-600 */
              color: #6b7280; /* gray-500 */
@@ -103,21 +103,21 @@
          /* Shopee Button Styles */
          .btn-shopee-outline {
              background-color: rgba(255, 87, 34, 0.1);
-             border: 1px solid #ff2a00ff;
-             color: #ff2a00ff;
+             border: 1px solid #EE4D2D;
+             color: #EE4D2D;
              transition: background-color 0.2s ease;
          }
          .btn-shopee-outline:hover {
              background-color: rgba(255, 87, 34, 0.15);
          }
          .btn-shopee-solid {
-             background-color: #ff2a00ff;
-             border: 1px solid #ff2a00ff;
+             background-color: #EE4D2D;
+             border: 1px solid #EE4D2D;
              color: white;
               transition: background-color 0.2s ease;
          }
          .btn-shopee-solid:hover {
-             background-color: #ff2a00ff; /* Slightly darker orange */
+             background-color: #d73210; /* Slightly darker orange */
          }
 
          /* Prose adjustments */
@@ -381,13 +381,15 @@
         @if ($product->store_name)
         <div class="mt-8 bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 sm:p-6">
             <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                 <a href="{{ Route::has('toko.profile') ? route('toko.profile', ['slug' => $product->store_slug ?? Str::slug($product->store_name)]) : '#' }}" class="flex-shrink-0">
+                 {{-- [PERBAIKAN ROUTE] Ganti 'slug' menjadi 'name' --}}
+                 <a href="{{ Route::has('toko.profile') ? route('toko.profile', ['name' => $product->store_slug ?? Str::slug($product->store_name)]) : '#' }}" class="flex-shrink-0">
                     <img src="{{ $product->seller_logo ? asset('storage/' . $product->seller_logo) : 'https://placehold.co/64x64/E2E8F0/AAAAAA?text=Toko' }}"
                          alt="Logo {{ $product->store_name }}"
                          class="w-16 h-16 rounded-full border border-gray-200 dark:border-gray-700 object-cover">
                  </a>
                 <div class="flex-grow">
-                     <a href="{{ Route::has('toko.profile') ? route('toko.profile', ['slug' => $product->store_slug ?? Str::slug($product->store_name)]) : '#' }}" class="hover:underline">
+                     {{-- [PERBAIKAN ROUTE] Ganti 'slug' menjadi 'name' --}}
+                     <a href="{{ Route::has('toko.profile') ? route('toko.profile', ['name' => $product->store_slug ?? Str::slug($product->store_name)]) : '#' }}" class="hover:underline">
                         <h3 class="text-base font-bold text-gray-900 dark:text-white">{{ $product->store_name }}</h3>
                     </a>
                     <div class="flex items-center text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -410,7 +412,8 @@
                         </a>
                     @endif
                      @if(Route::has('toko.profile'))
-                         <a href="{{ route('toko.profile', ['slug' => $product->store_slug ?? Str::slug($product->store_name)]) }}" class="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                          {{-- [PERBAIKAN ROUTE] Ganti 'slug' menjadi 'name' --}}
+                         <a href="{{ route('toko.profile', ['name' => $product->store_slug ?? Str::slug($product->store_name)]) }}" class="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                              <i class="fas fa-store text-gray-500 dark:text-gray-400"></i> Kunjungi Toko
                         </a>
                      @endif
