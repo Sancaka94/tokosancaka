@@ -1,6 +1,6 @@
 {{-- Halaman ini adalah view untuk 'AdminOrderController@index' --}}
 {{-- PERUBAHAN: Menggunakan layout admin.layouts.admin --}}
-@extends('admin.layouts.admin')
+@extends('layouts.admin')
 
 {{-- Kirim CSS tambahan ke layout utama --}}
 @push('styles')
