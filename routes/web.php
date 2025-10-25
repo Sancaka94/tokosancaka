@@ -124,8 +124,17 @@ Route::get('/marketplace', [CustomerMarketplaceController::class, 'index'])->nam
 // Rute ini akan menangani permintaan POST saat tombol "+ Keranjang" diklik
 Route::post('/cart/add/{product}', [CartController::class, 'add'])->name('cart.add');
 // Rute ini untuk menampilkan halaman keranjang belanja
-Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
-Route::post('/cart/clear', [CartController::class, 'clear'])->name('cart.clear');
+  Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
+
+    // Update jumlah item (gunakan PATCH)
+    Route::patch('/cart/update', [CartController::class, 'update'])->name('cart.update');
+
+    // Hapus item dari keranjang (AJAX atau form)
+    Route::delete('/cart/remove', [CartController::class, 'remove'])->name('cart.remove');
+
+    // Kosongkan keranjang
+    Route::post('/cart/clear', [CartController::class, 'clear'])->name('cart.clear');
+
 
 Route::prefix('customer')->name('customer.')->group(function () {
     Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
