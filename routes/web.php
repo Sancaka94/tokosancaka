@@ -125,6 +125,7 @@ Route::get('/marketplace', [CustomerMarketplaceController::class, 'index'])->nam
 Route::post('/cart/add/{product}', [CartController::class, 'add'])->name('cart.add');
 // Rute ini untuk menampilkan halaman keranjang belanja
 Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
+Route::post('/cart/clear', [CartController::class, 'clear'])->name('cart.clear');
 
 Route::prefix('customer')->name('customer.')->group(function () {
     Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
