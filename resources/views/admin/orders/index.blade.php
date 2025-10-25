@@ -206,6 +206,8 @@ vertical-align: middle;
                             <div><strong>{{ strtoupper($order->payment_method ?? 'N/A') }}</strong></div>
                             <div class="font-medium text-gray-800">{{ $order->invoice_number }}</div>
                             <div class="text-xs text-gray-500">{{ \Carbon\Carbon::parse($order->created_at)->translatedFormat('d M Y, H:i') }}</div>
+                            {{-- TAMBAHAN: Menampilkan Total Amount --}}
+                            <div class="font-bold text-lg text-indigo-600 mt-1">Rp{{ number_format($order->total_amount, 0, ',', '.') }}</div>
                         </td>
 
                         {{-- Alamat (dibuat bisa wrap) --}}
@@ -241,7 +243,8 @@ vertical-align: middle;
                             @endif
                             
                             <div><small>{{ $shippingInfo['service_name'] }} ({{ $shippingInfo['type'] }})</small></div>
-                            <div class="font-semibold text-green-700">{{ $shippingInfo['cost_formatted'] }}</div>
+                            {{-- DIPERBAIKI: Menggunakan shipping_cost dari database --}}
+                            <div class="font-semibold text-green-700">Rp{{ number_format($order->shipping_cost, 0, ',', '.') }}</div>
                         </td>
 
                         {{-- Isi Paket --}}
