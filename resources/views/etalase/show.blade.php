@@ -194,10 +194,10 @@ if (!function_exists('formatWaNumber')) {
         <!-- Breadcrumb -->
         <nav aria-label="Breadcrumb" class="mb-6 text-sm text-gray-500 dark:text-gray-400">
              <ol class="flex items-center space-x-2 overflow-x-auto whitespace-nowrap py-1">
-                <li><a href="{{ route('etalase.index') }}" class="hover:text-orange-600">Sancaka</a></li>
+                <li><a href="{{ route('etalase.index') }}" class="hover:text-red-600">Sancaka</a></li>
                 <li><i class="fas fa-chevron-right text-xs"></i></li>
                 @if($product->category && is_object($product->category))
-                <li><a href="{{ route('etalase.category.show', $product->category->slug) }}" class="hover:text-orange-600">{{ $product->category->name }}</a></li>
+                <li><a href="{{ route('etalase.category.show', $product->category->slug) }}" class="hover:text-red-600">{{ $product->category->name }}</a></li>
                 <li><i class="fas fa-chevron-right text-xs"></i></li>
                 @endif
                 <li class="font-medium text-gray-700 dark:text-gray-300 truncate">{{ $product->name }}</li>
@@ -221,7 +221,7 @@ if (!function_exists('formatWaNumber')) {
                     {{-- Thumbnails --}}
                     <div class="grid grid-cols-5 gap-2 sm:gap-3">
                         <div>
-                            <img src="{{ $imageUrl }}" alt="Thumbnail 1" class="thumbnail-img w-full h-auto object-cover rounded cursor-pointer border border-gray-200 dark:border-gray-700 hover:border-orange-500 thumbnail-active" onclick="changeImage(this)" onerror="this.onerror=null;this.style.display='none';">
+                            <img src="{{ $imageUrl }}" alt="Thumbnail 1" class="thumbnail-img w-full h-auto object-cover rounded cursor-pointer border border-gray-200 dark:border-gray-700 hover:border-red-500 thumbnail-active" onclick="changeImage(this)" onerror="this.onerror=null;this.style.display='none';">
                         </div>
                         {{-- Logika untuk gambar tambahan (jika ada) --}}
                         {{-- @if($product->images && is_array(json_decode($product->images))) ... @endif --}}
@@ -234,11 +234,11 @@ if (!function_exists('formatWaNumber')) {
 
                     <div class="flex items-center space-x-4 mb-4 text-sm text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700 pb-4">
                         <div class="flex items-center">
-                             <span class="font-semibold text-orange-500 mr-1">{{ number_format($product->rating ?? 5, 1) }}</span>
+                             <span class="font-semibold text-red-500 mr-1">{{ number_format($product->rating ?? 5, 1) }}</span>
                              {{-- Simple Stars --}}
-                             <div class="flex text-orange-400">
+                             <div class="flex text-red-400">
                                  @for ($i = 1; $i <= 5; $i++)
-                                     <i class="fas fa-star {{ ($product->rating ?? 5) >= $i ? 'text-orange-400' : 'text-gray-300' }} text-xs"></i>
+                                     <i class="fas fa-star {{ ($product->rating ?? 5) >= $i ? 'text-red-400' : 'text-gray-300' }} text-xs"></i>
                                  @endfor
                              </div>
                         </div>
@@ -308,11 +308,11 @@ if (!function_exists('formatWaNumber')) {
                              <label for="quantity" class="w-24 text-sm text-gray-500 dark:text-gray-400 flex-shrink-0">Kuantitas</label>
                             <div class="flex items-center">
                                 <div class="flex items-center border border-gray-300 dark:border-gray-600 rounded">
-                                    <button id="button-minus" type="button" class="px-3 py-1 text-gray-600 dark:text-gray-400 hover:text-orange-600 dark:hover:text-orange-500 transition disabled:text-gray-300 dark:disabled:text-gray-500" disabled>
+                                    <button id="button-minus" type="button" class="px-3 py-1 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-500 transition disabled:text-gray-300 dark:disabled:text-gray-500" disabled>
                                         <i class="fas fa-minus text-xs"></i>
                                     </button>
                                     <input type="number" id="quantity" name="quantity" class="w-12 h-8 text-center text-sm bg-transparent border-x border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-0 disabled:bg-gray-100 dark:disabled:bg-gray-700" value="1" min="1" max="{{ $initialStock > 0 ? $initialStock : 1 }}" {{ $initialStock <= 0 ? 'disabled' : '' }}>
-                                    <button id="button-plus" type="button" class="px-3 py-1 text-gray-600 dark:text-gray-400 hover:text-orange-600 dark:hover:text-orange-500 transition disabled:text-gray-300 dark:disabled:text-gray-500" {{ $initialStock <= 1 ? 'disabled' : '' }}>
+                                    <button id="button-plus" type="button" class="px-3 py-1 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-500 transition disabled:text-gray-300 dark:disabled:text-gray-500" {{ $initialStock <= 1 ? 'disabled' : '' }}>
                                         <i class="fas fa-plus text-xs"></i>
                                     </button>
                                 </div>
@@ -336,7 +336,7 @@ if (!function_exists('formatWaNumber')) {
                                 <button id="add-to-cart-button" type="submit" name="action" value="add_to_cart" class="flex-1 flex items-center justify-center gap-2 px-6 py-3 text-sm btn-shopee-outline rounded-sm disabled:opacity-70 disabled:hover:bg-opacity-10" {{ $initialStock <= 0 ? 'disabled' : '' }}>
                                     <i class="fas fa-cart-plus"></i> Masukkan Keranjang
                                 </button>
-                                 <button id="buy-now-button" type="submit" name="action" value="buy_now" class="flex-1 flex items-center justify-center gap-2 px-6 py-3 text-sm btn-shopee-solid rounded-sm disabled:opacity-70 disabled:hover:bg-orange-600" {{ $initialStock <= 0 ? 'disabled' : '' }}>
+                                 <button id="buy-now-button" type="submit" name="action" value="buy_now" class="flex-1 flex items-center justify-center gap-2 px-6 py-3 text-sm btn-shopee-solid rounded-sm disabled:opacity-70 disabled:hover:bg-red-600" {{ $initialStock <= 0 ? 'disabled' : '' }}>
                                     Beli Sekarang
                                 </button>
                             </div>
@@ -449,7 +449,7 @@ if (!function_exists('formatWaNumber')) {
             </div>
             @if(strlen($product->description ?? '') > 350)
             <div class="text-center mt-4">
-                 <button id="toggle-description" class="text-sm text-orange-600 dark:text-orange-500 font-medium hover:underline">
+                 <button id="toggle-description" class="text-sm text-red-600 dark:text-red-500 font-medium hover:underline">
                     Baca Selengkapnya <i class="fas fa-chevron-down text-xs ml-1"></i>
                 </button>
             </div>
