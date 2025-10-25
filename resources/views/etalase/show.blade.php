@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
         body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
-        .thumbnail-active { outline: 2px solid #EE4D2D; outline-offset: 2px; } /* Shopee Orange */
+        .thumbnail-active { outline: 2px solid #ff2a00ff; outline-offset: 2px; } /* Shopee Orange */
         input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         input[type=number] { -moz-appearance: textfield; }
 
@@ -29,12 +29,12 @@
             color: #1f2937; /* gray-800 */
         }
         .variant-option:hover {
-            border-color: #EE4D2D;
-            color: #EE4D2D;
+            border-color: #ff2a00ff;
+            color: #ff2a00ff;
         }
         .variant-option.active {
-            border-color: #EE4D2D;
-            color: #EE4D2D;
+            border-color: #ff2a00ff;
+            color: #ff2a00ff;
             background-color: rgba(238, 77, 45, 0.05); /* Light orange tint */
             position: relative; /* For the checkmark */
         }
@@ -46,7 +46,7 @@
              right: 0;
              width: 0;
              height: 0;
-             border-bottom: 12px solid #EE4D2D;
+             border-bottom: 12px solid #ff2a00ff;
              border-left: 12px solid transparent;
         }
          .variant-option.active::before {
@@ -74,15 +74,15 @@
             color: #e5e7eb; /* gray-200 */
         }
          .dark .variant-option:hover {
-             border-color: #F97316; /* orange-500 */
-             color: #F97316;
+             border-color: #1100ffff; /* orange-500 */
+             color: #1100ffff;
          }
         .dark .variant-option.active {
-            border-color: #F97316;
-            color: #F97316;
+            border-color: #1100ffff;
+            color: #1100ffff;
             background-color: rgba(249, 115, 22, 0.1); /* Light orange tint */
         }
-         .dark .variant-option.active::after { border-bottom-color: #F97316; }
+         .dark .variant-option.active::after { border-bottom-color: #1100ffff; }
          .dark .variant-option:disabled {
              background-color: #4b5563; /* gray-600 */
              color: #6b7280; /* gray-500 */
@@ -103,21 +103,21 @@
          /* Shopee Button Styles */
          .btn-shopee-outline {
              background-color: rgba(255, 87, 34, 0.1);
-             border: 1px solid #EE4D2D;
-             color: #EE4D2D;
+             border: 1px solid #ff2a00ff;
+             color: #ff2a00ff;
              transition: background-color 0.2s ease;
          }
          .btn-shopee-outline:hover {
              background-color: rgba(255, 87, 34, 0.15);
          }
          .btn-shopee-solid {
-             background-color: #EE4D2D;
-             border: 1px solid #EE4D2D;
+             background-color: #ff2a00ff;
+             border: 1px solid #ff2a00ff;
              color: white;
               transition: background-color 0.2s ease;
          }
          .btn-shopee-solid:hover {
-             background-color: #d73210; /* Slightly darker orange */
+             background-color: #ff2a00ff; /* Slightly darker orange */
          }
 
          /* Prose adjustments */
@@ -149,9 +149,10 @@
             $key = '';
             if ($variant->relationLoaded('options')) {
                 $key = $variant->options->sortBy(function($option) {
+                            // Safely access nested properties
                             return optional(optional($option)->productVariantType)->name ?? '';
                         })
-                        ->map(fn($option) => (optional(optional($option)->productVariantType)->name ?? 'UNKNOWN') . ':' . ($option->name ?? 'UNKNOWN'))
+                        ->map(fn($option) => (optional(optional($option)->productVariantType)->name ?? 'UNKNOWN') . ':' . (optional($option)->name ?? 'UNKNOWN')) // Safely access option name
                         ->implode(';');
             }
             if (!empty($key)) {
@@ -164,11 +165,13 @@
                 ]];
             }
             return [];
-        })->filter()->all();
+        })->filter()->all(); // filter() removes empty arrays if key wasn't generated
     }
     $jsVariantTypesCount = $productHasVariants ? $product->productVariantTypes->count() : 0;
-    $initialStock = $productHasVariants ? 0 : ($product->stock ?? 0); // Stok awal 0 jika ada varian
+    // Initial stock is 0 if product has variants, otherwise use product stock
+    $initialStock = $productHasVariants ? 0 : (int)($product->stock ?? 0); // Cast to int
 @endphp
+
 
 <div class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 min-h-screen">
     <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -239,16 +242,18 @@
                              <span id="display-original-price" class="text-base text-gray-400 dark:text-gray-500 line-through hidden"></span>
                         @endif
 
-                        <span id="display-price" class="text-2xl lg:text-3xl font-bold text-orange-600 dark:text-orange-500">
+                        {{-- [PERBAIKAN WARNA] Kembali ke merah --}}
+                        <span id="display-price" class="text-2xl lg:text-3xl font-bold text-red-600 dark:text-red-500">
                            Rp{{ number_format($product->price, 0, ',', '.') }}
                         </span>
 
                         @if($product->original_price && $product->original_price > $product->price)
-                            <span id="display-discount" class="text-xs font-semibold text-orange-600 dark:text-orange-500 bg-orange-100 dark:bg-orange-900/50 px-2 py-0.5 rounded-sm">
+                             {{-- [PERBAIKAN WARNA] Sesuaikan diskon dengan warna harga utama --}}
+                            <span id="display-discount" class="text-xs font-semibold text-red-600 dark:text-red-500 bg-red-100 dark:bg-red-900/50 px-2 py-0.5 rounded-sm">
                                 {{ round((($product->original_price - $product->price) / $product->original_price) * 100) }}% OFF
                             </span>
                         @else
-                             <span id="display-discount" class="text-xs font-semibold text-orange-600 dark:text-orange-500 bg-orange-100 dark:bg-orange-900/50 px-2 py-0.5 rounded-sm hidden"></span>
+                             <span id="display-discount" class="text-xs font-semibold text-red-600 dark:text-red-500 bg-red-100 dark:bg-red-900/50 px-2 py-0.5 rounded-sm hidden"></span>
                         @endif
                     </div>
 
@@ -261,14 +266,14 @@
                         @if($productHasVariants)
                             <div id="variant-selection" class="mt-6 space-y-4">
                                 @foreach($product->productVariantTypes as $type)
-                                    <div class="flex items-center">
-                                        <label class="w-24 text-sm text-gray-500 dark:text-gray-400 capitalize">{{ $type->name }}</label>
+                                    <div class="flex items-start sm:items-center flex-col sm:flex-row"> {{-- Allow stacking on small screens --}}
+                                        <label class="w-full sm:w-24 text-sm text-gray-500 dark:text-gray-400 capitalize mb-2 sm:mb-0 flex-shrink-0">{{ $type->name }}</label>
                                         <div class="flex flex-wrap gap-2">
                                             @if($type->relationLoaded('options'))
                                                 @foreach($type->options as $option)
                                                     <button
                                                         type="button"
-                                                        class="variant-option text-sm" {{-- Hapus padding & min-width di style --}}
+                                                        class="variant-option text-sm"
                                                         data-type-name="{{ $type->name }}"
                                                         data-option-name="{{ $option->name }}">
                                                         {{ $option->name }}
@@ -284,7 +289,7 @@
 
                         {{-- Kuantitas --}}
                         <div class="mt-6 flex items-center">
-                             <label for="quantity" class="w-24 text-sm text-gray-500 dark:text-gray-400">Kuantitas</label>
+                             <label for="quantity" class="w-24 text-sm text-gray-500 dark:text-gray-400 flex-shrink-0">Kuantitas</label>
                             <div class="flex items-center">
                                 <div class="flex items-center border border-gray-300 dark:border-gray-600 rounded">
                                     <button id="button-minus" type="button" class="px-3 py-1 text-gray-600 dark:text-gray-400 hover:text-orange-600 dark:hover:text-orange-500 transition disabled:text-gray-300 dark:disabled:text-gray-500" disabled>
@@ -325,12 +330,13 @@
                      {{-- Bagian Spesifikasi / Atribut --}}
                      @php
                          $hasAttributesToShow = false;
-                         $attributesProductData = []; // Definisikan di luar if
+                         $attributesProductData = [];
                          if ($product->relationLoaded('category') && $product->category && $product->category->relationLoaded('attributes')) {
                              $attributesProductData = is_string($product->attributes_data) ? json_decode($product->attributes_data, true) : ($product->attributes_data ?? []);
-                             if(!is_array($attributesProductData)) $attributesProductData = []; // Fallback jika decode gagal
+                             if(!is_array($attributesProductData)) $attributesProductData = [];
 
                              foreach ($product->category->attributes as $attributeDefinition) {
+                                 // Check both slug and name for robust compatibility
                                  $attributeValue = $attributesProductData[$attributeDefinition->slug] ?? ($attributesProductData[$attributeDefinition->name] ?? null);
                                  if ($attributeValue !== null && $attributeValue !== '' && (!is_array($attributeValue) || !empty(array_filter($attributeValue)))) {
                                      $hasAttributesToShow = true;
@@ -344,8 +350,9 @@
                          <div class="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
                              <h3 class="text-base font-semibold text-gray-900 dark:text-white mb-4">Spesifikasi Produk</h3>
                              <div class="space-y-3">
-                                 @foreach ($product->category->attributes as $attributeDefinition)
+                                 @foreach ($product->category->attributes->sortBy('name') as $attributeDefinition) {{-- Sort attributes by name --}}
                                     @php
+                                        // Check both slug and name
                                         $value = $attributesProductData[$attributeDefinition->slug] ?? ($attributesProductData[$attributeDefinition->name] ?? null);
                                         $displayValue = '';
                                         if ($value !== null && $value !== '') {
@@ -356,9 +363,9 @@
                                         }
                                     @endphp
                                      @if (!empty($displayValue))
-                                         <div class="grid grid-cols-3 gap-4 text-sm">
+                                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-1 text-sm">
                                              <dt class="text-gray-500 dark:text-gray-400">{{ $attributeDefinition->name }}</dt>
-                                             <dd class="col-span-2 font-medium text-gray-800 dark:text-gray-200">{{ $displayValue }}</dd>
+                                             <dd class="sm:col-span-2 font-medium text-gray-800 dark:text-gray-200">{{ $displayValue }}</dd>
                                          </div>
                                      @endif
                                  @endforeach
@@ -387,12 +394,18 @@
                         <span class="w-2 h-2 bg-gray-400 rounded-full mr-1.5"></span>
                         <span>Offline</span> {{-- Ganti dengan status toko jika ada --}}
                     </div>
+                     {{-- Tambahkan info lokasi toko --}}
+                     @if($product->seller_city)
+                         <div class="flex items-center text-xs text-gray-500 dark:text-gray-400 mt-1">
+                             <i class="fas fa-map-marker-alt mr-1.5"></i> {{ $product->seller_city }}
+                         </div>
+                     @endif
                 </div>
 
                 <div class="flex w-full sm:w-auto flex-col sm:flex-row gap-3 mt-4 sm:mt-0 self-stretch sm:self-center">
                     @if(Auth::check() && $product->seller_wa)
                         @php $wa_number = formatWaNumber($product->seller_wa); @endphp
-                        <a href="https://wa.me/{{ $wa_number }}" target="_blank" class="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded transition-colors hover:bg-gray-100 dark:hover:bg-gray-700">
+                        <a href="https://wa.me/{{ $wa_number }}?text=Halo%2C%20saya%20tertarik%20dengan%20produk%20Anda%3A%20{{ urlencode($product->name) }}" target="_blank" class="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded transition-colors hover:bg-gray-100 dark:hover:bg-gray-700">
                             <i class="fab fa-whatsapp text-green-500"></i> Chat
                         </a>
                     @endif
@@ -430,14 +443,17 @@
 
 {{-- Helper function to format WhatsApp number --}}
 @php
-function formatWaNumber($number) {
-    $number = preg_replace('/[^0-9]/', '', $number);
-    if (substr($number, 0, 1) === '0') {
-        return '62' . substr($number, 1);
-    } elseif (substr($number, 0, 2) !== '62') {
-        return '62' . $number;
+if (!function_exists('formatWaNumber')) {
+    function formatWaNumber($number) {
+        if(empty($number)) return '';
+        $number = preg_replace('/[^0-9]/', '', $number);
+        if (substr($number, 0, 1) === '0') {
+            return '62' . substr($number, 1);
+        } elseif (substr($number, 0, 2) !== '62') {
+            return '62' . $number;
+        }
+        return $number;
     }
-    return $number;
 }
 @endphp
 
@@ -465,11 +481,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const currentValue = parseInt(quantityInput.value);
             const minVal = parseInt(quantityInput.min);
             const maxVal = parseInt(quantityInput.max);
+            // Also consider if the input itself is disabled
             minusButton.disabled = currentValue <= minVal || quantityInput.disabled;
             plusButton.disabled = currentValue >= maxVal || quantityInput.disabled;
         } catch (e) {
             console.error("Error updating quantity buttons:", e);
-            // Disable both if error
             minusButton.disabled = true;
             plusButton.disabled = true;
         }
@@ -477,7 +493,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if(minusButton) {
         minusButton.addEventListener('click', () => {
-            if (!quantityInput) return;
+            if (!quantityInput || quantityInput.disabled) return; // Check disabled state
             let currentValue = parseInt(quantityInput.value);
             const minVal = parseInt(quantityInput.min);
             if (!isNaN(currentValue) && !isNaN(minVal) && currentValue > minVal) {
@@ -489,7 +505,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if(plusButton) {
         plusButton.addEventListener('click', () => {
-             if (!quantityInput) return;
+             if (!quantityInput || quantityInput.disabled) return; // Check disabled state
             let currentValue = parseInt(quantityInput.value);
             const maxVal = parseInt(quantityInput.max);
             if(!isNaN(currentValue) && !isNaN(maxVal) && currentValue < maxVal) {
@@ -509,6 +525,10 @@ document.addEventListener('DOMContentLoaded', () => {
                  quantityInput.value = minVal;
              } else if (value > maxVal) {
                  quantityInput.value = maxVal;
+             }
+             // Ensure value is not empty if manually cleared
+             if (quantityInput.value === '') {
+                quantityInput.value = minVal;
              }
              updateQuantityButtonsState();
         });
@@ -547,20 +567,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const addToCartButton = document.getElementById('add-to-cart-button');
     const buyNowButton = document.getElementById('buy-now-button');
 
-    // Data varian dari Blade (menggunakan variabel $jsProductVariantsData)
     const productVariantsData = @json($jsProductVariantsData);
     const variantTypesCount = {{ $jsVariantTypesCount }};
-    let selectedOptions = {}; // { 'Warna': 'Merah', 'Ukuran': 'S' }
+    let selectedOptions = {};
+
+    // Initial product state (non-variant)
+    const initialProductPrice = {{ (float) ($product->price ?? 0) }};
+    const initialProductOriginalPrice = {{ (float) ($product->original_price ?? 0) }};
+    const initialProductStock = {{ $initialStock }};
 
     if (variantSelectionDiv && variantTypesCount > 0) {
         const optionButtons = variantSelectionDiv.querySelectorAll('.variant-option');
 
         optionButtons.forEach(button => {
             button.addEventListener('click', () => {
+                if (button.disabled) return; // Ignore clicks on disabled buttons
+
                 const typeName = button.dataset.typeName;
                 const optionName = button.dataset.optionName;
 
-                // Update selected state
                 selectedOptions[typeName] = optionName;
 
                 // Update visual state for the group
@@ -574,14 +599,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     updateProductDetails();
                     if(variantErrorEl) variantErrorEl.classList.add('hidden');
                 } else {
-                     disableActionsAndResetVariantId('Pilih semua varian untuk melihat stok');
+                     // Keep UI disabled but show selected options
+                     disableActionsAndResetVariantId('Pilih semua varian');
                 }
             });
         });
     }
 
     function generateVariantKey(options) {
-        if (Object.keys(options).length !== variantTypesCount) return null;
+        if (variantTypesCount === 0 || Object.keys(options).length !== variantTypesCount) return null;
         return Object.keys(options)
             .sort()
             .map(typeName => `${typeName}:${options[typeName]}`)
@@ -590,16 +616,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateProductDetails() {
         const currentKey = generateVariantKey(selectedOptions);
-        if (!currentKey) return;
+        if (!currentKey) {
+            console.warn("Attempted to update details but key generation failed. Options:", selectedOptions);
+            return; // Should not happen if called correctly
+        }
 
         const selectedVariant = productVariantsData[currentKey];
 
         if (selectedVariant) {
             // Update Harga
-            if(displayPriceEl) displayPriceEl.textContent = `Rp${number_format(selectedVariant.price, 0, ',', '.')}`;
-            // Handle original price & discount for variant (assuming variant doesn't have its own original price)
-            if(displayOriginalPriceEl) displayOriginalPriceEl.textContent = ''; // Kosongkan harga coret produk utama
-            if(displayDiscountEl) displayDiscountEl.classList.add('hidden');   // Sembunyikan diskon produk utama
+            if(displayPriceEl) displayPriceEl.textContent = `Rp${number_format(selectedVariant.price)}`;
+            // Hide original price and discount when a variant is selected
+            if(displayOriginalPriceEl) displayOriginalPriceEl.classList.add('hidden');
+            if(displayDiscountEl) displayDiscountEl.classList.add('hidden');
 
             // Update Stok
             const currentStock = selectedVariant.stock;
@@ -607,8 +636,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if(quantityInput) {
                 quantityInput.max = currentStock > 0 ? currentStock : 1;
-                if (parseInt(quantityInput.value) > currentStock || currentStock <= 0) {
-                     quantityInput.value = currentStock > 0 ? 1 : 1;
+                 // Reset quantity only if current value exceeds new max stock, or if stock is 0
+                 const currentQuantity = parseInt(quantityInput.value);
+                if (isNaN(currentQuantity) || currentQuantity > currentStock || currentStock <= 0) {
+                    quantityInput.value = 1; // Reset to 1
                 }
                  quantityInput.disabled = currentStock <= 0;
             }
@@ -618,7 +649,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Update hidden input variant ID
             if(selectedVariantIdInput) selectedVariantIdInput.value = selectedVariant.id;
 
-            // Enable/Disable tombol beli/keranjang
+            // Enable/Disable action buttons
             const disableActions = currentStock <= 0;
             if(addToCartButton) addToCartButton.disabled = disableActions;
             if(buyNowButton) buyNowButton.disabled = disableActions;
@@ -627,62 +658,61 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             console.error("Kombinasi varian TIDAK DITEMUKAN:", currentKey);
             disableActionsAndResetVariantId('Kombinasi tidak tersedia');
+            // Optionally: Visually indicate invalid combination, e.g., reset active buttons
+             variantSelectionDiv.querySelectorAll('.variant-option.active').forEach(btn => btn.classList.remove('active'));
+             selectedOptions = {}; // Clear selections on invalid combo
         }
     }
 
-     // Fungsi untuk disable aksi dan reset ID varian
+     // Disables actions, resets variant ID, updates stock message, disables quantity input
      function disableActionsAndResetVariantId(message = 'Pilih varian') {
         if(displayStockEl) displayStockEl.textContent = message;
         if(quantityInput) {
              quantityInput.max = 1;
              quantityInput.value = 1;
-             quantityInput.disabled = true;
+             quantityInput.disabled = true; // Always disable quantity if state is invalid/incomplete
         }
         if(selectedVariantIdInput) selectedVariantIdInput.value = '';
 
-        updateQuantityButtonsState();
+        updateQuantityButtonsState(); // Will disable +/- because quantity input is disabled
 
         if(addToCartButton) addToCartButton.disabled = true;
         if(buyNowButton) buyNowButton.disabled = true;
      }
 
-    // Reset ke state awal produk (harga utama, dll)
+    // Resets display to the main product's details and disables actions
     function resetProductDetailsToDefault(message = 'Pilih varian untuk melihat stok') {
-        const defaultPrice = {{ (float) ($product->price ?? 0) }}; // Cast ke float
-        const defaultOriginalPrice = {{ (float) ($product->original_price ?? 0) }}; // Cast ke float
-
-        if(displayPriceEl) displayPriceEl.textContent = `Rp${number_format(defaultPrice, 0, ',', '.')}`;
+        if(displayPriceEl) displayPriceEl.textContent = `Rp${number_format(initialProductPrice)}`;
 
         if(displayOriginalPriceEl) {
-            if (defaultOriginalPrice > 0) {
-                displayOriginalPriceEl.textContent = `Rp${number_format(defaultOriginalPrice, 0, ',', '.')}`;
-                displayOriginalPriceEl.classList.remove('hidden'); // Tampilkan jika ada
+            if (initialProductOriginalPrice > 0) {
+                displayOriginalPriceEl.textContent = `Rp${number_format(initialProductOriginalPrice)}`;
+                displayOriginalPriceEl.classList.remove('hidden');
             } else {
                  displayOriginalPriceEl.textContent = '';
-                 displayOriginalPriceEl.classList.add('hidden'); // Sembunyikan jika tidak ada
+                 displayOriginalPriceEl.classList.add('hidden');
             }
         }
         if(displayDiscountEl) {
-            if (defaultOriginalPrice > defaultPrice) {
-                const discount = Math.round(((defaultOriginalPrice - defaultPrice) / defaultOriginalPrice) * 100);
-                displayDiscountEl.textContent = `${discount}% OFF`; // Ubah format
+            if (initialProductOriginalPrice > initialProductPrice) {
+                const discount = Math.round(((initialProductOriginalPrice - initialProductPrice) / initialProductOriginalPrice) * 100);
+                displayDiscountEl.textContent = `${discount}% OFF`;
                 displayDiscountEl.classList.remove('hidden');
             } else {
                 displayDiscountEl.classList.add('hidden');
             }
         }
 
-       disableActionsAndResetVariantId(message); // Disable action & reset ID
-
+       // Call the function to disable actions, quantity, and reset variant ID
+       disableActionsAndResetVariantId(message);
     }
 
-    // Fungsi format angka (integer only, titik ribuan)
-    function number_format(number, decimals, dec_point, thousands_sep) {
+    // Format number as integer with dot thousands separator
+    function number_format(number) {
         number = (number + '').replace(/[^0-9+\-Ee.]/g, '');
         var n = !isFinite(+number) ? 0 : +number,
-            prec = 0, // Force 0 decimals
-            sep = '.', // Titik ribuan
-            dec = ',', // Koma desimal (tidak digunakan)
+            prec = 0,
+            sep = '.',
             s = '',
             toFixedFix = function (n, prec) {
                 var k = Math.pow(10, prec);
@@ -695,36 +725,37 @@ document.addEventListener('DOMContentLoaded', () => {
         return s[0];
     }
 
-     // Validasi sebelum submit form
+     // Form validation on submit
     const productForm = document.getElementById('add-to-cart-form');
     if(productForm && variantTypesCount > 0) {
         productForm.addEventListener('submit', function(event) {
+            // Re-check if variant selection is complete and ID is set
             if (Object.keys(selectedOptions).length !== variantTypesCount || !selectedVariantIdInput || !selectedVariantIdInput.value) {
-                event.preventDefault();
+                event.preventDefault(); // Stop submission
                 if(variantErrorEl) {
                     variantErrorEl.textContent = 'Silakan pilih semua opsi varian.';
-                    variantErrorEl.classList.remove('hidden');
+                    variantErrorEl.classList.remove('hidden'); // Show error
                 }
+                // Scroll to variant section for visibility
                 if(variantSelectionDiv) variantSelectionDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
             } else {
-                 if(variantErrorEl) variantErrorEl.classList.add('hidden');
+                 if(variantErrorEl) variantErrorEl.classList.add('hidden'); // Hide error if valid
             }
         });
     }
 
-     // Inisialisasi awal
+     // Initial page load setup
     if (variantTypesCount > 0) {
-        resetProductDetailsToDefault(); // Panggil ini untuk state awal jika ada varian
+        resetProductDetailsToDefault('Pilih varian'); // Initial state for variant products
     } else {
-        // Jika tidak ada varian, update tombol quantity & action berdasarkan stok produk utama
-        updateQuantityButtonsState();
-        const initialStock = {{ $initialStock }}; // Gunakan var PHP yang sudah disiapkan
-        if (quantityInput) quantityInput.disabled = initialStock <= 0;
-        if (addToCartButton) addToCartButton.disabled = initialStock <= 0;
-        if (buyNowButton) buyNowButton.disabled = initialStock <= 0;
-         if (initialStock <= 0 && displayStockEl) displayStockEl.textContent = 'Stok habis';
+        // Initial state for non-variant products
+        updateQuantityButtonsState(); // Update based on initialStock
+        const stockIsZero = initialProductStock <= 0;
+        if (quantityInput) quantityInput.disabled = stockIsZero;
+        if (addToCartButton) addToCartButton.disabled = stockIsZero;
+        if (buyNowButton) buyNowButton.disabled = stockIsZero;
+        if (stockIsZero && displayStockEl) displayStockEl.textContent = 'Stok habis';
     }
-
 
 }); // Akhir DOMContentLoaded
 </script>
