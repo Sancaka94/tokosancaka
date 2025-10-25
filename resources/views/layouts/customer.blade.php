@@ -15,9 +15,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
-    <link rel="icon" href="https://tokosancaka.biz.id/storage/uploads/sancaka.png" type="image/png">
-    <link rel="shortcut icon" href="https://tokosancaka.biz.id/storage/uploads/sancaka.png" type="image/png">
-    <link rel="apple-touch-icon" href="https://tokosancaka.biz.id/storage/uploads/sancaka.png">
+    <link rel="icon" href="https://tokosancaka.com/storage/uploads/sancaka.png" type="image/png">
+    <link rel="shortcut icon" href="https://tokosancaka.com/storage/uploads/sancaka.png" type="image/png">
+    <link rel="apple-touch-icon" href="https://tokosancaka.com/storage/uploads/sancaka.png">
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
 
@@ -60,7 +60,7 @@
             <footer class="bg-white text-gray-600 body-font border-t border-gray-200">
                 <div class="container px-5 py-4 mx-auto flex items-center sm:flex-row flex-col">
                     <a class="flex title-font font-medium items-center md:justify-start justify-center text-gray-900">
-                         <img src="https://tokosancaka.biz.id/storage/uploads/sancaka.png" alt="Logo Sancaka Express" class="w-8 h-8">
+                         <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="Logo Sancaka Express" class="w-8 h-8">
                         <span class="ml-3 text-lg">Sancaka Express</span>
                     </a>
                     <p class="text-sm text-gray-500 sm:ml-4 sm:pl-4 sm:border-l-2 sm:border-gray-200 sm:py-2 sm:mt-0 mt-4">
