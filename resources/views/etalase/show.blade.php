@@ -140,6 +140,22 @@
 @endpush
 
 @section('content')
+{{-- Helper function to format WhatsApp number --}}
+@php
+if (!function_exists('formatWaNumber')) {
+    function formatWaNumber($number) {
+        if(empty($number)) return '';
+        $number = preg_replace('/[^0-9]/', '', $number);
+        if (substr($number, 0, 1) === '0') {
+            return '62' . substr($number, 1);
+        } elseif (substr($number, 0, 2) !== '62') {
+            return '62' . $number;
+        }
+        return $number;
+    }
+}
+@endphp
+
 {{-- Siapkan data varian untuk JS di sini --}}
 @php
     $jsProductVariantsData = [];
@@ -443,23 +459,6 @@
     </div>
 </div>
 @endsection
-
-{{-- Helper function to format WhatsApp number --}}
-@php
-if (!function_exists('formatWaNumber')) {
-    function formatWaNumber($number) {
-        if(empty($number)) return '';
-        $number = preg_replace('/[^0-9]/', '', $number);
-        if (substr($number, 0, 1) === '0') {
-            return '62' . substr($number, 1);
-        } elseif (substr($number, 0, 2) !== '62') {
-            return '62' . $number;
-        }
-        return $number;
-    }
-}
-@endphp
-
 
 @push('scripts')
 <script>
