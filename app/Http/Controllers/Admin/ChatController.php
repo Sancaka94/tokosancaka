@@ -145,22 +145,26 @@ class ChatController extends Controller
     }
 
     public function start(Request $request)
-    {
-        // Ambil id_pengguna dari query string
-        $idPengguna = $request->query('id_pengguna');
+{
+    $idPengguna = $request->query('id_pengguna');
 
-        // Ambil data penerima berdasarkan id_pengguna
-        $receiver = Pengguna::where('id_pengguna', $idPengguna)->first();
+    // Ambil data penerima berdasarkan id_pengguna
+    $receiver = Pengguna::where('id_pengguna', $idPengguna)->first();
 
-        if (!$receiver) {
-            return redirect()->back()->with('error', 'Data penerima tidak ditemukan.');
-        }
-
-        // Ambil semua pengguna lain untuk daftar chat
-        $users = Pengguna::where('id_pengguna', '!=', auth()->user()->id_pengguna)->get();
-
-        return view('admin.chat.index', compact('receiver', 'users'));
+    if (!$receiver) {
+        return redirect()->route('admin.chat.index')->with('error', 'Pelanggan tidak ditemukan.');
     }
+
+    // Ambil semua pengguna lain untuk daftar chat
+    $users = Pengguna::where('id_pengguna', '!=', auth()->user()->id_pengguna)->get();
+
+    // 👇 tambahkan agar view tahu siapa yang aktif
+    return view('admin.chat.index', [
+        'users' => $users,
+        'activeReceiver' => $receiver, // <- dikirim ke Blade
+    ]);
+}
+
 
 }
 
