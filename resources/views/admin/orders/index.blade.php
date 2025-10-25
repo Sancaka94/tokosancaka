@@ -302,10 +302,20 @@
                                              <i class="fas fa-file-pdf fa-fw"></i>
                                          </a>
 
-                                        {{-- Chat Penerima --}}
-                                        <a href="{{ $customerUserId ? route('admin.chat.start', ['user_id' => $customerUserId]) : '#' }}" target="_blank" class="btn-chat" title="Chat Penerima" @disabled(!$customerUserId)>
-                                             <i class="fas fa-comment fa-fw"></i>
-                                         </a>
+                                       {{-- Chat Penerima --}}
+@php
+    // Pastikan variabel customerUserId mengacu ke kolom id_pengguna, bukan id
+    $customerUserId = $order->penerima->id_pengguna ?? null;
+@endphp
+
+<a href="{{ $customerUserId ? route('admin.chat.start', ['user_id' => $customerUserId]) : '#' }}"
+   target="_blank"
+   class="btn btn-sm btn-outline-primary"
+   title="Chat Penerima"
+   @disabled(!$customerUserId)>
+    <i class="fas fa-comment fa-fw"></i>
+</a>
+
 
                                         {{-- Cancel/Hapus --}}
                                         <form action="{{ route('admin.orders.cancel', $invoice) }}" method="POST" onsubmit="return confirm('Anda yakin ingin membatalkan pesanan ini?')">
