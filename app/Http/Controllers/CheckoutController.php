@@ -63,20 +63,40 @@ class CheckoutController extends Controller
                 ->with('info', 'Keranjang Anda kosong. Silakan belanja terlebih dahulu.');
         }
 
-        $user  = Auth::user();
-        $firstProduct = Product::find(array_key_first($cart));
-        
-        // --- PERBAIKAN ERROR 'store' ---
-        if (!$firstProduct) { // <--- INI PENGECEKANNYA
-            // Jika produk tidak ditemukan (mungkin sudah dihapus atau ID-nya salah),
-            // bersihkan keranjang dan redirect kembali.
-            session()->forget('cart');
-            return redirect()->route('cart.index')
-                ->with('error', 'Produk di keranjang Anda tidak lagi tersedia. Keranjang telah dikosongkan.');
-        }
-        // --- AKHIR PERBAIKAN ---
+         $user  = Auth::user();
+      
+      // --- REVISI UNTUK MENDUKUNG VARIAN ---
+      // 1. Ambil data (value) dari item pertama di keranjang, bukan kuncinya (key).
+      $firstCartItemData = reset($cart); 
 
-        $store = $firstProduct->store; // Baris ini sekarang aman
+      // 2. Cek apakah data item itu ada dan memiliki 'product_id'.
+      //    'product_id' disimpan baik untuk produk simpel maupun produk varian,
+      //    berdasarkan CartController yang baru.
+      $productId = $firstCartItemData['product_id'] ?? null;
+      
+      // 3. Cari produk berdasarkan product_id yang valid.
+      $firstProduct = $productId ? Product::find($productId) : null;
+      
+      // --- PENGECEKAN KEAMANAN (sebelumnya 'PERBAIKAN ERROR store') ---
+      
+      // Pengecekan ini sekarang berfungsi dengan benar.
+      // Ini akan GAGAL (true) jika:
+      // 1. Keranjang kosong ($firstCartItemData = false, $productId = null, $firstProduct = null)
+      // 2. Data keranjang korup ($productId = null, $firstProduct = null)
+      // 3. Produk dengan ID tersebut memang sudah dihapus ($firstProduct = null)
+      if (!$firstProduct) { 
+          // 1. Keranjang Anda dihapus
+          session()->forget('cart');
+          
+          // 2. Anda dikembalikan ke halaman keranjang
+          return redirect()->route('cart.index')
+              // 3. Dengan pesan error yang Anda lihat di screenshot
+              ->with('error', 'Produk di keranjang Anda tidak lagi tersedia. Keranjang telah dikosongkan.');
+      }
+      // --- AKHIR PENGECEKAN ---
+
+      // Kode ini sekarang aman karena $firstProduct dijamin valid jika lolos pengecekan di atas
+      $store = $firstProduct->store; 
         
          if (empty($store->village) || empty($store->district) || empty($store->regency) || empty($store->province)) {
              return redirect()->route('cart.index')
