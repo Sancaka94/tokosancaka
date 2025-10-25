@@ -14,13 +14,13 @@
 {{-- CSS Khusus untuk Sticky Column dan Styling Tabel --}}
 
 <style>
-/* Container tabel agar bisa scroll horizontal /
+
 .table-container {
 overflow-x: auto;
 -webkit-overflow-scrolling: touch; / Scrolling halus di iOS */
 }
 
-/* Styling untuk kolom sticky /
+
 th.sticky-col, td.sticky-col {
 position: -webkit-sticky; / Safari /
 position: sticky;
@@ -30,18 +30,19 @@ z-index: 10;             / Di atas kolom lain /
 border-left: 1px solid #e5e7eb; / Garis pemisah kiri (gray-200) */
 }
 
-/* Background solid untuk header sticky /
+
 thead th.sticky-col {
 background-color: #f9fafb; / gray-50 (sesuaikan dengan thead Anda) /
 z-index: 11; / Di atas sel data sticky */
 }
 
-/* Styling tambahan agar tabel responsif /
+
 .table {
 border-collapse: separate;
 border-spacing: 0;
 width: 100%; / Pastikan tabel mengisi container /
 }
+
 .table th, .table td {
 border-bottom-width: 1px;
 border-color: #e5e7eb; / gray-200 /
@@ -49,7 +50,7 @@ white-space: nowrap; / Default: jangan wrap text di sel /
 padding: 0.75rem 1.5rem; / Sesuaikan padding sel /
 vertical-align: top; / Ratakan konten ke atas /
 }
-/ Kecuali kolom alamat bisa wrap /
+
 .table td.address-col {
 white-space: normal;
 min-width: 250px; / Beri lebar minimum untuk kolom alamat /
@@ -74,7 +75,7 @@ white-space: nowrap; / Header jangan wrap */
 @apply bg-gray-200 text-gray-700 hover:bg-gray-300 focus:ring-gray-400;
 }
 
-/* Styling tombol aksi /
+
 .action-buttons div {
 display: flex;
 align-items: center;
