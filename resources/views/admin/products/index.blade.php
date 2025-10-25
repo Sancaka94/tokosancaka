@@ -33,7 +33,7 @@
         </div>
     @endif
 
-    <!-- --- [BARU] Filter Kategori --- -->
+    <!-- --- Filter Kategori --- -->
     <div class="mb-4">
         <label for="category_filter" class="block text-sm font-medium text-gray-700">Filter Berdasarkan Kategori:</label>
         <select id="category_filter" name="category_filter" class="form-select mt-1 block w-full md:w-1/3 border-gray-300 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
@@ -41,7 +41,8 @@
             {{-- Asumsi variabel $categories dikirim dari Controller --}}
             @isset($categories)
                 @foreach($categories as $category)
-                    <option value="{{ $category->id }}">{{ $category->name }}</option>
+                    {{-- [DIUBAH] Menggunakan $category->slug sesuai controller baru --}}
+                    <option value="{{ $category->slug }}">{{ $category->name }}</option>
                 @endforeach
             @endisset
         </select>
@@ -109,8 +110,8 @@
             ajax: {
                 url: "{{ route('admin.products.data') }}",
                 data: function(d) {
-                    // Tambahkan data filter kategori ke request
-                    d.category_id = $('#category_filter').val();
+                    // [DIUBAH] Mengirim 'category_slug' sesuai controller baru
+                    d.category_slug = $('#category_filter').val();
                 }
             },
             // --- [AKHIR PERUBAHAN] ---
@@ -118,7 +119,7 @@
                 { data: 'DT_RowIndex', name: 'DT_RowIndex', orderable: false, searchable: false },
                 { data: 'image', name: 'image', orderable: false, searchable: false },
                 { data: 'name', name: 'name' },
-                { data: 'category.name', name: 'category.name', defaultContent: 'Belum ada kategori', orderable: false, searchable: false },
+                { data: 'category.name', name: 'category.name', defaultContent: 'Belum ada kategori', orderable: false, searchable: false }, // Ini sudah benar
                 { data: 'price', name: 'price' },
                 { data: 'stock', name: 'stock' },
                 { data: 'status_badge', name: 'status', orderable: false, searchable: false },
@@ -126,7 +127,7 @@
             ]
         });
 
-        // --- [BARU] Tambahkan event listener untuk filter ---
+        // --- Event listener untuk filter (Sudah Benar) ---
         $('#category_filter').on('change', function() {
             // Muat ulang data tabel saat filter diubah
             table.ajax.reload();
@@ -138,13 +139,13 @@
         function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
         function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 
-        function openRestockModal(productId, productName) {
+        // --- [DIUBAH] Fungsi modal disesuaikan untuk menerima URL lengkap ---
+        function openRestockModal(restockUrl, productName) {
             const form = document.getElementById('restockForm');
             const nameEl = document.getElementById('productName');
             
-            // Membuat URL action yang benar
-            const url = `{{ url('admin/products') }}/${productId}/restock`;
-            form.action = url;
+            // Langsung gunakan URL yang dikirim dari controller
+            form.action = restockUrl;
             
             nameEl.textContent = productName;
             openModal('restockModal');
