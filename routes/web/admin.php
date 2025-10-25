@@ -56,6 +56,9 @@ use App\Http\Controllers\Admin\KontakController as AdminKontakController;
 
 use App\Http\Controllers\Admin\ProductController;
 
+use App\Http\Controllers\Admin\AdminOrderController;
+
+
 
 
 
@@ -77,6 +80,52 @@ use App\Http\Controllers\Admin\ProductController;
 |
 
 */
+
+// Grup route untuk pesanan marketplace
+Route::prefix('orders')->name('admin.orders.')->group(function () {
+    
+    // Menampilkan halaman daftar pesanan (menggunakan DataTables)
+    // URL: /admin/orders
+    Route::get('/', [AdminOrderController::class, 'index'])->name('index');
+    
+    // Endpoint AJAX untuk DataTables mengambil data pesanan
+    // URL: /admin/orders/data
+    Route::get('/data', [AdminOrderController::class, 'getData'])->name('data');
+    
+    // Menampilkan detail satu pesanan berdasarkan nomor invoice
+    // URL: /admin/orders/{invoice_number}
+    // Menggunakan {invoice_number} karena kita tidak pakai Route Model Binding Order
+    Route::get('/{invoice_number}', [AdminOrderController::class, 'show'])->name('show'); 
+    
+    // Membatalkan pesanan (menggunakan PATCH karena ini update status)
+    // URL: /admin/orders/{invoice_number}/cancel 
+    Route::patch('/{invoice_number}/cancel', [AdminOrderController::class, 'cancel'])->name('cancel');
+    
+    // Mengunduh faktur PDF untuk satu pesanan
+    // URL: /admin/orders/{invoice_number}/invoice-pdf
+    Route::get('/{invoice_number}/invoice-pdf', [AdminOrderController::class, 'exportInvoice'])->name('invoice.pdf');
+
+    // Menampilkan/mengunduh struk thermal untuk satu pesanan
+    // URL: /admin/orders/{invoice_number}/print-thermal
+    Route::get('/{invoice_number}/print-thermal', [AdminOrderController::class, 'printThermal'])->name('print.thermal');
+
+}); // Akhir grup /orders
+
+// Route untuk ekspor laporan (di luar grup /orders/{invoice_number})
+// URL: /admin/orders-report/pdf?start_date=...&end_date=...
+Route::get('/orders-report/pdf', [AdminOrderController::class, 'exportReport'])->name('admin.orders.report.pdf'); 
+
+// Route Placeholder untuk memulai chat (sesuaikan controller dan method jika sudah ada)
+// URL: /admin/chat/start?recipient={user_id}&sender={store_user_id}
+// Anda perlu membuat ChatController dan method startChat ini
+Route::get('/chat/start', function(Illuminate\Http\Request $request) {
+    // Logika untuk menampilkan halaman chat atau redirect ke chat yang ada
+    // Contoh: return app(ChatController::class)->startChat($request); 
+    $recipientId = $request->query('recipient');
+    $senderId = $request->query('sender');
+    // Redirect atau tampilkan view chat di sini...
+    return "Membuka chat antara User ID: {$recipientId} dan Sender ID: {$senderId}. (Implementasi Controller diperlukan)";
+})->name('admin.chat.start');
 
 // route custom harus ditulis sebelum resource
 Route::post('admin/posts/generate-content', [PostController::class, 'generateContent'])
