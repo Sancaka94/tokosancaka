@@ -151,7 +151,7 @@ class ChatController extends Controller
     $receiver = \App\Models\User::find($userId);
 
     // Ambil semua user lain untuk daftar chat di sidebar
-    $users = \App\Models\User::where('id', '!=', auth()->id())->get();
+    $users = \App\Models\User::where('id_pengguna', '!=', auth()->id())->get();
 
     if (!$receiver) {
         return redirect()->back()->with('error', 'Data penerima tidak ditemukan.');
