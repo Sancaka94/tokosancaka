@@ -42,7 +42,7 @@ class AdminOrderController extends Controller
             // 2. Eager Loading Relasi: Ambil data terkait (user, store, items, dll.)
             //    dalam query awal untuk menghindari N+1 problem (lebih efisien).
             ->with([
-                'user:id,nama_lengkap,no_wa,village,district,regency', // Hanya ambil kolom yang dibutuhkan dari user
+                'user:id_pengguna,nama_lengkap,no_wa,village,district,regency', // Hanya ambil kolom yang dibutuhkan dari user
                 'store:id,name,address_detail,village,district,regency', // Hanya ambil kolom yang dibutuhkan dari store
                 'items:id,order_id,product_id,product_variant_id,quantity', // Hanya ambil kolom yang dibutuhkan dari items
                 'items.product:id,name,weight,length,width,height', // Dari items, ambil produk terkait (hanya kolom yg perlu)
