@@ -7,47 +7,43 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\Order;
 use App\Models\OrderItem;
 use Illuminate\Support\Facades\DB;
+use App\Http\Controllers\DanaController;
 use Illuminate\Support\Facades\Log;
 use App\Models\TopUp;
-use App\Models\User; // Pastikan model User diimport
-use App\Models\Store; // Import model Store
+use App\Models\User;
 use App\Events\SaldoUpdated;
 use App\Events\AdminNotificationEvent;
 use App\Services\KiriminAjaService;
 use App\Models\Product;
-use App\Models\ProductVariant; // Import ProductVariant
 use Illuminate\Support\Facades\Http;
-use App\Models\Pesanan; // Asumsi model ini ada
+use App\Models\Pesanan;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Route; // Pastikan Route facade diimport
-use Illuminate\Validation\ValidationException;
-use Illuminate\Validation\Rule; // Import Rule
 
 class CheckoutController extends Controller
 {
 
     public function geocode($address){
         
-        $url = "https://nominatim.openstreetmap.org/search";
+    $url = "https://nominatim.openstreetmap.org/search";
 
-        $response = Http::withHeaders([
-            'User-Agent' => 'MyLaravelApp/1.0 (support@tokosancaka.com)',
-            'Accept'     => 'application/json',
-        ])->get($url, [
-            'q'      => $address,
-            'format' => 'json',
-            'limit'  => 1,
-        ]);
+    $response = Http::withHeaders([
+        'User-Agent' => 'MyLaravelApp/1.0 (support@tokosancaka.com)',
+        'Accept'     => 'application/json',
+    ])->get($url, [
+        'q'      => $address,
+        'format' => 'json',
+        'limit'  => 1,
+    ]);
 
-        if ($response->successful() && !empty($response[0])) {
-            return [
-                'lat' => (float) $response[0]['lat'],
-                'lng' => (float) $response[0]['lon'],
-            ];
-        }
-
-        return null;
+    if ($response->successful() && !empty($response[0])) {
+        return [
+            'lat' => (float) $response[0]['lat'],
+            'lng' => (float) $response[0]['lon'],
+        ];
     }
+
+    return null;
+}
 
 
 
@@ -68,31 +64,20 @@ class CheckoutController extends Controller
         }
 
         $user  = Auth::user();
-        $firstProduct = Product::find(array_key_first($cart)); // Baris 71
-
-        // --- REVISI UNTUK ERROR 'Attempt to read property "store" on null' ---
-        if (!$firstProduct) {
-            // Jika produk pertama tidak ditemukan (mungkin sudah dihapus),
-            // bersihkan keranjang dan redirect kembali.
-            session()->forget('cart');
-            return redirect()->route('cart.index')
-                ->with('error', 'Produk di keranjang Anda tidak lagi tersedia. Keranjang telah dikosongkan.');
-        }
-        // --- AKHIR REVISI ---
-
-        $store = $firstProduct->store; // Baris 72 (Sekarang aman)
+        $firstProduct = Product::find(array_key_first($cart));
+        $store = $firstProduct->store;
         
          if (empty($store->village) || empty($store->district) || empty($store->regency) || empty($store->province)) {
              return redirect()->route('cart.index')
-                 ->with('error', 'Alamat toko tidak lengkap. Mohon lengkapi data lokasi toko terlebih dahulu.');
+                ->with('error', 'Alamat toko tidak lengkap. Mohon lengkapi data lokasi toko terlebih dahulu.');
                 
-         }
+        }
         
-         if (empty($user->village) || empty($user->district) || empty($user->regency) || empty($user->province)) {
+        if (empty($user->village) || empty($user->district) || empty($user->regency) || empty($user->province)) {
              return redirect()->route('cart.index')
-                 ->with('error', 'Alamat penerima tidak lengkap. Mohon lengkapi data lokasi Anda terlebih dahulu.');
+                ->with('error', 'Alamat penerima tidak lengkap. Mohon lengkapi data lokasi Anda terlebih dahulu.');
                 
-         }
+        }
 
         $storeSearch = $store->village . ', ' . $store->district . ', ' . $store->regency . ', ' . $store->province;
         $userSearch  = $user->village . ', ' . $user->district . ', ' . $user->regency . ', ' . $user->province;
@@ -209,15 +194,6 @@ if ($storeLat && $storeLng && $userLat && $userLng) {
             $insurance_cost = (int) $asrCost;
     
             $firstProduct = Product::find(array_key_first($cart));
-            
-            // --- REVISI JIKA PRODUK HILANG SAAT PROSES STORE ---
-            if (!$firstProduct) {
-                DB::rollBack();
-                return redirect()->route('cart.index')
-                    ->with('error', 'Produk di keranjang Anda tidak lagi tersedia. Keranjang telah dikosongkan.');
-            }
-            // --- AKHIR REVISI ---
-
             $isMandatoryInsurance = in_array((int) $firstProduct->jenis_barang, [1, 3, 4, 8]);
             
             // Hitung total dasar (sebelum biaya COD)
@@ -277,9 +253,9 @@ if ($storeLat && $storeLng && $userLat && $userLng) {
             
                 $orderItemsPayload[] = [
                     'sku'        => $product_id,
-                    'name'       => $details['name'] ?? 'Produk #' . $product_id,
-                    'price'      => $details['price'],
-                    'quantity'   => $details['quantity'],
+                    'name'        => $details['name'] ?? 'Produk #' . $product_id,
+                    'price'       => $details['price'],
+                    'quantity'    => $details['quantity'],
                 ];
             }
             
@@ -583,8 +559,8 @@ $finalWeight = max(1000, $totalWeight);
                         // Success
                     } else {
 
-                        Log::error('KiriminAja Instant Response: ', $kiriminResponse);
-                        
+                          Log::error('KiriminAja Instant Response: ', $kiriminResponse);
+                          
                             DB::rollBack();
                         
                             if (!empty($kiriminResponse['errors'])) {
@@ -1022,9 +998,7 @@ $finalWeight = max(1000, $totalWeight);
                                 $shipping_cost_formatted = number_format($cost);
                                 $ansuransi_fee_formatted = number_format($ansuransi_fee);
                                 $cod_fee_formatted = number_format($cod_fee);
-                                // REVISI: Gunakan item_price jika ada, jika tidak, 0
-                                $total_harga_barang_formatted = number_format($pesanan->item_price ?? 0); 
-                                // REVISI: Gunakan price jika ada, jika tidak, 0
+                                $total_harga_barang_formatted = number_format($pesanan->item_price ?? 0);
                                 $total_bayar_formatted = number_format($pesanan->price ?? 0);
                                 $resi_display = $pesanan->resi ?? '-';
 
@@ -1101,7 +1075,7 @@ $senderWa = preg_replace('/^0/', '62', $pesanan->sender_phone);
     
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Tripay Callback Error: '.$e->getMessage().' on line '.$e->getLine()); // Menambahkan baris error
+            Log::error('Tripay Callback Error: '.$e->getMessage());
             return response()->json(['error' => 'Failed to update order/topup'], 500);
         }
     }
