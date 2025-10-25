@@ -53,6 +53,7 @@ class Product extends Model
         'width',
         'height',
         'length',
+        'image_url',
         // 'attributes_data', // Hapus jika Anda beralih ke tabel relasi
     ];
 
