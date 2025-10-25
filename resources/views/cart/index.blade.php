@@ -76,6 +76,22 @@
          .dark input:disabled {
              background-color: #4b5563; /* gray-600 */
          }
+         /* Style untuk link di pesan error agar cocok */
+         #alert-error a {
+             color: #721c24; /* Warna teks standar alert error */
+             font-weight: bold;
+             text-decoration: underline;
+         }
+         #alert-error a:hover {
+            color: #491217; /* Warna lebih gelap saat hover */
+         }
+         .dark #alert-error a { /* Jika Anda implementasi dark mode */
+            color: #f8d7da;
+         }
+         .dark #alert-error a:hover {
+            color: #f1b0b7;
+         }
+
     </style>
 @endpush
 
@@ -98,12 +114,34 @@
          @if (session('error'))
             <div id="alert-error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
                 <strong class="font-bold">Gagal!</strong>
-                <span class="block sm:inline">{{ session('error') }}</span>
+                {{-- [PERBAIKAN] Gunakan {!! !!} untuk menampilkan HTML --}}
+                <span class="block sm:inline">{!! session('error') !!}</span>
                 <span class="absolute top-0 bottom-0 right-0 px-4 py-3 close-alert cursor-pointer">
                     <svg class="fill-current h-6 w-6 text-red-500" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><title>Close</title><path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z"/></svg>
                 </span>
             </div>
         @endif
+         {{-- Notifikasi Info --}}
+         @if (session('info'))
+            <div id="alert-info" class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded relative mb-4" role="alert">
+                <strong class="font-bold">Info:</strong>
+                <span class="block sm:inline">{!! session('info') !!}</span> {{-- Gunakan {!! !!} jika info mungkin berisi HTML --}}
+                <span class="absolute top-0 bottom-0 right-0 px-4 py-3 close-alert cursor-pointer">
+                    <svg class="fill-current h-6 w-6 text-blue-500" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><title>Close</title><path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z"/></svg>
+                </span>
+            </div>
+        @endif
+         {{-- Notifikasi Warning --}}
+         @if (session('warning'))
+            <div id="alert-warning" class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded relative mb-4" role="alert">
+                <strong class="font-bold">Perhatian:</strong>
+                <span class="block sm:inline">{!! session('warning') !!}</span> {{-- Gunakan {!! !!} jika warning mungkin berisi HTML --}}
+                <span class="absolute top-0 bottom-0 right-0 px-4 py-3 close-alert cursor-pointer">
+                    <svg class="fill-current h-6 w-6 text-yellow-500" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><title>Close</title><path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z"/></svg>
+                </span>
+            </div>
+        @endif
+
 
         {{-- Global error message area for AJAX --}}
         <div id="ajax-error-message" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4 hidden" role="alert"></div>
@@ -220,7 +258,7 @@
                             <dd class="text-base font-semibold text-gray-900 dark:text-white" id="total-amount">Rp{{ number_format($grandTotal, 0, ',', '.') }}</dd>
                         </div>
                         <div class="mt-6">
-                            {{-- [PERBAIKAN] Gunakan route 'checkout.index' (tanpa prefix customer) --}}
+                            {{-- Gunakan route 'checkout.index' (tanpa prefix customer) --}}
                             <a href="{{ route('checkout.index') }}" class="flex w-full items-center justify-center rounded-md border border-transparent btn-shopee-solid px-6 py-3 text-base font-medium text-white shadow-sm hover:opacity-90 {{ empty($cart) ? 'opacity-50 pointer-events-none disabled' : '' }}">
                                 Lanjut ke Checkout
                             </a>
@@ -282,7 +320,7 @@ $(document).ready(function () {
         $('#total-amount').text(formatCurrency(total)); // Assuming no shipping/taxes for now
         $('#total-items').text(itemCount);
          // Disable checkout if cart is empty
-         // [PERBAIKAN] Gunakan route 'checkout.index' (tanpa prefix customer)
+         // Gunakan route 'checkout.index' (tanpa prefix customer)
          $('a[href="{{ route('checkout.index') }}"]').toggleClass('opacity-50 pointer-events-none disabled', itemCount <= 0);
     }
 
@@ -321,12 +359,14 @@ $(document).ready(function () {
     }
     // Function to display global AJAX error
     function showGlobalError(message) {
-        $('#ajax-error-message').html('<strong>Error:</strong> ' + message).removeClass('hidden'); // Use html() for potential strong tag
+        // Use html() to render the link correctly if present in the message
+        $('#ajax-error-message').html('<strong>Error:</strong> ' + message).removeClass('hidden');
          // Automatically hide after 5 seconds
          setTimeout(() => {
              $('#ajax-error-message').addClass('hidden');
          }, 5000);
     }
+
 
     // --- AJAX Cart Update ---
     let updateTimeout; // To debounce input changes
@@ -405,8 +445,8 @@ $(document).ready(function () {
 
         $.ajax({
             // [PERBAIKAN] Gunakan route 'cart.update' dan method POST
-            url: '{{ route('cart.update') }}',
-            method: 'POST', // <-- UBAH KE POST
+            url: '{{ route('cart.update') }}', // <-- SESUAIKAN ROUTE
+            method: 'POST', // <-- SESUAIKAN METHOD
             data: {
                 _token: '{{ csrf_token() }}',
                 id: cartKey, // Send cartKey as id
@@ -493,9 +533,9 @@ $(document).ready(function () {
         showItemLoader(cartKey);
 
         $.ajax({
-            // [PERBAIKAN] Gunakan route 'cart.remove' dan method POST
-            url: '{{ route('cart.remove') }}',
-            method: 'POST', // <-- UBAH KE POST
+             // [PERBAIKAN] Gunakan route 'cart.remove' dan method POST
+            url: '{{ route('cart.remove') }}', // <-- SESUAIKAN ROUTE
+            method: 'POST', // <-- SESUAIKAN METHOD
             data: {
                 _token: '{{ csrf_token() }}',
                 id: cartKey // Send cartKey as id
