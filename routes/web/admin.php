@@ -321,6 +321,31 @@ Route::put('/settings/slider', [AppSettingsController::class, 'updateSlider'])->
 Route::put('/settings/general', [AppSettingsController::class, 'updateGeneral'])->name('settings.general.update');
 
 
+// Route untuk halaman settings utama
+    Route::get('/settings', [SettingController::class, 'index'])->name('admin.settings.index');
+
+    // Route untuk update profile info (POST atau PUT/PATCH)
+    Route::put('/settings/profile', [SettingController::class, 'updateProfile'])->name('admin.settings.profile.update'); // Ganti nama method jika berbeda
+
+    // Route untuk update password (POST atau PUT/PATCH)
+    Route::put('/settings/password', [SettingController::class, 'updatePassword'])->name('admin.settings.password.update'); // Ganti nama method jika berbeda
+
+    // Route untuk update setting gambar utama (logo, banner_2, banner_3)
+    Route::post('/settings/images', [SettingController::class, 'updateSettings'])->name('admin.settings.update'); // Sesuaikan nama route ini jika perlu
+
+    // [TAMBAHKAN INI] Route untuk update alamat pengguna
+    Route::put('/settings/address', [SettingController::class, 'updateAddress'])->name('admin.settings.address.update');
+
+    // Route untuk AJAX search alamat KiriminAja
+    Route::post('/settings/address/search', [SettingController::class, 'searchAddressKiriminAja'])->name('admin.settings.address.search');
+
+    // Route untuk AJAX geocode alamat
+    Route::post('/settings/address/geocode', [SettingController::class, 'geocodeAddress'])->name('admin.settings.address.geocode');
+
+    // Route untuk banner etalase
+    Route::post('/settings/banners', [SettingController::class, 'storeBanner'])->name('admin.settings.banners.store');
+    Route::put('/settings/banners/{banner}', [SettingController::class, 'updateBanner'])->name('admin.settings.banners.update'); // Gunakan PUT/PATCH dan parameter {banner}
+    Route::delete('/settings/banners/{banner}', [SettingController::class, 'destroyBanner'])->name('admin.settings.banners.destroy');
 
 // Blog Content Management
 
