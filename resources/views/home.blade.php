@@ -690,7 +690,7 @@ width: 22px;
 
                     <a href="{{ route('blog.posts.show', $headline->slug) }}" class="text-decoration-none text-dark">
 
-                        <img src="{{ asset('uploads/posts/' . $headline->featured_image) }}"
+                        <img src="{{ asset('public/uploads/posts/' . $headline->featured_image) }}"
      class="card-img-top post-card-img"
      onerror="this.onerror=null;this.src='https://placehold.co/800x450/1a73e8/ffffff?text=Headline';"
      alt="{{ $headline->title }}">
