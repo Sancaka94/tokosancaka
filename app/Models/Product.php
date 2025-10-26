@@ -34,7 +34,7 @@ class Product extends Model
         //'category', // Hapus kolom 'category' jika tidak ada di DB
         'tags',
         'description',
-        'image', // Ganti image_url ke image jika nama kolom di DB adalah image
+        'image_url', // Ganti image_url ke image jika nama kolom di DB adalah image
         'store_name',
         'seller_name',
         'seller_city',
