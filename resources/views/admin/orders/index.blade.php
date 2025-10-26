@@ -40,7 +40,7 @@
                         'pending' => 'Menunggu Bayar',
                         'menunggu-pickup' => 'Menunggu Pickup',
                         'diproses' => 'Diproses',
-                        'terkirim' => 'Terkirim',
+                        'shipment' => 'Terkirim', // PERBAIKAN: Mengganti key 'terkirim' menjadi 'shipment'
                         'selesai' => 'Selesai',
                         'batal' => 'Batal',
                     ];
@@ -174,6 +174,10 @@
                                 <td class="px-4 py-3 align-top whitespace-nowrap">
                                     @php
                                         $status = $order->status;
+                                        // PERBAIKAN: Ubah 'shipment' menjadi 'terkirim' agar helper bisa membacanya
+                                        if ($status == 'shipment') {
+                                            $status = 'terkirim';
+                                        }
                                         $text = \App\Helpers\OrderStatusHelper::getStatusText($status);
                                         $badge = \App\Helpers\OrderStatusHelper::getStatusBadgeClass($status);
                                     @endphp
@@ -278,4 +282,5 @@ $(function(){
 });
 </script>
 @endpush
+
 
