@@ -116,8 +116,9 @@
 
     {{-- TABEL --}}
     {{-- Wrapper ini adalah yang akan scroll horizontal --}}
-    <div class="table-wrapper">
-    <table class="min-w-full border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm">
+    <div class="max-w-full overflow-x-auto">
+        {{-- Hapus 'w-full' dari tabel --}}
+        <table class="text-sm text-gray-700 divide-y divide-gray-200">
             <thead class="bg-gray-50">
                 <tr>
                     {{-- Header Tabel --}}
@@ -238,9 +239,38 @@
                         
                         // Ambil info ekspedisi
                         $ship = \App\Helpers\ShippingHelper::parseShippingMethod($shippingMethodString);
-                        // Ambil info status (teks & warna badge) dari Helper
-                        $statusText = \App\Helpers\OrderStatusHelper::getStatusText($status);
-                        $statusBadge = \App\Helpers\OrderStatusHelper::getStatusBadgeClass($status);
+
+                        // --- PERBAIKAN: Ganti panggilan helper dengan mapping lokal ---
+                        $badgeMap = [
+                            'pending' => 'bg-yellow-100 text-yellow-800',        // Kuning
+                            'menunggu-pickup' => 'bg-blue-100 text-blue-800',   // Biru
+                            'diproses' => 'bg-cyan-100 text-cyan-800',        // Cyan
+                            'terkirim' => 'bg-indigo-100 text-indigo-800',      // Indigo
+                            'selesai' => 'bg-green-100 text-green-800',        // Hijau
+                            'completed' => 'bg-green-100 text-green-800',      // Hijau (alias)
+                            'batal' => 'bg-red-100 text-red-800',              // Merah
+                            'cancelled' => 'bg-red-100 text-red-800',          // Merah (alias)
+                            'failed' => 'bg-red-100 text-red-800',             // Merah (alias)
+                            'rejected' => 'bg-red-100 text-red-800',           // Merah (alias)
+                        ];
+                        
+                        $textMap = [
+                            'pending' => 'Menunggu Bayar',
+                            'menunggu-pickup' => 'Menunggu Pickup',
+                            'diproses' => 'Diproses',
+                            'terkirim' => 'Terkirim',
+                            'selesai' => 'Selesai',
+                            'completed' => 'Selesai',
+                            'batal' => 'Batal',
+                            'cancelled' => 'Dibatalkan',
+                            'failed' => 'Gagal',
+                            'rejected' => 'Ditolak',
+                        ];
+
+                        // Terapkan mapping, dengan fallback. Cek status yang sudah di-map, lalu status raw
+                        $statusBadge = $badgeMap[$status] ?? $badgeMap[$statusRaw] ?? 'bg-gray-100 text-gray-800';
+                        $statusText = $textMap[$status] ?? $textMap[$statusRaw] ?? ucfirst($statusRaw);
+                        // --- Akhir Perbaikan ---
                     @endphp
                     
                     {{-- Baris 'group' memungkinkan 'group-hover' pada kolom sticky --}}
