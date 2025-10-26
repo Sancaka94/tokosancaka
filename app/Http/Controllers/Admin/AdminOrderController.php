@@ -7,24 +7,27 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller; // Controller dasar Laravel
 use Illuminate\Http\Request; // Class untuk mengelola data request HTTP (query string, form input)
 use App\Models\Order; // Model Eloquent untuk berinteraksi dengan tabel 'orders'
+use App\Models\Pesanan; // <-- TAMBAHKAN INI: Model Eloquent untuk tabel 'Pesanan'
 use App\Models\User; // Model User (digunakan untuk relasi dan pencarian)
-// use Yajra\DataTables\Facades\DataTables; // Tidak digunakan lagi untuk view index, tapi mungkin berguna di tempat lain
 use Illuminate\Support\Facades\Log; // Fasilitas logging Laravel untuk mencatat error atau informasi
 use Exception; // Class Exception dasar PHP untuk menangani error umum
 use Barryvdh\DomPDF\Facade\Pdf; // Facade untuk library DomPDF (generate PDF dari HTML)
 use Carbon\Carbon; // Library untuk mempermudah manipulasi tanggal dan waktu
 use Illuminate\Database\Eloquent\ModelNotFoundException; // Exception khusus saat query findOrFail() gagal
+use Illuminate\Pagination\Paginator; // <-- TAMBAHAN: Untuk pagination manual
+use Illuminate\Pagination\LengthAwarePaginator; // <-- TAMBAHAN: Untuk pagination manual
+use Illuminate\Support\Collection; // <-- TAMBAHAN: Untuk pagination manual
 
 // Deklarasi class controller, mewarisi (extends) Controller dasar Laravel
 class AdminOrderController extends Controller
 {
     /**
-     * Menampilkan halaman utama Data Pesanan.
-     * Method ini mengambil data pesanan dengan filter, pencarian, dan pagination,
-     * lalu mengirimkannya ke view Blade untuk ditampilkan sebagai tabel HTML biasa.
+     * Menampilkan halaman utama Data Pesanan (Gabungan 'Orders' dan 'Pesanan').
+     * Method ini mengambil data dari kedua tabel, menggabungkan, memfilter,
+     * melakukan pencarian, dan paginasi secara manual.
      *
      * @param  \Illuminate\Http\Request  $request Object request yang berisi query string (cth: ?status=pending&search=INV)
-     * @return \Illuminate\View\View      Objek view Blade 'admin.orders.index' beserta data orders
+     * @return \Illuminate\View\View      Objek view Blade 'admin.orders.index' beserta data gabungan
      */
     public function index(Request $request)
     {
@@ -37,70 +40,113 @@ class AdminOrderController extends Controller
         // Ambil dari query string 'per_page', jika tidak ada, gunakan 15
         $perPage = $request->query('per_page', 15);
 
-        // 1. Mulai query ke model Order
-        $query = Order::query() // Sama dengan Order:: , tapi lebih eksplisit
-            // 2. Eager Loading Relasi: Ambil data terkait (user, store, items, dll.)
-            //    dalam query awal untuk menghindari N+1 problem (lebih efisien).
+        // --- 1. Query 'Orders' ---
+        $orderQuery = Order::query()
             ->with([
-                'user:id_pengguna,nama_lengkap,no_wa,village,district,regency', // Hanya ambil kolom yang dibutuhkan dari user
-                'store:id,name,address_detail,village,district,regency', // Hanya ambil kolom yang dibutuhkan dari store
-                'items:id,order_id,product_id,product_variant_id,quantity', // Hanya ambil kolom yang dibutuhkan dari items
-                'items.product:id,name,weight,length,width,height', // Dari items, ambil produk terkait (hanya kolom yg perlu)
-                'items.variant:id,product_variant_id,combination_string,sku_code' // Dari items, ambil varian terkait (hanya kolom yg perlu)
+                'user:id_pengguna,nama_lengkap,no_wa,village,district,regency',
+                'store:id,name,address_detail,village,district,regency',
+                'items:id,order_id,product_id,product_variant_id,quantity',
+                'items.product:id,name,weight,length,width,height',
+                'items.variant:id,product_variant_id,combination_string,sku_code'
             ])
-            // 3. Terapkan Filter Status jika parameter 'status' ada di URL
             ->when($statusFilter, function ($query, $statusTab) {
-                // Mapping antara nilai 'status' dari URL/Tab ke nilai 'status' di database
-                // Sesuaikan array ini jika nilai status di DB Anda berbeda!
+                // Mapping status filter (dari URL) ke status di tabel 'orders'
                 $statusMap = [
-                    'pending' => ['pending'],                         // Tab Menunggu Bayar
-                    'menunggu-pickup' => ['paid', 'processing'],   // Tab Menunggu Pickup (dibayar atau diproses KiriminAja)
-                    'diproses' => ['shipping'],                    // Tab Diproses (jika Anda pakai status 'shipping')
-                    'terkirim' => ['delivered'],                   // Tab Terkirim (jika Anda pakai status 'delivered')
-                    'selesai' => ['completed'],                    // Tab Selesai (jika Anda pakai status 'completed')
-                    'batal' => ['cancelled', 'failed', 'rejected'],// Tab Batal (gabungan semua status gagal/batal)
+                    'pending' => ['pending'],
+                    'menunggu-pickup' => ['paid', 'processing'],
+                    'diproses' => ['shipping'],
+                    'terkirim' => ['delivered'],
+                    'selesai' => ['completed'],
+                    'batal' => ['cancelled', 'failed', 'rejected'],
                 ];
-                // Jika nilai $statusTab ada di dalam $statusMap sebagai key
                 if (isset($statusMap[$statusTab])) {
-                    // Terapkan filter 'whereIn' (mencari status yang ada dalam array)
                     return $query->whereIn('status', $statusMap[$statusTab]);
                 }
-                // Jika status tidak dikenal atau kosong (tab 'Semua'), jangan filter
                 return $query;
             })
-            // 4. Terapkan Filter Pencarian jika parameter 'search' ada di URL
             ->when($searchQuery, function ($query, $search) {
-                // Menggunakan closure 'where' agar kondisi OR tergabung dengan benar
+                // Pencarian untuk tabel 'orders'
                 return $query->where(function($q) use ($search) {
-                    // Cari di kolom 'invoice_number'
                     $q->where('invoice_number', 'like', "%{$search}%")
-                      // Cari di kolom 'tracking_number' (resi)
                       ->orWhere('tracking_number', 'like', "%{$search}%")
-                      // ->orWhere('resi', 'like', "%{$search}%") // Uncomment jika nama kolom Anda 'resi'
-                      // Cari di relasi 'user' (pembeli/penerima)
                       ->orWhereHas('user', function($userQuery) use ($search) {
-                          // Cari berdasarkan 'nama_lengkap' ATAU 'no_wa'
                           $userQuery->where('nama_lengkap', 'like', "%{$search}%")
                                     ->orWhere('no_wa', 'like', "%{$search}%");
                       })
-                      // Cari di relasi 'store' (penjual/pengirim)
                       ->orWhereHas('store', function($storeQuery) use ($search) {
-                          // Cari berdasarkan nama toko
                           $storeQuery->where('name', 'like', "%{$search}%");
                       });
-                      // Bisa tambahkan orWhereHas lagi untuk cari di nama produk, dll.
                 });
+            });
+
+        // --- 2. Query 'Pesanan' ---
+        $pesananQuery = Pesanan::query()
+            // ->with(['...']) // Tambahkan relasi 'Pesanan' jika ada (cth: toko, pembeli)
+            ->when($statusFilter, function ($query, $statusTab) {
+                // Mapping status filter (dari URL) ke status di tabel 'Pesanan'
+                $statusMap = [
+                    // 'pending' => [], // Tidak ada status 'pending' di Pesanan
+                    'menunggu-pickup' => ['Menunggu Pickup'],
+                    // 'diproses' => [], // Tidak ada status 'diproses' di Pesanan
+                    'terkirim' => ['Sedang Dikirim'],
+                    'selesai' => ['Selesai'], // Asumsi nama statusnya 'Selesai'
+                    'batal' => ['Batal'], // Asumsi nama statusnya 'Batal'
+                ];
+                if (isset($statusMap[$statusTab])) {
+                    return $query->whereIn('status_pesanan', $statusMap[$statusTab]);
+                }
+                return $query;
             })
-            // 5. Urutkan hasil berdasarkan tanggal pembuatan (created_at), terbaru di atas
-            ->orderBy('created_at', 'desc');
+            ->when($searchQuery, function ($query, $search) {
+                // Pencarian untuk tabel 'Pesanan'
+                return $query->where(function($q) use ($search) {
+                    $q->where('nomor_invoice', 'like', "%{$search}%")
+                      ->orWhere('resi', 'like', "%{$search}%")
+                      ->orWhere('resi_aktual', 'like', "%{$search}%")
+                      ->orWhere('nama_pembeli', 'like', "%{$search}%")
+                      ->orWhere('telepon_pembeli', 'like', "%{$search}%")
+                      ->orWhere('receiver_name', 'like', "%{$search}%")
+                      ->orWhere('receiver_phone', 'like', "%{$search}%")
+                      ->orWhere('sender_name', 'like', "%{$search}%");
+                });
+            });
 
-        // 6. Eksekusi query dan ambil hasil dengan pagination
-        //    paginate() otomatis menghitung total data dan halaman
-        //    withQueryString() memastikan parameter filter (status, search) tetap ada di link pagination
-        $orders = $query->paginate($perPage)->withQueryString();
+        // --- 3. Eksekusi Query dan Standarisasi Tanggal ---
+        $orders = $orderQuery->get();
+        $pesanans = $pesananQuery->get();
 
-        // 7. Kirim data hasil pagination ($orders) ke view 'admin.orders.index'
-        return view('admin.orders.index', compact('orders'));
+        // Standarisasi 'created_at' untuk sorting
+        // Blade file Anda sudah menangani ini untuk tampilan, tapi kita butuh untuk sorting
+        $standardizedPesanans = $pesanans->map(function ($pesanan) {
+            // Gunakan 'created_at' jika ada, jika tidak, gunakan 'tanggal_pesanan'
+            $pesanan->created_at = $pesanan->created_at ?? $pesanan->tanggal_pesanan;
+            return $pesanan;
+        });
+
+        // --- 4. Gabungkan dan Urutkan ---
+        $merged = $orders->merge($standardizedPesanans);
+        $sorted = $merged->sortByDesc('created_at'); // Urutkan berdasarkan tanggal (terbaru dulu)
+
+        // --- 5. Pagination Manual ---
+        $currentPage = Paginator::resolveCurrentPage('page'); // Ambil halaman saat ini
+        // "Iris" koleksi yang sudah diurutkan sesuai halaman
+        $currentPageItems = $sorted->slice(($currentPage - 1) * $perPage, $perPage);
+
+        // Buat objek Paginator baru
+        $paginatedItems = new LengthAwarePaginator(
+            $currentPageItems, // Item untuk halaman ini
+            $sorted->count(),  // Total semua item (untuk menghitung total halaman)
+            $perPage,          // Item per halaman
+            $currentPage,      // Halaman saat ini
+            [
+                'path' => Paginator::resolveCurrentPath(), // URL dasar
+                'query' => $request->query() // <-- PENTING: Meneruskan filter (status, search) ke link pagination
+            ]
+        );
+
+        // 6. Kirim data hasil pagination ($paginatedItems) ke view
+        // Kita tetap mengirimkannya sebagai variabel 'orders'
+        return view('admin.orders.index', ['orders' => $paginatedItems]);
     }
 
     /*
@@ -121,313 +167,289 @@ class AdminOrderController extends Controller
 
     /**
      * Menampilkan halaman detail satu pesanan.
-     * Dipanggil saat link 'Detail' (ikon mata) di tabel diklik.
+     * PENTING: Saat ini HANYA berfungsi untuk data dari tabel 'orders'.
      *
      * @param  string $invoice Nomor invoice dari URL (misal: /admin/orders/SCK-ABCDEF)
      * @return \Illuminate\View\View|\Illuminate\Http\RedirectResponse
      */
      public function show(string $invoice)
      {
-         try {
-             // Cari pesanan berdasarkan 'invoice_number'
-             $order = Order::where('invoice_number', $invoice)
-                 // Eager load relasi yang dibutuhkan di halaman detail
-                 ->with(['user', 'store', 'items.product', 'items.variant'])
-                 // Jika tidak ditemukan, lempar exception ModelNotFoundException (akan jadi error 404)
-                 ->firstOrFail();
+        try {
+            // Cari pesanan berdasarkan 'invoice_number' di tabel 'orders'
+            $order = Order::where('invoice_number', $invoice)
+                // Eager load relasi yang dibutuhkan di halaman detail
+                ->with(['user', 'store', 'items.product', 'items.variant'])
+                // Jika tidak ditemukan, lempar exception ModelNotFoundException (akan jadi error 404)
+                ->firstOrFail();
 
-             // Tampilkan view 'admin.orders.show' dan kirim data $order
-             // PENTING: Anda perlu membuat file view ini: resources/views/admin/orders/show.blade.php
-             return view('admin.orders.show', compact('order'));
+            // Tampilkan view 'admin.orders.show' dan kirim data $order
+            // PENTING: Anda perlu membuat file view ini: resources/views/admin/orders/show.blade.php
+            return view('admin.orders.show', compact('order'));
 
-         } catch (ModelNotFoundException $e) {
-             // Tangani jika order tidak ditemukan
-             Log::warning("Order detail not found for invoice: " . $invoice);
-             // Redirect kembali ke halaman daftar dengan pesan error
-             return redirect()->route('admin.orders.index')->with('error', 'Pesanan dengan invoice ' . $invoice . ' tidak ditemukan.');
-         } catch (Exception $e) {
-             // Tangani error lainnya
-             Log::error('Error showing order detail for ' . $invoice . ': ' . $e->getMessage());
-             return redirect()->route('admin.orders.index')->with('error', 'Terjadi kesalahan saat menampilkan detail pesanan.');
-         }
+        } catch (ModelNotFoundException $e) {
+            // Tangani jika order tidak ditemukan
+            Log::warning("Order detail not found for invoice: " . $invoice . " (Checked 'orders' table only)");
+            // Redirect kembali ke halaman daftar dengan pesan error
+            return redirect()->route('admin.orders.index')->with('error', 'Pesanan dengan invoice ' . $invoice . ' tidak ditemukan di data "Order".');
+        } catch (Exception $e) {
+            // Tangani error lainnya
+            Log::error('Error showing order detail for ' . $invoice . ': ' . $e->getMessage());
+            return redirect()->route('admin.orders.index')->with('error', 'Terjadi kesalahan saat menampilkan detail pesanan.');
+        }
      }
 
 
      /**
-      * Membatalkan pesanan.
-      * Dipanggil saat form 'Cancel' (ikon sampah) di tabel disubmit (method PATCH).
-      *
-      * @param  string $invoice Nomor invoice dari URL
-      * @return \Illuminate\Http\RedirectResponse
-      */
+     * Membatalkan pesanan.
+     * PENTING: Saat ini HANYA berfungsi untuk data dari tabel 'orders'.
+     *
+     * @param  string $invoice Nomor invoice dari URL
+     * @return \Illuminate\Http\RedirectResponse
+     */
      public function cancel(string $invoice)
      {
-         try {
-             // Cari pesanan berdasarkan 'invoice_number'
-             $order = Order::where('invoice_number', $invoice)->firstOrFail();
+        try {
+            // Cari pesanan berdasarkan 'invoice_number' di tabel 'orders'
+            $order = Order::where('invoice_number', $invoice)->firstOrFail();
 
-             // Tentukan status mana saja yang boleh dibatalkan
-             $cancellableStatuses = ['pending', 'paid', 'processing']; // Sesuaikan dengan alur bisnis Anda
+            // Tentukan status mana saja yang boleh dibatalkan
+            $cancellableStatuses = ['pending', 'paid', 'processing']; // Sesuaikan dengan alur bisnis Anda
 
-             // Cek apakah status saat ini ada di dalam array $cancellableStatuses
-             if (in_array($order->status, $cancellableStatuses)) {
-                 // Ubah status order menjadi 'cancelled'
-                 $order->status = 'cancelled';
-                 // Anda bisa tambahkan timestamp pembatalan jika ada kolomnya
-                 // $order->cancelled_at = now();
-                 $order->save(); // Simpan perubahan ke database
+            // Cek apakah status saat ini ada di dalam array $cancellableStatuses
+            if (in_array($order->status, $cancellableStatuses)) {
+                // Ubah status order menjadi 'cancelled'
+                $order->status = 'cancelled';
+                // Anda bisa tambahkan timestamp pembatalan jika ada kolomnya
+                // $order->cancelled_at = now();
+                $order->save(); // Simpan perubahan ke database
 
-                 // TODO: Logika PENTING untuk Mengembalikan Stok Produk/Varian
-                 // Jika Anda mengurangi stok saat order DIBUAT atau DIBAYAR,
-                 // Anda *harus* mengembalikannya di sini agar stok akurat.
-                 // Uncomment dan sesuaikan logika di bawah ini jika diperlukan.
-                 /*
-                 Log::info("Attempting to restock items for cancelled order: " . $order->invoice_number);
-                 foreach ($order->items as $item) {
-                     try {
-                         if ($item->product_variant_id && $item->load('variant')->variant) { // Load relasi jika belum
-                             $item->variant->increment('stock', $item->quantity);
-                             Log::info("Restocked variant ID {$item->product_variant_id} by {$item->quantity}");
-                         } elseif ($item->load('product')->product) { // Load relasi jika belum
-                             $item->product->increment('stock', $item->quantity);
-                             Log::info("Restocked product ID {$item->product_id} by {$item->quantity}");
-                         } else {
-                              Log::warning("Could not restock item ID {$item->id}: Product/Variant relation missing.");
-                         }
-                     } catch (Exception $stockError) {
-                         Log::error("Error restocking item ID {$item->id} for order {$order->invoice_number}: " . $stockError->getMessage());
-                     }
-                 }
-                 */
+                // TODO: Logika PENTING untuk Mengembalikan Stok Produk/Varian
+                // (Lihat controller Anda sebelumnya untuk contoh)
+                /*
+                Log::info("Attempting to restock items for cancelled order: " . $order->invoice_number);
+                foreach ($order->items as $item) {
+                    // ... (logika restock) ...
+                }
+                */
 
-                 // Kirim notifikasi pembatalan (opsional)
-                 // event(new OrderCancelledEvent($order)); // Anda perlu membuat event ini
+                // Kirim notifikasi pembatalan (opsional)
+                // event(new OrderCancelledEvent($order)); // Anda perlu membuat event ini
 
-                 // Redirect kembali ke halaman sebelumnya (daftar pesanan) dengan pesan sukses
-                 return redirect()->back()->with('success', 'Pesanan #' . $invoice . ' berhasil dibatalkan.');
-             } else {
-                 // Jika status tidak memungkinkan untuk dibatalkan
-                 Log::warning("Attempt to cancel order {$invoice} with non-cancellable status: {$order->status}");
-                 return redirect()->back()->with('error', 'Pesanan tidak dapat dibatalkan (Status saat ini: ' . ucfirst($order->status) . ').');
-             }
-         } catch (ModelNotFoundException $e) {
-             // Tangani jika order tidak ditemukan
-             Log::warning("Attempt to cancel non-existent order: " . $invoice);
-             return redirect()->back()->with('error', 'Pesanan dengan invoice ' . $invoice . ' tidak ditemukan.');
-         } catch (Exception $e) {
-             // Tangani error lainnya
-             Log::error('Gagal membatalkan order ' . $invoice . ': ' . $e->getMessage());
-             return redirect()->back()->with('error', 'Terjadi kesalahan sistem saat membatalkan pesanan.');
-         }
+                // Redirect kembali ke halaman sebelumnya (daftar pesanan) dengan pesan sukses
+                return redirect()->back()->with('success', 'Pesanan #' . $invoice . ' berhasil dibatalkan.');
+            } else {
+                // Jika status tidak memungkinkan untuk dibatalkan
+                Log::warning("Attempt to cancel order {$invoice} with non-cancellable status: {$order->status}");
+                return redirect()->back()->with('error', 'Pesanan tidak dapat dibatalkan (Status saat ini: ' . ucfirst($order->status) . ').');
+            }
+        } catch (ModelNotFoundException $e) {
+            // Tangani jika order tidak ditemukan
+            Log::warning("Attempt to cancel non-existent order: " . $invoice . " (Checked 'orders' table only)");
+            return redirect()->back()->with('error', 'Pesanan dengan invoice ' . $invoice . ' tidak ditemukan di data "Order".');
+        } catch (Exception $e) {
+            // Tangani error lainnya
+            Log::error('Gagal membatalkan order ' . $invoice . ': ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Terjadi kesalahan sistem saat membatalkan pesanan.');
+        }
      }
 
      /**
-      * Ekspor Faktur PDF untuk satu pesanan.
-      * Dipanggil saat link 'Faktur PDF' (ikon file-pdf) diklik.
-      *
-      * @param  string $invoice Nomor invoice dari URL
-      * @return \Symfony\Component\HttpFoundation\Response|\Illuminate\Http\RedirectResponse
-      */
+     * Ekspor Faktur PDF untuk satu pesanan.
+     * PENTING: Saat ini HANYA berfungsi untuk data dari tabel 'orders'.
+     *
+     * @param  string $invoice Nomor invoice dari URL
+     * @return \Symfony\Component\HttpFoundation\Response|\Illuminate\Http\RedirectResponse
+     */
      public function exportInvoice(string $invoice)
      {
-         try {
-             // Cari order beserta relasi yang dibutuhkan untuk faktur
-             $order = Order::where('invoice_number', $invoice)
-                             ->with([
-                                 'user:id,nama_lengkap,no_wa,email,address_detail,village,district,regency', // Ambil data user lengkap
-                                 'store', // Ambil data toko lengkap
-                                 'items', // Ambil semua item
-                                 'items.product:id,name', // Hanya nama produk dari item
-                                 'items.variant:id,product_variant_id,combination_string' // Hanya info varian dari item
-                             ])
-                             ->firstOrFail(); // Error 404 jika tidak ketemu
+        try {
+            // Cari order beserta relasi yang dibutuhkan untuk faktur
+            $order = Order::where('invoice_number', $invoice)
+                            ->with([
+                                'user:id_pengguna,nama_lengkap,no_wa,email,address_detail,village,district,regency', // Ambil data user lengkap
+                                'store', // Ambil data toko lengkap
+                                'items', // Ambil semua item
+                                'items.product:id,name', // Hanya nama produk dari item
+                                'items.variant:id,product_variant_id,combination_string' // Hanya info varian dari item
+                            ])
+                            ->firstOrFail(); // Error 404 jika tidak ketemu
 
-             // Siapkan data untuk dikirim ke view Blade PDF
-             $data = [
-                 'order' => $order,
-                 'title' => 'Faktur ' . $order->invoice_number // Judul dokumen PDF
-                 // Anda bisa tambahkan data lain, misal data perusahaan dari settings
-                 // 'company_name' => Setting::get('company_name'),
-             ];
+            // Siapkan data untuk dikirim ke view Blade PDF
+            $data = [
+                'order' => $order,
+                'title' => 'Faktur ' . $order->invoice_number // Judul dokumen PDF
+            ];
 
-             // PENTING: Buat file view Blade di:
-             // resources/views/admin/orders/invoice_pdf.blade.php
-             // Desain tampilan faktur menggunakan HTML dan CSS di file ini.
-             $pdf = Pdf::loadView('admin.orders.invoice_pdf', $data);
-             // Atur orientasi kertas jika perlu (default portrait)
-             // ->setPaper('a4', 'portrait');
+            // PENTING: Buat file view Blade di:
+            // resources/views/admin/orders/invoice_pdf.blade.php
+            $pdf = Pdf::loadView('admin.orders.invoice_pdf', $data);
+            // ->setPaper('a4', 'portrait');
 
-             // Buat nama file PDF yang akan diunduh
-             $filename = 'Faktur-' . $order->invoice_number . '.pdf';
-             // Unduh file PDF (browser akan menampilkan dialog save/open)
-             return $pdf->download($filename);
+            // Buat nama file PDF yang akan diunduh
+            $filename = 'Faktur-' . $order->invoice_number . '.pdf';
+            // Unduh file PDF (browser akan menampilkan dialog save/open)
+            return $pdf->download($filename);
 
-         } catch (ModelNotFoundException $e) {
-             Log::warning("Attempt to export invoice for non-existent order: " . $invoice);
-             return redirect()->back()->with('error', 'Pesanan dengan invoice ' . $invoice . ' tidak ditemukan.');
-         } catch (\ErrorException $e) {
-              // Tangani error jika view PDF belum dibuat
-             if (str_contains($e->getMessage(), 'View [admin.orders.invoice_pdf] not found')) {
-                  Log::error('PDF View Missing: resources/views/admin/orders/invoice_pdf.blade.php');
-                 return redirect()->back()->with('error', 'Gagal membuat PDF: Template faktur (invoice_pdf.blade.php) belum dibuat.');
-             }
-             // Tangani error view lainnya
-             Log::error('Error rendering PDF view for invoice ' . $invoice . ': ' . $e->getMessage());
-             return redirect()->back()->with('error', 'Terjadi kesalahan saat membuat tampilan PDF faktur.');
-         } catch (Exception $e) {
-             // Tangani error DomPDF atau error lainnya
-             Log::error('Gagal membuat PDF faktur ' . $invoice . ': ' . $e->getMessage());
-             return redirect()->back()->with('error', 'Gagal membuat PDF faktur: ' . $e->getMessage());
-         }
+        } catch (ModelNotFoundException $e) {
+            Log::warning("Attempt to export invoice for non-existent order: " . $invoice . " (Checked 'orders' table only)");
+            return redirect()->back()->with('error', 'Pesanan dengan invoice ' . $invoice . ' tidak ditemukan di data "Order".');
+        } catch (\ErrorException $e) {
+             // Tangani error jika view PDF belum dibuat
+            if (str_contains($e->getMessage(), 'View [admin.orders.invoice_pdf] not found')) {
+                 Log::error('PDF View Missing: resources/views/admin/orders/invoice_pdf.blade.php');
+                return redirect()->back()->with('error', 'Gagal membuat PDF: Template faktur (invoice_pdf.blade.php) belum dibuat.');
+            }
+            // Tangani error view lainnya
+            Log::error('Error rendering PDF view for invoice ' . $invoice . ': ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Terjadi kesalahan saat membuat tampilan PDF faktur.');
+        } catch (Exception $e) {
+            // Tangani error DomPDF atau error lainnya
+            Log::error('Gagal membuat PDF faktur ' . $invoice . ': ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Gagal membuat PDF faktur: ' . $e->getMessage());
+        }
      }
 
      /**
-      * Cetak Label Thermal PDF untuk satu pesanan.
-      * Dipanggil saat link 'Cetak Thermal' (ikon print) diklik.
-      *
-      * @param  string $invoice Nomor invoice dari URL
-      * @return \Symfony\Component\HttpFoundation\Response|\Illuminate\Http\RedirectResponse
-      */
+     * Cetak Label Thermal PDF untuk satu pesanan.
+     * PENTING: Saat ini HANYA berfungsi untuk data dari tabel 'orders'.
+     *
+     * @param  string $invoice Nomor invoice dari URL
+     * @return \Symfony\Component\HttpFoundation\Response|\Illuminate\Http\RedirectResponse
+     */
      public function printThermal(string $invoice)
      {
-         try {
-             // Cari order beserta relasi yang dibutuhkan untuk label
-             $order = Order::where('invoice_number', $invoice)
-                             ->with(['user', 'store', 'items.product:id,name,weight,length,width,height']) // Ambil data produk yg relevan
-                             ->firstOrFail(); // Error 404 jika tidak ketemu
+        try {
+            // Cari order beserta relasi yang dibutuhkan untuk label
+            $order = Order::where('invoice_number', $invoice)
+                            ->with(['user', 'store', 'items.product:id,name,weight,length,width,height']) // Ambil data produk yg relevan
+                            ->firstOrFail(); // Error 404 jika tidak ketemu
 
             // Ambil detail pengiriman dari shipping_method
             $shippingInfo = \App\Helpers\ShippingHelper::parseShippingMethod($order->shipping_method); // Gunakan helper jika ada
 
-             // Siapkan data untuk view Blade PDF
-             $data = [
-                 'order' => $order,
-                 'shippingInfo' => $shippingInfo, // Kirim info pengiriman
-                 'title' => 'Label ' . $order->invoice_number // Judul dokumen
-                 // Anda mungkin perlu generate string barcode di sini dan mengirimkannya ke view
-                 // 'barcode_string' => generateBarcodeString($order->tracking_number ?? $order->invoice_number),
-             ];
+            // Siapkan data untuk view Blade PDF
+            $data = [
+                'order' => $order,
+                'shippingInfo' => $shippingInfo, // Kirim info pengiriman
+                'title' => 'Label ' . $order->invoice_number // Judul dokumen
+            ];
 
-             // PENTING: Buat file view Blade di:
-             // resources/views/admin/orders/thermal_pdf.blade.php
-             // Desain view ini HANYA dengan HTML dan CSS sederhana agar cocok untuk printer thermal.
-             // Atur font, ukuran, margin seminimal mungkin. Gunakan tabel jika perlu.
+            // PENTING: Buat file view Blade di:
+            // resources/views/admin/orders/thermal_pdf.blade.php
+            
+            // Atur ukuran kertas custom untuk thermal (contoh: 80mm x 100mm)
+            $widthInMm = 80;
+            $heightInMm = 100; // Sesuaikan tinggi label Anda
+            $customPaper = [0, 0, ($widthInMm * 2.83465), ($heightInMm * 2.83465)];
 
-             // Atur ukuran kertas custom untuk thermal (contoh: 80mm x 100mm)
-             $widthInMm = 80;
-             $heightInMm = 100; // Sesuaikan tinggi label Anda
-             $customPaper = [0, 0, ($widthInMm * 2.83465), ($heightInMm * 2.83465)];
+            // Load view dan set ukuran kertas custom
+            $pdf = Pdf::loadView('admin.orders.thermal_pdf', $data)
+                        // Set margin ke 0 jika perlu
+                        ->setOption(['dpi' => 150, 'defaultFont' => 'sans-serif', 'isHtml5ParserEnabled' => true, 'isRemoteEnabled' => true])
+                        ->setPaper($customPaper, 'portrait');
 
-             // Load view dan set ukuran kertas custom
-             $pdf = Pdf::loadView('admin.orders.thermal_pdf', $data)
-                       // Set margin ke 0 jika perlu
-                       ->setOption(['dpi' => 150, 'defaultFont' => 'sans-serif', 'isHtml5ParserEnabled' => true, 'isRemoteEnabled' => true])
-                       ->setPaper($customPaper, 'portrait');
+            // Buat nama file
+            $filename = 'Label-' . $order->invoice_number . '.pdf';
+            // Tampilkan PDF di browser (stream) agar bisa langsung di-print dari browser
+            return $pdf->stream($filename);
 
-             // Buat nama file
-             $filename = 'Label-' . $order->invoice_number . '.pdf';
-             // Tampilkan PDF di browser (stream) agar bisa langsung di-print dari browser
-             return $pdf->stream($filename);
-
-         } catch (ModelNotFoundException $e) {
-             Log::warning("Attempt to print thermal for non-existent order: " . $invoice);
-             return redirect()->back()->with('error', 'Pesanan dengan invoice ' . $invoice . ' tidak ditemukan.');
-          } catch (\ErrorException $e) {
-              // Tangani error jika view PDF belum dibuat
-             if (str_contains($e->getMessage(), 'View [admin.orders.thermal_pdf] not found')) {
-                  Log::error('PDF View Missing: resources/views/admin/orders/thermal_pdf.blade.php');
-                 return redirect()->back()->with('error', 'Gagal membuat PDF: Template label (thermal_pdf.blade.php) belum dibuat.');
-             }
-             Log::error('Error rendering PDF view for thermal ' . $invoice . ': ' . $e->getMessage());
-             return redirect()->back()->with('error', 'Terjadi kesalahan saat membuat tampilan PDF label.');
-         } catch (Exception $e) {
-             // Tangani error DomPDF atau error lainnya
-             Log::error('Gagal membuat PDF thermal ' . $invoice . ': ' . $e->getMessage());
-             return redirect()->back()->with('error', 'Gagal membuat PDF thermal: ' . $e->getMessage());
-         }
+        } catch (ModelNotFoundException $e) {
+            Log::warning("Attempt to print thermal for non-existent order: " . $invoice . " (Checked 'orders' table only)");
+            return redirect()->back()->with('error', 'Pesanan dengan invoice ' . $invoice . ' tidak ditemukan di data "Order".');
+         } catch (\ErrorException $e) {
+             // Tangani error jika view PDF belum dibuat
+            if (str_contains($e->getMessage(), 'View [admin.orders.thermal_pdf] not found')) {
+                 Log::error('PDF View Missing: resources/views/admin/orders/thermal_pdf.blade.php');
+                return redirect()->back()->with('error', 'Gagal membuat PDF: Template label (thermal_pdf.blade.php) belum dibuat.');
+            }
+            Log::error('Error rendering PDF view for thermal ' . $invoice . ': ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Terjadi kesalahan saat membuat tampilan PDF label.');
+        } catch (Exception $e) {
+            // Tangani error DomPDF atau error lainnya
+            Log::error('Gagal membuat PDF thermal ' . $invoice . ': ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Gagal membuat PDF thermal: ' . $e->getMessage());
+        }
      }
 
 
      /**
-      * Ekspor Laporan Penjualan PDF (dengan filter tanggal).
-      * Dipanggil saat form di modal 'Export Laporan' disubmit.
-      *
-      * @param  \Illuminate\Http\Request  $request Object request berisi 'start_date' dan 'end_date'
-      * @return \Symfony\Component\HttpFoundation\Response|\Illuminate\Http\RedirectResponse
-      */
+     * Ekspor Laporan Penjualan PDF (dengan filter tanggal).
+     * PENTING: Saat ini HANYA berfungsi untuk data dari tabel 'orders'.
+     *
+     * @param  \Illuminate\Http\Request  $request Object request berisi 'start_date' dan 'end_date'
+     * @return \Symfony\Component\HttpFoundation\Response|\Illuminate\Http\RedirectResponse
+     */
      public function exportReport(Request $request)
      {
-         try {
-             // Validasi input tanggal dari request (form di modal)
-             $validated = $request->validate([
-                 'start_date' => 'nullable|date_format:Y-m-d',
-                 'end_date' => 'nullable|date_format:Y-m-d|after_or_equal:start_date',
-             ], [
-                 // Pesan error custom (opsional)
-                 'end_date.after_or_equal' => 'Tanggal Selesai harus setelah atau sama dengan Tanggal Mulai.'
-             ]);
+        try {
+            // Validasi input tanggal dari request (form di modal)
+            $validated = $request->validate([
+                'start_date' => 'nullable|date_format:Y-m-d',
+                'end_date' => 'nullable|date_format:Y-m-d|after_or_equal:start_date',
+            ], [
+                // Pesan error custom (opsional)
+                'end_date.after_or_equal' => 'Tanggal Selesai harus setelah atau sama dengan Tanggal Mulai.'
+            ]);
 
-             // Ambil tanggal dari input, atau set default ke bulan ini jika tidak diisi
-             $startDate = $validated['start_date'] ?? Carbon::now()->startOfMonth()->format('Y-m-d');
-             $endDate = $validated['end_date'] ?? Carbon::now()->endOfMonth()->format('Y-m-d');
+            // Ambil tanggal dari input, atau set default ke bulan ini jika tidak diisi
+            $startDate = $validated['start_date'] ?? Carbon::now()->startOfMonth()->format('Y-m-d');
+            $endDate = $validated['end_date'] ?? Carbon::now()->endOfMonth()->format('Y-m-d');
 
-             // Tentukan status pesanan yang dianggap "masuk" dalam laporan
-             // Sesuaikan array ini dengan logika bisnis Anda!
-             $statusesToInclude = ['paid', 'processing', 'shipped', 'delivered', 'completed'];
+            // Tentukan status pesanan yang dianggap "masuk" dalam laporan
+            $statusesToInclude = ['paid', 'processing', 'shipped', 'delivered', 'completed'];
 
-             // Ambil data pesanan sesuai filter tanggal dan status
-             $orders = Order::with(['user:id,nama_lengkap', 'store:id,name', 'items']) // Eager load relasi secukupnya
-                 ->whereIn('status', $statusesToInclude) // Filter berdasarkan status yang valid
-                 // Filter berdasarkan rentang tanggal 'created_at' (inklusif)
-                 ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
-                 ->orderBy('created_at', 'asc') // Urutkan dari pesanan terlama dalam rentang
-                 ->get(); // Ambil semua data yang cocok (koleksi)
+            // Ambil data pesanan sesuai filter tanggal dan status DARI 'orders'
+            $orders = Order::with(['user:id_pengguna,nama_lengkap', 'store:id,name', 'items']) // Eager load relasi secukupnya
+                ->whereIn('status', $statusesToInclude) // Filter berdasarkan status yang valid
+                // Filter berdasarkan rentang tanggal 'created_at' (inklusif)
+                ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+                ->orderBy('created_at', 'asc') // Urutkan dari pesanan terlama dalam rentang
+                ->get(); // Ambil semua data yang cocok (koleksi)
+            
+            // TODO: Jika laporan juga harus mencakup 'Pesanan', Anda perlu query 'Pesanan' di sini
+            // dan menggabungkannya sebelum menghitung total.
 
-             // Hitung total ringkasan untuk laporan
-             $totalRevenue = $orders->sum('total_amount'); // Jumlahkan total semua pesanan
-             $totalOrders = $orders->count(); // Hitung jumlah pesanan
+            // Hitung total ringkasan untuk laporan
+            $totalRevenue = $orders->sum('total_amount'); // Jumlahkan total semua pesanan
+            $totalOrders = $orders->count(); // Hitung jumlah pesanan
 
-             // Siapkan data untuk dikirim ke view Blade PDF
-             $data = [
-                 'orders' => $orders,           // Koleksi data pesanan
-                 'startDate' => Carbon::parse($startDate),     // Objek Carbon untuk format tanggal
-                 'endDate' => Carbon::parse($endDate),         // Objek Carbon untuk format tanggal
-                 'totalRevenue' => $totalRevenue, // Total pendapatan
-                 'totalOrders' => $totalOrders,   // Jumlah total pesanan
-                 'title' => 'Laporan Penjualan ' . Carbon::parse($startDate)->translatedFormat('d M Y') . ' - ' . Carbon::parse($endDate)->translatedFormat('d M Y') // Judul dinamis
-             ];
+            // Siapkan data untuk dikirim ke view Blade PDF
+            $data = [
+                'orders' => $orders,           // Koleksi data pesanan ('orders' saja)
+                'startDate' => Carbon::parse($startDate),      // Objek Carbon untuk format tanggal
+                'endDate' => Carbon::parse($endDate),          // Objek Carbon untuk format tanggal
+                'totalRevenue' => $totalRevenue, // Total pendapatan
+                'totalOrders' => $totalOrders,   // Jumlah total pesanan
+                'title' => 'Laporan Penjualan ' . Carbon::parse($startDate)->translatedFormat('d M Y') . ' - ' . Carbon::parse($endDate)->translatedFormat('d M Y') // Judul dinamis
+            ];
 
-             // PENTING: Buat file view Blade di:
-             // resources/views/admin/orders/report_pdf.blade.php
-             // View ini akan berisi tabel laporan Anda (loop $orders), dan ringkasan total.
-             $pdf = Pdf::loadView('admin.orders.report_pdf', $data)
-                       ->setPaper('a4', 'landscape'); // Atur kertas A4 landscape agar tabel muat
+            // PENTING: Buat file view Blade di:
+            // resources/views/admin/orders/report_pdf.blade.php
+            $pdf = Pdf::loadView('admin.orders.report_pdf', $data)
+                        ->setPaper('a4', 'landscape'); // Atur kertas A4 landscape agar tabel muat
 
-             // Buat nama file PDF yang dinamis
-             $filename = 'Laporan-Penjualan-' . $startDate . '-sd-' . $endDate . '.pdf';
-             // Unduh laporan PDF
-             return $pdf->download($filename);
+            // Buat nama file PDF yang dinamis
+            $filename = 'Laporan-Penjualan-' . $startDate . '-sd-' . $endDate . '.pdf';
+            // Unduh laporan PDF
+            return $pdf->download($filename);
 
-         } catch (\Illuminate\Validation\ValidationException $e) {
-              // Tangani error validasi tanggal
-              Log::warning('Validation error on export report: ' . json_encode($e->errors()));
-              // Redirect kembali ke halaman index dengan pesan error validasi dan input lama
-              return redirect()->route('admin.orders.index')->withErrors($e->errors())->withInput();
-         } catch (\ErrorException $e) {
-             // Tangani error jika view PDF belum dibuat
-             if (str_contains($e->getMessage(), 'View [admin.orders.report_pdf] not found')) {
-                  Log::error('PDF View Missing: resources/views/admin/orders/report_pdf.blade.php');
-                 return redirect()->route('admin.orders.index')->with('error', 'Gagal membuat Laporan PDF: Template laporan (report_pdf.blade.php) belum dibuat.');
-             }
-             Log::error('Error rendering PDF view for report: ' . $e->getMessage());
-             return redirect()->route('admin.orders.index')->with('error', 'Terjadi kesalahan saat membuat tampilan PDF laporan.');
-         } catch (Exception $e) {
-             // Tangani error DomPDF atau error lainnya
-             Log::error('Gagal membuat Laporan PDF: ' . $e->getMessage());
-             return redirect()->route('admin.orders.index')->with('error', 'Gagal membuat Laporan PDF: ' . $e->getMessage());
-         }
+        } catch (\Illuminate\Validation\ValidationException $e) {
+             // Tangani error validasi tanggal
+             Log::warning('Validation error on export report: ' . json_encode($e->errors()));
+             // Redirect kembali ke halaman index dengan pesan error validasi dan input lama
+             return redirect()->route('admin.orders.index')->withErrors($e->errors())->withInput();
+        } catch (\ErrorException $e) {
+            // Tangani error jika view PDF belum dibuat
+            if (str_contains($e->getMessage(), 'View [admin.orders.report_pdf] not found')) {
+                 Log::error('PDF View Missing: resources/views/admin/orders/report_pdf.blade.php');
+                return redirect()->route('admin.orders.index')->with('error', 'Gagal membuat Laporan PDF: Template laporan (report_pdf.blade.php) belum dibuat.');
+            }
+            Log::error('Error rendering PDF view for report: ' . $e->getMessage());
+            return redirect()->route('admin.orders.index')->with('error', 'Terjadi kesalahan saat membuat tampilan PDF laporan.');
+        } catch (Exception $e) {
+            // Tangani error DomPDF atau error lainnya
+            Log::error('Gagal membuat Laporan PDF: ' . $e->getMessage());
+            return redirect()->route('admin.orders.index')->with('error', 'Gagal membuat Laporan PDF: ' . $e->getMessage());
+        }
      }
-
-  
 }
-
