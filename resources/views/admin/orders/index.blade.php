@@ -38,7 +38,12 @@
 
         // Tampilkan notifikasi 'error' dari session
         @if (session('error'))
-            toastr.error("{{ session('error') }}", "Gagal!");
+            // Perbaiki pesan error untuk kolom tidak ditemukan
+            @if (Str::contains(session('error'), 'Unknown column'))
+                toastr.error("Kolom pencarian tidak ditemukan di database. Harap periksa logika pencarian di Controller.", "Gagal!");
+            @else
+                toastr.error("{{ session('error') }}", "Gagal!");
+            @endif
         @endif
         
         // Tampilkan notifikasi error validasi
@@ -91,7 +96,7 @@
                 'menunggu-pickup' => 'Menunggu Pickup',
                 'diproses' => 'Diproses', 
                 'terkirim' => 'Terkirim', 
-                'selesai' => 'Selesai', 
+                'selesai' => 'Selesai', // Filter ini akan mencari status 'completed' di DB 'orders'
                 'batal' => 'Batal', 
             ];
             $currentStatus = request('status');
@@ -141,15 +146,18 @@
                 @forelse($orders as $index => $order)
                     {{-- 
                       Inisialisasi Variabel.
+                      PENTING: Error 'Unknown column tracking_number' harus diperbaiki di AdminOrderController.php
+                      Ganti ->orWhere('tracking_number', ...) dengan ->orWhere('shipping_reference', ...) untuk query $ordersQuery
+                      dan ganti ->orWhere('resi', ...) / ->orWhere('resi_aktual', ...) untuk query $pesananQuery
                     --}}
                     @php
                         $isPesanan = isset($order->status_pesanan);
                         
-                        // --- Blok Inisialisasi Variabel (Sama seperti sebelumnya) ---
+                        // --- Blok Inisialisasi Variabel ---
                         if ($isPesanan) {
                             $id = $order->id_pesanan;
                             $invoice = $order->nomor_invoice;
-                            $resi = $order->resi_aktual ?? $order->resi;
+                            $resi = $order->resi_aktual ?? $order->resi; 
                             $paymentMethod = $order->payment_method;
                             $shippingMethodString = $order->jasa_ekspedisi_aktual ?? $order->expedition;
                             $paket = $order->item_description ?? 'N/A';
@@ -182,17 +190,21 @@
                             if ($subtotal === null) {
                                 $subtotal = max(0, $totalAmount - $shippingCost - $codFee);
                             }
-                        } else {
+                        } else { // Jika data berasal dari tabel 'orders'
                             $id = $order->id;
                             $invoice = $order->invoice_number;
-                            $resi = $order->tracking_number;
+                            $resi = $order->shipping_reference; // Gunakan kolom resi yang benar untuk 'orders'
                             $paymentMethod = $order->payment_method;
                             $shippingMethodString = $order->shipping_method;
-                            $paket = $order->items->first()->product->name ?? ($order->items->first()->variant->combination_string ?? 'N/A');
+                            // Cek relasi items, product, dan variant sebelum mengakses property
+                            $item = $order->items->first();
+                            $paket = $item && $item->product ? $item->product->name : ($item && $item->variant ? $item->variant->combination_string : 'N/A');
                             $userId = $order->user_id;
-                            $senderName = $order->store->name ?? 'N/A';
-                            $senderAddress = $order->store->address_detail ?? 'N/A';
-                            $receiverName = $order->user->nama_lengkap ?? 'N/A';
+                            // Cek relasi store sebelum mengakses property
+                            $senderName = $order->store ? $order->store->name : 'N/A';
+                            $senderAddress = $order->store ? $order->store->address_detail : 'N/A';
+                             // Cek relasi user sebelum mengakses property
+                            $receiverName = $order->user ? $order->user->nama_lengkap : 'N/A';
                             $receiverAddress = $order->shipping_address ?? 'N/A';
                             $createdAt = $order->created_at;
                             $shippedAt = $order->shipped_at;
@@ -201,7 +213,8 @@
                             $statusMapOrder = [
                                 'shipment' => 'terkirim', 
                                 'processing' => 'diproses', 
-                                'paid' => 'menunggu-pickup' 
+                                'paid' => 'menunggu-pickup',
+                                'completed' => 'selesai', // Tambahkan mapping untuk 'completed'
                             ];
                             $status = $statusMapOrder[$statusRaw] ?? $statusRaw;
                             $canCancel = in_array($statusRaw, ['pending', 'paid', 'processing']);
@@ -213,32 +226,35 @@
                         
                         $ship = \App\Helpers\ShippingHelper::parseShippingMethod($shippingMethodString);
 
+                        // Mapping Badge Status
                         $badgeMap = [
                             'pending' => 'bg-yellow-100 text-yellow-800',        
-                            'menunggu-pickup' => 'bg-yellow-100 text-yellow-800', // Ubah ke kuning sesuai ref   
-                            'diproses' => 'bg-blue-100 text-blue-800',        // Ubah ke biru sesuai ref
-                            'terkirim' => 'bg-green-100 text-green-800',      // Ubah ke hijau sesuai ref
-                            'selesai' => 'bg-green-100 text-green-800',        
-                            'completed' => 'bg-green-100 text-green-800',      
+                            'menunggu-pickup' => 'bg-yellow-100 text-yellow-800',   
+                            'diproses' => 'bg-blue-100 text-blue-800',        
+                            'terkirim' => 'bg-green-100 text-green-800',      
+                            'selesai' => 'bg-green-100 text-green-800', // Status 'selesai' dari Pesanan atau 'completed' dari Order
+                            'completed' => 'bg-green-100 text-green-800', // Handle 'completed' dari Order secara eksplisit     
                             'batal' => 'bg-red-100 text-red-800',              
                             'cancelled' => 'bg-red-100 text-red-800',          
                             'failed' => 'bg-red-100 text-red-800',             
                             'rejected' => 'bg-red-100 text-red-800',           
                         ];
                         
+                        // Mapping Teks Status
                         $textMap = [
                             'pending' => 'Menunggu Bayar',
                             'menunggu-pickup' => 'Menunggu Pickup',
                             'diproses' => 'Diproses',
                             'terkirim' => 'Terkirim',
-                            'selesai' => 'Selesai',
-                            'completed' => 'Selesai',
+                            'selesai' => 'Selesai', // Status 'selesai' dari Pesanan atau 'completed' dari Order
+                            'completed' => 'Selesai', // Handle 'completed' dari Order secara eksplisit
                             'batal' => 'Batal',
                             'cancelled' => 'Dibatalkan',
                             'failed' => 'Gagal',
                             'rejected' => 'Ditolak',
                         ];
 
+                        // Tentukan badge dan teks, utamakan mapping $status lalu $statusRaw
                         $statusBadge = $badgeMap[$status] ?? $badgeMap[$statusRaw] ?? 'bg-gray-100 text-gray-800';
                         $statusText = $textMap[$status] ?? $textMap[$statusRaw] ?? ucfirst($statusRaw);
                         // --- Akhir Blok Inisialisasi ---
@@ -246,13 +262,13 @@
                     
                     <tr class="group hover:bg-gray-50">
                         {{-- Kolom No --}}
-                        <td class="px-4 py-4 whitespace-nowrap text-gray-500 align-top">{{ $orders->firstItem() + $index }}</td> {{-- Ubah padding & align --}}
+                        <td class="px-4 py-4 whitespace-nowrap text-gray-500 align-top">{{ $orders->firstItem() + $index }}</td>
                         
                         {{-- Kolom ID --}}
-                        <td class="px-4 py-4 whitespace-nowrap text-gray-500 align-top">{{ $id }}</td> {{-- Ubah padding & align --}}
+                        <td class="px-4 py-4 whitespace-nowrap text-gray-500 align-top">{{ $id }}</td>
                         
                         {{-- Kolom Tipe --}}
-                        <td class="px-4 py-4 whitespace-nowrap align-top"> {{-- Ubah padding & align --}}
+                        <td class="px-4 py-4 whitespace-nowrap align-top">
                             @if ($isPesanan)
                                 <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Pesanan</span>
                             @else
@@ -261,16 +277,15 @@
                         </td>
                         
                         {{-- Kolom Transaksi --}}
-                        <td class="px-4 py-4 align-top"> {{-- Ubah padding --}}
-                            {{-- Tampilkan COD/Non COD dari referensi --}}
+                        <td class="px-4 py-4 align-top">
                             @if(Str::contains(strtoupper($paymentMethod ?? ''), 'COD'))
                                 <span class="font-bold text-green-600">COD</span>
                             @else
                                 <span class="font-bold text-blue-600">Non COD</span>
                             @endif
-                            <div class="font-bold text-gray-800">{{ $invoice }}</div> {{-- Tampilkan invoice di sini --}}
+                            <div class="font-bold text-gray-800">{{ $invoice }}</div> 
 
-                            {{-- TAMBAHKAN RINCIAN BIAYA DI SINI --}}
+                            {{-- Rincian Biaya --}}
                             <div class="text-xs mt-2 space-y-0.5 text-gray-600 w-52">
                                 <div class="flex justify-between">
                                     <span>Subtotal:</span>
@@ -286,43 +301,40 @@
                                     <span class="font-medium">Rp{{ number_format($codFee, 0, ',', '.') }}</span>
                                 </div>
                                 @endif
-                                <div class="flex justify-between font-bold pt-0.5 border-t border-gray-200 mt-1"> {{-- Tambah mt-1 --}}
+                                <div class="flex justify-between font-bold pt-0.5 border-t border-gray-200 mt-1">
                                     <span>Total:</span>
                                     <span class="text-indigo-600">Rp{{ number_format($totalAmount ?? 0, 0, ',', '.') }}</span>
                                 </div>
                             </div>
-                            {{-- AKHIR RINCIAN BIAYA --}}
                         </td>
                         
                         {{-- Kolom Alamat --}}
-                        <td class="px-4 py-4 align-top"> {{-- Ubah padding --}}
+                        <td class="px-4 py-4 align-top">
                             <div class="mb-2">
-                                <div class="text-xs text-gray-500">Dari:</div> {{-- Ubah gaya --}}
-                                <div class="font-semibold text-blue-700"><strong>{{ $senderName }}</strong></div> {{-- Tambah strong --}}
-                                <div class="text-xs text-gray-600 break-words max-w-xs">{{ $senderAddress }}</div> {{-- Ubah gaya --}}
+                                <div class="text-xs text-gray-500">Dari:</div>
+                                <div class="font-semibold text-blue-700"><strong>{{ $senderName }}</strong></div>
+                                <div class="text-xs text-gray-600 break-words max-w-xs">{{ $senderAddress }}</div>
                             </div>
                             <div>
-                                <div class="text-xs text-gray-500">Kepada:</div> {{-- Ubah gaya --}}
-                                <div class="font-semibold text-red-700"><strong>{{ $receiverName }}</strong></div> {{-- Tambah strong --}}
-                                <div class="text-xs text-gray-600 break-words max-w-xs">{{ $receiverAddress }}</div> {{-- Ubah gaya --}}
+                                <div class="text-xs text-gray-500">Kepada:</div>
+                                <div class="font-semibold text-red-700"><strong>{{ $receiverName }}</strong></div>
+                                <div class="text-xs text-gray-600 break-words max-w-xs">{{ $receiverAddress }}</div>
                             </div>
                         </td>
                         
                         {{-- Kolom Ekspedisi --}}
-                        <td class="px-4 py-4 align-top whitespace-nowrap"> {{-- Ubah padding --}}
+                        <td class="px-4 py-4 align-top whitespace-nowrap">
                             @if ($ship['logo_url'])
                                 <img src="{{ $ship['logo_url'] }}" alt="{{ $ship['courier_name'] }}" class="h-5 mb-1 max-w-[90px] object-contain">
                             @else
-                                {{-- Jika tidak ada logo, tampilkan nama --}}
                                 <div class="font-bold text-gray-800">{{ $ship['courier_name'] }}</div>
                             @endif
-                            {{-- Tampilkan layanan dan ongkir sesuai referensi --}}
                             <div class="text-xs text-gray-500">Layanan: {{ $ship['service_name'] }}</div> 
-                            <div class="font-semibold text-green-700 mt-1">Rp{{ number_format($shippingCost ?? 0, 0, ',', '.') }}</div> {{-- Tampilkan ongkir --}}
+                            <div class="font-semibold text-green-700 mt-1">Rp{{ number_format($shippingCost ?? 0, 0, ',', '.') }}</div>
                         </td>
                         
                         {{-- Kolom Resi --}}
-                        <td class="px-4 py-4 align-top whitespace-nowrap"> {{-- Ubah padding --}}
+                        <td class="px-4 py-4 align-top whitespace-nowrap">
                             @if ($resi)
                                 <div class="font-medium text-gray-800 break-all max-w-[180px]">{{ $resi }}</div>
                             @else
@@ -331,17 +343,14 @@
                         </td>
                         
                         {{-- Kolom Paket --}}
-                        <td class="px-4 py-4 align-top"> {{-- Ubah padding --}}
-                            <div class="font-semibold text-gray-800 break-words max-w-xs">{{ $paket }}</div> {{-- Buat teks bold --}}
-                            {{-- Tampilkan detail paket sesuai referensi --}}
+                        <td class="px-4 py-4 align-top">
+                            <div class="font-semibold text-gray-800 break-words max-w-xs">{{ $paket }}</div>
                             @if($isPesanan)
                             <div class="text-xs text-gray-500 mt-1">
                                 Berat: {{ $order->weight ?? 0 }} gr | Dimensi: {{ $order->length ?? 0 }}x{{ $order->width ?? 0 }}x{{ $order->height ?? 0 }} cm
                             </div>
-                            @elseif(isset($order->items) && $order->items->first())
-                            @php $item = $order->items->first(); @endphp
+                            @elseif(isset($order->items) && $item = $order->items->first()) {{-- Assign $item here --}}
                             <div class="text-xs text-gray-500 mt-1">
-                                {{-- Cek jika relasi product ada sebelum mengakses property --}}
                                 @if($item->product)
                                 Berat: {{ ($item->product->weight ?? 0) * ($item->quantity ?? 1) }} gr | 
                                 Dimensi: {{ $item->product->length ?? 0 }}x{{ $item->product->width ?? 0 }}x{{ $item->product->height ?? 0 }} cm
@@ -353,8 +362,7 @@
                         </td>
                         
                         {{-- Kolom Tanggal --}}
-                        <td class="px-4 py-4 align-top whitespace-nowrap text-gray-500"> {{-- Ubah padding --}}
-                            {{-- KEMBALIKAN TAMPILAN TANGGAL SEPERTI AWAL --}}
+                        <td class="px-4 py-4 align-top whitespace-nowrap text-gray-500">
                             <div>
                                 <span class="text-gray-400">Dibuat:</span>
                                 {{ $createdAt ? \Carbon\Carbon::parse($createdAt)->translatedFormat('d M Y, H:i') : '-' }}
@@ -367,63 +375,46 @@
                                 <span class="text-gray-400">Selesai:</span>
                                 {{ $finishedAt ? \Carbon\Carbon::parse($finishedAt)->translatedFormat('d M Y, H:i') : '-' }}
                             </div>
-                            {{-- AKHIR PERUBAHAN TANGGAL --}}
                         </td>
                         
                         {{-- Kolom Status --}}
-                        <td class="px-4 py-4 align-top whitespace-nowrap"> {{-- Ubah padding --}}
-                             {{-- Gunakan gaya badge dari referensi --}}
+                        <td class="px-4 py-4 align-top whitespace-nowrap">
                             <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full {{ $statusBadge }}">
                                 {{ $statusText }}
                             </span>
                         </td>
                         
                         {{-- Kolom Aksi (Sticky) --}}
-                        {{-- 'group-hover:bg-gray-100' membuatnya ganti warna saat <tr> di-hover --}}
-                        <td class="sticky right-0 z-10 bg-white group-hover:bg-gray-50 px-6 py-4 align-top whitespace-nowrap border-l border-gray-200"> {{-- Ubah padding --}}
-                            {{-- Gunakan gaya tombol aksi dari referensi --}}
+                        <td class="sticky right-0 z-10 bg-white group-hover:bg-gray-50 px-6 py-4 align-top whitespace-nowrap border-l border-gray-200">
                             <div class="flex items-center space-x-3">
-                                {{-- Tombol Lacak --}}
                                 @if($resi)
                                 <a href="{{ 'https://tokosancaka.com/tracking/search?resi=' . e($resi) }}" target="_blank" 
                                    class="text-gray-500 hover:text-green-600" title="Lacak Resi">
                                     <i class="fas fa-truck fa-fw"></i>
                                 </a>
                                 @endif
-                                
-                                {{-- Tombol Detail --}}
                                 <a href="{{ route('admin.orders.show', $invoice) }}" 
                                    class="text-gray-500 hover:text-indigo-600" title="Detail">
                                     <i class="fas fa-eye fa-fw"></i>
                                 </a>
-                                
-                                {{-- Tombol Print Thermal --}}
                                 <a href="{{ route('admin.orders.print.thermal', $invoice) }}" target="_blank" 
                                    class="text-gray-500 hover:text-gray-800" title="Cetak Label">
                                     <i class="fas fa-print fa-fw"></i>
                                 </a>
-
-                                {{-- Tombol PDF Faktur (Tidak ada di ref, tapi kita simpan) --}}
                                 <a href="{{ route('admin.orders.invoice.pdf', $invoice) }}" target="_blank" 
                                    class="text-gray-500 hover:text-red-600" title="PDF Faktur">
                                     <i class="fas fa-file-pdf fa-fw"></i>
                                 </a>
-
-                                {{-- Tombol Edit (Hanya placeholder, route perlu dibuat) --}}
                                 <a href="#" {{-- route('admin.orders.edit', $invoice) --}} 
                                    class="text-gray-500 hover:text-blue-600" title="Edit">
                                     <i class="fas fa-pencil-alt fa-fw"></i>
                                 </a>
-
-                                {{-- Tombol Chat (Tidak ada di ref, tapi kita simpan) --}}
                                 @if ($userId)
                                 <a href="{{ route('admin.chat.start', ['id_pengguna' => $userId]) }}" target="_blank" 
                                    class="text-gray-500 hover:text-blue-600" title="Chat">
                                     <i class="fas fa-comment fa-fw"></i>
                                 </a>
                                 @endif
-                                
-                                {{-- Tombol Hapus/Batal --}}
                                 <form action="{{ route('admin.orders.cancel', $invoice) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin membatalkan pesanan ini?');" class="inline-block">
                                     @csrf
                                     @method('PATCH')
@@ -438,8 +429,8 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="11" class="text-center py-4 text-gray-500"> {{-- Ubah py-10 ke py-4 --}}
-                            Data pesanan tidak ditemukan. {{-- Ubah pesan --}}
+                        <td colspan="11" class="text-center py-4 text-gray-500">
+                            Data pesanan tidak ditemukan.
                         </td>
                     </tr>
                 @endforelse
@@ -449,7 +440,7 @@
 
     {{-- PAGINATION --}}
     @if ($orders->hasPages())
-        <div class="mt-4 p-4 border-t border-gray-200"> {{-- Tambah mt-4 & p-4 --}}
+        <div class="mt-4 p-4 border-t border-gray-200">
             {{ $orders->links() }}
         </div>
     @endif
