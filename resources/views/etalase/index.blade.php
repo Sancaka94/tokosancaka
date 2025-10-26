@@ -57,13 +57,13 @@
        <div class="grid grid-rows-2 gap-6 h-[400px] sm:h-[250px] md:h-[300px] lg:h-[420px]" data-aos="fade-left">
         @if(isset($settings['banner_2']))
         <div class="rounded-2xl overflow-hidden shadow-lg">
-            <img src="{{ asset('storage/' . $settings['banner_2']) }}" class="w-full h-full object-fill" alt="Banner 2">
+            <img src="{{ asset('public/storage/' . $settings['banner_2']) }}" class="w-full h-full object-fill" alt="Banner 2">
         </div>
         @endif
 
         @if(isset($settings['banner_3']))
         <div class="rounded-2xl overflow-hidden shadow-lg">
-            <img src="{{ asset('storage/' . $settings['banner_3']) }}" class="w-full h-full object-fill" alt="Banner 3">
+            <img src="{{ asset('public/storage/' . $settings['banner_3']) }}" class="w-full h-full object-fill" alt="Banner 3">
         </div>
         @endif
     </div>
