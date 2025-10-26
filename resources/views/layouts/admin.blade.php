@@ -62,17 +62,15 @@
         
         @include('layouts.partials.sidebar')
 
-        <div class="flex-1 flex flex-col overflow-hidden">
+        <div class="flex-1 flex flex-col overflow-hidden min-w-0">
             
             @include('layouts.partials.header')
 
-            <div class="flex-1 flex flex-col overflow-hidden min-w-0"> 
-                <main class="flex-1 overflow-x-hidden overflow-y-auto ...">
-                    <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                        @yield('content')
-                    </div>
-                </main>
-            </div>
+            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 dark:bg-gray-900 custom-scrollbar">
+                <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                    @yield('content')
+                </div>
+            </main>
         </div>
     </div>
     
