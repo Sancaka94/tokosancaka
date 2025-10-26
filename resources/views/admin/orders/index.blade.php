@@ -7,8 +7,8 @@
 
 @section('content')
 <div class="px-4 sm:px-6 lg:px-8 py-6">
-    {{-- Mengganti bg-white shadow rounded-lg overflow-hidden dengan card modern Tailwind --}}
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+    {{-- PERBAIKAN: Tambahkan 'overflow-hidden' agar kartu ini menampung tabel yang lebar --}}
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         
         {{-- HEADER: Pencarian dan Tombol Ekspor --}}
         <div class="flex flex-col md:flex-row items-center justify-between border-b border-gray-200 p-4 sm:p-6 gap-3">
@@ -233,7 +233,7 @@
                                 Tidak ada pesanan ditemukan.
                             </td>
                         </tr>
-                    @endforelse
+                    @forelse
                 </tbody>
             </table>
         </div>
