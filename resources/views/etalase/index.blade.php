@@ -39,7 +39,7 @@
                 <div class="swiper-wrapper">
                     @forelse($banners as $banner)
                         <div class="swiper-slide">
-                            <img src="{{ asset('storage/' . $banner->image) }}" class="w-full h-full object-fill" alt="{{ $banner->title ?? 'Promo Banner' }}">
+                            <img src="{{ asset('public/storage/' . $banner->image) }}" class="w-full h-full object-fill" alt="{{ $banner->title ?? 'Promo Banner' }}">
                         </div>
                     @empty
                         <div class="swiper-slide">
