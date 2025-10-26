@@ -152,7 +152,8 @@
                                 <td class="px-4 py-3 align-top whitespace-nowrap text-xs">
                                     <div>
                                         <span class="text-gray-500">Dibuat:</span>
-                                        <span class="text-gray-800 block">{{ $order->created-at->format('d M Y, H:i') }}</span>
+                                        {{-- PERBAIKAN: Mengganti created-at menjadi created_at --}}
+                                        <span class="text-gray-800 block">{{ $order->created_at->format('d M Y, H:i') }}</span>
                                     </div>
                                     <div class="mt-1">
                                         <span class="text-gray-500">Dikirim:</span>
