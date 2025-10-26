@@ -36,11 +36,12 @@
             {{-- FILTER STATUS: Menggunakan utility classes secara langsung --}}
             <div class="p-4 border-b border-gray-200 flex flex-wrap gap-2">
                 @php
+                    // PERBAIKAN: Menyesuaikan key filter agar cocok dengan $statusMap di controller baru
                     $statusFilters = [
                         'pending' => 'Menunggu Bayar',
                         'menunggu-pickup' => 'Menunggu Pickup',
-                        'processing' => 'Diproses', // PERBAIKAN: Mengganti key 'diproses' menjadi 'processing' agar sesuai DB
-                        'shipment' => 'Dikirim', 
+                        'diproses' => 'Diproses', // Sebelumnya 'processing'
+                        'terkirim' => 'Terkirim', // Sebelumnya 'shipment'
                         'selesai' => 'Selesai',
                         'batal' => 'Batal',
                     ];
@@ -98,7 +99,7 @@
                                     
                                     // Mapping status 'Pesanan' ke status helper
                                     if ($status == 'Menunggu Pickup') $status = 'menunggu-pickup';
-                                    if ($status == 'Sedang Dikirim') $status = 'Dikirim';
+                                    if ($status == 'Sedang Dikirim') $status = 'terkirim'; // Sesuaikan jika helper Anda beda
                                     if ($status == 'Selesai') $status = 'selesai';
                                     if ($status == 'Batal') $status = 'batal';
 
@@ -107,13 +108,28 @@
                                     // == DATA DARI 'Order' ==
                                     $invoice = $order->invoice_number;
                                     $resi = $order->shipping_reference ?? $order->tracking_number ?? $order->resi ?? null;
-                                    $status = $order->status;
                                     
-                                    // Mapping status 'Order' ke status helper
-                                    if ($status == 'shipment') $status = 'Dikirim';
-                                    if ($status == 'processing') $status = 'diproses';
+                                    // PERBAIKAN: Logika $status dan $canCancel disesuaikan dengan Controller baru
+                                    $db_status = $order->status; // Status asli dari DB (cth: 'paid', 'shipping')
+                                    $status = $db_status; // Status untuk ditampilkan (akan dimapping)
 
-                                    $canCancel = in_array($order->status, ['pending','paid','processing', 'menunggu-pickup']);
+                                    // Mapping status DB ke status yang dimengerti Helper/Tampilan
+                                    // Berdasarkan $statusMap di controller baru Anda
+                                    if (in_array($db_status, ['paid', 'processing'])) {
+                                        $status = 'menunggu-pickup';
+                                    } elseif ($db_status == 'shipping') {
+                                        $status = 'diproses'; // Cocokkan dengan key filter 'diproses'
+                                    } elseif ($db_status == 'delivered') {
+                                        $status = 'terkirim'; // Cocokkan dengan key filter 'terkirim'
+                                    } elseif ($db_status == 'completed') {
+                                        $status = 'selesai';
+                                    } elseif (in_array($db_status, ['cancelled', 'failed', 'rejected'])) {
+                                        $status = 'batal';
+                                    }
+                                    // 'pending' akan tetap 'pending'
+
+                                    // Sesuaikan $canCancel dengan logic di controller baru
+                                    $canCancel = in_array($db_status, ['pending','paid','processing']);
                                 }
                             @endphp
                             {{-- Tambahkan 'group' untuk hover pada sticky column --}}
