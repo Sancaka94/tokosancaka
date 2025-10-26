@@ -41,7 +41,7 @@
             <div class="flex justify-between items-center h-20">
                 <!-- Logo -->
                 <a href="{{ url('/etalase') }}" class="flex-shrink-0">
-                    <img src="{{ asset('storage/' . $weblogo) }}" alt="SANCAKA STORE" class="h-12">
+                    <img src="{{ asset('public/storage/' . $weblogo) }}" alt="SANCAKA STORE" class="h-12">
                 </a>
 
                 <!-- Search Bar (Desktop) - Desain Baru -->
