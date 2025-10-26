@@ -26,7 +26,7 @@
                 <div class="swiper-wrapper">
                     @forelse($banners as $banner)
                         <div class="swiper-slide">
-                            <img src="{{ asset('storage/' . $banner->image) }}" class="w-full h-full object-fill" alt="{{ $banner->title ?? 'Promo Banner' }}">
+                            <img src="{{ asset('public/storage/' . $banner->image) }}" class="w-full h-full object-fill" alt="{{ $banner->title ?? 'Promo Banner' }}">
                         </div>
                     @empty
                         <div class="swiper-slide">
@@ -41,10 +41,10 @@
         </div>
         <div class="grid grid-rows-2 gap-6 h-[400px] sm:h-[250px] md:h-[300px] lg:h-[420px]" data-aos="fade-left">
             @if(isset($settings['banner_2']))
-            <div class="rounded-2xl overflow-hidden shadow-lg"><img src="{{ asset('storage/' . $settings['banner_2']) }}" class="w-full h-full object-fill" alt="Banner 2"></div>
+            <div class="rounded-2xl overflow-hidden shadow-lg"><img src="{{ asset('public/storage/' . $settings['banner_2']) }}" class="w-full h-full object-fill" alt="Banner 2"></div>
             @endif
             @if(isset($settings['banner_3']))
-            <div class="rounded-2xl overflow-hidden shadow-lg"><img src="{{ asset('storage/' . $settings['banner_3']) }}" class="w-full h-full object-fill" alt="Banner 3"></div>
+            <div class="rounded-2xl overflow-hidden shadow-lg"><img src="{{ asset('public/storage/' . $settings['banner_3']) }}" class="w-full h-full object-fill" alt="Banner 3"></div>
             @endif
         </div>
     </section>
@@ -89,7 +89,7 @@
                         <div class="swiper-slide h-auto pb-2">
                             <a href="{{ route('etalase.show', $product->slug) }}" class="block border rounded-xl overflow-hidden group hover:shadow-xl transition-all duration-300 h-full flex flex-col bg-white">
                                 <div class="relative">
-                                    <div class="h-48 bg-gray-50"><img src="{{ $product->image_url ? asset('storage/' . $product->image_url) : 'https://placehold.co/400x400' }}" alt="{{ $product->name }}" class="w-full h-full object-fill group-hover:scale-105 transition-transform"></div>
+                                    <div class="h-48 bg-gray-50"><img src="{{ $product->image_url ? asset('public/storage/' . $product->image_url) : 'https://placehold.co/400x400' }}" alt="{{ $product->name }}" class="w-full h-full object-fill group-hover:scale-105 transition-transform"></div>
                                     <span class="absolute top-2 left-2 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-full">{{ round($product->discount_percentage) }}%</span>
                                 </div>
                                 <div class="p-3 flex flex-col flex-grow">
@@ -121,7 +121,7 @@
                     <div class="bg-white border rounded-xl overflow-hidden group hover:shadow-2xl transition-all duration-300 flex flex-col">
                         <a href="{{ route('products.show', $product->slug) }}">
                             <div class="h-48 bg-gray-50 relative">
-                               <img src="{{ $product->image_url ? asset('storage/' . $product->image_url) : 'https://placehold.co/400x400' }}" alt="{{ $product->name }}" class="w-full h-full object-fill group-hover:scale-105 transition-transform">
+                               <img src="{{ $product->image_url ? asset('public/storage/' . $product->image_url) : 'https://placehold.co/400x400' }}" alt="{{ $product->name }}" class="w-full h-full object-fill group-hover:scale-105 transition-transform">
                             </div>
                         </a>
                         <div class="p-4 flex flex-col flex-grow">
