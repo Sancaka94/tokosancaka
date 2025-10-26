@@ -210,7 +210,7 @@ if (!function_exists('formatWaNumber')) {
                 <div class="md:col-span-2 image-gallery">
                     <div class="aspect-w-1 aspect-h-1 w-full overflow-hidden rounded-md shadow-sm mb-4 border border-gray-200 dark:border-gray-700">
                          @php
-                             $imageUrl = $product->image_url ? asset('storage/' . $product->image_url) : 'https://placehold.co/600x600/EFEFEF/AAAAAA?text=Gambar+Tidak+Ada';
+                             $imageUrl = $product->image_url ? asset('public/storage/' . $product->image_url) : 'https://placehold.co/600x600/EFEFEF/AAAAAA?text=Gambar+Tidak+Ada';
                          @endphp
                         <img id="main-product-image"
                              src="{{ $imageUrl }}"
