@@ -209,18 +209,39 @@ class AdminOrderController extends Controller
         $order->tracking_number = $pesanan->resi_aktual ?? $pesanan->resi;
         $order->payment_method = $pesanan->payment_method;
 
-        // Biaya
+        // ===== PERBAIKAN LOGIKA BIAYA =====
         $order->total_amount = $pesanan->price ?? 0;
-        $order->subtotal = $pesanan->total_harga_barang ?? $order->total_amount; // Fallback
-        
-        $shipping_cost = ($pesanan->price ?? 0) - ($pesanan->total_harga_barang ?? 0);
-        $order->shipping_cost = ($shipping_cost > 0) ? $shipping_cost : 0;
-        
-        $order->cod_fee = 0; // Tidak ada data 'cod_fee' eksplisit
-        if (strtoupper($pesanan->payment_method) == 'CODBARANG' || strtoupper($pesanan->payment_method) == 'COD') {
-             // Asumsi: 'price' adalah total, 'total_harga_barang' adalah subtotal.
-             // Sisanya adalah ongkir. Tidak bisa membedakan ongkir dan biaya COD.
+
+        // Gunakan ShippingHelper (jika ada) untuk parse biaya
+        // Asumsi helper ada di App\Helpers\ShippingHelper
+        $shippingInfo = \App\Helpers\ShippingHelper::parseShippingMethod($order->shipping_method);
+        $order->shipping_cost = $shippingInfo['cost']; // Ambil biaya ongkir akurat dari parser
+
+        // Tentukan Subtotal. Prioritaskan total_harga_barang jika ada.
+        if ($pesanan->total_harga_barang !== null) {
+            $order->subtotal = $pesanan->total_harga_barang;
+        } else {
+            // Jika tidak ada, hitung (Total - Ongkir)
+            // Ini akan disesuaikan lagi jika ada biaya COD
+            $order->subtotal = $order->total_amount - $order->shipping_cost;
         }
+        
+        $order->cod_fee = 0; // Default 0
+        if (strtoupper($pesanan->payment_method) == 'CODBARANG' || strtoupper($pesanan->payment_method) == 'COD') {
+             // Biaya COD = Total - Subtotal - Ongkir
+             // (Gunakan $pesanan->total_harga_barang untuk subtotal jika ada, jika tidak, $order->subtotal)
+             $subtotalForCalc = $pesanan->total_harga_barang ?? $order->subtotal;
+             $calculated_cod_fee = $order->total_amount - $subtotalForCalc - $order->shipping_cost;
+             
+             $order->cod_fee = max(0, $calculated_cod_fee); // Pastikan tidak negatif
+        }
+
+        // Koreksi terakhir untuk subtotal jika 'total_harga_barang' tidak ada
+        if ($pesanan->total_harga_barang === null) {
+            $order->subtotal = $order->total_amount - $order->shipping_cost - $order->cod_fee;
+            $order->subtotal = max(0, $order->subtotal); // Pastikan tidak negatif
+        }
+        // ===== AKHIR PERBAIKAN BIAYA =====
 
         // Relasi
         $order->user = $user;
@@ -492,12 +513,15 @@ class AdminOrderController extends Controller
             // --- Gabungkan Data Untuk Laporan ---
             // Standarisasi data 'Pesanan' agar mirip 'Order' untuk view laporan
             $standardizedPesanans = $pesanans->map(function ($item) {
+                // Gunakan helper standarisasi, tapi hanya ambil data yg perlu u/ laporan
+                $stdOrder = $this->standardizePesanan($item);
+                
                 return (object) [ // Ubah jadi objek standar agar mirip Eloquent
-                    'invoice_number' => $item->nomor_invoice,
-                    'created_at' => $item->created_at ?? $item->tanggal_pesanan,
-                    'user' => (object) ['nama_lengkap' => $item->receiver_name ?? $item->nama_pembeli ?? 'N/A'],
-                    'total_amount' => $item->price, // Asumsi 'price' adalah total di 'Pesanan'
-                    'status' => $item->status_pesanan,
+                    'invoice_number' => $stdOrder->invoice_number,
+                    'created_at' => $stdOrder->created_at,
+                    'user' => (object) ['nama_lengkap' => $stdOrder->user->nama_lengkap],
+                    'total_amount' => $stdOrder->total_amount, // 'total_amount' dari standarisasi
+                    'status' => $stdOrder->status,
                     'is_pesanan' => true // Tambahkan flag
                 ];
             });
