@@ -399,7 +399,7 @@ if (!function_exists('formatWaNumber')) {
             <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                  {{-- [PERBAIKAN ROUTE] Ganti 'slug' menjadi 'name' --}}
                  <a href="{{ Route::has('toko.profile') ? route('toko.profile', ['name' => $product->store_slug ?? Str::slug($product->store_name)]) : '#' }}" class="flex-shrink-0">
-                    <img src="{{ $product->seller_logo ? asset('storage/' . $product->seller_logo) : 'https://placehold.co/64x64/E2E8F0/AAAAAA?text=Toko' }}"
+                    <img src="{{ $product->seller_logo ? asset('public/storage/' . $product->seller_logo) : 'https://placehold.co/64x64/E2E8F0/AAAAAA?text=Toko' }}"
                          alt="Logo {{ $product->store_name }}"
                          class="w-16 h-16 rounded-full border border-gray-200 dark:border-gray-700 object-cover">
                  </a>
