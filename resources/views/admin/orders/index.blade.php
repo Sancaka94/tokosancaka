@@ -39,8 +39,8 @@
                     $statusFilters = [
                         'pending' => 'Menunggu Bayar',
                         'menunggu-pickup' => 'Menunggu Pickup',
-                        'diproses' => 'Diproses',
-                        'shipment' => 'Dikirim', // PERBAIKAN: Mengganti key 'terkirim' menjadi 'shipment'
+                        'processing' => 'Diproses', // PERBAIKAN: Mengganti key 'diproses' menjadi 'processing' agar sesuai DB
+                        'shipment' => 'Dikirim', 
                         'selesai' => 'Selesai',
                         'batal' => 'Batal',
                     ];
@@ -72,6 +72,7 @@
                             {{-- Styling TH dengan sticky top --}}
                             <th scope="col" class="sticky top-0 z-10 bg-gray-50 px-4 py-3 font-medium tracking-wider">No</th>
                             <th scope="col" class="sticky top-0 z-10 bg-gray-50 px-4 py-3 font-medium tracking-wider">ID</th>
+                            <th scope="col" class="sticky top-0 z-10 bg-gray-50 px-4 py-3 font-medium tracking-wider">Tipe</th>
                             <th scope="col" class="sticky top-0 z-10 bg-gray-50 px-4 py-3 font-medium tracking-wider">Transaksi</th>
                             <th scope="col" class="sticky top-0 z-10 bg-gray-50 px-4 py-3 font-medium tracking-wider">Alamat</th>
                             <th scope="col" class="sticky top-0 z-10 bg-gray-50 px-4 py-3 font-medium tracking-wider">Ekspedisi</th>
@@ -80,104 +81,195 @@
                             <th scope="col" class="sticky top-0 z-10 bg-gray-50 px-4 py-3 font-medium tracking-wider">Tanggal</th>
                             <th scope="col" class="sticky top-0 z-10 bg-gray-50 px-4 py-3 font-medium tracking-wider">Status</th>
                             {{-- Kolom Aksi Sticky Kanan --}}
-                            {{-- PERBAIKAN: Ganti inline style dengan kelas Tailwind --}}
                             <th scope="col" class="sticky top-0 right-0 z-20 bg-gray-100 px-4 py-3 font-medium tracking-wider text-right shadow-sm min-w-[160px]">Aksi</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
                         @forelse($orders as $index => $order)
                             @php
-                                $invoice = $order->invoice_number;
-                                // Memperbarui sumber $resi berdasarkan dump database
-                                $resi = $order->shipping_reference ?? $order->tracking_number ?? $order->resi ?? null;
-                                $canCancel = in_array($order->status, ['pending','paid','processing']);
+                                // STANDARISASI: Tentukan sumber data
+                                $isPesanan = isset($order->status_pesanan);
+                                
+                                if ($isPesanan) {
+                                    // == DATA DARI 'Pesanan' ==
+                                    $invoice = $order->nomor_invoice;
+                                    $resi = $order->resi;
+                                    $status = $order->status_pesanan;
+                                    
+                                    // Mapping status 'Pesanan' ke status helper
+                                    if ($status == 'Menunggu Pickup') $status = 'menunggu-pickup';
+                                    if ($status == 'Sedang Dikirim') $status = 'Dikirim';
+                                    if ($status == 'Selesai') $status = 'selesai';
+                                    if ($status == 'Batal') $status = 'batal';
+
+                                    $canCancel = in_array($status, ['menunggu-pickup']); // Sesuaikan logika 'Pesanan'
+                                } else {
+                                    // == DATA DARI 'Order' ==
+                                    $invoice = $order->invoice_number;
+                                    $resi = $order->shipping_reference ?? $order->tracking_number ?? $order->resi ?? null;
+                                    $status = $order->status;
+                                    
+                                    // Mapping status 'Order' ke status helper
+                                    if ($status == 'shipment') $status = 'Dikirim';
+                                    if ($status == 'processing') $status = 'diproses';
+
+                                    $canCancel = in_array($order->status, ['pending','paid','processing', 'menunggu-pickup']);
+                                }
                             @endphp
                             {{-- Tambahkan 'group' untuk hover pada sticky column --}}
                             <tr class="group hover:bg-gray-50 transition duration-150">
                                 <td class="px-4 py-3 align-top whitespace-nowrap">{{ $orders->firstItem() + $index }}</td>
-                                <td class="px-4 py-3 align-top whitespace-nowrap font-mono text-xs">{{ $order->id }}</td>
-                                {{-- PERBAIKAN: Ganti inline style dengan kelas Tailwind --}}
-                                <td class="px-4 py-3 align-top whitespace-nowrap min-w-[220px]">
-                                    <div><b class="text-gray-900">{{ strtoupper($order->payment_method ?? '-') }}</b></div>
-                                    <div class="font-mono">{{ $invoice }}</div>
-                                    {{-- Rincian biaya --}}
-                                    <div class="mt-1 text-xs space-y-0.5">
-                                        <div class="flex justify-between gap-4">
-                                            <span class="text-gray-500">Subtotal:</span>
-                                            <span class="font-medium text-gray-700">Rp{{ number_format($order->subtotal, 0, ',', '.') }}</span>
-                                        </div>
-                                        <div class="flex justify-between gap-4">
-                                            <span class="text-gray-500">Ongkir:</span>
-                                            <span class="font-medium text-gray-700">Rp{{ number_format($order->shipping_cost, 0, ',', '.') }}</span>
-                                        </div>
-                                        @if($order->cod_fee > 0)
-                                        <div class="flex justify-between gap-4">
-                                            <span class="text-gray-500">Biaya COD:</span>
-                                            <span class="font-medium text-gray-700">Rp{{ number_format($order->cod_fee, 0, ',', '.') }}</span>
-                                        </div>
-                                        @endif
-                                        <div class="flex justify-between gap-4 font-bold text-indigo-600 pt-0.5 border-t border-gray-200">
-                                            <span class="text-indigo-600">Total:</span>
-                                            <span>Rp{{ number_format($order->total_amount, 0, ',', '.') }}</span>
-                                        </div>
-                                    </div>
-                                </td>
-                                {{-- PERBAIKAN: Ganti inline style dengan kelas Tailwind --}}
-                                <td class="px-4 py-3 align-top min-w-[250px]">
-                                    <div class="mb-1">
-                                        <span class="text-xs text-gray-500">Dari:</span>
-                                        <strong class="text-blue-700 block">{{ $order->store->name ?? '-' }}</strong>
-                                        <small class="text-gray-600">{{ $order->store->address_detail ?? '' }}</small>
-                                    </div>
-                                    <div>
-                                        <span class="text-xs text-gray-500">Kepada:</span>
-                                        <strong class="text-red-700 block">{{ $order->user->nama_lengkap ?? '-' }}</strong>
-                                        <small class="text-gray-600">{{ $order->shipping_address ?? '-' }}</small>
-                                    </div>
-                                </td>
+                                <td class="px-4 py-3 align-top whitespace-nowrap font-mono text-xs">{{ $isPesanan ? $order->id_pesanan : $order->id }}</td>
+                                
+                                {{-- KOLOM TIPE BARU --}}
                                 <td class="px-4 py-3 align-top whitespace-nowrap">
-                                    @php $ship = \App\Helpers\ShippingHelper::parseShippingMethod($order->shipping_method); @endphp
+                                    @if($isPesanan)
+                                        <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">Pesanan</span>
+                                    @else
+                                        <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">Order</span>
+                                    @endif
+                                </td>
+
+                                {{-- Kolom Transaksi --}}
+                                <td class="px-4 py-3 align-top whitespace-nowrap min-w-[220px]">
+                                    @if($isPesanan)
+                                        {{-- Tampilan 'Pesanan' --}}
+                                        <div><b class="text-gray-900">{{ strtoupper($order->payment_method ?? '-') }}</b></div>
+                                        <div class="font-mono">{{ $invoice }}</div>
+                                        <div class="mt-1 text-xs space-y-0.5">
+                                            <div class="flex justify-between gap-4 font-bold text-indigo-600 pt-0.5 border-t border-gray-200">
+                                                <span class="text-indigo-600">Total:</span>
+                                                <span>Rp{{ number_format($order->price, 0, ',', '.') }}</span>
+                                            </div>
+                                        </div>
+                                    @else
+                                        {{-- Tampilan 'Order' (Existing) --}}
+                                        <div><b class="text-gray-900">{{ strtoupper($order->payment_method ?? '-') }}</b></div>
+                                        <div class="font-mono">{{ $invoice }}</div>
+                                        <div class="mt-1 text-xs space-y-0.5">
+                                            <div class="flex justify-between gap-4">
+                                                <span class="text-gray-500">Subtotal:</span>
+                                                <span class="font-medium text-gray-700">Rp{{ number_format($order->subtotal, 0, ',', '.') }}</span>
+                                            </div>
+                                            <div class="flex justify-between gap-4">
+                                                <span class="text-gray-500">Ongkir:</span>
+                                                <span class="font-medium text-gray-700">Rp{{ number_format($order->shipping_cost, 0, ',', '.') }}</span>
+                                            </div>
+                                            @if($order->cod_fee > 0)
+                                            <div class="flex justify-between gap-4">
+                                                <span class="text-gray-500">Biaya COD:</span>
+                                                <span class="font-medium text-gray-700">Rp{{ number_format($order->cod_fee, 0, ',', '.') }}</span>
+                                            </div>
+                                            @endif
+                                            <div class="flex justify-between gap-4 font-bold text-indigo-600 pt-0.5 border-t border-gray-200">
+                                                <span class="text-indigo-600">Total:</span>
+                                                <span>Rp{{ number_format($order->total_amount, 0, ',', '.') }}</span>
+                                            </div>
+                                        </div>
+                                    @endif
+                                </td>
+                                
+                                {{-- Kolom Alamat --}}
+                                <td class="px-4 py-3 align-top min-w-[250px]">
+                                    @if($isPesanan)
+                                        {{-- Tampilan 'Pesanan' --}}
+                                        <div class="mb-1">
+                                            <span class="text-xs text-gray-500">Dari:</span>
+                                            <strong class="text-blue-700 block">{{ $order->sender_name ?? '-' }}</strong>
+                                            <small class="text-gray-600">{{ $order->sender_address ?? '' }}</small>
+                                        </div>
+                                        <div>
+                                            <span class="text-xs text-gray-500">Kepada:</span>
+                                            <strong class="text-red-700 block">{{ $order->receiver_name ?? '-' }}</strong>
+                                            <small class="text-gray-600">{{ $order->receiver_address ?? '-' }}</small>
+                                        </div>
+                                    @else
+                                        {{-- Tampilan 'Order' (Existing) --}}
+                                        <div class="mb-1">
+                                            <span class="text-xs text-gray-500">Dari:</span>
+                                            <strong class="text-blue-700 block">{{ $order->store->name ?? '-' }}</strong>
+                                            <small class="text-gray-600">{{ $order->store->address_detail ?? '' }}</small>
+                                        </div>
+                                        <div>
+                                            <span class="text-xs text-gray-500">Kepada:</span>
+                                            <strong class="text-red-700 block">{{ $order->user->nama_lengkap ?? '-' }}</strong>
+                                            <small class="text-gray-600">{{ $order->shipping_address ?? '-' }}</small>
+                                        </div>
+                                    @endif
+                                </td>
+
+                                {{-- Kolom Ekspedisi --}}
+                                <td class="px-4 py-3 align-top whitespace-nowrap">
+                                    @php 
+                                        $shipping_method = $isPesanan ? $order->jasa_ekspedisi_aktual : $order->shipping_method;
+                                        $ship = \App\Helpers\ShippingHelper::parseShippingMethod($shipping_method); 
+                                    @endphp
                                     @if($ship['logo_url'])
                                         <img src="{{ $ship['logo_url'] }}" alt="{{ $ship['courier_name'] }}" class="h-5 mb-1 max-w-[90px]">
                                     @endif
                                     <div class="text-sm font-medium text-gray-900">{{ $ship['courier_name'] ?? '-' }}</div>
                                     <small class="text-gray-600">{{ $ship['service_name'] ?? '' }}</small>
                                 </td>
-                                {{-- Kolom Resi Baru --}}
+                                
+                                {{-- Kolom Resi (Sudah distandarisasi) --}}
                                 <td class="px-4 py-3 align-top whitespace-nowrap font-mono text-gray-700">
                                     {{ $resi ?? '-' }}
                                 </td>
-                                {{-- PERBAIKAN: Ganti inline style dengan kelas Tailwind --}}
+                                
+                                {{-- Kolom Paket --}}
                                 <td class="px-4 py-3 align-top min-w-[200px]">
-                                    @php $first = $order->items->first(); @endphp
-                                    {{ $first->product->name ?? '-' }}
+                                    @if($isPesanan)
+                                        {{ $order->item_description ?? '-' }}
+                                    @else
+                                        @php $first = $order->items->first(); @endphp
+                                        {{ $first->product->name ?? '-' }}
+                                    @endif
                                 </td>
-                                {{-- Kolom Tanggal Baru --}}
+                                
+                                {{-- Kolom Tanggal --}}
                                 <td class="px-4 py-3 align-top whitespace-nowrap text-xs">
-                                    <div>
-                                        <span class="text-gray-500">Dibuat:</span>
-                                        <span class="text-gray-800 block">{{ $order->created_at->format('d M Y, H:i') }}</span>
-                                    </div>
-                                    <div class="mt-1">
-                                        <span class="text-gray-500">Dikirim:</span>
-                                        <span class="text-gray-800 block">
-                                            {{ $order->shipped_at ? \Carbon\Carbon::parse($order->shipped_at)->format('d M Y, H:i') : '-' }}
-                                        </span>
-                                    </div>
-                                    <div class="mt-1">
-                                        <span class="text-gray-500">Selesai:</span>
-                                        <span class="text-gray-800 block">
-                                            {{ $order->finished_at ? \Carbon\Carbon::parse($order->finished_at)->format('d M Y, H:i') : '-' }}
-                                        </span>
-                                    </div>
+                                    @if($isPesanan)
+                                        {{-- Tampilan 'Pesanan' --}}
+                                        <div>
+                                            <span class="text-gray-500">Dibuat:</span>
+                                            <span class="text-gray-800 block">{{ $order->tanggal_pesanan ? \Carbon\Carbon::parse($order->tanggal_pesanan)->format('d M Y, H:i') : '-' }}</span>
+                                        </div>
+                                        <div class="mt-1">
+                                            <span class="text-gray-500">Dikirim:</span>
+                                            <span class="text-gray-800 block">
+                                                {{ $order->shipped_at ? \Carbon\Carbon::parse($order->shipped_at)->format('d M Y, H:i') : '-' }}
+                                            </span>
+                                        </div>
+                                        <div class="mt-1">
+                                            <span class="text-gray-500">Selesai:</span>
+                                            <span class="text-gray-800 block">
+                                                {{ $order->finished_at ? \Carbon\Carbon::parse($order->finished_at)->format('d M Y, H:i') : '-' }}
+                                            </span>
+                                        </div>
+                                    @else
+                                        {{-- Tampilan 'Order' (Existing) --}}
+                                        <div>
+                                            <span class="text-gray-500">Dibuat:</span>
+                                            <span class="text-gray-800 block">{{ $order->created_at->format('d M Y, H:i') }}</span>
+                                        </div>
+                                        <div class="mt-1">
+                                            <span class="text-gray-500">Dikirim:</span>
+                                            <span class="text-gray-800 block">
+                                                {{ $order->shipped_at ? \Carbon\Carbon::parse($order->shipped_at)->format('d M Y, H:i') : '-' }}
+                                            </span>
+                                        </div>
+                                        <div class="mt-1">
+                                            <span class="text-gray-500">Selesai:</span>
+                                            <span class="text-gray-800 block">
+                                                {{ $order->finished_at ? \Carbon\Carbon::parse($order->finished_at)->format('d M Y, H:i') : '-' }}
+                                            </span>
+                                        </div>
+                                    @endif
                                 </td>
+
+                                {{-- Kolom Status (Sudah distandarisasi) --}}
                                 <td class="px-4 py-3 align-top whitespace-nowrap">
                                     @php
-                                        $status = $order->status;
-                                        // PERBAIKAN: Ubah 'shipment' menjadi 'terkirim' agar helper bisa membacanya
-                                        if ($status == 'shipment') {
-                                            $status = 'Dikirim';
-                                        }
                                         $text = \App\Helpers\OrderStatusHelper::getStatusText($status);
                                         $badge = \App\Helpers\OrderStatusHelper::getStatusBadgeClass($status);
                                     @endphp
@@ -185,17 +277,13 @@
                                         {{ $text }}
                                     </span>
                                 </td>
-                                {{-- Kolom Aksi Sticky Kanan --}}
-                                {{-- Gunakan bg-white dan group-hover:bg-gray-50 untuk efek hover --}}
+                                
+                                {{-- Kolom Aksi Sticky Kanan (Invoice & Resi sudah distandarisasi) --}}
                                 <td class="sticky right-0 z-10 bg-white px-4 py-3 text-right align-top transition duration-150 group-hover:bg-gray-50 shadow-sm">
-                                    {{-- Utility classes untuk action buttons --}}
                                     <div class="flex items-center justify-end gap-1">
                                         @php
-                                            // Base class untuk semua tombol aksi
                                             $actionBtnClass = "inline-flex items-center justify-center w-8 h-8 rounded-md text-gray-500 transition duration-150";
-                                            // Class untuk tombol non-disabled
                                             $actionBtnHover = "hover:bg-gray-100";
-                                            // Class untuk tombol disabled
                                             $actionBtnDisabled = "disabled:opacity-40 disabled:cursor-not-allowed";
                                         @endphp
                                         
@@ -204,37 +292,51 @@
                                            title="Lacak" @disabled(!$resi)>
                                             <i class="fas fa-truck fa-fw"></i>
                                         </a>
-                                        <a href="{{ route('admin.orders.show', $invoice) }}" title="Detail" 
-                                           class="{{ $actionBtnClass }} {{ $actionBtnHover }} hover:text-indigo-600">
-                                            <i class="fas fa-eye fa-fw"></i>
-                                        </a>
-                                        <a href="{{ route('admin.orders.print.thermal', $invoice) }}" target="_blank" 
-                                           class="{{ $actionBtnClass }} {{ $actionBtnHover }} hover:text-gray-700" title="Print">
-                                            <i class="fas fa-print fa-fw"></i>
-                                        </a>
-                                        <a href="{{ route('admin.orders.invoice.pdf', $invoice) }}" target="_blank" 
-                                           class="{{ $actionBtnClass }} {{ $actionBtnHover }} hover:text-red-600" title="PDF">
-                                            <i class="fas fa-file-pdf fa-fw"></i>
-                                        </a>
-                                        <a href="{{ route('admin.chat.start', ['id_pengguna' => $order->user_id]) }}" target="_blank" 
-                                           class="{{ $actionBtnClass }} {{ $actionBtnHover }} hover:text-blue-600" title="Chat">
-                                            <i class="fas fa-comment fa-fw"></i>
-                                        </a>
-                                        <form action="{{ route('admin.orders.cancel', $invoice) }}" method="POST" onsubmit="return confirm('Batalkan pesanan ini?')">
-                                            @csrf @method('PATCH')
-                                            <button type="submit" 
-                                                    class="{{ $actionBtnClass }} {{ $canCancel ? $actionBtnHover.' hover:text-red-700' : $actionBtnDisabled }}" 
-                                                    title="Batalkan" @disabled(!$canCancel)>
-                                                <i class="fas fa-trash fa-fw"></i>
-                                            </button>
-                                        </form>
+
+                                        {{-- Tombol aksi mungkin perlu logika @if juga, tapi kita standarisasi yg utama --}}
+                                        @if(!$isPesanan)
+                                            <a href="{{ route('admin.orders.show', $invoice) }}" title="Detail" 
+                                            class="{{ $actionBtnClass }} {{ $actionBtnHover }} hover:text-indigo-600">
+                                                <i class="fas fa-eye fa-fw"></i>
+                                            </a>
+                                            <a href="{{ route('admin.orders.print.thermal', $invoice) }}" target="_blank" 
+                                            class="{{ $actionBtnClass }} {{ $actionBtnHover }} hover:text-gray-700" title="Print">
+                                                <i class="fas fa-print fa-fw"></i>
+                                            </a>
+                                            <a href="{{ route('admin.orders.invoice.pdf', $invoice) }}" target="_blank" 
+                                            class="{{ $actionBtnClass }} {{ $actionBtnHover }} hover:text-red-600" title="PDF">
+                                                <i class="fas fa-file-pdf fa-fw"></i>
+                                            </a>
+                                            <a href="{{ route('admin.chat.start', ['id_pengguna' => $order->user_id]) }}" target="_blank" 
+                                            class="{{ $actionBtnClass }} {{ $actionBtnHover }} hover:text-blue-600" title="Chat">
+                                                <i class="fas fa-comment fa-fw"></i>
+                                            </a>
+                                            <form action="{{ route('admin.orders.cancel', $invoice) }}" method="POST" onsubmit="return confirm('Batalkan pesanan ini?')">
+                                                @csrf @method('PATCH')
+                                                <button type="submit" 
+                                                        class="{{ $actionBtnClass }} {{ $canCancel ? $actionBtnHover.' hover:text-red-700' : $actionBtnDisabled }}" 
+                                                        title="Batalkan" @disabled(!$canCancel)>
+                                                    <i class="fas fa-trash fa-fw"></i>
+                                                </button>
+                                            </form>
+                                        @else
+                                            {{-- Tombol Aksi untuk 'Pesanan' (Sesuaikan rutenya jika perlu) --}}
+                                            <a href="#" title="Detail Pesanan" 
+                                            class="{{ $actionBtnClass }} {{ $actionBtnHover }} hover:text-indigo-600">
+                                                <i class="fas fa-eye fa-fw"></i>
+                                            </a>
+                                            <a href="#" target="_blank" 
+                                            class="{{ $actionBtnClass }} {{ $actionBtnHover }} hover:text-gray-700" title="Print">
+                                                <i class="fas fa-print fa-fw"></i>
+                                            </a>
+                                        @endif
                                     </div>
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                {{-- Memperbarui colspan menjadi 10 --}}
-                                <td colspan="10" class="text-center py-10 text-gray-500">
+                                {{-- Memperbarui colspan menjadi 11 --}}
+                                <td colspan="11" class="text-center py-10 text-gray-500">
                                     <i class="fas fa-box-open text-4xl text-gray-400 mb-2"></i><br>
                                     Tidak ada pesanan ditemukan.
                                 </td>
@@ -245,7 +347,6 @@
             </div>
     
             {{-- PAGINATION --}}
-            {{-- Tambahkan border top untuk memisahkan dari tabel --}}
             <div class="p-4 border-t border-gray-200">
                 {{ $orders->links() }}
             </div>
@@ -282,5 +383,4 @@ $(function(){
 });
 </script>
 @endpush
-
 
