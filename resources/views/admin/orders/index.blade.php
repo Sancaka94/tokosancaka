@@ -268,8 +268,30 @@
                             @else
                                 <span class="font-bold text-blue-600">Non COD</span>
                             @endif
-                            <div class="font-bold text-gray-800">{{ $invoice }}</div> {{-- Tampilkan invoice di sini (Resi ada kolom sendiri) --}}
-                            {{-- Hapus rincian biaya dari sini --}}
+                            <div class="font-bold text-gray-800">{{ $invoice }}</div> {{-- Tampilkan invoice di sini --}}
+
+                            {{-- TAMBAHKAN RINCIAN BIAYA DI SINI --}}
+                            <div class="text-xs mt-2 space-y-0.5 text-gray-600 w-52">
+                                <div class="flex justify-between">
+                                    <span>Subtotal:</span>
+                                    <span class="font-medium">Rp{{ number_format($subtotal ?? 0, 0, ',', '.') }}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>Ongkir:</span>
+                                    <span class="font-medium">Rp{{ number_format($shippingCost ?? 0, 0, ',', '.') }}</span>
+                                </div>
+                                @if ($codFee > 0)
+                                <div class="flex justify-between">
+                                    <span>Biaya COD:</span>
+                                    <span class="font-medium">Rp{{ number_format($codFee, 0, ',', '.') }}</span>
+                                </div>
+                                @endif
+                                <div class="flex justify-between font-bold pt-0.5 border-t border-gray-200 mt-1"> {{-- Tambah mt-1 --}}
+                                    <span>Total:</span>
+                                    <span class="text-indigo-600">Rp{{ number_format($totalAmount ?? 0, 0, ',', '.') }}</span>
+                                </div>
+                            </div>
+                            {{-- AKHIR RINCIAN BIAYA --}}
                         </td>
                         
                         {{-- Kolom Alamat --}}
