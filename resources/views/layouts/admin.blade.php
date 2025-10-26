@@ -62,7 +62,7 @@
         
         @include('layouts.partials.sidebar')
 
-        <div class="flex-1 flex flex-col overflow-hidden min-w-0">
+        <div class="flex-1 flex flex-col overflow-hidden">
             
             @include('layouts.partials.header')
 
