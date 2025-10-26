@@ -15,8 +15,7 @@
             <form action="{{ route('admin.orders.index') }}" method="GET" class="w-full md:w-1/3">
                 <div class="relative">
                     {{-- Styling input search yang lebih konsisten --}}
-                    <input type
-="text" name="search" placeholder="Cari Resi, Invoice, Nama..."
+                    <input type="text" name="search" placeholder="Cari Resi, Invoice, Nama..."
                            value="{{ request('search') }}"
                            class="w-full pl-10 pr-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-150">
                     <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
