@@ -31,7 +31,7 @@ class OrderStatusHelper
             case 'failed': return 'Gagal';
             case 'rejected': return 'Ditolak';
             // Tambahkan status lain jika ada
-            default: return 'Status Tidak Dikenal (' . ucfirst($status) . ')'; // Tampilkan status asli jika tidak ada di map
+            default: return 'Barang Anda (' . ucfirst($status) . ')'; // Tampilkan status asli jika tidak ada di map
         }
     }
 
