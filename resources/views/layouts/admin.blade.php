@@ -45,18 +45,7 @@
         .modal-hidden { opacity: 0; transform: scale(0.95); pointer-events: none; }
         .modal-visible { opacity: 1; transform: scale(1); pointer-events: auto; }
 
-        /* Batasi container agar tidak ikut melar karena tabel */
-  main .container {
-    max-width: 100% !important;
-    width: 100%;
-    overflow-x: hidden;
-  }
-
-  /* Supaya tabel yang panjang tidak bikin parent ikut melar */
-  main .container table {
-    width: 100%;
-    table-layout: auto;
-  }
+        
     </style>
     
     @stack('styles')
