@@ -68,7 +68,7 @@ class AdminOrderController extends Controller
                 // Pencarian untuk tabel 'orders'
                 return $query->where(function($q) use ($search) {
                     $q->where('invoice_number', 'like', "%{$search}%")
-                      ->orWhere('tracking_number', 'like', "%{$search}%")
+                      ->orWhere('shipping_reference', 'like', "%{$search}%")
                       ->orWhereHas('user', function($userQuery) use ($search) {
                           $userQuery->where('nama_lengkap', 'like', "%{$search}%")
                                     ->orWhere('no_wa', 'like', "%{$search}%");
@@ -206,7 +206,7 @@ class AdminOrderController extends Controller
 
         $order->shipping_method = $pesanan->jasa_ekspedisi_aktual ?? $pesanan->expedition;
         $order->shipping_address = $pesanan->receiver_address ?? $pesanan->alamat_pengiriman;
-        $order->tracking_number = $pesanan->resi_aktual ?? $pesanan->resi;
+        $order->shipping_reference = $pesanan->resi_aktual ?? $pesanan->resi;
         $order->payment_method = $pesanan->payment_method;
 
         // ===== PERBAIKAN LOGIKA BIAYA =====
