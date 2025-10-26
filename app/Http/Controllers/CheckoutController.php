@@ -65,7 +65,6 @@ class CheckoutController extends Controller
         }
 
         $user  = Auth::user();
-
         
         // --- REVISI UNTUK MENDUKUNG VARIAN ---
         $firstCartItemData = reset($cart); 
@@ -75,10 +74,11 @@ class CheckoutController extends Controller
         if (!$firstProduct) { 
             session()->forget('cart');
             return redirect()->route('cart.index')
-
+                ->with('error', 'Produk di keranjang Anda tidak lagi tersedia. Keranjang telah dikosongkan.');
+        }
+        // --- AKHIR REVISI ---
 
         $store = $firstProduct->store;
-
         
          if (empty($store->village) || empty($store->district) || empty($store->regency) || empty($store->province)) {
              return redirect()->route('cart.index')
