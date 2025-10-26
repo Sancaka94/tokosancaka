@@ -80,7 +80,8 @@
                             <th scope="col" class="sticky top-0 z-10 bg-gray-50 px-4 py-3 font-medium tracking-wider">Tanggal</th>
                             <th scope="col" class="sticky top-0 z-10 bg-gray-50 px-4 py-3 font-medium tracking-wider">Status</th>
                             {{-- Kolom Aksi Sticky Kanan --}}
-                            <th scope="col" class="sticky top-0 right-0 z-20 bg-gray-100 px-4 py-3 font-medium tracking-wider text-right shadow-sm" style="min-width: 160px;">Aksi</th>
+                            {{-- PERBAIKAN: Ganti inline style dengan kelas Tailwind --}}
+                            <th scope="col" class="sticky top-0 right-0 z-20 bg-gray-100 px-4 py-3 font-medium tracking-wider text-right shadow-sm min-w-[160px]">Aksi</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
@@ -95,7 +96,8 @@
                             <tr class="group hover:bg-gray-50 transition duration-150">
                                 <td class="px-4 py-3 align-top whitespace-nowrap">{{ $orders->firstItem() + $index }}</td>
                                 <td class="px-4 py-3 align-top whitespace-nowrap font-mono text-xs">{{ $order->id }}</td>
-                                <td class="px-4 py-3 align-top whitespace-nowrap" style="min-width: 220px;">
+                                {{-- PERBAIKAN: Ganti inline style dengan kelas Tailwind --}}
+                                <td class="px-4 py-3 align-top whitespace-nowrap min-w-[220px]">
                                     <div><b class="text-gray-900">{{ strtoupper($order->payment_method ?? '-') }}</b></div>
                                     <div class="font-mono">{{ $invoice }}</div>
                                     {{-- Rincian biaya --}}
@@ -120,7 +122,8 @@
                                         </div>
                                     </div>
                                 </td>
-                                <td class="px-4 py-3 align-top" style="min-width: 250px;">
+                                {{-- PERBAIKAN: Ganti inline style dengan kelas Tailwind --}}
+                                <td class="px-4 py-3 align-top min-w-[250px]">
                                     <div class="mb-1">
                                         <span class="text-xs text-gray-500">Dari:</span>
                                         <strong class="text-blue-700 block">{{ $order->store->name ?? '-' }}</strong>
@@ -144,7 +147,8 @@
                                 <td class="px-4 py-3 align-top whitespace-nowrap font-mono text-gray-700">
                                     {{ $resi ?? '-' }}
                                 </td>
-                                <td class="px-4 py-3 align-top" style="min-width: 200px;">
+                                {{-- PERBAIKAN: Ganti inline style dengan kelas Tailwind --}}
+                                <td class="px-4 py-3 align-top min-w-[200px]">
                                     @php $first = $order->items->first(); @endphp
                                     {{ $first->product->name ?? '-' }}
                                 </td>
@@ -152,20 +156,17 @@
                                 <td class="px-4 py-3 align-top whitespace-nowrap text-xs">
                                     <div>
                                         <span class="text-gray-500">Dibuat:</span>
-                                        {{-- PERBAIKAN: Mengganti created-at menjadi created_at --}}
                                         <span class="text-gray-800 block">{{ $order->created_at->format('d M Y, H:i') }}</span>
                                     </div>
                                     <div class="mt-1">
                                         <span class="text-gray-500">Dikirim:</span>
                                         <span class="text-gray-800 block">
-                                            {{-- PERBAIKAN: Gunakan Carbon::parse() untuk mengubah string menjadi objek tanggal --}}
                                             {{ $order->shipped_at ? \Carbon\Carbon::parse($order->shipped_at)->format('d M Y, H:i') : '-' }}
                                         </span>
                                     </div>
                                     <div class="mt-1">
                                         <span class="text-gray-500">Selesai:</span>
                                         <span class="text-gray-800 block">
-                                            {{-- PERBAIKAN: Gunakan Carbon::parse() untuk mengubah string menjadi objek tanggal --}}
                                             {{ $order->finished_at ? \Carbon\Carbon::parse($order->finished_at)->format('d M Y, H:i') : '-' }}
                                         </span>
                                     </div>
