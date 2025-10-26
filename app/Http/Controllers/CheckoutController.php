@@ -65,6 +65,7 @@ class CheckoutController extends Controller
         }
 
         $user  = Auth::user();
+<<<<<<< HEAD
         
         // --- REVISI UNTUK MENDUKUNG VARIAN ---
         $firstCartItemData = reset($cart); 
@@ -74,11 +75,25 @@ class CheckoutController extends Controller
         if (!$firstProduct) { 
             session()->forget('cart');
             return redirect()->route('cart.index')
+=======
+        $cart = session()->get('cart', []); // Mengambil data keranjang dari session
+        $firstProduct = Product::find(array_key_first($cart)); // Mencoba cari produk pakai KEY PERTAMA dari array $cart
+        
+        // --- PERBAIKAN ERROR 'store' ---
+        if (!$firstProduct) { // <-- KONDISI INI JADI TRUE
+            // Jika produk tidak ditemukan (karena key-nya salah), jalankan ini:
+            session()->forget('cart'); // <-- KERANJANG DIHAPUS
+            return redirect()->route('cart.index') // <-- KEMBALI KE HALAMAN KERANJANG
+>>>>>>> 7133de6 (Perbaikan di CheckoutController)
                 ->with('error', 'Produk di keranjang Anda tidak lagi tersedia. Keranjang telah dikosongkan.');
         }
         // --- AKHIR REVISI ---
 
         $store = $firstProduct->store;
+<<<<<<< HEAD
+=======
+
+>>>>>>> 7133de6 (Perbaikan di CheckoutController)
         
          if (empty($store->village) || empty($store->district) || empty($store->regency) || empty($store->province)) {
              return redirect()->route('cart.index')
