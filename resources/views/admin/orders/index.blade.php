@@ -116,8 +116,8 @@
 
     {{-- TABEL --}}
     {{-- Wrapper ini adalah yang akan scroll horizontal --}}
-    <div class="overflow-x-auto w-full">
-        <table class="min-w-full border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm">
+    <div class="table-wrapper">
+    <table class="min-w-full border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm">
             <thead class="bg-gray-50">
                 <tr>
                     {{-- Header Tabel --}}
