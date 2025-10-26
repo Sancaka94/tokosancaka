@@ -123,7 +123,7 @@
                                 <div class="relative">
                                     <div class="h-48 bg-gray-50">
                                         @php
-                                            $imageUrl = $product->image_url ? asset('storage/' . $product->image_url) : 'https://placehold.co/400x400/EFEFEF/333333?text=N/A';
+                                            $imageUrl = $product->image_url ? asset('public/storage/' . $product->image_url) : 'https://placehold.co/400x400/EFEFEF/333333?text=N/A';
                                         @endphp
                                         <img src="{{ $imageUrl }}" alt="{{ $product->name }}" class="w-full h-full object-fill group-hover:scale-105 transition-transform">
                                     </div>
@@ -162,7 +162,7 @@
                         <div>
                             <div class="h-48 bg-gray-50 relative">
                                @php
-                                    $imageUrl = $product->image_url ? asset('storage/' . $product->image_url) : 'https://placehold.co/400x400/EFEFEF/333333?text=N/A';
+                                    $imageUrl = $product->image_url ? asset('public/storage/' . $product->image_url) : 'https://placehold.co/400x400/EFEFEF/333333?text=N/A';
                                 @endphp
                                 <img src="{{ $imageUrl }}" alt="{{ $product->name }}" class="w-full h-full object-fill group-hover:scale-105 transition-transform">
                             </div>
