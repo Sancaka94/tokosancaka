@@ -71,10 +71,13 @@
                     <tr>
                         {{-- Styling TH dengan sticky top --}}
                         <th scope="col" class="sticky top-0 z-10 bg-gray-50 px-4 py-3 font-medium tracking-wider">No</th>
+                        <th scope="col" class="sticky top-0 z-10 bg-gray-50 px-4 py-3 font-medium tracking-wider">ID</th>
                         <th scope="col" class="sticky top-0 z-10 bg-gray-50 px-4 py-3 font-medium tracking-wider">Transaksi</th>
                         <th scope="col" class="sticky top-0 z-10 bg-gray-50 px-4 py-3 font-medium tracking-wider">Alamat</th>
                         <th scope="col" class="sticky top-0 z-10 bg-gray-50 px-4 py-3 font-medium tracking-wider">Ekspedisi</th>
+                        <th scope="col" class="sticky top-0 z-10 bg-gray-50 px-4 py-3 font-medium tracking-wider">Resi</th>
                         <th scope="col" class="sticky top-0 z-10 bg-gray-50 px-4 py-3 font-medium tracking-wider">Paket</th>
+                        <th scope="col" class="sticky top-0 z-10 bg-gray-50 px-4 py-3 font-medium tracking-wider">Tanggal</th>
                         <th scope="col" class="sticky top-0 z-10 bg-gray-50 px-4 py-3 font-medium tracking-wider">Status</th>
                         {{-- Kolom Aksi Sticky Kanan --}}
                         <th scope="col" class="sticky top-0 right-0 z-20 bg-gray-100 px-4 py-3 font-medium tracking-wider text-right shadow-sm" style="min-width: 160px;">Aksi</th>
@@ -84,17 +87,38 @@
                     @forelse($orders as $index => $order)
                         @php
                             $invoice = $order->invoice_number;
-                            $resi = $order->tracking_number ?? $order->resi ?? null;
+                            // Memperbarui sumber $resi berdasarkan dump database
+                            $resi = $order->shipping_reference ?? $order->tracking_number ?? $order->resi ?? null;
                             $canCancel = in_array($order->status, ['pending','paid','processing']);
                         @endphp
                         {{-- Tambahkan 'group' untuk hover pada sticky column --}}
                         <tr class="group hover:bg-gray-50 transition duration-150">
                             <td class="px-4 py-3 align-top whitespace-nowrap">{{ $orders->firstItem() + $index }}</td>
-                            <td class="px-4 py-3 align-top whitespace-nowrap">
+                            <td class="px-4 py-3 align-top whitespace-nowrap font-mono text-xs">{{ $order->id }}</td>
+                            <td class="px-4 py-3 align-top whitespace-nowrap" style="min-width: 220px;">
                                 <div><b class="text-gray-900">{{ strtoupper($order->payment_method ?? '-') }}</b></div>
                                 <div class="font-mono">{{ $invoice }}</div>
-                                <div class="text-xs text-gray-500">{{ $order->created_at->format('d M Y, H:i') }}</div>
-                                <div class="font-bold text-indigo-600 mt-1">Rp{{ number_format($order->total_amount, 0, ',', '.') }}</div>
+                                {{-- Rincian biaya --}}
+                                <div class="mt-1 text-xs space-y-0.5">
+                                    <div class="flex justify-between gap-4">
+                                        <span class="text-gray-500">Subtotal:</span>
+                                        <span class="font-medium text-gray-700">Rp{{ number_format($order->subtotal, 0, ',', '.') }}</span>
+                                    </div>
+                                    <div class="flex justify-between gap-4">
+                                        <span class="text-gray-500">Ongkir:</span>
+                                        <span class="font-medium text-gray-700">Rp{{ number_format($order->shipping_cost, 0, ',', '.') }}</span>
+                                    </div>
+                                    @if($order->cod_fee > 0)
+                                    <div class="flex justify-between gap-4">
+                                        <span class="text-gray-500">Biaya COD:</span>
+                                        <span class="font-medium text-gray-700">Rp{{ number_format($order->cod_fee, 0, ',', '.') }}</span>
+                                    </div>
+                                    @endif
+                                    <div class="flex justify-between gap-4 font-bold text-indigo-600 pt-0.5 border-t border-gray-200">
+                                        <span class="text-indigo-600">Total:</span>
+                                        <span>Rp{{ number_format($order->total_amount, 0, ',', '.') }}</span>
+                                    </div>
+                                </div>
                             </td>
                             <td class="px-4 py-3 align-top" style="min-width: 250px;">
                                 <div class="mb-1">
@@ -116,9 +140,32 @@
                                 <div class="text-sm font-medium text-gray-900">{{ $ship['courier_name'] ?? '-' }}</div>
                                 <small class="text-gray-600">{{ $ship['service_name'] ?? '' }}</small>
                             </td>
+                            {{-- Kolom Resi Baru --}}
+                            <td class="px-4 py-3 align-top whitespace-nowrap font-mono text-gray-700">
+                                {{ $resi ?? '-' }}
+                            </td>
                             <td class="px-4 py-3 align-top" style="min-width: 200px;">
                                 @php $first = $order->items->first(); @endphp
                                 {{ $first->product->name ?? '-' }}
+                            </td>
+                            {{-- Kolom Tanggal Baru --}}
+                            <td class="px-4 py-3 align-top whitespace-nowrap text-xs">
+                                <div>
+                                    <span class="text-gray-500">Dibuat:</span>
+                                    <span class="text-gray-800 block">{{ $order->created_at->format('d M Y, H:i') }}</span>
+                                </div>
+                                <div class="mt-1">
+                                    <span class="text-gray-500">Dikirim:</span>
+                                    <span class="text-gray-800 block">
+                                        {{ $order->shipped_at ? $order->shipped_at->format('d M Y, H:i') : '-' }}
+                                    </span>
+                                </div>
+                                <div class="mt-1">
+                                    <span class="text-gray-500">Selesai:</span>
+                                    <span class="text-gray-800 block">
+                                        {{ $order->finished_at ? $order->finished_at->format('d M Y, H:i') : '-' }}
+                                    </span>
+                                </div>
                             </td>
                             <td class="px-4 py-3 align-top whitespace-nowrap">
                                 @php
@@ -178,7 +225,8 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="text-center py-10 text-gray-500">
+                            {{-- Memperbarui colspan menjadi 10 --}}
+                            <td colspan="10" class="text-center py-10 text-gray-500">
                                 <i class="fas fa-box-open text-4xl text-gray-400 mb-2"></i><br>
                                 Tidak ada pesanan ditemukan.
                             </td>
@@ -225,3 +273,4 @@ $(function(){
 });
 </script>
 @endpush
+
