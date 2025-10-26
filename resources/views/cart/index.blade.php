@@ -186,7 +186,7 @@
                                 {{-- @php $totalWeight += ($details['weight'] ?? 0) * $quantity; @endphp --}}
                                 <li class="flex flex-col sm:flex-row py-4 sm:py-6 px-4 sm:px-6 cart-item relative" data-id="{{ $cartKey }}">
                                     <div class="h-24 w-24 sm:h-28 sm:w-28 flex-shrink-0 overflow-hidden rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
-                                        <img src="{{ $details['image_url'] ? asset('storage/' . $details['image_url']) : 'https://placehold.co/112x112/EFEFEF/AAAAAA?text=N/A' }}"
+                                        <img src="{{ $details['image_url'] ? asset('public/storage/' . $details['image_url']) : 'https://placehold.co/112x112/EFEFEF/AAAAAA?text=N/A' }}"
                                              alt="{{ $details['name'] ?? 'Produk' }}"
                                              class="h-full w-full object-cover object-center"
                                              onerror="this.onerror=null;this.src='https://placehold.co/112x112/EFEFEF/AAAAAA?text=Error';">
