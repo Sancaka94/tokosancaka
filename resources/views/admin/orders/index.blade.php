@@ -40,7 +40,7 @@
                         'pending' => 'Menunggu Bayar',
                         'menunggu-pickup' => 'Menunggu Pickup',
                         'diproses' => 'Diproses',
-                        'shipment' => 'Terkirim', // PERBAIKAN: Mengganti key 'terkirim' menjadi 'shipment'
+                        'shipment' => 'Dikirim', // PERBAIKAN: Mengganti key 'terkirim' menjadi 'shipment'
                         'selesai' => 'Selesai',
                         'batal' => 'Batal',
                     ];
@@ -176,7 +176,7 @@
                                         $status = $order->status;
                                         // PERBAIKAN: Ubah 'shipment' menjadi 'terkirim' agar helper bisa membacanya
                                         if ($status == 'shipment') {
-                                            $status = 'terkirim';
+                                            $status = 'Dikirim';
                                         }
                                         $text = \App\Helpers\OrderStatusHelper::getStatusText($status);
                                         $badge = \App\Helpers\OrderStatusHelper::getStatusBadgeClass($status);
