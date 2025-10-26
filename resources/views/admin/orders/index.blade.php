@@ -341,17 +341,33 @@
                             @elseif(isset($order->items) && $order->items->first())
                             @php $item = $order->items->first(); @endphp
                             <div class="text-xs text-gray-500 mt-1">
+                                {{-- Cek jika relasi product ada sebelum mengakses property --}}
+                                @if($item->product)
                                 Berat: {{ ($item->product->weight ?? 0) * ($item->quantity ?? 1) }} gr | 
                                 Dimensi: {{ $item->product->length ?? 0 }}x{{ $item->product->width ?? 0 }}x{{ $item->product->height ?? 0 }} cm
+                                @else
+                                Berat: ? gr | Dimensi: ?x?x? cm
+                                @endif
                             </div>
                             @endif
                         </td>
                         
                         {{-- Kolom Tanggal --}}
                         <td class="px-4 py-4 align-top whitespace-nowrap text-gray-500"> {{-- Ubah padding --}}
-                            {{-- Format tanggal dari referensi --}}
-                             <div class="text-xs text-gray-500">{{ $createdAt ? \Carbon\Carbon::parse($createdAt)->format('d M Y, H:i') : '-' }}</div>
-                           {{-- Hapus tanggal kirim & selesai untuk mengikuti referensi --}}
+                            {{-- KEMBALIKAN TAMPILAN TANGGAL SEPERTI AWAL --}}
+                            <div>
+                                <span class="text-gray-400">Dibuat:</span>
+                                {{ $createdAt ? \Carbon\Carbon::parse($createdAt)->translatedFormat('d M Y, H:i') : '-' }}
+                            </div>
+                            <div>
+                                <span class="text-gray-400">Dikirim:</span>
+                                {{ $shippedAt ? \Carbon\Carbon::parse($shippedAt)->translatedFormat('d M Y, H:i') : '-' }}
+                            </div>
+                            <div>
+                                <span class="text-gray-400">Selesai:</span>
+                                {{ $finishedAt ? \Carbon\Carbon::parse($finishedAt)->translatedFormat('d M Y, H:i') : '-' }}
+                            </div>
+                            {{-- AKHIR PERUBAHAN TANGGAL --}}
                         </td>
                         
                         {{-- Kolom Status --}}
