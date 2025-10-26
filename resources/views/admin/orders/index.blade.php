@@ -66,7 +66,7 @@
             <div class="relative">
                 <input type="text" name="search" placeholder="Cari Resi, Invoice, Nama..."
                     value="{{ request('search') }}"
-                    class="w-full pl-10 pr-4 py-2 text-sm border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 shadow-sm">
+                    class="w-full pl-10 pr-4 py-2 text-sm border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"> {{-- Ubah rounded-md ke rounded-lg --}}
                 <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
             </div>
             {{-- Menyimpan filter status saat melakukan pencarian --}}
@@ -77,13 +77,13 @@
 
         {{-- Tombol Export --}}
         <button type="button" data-bs-toggle="modal" data-bs-target="#exportModal"
-            class="inline-flex items-center justify-center w-full md:w-auto px-4 py-2 bg-gray-700 hover:bg-gray-800 text-white text-sm font-medium rounded-md shadow-sm transition duration-150 ease-in-out whitespace-nowrap">
-            <i class="fas fa-download mr-2"></i> Export Laporan
+            class="inline-flex items-center justify-center w-full md:w-auto px-4 py-2 bg-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-300 transition duration-150 ease-in-out whitespace-nowrap"> {{-- Ubah gaya tombol export --}}
+            <i class="fas fa-file-export mr-2"></i> Export
         </button>
     </div>
 
     {{-- FILTER STATUS --}}
-    <div class="p-4 border-b border-gray-200 flex flex-wrap gap-2">
+    <div class="p-4 border-b border-gray-200 flex flex-wrap gap-2 pb-4 mb-4"> {{-- Tambah pb-4 mb-4 --}}
         @php
             // Definisikan filter tab
             $statusFilters = [
@@ -100,7 +100,7 @@
         {{-- Tombol "Semua" --}}
         <a href="{{ route('admin.orders.index', request()->except('status', 'page')) }}"
             class="px-3 py-1 text-sm font-medium rounded-full transition duration-150 ease-in-out focus:outline-none whitespace-nowrap
-            {{ !$currentStatus ? 'bg-indigo-600 text-white shadow' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
+            {{ !$currentStatus ? 'bg-green-600 text-white shadow' : 'bg-gray-200 text-gray-600 hover:bg-gray-300' }}"> {{-- Ubah gaya filter --}}
             Semua
         </a>
 
@@ -108,7 +108,7 @@
         @foreach ($statusFilters as $key => $label)
             <a href="{{ route('admin.orders.index', array_merge(request()->query(), ['status' => $key, 'page' => 1])) }}"
                 class="px-3 py-1 text-sm font-medium rounded-full transition duration-150 ease-in-out focus:outline-none whitespace-nowrap
-                {{ $currentStatus == $key ? 'bg-indigo-600 text-white shadow' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
+                {{ $currentStatus == $key ? 'bg-blue-600 text-white shadow' : 'bg-gray-200 text-gray-600 hover:bg-gray-300' }}"> {{-- Ubah gaya filter --}}
                 {{ $label }}
             </a>
         @endforeach
@@ -119,22 +119,22 @@
     <div class="overflow-x-auto">
         {{-- Hapus min-w-full dari tabel --}}
         <table class="text-sm text-gray-700 divide-y divide-gray-200"> 
-            <thead class="bg-gray-50">
+            <thead class="bg-red-100"> {{-- Ubah background header --}}
                 <tr>
                     {{-- Header Tabel --}}
                     {{-- 'sticky top-0' membuat header 'menempel' di atas saat scroll vertikal --}}
-                    <th scope="col" class="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">No</th>
-                    <th scope="col" class="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider min-w-[100px] whitespace-nowrap">ID</th>
-                    <th scope="col" class="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider min-w-[100px] whitespace-nowrap">Tipe</th>
-                    <th scope="col" class="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider min-w-[250px] whitespace-nowrap">Transaksi</th>
-                    <th scope="col" class="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider min-w-[300px] whitespace-nowrap">Alamat</th>
-                    <th scope="col" class="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider min-w-[180px] whitespace-nowrap">Ekspedisi</th>
-                    <th scope="col" class="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider min-w-[200px] whitespace-nowrap">Resi</th>
-                    <th scope="col" class="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider min-w-[200px] whitespace-nowrap">Paket</th>
-                    <th scope="col" class="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider min-w-[200px] whitespace-nowrap">Tanggal</th>
-                    <th scope="col" class="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider min-w-[150px] whitespace-nowrap">Status</th>
+                    <th scope="col" class="sticky top-0 z-10 bg-red-100 px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider whitespace-nowrap">No</th> {{-- Ubah bg & text color --}}
+                    <th scope="col" class="sticky top-0 z-10 bg-red-100 px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider min-w-[100px] whitespace-nowrap">ID</th> {{-- Ubah bg & text color --}}
+                    <th scope="col" class="sticky top-0 z-10 bg-red-100 px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider min-w-[100px] whitespace-nowrap">Tipe</th> {{-- Ubah bg & text color --}}
+                    <th scope="col" class="sticky top-0 z-10 bg-red-100 px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider min-w-[250px] whitespace-nowrap"><strong>Transaksi</strong></th> {{-- Ubah bg & text color, tambah strong --}}
+                    <th scope="col" class="sticky top-0 z-10 bg-red-100 px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider min-w-[300px] whitespace-nowrap"><strong>Alamat</strong></th> {{-- Ubah bg & text color, tambah strong --}}
+                    <th scope="col" class="sticky top-0 z-10 bg-red-100 px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider min-w-[180px] whitespace-nowrap"><strong>Ekspedisi & Ongkir</strong></th> {{-- Ubah bg & text color, tambah strong --}}
+                    <th scope="col" class="sticky top-0 z-10 bg-red-100 px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider min-w-[200px] whitespace-nowrap">Resi</th> {{-- Ubah bg & text color --}}
+                    <th scope="col" class="sticky top-0 z-10 bg-red-100 px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider min-w-[200px] whitespace-nowrap"><strong>Isi Paket</strong></th> {{-- Ubah bg & text color, tambah strong --}}
+                    <th scope="col" class="sticky top-0 z-10 bg-red-100 px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider min-w-[200px] whitespace-nowrap">Tanggal</th> {{-- Ubah bg & text color --}}
+                    <th scope="col" class="sticky top-0 z-10 bg-red-100 px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider min-w-[150px] whitespace-nowrap"><strong>Status</strong></th> {{-- Ubah bg & text color, tambah strong --}}
                     {{-- Kolom Aksi: 'sticky right-0' membuatnya 'menempel' di kanan saat scroll horizontal --}}
-                    <th scope="col" class="sticky top-0 right-0 z-20 bg-gray-100 px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider min-w-[170px] whitespace-nowrap border-l border-gray-300">Aksi</th>
+                    <th scope="col" class="sticky top-0 right-0 z-20 bg-red-100 px-4 py-3 text-right text-xs font-medium text-gray-600 uppercase tracking-wider min-w-[170px] whitespace-nowrap border-l border-gray-300"><strong>Aksi</strong></th> {{-- Ubah bg & text color, tambah strong --}}
                 </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
@@ -145,6 +145,7 @@
                     @php
                         $isPesanan = isset($order->status_pesanan);
                         
+                        // --- Blok Inisialisasi Variabel (Sama seperti sebelumnya) ---
                         if ($isPesanan) {
                             $id = $order->id_pesanan;
                             $invoice = $order->nomor_invoice;
@@ -187,7 +188,7 @@
                             $resi = $order->tracking_number;
                             $paymentMethod = $order->payment_method;
                             $shippingMethodString = $order->shipping_method;
-                            $paket = $order->items->first()->product->name ?? ($order->items->first()->variant->combination_string ?? 'N/A'); // Tambah fallback ke varian
+                            $paket = $order->items->first()->product->name ?? ($order->items->first()->variant->combination_string ?? 'N/A');
                             $userId = $order->user_id;
                             $senderName = $order->store->name ?? 'N/A';
                             $senderAddress = $order->store->address_detail ?? 'N/A';
@@ -214,9 +215,9 @@
 
                         $badgeMap = [
                             'pending' => 'bg-yellow-100 text-yellow-800',        
-                            'menunggu-pickup' => 'bg-blue-100 text-blue-800',   
-                            'diproses' => 'bg-cyan-100 text-cyan-800',        
-                            'terkirim' => 'bg-indigo-100 text-indigo-800',      
+                            'menunggu-pickup' => 'bg-yellow-100 text-yellow-800', // Ubah ke kuning sesuai ref   
+                            'diproses' => 'bg-blue-100 text-blue-800',        // Ubah ke biru sesuai ref
+                            'terkirim' => 'bg-green-100 text-green-800',      // Ubah ke hijau sesuai ref
                             'selesai' => 'bg-green-100 text-green-800',        
                             'completed' => 'bg-green-100 text-green-800',      
                             'batal' => 'bg-red-100 text-red-800',              
@@ -240,128 +241,158 @@
 
                         $statusBadge = $badgeMap[$status] ?? $badgeMap[$statusRaw] ?? 'bg-gray-100 text-gray-800';
                         $statusText = $textMap[$status] ?? $textMap[$statusRaw] ?? ucfirst($statusRaw);
+                        // --- Akhir Blok Inisialisasi ---
                     @endphp
                     
                     <tr class="group hover:bg-gray-50">
-                        <td class="px-4 py-3 whitespace-nowrap text-gray-500">{{ $orders->firstItem() + $index }}</td>
-                        <td class="px-4 py-3 whitespace-nowrap text-gray-500">{{ $id }}</td>
-                        <td class="px-4 py-3 whitespace-nowrap">
+                        {{-- Kolom No --}}
+                        <td class="px-4 py-4 whitespace-nowrap text-gray-500 align-top">{{ $orders->firstItem() + $index }}</td> {{-- Ubah padding & align --}}
+                        
+                        {{-- Kolom ID --}}
+                        <td class="px-4 py-4 whitespace-nowrap text-gray-500 align-top">{{ $id }}</td> {{-- Ubah padding & align --}}
+                        
+                        {{-- Kolom Tipe --}}
+                        <td class="px-4 py-4 whitespace-nowrap align-top"> {{-- Ubah padding & align --}}
                             @if ($isPesanan)
                                 <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Pesanan</span>
                             @else
                                 <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Order</span>
                             @endif
                         </td>
-                        <td class="px-4 py-3 align-top">
-                            <div class="font-semibold text-gray-900">{{ strtoupper($paymentMethod ?? 'N/A') }}</div>
-                            <div class="text-gray-500">{{ $invoice }}</div>
-                            <div class="text-xs mt-2 space-y-0.5 text-gray-600 w-52">
-                                <div class="flex justify-between">
-                                    <span>Subtotal:</span>
-                                    <span class="font-medium">Rp{{ number_format($subtotal ?? 0, 0, ',', '.') }}</span> {{-- Tambah fallback 0 --}}
-                                </div>
-                                <div class="flex justify-between">
-                                    <span>Ongkir:</span>
-                                    <span class="font-medium">Rp{{ number_format($shippingCost ?? 0, 0, ',', '.') }}</span> {{-- Tambah fallback 0 --}}
-                                </div>
-                                @if ($codFee > 0)
-                                <div class="flex justify-between">
-                                    <span>Biaya COD:</span>
-                                    <span class="font-medium">Rp{{ number_format($codFee, 0, ',', '.') }}</span>
-                                </div>
-                                @endif
-                                <div class="flex justify-between font-bold pt-0.5 border-t border-gray-200">
-                                    <span>Total:</span>
-                                    <span class="text-indigo-600">Rp{{ number_format($totalAmount ?? 0, 0, ',', '.') }}</span> {{-- Tambah fallback 0 --}}
-                                </div>
-                            </div>
+                        
+                        {{-- Kolom Transaksi --}}
+                        <td class="px-4 py-4 align-top"> {{-- Ubah padding --}}
+                            {{-- Tampilkan COD/Non COD dari referensi --}}
+                            @if(Str::contains(strtoupper($paymentMethod ?? ''), 'COD'))
+                                <span class="font-bold text-green-600">COD</span>
+                            @else
+                                <span class="font-bold text-blue-600">Non COD</span>
+                            @endif
+                            <div class="font-bold text-gray-800">{{ $invoice }}</div> {{-- Tampilkan invoice di sini (Resi ada kolom sendiri) --}}
+                            {{-- Hapus rincian biaya dari sini --}}
                         </td>
-                        <td class="px-4 py-3 align-top">
+                        
+                        {{-- Kolom Alamat --}}
+                        <td class="px-4 py-4 align-top"> {{-- Ubah padding --}}
                             <div class="mb-2">
-                                <span class="text-xs text-gray-500">Dari:</span>
-                                <div class="font-semibold text-blue-700">{{ $senderName }}</div>
-                                <div class="text-gray-600 text-xs break-words max-w-xs">{{ $senderAddress }}</div> {{-- Tambah break-words & max-w --}}
+                                <div class="text-xs text-gray-500">Dari:</div> {{-- Ubah gaya --}}
+                                <div class="font-semibold text-blue-700"><strong>{{ $senderName }}</strong></div> {{-- Tambah strong --}}
+                                <div class="text-xs text-gray-600 break-words max-w-xs">{{ $senderAddress }}</div> {{-- Ubah gaya --}}
                             </div>
                             <div>
-                                <span class="text-xs text-gray-500">Kepada:</span>
-                                <div class="font-semibold text-red-700">{{ $receiverName }}</div>
-                                <div class="text-gray-600 text-xs break-words max-w-xs">{{ $receiverAddress }}</div> {{-- Tambah break-words & max-w --}}
+                                <div class="text-xs text-gray-500">Kepada:</div> {{-- Ubah gaya --}}
+                                <div class="font-semibold text-red-700"><strong>{{ $receiverName }}</strong></div> {{-- Tambah strong --}}
+                                <div class="text-xs text-gray-600 break-words max-w-xs">{{ $receiverAddress }}</div> {{-- Ubah gaya --}}
                             </div>
                         </td>
-                        <td class="px-4 py-3 align-top whitespace-nowrap">
+                        
+                        {{-- Kolom Ekspedisi --}}
+                        <td class="px-4 py-4 align-top whitespace-nowrap"> {{-- Ubah padding --}}
                             @if ($ship['logo_url'])
                                 <img src="{{ $ship['logo_url'] }}" alt="{{ $ship['courier_name'] }}" class="h-5 mb-1 max-w-[90px] object-contain">
                             @else
-                                <div class="font-semibold">{{ $ship['courier_name'] }}</div>
+                                {{-- Jika tidak ada logo, tampilkan nama --}}
+                                <div class="font-bold text-gray-800">{{ $ship['courier_name'] }}</div>
                             @endif
-                            <div class="text-gray-600">{{ $ship['service_name'] }}</div>
-                            <div class="text-xs text-gray-500">Ongkir: Rp{{ number_format($ship['cost'], 0, ',', '.') }}</div>
+                            {{-- Tampilkan layanan dan ongkir sesuai referensi --}}
+                            <div class="text-xs text-gray-500">Layanan: {{ $ship['service_name'] }}</div> 
+                            <div class="font-semibold text-green-700 mt-1">Rp{{ number_format($shippingCost ?? 0, 0, ',', '.') }}</div> {{-- Tampilkan ongkir --}}
                         </td>
-                        <td class="px-4 py-3 align-top whitespace-nowrap">
+                        
+                        {{-- Kolom Resi --}}
+                        <td class="px-4 py-4 align-top whitespace-nowrap"> {{-- Ubah padding --}}
                             @if ($resi)
-                                <div class="font-medium text-gray-800 break-all max-w-[180px]">{{ $resi }}</div> {{-- Tambah break-all & max-w --}}
+                                <div class="font-medium text-gray-800 break-all max-w-[180px]">{{ $resi }}</div>
                             @else
                                 <span class="text-gray-400 italic">Belum ada resi</span>
                             @endif
                         </td>
-                        <td class="px-4 py-3 align-top font-medium break-words max-w-xs">{{ $paket }}</td> {{-- Tambah break-words & max-w --}}
-                        <td class="px-4 py-3 align-top whitespace-nowrap text-gray-500">
-                            <div>
-                                <span class="text-gray-400">Dibuat:</span>
-                                {{ $createdAt ? \Carbon\Carbon::parse($createdAt)->translatedFormat('d M Y, H:i') : '-' }}
+                        
+                        {{-- Kolom Paket --}}
+                        <td class="px-4 py-4 align-top"> {{-- Ubah padding --}}
+                            <div class="font-semibold text-gray-800 break-words max-w-xs">{{ $paket }}</div> {{-- Buat teks bold --}}
+                            {{-- Tampilkan detail paket sesuai referensi --}}
+                            @if($isPesanan)
+                            <div class="text-xs text-gray-500 mt-1">
+                                Berat: {{ $order->weight ?? 0 }} gr | Dimensi: {{ $order->length ?? 0 }}x{{ $order->width ?? 0 }}x{{ $order->height ?? 0 }} cm
                             </div>
-                            <div>
-                                <span class="text-gray-400">Dikirim:</span>
-                                {{ $shippedAt ? \Carbon\Carbon::parse($shippedAt)->translatedFormat('d M Y, H:i') : '-' }}
+                            @elseif(isset($order->items) && $order->items->first())
+                            @php $item = $order->items->first(); @endphp
+                            <div class="text-xs text-gray-500 mt-1">
+                                Berat: {{ ($item->product->weight ?? 0) * ($item->quantity ?? 1) }} gr | 
+                                Dimensi: {{ $item->product->length ?? 0 }}x{{ $item->product->width ?? 0 }}x{{ $item->product->height ?? 0 }} cm
                             </div>
-                            <div>
-                                <span class="text-gray-400">Selesai:</span>
-                                {{ $finishedAt ? \Carbon\Carbon::parse($finishedAt)->translatedFormat('d M Y, H:i') : '-' }}
-                            </div>
+                            @endif
                         </td>
-                        <td class="px-4 py-3 align-top whitespace-nowrap">
-                            <span class="px-2 py-1 rounded-full text-xs font-semibold {{ $statusBadge }}">
+                        
+                        {{-- Kolom Tanggal --}}
+                        <td class="px-4 py-4 align-top whitespace-nowrap text-gray-500"> {{-- Ubah padding --}}
+                            {{-- Format tanggal dari referensi --}}
+                             <div class="text-xs text-gray-500">{{ $createdAt ? \Carbon\Carbon::parse($createdAt)->format('d M Y, H:i') : '-' }}</div>
+                           {{-- Hapus tanggal kirim & selesai untuk mengikuti referensi --}}
+                        </td>
+                        
+                        {{-- Kolom Status --}}
+                        <td class="px-4 py-4 align-top whitespace-nowrap"> {{-- Ubah padding --}}
+                             {{-- Gunakan gaya badge dari referensi --}}
+                            <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full {{ $statusBadge }}">
                                 {{ $statusText }}
                             </span>
                         </td>
-                        <td class="sticky right-0 z-10 bg-white group-hover:bg-gray-50 px-4 py-3 align-top text-right whitespace-nowrap border-l border-gray-200">
-                            <div class="inline-flex items-center justify-end gap-1">
-                                <a href="{{ $resi ? 'https://tokosancaka.com/tracking/search?resi=' . e($resi) : '#' }}" target="_blank" 
-                                   class="inline-flex items-center justify-center w-8 h-8 rounded-md text-gray-500 hover:text-green-600 hover:bg-gray-100 transition
-                                          {{ !$resi ? 'opacity-40 cursor-not-allowed' : '' }}" 
-                                   title="Lacak" @if(!$resi) onclick="return false;" @endif>
+                        
+                        {{-- Kolom Aksi (Sticky) --}}
+                        {{-- 'group-hover:bg-gray-100' membuatnya ganti warna saat <tr> di-hover --}}
+                        <td class="sticky right-0 z-10 bg-white group-hover:bg-gray-50 px-6 py-4 align-top whitespace-nowrap border-l border-gray-200"> {{-- Ubah padding --}}
+                            {{-- Gunakan gaya tombol aksi dari referensi --}}
+                            <div class="flex items-center space-x-3">
+                                {{-- Tombol Lacak --}}
+                                @if($resi)
+                                <a href="{{ 'https://tokosancaka.com/tracking/search?resi=' . e($resi) }}" target="_blank" 
+                                   class="text-gray-500 hover:text-green-600" title="Lacak Resi">
                                     <i class="fas fa-truck fa-fw"></i>
                                 </a>
+                                @endif
+                                
+                                {{-- Tombol Detail --}}
                                 <a href="{{ route('admin.orders.show', $invoice) }}" 
-                                   class="inline-flex items-center justify-center w-8 h-8 rounded-md text-gray-500 hover:text-indigo-600 hover:bg-gray-100 transition" 
-                                   title="Detail">
+                                   class="text-gray-500 hover:text-indigo-600" title="Detail">
                                     <i class="fas fa-eye fa-fw"></i>
                                 </a>
+                                
+                                {{-- Tombol Print Thermal --}}
                                 <a href="{{ route('admin.orders.print.thermal', $invoice) }}" target="_blank" 
-                                   class="inline-flex items-center justify-center w-8 h-8 rounded-md text-gray-500 hover:text-gray-800 hover:bg-gray-100 transition" 
-                                   title="Print Label">
+                                   class="text-gray-500 hover:text-gray-800" title="Cetak Label">
                                     <i class="fas fa-print fa-fw"></i>
                                 </a>
+
+                                {{-- Tombol PDF Faktur (Tidak ada di ref, tapi kita simpan) --}}
                                 <a href="{{ route('admin.orders.invoice.pdf', $invoice) }}" target="_blank" 
-                                   class="inline-flex items-center justify-center w-8 h-8 rounded-md text-gray-500 hover:text-red-600 hover:bg-gray-100 transition" 
-                                   title="PDF Faktur">
+                                   class="text-gray-500 hover:text-red-600" title="PDF Faktur">
                                     <i class="fas fa-file-pdf fa-fw"></i>
                                 </a>
+
+                                {{-- Tombol Edit (Hanya placeholder, route perlu dibuat) --}}
+                                <a href="#" {{-- route('admin.orders.edit', $invoice) --}} 
+                                   class="text-gray-500 hover:text-blue-600" title="Edit">
+                                    <i class="fas fa-pencil-alt fa-fw"></i>
+                                </a>
+
+                                {{-- Tombol Chat (Tidak ada di ref, tapi kita simpan) --}}
                                 @if ($userId)
                                 <a href="{{ route('admin.chat.start', ['id_pengguna' => $userId]) }}" target="_blank" 
-                                   class="inline-flex items-center justify-center w-8 h-8 rounded-md text-gray-500 hover:text-blue-600 hover:bg-gray-100 transition" 
-                                   title="Chat">
+                                   class="text-gray-500 hover:text-blue-600" title="Chat">
                                     <i class="fas fa-comment fa-fw"></i>
                                 </a>
                                 @endif
-                                <form action="{{ route('admin.orders.cancel', $invoice) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin membatalkan pesanan ini?')">
+                                
+                                {{-- Tombol Hapus/Batal --}}
+                                <form action="{{ route('admin.orders.cancel', $invoice) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin membatalkan pesanan ini?');" class="inline-block">
                                     @csrf
                                     @method('PATCH')
                                     <button type="submit" 
-                                            class="inline-flex items-center justify-center w-8 h-8 rounded-md text-gray-500 hover:text-red-600 hover:bg-gray-100 transition
-                                                   {{ !$canCancel ? 'opacity-40 cursor-not-allowed' : '' }}" 
+                                            class="text-gray-500 hover:text-red-600 {{ !$canCancel ? 'opacity-40 cursor-not-allowed' : '' }}" 
                                             title="Batalkan" @disabled(!$canCancel)>
-                                        <i class="fas fa-trash fa-fw"></i>
+                                        <i class="fas fa-trash-alt fa-fw"></i>
                                     </button>
                                 </form>
                             </div>
@@ -369,12 +400,8 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="11" class="text-center py-10 text-gray-500">
-                            <div class="flex flex-col items-center">
-                                <i class="fas fa-box-open fa-3x text-gray-400 mb-3"></i>
-                                <h3 class="text-lg font-medium text-gray-700">Tidak ada pesanan ditemukan</h3>
-                                <p class="text-sm text-gray-500">Coba ubah filter pencarian Anda.</p>
-                            </div>
+                        <td colspan="11" class="text-center py-4 text-gray-500"> {{-- Ubah py-10 ke py-4 --}}
+                            Data pesanan tidak ditemukan. {{-- Ubah pesan --}}
                         </td>
                     </tr>
                 @endforelse
@@ -384,7 +411,7 @@
 
     {{-- PAGINATION --}}
     @if ($orders->hasPages())
-        <div class="p-4 border-t border-gray-200">
+        <div class="mt-4 p-4 border-t border-gray-200"> {{-- Tambah mt-4 & p-4 --}}
             {{ $orders->links() }}
         </div>
     @endif
