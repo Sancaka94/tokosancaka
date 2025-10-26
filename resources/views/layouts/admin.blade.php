@@ -64,12 +64,12 @@
             
             @include('layouts.partials.header')
 
-            <main class="flex-1 overflow-hidden bg-gray-100 dark:bg-gray-900 custom-scrollbar">
-                <div class="w-full min-w-0 h-full px-4 sm:px-6 lg:px-8 py-6 overflow-y-auto">
-                    @yield('content')
-                </div>
-            </main>
-            
+                <main class="flex-1 overflow-hidden bg-gray-100 dark:bg-gray-900 custom-scrollbar">
+                    <div class="flex flex-col w-full min-w-0 max-w-full overflow-y-auto overflow-x-hidden px-4 sm:px-6 lg:px-8 py-6">
+                        @yield('content')
+                    </div>
+                </main>
+
         </div>
     </div>
     
