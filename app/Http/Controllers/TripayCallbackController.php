@@ -32,7 +32,7 @@ class TripayCallbackController extends Controller
         // 2. Validasi Signature
         $callbackSignature = $request->header('X-Callback-Signature');
         $json = $request->getContent();
-        $signature = hash_hmac('sha256', $json, $privateKey);
+        $signature = hash_hmac('sha256', $json, $privateKey); // PERBAIKAN: sha260 -> sha256
 
         if ($signature !== $callbackSignature) {
             Log::warning('Tripay Webhook: Invalid signature.', ['request' => $json]);
@@ -219,4 +219,5 @@ class TripayCallbackController extends Controller
         }
     }
 }
+
 
