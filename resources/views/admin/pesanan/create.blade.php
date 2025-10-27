@@ -473,7 +473,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 card.innerHTML = `
                     <div class="p-4 flex justify-between items-center">
                         <div class="flex items-center">
-                            <img src="{{ asset('public/storage/logo-ekspedisi/') }}/${item.service.toLowerCase().replace(/\s+/g, '')}.png" class="w-16 h-auto mr-4 object-contain" onerror="this.src='https://placehold.co/100x40?text=${item.service}'">
+                            <img src="{{ asset('/public/storage/logo-ekspedisi/') }}/${item.service.toLowerCase().replace(/\s+/g, '')}.png" class="w-16 h-auto mr-4 object-contain" onerror="this.src='https://placehold.co/100x40?text=${item.service}'">
                             <div><h6 class="font-bold text-gray-800">${item.service_name}</h6>${details}</div>
                         </div>
                         <div class="text-right">
