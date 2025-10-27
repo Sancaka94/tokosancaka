@@ -851,7 +851,7 @@ class PesananController extends Controller
         $baseUrl = $mode === 'production' ? 'https://tripay.co.id/api/transaction/create' : 'https://tripay.co.id/api-sandbox/transaction/create';
         try {
             $response = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])
-                          ->timeout(30)
+                          ->timeout(60)
                           ->withoutVerifying() // Tetap pakai jika perlu
                           ->post($baseUrl, $payload);
 
