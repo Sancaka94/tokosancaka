@@ -495,11 +495,30 @@ class PesananController extends Controller
 
     private function _preparePesananData(array $validatedData, int $total_ongkir, string $ip, string $userAgent): array
     {
-        // ... (fungsi _preparePesananData tetap sama) ...
-        do { $nomorInvoice = 'SCK-' . date('Ymd') . '-'. strtoupper(Str::random(6)); } while (Pesanan::where('nomor_invoice', $nomorInvoice)->exists());
-         /* ... siapkan data ... */
-         return array_merge($pesananCoreData, [ /* ... */ ]);
+        // --- PERBAIKAN: Pastikan $pesananCoreData terdefinisi ---
+        do {
+            $nomorInvoice = 'SCK-' . date('Ymd') . '-'. strtoupper(Str::random(6));
+        } while (Pesanan::where('nomor_invoice', $nomorInvoice)->exists());
+
+        $fieldsToSave = array_keys($this->_validateOrderRequest(request()));
+        $fieldsToExclude = ['save_sender', 'save_receiver', 'expedition', 'customer_email', 'sender_phone_original', 'receiver_phone_original'];
+        $fieldsToSave = array_diff($fieldsToSave, $fieldsToExclude);
+
+        // --- BARIS YANG DITAMBAHKAN KEMBALI ---
+        $pesananCoreData = collect($validatedData)->only($fieldsToSave)->all();
+
+        return array_merge($pesananCoreData, [
+            'nomor_invoice' => $nomorInvoice,
+            'status' => 'Menunggu Pembayaran',
+            'status_pesanan' => 'Menunggu Pembayaran',
+            'tanggal_pesanan' => now(),
+            'ip_address' => $ip,
+            'user_agent' => $userAgent,
+            'kontak_pengirim_id' => $validatedData['pengirim_id'] ?? null,
+            'kontak_penerima_id' => $validatedData['penerima_id'] ?? null,
+        ]);
     }
+
 
     private function _calculateTotalPaid(array $validatedData): array
     {
@@ -644,8 +663,17 @@ TEXT;
 
 
         $message = str_replace(
-            [/* placeholders */],
-            [/* values */],
+            [
+                '{NOMOR_INVOICE}', '{SENDER_NAME}', '{SENDER_PHONE}', '{RECEIVER_NAME}', '{RECEIVER_PHONE}',
+                '{DETAIL_PAKET}', '{RINCIAN_BIAYA}', '{TOTAL_BAYAR}', '{STATUS_BAYAR}',
+                '{TRACKING_LINK}' // Ganti placeholder lama
+            ],
+            [
+                $pesanan->nomor_invoice, $pesanan->sender_name, $displaySenderPhone,
+                $pesanan->receiver_name, $displayReceiverPhone, $detailPaket, $rincianBiaya,
+                number_format($total_paid, 0, ',', '.'), $statusBayar,
+                $trackingLink // Masukkan link tracking yang sudah dibuat
+            ],
             $messageTemplate
         );
 
