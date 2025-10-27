@@ -503,10 +503,37 @@ class PesananController extends Controller
 
     private function _calculateTotalPaid(array $validatedData): array
     {
-        // ... (fungsi _calculateTotalPaid tetap sama) ...
-        $parts = explode('-', $validatedData['expedition']); /* ... */
-         return compact('total_paid_ongkir', 'cod_value', 'shipping_cost', 'ansuransi_fee', 'cod_fee');
+        // --- PERBAIKAN: Inisialisasi variabel ---
+        $cod_fee = 0;
+        $ansuransi_fee = 0;
+        $shipping_cost = 0;
+        $total_paid_ongkir = 0; // Inisialisasi di sini
+        $cod_value = 0;
+
+        $parts = explode('-', $validatedData['expedition']);
+        $count = count($parts);
+
+        // ... (logika parsing $parts tetap sama) ...
+        if ($count >= 6) { $cod_fee = (int) end($parts); $ansuransi_fee = (int) $parts[$count - 2]; $shipping_cost = (int) $parts[$count - 3]; }
+        elseif ($count === 5) { $ansuransi_fee = (int) $parts[4]; $shipping_cost = (int) $parts[3]; }
+        elseif ($count === 4) { $shipping_cost = (int) $parts[3]; }
+        else { Log::warning('Format expedition tidak dikenal', ['exp' => $validatedData['expedition']]); }
+
+        // Hitung ulang $total_paid_ongkir berdasarkan hasil parsing
+        $total_paid_ongkir = $shipping_cost;
+        if ($validatedData['ansuransi'] == 'iya' && $ansuransi_fee > 0) {
+            $total_paid_ongkir += $ansuransi_fee;
+        } elseif ($validatedData['ansuransi'] == 'iya' && $ansuransi_fee <= 0) {
+            Log::warning('Asuransi dipilih "iya" tapi biaya asuransi 0 dari string expedition', ['expedition' => $validatedData['expedition']]);
+        }
+
+        // ... (logika hitung $cod_value tetap sama) ...
+        if ($validatedData['payment_method'] === 'CODBARANG') { $cod_value = (int)$validatedData['item_price'] + $total_paid_ongkir + $cod_fee; }
+        elseif ($validatedData['payment_method'] === 'COD') { $cod_value = $total_paid_ongkir + $cod_fee; }
+
+        return compact('total_paid_ongkir', 'cod_value', 'shipping_cost', 'ansuransi_fee', 'cod_fee');
     }
+
 
     private function _createKiriminAjaOrder(
         array $data, Pesanan $pesanan, KiriminAjaService $kirimaja,
