@@ -40,7 +40,7 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ScanController;
 use App\Http\Controllers\TrackingController;
-use App\Http\Controllers\TripayCallbackController;
+//use App\Http\Controllers\TripayCallbackController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -52,9 +52,9 @@ use App\Http\Controllers\TripayCallbackController;
 
 // --- RUTE WEBHOOK & CALLBACK (PUBLIK) ---
 Route::post('/webhook/kiriminaja', [KirimAjaController::class, 'handle'])->name('api.callback.kirimaja');
-//Route::post('/callback/tripay', [CheckoutController::class, 'TripayCallback'])->name('api.callback.tripay');
+Route::post('/callback/tripay', [CheckoutController::class, 'TripayCallback'])->name('api.callback.tripay');
 
-Route::post('/callback/tripay', [TripayCallbackController::class, 'handle']);
+//Route::post('/callback/tripay', [TripayCallbackController::class, 'handle']);
 
 // --- RUTE PUBLIK (Tidak Perlu Login) ---
 
