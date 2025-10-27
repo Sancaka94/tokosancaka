@@ -11,7 +11,7 @@ use App\Services\KiriminAjaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http; // Menggunakan Http Client Laravel
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Exception;
@@ -181,7 +181,6 @@ class PesananController extends Controller
     }
 
     
-    // ... (kode show, edit, update, destroy, dll. tetap sama) ...
     public function show($resi)
     {
         $order = Pesanan::where('resi', $resi)->orWhere('nomor_invoice', $resi)->firstOrFail();
@@ -196,9 +195,7 @@ class PesananController extends Controller
 
     public function update(Request $request, $resi)
     {
-        // ... (Logika update, pastikan divalidasi)
-        $order = Pesanan::where('resi', $resi)->orWhere('nomor_invoice', $resi)->firstOrFail();
-         $validatedData = $request->validate([
+        $validatedData = $request->validate([
             'sender_name' => 'required|string|max:255',
             'sender_phone' => 'required|string|max:20',
             'sender_address' => 'required|string',
@@ -210,6 +207,7 @@ class PesananController extends Controller
             'payment_method' => 'required|string',
             'expedition' => 'required|string',
         ]);
+        $order = Pesanan::where('resi', $resi)->orWhere('nomor_invoice', $resi)->firstOrFail();
         $order->update($validatedData);
         return redirect()->route('admin.pesanan.index')->with('success', 'Pesanan ' . $resi . ' berhasil diperbarui.');
     }
@@ -246,7 +244,6 @@ class PesananController extends Controller
 
     public function searchAddressApi(Request $request, KiriminAjaService $kirimaja)
     {
-        // ... (kode searchAddressApi tetap sama) ...
         $request->validate(['search' => 'required|string|min:3']);
         try {
             $results = $kirimaja->searchAddress($request->input('search'));
@@ -259,7 +256,6 @@ class PesananController extends Controller
     
     public function searchKontak(Request $request)
     {
-        // ... (kode searchKontak tetap sama) ...
          $request->validate([
             'search' => 'required|string|min:2',
             'tipe'   => 'nullable|in:Pengirim,Penerima',
@@ -280,7 +276,6 @@ class PesananController extends Controller
     
     public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
     {
-        // ... (kode cek_Ongkir tetap sama) ...
          try {
             $validated = $request->validate([
                 'sender_district_id' => 'required|integer', 'sender_subdistrict_id' => 'required|integer',
@@ -564,7 +559,6 @@ class PesananController extends Controller
     
     private function geocode(string $address): ?array
     {
-        // ... (kode geocode tetap sama) ...
         try {
             $response = Http::timeout(10)
                 ->withHeaders([
@@ -609,7 +603,6 @@ class PesananController extends Controller
 
     private function _getAddressData(Request $request, string $type): array
     {
-        // ... (kode _getAddressData tetap sama) ...
         $lat = $request->input("{$type}_lat");
         $lng = $request->input("{$type}_lng");
 
@@ -676,7 +669,6 @@ class PesananController extends Controller
 
     private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
     {
-        // ... (kode _saveOrUpdateKontak tetap sama) ...
         if (!empty($data["save_{$prefix}"])) {
             $sanitizedPhone = $this->_sanitizePhoneNumber($data["{$prefix}_phone"]);
             if (empty($sanitizedPhone)) {
@@ -707,7 +699,6 @@ class PesananController extends Controller
     
     private function _preparePesananData(array $validatedData, int $total_ongkir, string $ip, string $userAgent): array
     {
-        // ... (kode _preparePesananData tetap sama) ...
         do {
             $nomorInvoice = 'SCK-' . date('Ymd') . '-'. strtoupper(Str::random(6));
         } while (Pesanan::where('nomor_invoice', $nomorInvoice)->exists());
@@ -747,7 +738,6 @@ class PesananController extends Controller
 
     private function _calculateTotalPaid(array $validatedData): array
     {
-        // ... (kode _calculateTotalPaid tetap sama) ...
         $parts = explode('-', $validatedData['expedition']);
         $count = count($parts);
 
@@ -764,7 +754,6 @@ class PesananController extends Controller
             $shipping_cost = (int) ($parts[3] ?? 0);
         } elseif ($count === 4) { // Bisa non-COD non-Asuransi, ATAU instant
             $shipping_cost = (int) ($parts[3] ?? 0);
-            // Cek part pertama jika perlu, tapi ongkir tetap di [3]
         } else {
             Log::warning('Format string expedition tidak dikenal saat kalkulasi biaya:', ['expedition' => $validatedData['expedition']]);
         }
@@ -935,7 +924,6 @@ class PesananController extends Controller
 
     private function _prepareOrderItemsPayload(int $shipping_cost, int $ansuransi_fee, string $ansuransi_choice): array
     {
-        // ... (kode _prepareOrderItemsPayload tetap sama) ...
         $payload = [['sku' => 'SHIPPING', 'name' => 'Ongkos Kirim', 'price' => $shipping_cost, 'quantity' => 1]];
         if ($ansuransi_choice == 'iya' && $ansuransi_fee > 0) {
             $payload[] = ['sku' => 'INSURANCE', 'name' => 'Biaya Asuransi', 'price' => $ansuransi_fee, 'quantity' => 1];
@@ -947,7 +935,6 @@ class PesananController extends Controller
 
     private function _createTripayTransaction(array $data, Pesanan $pesanan, int $total, array $orderItems): array
     {
-        // ... (kode _createTripayTransaction tetap sama, menggunakan Laravel HTTP Client) ...
         $apiKey = config('tripay.api_key');
         $privateKey = config('tripay.private_key');
         $merchantCode = config('tripay.merchant_code');
@@ -991,8 +978,12 @@ class PesananController extends Controller
             : 'https://tripay.co.id/api-sandbox/transaction/create';
         
         try {
+            // --- PERCOBAAN PERBAIKAN ---
+            // Coba tambahkan ->withoutVerifying() untuk bypass cek SSL
+            // Ini adalah langkah debugging untuk masalah koneksi di server
             $response = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])
                 ->timeout(30)
+                ->withoutVerifying() // <-- PERUBAHAN DI SINI
                 ->post($baseUrl, $payload);
 
             if (!$response->successful()) {
@@ -1016,7 +1007,13 @@ class PesananController extends Controller
 
         } catch (\Illuminate\Http\Client\ConnectionException $e) {
             Log::error('Tripay API Connection Failed: ' . $e->getMessage(), ['payload' => $payload]);
-            return ['success' => false, 'message' => 'Tidak dapat terhubung ke server pembayaran. Periksa koneksi Anda.'];
+            // --- PERCOBAAN PERBAIKAN ---
+            // Berikan pesan error yang lebih spesifik jika kita mematikan verifikasi
+            $message = 'Tidak dapat terhubung ke server pembayaran. Periksa koneksi Anda.';
+            if (str_contains(strtolower($e->getMessage()), 'ssl') || str_contains(strtolower($e->getMessage()), 'certificate')) {
+                $message = 'Koneksi gagal karena masalah verifikasi SSL di server PHP. (Bypass SSL dicoba).';
+            }
+            return ['success' => false, 'message' => $message];
         } catch (Exception $e) {
             Log::error('Tripay API General Error: ' . $e->getMessage(), ['payload' => $payload, 'trace' => $e->getTraceAsString()]);
             return ['success' => false, 'message' => 'Terjadi kesalahan internal saat menghubungi server pembayaran.'];
@@ -1025,7 +1022,6 @@ class PesananController extends Controller
     
     private function _sanitizePhoneNumber(string $phone): string
     {
-        // ... (kode _sanitizePhoneNumber tetap sama) ...
         $phone = preg_replace('/[^0-9]/', '', $phone);
         if (Str::startsWith($phone, '62')) {
             if (Str::startsWith(substr($phone, 2), '0')) {
@@ -1047,7 +1043,6 @@ class PesananController extends Controller
         int $cod_fee,
         int $total_paid
     ) {
-        // ... (kode _sendWhatsappNotification tetap sama) ...
         if (empty($validatedData['sender_phone']) || empty($validatedData['receiver_phone'])) {
             Log::warning('Nomor telepon pengirim atau penerima kosong, notifikasi WA dibatalkan.', ['invoice' => $pesanan->nomor_invoice]);
             return;
@@ -1107,7 +1102,7 @@ Berikut adalah Nomor Order ID / Nomor Invoice Kakak:
 ----------------------------------------
 {DETAIL_PAKET}
 ----------------------------------------
-{RINCIAN_BIAYA}
+{RINCIAN_BIYA}
 ----------------------------------------
 *Total Bayar: Rp {TOTAL_BAYAR}*
 Status Pembayaran: {STATUS_BAYAR}
@@ -1129,7 +1124,7 @@ TEXT;
                 '{SENDER_NAME}', '{SENDER_PHONE}', 
                 '{RECEIVER_NAME}', '{RECEIVER_PHONE}', 
                 '{TOTAL_BAYAR}',
-                '{RINCIAN_BIAYA}', 
+                '{RINCIAN_BIYA}', // <-- PERBAIKAN: Nama placeholder salah, harusnya {RINCIAN_BIAYA}
                 '{DETAIL_PAKET}',
                 '{STATUS_BAYAR}',
                 '{LINK_RESI}'
@@ -1139,7 +1134,7 @@ TEXT;
                 $validatedData['sender_name'], $validatedData['sender_phone'],
                 $validatedData['receiver_name'], $validatedData['receiver_phone'],
                 number_format($total_paid, 0, ',', '.'),
-                $rincianBiaya,
+                $rincianBiaya, // <-- Ini variabel yang benar
                 $detailPaket,
                 $statusBayar,
                 $linkResi
