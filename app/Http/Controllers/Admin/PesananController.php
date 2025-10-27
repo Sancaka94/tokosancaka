@@ -173,9 +173,18 @@ class PesananController extends Controller
 
             // 8. Kirim notifikasi WhatsApp (setelah commit)
             // Gunakan biaya terpisah untuk notifikasi yang lebih akurat
-            $notification_total = $pesanan->price; // Total bayar final
-            $this->_sendWhatsappNotification($pesanan, $validatedData, $shipping_cost, $pesanan->insurance_cost, $pesanan->cod_fee, $notification_total, $request); // Kirim $request untuk ambil nomor asli
+           $notification_total = $pesanan->price; // Total bayar final
+            $this->_sendWhatsappNotification(
+                $pesanan,
+                $validatedData,
+                $shipping_cost,
+                (int) $pesanan->insurance_cost, // Cast ke int
+                (int) $pesanan->cod_fee,         // Cast ke int
+                $notification_total,
+                $request
+            );
             $notifMessage = 'Pesanan baru ' . ($pesanan->resi ? 'dengan resi ' . $pesanan->resi : 'dengan invoice ' . $pesanan->nomor_invoice) . ' berhasil dibuat!';
+
 
             // 9. Arahkan pengguna
             if ($paymentUrl) {
