@@ -52,8 +52,9 @@ use App\Http\Controllers\TripayCallbackController;
 
 // --- RUTE WEBHOOK & CALLBACK (PUBLIK) ---
 Route::post('/webhook/kiriminaja', [KirimAjaController::class, 'handle'])->name('api.callback.kirimaja');
-Route::post('/callback/tripay', [CheckoutController::class, 'TripayCallback'])->name('api.callback.tripay');
+//Route::post('/callback/tripay', [CheckoutController::class, 'TripayCallback'])->name('api.callback.tripay');
 
+Route::post('/callback/tripay', [TripayCallbackController::class, 'handle']);
 
 // --- RUTE PUBLIK (Tidak Perlu Login) ---
 
