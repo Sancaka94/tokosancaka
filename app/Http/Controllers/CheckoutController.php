@@ -809,7 +809,7 @@ class CheckoutController extends Controller
                         $topUp->save();
                     }
                 } else {
-                    $pesanan = Pesanan::where('invoice_number', $orderId)->first();
+                    $pesanan = Pesanan::where('nomor_invoice', $orderId)->first();
                         
                     if($pesanan) {
                         if ($status === 'PAID' && $pesanan->status === 'pending') { // Hanya proses jika 'pending'
