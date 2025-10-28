@@ -65,12 +65,12 @@
         }
     }
     
-        {{-- PERBAIKAN DATA PENERIMA UNTUK WA --}}
+        // --- PERBAIKAN: Menggunakan komentar PHP ( // ) ---
     $waMessageReceiver = urlencode("Halo " . $pesanan->receiver_name . ", pesanan Anda dengan resi " . $pesanan->resi . " dari " . $pesanan->sender_name . " telah berhasil dibuat. Anda dapat melihat detail resi di sini: " . route('admin.pesanan.cetak_thermal', ['resi' => $pesanan->resi]));
     $waPhoneReceiver = preg_replace('/^0/', '62', $pesanan->receiver_phone);
 
     // Pesan untuk pengirim
-        {{-- PERBAIKAN DATA PENERIMA UNTUK WA --}}
+    // --- PERBAIKAN: Menggunakan komentar PHP ( // ) ---
     $waMessageSender = urlencode("Halo " . $pesanan->sender_name . ", pesanan Anda dengan resi " . $pesanan->resi . " untuk " . $pesanan->receiver_name . " telah berhasil dibuat. Anda dapat melihat detail resi di sini: " . route('admin.pesanan.cetak_thermal', ['resi' => $pesanan->resi]));
     $waPhoneSender = preg_replace('/^0/', '62', $pesanan->sender_phone);
         @endphp
@@ -164,13 +164,10 @@
 
             <div class="pl-2">
                 <p class="label"><strong>PENERIMA:</strong></p>
-                {{-- PERBAIKAN: Menggunakan receiver_name --}}
                 <p class="value">{{ $pesanan->receiver_name }}</p>
-                {{-- PERBAIKAN: Menggunakan receiver_phone --}}
                 <p class="text-xs">{{ $pesanan->receiver_phone }}</p>
                 <p class="text-xs leading-snug mt-1">
                     {{ implode(', ', array_filter([
-                        {{-- PERBAIKAN: Menggunakan receiver_address --}}
                         $pesanan->receiver_address,
                         $pesanan->receiver_village,
                         $pesanan->receiver_district,
