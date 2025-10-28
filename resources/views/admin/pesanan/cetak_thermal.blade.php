@@ -55,24 +55,21 @@
 
     <div class="no-print p-3 text-center bg-white border-b border-gray-200 shadow-sm sticky top-0 z-10">
         @php
-    $backUrl = url()->previous();
+            $backUrl = url()->previous();
 
-    if (Auth::check()) {
-        if (Auth::user()->hasRole('Admin')) {
-            $backUrl = route('admin.pesanan.index');
-        } elseif (Auth::user()->hasRole('Pelanggan')) {
-            $backUrl = route('customer.pesanan.index');
-        }
-    }
-    
-        // --- PERBAIKAN: Menggunakan komentar PHP ( // ) ---
-    $waMessageReceiver = urlencode("Halo " . $pesanan->receiver_name . ", pesanan Anda dengan resi " . $pesanan->resi . " dari " . $pesanan->sender_name . " telah berhasil dibuat. Anda dapat melihat detail resi di sini: " . route('admin.pesanan.cetak_thermal', ['resi' => $pesanan->resi]));
-    $waPhoneReceiver = preg_replace('/^0/', '62', $pesanan->receiver_phone);
+            if (Auth::check()) {
+                if (Auth::user()->hasRole('Admin')) {
+                    $backUrl = route('admin.pesanan.index');
+                } elseif (Auth::user()->hasRole('Pelanggan')) {
+                    $backUrl = route('customer.pesanan.index');
+                }
+            }
+            
+            $waMessageReceiver = urlencode("Halo " . $pesanan->receiver_name . ", pesanan Anda dengan resi " . $pesanan->resi . " dari " . $pesanan->sender_name . " telah berhasil dibuat. Anda dapat melihat detail resi di sini: " . route('admin.pesanan.cetak_thermal', ['resi' => $pesanan->resi]));
+            $waPhoneReceiver = preg_replace('/^0/', '62', $pesanan->receiver_phone);
 
-    // Pesan untuk pengirim
-    // --- PERBAIKAN: Menggunakan komentar PHP ( // ) ---
-    $waMessageSender = urlencode("Halo " . $pesanan->sender_name . ", pesanan Anda dengan resi " . $pesanan->resi . " untuk " . $pesanan->receiver_name . " telah berhasil dibuat. Anda dapat melihat detail resi di sini: " . route('admin.pesanan.cetak_thermal', ['resi' => $pesanan->resi]));
-    $waPhoneSender = preg_replace('/^0/', '62', $pesanan->sender_phone);
+            $waMessageSender = urlencode("Halo " . $pesanan->sender_name . ", pesanan Anda dengan resi " . $pesanan->resi . " untuk " . $pesanan->receiver_name . " telah berhasil dibuat. Anda dapat melihat detail resi di sini: " . route('admin.pesanan.cetak_thermal', ['resi' => $pesanan->resi]));
+            $waPhoneSender = preg_replace('/^0/', '62', $pesanan->sender_phone);
         @endphp
 
         <button onclick="window.print()" class="bg-indigo-600 text-white px-5 py-2 rounded-md shadow hover:bg-indigo-700 transition">🖨 Cetak Resi</button>
@@ -84,48 +81,20 @@
     <div class="page">
 
         @php
-            // ---------- BLok partnerLogos & logoPath (DIPULIHKAN) ----------
-            $partnerLogos = [
-                'JNE' => 'https://upload.wikimedia.org/wikipedia/commons/9/92/New_Logo_JNE.png',
-                'J&T EXPRESS' => 'https://upload.wikimedia.org/wikipedia/commons/0/01/J%26T_Express_logo.svg',
-                'J&T CARGO' => 'https://i.pinimg.com/736x/22/cf/92/22cf92368c1f901d17e38e99061f4849.jpg',
-                'WAHANA EXPRESS' => 'https://account.wahana.com/assets/images/Logo.png',
-                'POS INDONESIA' => 'https://kiriminaja.com/assets/home-v4/pos.png',
-                'SAP EXPRESS' => 'https://kiriminaja.com/assets/home-v4/sap.png',
-                'INDAH CARGO' => 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEicOAaLoH2eElQ93_gbkzhvk4dRhWVlk5wQsGgilihIB58321aHchlJLdjyz1ToS25P_nWrHJ_E4QBiW_OVlI7tQt7cZ5I0HZqk6StS7jZltLVvDXp2d5ZDLB9yklhV4x6z2iXyURURDv_unhf-U6vyiD_8to9OC4PBwMwyU_5wAqOiCl6tKiaTA-ri1Q/s851/Logo%20Indah%20Logistik%20Cargo@0.5x.png',
-                'LION PARCEL' => 'https://kiriminaja.com/assets/home-v4/lion.png',
-                'ID EXPRESS' => 'https://assets.bukalapak.com/beagle/images/courier_logo/id-express.png',
-                'SPX EXPRESS' => 'https://images.seeklogo.com/logo-png/49/1/spx-express-indonesia-logo-png_seeklogo-499970.png',
-                'NCS' => 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjxj3iyyZEjK2L4A4yCIr_E-4W3hF2lk_yb-t0Oj2oFPErCPCMHie5LHqps02xMb6sNa-Gqz5NSX_P_hzWlYpUpJUlCD4iN6_QxiSG9fzY4bsZ9XvLFDn7HCiORtNvIlPfuQbSSdW96p7x7uN8ek3FWyHW9c2bznrFBQkoLd5A9sVAFVKWLhUhT3Dxh/s320/GKL41_NCS%20Kurir%20-%20Koleksilogo.com.jpg',
-                'SENTRAL CARGO' => 'https://kiriminaja.com/assets/home-v4/central-cargo.png',
-                'SICEPAT' => 'https://kiriminaja.com/assets/home-v4/sicepat.png',
-                'NINJA XPRESS' => 'https://kiriminaja.com/assets/home-v4/ninja.png',
-                'PAXEL' => 'https://paxel.co/images/logo-paxel.png',
-                'ANTERAJA' => 'https://kiriminaja.com/assets/home-v4/anter-aja.png',
-                'TIKI' => 'https://kiriminaja.com/assets/home-v4/tiki.png',
-                'REX' => 'https://assets.bukalapak.com/beagle/images/courier_logo/rex.png',
-                'FIRST LOGISTICS' => 'https://assets.bukalapak.com/beagle/images/courier_logo/first-logistics.png',
-                'LEX (LAZADA EXPRESS)' => 'https://sellercenter.lazada.co.id/assets/images/knowledge-management/lex-logo.png',
-                'OEXPRESS' => 'https://assets.autokirim.com/courier/oexpress.png',
-                'BORZO' => 'https://kiriminaja.com/assets/home-v4/borzo.png',
-                'GOSEND' => 'https://kiriminaja.com/assets/home-v4/gosend.png',
-                'GRABEXPRESS' => 'https://kiriminaja.com/assets/home-v4/grab.svg',
-            ];
+            // Menggunakan helper untuk mem-parsing metode pengiriman
+            // Pastikan helper ini ada dan berfungsi dengan benar
+            $ship = \App\Helpers\ShippingHelper::parseShippingMethod($pesanan->expedition);
 
-            // Ubah semua key menjadi uppercase
-            $partnerLogos = array_change_key_case($partnerLogos, CASE_UPPER);
-
-            $partnerKey = strtoupper(explode('-', $pesanan->expedition)[1] ?? '');
-            $partnerLogoUrl = $partnerLogos[$partnerKey] ?? 'https://placehold.co/150x50/e2e8f0/334155?text=' . urlencode($partnerKey);
-
-            $expeditionParts = explode('-', $pesanan->expedition);
-            $expeditionName = $expeditionParts[1] ?? 'POSINDONESIA';
-            $expeditionService = $expeditionParts[2] ?? 'Regular';
+            $expeditionName = $ship['expedition'] ?? 'SANCACA'; // Default jika tidak ditemukan
+            $expeditionService = $ship['service'] ?? 'Regular'; // Default jika tidak ditemukan
+            
+            // Format nama ekspedisi menjadi lowercase dan tanpa spasi untuk path logo
             $logoPath = strtolower(str_replace(' ', '', $expeditionName));
         @endphp
 
         <div class="flex justify-between items-center border-b border-dashed border-gray-500 pb-2">
             <img src="https://tokosancaka.biz.id/storage/uploads/sancaka.png" alt="Sancaka Express" class="h-10" onerror="this.style.display='none'">
+            {{-- Menggunakan logo dari storage berdasarkan expeditionName dari helper --}}
             <img src="{{ asset('storage/logo-ekspedisi/' . $logoPath . '.png') }}" alt="{{ $expeditionName }} Logo" class="h-8">
         </div>
 
@@ -188,8 +157,8 @@
             <div><p class="label"><strong>ORDER ID</strong></p><p class="value">{{ $pesanan->nomor_invoice }}</p></div>
             <div><p class="label"><strong>BERAT</strong></p><p class="value">{{ $pesanan->weight }} gr</p></div>
             <div><p class="label"><strong>VOLUME</strong></p><p class="value">{{ $pesanan->length ?? 0 }}x{{ $pesanan->width ?? 0 }}x{{ $pesanan->height ?? 0 }} cm</p></div>
-            <div><p class="label"><strong>LAYANAN</strong></p><p class="value">{{ strtoupper($pesanan->service_type) }}</p></div>
-            <div><p class="label"><strong>EKSPEDISI</strong></p><p class="value">{{ strtoupper(explode('-', $pesanan->expedition)[1]) }}</p></div>
+            <div><p class="label"><strong>LAYANAN</strong></p><p class="value">{{ strtoupper($expeditionService) }}</p></div> {{-- Menggunakan $expeditionService dari helper --}}
+            <div><p class="label"><strong>EKSPEDISI</strong></p><p class="value">{{ strtoupper($expeditionName) }}</p></div> {{-- Menggunakan $expeditionName dari helper --}}
         </div>
 
         @if($pesanan->payment_method == 'COD' || $pesanan->payment_method == 'CODBARANG')
