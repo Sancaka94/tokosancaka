@@ -95,7 +95,7 @@
         <div class="flex justify-between items-center border-b border-dashed border-gray-500 pb-2">
             <img src="https://tokosancaka.biz.id/storage/uploads/sancaka.png" alt="Sancaka Express" class="h-10" onerror="this.style.display='none'">
             {{-- Menggunakan logo dari storage berdasarkan expeditionName dari helper --}}
-            <img src="{{ asset('storage/logo-ekspedisi/' . $logoPath . '.png') }}" alt="{{ $expeditionName }} Logo" class="h-8">
+            <img src="{{ asset('public/storage/logo-ekspedisi/' . $logoPath . '.png') }}" alt="{{ $expeditionName }} Logo" class="h-8">
         </div>
 
         <div class="text-center mt-2">
