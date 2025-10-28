@@ -85,12 +85,17 @@
             // Pastikan helper ini ada dan berfungsi dengan benar
             $ship = \App\Helpers\ShippingHelper::parseShippingMethod($pesanan->expedition);
 
-            $expeditionName = $ship['expedition'] ?? 'SANCACA'; // Default jika tidak ditemukan
-            $expeditionService = $ship['service'] ?? 'Regular'; // Default jika tidak ditemukan
+            $expeditionName = $ship['expedition'] ?? $ship['courier_name'] ?? 'SANCACA'; // Coba ambil 'courier_name' juga
+            $expeditionService = $ship['service'] ?? $ship['service_name'] ?? 'Regular'; // Coba ambil 'service_name' juga
             
             // Format nama ekspedisi menjadi lowercase dan tanpa spasi untuk path logo
             $logoPath = strtolower(str_replace(' ', '', $expeditionName));
-        @endphp
+
+            // ---- TAMBAHKAN BARIS INI UNTUK DEBUGGING ----
+            dd($pesanan->expedition, $ship, $logoPath, $expeditionName); 
+            // ---------------------------------------------
+
+        @endphp // <-- Sebelum ini
 
         <div class="flex justify-between items-center border-b border-dashed border-gray-500 pb-2">
             <img src="https://tokosancaka.biz.id/storage/uploads/sancaka.png" alt="Sancaka Express" class="h-10" onerror="this.style.display='none'">
