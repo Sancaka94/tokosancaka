@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <!-- Favicon -->
     <link rel="icon" type="image/png" href="https://tokosancaka.com/storage/uploads/sancaka.png">
 
     <title>Cetak Resi - {{ $pesanan->resi }}</title>
@@ -54,7 +53,6 @@
 </head>
 <body>
 
-    <!-- Toolbar -->
     <div class="no-print p-3 text-center bg-white border-b border-gray-200 shadow-sm sticky top-0 z-10">
         @php
     $backUrl = url()->previous();
@@ -66,23 +64,23 @@
             $backUrl = route('customer.pesanan.index');
         }
     }
-     
-      // Pesan untuk penerima
-    $waMessageReceiver = urlencode("Halo " . $pesanan->nama_pembeli . ", pesanan Anda dengan resi " . $pesanan->resi . " dari " . $pesanan->sender_name . " telah berhasil dibuat. Anda dapat melihat detail resi di sini: " . route('admin.pesanan.cetak_thermal', ['resi' => $pesanan->resi]));
-    $waPhoneReceiver = preg_replace('/^0/', '62', $pesanan->telepon_pembeli);
+    
+        {{-- PERBAIKAN DATA PENERIMA UNTUK WA --}}
+    $waMessageReceiver = urlencode("Halo " . $pesanan->receiver_name . ", pesanan Anda dengan resi " . $pesanan->resi . " dari " . $pesanan->sender_name . " telah berhasil dibuat. Anda dapat melihat detail resi di sini: " . route('admin.pesanan.cetak_thermal', ['resi' => $pesanan->resi]));
+    $waPhoneReceiver = preg_replace('/^0/', '62', $pesanan->receiver_phone);
 
     // Pesan untuk pengirim
-    $waMessageSender = urlencode("Halo " . $pesanan->sender_name . ", pesanan Anda dengan resi " . $pesanan->resi . " untuk " . $pesanan->nama_pembeli . " telah berhasil dibuat. Anda dapat melihat detail resi di sini: " . route('admin.pesanan.cetak_thermal', ['resi' => $pesanan->resi]));
+        {{-- PERBAIKAN DATA PENERIMA UNTUK WA --}}
+    $waMessageSender = urlencode("Halo " . $pesanan->sender_name . ", pesanan Anda dengan resi " . $pesanan->resi . " untuk " . $pesanan->receiver_name . " telah berhasil dibuat. Anda dapat melihat detail resi di sini: " . route('admin.pesanan.cetak_thermal', ['resi' => $pesanan->resi]));
     $waPhoneSender = preg_replace('/^0/', '62', $pesanan->sender_phone);
         @endphp
 
         <button onclick="window.print()" class="bg-indigo-600 text-white px-5 py-2 rounded-md shadow hover:bg-indigo-700 transition">🖨 Cetak Resi</button>
         <a href="https://wa.me/{{ $waPhoneReceiver }}?text={{ $waMessageReceiver }}" target="_blank" class="ml-2 bg-green-600 text-white px-5 py-2 rounded-md shadow hover:bg-green-700 transition">📱 Kirim WA (Penerima)</a>
         <a href="https://wa.me/{{ $waPhoneSender }}?text={{ $waMessageSender }}" target="_blank" class="ml-2 bg-green-600 text-white px-5 py-2 rounded-md shadow hover:bg-green-700 transition">📱 Kirim WA (Pengirim)</a>
-        <a href="{{ $backUrl }}" class="ml-2 bg-gray-200 text-gray-800 px-5 py-2 rounded-md shadow hover:bg-gray-300 transition">⬅ Kembali</a>
+        <a href="{{ $backUrl }}" class="ml-2 bg-gray-200 text-gray-800 px-5 py-2 rounded-md shadow hover:bg-gray-300 transition">← Kembali</a>
     </div>
 
-    <!-- Halaman Resi -->
     <div class="page">
 
         @php
@@ -126,21 +124,17 @@
             $logoPath = strtolower(str_replace(' ', '', $expeditionName));
         @endphp
 
-        <!-- Header -->
         <div class="flex justify-between items-center border-b border-dashed border-gray-500 pb-2">
             <img src="https://tokosancaka.biz.id/storage/uploads/sancaka.png" alt="Sancaka Express" class="h-10" onerror="this.style.display='none'">
             <img src="{{ asset('storage/logo-ekspedisi/' . $logoPath . '.png') }}" alt="{{ $expeditionName }} Logo" class="h-8">
         </div>
 
-        <!-- Barcode Resi -->
         <div class="text-center mt-2">
             <p class="font-bold text-sm tracking-wide"><strong>RESI SANCAKA</strong></p>
             <svg id="barcodeSancaka" class="barcode"></svg>
         </div>
 
-        <!-- Pengirim & Penerima serta Detail Paket & Barcode 2D -->
         <div class="grid grid-cols-2 gap-3 mt-2 border-b border-dashed border-gray-400 pb-2">
-            <!-- Kolom Kiri: Pengirim & Rincian Paket -->
             <div class="pr-2">
                 <p class="label"><strong>PENGIRIM:</strong></p>
                 <p class="value">{{ $pesanan->sender_name }}</p>
@@ -168,14 +162,16 @@
                 </div>
             </div>
 
-            <!-- Kolom Kanan: Penerima & Barcode 2D -->
             <div class="pl-2">
                 <p class="label"><strong>PENERIMA:</strong></p>
-                <p class="value">{{ $pesanan->nama_pembeli }}</p>
-                <p class="text-xs">{{ $pesanan->telepon_pembeli }}</p>
+                {{-- PERBAIKAN: Menggunakan receiver_name --}}
+                <p class="value">{{ $pesanan->receiver_name }}</p>
+                {{-- PERBAIKAN: Menggunakan receiver_phone --}}
+                <p class="text-xs">{{ $pesanan->receiver_phone }}</p>
                 <p class="text-xs leading-snug mt-1">
                     {{ implode(', ', array_filter([
-                        $pesanan->alamat_pengiriman,
+                        {{-- PERBAIKAN: Menggunakan receiver_address --}}
+                        $pesanan->receiver_address,
                         $pesanan->receiver_village,
                         $pesanan->receiver_district,
                         $pesanan->receiver_regency,
@@ -191,7 +187,6 @@
             </div>
         </div>
 
-        <!-- Detail Order -->
         <div class="grid grid-cols-3 gap-2 text-center mt-2 border-b border-dashed border-gray-400 pb-2">
             <div><p class="label"><strong>ORDER ID</strong></p><p class="value">{{ $pesanan->nomor_invoice }}</p></div>
             <div><p class="label"><strong>BERAT</strong></p><p class="value">{{ $pesanan->weight }} gr</p></div>
@@ -200,7 +195,6 @@
             <div><p class="label"><strong>EKSPEDISI</strong></p><p class="value">{{ strtoupper(explode('-', $pesanan->expedition)[1]) }}</p></div>
         </div>
 
-        <!-- COD -->
         @if($pesanan->payment_method == 'COD' || $pesanan->payment_method == 'CODBARANG')
         <div class="text-center mt-2 border-b border-dashed border-gray-400 pb-2">
             <p class="label">HARGA COD</p>
@@ -208,7 +202,6 @@
         </div>
         @endif
 
-        <!-- Resi Aktual -->
         @if($pesanan->resi_aktual)
         <div class="text-center mt-3 pt-2 border-t border-dashed border-gray-400">
             <p class="label">RESI AKTUAL ({{ $pesanan->jasa_ekspedisi_aktual }})</p>
@@ -216,7 +209,6 @@
         </div>
         @endif
 
-        <!-- Footer -->
         <div class="mt-auto pt-3 text-center text-xs">
             <p>Terima kasih telah menggunakan <span class="font-semibold">Sancaka Express</span>.</p>
             <p class="font-bold mt-1">{{ \Carbon\Carbon::parse($pesanan->created_at)->format('d M Y H:i') }}</p>
