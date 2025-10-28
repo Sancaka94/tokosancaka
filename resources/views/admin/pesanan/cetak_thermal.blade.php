@@ -64,7 +64,7 @@
                     $backUrl = route('customer.pesanan.index');
                 }
             }
-            
+
             $waMessageReceiver = urlencode("Halo " . $pesanan->receiver_name . ", pesanan Anda dengan resi " . $pesanan->resi . " dari " . $pesanan->sender_name . " telah berhasil dibuat. Anda dapat melihat detail resi di sini: " . route('admin.pesanan.cetak_thermal', ['resi' => $pesanan->resi]));
             $waPhoneReceiver = preg_replace('/^0/', '62', $pesanan->receiver_phone);
 
@@ -81,26 +81,25 @@
     <div class="page">
 
         @php
-            // Menggunakan helper untuk mem-parsing metode pengiriman
-            // Pastikan helper ini ada dan berfungsi dengan benar
+            // Menggunakan helper
             $ship = \App\Helpers\ShippingHelper::parseShippingMethod($pesanan->expedition);
 
-            $expeditionName = $ship['expedition'] ?? $ship['courier_name'] ?? 'SANCACA'; // Coba ambil 'courier_name' juga
-            $expeditionService = $ship['service'] ?? $ship['service_name'] ?? 'Regular'; // Coba ambil 'service_name' juga
-            
-            // Format nama ekspedisi menjadi lowercase dan tanpa spasi untuk path logo
-            $logoPath = strtolower(str_replace(' ', '', $expeditionName));
+            $expeditionName = $ship['courier_name'] ?? 'SANCACA';
+            $expeditionService = $ship['service_name'] ?? 'Regular';
+            $logoUrlFromHelper = $ship['logo_url'] ?? null; // Ambil URL logo dari helper
 
-            // ---- TAMBAHKAN BARIS INI UNTUK DEBUGGING ----
-            dd($pesanan->expedition, $ship, $logoPath, $expeditionName); 
-            // ---------------------------------------------
+            // Format nama ekspedisi menjadi lowercase dan tanpa spasi untuk path logo LOKAL (sebagai fallback)
+            $localLogoPath = strtolower(str_replace(' ', '', $expeditionName));
+            $localLogoAssetUrl = asset('storage/logo-ekspedisi/' . $localLogoPath . '.png');
 
-        @endphp // <-- Sebelum ini
+            // Prioritaskan URL dari helper, jika tidak ada, gunakan URL asset lokal
+            $finalLogoUrl = $logoUrlFromHelper ?: $localLogoAssetUrl;
+        @endphp
 
         <div class="flex justify-between items-center border-b border-dashed border-gray-500 pb-2">
             <img src="https://tokosancaka.biz.id/storage/uploads/sancaka.png" alt="Sancaka Express" class="h-10" onerror="this.style.display='none'">
-            {{-- Menggunakan logo dari storage berdasarkan expeditionName dari helper --}}
-            <img src="{{ asset('storage/logo-ekspedisi/' . $logoPath . '.png') }}" alt="{{ $expeditionName }} Logo" class="h-8">
+            {{-- Menggunakan $finalLogoUrl --}}
+            <img src="{{ $finalLogoUrl }}" alt="{{ $expeditionName }} Logo" class="h-8">
         </div>
 
         <div class="text-center mt-2">
@@ -123,7 +122,7 @@
                         $pesanan->sender_postal_code,
                     ])) }}
                 </p>
-                
+
                 {{-- Rincian Paket --}}
                 <div class="mt-2 pt-2">
                     <p class="label"><strong>Rincian Paket:</strong></p>
@@ -162,8 +161,8 @@
             <div><p class="label"><strong>ORDER ID</strong></p><p class="value">{{ $pesanan->nomor_invoice }}</p></div>
             <div><p class="label"><strong>BERAT</strong></p><p class="value">{{ $pesanan->weight }} gr</p></div>
             <div><p class="label"><strong>VOLUME</strong></p><p class="value">{{ $pesanan->length ?? 0 }}x{{ $pesanan->width ?? 0 }}x{{ $pesanan->height ?? 0 }} cm</p></div>
-            <div><p class="label"><strong>LAYANAN</strong></p><p class="value">{{ strtoupper($expeditionService) }}</p></div> {{-- Menggunakan $expeditionService dari helper --}}
-            <div><p class="label"><strong>EKSPEDISI</strong></p><p class="value">{{ strtoupper($expeditionName) }}</p></div> {{-- Menggunakan $expeditionName dari helper --}}
+            <div><p class="label"><strong>LAYANAN</strong></p><p class="value">{{ strtoupper($expeditionService) }}</p></div> {{-- Menggunakan $expeditionService --}}
+            <div><p class="label"><strong>EKSPEDISI</strong></p><p class="value">{{ strtoupper($expeditionName) }}</p></div> {{-- Menggunakan $expeditionName --}}
         </div>
 
         @if($pesanan->payment_method == 'COD' || $pesanan->payment_method == 'CODBARANG')
