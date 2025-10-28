@@ -930,7 +930,6 @@ class PesananController extends Controller
         int $ansuransi_fee, int $cod_fee, int $total_paid,
         Request $request // Tambahkan $request di sini
     ) {
-        // ... (fungsi _sendWhatsappNotification - gunakan biaya terpisah) ...
         // Ambil nomor asli dari request jika ada, fallback ke data yg mungkin disimpan sebelumnya, fallback ke data pesanan
         $displaySenderPhone = $request->input('sender_phone') ?? $validatedData['sender_phone_original'] ?? $pesanan->sender_phone;
         $displayReceiverPhone = $request->input('receiver_phone') ?? $validatedData['receiver_phone_original'] ?? $pesanan->receiver_phone;
@@ -948,42 +947,65 @@ class PesananController extends Controller
         $service_display = trim(ucwords(strtolower(str_replace('_', ' ', $exp_vendor))) . ' ' . ucwords(strtolower(str_replace('_', ' ', $exp_service_type))));
         $detailPaket .= "Ekspedisi: " . ($service_display ?: '-') . "\n";
         $detailPaket .= "Layanan: " . ucwords($pesanan->service_type ?? '-');
+        
+        // --- PERBAIKAN 1: Logika Resi ---
         if ($pesanan->resi) {
             $detailPaket .= "\nResi: *" . $pesanan->resi . "*";
         } else {
-             $detailPaket .= "\nResi: -";
+            // Tampilkan 'Menunggu Resi' jika $pesanan->resi masih null
+            $detailPaket .= "\nResi: Menunggu Resi";
         }
+        // --- AKHIR PERBAIKAN 1 ---
 
 
+        // --- PERBAIKAN 2: Logika Rincian Biaya ---
         $rincianBiaya = "*Rincian Biaya:*\n- Ongkir: Rp " . number_format($shipping_cost, 0, ',', '.');
         $itemPrice = $validatedData['item_price'] ?? $pesanan->item_price ?? 0;
-        $rincianBiaya .= "\n- Nilai Barang: Rp " . number_format($itemPrice, 0, ',', '.');
-        if ($ansuransi_fee > 0) $rincianBiaya .= "\n- Asuransi: Rp " . number_format($ansuransi_fee, 0, ',', '.');
-        if ($cod_fee > 0) $rincianBiaya .= "\n- Biaya COD: Rp " . number_format($cod_fee, 0, ',', '.');
+        
+        $use_insurance = $ansuransi_fee > 0;
+        $is_cod_barang = $pesanan->payment_method === 'CODBARANG';
+        $is_cod_custom = $pesanan->payment_method === 'COD';
+        $is_lunas_or_saldo = !$is_cod_barang && !$is_cod_custom;
+
+        // Aturan tampilkan Nilai Barang:
+        // 1. Jika pakai asuransi
+        // 2. Jika CODBARANG
+        // 3. Jika Lunas (Tripay/Saldo)
+        if ($use_insurance || $is_cod_barang || $is_lunas_or_saldo) {
+            if ($itemPrice > 0) { // Hanya tampilkan jika harga barang di atas 0
+                $rincianBiaya .= "\n- Nilai Barang: Rp " . number_format($itemPrice, 0, ',', '.');
+            }
+        }
+        
+        if ($use_insurance) { // Tampilkan HANYA jika > 0
+            $rincianBiaya .= "\n- Asuransi: Rp " . number_format($ansuransi_fee, 0, ',', '.');
+        }
+        if ($cod_fee > 0) { // Tampilkan HANYA jika > 0
+            $rincianBiaya .= "\n- Biaya COD: Rp " . number_format($cod_fee, 0, ',', '.');
+        }
+        // --- AKHIR PERBAIKAN 2 ---
 
 
-         // --- GANTI BLOK INI ---
+        // --- PERBAIKAN 3: Logika Status Pembayaran ---
+        $statusBayar = "⏳ Menunggu Pembayaran"; // Default
 
-$statusBayar = "⏳ Menunggu Pembayaran"; // Default
-
-        // PERBAIKAN: Cek COD/CODBARANG harus di urutan PERTAMA
-if (in_array($pesanan->payment_method, ['COD', 'CODBARANG'])) {
-$statusBayar = "⏳ Bayar di Tempat (COD)";
-} 
+        // Cek COD/CODBARANG harus di urutan PERTAMA
+        if (in_array($pesanan->payment_method, ['COD', 'CODBARANG'])) {
+            $statusBayar = "⏳ Bayar di Tempat (COD)";
+        } 
         // Cek Lunas via Saldo
         elseif ($pesanan->payment_method === 'Potong Saldo') {
-$statusBayar = "✅ Lunas via Saldo";
-} 
+            $statusBayar = "✅ Lunas via Saldo";
+        } 
         // Cek Lunas via Tripay (status 'Menunggu Pickup' dll BUKAN COD)
         elseif ($pesanan->status_pesanan === 'PAID' || in_array($pesanan->status, ['Menunggu Pickup', 'Diproses', 'Terkirim', 'Pembayaran Lunas (Gagal Auto-Resi)', 'Pembayaran Lunas (Error Kirim API)'])) {
-$statusBayar = "✅ Lunas";
-} 
+            $statusBayar = "✅ Lunas";
+        } 
         // Cek Gagal
         elseif (in_array($pesanan->status, ['Gagal Bayar', 'Kadaluarsa'])) {
-$statusBayar = "❌ Pembayaran Gagal/Kadaluarsa";
-}
-
-        // --- AKHIR BLOK PENGGANTIAN ---
+            $statusBayar = "❌ Pembayaran Gagal/Kadaluarsa";
+        }
+        // --- AKHIR PERBAIKAN 3 ---
 
 
         $messageTemplate = <<<TEXT
@@ -1012,6 +1034,7 @@ https://tokosancaka.com/tracking/search?resi={LINK_RESI}
 *Manajemen Sancaka*
 TEXT;
 
+        // Logika $linkResi sudah benar, ia akan pakai invoice jika resi belum ada
         $linkResi = $pesanan->resi ?? $pesanan->nomor_invoice;
         $message = str_replace(
             [
@@ -1042,16 +1065,15 @@ TEXT;
         $receiverWa = preg_replace('/^0/', '62', $this->_sanitizePhoneNumber($pesanan->receiver_phone));
 
         try {
-             Log::info("Mengirim WA Notif ke Pengirim ($senderWa) untuk {$pesanan->nomor_invoice}");
+            Log::info("Mengirim WA Notif ke Pengirim ($senderWa) untuk {$pesanan->nomor_invoice}");
             if ($senderWa) FonnteService::sendMessage($senderWa, $message);
 
-             Log::info("Mengirim WA Notif ke Penerima ($receiverWa) untuk {$pesanan->nomor_invoice}");
+            Log::info("Mengirim WA Notif ke Penerima ($receiverWa) untuk {$pesanan->nomor_invoice}");
             if ($receiverWa) FonnteService::sendMessage($receiverWa, $message);
-             Log::info("Notifikasi WA Terkirim (atau attempt) untuk Invoice: " . $pesanan->nomor_invoice);
+            Log::info("Notifikasi WA Terkirim (atau attempt) untuk Invoice: " . $pesanan->nomor_invoice);
         } catch (Exception $e) {
-             Log::error('Fonnte Service sendMessage failed: ' . $e->getMessage(), ['invoice' => $pesanan->nomor_invoice]);
+            Log::error('Fonnte Service sendMessage failed: ' . $e->getMessage(), ['invoice' => $pesanan->nomor_invoice]);
         }
     }
-
 } // Akhir Class
 
