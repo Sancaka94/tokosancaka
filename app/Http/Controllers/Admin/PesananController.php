@@ -673,7 +673,7 @@ class PesananController extends Controller
          // Ambil semua field yang relevan dari validasi
         $fieldsToSave = array_keys($this->_validateOrderRequest(request())); // Ambil keys dari validasi
         // Hapus field yang tidak ada di tabel pesanan atau tidak ingin disimpan langsung
-        $fieldsToExclude = ['save_sender', 'save_receiver', 'expedition', 'customer_email', 'sender_phone_original', 'receiver_phone_original']; // Tambahkan _original
+        $fieldsToExclude = ['save_sender', 'save_receiver', 'customer_email', 'sender_phone_original', 'receiver_phone_original']; // Tambahkan _original
         $fieldsToSave = array_diff($fieldsToSave, $fieldsToExclude);
 
         $pesananCoreData = collect($validatedData)->only($fieldsToSave)->all();
