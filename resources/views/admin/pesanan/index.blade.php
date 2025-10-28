@@ -1,20 +1,3 @@
-Tentu, saya akan perbaiki kode `index.blade.php` Anda.
-
-Masalah "N/A" dan harga yang salah (menampilkan total harga, bukan ongkir) di screenshot Anda terjadi karena dua alasan:
-
-1.  **Data `expedition` Kosong:** Untuk pesanan yang pembayarannya gagal atau "Gagal Auto-Resi" (seperti `...J5JFCG`), kolom `expedition` di database Anda `NULL`. Kode `explode` di *view* Anda gagal, sehingga menampilkan "N/A".
-2.  **Menampilkan Harga yang Salah:** Kode Anda menampilkan `$order->price` (Total Bayar: Rp 5.500) di kolom ongkir, padahal seharusnya menampilkan `$order->shipping_cost` (yang bernilai `Rp 0` untuk pesanan lama yang gagal itu).
-3.  **Aksi Tidak Tersedia:** Tombol "Aksi" (seperti "Detail") hilang untuk pesanan yang gagal, padahal Anda perlu melihat detailnya.
-
-Berikut adalah kode yang sudah diperbaiki secara lengkap. Saya telah memberi tanda `{{-- PERBAIKAN --}}` pada baris-baris yang krusial.
-
------
-
-### `resources/views/admin/pesanan/index.blade.php` (Lengkap & Benar)
-
-Salin dan ganti seluruh isi file Anda dengan kode di bawah ini:
-
-```blade
 {{--
     File: resources/views/admin/pesanan/index.blade.php
     Deskripsi: Halaman untuk menampilkan daftar pesanan dengan tombol aksi yang lengkap.
@@ -258,4 +241,3 @@ Salin dan ganti seluruh isi file Anda dengan kode di bawah ini:
     function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 </script>
 @endpush
-```
