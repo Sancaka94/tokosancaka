@@ -770,7 +770,7 @@ class PesananController extends Controller
 
              // Tentukan insuranceAmount berdasarkan $insurance_cost (dari parameter) > 0
              // Nilai yang diasuransikan adalah harga barang
-            $insuranceAmount = ($insurance_cost > 0) ? (int)$data['item_price'] : 0;
+            $insuranceAmount = ($data['ansuransi'] == 'iya') ? (int)$data['item_price'] : 0;
 
              // Validasi Kirimaja Data IDs
              if (empty($senderData['kirimaja_data']['district_id']) || empty($senderData['kirimaja_data']['subdistrict_id']) ||
