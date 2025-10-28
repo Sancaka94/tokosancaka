@@ -935,16 +935,28 @@ class PesananController extends Controller
         if ($cod_fee > 0) $rincianBiaya .= "\n- Biaya COD: Rp " . number_format($cod_fee, 0, ',', '.');
 
 
-         $statusBayar = "⏳ Menunggu Pembayaran"; // Default
-         if ($pesanan->status_pesanan === 'PAID' || in_array($pesanan->status, ['Menunggu Pickup', 'Diproses', 'Terkirim', 'Pembayaran Lunas (Gagal Auto-Resi)', 'Pembayaran Lunas (Error Kirim API)'])) {
-             $statusBayar = "✅ Lunas";
-         } elseif (in_array($pesanan->payment_method, ['COD', 'CODBARANG'])) {
-             $statusBayar = "⏳ Bayar di Tempat (COD)";
-         } elseif ($pesanan->payment_method === 'Potong Saldo') {
-             $statusBayar = "✅ Lunas via Saldo";
-         } elseif (in_array($pesanan->status, ['Gagal Bayar', 'Kadaluarsa'])) {
-              $statusBayar = "❌ Pembayaran Gagal/Kadaluarsa";
-         }
+         // --- GANTI BLOK INI ---
+
+$statusBayar = "⏳ Menunggu Pembayaran"; // Default
+
+        // PERBAIKAN: Cek COD/CODBARANG harus di urutan PERTAMA
+if (in_array($pesanan->payment_method, ['COD', 'CODBARANG'])) {
+$statusBayar = "⏳ Bayar di Tempat (COD)";
+} 
+        // Cek Lunas via Saldo
+        elseif ($pesanan->payment_method === 'Potong Saldo') {
+$statusBayar = "✅ Lunas via Saldo";
+} 
+        // Cek Lunas via Tripay (status 'Menunggu Pickup' dll BUKAN COD)
+        elseif ($pesanan->status_pesanan === 'PAID' || in_array($pesanan->status, ['Menunggu Pickup', 'Diproses', 'Terkirim', 'Pembayaran Lunas (Gagal Auto-Resi)', 'Pembayaran Lunas (Error Kirim API)'])) {
+$statusBayar = "✅ Lunas";
+} 
+        // Cek Gagal
+        elseif (in_array($pesanan->status, ['Gagal Bayar', 'Kadaluarsa'])) {
+$statusBayar = "❌ Pembayaran Gagal/Kadaluarsa";
+}
+
+        // --- AKHIR BLOK PENGGANTIAN ---
 
 
         $messageTemplate = <<<TEXT
