@@ -76,20 +76,29 @@
     </div>
 
     <div class="mt-8 border-t pt-6">
-        <h3 class="font-semibold text-lg text-gray-700 mb-3">Rincian Biaya</h3>
-        <dl class="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-            <div><dt class="text-gray-500">Harga Barang</dt><dd class="text-gray-800 font-medium">Rp {{ number_format($order->total_harga_barang) }}</dd></div>
-            <div><dt class="text-gray-500">Ongkos Kirim</dt><dd class="text-gray-800 font-medium">Rp {{ number_format($shipping_cost) }}</dd></div>
-            @if($insurance_fee > 0)
-                <div><dt class="text-gray-500">Biaya Asuransi</dt><dd class="text-gray-800 font-medium">Rp {{ number_format($insurance_fee) }}</dd></div>
-            @endif
-            @if($cod_fee > 0)
-                 <div><dt class="text-gray-500">Biaya COD</dt><dd class="text-gray-800 font-medium">Rp {{ number_format($cod_fee) }}</dd></div>
-            @endif
-             <div class="col-span-2 border-t mt-2 pt-2"></div>
-            <div><dt class="text-gray-500 font-bold">Total</dt><dd class="text-gray-800 font-bold text-base">Rp {{ number_format($order->price) }}</dd></div>
-        </dl>
-    </div>
+    <h3 class="font-semibold text-lg text-gray-700 mb-3">Rincian Biaya</h3>
+    <dl class="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+        
+        {{-- Membaca dari kolom 'item_price' (bukan 'total_harga_barang') --}}
+        <div><dt class="text-gray-500">Harga Barang</dt><dd class="text-gray-800 font-medium">Rp {{ number_format($order->item_price ?? $order->total_harga_barang ?? 0) }}</dd></div>
+        
+        {{-- Membaca dari kolom baru 'shipping_cost' --}}
+        <div><dt class="text-gray-500">Ongkos Kirim</dt><dd class="text-gray-800 font-medium">Rp {{ number_format($order->shipping_cost ?? 0) }}</dd></div>
+        
+        {{-- Membaca dari kolom baru 'insurance_cost' --}}
+        @if($order->insurance_cost > 0)
+            <div><dt class="text-gray-500">Biaya Asuransi</dt><dd class="text-gray-800 font-medium">Rp {{ number_format($order->insurance_cost) }}</dd></div>
+        @endif
+
+        {{-- Membaca dari kolom baru 'cod_fee' --}}
+        @if($order->cod_fee > 0)
+            <div><dt class="text-gray-500">Biaya COD</dt><dd class="text-gray-800 font-medium">Rp {{ number_format($order->cod_fee) }}</dd></div>
+        @endif
+
+        <div class="col-span-2 border-t mt-2 pt-2"></div>
+        <div><dt class="text-gray-500 font-bold">Total</dt><dd class="text-gray-800 font-bold text-base">Rp {{ number_format($order->price) }}</dd></div>
+    </dl>
+</div>
 
     @if($order->resi_aktual)
     <div class="mt-8 border-t pt-6">
@@ -105,9 +114,17 @@
         <a href="{{ route('admin.pesanan.index') }}" class="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-300">
             Kembali ke Data Pesanan
         </a>
-        <a href="{{ route('admin.pesanan.cetak_thermal', $order->resi) }}" target="_blank" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 ml-2">
-            Cetak Resi
-        </a>
+        {{-- SESUDAH --Ai --}}
+@if(!empty($order->resi))
+    <a href="{{ route('admin.pesanan.cetak_thermal', $order->resi) }}" target="_blank" class="btn btn-primary">
+        Cetak Resi Thermal
+    </a>
+@else
+    <a href="#" class="btn btn-secondary disabled" aria-disabled="true" 
+       onclick="alert('Resi belum tersedia. Silakan refresh halaman ini dalam beberapa detik.'); return false;">
+        Cetak Resi (Menunggu Resi)
+    </a>
+@endif
     </div>
 
 </div>
