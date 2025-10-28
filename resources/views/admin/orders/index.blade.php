@@ -57,11 +57,6 @@
 @endpush
 
 @section('content')
-{{-- 
-  Wrapper container (container, max-w-7xl, px-4, py-6, dll.) 
-  SEKARANG DISEDIAKAN OLEH layout/admin.blade.php.
-  File ini sekarang hanya berisi card-nya saja.
---}}
 <div class="bg-white shadow border border-gray-200 rounded-lg overflow-hidden">
     
     {{-- HEADER: Pencarian & Tombol Export --}}
@@ -70,8 +65,8 @@
         <form action="{{ route('admin.orders.index') }}" method="GET" class="w-full md:max-w-md">
             <div class="relative">
                 <input type="text" name="search" placeholder="Cari Resi, Invoice, Nama..."
-                    value="{{ request('search') }}"
-                    class="w-full pl-10 pr-4 py-2 text-sm border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"> {{-- Ubah rounded-md ke rounded-lg --}}
+                       value="{{ request('search') }}"
+                       class="w-full pl-10 pr-4 py-2 text-sm border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"> {{-- Ubah rounded-md ke rounded-lg --}}
                 <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
             </div>
             {{-- Menyimpan filter status saat melakukan pencarian --}}
@@ -82,7 +77,7 @@
 
         {{-- Tombol Export --}}
         <button type="button" data-bs-toggle="modal" data-bs-target="#exportModal"
-            class="inline-flex items-center justify-center w-full md:w-auto px-4 py-2 bg-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-300 transition duration-150 ease-in-out whitespace-nowrap"> {{-- Ubah gaya tombol export --}}
+                class="inline-flex items-center justify-center w-full md:w-auto px-4 py-2 bg-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-300 transition duration-150 ease-in-out whitespace-nowrap"> {{-- Ubah gaya tombol export --}}
             <i class="fas fa-file-export mr-2"></i> Export
         </button>
     </div>
@@ -104,30 +99,27 @@
 
         {{-- Tombol "Semua" --}}
         <a href="{{ route('admin.orders.index', request()->except('status', 'page')) }}"
-            class="px-3 py-1 text-sm font-medium rounded-full transition duration-150 ease-in-out focus:outline-none whitespace-nowrap
-            {{ !$currentStatus ? 'bg-green-600 text-white shadow' : 'bg-gray-200 text-gray-600 hover:bg-gray-300' }}"> {{-- Ubah gaya filter --}}
+           class="px-3 py-1 text-sm font-medium rounded-full transition duration-150 ease-in-out focus:outline-none whitespace-nowrap
+           {{ !$currentStatus ? 'bg-green-600 text-white shadow' : 'bg-gray-200 text-gray-600 hover:bg-gray-300' }}"> {{-- Ubah gaya filter --}}
             Semua
         </a>
 
         {{-- Loop Tombol Filter Dinamis --}}
         @foreach ($statusFilters as $key => $label)
             <a href="{{ route('admin.orders.index', array_merge(request()->query(), ['status' => $key, 'page' => 1])) }}"
-                class="px-3 py-1 text-sm font-medium rounded-full transition duration-150 ease-in-out focus:outline-none whitespace-nowrap
-                {{ $currentStatus == $key ? 'bg-blue-600 text-white shadow' : 'bg-gray-200 text-gray-600 hover:bg-gray-300' }}"> {{-- Ubah gaya filter --}}
-                {{ $label }}
+               class="px-3 py-1 text-sm font-medium rounded-full transition duration-150 ease-in-out focus:outline-none whitespace-nowrap
+               {{ $currentStatus == $key ? 'bg-blue-600 text-white shadow' : 'bg-gray-200 text-gray-600 hover:bg-gray-300' }}"> {{-- Ubah gaya filter --}}
+               {{ $label }}
             </a>
         @endforeach
     </div>
 
     {{-- TABEL --}}
-    {{-- Tambahkan kembali wrapper overflow-x-auto di sini --}}
     <div class="overflow-x-auto">
-        {{-- Hapus min-w-full dari tabel --}}
         <table class="text-sm text-gray-700 divide-y divide-gray-200"> 
             <thead class="bg-red-100"> {{-- Ubah background header --}}
                 <tr>
                     {{-- Header Tabel --}}
-                    {{-- 'sticky top-0' membuat header 'menempel' di atas saat scroll vertikal --}}
                     <th scope="col" class="sticky top-0 z-10 bg-red-100 px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider whitespace-nowrap">No</th> {{-- Ubah bg & text color --}}
                     <th scope="col" class="sticky top-0 z-10 bg-red-100 px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider min-w-[100px] whitespace-nowrap">ID</th> {{-- Ubah bg & text color --}}
                     <th scope="col" class="sticky top-0 z-10 bg-red-100 px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider min-w-[100px] whitespace-nowrap">Tipe</th> {{-- Ubah bg & text color --}}
@@ -138,18 +130,11 @@
                     <th scope="col" class="sticky top-0 z-10 bg-red-100 px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider min-w-[200px] whitespace-nowrap"><strong>Isi Paket</strong></th> {{-- Ubah bg & text color, tambah strong --}}
                     <th scope="col" class="sticky top-0 z-10 bg-red-100 px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider min-w-[200px] whitespace-nowrap">Tanggal</th> {{-- Ubah bg & text color --}}
                     <th scope="col" class="sticky top-0 z-10 bg-red-100 px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider min-w-[150px] whitespace-nowrap"><strong>Status</strong></th> {{-- Ubah bg & text color, tambah strong --}}
-                    {{-- Kolom Aksi: 'sticky right-0' membuatnya 'menempel' di kanan saat scroll horizontal --}}
                     <th scope="col" class="sticky top-0 right-0 z-20 bg-red-100 px-4 py-3 text-right text-xs font-medium text-gray-600 uppercase tracking-wider min-w-[170px] whitespace-nowrap border-l border-gray-300"><strong>Aksi</strong></th> {{-- Ubah bg & text color, tambah strong --}}
                 </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
                 @forelse($orders as $index => $order)
-                    {{-- 
-                      Inisialisasi Variabel.
-                      PENTING: Error 'Unknown column tracking_number' harus diperbaiki di AdminOrderController.php
-                      Ganti ->orWhere('tracking_number', ...) dengan ->orWhere('shipping_reference', ...) untuk query $ordersQuery
-                      dan ganti ->orWhere('resi', ...) / ->orWhere('resi_aktual', ...) untuk query $pesananQuery
-                    --}}
                     @php
                         $isPesanan = isset($order->status_pesanan);
                         
@@ -175,35 +160,31 @@
                                 'Sedang Dikirim' => 'terkirim',
                                 'Selesai' => 'selesai',
                                 'Batal' => 'batal',
+                                // Tambahkan mapping lain jika perlu dari tabel Pesanan
+                                'Pembayaran Lunas (Gagal Auto-Resi)' => 'batal', // Anggap gagal resi = batal sementara
+                                'Pembayaran Lunas (Error Kirim API)' => 'batal',
+                                'Kadaluarsa' => 'batal',
+                                'Gagal Bayar' => 'batal',
                             ];
                             $status = $statusMapPesanan[$statusRaw] ?? strtolower($statusRaw);
                             $canCancel = in_array($statusRaw, ['Menunggu Pickup']);
                             $totalAmount = $order->price ?? 0;
-                            $shippingInfo = \App\Helpers\ShippingHelper::parseShippingMethod($shippingMethodString);
-                            $shippingCost = $shippingInfo['cost'];
-                            $subtotal = $order->total_harga_barang;
-                            $codFee = 0;
-                            if (strtoupper($paymentMethod) == 'CODBARANG' || strtoupper($paymentMethod) == 'COD') {
-                                $subtotalForCalc = $subtotal ?? ($totalAmount - $shippingCost);
-                                $codFee = max(0, $totalAmount - $subtotalForCalc - $shippingCost);
-                            }
-                            if ($subtotal === null) {
-                                $subtotal = max(0, $totalAmount - $shippingCost - $codFee);
-                            }
+                            // Menggunakan kolom biaya baru dari tabel Pesanan
+                            $shippingCost = $order->shipping_cost ?? 0;
+                            $subtotal = $order->item_price ?? $order->total_harga_barang ?? 0;
+                            $codFee = $order->cod_fee ?? 0;
+
                         } else { // Jika data berasal dari tabel 'orders'
                             $id = $order->id;
                             $invoice = $order->invoice_number;
                             $resi = $order->shipping_reference; // Gunakan kolom resi yang benar untuk 'orders'
                             $paymentMethod = $order->payment_method;
                             $shippingMethodString = $order->shipping_method;
-                            // Cek relasi items, product, dan variant sebelum mengakses property
                             $item = $order->items->first();
                             $paket = $item && $item->product ? $item->product->name : ($item && $item->variant ? $item->variant->combination_string : 'N/A');
                             $userId = $order->user_id;
-                            // Cek relasi store sebelum mengakses property
                             $senderName = $order->store ? $order->store->name : 'N/A';
                             $senderAddress = $order->store ? $order->store->address_detail : 'N/A';
-                             // Cek relasi user sebelum mengakses property
                             $receiverName = $order->user ? $order->user->nama_lengkap : 'N/A';
                             $receiverAddress = $order->shipping_address ?? 'N/A';
                             $createdAt = $order->created_at;
@@ -214,7 +195,8 @@
                                 'shipment' => 'terkirim', 
                                 'processing' => 'diproses', 
                                 'paid' => 'menunggu-pickup',
-                                'completed' => 'selesai', // Tambahkan mapping untuk 'completed'
+                                'completed' => 'selesai',
+                                // Tambahkan mapping lain jika perlu dari tabel orders
                             ];
                             $status = $statusMapOrder[$statusRaw] ?? $statusRaw;
                             $canCancel = in_array($statusRaw, ['pending', 'paid', 'processing']);
@@ -224,20 +206,21 @@
                             $codFee = $order->cod_fee;
                         }
                         
+                        // --- PERBAIKAN: Menggunakan Helper Shipping ---
                         $ship = \App\Helpers\ShippingHelper::parseShippingMethod($shippingMethodString);
 
                         // Mapping Badge Status
                         $badgeMap = [
-                            'pending' => 'bg-yellow-100 text-yellow-800',        
+                            'pending' => 'bg-yellow-100 text-yellow-800',       
                             'menunggu-pickup' => 'bg-yellow-100 text-yellow-800',   
-                            'diproses' => 'bg-blue-100 text-blue-800',        
-                            'terkirim' => 'bg-green-100 text-green-800',      
-                            'selesai' => 'bg-green-100 text-green-800', // Status 'selesai' dari Pesanan atau 'completed' dari Order
-                            'completed' => 'bg-green-100 text-green-800', // Handle 'completed' dari Order secara eksplisit     
-                            'batal' => 'bg-red-100 text-red-800',              
-                            'cancelled' => 'bg-red-100 text-red-800',          
-                            'failed' => 'bg-red-100 text-red-800',             
-                            'rejected' => 'bg-red-100 text-red-800',           
+                            'diproses' => 'bg-blue-100 text-blue-800',       
+                            'terkirim' => 'bg-green-100 text-green-800',     
+                            'selesai' => 'bg-green-100 text-green-800',
+                            'completed' => 'bg-green-100 text-green-800',     
+                            'batal' => 'bg-red-100 text-red-800',           
+                            'cancelled' => 'bg-red-100 text-red-800',       
+                            'failed' => 'bg-red-100 text-red-800',           
+                            'rejected' => 'bg-red-100 text-red-800',        
                         ];
                         
                         // Mapping Teks Status
@@ -246,15 +229,24 @@
                             'menunggu-pickup' => 'Menunggu Pickup',
                             'diproses' => 'Diproses',
                             'terkirim' => 'Terkirim',
-                            'selesai' => 'Selesai', // Status 'selesai' dari Pesanan atau 'completed' dari Order
-                            'completed' => 'Selesai', // Handle 'completed' dari Order secara eksplisit
+                            'selesai' => 'Selesai',
+                            'completed' => 'Selesai',
                             'batal' => 'Batal',
                             'cancelled' => 'Dibatalkan',
                             'failed' => 'Gagal',
                             'rejected' => 'Ditolak',
+                            // Tambahkan teks untuk status Pesanan jika berbeda
+                            'Menunggu Pickup' => 'Menunggu Pickup',
+                            'Sedang Dikirim' => 'Terkirim',
+                            'Selesai' => 'Selesai',
+                            'Batal' => 'Batal',
+                            'Pembayaran Lunas (Gagal Auto-Resi)' => 'Gagal Resi',
+                            'Pembayaran Lunas (Error Kirim API)' => 'Error API',
+                            'Kadaluarsa' => 'Kadaluarsa',
+                            'Gagal Bayar' => 'Gagal Bayar',
                         ];
 
-                        // Tentukan badge dan teks, utamakan mapping $status lalu $statusRaw
+                        // Tentukan badge dan teks
                         $statusBadge = $badgeMap[$status] ?? $badgeMap[$statusRaw] ?? 'bg-gray-100 text-gray-800';
                         $statusText = $textMap[$status] ?? $textMap[$statusRaw] ?? ucfirst($statusRaw);
                         // --- Akhir Blok Inisialisasi ---
@@ -324,7 +316,8 @@
                         
                         {{-- Kolom Ekspedisi --}}
                         <td class="px-4 py-4 align-top whitespace-nowrap">
-                            @if ($ship['logo_url'])
+                            {{-- PERBAIKAN: Menggunakan $ship dari Helper --}}
+                            @if (!empty($ship['logo_url']))
                                 <img src="{{ $ship['logo_url'] }}" alt="{{ $ship['courier_name'] }}" class="h-5 mb-1 max-w-[90px] object-contain">
                             @else
                                 <div class="font-bold text-gray-800">{{ $ship['courier_name'] }}</div>
@@ -452,4 +445,3 @@
     'pdf_route' => route('admin.orders.report.pdf')
 ])
 @endsection
-
