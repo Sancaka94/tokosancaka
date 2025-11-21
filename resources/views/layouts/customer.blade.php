@@ -90,85 +90,184 @@
         </div>
     </div>
     
-    <!-- Tombol Chat Floating dengan Tooltip -->
-    <div class="fixed bottom-8 right-8 z-50 group flex items-center">
-        <span class="absolute right-full mr-4 bg-gray-800 text-white text-sm font-medium px-3 py-1.5 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap pointer-events-none">
-            Hubungi Admin
-        </span>
-        <button id="chatButton" class="bg-gradient-to-r from-cyan-500 to-blue-500 text-white w-16 h-16 rounded-full shadow-lg flex items-center justify-center hover:scale-110 transform transition-transform duration-300 ease-in-out focus:outline-none focus:ring-4 focus:ring-blue-300">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-            </svg>
-        </button>
-    </div>
-
-    <!-- Modal Container -->
-    <div id="chatModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 modal-transition modal-hidden">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-auto overflow-hidden transform">
-            <div class="p-6 text-center">
-                <div class="flex justify-center items-center mx-auto bg-blue-100 rounded-full w-20 h-20 mb-5">
-                     <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                         <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                    </svg>
-                </div>
-                <h3 class="text-2xl font-bold text-gray-800">Hubungi Admin</h3>
-                <p class="text-gray-500 mt-2 mb-6">Anda akan diarahkan ke halaman chat untuk berbicara langsung dengan customer service kami.</p>
-                <a href="https://tokosancaka.com/customer/chat" target="_blank" class="w-full block bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-semibold py-3 px-4 rounded-lg shadow-md hover:shadow-lg hover:from-cyan-600 hover:to-blue-600 transition-all duration-300 ease-in-out">
-                    Lanjutkan ke Chat
-                </a>
-                <button id="closeModalButton" class="w-full mt-3 bg-gray-100 text-gray-600 font-semibold py-3 px-4 rounded-lg hover:bg-gray-200 transition-colors duration-300">
-                    Batal
-                </button>
-            </div>
-        </div>
-    </div>
-
     
-
-    {{-- Kode JavaScript dan SweetAlert Anda tetap dipertahankan --}}
-    <script>
-        const chatButton = document.getElementById('chatButton');
-        const chatModal = document.getElementById('chatModal');
-        const closeModalButton = document.getElementById('closeModalButton');
-        const openModal = () => {
-            chatModal.classList.remove('modal-hidden');
-            chatModal.classList.add('modal-visible');
-        };
-        const closeModal = () => {
-            chatModal.classList.remove('modal-visible');
-            chatModal.classList.add('modal-hidden');
-        };
-        chatButton.addEventListener('click', openModal);
-        closeModalButton.addEventListener('click', closeModal);
-        chatModal.addEventListener('click', (event) => {
-            if (event.target === chatModal) closeModal();
-        });
-    </script>
+   {{-- ================================================================= --}}
+    {{-- KODE JAVASCRIPT UTAMA (INI YANG KITA PERBARUI) --}}
+    {{-- ================================================================= --}}
     <script src="https://js.pusher.com/8.4.0/pusher.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/laravel-echo/1.14.1/echo.iife.js"></script>
     <script>
-        document.addEventListener('alpine:init', () => {
-            window.Pusher = Pusher;
-            window.Echo = new Echo({
-                broadcaster: 'pusher',
-                key: '7a59606602fcfa7ae2d5',
-                cluster: 'mt1',
-                forceTLS: true,
-                authEndpoint: '/broadcasting/auth',
-                auth: {
-                    headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content') }
-                }
-            });
-            let userId = {{ auth()->id() }};
-            window.Echo.private(`customer-saldo.${userId}`)
-                .listen('.SaldoUpdated', (data) => {
-                    // Logika notifikasi Anda tetap di sini
-                });
-            if (Notification.permission !== "granted") {
-                Notification.requestPermission();
+    document.addEventListener('alpine:init', () => {
+        window.Pusher = Pusher;
+        window.Echo = new Echo({
+            broadcaster: 'pusher',
+            key: '7a59606602fcfa7ae2d5', // Key Pusher Anda
+            cluster: 'mt1',             // Cluster Pusher Anda
+            forceTLS: true,
+            authEndpoint: '/broadcasting/auth',
+            auth: {
+                headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content') }
             }
         });
+
+        let userId = {{ auth()->id() }};
+
+        // 1. Ambil elemen HTML dari header (topbar.blade.php)
+        const notificationBadge = document.getElementById('notification-count-badge');
+        const notificationList = document.getElementById('notification-list');
+        const notificationEmpty = document.getElementById('notification-empty-state');
+        // 👇 TAMBAHKAN ELEMEN SALDO BARU
+        const saldoDesktop = document.getElementById('saldo-desktop');
+        const saldoMobile = document.getElementById('saldo-mobile');
+        let currentNotificationCount = 0;
+
+        // 2. Fungsi untuk memformat 1 notifikasi (HTML)
+        function formatNotificationHTML(notification) {
+            const data = notification.data ? notification.data : notification;
+            const icon = data.icon || 'fas fa-info-circle';
+            const url = data.url || '#';
+            const title = data.judul || 'Notifikasi';
+            const message = data.pesan_utama || 'Anda memiliki notifikasi baru.';
+            
+            // TODO: Ganti 'data.id' dengan ID notifikasi yang benar (mungkin 'notification.id')
+            // Ini untuk fitur "mark as read" nanti
+            // const notificationId = notification.id; 
+
+            return `
+                <a href="${url}" class="flex items-start p-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                    <div class="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-indigo-100 dark:bg-indigo-700 rounded-full">
+                        <i class="${icon} text-indigo-500 dark:text-indigo-200 text-sm"></i>
+                    </div>
+                    <div class="ml-3 w-0 flex-1">
+                        <p class="text-sm font-semibold text-gray-800 dark:text-gray-200">${title}</p>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 truncate">${message}</p>
+                    </div>
+                </a>
+            `;
+        }
+
+        // 👇 TAMBAHKAN FUNGSI BARU UNTUK FORMAT RUPIAH
+        function formatRupiah(number) {
+            if (isNaN(number)) {
+                return 'Rp -';
+            }
+            // Format ke "Rp X.XXX.XXX"
+            return new Intl.NumberFormat('id-ID', {
+                style: 'currency',
+                currency: 'IDR',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            }).format(number).replace('Rp', 'Rp '); // Pastikan ada spasi
+        }
+
+        // 3. Fungsi untuk update badge angka
+        function updateCount(count) {
+            currentNotificationCount = count;
+            if (count > 0) {
+                notificationBadge.innerText = count;
+                notificationBadge.style.display = 'flex'; 
+                notificationEmpty.style.display = 'none';
+            } else {
+                notificationBadge.style.display = 'none'; 
+                notificationEmpty.style.display = 'block';
+            }
+        }
+
+        // 4. Fungsi untuk menambahkan notifikasi BARU ke ATAS daftar
+        function addNewNotification(notification) {
+            const html = formatNotificationHTML(notification);
+            notificationList.insertAdjacentHTML('afterbegin', html); 
+            updateCount(currentNotificationCount + 1); 
+        }
+
+        // 5. [SAAT HALAMAN DIMUAT] Ambil notifikasi awal
+        function loadInitialNotifications() {
+            fetch("{{ route('customer.notifications.unread') }}") 
+                .then(response => response.json())
+                .then(data => {
+                    if (data.notifications && data.notifications.length > 0) {
+                        let html = '';
+                        data.notifications.forEach(notif => {
+                            html += formatNotificationHTML(notif);
+                        });
+                        notificationList.innerHTML = html;
+                        updateCount(data.unread_count); 
+                    } else {
+                        updateCount(0); 
+                    }
+                })
+                .catch(error => console.error('Gagal memuat notifikasi:', error));
+        }
+
+        // Panggil fungsi ini saat halaman dimuat
+        loadInitialNotifications();
+
+        // 6. [REAL-TIME] Listener Echo untuk Notifikasi BARU
+        window.Echo.private(`App.Models.User.${userId}`)
+            .notification((notification) => {
+                console.log('NOTIFIKASI BARU DITERIMA:', notification);
+                
+                const data = notification.data ? notification.data : notification;
+
+                if (Notification.permission === "granted") {
+                    new Notification(data.judul, { // <-- Sudah diperbaiki
+                        body: data.pesan_utama, // <-- Sudah diperbaiki
+                        icon: 'https://tokosancaka.com/storage/uploads/sancaka.png' 
+                    });
+                }
+                
+                addNewNotification(notification);
+            });
+
+        // ==========================================================
+        // 👇 LOGIKA SALDO SEKARANG DILENGKAPI
+        // ==========================================================
+        window.Echo.private(`customer-saldo.${userId}`)
+            .listen('.SaldoUpdated', (data) => {
+                
+                console.log('EVENT SALDO DITERIMA:', data);
+
+                // Periksa apakah data 'new_saldo' ada di dalam event
+                if (data.new_saldo !== undefined) {
+                    const formattedSaldo = formatRupiah(data.new_saldo);
+
+                    // Update Saldo di Desktop
+                    if (saldoDesktop) {
+                        saldoDesktop.innerHTML = formattedSaldo;
+                    }
+                    
+                    // Update Saldo di Mobile
+                    if (saldoMobile) {
+                        saldoMobile.innerHTML = formattedSaldo;
+                    }
+
+                    // Tampilkan notifikasi toast (pop-up kecil)
+                    Swal.fire({
+                        title: 'Saldo Diperbarui!',
+                        text: data.message || `Saldo Anda sekarang ${formattedSaldo}`,
+                        icon: 'success',
+                        timer: 3500, // Tutup otomatis setelah 3.5 detik
+                        showConfirmButton: false,
+                        toast: true, // Jadikan sebagai toast
+                        position: 'top-end', // Tampil di pojok kanan atas
+                        timerProgressBar: true
+                    });
+                } else {
+                    console.warn('Event SaldoUpdated diterima, tapi tidak ada data new_saldo.');
+                }
+            });
+        // ==========================================================
+        // 👆 AKHIR LOGIKA SALDO
+        // ==========================================================
+
+        // 8. Minta Izin Notifikasi (biarkan saja)
+        if (Notification.permission !== "granted") {
+            Notification.requestPermission();
+        }
+    });
     </script>
+    
+    
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     @if(session('success'))
     <script>

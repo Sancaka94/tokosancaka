@@ -1,154 +1,195 @@
-@extends('layouts.customer')
-
-@section('title', 'Riwayat Transaksi - Sancaka Marketplace')
-
-@section('content')
-    {{-- Alpine.js untuk fungsionalitas modal --}}
-    <script src="//unpkg.com/alpinejs" defer></script>
-
-    {{-- 
-        Inisialisasi Alpine.js
-        - isModalOpen: Mengontrol visibilitas modal detail produk.
-        - currentOrderItems: Menyimpan data item dari pesanan yang diklik.
-    --}}
-    <div class="container mx-auto p-4 sm:p-8 max-w-5xl" x-data="{ isModalOpen: false, currentOrderItems: [] }">
-        
-        <!-- Header Halaman -->
-        <header class="mb-8">
-            <h1 class="text-3xl font-bold text-gray-800">Riwayat Transaksi Saya</h1>
-            <p class="text-gray-500 mt-2">Lihat semua riwayat pembelian dan pembayaran Anda di sini.</p>
-        </header>
-
-        <!-- Card Riwayat Transaksi -->
-        <div class="bg-white rounded-xl shadow-lg overflow-hidden">
-            <div class="p-6 border-b">
-                <h2 class="text-xl font-semibold text-gray-700">Semua Pesanan</h2>
-            </div>
-
-            <!-- Kontainer Tabel agar Responsif -->
-            <div class="overflow-x-auto">
-                <table class="min-w-full text-sm text-left text-gray-500">
-                    <thead class="text-xs text-gray-700 uppercase bg-gray-50">
-                        <tr>
-                            <th scope="col" class="px-6 py-3">Detail Pesanan</th>
-                            {{-- ✅ DITAMBAHKAN: Kolom baru untuk metode pengiriman --}}
-                            <th scope="col" class="px-6 py-3">Metode Pengiriman</th>
-                            {{-- ✅ DITAMBAHKAN: Kolom baru untuk metode pembayaran --}}
-                            <th scope="col" class="px-6 py-3">Metode Pembayaran</th>
-                            <th scope="col" class="px-6 py-3">Total</th>
-                            <th scope="col" class="px-6 py-3 text-center">Status</th>
-                            <th scope="col" class="px-6 py-3 text-center">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse ($orders as $order)
-                            <tr class="bg-white border-b hover:bg-gray-50">
-                                <td class="px-6 py-4">
-                                    <div class="font-medium text-gray-900">#{{ $order->invoice_number }}</div>
-                                    <div class="text-xs text-gray-500">{{ \Carbon\Carbon::parse($order->created_at)->format('d F Y') }}</div>
-                                </td>
-                                {{-- ✅ DITAMBAHKAN: Data untuk kolom pengiriman --}}
-                                <td class="px-6 py-4">
-                                    {{ $order->shipping_method }}
-                                </td>
-                                {{-- ✅ DITAMBAHKAN: Data untuk kolom pembayaran --}}
-                                <td class="px-6 py-4">
-                                    {{ $order->payment_method }}
-                                </td>
-                                <td class="px-6 py-4 font-medium text-gray-800">
-                                    Rp {{ number_format($order->total_amount, 0, ',', '.') }}
-                                </td>
-                                <td class="px-6 py-4 text-center">
-                                    @php
-                                        $status = strtolower($order->status);
-                                        $badgeClass = match($status) {
-                                            'paid'    => 'bg-green-100 text-green-800',
-                                            'pending' => 'bg-yellow-100 text-yellow-800',
-                                            'failed'  => 'bg-red-100 text-red-800',
-                                            'expired' => 'bg-gray-100 text-gray-800',
-                                            default   => 'bg-blue-100 text-blue-800'
-                                        };
-                                    @endphp
-                                    <span class="px-3 py-1 text-xs font-medium rounded-full {{ $badgeClass }}">{{ ucfirst($status) }}</span>
-                                </td>
-                                <td class="px-6 py-4 text-center">
-    <div x-data="{ isModalOpen: false }" class="flex items-center justify-center space-x-2">
-        {{-- Bayar / Invoice --}}
-        @if($status === 'pending')
-            <a href="{{ route('checkout.invoice', $order->invoice_number) }}" class="px-3 py-1 text-xs font-medium text-white bg-orange-500 rounded-md hover:bg-orange-600 transition-colors">Bayar</a>
-        @else
-            <a href="{{ route('checkout.invoice', $order->invoice_number) }}" class="px-3 py-1 text-xs font-medium text-white bg-blue-500 rounded-md hover:bg-blue-600 transition-colors">Invoice</a>
-        @endif
-
-        {{-- Tombol Detail --}}
-        <button @click="isModalOpen = true" class="px-3 py-1 text-xs font-medium text-white bg-gray-700 rounded-md hover:bg-gray-800 transition-colors">Detail</button>
-
-        {{-- Modal Detail --}}
-        <div 
-            x-show="isModalOpen" 
-            x-transition
-            class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
-        >
-            <div class="bg-white w-11/12 max-w-2xl p-6 rounded-lg overflow-y-auto max-h-[80vh]">
-                <h3 class="text-lg font-medium mb-4">Detail Order #{{ $order->invoice_number }}</h3>
-                <table class="w-full text-left border">
-                    <thead class="bg-gray-100">
-                        <tr>
-                            <th class="px-4 py-2">Produk</th>
-                            <th class="px-4 py-2">Nama</th>
-                             <th class="px-4 py-2">Kategori</th>
-                              <th class="px-4 py-2">SKU</th>
-                            <th class="px-4 py-2">Qty</th>
-                            <th class="px-4 py-2">Harga</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($order->items as $item)
-                            <tr class="border-b">
-                                <td class="px-4 py-2">
-                                    <img src="{{ asset('storage/'.$item->product->image_url) }}" alt="{{ $item->product->name }}" class="w-16 h-16 object-cover rounded">
-                                </td>
-                                <td class="px-4 py-2">{{ $item->product->name }}</td>
-                                 <td class="px-4 py-2">{{ $item->product->category }}</td>
-                                  <td class="px-4 py-2">{{ $item->product->sku }}</td>
-                                <td class="px-4 py-2">{{ $item->quantity }}</td>
-                                <td class="px-4 py-2">Rp {{ number_format($item->price, 0, ',', '.') }}</td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-
-                <div class="mt-4 text-right">
-                    <button @click="isModalOpen = false" class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors">Tutup</button>
-                </div>
-            </div>
-        </div>
-    </div>
-</td>
-
-
-                                
-                            </tr>
-                        @empty
-                            <tr>
-                                {{-- ✅ DIPERBAIKI: Colspan disesuaikan menjadi 6 --}}
-                                <td colspan="6" class="text-center py-10 text-gray-500">
-                                    Anda belum memiliki riwayat transaksi.
-                                </td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-            
-            <!-- Pagination Links -->
-            <div class="p-4 border-t">
-                {{ $orders->links() }}
-            </div>
-        </div>
-
-
-
-
-
-@endsection
+{{-- 
+File: resources/views/customer/pesanan/riwayat.blade.php
+Deskripsi: Tampilan riwayat OrderMarketplace dengan desain rinci.
+--}}
+
+@extends('layouts.customer')
+
+@section('title', 'Riwayat Pesanan Marketplace')
+
+@section('content')
+<div class="bg-slate-50 min-h-screen">
+    <div class="container mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+
+        <div class="mb-8 text-center md:text-left">
+            <h1 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+                Riwayat Pesanan Marketplace
+            </h1>
+            <p class="mt-2 text-lg text-slate-600">
+                Berikut adalah riwayat semua pesanan marketplace yang telah Anda buat.
+            </p>
+        </div>
+
+        <div class="space-y-4">
+            <div class="hidden md:grid grid-cols-12 gap-4 px-4 py-2 bg-red-100 text-red-800 rounded-lg text-xs font-bold uppercase tracking-wider">
+                <div class="col-span-1 text-center">No</div>
+                <div class="col-span-2">Transaksi</div>
+                <div class="col-span-3">Alamat</div>
+                <div class="col-span-2">Ekspedisi & Ongkir</div>
+                <div class="col-span-2">Isi Paket</div>
+                <div class="col-span-2 text-center">Status</div>
+            </div>
+
+            {{-- ========================================================== --}}
+            {{-- PERBAIKAN: Loop $pesanans (sesuai kiriman controller) --}}
+            {{-- ========================================================== --}}
+            @forelse ($pesanans as $order) 
+                <div class="bg-white rounded-xl shadow-md overflow-hidden border border-slate-200 hover:shadow-lg transition duration-200">
+                    <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
+
+                        <div class="hidden md:flex col-span-1 h-full items-center justify-center font-bold text-slate-700 bg-slate-50 border-r border-slate-200">
+                            {{ $loop->iteration + ($pesanans->currentPage() - 1) * $pesanans->perPage() }}
+                        </div>
+
+                        <div class="md:col-span-2 p-4">
+                            <div class="md:hidden text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Transaksi</div>
+                            <span class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium bg-orange-100 text-orange-800">
+                                {{-- Variabel Marketplace --}}
+                                {{ $order->payment_method }}
+                            </span>
+                            <div class="mt-2 font-semibold text-sm text-indigo-600">{{ $order->invoice_number }}</div>
+                            <div class="text-xs text-slate-500">
+                                {{-- Variabel Marketplace --}}
+                                {{ \Carbon\Carbon::parse($order->created_at)->format('d M Y H:i') }}
+                            </div>
+                            <div class="text-xs text-slate-500">
+                                Dibuat oleh: {{ Auth::user()->nama_lengkap }}
+                            </div>
+                        </div>
+
+                        <div class="md:col-span-3 p-4 border-t md:border-t-0 md:border-l border-slate-200 space-y-3">
+                            {{-- ALAMAT PENGIRIM (TOKO) --}}
+                            <div class="flex items-start">
+                                <i class="fas fa-upload text-red-500 mr-3 mt-1 flex-shrink-0"></i>
+                                <div>
+                                    <div class="font-semibold text-slate-800 text-sm">
+                                        {{-- Variabel Marketplace --}}
+                                        {{ optional($order->store)->name ?? 'Toko Dihapus' }} ({{ optional($order->store->user)->no_wa ?? 'N/A' }})
+                                    </div>
+                                    <div class="text-xs text-slate-600">{{ optional($order->store)->address_detail ?? 'Alamat toko tidak ada' }}</div>
+                                </div>
+                            </div>
+                            
+                            {{-- ALAMAT PENERIMA (PEMBELI) --}}
+                            <div class="flex items-start">
+                                <i class="fas fa-download text-green-500 mr-3 mt-1 flex-shrink-0"></i>
+                                <div>
+                                    <div class="font-semibold text-slate-800 text-sm">
+                                        {{-- Variabel Marketplace --}}
+                                        {{ $order->user->nama_lengkap }} ({{ $order->user->no_wa }})
+                                    </div>
+                                    <div class="text-xs text-slate-600">{{ $order->shipping_address }}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="md:col-span-2 p-4 border-t md:border-t-0 md:border-l border-slate-200">
+                            <div class="md:hidden text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
+                                Ekspedisi & Ongkir
+                            </div>
+                            @php
+                                // PARSING DATA DARI 'shipping_method' (cth: regular-anteraja-REG-6500-0-0)
+                                $shippingParts = explode('-', $order->shipping_method);
+                                $expeditionName = ucwords($shippingParts[1] ?? 'N/A');
+                                $expeditionService = $shippingParts[2] ?? 'N/A';
+                                $logoPath = strtolower(str_replace(' ', '', $expeditionName));
+                            @endphp
+                            <div class="flex items-center mb-1">
+                                {{-- PERBAIKAN PATH GAMBAR: Hapus 'public/' --}}
+                                <img src="{{ asset('public/storage/logo-ekspedisi/' . $logoPath . '.png') }}" 
+                                     alt="{{ $expeditionName }} Logo" 
+                                     class="w-10 h-auto mr-2"
+                                     onerror="this.style.display='none'"> {{-- Sembunyikan jika logo tdk ada --}}
+                                <span class="font-bold text-sm">{{ $expeditionName }}</span>
+                            </div>
+                            <div class="text-xs text-slate-600">{{ $expeditionService }}</div>
+                            <div class="text-sm text-slate-600 mt-2">
+                                {{-- Variabel Marketplace --}}
+                                Ongkir: <span class="font-bold text-red-600">Rp {{ number_format($order->shipping_cost ?? 0, 0, ',', '.') }}</span>
+                            </div>
+                            <div class="text-xs text-slate-500 break-all font-semibold">
+                                {{-- Variabel Marketplace --}}
+                                <strong>Resi: {{ $order->shipping_resi ?? 'Menunggu' }}</strong>
+                            </div>
+                        </div>
+
+                        <div class="md:col-span-2 p-4 border-t md:border-t-0 md:border-l border-slate-200">
+                            <div class="md:hidden text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Isi Paket</div>
+                            
+                            {{-- Ambil item pertama sebagai 'display' --}}
+                            @php $firstItem = $order->items->first(); @endphp
+                            
+                            <div class="text-sm text-slate-800 font-semibold">
+                                {{ $firstItem ? $firstItem->product->name : 'N/A' }} 
+                                @if($order->items->count() > 1)
+                                    <span class="text-xs text-slate-500">(+ {{ $order->items->count() - 1 }} item lain)</span>
+                                @endif
+                            </div>
+                            <div class="text-xs text-slate-600">Total Nilai: Rp {{ number_format($order->subtotal ?? 0, 0, ',', '.') }}</div>
+                            <div class="text-xs text-slate-600">Total Kuantitas: {{ $order->items->sum('quantity') }} pcs</div>
+                        </div>
+
+                        <div class="md:col-span-2 p-4 flex flex-col items-center justify-center border-t md:border-t-0 md:border-l border-slate-200">
+                            <div class="md:hidden text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Status</div>
+                            @php
+                                $status = strtolower($order->status); // Variabel Marketplace
+                                $badgeClass = match($status) {
+                                    'paid'       => 'bg-green-100 text-green-800',
+                                    'completed'  => 'bg-green-100 text-green-800',
+                                    'pending'    => 'bg-yellow-100 text-yellow-800',
+                                    'failed'     => 'bg-red-100 text-red-800',
+                                    'expired'    => 'bg-gray-100 text-gray-800',
+                                    'processing' => 'bg-blue-100 text-blue-800',
+                                    default      => 'bg-blue-100 text-blue-800'
+                                };
+                            @endphp
+                            <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold leading-5 {{ $badgeClass }}">
+                                {{ ucfirst($status) }}
+                            </span>
+
+                            @if ($status === 'pending' && $order->payment_url)
+                                <a href="{{ route('customer.checkout.invoice', ['invoice' => $order->invoice_number]) }}" class="mt-2 text-indigo-600 hover:text-indigo-900 font-semibold text-sm">
+                                    Bayar Sekarang
+                                </a>
+                            @elseif ($order->shipping_resi)
+                                {{-- Pastikan route 'customer.lacak.index' ada --}}
+                                <a href="{{ route('customer.lacak.index', ['resi' => $order->shipping_resi]) }}" 
+                                   class="mt-2 text-indigo-600 hover:text-indigo-900 font-semibold text-sm">
+                                   Lacak Paket
+                                </a>
+                            @else
+                                <a href="{{ route('customer.checkout.invoice', ['invoice' => $order->invoice_number]) }}" class="mt-2 text-blue-600 hover:text-blue-900 font-semibold text-sm">
+                                   Lihat Invoice
+                                </a>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            @empty
+                <div class="text-center py-16 bg-white rounded-xl shadow-md border border-slate-200">
+                    <div class="mx-auto max-w-md">
+                        <i class="fas fa-box-open fa-4x text-slate-300"></i>
+                        <h3 class="mt-4 text-lg font-medium text-slate-900">Tidak ada data pesanan</h3>
+                        <p class="mt-1 text-sm text-slate-500">
+                            Anda belum pernah membuat pesanan marketplace.
+                        </p>
+                        <div class="mt-6">
+                            <a href="{{ route('katalog.index') }}" {{-- Ganti ke route marketplace --}}
+                               class="inline-flex items-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700">
+                                <i class="fas fa-shopping-cart -ml-1 mr-2"></i>
+                                Mulai Belanja
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            @endforelse
+        </div>
+
+        @if ($pesanans->hasPages())
+            <div class="mt-6">
+                {{ $pesanans->links() }}
+            </div>
+        @endif
+    </div>
+</div>
+@endsection

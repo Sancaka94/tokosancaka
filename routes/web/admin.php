@@ -58,9 +58,11 @@ use App\Http\Controllers\Admin\ProductController;
 
 use App\Http\Controllers\Admin\AdminOrderController;
 
+use App\Http\Controllers\Admin\UserController; // <-- Ini untuk tombol aksi tabel
 
+use App\Models\BannerEtalase; // [BARU] Import model Banner
 
-
+use App\Http\Controllers\Admin\DokuBalanceController; // ✅ DITAMBAHKAN
 
 
 /*
@@ -81,6 +83,32 @@ use App\Http\Controllers\Admin\AdminOrderController;
 
 */
 
+// ===================================================================
+// RUTE-RUTE YANG HILANG (DITAMBAHKAN DI SINI)
+// ===================================================================
+// Ini diperlukan oleh JavaScript di admin.blade.php untuk mengisi dropdown lonceng
+
+Route::get('/notifications/unread', [AdminNotificationController::class, 'getUnread'])
+     ->name('notifications.getUnread'); // [FIX] Diubah dari 'notifications.unread' agar cocok dengan JS
+
+
+Route::get('/notifications', [AdminNotificationController::class, 'index'])
+     ->name('notifications.index'); // 'admin.notifications.index'
+
+Route::post('/notifications/{id}/read', [AdminNotificationController::class, 'markAsRead'])
+     ->name('notifications.markAsRead'); // 'admin.notifications.markAsRead'
+
+Route::post('/notifications/read-all', [AdminNotificationController::class, 'markAllAsRead'])
+     ->name('notifications.markAllAsRead'); // 'admin.notifications.markAllAsRead'
+
+// ===================================================================
+// AKHIR RUTE YANG HILANG
+// ===================================================================
+
+
+
+Route::post('/admin/users/{user}/toggle-freeze', [App\Http\Controllers\Admin\UserController::class, 'toggleFreeze'])
+     ->name('admin.users.toggle-freeze');
 
 
 // route custom harus ditulis sebelum resource
@@ -99,6 +127,83 @@ Route::post('/settings-markerplace', [SettingController::class, 'store'])->name(
 Route::post('/settings-markerplaces/{banner}', [SettingController::class, 'update'])->name('settings.banners.update');
 
 Route::delete('/settings-markerplace/{banner}', [SettingController::class, 'destroy'])->name('settings.banners.destroy');
+
+
+ /*
+    |--------------------------------------------------------------------------
+    | 1. RUTE PENGATURAN LAMA (settings.blade.php)
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('settings')->name('settings.')->group(function () {
+        Route::get('/', [AppSettingsController::class, 'index'])->name('index');
+        Route::put('/profile', [AppSettingsController::class, 'updateProfile'])->name('profile.update');
+        Route::put('/password', [AppSettingsController::class, 'updatePassword'])->name('password.update');
+        Route::put('/slider', [AppSettingsController::class, 'updateSlider'])->name('slider.update');
+        Route::put('/general', [AppSettingsController::class, 'updateGeneral'])->name('general.update');
+
+        /*
+        |--------------------------------------------------------------------------
+        | 2. RUTE BARU (dari SettingController)
+        |--------------------------------------------------------------------------
+        | Ini adalah rute untuk fungsi-fungsi baru yang Anda tambahkan
+        */
+        
+        // Rute untuk update Logo, Banner 2, Banner 3
+        Route::put('/main', [AppSettingsController::class, 'updateSettings'])
+             ->name('main.update');
+
+        // Rute untuk update Alamat Admin/Toko (yang sedang login)
+        Route::put('/address', [AppSettingsController::class, 'updateAddress'])
+             ->name('address.update'); // <-- INI ADALAH RUTE YANG ERROR
+
+        // Rute untuk Banner Etalase (Slider Baru)
+        Route::post('/banners', [AppSettingsController::class, 'storeBanner'])
+             ->name('banners.store');
+        
+        Route::put('/banners/{banner}', [AppSettingsController::class, 'updateBanner'])
+             ->name('banners.update'); 
+        
+        Route::delete('/banners/{banner}', [AppSettingsController::class, 'destroyBanner'])
+               ->name('banners.destroy');
+    });
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | 3. RUTE MANAJEMEN PENGGUNA (UserController)
+    |--------------------------------------------------------------------------
+    */
+    Route::resource('users', UserController::class);
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | 4. RUTE API (UNTUK KIRIMINAJA & GEOCODING)
+    |--------------------------------------------------------------------------
+    | Ini adalah rute yang menyebabkan error Anda.
+    */
+    Route::prefix('api')->name('api.')->group(function () {
+        Route::get('/search-address', [AppSettingsController::class, 'searchAddressKiriminAja'])
+             ->name('search.address'); // <-- Ini akan membuat nama rute: admin.api.search.address
+        Route::get('/geocode-address', [AppSettingsController::class, 'geocodeAddress'])
+             ->name('geocode.address'); // <-- Ini akan membuat nama rute: admin.api.geocode.address
+    });
+    
+    /*
+    |--------------------------------------------------------------------------
+    | 2. RUTE UNTUK AKSI TABEL PENGGUNA
+    |--------------------------------------------------------------------------
+    | Ini menggunakan UserController baru (Anda perlu membuatnya).
+    | Rute-rute ini SANGAT PENTING untuk tombol Lihat, Edit, Hapus.
+    */
+    
+    // Rute 'resource' ini secara otomatis membuat semua rute di bawah:
+    // • Tombol LIHAT   -> GET    /admin/users/{user}      -> UserController@show
+    // • Tombol EDIT    -> GET    /admin/users/{user}/edit -> UserController@edit
+    // • Tombol HAPUS   -> DELETE /admin/users/{user}      -> UserController@destroy
+    // (Juga membuat 'create', 'store', dan 'update' untuk manajemen user penuh)
+    
+    Route::resource('users', UserController::class);
 
 
 
@@ -299,9 +404,13 @@ Route::prefix('saldo-requests')->name('saldo.requests.')->group(function () {
 
     Route::get('/', [SaldoRequestController::class, 'index'])->name('index');
 
-    Route::post('/{topUp}/approve', [SaldoRequestController::class, 'approve'])->name('approve');
+    Route::post('/{transaction}/approve', [SaldoRequestController::class, 'approve'])->name('approve');
 
-    Route::post('/{topUp}/reject', [SaldoRequestController::class, 'reject'])->name('reject');
+    Route::post('/{transaction}/reject', [SaldoRequestController::class, 'reject'])->name('reject');
+    
+    // ✅ ROUTE BARU: [GET] /admin/saldo-requests/history
+    Route::get('/history', [SaldoRequestController::class, 'showHistory'])->name('history'); // Halaman riwayat semua top-up
+    
 
 });
 
@@ -449,6 +558,13 @@ Route::prefix('email')->name('email.')->group(function () {
 // Ini akan secara otomatis membuat route untuk index, create, store, edit, update, destroy
 
 Route::resource('stores', StoreController::class)->names('stores');
+
+// ✅ RUTE BARU YANG HILANG: Untuk memproses form pencairan dana
+Route::post('/stores/{store}/payout', [App\Http\Controllers\Admin\StoreController::class, 'payout'])->name('stores.payout');
+
+
+// ✅ RUTE BARU UNTUK MELIHAT SALDO DOMPET UTAMA ADMIN
+Route::get('/doku-balance', [App\Http\Controllers\Admin\DokuBalanceController::class, 'index'])->name('doku_balance.index');
 
 
 

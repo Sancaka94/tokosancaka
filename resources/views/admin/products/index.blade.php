@@ -5,24 +5,13 @@
 @section('title', 'Manajemen Produk')
 @section('page-title', 'Manajemen Produk')
 
-@push('styles')
-    {{-- CSS untuk DataTables --}}
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- Bootstrap 5 CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-
-    <!-- Font Awesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-@endpush
-
 @section('content')
 <div class="bg-white p-6 rounded-lg shadow-md">
-    <div class="flex justify-between items-center mb-4">
-        <h2 class="text-xl font-semibold">Daftar Semua Produk</h2>
-        <a href="{{ route('admin.products.create') }}" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 text-sm font-medium">
-            Tambah Produk Baru
+    {{-- Header: Judul & Tombol Tambah --}}
+    <div class="flex flex-col md:flex-row justify-between items-center mb-6">
+        <h2 class="text-2xl font-bold text-gray-800 mb-4 md:mb-0">Kelola Produk Anda</h2>
+        <a href="{{ route('admin.products.create') }}" class="bg-blue-600 text-white px-6 py-2 rounded shadow hover:bg-blue-700 font-semibold text-sm uppercase tracking-wider">
+            TAMBAH PRODUK BARU
         </a>
     </div>
 
@@ -33,123 +22,197 @@
         </div>
     @endif
 
-    <!-- --- Filter Kategori --- -->
-    <div class="mb-4">
-        <label for="category_filter" class="block text-sm font-medium text-gray-700">Filter Berdasarkan Kategori:</label>
-        <select id="category_filter" name="category_filter" class="form-select mt-1 block w-full md:w-1/3 border-gray-300 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
-            <option value="">Semua Kategori</option>
-            {{-- Asumsi variabel $categories dikirim dari Controller --}}
-            @isset($categories)
-                @foreach($categories as $category)
-                    {{-- [DIUBAH] Menggunakan $category->slug sesuai controller baru --}}
-                    <option value="{{ $category->slug }}">{{ $category->name }}</option>
-                @endforeach
-            @endisset
-        </select>
+    {{-- Form Pencarian & Filter --}}
+    <form method="GET" action="{{ route('admin.products.index') }}" class="mb-4">
+        <div class="flex flex-col md:flex-row gap-4 items-end">
+            {{-- Search Bar --}}
+            <div class="w-full md:w-1/3">
+                <div class="flex">
+                    <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari nama produk atau SKU..." 
+                        class="w-full border border-gray-300 rounded-l px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-600">
+                    <button type="submit" class="bg-gray-800 text-white px-6 py-2 rounded-r font-semibold hover:bg-gray-900 uppercase text-sm">
+                        CARI
+                    </button>
+                </div>
+            </div>
+
+            {{-- Filter Kategori --}}
+            <div class="w-full md:w-1/4">
+                <select name="category" onchange="this.form.submit()" class="w-full border border-gray-300 rounded px-3 py-2 text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">Semua Kategori</option>
+                    @isset($categories)
+                        @foreach($categories as $cat)
+                            <option value="{{ $cat->slug }}" {{ request('category') == $cat->slug ? 'selected' : '' }}>
+                                {{ $cat->name }}
+                            </option>
+                        @endforeach
+                    @endisset
+                </select>
+            </div>
+        </div>
+    </form>
+
+    {{-- Tombol Export --}}
+    <div class="flex gap-2 mb-6">
+        <button type="button" class="bg-green-600 text-white px-4 py-2 rounded font-bold text-sm hover:bg-green-700 shadow uppercase">
+            EXPORT EXCEL
+        </button>
+        <button type="button" class="bg-red-600 text-white px-4 py-2 rounded font-bold text-sm hover:bg-red-700 shadow uppercase">
+            EXPORT PDF
+        </button>
     </div>
-    <!-- --- [AKHIR] Filter Kategori --- -->
 
-
-    {{-- Tabel akan diisi oleh DataTables --}}
+    {{-- Tabel Produk --}}
     <div class="overflow-x-auto">
-        <table class="table table-bordered product-table w-full" id="product-table">
-            <thead class="bg-gray-50">
-                <tr>
-                    <th class="w-10">No</th>
-                    <th class="w-24">Gambar</th>
-                    <th>Nama Produk</th>
-                    <th>Kategori</th>
-                    <th>Harga</th>
-                    <th class="w-20">Stok</th>
-                    <th class="w-24">Status</th>
-                    <th class="w-48">Aksi</th>
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="bg-gray-50 border-b border-gray-200 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                    <th class="p-4">No</th>
+                    <th class="p-4">Gambar</th>
+                    <th class="p-4">Nama Produk</th>
+                    <th class="p-4">SKU</th>
+                    <th class="p-4">Kategori</th>
+                    <th class="p-4">Harga</th>
+                    <th class="p-4">Stok</th>
+                    <th class="p-4">Status</th>
+                    <th class="p-4 text-center">Aksi</th>
                 </tr>
             </thead>
-            <tbody>
-                {{-- Isi tabel akan dimuat oleh JavaScript --}}
+            <tbody class="bg-white divide-y divide-gray-100">
+                @forelse($products as $index => $product)
+                <tr class="hover:bg-gray-50">
+                    {{-- Nomor Urut --}}
+                    <td class="p-4 text-gray-500">
+                        {{ $products->firstItem() + $index }}
+                    </td>
+
+                    {{-- Kolom: image_url --}}
+                    <td class="p-4">
+                        @if($product->image_url)
+                            <img src="{{ asset('public/storage/' . $product->image_url) }}" alt="Img" class="h-12 w-12 object-cover rounded border">
+                        @else
+                            <div class="h-12 w-12 bg-gray-100 rounded border flex items-center justify-center text-xs text-gray-400">
+                                No IMG
+                            </div>
+                        @endif
+                    </td>
+
+                    {{-- Kolom: name --}}
+                    <td class="p-4 font-medium text-gray-900">
+                        {{ $product->name }}
+                        {{-- Tampilkan label NEW atau BESTSELLER jika ada --}}
+                        @if($product->is_new) <span class="text-[10px] bg-blue-100 text-blue-800 px-1 rounded">New</span> @endif
+                        @if($product->is_bestseller) <span class="text-[10px] bg-yellow-100 text-yellow-800 px-1 rounded">Best</span> @endif
+                    </td>
+
+                    {{-- Kolom: sku --}}
+                    <td class="p-4 text-gray-500 font-mono text-sm">
+                        {{ $product->sku ?? '-' }}
+                    </td>
+
+                    {{-- Kolom: category (Prioritas relasi, fallback ke kolom string) --}}
+                    <td class="p-4 text-gray-500">
+                        {{ $product->category_relation->name ?? ($product->category ?? '-') }}
+                    </td>
+
+                    {{-- Kolom: price --}}
+                    <td class="p-4 font-medium text-gray-900">
+                        Rp {{ number_format($product->price, 0, ',', '.') }}
+                    </td>
+
+                    {{-- Kolom: stock --}}
+                    <td class="p-4">
+                        <span class="{{ $product->stock <= 5 ? 'text-red-600 font-bold' : 'text-gray-600' }}">
+                            {{ $product->stock }}
+                        </span>
+                    </td>
+
+                    {{-- Kolom: status (active) --}}
+                    <td class="p-4">
+                        @if($product->status === 'active')
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                Aktif
+                            </span>
+                        @else
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                                Nonaktif
+                            </span>
+                        @endif
+                    </td>
+
+                    {{-- Aksi --}}
+                    <td class="p-4 text-center">
+                        <div class="flex justify-center space-x-2">
+                            {{-- Edit (Gunakan slug sesuai DB) --}}
+                            <a href="{{ route('admin.products.edit', $product->slug) }}" class="text-indigo-600 hover:text-indigo-900" title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            
+                            {{-- Restock --}}
+                            <button onclick="openRestockModal('{{ route('admin.products.restock', $product->slug) }}', '{{ $product->name }}')" class="text-green-600 hover:text-green-900" title="Restock">
+                                <i class="fas fa-plus-circle"></i>
+                            </button>
+                            
+                            {{-- Hapus --}}
+                            <form action="{{ route('admin.products.destroy', $product->slug) }}" method="POST" onsubmit="return confirm('Yakin hapus?')" class="inline">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="text-red-600 hover:text-red-900" title="Hapus">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                @empty
+                <tr>
+                    <td colspan="9" class="p-8 text-center text-gray-500">
+                        <div class="flex flex-col items-center justify-center">
+                            <p class="text-lg">Data tidak ditemukan.</p>
+                        </div>
+                    </td>
+                </tr>
+                @endforelse
             </tbody>
         </table>
     </div>
+
+    {{-- Pagination --}}
+    <div class="mt-4">
+        @if($products->hasPages())
+            {{ $products->withQueryString()->links() }}
+        @endif
+    </div>
 </div>
 
-<!-- Modal Restock -->
-<div id="restockModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 z-50 hidden">
-    <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
-        <form id="restockForm" action="" method="POST">
+<div id="restockModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 z-50 hidden flex items-center justify-center">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 overflow-hidden">
+        <div class="px-6 py-4 border-b">
+            <h3 class="text-lg font-bold text-gray-900">Restock Produk</h3>
+        </div>
+        <form id="restockForm" action="" method="POST" class="p-6">
             @csrf
-            @method('POST') {{-- Method untuk restock adalah POST --}}
-            <h3 class="text-xl font-semibold mb-4">Restock Produk</h3>
-            <p class="mb-4">Anda akan menambahkan stok untuk produk: <strong id="productName"></strong></p>
-            <div>
-                <label for="stock" class="block text-sm font-medium text-gray-700">Jumlah Stok Baru</label>
-                <input type="number" name="stock" id="stock" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required min="1">
+            <p class="mb-4 text-gray-600">Tambah stok untuk: <strong id="productName" class="text-gray-900"></strong></p>
+            <div class="mb-4">
+                <label for="stock" class="block text-sm font-medium text-gray-700 mb-1">Jumlah Stok Baru</label>
+                <input type="number" name="stock" id="stock" class="w-full border-gray-300 rounded shadow-sm focus:ring-blue-500 focus:border-blue-500" required min="1">
             </div>
-            <div class="flex justify-end gap-3 mt-6">
-                <button type="button" onclick="closeModal('restockModal')" class="bg-gray-200 px-4 py-2 rounded-md">Batal</button>
-                <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-md">Simpan Stok</button>
+            <div class="flex justify-end gap-3">
+                <button type="button" onclick="closeModal('restockModal')" class="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">Batal</button>
+                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Simpan</button>
             </div>
         </form>
     </div>
 </div>
+
+<script>
+    function openRestockModal(url, name) {
+        document.getElementById('restockForm').action = url;
+        document.getElementById('productName').innerText = name;
+        document.getElementById('restockModal').classList.remove('hidden');
+    }
+    function closeModal(id) {
+        document.getElementById(id).classList.add('hidden');
+    }
+</script>
 @endsection
-
-@push('scripts')
-    {{-- JavaScript untuk jQuery & DataTables --}}
-    <script src="https://code.jquery.com/jquery-3.7.0.js"></script>
-    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
-    <!-- Bootstrap Bundle JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
-    <script>
-        // Simpan instance DataTables ke dalam variabel
-        var table = $('#product-table').DataTable({
-            processing: true,
-            serverSide: true,
-            // --- [PERUBAHAN] Ubah 'ajax' menjadi objek ---
-            ajax: {
-                url: "{{ route('admin.products.data') }}",
-                data: function(d) {
-                    // [DIUBAH] Mengirim 'category_slug' sesuai controller baru
-                    d.category_slug = $('#category_filter').val();
-                }
-            },
-            // --- [AKHIR PERUBAHAN] ---
-            columns: [
-                { data: 'DT_RowIndex', name: 'DT_RowIndex', orderable: false, searchable: false },
-                { data: 'image', name: 'image', orderable: false, searchable: false },
-                { data: 'name', name: 'name' },
-                { data: 'category.name', name: 'category.name', defaultContent: 'Belum ada kategori', orderable: false, searchable: false }, // Ini sudah benar
-                { data: 'price', name: 'price' },
-                { data: 'stock', name: 'stock' },
-                { data: 'status_badge', name: 'status', orderable: false, searchable: false },
-                { data: 'action', name: 'action', orderable: false, searchable: false },
-            ]
-        });
-
-        // --- Event listener untuk filter (Sudah Benar) ---
-        $('#category_filter').on('change', function() {
-            // Muat ulang data tabel saat filter diubah
-            table.ajax.reload();
-        });
-        // --- [AKHIR BARU] ---
-
-
-        // --- FUNGSI UNTUK MODAL ---
-        function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
-        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
-
-        // --- [DIUBAH] Fungsi modal disesuaikan untuk menerima URL lengkap ---
-        function openRestockModal(restockUrl, productName) {
-            const form = document.getElementById('restockForm');
-            const nameEl = document.getElementById('productName');
-            
-            // Langsung gunakan URL yang dikirim dari controller
-            form.action = restockUrl;
-            
-            nameEl.textContent = productName;
-            openModal('restockModal');
-        }
-    </script>
-@endpush
-

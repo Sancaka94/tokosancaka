@@ -6,7 +6,7 @@
 
 --}}
 
-<aside id="sidebar-wrapper" class="bg-gray-800 text-gray-300 flex-shrink-0 flex flex-col w-[280px] min-h-screen fixed inset-y-0 left-0 z-50 transform -translate-x-full lg:relative lg:translate-x-0 transition-transform duration-300 ease-in-out">
+<aside id="sidebar-wrapper" class="bg-blue-900 text-gray-300 flex-shrink-0 flex flex-col w-[280px] min-h-screen fixed inset-y-0 left-0 z-50 transform -translate-x-full lg:relative lg:translate-x-0 transition-transform duration-300 ease-in-out">
 
     <div class="flex justify-end p-4 lg:hidden">
 
@@ -95,6 +95,14 @@
             <span>Email Sancaka</span>
 
         </a>
+        
+        {{-- START: LINK BARU DITAMBAHKAN (CHAT) --}}
+<a href="https://tokosancaka.com/admin/chat" 
+    class="sidebar-link flex items-center px-4 py-2.5 text-sm font-medium rounded-lg hover:bg-gray-700 hover:text-white {{ request()->is('admin/chat*') ? 'bg-gray-700 text-white' : '' }}">
+    <i class="fa-solid fa-comment-dots fa-fw w-5 h-5 mr-3"></i>
+    <span>Chat Customer</span>
+</a>
+{{-- END: LINK BARU DITAMBAHKAN (CHAT) --}}
 
         {{-- Menu Pelanggan --}}
                 <a href="{{ route('admin.pelanggan.index') }}" class="sidebar-link flex items-center px-4 py-2.5 text-sm font-medium rounded-lg hover:bg-gray-700 hover:text-white {{ request()->routeIs('admin.pelanggan.*') ? 'bg-gray-700 text-white' : '' }}">
@@ -378,7 +386,7 @@
         {{-- ====================================================== --}}
         <a href="{{ route('admin.marketplace.index') }}" class="sidebar-link flex items-center px-4 py-2.5 text-sm font-medium rounded-lg hover:bg-gray-700 hover:text-white {{ request()->routeIs('admin.marketplace.*') ? 'bg-gray-700 text-white' : '' }}">
             <i class="fa-solid fa-store fa-fw w-5 h-5 mr-3"></i>
-            <span>Produk Marketplace</span>
+            <span>Produk Katalog</span>
         </a>
         {{-- ====================================================== --}}
         {{-- == AKHIR DARI PENAMBAHAN LINK == --}}
@@ -533,6 +541,17 @@
                         </a>
 
                     </li>
+                    
+                    
+                    {{-- ====================================================== --}}
+                    {{-- == ✅ LINK BARU DITAMBAHKAN DI SINI == --}}
+                    {{-- ====================================================== --}}
+                    <li>
+                        <a href="{{ route('admin.saldo.requests.history') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-gray-700 {{ request()->routeIs('admin.saldo.requests.history') ? 'text-white' : 'text-gray-400' }}">
+                            Riwayat Top Up
+                        </a>
+                    </li>
+                    {{-- ====================================================== --}}
 
                   
 
@@ -592,6 +611,15 @@
                             Atribut Kategori
                         </a>
                     </li>
+                    
+                    {{-- [BARU] Link ke Manajemen Slider --}}
+                    <li>
+                        <a href="{{ route('admin.sliders.index') }}"
+                                class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-gray-700 {{ request()->routeIs('admin.sliders.*') ? 'text-white' : 'text-gray-400' }}">
+                                    Manajemen Slider Informasi
+                        </a>
+                    </li>
+
 
                 </ul>
 

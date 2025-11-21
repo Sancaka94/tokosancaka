@@ -40,6 +40,55 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ScanController;
 use App\Http\Controllers\TrackingController;
+use App\Http\Controllers\DokuPaymentController;
+use App\Http\Controllers\TestOrderController;
+use App\Http\Controllers\DokuWebhookController;
+use App\Http\Controllers\DokuController;
+use App\Http\Controllers\Api\OngkirApiController; // <-- IMPORT
+use App\Http\Controllers\Customer\PesananController as CustomerPesananController; // ALIAS
+
+
+Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
+    return $request->user();
+});
+
+// Rute untuk mencari alamat (GET)
+Route::get('/search-address', [OngkirApiController::class, 'searchAddress'])->name('ongkir.search-address');
+
+// Rute untuk mengecek ongkir (POST)
+Route::post('/check-cost', [OngkirApiController::class, 'checkCost'])->name('ongkir.check-cost');
+
+// --- Rute untuk Virtual Account ---
+Route::post('/doku/va/create', [DokuController::class, 'createVirtualAccount']);
+Route::post('/doku/va/update', [DokuController::class, 'updateVirtualAccount']);
+Route::post('/doku/va/delete', [DokuController::class, 'deleteVirtualAccount']);
+Route::post('/doku/va/check-status', [DokuController::class, 'checkStatusVirtualAccount']);
+
+// PERBAIKAN FONTTE: Ditempatkan di sini, tanpa prefix 'api'
+Route::post('whatsapp/send-resi', [CustomerPesananController::class, 'sendResiViaWhatsappApi'])
+    ->name('api.whatsapp.send_resi');
+
+// --- Rute untuk Account Binding ---
+Route::post('/doku/account-binding', [DokuController::class, 'accountBinding']);
+Route::post('/doku/account-unbinding', [DokuController::class, 'accountUnbinding']);
+
+// --- Rute untuk Card Registration ---
+Route::post('/doku/card-registration', [DokuController::class, 'cardRegistration']);
+Route::post('/doku/card-unbinding', [DokuController::class, 'cardUnbinding']);
+
+// --- Rute untuk Payment ---
+Route::post('/doku/payment/direct-debit', [DokuController::class, 'paymentDirectDebit']);
+Route::post('/doku/payment/jump-app', [DokuController::class, 'paymentJumpApp']);
+
+// --- Rute untuk Operasi Lainnya ---
+Route::post('/doku/transaction/check-status', [DokuController::class, 'checkTransactionStatus']);
+Route::post('/doku/transaction/refund', [DokuController::class, 'refundTransaction']);
+Route::post('/doku/transaction/balance-inquiry', [DokuController::class, 'balanceInquiry']);
+
+// --- RUTE INBOUND DARI DOKU (Webhook) ---
+// Ini adalah endpoint yang akan DIHIT DOKU, bukan yang Anda hit.
+Route::post('/doku/webhook/direct-inquiry', [DokuController::class, 'handleDirectInquiry']);
+Route::post('/doku/webhook/payment-notification', [DokuController::class, 'handlePaymentNotification']);
 
 /*
 |--------------------------------------------------------------------------
@@ -50,10 +99,16 @@ use App\Http\Controllers\TrackingController;
 |
 */
 
+Route::post('/webhook/doku-jokul', [DokuWebhookController::class, 'handle'])
+     ->name('webhook.doku.jokul');
+
 // --- RUTE WEBHOOK & CALLBACK (PUBLIK) ---
 Route::post('/webhook/kiriminaja', [KirimAjaController::class, 'handle'])->name('api.callback.kirimaja');
 Route::post('/callback/tripay', [CheckoutController::class, 'TripayCallback'])->name('api.callback.tripay');
 
+
+// URL lengkapnya akan menjadi: https://tokosancaka.com/api/payment/callback
+Route::post('/payment/callback', [DokuPaymentController::class, 'callbackHandler'])->name('doku.callback');
 
 // --- RUTE PUBLIK (Tidak Perlu Login) ---
 

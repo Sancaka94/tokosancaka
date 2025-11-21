@@ -126,7 +126,7 @@
         padding: 1rem 1.5rem;
         display: flex;
         justify-content: flex-end;
-        gap: 0.5rem;
+        gap: 1rem;
         box-shadow: 0 -2px 6px rgba(0,0,0,0.05);
         /* Ini akan menempel di bawah .content-wrapper */
     }
@@ -320,25 +320,60 @@
             </div>
 
             <div class="bg-white p-6 rounded-lg shadow-md">
-                <h2 class="text-lg font-semibold text-gray-800 mb-4">Status & Label</h2>
-                <div class="space-y-4">
-                    <div>
-                        <label for="status" class="block text-sm font-medium text-gray-700">Status Produk</label>
-                        <select name="status" id="status" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
-                            <option value="active" {{ old('status', 'active') == 'active' ? 'selected' : '' }}>Aktif (Dijual)</option>
-                            <option value="inactive" {{ old('status') == 'inactive' ? 'selected' : '' }}>Nonaktif (Disimpan)</option>
-                        </select>
-                    </div>
-                    <div class="flex items-center">
-                        <input type="checkbox" name="is_new" id="is_new" value="1" {{ old('is_new') ? 'checked' : '' }} class="h-4 w-4 text-indigo-600 border-gray-300 rounded">
-                        <label for="is_new" class="ml-2 block text-sm text-gray-900">Tandai sebagai Produk Baru</label>
-                    </div>
-                    <div class="flex items-center">
-                        <input type="checkbox" name="is_bestseller" id="is_bestseller" value="1" {{ old('is_bestseller') ? 'checked' : '' }} class="h-4 w-4 text-indigo-600 border-gray-300 rounded">
-                        <label for="is_bestseller" class="ml-2 block text-sm text-gray-900">Tandai sebagai Bestseller</label>
-                    </div>
-                </div>
+    <h2 class="text-lg font-semibold text-gray-800 mb-4">Status & Label</h2>
+    <div class="space-y-4">
+        
+        {{-- Status Dropdown --}}
+        <div>
+            <label for="status" class="block text-sm font-medium text-gray-700">Status Produk</label>
+            <select name="status" id="status" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
+                <option value="active" {{ old('status', $product->status ?? 'active') == 'active' ? 'selected' : '' }}>Aktif (Dijual)</option>
+                <option value="inactive" {{ old('status', $product->status ?? '') == 'inactive' ? 'selected' : '' }}>Nonaktif (Disimpan)</option>
+            </select>
+        </div>
+
+        <hr class="border-gray-200 my-2">
+
+        {{-- Label Produk --}}
+        <div class="space-y-3">
+            {{-- Produk Baru --}}
+            <div class="flex items-center">
+                <input type="checkbox" name="is_new" id="is_new" value="1" {{ old('is_new', $product->is_new ?? false) ? 'checked' : '' }} class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
+                <label for="is_new" class="ml-2 block text-sm text-gray-900">Tandai sebagai Produk Baru</label>
             </div>
+
+            {{-- Bestseller --}}
+            <div class="flex items-center">
+                <input type="checkbox" name="is_bestseller" id="is_bestseller" value="1" {{ old('is_bestseller', $product->is_bestseller ?? false) ? 'checked' : '' }} class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
+                <label for="is_bestseller" class="ml-2 block text-sm text-gray-900">Tandai sebagai Bestseller</label>
+            </div>
+
+            {{-- Promo --}}
+            <div class="flex items-center">
+                <input type="checkbox" name="is_promo" id="is_promo" value="1" {{ old('is_promo', $product->is_promo ?? false) ? 'checked' : '' }} class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
+                <label for="is_promo" class="ml-2 block text-sm text-gray-900">Sedang Promo</label>
+            </div>
+        </div>
+
+        <hr class="border-gray-200 my-2">
+
+        {{-- Label Pengiriman --}}
+        <div class="space-y-3">
+            {{-- Diskon Ongkir --}}
+            <div class="flex items-center">
+                <input type="checkbox" name="is_shipping_discount" id="is_shipping_discount" value="1" {{ old('is_shipping_discount', $product->is_shipping_discount ?? false) ? 'checked' : '' }} class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
+                <label for="is_shipping_discount" class="ml-2 block text-sm text-gray-900">Diskon Ongkir</label>
+            </div>
+
+            {{-- Free Ongkir --}}
+            <div class="flex items-center">
+                <input type="checkbox" name="is_free_shipping" id="is_free_shipping" value="1" {{ old('is_free_shipping', $product->is_free_shipping ?? false) ? 'checked' : '' }} class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
+                <label for="is_free_shipping" class="ml-2 block text-sm text-gray-900">Free Ongkir</label>
+            </div>
+        </div>
+
+    </div>
+</div>
         </div>
     </div>
 

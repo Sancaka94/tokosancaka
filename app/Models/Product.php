@@ -14,7 +14,7 @@ use App\Models\Review; // Jika Anda menggunakan Review
 use App\Models\ProductAttribute; // Tambahkan ini
 use App\Models\ProductVariantType; // Tambahkan ini
 use App\Models\ProductVariant; // Tambahkan ini
-
+// use App\Models\User; // <-- Dihapus, tidak perlu di sini
 
 class Product extends Model
 {
@@ -31,10 +31,10 @@ class Product extends Model
         'store_id',
         'sku',
         'category_id', // Pastikan ini ada
-        //'category', // Hapus kolom 'category' jika tidak ada di DB
+        'category', // Hapus kolom 'category' jika tidak ada di DB
         'tags',
         'description',
-        'image', // Ganti image_url ke image jika nama kolom di DB adalah image
+        'image_url', // Ganti image_url ke image jika nama kolom di DB adalah image
         'store_name',
         'seller_name',
         'seller_city',
@@ -55,6 +55,9 @@ class Product extends Model
         'length',
         'image_url',
         'jenis_barang', // <-- DITAMBAHKAN: Pastikan kolom ini ada di DB Anda
+        'is_promo',             // Baru
+        'is_shipping_discount', // Baru
+        'is_free_shipping',     // Baru
         // 'attributes_data', // Hapus jika Anda beralih ke tabel relasi
     ];
 
@@ -67,16 +70,33 @@ class Product extends Model
         'tags' => 'array',
         'is_new' => 'boolean',
         'is_bestseller' => 'boolean',
-        // 'attributes_data' => 'array', // Hapus jika tidak digunakan lagi
+    'is_promo' => 'boolean',
+    'is_shipping_discount' => 'boolean',
+    'is_free_shipping' => 'boolean',
     ];
 
+
     /**
-     * Mendefinisikan relasi bahwa produk ini dimiliki oleh satu toko.
+     * =========================================================================
+     * INI ADALAH FUNGSI YANG DIPERBAIKI
+     * =========================================================================
+     *
+     * Mendefinisikan relasi BelongsTo ke model Store.
+     * Product 'belongsTo' Store.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
     public function store(): BelongsTo
     {
-        // Pastikan foreign key 'store_id' ada di tabel products
-        return $this->belongsTo(Store::class, 'store_id');
+        /**
+         * Keterangan:
+         * - Store::class: Model tujuannya.
+         * - 'store_id': Nama kolom foreign key di tabel 'products' (INI).
+         * - 'id': Nama kolom primary key di tabel 'stores' (TUJUAN).
+         *
+         * Ini adalah relasi yang benar.
+         */
+        return $this->belongsTo(Store::class, 'store_id', 'id');
     }
 
     /**
@@ -84,9 +104,10 @@ class Product extends Model
      */
     public function category(): BelongsTo
     {
-        return $this->belongsTo(Category::class);
+        // Pastikan ini menunjuk ke 'category_id'
+        return $this->belongsTo(Category::class, 'category_id'); 
     }
-
+    
     /**
      * Dapatkan semua ulasan untuk produk ini.
      */
@@ -123,6 +144,14 @@ class Product extends Model
     {
          // Nama relasi harus sama persis ('productVariants')
         return $this->hasMany(ProductVariant::class);
+    }
+
+    /**
+     * Relasi ke item order (Tambahan dari file sebelumnya)
+     */
+    public function orderItems(): HasMany
+    {
+        return $this->hasMany(OrderItem::class, 'product_id', 'id');
     }
 
     // --- AKHIR RELASI BARU ---

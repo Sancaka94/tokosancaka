@@ -21,8 +21,8 @@
     </p>
 
     {{-- Tombol untuk kembali ke halaman etalase/produk --}}
-    <a href="{{ route('etalase.index') }}" 
-       class="inline-block bg-blue-600 text-white font-medium py-3 px-6 rounded-lg shadow-md hover:bg-blue-700 transition-colors duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+    <a href="https://tokosancaka.com/etalase" 
+       class="inline-block bg-red-600 text-white font-medium py-3 px-6 rounded-lg shadow-md hover:bg-red-700 transition-colors duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">
         Mulai Belanja
     </a>
 </div>

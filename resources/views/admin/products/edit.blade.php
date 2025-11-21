@@ -215,7 +215,7 @@
                 
                 {{-- [PERBAIKAN] Menggunakan $product->image_url --}}
                 @if($product->image_url)
-                    <img id="image-preview" src="{{ asset('storage/' . $product->image_url) }}" alt="Pratinjau Gambar Produk" class="image-preview" />
+                    <img id="image-preview" src="{{ asset('public/storage/' . $product->image_url) }}" alt="Pratinjau Gambar Produk" class="image-preview" />
                 @else
                     <img id="image-preview" alt="Pratinjau Gambar Produk" class="image-preview" />
                 @endif
@@ -260,7 +260,7 @@
                         
                         {{-- Bagian ini sudah benar --}}
                         @if($product->seller_logo)
-                            <img id="seller-logo-preview" src="{{ asset('storage/' . $product->seller_logo) }}" alt="Pratinjau Logo Penjual" class="image-preview" />
+                            <img id="seller-logo-preview" src="{{ asset('public/storage/' . $product->seller_logo) }}" alt="Pratinjau Logo Penjual" class="image-preview" />
                         @else
                             <img id="seller-logo-preview" alt="Pratinjau Logo Penjual" class="image-preview" />
                         @endif

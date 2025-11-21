@@ -2,9 +2,15 @@
 
 namespace App\Http\Controllers\Customer;
 
+use App\Models\OrderMarketplace;
+use App\Models\OrderItemMarketplace; 
 use App\Models\Marketplace;
+use App\Models\ProductVariant;
+use App\Models\Store;
+use App\Models\User;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Log; // <-- Tambahkan untuk logging
 
 class CartController extends Controller
 {
@@ -18,59 +24,109 @@ class CartController extends Controller
     }
 
     /**
-     * Menambahkan produk ke dalam keranjang (session).
+     * ==========================================================
+     * PERBAIKAN TOTAL FUNGSI ADD
+     * ==========================================================
+     * Menambahkan produk ke dalam keranjang (session)
+     * dengan logika varian yang benar.
      */
     public function add(Request $request, Marketplace $product)
     {
-        $cart = session()->get('cart', []);
-        $quantity = $request->input('quantity', 1);
+        $quantity = (int)$request->input('quantity', 1);
+        $variantId = $request->input('variant_id', null);
+        
+        // Membuat ID unik untuk keranjang
+        // Cth: "12-5" (produk 12, varian 5) atau "12-0" (produk 12, tanpa varian)
+        $cartId = $product->id . '-' . ($variantId ?? '0');
 
-        if(isset($cart[$product->id])) {
-            $cart[$product->id]['quantity'] += $quantity;
+        $cart = session()->get('cart', []);
+
+        $itemPrice = $product->price;
+        $itemName = $product->name;
+        
+        // Jika ada varian, ambil data dari varian
+        if ($variantId) {
+            $variant = ProductVariant::find($variantId);
+            if ($variant) {
+                // (Opsional) Sesuaikan nama & harga jika beda
+                // $itemName = $product->name . ' (' . $variant->combination_string . ')';
+                // $itemPrice = $variant->price; 
+            }
+        }
+
+        // Jika item sudah ada di keranjang, tambahkan kuantitasnya
+        if (isset($cart[$cartId])) {
+            $cart[$cartId]['quantity'] += $quantity;
         } else {
-            $cart[$product->id] = [
-                "name" => $product->name,
+            // Jika item baru, buat entri baru
+            $cart[$cartId] = [
+                "product_id" => $product->id, // <-- KUNCI #1: INI YANG HILANG
+                "variant_id" => $variantId,  // <-- KUNCI #2: INI YANG HILANG
+                "name" => $itemName,
                 "quantity" => $quantity,
-                "price" => $product->price,
+                "price" => $itemPrice,
                 "image_url" => $product->image_url
             ];
         }
 
         session()->put('cart', $cart);
+        
         // Mengarahkan ke halaman keranjang setelah berhasil menambahkan produk.
         return redirect()->route('customer.cart.index')->with('success', 'Produk berhasil ditambahkan ke keranjang!');
     }
 
     /**
+     * ==========================================================
+     * PERBAIKAN FUNGSI UPDATE
+     * ==========================================================
      * Memperbarui kuantitas produk di keranjang.
+     * Fungsi ini sudah kompatibel dengan cart.index.blade.php Anda
      */
     public function update(Request $request)
     {
-        if($request->id && $request->quantity){
+        // $request->id sekarang adalah 'cartId' (cth: "12-5")
+        if ($request->id && $request->quantity) {
             $cart = session()->get('cart');
-            if(isset($cart[$request->id])) {
-                $cart[$request->id]["quantity"] = $request->quantity;
+            
+            if (isset($cart[$request->id])) {
+                $cart[$request->id]["quantity"] = (int)$request->quantity;
                 session()->put('cart', $cart);
-                return redirect()->back()->with('success', 'Kuantitas berhasil diperbarui.');
+
+                // Perbaikan: Kirim JSON response, BUKAN redirect
+                // Ini sesuai dengan kode JavaScript 'fetch' Anda
+                return response()->json(['success' => true, 'message' => 'Kuantitas berhasil diperbarui.']);
             }
         }
-        return redirect()->back()->with('error', 'Gagal memperbarui kuantitas.');
+
+        Log::warning('Cart update failed', ['request' => $request->all()]);
+        // Perbaikan: Kirim JSON error
+        return response()->json(['success' => false, 'message' => 'Gagal memperbarui kuantitas.'], 404);
     }
 
     /**
+     * ==========================================================
+     * PERBAIKAN FUNGSI REMOVE
+     * ==========================================================
      * Menghapus produk dari keranjang.
+     * Fungsi ini sudah kompatibel dengan cart.index.blade.php Anda
      */
     public function remove(Request $request)
     {
-        if($request->id) {
+        // $request->id sekarang adalah 'cartId' (cth: "12-5")
+        if ($request->id) {
             $cart = session()->get('cart');
-            if(isset($cart[$request->id])) {
+            if (isset($cart[$request->id])) {
                 unset($cart[$request->id]);
                 session()->put('cart', $cart);
             }
-            return redirect()->back()->with('success', 'Produk berhasil dihapus dari keranjang.');
+            
+            // Perbaikan: Kirim JSON response, BUKAN redirect
+            // Ini sesuai dengan kode JavaScript 'fetch' Anda
+            return response()->json(['success' => true, 'message' => 'Produk berhasil dihapus.']);
         }
-        return redirect()->back()->with('error', 'Gagal menghapus produk.');
+        
+        Log::warning('Cart remove failed', ['request' => $request->all()]);
+        // Perbaikan: Kirim JSON error
+        return response()->json(['success' => false, 'message' => 'Gagal menghapus produk.'], 404);
     }
 }
-

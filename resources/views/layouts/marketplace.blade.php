@@ -7,7 +7,7 @@
     <title>@yield('title', 'Sancaka Marketplace')</title>
 
     <!-- Favicon -->
-    <link rel="icon" type="image/png" href="https://sancaka.bisnis.pro/wp-content/uploads/sites/5/2024/10/WhatsApp_Image_2024-10-08_at_10.14.16-removebg-preview.png">
+    <link rel="icon" type="image/png" href="https://tokosancaka.com/storage/uploads/sancaka.png">
 
     <!-- Frameworks & Libraries CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -21,7 +21,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     
     <!-- AlpineJS for mobile menu interactivity -->
-    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/alpinejs/alpine@v2.x.x/dist/alpine.min.js" defer></script>
+
 
     <!-- Custom Styles -->
     <style>

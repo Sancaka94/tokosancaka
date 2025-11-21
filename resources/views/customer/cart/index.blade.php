@@ -6,21 +6,65 @@
 <div class="container mx-auto py-10 px-4">
     <h1 class="text-3xl font-bold text-gray-800 mb-6">Keranjang Belanja Anda</h1>
 
-    {{-- Container untuk notifikasi --}}
-    <div id="notification-container">
-        @if(session('success'))
-            <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-4 rounded-md" role="alert">
-                {{ session('success') }}
-            </div>
-        @endif
-    </div>
+    {{-- ========================================================== --}}
+{{-- AWAL BLOK NOTIFIKASI LENGKAP --}}
+{{-- ========================================================== --}}
+<div id="notification-container" class="mb-4">
+
+    {{-- 1. Pesan SUKSES (dari session 'success') --}}
+    @if(session('success'))
+        <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded-md" role="alert">
+            <p><strong>Sukses!</strong> {{ session('success') }}</p>
+        </div>
+    @endif
+
+    {{-- 2. Pesan ERROR (dari session 'error') --}}
+    {{-- Ini yang paling penting untuk Anda! --}}
+    @if(session('error'))
+        <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md" role="alert">
+            <p><strong>Gagal!</strong> {{ session('error') }}</p>
+        </div>
+    @endif
+
+    {{-- 3. Pesan PERINGATAN (dari session 'warning') --}}
+    @if(session('warning'))
+        <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-md" role="alert">
+            <p><strong>Peringatan:</strong> {{ session('warning') }}</p>
+        </div>
+    @endif
+
+    {{-- 4. Pesan INFO (dari session 'info') --}}
+    @if(session('info'))
+        <div class="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 rounded-md" role="alert">
+            <p><strong>Info:</strong> {{ session('info') }}</p>
+        </div>
+    @endif
+
+    {{-- 5. SEMUA Error Validasi (dari $errors) --}}
+    {{-- Ini akan menampilkan error jika validasi form gagal --}}
+    @if ($errors->any())
+        <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md" role="alert">
+            <strong class="font-bold">Terjadi Kesalahan:</strong>
+            <ul class="list-disc list-inside mt-2">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
+    {{-- Placeholder untuk notifikasi dari JavaScript (seperti yang Anda perbaiki sebelumnya) --}}
+    {{-- Posisinya sudah benar di dalam container --}}
+</div>
+{{-- ========================================================== --}}
+{{-- AKHIR BLOK NOTIFIKASI LENGKAP --}}
+{{-- ========================================================== --}}
     
     {{-- Container utama untuk isi keranjang, agar bisa diganti dengan pesan kosong via JS --}}
     <div id="cart-content">
         @if($cart && count($cart) > 0)
             <div class="flex flex-col lg:flex-row gap-8">
                 
-                <!-- Daftar Item Keranjang -->
                 <div class="w-full lg:w-2/3">
                     <div class="bg-white rounded-lg shadow-md overflow-hidden">
                         <table class="w-full text-left">
@@ -39,7 +83,13 @@
                                     @php $total += $details['price'] * $details['quantity'] @endphp
                                     <tr class="border-b transition-opacity duration-300" id="row-{{ $id }}">
                                         <td class="p-4 flex items-center gap-4">
-                                            <img src="{{ $details['image_url'] ? asset('storage/' . $details['image_url']) : 'https://placehold.co/80x80/e2e8f0/94a3b8?text=Produk' }}" alt="{{ $details['name'] }}" class="w-16 h-16 object-cover rounded-md">
+                                            
+                                            {{-- ========================================================== --}}
+                                            {{-- PERBAIKAN 1: Menghapus 'public/' dari path gambar --}}
+                                            {{-- ========================================================== --}}
+                                            <img src="{{ $details['image_url'] ? asset('public/storage/' . $details['image_url']) : 'https://placehold.co/80x80/e2e8f0/94a3b8?text=Produk' }}" 
+                                                 alt="{{ $details['name'] }}" class="w-16 h-16 object-cover rounded-md">
+                                            
                                             <div>
                                                 <p class="font-semibold text-gray-800">{{ $details['name'] }}</p>
                                             </div>
@@ -69,7 +119,6 @@
                     </div>
                 </div>
 
-                <!-- Ringkasan Pesanan -->
                 <div class="w-full lg:w-1/3">
                     <div class="bg-white rounded-lg shadow-md p-6">
                         <h2 class="text-xl font-bold text-gray-800 border-b pb-4 mb-4">Ringkasan Pesanan</h2>
@@ -102,7 +151,7 @@
                 <i class="fas fa-shopping-cart text-6xl text-gray-300 mb-4"></i>
                 <h2 class="text-2xl font-bold text-gray-700 mb-2">Keranjang Anda Kosong</h2>
                 <p class="text-gray-500 mb-6">Sepertinya Anda belum menambahkan produk apapun ke keranjang.</p>
-                <a href="{{ route('katalog.index') }}" class="bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-indigo-700 transition-colors">
+                <a href="{{ route('katalog.index') }}" class="bg-red-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-red-700 transition-colors">
                     Mulai Belanja
                 </a>
             </div>
@@ -131,8 +180,27 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         const formattedTotal = 'Rp' + new Intl.NumberFormat('id-ID').format(total);
-        document.getElementById('cart-subtotal').innerText = formattedTotal;
-        document.getElementById('cart-total').innerText = formattedTotal;
+        const subtotalEl = document.getElementById('cart-subtotal');
+        const totalEl = document.getElementById('cart-total');
+        
+        if (subtotalEl) subtotalEl.innerText = formattedTotal;
+        if (totalEl) totalEl.innerText = formattedTotal;
+    }
+
+    function showNotification(message, type = 'error') {
+        const container = document.getElementById('notification-container');
+        letbgColor = 'bg-red-100 border-red-500 text-red-700'; // error
+        if (type === 'success') {
+            bgColor = 'bg-green-100 border-green-500 text-green-700';
+        }
+
+        const div = document.createElement('div');
+        div.className = `bg-opacity-90 border-l-4 p-4 mb-4 rounded-md ${bgColor}`;
+        div.setAttribute('role', 'alert');
+        div.innerText = message;
+        
+        container.innerHTML = ''; // Hapus notifikasi lama
+        container.appendChild(div);
     }
 
     function updateCartOnServer(id, quantity) {
@@ -144,21 +212,46 @@ document.addEventListener('DOMContentLoaded', function() {
         body.append('id', id);
         body.append('quantity', quantity);
 
+        {{-- ========================================================== --}}
+        {{-- PERBAIKAN 2: Error handling pada FETCH --}}
+        {{-- ========================================================== --}}
         fetch("{{ route('customer.cart.update') }}", {
             method: 'POST',
             headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' },
             body: body
         })
         .then(response => {
-            if (response.ok && response.headers.get("content-type")?.includes("application/json")) {
-                return response.json();
+            // Cek jika sesi berakhir
+            if (response.status === 401 || response.status === 419) {
+                throw new Error('Sesi berakhir, silakan muat ulang halaman.');
             }
-            throw new Error("Sesi berakhir");
+            // Cek jika TIDAK ok (cth: 422, 500)
+            if (!response.ok) {
+                // Coba baca JSON error dari Laravel
+                return response.json().then(err => { 
+                    // Lempar error dengan pesan dari server
+                    throw new Error(err.message || 'Error tidak diketahui dari server.'); 
+                });
+            }
+            // Jika OK, lanjutkan
+            return response.json();
+        })
+        .then(data => {
+            // Sukses (opsional: tampilkan notif sukses)
+            // console.log(data.message); 
         })
         .catch(error => {
             console.error('Fetch Error:', error.message);
-            if (error.message === "Sesi berakhir") {
-                window.location.reload();
+            // Tampilkan error ASLI ke user
+            showNotification(error.message, 'error');
+            
+            // Hanya reload jika errornya adalah sesi berakhir
+            if (error.message.includes('Sesi berakhir')) {
+                setTimeout(() => window.location.reload(), 2000);
+            } else {
+                // Jika error lain (cth: stok habis), kembalikan kuantitas ke nilai lama (jika ada)
+                // atau setidaknya reload halaman untuk data yang konsisten
+                // Untuk sekarang, kita log saja dan biarkan opacity kembali
             }
         })
         .finally(() => {
@@ -191,7 +284,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 input.value = currentValue - 1;
             }
             updateTotal();
-            input.dispatchEvent(new Event('input', { bubbles: true }));
+            // Memicu event 'input' akan menjalankan debouncer
+            input.dispatchEvent(new Event('input', { bubbles: true })); 
         });
     });
 
@@ -208,31 +302,40 @@ document.addEventListener('DOMContentLoaded', function() {
             body.append('_method', 'DELETE');
             body.append('id', id);
 
+            {{-- ========================================================== --}}
+            {{-- PERBAIKAN 2: Error handling pada FETCH (Hapus) --}}
+            {{-- ========================================================== --}}
             fetch("{{ route('customer.cart.remove') }}", {
                 method: 'POST',
                 headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: body
             })
             .then(response => {
-                if (response.ok && response.headers.get("content-type")?.includes("application/json")) {
-                    return response.json();
+                if (response.status === 401 || response.status === 419) {
+                    throw new Error('Sesi berakhir, silakan muat ulang halaman.');
                 }
-                throw new Error("Sesi berakhir");
+                if (!response.ok) {
+                    return response.json().then(err => { 
+                        throw new Error(err.message || 'Error tidak diketahui dari server.'); 
+                    });
+                }
+                return response.json();
             })
             .then(data => {
                 if(data.success) {
+                    showNotification(data.message || 'Item berhasil dihapus.', 'success');
                     row.style.opacity = '0';
                     setTimeout(() => {
                         row.remove();
                         updateTotal();
-                        // PERBAIKAN: Ganti isi container jika keranjang kosong, tanpa reload.
+                        // Logika cerdas Anda untuk mengosongkan keranjang tanpa reload
                         if(document.querySelectorAll('tbody tr').length === 0) {
                             document.getElementById('cart-content').innerHTML = `
                                 <div class="text-center py-20 bg-white rounded-lg shadow-md">
                                     <i class="fas fa-shopping-cart text-6xl text-gray-300 mb-4"></i>
                                     <h2 class="text-2xl font-bold text-gray-700 mb-2">Keranjang Anda Kosong</h2>
                                     <p class="text-gray-500 mb-6">Semua item telah dihapus.</p>
-                                    <a href="{{ route('katalog.index') }}" class="bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-indigo-700 transition-colors">
+                                    <a href="{{ route('katalog.index') }}" class="bg-red-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-red-700 transition-colors">
                                         Mulai Belanja
                                     </a>
                                 </div>
@@ -243,8 +346,11 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .catch(error => {
                 console.error('Fetch Error:', error.message);
-                if (error.message === "Sesi berakhir") {
-                    window.location.reload();
+                // Tampilkan error ASLI ke user
+                showNotification(error.message, 'error');
+                
+                if (error.message.includes('Sesi berakhir')) {
+                    setTimeout(() => window.location.reload(), 2000);
                 }
             });
         });
@@ -252,4 +358,3 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 @endpush
-

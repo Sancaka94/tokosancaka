@@ -8,6 +8,8 @@ use App\Models\BannerEtalase;
 use App\Models\Category;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Models\Store; // <-- TAMBAHKAN IMPORT INI
+
 
 class EtalaseController extends Controller
 {
@@ -35,7 +37,7 @@ class EtalaseController extends Controller
         $categories = Category::where('type', 'product')->orderBy('name')->get();
         $banners = BannerEtalase::latest()->get(); 
         $settings = Setting::whereIn('key', ['banner_2','banner_3'])->pluck('value','key');
-                                
+                                    
         return view('etalase.index', compact('products', 'flashSaleProducts', 'banners', 'settings', 'categories'));
     }
 
@@ -75,6 +77,8 @@ class EtalaseController extends Controller
          * PERBAIKAN: Memuat relasi 'attributes' dari 'category'.
          * Ini adalah kunci agar data spesifikasi bisa tampil di view.
          */
+        // SEMULA: $product->load(['store.user']);
+        // BARU: (Tambahkan 'category.attributes' ke dalam array)
         $product->load(['category.attributes', 'store.user']);
         
         $relatedProducts = Product::with(['category', 'store'])->where('category_id', $product->category_id)
@@ -88,21 +92,25 @@ class EtalaseController extends Controller
         return view('etalase.show', compact('product', 'relatedProducts', 'categories', 'banners', 'settings'));
     }
 
-    /**
-     * Menampilkan halaman profil toko.
-     */
-    public function profileToko($name)
-    {
-        $products = Product::where('store_name', 'like', '%' . $name . '%')->where('status', 'active')->paginate(12);
-        
-        $firstProduct = $products->first();
-        $store = $firstProduct ? (object)[
-            'name' => $firstProduct->store_name,
-            'city' => $firstProduct->seller_city,
-            'logo' => $firstProduct->seller_logo,
-        ] : null;
+/**
+ * Menampilkan halaman profil toko.
+ */
+public function profileToko($name)
+{
+    // Ambil data 'store' dengan relasi 'user'
+    $store = Store::with('user')
+        ->where('slug', $name)
+        ->orWhere('name', $name)
+        ->firstOrFail();
 
-        return view('etalase.toko', compact('products', 'name', 'store'));
-    }
+    // Ambil produk berdasarkan store_id
+    $products = Product::where('store_id', $store->id)
+        ->where('status', 'active')
+        ->where('stock', '>', 0)
+        ->paginate(12);
+
+    // Kirim variabel ke view
+    return view('etalase.toko', compact('products', 'store'));
 }
 
+}

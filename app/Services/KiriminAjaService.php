@@ -1,40 +1,27 @@
 <?php
 
-
-
 namespace App\Services;
 
-
-
 use Illuminate\Support\Facades\Http;
-
-use Illuminate\Support\Facades\Log; // PERBAIKAN: Menambahkan import Log
-
-
-
-
+use Illuminate\Support\Facades\Log;
+use Illuminate\Http\Client\Response; // Import Response
+use Exception; // Import Exception
 
 class KiriminAjaService
-
 {
-
     protected $baseUrl;
-
     protected $token;
 
-
-
     public function __construct()
-
     {
+        $this->baseUrl = config('services.kiriminaja.base_url', 'https://client.kiriminaja.com');
+        $this->token = config('services.kiriminaja.token');
 
-        $this->baseUrl = config('services.kiriminaja.base_url', 'https://tdev.kiriminaja.com');
-
-        $this->token   = config('services.kiriminaja.token');
-
+        // PERIKSA: Pastikan token ada di produksi
+        if (empty($this->token)) {
+            Log::critical('KIRIMINAJA_TOKEN tidak diatur di file .env!');
+        }
     }
-
-    
 
     /**
      * Melakukan pelacakan paket (Express atau Instant).
@@ -45,284 +32,192 @@ class KiriminAjaService
             return null;
         }
 
+        // Gunakan $this->request() yang sudah diperbarui
         if ($serviceType == 'instant') {
             return $this->request('GET', "/api/mitra/v4/instant/tracking/{$orderId}");
         }
-        
+
+        // Gunakan $this->request() yang sudah diperbarui
         return $this->request('POST', '/api/mitra/tracking', ['order_id' => $orderId]);
     }
 
-
-
-  public function getExpressPricing($origin, $subOrigin, $destination, $subDestination, $weight, $length, $width, $height, $itemValue, $couriers = null, $category = 'regular', $insurance = 0)
-
+    public function getExpressPricing($origin, $subOrigin, $destination, $subDestination, $weight, $length, $width, $height, $itemValue, $couriers = null, $category = 'regular', $insurance = 0)
     {
-
         if ($category === 'trucking') {
-
             $volumetricWeight = ($width * $length * $height) / 4000 * 1000; // Standar trucking
-
         } else {
-
             $volumetricWeight = ($width * $length * $height) / 6000 * 1000; // Standar reguler
-
         }
-
-    
 
         $finalWeight = max($weight, $volumetricWeight);
 
-    
-
         $payload = [
-
-            "origin"                  => $origin,
-
-            "subdistrict_origin"      => $subOrigin,
-
-            "destination"             => $destination,
-
+            "origin" => $origin,
+            "subdistrict_origin" => $subOrigin,
+            "destination" => $destination,
             "subdistrict_destination" => $subDestination,
-
-            "weight"                  => (int) ceil($finalWeight),
-
-            "length"                  => $length,
-
-            "width"                   => $width,
-
-            "height"                  => $height,
-
-            "item_value"              => $itemValue,
-
-            "insurance"               => $insurance,
-
-            "courier"                 => $couriers ?? []
-
-        
-
+            "weight" => (int) ceil($finalWeight),
+            "length" => $length,
+            "width" => $width,
+            "height" => $height,
+            "item_value" => $itemValue,
+            "insurance" => $insurance,
+            "courier" => $couriers ?? []
         ];
-
-
 
         Log::info('KiriminAja Pricing Payload:', $payload);
 
-
-
         $response = Http::withToken($this->token)
-
             ->acceptJson()
-
             ->post($this->baseUrl . '/api/mitra/v6.1/shipping_price', $payload);
 
-        
+        // --- PERBAIKAN: Tambahkan Pengecekan Error ---
+        if (!$response->successful()) {
+            Log::error('KiriminAja getExpressPricing Gagal', [
+                'status' => $response->status(),
+                'body' => $response->json(),
+                'payload' => $payload
+            ]);
+            return null; // Kembalikan null agar controller bisa menangani
+        }
+        // --- Akhir Perbaikan ---
 
         Log::info('KiriminAja Pricing Response:', ['body' => $response->json()]);
-
         return $response->json();
-
     }
 
-
-
-    public function getInstantPricing($originLat, $originLng, $originAddress, $destLat, $destLng, $destAddress, $weight, $itemPrice, $vehicle = 'motor', $services = ['gosend','grab_express'])
-
+    public function getInstantPricing($originLat, $originLng, $originAddress, $destLat, $destLng, $destAddress, $weight, $itemPrice, $vehicle = 'motor', $services = ['gosend', 'grab_express'])
     {
-
+        $payload = [
+            "service" => $services,
+            "item_price" => (int)$itemPrice,
+            "origin" => [
+                "lat" => $originLat,
+                "long" => $originLng,
+                "address" => $originAddress,
+            ],
+            "destination" => [
+                "lat" => $destLat,
+                "long" => $destLng,
+                "address" => $destAddress,
+            ],
+            "weight" => (int)$weight,
+            "vehicle" => $vehicle,
+            "timezone" => "WIB"
+        ];
+        
         $response = Http::withToken($this->token)
-
             ->acceptJson()
+            ->post($this->baseUrl . '/api/mitra/v4/instant/pricing', $payload);
 
-            ->post($this->baseUrl . '/api/mitra/v4/instant/pricing', [
-
-                "service"     => $services,
-
-                "item_price"  => (int)$itemPrice,
-
-                "origin"      => [
-
-                    "lat"     => $originLat,
-
-                    "long"    => $originLng,
-
-                    "address" => $originAddress,
-
-                ],
-
-                "destination" => [
-
-                    "lat"     => $destLat,
-
-                    "long"    => $destLng,
-
-                    "address" => $destAddress,
-
-                ],
-
-                "weight"     => (int)$weight,
-
-                "vehicle"    => $vehicle,
-
-                "timezone"   => "WIB"
-
+        // --- PERBAIKAN: Tambahkan Pengecekan Error ---
+        if (!$response->successful()) {
+            Log::error('KiriminAja getInstantPricing Gagal', [
+                'status' => $response->status(),
+                'body' => $response->json(),
+                'payload' => $payload
             ]);
-
-
+            return null;
+        }
+        // --- Akhir Perbaikan ---
 
         return $response->json();
-
     }
-
-    
 
     public function searchAddress($keyword)
-
     {
-
         $response = Http::withToken($this->token)
-
             ->acceptJson()
-
             ->get($this->baseUrl . '/api/mitra/v6.1/addresses', [
-
                 'search' => $keyword
-
             ]);
 
-    
+        // --- PERBAIKAN: Tambahkan Pengecekan Error ---
+        if (!$response->successful()) {
+            Log::error('KiriminAja searchAddress Gagal', [
+                'status' => $response->status(),
+                'body' => $response->json(),
+                'keyword' => $keyword
+            ]);
+            return null;
+        }
+        // --- Akhir Perbaikan ---
 
         return $response->json();
-
     }
-
-    
 
     public function createExpressOrder(array $data)
-
     {
-
-        return $this->request('/api/mitra/v6.1/request_pickup', 'POST', $data);
-
+        // Ganti ke $this->request() agar konsisten
+        return $this->request('POST', '/api/mitra/v6.1/request_pickup', $data);
     }
-
-    
 
     public function createInstantOrder(array $data)
-
     {
-
-        return $this->request('/api/mitra/v4/instant/pickup/request', 'POST', $data);
-
+        // Ganti ke $this->request() agar konsisten
+        return $this->request('POST', '/api/mitra/v4/instant/pickup/request', $data);
     }
-
-    
 
     public function setCallback(string $url)
-
     {
-
-        return $this->request('/api/mitra/set_callback', 'POST', [
-
+        return $this->request('POST', '/api/mitra/set_callback', [
             'url' => $url,
-
         ]);
-
     }
 
-    
-
-    private function request($endpoint, $method, $payload = [])
-
+    /**
+     * --- PERBAIKAN BESAR:
+     * Mengganti cURL manual dengan Laravel HTTP Client agar konsisten
+     * dan menambahkan penanganan error yang lebih baik.
+     */
+    private function request($method, $endpoint, $payload = [])
     {
-
         $url = $this->baseUrl . $endpoint;
+        $method = strtolower($method); // pastikan method lowercase
 
-        $apiKey = $this->token;
+        try {
+            /** @var \Illuminate\Http\Client\Response $response */
+            $response = Http::withToken($this->token)
+                ->acceptJson()
+                ->{$method}($url, $payload); // Panggil method secara dinamis (get, post, dll)
 
-    
-
-        $ch = curl_init();
-
-        curl_setopt_array($ch, [
-
-            CURLOPT_URL => $url,
-
-            CURLOPT_RETURNTRANSFER => true,
-
-            CURLOPT_CUSTOMREQUEST => $method,
-
-            CURLOPT_POSTFIELDS => json_encode($payload),
-
-            CURLOPT_HTTPHEADER => [
-
-                'Content-Type: application/json',
-
-                'Authorization: Bearer ' . $apiKey,
-
-            ],
-
-            CURLOPT_FAILONERROR => false,
-
-        ]);
-
-    
-
-        $response = curl_exec($ch);
-
-        $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
-        curl_close($ch);
-
-    
-
-        if ($httpcode >= 400) {
-
-            throw new \Exception("HTTP error $httpcode | Response: " . $response);
-
-        }
-
-    
-
-        return json_decode($response, true);
-
-    }
-
-    
-
-    public function getSchedules()
-
-    {
-
-        $url = $this->baseUrl . '/api/mitra/v2/schedules';
-
-
-
-        $response = Http::withToken($this->token)
-
-            ->post($url);
-
-
-
-        if ($response->successful() && isset($response['schedules'])) {
-
-            foreach ($response['schedules'] as $schedule) {
-
-                if (!$schedule['libur']) {
-
-                    return $schedule;
-
-                }
-
+            // Cek jika request TIDAK sukses (bukan 2xx)
+            if (!$response->successful()) {
+                Log::error("KiriminAja API Error: {$method} {$endpoint}", [
+                    'status' => $response->status(),
+                    'response' => $response->body(), // Gunakan body() untuk teks mentah
+                    'payload' => $payload
+                ]);
+                return null; // Kembalikan null untuk di-handle oleh pemanggil
             }
 
+            // Jika sukses, kembalikan data JSON
+            return $response->json();
+
+        } catch (Exception $e) {
+            // Tangani error level koneksi (mis. DNS, timeout)
+            Log::error("KiriminAja Connection Error: {$e->getMessage()}", [
+                'endpoint' => $endpoint,
+                'payload' => $payload
+            ]);
+            return null;
         }
-
-
-
-        return null;
-
     }
 
+    public function getSchedules()
+    {
+        // Gunakan $this->request() yang baru
+        $response = $this->request('POST', '/api/mitra/v2/schedules');
 
+        // $this->request() sudah menangani logging error, kita hanya perlu menangani data
+        if ($response && isset($response['schedules'])) {
+            foreach ($response['schedules'] as $schedule) {
+                if (!$schedule['libur']) {
+                    return $schedule;
+                }
+            }
+        }
 
+        return null; // Kembalikan null jika tidak ada jadwal
+    }
 }
-

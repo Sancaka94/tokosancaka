@@ -23,7 +23,7 @@
     */
     :root {
         --primary-color: #dc3545; /* Warna Merah */
-        --primary-rgb: 220, 53, 69;
+        --primary-rgb: 255, 255, 255; /* <-- SEPERTI INI */
         --primary-color-darker: #b02a37;
         --secondary-color: #6c757d;
         --success-color: #198754;
@@ -564,6 +564,8 @@
 {{-- Pustaka jQuery & jQuery UI --}}
 <script src="https://code.jquery.com/jquery-3.6.0.js"></script>
 <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.js"></script>
+{{-- SweetAlert untuk notifikasi --}}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
 $(document).ready(function () {
@@ -614,6 +616,7 @@ $(document).ready(function () {
     // ============================================
     $.ajaxSetup({ headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') } });
 
+    // Tampilkan error validasi dari server
     @if ($errors->any())
         let errorHtml = '<ul class="list-unstyled text-start mb-0" style="padding-left: 1rem;">';
         @foreach ($errors->all() as $error)
@@ -629,15 +632,20 @@ $(document).ready(function () {
         Swal.fire({ title: 'Gagal!', text: @json(session('error')), icon: 'error', confirmButtonColor: '#dc2626' });
     @endif
 
+    // Inisialisasi Modal
     const ongkirModal = new bootstrap.Modal(document.getElementById('ongkirModal'));
     const paymentModal = new bootstrap.Modal(document.getElementById('paymentMethodModal'));
+    
+    // Helper
     let searchTimeout = null;
     const debounce = (func, delay) => (...args) => { clearTimeout(searchTimeout); searchTimeout = setTimeout(() => func.apply(this, args), delay); };
     function formatRupiah(angka) { return 'Rp ' + (parseInt(angka, 10) || 0).toLocaleString('id-ID'); }
 
     function maskData(type, value) { if (!value) return '***'; if (type === 'name') { const parts = value.split(' '); return parts.length > 1 ? parts[0] + ' ' + parts.slice(1).map(p => p.replace(/./g, '*')).join(' ') : (value.length > 2 ? value.substring(0, 2) + '***' : value); } if (type === 'phone') { const num = value.replace(/\D/g, ''); return num.length > 8 ? num.substring(0, 3) + '****' + num.substring(num.length - 4) : num.substring(0, 3) + '****'; } if (type === 'address') { const parts = value.split(' '); return parts.length > 2 ? parts.slice(0, 2).join(' ') + ' **** **** ****' : value; } return '***'; }
-    function clearHiddenAddress(prefix) { $(`#${prefix}_province, #${prefix}_regency, #${prefix}_district, #${prefix}_village, #${prefix}_postal_code, #${prefix}_district_id, #${prefix}_subdistrict_id`).val(''); }
+    // [PERBAIKAN] Pastikan lat/lng juga di-clear
+    function clearHiddenAddress(prefix) { $(`#${prefix}_province, #${prefix}_regency, #${prefix}_district, #${prefix}_village, #${prefix}_postal_code, #${prefix}_district_id, #${prefix}_subdistrict_id, #${prefix}_lat, #${prefix}_lng`).val(''); }
     
+    // ✅✅✅ [FUNGSI DIPERBAIKI] Bug 2: Menyimpan Lat/Lng dari Kontak ✅✅✅
     function fillContactForm(prefix, data) {
         $(`#${prefix}_name`).val(maskData('name', data.nama)).trigger('blur').attr('data-real-value', data.nama);
         $(`#${prefix}_phone`).val(maskData('phone', data.no_hp)).trigger('blur').attr('data-real-value', data.no_hp);
@@ -645,12 +653,14 @@ $(document).ready(function () {
         $(`#${prefix}_id`).val(data.id);
         clearHiddenAddress(prefix);
         const addressSearchInput = $(`#${prefix}_address_search`);
+        
         if (data.village && data.district) {
             const addressQuery = `${data.village}, ${data.district}`;
             addressSearchInput.val(`Mencari: ${addressQuery}...`).prop('disabled', true).removeClass('is-invalid is-valid');
+            
             $.get("{{ route('api.address.search') }}", { search: addressQuery }).done(function(results) {
                 if (results && results.length > 0) {
-                    const item = results[0];
+                    const item = results[0]; 
                     const parts = item.full_address.split(',').map(s => s.trim());
                     $(`#${prefix}_village`).val(parts[0] || data.village).trigger('change');
                     $(`#${prefix}_district`).val(parts[1] || data.district).trigger('change');
@@ -659,6 +669,11 @@ $(document).ready(function () {
                     $(`#${prefix}_postal_code`).val(parts[4] || data.postal_code).trigger('change');
                     $(`#${prefix}_district_id`).val(item.district_id).trigger('change');
                     $(`#${prefix}_subdistrict_id`).val(item.subdistrict_id).trigger('change');
+                    
+                    // ✅ PERBAIKAN (Bug 2): Simpan Lat/Lng dari kontak
+                    $(`#${prefix}_lat`).val(item.lat || '');
+                    $(`#${prefix}_lng`).val(item.lon || ''); // API KiriminAja pakai 'lon'
+
                     addressSearchInput.val('Alamat Ditemukan (Privasi Terjaga)').addClass('is-valid').removeClass('is-invalid');
                     setTimeout(() => addressSearchInput.removeClass('is-valid'), 2500);
                 } else {
@@ -674,6 +689,10 @@ $(document).ready(function () {
             Swal.fire({ title: 'Data Tidak Lengkap', text: 'Kontak yang dipilih tidak memiliki data alamat. Anda wajib mengisi dan mencari alamat secara manual.', icon: 'info', confirmButtonColor: '#0d6efd' }).then(() => addressSearchInput.focus());
         }
     }
+
+    // Fungsi masking (dari kode Anda, sudah OK)
+    function maskDropdownPhone(phone) { if (!phone) return '****'; const num = String(phone).replace(/\D/g, ''); if (num.length > 7) { return num.substring(0, 4) + ' **** ' + num.substring(num.length - 3); } return num.substring(0, 3) + '****'; }
+    function maskDropdownName(name) { if (!name) return '****'; const titleCase = (str) => { if (!str) return ''; return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase(); }; const words = String(name).split(' '); if (words.length === 1) { const word = words[0]; if (word.length <= 2) return titleCase(word); if (word.length === 3) return titleCase(word.substring(0, 2)) + '*'; return titleCase(word.substring(0, 2)) + '**'; } const firstWord = titleCase(words[0]); const maskedRest = words.slice(1).map(() => '****').join(' '); return firstWord + ' ' + maskedRest; }
 
     function setupContactSearch(prefix) {
         $(`#${prefix}_name, #${prefix}_phone`).autocomplete({
@@ -691,9 +710,7 @@ $(document).ready(function () {
                             return { label: `${item.nama} - ${item.no_hp}`, value: item.nama, data: item };
                         }));
                     },
-                    error: function() {
-                        response([]);
-                    }
+                    error: function() { response([]); }
                 });
             },
             minLength: 2,
@@ -705,14 +722,18 @@ $(document).ready(function () {
             focus: function(event, ui) {
                 if (ui.item.disabled) return false;
                 event.preventDefault();
-                $(`#${prefix}_name`).val(ui.item.data.nama);
-                $(`#${prefix}_phone`).val(ui.item.data.no_hp);
+                const maskedName = maskDropdownName(ui.item.data.nama);
+                const maskedPhone = maskDropdownPhone(ui.item.data.no_hp);
+                $(`#${prefix}_name`).val(maskedName);
+                $(`#${prefix}_phone`).val(maskedPhone);
             }
         }).autocomplete("instance")._renderItem = function(ul, item) {
             if (item.disabled) {
                 return $("<li class='ui-state-disabled p-3 text-muted'></li>").text(item.label).appendTo(ul);
             }
-            return $("<li>").append(`<div class="ui-menu-item-wrapper"><div class="font-weight-bold">${item.data.nama}</div><small>${item.data.no_hp}</small></div>`).appendTo(ul);
+            const maskedName = maskDropdownName(item.data.nama);
+            const maskedPhone = maskDropdownPhone(item.data.no_hp);
+            return $("<li>").append(`<div class="ui-menu-item-wrapper"><div class="font-weight-bold">${maskedName}</div><small>${maskedPhone}</small></div>`).appendTo(ul);
         };
     }
     setupContactSearch('sender');
@@ -726,12 +747,14 @@ $(document).ready(function () {
         });
     }
 
+    // ✅✅✅ [FUNGSI DIPERBAIKI] Bug 1: Menyimpan Lat/Lng dari Autocomplete ✅✅✅
     function setupAddressSearch(prefix) {
         const s = $(`#${prefix}_address_search`), r = $(`#${prefix}_address_results`);
         s.on('input', debounce(() => {
             s.removeClass('is-valid is-invalid');
             const q = s.val();
             if (q.length < 3) return r.addClass('d-none');
+            
             $.get("{{ route('api.address.search') }}", { search: q }).done(d => {
                 r.html('').removeClass('d-none');
                 if (d && d.length > 0) {
@@ -745,6 +768,11 @@ $(document).ready(function () {
                         $(`#${prefix}_postal_code`).val(p[4] || '').trigger('change');
                         $(`#${prefix}_district_id`).val(i.district_id).trigger('change');
                         $(`#${prefix}_subdistrict_id`).val(i.subdistrict_id).trigger('change');
+                        
+                        // ✅ PERBAIKAN (Bug 1): Simpan Lat/Lng dari pencarian
+                        $(`#${prefix}_lat`).val(i.lat || '');
+                        $(`#${prefix}_lng`).val(i.lon || ''); // API KiriminAja pakai 'lon'
+                        
                         r.addClass('d-none');
                     })));
                 } else {
@@ -756,10 +784,18 @@ $(document).ready(function () {
     setupAddressSearch('sender');
     setupAddressSearch('receiver');
 
+    // ✅✅✅ [FUNGSI DIPERBAIKI] Bug 1 & 3: Memperbaiki Logo & ETD ✅✅✅
     function runCekOngkir() {
         let formData = $('#orderForm').serializeArray();
         formData.forEach((item, index) => { let realVal = $(`#${item.name.replace(/\[/g, '\\[').replace(/\]/g, '\\]')}`).attr('data-real-value'); if (realVal) formData[index].value = realVal; });
+        
         let tempForm = $('<form>').append($.map(formData, item => $('<input>').attr({type: 'hidden', name: item.name, value: item.value})));
+        
+        // ✅ PERBAIKAN (Bug 1): Pastikan Lat/Lng terkirim
+        tempForm.append($('<input>').attr({type: 'hidden', name: 'sender_lat', value: $('#sender_lat').val()}));
+        tempForm.append($('<input>').attr({type: 'hidden', name: 'sender_lng', value: $('#sender_lng').val()}));
+        tempForm.append($('<input>').attr({type: 'hidden', name: 'receiver_lat', value: $('#receiver_lat').val()}));
+        tempForm.append($('<input>').attr({type: 'hidden', name: 'receiver_lng', value: $('#receiver_lng').val()}));
 
         const required = { 'sender_district_id': 'Alamat Pengirim', 'receiver_district_id': 'Alamat Penerima', 'item_price': 'Harga Barang', 'weight': 'Berat' };
         let missing = Object.keys(required).filter(s => !tempForm.find(`[name="${s.replace('#','')}"]`).val());
@@ -781,55 +817,143 @@ $(document).ready(function () {
                     return;
                 }
 
+                // [PERBAIKAN] Cek juga 'status: false'
                 const hasData = (res.result && Array.isArray(res.result)) || (res.results && Array.isArray(res.results));
-                if (!hasData) {
-                    let errorMessage = res.text || 'Layanan pengiriman tidak ditemukan untuk rute atau jenis layanan ini.';
+                if (!hasData || (res.status === false && !hasData)) {
+                    let errorMessage = res.message || res.text || 'Layanan pengiriman tidak ditemukan untuk rute atau jenis layanan ini.';
                     $('#ongkirResultsContainer').html(`<div class="alert alert-warning text-center">${errorMessage}</div>`);
                     return;
                 }
 
+                // ✅ PERBAIKAN (Bug 3): Logika Logo Instant
                 if (res.result && Array.isArray(res.result)) {
-                    const fromResult = res.result.flatMap(provider =>
-                        provider.costs.map(cost => ({...cost, service: provider.name, service_name: `${provider.name.toUpperCase()}`, service_type_label: `${cost.service_type}`, cost: cost.price.total_price, price: cost.price, etd: cost.estimation || '-', setting: cost.setting || {}, insurance: cost.price.insurance_fee || 0 }))
-                    );
+                    const fromResult = res.result.flatMap(provider => {
+                        let providerNameForLogo = provider.name; // 'gosend' or 'grab_express'
+                        if (providerNameForLogo === 'grab_express') {
+                            providerNameForLogo = 'grab'; // Ganti untuk nama file logo
+                        }
+                        
+                        return provider.costs.map(cost => ({
+                            ...cost, 
+                            service: providerNameForLogo, // Untuk LOGO ('gosend' atau 'grab')
+                            service_name: `${provider.name.toUpperCase()}`, // Untuk TAMPILAN
+                            service_type_label: `${cost.service_type}`, 
+                            cost: cost.price.total_price, 
+                            price: cost.price, 
+                            etd: cost.estimation || '-', 
+                            setting: cost.setting || {}, 
+                            insurance: cost.price.insurance_fee || 0,
+                            cod: cost.cod_available ?? false,
+                            is_instant: true // ✅ PERBAIKAN (Bug 3): Flag untuk ETD
+                        }));
+                    });
                     allResults.push(...fromResult);
                 }
 
                 if (res.results && Array.isArray(res.results)) {
-                    const fromResults = res.results.map(service => ({ ...service, cost: service.cost, price: { base_price: service.cost, total_price: service.cost }, insurance: service.insurance || 0, cod: service.cod, service_name: `${service.service.toUpperCase()}`, service_type_label: `${service.service_type}`}));
+                    const fromResults = res.results.map(service => ({ ...service, cost: service.cost, price: { base_price: service.cost, total_price: service.cost }, insurance: service.insurance || 0, cod: service.cod, service_name: `${service.service.toUpperCase()}`, service_type_label: `${service.service_type}`, is_instant: false}));
                     allResults.push(...fromResults);
                 }
 
                 allResults.sort((a, b) => a.cost - b.cost);
                 const b = $('#ongkirResultsContainer').empty();
+
+                if (allResults.length === 0) {
+                     $('#ongkirResultsContainer').html(`<div class="alert alert-warning text-center">Tidak ada layanan yang tersedia untuk filter ini.</div>`);
+                     return;
+                }
+                
+                // Hapus header, sesuai desain
                 const headerHtml = `<div class="ongkir-header-row d-none d-lg-flex"><div class="ongkir-item-col col-service">Layanan</div><div class="ongkir-item-col col-etd">Estimasi</div><div class="ongkir-item-col col-cod">COD</div><div class="ongkir-item-col col-pickup">Opsi Penjemputan</div><div class="ongkir-item-col col-discount">Diskon</div><div class="ongkir-item-col col-price">Tarif</div><div class="ongkir-item-col col-action"></div></div>`;
                 b.append(headerHtml);
 
                 allResults.forEach(i => {
+                    // [PERBAIKAN] Pastikan 'i.service' ada sebelum .toLowerCase()
+                    const logoName = (i.service || "").toLowerCase().replace(/\s+/g, '');
+                    let logoUrl = '';
+
+                    // ✅ PERBAIKAN (Bug 3): Logika URL Logo Eksternal
+                    if (logoName === 'gosend') {
+                        logoUrl = 'https://tokosancaka.com/public/storage/logo-ekspedisi/gosend.png';
+                    } else if (logoName === 'grab') {
+                        logoUrl = 'https://tokosancaka.com/public/storage/logo-ekspedisi/grab.png';
+                    } else if (logoName) {
+                        logoUrl = `{{ asset('public/storage/logo-ekspedisi/') }}/${logoName}.png`;
+                    }
+                    
                     const safeService = (i.service || '').toString().replace(/-/g, ' ');
                     const safeServiceTypeLabel = (i.service_type_label || '').toString().replace(/-/g, ' ');
                     const useInsurance = $('#ansuransi').val() === 'iya';
                     const insuranceFeeValue = useInsurance ? (i.insurance || 0) : 0;
-                    const v = `${serviceType}-${safeService}-${safeServiceTypeLabel}-${i.cost}-${insuranceFeeValue}-${i.setting?.cod_fee_amount||0}`;
+                    // [PERBAIKAN] Pastikan 'setting' ada
+                    const codFee = (i.setting && i.setting.cod_fee_amount) ? i.setting.cod_fee_amount : 0;
+                    const v = `${serviceType}-${safeService}-${safeServiceTypeLabel}-${i.cost}-${insuranceFeeValue}-${codFee}`;
+                    
                     const hasDiscount = i.price?.base_price && i.price.base_price > i.cost;
                     const basePriceFmt = hasDiscount ? formatRupiah(i.price.base_price) : '';
-                    const discountFmt = hasDiscount ? `${Math.round(((i.price.base_price - i.cost) / i.price.base_price) * 100)}%` : 'FLAT';
-                    const codFee = i.setting?.cod_fee_amount || 0;
+                    
                     const insuranceFee = i.insurance || 0;
                     let feeDetailsHtml = '';
                     if (useInsurance && insuranceFee > 0) { feeDetailsHtml += `<div><small>Termasuk Asuransi: ${formatRupiah(insuranceFee)}</small></div>`; }
                     if (i.cod && codFee > 0) { feeDetailsHtml += `<div><small>Biaya COD: ${formatRupiah(codFee)}</small></div>`; }
+
+                    // ✅ PERBAIKAN (Bug 3): Logika ETD (Hari vs Jam)
+                    let etdHtml = '';
+                    if (i.etd) {
+                        const etdText = i.etd.toString();
+                        if (i.is_instant) {
+                            etdHtml = `<span>${etdText}</span>`; // Instant (cth: 1-2 hours)
+                        } else {
+                            etdHtml = `<span>${etdText} Hari</span>`; // Express/Cargo (cth: 1-2)
+                        }
+                    }
+
                     const buttonHtml = `<button type="button" class="btn btn-kirim select-ongkir-btn" data-value="${v}" data-display="${i.service_name} - ${i.service_type_label}" data-cod-supported="${i.cod}">Kirim Paket</button>`;
-                    const itemHtml = `<div class="ongkir-item-card"><div class="ongkir-item-col col-service"><img src="{{ asset('storage/logo-ekspedisi/') }}/${i.service.toLowerCase().replace(/\s+/g, '')}.png" class="ongkir-logo" onerror="this.style.display='none'"><div class="service-info"><span class="service-name">${i.service_name}</span><span class="service-type">${i.service_type_label}</span></div></div><div class="ongkir-item-col col-etd"><span class="col-label">Estimasi</span><span>${i.etd} Hari</span></div><div class="ongkir-item-col col-cod"><span class="col-label">COD</span><span>${i.cod ? 'Tersedia' : '-'}</span></div><div class="ongkir-item-col col-pickup"><span class="col-label">Opsi Penjemputan</span><span>Pick Up & Drop Off</span></div><div class="ongkir-item-col col-discount"><span class="col-label">Diskon</span><span>${discountFmt}</span></div><div class="ongkir-item-col col-price"><span class="col-label">Tarif</span><div class="price-value"><span class="final-price">${formatRupiah(i.cost)}</span>${hasDiscount ? `<span class="base-price">${basePriceFmt}</span>` : ''}</div><div class="price-details">${feeDetailsHtml}</div></div><div class="ongkir-item-col col-action">${buttonHtml}</div></div>`;
+                    
+                    // Gunakan variabel logoUrl dan etdHtml yang baru
+                    const itemHtml = `
+                    <div class="ongkir-item-card">
+                        <div class="ongkir-item-col col-service">
+                            <img src="${logoUrl}" class="ongkir-logo" onerror="this.style.display='none'">
+                            <div class="service-info">
+                                <span class="service-name">${i.service_name}</span>
+                                <span class="service-type">${i.service_type_label}</span>
+                            </div>
+                        </div>
+                        <div class="ongkir-item-col col-etd">
+                            <span class="col-label">Estimasi</span>
+                            ${etdHtml}
+                        </div>
+                        <div class="ongkir-item-col col-cod">
+                            <span class="col-label">COD</span>
+                            <span>${i.cod ? 'Tersedia' : '-'}</span>
+                        </div>
+                        <div class="ongkir-item-col col-price">
+                            <span class="col-label">Tarif</span>
+                            <div class="price-value">
+                                <span class="final-price">${formatRupiah(i.cost)}</span>
+                                ${hasDiscount ? `<span class="base-price text-decoration-line-through">${basePriceFmt}</span>` : ''}
+                            </div>
+                            <div class="price-details">${feeDetailsHtml}</div>
+                        </div>
+                        <div class="ongkir-item-col col-action">
+                            ${buttonHtml}
+                        </div>
+                    </div>`;
                     b.append(itemHtml);
                 });
             },
-            error: function() {
-                $('#ongkirResultsContainer').html(`<div class="alert alert-danger text-center">Gagal mengambil data ongkir. Silakan periksa koneksi Anda dan coba lagi.</div>`);
+            error: function(jqXHR, textStatus, errorThrown) {
+                let errorMsg = 'Gagal mengambil data ongkir. Silakan periksa koneksi Anda dan coba lagi.';
+                if (jqXHR.responseJSON && jqXHR.responseJSON.message) {
+                    errorMsg = jqXHR.responseJSON.message;
+                }
+                $('#ongkirResultsContainer').html(`<div class="alert alert-danger text-center">${errorMsg}</div>`);
             }
         });
     }
 
+    // --- Event Listener (dari kode Anda, sudah OK) ---
     const fieldsThatAffectShipping = '#sender_district_id, #receiver_district_id, #item_price, #weight, #length, #width, #height, #ansuransi, #service_type';
     $(document).on('change', fieldsThatAffectShipping, function() {
         $('#expedition').val('');
@@ -862,8 +986,7 @@ $(document).ready(function () {
     $('.cod-payment-option').hide();
     $('#confirmBtn').on('click', function(e) { e.preventDefault(); const $this = $(this); unmaskDataForSubmit(); if (!$('#orderForm')[0].checkValidity()) { $('#orderForm')[0].reportValidity(); Swal.fire('Peringatan', 'Harap lengkapi semua field yang wajib diisi.', 'warning'); return; } Swal.fire({ title: 'Konfirmasi Pesanan', text: "Apakah semua data sudah benar?", icon: 'question', showCancelButton: true, confirmButtonText: 'Ya, Buat Pesanan', cancelButtonText: 'Batal' }).then((result) => { if (result.isConfirmed) { $this.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Memproses...'); $('#orderForm').submit(); } }); });
     $('#cekOngkirWaBtn').on('click', () => { unmaskDataForSubmit(); window.open(`https://wa.me/6285745808809?text=${encodeURIComponent(`Halo, saya mau tanya ongkir:\n\n*Dari:* ${$('#sender_address').val()}, ${$('#sender_village').val()}\n*Ke:* ${$('#receiver_address').val()}, ${$('#receiver_village').val()}\n*Berat:* ${$('#weight').val()} gr\n\nTerima kasih.`)}`, '_blank'); });
-    $(document).on('click', e => { if (!$(e.target).closest('.input-group').length) { $('.search-results-container').addClass('d-none'); } });
+    $(document).on('click', e => { if (!$(e.target).closest('.input-group').length && !$(e.target).closest('.ui-autocomplete').length) { $('.search-results-container').addClass('d-none'); } });
 });
 </script>
 @endpush
-

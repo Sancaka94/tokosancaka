@@ -6,7 +6,7 @@
     <a href="#">
         <div class="aspect-square bg-white relative">
             {{-- PERBAIKAN UTAMA ADA DI SINI --}}
-            <img src="{{ $product->image_url ? asset('storage/' . $product->image_url) : 'https://placehold.co/400x400/e2e8f0/94a3b8?text=Produk' }}" 
+            <img src="{{ $product->image_url ? asset('public/storage/' . $product->image_url) : 'https://placehold.co/400x400/e2e8f0/94a3b8?text=Produk' }}" 
                  alt="{{ $product->name }}" 
                  class="w-full h-full object-contain p-2">
             

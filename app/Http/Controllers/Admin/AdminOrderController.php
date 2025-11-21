@@ -17,6 +17,8 @@ use Illuminate\Database\Eloquent\ModelNotFoundException; // Exception khusus saa
 use Illuminate\Pagination\Paginator; // <-- TAMBAHAN: Untuk pagination manual
 use Illuminate\Pagination\LengthAwarePaginator; // <-- TAMBAHAN: Untuk pagination manual
 use Illuminate\Support\Collection; // <-- TAMBAHAN: Untuk pagination manual
+use App\Services\DokuJokulService;
+
 
 // Deklarasi class controller, mewarisi (extends) Controller dasar Laravel
 class AdminOrderController extends Controller
@@ -38,7 +40,7 @@ class AdminOrderController extends Controller
 
         // Tentukan jumlah item per halaman untuk pagination
         // Ambil dari query string 'per_page', jika tidak ada, gunakan 15
-        $perPage = $request->query('per_page', 15);
+        $perPage = $request->query('per_page', 5);
 
         // --- 1. Query 'Orders' ---
         $orderQuery = Order::query()

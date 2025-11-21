@@ -29,3 +29,7 @@ error_log
 /storage/logs/*.log
 /storage/uploads/
 /storage/*.zip
+
+# Ignore cached view files
+/storage/framework/views/*
+!/storage/framework/views/.gitignore

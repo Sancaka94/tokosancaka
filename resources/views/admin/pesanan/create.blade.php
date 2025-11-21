@@ -147,24 +147,75 @@
 <select name="item_type" id="item_type"
     class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5"
     required>
-    <option value="" disabled selected>Pilih...</option>
-    <option value="1">Elektronik</option>
-    <option value="2">Pakaian</option>
-    <option value="3">Pecah Belah</option>
-    <option value="4">Dokumen</option>
-    <option value="5">Peralatan Rumah Tangga</option>
-    <option value="6">Aksesoris</option>
-    <option value="7">Kosmetik & Perawatan</option>
-    <option value="8">Makanan / Minuman</option>
-    <option value="9">Buku & Alat Tulis</option>
-    <option value="10">Mainan / Hobi</option>
-    <option value="11">Obat-obatan / Suplemen</option>
-    <option value="12">Sparepart / Komponen</option>
-    <option value="13">Alat Olahraga</option>
-    <option value="14">Alat Musik</option>
-    <option value="15">Perhiasan / Jam Tangan</option>
-    <option value="16">Alat Kesehatan</option>
-    <option value="17">Lainnya</option>
+<option value="" disabled selected>Pilih...</option>
+
+<!-- Elektronik & Gadget -->
+<option value="1">Elektronik</option>
+<option value="2">Handphone / Tablet</option>
+<option value="3">Laptop / Komputer</option>
+<option value="4">Aksesoris Elektronik</option>
+
+<!-- Fashion -->
+<option value="5">Pakaian</option>
+<option value="6">Tas / Dompet</option>
+<option value="7">Sepatu / Sandal</option>
+<option value="8">Aksesoris Fashion</option>
+
+<!-- Fragile & Khusus -->
+<option value="9">Pecah Belah</option>
+<option value="10">Barang Mudah Rusak</option>
+
+<!-- Dokumen & Kertas -->
+<option value="11">Dokumen</option>
+<option value="12">Buku & Alat Tulis</option>
+
+<!-- Rumah Tangga -->
+<option value="13">Peralatan Rumah Tangga</option>
+<option value="14">Furniture Kecil</option>
+
+<!-- Kosmetik & Perawatan -->
+<option value="15">Kosmetik & Perawatan</option>
+<option value="16">Parfum</option>
+
+<!-- Makanan -->
+<option value="17">Makanan / Minuman</option>
+<option value="18">Makanan Beku (Frozen Food)</option>
+
+<!-- Hobi -->
+<option value="19">Mainan / Hobi</option>
+<option value="20">Koleksi & Merchandise</option>
+
+<!-- Kesehatan -->
+<option value="21">Obat-obatan / Suplemen</option>
+<option value="22">Alat Kesehatan</option>
+
+<!-- Kendaraan -->
+<option value="23">Sparepart / Komponen</option>
+<option value="24">Aksesoris Kendaraan</option>
+
+<!-- Olahraga & Musik -->
+<option value="25">Alat Olahraga</option>
+<option value="26">Alat Musik</option>
+
+<!-- Perhiasan -->
+<option value="27">Perhiasan / Jam Tangan</option>
+
+<!-- Industri -->
+<option value="28">Alat Pertukangan</option>
+<option value="29">Bahan Bangunan</option>
+<option value="30">Peralatan Industri</option>
+
+<!-- Khusus -->
+<option value="31">Barang Cair (Non-Bahan Kimia Berbahaya)</option>
+<option value="32">Bahan Kimia Ringan</option>
+
+<option value="33">Barang Umum</option>
+
+<!-- Misc -->
+<option value="99">Lainnya</option>
+
+
+
 </select>
 
                         </div>
@@ -473,7 +524,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 card.innerHTML = `
                     <div class="p-4 flex justify-between items-center">
                         <div class="flex items-center">
-                            <img src="{{ asset('storage/logo-ekspedisi/') }}/${item.service.toLowerCase().replace(/\s+/g, '')}.png" class="w-16 h-auto mr-4 object-contain" onerror="this.src='https://placehold.co/100x40?text=${item.service}'">
+                            <img src="{{ asset('/public/storage/logo-ekspedisi/') }}/${item.service.toLowerCase().replace(/\s+/g, '')}.png" class="w-16 h-auto mr-4 object-contain" onerror="this.src='https://placehold.co/100x40?text=${item.service}'">
                             <div><h6 class="font-bold text-gray-800">${item.service_name}</h6>${details}</div>
                         </div>
                         <div class="text-right">

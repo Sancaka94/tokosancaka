@@ -35,16 +35,9 @@ return [
         ],
     ],
     
-    'dana' => [
-        'api_url' => env('DANA_API_URL'),
-        'merchant_id' => env('DANA_MERCHANT_ID'),
-        'client_id' => env('DANA_CLIENT_ID'),
-        'client_secret' => env('DANA_CLIENT_SECRET'),
-        'private_key' => str_replace('\n', "\n", env('DANA_PRIVATE_KEY')),
-        'public_key' => str_replace('\n', "\n", env('DANA_PUBLIC_KEY')),
-    ],
+
     'kiriminaja' => [
-        'base_url' => env('KIRIMINAJA_BASE_URL', 'https://tdev.kiriminaja.com'),
+        'base_url' => env('KIRIMINAJA_BASE_URL', 'https://client.kiriminaja.com'),
         'token'    => env('KIRIMINAJA_TOKEN'),
     ],
     'fonnte' => [

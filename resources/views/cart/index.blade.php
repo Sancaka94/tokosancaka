@@ -301,7 +301,7 @@
     <h3 class="mt-2 text-lg font-medium text-gray-900 dark:text-white">Keranjang Anda Kosong</h3>
     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Ayo cari produk menarik!</p>
     <div class="mt-6">
-        <a href="{{ route('etalase.index') }}" class="inline-flex items-center rounded-md border border-transparent btn-shopee-solid px-4 py-2 text-sm font-medium text-white shadow-sm hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900">
+        <a href="https://tokosancaka.com/etalase" class="inline-flex items-center rounded-md border border-transparent btn-shopee-solid px-4 py-2 text-sm font-medium text-white shadow-sm hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900">
            <i class="fas fa-shopping-bag mr-2"></i> Mulai Belanja
         </a>
     </div>

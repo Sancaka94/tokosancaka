@@ -14,6 +14,7 @@
         "php": "^8.2",
         "barryvdh/laravel-dompdf": "^3.1",
         "danaid/dana-php": "^1.0",
+        "doku/doku-php-library": "^1.0",
         "intervention/image": "^3.11",
         "ipaymu/ipaymu-php-api": "^3.0",
         "jenssegers/agent": "^2.6",

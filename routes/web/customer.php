@@ -58,11 +58,24 @@ Route::get('/cek-ongkir', [CekOngkirController::class, 'index'])->name('ongkir.i
 
 */
 
+           // 🔑 ROUTE BARU: Pencarian Alamat KiriminAja (AJAX)
+        // [CustomerProfileController::class, 'searchKiriminAjaAddress'] adalah method yang dipanggil JS
+        Route::get('/api/kiriminaja/address-search', [App\Http\Controllers\Customer\ProfileController::class, 'searchKiriminAjaAddress'])
+            ->name('kiriminaja.address_search'); // Nama route: customer.kiriminaja.address_search
+            
+
+// API Autosave Kontak (Dipanggil saat checkbox dicentang)
+Route::post('pesanan/save-contact', [CustomerPesananController::class, 'saveContactApi'])
+    ->name('pesanan.save_contact'); // Nama route akan menjadi customer.pesanan.save_contact
 
 
 
+Route::post('/topup/{reference_id}/upload', [App\Http\Controllers\Customer\TopUpController::class, 'uploadProof'])
+->name('topup.upload_proof');
 
-
+// Rute ini HANYA untuk cek status (untuk polling JS)
+Route::get('/topup/status/{reference_id}', [App\Http\Controllers\Customer\TopUpController::class, 'checkStatus'])
+     ->name('topup.check_status');
 
 Route::get('/show-profile', [CustomerProfileController::class, 'show'])->name('profile.show');
 
@@ -119,7 +132,6 @@ Route::middleware([EnsureProfileIsSetup::class])->group(function () {
     });
 
     Route::get('/pesanan/status', [CustomerOrderController::class, 'status'])->name('pesanan.status');
-
 
 
     // Top Up

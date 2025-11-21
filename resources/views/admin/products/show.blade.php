@@ -224,7 +224,7 @@
                             {{-- Gunakan kolom 'image' jika 'image_url' tidak ada --}}
                             @php
                                 $mainImageUrl = $product->image_url ?? $product->image;
-                                $displayImageUrl = $mainImageUrl ? asset('storage/' . $mainImageUrl) : 'https://placehold.co/600x600/e2e8f0/e2e8f0?text=Produk';
+                                $displayImageUrl = $mainImageUrl ? asset('public/storage/' . $mainImageUrl) : 'https://placehold.co/600x600/e2e8f0/e2e8f0?text=Produk';
                             @endphp
                             <img id="main-product-image" src="{{ $displayImageUrl }}" alt="{{ $product->name }}">
                         </div>
@@ -235,12 +235,12 @@
                         @if($mainImageUrl || !empty($galleryImages))
                         <div class="thumbnail-list">
                             @if($mainImageUrl)
-                            <img src="{{ asset('storage/' . $mainImageUrl) }}" alt="Thumbnail 1" class="active" onclick="changeMainImage(this)">
+                            <img src="{{ asset('public/storage/' . $mainImageUrl) }}" alt="Thumbnail 1" class="active" onclick="changeMainImage(this)">
                             @endif
                             @if(is_array($galleryImages))
                                 @foreach($galleryImages as $index => $galleryImage)
                                     @if($loop->index < 4) // Batasi jumlah thumbnail
-                                    <img src="{{ asset('storage/' . $galleryImage) }}" alt="Thumbnail {{ $index + 2 }}" onclick="changeMainImage(this)">
+                                    <img src="{{ asset('public/storage/' . $galleryImage) }}" alt="Thumbnail {{ $index + 2 }}" onclick="changeMainImage(this)">
                                     @endif
                                 @endforeach
                             @endif
@@ -290,7 +290,7 @@
 
                         {{-- Info Penjual --}}
                         <div class="seller-info-card my-4">
-                            <img src="{{ $product->seller_logo ? asset('storage/' . $product->seller_logo) : 'https://placehold.co/100x100/e2e8f0/e2e8f0?text=Toko' }}" alt="Logo {{ $product->store_name ?? 'Toko' }}">
+                            <img src="{{ $product->seller_logo ? asset('public/storage/' . $product->seller_logo) : 'https://placehold.co/100x100/e2e8f0/e2e8f0?text=Toko' }}" alt="Logo {{ $product->store_name ?? 'Toko' }}">
                             <div class="seller-details">
                                 <div class="fw-bold text-dark">{{ $product->store_name ?? 'Nama Toko' }}</div>
                                 <div class="text-muted small"><i class="bi bi-geo-alt-fill me-1"></i>{{ $product->seller_city ?? 'Lokasi Toko' }}</div>
@@ -301,7 +301,9 @@
                             </div>
                             @endif
                         </div>
-
+                        
+                        
+                        
                         {{-- Form Aksi (Keranjang & Beli) --}}
                         {{-- Logika untuk varian perlu ditambahkan di sini jika produk memiliki varian --}}
                         {{-- Misalnya, pilihan varian sebelum bisa menambah ke keranjang --}}

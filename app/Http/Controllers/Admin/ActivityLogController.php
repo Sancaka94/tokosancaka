@@ -180,20 +180,27 @@ class ActivityLogController extends Controller
             }
         }
         
-        // 4. Mengambil data SCAN PAKET terbaru
-        $spxScans = ScannedPackage::with('user')->latest()->take($limit)->get();
-        foreach ($spxScans as $scan) {
-             if ($scan) {
-                $allActivities->push((object)[
-                    'icon' => 'fa-solid fa-barcode text-purple-500',
-                    'title' => 'Scan Resi oleh ' . (optional($scan->user)->nama_lengkap ?? 'N/A'),
-                    'details' => 'Resi: ' . $scan->resi_number,
-                    'url' => route('admin.spx_scans.index'),
-                    'created_at' => $scan->created_at,
-                    'maps_url' => ($scan->latitude && $scan->longitude) ? "https://www.google.com/maps?q={$scan->latitude},{$scan->longitude}" : null,
-                ]);
-            }
-        }
+       // 4. Mengambil data SCAN PAKET terbaru
+$spxScans = ScannedPackage::with(['user', 'kontak'])->latest()->take($limit)->get();
+
+foreach ($spxScans as $scan) {
+    if ($scan) {
+        // Ambil nama dari kontak dulu, jika tidak ada baru dari user, jika tidak ada tampilkan 'N/A'
+        $userName = optional($scan->kontak)->nama ?? optional($scan->user)->nama_lengkap ?? 'N/A';
+
+        $allActivities->push((object)[
+            'icon' => 'fa-solid fa-barcode text-purple-500',
+            'title' => 'Scan Resi oleh ' . $userName, // <--- GUNAKAN VARIABEL INI
+            'details' => 'Resi: ' . $scan->resi_number,
+            'url' => route('admin.spx_scans.index'),
+            'created_at' => $scan->created_at,
+            'maps_url' => ($scan->latitude && $scan->longitude)
+                ? "https://www.google.com/maps?q={$scan->latitude},{$scan->longitude}"
+                : null,
+        ]);
+    }
+}
+
 
         // Urutkan semua aktivitas yang terkumpul (hingga 20 notifikasi) dan kembalikan semuanya.
         return $allActivities->sortByDesc('created_at');

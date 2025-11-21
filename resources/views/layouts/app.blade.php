@@ -6,7 +6,7 @@
     <title>@yield('title', 'Sancaka Express')</title>
 
     <!-- Favicon -->
-    <link rel="icon" type="image/png" href="https://tokosancaka.biz.id/storage/uploads/sancaka.png">
+    <link rel="icon" type="image/png" href="https://tokosancaka.com/storage/uploads/sancaka.png">
 
     <!-- Google Fonts: Poppins -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -151,8 +151,8 @@
         <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm fixed-top">
             <div class="container">
                 <a class="navbar-brand d-flex align-items-center" href="{{ url('/') }}">
-                    <img src="https://tokosancaka.biz.id/storage/uploads/sancaka.png" alt="Sancaka Express Logo" style="max-height: 40px;" class="me-2">
-                    <strong>SANCAKA KARYA HUTAMA</strong>
+                    <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="Sancaka Express Logo" style="max-height: 40px;" class="me-2">
+                    <strong>SANCAKA EXPRESS</strong>
                 </a>
 
                 <button class="navbar-toggler ms-auto" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
@@ -359,9 +359,9 @@
                                     <div class="col-lg-3 col-md-6">
                                         <div class="megamenu-feature">
                                             <i class="fas fa-barcode fa-3x text-primary mb-3"></i>
-                                            <h6 class="fw-bold">Input Resi SPX Cepat</h6>
-                                            <p class="small text-muted">Daftarkan paket SPX Express Anda dengan mudah melalui scan barcode atau input manual.</p>
-                                            <a href="{{ route('scan.spx.show') }}" class="btn btn-primary btn-sm">Mulai Sekarang</a>
+                                            <h6 class="fw-bold">Ekpedisi Lengkap</h6>
+                                            <p class="small text-muted">Daftarkan paket Favorit Anda dengan mudah melalui sancaka express dengan auto pickup by Kurir.</p>
+                                            <a href="https://tokosancaka.com/buat-pesanan" class="btn btn-primary btn-sm">Kirim Paket Sekarang</a>
                                         </div>
                                     </div>
                                 </div>
@@ -373,20 +373,182 @@
                         </li>
                     </ul>
 
-                    <div class="d-lg-flex align-items-center mt-3 mt-lg-0 ms-lg-3">
-                        <div class="dropdown">
-                            <button class="btn btn-danger dropdown-toggle fw-bold" type="button" id="mainDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="fa-solid fa-user me-1"></i> Login / Order
-                            </button>
-                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="mainDropdown">
-                                <li><a class="dropdown-item" href="{{ route('login') }}"><i class="fa-solid fa-right-to-bracket me-2"></i> Login</a></li>
-                                <li><a class="dropdown-item" href="{{ route('register') }}"><i class="fa-solid fa-user-plus me-2"></i>Daftar Akun Baru</a></li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="{{ route('pesanan.public.create') }}"><i class="fas fa-shipping-fast me-2"></i>Order via <strong>Sancaka Express</strong></a></li>
-                                <li><a class="dropdown-item" href="{{ route('scan.spx.show') }}"><i class="fas fa-barcode me-2"></i> Input Resi SPX Express</a></li>
-                            </ul>
-                        </div>
-                    </div>
+@auth
+            @php
+                $user = Auth::user();
+                $userRole = strtolower($user->role ?? 'user'); // Pastikan role ada, default ke 'user'
+                $dashboardRoute = route('home'); // Default fallback route
+                $roleName = 'User';
+
+                // Tentukan rute dashboard dan nama role berdasarkan role
+                if ($userRole === 'admin') {
+                    $dashboardRoute = route('admin.dashboard');
+                    $roleName = 'Admin';
+                } elseif ($userRole === 'seller') {
+                    // Gunakan route yang lebih spesifik jika ada, atau customer.dashboard sebagai default
+                    $dashboardRoute = route('seller.dashboard') ?? route('customer.dashboard'); 
+                    $roleName = 'Seller';
+                } elseif ($userRole === 'pelanggan') {
+                    $dashboardRoute = route('customer.dashboard');
+                    $roleName = 'Pelanggan';
+                }
+                
+                // Ambil NAMA LENGKAP untuk tampilan. Ini yang diperbaiki agar tampil nama lengkap.
+                $displayName = $user->nama_lengkap ?? $user->name ?? $user->email;
+            @endphp
+
+            <button class="btn btn-danger dropdown-toggle fw-bold" type="button" id="authDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="fa-solid fa-user-check me-1"></i> {{ $displayName }} ({{ $roleName }})
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="authDropdown">
+                
+                {{-- Tautan Dashboard Umum --}}
+                <li>
+                    <a class="dropdown-item fw-bold text-danger" href="{{ $dashboardRoute }}">
+                        <i class="fa-solid fa-house-chimney-user me-2"></i> Dashboard {{ $roleName }}
+                    </a>
+                </li>
+                
+                {{-- Submenu Khusus Admin (TAMBAHAN SESUAI PERMINTAAN) --}}
+                @if ($userRole === 'admin')
+                    <li><hr class="dropdown-divider"></li>
+                    <li><h6 class="dropdown-header text-primary fw-bold">Menu Admin</h6></li>
+                    
+                    {{-- 1. Kirim Paket --}}
+                    <li>
+                        <a class="dropdown-item" href="{{ route('admin.pesanan.create') }}">
+                            <i class="fa-solid fa-truck-fast me-2 text-success"></i> Kirim Paket Baru
+                        </a>
+                    </li>
+                    
+                    {{-- 2. Data Pesanan --}}
+                    <li>
+                        <a class="dropdown-item" href="{{ route('admin.pesanan.index') }}">
+                            <i class="fa-solid fa-box-open me-2 text-warning"></i> Data Pesanan
+                        </a>
+                    </li>
+                    
+                    {{-- 3. Manajemen Pelanggan --}}
+                    <li>
+                        <a class="dropdown-item" href="{{ route('admin.customers.index') }}">
+                            <i class="fa-solid fa-users me-2 text-info"></i> Manajemen Pelanggan
+                        </a>
+                    </li>
+                    
+                    {{-- 4. Data Scan SPX --}}
+                    <li>
+                        <a class="dropdown-item" href="{{ route('admin.spx_scans.index') }}">
+                            <i class="fa-solid fa-qrcode me-2 text-secondary"></i> Data Scan SPX
+                        </a>
+                    </li>
+
+                @endif
+                
+                
+                {{-- =================================================== --}}
+                {{-- Submenu Khusus Pelanggan --}}
+                {{-- =================================================== --}}
+                @if ($userRole === 'pelanggan')
+                    <li><hr class="dropdown-divider"></li>
+                    <li><h6 class="dropdown-header text-primary fw-bold">Menu Pelanggan</h6></li>
+                    
+                    {{-- 1. Kirim Paket --}}
+                    <li>
+                        <a class="dropdown-item" href="{{ route('customer.pesanan.create') }}">
+                            <i class="fa-solid fa-map-location-dot me-2 text-success"></i> Kirim Paket Saya
+                        </a>
+                    </li>
+                    
+                    {{-- 2. Data Pesanan (Riwayat Order) --}}
+                    <li>
+                        <a class="dropdown-item" href="{{ route('customer.pesanan.index') }}">
+                            <i class="fa-solid fa-list-ul me-2 text-warning"></i> Riwayat Pesanan
+                        </a>
+                    </li>
+                    
+                    {{-- 3. Topup --}}
+                    <li>
+                        <a class="dropdown-item" href="{{ route('customer.topup.index') }}">
+                            <i class="fa-solid fa-wallet me-2 text-info"></i> Isi Saldo (Topup)
+                        </a>
+                    </li>
+                    
+                    {{-- 4. Riwayat Scan SPX --}}
+                    <li>
+                        <a class="dropdown-item" href="{{ route('customer.scan.spx') }}">
+                            <i class="fa-solid fa-barcode me-2 text-secondary"></i> Riwayat Scan SPX
+                        </a>
+                    </li>
+                @endif
+                
+                 
+                {{-- =================================================== --}}
+                {{-- Submenu Khusus Seller (TAMBAHAN BARU) --}}
+                {{-- =================================================== --}}
+                @if ($userRole === 'seller')
+                    <li><hr class="dropdown-divider"></li>
+                    <li><h6 class="dropdown-header text-primary fw-bold">Menu Seller</h6></li>
+                    
+                    {{-- 1. Kirim Paket --}}
+                    <li>
+                        <a class="dropdown-item" href="{{ route('customer.pesanan.create') }}">
+                            <i class="fa-solid fa-map-location-dot me-2 text-success"></i> Kirim Paket Saya
+                        </a>
+                    </li>
+                    
+                    {{-- 2. Data Pesanan (Riwayat Order) --}}
+                    <li>
+                        <a class="dropdown-item" href="{{ route('customer.pesanan.index') }}">
+                            <i class="fa-solid fa-list-ul me-2 text-warning"></i> Riwayat Pesanan
+                        </a>
+                    </li>
+                    
+                    {{-- 3. Topup --}}
+                    <li>
+                        <a class="dropdown-item" href="{{ route('customer.topup.index') }}">
+                            <i class="fa-solid fa-wallet me-2 text-info"></i> Isi Saldo (Topup)
+                        </a>
+                    </li>
+                    
+                    {{-- 4. Riwayat Scan SPX --}}
+                    <li>
+                        <a class="dropdown-item" href="{{ route('customer.scan.spx') }}">
+                            <i class="fa-solid fa-barcode me-2 text-secondary"></i> Riwayat Scan SPX
+                        </a>
+                    </li>
+                @endif
+
+                <li><hr class="dropdown-divider"></li>
+                
+                {{-- Tautan Logout --}}
+                <li>
+                    <form method="POST" action="{{ route('logout') }}">
+                        @csrf
+                        <button type="submit" class="dropdown-item">
+                            <i class="fa-solid fa-right-from-bracket me-2"></i> Logout
+                        </button>
+                    </form>
+                </li>
+            </ul>
+        @endauth
+
+        @guest
+            <button class="btn btn-danger dropdown-toggle fw-bold" type="button" id="guestDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="fa-solid fa-user me-1"></i> Login / Order
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="guestDropdown">
+                <li><a class="dropdown-item" href="{{ route('login') }}"><i class="fa-solid fa-right-to-bracket me-2"></i> Login</a></li>
+                <li><a class="dropdown-item" href="{{ route('register') }}"><i class="fa-solid fa-user-plus me-2"></i>Daftar Akun Baru</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="{{ route('pesanan.public.create') }}"><i class="fas fa-shipping-fast me-2"></i>Order via <strong>Sancaka Express</strong></a></li>
+                <li><a class="dropdown-item" href="{{ route('scan.spx.show') }}"><i class="fas fa-barcode me-2"></i> Input Resi SPX Express</a></li>
+            </ul>
+        @endguest
+    </div>
+</div>
+<!-- =================================================== -->
+<!-- AKHIR KODE PERBAIKAN -->
+<!-- =================================================== -->
                 </div>
             </div>
         </nav>

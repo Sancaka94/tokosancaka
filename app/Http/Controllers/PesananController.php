@@ -19,6 +19,8 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Exception;
+use Illuminate\Support\Facades\Notification;
+use App\Notifications\NotifikasiUmum;
 
 class PesananController extends Controller
 {
@@ -126,6 +128,36 @@ class PesananController extends Controller
             }
             $pesanan->save();
             DB::commit();
+            
+              // ==========================================================
+            // 👇 BLOK NOTIFIKASI REAL-TIME ADMIN (DILENGKAPI)
+            // ==========================================================
+            try {
+                $admins = User::where('role', 'admin')->get();
+                if ($admins->count() > 0) {
+                    $customerName = Auth::user() ? Auth::user()->nama_lengkap : $validatedData['sender_name'];
+                    
+                    // Tentukan URL. Rute admin.pesanan.show butuh 'resi'.
+                    // Jika resi belum ada (misal Tripay), kita link ke index.
+                    $adminUrl = $pesanan->resi 
+                                ? route('admin.pesanan.show', $pesanan->resi) 
+                                : route('admin.pesanan.index');
+
+                    $dataNotifAdmin = [
+                        'tipe'        => 'Pesanan',
+                        'judul'       => 'Pesanan Manual Baru!',
+                        'pesan_utama' => "Pesanan {$pesanan->nomor_invoice} dibuat oleh {$customerName}.",
+                        'url'         => $adminUrl,
+                        'icon'        => 'fas fa-shipping-fast',
+                    ];
+                    Notification::send($admins, new NotifikasiUmum($dataNotifAdmin));
+                }
+            } catch (Exception $e) {
+                Log::error('Gagal mengirim notifikasi pesanan manual ke admin: ' . $e->getMessage());
+            }
+            // ==========================================================
+            // 👆 AKHIR BLOK NOTIFIKASI
+            // ==========================================================
 
             // 8. Kirim notifikasi WhatsApp
             $notification_total = ($cod_value > 0) ? $cod_value : $total_paid_ongkir;

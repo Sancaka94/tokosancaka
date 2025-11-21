@@ -27,13 +27,40 @@ class ProductController extends Controller
     /**
      * Menampilkan halaman manajemen produk.
      */
-    public function index()
+   /**
+     * Menampilkan halaman manajemen produk.
+     */
+    public function index(Request $request)
     {
-        // Ambil semua kategori produk untuk filter dropdown
+        // 1. Ambil semua kategori untuk dropdown filter
         $categories = Category::where('type', 'product')->orderBy('name')->get(['name', 'slug']);
-        return view('admin.products.index', compact('categories')); // Kirim categories ke view
-    }
 
+        // 2. Mulai Query Produk dengan Eager Loading (untuk efisiensi query kategori)
+        $query = Product::with('category');
+
+        // 3. Logika Pencarian (Search)
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('sku', 'like', "%{$search}%");
+            });
+        }
+
+        // 4. Logika Filter Kategori
+        if ($request->filled('category')) {
+            $categorySlug = $request->category;
+            $query->whereHas('category', function($q) use ($categorySlug) {
+                $q->where('slug', $categorySlug);
+            });
+        }
+
+        // 5. Ambil data dengan Pagination (10 per halaman) & Urutkan dari yang terbaru
+        $products = $query->latest()->paginate(10);
+
+        // 6. Kirim $categories DAN $products ke view
+        return view('admin.products.index', compact('categories', 'products'));
+    }
     /**
      * Menyediakan data untuk Yajra DataTables.
      */
@@ -59,7 +86,7 @@ class ProductController extends Controller
                         // PERBAIKAN: Cek 'image_url' dan fallback ke 'image', lalu cek null dan file exists
                         $imageUrl = $row->image_url ?? $row->image; // Coba image_url dulu, fallback ke image
                         $url = $imageUrl && Storage::disk('public')->exists($imageUrl)
-                               ? asset('storage/' . $imageUrl)
+                               ? asset('public/storage/' . $imageUrl)
                                : 'https://placehold.co/80x80/EFEFEF/333333?text=N/A'; // Tampilkan N/A jika null atau file tidak ada
                         return '<img src="' . e($url) . '" alt="' . e($row->name) . '" class="rounded" width="60" loading="lazy" />';
                     })
@@ -212,7 +239,7 @@ class ProductController extends Controller
 
             if ($request->hasFile('seller_logo')) {
                  Log::info('Processing seller logo upload...');
-                $logoPath = $request->file('seller_logo')->store('seller_logos', 'public');
+                $logoPath = $request->file('public/seller_logo')->store('seller_logos', 'public');
                  if ($logoPath) {
                     $validatedDataForCreate['seller_logo'] = $logoPath;
                     Log::info('Seller logo stored at: ' . $logoPath);
@@ -260,6 +287,11 @@ class ProductController extends Controller
 
             $validatedDataForCreate['is_new'] = $request->has('is_new');
             $validatedDataForCreate['is_bestseller'] = $request->has('is_bestseller');
+            // --- TAMBAHKAN KODE INI ---
+$validatedDataForCreate['is_promo'] = $request->has('is_promo');
+$validatedDataForCreate['is_shipping_discount'] = $request->has('is_shipping_discount');
+$validatedDataForCreate['is_free_shipping'] = $request->has('is_free_shipping');
+// --------------------------
 
             // Hapus data relasi sebelum create product
             $attributesInput = $request->input('attributes', []);
@@ -503,6 +535,11 @@ class ProductController extends Controller
 
             $validatedDataForUpdate['is_new'] = $request->has('is_new');
             $validatedDataForUpdate['is_bestseller'] = $request->has('is_bestseller');
+            // --- TAMBAHKAN KODE INI ---
+$validatedDataForUpdate['is_promo'] = $request->has('is_promo');
+$validatedDataForUpdate['is_shipping_discount'] = $request->has('is_shipping_discount');
+$validatedDataForUpdate['is_free_shipping'] = $request->has('is_free_shipping');
+// --------------------------
 
             $attributesInput = $request->input('attributes', []);
             $variantTypesInput = $request->input('variant_types', []);

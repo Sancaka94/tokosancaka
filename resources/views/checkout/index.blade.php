@@ -8,6 +8,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    {{-- Font Awesome (Dibutuhkan untuk ikon) --}}
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
         body { font-family: 'Inter', sans-serif; }
         .form-radio:checked {
@@ -24,12 +26,17 @@
             background-color: #9ca3af; /* Tailwind gray-400 */
             opacity: 0.7;
         }
+        /* Style untuk tab aktif */
+        .group-button.active {
+            background-color: #dc2626; /* GANTI KE Tailwind red-600 */
+            color: white;
+            border-color: #dc2626; /* GANTI KE Tailwind red-600 */
+        }
     </style>
 @endpush
 
 @section('content')
 
-@include('layouts.partials.notifications')
 
 <div class="bg-gray-100">
     <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -39,26 +46,62 @@
             <p class="mt-2 text-sm text-gray-500">Selesaikan pesanan Anda dalam beberapa langkah mudah.</p>
         </div>
 
-        @if (session('error'))
-            <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-md" role="alert">
-                <p class="font-bold">Terjadi Kesalahan</p>
-                <p>{{ session('error') }}</p>
-            </div>
-        @endif
+        {{-- ====================================================================== --}}
+        {{-- ================== BLOK NOTIFIKASI (SUDAH TAILWIND) ================== --}}
+        {{-- ====================================================================== --}}
+@if ($errors->any())
+    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+        <strong class="font-bold"><i class="fas fa-exclamation-triangle"></i> Gagal!</strong>
+        <span class="block sm:inline">Ada beberapa kesalahan pada input Anda:</span>
+        <ul class="list-disc list-inside mt-2">
+            @foreach ($errors->all() as $error)
+                <li>{{ $error }}</li>
+            @endforeach
+        </ul>
+    </div>
+@endif
 
-        @if ($errors->any())
-            <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-md" role="alert">
-                <p class="font-bold">Oops! Ada beberapa kesalahan:</p>
-                <ul class="mt-2 list-disc list-inside">
-                    @foreach ($errors->all() as $error)
-                        <li>{{ $error }}</li>
-                    @endforeach
-                </ul>
-            </div>
-        @endif
+@if (session('error'))
+    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+        <strong class="font-bold"><i class="fas fa-times-circle"></i> Error!</strong>
+        <span class="block sm:inline">{{ session('error') }}</span>
+    </div>
+@endif
+
+@if (session('success'))
+    <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">
+        <strong class="font-bold"><i class="fas fa-check-circle"></i> Sukses!</strong>
+        <span class="block sm:inline">{{ session('success') }}</span>
+    </div>
+@endif
+
+@if (session('info'))
+    <div class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded relative mb-4" role="alert">
+        <strong class="font-bold"><i class="fas fa-info-circle"></i> Info:</strong>
+        <span class="block sm:inline">{{ session('info') }}</span>
+    </div>
+@endif
+
+@if (session('warning'))
+    <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded relative mb-4" role="alert">
+        <strong class="font-bold"><i class="fas fa-exclamation-triangle"></i> Peringatan:</strong>
+        <span class="block sm:inline">{{ session('warning') }}</span>
+    </div>
+@endif
+        {{-- ====================================================================== --}}
+        {{-- =================== AKHIR BLOK NOTIFIKASI ================== --}}
+        {{-- ====================================================================== --}}
         
         <form id="checkout-form" action="{{ route('checkout.store') }}" method="POST">
             @csrf
+            
+             <!-- ====================================================== -->
+            <!-- === KODE GPS (INPUT TERSEMBUNYI) DITARUH DI SINI === -->
+            <!-- ====================================================== -->
+            <input type="hidden" name="latitude" id="latitude">
+            <input type="hidden" name="longitude" id="longitude">
+            <!-- ====================================================== -->
+            
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 
                 <!-- Kolom Kiri: Alamat, Pengiriman, Pembayaran -->
@@ -75,7 +118,7 @@
                             <p class="font-semibold">{{ $user->nama_lengkap }}</p>
                             <p class="text-sm text-gray-600">{{ $user->no_wa }}</p>
                             <p class="text-sm text-gray-600 mt-2">{{ $alamat }}</p>
-                            <a href="{{ route('customer.profile.edit') }}" class="text-sm text-blue-600 hover:underline mt-2 inline-block">Ubah Alamat</a>
+                            <a href="{{ route('customer.profile.edit') }}?redirect_to=checkout" class="text-sm text-red-600 hover:underline mt-2 inline-block">Ubah Alamat</a>
                         </div>
                     </div>
 
@@ -83,157 +126,135 @@
                    <div class="bg-white rounded-xl shadow-md p-6">
                         <h2 class="text-lg font-bold text-gray-900 mb-4">Pilih Metode Pengiriman</h2>
                         <div class="space-y-4">
-                         
-                   @php
-$expressResults = collect($expressOptions['results'] ?? []);
+                        
+                        {{-- ====================================================================== --}}
+                        {{-- ================== AWAL BLOK PENGIRIMAN ================== --}}
+                        {{-- ====================================================================== --}}
+                        @php
+                            // 1. Ambil hasil Express (sudah bersih dari controller)
+                            $expressResults = collect($expressOptions['results'] ?? []);
+                        
+                            // 2. Ambil hasil Instant (sudah bersih dari controller)
+                            $instantResults = collect([]); // Default ke array kosong
+                            if (isset($instantOptions['status']) && $instantOptions['status'] === true && isset($instantOptions['results'])) {
+                                $instantResults = collect($instantOptions['results']);
+                            }
+                            
+                            // 3. Gabungkan keduanya
+                            $allResults = $expressResults->merge($instantResults);
+                        
+                            // 4. Buat grup. Gunakan 'group' key yang sudah ada.
+                            $groupedOptions = $allResults->groupBy('group');
+                        
+                            // 5. Pastikan urutan tab benar
+                            $groupOrder = ['Regular', 'One Day', 'Instant', 'Cargo', 'Trucking'];
+                            $finalGrouped = collect($groupOrder)
+                                ->mapWithKeys(function($key) use ($groupedOptions) {
+                                    $key = \Illuminate\Support\Str::title($key);
+                                    return [$key => $groupedOptions->get(strtolower($key), collect())];
+                                })
+                                ->filter(fn($group) => $group->isNotEmpty()); // Hapus tab yang kosong
+                            
+                            $firstActiveGroup = $finalGrouped->keys()->first();
+                        @endphp
 
-$expressResults = $expressResults->map(function($option) {
-    $serviceNameLower = strtolower($option['service_name'] ?? '');
-
-    if (str_contains($serviceNameLower, 'trucking')) {
-        $option['group'] = 'Trucking';
-    } elseif (str_contains($serviceNameLower, 'cargo')) {
-        $option['group'] = 'Cargo';
-    } elseif (str_contains($serviceNameLower, 'instan') || str_contains($serviceNameLower, 'instant')) {
-        $option['group'] = 'Instant';
-    } elseif (str_contains($serviceNameLower, 'same day')) {
-        $option['group'] = 'Same Day';
-    } elseif (str_contains($serviceNameLower, 'one day') || str_contains($serviceNameLower, 'next day')) {
-        $option['group'] = 'One Day';
-    } else {
-        $option['group'] = 'Regular';
-    }
-
-    return $option;
-});
-
-// Kelompokkan berdasarkan grup
-$expressGrouped = $expressResults->groupBy('group');
-
-// Pastikan urutannya sesuai keinginan
-$groupOrder = ['Regular', 'One Day', 'Instant', 'Cargo', 'Trucking'];
-$expressGrouped = collect($groupOrder)
-    ->mapWithKeys(function($key) use ($expressGrouped) {
-        return [$key => $expressGrouped->get($key, collect())];
-    });
-
-$firstGroup = $expressGrouped->keys()->first();
-@endphp
-
-
-
-<div class="flex gap-2 mb-4">
-    {{-- Button dari express (Regular & Cargo) --}}
-    @foreach($expressGrouped as $group => $options)
-        <button type="button" 
-            class="px-4 py-2 rounded-lg border hover:bg-gray-100 group-button" 
-            data-group="{{ $group }}">
-            {{ \Illuminate\Support\Str::of($group)->replace('_', ' ')->title() }}
-        </button>
-    @endforeach
-
-</div>
-
-{{-- Group Regular & Cargo --}}
-@foreach($expressGrouped as $group => $options)
-    <div class="express-group-options {{ $loop->first ? '' : 'hidden' }}" data-group="{{ $group }}">
-        @php
-            $sortedOptions = collect($options)->sortBy('cost')->values();
-        @endphp
-
-        @foreach($sortedOptions as $i => $option)
-            @php
-                $logoName = strtolower(str_replace(' ', '', $option['service'])) . '.png';
-            @endphp
-            <label class="flex items-center border border-gray-200 p-4 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:bg-blue-50 has-[:checked]:border-blue-500 mb-2">
-                <input 
-                    type="radio" 
-                    name="shipping_method" 
-                    value="express-{{ $option['service'] }}-{{ $option['service_type'] }}-{{ $option['cost'] }}-{{ $option['insurance'] }}" 
-                    class="form-radio h-5 w-5 text-blue-600"
-                    data-cost="{{ $option['cost'] }}"
-                    data-insurance="{{ $option['insurance'] }}"
-                    data-cod="{{ $option['cod'] ? 'true' : 'false' }}"
-                    {{ $loop->parent->first && $loop->first ? 'checked' : '' }}
-                >
-                <div class="ml-4 flex justify-between w-full items-center">
-                    <div class="flex items-center gap-3">
-                        <img src="{{ asset('storage/logo-ekspedisi/'.$logoName) }}" 
-                             alt="{{ $option['service_name'] }}" 
-                             class="w-8 h-8 object-contain">
-                        <span class="text-sm font-medium text-gray-900">{{ $option['service_name'] }}</span>
-                    </div>
-                    <span class="text-sm font-medium text-gray-900">
-                        Rp{{ number_format($option['cost'], 0, ',', '.') }}
-                    </span>
-                </div>
-            </label>
-        @endforeach
-    </div>
-@endforeach
-
-{{-- Group Instant --}}
-@if($instantOptions && isset($instantOptions['result']))
-    @php
-        $instantSorted = collect($instantOptions['result'])
-            ->flatMap(function($courier) {
-                return collect($courier['costs'])->map(function($cost) use ($courier) {
-                    return [
-                        'courier_name' => $courier['name'],
-                        'service_type' => $cost['service_type'],
-                        'estimation' => $cost['estimation'],
-                        'price' => $cost['price']['total_price'],
-                    ];
-                });
-            })
-            ->sortBy('price')
-            ->values();
-    @endphp
-
-    <div class="express-group-options hidden" data-group="Instant">
-        @foreach($instantSorted as $option)
-            @php
-                $logoName = strtolower(str_replace(' ', '', $option['courier_name'])) . '.png';
-            @endphp
-            <label class="flex items-center border border-gray-200 p-4 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:bg-blue-50 has-[:checked]:border-blue-500 mb-2">
-                <input type="radio" 
-                       name="shipping_method" 
-                       value="instant-{{ $option['courier_name'] }}-{{ $option['service_type'] }}-{{$option['price']}}-0" 
-                       class="form-radio h-5 w-5 text-blue-600"
-                       data-cost="{{ $option['price'] }}"
-                       data-insurance="0"
-                       data-cod="false">
-                <div class="ml-4 flex justify-between w-full items-center">
-                    <div class="flex items-center gap-3">
-                        <img src="{{ asset('storage/logo-ekspedisi/'.$logoName) }}" 
-                             alt="{{ strtoupper($option['courier_name']) }}" 
-                             class="w-8 h-8 object-contain">
-                        <div>
-                            <span class="text-sm font-medium text-gray-900">
-                                {{ strtoupper($option['courier_name']) }} - {{ strtoupper($option['service_type']) }}
-                            </span>
-                            @if($option['estimation'])
-                                <span class="block text-xs text-gray-500">Est: {{ $option['estimation'] }}</span>
-                            @endif
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            @forelse($finalGrouped as $group => $options)
+                                <button type="button" 
+                                        class="px-4 py-2 rounded-lg border hover:bg-gray-100 group-button {{ $group === $firstActiveGroup ? 'active' : '' }}"
+                                        data-group="{{ $group }}">
+                                    {{ $group }}
+                                </button>
+                            @empty
+                                <p class="text-sm text-gray-500">Tidak ada opsi pengiriman yang tersedia untuk alamat Anda.</p>
+                            @endforelse
                         </div>
-                    </div>
-                    <span class="text-sm font-medium text-gray-900">
-                        Rp{{ number_format($option['price'], 0, ',', '.') }}
-                    </span>
-                </div>
-            </label>
-        @endforeach
-    </div>
-@endif
 
-                           
+                        @foreach($finalGrouped as $group => $options)
+                            <div class="shipping-group-options {{ $group !== $firstActiveGroup ? 'hidden' : '' }}" data-group="{{ $group }}">
+                                @php
+                                    $sortedOptions = $options->sortBy('final_price')->values();
+                                @endphp
+
+                                @foreach($sortedOptions as $i => $option)
+                                    @php
+                                        $serviceName = $option['service_name'];
+                                        $service = $option['service'];
+                                        $serviceType = $option['service_type'];
+                                        $etd = $option['etd'];
+                                        $finalPrice = $option['final_price'];
+                                        
+                                        // ======================================================
+                                        // ==== INI ADALAH PERBAIKAN UNTUK ERROR DI SCREENSHOT ANDA ====
+                                        // ==== SAYA TETAP MENGGUNAKAN 'insurance_cost' BUKAN 'insurance' ====
+                                        $insurance = $option['insurance_cost'] ?? 0;
+                                        // ======================================================
+
+                                        $codAvailable = $option['cod_available'] ?? false;
+                                        $codFee = $option['cod_fee'] ?? 0;
+                                        $groupName = $option['group'];
+                                        
+                                        $logoName = strtolower(str_replace(' ', '', $service)) . '.png';
+                                        
+                                        $value = sprintf('%s-%s-%s-%d-%d-%d',
+                                            strtolower($groupName),
+                                            $service,
+                                            $serviceType,
+                                            $finalPrice,
+                                            $insurance,
+                                            $codFee
+                                        );
+                                    @endphp
+                                    <label class="flex items-center border border-gray-200 p-4 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:bg-red-50 has-[:checked]:border-red-500 mb-2">
+                                        <input 
+                                            type="radio" 
+                                            name="shipping_method" 
+                                            value="{{ $value }}"
+                                            class="form-radio h-5 w-5 text-red-600"
+                                            data-cost="{{ $finalPrice }}"
+                                            data-insurance="{{ $insurance }}"
+                                            data-cod="{{ $codAvailable ? 'true' : 'false' }}"
+                                            data-cod-fee="{{ $codFee }}"
+                                            {{ $group === $firstActiveGroup && $loop->first ? 'checked' : '' }}
+                                        >
+                                        <div class="ml-4 flex justify-between w-full items-center">
+                                            <div class="flex items-center gap-3">
+                                                <img src="{{ asset('public/storage/logo-ekspedisi/'.$logoName) }}" 
+                                                     alt="{{ $serviceName }}" 
+                                                     class="w-8 h-8 object-contain"
+                                                     onerror="this.style.display='none'">
+                                                <div>
+                                                    <span class="text-sm font-medium text-gray-900"><strong>{{ $serviceName }}</strong></span>
+<span class="block text-xs text-gray-500">
+    Estimasi In Syaa Allah: {{ $etd }}
+    @if( !\Illuminate\Support\Str::contains($etd, ['menit', 'minutes', 'Jam', 'hours',]) )
+        Hari
+    @endif
+</span>
+                                                </div>
+                                            </div>
+                                            <span class="text-sm font-medium text-gray-900">
+                                                Rp{{ number_format($finalPrice, 0, ',', '.') }}
+                                            </span>
+                                        </div>
+                                    </label>
+                                @endforeach
+                            </div>
+                        @endforeach
+                        {{-- ====================================================================== --}}
+                        {{-- =================== AKHIR BLOK PENGIRIMAN ================== --}}
+                        {{-- ====================================================================== --}}
+                        
                         </div>
-                    </div>
+                   </div>
 
                     <!-- Opsi Pembayaran -->
                     <div class="bg-white rounded-xl shadow-md p-6">
                         <h2 class="text-lg font-bold text-gray-900 mb-4">Pilih Metode Pembayaran</h2>
                         <div class="w-full">
+                            {{-- ====================================================================== --}}
+                            {{-- ================== PENGEMBALIAN KODE PEMBAYARAN DEFAULT ================== --}}
+                            {{-- ====================================================================== --}}
                             <button type="button" id="paymentMethodButton" class="flex items-center justify-between w-full border border-gray-200 p-4 rounded-lg cursor-pointer hover:bg-gray-50 focus:outline-none">
                                 <div class="flex items-center">
                                     <img id="paymentMethodImg" src="{{ asset('public/assets/permata.webp') }}" alt="Permata Logo" class="h-8 w-8 object-contain mr-4">
@@ -244,6 +265,9 @@ $firstGroup = $expressGrouped->keys()->first();
                                 </svg>
                             </button>
                             <input type="hidden" name="payment_method" id="payment_method" value="PERMATAVA">
+                            {{-- ====================================================================== --}}
+                            {{-- ================== AKHIR PENGEMBALIAN KODE ================== --}}
+                            {{-- ====================================================================== --}}
                         </div>
                     </div>
 
@@ -260,7 +284,10 @@ $firstGroup = $expressGrouped->keys()->first();
                                 @php $subtotal += $details['price'] * $details['quantity']; @endphp
                                 <li class="flex py-4">
                                     <div class="h-16 w-16 flex-shrink-0 overflow-hidden rounded-md">
-                                        <img src="{{ url('storage/' . $details['image_url']) }}" alt="{{ $details['name'] }}" class="h-full w-full object-cover object-center">
+                                        {{-- ====================================================================== --}}
+                                        {{-- ================== PENGEMBALIAN LINK GAMBAR PRODUK ================== --}}
+                                        {{-- ====================================================================== --}}
+                                        <img src="{{ url('public/storage/' . $details['image_url']) }}" alt="{{ $details['name'] }}" class="h-full w-full object-cover object-center">
                                     </div>
                                     <div class="ml-4 flex flex-1 flex-col text-sm">
                                         <h3 class="font-medium text-gray-800">{{ $details['name'] }}</h3>
@@ -278,30 +305,49 @@ $firstGroup = $expressGrouped->keys()->first();
                             </div>
                              <div class="flex items-center justify-between">
                                 <dt class="text-sm text-gray-600">Ongkos Kirim</dt>
-                                <dd class="text-sm font-medium text-gray-900" id="ongkos_kirim">Rp{{ number_format(0, 0, ',', '.') }}</dd>
+                                <dd class="text-sm font-medium text-gray-900" id="ongkos_kirim">Pilih pengiriman</dd>
                             </div>
+
+                            <!-- Baris Asuransi (Baru) -->
+                            {{-- ====================================================== --}}
+                            {{-- ==== PERBAIKAN: Menghapus style="display:none;" ==== --}}
+                            {{-- ====================================================== --}}
+                            <div class="flex items-center justify-between" id="insurance_row">
+                                <dt class="text-sm text-gray-600">
+                                    <label for="use_insurance" class="cursor-pointer">Gunakan Asuransi</label>
+                                </dt>
+                                <dd class="flex items-center">
+                                    {{-- ====================================================== --}}
+                                    {{-- ==== PERBAIKAN: Memunculkan kembali <span> biaya ==== --}}
+                                    {{-- ====================================================== --}}
+                                    <span id="insurance_cost_text" class="text-sm font-medium text-gray-900 mr-2">Rp0</span>
+                                    <input type="checkbox" id="use_insurance" name="use_insurance" class="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-600">
+                                </dd>
+                            </div>
+
                             <div class="flex items-center justify-between" id="cod_fee_row" style="display:none;">
                                 <dt class="text-sm text-gray-600">Biaya Penanganan COD</dt>
                                 <dd class="text-sm font-medium text-gray-900" id="cod_fee_text">Rp0</dd>
                             </div>
                            <div class="flex items-center justify-between border-t border-gray-200 pt-4">
-                               <dt class="text-base font-bold text-gray-900">Total Pesanan</dt>
-                               <dd class="text-base font-bold text-gray-900" id="total_pesanan">
-                                   Rp{{ number_format($subtotal, 0, ',', '.') }}
-                               </dd>
+                                <dt class="text-base font-bold text-gray-900">Total Pesanan</dt>
+                                <dd class="text-base font-bold text-gray-900" id="total_pesanan">
+                                    Rp{{ number_format($subtotal, 0, ',', '.') }}
+                                </dd>
                            </div>
                         </div>
 
-                        <!-- Syarat & Ketentuan -->
                         <div class="mt-6 border-t pt-6">
                             <div class="relative flex items-start">
                                 <div class="flex h-6 items-center">
-                                    <input id="terms-and-conditions" name="terms-and-conditions" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-600">
+                                    <input id="terms-and-conditions" name="terms-and-conditions" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-600">
                                 </div>
                                 <div class="ml-3 text-sm leading-6">
                                     <label for="terms-and-conditions" class="font-medium text-gray-900">
                                         Saya telah membaca dan menyetujui
-                                        <span id="terms-link" class="underline text-blue-600 cursor-pointer">Syarat & Ketentuan</span>
+                                        <a href="https://tokosancaka.com/terms-and-conditions" target="_blank" class="underline text-red-600 hover:text-red-700">Syarat & Ketentuan</a>
+                                        dan
+                                        <a href="https://tokosancaka.com/privacy-policy" target="_blank" class="underline text-red-600 hover:text-red-700">Kebijakan Privasi</a>
                                         yang berlaku.
                                     </label>
                                 </div>
@@ -309,7 +355,7 @@ $firstGroup = $expressGrouped->keys()->first();
                         </div>
 
                         <div class="mt-6">
-                            <button type="submit" id="submit-button" class="flex w-full items-center justify-center rounded-md border border-transparent bg-blue-600 px-6 py-3 text-base font-medium text-white shadow-sm hover:bg-blue-700" disabled>
+                            <button type="submit" id="submit-button" class="flex w-full items-center justify-center rounded-md border border-transparent bg-red-600 px-6 py-3 text-base font-medium text-white shadow-sm hover:bg-red-700" disabled>
                                 Buat Pesanan & Bayar
                             </button>
                         </div>
@@ -317,8 +363,7 @@ $firstGroup = $expressGrouped->keys()->first();
                 </div>
 
             </div>
-        </div>
-    </form>
+        </form>
     </div>
 </div>
 
@@ -333,220 +378,154 @@ $firstGroup = $expressGrouped->keys()->first();
         </div>
         <div class="p-2">
             <ul id="paymentOptionsList" class="max-h-[60vh] overflow-y-auto space-y-2 p-4">
-                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" 
+                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50" 
                      data-value="cash" 
-                     data-label="CASH" 
-                     data-img="https://uxwing.com/wp-content/themes/uxwing/download/banking-finance/cash-icon.png">
-                     <img src="https://uxwing.com/wp-content/themes/uxwing/download/banking-finance/cash-icon.png" class="h-8 w-8 object-contain mr-4">
-                     <span class="text-sm font-medium text-gray-900">CASH</span>
+                     data-label="Saldo Sancaka"
+                     data-img="{{ asset('public/assets/saldo.png') }}">
+                     <img src="{{ asset('public/assets/saldo.png') }}" class="h-8 w-8 object-contain mr-4">
+                     <span class="text-sm font-medium text-gray-900">Saldo {{ $user->nama_lengkap }}: (Rp{{ number_format(Auth::user()->saldo, 0, ',', '.') }})</span>
                  </li>
-                 <li id="codPaymentOption" class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" 
+                 
+                 <!-- PENAMBAHAN DOKU -->
+                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50"
+                     data-value="DOKU_JOKUL"
+                     data-label="Doku (Kartu Kredit, E-Wallet, dll)"
+                     data-img="{{ asset('public/assets/doku.png') }}">
+                     <img src="{{ asset('public/assets/doku.png') }}" class="h-8 w-8 object-contain mr-4">
+                     <span class="text-sm font-medium text-gray-900">Rekomendasi Sancaka (Kartu Kredit, E-Wallet, dll)</span>
+                 </li>
+                 <!-- AKHIR PENAMBAHAN DOKU -->
+                 
+                 <li id="codPaymentOption" class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50" 
                      data-value="cod" 
                      data-label="COD" 
                      data-img="{{ asset('public/assets/cod.png') }}">
                      <img src="{{ asset('public/assets/cod.png') }}" class="h-8 w-8 object-contain mr-4">
                      <span class="text-sm font-medium text-gray-900">COD (Cash on Delivery)</span>
                  </li>
-                <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="PERMATAVA" data-label="Permata Virtual Account" data-img="{{ asset('storage/payments/permata.webp') }}">
-                    <img src="{{ asset('public/assets/permata.webp') }}" class="h-8 w-8 object-contain mr-4">
-                    <span class="text-sm font-medium text-gray-900">Permata Virtual Account</span>
-                </li>
-                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="BNIVA" data-label="BNI Virtual Account" data-img="{{ asset('storage/payments/bni.webp') }}">
-                    <img src="{{ asset('public/assets/bni.webp') }}" class="h-8 w-8 object-contain mr-4">
-                    <span class="text-sm font-medium text-gray-900">BNI Virtual Account</span>
-                </li>
-                <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="BRIVA" data-label="BRI Virtual Account" data-img="{{ asset('storage/payments/bri.webp') }}">
-                    <img src="{{ asset('public/assets/bri.webp') }}" class="h-8 w-8 object-contain mr-4">
-                    <span class="text-sm font-medium text-gray-900">BRI Virtual Account</span>
-                </li>
-                <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="MANDIRIVA" data-label="Mandiri Virtual Account" data-img="{{ asset('storage/payments/mandiri.webp') }}">
-                    <img src="{{ asset('public/assets/mandiri.webp') }}" class="h-8 w-8 object-contain mr-4">
-                    <span class="text-sm font-medium text-gray-900">Mandiri Virtual Account</span>
-                </li>
-                <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="BCAVA" data-label="BCA Virtual Account" data-img="{{ asset('storage/payments/bca.webp') }}">
-                    <img src="{{ asset('public/assets/bca.webp') }}" class="h-8 w-8 object-contain mr-4">
-                    <span class="text-sm font-medium text-gray-900">BCA Virtual Account</span>
-                </li>
-                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="MUAMALATVA" data-label="Muamalat Virtual Account" data-img="{{ asset('storage/payments/muamalat.png') }}">
-                    <img src="{{ asset('public/assets/muamalat.png') }}" class="h-8 w-8 object-contain mr-4">
-                    <span class="text-sm font-medium text-gray-900">Muamalat Virtual Account</span>
-                </li>
-                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="CIMBVA" data-label="CIMB Niaga Virtual Account" data-img="{{ asset('storage/payments/cimb.svg') }}">
-                    <img src="{{ asset('public/assets/cimb.svg') }}" class="h-8 w-8 object-contain mr-4">
-                    <span class="text-sm font-medium text-gray-900">CIMB Niaga Virtual Account</span>
-                </li>
-                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="BSIVA" data-label="BSI Virtual Account" data-img="{{ asset('storage/payments/bsi.png') }}">
-                    <img src="{{ asset('public/assets/bsi.png') }}" class="h-8 w-8 object-contain mr-4">
-                    <span class="text-sm font-medium text-gray-900">BSI Virtual Account</span>
-                </li>
-                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="OCBCVA" data-label="OCBC NISP Virtual Account" data-img="{{ asset('storage/payments/ocbc.png') }}">
-                    <img src="{{ asset('public/assets/ocbc.png') }}" class="h-8 w-8 object-contain mr-4">
-                    <span class="text-sm font-medium text-gray-900">OCBC NISP Virtual Account</span>
-                </li>
-                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="DANAMONVA" data-label="Danamon Virtual Account" data-img="{{ asset('storage/payments/danamon.png') }}">
-                    <img src="{{ asset('public/assets/danamon.png') }}" class="h-8 w-8 object-contain mr-4">
-                    <span class="text-sm font-medium text-gray-900">Danamon Virtual Account</span>
-                </li>
-                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="OTHERBANKVA" data-label="Other Bank Virtual Account" data-img="{{ asset('storage/payments/other.png') }}">
-                    <img src="{{ asset('public/assets/other.png') }}" class="h-8 w-8 object-contain mr-4">
-                    <span class="text-sm font-medium text-gray-900">Other Bank Virtual Account</span>
-                </li>
-                <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="ALFAMART" data-label="Alfamart" data-img="{{ asset('storage/payments/alfamart.webp') }}">
-                    <img src="{{ asset('public/assets/alfamart.webp') }}" class="h-8 w-8 object-contain mr-4">
-                    <span class="text-sm font-medium text-gray-900">Alfamart</span>
-                </li>
-                <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="INDOMARET" data-label="Indomaret" data-img="{{ asset('storage/payments/indomaret.webp') }}">
-                    <img src="{{ asset('public/assets/indomaret.webp') }}" class="h-8 w-8 object-contain mr-4">
-                    <span class="text-sm font-medium text-gray-900">Indomaret</span>
-                </li>
-                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="ALFAMIDI" data-label="Alfamidi" data-img="{{ asset('storage/payments/Alfamidi.png') }}">
-                    <img src="{{ asset('public/assets/Alfamidi.png') }}" class="h-8 w-8 object-contain mr-4">
-                    <span class="text-sm font-medium text-gray-900">Alfamidi</span>
-                </li>
-                <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="OVO" data-label="OVO" data-img="{{ asset('storage/payments/ovo.webp') }}">
-                    <img src="{{ asset('public/assets/ovo.webp') }}" class="h-8 w-8 object-contain mr-4">
-                    <span class="text-sm font-medium text-gray-900">OVO</span>
-                </li>
-                <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="QRIS" data-label="QRIS" data-img="{{ asset('storage/payments/qris2.png') }}">
-                    <img src="{{ asset('storage/payments/qris2.png') }}" class="h-8 w-8 object-contain mr-4">
-                    <span class="text-sm font-medium text-gray-900">QRIS</span>
-                </li>
-                <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="DANA" data-label="DANA" data-img="{{ asset('storage/payments/dana.webp') }}">
-                    <img src="{{ asset('public/assets/dana.webp') }}" class="h-8 w-8 object-contain mr-4">
-                    <span class="text-sm font-medium text-gray-900">DANA</span>
-                </li>
-                <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-blue-50" data-value="SHOPEEPAY" data-label="ShopeePay" data-img="{{ asset('storage/payments/shopeepay.webp') }}">
-                    <img src="{{ asset('public/assets/shopeepay.webp') }}" class="h-8 w-8 object-contain mr-4">
-                    <span class="text-sm font-medium text-gray-900">ShopeePay</span>
-                </li>
-            </ul>
+                 <!-- PENAMBAHAN CODBARANG -->
+                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50" 
+                     data-value="CODBARANG" 
+                     data-label="COD BARANG"
+                     data-img="{{ asset('public/assets/cod.png') }}">
+                     <img src="{{ asset('public/assets/cod.png') }}" class="h-8 w-8 object-contain mr-4">
+                     <span class="text-sm font-medium text-gray-900">COD BARANG</span>
+                 </li>
+                 <!-- AKHIR PENAMBAHAN -->
+
+                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50" data-value="PERMATAVA" data-label="Permata Virtual Account" data-img="{{ asset('public/assets/permata.webp') }}">
+                     <img src="{{ asset('public/assets/permata.webp') }}" class="h-8 w-8 object-contain mr-4">
+                     <span class="text-sm font-medium text-gray-900">Permata Virtual Account</span>
+                 </li>
+                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50" data-value="BNIVA" data-label="BNI Virtual Account" data-img="{{ asset('public/assets/bni.webp') }}">
+                     <img src="{{ asset('public/assets/bni.webp') }}" class="h-8 w-8 object-contain mr-4">
+                     <span class="text-sm font-medium text-gray-900">BNI Virtual Account</span>
+                 </li>
+                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50" data-value="BRIVA" data-label="BRI Virtual Account" data-img="{{ asset('public/assets/bri.webp') }}">
+                     <img src="{{ asset('public/assets/bri.webp') }}" class="h-8 w-8 object-contain mr-4">
+                     <span class="text-sm font-medium text-gray-900">BRI Virtual Account</span>
+                 </li>
+                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50" data-value="MANDIRIVA" data-label="Mandiri Virtual Account" data-img="{{ asset('public/assets/mandiri.webp') }}">
+                     <img src="{{ asset('public/assets/mandiri.webp') }}" class="h-8 w-8 object-contain mr-4">
+                     <span class="text-sm font-medium text-gray-900">Mandiri Virtual Account</span>
+                 </li>
+                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50" data-value="BCAVA" data-label="BCA Virtual Account" data-img="{{ asset('public/assets/bca.webp') }}">
+                     <img src="{{ asset('public/assets/bca.webp') }}" class="h-8 w-8 object-contain mr-4">
+                     <span class="text-sm font-medium text-gray-900">BCA Virtual Account</span>
+                 </li>
+                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50" data-value="MUAMALATVA" data-label="Muamalat Virtual Account" data-img="{{ asset('public/assets/muamalat.png') }}">
+                     <img src="{{ asset('public/assets/muamalat.png') }}" class="h-8 w-8 object-contain mr-4">
+                     <span class="text-sm font-medium text-gray-900">Muamalat Virtual Account</span>
+                 </li>
+                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50" data-value="CIMBVA" data-label="CIMB Niaga Virtual Account" data-img="{{ asset('public/assets/cimb.svg') }}">
+                     <img src="{{ asset('public/assets/cimb.svg') }}" class="h-8 w-8 object-contain mr-4">
+                     <span class="text-sm font-medium text-gray-900">CIMB Niaga Virtual Account</span>
+                 </li>
+                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50" data-value="BSIVA" data-label="BSI Virtual Account" data-img="{{ asset('public/assets/bsi.png') }}">
+                     <img src="{{ asset('public/assets/bsi.png') }}" class="h-8 w-8 object-contain mr-4">
+                     <span class="text-sm font-medium text-gray-900">BSI Virtual Account</span>
+                 </li>
+                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50" data-value="OCBCVA" data-label="OCBC NISP Virtual Account" data-img="{{ asset('public/assets/ocbc.png') }}">
+                     <img src="{{ asset('public/assets/ocbc.png') }}" class="h-8 w-8 object-contain mr-4">
+                     <span class="text-sm font-medium text-gray-900">OCBC NISP Virtual Account</span>
+                 </li>
+                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50" data-value="DANAMONVA" data-label="Danamon Virtual Account" data-img="{{ asset('public/assets/danamon.png') }}">
+                     <img src="{{ asset('public/assets/danamon.png') }}" class="h-8 w-8 object-contain mr-4">
+                     <span class="text-sm font-medium text-gray-900">Danamon Virtual Account</span>
+                 </li>
+                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50" data-value="OTHERBANKVA" data-label="Other Bank Virtual Account" data-img="{{ asset('public/assets/other.png') }}">
+                     <img src="{{ asset('public/assets/other.png') }}" class="h-8 w-8 object-contain mr-4">
+                     <span class="text-sm font-medium text-gray-900">Other Bank Virtual Account</span>
+                 </li>
+                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50" data-value="ALFAMART" data-label="Alfamart" data-img="{{ asset('public/assets/alfamart.webp') }}">
+                     <img src="{{ asset('public/assets/alfamart.webp') }}" class="h-8 w-8 object-contain mr-4">
+                     <span class="text-sm font-medium text-gray-900">Alfamart</span>
+                 </li>
+                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50" data-value="INDOMARET" data-label="Indomaret" data-img="{{ asset('public/assets/indomaret.webp') }}">
+                     <img src="{{ asset('public/assets/indomaret.webp') }}" class="h-8 w-8 object-contain mr-4">
+                     <span class="text-sm font-medium text-gray-900">Indomaret</span>
+                 </li>
+                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50" data-value="ALFAMIDI" data-label="Alfamidi" data-img="{{ asset('public/assets/Alfamidi.png') }}">
+                     <img src="{{ asset('public/assets/Alfamidi.png') }}" class="h-8 w-8 object-contain mr-4">
+                     <span class="text-sm font-medium text-gray-900">Alfamidi</span>
+                 </li>
+                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50" data-value="OVO" data-label="OVO" data-img="{{ asset('public/assets/ovo.webp') }}">
+                     <img src="{{ asset('public/assets/ovo.webp') }}" class="h-8 w-8 object-contain mr-4">
+                     <span class="text-sm font-medium text-gray-900">OVO</span>
+                 </li>
+                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50" data-value="QRIS" data-label="QRIS" data-img="{{ asset('public/assets/qris2.png') }}">
+                     <img src="{{ asset('public/assets/qris2.png') }}" class="h-8 w-8 object-contain mr-4">
+                     <span class="text-sm font-medium text-gray-900">QRIS</span>
+                 </li>
+                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50" data-value="DANA" data-label="DANA" data-img="{{ asset('public/assets/dana.webp') }}">
+                     <img src="{{ asset('public/assets/dana.webp') }}" class="h-8 w-8 object-contain mr-4">
+                     <span class="text-sm font-medium text-gray-900">DANA</span>
+                 </li>
+                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50" data-value="SHOPEEPAY" data-label="ShopeePay" data-img="{{ asset('public/assets/shopeepay.webp') }}">
+                     <img src="{{ asset('public/assets/shopeepay.webp') }}" class="h-8 w-8 object-contain mr-4">
+                     <span class="text-sm font-medium text-gray-900">ShopeePay</span>
+                 </li>
+             </ul>
         </div>
         <div class="flex justify-end p-4 border-t bg-gray-50 rounded-b-lg space-x-4">
             <button type="button" id="backButton" class="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">Kembali</button>
-            <button type="button" id="continueButton" class="px-4 py-2 bg-blue-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-blue-700">Lanjutkan</button>
+            <button type="button" id="continueButton" class="px-4 py-2 bg-red-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-red-700">Lanjutkan</button>
         </div>
     </div>
 </div>
 
-<!-- Modal Syarat & Ketentuan -->
-<div id="terms-modal" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 transform transition-all">
-        <div class="flex justify-between items-center p-4 border-b">
-            <h3 class="text-lg font-semibold text-gray-800">Syarat & Ketentuan Pembelian</h3>
-            <button type="button" id="terms-modal-close" class="text-gray-400 hover:text-gray-600">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-            </button>
-        </div>
-        <div id="terms-content" class="p-6 text-sm text-gray-600 max-h-[60vh] overflow-y-auto space-y-4">
-            <p class="font-bold">Selamat datang di Sancaka Marketplace!</p>
-            <p>Dengan melakukan transaksi di platform kami, Anda dianggap telah membaca, memahami, dan menyetujui seluruh isi dalam Syarat & Ketentuan ini. Mohon dibaca dengan saksama.</p>
-            
-            <div>
-                <h4 class="font-semibold text-gray-800">1. Definisi</h4>
-                <p>Sancaka Marketplace adalah platform jual beli online yang mempertemukan Penjual dan Pembeli. Setiap produk yang terdaftar merupakan tanggung jawab Penjual sepenuhnya.</p>
-            </div>
-            <div>
-                <h4 class="font-semibold text-gray-800">2. Proses Pemesanan</h4>
-                <p>Pastikan alamat pengiriman dan nomor telepon yang Anda cantumkan sudah benar dan aktif. Kesalahan penulisan alamat yang mengakibatkan kegagalan pengiriman berada di luar tanggung jawab kami.</p>
-            </div>
-            <div>
-                <h4 class="font-semibold text-gray-800">3. Pembayaran</h4>
-                <p>Semua transaksi wajib dilakukan melalui metode pembayaran resmi. Biaya tambahan seperti COD atau biaya administrasi bank mungkin berlaku tergantung metode yang dipilih.</p>
-            </div>
-            <div>
-                <h4 class="font-semibold text-gray-800">4. Pengiriman</h4>
-                <p>Estimasi waktu pengiriman adalah perkiraan ekspedisi. Keterlambatan akibat kurir, cuaca, atau force majeure berada di luar kendali kami. Periksa kondisi produk saat diterima.</p>
-            </div>
-            <div>
-                <h4 class="font-semibold text-gray-800">5. Kebijakan Pengembalian (Return & Refund)</h4>
-                <p>Pengembalian hanya berlaku jika produk rusak, cacat, atau tidak sesuai deskripsi. Klaim wajib menyertakan video unboxing tanpa jeda sebagai bukti.</p>
-            </div>
-            <div>
-                <h4 class="font-semibold text-gray-800">6. Asuransi & Kerusakan Barang</h4>
-                <p>Pembeli dapat memilih layanan asuransi pengiriman. Klaim hanya dapat diproses apabila pembeli menggunakan layanan dengan asuransi.</p>
-            </div>
-            <div>
-                <h4 class="font-semibold text-gray-800">7. Kesalahan Pemesanan</h4>
-                <p>Pembeli wajib memastikan detail produk sudah sesuai sebelum checkout. Kesalahan pemesanan bukan tanggung jawab penjual maupun marketplace.</p>
-            </div>
-            <div>
-                <h4 class="font-semibold text-gray-800">8. Tanggung Jawab Penjual</h4>
-                <p>Penjual wajib memastikan produk asli, layak, dan sesuai deskripsi. Penjual dilarang menjual produk ilegal atau palsu.</p>
-            </div>
-            <div>
-                <h4 class="font-semibold text-gray-800">9. Privasi dan Keamanan</h4>
-                <p>Data pribadi pembeli dijaga sesuai kebijakan privasi. Data tidak akan dibagikan kepada pihak ketiga tanpa persetujuan.</p>
-            </div>
-            <div>
-                <h4 class="font-semibold text-gray-800">10. Produk Digital</h4>
-                <p>Untuk produk digital (e-book, software, lisensi), tidak ada pengembalian atau refund setelah produk diterima kecuali terdapat kerusakan file.</p>
-            </div>
-            <div>
-                <h4 class="font-semibold text-gray-800">11. Garansi Produk</h4>
-                <p>Beberapa produk mungkin memiliki garansi resmi dari penjual atau distributor. Pembeli wajib menyimpan bukti transaksi untuk klaim garansi.</p>
-            </div>
-            <div>
-                <h4 class="font-semibold text-gray-800">12. Kewajiban Pembeli</h4>
-                <p>Pembeli wajib memberikan informasi yang benar saat bertransaksi, menjaga etika dalam komunikasi, dan tidak melakukan penipuan.</p>
-            </div>
-            <div>
-                <h4 class="font-semibold text-gray-800">13. Kewajiban Penjual</h4>
-                <p>Penjual wajib mengirimkan produk sesuai pesanan, memberikan nomor resi valid, serta menjaga kualitas layanan kepada pembeli.</p>
-            </div>
-            <div>
-                <h4 class="font-semibold text-gray-800">14. Larangan</h4>
-                <p>Dilarang memperjualbelikan barang terlarang, berbahaya, atau yang melanggar hukum. Pelanggaran dapat mengakibatkan pemblokiran akun.</p>
-            </div>
-            <div>
-                <h4 class="font-semibold text-gray-800">15. Penyelesaian Sengketa</h4>
-                <p>Jika terjadi perselisihan, pembeli dan penjual wajib berusaha menyelesaikan secara musyawarah. Marketplace dapat menjadi mediator bila diperlukan.</p>
-            </div>
-            <div>
-                <h4 class="font-semibold text-gray-800">16. Force Majeure</h4>
-                <p>Kami tidak bertanggung jawab atas keterlambatan atau kegagalan layanan yang diakibatkan oleh kejadian di luar kendali seperti bencana alam, perang, atau kebijakan pemerintah.</p>
-            </div>
-            <div>
-                <h4 class="font-semibold text-gray-800">17. Perubahan Harga</h4>
-                <p>Harga produk dapat berubah sewaktu-waktu sesuai kebijakan penjual. Harga yang berlaku adalah harga saat checkout dilakukan.</p>
-            </div>
-            <div>
-                <h4 class="font-semibold text-gray-800">18. Perubahan Syarat & Ketentuan</h4>
-                <p>Sancaka Marketplace berhak memperbarui Syarat & Ketentuan kapan saja. Perubahan akan diumumkan melalui platform.</p>
-            </div>
-            <div>
-                <h4 class="font-semibold text-gray-800">19. Hukum yang Berlaku</h4>
-                <p>Syarat & Ketentuan ini tunduk pada hukum yang berlaku di Indonesia. Setiap sengketa akan diselesaikan di wilayah hukum Republik Indonesia.</p>
-            </div>
-            <div>
-                <h4 class="font-semibold text-gray-800">20. Kontak & Layanan Pelanggan</h4>
-                <p>Untuk pertanyaan, klaim, atau bantuan, pembeli dapat menghubungi layanan pelanggan melalui kontak resmi yang tersedia di platform.</p>
-            </div>
-            
-            <p class="font-bold pt-4 border-t">Dengan menekan tombol "Setuju", Anda mengonfirmasi bahwa Anda telah membaca dan menerima semua poin di atas tanpa paksaan dari pihak manapun.</p>
-        </div>
-        <div class="flex justify-end p-4 border-t bg-gray-50 rounded-b-lg">
-            <button type="button" id="terms-agree-button" class="px-6 py-2 bg-blue-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-blue-700" disabled>Setuju</button>
-        </div>
-    </div>
-</div>
-
+{{-- Modal S&K dihapus --}}
 
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const subtotal = {{ $subtotal }};
+    const subtotal = {{ $subtotal ?? 0 }};
     const codFeePercentage = 0.03;
     let shippingCost = 0;
-    let insuranceCost = 0;
+    
+    // --- PERUBAHAN ASURANSI & KODE JS LENGKAP ---
+    let insuranceCost = 0; // Biaya asuransi final yang ditambahkan ke total
+    let availableInsuranceCost = 0; // Biaya asuransi dari kurir
     let isCodPayment = false;
     let isCodSupportedByCourier = false;
+    let codAddCost = 0; // Biaya COD dari API
     
     const ongkirEl = document.getElementById('ongkos_kirim');
     const codFeeRow = document.getElementById('cod_fee_row');
     const codFeeTextEl = document.getElementById('cod_fee_text');
+    
+    // --- ELEMEN BARU ASURANSI ---
+    const insuranceRow = document.getElementById('insurance_row');
+    // ======================================================
+    // ==== PERBAIKAN: Mengaktifkan kembali const ====
+    // ======================================================
+    const insuranceCostTextEl = document.getElementById('insurance_cost_text'); // DI-AKTIFKAN KEMBALI
+    const useInsuranceCheckbox = document.getElementById('use_insurance');
+    // --- AKHIR ELEMEN BARU ---
+
     const totalEl = document.getElementById('total_pesanan');
     const paymentMethodInput = document.getElementById('payment_method');
-    const codPaymentOption = document.getElementById("codPaymentOption");
+    const codPaymentOption = document.getElementById("codPaymentOption"); // Pastikan ID ini ada di <li> COD
 
     const paymentModal = document.getElementById('paymentModal');
     const paymentMethodButton = document.getElementById('paymentMethodButton');
@@ -557,47 +536,119 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const termsCheckbox = document.getElementById('terms-and-conditions');
     const submitButton = document.getElementById('submit-button');
-    const termsModal = document.getElementById('terms-modal');
-    const termsLink = document.getElementById('terms-link');
-    const termsContent = document.getElementById('terms-content');
-    const termsAgreeButton = document.getElementById('terms-agree-button');
-    const termsModalClose = document.getElementById('terms-modal-close');
     const checkoutForm = document.getElementById('checkout-form');
+
+    // Modal S&K dihapus
+    // ...
 
     function formatRupiah(num) {
         return 'Rp' + new Intl.NumberFormat('id-ID').format(num || 0);
     }
 
     function updateTotal() {
-        let codAddCost = 0;
+        let totalCodFee = 0; // Reset biaya COD
+
+        // ======================================================
+        // ==== PERBAIKAN JS: Logika Asuransi di updateTotal ====
+        // ======================================================
+        // Tampilkan baris asuransi (selalu)
+        insuranceRow.style.display = 'flex'; 
+
+        // Hitung asuransi HANYA jika dicentang DAN tersedia
+        if (useInsuranceCheckbox.checked && availableInsuranceCost > 0) {
+            insuranceCost = availableInsuranceCost;
+            // ======================================================
+            // ==== PERBAIKAN: Memunculkan kembali <span> biaya ====
+            insuranceCostTextEl.innerText = formatRupiah(insuranceCost);
+            // ======================================================
+        } else {
+            insuranceCost = 0;
+            // ======================================================
+            // ==== PERBAIKAN: Reset <span> biaya jika tidak dicentang ====
+            insuranceCostTextEl.innerText = 'Rp0'; // Reset ke Rp0 jika tidak dicentang
+            // ======================================================
+        }
+        // ======================================================
+
+
+        // Hitung biaya COD
         if (isCodPayment && isCodSupportedByCourier) {
-            const baseTotal = subtotal + shippingCost + insuranceCost;
-            codAddCost = Math.ceil(baseTotal * codFeePercentage);
+            // Cek apakah API memberikan biaya COD (dari data-cod-fee)
+            if (codAddCost > 0) {
+                totalCodFee = codAddCost;
+            } else {
+                // Jika tidak, hitung manual 3%
+                const baseTotal = subtotal + shippingCost + insuranceCost;
+                totalCodFee = Math.ceil(baseTotal * codFeePercentage);
+            }
             codFeeRow.style.display = 'flex';
-            codFeeTextEl.innerText = formatRupiah(codAddCost);
+            codFeeTextEl.innerText = formatRupiah(totalCodFee);
         } else {
             codFeeRow.style.display = 'none';
         }
-        const grandTotal = subtotal + shippingCost + insuranceCost + codAddCost;
+        
+        const grandTotal = subtotal + shippingCost + insuranceCost + totalCodFee;
         ongkirEl.innerText = formatRupiah(shippingCost);
         totalEl.innerText = formatRupiah(grandTotal);
     }
 
     function handleShippingChange() {
         const selectedShipping = document.querySelector('input[name="shipping_method"]:checked');
-        if (!selectedShipping) return;
-        shippingCost = parseInt(selectedShipping.dataset.cost || 0, 10);
-        insuranceCost = parseInt(selectedShipping.dataset.insurance || 0, 10);
-        isCodSupportedByCourier = selectedShipping.dataset.cod === 'true';
+        
+        if (!selectedShipping) {
+            shippingCost = 0;
+            availableInsuranceCost = 0;
+            isCodSupportedByCourier = false;
+            codAddCost = 0;
+        } else {
+            shippingCost = parseInt(selectedShipping.dataset.cost || 0, 10);
+            availableInsuranceCost = parseInt(selectedShipping.dataset.insurance || 0, 10);
+            isCodSupportedByCourier = selectedShipping.dataset.cod === 'true';
+            codAddCost = parseInt(selectedShipping.dataset.codFee || 0, 10); // Ambil biaya COD dari API
+        }
+
+        // ======================================================
+        // ==== PERBAIKAN JS: Logika Asuransi di handleShippingChange ====
+        // ======================================================
+        // Selalu tampilkan baris asuransi
+        insuranceRow.style.display = 'flex'; 
+
+        if (availableInsuranceCost > 0) {
+            // Jika asuransi tersedia, aktifkan checkbox
+            useInsuranceCheckbox.disabled = false;
+            useInsuranceCheckbox.classList.remove('opacity-50', 'cursor-not-allowed');
+            // ======================================================
+            // ==== PERBAIKAN: Memunculkan kembali <span> biaya ====
+            insuranceCostTextEl.innerText = formatRupiah(availableInsuranceCost);
+            // ======================================================
+        } else {
+            // Jika asuransi TIDAK tersedia, non-aktifkan dan reset
+            useInsuranceCheckbox.disabled = true;
+            useInsuranceCheckbox.checked = false; 
+            useInsuranceCheckbox.classList.add('opacity-50', 'cursor-not-allowed');
+            // ======================================================
+            // ==== PERBAIKAN: Reset <span> biaya jika tidak tersedia ====
+            insuranceCostTextEl.innerText = 'Rp0'; // Reset ke Rp0 jika tidak tersedia
+            // ======================================================
+        }
+        // ======================================================
+
 
         if (isCodSupportedByCourier) {
             codPaymentOption.style.display = 'flex';
         } else {
             codPaymentOption.style.display = 'none';
             if(isCodPayment) {
-                const defaultPayment = document.querySelector('.payment-option[data-value="PERMATAVA"]');
+                // Jika kurir tidak support COD, reset pembayaran ke default
+                const defaultPayment = document.querySelector('.payment-option[data-value="PERMATAVA"]'); // Ganti ke default payment Anda
                 if (defaultPayment) {
                     defaultPayment.click();
+                } else {
+                    // Fallback jika PERMATAVA tidak ada
+                    isCodPayment = false;
+                    paymentMethodInput.value = '';
+                    document.getElementById('paymentMethodLabel').textContent = 'Pilih Pembayaran';
+                    document.getElementById('paymentMethodImg').src = 'https://placehold.co/32x32/EFEFEF/AAAAAA?text=?';
                 }
             }
         }
@@ -612,49 +663,30 @@ document.addEventListener('DOMContentLoaded', function () {
     backButton.addEventListener('click', closePaymentModal);
     continueButton.addEventListener('click', closePaymentModal);
     
-    function openTermsModal() { termsModal.classList.remove('hidden'); }
-    function closeTermsModal() { termsModal.classList.add('hidden'); }
-    
-    // REVISI LOGIKA CHECKBOX
+    // Logika Checkbox S&K Disederhanakan
     termsCheckbox.addEventListener('change', function() {
-        if (this.checked) {
-            openTermsModal();
-        } else {
-            submitButton.disabled = true;
-        }
+        submitButton.disabled = !this.checked;
     });
 
-    termsLink.addEventListener('click', openTermsModal);
-
-    termsContent.addEventListener('scroll', function() {
-        const isScrolledToBottom = this.scrollHeight - this.scrollTop <= this.clientHeight + 1;
-        termsAgreeButton.disabled = !isScrolledToBottom;
-    });
-
-    termsAgreeButton.addEventListener('click', function() {
-        termsCheckbox.checked = true;
-        submitButton.disabled = false;
-        closeTermsModal();
-    });
-
-    termsModalClose.addEventListener('click', function() {
-        termsCheckbox.checked = false;
-        submitButton.disabled = true;
-        closeTermsModal();
-    });
+    // Event listener modal S&K dihapus
+    // ...
 
     document.querySelectorAll('input[name="shipping_method"]').forEach(radio => {
         radio.addEventListener('change', handleShippingChange);
     });
 
+    // TAMBAHKAN EVENT LISTENER UNTUK CHECKBOX ASURANSI
+    useInsuranceCheckbox.addEventListener('change', updateTotal);
+
     paymentOptionsList.querySelectorAll('.payment-option').forEach(item => {
         item.addEventListener('click', function () {
             const paymentValue = this.dataset.value;
             paymentMethodInput.value = paymentValue;
-            isCodPayment = paymentValue === 'cod';
             
-            paymentOptionsList.querySelectorAll('li').forEach(li => li.classList.remove('bg-blue-100', 'border-blue-500'));
-            this.classList.add('bg-blue-100', 'border-blue-500');
+            isCodPayment = (paymentValue === 'cod' || paymentValue === 'CODBARANG');
+            
+            paymentOptionsList.querySelectorAll('li').forEach(li => li.classList.remove('bg-red-100', 'border-red-500'));
+            this.classList.add('bg-red-100', 'border-red-500');
 
             const label = this.dataset.label;
             const img = this.dataset.img;
@@ -662,37 +694,117 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('paymentMethodImg').src = img;
             
             updateTotal();
+            closePaymentModal();
         });
     });
 
     checkoutForm.addEventListener('submit', function(e) {
         if (!termsCheckbox.checked) {
             e.preventDefault();
-            alert('Anda harus menyetujui Syarat & Ketentuan untuk melanjutkan.');
+            alert('Anda harus menyetujui Syarat & Ketentuan untuk melanjutkan.'); // Gunakan modal custom jika ada
+            return;
         }
+        
+        const selectedShipping = document.querySelector('input[name="shipping_method"]:checked');
+        if (!selectedShipping) {
+            e.preventDefault();
+            alert('Anda harus memilih metode pengiriman terlebih dahulu.'); // Gunakan modal custom jika ada
+            return;
+        }
+        
+        // Validasi pembayaran
+        if (paymentMethodInput.value === "") {
+             e.preventDefault();
+             alert('Anda harus memilih metode pembayaran terlebih dahulu.'); // Gunakan modal custom jika ada
+             return;
+        }
+        
+        submitButton.disabled = true;
+        submitButton.innerHTML = 'Memproses...';
     });
     
+    // Inisialisasi awal
     const initialPayment = document.querySelector(`#paymentOptionsList li[data-value="${paymentMethodInput.value}"]`);
     if(initialPayment) {
-        initialPayment.classList.add('bg-blue-100', 'border-blue-500');
+        initialPayment.classList.add('bg-red-100', 'border-red-500');
+        // Update tampilan tombol utama saat load
+        // SAYA KEMBALIKAN KODE INI AGAR SESUAI DENGAN HTML YANG DI-HARDCODE
+        document.getElementById('paymentMethodLabel').textContent = initialPayment.dataset.label;
+        document.getElementById('paymentMethodImg').src = initialPayment.dataset.img;
+    } else {
+        // Fallback ini seharusnya tidak berjalan lagi karena value="PERMATAVA" sudah ada
+        paymentMethodInput.value = "";
+        document.getElementById('paymentMethodLabel').textContent = 'Pilih Pembayaran';
+        document.getElementById('paymentMethodImg').src = 'https://placehold.co/32x32/EFEFEF/AAAAAA?text=?';
     }
+    
     handleShippingChange();
-});
-</script>
-<script>
+
+    // Logika Tab Pengiriman
     const groupButtons = document.querySelectorAll('.group-button');
-    const groupOptions = document.querySelectorAll('.express-group-options');
+    const groupOptions = document.querySelectorAll('.shipping-group-options');
 
     groupButtons.forEach(button => {
         button.addEventListener('click', () => {
             const group = button.dataset.group;
-            groupButtons.forEach(b => b.classList.remove('bg-blue-500', 'text-white'));
-            button.classList.add('bg-blue-500', 'text-black');
+            
+            groupButtons.forEach(b => b.classList.remove('active'));
+            button.classList.add('active');
+            
             groupOptions.forEach(div => {
                 div.classList.toggle('hidden', div.dataset.group !== group);
             });
+            
+            const firstRadioInGroup = document.querySelector(`.shipping-group-options[data-group="${group}"] input[name="shipping_method"]`);
+            if (firstRadioInGroup) {
+                firstRadioInGroup.checked = true;
+            }
+            handleShippingChange();
         });
     });
-</script>
-@endsection
+    
+    // Inisialisasi tab dan radio button pertama
+    const firstActiveRadio = document.querySelector('input[name="shipping_method"]:checked');
+    if (!firstActiveRadio && groupButtons.length > 0) {
+        // Jika tidak ada yang checked, klik tombol tab pertama
+        groupButtons[0].click();
+    }
 
+});
+</script>
+
+<!-- ====================================================== -->
+<!-- === KODE GPS (SCRIPT) DITARUH DI SINI === -->
+<!-- ====================================================== -->
+<script>
+// Skrip ini akan otomatis mengambil lokasi GPS saat halaman checkout dimuat
+// dan mengisinya ke input 'latitude' dan 'longitude' di atas.
+window.addEventListener('load', function() {
+    if ('geolocation' in navigator) {
+        console.log('Mencoba mengambil lokasi GPS...');
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                // Sukses dapat lokasi
+                document.getElementById('latitude').value = position.coords.latitude;
+                document.getElementById('longitude').value = position.coords.longitude;
+                console.log('Lokasi GPS didapat:', position.coords.latitude, position.coords.longitude);
+            },
+            function(error) {
+                // Gagal dapat lokasi
+                console.warn('Gagal mendapatkan lokasi GPS:', error.message);
+                // Biarkan input kosong, controller akan menanganinya (jadi null)
+            },
+            { 
+                enableHighAccuracy: true, // Minta akurasi tinggi (GPS)
+                timeout: 10000,           // Batas waktu 10 detik
+                maximumAge: 0             // Jangan pakai cache lokasi lama
+            }
+        );
+    } else {
+        console.warn('Geolocation tidak didukung browser ini.');
+    }
+});
+</script>
+<!-- ====================================================== -->
+
+@endsection

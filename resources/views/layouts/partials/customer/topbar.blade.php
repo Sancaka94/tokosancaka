@@ -15,7 +15,9 @@
             {{-- Saldo & Tombol Top Up (Mobile) --}}
             <li class="flex md:hidden items-center space-x-2">
                 <span class="fas fa-wallet font-semibold text-xs sm:text-sm text-gray-700 dark:text-gray-200">
-                    <a class="text-green-600 dark:text-green-400">Saldo Anda: </a> <strong>Rp {{ number_format($saldo ?? 0, 0, ',', '.') }}</strong>
+                    <a class="text-green-600 dark:text-green-400">Saldo Anda: </a> 
+                    {{-- ID untuk update Saldo Mobile --}}
+                    <strong id="saldo-mobile">Rp {{ number_format($saldo ?? 0, 0, ',', '.') }}</strong>
                 </span>
                 <a href="{{ route('customer.topup.create') }}" class="inline-flex items-center justify-center w-8 h-8 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-full hover:bg-indigo-700 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     <i class="fas fa-plus"></i>
@@ -26,7 +28,9 @@
             <li class="hidden md:flex items-center space-x-2 bg-gray-50 dark:bg-gray-700/50 px-3 py-1.5 rounded-lg">
                 <i class="fas fa-wallet text-gray-500 dark:text-gray-400"></i>
                 <span class="font-semibold text-sm text-gray-700 dark:text-gray-200">
-                    <a class="text-green-600 dark:text-green-400">Saldo Anda: </a> <strong>Rp {{ number_format($saldo ?? 0, 0, ',', '.') }}</strong>
+                    <a class="text-green-600 dark:text-green-400">Saldo Anda: </a> 
+                    {{-- ID untuk update Saldo Desktop --}}
+                    <strong id="saldo-desktop">Rp {{ number_format($saldo ?? 0, 0, ',', '.') }}</strong>
                 </span>
                 <a href="{{ route('customer.topup.create') }}" class="inline-flex items-center px-3 py-1 text-xs font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 transition-colors duration-150">
                     <i class="fas fa-plus mr-1"></i>
@@ -34,46 +38,49 @@
                 </a>
             </li>
 
+            {{-- Tombol Ikon Toko --}}
+            @if(Auth::user() && Auth::user()->role == 'Seller')
+            <li class="relative">
+                <a href="{{ url('https://tokosancaka.com/seller/dashboard') }}" 
+                   class="relative align-middle rounded-md focus:outline-none p-2 text-gray-600 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-300" 
+                   aria-label="Dashboard Toko"
+                   title="Dashboard Toko">
+                    <i class="fas fa-store w-5 h-5"></i>
+                </a>
+            </li>
+            @endif
+
             <!-- Tombol Notifikasi -->
             <li class="relative">
-                <button class="relative align-middle rounded-md focus:outline-none" @click="isNotificationsMenuOpen = !isNotificationsMenuOpen" aria-label="Notifikasi" aria-haspopup="true">
+                <button class="relative align-middle rounded-md focus:outline-none" @click="isNotificationsMenuOpen = !isNotificationsMenuOpen" aria-label="Notifikasi" aria-haspopup="true"
+                        title="Notifikasi">
                     <i class="fas fa-bell w-5 h-5 text-gray-600 dark:text-gray-400"></i>
-                    @if(isset($notifications) && $notifications->isNotEmpty())
-                        <span class="absolute top-0 right-0 inline-block w-3 h-3 transform translate-x-1 -translate-y-1 bg-red-600 border-2 border-white rounded-full dark:border-gray-800"></span>
-                    @endif
+                    
+                    {{-- ID untuk Badge Angka Notifikasi --}}
+                    <span id="notification-count-badge" class="absolute -top-2 -right-2 bg-red-600 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full" style="display: none;">0</span>
+
                 </button>
 
                 <div x-show="isNotificationsMenuOpen" @click.away="isNotificationsMenuOpen = false" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 transform scale-95" x-transition:enter-end="opacity-100 transform scale-100" x-transition:leave="transition ease-in duration-75" x-transition:leave-start="opacity-100 transform scale-100" x-transition:leave-end="opacity-0 transform scale-95" class="absolute right-0 w-80 mt-2 origin-top-right bg-white rounded-md shadow-lg dark:bg-gray-800">
                     <div class="p-2">
                         <div class="flex justify-between items-center p-2 border-b dark:border-gray-700">
-                             <h4 class="font-semibold text-gray-700 dark:text-gray-300">Notifikasi</h4>
-                             @if(isset($notifications) && $notifications->isNotEmpty())
-                                <span class="px-2 py-1 text-xs font-bold text-red-100 bg-red-600 rounded-full">{{ $notifications->count() }}</span>
-                             @endif
+                            <h4 class="font-semibold text-gray-700 dark:text-gray-300">Notifikasi</h4>
                         </div>
-                        <div class="max-h-64 overflow-y-auto">
-                        @forelse($notifications ?? [] as $notification)
-                            <a class="flex items-start w-full px-4 py-3 text-sm text-gray-700 rounded-md hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700" href="#">
-                               <div class="mr-3 pt-1">
-                                   <div class="p-2 bg-blue-100 dark:bg-blue-900/50 rounded-full">
-                                      <i class="fas fa-info-circle text-blue-500"></i>
-                                   </div>
-                               </div>
-                               <div>
-                                   <p class="font-semibold">{{ $notification->data['title'] ?? 'Notifikasi Baru' }}</p>
-                                   <p class="text-xs text-gray-500">{{ $notification->data['message'] ?? 'Anda memiliki pembaruan baru.' }}</p>
-                                   <p class="text-xs text-gray-400 mt-1">{{ $notification->created_at->diffForHumans() }}</p>
-                               </div>
-                            </a>
-                        @empty
-                            <p class="p-4 text-sm text-center text-gray-500">Tidak ada notifikasi baru.</p>
-                        @endforelse
+                        
+                        {{-- ID untuk Daftar List Notifikasi --}}
+                        <div id="notification-list" class="max-h-64 overflow-y-auto">
+                        
+                            {{-- ID untuk Status Kosong --}}
+                            <p id="notification-empty-state" class="p-4 text-sm text-center text-gray-500" style="display: none;">Tidak ada notifikasi baru.</p>
+
                         </div>
                     </div>
                 </div>
             </li>
 
-            <a href="{{ route('customer.cart.index') }}" class="text-gray-600 hover:text-red-600 relative">
+            {{-- Tombol Keranjang Belanja --}}
+            <a href="{{ route('customer.cart.index') }}" class="text-gray-600 hover:text-red-600 relative"
+               title="Keranjang Belanja">
                 <i class="fas fa-shopping-cart"></i>
                 @php $cartCount = count((array) session('cart')) @endphp
                 @if($cartCount > 0)
@@ -83,8 +90,9 @@
 
             <!-- Menu Profil Pengguna -->
             <li class="relative">
-                <button class="align-middle rounded-full focus:outline-none" @click="isProfileMenuOpen = !isProfileMenuOpen" aria-label="Akun" aria-haspopup="true">
-                    <img class="object-cover w-8 h-8 rounded-full" src="{{ Auth::user()->store_logo_path ? asset('storage/' . Auth::user()->store_logo_path) : 'https://ui-avatars.com/api/?name=' . urlencode(Auth::user()->nama_lengkap) . '&background=random&color=fff' }}" alt="Avatar Pengguna" />
+                <button class="align-middle rounded-full focus:outline-none" @click="isProfileMenuOpen = !isProfileMenuOpen" aria-label="Akun" aria-haspopup="true"
+                        title="Akun Anda">
+                    <img class="object-cover w-8 h-8 rounded-full" src="{{ Auth::user()->store_logo_path ? asset('public/storage/'. Auth::user()->store_logo_path) : 'https://ui-avatars.com/api/?name=' . urlencode(Auth::user()->nama_lengkap) . '&background=random&color=fff' }}" alt="Avatar Pengguna" />
                 </button>
                 <div x-show="isProfileMenuOpen" @click.away="isProfileMenuOpen = false" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 transform scale-95" x-transition:enter-end="opacity-100 transform scale-100" x-transition:leave="transition ease-in duration-75" x-transition:leave-start="opacity-100 transform scale-100" x-transition:leave-end="opacity-0 transform scale-95" class="absolute right-0 w-56 mt-2 origin-top-right bg-white rounded-md shadow-lg dark:bg-gray-800">
                     <div class="p-2">
@@ -105,4 +113,3 @@
         </ul>
     </div>
 </header>
-

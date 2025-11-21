@@ -1,5 +1,21 @@
 @extends('layouts.admin')
 
+@push('styles')
+<style>
+/* Memaksa kontainer utama di Dasbor agar memiliki tinggi yang diperbesar (1 / 0.75) */
+.main-layout-container {
+    height: 133.33vh; 
+    /* Tambahkan !important jika tidak mempan */
+    /* height: 133.33vh !important; */ 
+}
+/* Opsional: Tambahkan ini jika sidebar Anda (yang ada di dalam .main-layout-container) 
+   terlihat pendek pada halaman Dasbor */
+.sidebar-container {
+    height: 100%; /* Atau 133.33vh */
+}
+</style>
+@endpush
+
 @section('title', 'Dashboard Admin')
 @section('page-title', 'Dashboard')
 
@@ -206,7 +222,7 @@
             const noNotificationRow = document.getElementById('no-notification-row');
             if (noNotificationRow) noNotificationRow.remove();
             const newRow = document.createElement('tr');
-            newRow.className = 'hover:bg-gray-50 dark:hover:bg-gray-700 bg-blue-50 dark:bg-blue-900/50 font-semibold';
+            newRow.className = 'hover:bg-gray-50 dark:hover:bg-gray-700 bg-red-50 dark:bg-red-900/50 font-semibold';
             newRow.innerHTML = `
                 <td class="px-6 py-4">
                     <a href="${notification.url || '#'}" class="block text-gray-800 dark:text-gray-200 hover:text-indigo-600 dark:hover:text-indigo-400">

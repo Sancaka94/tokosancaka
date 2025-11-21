@@ -68,7 +68,7 @@
 
                     @if(isset($settings[$key]))
 
-                        <img src="{{ asset('storage/'.$settings[$key]) }}" class="mt-2 object-cover rounded mx-auto" style="width:200px;height:110px">
+                        <img src="{{ asset('public/storage/'.$settings[$key]) }}" class="mt-2 object-cover rounded mx-auto" style="width:200px;height:110px">
 
                     @endif
 
@@ -170,7 +170,7 @@
 
                     <td class="border border-gray-300 px-4 py-2">
 
-                        <img src="{{ asset('storage/'.$banner->image) }}" class="w-40 h-20 object-cover rounded mx-auto">
+                        <img src="{{ asset('public/storage/'.$banner->image) }}" class="w-40 h-20 object-cover rounded mx-auto">
 
                     </td>
 
@@ -178,7 +178,7 @@
 
                         <div class="flex flex-col gap-2">
 
-                            <button @click="openModal({{ $banner->id }}, '{{ asset('storage/'.$banner->image) }}')"
+                            <button @click="openModal({{ $banner->id }}, '{{ asset('public/storage/'.$banner->image) }}')"
 
                                 class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
 

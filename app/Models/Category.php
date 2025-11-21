@@ -40,5 +40,19 @@ class Category extends Model
     {
         return $this->hasMany(Attribute::class);
     }
+    
+     /**
+     * ==========================================================
+     * FUNGSI BARU (SESUAI PERMINTAAN ANDA)
+     * ==========================================================
+     *
+     * Relasi ini dibuat khusus untuk produk Marketplace
+     * agar tidak bentrok dengan relasi 'products()' yang lama.
+     */
+    public function marketplaceProducts(): HasMany
+    {
+        // Menghubungkan Category dengan Marketplace melalui foreign key 'category_id'
+        return $this->hasMany(Marketplace::class, 'category_id');
+    }
 }
 

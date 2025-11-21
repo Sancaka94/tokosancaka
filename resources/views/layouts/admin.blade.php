@@ -27,11 +27,45 @@
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-    <style>
-        body { font-family: 'Inter', sans-serif; }
-        [x-cloak] { display: none !important; }
+<style>
 
-        /* Custom scrollbar styles */
+html, body {
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    /* Wajib untuk referensi tinggi root */
+    height: 100%; 
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    
+    /* 🔑 KUNCI: Untuk melebar KANAN (100% / 0.75) */
+    width: 133.33vw; 
+    
+    /* Wajib untuk menjaga konsistensi TINGGI, atasi efek "mengecil" */
+    min-height: 133.33vh; 
+    
+    /* Terapkan Scale dari sudut kiri atas */
+    transform: scale(0.75);
+    transform-origin: 0 0;
+    
+    overflow-x: hidden;
+}
+
+/* Kunci: Pastikan kontainer utama ikut memanjang setidaknya setinggi layar */
+.main-layout-container {
+    min-height: 133.33vh; 
+}
+
+/* ========================================================= */
+/* END: PERBAIKAN TINGGI PENUH + ZOOM OUT 75% */
+/* ========================================================= */
+        
+[x-cloak] { display: none !important; }
+        /* ... (style Anda yang lain) ... */
         .custom-scrollbar::-webkit-scrollbar { width: 8px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
@@ -39,11 +73,13 @@
         .dark .custom-scrollbar::-webkit-scrollbar-track { background: #1e293b; }
         .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; }
         .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #64748b; }
-
-        /* CSS untuk transisi modal chat */
         .modal-transition { transition: opacity 0.3s ease, transform 0.3s ease; }
         .modal-hidden { opacity: 0; transform: scale(0.95); pointer-events: none; }
         .modal-visible { opacity: 1; transform: scale(1); pointer-events: auto; }
+        
+          
+        
+  
 
         
     </style>
@@ -58,16 +94,17 @@
     </div>
 @endif
 
-    <div x-data="{ sidebarOpen: window.innerWidth > 1024 ? true : false }" @resize.window="sidebarOpen = window.innerWidth > 1024 ? true : false" class="flex h-screen bg-gray-100 dark:bg-gray-800">
-        
+<div x-data="{ sidebarOpen: window.innerWidth > 1024 ? true : false }" @resize.window="sidebarOpen = window.innerWidth > 1024 ? true : false" class="flex main-layout-container bg-gray-100 dark:bg-gray-800">
         @include('layouts.partials.sidebar')
 
         <div class="flex-1 flex flex-col overflow-hidden">
             
+            {{-- PENTING: File header.blade.php Anda harus memiliki ID: --}}
+            {{-- 'notification-list-body', 'notification-empty-state', 'notification-count-badge' --}}
             @include('layouts.partials.header')
 
             <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 dark:bg-gray-900 custom-scrollbar">
-                <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <div class="w-full px-4 sm:px-6 lg:px-8 py-8">
                     @yield('content')
                 </div>
             </main>
@@ -75,36 +112,7 @@
     </div>
     
     <!-- Tombol & Modal Chat (Global) -->
-    <div class="fixed bottom-8 right-8 z-50 group flex items-center">
-        <span class="absolute right-full mr-4 bg-gray-800 text-white text-sm font-medium px-3 py-1.5 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap pointer-events-none">
-            Hubungi Customer
-        </span>
-        <button id="chatButton" class="bg-gradient-to-r from-indigo-500 to-purple-500 text-white w-16 h-16 rounded-full shadow-lg flex items-center justify-center hover:scale-110 transform transition-transform duration-300 ease-in-out focus:outline-none focus:ring-4 focus:ring-indigo-300">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-            </svg>
-        </button>
-    </div>
-
-    <div id="chatModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[9999] modal-transition modal-hidden">
-        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-sm mx-auto overflow-hidden transform">
-            <div class="p-6 text-center">
-                <div class="flex justify-center items-center mx-auto bg-indigo-100 rounded-full w-20 h-20 mb-5">
-                     <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                    </svg>
-                </div>
-                <h3 class="text-2xl font-bold text-gray-800 dark:text-white">Mulai Chat</h3>
-                <p class="text-gray-500 dark:text-gray-400 mt-2 mb-6">Anda akan diarahkan ke halaman chat untuk berkomunikasi dengan customer.</p>
-                <a href="{{ route('admin.chat.index') }}" target="_blank" class="w-full block bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-semibold py-3 px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-300">
-                    Lanjutkan ke Chat
-                </a>
-                <button id="closeModalButton" class="w-full mt-3 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-semibold py-3 px-4 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
-                    Batal
-                </button>
-            </div>
-        </div>
-    </div>
+    {{-- ... (Modal Chat Anda, biarkan saja) ... --}}
     
     {{-- SweetAlert Scripts --}}
     @if(session('success'))
@@ -128,7 +136,7 @@
         document.addEventListener('DOMContentLoaded', function() {
 
             // ======================================================================
-            // == BAGIAN BARU: Fungsi untuk Notifikasi Browser & Meminta Izin ==
+            // == FUNGSI NOTIFIKASI BROWSER (Ini sudah benar, biarkan)
             // ======================================================================
             function requestNotificationPermission() {
                 if ('Notification' in window) {
@@ -156,7 +164,6 @@
                     icon: 'https://tokosancaka.biz.id/storage/uploads/sancaka.png' // Icon notifikasi
                 });
 
-                // Jika ada URL, buat notifikasi bisa diklik
                 if (url) {
                     notification.onclick = function() {
                         window.open(url, '_blank');
@@ -167,6 +174,198 @@
             // Meminta izin saat halaman pertama kali dimuat
             requestNotificationPermission();
 
+            // ======================================================================
+            // == [MULAI] LOGIKA BARU NOTIFIKASI DROPDOWN (MENGGANTIKAN KODE LAMA)
+            // ======================================================================
+            
+            /**
+             * [BARU] Fungsi untuk menandai notifikasi sebagai dibaca, lalu mengarahkan.
+             */
+            async function markAndRedirect(notificationId, targetUrl) {
+                try {
+                    // 1. Tandai sebagai dibaca di server
+                    const response = await fetch(`/admin/notifications/mark-as-read/${notificationId}`, {
+                        method: 'POST', // Pastikan rute Anda menerima POST
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        },
+                    });
+                    
+                    const result = await response.json();
+
+                    if (result.status === 'success') {
+                        // 2. Perbarui badge hitungan secara manual
+                        const badge = document.getElementById('notification-count-badge');
+                        if (badge && result.unread_count > 0) {
+                            badge.textContent = result.unread_count;
+                            badge.style.display = 'flex';
+                        } else if (badge) {
+                            badge.style.display = 'none';
+                        }
+                    }
+                    
+                } catch (error) {
+                    console.error('Gagal menandai notifikasi:', error);
+                } finally {
+                    // 3. Arahkan pengguna ke URL tujuan, tidak peduli sukses atau gagal
+                    window.location.href = targetUrl;
+                }
+            }
+
+            /**
+             * Helper untuk format 'time ago' (disederhanakan)
+             */
+            function timeAgo(dateString) {
+                const date = new Date(dateString);
+                const seconds = Math.floor((new Date() - date) / 1000);
+                let interval = seconds / 31536000;
+                if (interval > 1) return Math.floor(interval) + " tahun lalu";
+                interval = seconds / 2592000;
+                if (interval > 1) return Math.floor(interval) + " bulan lalu";
+                interval = seconds / 86400;
+                if (interval > 1) return Math.floor(interval) + " hari lalu";
+                interval = seconds / 3600;
+                if (interval > 1) return Math.floor(interval) + " jam lalu";
+                interval = seconds / 60;
+                if (interval > 1) return Math.floor(interval) + " menit lalu";
+                return Math.floor(seconds) + " detik lalu";
+            }
+
+            /**
+             * Memuat notifikasi (5 terakhir) dan mengisinya ke dalam TABEL dropdown.
+             * (Ini akan dipanggil oleh Alpine.js @click di header)
+             */
+            async function loadInitialNotifications() {
+                try {
+                    // Pastikan rute ini benar
+                    const response = await fetch('{{ route('admin.notifications.getUnread') }}'); 
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    
+                    const data = await response.json();
+
+                    // [PENTING] Ini adalah ID baru dari HTML Anda
+                    const listBody = document.getElementById('notification-list-body');
+                    const emptyState = document.getElementById('notification-empty-state');
+                    const badge = document.getElementById('notification-count-badge');
+
+                    // Pengaman jika elemen tidak ditemukan
+                    if (!listBody || !emptyState || !badge) {
+                        console.error('Elemen notifikasi (list-body/empty/badge) tidak ditemukan di DOM.');
+                        return;
+                    }
+
+                    listBody.innerHTML = ''; // Selalu kosongkan list
+
+                    // Update badge
+                    if (data.unread_count > 0) {
+                        badge.textContent = data.unread_count > 9 ? '9+' : data.unread_count;
+                        badge.style.display = 'flex';
+                    } else {
+                        badge.style.display = 'none';
+                    }
+
+                    // Tampilkan status kosong jika tidak ada notifikasi
+                    if (data.notifications.length === 0) {
+                        emptyState.style.display = 'table-row-group'; // Tipe display untuk tbody
+                    } else {
+                        emptyState.style.display = 'none';
+
+                        // Isi tabel dengan data notifikasi
+                        data.notifications.forEach(notification => {
+                            const notifData = notification.data;
+                            const title = notifData.judul || 'Notifikasi';
+                            const message = notifData.pesan_utama || 'Tidak ada detail.';
+                            const url = notifData.url || '#';
+                            const hasLocation = notifData.latitude && notifData.longitude;
+                            const locationUrl = `https://www.google.com/maps?q=${notifData.latitude},${notifData.longitude}`;
+
+                            let lacakButtonHtml = '';
+                            if (hasLocation) {
+                                lacakButtonHtml = `
+                                    <a href="${locationUrl}" target="_blank" onclick="event.stopPropagation()"
+                                       class="inline-flex items-center gap-1.5 text-xs px-2 py-0.5 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 rounded-full hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors font-medium">
+                                        <i class="fas fa-map-marker-alt w-3 h-3"></i>
+                                        Lacak
+                                    </a>`;
+                            }
+                            
+                             // Tombol "Lihat"
+                            const lihatButtonHtml = `
+                                <button onclick="event.preventDefault(); markAndRedirect('${notification.id}', '${url}')"
+                                   class="inline-flex items-center gap-1.5 text-xs px-2 py-1 bg-green dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-md hover:bg-green-50 dark:hover:bg-gray-600 transition-colors font-medium">
+                                    <i class="fas fa-eye w-3 h-3"></i>
+                                    Lihat
+                                </button>`;
+
+                            // Buat baris tabel (tr)
+                            const row = document.createElement('tr');
+                            row.className = 'hover:bg-gray-50 dark:hover:bg-gray-700/50';
+                            
+                            // [PERBAIKAN DARI ANDA] Menggunakan break-words alih-alih truncate
+                            row.innerHTML = `
+                                <td class="px-4 py-3 align-top w-2/3 overflow-hidden break-words">
+                                    <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">${title}</p>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">${message}</p>
+                                    <p class="text-xs text-gray-400 dark:text-gray-500 mt-2">${timeAgo(notification.created_at)}</p>
+                                </td>
+                                <td class="px-4 py-3 align-top text-center w-1/3">
+                                    <div class="flex flex-col items-center justify-center gap-2">
+                                        ${lihatButtonHtml}
+                                        ${lacakButtonHtml}
+                                    </div>
+                                </td>
+                            `;
+                            listBody.appendChild(row);
+                        });
+                    }
+                } catch (error) {
+                    console.error('Gagal memuat notifikasi:', error);
+                    const listBody = document.getElementById('notification-list-body');
+                    if(listBody) {
+                         listBody.innerHTML = `<tr><td class="text-red-500 p-4">Gagal memuat notifikasi.</td></tr>`;
+                    }
+                }
+            }
+
+            /**
+             * Fungsi terpisah HANYA untuk mengambil jumlah (untuk badge)
+             */
+            async function fetchNotificationCount() {
+                try {
+                    const response = await fetch('{{ route('admin.notifications.count') }}');
+                    if (!response.ok) return;
+
+                    const data = await response.json();
+                    const badge = document.getElementById('notification-count-badge');
+                    
+                    if (data.count > 0) {
+                        badge.textContent = data.count > 9 ? '9+' : data.count;
+                        badge.style.display = 'flex';
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                } catch (error) {
+                    console.warn('Gagal mengambil hitungan notifikasi:', error);
+                }
+            }
+            
+            // Panggil hitungan saat halaman dimuat
+            fetchNotificationCount();
+            
+            // [PENTING] Buat fungsi loadInitialNotifications TERSEDIA SECARA GLOBAL
+            // agar Alpine.js di header.blade.php bisa memanggilnya
+            // (Tombol @click di header ada di file lain, jadi fungsi ini harus global)
+            window.loadInitialNotifications = loadInitialNotifications;
+
+            // ======================================================================
+            // == [AKHIR] LOGIKA BARU NOTIFIKASI
+            // ======================================================================
+            
+
+            // ======================================================================
+            // == INISIALISASI LARAVEL ECHO (Ini sudah benar, biarkan)
             // ======================================================================
 
             if (window.EchoInitialized) return;
@@ -186,20 +385,13 @@
                     window.EchoInitialized = true;
                     console.log("Laravel Echo initialized for admin.");
 
+                    // Listener untuk 'AdminNotificationEvent' (Sudah ada)
                     window.Echo.private('admin-notifications')
                         .on('pusher:subscription_succeeded', () => console.log("Subscribed to 'admin-notifications' channel!"))
                         .on('pusher:subscription_error', (status) => console.error("Subscription to 'admin-notifications' failed. Status:", status))
-                        
-                        // ======================================================================
-                        // == PERUBAHAN: Memanggil KEDUA jenis notifikasi ==
-                        // ======================================================================
                         .listen('AdminNotificationEvent', (e) => {
-                            console.log('Notifikasi diterima:', e);
-
-                            // 1. Tampilkan Notifikasi Browser (Pojok Kanan Bawah)
+                            console.log('Notifikasi (AdminEvent) diterima:', e);
                             showBrowserNotification(e.title, e.message, e.url);
-
-                            // 2. Tampilkan Notifikasi Pop-up (Tengah Layar)
                             Swal.fire({
                                 title: e.title || 'Notifikasi Baru',
                                 text: e.message,
@@ -214,8 +406,32 @@
                                     window.location.href = e.url;
                                 }
                             });
+                            // [PERBAIKAN] Saat notifikasi baru masuk, cukup update angkanya
+                            fetchNotificationCount();
                         });
-                        // ======================================================================
+                        
+                    // Listener untuk Notifikasi Umum (Database)
+                    const userId = {{ auth()->id() }};
+                    window.Echo.private(`App.Models.User.${userId}`)
+                        .on('pusher:subscription_succeeded', () => console.log(`Subscribed to 'App.Models.User.${userId}' channel!`))
+                        .on('pusher:subscription_error', (status) => console.error(`Subscription to 'App.Models.User.${userId}' failed. Status:`, status))
+                        .notification((notification) => {
+                            
+                            console.log('NOTIFIKASI BARU DITERIMA (dari NotifikasiUmum):', notification);
+                            
+                            const data = notification.data ? notification.data : notification;
+
+                            // Tampilkan notifikasi di browser (Pop-up Desktop)
+                            showBrowserNotification(
+                                data.judul,      // <-- DIPERBAIKI
+                                data.pesan_utama, // <-- DIPERBAIKI
+                                data.url          // <-- DIPERBAIKI
+                            );
+                            
+                            // [PERBAIKAN] Update angka badge. 
+                            // Daftar lengkap akan di-refresh saat user mengklik lonceng.
+                            fetchNotificationCount(); 
+                        });
 
                 } catch (error) { console.error("Failed to initialize Echo:", error); }
             } else { console.error("Echo or Pusher.js not found."); }
@@ -245,4 +461,3 @@
     @stack('scripts')
 </body>
 </html>
-

@@ -86,7 +86,8 @@
                     @if(Str::contains($order->payment_method, 'COD'))
                         <span class="font-bold text-green-600">COD</span>
                     @else
-                        <span class="font-bold text-blue-600">Non COD</span>
+                        <span class="font-bold text-blue-600">{{$order->payment_method}} (<span class="text-red-600">Non COD</span>)</span>
+
                     @endif
 
                     <div class="font-bold text-gray-800">{{ $order->resi ?? 'Menunggu Resi' }}</div>
@@ -156,7 +157,7 @@
                     <div class="font-semibold text-gray-800">{{ $order->item_description }}</div>
                     <div class="text-xs text-gray-500">Order ID: # <strong>{{ $order->nomor_invoice }}</strong> </div>
                     <div class="text-xs text-gray-500 mt-1">
-                        Berat: {{ $order->weight }} gr | Dimensi: {{ $order->length ?? 'N/A' }}x{{ $order->width ?? 'N/A' }}x{{ $order->height ?? 'N/A' }} cm
+                        Berat: {{ $order->weight }} gr | Dimensi: {{ $order->length ?? '0' }} x {{ $order->width ?? '0' }} x {{ $order->height ?? '0' }} cm
                     </div>
                 </td>
 

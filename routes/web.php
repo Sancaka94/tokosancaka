@@ -48,30 +48,60 @@ use App\Http\Controllers\ProductController; // Pastikan controller ini ada
 use App\Http\Controllers\Admin\CategoryAttributeController; // Import controller baru
 use App\Http\Controllers\Admin\AdminOrderController;
 use App\Http\Controllers\Admin\ChatController;
+use Illuminate\Support\Facades\Artisan;
+use App\Http\Controllers\Admin\MarketplaceController; // <-- TAMBAHKAN BARIS INI
+use App\Http\Controllers\DokuPaymentController;
+use App\Http\Controllers\TestOrderController;
+use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\SliderController;
+use App\Http\Controllers\Admin\AdminSaldoTransferController;
+use App\Http\Controllers\Customer\KontakController as CustomerOldKontakController;
+use App\Http\Controllers\NotifikasiCustomerController;
+use App\Http\Controllers\Admin\BarcodeController;
+// Impor Controller Login yang benar
+use App\Http\Controllers\Auth\Customer\CustomerLoginController; 
+// Anda perlu mengimpor RegisteredUserController jika ada, saya asumsikan ia ada di sini.
+use App\Http\Controllers\Auth\RegisteredUserController; 
 
 
+// Rute ini akan menggunakan middleware kustom baru kita: 'auth.redirect'
+// Jika user sudah login, dia akan dialihkan ke dashboard sesuai role.
+// Jika belum login, dia akan diizinkan mengakses halaman.
+Route::middleware('auth.redirect')->group(function () {
+    // Rute untuk menampilkan form Login (Menggunakan Controller Anda)
+    Route::get('login', [CustomerLoginController::class, 'showLoginForm'])->name('login');
+    // Rute untuk memproses form Login (Gunakan method login di Controller Anda)
+    Route::post('login', [CustomerLoginController::class, 'login']); 
 
-/*
+    // Rute untuk menampilkan form Register (Controller ini mungkin perlu diperbaiki/dibuat)
+    Route::get('register', [RegisteredUserController::class, 'create'])->name('register');
+    // Rute untuk memproses form Register
+    Route::post('register', [RegisteredUserController::class, 'store']);
+});
 
-|--------------------------------------------------------------------------
-
-| Web Routes
-
-|--------------------------------------------------------------------------
-
-|
-
-| This file defines the web routes for your application.
-
-| It's organized by access level: Public, Authentication, Customer, Admin.
-
-|
-
-*/
+Route::get('/admin/generate-barcode-zoom', [App\Http\Controllers\Admin\BarcodeController::class, 'generateBarcode'])->name('admin.barcode.generate');
 
 
+// 1. Rute untuk PENCARIAN ALAMAT (AJAX)
+// Ini akan membuat URL: /search-address
+Route::get('/search-address', [CekOngkirController::class, 'searchAddress'])
+     ->middleware('auth') // Pastikan user login untuk mencari
+     ->name('customer.search.address');
 
-// Di dalam file: routes/web.php
+// 2. Rute untuk SUBMIT FORM CEK ONGKIR (AJAX)
+// Ini akan membuat URL: /check-cost
+Route::post('/check-cost', [CekOngkirController::class, 'checkCost']) // Anda perlu membuat method 'checkCost'
+     ->middleware('auth') // Pastikan user login untuk cek ongkir
+     ->name('customer.check.cost');
+
+
+// URL untuk tes skenario form publik (simple)
+Route::get('/test/doku/simple', [TestOrderController::class, 'testSimplePayment'])
+     ->name('test.doku.simple');
+
+// URL untuk tes skenario marketplace (dengan Sub-Account)
+Route::get('/test/doku/marketplace', [TestOrderController::class, 'testMarketplacePayment'])
+     ->name('test.doku.marketplace');
 
 
 
@@ -89,6 +119,21 @@ Route::get('/terms-and-conditions', function () {
     return view('terms');
 })->name('terms.conditions');
 
+
+    
+    
+/*
+|--------------------------------------------------------------------------
+| Rute Pembayaran DOKU
+|--------------------------------------------------------------------------
+*/
+// Rute ini HANYA CONTOH untuk memicu pembayaran
+// Idealnya, tombol "Bayar" di keranjang Anda akan memanggil method
+// di CustomerOrderController, yang KEMUDIAN memanggil DokuPaymentController.
+Route::post('/payment/create-example', [DokuPaymentController::class, 'createPayment'])->name('doku.create.example');
+
+
+
 // Rute untuk menampilkan halaman kategori di etalase publik
 Route::get('/etalase/category/{category:slug}', [EtalaseController::class, 'showCategory'])->name('public.categories.show');
 
@@ -99,6 +144,7 @@ Route::get('/products/{product:slug}', [EtalaseController::class, 'show'])->name
 Route::get('/toko/{name}', [EtalaseController::class, 'profileToko'])->name('toko.profile');
 Route::get('/etalase/kategori/{slug}', [EtalaseController::class, 'showCategory'])->name('etalase.category-show');
 
+Route::get('/tracking/refresh', [TrackingController::class, 'refresh'])->name('tracking.refresh');
     
 // Rute untuk menampilkan daftar pelanggan ke publik
 Route::get('/pelanggan', [PublicPelangganController::class, 'index'])->name('pelanggan.public.index');
@@ -130,9 +176,21 @@ Route::prefix('customer')->name('customer.')->group(function () {
     Route::patch('/cart/update', [CartController::class, 'update'])->name('cart.update');
     Route::delete('/cart/remove', [CartController::class, 'remove'])->name('cart.remove');
        // INI ADALAH PERBAIKANNYA: Rute untuk halaman checkout
-    Route::get('/checkout', [CustomerCheckoutController::class, 'index'])->name('checkout.index');
-    Route::post('/checkout', [CustomerCheckoutController::class, 'process'])->name('checkout.process');
+ 
     Route::get('/marketplace', [CustomerMarketplaceController::class, 'index'])->name('marketplace.index');
+    
+    // --- RUTE CHECKOUT YANG BENAR ---
+    // 1. Menampilkan halaman checkout (GET)
+    // Nama route: customer.checkout.index
+ Route::get('/checkout', [CustomerCheckoutController::class, 'index'])->name('checkout.index');
+    
+    // 2. Memproses form checkout (POST)
+    // Nama route: customer.checkout.store
+ Route::post('/checkout', [CustomerCheckoutController::class, 'store'])->name('checkout.store'); // <-- DIPERBAIKI
+
+    // 3. Menampilkan halaman invoice (GET)
+    // Nama route: customer.checkout.invoice (Kita buat di luar prefix 'customer.' agar lebih pendek)
+ Route::get('/invoice/{invoice}', [CustomerCheckoutController::class, 'invoice'])->name('checkout.invoice');
 
 });
 
@@ -142,6 +200,12 @@ Route::prefix('customer')->name('customer.')->group(function () {
 // == PUBLIC & AUTHENTICATION ROUTES
 
 // =========================================================================
+
+           // 🔑 ROUTE BARU: Pencarian Alamat KiriminAja (AJAX)
+        // [CustomerProfileController::class, 'searchKiriminAjaAddress'] adalah method yang dipanggil JS
+        Route::get('/api/kiriminaja/address-search', [App\Http\Controllers\Customer\ProfileController::class, 'searchKiriminAjaAddress'])
+            ->name('kiriminaja.address_search'); // Nama route: customer.kiriminaja.address_search
+            
 
 
 
@@ -164,6 +228,8 @@ Route::get('/register/success/{no_wa}', function ($no_wa) {
     return view('auth.register-success', compact('no_wa'));
 
 })->name('register.success');
+
+Route::get('customer/profile/setup/{token}', [CustomerProfileController::class, 'setup'])->name('customer.profile.setup');
 
 
 
@@ -213,7 +279,7 @@ Route::get('/kiriminaja/search-address', function (Request $request, KiriminAjaS
 
 
 
-Route::get('customer/profile/setup/{token}', [CustomerProfileController::class, 'setup'])->name('customer.profile.setup');
+
 
 
 
@@ -265,6 +331,8 @@ Route::middleware(['auth', RoleMiddleware::class . ':Pelanggan|Seller'])
             Route::get('/messages', [CustomerChatController::class, 'fetchMessages'])->name('fetchMessages');
 
             Route::post('/messages', [CustomerChatController::class, 'sendMessage'])->name('sendMessage');
+            
+ 
 
         });
 
@@ -287,6 +355,8 @@ Route::middleware(['auth', RoleMiddleware::class . ':Pelanggan|Seller'])
 
 
 Route::prefix('admin')->name('admin.')->group(function () {
+    
+
 
     Route::get('/post/{post:slug}', [PostController::class, 'show'])->name('posts.post-detail');
 
@@ -301,6 +371,12 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::get('/wilayah/district/{district}/villages', [WilayahController::class, 'getDesa'])->name('wilayah.desa');
 
     Route::resource('pelanggan', PelangganController::class);
+    
+    // --- [BARU] RUTE UNTUK MANAJEMEN SLIDER ---
+    Route::get('/sliders', [SliderController::class, 'index'])->name('sliders.index');
+    Route::post('/sliders', [SliderController::class, 'store'])->name('sliders.store');
+    Route::delete('/sliders/{slide}', [SliderController::class, 'destroy'])->name('sliders.destroy');
+    // ------------------------------------------
 
      // Rute spesifik untuk fungsionalitas Import & Export
     Route::prefix('pelanggan')->name('pelanggan.')->group(function () {
@@ -309,8 +385,26 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/export-pdf', [PelangganController::class, 'exportPdf'])->name('export.pdf');
     });
     
-    // Rute untuk Manajemen Produk Marketplace (CRUD)
-    Route::resource('marketplace', AdminMarketplaceController::class);
+
+   // 1. (GET) Menampilkan halaman daftar produk
+        Route::get('/marketplace', [MarketplaceController::class, 'index'])
+             ->name('marketplace.index'); // Akan menjadi 'admin.marketplace.index'
+
+        // 2. (POST) Menyimpan produk baru
+        Route::post('/marketplace', [MarketplaceController::class, 'store'])
+             ->name('marketplace.store'); // Akan menjadi 'admin.marketplace.store'
+
+        // 3. (GET) Mengambil data 1 produk untuk modal edit
+        Route::get('/marketplace/{product}', [MarketplaceController::class, 'show'])
+             ->name('marketplace.show'); // Akan menjadi 'admin.marketplace.show'
+
+        // 4. (PUT) Memperbarui produk
+        Route::put('/marketplace/{product}', [MarketplaceController::class, 'update'])
+             ->name('marketplace.update'); // Akan menjadi 'admin.marketplace.update'
+
+        // 5. (DELETE) Menghapus produk
+        Route::delete('/marketplace/{product}', [MarketplaceController::class, 'destroy'])
+             ->name('marketplace.destroy'); // Akan menjadi 'admin.marketplace.destroy'
 
     // Rute untuk Manajemen Banner (CRUD)
     Route::resource('banners', BannerController::class);
@@ -368,6 +462,8 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])
 
        
           // TAMBAHKAN ROUTE INI UNTUK HALAMAN PENGATURAN
+          
+  Route::post('/users/{user}/toggle-freeze', [App\Http\Controllers\Admin\UserController::class, 'toggleFreeze'])->name('admin.users.toggle-freeze');        
     
 
     // TAMBAHKAN ROUTE INI JIKA BELUM ADA
@@ -590,6 +686,23 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])
 
 
 Route::middleware('auth')->group(function () {
+    
+        // Rute untuk mengambil data notifikasi (via JavaScript/AJAX)
+    // Ini yang akan kita pakai di layout Anda
+    Route::get('/customer/notifications/unread', [NotifikasiCustomerController::class, 'getUnread'])
+         ->name('customer.notifications.unread');
+
+    // Rute untuk halaman "Semua Notifikasi" (jika Anda membuatnya)
+    Route::get('/customer/notifications', [NotifikasiCustomerController::class, 'index'])
+         ->name('customer.notifications.index');
+
+    // Rute untuk menandai 1 notifikasi sebagai "dibaca"
+    Route::post('/customer/notifications/{id}/read', [NotifikasiCustomerController::class, 'markAsRead'])
+         ->name('customer.notifications.markAsRead');
+
+    // Rute untuk menandai SEMUA notifikasi sebagai "dibaca"
+    Route::post('/customer/notifications/read-all', [NotifikasiCustomerController::class, 'markAllAsRead'])
+         ->name('customer.notifications.markAllAsRead');
 
     // Checkout Process
 
@@ -626,6 +739,16 @@ Route::middleware('auth')->group(function () {
     // Other Payment Gateway (Redirect page for user)
 
     Route::get('/payment/finish', [PaymentController::class, 'finishPage'])->name('payment.finish');
+    
+    
+    // Grup untuk Buku Alamat Customer
+    Route::prefix('customer/kontak')->name('customer.kontak.')->group(function () {
+        Route::get('/', [App\Http\Controllers\CustomerKontakController::class, 'index'])->name('index');
+        Route::post('/', [App\Http\Controllers\CustomerKontakController::class, 'store'])->name('store');
+        Route::get('/{kontak}/edit', [App\Http\Controllers\CustomerKontakController::class, 'edit'])->name('edit');
+        Route::put('/{kontak}', [App\Http\Controllers\CustomerKontakController::class, 'update'])->name('update');
+        Route::delete('/{kontak}', [App\Http\Controllers\CustomerKontakController::class, 'destroy'])->name('destroy');
+    });
 
 
 
@@ -762,3 +885,27 @@ Route::get('/controllers-list', function () {
 
     return view('controllers-list', compact('controllers'));
 });
+
+     
+     
+     // ==========================================================
+    // ROUTE UNTUK REGISTRASI SELLER (YANG BARU)
+    // ==========================================================
+
+    // 1. Rute untuk MENAMPILKAN form (yang Anda lihat)
+    Route::get('customer/seller/register', [SellerRegisterController::class, 'create'])
+         ->name('customer.seller.register.form'); // Ganti nama route ini jika view Anda memanggil nama lain
+
+    // 2. Rute untuk MENYIMPAN form (submit)
+    Route::post('customer/seller/register', [SellerRegisterController::class, 'store'])
+         ->name('seller.register.submit'); // View Anda memanggil nama ini
+
+    // 3. Rute untuk PENCARIAN ALAMAT (AJAX) <-- INI YANG HILANG
+    Route::get('seller/address/search', [SellerRegisterController::class, 'searchAddressKiriminAja'])
+         ->name('seller.address.search');
+
+    // 4. Rute untuk GEOCODE ALAMAT (AJAX) <-- INI JUGA HILANG
+    Route::post('seller/address/geocode', [SellerRegisterController::class, 'geocodeAddress'])
+         ->name('seller.address.geocode');
+         
+    // ==========================================================

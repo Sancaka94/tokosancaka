@@ -28,9 +28,10 @@ class ProductAttribute extends Model
         'product_id',
         'attribute_id',
         'attribute_slug', // Slug dari tabel 'attributes'
-        // 'attribute_name', // Opsional, bisa diambil dari relasi
-        // 'attribute_type', // Opsional, bisa diambil dari relasi
+        'attribute_name', // Opsional, bisa diambil dari relasi
+        'attribute_type', // Opsional, bisa diambil dari relasi
         'value',
+        'name',       // <-- TAMBAHKAN BARIS INI
     ];
 
     /**

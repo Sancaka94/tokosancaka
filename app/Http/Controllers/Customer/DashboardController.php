@@ -45,7 +45,7 @@ class DashboardController extends Controller
         $spxChartData = $this->getSpxScanChartData($customerId);
 
         // Mengambil data slider dari tabel settings
-        $sliderData = Setting::where('key', 'dashboard_slider')->first();
+        $sliderData = Setting::where('key', 'slider_informasi')->first();
         $slides = $sliderData ? json_decode($sliderData->value, true) : [];
 
         $data = [

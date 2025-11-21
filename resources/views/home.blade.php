@@ -297,7 +297,140 @@ width: 22px;
     }
 
     /* ===== AKHIR STYLING FITUR PENCARIAN ALAMAT BARU ===== */
+    
+/* Mengubah tampilan Modal */
+    #cekOngkirModal .modal-content {
+        border-radius: 0.75rem; /* 12px */
+        border: none;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    }
+    #cekOngkirModal .modal-header {
+        background-color: #dc2626; /* Biru */
+        border-top-left-radius: 0.75rem;
+        border-top-right-radius: 0.75rem;
+        border-bottom: none;
+        color: white;
+    }
+    #cekOngkirModal .modal-header .btn-close-white {
+        filter: invert(1) grayscale(100%) brightness(200%);
+    }
 
+    /* Membuat input form lebih elegan */
+    #cekOngkirModal .form-control,
+    #cekOngkirModal .form-select {
+        border-radius: 0.5rem; /* 8px */
+        padding: 0.75rem 1rem; /* 12px 16px */
+        border: 1px solid #ced4da;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    #cekOngkirModal .form-control:focus,
+    #cekOngkirModal .form-select:focus {
+        border-color: #dc2626;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+    }
+    #cekOngkirModal .form-label {
+        font-weight: 600;
+        color: #374151; /* Gray-700 */
+    }
+
+    /* Ikon di dalam input */
+    .input-group-elegant {
+        position: relative;
+    }
+    #cekOngkirModal .input-group-elegant .form-control {
+        padding-left: 3rem !important; /* PENTING: Paksa padding */
+    }
+    .input-group-elegant .input-icon {
+        position: absolute;
+        left: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #9ca3af; /* Gray-400 */
+        z-index: 5;
+        pointer-events: none;
+    }
+
+    /* Kustomisasi Tombol Submit */
+    #cekOngkirModal #submit-button {
+        background-color: #dc2626;
+        border-color: #dc2626;
+        padding: 0.75rem 1.5rem;
+        font-weight: 600;
+        border-radius: 0.5rem;
+        transition: background-color 0.2s;
+    }
+    #cekOngkirModal #submit-button:hover {
+        background-color: #ff0000;
+    }
+
+    /* Kustomisasi Tab Hasil */
+    #cost-results-container .nav-tabs {
+        border-bottom: 2px solid #e5e7eb; /* Gray-200 */
+    }
+    #cost-results-container .nav-tabs .nav-link {
+        border: none;
+        border-bottom: 2px solid transparent;
+        color: #6b7280; /* Gray-500 */
+        font-weight: 600;
+        margin-bottom: -2px;
+    }
+    #cost-results-container .nav-tabs .nav-link.active {
+        color: #dc2626; /* Biru */
+        border-bottom-color: #dc2626;
+    }
+
+    /* Kustomisasi Card Hasil */
+    #cost-results-container .list-group-item {
+        /* [PERBAIKAN] Paksa background putih (hilangkan merah) */
+        background-color: #ffffff !important; 
+        border-bottom: 1px solid #e5e7eb; /* Gray-200 */
+    }
+    #cost-results-container .list-group-item:last-child {
+        border-bottom: none;
+    }
+    #cost-results-container .courier-logo {
+        height: 30px;
+        width: 60px;
+        object-fit: contain;
+    }
+    #cost-results-container .btn-pilih {
+        background-color: #dc2626; /* Merah */
+        border-color: #dc2626;
+        color: white;
+        font-weight: 500;
+        font-size: 0.875rem;
+        padding: 0.25rem 0.75rem;
+        border-radius: 0.375rem;
+    }
+    
+    /* === TAMBAHKAN BLOK INI === */
+    /* Perbaikan Z-Index Autocomplete */
+    #cekOngkirModal #origin-results,
+    #cekOngkirModal #destination-results {
+        /* z-index modal Bootstrap adalah 1055 */
+        /* Kita buat 1056 agar muncul di atas modal */
+        z-index: 1056 !important; 
+    }
+    
+    /* === TAMBAHKAN BLOK INI === */
+    /* Perbaikan Teks Putih saat Hover */
+    #cost-results-container .list-group-item:hover {
+        /* Ganti background hover menjadi abu-abu netral */
+        background-color: #f8f9fa !important; 
+    }
+    
+    #cost-results-container .list-group-item:hover h6,
+    #cost-results-container .list-group-item:hover small {
+        /* Paksa warna teks (nama layanan & estimasi) tetap gelap */
+        color: #212529 !important; 
+    }
+    
+    #cost-results-container .list-group-item:hover h5 {
+        /* Paksa warna harga tetap hijau */
+        color: #198754 !important; 
+    }
+    /* === AKHIR BLOK TAMBAHAN === */
+    
 </style>
 
 @endpush
@@ -344,7 +477,7 @@ width: 22px;
 
                             <input type="text" name="resi" class="form-control form-control-lg" placeholder="Cek Resi" required>
 
-                            <button class="btn btn-primary px-4" type="submit" style="background-color: var(--google-blue); border-color: var(--google-blue);">
+                            <button class="btn btn-danger px-4" type="submit" style="background-color: var(--google-blue); border-color: var(--google-blue);">
 
                                 <i class="fas fa-arrow-right"></i>
 
@@ -504,7 +637,7 @@ width: 22px;
 
                             <input type="text" class="form-control" id="kodepos-search-input" placeholder="Masukkan nama desa, kecamatan, kota, atau kode pos...">
 
-                            <button class="btn btn-primary" id="kodepos-search-btn">
+                            <button class="btn btn-danger" id="kodepos-search-btn">
 
                                 <i class="fas fa-search"></i> <span id="kodepos-search-btn-text">Cari</span>
 
@@ -627,269 +760,6 @@ width: 22px;
     </div>
 
 </section>
-
-
-
-{{-- ====================================================================== --}}
-
-{{-- == BAGIAN BLOG DENGAN DESAIN BARU == --}}
-
-{{-- ====================================================================== --}}
-
-<section id="blog" class="section">
-
-    <div class="container">
-
-        <h2 class="section-title">Berita & Informasi Terbaru</h2>
-
-        
-
-        <!-- ========== FORM PENCARIAN ========== -->
-
-        <div class="mb-5">
-
-            <form action="{{ url()->current() }}" method="GET" class="max-w-xl mx-auto">
-
-                <div class="input-group input-group-lg">
-
-                    <input type="search" name="search" class="form-control" placeholder="Cari artikel berdasarkan judul atau konten..." value="{{ request('search') }}" aria-label="Cari Artikel">
-
-                    <button class="btn btn-primary px-4" type="submit" id="button-addon2"><i class="fas fa-search"></i></button>
-
-                </div>
-
-            </form>
-
-        </div>
-
-        <!-- ========== AKHIR FORM PENCARIAN ========== -->
-
-        
-
-        {{-- Jika sedang dalam mode pencarian, tampilkan judul hasil pencarian --}}
-
-        @if(request()->has('search') && request()->input('search') != '')
-
-            <h4 class="mb-4 fw-bold">Hasil pencarian untuk: "{{ request('search') }}"</h4>
-
-        @endif
-
-
-
-        @if($headline && !request()->filled('search'))
-
-        <!-- Bagian Headline Utama (Hanya tampil jika tidak sedang mencari) -->
-
-        <div class="row g-4 mb-5">
-
-            <!-- Artikel Utama (Kiri) -->
-
-            <div class="col-lg-8">
-
-                <div class="card post-card shadow-sm h-100">
-
-                    <a href="{{ route('blog.posts.show', $headline->slug) }}" class="text-decoration-none text-dark">
-
-                        <img src="{{ Storage::url($headline->featured_image) }}"
-
-                             class="card-img-top post-card-img"
-
-                             onerror="this.onerror=null;this.src='https://placehold.co/800x450/1a73e8/ffffff?text=Headline';"
-
-                             alt="{{ $headline->title }}">
-
-                        <div class="card-body p-4">
-
-                            <small class="text-primary fw-bold">{{ $headline->category->name ?? 'UMUM' }}</small>
-
-                            <h3 class="card-title fw-bold mt-2">{{ $headline->title }}</h3>
-
-                            <p class="card-text text-muted">{{ Str::limit(strip_tags($headline->content), 1000) }}</p>
-
-                            <small class="text-muted">{{ $headline->created_at->diffForHumans() }}</small>
-
-                        </div>
-
-                    </a>
-
-                </div>
-
-            </div>
-
-
-
-            <!-- 4 Artikel Kecil (Kanan) -->
-
-            <div class="col-lg-4">
-
-                <div class="d-flex flex-column gap-3 h-100">
-
-                    @foreach($topArticles as $article)
-
-                    <a href="{{ route('blog.posts.show', $article->slug) }}" class="text-decoration-none text-dark">
-
-                        <div class="card post-card shadow-sm flex-row h-100">
-
-                           <img src="{{ Storage::url($article->featured_image) }}" class="w-25" style="aspect-ratio: 1/1; object-fit: cover;" onerror="this.onerror=null;this.src='https://placehold.co/100x100/CCCCCC/FFFFFF?text=Image';" alt="{{ $article->title }}">
-
-                            <div class="card-body d-flex align-items-center p-3">
-
-                                <h6 class="fw-bold small mb-0">{{ $article->title }}</h6>
-
-                            </div>
-
-                        </div>
-
-                    </a>
-
-                    @endforeach
-
-                </div>
-
-            </div>
-
-        </div>
-
-        @endif
-
-
-
-        <!-- Berita Terbaru & Sidebar Populer -->
-
-        <div class="row g-5">
-
-            <!-- Kolom Berita Terbaru (Kiri) -->
-
-            <div class="col-lg-8">
-
-                <h4 class="fw-bold mb-4">{{ request()->filled('search') ? 'Hasil Ditemukan' : 'Lainnya dari Blog Kami' }}</h4>
-
-                @forelse($latestPosts as $post)
-
-                    <div class="card post-card mb-4 shadow-sm">
-
-                        <div class="row g-0">
-
-                            <div class="col-md-4">
-
-                                <a href="{{ route('blog.posts.show', $post->slug) }}">
-
-                                    <img src="{{ Storage::url($post->featured_image) }}" class="img-fluid rounded-start h-100 post-card-img" onerror="this.onerror=null;this.src='https://placehold.co/400x250/CCCCCC/FFFFFF?text=Image';" alt="{{ $post->title }}">
-
-                                </a>
-
-                            </div>
-
-                            <div class="col-md-8">
-
-                                <div class="card-body">
-
-                                    <h5 class="card-title fw-bold">
-
-                                        <a href="{{ route('blog.posts.show', $post->slug) }}" class="text-decoration-none text-dark">{{ $post->title }}</a>
-
-                                    </h5>
-
-                                    <p class="card-text text-muted small">{{ Str::limit(strip_tags($post->content), 500) }}</p>
-
-                                    <div class="d-flex justify-content-between align-items-center mt-3">
-
-                                        <small class="text-muted">{{ $post->created_at->diffForHumans() }} by {{ $post->author->nama_lengkap ?? 'Admin' }}</small>
-
-                                        <a href="{{ route('blog.posts.show', $post->slug) }}" class="btn btn-sm btn-outline-primary">Baca Selengkapnya</a>
-
-                                    </div>
-
-                                </div>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                @empty
-
-                    <div class="alert alert-warning">
-
-                        Tidak ada artikel yang cocok dengan pencarian Anda. Silakan coba kata kunci lain.
-
-                    </div>
-
-                @endforelse
-
-
-
-                <div class="d-flex flex-column align-items-center mt-4">
-
-                    {{-- Info jumlah data --}}
-
-                    <div class="mb-2 text-muted">
-
-                        Menampilkan {{ $latestPosts->firstItem() }} - {{ $latestPosts->lastItem() }}
-
-                        dari total {{ $latestPosts->total() }} post
-
-                    </div>
-
-
-
-                    {{-- Tombol pagination --}}
-
-                    <div>
-
-                        {{ $latestPosts->appends(request()->query())->links('pagination::bootstrap-5') }}
-
-                    </div>
-
-                </div>
-
-            </div>
-
-
-
-            <!-- Sidebar (Kanan) -->
-
-            <div class="col-lg-4">
-
-                <div class="card shadow-sm sticky-top" style="top: 2rem;">
-
-                    <div class="card-header bg-primary text-white">
-
-                        <h5 class="mb-0 fw-bold">Terpopuler</h5>
-
-                    </div>
-
-                    <ul class="list-group list-group-flush">
-
-                        @forelse($popularPosts as $key => $post)
-
-                        <a href="{{ route('blog.posts.show', $post->slug) }}" class="list-group-item list-group-item-action d-flex align-items-center">
-
-                            <span class="fw-bold me-3 fs-4 text-muted">{{ $key + 1 }}</span>
-
-                            <span>{{ $post->title }}</span>
-
-                        </a>
-
-                        @empty
-
-                        <li class="list-group-item">Belum ada artikel populer.</li>
-
-                        @endforelse
-
-                    </ul>
-
-                </div>
-
-            </div>
-
-        </div>
-
-    </div>
-
-</section>
-
 
 
 <!-- Layanan Section -->
@@ -1076,7 +946,7 @@ width: 22px;
 
                     <div class="partner-logo-card">
 
-                        <img src="https://upload.wikimedia.org/wikipedia/commons/9/92/New_Logo_JNE.png" alt="Logo JNE" onerror="this.src='https://placehold.co/150x60/CCCCCC/333333?text=Logo+Error';">
+                        <img src="https://tokosancaka.com/public/storage/logo-ekspedisi/jne.png" alt="Logo JNE" onerror="this.src='https://placehold.co/150x60/CCCCCC/333333?text=Logo+Error';">
 
                     </div>
 
@@ -1092,7 +962,7 @@ width: 22px;
 
                     <div class="partner-logo-card">
 
-                        <img src="https://kiriminaja.com/assets/home-v4/pos.png" alt="Logo POS Indonesia" onerror="this.src='https://placehold.co/150x60/CCCCCC/333333?text=Logo+Error';">
+                        <img src="https://tokosancaka.com/public/storage/logo-ekspedisi/posindonesia.png" alt="Logo POS Indonesia" onerror="this.src='https://placehold.co/150x60/CCCCCC/333333?text=Logo+Error';">
 
                     </div>
 
@@ -1124,7 +994,7 @@ width: 22px;
 
                     <div class="partner-logo-card">
 
-                        <img src="https://kiriminaja.com/assets/home-v4/sap.png" alt="Logo SAP Express" onerror="this.src='https://placehold.co/150x60/CCCCCC/333333?text=Logo+Error';">
+                        <img src="https://tokosancaka.com/public/storage/logo-ekspedisi/sap.png" alt="Logo SAP Express" onerror="this.src='https://placehold.co/150x60/CCCCCC/333333?text=Logo+Error';">
 
                     </div>
 
@@ -1140,7 +1010,7 @@ width: 22px;
 
                     <div class="partner-logo-card">
 
-                        <img src="https://kiriminaja.com/assets/home-v4/id-express.png" alt="Logo ID Express" onerror="this.src='https://placehold.co/150x60/CCCCCC/333333?text=Logo+Error';">
+                        <img src="https://tokosancaka.com/public/storage/logo-ekspedisi/idx.png" alt="Logo ID Express" onerror="this.src='https://placehold.co/150x60/CCCCCC/333333?text=Logo+Error';">
 
                     </div>
 
@@ -1156,7 +1026,7 @@ width: 22px;
 
                     <div class="partner-logo-card">
 
-                        <img src="https://i.pinimg.com/736x/22/cf/92/22cf92368c1f901d17e38e99061f4849.jpg" alt="Logo J&amp;T Cargo" onerror="this.src='https://placehold.co/150x60/CCCCCC/333333?text=Logo+Error';">
+                        <img src="https://tokosancaka.com/public/storage/logo-ekspedisi/jtcargo.png" alt="Logo J&amp;T Cargo" onerror="this.src='https://placehold.co/150x60/CCCCCC/333333?text=Logo+Error';">
 
                     </div>
 
@@ -1172,7 +1042,7 @@ width: 22px;
 
                     <div class="partner-logo-card">
 
-                        <img src="https://kiriminaja.com/assets/home-v4/lion.png" alt="Logo Lion Parcel" onerror="this.src='https://placehold.co/150x60/CCCCCC/333333?text=Logo+Error';">
+                        <img src="https://tokosancaka.com/public/storage/logo-ekspedisi/lion.png" alt="Logo Lion Parcel" onerror="this.src='https://placehold.co/150x60/CCCCCC/333333?text=Logo+Error';">
 
                     </div>
 
@@ -1188,7 +1058,7 @@ width: 22px;
 
                     <div class="partner-logo-card">
 
-                        <img src="https://images.seeklogo.com/logo-png/49/1/spx-express-indonesia-logo-png_seeklogo-499970.png" alt="Logo SPX Express" onerror="this.src='https://placehold.co/150x60/CCCCCC/333333?text=Logo+Error';">
+                        <img src="https://tokosancaka.com/public/storage/logo-ekspedisi/sap.png" alt="Logo SPX Express" onerror="this.src='https://placehold.co/150x60/CCCCCC/333333?text=Logo+Error';">
 
                     </div>
 
@@ -1204,7 +1074,7 @@ width: 22px;
 
                     <div class="partner-logo-card">
 
-                        <img src="https://kiriminaja.com/assets/home-v4/sicepat.png" alt="Logo Sicepat" onerror="this.src='https://placehold.co/150x60/CCCCCC/333333?text=Logo+Error';">
+                        <img src="https://tokosancaka.com/public/storage/logo-ekspedisi/sicepat.png" alt="Logo Sicepat" onerror="this.src='https://placehold.co/150x60/CCCCCC/333333?text=Logo+Error';">
 
                     </div>
 
@@ -1236,7 +1106,7 @@ width: 22px;
 
                     <div class="partner-logo-card">
 
-                        <img src="https://kiriminaja.com/assets/home-v4/ninja.png" alt="Logo Ninja Express" onerror="this.src='https://placehold.co/150x60/CCCCCC/333333?text=Logo+Error';">
+                        <img src="https://tokosancaka.com/public/storage/logo-ekspedisi/ninja.png" alt="Logo Ninja Express" onerror="this.src='https://placehold.co/150x60/CCCCCC/333333?text=Logo+Error';">
 
                     </div>
 
@@ -1252,7 +1122,7 @@ width: 22px;
 
                     <div class="partner-logo-card">
 
-                        <img src="https://kiriminaja.com/assets/home-v4/anter-aja.png" alt="Logo Anteraja" onerror="this.src='https://placehold.co/150x60/CCCCCC/333333?text=Logo+Error';">
+                        <img src="https://tokosancaka.com/public/storage/logo-ekspedisi/anteraja.png" alt="Logo Anteraja" onerror="this.src='https://placehold.co/150x60/CCCCCC/333333?text=Logo+Error';">
 
                     </div>
 
@@ -1268,7 +1138,7 @@ width: 22px;
 
                     <div class="partner-logo-card">
 
-                        <img src="https://kiriminaja.com/assets/home-v4/tiki.png" alt="Logo TIKI" onerror="this.src='https://placehold.co/150x60/CCCCCC/333333?text=Logo+Error';">
+                        <img src="https://tokosancaka.com/public/storage/logo-ekspedisi/tiki.png" alt="Logo TIKI" onerror="this.src='https://placehold.co/150x60/CCCCCC/333333?text=Logo+Error';">
 
                     </div>
 
@@ -1284,7 +1154,7 @@ width: 22px;
 
                     <div class="partner-logo-card">
 
-                        <img src="https://kiriminaja.com/assets/home-v4/central-cargo.png" alt="Logo Sentral Cargo" onerror="this.src='https://placehold.co/150x60/CCCCCC/333333?text=Logo+Error';">
+                        <img src="https://tokosancaka.com/public/storage/logo-ekspedisi/centralcargo.png" alt="Logo Sentral Cargo" onerror="this.src='https://placehold.co/150x60/CCCCCC/333333?text=Logo+Error';">
 
                     </div>
 
@@ -1302,7 +1172,7 @@ width: 22px;
 
                     <div class="partner-logo-card">
 
-                        <img src="https://kiriminaja.com/assets/home-v4/borzo.png" alt="Logo Borzo" onerror="this.src='https://placehold.co/150x60/CCCCCC/333333?text=Logo+Error';">
+                        <img src="https://tokosancaka.com/public/storage/logo-ekspedisi/borzo.png" alt="Logo Borzo" onerror="this.src='https://placehold.co/150x60/CCCCCC/333333?text=Logo+Error';">
 
                     </div>
 
@@ -1320,7 +1190,7 @@ width: 22px;
 
                     <div class="partner-logo-card">
 
-                        <img src="https://kiriminaja.com/assets/home-v4/gosend.png" alt="Logo GoSend" onerror="this.src='https://placehold.co/150x60/CCCCCC/333333?text=Logo+Error';">
+                        <img src="https://tokosancaka.com/public/storage/logo-ekspedisi/gosend.png" alt="Logo GoSend" onerror="this.src='https://placehold.co/150x60/CCCCCC/333333?text=Logo+Error';">
 
                     </div>
 
@@ -1338,7 +1208,7 @@ width: 22px;
 
                     <div class="partner-logo-card">
 
-                        <img src="https://kiriminaja.com/assets/home-v4/grab.svg" alt="Logo GrabExpress" onerror="this.src='https://placehold.co/150x60/CCCCCC/333333?text=Logo+Error';">
+                        <img src="https://tokosancaka.com/public/storage/logo-ekspedisi/grab.png" alt="Logo GrabExpress" onerror="this.src='https://placehold.co/150x60/CCCCCC/333333?text=Logo+Error';">
 
                     </div>
 
@@ -1764,7 +1634,7 @@ width: 22px;
 
                     <div class="mb-3"><label for="contactMessage" class="form-label">Pesan</label><textarea class="form-control" id="contactMessage" rows="5" required></textarea></div>
 
-                    <button type="submit" class="btn btn-primary">Kirim Pesan</button>
+                    <button type="submit" class="btn btn-danger">Kirim Pesan</button>
 
                 </form>
 
@@ -1788,6 +1658,99 @@ width: 22px;
 
 </section>
 
+
+<div class="modal fade" id="cekOngkirModal" tabindex="-1" aria-labelledby="cekOngkirModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="cekOngkirModalLabel">
+                    <i class="fa-solid fa-calculator me-2"></i> Cek Estimasi Ongkos Kirim
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 p-lg-5">
+                
+                <form id="shipping-form">
+                    @csrf
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <label for="origin" class="form-label">Alamat Asal</label>
+                            <div class="position-relative input-group-elegant">
+                                <i class="fa-solid fa-map-marker-alt input-icon"></i>
+                                <input type="text" class="form-control" id="origin" name="origin_text" placeholder="Ketik alamat asal..." autocomplete="off">
+                                <div id="origin-results" class="list-group position-absolute w-100 top-100 start-0 d-none shadow-lg" style="max-height: 200px; overflow-y: auto;"></div>
+                            </div>
+                            <input type="hidden" id="origin_id" name="origin_id">
+                            <input type="hidden" id="origin_subdistrict_id" name="origin_subdistrict_id">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="destination" class="form-label">Alamat Tujuan</label>
+                            <div class="position-relative input-group-elegant">
+                                <i class="fa-solid fa-map-pin input-icon"></i>
+                                <input type="text" class="form-control" id="destination" name="destination_text" placeholder="Ketik alamat tujuan..." autocomplete="off">
+                                <div id="destination-results" class="list-group position-absolute w-100 top-100 start-0 d-none shadow-lg" style="max-height: 200px; overflow-y: auto;"></div>
+                            </div>
+                            <input type="hidden" id="destination_id" name="destination_id">
+                            <input type="hidden" id="destination_subdistrict_id" name="destination_subdistrict_id">
+                        </div>
+
+                        <div class="col-12"><hr class="my-2"></div>
+
+                        <div class="col-md-6">
+                            <label for="weight" class="form-label">Berat (gram)*</label>
+                            <div class="input-group-elegant">
+                                <i class="fa-solid fa-weight-hanging input-icon"></i>
+                                <input type="number" class="form-control" id="weight" name="weight" value="1000" min="1" required>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="item_value" class="form-label">Nilai Barang (Rp)</label>
+                            <div class="input-group-elegant">
+                                <i class="fa-solid fa-dollar-sign input-icon"></i>
+                                <input type="number" class="form-control" id="item_value" name="item_value" placeholder="0" min="0">
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">Dimensi (cm)</label>
+                            <div class="row g-3">
+                                <div class="col-4">
+                                    <input type="number" class="form-control" id="length" name="length" placeholder="Panjang" min="1">
+                                </div>
+                                <div class="col-4">
+                                    <input type="number" class="form-control" id="width" name="width" placeholder="Lebar" min="1">
+                                </div>
+                                <div class="col-4">
+                                    <input type="number" class="form-control" id="height" name="height" placeholder="Tinggi" min="1">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-12 d-flex align-items-end">
+                            <div class="form-check form-switch fs-6 mt-2">
+                                <input class="form-check-input" type="checkbox" id="insurance" name="insurance">
+                                <label class="form-check-label" for="insurance">
+                                    Gunakan Asuransi
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg" id="submit-button">
+                            <span id="btn-text">Cek Ongkos Kirim</span>
+                            <span id="btn-spinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                        </button>
+                    </div>
+                </form>
+                
+                <div id="cost-results-container" class="mt-4"></div>
+            </div>
+        </div>
+    </div>
+</div>
 
 
 <!-- Floating Action Buttons -->
@@ -2237,503 +2200,420 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 
-
 <script>
-
-document.addEventListener('DOMContentLoaded', function() {
-
-
-
-    // Fungsi debounce untuk optimasi pencarian
-
-    const debounce = (func, delay) => {
-
-        let timeout;
-
-        return (...args) => { clearTimeout(timeout); timeout = setTimeout(() => func.apply(this, args), delay); };
-
-    };
-
-
-
-    // Setup autocomplete untuk origin & destination
-
-    const setupAutocomplete = (inputId, resultsId, hiddenId, hiddenSubId) => {
-
-    const input = document.getElementById(inputId);
-
-    const resultsContainer = document.getElementById(resultsId);
-
-    const hiddenInput = document.getElementById(hiddenId);
-
-    const hiddenSubInput = document.getElementById(hiddenSubId);
-
-
-
-    resultsContainer.classList.add('list-group', 'autocomplete-results');
-
-
-
-    const handleSearch = async (event) => {
-
-        const query = event.target.value;
-
-        if (query.length < 3) {
-
-            resultsContainer.classList.add('d-none');
-
-            return;
-
-        }
-
-
-
-        try {
-
-            const response = await fetch(`{{ route('api.ongkir.address.search') }}?search=${query}`);
-
-            if (!response.ok) throw new Error('Gagal memuat data alamat.');
-
-            
-
-            const result = await response.json();
-
-            resultsContainer.innerHTML = '';
-
-
-
-            if (Array.isArray(result) && result.length > 0) {
-
-                resultsContainer.classList.remove('d-none');
-
-                result.forEach(item => {
-
-                    const div = document.createElement('div');
-
-                    div.className = 'list-group-item list-group-item-action';
-
-                    div.textContent = item.full_address;
-
-                    div.dataset.id = item.district_id;
-
-                    div.dataset.subId = item.subdistrict_id;
-
-
-
-                    div.addEventListener('click', () => {
-
-                        input.value = item.full_address;
-
-                        hiddenInput.value = item.district_id;
-
-                        hiddenSubInput.value = item.subdistrict_id;
-
-                        resultsContainer.classList.add('d-none');
-
-                    });
-
-
-
-                    resultsContainer.appendChild(div);
-
-                });
-
-            } else {
-
-                resultsContainer.innerHTML = `<div class="list-group-item text-muted">Alamat tidak ditemukan.</div>`;
-
-            }
-
-            resultsContainer.classList.remove('d-none');
-
-        } catch (error) {
-
-            resultsContainer.innerHTML = `<div class="list-group-item text-danger">${error.message}</div>`;
-
-            resultsContainer.classList.remove('d-none');
-
-        }
-
-    };
-
-
-
-    input.addEventListener('input', debounce(handleSearch, 350));
-
-    document.addEventListener('click', (event) => {
-
-        if (!resultsContainer.contains(event.target) && !input.contains(event.target)) {
-
-            resultsContainer.classList.add('d-none');
-
-        }
-
-    });
-
-};
-
-
-
-
-
-    setupAutocomplete('origin', 'origin-results', 'origin_id', 'origin_subdistrict_id');
-
-    setupAutocomplete('destination', 'destination-results', 'destination_id', 'destination_subdistrict_id');
-
-
-
-    // Form submit handler
-
-    const shippingForm = document.getElementById('shipping-form');
-
-    const costResultsContainer = document.getElementById('cost-results-container');
-
-    const submitButton = document.getElementById('submit-button');
-
-
-
-    shippingForm.addEventListener('submit', async function(event) {
-
-        event.preventDefault();
-
-        submitButton.disabled = true;
-
-        submitButton.innerHTML = `
-
-            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-
-            Sedang menghitung ongkos kirim...
-
-        `;
-
-        costResultsContainer.innerHTML = '';
-
-
-
-        const formData = new FormData(this);
-
-        if (document.getElementById('insurance').checked) {
-
-            formData.set('insurance', 'on');
-
+document.addEventListener('DOMContentLoaded', function () {
+
+    /* =======================
+       SCROLL TO TOP BUTTON
+    ======================= */
+    const scrollTopBtn = document.getElementById('scrollTopBtn');
+
+    window.onscroll = () => {
+        if (document.body.scrollTop > 200 || document.documentElement.scrollTop > 200) {
+            scrollTopBtn.style.display = "block";
         } else {
-
-            formData.delete('insurance');
-
+            scrollTopBtn.style.display = "none";
         }
+    };
 
-
-
-        try {
-
-            const response = await fetch("{{ route('api.ongkir.cost.check') }}", {
-
-                method: 'POST',
-
-                body: formData,
-
-                headers: {
-
-                    'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
-
-                    'Accept': 'application/json',
-
-                }
-
-            });
-
-
-
-            const result = await response.json();
-            console.log('Hasil API Ongkir:', result); // 🔍 Tambahkan di sini
-
-
-            if (response.ok && result.success) {
-
-                displayResults(result);
-
-            } else {
-
-                throw new Error(result.message || 'Terjadi kesalahan.');
-
-            }
-
-        } catch (error) {
-
-            costResultsContainer.innerHTML = `
-
-                <div class="alert alert-danger" role="alert">
-
-                    <strong>Error!</strong> ${error.message}
-
-                </div>
-
-            `;
-
-        } finally {
-
-            submitButton.disabled = false;
-
-            submitButton.innerHTML = 'Cek Harga';
-
-        }
-
+    scrollTopBtn.addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     });
 
+    /* =======================
+       CEK ALAMAT (PROV/KAB/KEC)
+    ======================= */
+    const selectProvinsi = document.getElementById('select-provinsi');
+    const selectKabupaten = document.getElementById('select-kabupaten');
+    const selectKecamatan = document.getElementById('select-kecamatan');
+    const wilayahResultsContainer = document.getElementById('wilayah-results-container');
+    const kodeposSearchInput = document.getElementById('kodepos-search-input');
+    const kodeposSearchBtn = document.getElementById('kodepos-search-btn');
+    const kodeposSearchBtnText = document.getElementById('kodepos-search-btn-text');
+    const kodeposResultsContainer = document.getElementById('kodepos-results-container');
 
+    const apiUrls = {
+        provinces: "{{ route('api.wilayah.provinces') }}",
+        kabupaten: "{{ route('api.wilayah.kabupaten', ':id') }}",
+        kecamatan: "{{ route('api.wilayah.kecamatan', ':id') }}",
+        desa: "{{ route('api.kodepos.by-district', ':id') }}",
+        search: "{{ route('api.kodepos.public.search') }}"
+    };
 
-    // Render hasil ongkir
+    const populateSelect = (selectElement, data, placeholder) => {
+        selectElement.innerHTML = `<option value="">-- ${placeholder} --</option>`;
+        data.forEach(item => {
+            const option = document.createElement('option');
+            option.value = item.id;
+            option.textContent = item.name;
+            selectElement.appendChild(option);
+        });
+    };
 
-    function displayResults(result) {
-
-        const { final_weight, data } = result;
-
-        const instantServices = data.instant || [];
-
-        const expressCargoServices = data.express_cargo || [];
-
-
-
-        let html = '';
-
-
-
-        if (final_weight) {
-
-            html += `
-
-                <div class="alert alert-info">
-
-                    <strong>Total Berat:</strong> ${(final_weight / 1000).toFixed(2)} kg (${final_weight.toLocaleString('id-ID')} gram)
-
-                </div>
-
-            `;
-
-        }
-
-
-
-        html += `
-
-            <h5 class="fw-bold mb-3">Pilihan Kurir</h5>
-
-            <div class="btn-group mb-3" role="group" aria-label="Filter layanan">
-
-                <input type="radio" class="btn-check" name="service_filter" id="filter_regular" value="regular" checked>
-
-                <label class="btn btn-outline-primary" for="filter_regular">Reguler</label>
-
-                <input type="radio" class="btn-check" name="service_filter" id="filter_instant" value="instant">
-
-                <label class="btn btn-outline-primary" for="filter_instant">Instant</label>
-
-                <input type="radio" class="btn-check" name="service_filter" id="filter_cargo" value="trucking">
-
-                <label class="btn btn-outline-primary" for="filter_cargo">Cargo</label>
-
-            </div>
-
-            <div id="service-list-container"></div>
-
-        `;
-
-
-
-        costResultsContainer.innerHTML = html;
-
-
-
-        const serviceListContainer = document.getElementById('service-list-container');
-
-
-
-        const renderServices = (filter) => {
-
-            let servicesHtml = '';
-
-            if (filter === 'instant') {
-
-                servicesHtml = generateInstantHtml(instantServices);
-
-            } else {
-
-                const filteredServices = expressCargoServices.filter(service => {
-
-                    const group = service.group ? service.group.toLowerCase() : '';
-
-                    const serviceName = service.service_name ? service.service_name.toLowerCase() : '';
-
-                    if (filter === 'trucking') {
-
-                        return group === 'trucking' || serviceName.includes('cargo');
-
-                    }
-
-                    if (filter === 'regular') {
-
-                        return group === 'regular' && !serviceName.includes('cargo');
-
-                    }
-
-                    return false;
-
-                });
-
-                servicesHtml = generateExpressCargoHtml(filteredServices);
-
+    if (selectProvinsi) {
+        const loadProvinces = async () => {
+            try {
+                const response = await fetch(apiUrls.provinces);
+                const data = await response.json();
+                populateSelect(selectProvinsi, data, 'Pilih Provinsi');
+            } catch (error) {
+                console.error('Gagal memuat provinsi:', error);
             }
-
-            serviceListContainer.innerHTML = servicesHtml;
-
         };
-
-
-
-        document.querySelectorAll('input[name="service_filter"]').forEach(radio => {
-
-            radio.addEventListener('change', (e) => renderServices(e.target.value));
-
-        });
-
-
-
-        renderServices('regular');
-
-    }
-
-
-
-    function generateExpressCargoHtml(services) {
-
-        if (!services || services.length === 0) {
-
-            return '<div class="alert alert-warning">Layanan tidak tersedia.</div>';
-
-        }
-
-        let html = `
-
-            <div class="list-group">
-
-        `;
-
-        services.sort((a, b) => parseInt(a.cost) - parseInt(b.cost));
-
-        services.forEach(service => {
-
-            const cost = parseInt(service.cost).toLocaleString('id-ID');
-
-            html += `
-
-                <div class="list-group-item d-flex justify-content-between align-items-center">
-
-                    <div>
-
-                        <img src="https://tokosancaka.com/storage/logo-ekspedisi/${service.service}.png" 
-
-                             alt="${service.service}" 
-
-                             class="me-2" style="height:24px;">
-
-                        <strong>${service.service.toUpperCase()}</strong> - ${service.service_name} <br>
-
-                        <small class="text-muted">Estimasi: ${service.etd} Hari</small>
-
-                    </div>
-
-                    <div class="text-end">
-
-                        <div class="fw-bold">Rp ${cost}</div>
-
-                        <button class="btn btn-sm btn-danger mt-1">Pilih</button>
-
-                    </div>
-
-                </div>
-
-            `;
-
-        });
-
-        html += '</div>';
-
-        return html;
-
-    }
-
-
-
-    function generateInstantHtml(services) {
-
-        if (!services || services.length === 0) {
-
-            return '<div class="alert alert-warning">Layanan Instant tidak tersedia.</div>';
-
-        }
-
-        let html = `<div class="list-group">`;
-
-        let allServices = [];
-
-        services.forEach(courier => {
-
-            if(courier.costs && Array.isArray(courier.costs)) {
-
-                courier.costs.forEach(cost => { allServices.push({ courierName: courier.name, ...cost }); });
-
-            }
-
-        });
-
-        allServices.sort((a, b) => a.price.total_price - b.price.total_price);
-
-        allServices.forEach(service => {
-
-            const cost = parseInt(service.price.total_price).toLocaleString('id-ID');
-
-            html += `
-
-                <div class="list-group-item d-flex justify-content-between align-items-center">
-
-                    <div>
-
-                        <img src="https://tokosancaka.com/storage/logo-ekspedisi/${service.courierName}.png" 
-
-                             alt="${service.courierName}" 
-
-                             class="me-2" style="height:24px;">
-
-                        <strong>${service.courierName.toUpperCase()}</strong> - ${service.service_type}
-
-                    </div>
-
-                    <div class="text-end">
-
-                        <div class="fw-bold">Rp ${cost}</div>
-
-                        <button class="btn btn-sm btn-danger mt-1">Pilih</button>
-
-                    </div>
-
-                </div>
-
-            `;
-
-        });
-
-        html += `</div>`;
-
-        return html;
-
+        loadProvinces();
     }
 
 });
-
 </script>
 
+{{-- ======================
+     SCRIPT MODAL CEK ONGKIR
+====================== --}}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
 
+    /* =======================
+          AUTOCOMPLETE
+    ======================= */
+    const debounce = (func, delay) => {
+        let timeout;
+        return (...args) => {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), delay);
+        };
+    };
 
+    const setupAutocomplete = (inputId, resultsId, hiddenId, hiddenSubId) => {
+        const input = document.getElementById(inputId);
+        const resultsContainer = document.getElementById(resultsId);
+        const hiddenInput = document.getElementById(hiddenId);
+        const hiddenSubInput = document.getElementById(hiddenSubId);
+
+        const handleSearch = async (event) => {
+            const query = event.target.value;
+            const searchRoute = "{{ route('api.ongkir.address.search') }}";
+
+            if (query.length < 3) {
+                resultsContainer.classList.add('d-none');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${searchRoute}?search=${query}`);
+                const result = await response.json();
+
+                resultsContainer.innerHTML = "";
+
+                if (Array.isArray(result) && result.length > 0) {
+                    resultsContainer.classList.remove('d-none');
+                    result.forEach(item => {
+                        const div = document.createElement('div');
+                        div.className = 'list-group-item list-group-item-action';
+                        div.style.cursor = 'pointer';
+                        div.textContent = item.full_address;
+                        div.dataset.id = item.district_id;
+                        div.dataset.subId = item.subdistrict_id;
+
+                        div.addEventListener('click', () => {
+                            input.value = item.full_address;
+                            hiddenInput.value = item.district_id;
+                            hiddenSubInput.value = item.subdistrict_id;
+                            resultsContainer.classList.add('d-none');
+                        });
+
+                        resultsContainer.appendChild(div);
+                    });
+                } else {
+                    resultsContainer.classList.remove('d-none');
+                    resultsContainer.innerHTML = `<div class="list-group-item text-muted">Alamat tidak ditemukan.</div>`;
+                }
+
+            } catch (error) {
+                resultsContainer.innerHTML = `<div class="list-group-item text-danger">${error.message}</div>`;
+                resultsContainer.classList.remove('d-none');
+            }
+        };
+
+        input.addEventListener('input', debounce(handleSearch, 350));
+
+        document.addEventListener('click', (event) => {
+            if (!resultsContainer.contains(event.target) && !input.contains(event.target)) {
+                resultsContainer.classList.add('d-none');
+            }
+        });
+    };
+
+    setupAutocomplete('origin', 'origin-results', 'origin_id', 'origin_subdistrict_id');
+    setupAutocomplete('destination', 'destination-results', 'destination_id', 'destination_subdistrict_id');
+
+    /* =======================
+        FORM CEK ONGKIR
+    ======================= */
+    const shippingForm = document.getElementById('shipping-form');
+    const costResultsContainer = document.getElementById('cost-results-container');
+    const submitButton = document.getElementById('submit-button');
+    const btnText = document.getElementById('btn-text');
+    const btnSpinner = document.getElementById('btn-spinner');
+
+    shippingForm.addEventListener('submit', async function (event) {
+        event.preventDefault();
+
+        submitButton.disabled = true;
+        btnText.textContent = "Mencari...";
+        btnSpinner.classList.remove('d-none');
+
+        costResultsContainer.innerHTML = `<div class="text-center p-4"><p class="h5 text-muted">Mencari layanan terbaik, Mohon Ditunggu...</p></div>`;
+
+        const formData = new FormData(this);
+        const payload = {};
+
+        for (const [key, value] of formData.entries()) {
+            if (['length', 'width', 'height'].includes(key) && !value) {
+                payload[key] = "1";
+            } else if (key === 'item_value' && !value) {
+                payload[key] = "0";
+            } else {
+                payload[key] = value;
+            }
+        }
+
+        payload['origin_text'] = document.getElementById('origin').value;
+        payload['destination_text'] = document.getElementById('destination').value;
+
+        if (document.getElementById('insurance').checked) {
+            payload.insurance = 'on';
+        }
+
+        try {
+            const costCheckRoute = "{{ route('api.ongkir.cost.check') }}";
+            const response = await fetch(costCheckRoute, {
+                method: 'POST',
+                body: JSON.stringify(payload),
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const result = await response.json();
+
+            if (response.ok && result.success) {
+                displayResults(result);
+            } else {
+                throw new Error(result.message || 'Terjadi kesalahan.');
+            }
+
+        } catch (error) {
+            costResultsContainer.innerHTML =
+                `<div class="alert alert-danger"><strong>Error:</strong> ${error.message}</div>`;
+        } finally {
+            submitButton.disabled = false;
+            btnText.textContent = "Cek Ongkos Kirim";
+            btnSpinner.classList.add('d-none');
+        }
+    });
+
+    /* =======================
+      DISPLAY RESULTS
+    ======================= */
+    const formatRupiah = number => new Intl.NumberFormat('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
+        minimumFractionDigits: 0
+    }).format(number);
+
+    const getPrice = service => {
+        if (!service) return 0;
+        if (service.price?.total_price) return parseFloat(service.price.total_price);
+        return parseFloat(service.cost ?? service.rate ?? 0);
+    };
+
+    const createServiceCard = service => {
+        const price = service.numeric_price;
+        const etd = service.etd ? `<small class="text-muted">Estimasi: ${service.etd}</small>` : '';
+        const serviceName = service.service_name || service.service_type || "Layanan";
+
+        let logoUrl = '';
+        const serviceKey = (service.service || '').toLowerCase();
+
+        if (serviceKey.includes('gosend')) {
+            logoUrl = 'https://tokosancaka.com/public/storage/logo-ekspedisi/gosend.png';
+        } else if (serviceKey.includes('grab')) {
+            logoUrl = 'https://tokosancaka.com/public/storage/logo-ekspedisi/grab.png';
+        } else if (service.service) {
+            logoUrl = `https://tokosancaka.com/public/storage/logo-ekspedisi/${service.service.toLowerCase()}.png`;
+        }
+
+        const imgHtml = logoUrl
+            ? `<img src="${logoUrl}" alt="${serviceName}" class="me-3 courier-logo" onerror="this.style.display='none';">`
+            : '';
+
+        return `
+            <div class="list-group-item d-flex justify-content-between align-items-center py-3">
+                <div class="d-flex align-items-center">
+                    ${imgHtml}
+                    <div>
+                        <h6 class="fw-bold mb-0">${serviceName}</h6>
+                        ${etd}
+                    </div>
+                </div>
+                <div class="text-end">
+                    <h5 class="fw-bold text-success mb-1">${formatRupiah(price)}</h5>
+                    <button class="btn btn-pilih mt-1" onclick="window.location.href='https://tokosancaka.com/buat-pesanan'">Kirim</button>
+                </div>
+            </div>
+        `;
+    };
+
+    const attachTabListeners = () => {
+        const tabButtons = costResultsContainer.querySelectorAll('.shipping-tab-btn');
+        tabButtons.forEach(button => {
+            button.addEventListener('click', e => {
+                e.preventDefault();
+                const tab = new bootstrap.Tab(e.target);
+                tab.show();
+            });
+        });
+    };
+
+    function displayResults(result) {
+        const { final_weight, data, warning } = result;
+
+        costResultsContainer.innerHTML = warning
+            ? `<div class="alert alert-warning">${warning}</div>`
+            : '';
+
+        let instantServices = [];
+        let expressServices = [];
+        let cargoServices = [];
+
+        if (data.instant?.length) {
+            instantServices = data.instant
+                .map(s => {
+                    s.numeric_price = getPrice(s);
+                    return s;
+                })
+                .filter(Boolean);
+        }
+
+        if (data.express_cargo?.length) {
+            data.express_cargo.forEach(service => {
+                service.numeric_price = getPrice(service);
+                const type = (service.service_type || '').toLowerCase();
+                const name = (service.service_name || '').toLowerCase();
+
+                if (type.includes('cargo') || name.includes('cargo')) {
+                    cargoServices.push(service);
+                } else {
+                    expressServices.push(service);
+                }
+            });
+        }
+
+        instantServices.sort((a, b) => a.numeric_price - b.numeric_price);
+        expressServices.sort((a, b) => a.numeric_price - b.numeric_price);
+        cargoServices.sort((a, b) => a.numeric_price - b.numeric_price);
+
+        if (
+            instantServices.length === 0 &&
+            expressServices.length === 0 &&
+            cargoServices.length === 0
+        ) {
+            costResultsContainer.innerHTML +=
+                `<div class="alert alert-warning">Tidak ada layanan pengiriman untuk rute ini.</div>`;
+            return;
+        }
+
+        let firstActiveTab =
+            instantServices.length ? 'instant' :
+            expressServices.length ? 'express' :
+            'cargo';
+
+        let html = `
+            <div class="alert alert-info">
+                <strong>Berat Dihitung:</strong> ${final_weight.toLocaleString('id-ID')} gram
+            </div>
+
+            <ul class="nav nav-tabs" id="shipping-tabs" role="tablist">
+        `;
+
+        if (instantServices.length) {
+            html += `
+                <li class="nav-item">
+                    <button class="nav-link shipping-tab-btn ${firstActiveTab === 'instant' ? 'active' : ''}"
+                        data-bs-toggle="tab" data-bs-target="#tab-instant">
+                        <i class="fa-solid fa-bolt"></i> Instant (${instantServices.length})
+                    </button>
+                </li>
+            `;
+        }
+
+        if (expressServices.length) {
+            html += `
+                <li class="nav-item">
+                    <button class="nav-link shipping-tab-btn ${firstActiveTab === 'express' ? 'active' : ''}"
+                        data-bs-toggle="tab" data-bs-target="#tab-express">
+                        <i class="fa-solid fa-box"></i> Express (${expressServices.length})
+                    </button>
+                </li>
+            `;
+        }
+
+        if (cargoServices.length) {
+            html += `
+                <li class="nav-item">
+                    <button class="nav-link shipping-tab-btn ${firstActiveTab === 'cargo' ? 'active' : ''}"
+                        data-bs-toggle="tab" data-bs-target="#tab-cargo">
+                        <i class="fa-solid fa-truck"></i> Cargo (${cargoServices.length})
+                    </button>
+                </li>
+            `;
+        }
+
+        html += `</ul>
+            <div class="tab-content border border-top-0 rounded-bottom">
+        `;
+
+        if (instantServices.length) {
+            html += `
+                <div class="tab-pane fade ${firstActiveTab === 'instant' ? 'show active' : ''}" id="tab-instant">
+                    <div class="list-group list-group-flush">
+                        ${instantServices.map(createServiceCard).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        if (expressServices.length) {
+            html += `
+                <div class="tab-pane fade ${firstActiveTab === 'express' ? 'show active' : ''}" id="tab-express">
+                    <div class="list-group list-group-flush">
+                        ${expressServices.map(createServiceCard).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        if (cargoServices.length) {
+            html += `
+                <div class="tab-pane fade ${firstActiveTab === 'cargo' ? 'show active' : ''}" id="tab-cargo">
+                    <div class="list-group list-group-flush">
+                        ${cargoServices.map(createServiceCard).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        html += `</div>`;
+
+        costResultsContainer.innerHTML += html;
+
+        attachTabListeners();
+    }
+
+});
+</script>
 
 
 

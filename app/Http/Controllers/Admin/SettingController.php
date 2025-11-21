@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Http; // Untuk geocoding
 use App\Services\KiriminAjaService; // Import KiriminAjaService
 use Illuminate\Validation\ValidationException; // Untuk error validasi
 use Illuminate\Support\Facades\Route; // Make sure Route facade is imported
+use App\Models\Slide;
 
 class SettingController extends Controller
 {

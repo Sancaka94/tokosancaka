@@ -80,7 +80,7 @@
             <div><dt class="text-gray-500">Pembayaran</dt><dd class="text-gray-800 font-medium">{{ $order->payment_method }}</dd></div>
             <div><dt class="text-gray-500">Isi Paket</dt><dd class="text-gray-800 font-medium">{{ $order->item_description }}</dd></div>
             <div><dt class="text-gray-500">Berat</dt><dd class="text-gray-800 font-medium">{{ number_format($order->weight) }} gram</dd></div>
-            <div><dt class="text-gray-500">Dimensi</dt><dd class="text-gray-800 font-medium">{{ $order->length ?? '-' }}x{{ $order->width ?? '-' }}x{{ $order->height ?? '-' }} cm</dd></div>
+            <div><dt class="text-gray-500">Dimensi</dt><dd class="text-gray-800 font-medium">{{ $order->length ?? '0' }} x {{ $order->width ?? '0' }} x {{ $order->height ?? '0' }} cm</dd></div>
         </dl>
     </div>
 

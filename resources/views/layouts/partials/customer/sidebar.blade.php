@@ -34,7 +34,7 @@
 
             <img class="object-cover w-10 h-10 rounded-full mr-4 border-2 border-gray-600" 
 
-                 src="{{ Auth::user()->store_logo_path ? asset('storage/' . Auth::user()->store_logo_path) : 'https://ui-avatars.com/api/?name=' . urlencode(Auth::user()->store_name ?? 'T') . '&background=4f46e5&color=fff' }}" 
+                 src="{{ Auth::user()->store_logo_path ? asset('public/storage/' . Auth::user()->store_logo_path) : 'https://ui-avatars.com/api/?name=' . urlencode(Auth::user()->store_name ?? 'T') . '&background=4f46e5&color=fff' }}" 
 
                  alt="Logo Toko" />
 
@@ -78,7 +78,13 @@
 
         {{-- GRUP MANAJEMEN PESANAN --}}
 
-        <p class="px-4 pt-4 pb-2 text-xs text-gray-400 uppercase tracking-wider">Manajemen Pesanan</p>
+        <p class="px-4 pt-4 pb-2 text-xs text-gray-400 uppercase tracking-wider">Manajemen Pengiriman</p>
+        
+        {{-- START: LINK CHAT BARU DITAMBAHKAN --}}
+        <a href="https://tokosancaka.com/customer/chat" class="flex items-center px-4 py-2.5 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors duration-200 {{ request()->is('customer/chat*') ? 'bg-gray-900 text-white' : '' }}">
+            <i class="fas fa-comment-dots fa-fw w-6"></i>
+            <span class="ml-3">Chat CS ADMIN</span>
+        </a>
 
 
 
@@ -86,7 +92,7 @@
 
             <i class="fas fa-plus-circle fa-fw w-6"></i>
 
-            <span class="ml-3">Buat Pesanan</span>
+            <span class="ml-3">Kirim Paket</span>
 
         </a>
 
@@ -96,8 +102,15 @@
 
             <i class="fas fa-table fa-fw w-6"></i>
 
-            <span class="ml-3">Data Pesanan</span>
+            <span class="ml-3">Data Pengiriman</span>
 
+        </a>
+        
+        
+        
+        <a href="{{ route('customer.kontak.index') }}" class="flex items-center px-4 py-2.5 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors duration-200 {{ request()->routeIs('customer.kontak.*') ? 'bg-gray-900 text-white' : '' }}">
+            <i class="fas fa-address-book fa-fw w-6"></i>
+            <span class="ml-3">Data Penerima</span>
         </a>
 
 
@@ -207,7 +220,7 @@
     <div x-show="open" x-cloak class="ml-10 space-y-1">
 
     {{-- DIUBAH: Menggunakan nama dan rute baru --}}
-        <a href="{{ route('katalog.index') }}" target="_blank"
+        <a href="{{ route('katalog.index') }}" 
                    class="block px-4 py-2 text-gray-300 hover:bg-gray-600 hover:text-white rounded-md transition-colors duration-200">
                    <i class="fas fa-book-open fa-fw w-4"></i>
                    <span class="ml-2">Katalog</span>
@@ -223,7 +236,7 @@
 
         </a>
 
-        <a href="/pesanan/riwayat"
+        <a href="/customer/pesanan/riwayat"
 
            class="block px-4 py-2 text-gray-300 hover:bg-gray-600 hover:text-white rounded-md transition-colors duration-200">
 
@@ -298,6 +311,15 @@
             <span class="ml-2">Dashboard Toko</span>
 
         </a>
+        
+        
+        {{-- === TAMBAHAN UNTUK REGISTRASI DOMPET === --}}
+<a href="{{ route('seller.doku.index') }}"
+   class="block px-4 py-2 text-gray-300 hover:bg-gray-600 hover:text-white rounded-md transition-colors duration-200 {{ request()->routeIs('seller.doku.*') ? 'bg-gray-600' : '' }}">
+    <i class="fas fa-wallet fa-fw w-4"></i>
+    <span class="ml-2">Dompet Sancaka</span>
+</a>
+        {{-- === AKHIR TAMBAHAN === --}}
 
 
 
@@ -315,17 +337,15 @@
 
 
 
-        {{-- Link ke Pesanan Masuk --}}
+        
+        
+        {{-- Link ke Pesanan Marketplace (YANG BARU) --}}
+<a href="{{ route('seller.pesanan.marketplace.index') }}"
+   class="block px-4 py-2 text-gray-300 hover:bg-gray-600 hover:text-white rounded-md transition-colors duration-200 {{ request()->routeIs('seller.pesanan.marketplace.*') ? 'bg-gray-600' : '' }}">
+    <i class="fas fa-shopping-basket fa-fw w-4"></i>
+    <span class="ml-2">Pesanan Marketplace</span>
+</a>
 
-        <a href="{{-- route('seller.pesanan.index') --}}"
-
-           class="block px-4 py-2 text-gray-300 hover:bg-gray-600 hover:text-white rounded-md transition-colors duration-200 {{-- request()->routeIs('seller.pesanan.*') ? 'bg-gray-600' : '' --}}">
-
-            <i class="fas fa-inbox fa-fw w-4"></i>
-
-            <span class="ml-2">Pesanan Masuk</span>
-
-        </a>
 
         
 
