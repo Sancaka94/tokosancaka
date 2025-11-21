@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>{{ $title ?? 'Label Pengiriman' }}</title>
     <style>
-      // Styling dasar untuk label thermal
+      // Styling dasar untuk label 
         body {
             font-family: Arial, sans-serif; /* Font dasar yang umum */
             font-size: 10pt; /* Ukuran font umum untuk thermal */
