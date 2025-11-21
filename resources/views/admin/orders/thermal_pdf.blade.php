@@ -4,12 +4,7 @@
     <meta charset="UTF-8">
     <title>{{ $title ?? 'Label Pengiriman' }}</title>
     <style>
-        /* * Gaya CSS SANGAT MINIMAL untuk printer thermal. 
-         * Hindari warna, background, margin/padding kompleks.
-         * Ukuran font dan line-height mungkin perlu disesuaikan 
-         * tergantung printer Anda.
-         * Ukuran kertas diatur di Controller (setPaper).
-        */
+      
         body {
             font-family: Arial, sans-serif; /* Font dasar yang umum */
             font-size: 10pt; /* Ukuran font umum untuk thermal */
