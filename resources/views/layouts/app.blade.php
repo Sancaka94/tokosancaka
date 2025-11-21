@@ -144,9 +144,7 @@
 </head>
 <body>
 
-    <!-- =================================================================== -->
-    <!-- HEADER / NAVBAR -->
-    <!-- =================================================================== -->
+
     <header>
         <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm fixed-top">
             <div class="container">
