@@ -61,7 +61,10 @@ use App\Http\Controllers\Admin\BarcodeController;
 // Impor Controller Login yang benar
 use App\Http\Controllers\Auth\Customer\CustomerLoginController; 
 // Anda perlu mengimpor RegisteredUserController jika ada, saya asumsikan ia ada di sini.
-use App\Http\Controllers\Auth\RegisteredUserController; 
+use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\Admin\Customers\DataPenggunaController; // HARUS ADA DAN BENAR
+use App\Http\Controllers\Admin\CustomerController; // PENTING: Tambahkan ini
+
 
 
 // Rute ini akan menggunakan middleware kustom baru kita: 'auth.redirect'
@@ -357,6 +360,18 @@ Route::middleware(['auth', RoleMiddleware::class . ':Pelanggan|Seller'])
 Route::prefix('admin')->name('admin.')->group(function () {
     
 
+    // ================================================================
+    // == PERBAIKAN: RUTE CUSTOMERS (MENGGANTIKAN /ADMIN/CUSTOMERS/DATA) ==
+    // ================================================================
+    // PENTING: Gunakan 'customers.index' untuk URL /customers
+    Route::get('customers/data', [CustomerController::class, 'index'])->name('customers.data'); // Tambahkan rute ini untuk URL /data
+    Route::get('customers', [CustomerController::class, 'index'])->name('customers.index'); // Rute utama /customers
+// <<< PERBAIKAN DI SINI >>>
+// Sesuaikan nama rute agar cocok dengan pemanggilan di Blade 'admin.pengguna.exportExcel'
+Route::get('/export-excel', [PenggunaController::class, 'exportExcel'])->name('pengguna.exportExcel');
+Route::post('/import-excel', [PenggunaController::class, 'importExcel'])->name('pengguna.importExcel');
+// <<< END PERBAIKAN >>>
+
 
     Route::get('/post/{post:slug}', [PostController::class, 'show'])->name('posts.post-detail');
 
@@ -372,6 +387,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
     Route::resource('pelanggan', PelangganController::class);
     
+    
+
+    
     // --- [BARU] RUTE UNTUK MANAJEMEN SLIDER ---
     Route::get('/sliders', [SliderController::class, 'index'])->name('sliders.index');
     Route::post('/sliders', [SliderController::class, 'store'])->name('sliders.store');
@@ -383,6 +401,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('/import-excel', [PelangganController::class, 'importExcel'])->name('import.excel');
         Route::get('/export-excel', [PelangganController::class, 'exportExcel'])->name('export.excel');
         Route::get('/export-pdf', [PelangganController::class, 'exportPdf'])->name('export.pdf');
+
     });
     
 
@@ -463,9 +482,14 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])
        
           // TAMBAHKAN ROUTE INI UNTUK HALAMAN PENGATURAN
           
+          Route::resource('stores', AdminMarketplaceController::class)->names('stores');
+          
   Route::post('/users/{user}/toggle-freeze', [App\Http\Controllers\Admin\UserController::class, 'toggleFreeze'])->name('admin.users.toggle-freeze');        
     
-
+    Route::resource('customers/pengguna', DataPenggunaController::class)->names('customers.pengguna');
+    Route::resource('customers/data/pengguna', DataPenggunaController::class)->names('customers.data.pengguna');
+    Route::get('customers/data/pengguna/export/{type}', [DataPenggunaController::class, 'export'])->name('customers.pengguna.export');
+    
     // TAMBAHKAN ROUTE INI JIKA BELUM ADA
         Route::get('/wallet', [WalletController::class, 'index'])->name('wallet.index');
         
@@ -909,3 +933,6 @@ Route::get('/controllers-list', function () {
          ->name('seller.address.geocode');
          
     // ==========================================================
+    
+    
+  

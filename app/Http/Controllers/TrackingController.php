@@ -433,6 +433,91 @@ if ($pesanan) {
         return redirect()->route('tracking.index')->with('error', "Nomor resi '{$resi}' tidak ditemukan. Pastikan nomor yang Anda masukkan sudah benar.");
 
     }
+    
+    /**
+ * Memproses dan menormalisasi respons dari KiriminAja API.
+ * * @param array $rawResponse Respons mentah dari KiriminAja
+ * @param object $pesanan Objek Pesanan/Order internal
+ * @return array Data tracking yang sudah dinormalisasi untuk View
+ */
+private function normalizeKiriminAjaResponse(array $rawResponse, $pesanan): array
+{
+    // 1. Cek jika API gagal
+    if (!isset($rawResponse['status']) || !$rawResponse['status'] || !isset($rawResponse['details'])) {
+        return [
+            'error' => $rawResponse['text'] ?? 'Gagal mengambil data pelacakan dari KiriminAja atau API pihak ketiga.',
+            'is_external_error' => true
+        ];
+    }
+
+    $details = $rawResponse['details'];
+    $histories = $rawResponse['histories'] ?? [];
+
+    // 2. Normalisasi dan Konversi Timezone untuk Riwayat
+    $normalizedHistories = collect($histories)->map(function ($history) use ($details) {
+        
+        // VITAL FIX: Kita paksa Carbon menganggap string waktu API sudah dalam WIB (Asia/Jakarta)
+        $timestampWIB = Carbon::parse($history['created_at'], 'Asia/Jakarta');
+
+        // Membersihkan status: Menghilangkan tanggal/waktu yang mungkin terbawa di teks status
+        $statusText = $history['status'] ?? 'N/A';
+        $statusText = preg_replace('/\s\d{2}-\d{2}-\d{4}\s\d{2}:\d{2}\s\|/i', '', $statusText);
+
+        return (object)[
+            'status' => $statusText,
+            'lokasi' => $details['destination']['city'] ?? '-', // Lokasi yang lebih umum
+            'keterangan' => $history['status'] ?? null,
+            'created_at' => $timestampWIB, // Carbon Object dalam WIB
+        ];
+    })->toArray();
+
+    // 3. Tambahkan status "Pesanan Dibuat" dari created_at Pesanan (Internal)
+    if ($pesanan->created_at) {
+        $createdHistory = (object)[
+            'status' => 'Pesanan Dibuat',
+            'lokasi' => 'Data diterima sistem',
+            'keterangan' => 'Data diterima sistem Sancaka Express.',
+            // Tanggal buat Pesanan dari DB (UTC), konversi ke WIB
+            'created_at' => Carbon::parse($pesanan->created_at)->timezone('Asia/Jakarta'), 
+        ];
+        
+        // Cegah duplikasi jika status awal sudah ada
+        $isDuplicate = collect($normalizedHistories)->contains(function ($h) use ($createdHistory) {
+            // Membandingkan dalam jarak waktu 5 menit atau jika status mengandung kata 'dibuat'
+            return $h->created_at->diffInMinutes($createdHistory->created_at) < 5 || str_contains(strtolower($h->status), 'dibuat');
+        });
+        if (!$isDuplicate) {
+             $normalizedHistories[] = $createdHistory;
+        }
+    }
+
+
+    // 4. Mengurutkan riwayat berdasarkan waktu terbaru (DESC)
+    // Semua item di $normalizedHistories sekarang adalah Carbon objects dalam WIB
+    $sortedHistories = collect($normalizedHistories)->sortByDesc('created_at')->values();
+
+    // 5. Final Mapping untuk View
+    return [
+        'is_pesanan' => true,
+        'resi' => $pesanan->resi,
+        'resi_aktual' => $details['awb'] ?? $pesanan->resi_aktual,
+        
+        // Info Pengirim/Penerima dari API, fallback ke Pesanan
+        'pengirim' => $details['origin']['name'] ?? $pesanan->sender_name ?? 'N/A',
+        'alamat_pengirim' => $details['origin']['address'] ?? $pesanan->sender_address ?? 'N/A',
+        'no_pengirim' => $details['origin']['phone'] ?? $pesanan->sender_phone ?? 'N/A',
+        
+        'penerima' => $details['destination']['name'] ?? $pesanan->receiver_name ?? 'N/A',
+        'alamat_penerima' => $details['destination']['address'] ?? $pesanan->receiver_address ?? 'N/A',
+        'no_penerima' => $details['destination']['phone'] ?? $pesanan->receiver_phone ?? 'N/A',
+        
+        // Ambil status terbaru dari response API
+        'status' => $rawResponse['text'] ?? ($details['delivered'] ? 'Telah Diterima' : $pesanan->status),
+        'tanggal_dibuat' => $pesanan->created_at,
+        'histories' => $sortedHistories,
+        'jasa_ekspedisi_aktual' => $pesanan->jasa_ekspedisi_aktual,
+    ];
+}
 
 }
 
