@@ -557,7 +557,7 @@ Route::prefix('email')->name('email.')->group(function () {
 
 // Ini akan secara otomatis membuat route untuk index, create, store, edit, update, destroy
 
-Route::resource('stores', StoreController::class)->names('stores');
+
 
 // ✅ RUTE BARU YANG HILANG: Untuk memproses form pencairan dana
 Route::post('/stores/{store}/payout', [App\Http\Controllers\Admin\StoreController::class, 'payout'])->name('stores.payout');

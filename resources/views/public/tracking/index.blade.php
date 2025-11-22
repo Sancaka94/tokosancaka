@@ -327,7 +327,7 @@ if (!function_exists('getKiriminAjaStatusIcon')) {
                             <h5 class="mb-1 fw-bold">Status Terakhir:</h5>
                             <p class="mb-0 fs-5"><strong>{{ $result['summary']['status'] }}</strong></p>
                             {{-- PERBAIKAN TIMEZONE API KIRIMINAJA --}}
-                            <small class="text-muted">{{ \Carbon\Carbon::parse($result['summary']['date'])->timezone('Asia/Jakarta')->translatedFormat('d M Y, H:i') }} WIB</small>
+                            <small class="text-muted">{{ \Carbon\Carbon::parse($result['summary']['date'])->setTimezone('UTC')->timezone('Asia/Jakarta')->translatedFormat('d M Y, H:i') }} WIB</small>
                         </div>
 
                         <hr class="my-4">
@@ -352,7 +352,7 @@ if (!function_exists('getKiriminAjaStatusIcon')) {
                                     <p class="mb-1 small text-muted">{{ $history['location'] }}</p>
                                     @endif
                                     {{-- PERBAIKAN TIMEZONE API KIRIMINAJA --}}
-                                    <small class="text-muted">{{ \Carbon\Carbon::parse($history['date'])->timezone('Asia/Jakarta')->translatedFormat('d M Y, H:i') }} WIB</small>
+                                    <small class="text-muted">{{ \Carbon\Carbon::parse($history['date'])->setTimezone('UTC')->timezone('Asia/Jakarta')->translatedFormat('d M Y, H:i') }} WIB</small>
                                 </li>
                                 @endforeach
                             @else
@@ -387,20 +387,20 @@ if (!function_exists('getKiriminAjaStatusIcon')) {
                             <div class="col-md-6 mb-3 mb-md-0">
                                 <h6 class="fw-bold text-muted mb-2">PENGIRIM</h6>
                                 <p class="mb-1 fs-5 fw-medium">{{ $result['pengirim'] }}</p>
-                                @if(!empty($result['no_pengirim']) && $result['no_pengirim'] !== 'N/A')
+                                @if(!empty($result['no_pengirim']) && $result['no_pengirim'] !== '-')
                                     <p class="text-muted small mb-1"><i class="fas fa-phone-alt fa-fw me-1"></i>{{ $result['no_pengirim'] }}</p>
                                 @endif
-                                @if(!empty($result['alamat_pengirim']) && $result['alamat_pengirim'] !== 'N/A')
+                                @if(!empty($result['alamat_pengirim']) && $result['alamat_pengirim'] !== '-')
                                     <p class="text-muted small mb-0"><i class="fas fa-map-marker-alt fa-fw me-1"></i>{{ $result['alamat_pengirim'] }}</p>
                                 @endif
                             </div>
                             <div class="col-md-6">
                                 <h6 class="fw-bold text-muted mb-2">PENERIMA</h6>
-                                <p class="mb-1 fs-5 fw-medium">{{ $result['penerima'] ?? 'N/A' }}</p>
+                                <p class="mb-1 fs-5 fw-medium">{{ $result['penerima'] ?? '-' }}</p>
                                 @if(!empty($result['no_penerima']) && $result['no_penerima'] !== 'N/A')
                                     <p class="text-muted small mb-1"><i class="fas fa-phone-alt fa-fw me-1"></i>{{ $result['no_penerima'] }}</p>
                                 @endif
-                                @if(!empty($result['alamat_penerima']) && $result['alamat_penerima'] !== 'N/A')
+                                @if(!empty($result['alamat_penerima']) && $result['alamat_penerima'] !== '-')
                                     <p class="text-muted small mb-0"><i class="fas fa-map-marker-alt fa-fw me-1"></i>{{ $result['alamat_penerima'] }}</p>
                                 @endif
                             </div>
@@ -492,6 +492,7 @@ if (!function_exists('getKiriminAjaStatusIcon')) {
             {{-- Akhir @if (isset($result)) --}}
             @endif
         </div>
+        
     </div>
 </div>
 @endsection

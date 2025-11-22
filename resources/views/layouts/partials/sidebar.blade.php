@@ -174,6 +174,13 @@
                         </a>
 
                     </li>
+                    
+                    {{-- ✅ LINK DIPERBAIKI/DISPESIFIKASI KE DATA PENGGUNA --}}
+                    <li>
+                        <a href="{{ route('admin.customers.data.pengguna.index') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-gray-700 {{ request()->routeIs('admin.customers.data.pengguna.index') ? 'text-white' : 'text-gray-400' }}">
+                            Manajemen Data Pengguna
+                        </a>
+                    </li>
 
                     <li>
 

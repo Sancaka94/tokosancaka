@@ -34,7 +34,7 @@
             <!-- Gambar Unggulan -->
             @if($post->featured_image)
                 <div class="mb-8">
-                    <img src="{{ asset('storage/' . $post->featured_image) }}" alt="{{ $post->title }}" class="w-full h-auto rounded-lg shadow-md">
+                    <img src="{{ asset('public/storage/' . $post->featured_image) }}" alt="{{ $post->title }}" class="w-full h-auto rounded-lg shadow-md">
                 </div>
             @endif
 

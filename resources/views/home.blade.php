@@ -673,7 +673,7 @@ width: 22px;
 
             <div class="col-lg-6">
 
-                <img src="https://tokosancaka.biz.id/storage/uploads/logo.jpeg" class="img-fluid rounded" alt="Profil Sancaka Express">
+                <img src="https://tokosancaka.com/storage/uploads/logo.jpeg" class="img-fluid rounded" alt="Profil Sancaka Express">
 
             </div>
 
