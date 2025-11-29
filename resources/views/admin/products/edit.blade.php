@@ -432,6 +432,58 @@
                 </div>
             </div>
 
+            {{-- F. MONITOR SPESIFIKASI ATRIBUT (BARU) --}}
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mt-6">
+                <div class="px-6 py-4 border-b border-gray-100 bg-white flex justify-between items-center">
+                    <h2 class="text-lg font-semibold text-gray-800">
+                        <i class="fa-solid fa-clipboard-list text-indigo-500 mr-2"></i> Spesifikasi Produk
+                    </h2>
+                </div>
+
+                <div class="p-6">
+                    @php
+                        // 1. Ambil data atribut. Sesuaikan 'attributes_json' dengan nama kolom di database Anda
+                        // Bisa $product->attributes_json atau $product->specifications
+                        $specs = $product->attributes_json ?? [];
+
+                        // 2. Jika data masih berupa JSON String, decode dulu
+                        if (is_string($specs)) {
+                            $specs = json_decode($specs, true);
+                        }
+                    @endphp
+
+                    @if(!empty($specs) && is_array($specs) && count($specs) > 0)
+                        <div class="space-y-4">
+                            @foreach($specs as $key => $value)
+                                <div class="flex justify-between items-start border-b border-gray-50 pb-2 last:border-0">
+                                    {{-- Label: Ubah 'jenis_izin' menjadi 'Jenis Izin' --}}
+                                    <span class="text-sm text-gray-500 font-medium capitalize">
+                                        {{ str_replace(['_', '-'], ' ', $key) }}
+                                    </span>
+
+                                    {{-- Value --}}
+                                    <span class="text-sm font-bold text-gray-800 text-right max-w-[60%] leading-tight">
+                                        @if(is_array($value))
+                                            {{-- Jika checkbox (array), gabungkan dengan koma --}}
+                                            {{ implode(', ', $value) }}
+                                        @elseif($value === null || $value === '')
+                                            <span class="text-gray-300">-</span>
+                                        @else
+                                            {{ $value }}
+                                        @endif
+                                    </span>
+                                </div>
+                            @endforeach
+                        </div>
+                    @else
+                        {{-- Tampilan jika kosong --}}
+                        <div class="text-center py-4 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                            <span class="text-gray-400 text-sm italic">Belum ada spesifikasi khusus.</span>
+                        </div>
+                    @endif
+                </div>
+            </div>
+
         </div>
     </div>
 
