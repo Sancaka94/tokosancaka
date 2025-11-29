@@ -135,16 +135,21 @@
                 </div>
             </div>
 
-            <div class="max-w-7xl mx-auto flex items-center justify-end gap-3">
-                <a href="{{ route('admin.products.edit', $product->slug) }}" 
-                   class="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-4 focus:ring-gray-200 transition-all">
-                    Batal
-                </a>
-                <button type="submit" 
-                        class="px-5 py-2.5 text-sm font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 shadow-lg shadow-blue-500/50 transition-all flex items-center">
-                    <i class="fa-solid fa-floppy-disk mr-2"></i> Simpan Spesifikasi
-                </button>
-            </div>
+            <div class="w-full mt-6">
+    <div class="max-w-7xl mx-auto flex items-center justify-end gap-3">
+        <a href="{{ route('admin.products.edit', $product->slug) }}" 
+           class="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-4 focus:ring-gray-200 transition-all">
+            Batal
+        </a>
+
+        <button type="submit" 
+                class="px-5 py-2.5 text-sm font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 shadow-lg shadow-blue-500/50 transition-all flex items-center">
+            <i class="fa-solid fa-floppy-disk mr-2"></i> 
+            Simpan Spesifikasi
+        </button>
+    </div>
+</div>
+
 
         </div>
 
