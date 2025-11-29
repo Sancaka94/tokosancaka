@@ -258,7 +258,7 @@
                             <div class="relative">
                                 <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500 font-bold bg-gray-50 rounded-l-lg border-r border-gray-300 text-xs tracking-wide px-2">+62</span>
                                 <input type="text" name="seller_wa" id="seller_wa" value="{{ old('seller_wa', $product->seller_wa ? ltrim($product->seller_wa, '62') : '') }}" 
-                                       class="w-full border-gray-300 rounded-lg shadow-sm pl-14 focus:border-indigo-500 focus:ring-indigo-500 transition-colors" 
+                                       class="w-full h-14 border-gray-300 rounded-lg shadow-sm pl-14 focus:border-indigo-500 focus:ring-indigo-500 transition-colors" 
                                        placeholder="8123xxxx">
                             </div>
                         </div>
