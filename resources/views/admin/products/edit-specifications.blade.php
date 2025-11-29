@@ -510,7 +510,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             try {
                 // Construct URL delete
-                const url = "{{ route('categories.destroyAjax', ':id') }}".replace(':id', id);
+                const url = "{{ route('admin.categories.destroyAjax', ':id') }}".replace(':id', id);
 
                 const response = await fetch(url, {
                     method: 'DELETE',
