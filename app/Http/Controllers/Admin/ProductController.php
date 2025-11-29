@@ -539,7 +539,7 @@ class ProductController extends Controller
 
     public function editSpecifications($id)
     {
-        dd($request->all());
+        
         $product = Product::findOrFail($id);
         $categories = Category::where('type', 'product')->orderBy('name')->get();
 
