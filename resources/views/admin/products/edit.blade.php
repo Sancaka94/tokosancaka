@@ -178,8 +178,11 @@
 @include('layouts.partials.notifications')
 
 <form id="product-form" action="{{ route('admin.products.update', $product->slug) }}" method="POST" enctype="multipart/form-data" novalidate>
-    @csrf
+
+@csrf
     @method('PUT')
+
+    <input type="hidden" name="category_id" value="{{ $product->category_id }}">
 
     {{-- Breadcrumb / Header Kecil --}}
     <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between">
@@ -958,6 +961,6 @@ document.addEventListener('DOMContentLoaded', () => {
             reader.readAsDataURL(file);
         }
     }
-    
+
 </script>
 @endpush
