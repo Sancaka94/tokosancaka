@@ -25,24 +25,41 @@
             {{-- === LEFT COLUMN (Main Content: SKU, Tags, Specs) === --}}
             <div class="lg:col-span-8 space-y-6">
                 
-                {{-- 1. DATA DASAR --}}
-                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                    <h2 class="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">Informasi Dasar</h2>
-                    <div class="grid grid-cols-1 gap-4">
-                        {{-- SKU --}}
-                        <div>
-                            <label for="sku" class="block text-sm font-medium text-gray-700 mb-1">SKU Induk</label>
-                            <input type="text" name="sku" id="sku" value="{{ old('sku', $product->sku) }}" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                        </div>
-
-                        {{-- Tags --}}
-                        <div>
-                            <label for="tags" class="block text-sm font-medium text-gray-700 mb-1">Tags</label>
-                            <input type="text" name="tags" id="tags" value="{{ old('tags', $product->tags) }}" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="Jasa, Perizinan, Cepat">
-                            <p class="text-xs text-gray-500 mt-1">Pisahkan dengan koma.</p>
-                        </div>
-                    </div>
+                {{-- 1. PENGATURAN DATA (SKU, Kategori, Tags) --}}
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+    <h2 class="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">Informasi Dasar</h2>
+    
+    <div class="space-y-4">
+        {{-- SKU --}}
+        <div>
+            <label for="sku" class="block text-sm font-medium text-gray-700 mb-1">SKU Induk</label>
+            <div class="relative">
+                <input type="text" 
+                       name="sku" 
+                       id="sku" 
+                       value="{{ old('sku', $product->sku) }}" 
+                       class="w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 placeholder-gray-400"
+                       placeholder="Contoh: PRD-2023-001 (Kosongkan untuk Auto-Generate)">
+                
+                {{-- Indikator Visual (Opsional) --}}
+                <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                    <i class="fa-solid fa-magic text-gray-300"></i>
                 </div>
+            </div>
+            <p class="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                <i class="fa-solid fa-circle-info text-blue-500"></i>
+                <span>Biarkan kosong jika ingin sistem membuat SKU otomatis.</span>
+            </p>
+        </div>
+
+        {{-- Tags (Tetap sama) --}}
+        <div>
+            <label for="tags" class="block text-sm font-medium text-gray-700 mb-1">Tags</label>
+            <input type="text" name="tags" id="tags" value="{{ old('tags', $product->tags) }}" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="Jasa, Perizinan, Cepat">
+            <p class="text-xs text-gray-500 mt-1">Pisahkan dengan koma.</p>
+        </div>
+    </div>
+</div>
 
                 {{-- 2. SPESIFIKASI DINAMIS --}}
                 <div id="attributes-card" class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hidden">
