@@ -229,31 +229,77 @@
                 </div>
             </div>
 
-            {{-- 2. MEDIA / GAMBAR --}}
+            {{-- 2. MEDIA / GAMBAR (MULTI UPLOAD 5X) --}}
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
                     <h2 class="text-lg font-semibold text-gray-800 flex items-center">
-                        <i class="fa-solid fa-images text-indigo-500 mr-2"></i> Media Produk
+                        <i class="fa-solid fa-images text-indigo-500 mr-2"></i> Media Produk (Maks. 5 Gambar)
                     </h2>
                 </div>
                 <div class="p-6">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Gambar Utama</label>
-                    <div id="image-uploader" class="image-uploader" tabindex="0">
-                        <i class="fa-solid fa-cloud-arrow-up"></i>
-                        <p class="font-semibold text-indigo-600 text-lg">Klik atau Drag & Drop</p>
-                        <p class="text-sm text-gray-500 mt-1">Format: PNG, JPG, WEBP (Maks. 2MB)</p>
+                    {{-- Grid 5 Kolom --}}
+                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                        
+                        @for ($i = 1; $i <= 5; $i++)
+                            @php
+                                // Tentukan nama kolom di database: image_url, image_url_2, image_url_3, dst.
+                                // Asumsi: Kolom di DB bernama product_image_1 s/d product_image_5 atau image_url_1...
+                                // Tapi biasanya di Laravel pakai array product_images[].
+                                // Di sini saya asumsikan Anda akan handle di controller.
+                                // Untuk tampilan, kita pakai logic sederhana.
+                                
+                                // Ganti logika ini sesuai nama kolom di DB Anda.
+                                // Contoh: Jika kolomnya image_url (utama), image_url_2, image_url_3...
+                                $imgKey = ($i == 1) ? 'image_url' : 'image_url_' . $i;
+                                $existingImg = $product->$imgKey ?? null;
+                                $inputId = 'product_image_' . $i;
+                            @endphp
+
+                            <div class="relative group">
+                                {{-- Label Kecil --}}
+                                <span class="absolute top-2 left-2 z-10 bg-black/50 text-white text-[10px] px-2 py-0.5 rounded backdrop-blur-sm">
+                                    {{ $i == 1 ? 'Utama' : 'Gbr ' . $i }}
+                                </span>
+
+                                {{-- Area Upload (Klik Wrapper) --}}
+                                <div id="uploader-{{ $i }}" 
+                                     class="relative w-full aspect-square bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl overflow-hidden cursor-pointer hover:border-indigo-500 hover:bg-indigo-50 transition-all flex flex-col items-center justify-center text-center p-2"
+                                     onclick="document.getElementById('{{ $inputId }}').click();">
+                                    
+                                    {{-- Preview Gambar (Anti Pecah + Placeholder Default) --}}
+                                    <img id="preview-{{ $i }}" 
+                                         src="{{ $existingImg ? asset('public/storage/' . $existingImg) : 'https://tokosancaka.com/storage/uploads/sancaka.png' }}" 
+                                         class="w-full h-full object-contain p-1 {{ $existingImg ? '' : 'opacity-50 grayscale' }} transition-all duration-300"
+                                         alt="Preview {{ $i }}"
+                                         onerror="this.onerror=null; this.src='https://tokosancaka.com/storage/uploads/sancaka.png';">
+
+                                    {{-- Overlay Icon Upload saat Hover --}}
+                                    <div class="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all flex items-center justify-center">
+                                        <i class="fa-solid fa-cloud-arrow-up text-white opacity-0 group-hover:opacity-100 text-2xl drop-shadow-md transform scale-75 group-hover:scale-100 transition-transform"></i>
+                                    </div>
+                                </div>
+
+                                {{-- Input File Hidden --}}
+                                <input type="file" name="{{ $i == 1 ? 'product_image' : 'product_image_' . $i }}" 
+                                       id="{{ $inputId }}" class="hidden" accept="image/png, image/jpeg, image/webp"
+                                       onchange="previewImage(this, 'preview-{{ $i }}', 'uploader-{{ $i }}')">
+                                
+                                {{-- Tombol Hapus (Opsional, jika ingin fitur hapus) --}}
+                                @if($existingImg)
+                                    <button type="button" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center shadow-md hover:bg-red-600 transition transform hover:scale-110 z-20"
+                                            onclick="alert('Fitur hapus gambar ke-' + {{ $i }} + ' bisa ditambahkan di controller');">
+                                        <i class="fa-solid fa-times text-xs"></i>
+                                    </button>
+                                @endif
+                            </div>
+                        @endfor
+
                     </div>
-                    <input type="file" name="product_image" id="product_image" class="hidden" accept="image/png, image/jpeg, image/webp">
                     
-                    @if($product->image_url)
-                        <div class="mt-4 p-2 border rounded-lg bg-gray-50 inline-block">
-                            <img id="image-preview" src="{{ asset('public/storage/' . $product->image_url) }}" alt="Preview" class="image-preview" style="display: block;">
-                        </div>
-                    @else
-                        <img id="image-preview" alt="Preview" class="image-preview mt-4">
-                    @endif
-                    
-                    @error('product_image') <p class="mt-2 text-sm text-red-500 font-medium">{{ $message }}</p> @enderror
+                    <p class="text-xs text-gray-400 mt-4 text-center">
+                        <i class="fa-solid fa-circle-info mr-1"></i> Klik kotak untuk mengunggah. Gambar pertama akan menjadi cover produk.
+                    </p>
+                    @error('product_image') <p class="mt-2 text-sm text-red-500 font-medium text-center">{{ $message }}</p> @enderror
                 </div>
             </div>
 
@@ -832,6 +878,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 input.value = input.value.replace(/\./g, '');
             });
         });
+    }
+
+    // Fungsi Preview Gambar Multi
+    function previewImage(input, previewId, uploaderId) {
+        const file = input.files[0];
+        const preview = document.getElementById(previewId);
+        
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                preview.src = e.target.result;
+                // Hapus efek grayscale/opacity placeholder saat gambar dipilih
+                preview.classList.remove('opacity-50', 'grayscale');
+            }
+            reader.readAsDataURL(file);
+        }
     }
 </script>
 @endpush
