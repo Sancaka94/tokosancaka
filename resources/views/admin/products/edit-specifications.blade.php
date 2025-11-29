@@ -61,81 +61,78 @@
     </div>
 </div>
 
-                {{-- 2. SPESIFIKASI DINAMIS --}}
-                <div id="attributes-card" class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hidden">
-                    <div class="flex items-center justify-between mb-4 border-b pb-2">
-                        <h2 class="text-lg font-semibold text-gray-800">Spesifikasi Tambahan</h2>
-                        <span class="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded">Sesuai Kategori</span>
-                    </div>
-                    
-                    <div id="dynamic-attributes-container" class="space-y-4">
-
-                        {{-- AREA SPESIFIKASI (Existing) --}}
+                {{-- AREA SPESIFIKASI TAMBAHAN --}}
 <div id="attributes-card" class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hidden">
-    <div class="flex items-center justify-between mb-4 border-b pb-2">
+    {{-- Header Card --}}
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 border-b border-gray-100 pb-4">
         <h2 class="text-lg font-semibold text-gray-800">Spesifikasi Tambahan</h2>
-        <div class="flex gap-2">
-            <span class="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded" id="label-category-name">Sesuai Kategori</span>
-            {{-- Tombol Tambah Atribut Manual --}}
-            <button type="button" id="btn-show-add-attr" class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 py-1 rounded border border-gray-300 transition">
-                <i class="fa-solid fa-plus"></i> Tambah Field
+        
+        <div class="flex items-center gap-2">
+            <span class="text-xs bg-indigo-50 text-indigo-600 px-2.5 py-1 rounded-full font-medium border border-indigo-100">
+                Sesuai Kategori
+            </span>
+            {{-- Tombol Tambah (Pasti Muncul) --}}
+            <button type="button" id="btn-show-add-attr" class="text-xs bg-white hover:bg-gray-50 text-gray-700 px-3 py-1.5 rounded-lg border border-gray-300 shadow-sm transition flex items-center gap-2">
+                <i class="fa-solid fa-plus text-indigo-500"></i> Tambah Field
             </button>
         </div>
     </div>
     
     {{-- Container Input Dinamis --}}
-    <div id="dynamic-attributes-container" class="space-y-4">
+    <div id="dynamic-attributes-container" class="space-y-5">
         {{-- Diisi via JS --}}
     </div>
 
     {{-- === FORM TAMBAH ATRIBUT BARU (Hidden by Default) === --}}
-    <div id="form-add-attribute" class="hidden mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg animate-fade-in-down">
-        <h3 class="text-sm font-bold text-gray-800 mb-3"><i class="fa-solid fa-layer-group text-indigo-500 mr-1"></i> Buat Spesifikasi Baru</h3>
+    <div id="form-add-attribute" class="hidden mt-6 bg-gray-50 border border-indigo-100 rounded-xl p-5 relative overflow-hidden transition-all duration-300">
+        <div class="absolute top-0 left-0 w-1 h-full bg-indigo-500"></div>
         
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+        <h3 class="text-sm font-bold text-gray-800 mb-4 flex items-center">
+            <i class="fa-solid fa-layer-group text-indigo-500 mr-2"></i> Buat Spesifikasi Baru
+        </h3>
+        
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-4 mb-4">
             {{-- Nama Atribut --}}
-            <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">Nama Field (Label)</label>
-                <input type="text" id="new_attr_name" class="w-full text-sm border-gray-300 rounded focus:border-indigo-500 focus:ring-indigo-500" placeholder="Contoh: Warna / Bahan">
+            <div class="md:col-span-5">
+                <label class="block text-xs font-semibold text-gray-600 mb-1.5">Nama Field (Label) <span class="text-red-500">*</span></label>
+                <input type="text" id="new_attr_name" class="w-full text-sm border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-indigo-500" placeholder="Contoh: Warna / Bahan">
             </div>
 
             {{-- Tipe Input --}}
-            <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">Tipe Input</label>
-                <select id="new_attr_type" class="w-full text-sm border-gray-300 rounded focus:border-indigo-500 focus:ring-indigo-500">
-                    <option value="text">Text Singkat (Input)</option>
+            <div class="md:col-span-3">
+                <label class="block text-xs font-semibold text-gray-600 mb-1.5">Tipe Input</label>
+                <select id="new_attr_type" class="w-full text-sm border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-indigo-500">
+                    <option value="text">Text Singkat</option>
                     <option value="select">Pilihan (Dropdown)</option>
-                    <option value="checkbox">Pilihan Banyak (Checkbox)</option>
+                    <option value="checkbox">Checkbox (Banyak)</option>
                     <option value="number">Angka</option>
                     <option value="textarea">Text Panjang</option>
                 </select>
             </div>
+
+            {{-- Opsi (Muncul jika select/checkbox) --}}
+            <div id="new_attr_options_wrapper" class="md:col-span-4 hidden">
+                <label class="block text-xs font-semibold text-gray-600 mb-1.5">Opsi (Pisahkan koma)</label>
+                <input type="text" id="new_attr_options" class="w-full text-sm border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-indigo-500" placeholder="Merah, Hijau, Biru">
+            </div>
         </div>
 
-        {{-- Opsi (Hanya muncul jika Select/Checkbox) --}}
-        <div id="new_attr_options_wrapper" class="mb-3 hidden">
-            <label class="block text-xs font-medium text-gray-600 mb-1">Opsi Pilihan (Pisahkan dengan koma)</label>
-            <input type="text" id="new_attr_options" class="w-full text-sm border-gray-300 rounded focus:border-indigo-500 focus:ring-indigo-500" placeholder="Contoh: Merah, Hijau, Biru">
-        </div>
-
-        <div class="flex items-center justify-between mt-4">
-            <label class="inline-flex items-center">
+        <div class="flex items-center justify-between pt-2 border-t border-gray-200 mt-2">
+            <label class="inline-flex items-center cursor-pointer">
                 <input type="checkbox" id="new_attr_required" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" checked>
-                <span class="ml-2 text-xs text-gray-600">Wajib Diisi</span>
+                <span class="ml-2 text-xs font-medium text-gray-600">Wajib Diisi</span>
             </label>
             <div class="flex gap-2">
-                <button type="button" id="btn-cancel-attr" class="px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-800">Batal</button>
-                <button type="button" id="btn-save-attr" class="px-4 py-1.5 text-xs font-medium text-white bg-indigo-600 rounded hover:bg-indigo-700 shadow-sm flex items-center">
-                    Simpan Field
+                <button type="button" id="btn-cancel-attr" class="px-4 py-2 text-xs font-medium text-gray-600 hover:text-gray-800 bg-white border border-gray-300 rounded-lg transition">
+                    Batal
+                </button>
+                <button type="button" id="btn-save-attr" class="px-4 py-2 text-xs font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 shadow-sm flex items-center gap-2 transition">
+                    <i class="fa-solid fa-save"></i> Simpan Field
                 </button>
             </div>
         </div>
     </div>
 </div>
-                        {{-- Diisi via JS --}}
-                    </div>
-                </div>
-            </div>
 
             {{-- === RIGHT COLUMN (Sidebar: Category & Actions) === --}}
             <div class="lg:col-span-4 space-y-6">
