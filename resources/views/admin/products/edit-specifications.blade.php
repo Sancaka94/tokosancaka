@@ -2,6 +2,7 @@
 
 @section('title', 'Edit Spesifikasi: ' . $product->name)
 
+@section('styles')
 <style>
     .card-wrapper { @apply bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden; }
     .card-header { @apply px-6 py-4 bg-gray-50 border-b border-gray-200 font-semibold text-gray-700 flex items-center gap-2; }
@@ -29,7 +30,7 @@
     .sidebar-add { @apply p-4 border-t border-gray-200 bg-gray-50 space-y-2; }
     .add-label { @apply text-xs font-bold text-gray-600 uppercase flex items-center gap-1; }
 </style>
-
+@endsection
 
 @section('content')
 <div class="max-w-7xl mx-auto pb-40">
