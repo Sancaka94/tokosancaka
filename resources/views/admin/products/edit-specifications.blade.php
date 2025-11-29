@@ -77,6 +77,17 @@
             {{-- === RIGHT COLUMN (Sidebar: Category & Actions) === --}}
             <div class="lg:col-span-4 space-y-6">
 
+                {{-- CARD: SAVE ACTIONS --}}
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sticky top-6">
+                    <h3 class="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4">Aksi</h3>
+                    <button type="submit" class="w-full py-2.5 bg-indigo-600 text-white rounded-lg font-medium shadow-md hover:bg-indigo-700 transition flex items-center justify-center mb-3">
+                        <i class="fa-solid fa-save mr-2"></i> Simpan Perubahan
+                    </button>
+                    <a href="{{ route('admin.products.edit', $product->slug) }}" class="w-full block text-center py-2.5 bg-white border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition">
+                        Batal
+                    </a>
+                </div>
+
                 {{-- CARD: KATEGORI (UPDATED UI) --}}
 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
     <div class="flex justify-between items-center mb-4">
@@ -159,20 +170,6 @@
         </div>
     </div>
 </div>
-
-                    <div class="mt-3 p-3 bg-yellow-50 rounded-lg border border-yellow-100">
-                        <div class="flex">
-                            <div class="flex-shrink-0">
-                                <i class="fa-solid fa-triangle-exclamation text-yellow-500 mt-0.5"></i>
-                            </div>
-                            <div class="ml-3">
-                                <p class="text-xs text-yellow-700">
-                                    Mengubah kategori akan <strong>mereset</strong> form spesifikasi di kolom kiri.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
 
             </div>
         </div>
