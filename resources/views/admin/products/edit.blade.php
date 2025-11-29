@@ -404,35 +404,7 @@
     </div>
 </div>
 
-            {{-- D. STATUS --}}
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
-                    <h2 class="text-lg font-semibold text-gray-800">Status & Visibilitas</h2>
-                </div>
-                <div class="p-6 space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Status Publikasi</label>
-                        <select name="status" id="status" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                            <option value="active" {{ old('status', $product->status) == 'active' ? 'selected' : '' }}>✅ Aktif (Tayang)</option>
-                            <option value="inactive" {{ old('status', $product->status) == 'inactive' ? 'selected' : '' }}>⛔ Nonaktif (Gudang)</option>
-                        </select>
-                    </div>
-
-                    <div class="space-y-2 pt-2">
-                        <label class="inline-flex items-center cursor-pointer">
-                            <input type="checkbox" name="is_new" value="1" {{ old('is_new', $product->is_new) ? 'checked' : '' }} class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
-                            <span class="ml-2 text-sm text-gray-700">Label "Produk Baru"</span>
-                        </label>
-                        <br>
-                        <label class="inline-flex items-center cursor-pointer">
-                            <input type="checkbox" name="is_bestseller" value="1" {{ old('is_bestseller', $product->is_bestseller) ? 'checked' : '' }} class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
-                            <span class="ml-2 text-sm text-gray-700">Label "Bestseller"</span>
-                        </label>
-                    </div>
-                </div>
-            </div>
-
-            {{-- F. MONITOR SPESIFIKASI (LOGIKA CUSTOM DARI ANDA) --}}
+{{-- F. MONITOR SPESIFIKASI (LOGIKA CUSTOM DARI ANDA) --}}
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mt-6">
                 <div class="px-6 py-4 border-b border-gray-100 bg-white flex justify-between items-center">
                     <h2 class="text-lg font-semibold text-gray-800">
@@ -497,6 +469,36 @@
                     @endif
                 </div>
             </div>
+
+            {{-- D. STATUS --}}
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+                    <h2 class="text-lg font-semibold text-gray-800">Status & Visibilitas</h2>
+                </div>
+                <div class="p-6 space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Status Publikasi</label>
+                        <select name="status" id="status" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                            <option value="active" {{ old('status', $product->status) == 'active' ? 'selected' : '' }}>✅ Aktif (Tayang)</option>
+                            <option value="inactive" {{ old('status', $product->status) == 'inactive' ? 'selected' : '' }}>⛔ Nonaktif (Gudang)</option>
+                        </select>
+                    </div>
+
+                    <div class="space-y-2 pt-2">
+                        <label class="inline-flex items-center cursor-pointer">
+                            <input type="checkbox" name="is_new" value="1" {{ old('is_new', $product->is_new) ? 'checked' : '' }} class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                            <span class="ml-2 text-sm text-gray-700">Label "Produk Baru"</span>
+                        </label>
+                        <br>
+                        <label class="inline-flex items-center cursor-pointer">
+                            <input type="checkbox" name="is_bestseller" value="1" {{ old('is_bestseller', $product->is_bestseller) ? 'checked' : '' }} class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                            <span class="ml-2 text-sm text-gray-700">Label "Bestseller"</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            
 
         </div>
     </div>
