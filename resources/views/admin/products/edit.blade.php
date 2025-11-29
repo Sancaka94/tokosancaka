@@ -7,6 +7,17 @@
 <style>
     /* --- RESET & BASIC SETUP --- */
     /* Hapus html, body height 100% agar scrollbar browser bawaan muncul */
+    /* Trik memindahkan panah input number ke KIRI */
+    .spinner-left {
+        direction: rtl;       /* Memaksa elemen UI (panah) ke kiri */
+        text-align: center;   /* Teks angka tetap di tengah */
+        padding-left: 10px;   /* Memberi jarak agar tidak mepet panah */
+    }
+    
+    /* Memastikan saat mengetik angka tidak terbalik */
+    .spinner-left::placeholder {
+        direction: ltr;
+    }
     
     .image-uploader {
         border: 2px dashed #cbd5e1;
@@ -370,95 +381,43 @@
         {{-- KOLOM KANAN (SIDEBAR) --}}
         <div class="space-y-8">
 
-           {{-- A. HARGA & STOK (AUTO FORMAT RUPIAH) --}}
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
-                    <h2 class="text-lg font-semibold text-gray-800 flex items-center">
-                        <i class="fa-solid fa-tags text-blue-500 mr-2"></i> Harga & Stok
-                    </h2>
-                </div>
-                <div class="p-6 space-y-6">
-                    
-                    {{-- Harga Jual --}}
-                    <div>
-                        <label for="price" class="block text-sm font-medium text-gray-700 mb-1 required-label">Harga Jual</label>
-                        <div class="flex relative rounded-lg shadow-sm">
-                            <span class="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 text-gray-500 font-bold text-sm">
-                                Rp
-                            </span>
-                            {{-- Input diganti type="text" dan tambah class 'currency-input' --}}
-                            <input type="text" name="price" id="price" 
-                                   value="{{ old('price', number_format($product->price, 0, ',', '.')) }}" 
-                                   class="currency-input flex-1 w-full h-11 px-3 border border-gray-300 rounded-none rounded-r-lg focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-colors text-gray-800 font-bold text-lg" 
-                                   placeholder="0" inputmode="numeric" required>
-                        </div>
-                        @error('price') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
-                    </div>
-
-                    {{-- Harga Coret --}}
-                    <div>
-                        <label for="original_price" class="block text-sm font-medium text-gray-700 mb-1">Harga Coret (Asli)</label>
-                        <div class="flex relative rounded-lg shadow-sm">
-                            <span class="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 text-gray-500 font-bold text-sm">
-                                Rp
-                            </span>
-                            <input type="text" name="original_price" id="original_price" 
-                                   value="{{ old('original_price', $product->original_price ? number_format($product->original_price, 0, ',', '.') : '') }}" 
-                                   class="currency-input flex-1 w-full h-11 px-3 border border-gray-300 rounded-none rounded-r-lg focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-colors text-gray-500 line-through" 
-                                   placeholder="0" inputmode="numeric">
-                        </div>
-                    </div>
-
-                    {{-- Stok & Berat --}}
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label for="stock" class="block text-sm font-medium text-gray-700 mb-1 required-label">Stok</label>
-                            <input type="number" name="stock" id="stock" value="{{ old('stock', $product->stock) }}" 
-                                   class="w-full h-11 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-colors font-semibold" 
-                                   required>
-                        </div>
-                        <div>
-                            <label for="weight" class="block text-sm font-medium text-gray-700 mb-1 required-label">Berat</label>
-                            <div class="flex relative w-full">
-                                <input type="number" name="weight" id="weight" value="{{ old('weight', $product->weight) }}" 
-                                       class="flex-1 w-full h-11 px-3 border border-gray-300 rounded-none rounded-l-lg focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-colors" 
-                                       required>
-                                <span class="inline-flex items-center px-3 rounded-r-lg border border-l-0 border-gray-300 bg-gray-50 text-gray-500 font-bold text-xs uppercase">
-                                    Gram
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- Dimensi --}}
+           {{-- Dimensi (Panah Kiri, CM Kanan) --}}
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Dimensi (PxLxT) cm</label>
                         <div class="grid grid-cols-3 gap-3 items-center">
+                            
+                            {{-- Panjang --}}
                             <div class="relative">
+                                {{-- Input dengan class spinner-left --}}
                                 <input type="number" name="length" value="{{ old('length', $product->length) }}" 
-                                       class="w-full h-11 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 text-center" 
-                                       placeholder="P">
-                                <span class="absolute right-2 top-3 text-xs text-gray-400 font-bold pointer-events-none">cm</span>
+                                       class="spinner-left w-full h-11 border border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400" 
+                                       placeholder="0">
+                                {{-- Label P (Kecil di tengah atas/placeholder style) --}}
+                                <span class="absolute left-0 right-0 top-1 text-[10px] text-gray-400 text-center pointer-events-none font-bold uppercase">Panjang</span>
+                                {{-- Satuan CM (Di Kanan) --}}
+                                <span class="absolute right-3 top-3 text-sm text-gray-500 font-bold pointer-events-none">cm</span>
                             </div>
                             
+                            {{-- Lebar --}}
                             <div class="relative">
                                 <input type="number" name="width" value="{{ old('width', $product->width) }}" 
-                                       class="w-full h-11 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 text-center" 
-                                       placeholder="L">
-                                <span class="absolute right-2 top-3 text-xs text-gray-400 font-bold pointer-events-none">cm</span>
+                                       class="spinner-left w-full h-11 border border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400" 
+                                       placeholder="0">
+                                <span class="absolute left-0 right-0 top-1 text-[10px] text-gray-400 text-center pointer-events-none font-bold uppercase">Lebar</span>
+                                <span class="absolute right-3 top-3 text-sm text-gray-500 font-bold pointer-events-none">cm</span>
                             </div>
 
+                            {{-- Tinggi --}}
                             <div class="relative">
                                 <input type="number" name="height" value="{{ old('height', $product->height) }}" 
-                                       class="w-full h-11 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 text-center" 
-                                       placeholder="T">
-                                <span class="absolute right-2 top-3 text-xs text-gray-400 font-bold pointer-events-none">cm</span>
+                                       class="spinner-left w-full h-11 border border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400" 
+                                       placeholder="0">
+                                <span class="absolute left-0 right-0 top-1 text-[10px] text-gray-400 text-center pointer-events-none font-bold uppercase">Tinggi</span>
+                                <span class="absolute right-3 top-3 text-sm text-gray-500 font-bold pointer-events-none">cm</span>
                             </div>
+
                         </div>
                     </div>
-
-                </div>
-            </div>
 
             {{-- A. KATEGORI & SPESIFIKASI (FIXED) --}}
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
