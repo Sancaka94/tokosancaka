@@ -462,10 +462,10 @@
                             <span class="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 text-gray-500 font-bold text-sm">
                                 Rp
                             </span>
-                            <input type="text" name="original_price" id="original_price" 
-                                   value="{{ old('original_price', $product->original_price ? number_format($product->original_price, 0, ',', '.') : '') }}" 
-                                   class="currency-input flex-1 w-full h-11 px-3 border border-gray-300 rounded-none rounded-r-lg focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-colors text-gray-500 line-through" 
-                                   placeholder="0" inputmode="numeric">
+                            <input type="text" name="price" id="price" 
+       value="{{ old('price', number_format($product->price, 0, ',', '.')) }}" 
+       class="currency-input flex-1 w-full h-11 px-3 border border-gray-300 rounded-none rounded-r-lg focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-colors text-gray-800 font-bold text-lg" 
+       placeholder="0" inputmode="numeric" required>
                         </div>
                     </div>
 
