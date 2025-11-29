@@ -153,7 +153,7 @@ class CategoryController extends Controller
         'data' => [
             'id' => $category->id,
             'name' => $category->name,
-            'attributes_url' => route('categories.attributes', $category->id) 
+            'attributes_url' => route('admin.categories.attributes', $category->id) 
         ]
     ]);
 }
