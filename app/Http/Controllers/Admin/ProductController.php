@@ -5,40 +5,31 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\Category;
-// Hapus use Attribute jika tidak digunakan langsung di sini
-use App\Models\Attribute; // Pastikan Model Attribute ada (untuk get type)
-use App\Models\ProductAttribute; // Pastikan Model ProductAttribute ada
-use App\Models\ProductVariantType; // Pastikan Model ProductVariantType ada
-use App\Models\ProductVariantOption; // Pastikan Model ProductVariantOption ada
-use App\Models\ProductVariant; // Pastikan Model ProductVariant ada
+use App\Models\Attribute;
+use App\Models\ProductAttribute;
+use App\Models\ProductVariantType;
+use App\Models\ProductVariantOption;
+use App\Models\ProductVariant;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Yajra\DataTables\Facades\DataTables;
 use Exception;
-use Illuminate\Support\Facades\Log; // Untuk logging error
-use Illuminate\Support\Facades\Auth; // Jika perlu ambil data admin default
-use Illuminate\Validation\Rule; // Untuk unique rule
-
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 
 class ProductController extends Controller
 {
     /**
      * Menampilkan halaman manajemen produk.
      */
-   /**
-     * Menampilkan halaman manajemen produk.
-     */
     public function index(Request $request)
     {
-        // 1. Ambil semua kategori untuk dropdown filter
         $categories = Category::where('type', 'product')->orderBy('name')->get(['name', 'slug']);
-
-        // 2. Mulai Query Produk dengan Eager Loading (untuk efisiensi query kategori)
         $query = Product::with('category');
 
-        // 3. Logika Pencarian (Search)
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
@@ -47,7 +38,6 @@ class ProductController extends Controller
             });
         }
 
-        // 4. Logika Filter Kategori
         if ($request->filled('category')) {
             $categorySlug = $request->category;
             $query->whereHas('category', function($q) use ($categorySlug) {
@@ -55,12 +45,10 @@ class ProductController extends Controller
             });
         }
 
-        // 5. Ambil data dengan Pagination (10 per halaman) & Urutkan dari yang terbaru
         $products = $query->latest()->paginate(10);
-
-        // 6. Kirim $categories DAN $products ke view
         return view('admin.products.index', compact('categories', 'products'));
     }
+
     /**
      * Menyediakan data untuk Yajra DataTables.
      */
@@ -70,28 +58,24 @@ class ProductController extends Controller
             try {
                 $categorySlug = $request->input('category_slug');
 
-                // Muat relasi 'category' dan 'productVariantTypes'
-                // Juga muat relasi 'productVariants' untuk mendapatkan harga varian pertama (jika ada)
                 $data = Product::with(['category', 'productVariantTypes', 'productVariants'])
                         ->when($categorySlug, function ($query, $slug) {
                             $query->whereHas('category', function($q) use ($slug) {
                                 $q->where('slug', $slug);
                             });
                         })
-                        ->select('products.*'); // Pilih semua kolom dari products
+                        ->select('products.*');
 
                 return DataTables::of($data)
                     ->addIndexColumn()
                     ->addColumn('image', function ($row) {
-                        // PERBAIKAN: Cek 'image_url' dan fallback ke 'image', lalu cek null dan file exists
-                        $imageUrl = $row->image_url ?? $row->image; // Coba image_url dulu, fallback ke image
+                        $imageUrl = $row->image_url ?? $row->image;
                         $url = $imageUrl && Storage::disk('public')->exists($imageUrl)
                                ? asset('public/storage/' . $imageUrl)
-                               : 'https://placehold.co/80x80/EFEFEF/333333?text=N/A'; // Tampilkan N/A jika null atau file tidak ada
+                               : 'https://placehold.co/80x80/EFEFEF/333333?text=N/A';
                         return '<img src="' . e($url) . '" alt="' . e($row->name) . '" class="rounded" width="60" loading="lazy" />';
                     })
                     ->editColumn('price', function ($row) {
-                         // Tampilkan harga varian pertama jika ada dan relasi dimuat
                         $displayPrice = $row->price;
                         if($row->relationLoaded('productVariants') && $row->productVariants->isNotEmpty()){
                              $displayPrice = $row->productVariants->first()->price ?? $row->price;
@@ -99,11 +83,9 @@ class ProductController extends Controller
                         return 'Rp' . number_format($displayPrice, 0, ',', '.');
                     })
                     ->addColumn('category_id', function ($row) {
-                        // PERBAIKAN: Tambahkan is_object() check
                         return $row->category && is_object($row->category) ? e($row->category->id) : '<span class="text-danger">N/A</span>';
                     })
                     ->addColumn('has_variants', function($row) {
-                         // Cek apakah relasi productVariantTypes (yang di-load) ada dan tidak kosong
                         return $row->productVariantTypes && $row->productVariantTypes->isNotEmpty();
                     })
                     ->addColumn('status_badge', function ($row) {
@@ -112,23 +94,19 @@ class ProductController extends Controller
                         return '<span class="badge ' . e($color) . '">' . e($text) . '</span>';
                     })
                     ->editColumn('stock', function ($row) {
-                        // Tambahkan indikator varian
                         $stockDisplay = $row->stock ?? 0;
-                        // Gunakan has_variants yang sudah dihitung
                         if ($row->has_variants) {
                             $stockDisplay = ($row->stock ?? 0) . ' <i class="fas fa-code-branch variant-indicator" title="Produk ini memiliki varian"></i>';
                         }
                         return $stockDisplay;
                     })
                     ->addColumn('action', function($row){
-                        // Menggunakan slug untuk route model binding
                         $editUrl = route('admin.products.edit', $row->slug);
                         $deleteUrl = route('admin.products.destroy', $row->slug);
                         $outOfStockUrl = route('admin.products.outOfStock', $row->slug);
                         $restockUrl = route('admin.products.restock', $row->slug);
 
                         $actionBtn = '<div class="d-flex justify-content-center gap-2">';
-                        // Tombol restock (hanya tampil jika tidak ada varian)
                         if (!$row->has_variants) {
                              $actionBtn .= '<button type="button" onclick="openRestockModal(\''.e($restockUrl).'\', \''.e($row->name).'\')" class="btn btn-success btn-circle btn-sm" title="Restock"><i class="fas fa-plus"></i></button>';
                              $actionBtn .= '<form action="'.e($outOfStockUrl).'" method="POST" class="d-inline" onsubmit="return confirm(\'Anda yakin ingin menandai produk ini habis?\');">'.csrf_field().method_field('PATCH').'<button type="submit" class="btn btn-secondary btn-circle btn-sm" title="Tandai Habis"><i class="fas fa-box-open"></i></button></form>';
@@ -146,15 +124,13 @@ class ProductController extends Controller
                     ->make(true);
 
             } catch (Exception $e) {
-                Log::error('DataTables Error: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+                Log::error('DataTables Error: ' . $e->getMessage());
                 return response()->json(['error' => 'Could not process data.', 'message' => $e->getMessage()], 500);
             }
         }
-         // Fallback jika bukan AJAX
-         $categories = Category::where('type', 'product')->orderBy('name')->get(['name', 'slug']);
-         return view('admin.products.index', compact('categories'));
+        $categories = Category::where('type', 'product')->orderBy('name')->get(['name', 'slug']);
+        return view('admin.products.index', compact('categories'));
     }
-
 
     /**
      * Menampilkan form untuk membuat produk baru.
@@ -194,9 +170,11 @@ class ProductController extends Controller
             'attributes'       => 'nullable|array',
             'attributes.*'     => 'nullable',
             'variant_types'    => 'nullable|array',
+            'is_promo'         => 'nullable|boolean',
+            'is_shipping_discount' => 'nullable|boolean',
+            'is_free_shipping' => 'nullable|boolean',
         ];
 
-        $conditionalRules = [];
         $hasVariantsRequest = $request->has('variant_types') && !empty($request->variant_types);
 
         if ($hasVariantsRequest) {
@@ -219,46 +197,28 @@ class ProductController extends Controller
             ];
         }
 
-        $validated = $request->validate(array_merge($baseRules, $conditionalRules));
-
+        $validated = $request->validate(array_merge($baseRules, $conditionalRules ?? []));
         $validatedDataForCreate = $validated;
+
         try {
             if ($request->hasFile('product_image')) {
-                Log::info('Processing product image upload...');
                 $path = $request->file('product_image')->store('products', 'public');
-                if ($path) {
-                     $validatedDataForCreate['image_url'] = $path; // Use image_url
-                     Log::info('Product image stored at: ' . $path);
-                } else {
-                     Log::error('Failed to store product image.');
-                }
-            } else {
-                Log::info('No product image uploaded.');
+                $validatedDataForCreate['image_url'] = $path;
             }
             unset($validatedDataForCreate['product_image']);
 
             if ($request->hasFile('seller_logo')) {
-                 Log::info('Processing seller logo upload...');
-                $logoPath = $request->file('public/seller_logo')->store('seller_logos', 'public');
-                 if ($logoPath) {
-                    $validatedDataForCreate['seller_logo'] = $logoPath;
-                    Log::info('Seller logo stored at: ' . $logoPath);
-                 } else {
-                     Log::error('Failed to store seller logo.');
-                 }
-            } else {
-                 Log::info('No seller logo uploaded.');
+                $logoPath = $request->file('seller_logo')->store('seller_logos', 'public');
+                $validatedDataForCreate['seller_logo'] = $logoPath;
             }
             unset($validatedDataForCreate['seller_logo']);
 
-
             if (!empty($request->seller_wa)) {
                 $wa = preg_replace('/[^0-9]/', '', $request->seller_wa);
-                if (!Str::startsWith($wa, '62')) {
-                     $wa = '62' . ltrim($wa, '0');
-                }
+                if (!Str::startsWith($wa, '62')) $wa = '62' . ltrim($wa, '0');
                 $validatedDataForCreate['seller_wa'] = $wa;
             }
+
             if (empty($validatedDataForCreate['store_name'])) {
                 $validatedDataForCreate['store_name'] = Auth::user()->store->name ?? config('app.default_store_name', 'Toko Sancaka Default');
             }
@@ -272,10 +232,10 @@ class ProductController extends Controller
                  $validatedDataForCreate['sku'] = $this->generateSku($validatedDataForCreate['name'], $validatedDataForCreate['category_id']);
             }
 
+            // Tags Logic
             $manualTags = [];
             if (!empty($request->tags)) {
-                $manualTags = array_map('trim', explode(',', $request->tags));
-                $manualTags = array_filter($manualTags);
+                $manualTags = array_filter(array_map('trim', explode(',', $request->tags)));
             }
             $category = Category::find($validatedDataForCreate['category_id']);
             $categoryTag = $category->name ?? null;
@@ -285,35 +245,26 @@ class ProductController extends Controller
             }
             $validatedDataForCreate['tags'] = !empty($allTags) ? json_encode(array_values(array_unique($allTags))) : null;
 
+            // Boolean Flags
             $validatedDataForCreate['is_new'] = $request->has('is_new');
             $validatedDataForCreate['is_bestseller'] = $request->has('is_bestseller');
-            // --- TAMBAHKAN KODE INI ---
-$validatedDataForCreate['is_promo'] = $request->has('is_promo');
-$validatedDataForCreate['is_shipping_discount'] = $request->has('is_shipping_discount');
-$validatedDataForCreate['is_free_shipping'] = $request->has('is_free_shipping');
-// --------------------------
+            $validatedDataForCreate['is_promo'] = $request->has('is_promo');
+            $validatedDataForCreate['is_shipping_discount'] = $request->has('is_shipping_discount');
+            $validatedDataForCreate['is_free_shipping'] = $request->has('is_free_shipping');
 
-            // Hapus data relasi sebelum create product
+            // Extract relations data
             $attributesInput = $request->input('attributes', []);
             $variantTypesInput = $request->input('variant_types', []);
             $productVariantsInput = $request->input('product_variants', []);
-            unset($validatedDataForCreate['attributes']);
-            unset($validatedDataForCreate['variant_types']);
-            unset($validatedDataForCreate['product_variants']);
+            unset($validatedDataForCreate['attributes'], $validatedDataForCreate['variant_types'], $validatedDataForCreate['product_variants']);
 
             if ($hasVariantsRequest) {
                 $validatedDataForCreate['stock'] = 0;
-                 $validatedDataForCreate['price'] = $productVariantsInput[0]['price'] ?? $validatedDataForCreate['price'];
+                $validatedDataForCreate['price'] = $productVariantsInput[0]['price'] ?? $validatedDataForCreate['price'];
             }
-
-            Log::info('Attempting to create product with data:', $validatedDataForCreate);
 
             $product = DB::transaction(function () use ($validatedDataForCreate, $attributesInput, $variantTypesInput, $productVariantsInput, $hasVariantsRequest) {
                 $product = Product::create($validatedDataForCreate);
-                 if (!$product) {
-                    throw new Exception("Failed to create product model.");
-                 }
-                 Log::info("Product created with ID: " . $product->id);
                 $this->syncAttributes($product, $attributesInput);
                 if ($hasVariantsRequest) {
                     $this->syncVariantTypesAndCombinations($product, $variantTypesInput, $productVariantsInput);
@@ -324,15 +275,10 @@ $validatedDataForCreate['is_free_shipping'] = $request->has('is_free_shipping');
             return redirect()->route('admin.products.index')->with('success', 'Produk baru berhasil ditambahkan.');
 
         } catch (Exception $e) {
-            Log::error('Error saving product: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
-            $imagePath = $validatedDataForCreate['image_url'] ?? null;
-            if ($imagePath && Storage::disk('public')->exists($imagePath)) { Storage::disk('public')->delete($imagePath); }
-            $logoPath = $validatedDataForCreate['seller_logo'] ?? null;
-            if ($logoPath && Storage::disk('public')->exists($logoPath)) { Storage::disk('public')->delete($logoPath); }
+            Log::error('Error saving product: ' . $e->getMessage());
             return back()->with('error', 'Gagal menyimpan produk: ' . $e->getMessage())->withInput();
         }
     }
-
 
     /**
      * Menampilkan form untuk mengedit produk.
@@ -341,41 +287,37 @@ $validatedDataForCreate['is_free_shipping'] = $request->has('is_free_shipping');
     {
         $product->load([
             'category',
-            'productAttributes', // Hanya load ini, tidak perlu relasi ke attribute
+            'productAttributes',
             'productVariantTypes.options' => fn ($q) => $q->orderBy('id'),
             'productVariants.options' => fn ($q) => $q->orderBy('product_variant_type_id')->orderBy('id')
         ]);
 
         $product->tags = $this->decodeTags($product->tags);
 
-        // Siapkan data atribut yang ada untuk JavaScript [slug => value]
+        // --- Logic Penyiapan Data Atribut untuk JS ---
         $existingAttributesData = [];
-        // Ambil info tipe dari tabel 'attributes' untuk konversi checkbox JSON
-        $attributeDefinitions = Attribute::where('category_id', $product->category_id)
-                                          ->get()
-                                          ->keyBy('name'); // Key by name for lookup
+        $attributeDefinitions = Attribute::where('category_id', $product->category_id)->get()->keyBy('name');
 
         foreach($product->productAttributes as $pa) {
-            $attributeName = $pa->name;
-            $slug = Str::slug($attributeName); // Buat slug dari nama
+            $name = $pa->name;
+            $value = $pa->value;
+            $definition = $attributeDefinitions->get($name);
+            
+            // Gunakan slug asli dari master attribute jika ada, fallback ke Str::slug
+            $slug = $definition ? $definition->slug : Str::slug($name);
+            $type = $definition ? $definition->type : 'text';
 
-            if ($slug) {
-                $value = $pa->value;
-                $attributeInfo = $attributeDefinitions->get($attributeName);
-                $attributeType = $attributeInfo->type ?? 'text'; // Ambil tipe dari tabel attributes
-
-                if ($attributeType === 'checkbox' && is_string($value)) {
-                    try {
-                        $decodedValue = json_decode($value, true, 512, JSON_THROW_ON_ERROR);
-                        $value = is_array($decodedValue) ? $decodedValue : [$value];
-                    } catch (\JsonException $e) { $value = [$value]; }
-                }
-                $existingAttributesData[$slug] = $value;
+            if ($type === 'checkbox' && is_string($value)) {
+                try {
+                    $decoded = json_decode($value, true, 512, JSON_THROW_ON_ERROR);
+                    $value = is_array($decoded) ? $decoded : [$value];
+                } catch (\JsonException $e) { $value = [$value]; }
             }
+            $existingAttributesData[$slug] = $value;
         }
         $product->existing_attributes_json = json_encode($existingAttributesData);
 
-
+        // JSON Variants
         $product->existing_variant_types_json = $product->productVariantTypes->map(function($variantType) {
             return [ 'name' => $variantType->name, 'options' => $variantType->options->pluck('name')->implode(', ') ];
         })->toJson();
@@ -389,12 +331,12 @@ $validatedDataForCreate['is_free_shipping'] = $request->has('is_free_shipping');
         return view('admin.products.edit', compact('product', 'categories'));
     }
 
-
     /**
      * Memperbarui data produk di database.
      */
     public function update(Request $request, Product $product)
     {
+        // Validasi sama dengan Store, tapi ignore unique ID
         $baseRules = [
             'name'             => ['required', 'string', 'max:255', Rule::unique('products', 'name')->ignore($product->id)],
             'description'      => 'nullable|string',
@@ -419,9 +361,11 @@ $validatedDataForCreate['is_free_shipping'] = $request->has('is_free_shipping');
             'attributes'       => 'nullable|array',
             'attributes.*'     => 'nullable',
             'variant_types'    => 'nullable|array',
+            'is_promo'         => 'nullable|boolean',
+            'is_shipping_discount' => 'nullable|boolean',
+            'is_free_shipping' => 'nullable|boolean',
         ];
 
-        $conditionalRules = [];
         $hasVariantsRequest = $request->has('variant_types') && !empty($request->variant_types);
 
         if ($hasVariantsRequest) {
@@ -432,7 +376,7 @@ $validatedDataForCreate['is_free_shipping'] = $request->has('is_free_shipping');
                 'product_variants' => 'required|array|min:1',
                 'product_variants.*.price' => 'required|numeric|min:0',
                 'product_variants.*.stock' => 'required|integer|min:0',
-                'product_variants.*.sku_code' => ['nullable', 'string', 'max:100'], // Unique check might need manual loop
+                'product_variants.*.sku_code' => ['nullable', 'string', 'max:100'],
                 'product_variants.*.variant_options' => 'required|array|min:1',
                 'product_variants.*.variant_options.*.type_name' => 'required|string',
                 'product_variants.*.variant_options.*.value' => 'required|string',
@@ -444,73 +388,36 @@ $validatedDataForCreate['is_free_shipping'] = $request->has('is_free_shipping');
             ];
         }
 
-        $validated = $request->validate(array_merge($baseRules, $conditionalRules));
-
+        $validated = $request->validate(array_merge($baseRules, $conditionalRules ?? []));
         $validatedDataForUpdate = $validated;
+
         try {
-            // Handle image update
             if ($request->hasFile('product_image')) {
-                 Log::info('Processing product image update for product ID: ' . $product->id);
-                $oldImage = $product->image_url;
-                if ($oldImage && Storage::disk('public')->exists($oldImage)) {
-                    Log::info('Deleting old product image: ' . $oldImage);
-                    Storage::disk('public')->delete($oldImage);
+                if ($product->image_url && Storage::disk('public')->exists($product->image_url)) {
+                    Storage::disk('public')->delete($product->image_url);
                 }
-                $path = $request->file('product_image')->store('products', 'public');
-                if ($path) {
-                    $validatedDataForUpdate['image_url'] = $path; // Use image_url
-                    Log::info('New product image stored at: ' . $path);
-                } else {
-                     Log::error('Failed to store updated product image for product ID: ' . $product->id);
-                     unset($validatedDataForUpdate['image_url']); // Jangan update jika gagal
-                }
-            } else {
-                 // JANGAN set $validatedDataForUpdate['image_url'] = $product->image_url di sini
-                 // Cukup unset key agar tidak menimpa data lama jika tidak ada file baru
-                 unset($validatedDataForUpdate['image_url']);
-                 Log::info('No new product image uploaded for product ID: ' . $product->id . '. Keeping old: ' . $product->image_url);
+                $validatedDataForUpdate['image_url'] = $request->file('product_image')->store('products', 'public');
             }
-            unset($validatedDataForUpdate['product_image']); // Hapus input file
+            unset($validatedDataForUpdate['product_image']);
 
-
-            // Handle logo update (logika sama seperti image)
             if ($request->hasFile('seller_logo')) {
-                 Log::info('Processing seller logo update for product ID: ' . $product->id);
-                $oldLogo = $product->seller_logo;
-                if ($oldLogo && Storage::disk('public')->exists($oldLogo)) {
-                     Log::info('Deleting old seller logo: ' . $oldLogo);
-                    Storage::disk('public')->delete($oldLogo);
+                if ($product->seller_logo && Storage::disk('public')->exists($product->seller_logo)) {
+                    Storage::disk('public')->delete($product->seller_logo);
                 }
-                $logoPath = $request->file('seller_logo')->store('seller_logos', 'public');
-                 if ($logoPath) {
-                    $validatedDataForUpdate['seller_logo'] = $logoPath;
-                     Log::info('New seller logo stored at: ' . $logoPath);
-                 } else {
-                     Log::error('Failed to store updated seller logo for product ID: ' . $product->id);
-                     unset($validatedDataForUpdate['seller_logo']);
-                 }
-            } else {
-                // Jangan kirim key 'seller_logo' jika tidak ada file baru
-                 unset($validatedDataForUpdate['seller_logo']);
-                 Log::info('No new seller logo uploaded for product ID: ' . $product->id . '. Keeping old: ' . $product->seller_logo);
+                $validatedDataForUpdate['seller_logo'] = $request->file('seller_logo')->store('seller_logos', 'public');
             }
-            unset($validatedDataForUpdate['seller_logo']); // Hapus input file
-
+            unset($validatedDataForUpdate['seller_logo']);
 
             if ($request->filled('seller_wa')) {
                 $wa = preg_replace('/[^0-9]/', '', $request->seller_wa);
-                if (!Str::startsWith($wa, '62')) {
-                     $wa = '62' . ltrim($wa, '0');
-                }
+                if (!Str::startsWith($wa, '62')) $wa = '62' . ltrim($wa, '0');
                 $validatedDataForUpdate['seller_wa'] = $wa;
-            } else { $validatedDataForUpdate['seller_wa'] = null; }
+            } else {
+                $validatedDataForUpdate['seller_wa'] = null;
+            }
 
-            if (empty($validatedDataForUpdate['store_name'])) {
-                $validatedDataForUpdate['store_name'] = Auth::user()->store->name ?? config('app.default_store_name', 'Toko Sancaka Default');
-            }
-            if (empty($validatedDataForUpdate['seller_city'])) {
-                $validatedDataForUpdate['seller_city'] = Auth::user()->store->city ?? config('app.default_store_city', 'Ngawi');
-            }
+            if (empty($validatedDataForUpdate['store_name'])) $validatedDataForUpdate['store_name'] = Auth::user()->store->name ?? config('app.default_store_name');
+            if (empty($validatedDataForUpdate['seller_city'])) $validatedDataForUpdate['seller_city'] = Auth::user()->store->city ?? config('app.default_store_city');
 
             if ($request->name !== $product->name) {
                  $validatedDataForUpdate['slug'] = $this->generateUniqueSlug($validatedDataForUpdate['name'], $product->id);
@@ -520,10 +427,10 @@ $validatedDataForCreate['is_free_shipping'] = $request->has('is_free_shipping');
                  $validatedDataForUpdate['sku'] = $this->generateSku($validatedDataForUpdate['name'], $validatedDataForUpdate['category_id']);
             }
 
+            // Tags Logic
             $manualTags = [];
             if (!empty($request->tags)) {
-                $manualTags = array_map('trim', explode(',', $request->tags));
-                $manualTags = array_filter($manualTags);
+                $manualTags = array_filter(array_map('trim', explode(',', $request->tags)));
             }
             $category = Category::find($validatedDataForUpdate['category_id']);
             $categoryTag = $category->name ?? null;
@@ -533,20 +440,17 @@ $validatedDataForCreate['is_free_shipping'] = $request->has('is_free_shipping');
             }
             $validatedDataForUpdate['tags'] = !empty($allTags) ? json_encode(array_values(array_unique($allTags))) : null;
 
+            // Flags
             $validatedDataForUpdate['is_new'] = $request->has('is_new');
             $validatedDataForUpdate['is_bestseller'] = $request->has('is_bestseller');
-            // --- TAMBAHKAN KODE INI ---
-$validatedDataForUpdate['is_promo'] = $request->has('is_promo');
-$validatedDataForUpdate['is_shipping_discount'] = $request->has('is_shipping_discount');
-$validatedDataForUpdate['is_free_shipping'] = $request->has('is_free_shipping');
-// --------------------------
+            $validatedDataForUpdate['is_promo'] = $request->has('is_promo');
+            $validatedDataForUpdate['is_shipping_discount'] = $request->has('is_shipping_discount');
+            $validatedDataForUpdate['is_free_shipping'] = $request->has('is_free_shipping');
 
             $attributesInput = $request->input('attributes', []);
             $variantTypesInput = $request->input('variant_types', []);
             $productVariantsInput = $request->input('product_variants', []);
-            unset($validatedDataForUpdate['attributes']);
-            unset($validatedDataForUpdate['variant_types']);
-            unset($validatedDataForUpdate['product_variants']);
+            unset($validatedDataForUpdate['attributes'], $validatedDataForUpdate['variant_types'], $validatedDataForUpdate['product_variants']);
 
             if ($hasVariantsRequest) {
                 $validatedDataForUpdate['stock'] = 0;
@@ -556,32 +460,25 @@ $validatedDataForUpdate['is_free_shipping'] = $request->has('is_free_shipping');
                 $validatedDataForUpdate['price'] = $request->input('price', $product->price);
             }
 
-            Log::info('Attempting to update product ID: ' . $product->id . ' with data:', $validatedDataForUpdate);
-
             DB::transaction(function () use ($product, $validatedDataForUpdate, $attributesInput, $variantTypesInput, $productVariantsInput, $hasVariantsRequest) {
-                $updateResult = $product->update($validatedDataForUpdate);
-                 if (!$updateResult) {
-                     throw new Exception("Failed to update product model.");
-                 }
-                 Log::info("Product updated successfully for ID: " . $product->id);
+                $product->update($validatedDataForUpdate);
                 $this->syncAttributes($product, $attributesInput);
                 if ($hasVariantsRequest) {
                     $this->syncVariantTypesAndCombinations($product, $variantTypesInput, $productVariantsInput);
                 } else {
-                     $product->productVariants()->each(fn($v) => $v->options()->detach());
-                     $product->productVariants()->delete();
-                     $product->productVariantTypes()->delete();
+                    $product->productVariants()->each(fn($v) => $v->options()->detach());
+                    $product->productVariants()->delete();
+                    $product->productVariantTypes()->delete();
                 }
             });
 
             return redirect()->route('admin.products.index')->with('success', 'Produk berhasil diperbarui.');
 
         } catch (Exception $e) {
-            Log::error('Error updating product ID ' . $product->id . ': ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+            Log::error('Error updating product: ' . $e->getMessage());
             return back()->with('error', 'Gagal memperbarui produk: ' . $e->getMessage())->withInput();
         }
     }
-
 
     /**
      * Menghapus produk dari database.
@@ -594,15 +491,13 @@ $validatedDataForUpdate['is_free_shipping'] = $request->has('is_free_shipping');
             if ($imageUrl && Storage::disk('public')->exists($imageUrl)) { Storage::disk('public')->delete($imageUrl); }
             if ($product->seller_logo && Storage::disk('public')->exists($product->seller_logo)) { Storage::disk('public')->delete($product->seller_logo); }
 
-            // Hapus produk (cascade harusnya menangani relasi)
             $product->delete();
-
             DB::commit();
             return redirect()->route('admin.products.index')->with('success', 'Produk berhasil dihapus.');
         } catch (Exception $e) {
             DB::rollBack();
-            Log::error('Error deleting product ID ' . $product->id . ': ' . $e->getMessage());
-            return redirect()->route('admin.products.index')->with('error', 'Gagal menghapus produk: ' . $e->getMessage());
+            Log::error('Error deleting product: ' . $e->getMessage());
+            return redirect()->route('admin.products.index')->with('error', 'Gagal menghapus produk.');
         }
     }
 
@@ -617,46 +512,135 @@ $validatedDataForUpdate['is_free_shipping'] = $request->has('is_free_shipping');
         $validated = $request->validate([ 'stock' => 'required|integer|min:1' ]);
         try {
             $product->increment('stock', $validated['stock']);
-            return redirect()->route('admin.products.index')->with('success', 'Stok untuk produk ' . e($product->name) . ' berhasil ditambahkan.');
+            return redirect()->route('admin.products.index')->with('success', 'Stok berhasil ditambahkan.');
         } catch (Exception $e) {
-             Log::error('Error restocking product ID ' . $product->id . ': ' . $e->getMessage());
-             return redirect()->route('admin.products.index')->with('error', 'Gagal restock produk: ' . $e->getMessage());
+             return redirect()->route('admin.products.index')->with('error', 'Gagal restock produk.');
         }
     }
 
     /**
-     * Menandai produk (tanpa varian) sebagai habis (stok = 0).
+     * Menandai produk (tanpa varian) sebagai habis.
      */
     public function markAsOutOfStock(Product $product)
     {
         if ($product->productVariantTypes()->exists()) {
-             return redirect()->route('admin.products.index')->with('error', 'Gunakan halaman edit untuk mengatur stok produk dengan varian.');
+             return redirect()->route('admin.products.index')->with('error', 'Gunakan halaman edit untuk mengatur stok varian.');
         }
         try {
             $product->stock = 0;
             $product->save();
-            return redirect()->route('admin.products.index')->with('success', 'Stok untuk produk ' . e($product->name) . ' telah diatur menjadi 0.');
+            return redirect()->route('admin.products.index')->with('success', 'Stok diatur menjadi 0.');
         } catch (Exception $e) {
-             Log::error('Error marking product out of stock ID ' . $product->id . ': ' . $e->getMessage());
-             return redirect()->route('admin.products.index')->with('error', 'Gagal menandai habis stok: ' . $e->getMessage());
+             return redirect()->route('admin.products.index')->with('error', 'Gagal update stok.');
         }
     }
 
-    // --- Helper Methods ---
+    // --- SPESIAL: Method untuk Edit Kategori & Spesifikasi Terpisah ---
+
+    public function editSpecifications($id)
+    {
+        $product = Product::findOrFail($id);
+        $categories = Category::where('type', 'product')->orderBy('name')->get();
+
+        // LOGIC ROBUST UNTUK MENGAMBIL DATA ATRIBUT (MATCHING SLUG)
+        // Agar Frontend JavaScript bisa membaca data lama dengan benar
+        $existingAttributesData = [];
+        $attributeDefinitions = Attribute::where('category_id', $product->category_id)->get()->keyBy('name');
+
+        foreach($product->productAttributes as $pa) {
+            $name = $pa->name;
+            $value = $pa->value;
+            $definition = $attributeDefinitions->get($name);
+            
+            // PENTING: Gunakan slug master jika ada, agar cocok dengan field HTML frontend
+            $slug = $definition ? $definition->slug : Str::slug($name);
+            $type = $definition ? $definition->type : 'text';
+
+            if ($type === 'checkbox' && is_string($value)) {
+                try {
+                    $decoded = json_decode($value, true, 512, JSON_THROW_ON_ERROR);
+                    $value = is_array($decoded) ? $decoded : [$value];
+                } catch (\Exception $e) { $value = [$value]; }
+            }
+            $existingAttributesData[$slug] = $value;
+        }
+
+        // Encode ke JSON string agar siap dikonsumsi JavaScript
+        $existingAttributesJson = json_encode($existingAttributesData);
+
+        return view('admin.products.edit-specifications', compact('product', 'categories', 'existingAttributesJson'));
+    }
+
+    public function updateSpecifications(Request $request, $id)
+    {
+        $product = Product::findOrFail($id);
+
+        // 1. LOGIC SKU AUTO-GENERATE (Merge ke Request agar tervalidasi)
+        if (empty($request->input('sku'))) {
+            $generatedSku = 'SKU-' . date('Ymd') . '-' . strtoupper(Str::random(3));
+            $request->merge(['sku' => $generatedSku]);
+        }
+
+        // 2. Validasi
+        $validated = $request->validate([
+            'sku' => ['required', 'string', 'max:100', Rule::unique('products', 'sku')->ignore($product->id)],
+            'category_id' => 'required|exists:categories,id',
+            'tags' => 'nullable|string',
+            'attributes' => 'nullable|array',
+        ]);
+
+        try {
+            DB::transaction(function () use ($product, $request, $validated) {
+                // 3. Logic Update Tags
+                $manualTags = [];
+                if (!empty($request->tags)) {
+                    $manualTags = array_filter(array_map('trim', explode(',', $request->tags)));
+                }
+                $category = Category::find($validated['category_id']);
+                $categoryTag = $category->name ?? null;
+                $allTags = $manualTags;
+                if ($categoryTag && !in_array($categoryTag, $allTags)) {
+                    $allTags[] = $categoryTag;
+                }
+                $jsonTags = !empty($allTags) ? json_encode(array_values(array_unique($allTags))) : null;
+
+                // 4. Update Data Utama
+                $product->update([
+                    'sku' => $validated['sku'],
+                    'category_id' => $validated['category_id'],
+                    'tags' => $jsonTags,
+                ]);
+
+                // 5. Sync Attributes
+                $attributesInput = $request->input('attributes', []);
+                $this->syncAttributes($product, $attributesInput);
+            });
+
+            return redirect()->route('admin.products.edit', $product->slug)
+                ->with('success', 'Kategori dan Spesifikasi berhasil diperbarui.');
+
+        } catch (Exception $e) {
+            Log::error('Error updating specifications: ' . $e->getMessage());
+            return back()->with('error', 'Gagal update: ' . $e->getMessage())->withInput();
+        }
+    }
+
+
+    // --- Helpers ---
 
     protected function generateUniqueSlug(string $name, int $ignoreId = null): string
-     {
-         $slug = Str::slug($name);
-         $originalSlug = $slug;
-         $count = 1;
-         while (Product::where('slug', $slug)->when($ignoreId, fn($q) => $q->where('id', '!=', $ignoreId))->exists()) {
-             $slug = $originalSlug . '-' . $count++;
-         }
-         return $slug;
-     }
+    {
+        $slug = Str::slug($name);
+        $originalSlug = $slug;
+        $count = 1;
+        while (Product::where('slug', $slug)->when($ignoreId, fn($q) => $q->where('id', '!=', $ignoreId))->exists()) {
+            $slug = $originalSlug . '-' . $count++;
+        }
+        return $slug;
+    }
 
-     protected function generateSku(string $productName, int $categoryId): string
-     {
+    protected function generateSku(string $productName, int $categoryId): string
+    {
         $category = Category::find($categoryId);
         $categoryInitial = $category ? strtoupper(substr(preg_replace('/[^a-zA-Z0-9]/', '', $category->name), 0, 3)) : 'GEN';
         $productInitial = strtoupper(substr(preg_replace('/[^a-zA-Z0-9]/', '', $productName), 0, 3));
@@ -667,7 +651,7 @@ $validatedDataForUpdate['is_free_shipping'] = $request->has('is_free_shipping');
              $sku = "{$categoryInitial}-{$productInitial}-{$randomNum}";
         }
         return $sku;
-     }
+    }
 
     protected function decodeTags($tags): string
     {
@@ -680,10 +664,6 @@ $validatedDataForUpdate['is_free_shipping'] = $request->has('is_free_shipping');
          return '';
     }
 
-    /**
-     * Sinkronisasi atribut produk berdasarkan struktur tabel Anda (product_id, name, value).
-     * Menggunakan updateOrCreate dan menghapus yang lama.
-     */
     protected function syncAttributes(Product $product, ?array $attributesData)
     {
         if ($attributesData === null) {
@@ -691,52 +671,30 @@ $validatedDataForUpdate['is_free_shipping'] = $request->has('is_free_shipping');
             return;
         }
 
-        $currentAttributeNames = []; // Lacak NAMA atribut yang disinkronkan
-
-        // Ambil info atribut valid dari tabel 'attributes' untuk mendapatkan tipe data
-        // Hanya perlu jika Anda ingin menyimpan tipe di product_attributes atau handle checkbox
+        $currentAttributeNames = [];
+        // Ambil info atribut valid untuk cek tipe/nama asli
         $validAttributesInfo = Attribute::where('category_id', $product->category_id)
                                     ->whereIn('slug', array_keys($attributesData))
                                     ->get()
-                                    ->keyBy('slug'); // [slug => AttributeModel]
+                                    ->keyBy('slug');
 
         foreach ($attributesData as $slug => $value) {
-             // Dapatkan nama dari Attribute model jika ada, jika tidak, buat dari slug
             $attributeInfo = $validAttributesInfo->get($slug);
-            // Gunakan nama dari tabel attributes jika ada, jika tidak buat dari slug
             $attributeName = $attributeInfo->name ?? str_replace('-', ' ', Str::title($slug));
 
-            // Hanya proses jika nama atribut ada dan value tidak kosong/null
             if (!empty($attributeName) && ($value !== null && $value !== '' && (!is_array($value) || !empty(array_filter($value)))))
             {
-                // Proses value checkbox
                 $processedValue = is_array($value) ? json_encode(array_values(array_filter($value))) : $value;
-
-                // Gunakan updateOrCreate berdasarkan product_id dan name
                 ProductAttribute::updateOrCreate(
-                    [
-                        'product_id' => $product->id,
-                        'name' => $attributeName, // Gunakan 'name' sebagai kunci
-                    ],
-                    [
-                        'value' => $processedValue,
-                        // PERBAIKAN: Hapus kolom yang tidak ada di tabel Anda
-                        // 'attribute_slug' => $slug,
-                        // 'attribute_type' => $attributeInfo->type ?? 'text',
-                    ]
+                    ['product_id' => $product->id, 'name' => $attributeName],
+                    ['value' => $processedValue]
                 );
-                $currentAttributeNames[] = $attributeName; // Lacak nama
+                $currentAttributeNames[] = $attributeName;
             }
         }
-
-        // Hapus ProductAttribute yang namanya tidak ada lagi di $attributesData
         $product->productAttributes()->whereNotIn('name', $currentAttributeNames)->delete();
     }
 
-
-     /**
-     * Sinkronisasi tipe varian, opsi, dan kombinasi varian produk.
-     */
     protected function syncVariantTypesAndCombinations(Product $product, ?array $variantTypesData, ?array $productVariantsData)
     {
         if ($variantTypesData === null || $productVariantsData === null) {
@@ -781,152 +739,37 @@ $validatedDataForUpdate['is_free_shipping'] = $request->has('is_free_shipping');
 
             $combinationStringParts = [];
             $optionIdsForCombination = [];
-
             usort($variantOptions, fn($a, $b) => strcmp($a['type_name'], $b['type_name']));
 
             foreach ($variantOptions as $optionDetail) {
                  $typeName = trim($optionDetail['type_name'] ?? '');
                  $valueName = trim($optionDetail['value'] ?? '');
                  $mapKey = $typeName . ':' . $valueName;
-
                  if (isset($optionIdMap[$mapKey])) {
                      $combinationStringParts[] = $mapKey;
                      $optionIdsForCombination[] = $optionIdMap[$mapKey];
-                 } else {
-                      Log::warning("Opsi tidak ditemukan saat sinkronisasi: {$mapKey} for product ID: {$product->id}");
-                      continue 2;
-                 }
+                 } else { continue 2; }
             }
 
             if (count($optionIdsForCombination) !== count($variantOptions)) continue;
 
             $combinationString = implode(';', $combinationStringParts);
-
-             $variant = ProductVariant::updateOrCreate(
-                 ['product_id' => $product->id, 'combination_string' => $combinationString],
-                 [
-                     'price' => $comboData['price'] ?? 0,
-                     'stock' => $comboData['stock'] ?? 0,
-                     'sku_code' => $comboData['sku_code'] ?? null,
-                 ]
-             );
+            $variant = ProductVariant::updateOrCreate(
+                ['product_id' => $product->id, 'combination_string' => $combinationString],
+                [
+                    'price' => $comboData['price'] ?? 0,
+                    'stock' => $comboData['stock'] ?? 0,
+                    'sku_code' => $comboData['sku_code'] ?? null,
+                ]
+            );
             $currentVariantIds[] = $variant->id;
-
-            if ($variant) {
-                try {
-                    $variant->options()->sync($optionIdsForCombination);
-                } catch (Exception $e) {
-                     Log::error("Gagal sync options ke variant {$variant->id}: " . $e->getMessage());
-                     throw $e;
-                }
-            }
+            if ($variant) { $variant->options()->sync($optionIdsForCombination); }
         }
-         $variantsToDelete = ProductVariant::where('product_id', $product->id)->whereNotIn('id', $currentVariantIds)->get();
-         foreach($variantsToDelete as $variantToDel) {
+        
+        $variantsToDelete = ProductVariant::where('product_id', $product->id)->whereNotIn('id', $currentVariantIds)->get();
+        foreach($variantsToDelete as $variantToDel) {
             $variantToDel->options()->detach();
             $variantToDel->delete();
-         }
-    }
-
-   // ... (Kode method index, store, edit, update, dll biarkan sama) ...
-
-    /**
-     * Menampilkan form khusus untuk edit Kategori & Spesifikasi.
-     */
-    public function editSpecifications($id)
-    {
-        $product = Product::findOrFail($id);
-        $categories = Category::where('type', 'product')->orderBy('name')->get();
-
-        // --- PERBAIKAN LOGIC PENGAMBILAN DATA LAMA ---
-        // Kita ambil data dari tabel product_attributes
-        // Lalu kita ubah formatnya menjadi [ 'slug-atribut' => 'Nilai' ]
-        // Agar JavaScript bisa mencocokkan dengan name="attributes[slug-atribut]"
-        
-        $existingAttributes = $product->productAttributes->mapWithKeys(function ($item) {
-            // Karena di tabel product_attributes biasanya kolomnya 'name' (bukan slug),
-            // Kita convert Name ke Slug agar cocok dengan definisi atribut master.
-            // Contoh: Name "Jenis Izin" -> Slug "jenis-izin"
-            return [\Illuminate\Support\Str::slug($item->name) => $item->value];
-        });
-
-        return view('admin.products.edit-specifications', compact('product', 'categories', 'existingAttributes'));
-    }
-
-    /**
- * Memproses update Kategori & Spesifikasi.
- */
-public function updateSpecifications(Request $request, $id)
-{
-    $product = Product::findOrFail($id);
-
-    // 1. LOGIC SKU AUTO-GENERATE
-    // Kita cek apakah input kosong
-    if (empty($request->input('sku'))) {
-        // Generate SKU otomatis
-        $generatedSku = 'SKU-' . date('Ymd') . '-' . strtoupper(Str::random(3));
-        
-        // PENTING: Suntikkan (Merge) kembali ke request agar terbaca oleh validator
-        $request->merge(['sku' => $generatedSku]);
-    }
-
-    // 2. Validasi Input
-    $validated = $request->validate([
-        // 'required' aman digunakan di sini karena jika kosong sudah diisi otomatis di atas
-        'sku' => ['required', 'string', 'max:100', Rule::unique('products', 'sku')->ignore($product->id)],
-        'category_id' => 'required|exists:categories,id',
-        'tags' => 'nullable|string',
-        'attributes' => 'nullable|array', // Array atribut dinamis
-    ]);
-
-    try {
-        DB::transaction(function () use ($product, $request, $validated) {
-            
-            // 3. Logic Update Tags
-            $manualTags = [];
-            if (!empty($request->tags)) {
-                $manualTags = array_map('trim', explode(',', $request->tags));
-                $manualTags = array_filter($manualTags);
-            }
-            
-            // Tambahkan nama kategori otomatis ke tags
-            $category = Category::find($validated['category_id']);
-            $categoryTag = $category->name ?? null;
-            $allTags = $manualTags;
-            
-            // Hindari duplikasi tag kategori
-            if ($categoryTag && !in_array($categoryTag, $allTags)) {
-                $allTags[] = $categoryTag;
-            }
-            
-            // Encode ke JSON (atau string dipisah koma, tergantung struktur DB Anda)
-            // Asumsi kolom 'tags' di DB tipe JSON/TEXT
-            $jsonTags = !empty($allTags) ? implode(',', array_unique($allTags)) : null; 
-            // Catatan: Jika kolom DB Anda JSON, gunakan json_encode(array_values(array_unique($allTags)));
-
-            // 4. Update Data Utama Produk
-            $product->update([
-                'sku' => $validated['sku'], // Ini sekarang aman karena sudah di-merge
-                'category_id' => $validated['category_id'],
-                'tags' => $jsonTags,
-            ]);
-
-            // 5. Update Spesifikasi / Atribut Dinamis
-            // Mengambil input atribut
-            $attributesInput = $request->input('attributes', []);
-            
-            // Panggil helper syncAttributes (asumsi method ini ada di Controller yang sama atau Trait)
-            $this->syncAttributes($product, $attributesInput);
-        });
-
-        return redirect()->route('admin.products.edit', $product->slug)
-            ->with('success', 'Kategori dan Spesifikasi berhasil diperbarui.');
-
-    } catch (Exception $e) {
-        Log::error('Error updating specifications for Product ID ' . $product->id . ': ' . $e->getMessage());
-        return back()->with('error', 'Gagal memperbarui spesifikasi: ' . $e->getMessage())->withInput();
+        }
     }
 }
-
-} // End of ProductController class
-
