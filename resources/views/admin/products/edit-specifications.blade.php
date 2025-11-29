@@ -3,15 +3,22 @@
 @section('title', 'Edit Spesifikasi: ' . $product->name)
 
 @section('content')
-<div class="max-w-7xl mx-auto pb-40"> {{-- Padding bottom gede biar gak ketutup tombol simpan --}}
-    
+<div class="max-w-7xl mx-auto pb-24">
+
     {{-- HEADER --}}
     <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-            <h1 class="text-2xl font-bold text-gray-900">Edit Spesifikasi</h1>
-            <p class="text-sm text-gray-500 mt-1">Produk: <span class="font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{{ $product->name }}</span></p>
+            <h1 class="text-3xl font-semibold text-gray-900">Edit Spesifikasi</h1>
+            <p class="text-sm text-gray-500 mt-1">
+                Produk:
+                <span class="font-semibold text-blue-600 bg-blue-100 px-2 py-0.5 rounded">
+                    {{ $product->name }}
+                </span>
+            </p>
         </div>
-        <a href="{{ route('admin.products.edit', $product->slug) }}" class="inline-flex items-center justify-center px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 shadow-sm transition-colors">
+
+        <a href="{{ route('admin.products.edit', $product->slug) }}"
+           class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 shadow-sm transition">
             <i class="fa-solid fa-arrow-left mr-2"></i> Kembali
         </a>
     </div>
@@ -21,143 +28,152 @@
         @method('PUT')
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            
-            {{-- === KOLOM KIRI (MAIN) === --}}
-            <div class="lg:col-span-8 space-y-6">
 
-                {{-- CARD 1: KATEGORI --}}
-                <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-                    <div class="px-6 py-4 bg-gray-50 border-b border-gray-200 flex items-center text-blue-700 font-bold text-sm uppercase tracking-wide">
-                        <i class="fa-solid fa-layer-group mr-2"></i> 1. Kategori Produk
+            {{-- LEFT --}}
+            <div class="lg:col-span-8 space-y-8">
+
+                {{-- CARD 1 --}}
+                <div class="bg-white border rounded-lg shadow-sm">
+                    <div class="px-5 py-3 border-b bg-gray-50 text-blue-700 font-semibold flex items-center gap-2">
+                        <i class="fa-solid fa-layer-group"></i>
+                        1. Kategori Produk
                     </div>
-                    <div class="p-6">
-                        <div class="mb-4">
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">
-                                Kategori Terpilih <span class="text-red-500">*</span>
+
+                    <div class="p-6 space-y-4">
+
+                        {{-- SELECT --}}
+                        <div>
+                            <label class="block mb-2 text-sm font-medium text-gray-700">
+                                Kategori Terpilih <span class="text-red-600">*</span>
                             </label>
-                            {{-- Select readonly, user pilih lewat sidebar --}}
-                            <select name="category_id" id="category_id" class="w-full bg-gray-100 border border-gray-300 text-gray-500 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 cursor-not-allowed" readonly required>
+                            <select name="category_id" id="category_id"
+                                class="w-full bg-gray-100 border border-gray-300 text-gray-600 text-sm rounded-lg p-2.5 cursor-not-allowed"
+                                readonly required>
                                 <option value="">-- Pilih Kategori --</option>
                                 @foreach($categories as $category)
-                                    <option value="{{ $category->id }}" 
-                                            data-attributes-url="{{ route('admin.categories.attributes', $category->id) }}" 
-                                            {{ old('category_id', $product->category_id) == $category->id ? 'selected' : '' }}>
-                                            {{ $category->name }}
+                                    <option value="{{ $category->id }}"
+                                        data-attributes-url="{{ route('admin.categories.attributes', $category->id) }}"
+                                        {{ old('category_id', $product->category_id) == $category->id ? 'selected' : '' }}>
+                                        {{ $category->name }}
                                     </option>
                                 @endforeach
                             </select>
                         </div>
-                        
+
+                        {{-- ALERT --}}
                         <div class="flex gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-sm">
-                            <i class="fa-solid fa-circle-exclamation mt-0.5 text-amber-600"></i>
-                            <div>
-                                <strong class="font-bold">Perhatian:</strong> Ubah kategori melalui sidebar di kanan. Mengubah kategori akan mereset form spesifikasi.
-                            </div>
+                            <i class="fa-solid fa-circle-exclamation mt-0.5"></i>
+                            <span><strong>Perhatian:</strong> Ubah kategori melalui sidebar di kanan.</span>
                         </div>
+
                     </div>
                 </div>
 
-                {{-- CARD 2: SPESIFIKASI (JS AREA) --}}
-                <div id="attributes-card" class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden hidden transition-all">
-                    <div class="px-6 py-4 bg-gray-50 border-b border-gray-200 flex items-center text-gray-700 font-bold text-sm uppercase tracking-wide">
-                        <i class="fa-solid fa-list-check mr-2 text-blue-500"></i> 2. Form Spesifikasi
+                {{-- CARD 2 --}}
+                <div id="attributes-card" class="bg-white border rounded-lg shadow-sm hidden">
+                    <div class="px-5 py-3 border-b bg-gray-50 text-gray-700 font-semibold flex items-center gap-2">
+                        <i class="fa-solid fa-list-check text-blue-500"></i>
+                        2. Form Spesifikasi
                     </div>
-                    <div id="dynamic-attributes-container" class="p-6 space-y-5">
-                        {{-- JS will render inputs here --}}
-                    </div>
+                    <div id="dynamic-attributes-container" class="p-6 space-y-6"></div>
                 </div>
 
-                {{-- CARD 3: DATA TAMBAHAN --}}
-                <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-                    <div class="px-6 py-4 bg-gray-50 border-b border-gray-200 flex items-center text-gray-700 font-bold text-sm uppercase tracking-wide">
-                        <i class="fa-solid fa-tags mr-2 text-blue-500"></i> 3. Data Tambahan
+                {{-- CARD 3 --}}
+                <div class="bg-white border rounded-lg shadow-sm">
+                    <div class="px-5 py-3 border-b bg-gray-50 text-gray-700 font-semibold flex items-center gap-2">
+                        <i class="fa-solid fa-tags text-blue-500"></i>
+                        3. Data Tambahan
                     </div>
+
                     <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+
                         {{-- SKU --}}
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">SKU Induk</label>
-                            <input type="text" name="sku" value="{{ old('sku', $product->sku) }}" 
-                                   class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 font-mono uppercase placeholder-gray-400" 
-                                   placeholder="AUTO-GEN">
+                            <label class="block mb-2 text-sm font-medium text-gray-700">SKU Induk</label>
+                            <input type="text" name="sku" value="{{ old('sku', $product->sku) }}"
+                                class="bg-white border border-gray-300 rounded-lg p-2.5 w-full text-sm font-mono uppercase focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="AUTO-GEN">
                         </div>
 
-                        {{-- Tags --}}
+                        {{-- TAGS --}}
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">Tags</label>
-                            @php
-                                $tags = $product->tags;
-                                if(is_string($tags) && str_starts_with($tags, '[')) {
-                                    $decoded = json_decode($tags, true);
-                                    if(is_array($decoded)) $tags = implode(', ', $decoded);
-                                }
-                            @endphp
-                            <input type="text" name="tags" value="{{ old('tags', $tags) }}" 
-                                   class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 placeholder-gray-400" 
-                                   placeholder="Contoh: Murah, Promo, Cepat">
+                            <label class="block mb-2 text-sm font-medium text-gray-700">Tags</label>
+                            <input type="text" name="tags" value="{{ old('tags', $tags) }}"
+                                class="bg-white border border-gray-300 rounded-lg p-2.5 w-full text-sm focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="Contoh: Murah, Promo">
                         </div>
                     </div>
                 </div>
 
             </div>
 
-            {{-- === KOLOM KANAN (SIDEBAR) === --}}
+            {{-- SIDEBAR --}}
             <div class="lg:col-span-4">
-                <div class="sticky top-6 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-                    <div class="px-5 py-3 border-b border-gray-200 flex justify-between items-center bg-gray-50">
-                        <span class="font-bold text-gray-700 text-sm uppercase"><i class="fa-solid fa-magnifying-glass mr-2"></i> Cari Kategori</span>
-                        <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-0.5 rounded-full">{{ $categories->count() }}</span>
+                <div class="bg-white border rounded-lg shadow-sm sticky top-6">
+
+                    {{-- HEADER --}}
+                    <div class="px-4 py-3 border-b bg-gray-50 flex justify-between items-center">
+                        <span class="font-semibold text-sm text-gray-700 flex items-center gap-2">
+                            <i class="fa-solid fa-magnifying-glass"></i> Cari Kategori
+                        </span>
+                        <span class="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-0.5 rounded">
+                            {{ $categories->count() }}
+                        </span>
                     </div>
-                    
-                    <div class="p-3 border-b border-gray-100 bg-white">
-                        <input type="text" id="searchCategory" placeholder="Ketik nama kategori..." 
-                               class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+
+                    {{-- SEARCH --}}
+                    <div class="p-3 border-b">
+                        <input id="searchCategory" type="text" placeholder="Ketik nama kategori..."
+                            class="w-full bg-gray-50 border border-gray-300 rounded-lg text-sm p-2.5 focus:ring-blue-500 focus:border-blue-500">
                     </div>
-                    
-                    {{-- Scroll Area --}}
-                    <div class="overflow-y-auto p-2" style="max-height: 400px; scrollbar-width: thin;">
+
+                    {{-- LIST --}}
+                    <div class="p-2 overflow-y-auto" style="max-height: 420px;">
                         <ul id="categoryListUL" class="space-y-1">
                             @foreach($categories as $cat)
                                 <li>
-                                    <button type="button" onclick="selectCategory('{{ $cat->id }}')" 
-                                        class="w-full text-left px-3 py-2.5 text-sm rounded-lg flex items-center justify-between group transition-all duration-200
-                                        {{ $product->category_id == $cat->id 
-                                            ? 'bg-blue-600 text-white font-semibold shadow-md' 
-                                            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' }}">
+                                    <button type="button" onclick="selectCategory('{{ $cat->id }}')"
+                                        class="w-full text-left px-3 py-2.5 rounded-lg text-sm transition flex items-center justify-between
+                                        {{ $product->category_id == $cat->id
+                                            ? 'bg-blue-600 text-white font-medium shadow'
+                                            : 'text-gray-600 hover:bg-gray-100' }}">
                                         <span>{{ $cat->name }}</span>
                                         @if($product->category_id == $cat->id)
-                                            <i class="fa-solid fa-check text-white text-xs"></i>
+                                            <i class="fa-solid fa-check text-xs"></i>
                                         @endif
                                     </button>
                                 </li>
                             @endforeach
                         </ul>
                     </div>
+
                 </div>
             </div>
 
-            <div class="w-full mt-6">
-    <div class="max-w-7xl mx-auto flex items-center justify-end gap-3">
-        <a href="{{ route('admin.products.edit', $product->slug) }}" 
-           class="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-4 focus:ring-gray-200 transition-all">
-            Batal
-        </a>
-
-        <button type="submit" 
-                class="px-5 py-2.5 text-sm font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 shadow-lg shadow-blue-500/50 transition-all flex items-center">
-            <i class="fa-solid fa-floppy-disk mr-2"></i> 
-            Simpan Spesifikasi
-        </button>
-    </div>
-</div>
-
-
         </div>
 
-       
+        {{-- NON-STICKY BUTTON AREA --}}
+        <div class="w-full mt-10">
+            <div class="max-w-7xl mx-auto flex justify-end gap-3">
+
+                <a href="{{ route('admin.products.edit', $product->slug) }}"
+                    class="px-5 py-2.5 text-sm font-medium bg-white border border-gray-300 rounded-lg hover:bg-gray-100 transition">
+                    Batal
+                </a>
+
+                <button type="submit"
+                    class="px-5 py-2.5 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-md transition flex items-center gap-2">
+                    <i class="fa-solid fa-floppy-disk"></i>
+                    Simpan Spesifikasi
+                </button>
+
+            </div>
+        </div>
 
     </form>
 </div>
 @endsection
+
 
 @push('scripts')
 <script>
