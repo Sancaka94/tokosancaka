@@ -338,56 +338,72 @@ $validatedDataForCreate['is_free_shipping'] = $request->has('is_free_shipping');
      * Menampilkan form untuk mengedit produk.
      */
     public function edit(Product $product)
-    {
-        $product->load([
-            'category',
-            'productAttributes', // Hanya load ini, tidak perlu relasi ke attribute
-            'productVariantTypes.options' => fn ($q) => $q->orderBy('id'),
-            'productVariants.options' => fn ($q) => $q->orderBy('product_variant_type_id')->orderBy('id')
-        ]);
+{
+    $product->load([
+        'category',
+        'productAttributes', 
+        'productVariantTypes.options' => fn ($q) => $q->orderBy('id'),
+        'productVariants.options' => fn ($q) => $q->orderBy('product_variant_type_id')->orderBy('id')
+    ]);
 
-        $product->tags = $this->decodeTags($product->tags);
+    // Decode Tags jika perlu
+    // $product->tags = $this->decodeTags($product->tags); (Pastikan method ini ada)
 
-        // Siapkan data atribut yang ada untuk JavaScript [slug => value]
-        $existingAttributesData = [];
-        // Ambil info tipe dari tabel 'attributes' untuk konversi checkbox JSON
-        $attributeDefinitions = Attribute::where('category_id', $product->category_id)
-                                          ->get()
-                                          ->keyBy('name'); // Key by name for lookup
+    // --- 1. SIAPKAN DATA SPESIFIKASI (LOGIC FIX) ---
+    $existingAttributesData = [];
+    
+    // Ambil definisi atribut berdasarkan kategori untuk mendapatkan SLUG ASLI dan TIPE
+    $attributeDefinitions = Attribute::where('category_id', $product->category_id)
+        ->get()
+        ->keyBy('name'); // Key by name untuk pencocokan dengan data produk yg tersimpan
 
-        foreach($product->productAttributes as $pa) {
-            $attributeName = $pa->name;
-            $slug = Str::slug($attributeName); // Buat slug dari nama
+    foreach($product->productAttributes as $pa) {
+        $name = $pa->name;
+        $value = $pa->value;
+        
+        // Cari definisi atribut asli untuk memastikan kita pakai slug yang benar
+        $definition = $attributeDefinitions->get($name);
 
-            if ($slug) {
-                $value = $pa->value;
-                $attributeInfo = $attributeDefinitions->get($attributeName);
-                $attributeType = $attributeInfo->type ?? 'text'; // Ambil tipe dari tabel attributes
+        // Jika definisi ditemukan, gunakan slug asli dari database. 
+        // Jika tidak (misal atribut sudah dihapus master-nya), fallback ke Str::slug
+        $keySlug = $definition ? $definition->slug : Str::slug($name);
+        
+        // Cek tipe untuk handling Checkbox JSON
+        $type = $definition ? $definition->type : 'text';
 
-                if ($attributeType === 'checkbox' && is_string($value)) {
-                    try {
-                        $decodedValue = json_decode($value, true, 512, JSON_THROW_ON_ERROR);
-                        $value = is_array($decodedValue) ? $decodedValue : [$value];
-                    } catch (\JsonException $e) { $value = [$value]; }
-                }
-                $existingAttributesData[$slug] = $value;
+        if ($type === 'checkbox' && is_string($value)) {
+            try {
+                $decoded = json_decode($value, true, 512, JSON_THROW_ON_ERROR);
+                $value = is_array($decoded) ? $decoded : [$value];
+            } catch (\JsonException $e) { 
+                // Jika error decode (format lama/bukan json), jadikan array tunggal
+                $value = [$value]; 
             }
         }
-        $product->existing_attributes_json = json_encode($existingAttributesData);
 
-
-        $product->existing_variant_types_json = $product->productVariantTypes->map(function($variantType) {
-            return [ 'name' => $variantType->name, 'options' => $variantType->options->pluck('name')->implode(', ') ];
-        })->toJson();
-
-        $product->existing_variant_combinations_json = $product->productVariants->mapWithKeys(function($variant) {
-            $key = $variant->options->map(fn($option) => ($option->productVariantType->name ?? 'UNKNOWN') . ':' . $option->name)->sort()->implode(';');
-            return [ $key => [ 'price' => $variant->price, 'stock' => $variant->stock, 'sku_code' => $variant->sku_code ]];
-        })->toJson();
-
-        $categories = Category::where('type', 'product')->orderBy('name')->get();
-        return view('admin.products.edit', compact('product', 'categories'));
+        // Simpan dengan key slug yang valid
+        $existingAttributesData[$keySlug] = $value;
     }
+    
+    // Encode ke JSON agar siap dimakan JavaScript
+    $product->existing_attributes_json = json_encode($existingAttributesData);
+
+
+    // --- 2. VARIANT DATA (Tetap seperti kode Anda) ---
+    $product->existing_variant_types_json = $product->productVariantTypes->map(function($variantType) {
+        return [ 'name' => $variantType->name, 'options' => $variantType->options->pluck('name')->implode(', ') ];
+    })->toJson();
+
+    $product->existing_variant_combinations_json = $product->productVariants->mapWithKeys(function($variant) {
+        // Hati-hati di sini, pastikan relasi productVariantType diload jika sering null
+        $key = $variant->options->map(fn($option) => ($option->productVariantType->name ?? 'UNKNOWN') . ':' . $option->name)->sort()->implode(';');
+        return [ $key => [ 'price' => $variant->price, 'stock' => $variant->stock, 'sku_code' => $variant->sku_code ]];
+    })->toJson();
+
+    $categories = Category::where('type', 'product')->orderBy('name')->get();
+    
+    return view('admin.products.edit', compact('product', 'categories'));
+}
 
 
     /**
