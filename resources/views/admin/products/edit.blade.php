@@ -399,7 +399,7 @@
 
             {{-- A. KATEGORI & SPESIFIKASI (FIXED) --}}
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <div class="px-6 py-4 border-b border-gray-100 bg-red-50/50 flex justify-between items-center">
+                <div class="px-6 py-4 border-b border-gray-100 bg-red-200 flex justify-between items-center">
                     <h2 class="text-lg font-semibold text-gray-800">Kategori & Data</h2>
                     <span class="bg-red-100 text-red-700 text-xs px-2 py-1 rounded-full font-bold">Penting</span>
                 </div>
