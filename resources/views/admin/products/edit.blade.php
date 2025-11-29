@@ -262,17 +262,38 @@
                                 <p class="font-semibold text-indigo-600 text-sm">Upload Logo</p>
                             </div>
                          
-{{-- LOGO TOKO: ANTI PECAH (AUTO-FALLBACK) --}}
-<div class="w-24 h-24 border border-gray-200 rounded-lg bg-gray-50 flex items-center justify-center overflow-hidden">
+<div>
+    <label class="block text-sm font-medium text-gray-700 mb-1">Logo Toko (Opsional)</label>
     
-    <img id="seller-logo-preview" 
-         class="w-full h-full object-contain" 
-         alt="Logo Toko"
-         {{-- 1. Coba load gambar dari DB --}}
-         src="{{ $product->seller_logo ? asset('public/storage/' . $product->seller_logo) : 'https://tokosancaka.com/storage/uploads/sancaka.png' }}"
-         {{-- 2. JIKA GAGAL/PECAH/ERROR -> Paksa ganti ke gambar default Sancaka --}}
-         onerror="this.onerror=null; this.src='https://tokosancaka.com/storage/uploads/sancaka.png';">
+    <div class="flex items-start gap-4">
+        {{-- AREA UPLOAD (DENGAN ID YANG SESUAI JS) --}}
+        <div id="seller-logo-uploader" 
+             class="relative w-24 h-24 rounded-lg overflow-hidden group border border-gray-200 bg-gray-50 cursor-pointer hover:border-indigo-400 transition-colors"
+             title="Klik untuk ganti logo">
+            
+            {{-- 1. GAMBAR (ANTI PECAH) --}}
+            <img id="seller-logo-preview" 
+                 class="w-full h-full object-contain transition-opacity duration-300 group-hover:opacity-75"
+                 alt="Logo Toko"
+                 {{-- Coba load dari DB, kalau gagal/kosong otomatis ke Sancaka --}}
+                 src="{{ $product->seller_logo ? asset('public/storage/' . $product->seller_logo) : 'https://tokosancaka.com/storage/uploads/sancaka.png' }}"
+                 onerror="this.onerror=null; this.src='https://tokosancaka.com/storage/uploads/sancaka.png';">
 
+            {{-- 2. OVERLAY PENSIL (MUNCUL SAAT HOVER) --}}
+            <div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-300">
+                <i class="fa-solid fa-pen text-white opacity-0 group-hover:opacity-100 drop-shadow-md text-lg transform scale-75 group-hover:scale-100 transition-all"></i>
+            </div>
+        </div>
+
+        {{-- TEKS BANTUAN DI SEBELAH KANAN --}}
+        <div class="flex-1 mt-2 text-xs text-gray-500">
+            <p>Klik gambar di samping untuk mengganti logo.</p>
+            <p class="mt-1">Format: PNG, JPG, WEBP (Maks. 2MB)</p>
+        </div>
+    </div>
+
+    {{-- INPUT FILE TERSEMBUNYI (JANGAN DIHAPUS) --}}
+    <input type="file" name="seller_logo" id="seller_logo" class="hidden" accept="image/png, image/jpeg, image/webp">
 </div>
                         </div>
                         <input type="file" name="seller_logo" id="seller_logo" class="hidden" accept="image/png, image/jpeg, image/webp">
