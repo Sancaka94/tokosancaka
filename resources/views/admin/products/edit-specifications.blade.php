@@ -98,7 +98,7 @@
                         {{-- TAGS --}}
                         <div>
                             <label class="block mb-2 text-sm font-medium text-gray-700">Tags</label>
-                            <input type="text" name="tags" value="{{ old('tags', $tags) }}"
+                            <input type="text" name="tags" value="{{ old('tags', $product->tags) }}"
                                 class="bg-white border border-gray-300 rounded-lg p-2.5 w-full text-sm focus:ring-blue-500 focus:border-blue-500"
                                 placeholder="Contoh: Murah, Promo">
                         </div>
