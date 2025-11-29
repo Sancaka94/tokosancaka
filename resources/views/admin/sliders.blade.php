@@ -131,11 +131,11 @@
                 </p>
                     
                 <div id="customer-slider-preview" 
-                     class="relative w-full max-w-7xl mx-auto rounded-lg shadow-lg overflow-hidden dark:bg-gray-800">
+                     class="relative w-full max-w-7xl mx-auto rounded-lg shadow-lg overflow-hidden">
                     
                     {{-- Pesan jika kosong --}}
                     <template x-if="slides.length === 0">
-                        <div class="w-full flex justify-center items-center py-20 bg-gray-100 dark:bg-gray-900" style="aspect-ratio: 16/9;">
+                        <div class="w-full flex justify-center items-center py-20 bg-gray-100" style="aspect-ratio: 16/9;">
                             <p class="text-gray-500">Tambahkan slide di atas untuk melihat preview.</p>
                         </div>
                     </template>
@@ -148,7 +148,7 @@
                                  :style="`transform: translateX(-${activeSlide * 100}%);`">
             
                                 <template x-for="(slide, index) in slides" :key="index">
-                                    <div class="w-full flex-shrink-0 flex justify-center items-center relative bg-gray-100 dark:bg-gray-900 h-full">
+                                    <div class="w-full flex-shrink-0 flex justify-center items-center relative bg-gray-100 h-full">
                                         
                                         {{-- Background blur --}}
                                         <div class="absolute inset-0 blur-lg scale-110 opacity-30"

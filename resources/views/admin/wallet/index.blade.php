@@ -24,12 +24,12 @@
 <div class="space-y-8">
 
     <!-- Form Top Up Saldo Utama -->
-    <div class="bg-white dark:bg-gray-800 shadow-lg rounded-xl p-6 border border-gray-200 dark:border-gray-700">
+    <div class="bg-white shadow-lg rounded-xl p-6 border border-gray-200">
         <div class="flex items-center space-x-3 mb-4">
-            <div class="bg-indigo-100 dark:bg-indigo-900/50 p-2 rounded-lg">
-                <i class="fas fa-wallet text-indigo-600 dark:text-indigo-400"></i>
+            <div class="bg-indigo-100 p-2 rounded-lg">
+                <i class="fas fa-wallet text-indigo-600"></i>
             </div>
-            <h3 class="text-lg font-bold text-gray-900 dark:text-white">Formulir Top Up Saldo</h3>
+            <h3 class="text-lg font-bold text-gray-900">Formulir Top Up Saldo</h3>
         </div>
         <form action="{{ route('admin.wallet.topup') }}" method="POST">
             @csrf
@@ -37,13 +37,13 @@
             <input type="hidden" name="action" value="add">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
                 <div class="md:col-span-1">
-                    <label for="user_id" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Pilih Pelanggan</label>
+                    <label for="user_id" class="block mb-2 text-sm font-medium text-gray-900">Pilih Pelanggan</label>
                     <select id="user_id" name="user_id" class="w-full" required></select>
                     @error('user_id') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                 </div>
                 <div>
-                    <label for="amount" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Jumlah (Rp)</label>
-                    <input type="number" id="amount" name="amount" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600" placeholder="e.g., 50000" min="1000" required>
+                    <label for="amount" class="block mb-2 text-sm font-medium text-gray-900">Jumlah (Rp)</label>
+                    <input type="number" id="amount" name="amount" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5" placeholder="e.g., 50000" min="1000" required>
                     @error('amount') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                 </div>
                 <div>
@@ -56,25 +56,25 @@
     </div>
 
     <!-- Tabel Daftar Pengguna -->
-    <div class="bg-white dark:bg-gray-800 shadow-lg rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+    <div class="bg-white shadow-lg rounded-xl border border-gray-200 overflow-hidden">
         <div class="p-6 flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
              <div class="flex items-center space-x-3">
-                <div class="bg-gray-100 dark:bg-gray-900/50 p-2 rounded-lg">
-                    <i class="fas fa-users text-gray-600 dark:text-gray-400"></i>
+                <div class="bg-gray-100 p-2 rounded-lg">
+                    <i class="fas fa-users text-gray-600"></i>
                 </div>
-                <h2 class="text-lg font-bold text-gray-800 dark:text-gray-200">Daftar Saldo Pengguna</h2>
+                <h2 class="text-lg font-bold text-gray-800">Daftar Saldo Pengguna</h2>
             </div>
             <div class="relative w-full md:w-auto">
                 <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                     <i class="fas fa-search text-gray-400"></i>
                 </div>
-                <input type="text" id="table-search-input" placeholder="Cari pengguna..." class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400" autocomplete="off">
+                <input type="text" id="table-search-input" placeholder="Cari pengguna..." class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 p-2.5" autocomplete="off">
             </div>
         </div>
 
         <div class="overflow-x-auto relative">
-            <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700/50 dark:text-gray-400">
+            <table class="w-full text-sm text-left text-gray-500">
+                <thead class="text-xs text-gray-700 uppercase bg-gray-50">
                     <tr>
                         <th scope="col" class="py-3 px-6">ID</th>
                         <th scope="col" class="py-3 px-6">Nama Pengguna</th>
@@ -85,11 +85,11 @@
                 </thead>
                 <tbody id="user-table-body">
                     @forelse ($pengguna as $user)
-                    <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
-                        <td class="py-4 px-6 font-medium text-gray-900 whitespace-nowrap dark:text-white">{{ $user->id_pengguna }}</td>
+                    <tr class="bg-white border-b hover:bg-gray-50">
+                        <td class="py-4 px-6 font-medium text-gray-900 whitespace-nowrap">{{ $user->id_pengguna }}</td>
                         <td class="py-4 px-6">{{ $user->nama_lengkap }}</td>
                         <td class="py-4 px-6">{{ $user->email }}</td>
-                        <td class="py-4 px-6 text-right font-bold text-green-600 dark:text-green-400">
+                        <td class="py-4 px-6 text-right font-bold text-green-600">
                             Rp {{ number_format($user->saldo ?? 0, 0, ',', '.') }}
                         </td>
                         <td class="py-4 px-6 text-center">
@@ -114,7 +114,7 @@
             </table>
         </div>
         
-        <div class="p-6 border-t border-gray-200 dark:border-gray-700 pagination-container">
+        <div class="p-6 border-t border-gray-200 pagination-container">
             {{ $pengguna->links() }}
         </div>
     </div>
@@ -122,15 +122,15 @@
 
 <!-- Modal Aksi Saldo -->
 <div id="action-modal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-gray-900 bg-opacity-50 flex items-center justify-center">
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md mx-4">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
         <div class="p-6">
             <div class="flex justify-between items-start">
-                <h3 class="text-xl font-bold text-gray-900 dark:text-white" id="modal-title">...</h3>
-                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                <h3 class="text-xl font-bold text-gray-900" id="modal-title">...</h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Untuk Pengguna: <span id="modal-user-name" class="font-semibold">...</span></p>
+            <p class="text-sm text-gray-500 mt-1">Untuk Pengguna: <span id="modal-user-name" class="font-semibold">...</span></p>
 
             <form id="modal-form" action="{{ route('admin.wallet.topup') }}" method="POST" class="mt-6 space-y-4">
                 @csrf
@@ -139,8 +139,8 @@
                 <input type="hidden" name="action" id="modal-action">
 
                 <div>
-                    <label for="modal-amount" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Jumlah (Rp)</label>
-                    <input type="number" name="amount" id="modal-amount" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600" placeholder="e.g., 20000" min="1" required>
+                    <label for="modal-amount" class="block mb-2 text-sm font-medium text-gray-900">Jumlah (Rp)</label>
+                    <input type="number" name="amount" id="modal-amount" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5" placeholder="e.g., 20000" min="1" required>
                 </div>
 
                 <div class="pt-2">
@@ -213,11 +213,11 @@ $(document).ready(function() {
                             const balance = new Intl.NumberFormat('id-ID').format(user.balance || 0);
                             const escapedName = $('<div/>').text(user.nama_lengkap).html();
                             tableBody += `
-                                <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
-                                    <td class="py-4 px-6 font-medium text-gray-900 dark:text-white">${user.id}</td>
+                                <tr class="bg-white border-b hover:bg-gray-50">
+                                    <td class="py-4 px-6 font-medium text-gray-900">${user.id}</td>
                                     <td class="py-4 px-6">${user.nama_lengkap}</td>
                                     <td class="py-4 px-6">${user.email}</td>
-                                    <td class="py-4 px-6 text-right font-bold text-green-600 dark:text-green-400">Rp ${balance}</td>
+                                    <td class="py-4 px-6 text-right font-bold text-green-600">Rp ${balance}</td>
                                     <td class="py-4 px-6 text-center">
                                         <div class="flex justify-center space-x-2">
                                             <button onclick="openModal('add', '${user.id}', '${escapedName}')" class="action-button text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-xs px-3 py-1.5 text-center"><i class="fas fa-plus"></i></button>

@@ -88,7 +88,7 @@
         @foreach ($loadedMessages as $date => $messageGroup)
 
             {{-- Date  --}}
-            <div  class="sticky top-0 uppercase p-2 shadow-xs px-2.5 z-50 rounded-xl border dark:border-[var(--wc-dark-primary)] border-[var(--wc-light-primary)] text-sm flex text-center justify-center  bg-[var(--wc-light-secondary)] dark:bg-[var(--wc-dark-secondary)] dark:text-white  w-28 mx-auto ">
+            <div  class="sticky top-0 uppercase p-2 shadow-xs px-2.5 z-50 rounded-xl border border-[var(--wc-light-primary)] text-sm flex text-center justify-center  bg-[var(--wc-light-secondary)]  w-28 mx-auto ">
                 {{ $date }}
             </div>
 
@@ -156,7 +156,7 @@
                                         : ($parent->sendable?->display_name ?? __('wirechat::chat.labels.user'));
                                     @endphp
 
-                                    <h6 class="text-xs text-gray-500 dark:text-gray-300 px-2">
+                                    <h6 class="text-xs text-gray-500 px-2">
                                         @if ($parent?->ownedBy($this->auth) && $message?->ownedBy($this->auth))
                                             {{ __('wirechat::chat.labels.you_replied_to_yourself') }}
                                         @elseif ($parent?->ownedBy($this->auth))
@@ -171,12 +171,12 @@
 
 
                                     <div @class([
-                                        'px-1 border-[var(--wc-light-secondary)] dark:border-[var(--wc-dark-accent)] overflow-hidden ',
+                                        'px-1 border-[var(--wc-light-secondary)] overflow-hidden ',
                                         ' border-r-4 ml-auto' => $belongsToAuth,
                                         ' border-l-4 mr-auto ' => !$belongsToAuth,
                                     ])>
                                         <p
-                                            class=" bg-[var(--wc-light-secondary)] dark:text-white  dark:bg-[var(--wc-dark-secondary)] text-black line-clamp-1 text-sm  rounded-full max-w-fit   px-3 py-1 ">
+                                            class=" bg-[var(--wc-light-secondary)]  text-black line-clamp-1 text-sm  rounded-full max-w-fit   px-3 py-1 ">
                                             {{ $parent?->body != '' ? $parent?->body : ($parent->hasAttachment() ?  __('wirechat::chat.labels.attachment') : '') }}
                                         </p>
                                     </div>
@@ -201,7 +201,7 @@
                                         class=" invisible  group-hover:visible hover:scale-110 transition-transform">
                                     
                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                                            fill="currentColor" class="bi bi-reply-fill w-4 h-4 dark:text-white"
+                                            fill="currentColor" class="bi bi-reply-fill w-4 h-4"
                                             viewBox="0 0 16 16">
                                             <path
                                                 d="M5.921 11.9 1.353 8.62a.72.72 0 0 1 0-1.238L5.921 4.1A.716.716 0 0 1 7 4.719V6c1.5 0 6 0 7 8-2.5-4.5-7-4-7-4v1.281c0 .56-.606.898-1.079.62z" />
@@ -215,7 +215,7 @@
                                             <button class="invisible  group-hover:visible hover:scale-110 transition-transform">
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
                                                     fill="currentColor"
-                                                    class="bi bi-three-dots h-3 w-3 text-gray-700 dark:text-white"
+                                                    class="bi bi-three-dots h-3 w-3 text-gray-700"
                                                     viewBox="0 0 16 16">
                                                     <path
                                                         d="M3 9.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3m5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3m5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3" />
@@ -295,7 +295,7 @@
 
                                     {{-- if message is emoji then don't show the styled messagebody layout --}}
                                     @if ($isEmoji)
-                                        <p class="text-5xl dark:text-white ">
+                                        <p class="text-5xl ">
                                             {{ $message->body }}
                                         </p>
                                     @endif

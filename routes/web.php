@@ -1,7 +1,6 @@
 <?php
 
 
-
 use Illuminate\Support\Facades\Route;
 use App\Http\Middleware\RoleMiddleware;
 use App\Http\Controllers\Admin\ChatController as AdminChatController;
@@ -64,23 +63,65 @@ use App\Http\Controllers\Auth\Customer\CustomerLoginController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Admin\Customers\DataPenggunaController; // HARUS ADA DAN BENAR
 use App\Http\Controllers\Admin\CustomerController; // PENTING: Tambahkan ini
+use App\Http\Controllers\PublicScanController;
+use App\Http\Controllers\AdminController;
+use App\Http\Controllers\Customer\KoliController;
+use App\Http\Controllers\Admin\ApiSettingsController;
+use App\Http\Controllers\Admin\KoliController as AdminKoliController;
 
 
 
-// Rute ini akan menggunakan middleware kustom baru kita: 'auth.redirect'
-// Jika user sudah login, dia akan dialihkan ke dashboard sesuai role.
-// Jika belum login, dia akan diizinkan mengakses halaman.
-Route::middleware('auth.redirect')->group(function () {
-    // Rute untuk menampilkan form Login (Menggunakan Controller Anda)
-    Route::get('login', [CustomerLoginController::class, 'showLoginForm'])->name('login');
-    // Rute untuk memproses form Login (Gunakan method login di Controller Anda)
-    Route::post('login', [CustomerLoginController::class, 'login']); 
 
-    // Rute untuk menampilkan form Register (Controller ini mungkin perlu diperbaiki/dibuat)
-    Route::get('register', [RegisteredUserController::class, 'create'])->name('register');
-    // Rute untuk memproses form Register
-    Route::post('register', [RegisteredUserController::class, 'store']);
+
+
+
+Route::post('/koli/cek-ongkir', [KoliController::class, 'cekOngkirMulti'])->name('koli.cekOngkirMulti');
+
+
+Route::middleware(['auth', 'verified'])->prefix('customer')->group(function () {
+
+
+
+    // ----------------------------------------------------------------------
+    // Catatan: Jika Anda ingin mengganti rute lama, Anda bisa menimpa:
+    // Route::get('/pesanan/create', [KoliController::class, 'create'])->name('customer.pesanan.create'); 
+    // Route::post('/pesanan/store', [KoliController::class, 'store'])->name('customer.pesanan.store');
+    // ----------------------------------------------------------------------
+    
+    // Asumsi rute lama seperti /customer/pesanan/index dan lainnya tetap menunjuk ke PesananController.
 });
+
+
+// 1. Dashboard Pelanggan (Default View Breeze)
+Route::get('/customer/dashboard', function () {
+    return view('dashboard'); // Menggunakan view bawaan Breeze (resources/views/dashboard.blade.php)
+})->middleware(['auth', 'verified', RoleMiddleware::class . ':Pelanggan'])->name('customer.dashboard');
+
+// 2. Dashboard Admin
+Route::get('/admin/dashboard', function () {
+    return view('admin.dashboard'); // Pastikan Anda buat file: resources/views/admin/dashboard.blade.php
+})->middleware(['auth', 'verified', RoleMiddleware::class . ':Admin'])->name('admin.dashboard');
+
+// 3. Dashboard Seller
+Route::get('/seller/dashboard', function () {
+    return view('seller.dashboard'); // Pastikan Anda buat file: resources/views/seller/dashboard.blade.php
+})->middleware(['auth', 'verified', RoleMiddleware::class . ':Seller'])->name('seller.dashboard');
+
+// 4. Rute Fallback '/dashboard' (PENTING)
+// Jika ada user yang mengetik manual "/dashboard" di browser,
+// kita lempar mereka ke dashboard yang benar sesuai role-nya.
+Route::get('/dashboard', function () {
+    $user = auth()->user();
+
+    // Jika Admin, tetap ke Admin Dashboard
+    if ($user->role === 'Admin') {
+        return redirect()->route('admin.dashboard');
+    }
+    
+    return redirect()->route('customer.dashboard');
+
+})->middleware(['auth', 'verified'])->name('dashboard');
+
 
 Route::get('/admin/generate-barcode-zoom', [App\Http\Controllers\Admin\BarcodeController::class, 'generateBarcode'])->name('admin.barcode.generate');
 
@@ -123,7 +164,7 @@ Route::get('/terms-and-conditions', function () {
 })->name('terms.conditions');
 
 
-    
+require __DIR__.'/auth.php';    
     
 /*
 |--------------------------------------------------------------------------
@@ -182,6 +223,8 @@ Route::prefix('customer')->name('customer.')->group(function () {
  
     Route::get('/marketplace', [CustomerMarketplaceController::class, 'index'])->name('marketplace.index');
     
+    Route::get('/pesanan/export-pdf', [PesananController::class, 'exportPdf'])->name('pesanan.export_pdf');
+    
     // --- RUTE CHECKOUT YANG BENAR ---
     // 1. Menampilkan halaman checkout (GET)
     // Nama route: customer.checkout.index
@@ -194,6 +237,16 @@ Route::prefix('customer')->name('customer.')->group(function () {
     // 3. Menampilkan halaman invoice (GET)
     // Nama route: customer.checkout.invoice (Kita buat di luar prefix 'customer.' agar lebih pendek)
  Route::get('/invoice/{invoice}', [CustomerCheckoutController::class, 'invoice'])->name('checkout.invoice');
+ 
+// ===> INI FIX UNTUK ERROR 404 ANDA <===
+        // URL di browser: /customer/pesanan/create/multi-koli
+        Route::get('/pesanan/create/multi-koli', [KoliController::class, 'create'])->name('koli.create');
+        
+        // Rute Proses Simpan & Cek Ongkir Multi Koli
+        Route::post('/koli/store', [KoliController::class, 'store'])->name('koli.store');
+        Route::post('/koli/store-single', [KoliController::class, 'storeSingle'])->name('koli.store_single');
+        Route::post('/koli/cek-ongkir', [KoliController::class, 'cekOngkirMulti'])->name('koli.cek_ongkir');
+        // =========================================
 
 });
 
@@ -317,10 +370,41 @@ Route::middleware(['auth', RoleMiddleware::class . ':Pelanggan|Seller'])
     ->prefix('customer')->name('customer.')
 
     ->group(function () {
+        
+        
+        // 1. Menampilkan Halaman Form Multi-Koli (GET)
+        // URL: /customer/pesanan/multi/create
+        // Nama Rute: customer.koli.create
+        Route::get('/pesanan/multi/create', [KoliController::class, 'create'])->name('koli.create');
+
+        // 2. Memproses Data Multi-Koli (POST)
+        // URL: /customer/pesanan/multi/store
+        // Nama Rute: customer.koli.store
+        Route::post('/pesanan/multi/store', [KoliController::class, 'store'])->name('koli.store');
+
+        // 3. CEK ONGKIR (AJAX) 
+        // URL: /customer/koli/cek-ongkir
+        // Nama Rute: customer.koli.cek_ongkir
+        Route::post('/koli/cek-ongkir', [KoliController::class, 'cek_Ongkir'])->name('koli.cek_ongkir'); 
+
+        // 4. STORE SINGLE KOLI (AJAX) - Rute yang digunakan untuk menyimpan per paket
+        // URL: /customer/koli/store-single
+        // Nama Rute: customer.koli.store_single
+        Route::post('/koli/store-single', [KoliController::class, 'storeSingle'])->name('koli.store_single');
 
         
 
         require __DIR__.'/web/customer.php';
+        
+        // 1. Menampilkan Halaman Form (GET)
+        // URL: /customer/pesanan/multi/create
+        Route::get('/pesanan/multi/create', [KoliController::class, 'create'])->name('koli.create');
+
+        // 2. Memproses Data (POST)
+        // URL: /customer/pesanan/multi/store
+        Route::post('/pesanan/multi/store', [KoliController::class, 'store'])->name('koli.store');
+
+        // ====================================================
 
        
         Route::get('/kontak/search', [CustomerKontakController::class, 'search'])->name('kontak.search');
@@ -359,18 +443,13 @@ Route::middleware(['auth', RoleMiddleware::class . ':Pelanggan|Seller'])
 
 Route::prefix('admin')->name('admin.')->group(function () {
     
-
-    // ================================================================
-    // == PERBAIKAN: RUTE CUSTOMERS (MENGGANTIKAN /ADMIN/CUSTOMERS/DATA) ==
-    // ================================================================
-    // PENTING: Gunakan 'customers.index' untuk URL /customers
-    Route::get('customers/data', [CustomerController::class, 'index'])->name('customers.data'); // Tambahkan rute ini untuk URL /data
-    Route::get('customers', [CustomerController::class, 'index'])->name('customers.index'); // Rute utama /customers
-// <<< PERBAIKAN DI SINI >>>
-// Sesuaikan nama rute agar cocok dengan pemanggilan di Blade 'admin.pengguna.exportExcel'
-Route::get('/export-excel', [PenggunaController::class, 'exportExcel'])->name('pengguna.exportExcel');
-Route::post('/import-excel', [PenggunaController::class, 'importExcel'])->name('pengguna.importExcel');
-// <<< END PERBAIKAN >>>
+    
+    // Fitur Multi Koli Admin (YANG BARU ANDA BUAT)
+    Route::get('/pesanan/buat-multi', [AdminKoliController::class, 'create'])->name('pesanan.create_multi');
+    Route::post('/pesanan/store-multi', [AdminKoliController::class, 'store'])->name('koli.store');
+    Route::post('/pesanan/store-single', [AdminKoliController::class, 'storeSingle'])->name('koli.store_single');
+    Route::post('/cek-ongkir', [AdminKoliController::class, 'cek_Ongkir'])->name('koli.cek_ongkir');
+    
 
 
     Route::get('/post/{post:slug}', [PostController::class, 'show'])->name('posts.post-detail');
@@ -387,9 +466,6 @@ Route::post('/import-excel', [PenggunaController::class, 'importExcel'])->name('
 
     Route::resource('pelanggan', PelangganController::class);
     
-    
-
-    
     // --- [BARU] RUTE UNTUK MANAJEMEN SLIDER ---
     Route::get('/sliders', [SliderController::class, 'index'])->name('sliders.index');
     Route::post('/sliders', [SliderController::class, 'store'])->name('sliders.store');
@@ -401,7 +477,6 @@ Route::post('/import-excel', [PenggunaController::class, 'importExcel'])->name('
         Route::post('/import-excel', [PelangganController::class, 'importExcel'])->name('import.excel');
         Route::get('/export-excel', [PelangganController::class, 'exportExcel'])->name('export.excel');
         Route::get('/export-pdf', [PelangganController::class, 'exportPdf'])->name('export.pdf');
-
     });
     
 
@@ -478,18 +553,26 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])
         // All general admin routes should go in this file
 
         require __DIR__.'/web/admin.php';
+        
+        Route::resource('customers/data/pengguna', DataPenggunaController::class)
+    ->names('customers.data.pengguna');
+    
+// Halaman Pengaturan API All-in-One
+    Route::get('/settings/api', [ApiSettingsController::class, 'index'])->name('settings.api.index');
+    Route::put('/settings/api', [ApiSettingsController::class, 'update'])->name('settings.api.update');
+    Route::post('/settings/api', [ApiSettingsController::class, 'toggle'])->name('settings.api.toggle');
 
+
+Route::resource('stores', AdminMarketplaceController::class)->names('stores');
        
           // TAMBAHKAN ROUTE INI UNTUK HALAMAN PENGATURAN
           
-          Route::resource('stores', AdminMarketplaceController::class)->names('stores');
-          
   Route::post('/users/{user}/toggle-freeze', [App\Http\Controllers\Admin\UserController::class, 'toggleFreeze'])->name('admin.users.toggle-freeze');        
-    
-    Route::resource('customers/pengguna', DataPenggunaController::class)->names('customers.pengguna');
-    Route::resource('customers/data/pengguna', DataPenggunaController::class)->names('customers.data.pengguna');
-    Route::get('customers/data/pengguna/export/{type}', [DataPenggunaController::class, 'export'])->name('customers.pengguna.export');
-    
+
+// Route untuk edit info
+Route::get('/setting-info-pesanan', [AdminController::class, 'editInfoPesanan'])->name('info.edit');
+Route::post('/setting-info-pesanan', [AdminController::class, 'updateInfoPesanan'])->name('info.update');
+
     // TAMBAHKAN ROUTE INI JIKA BELUM ADA
         Route::get('/wallet', [WalletController::class, 'index'])->name('wallet.index');
         
@@ -933,6 +1016,3 @@ Route::get('/controllers-list', function () {
          ->name('seller.address.geocode');
          
     // ==========================================================
-    
-    
-  

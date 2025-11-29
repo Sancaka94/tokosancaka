@@ -67,7 +67,7 @@
             <div class="col-12">
                 <div class="text-center mb-4">
                     <a href="{{ url('/') }}">
-                        <img src="https://tokosancaka.biz.id/storage/uploads/sancaka.png" alt="Sancaka Express Logo" class="auth-logo mb-2">
+                        <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="Sancaka Express Logo" class="auth-logo mb-2">
                     </a>
                     <h3 class="fw-bold">Buat Akun Baru</h3>
                     <p class="text-muted">Daftar dan nikmati kemudahan pengiriman.</p>

@@ -125,10 +125,10 @@ if (!function_exists('formatWaNumber')) {
     $initialStock = (int)(!$hasVariants ? $product->stock : 0);
 @endphp
 
-<div class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 min-h-screen">
+<div class="bg-gray-100 text-gray-800 min-h-screen">
     <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
         {{-- Breadcrumb --}}
-        <nav aria-label="Breadcrumb" class="mb-6 text-sm text-gray-500 dark:text-gray-400">
+        <nav aria-label="Breadcrumb" class="mb-6 text-sm text-gray-500">
              <ol class="flex items-center space-x-2 overflow-x-auto whitespace-nowrap py-1">
                  <li><a href="{{ route('etalase.index') }}" class="hover:text-red-600">Sancaka</a></li>
                  <li><i class="fas fa-chevron-right text-xs mx-1"></i></li>
@@ -138,19 +138,19 @@ if (!function_exists('formatWaNumber')) {
                  <li><i class="fas fa-chevron-right text-xs mx-1"></i></li>
                  @endif
                  
-                 <li class="font-medium text-gray-700 dark:text-gray-300 truncate">{{ $product->name }}</li>
+                 <li class="font-medium text-gray-700 truncate">{{ $product->name }}</li>
              </ol>
         </nav>
 
         {{-- Main Product Section --}}
-        <main class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 md:p-6 lg:p-8">
+        <main class="bg-white rounded-lg shadow-sm p-4 md:p-6 lg:p-8">
             <div class="grid grid-cols-1 md:grid-cols-5 gap-6 lg:gap-8">
                 {{-- Product Image Gallery --}}
                 <div class="md:col-span-2 image-gallery">
                     @php
                         $imageUrl = $product->image_url ? asset('public/storage/' . $product->image_url) : 'https://placehold.co/600x600/EFEFEF/AAAAAA?text=Gambar+Tidak+Ada';
                     @endphp
-                    <div class="aspect-w-1 aspect-h-1 w-full overflow-hidden rounded-md shadow-sm mb-3 border border-gray-200 dark:border-gray-700">
+                    <div class="aspect-w-1 aspect-h-1 w-full overflow-hidden rounded-md shadow-sm mb-3 border border-gray-200">
                         <img id="main-product-image"
                              src="{{ $imageUrl }}"
                              alt="{{ $product->name }}"
@@ -166,9 +166,9 @@ if (!function_exists('formatWaNumber')) {
 
                 {{-- Product Info & Action --}}
                 <div class="md:col-span-3 product-info">
-                    <h1 class="text-xl lg:text-2xl font-semibold text-gray-900 dark:text-white mb-2 leading-tight">{{ $product->name }}</h1>
+                    <h1 class="text-xl lg:text-2xl font-semibold text-gray-900 mb-2 leading-tight">{{ $product->name }}</h1>
 
-                    <div class="flex items-center space-x-3 mb-4 text-sm text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700 pb-4">
+                    <div class="flex items-center space-x-3 mb-4 text-sm text-gray-500 border-b border-gray-100 pb-4">
                         <div class="flex items-center">
                             <span class="font-semibold text-red-500 mr-1">{{ number_format($product->rating ?? 0, 1) }}</span>
                             <div class="flex text-red-400">
@@ -177,18 +177,18 @@ if (!function_exists('formatWaNumber')) {
                                 @endfor
                             </div>
                         </div>
-                        <span class="text-gray-300 dark:text-gray-600 mx-1">|</span>
-                        <div><span class="font-semibold text-gray-700 dark:text-gray-300">{{ $product->reviews_count ?? 0 }}</span> Penilaian</div>
-                        <span class="text-gray-300 dark:text-gray-600 mx-1">|</span>
-                        <div><span class="font-semibold text-gray-700 dark:text-gray-300">{{ $product->sold_count ?? 0 }}</span> Terjual</div>
+                        <span class="text-gray-300 mx-1">|</span>
+                        <div><span class="font-semibold text-gray-700">{{ $product->reviews_count ?? 0 }}</span> Penilaian</div>
+                        <span class="text-gray-300 mx-1">|</span>
+                        <div><span class="font-semibold text-gray-700">{{ $product->sold_count ?? 0 }}</span> Terjual</div>
                     </div>
 
-                    <div class="bg-gray-50 dark:bg-gray-700/50 rounded-md p-4 my-4 flex items-center flex-wrap gap-x-4 gap-y-2">
-                        <span id="display-original-price" class="text-base text-gray-400 dark:text-gray-500 line-through {{ ($product->original_price && $product->original_price > $product->price && !$hasVariants) ? '' : 'hidden' }}">
+                    <div class="bg-gray-50 rounded-md p-4 my-4 flex items-center flex-wrap gap-x-4 gap-y-2">
+                        <span id="display-original-price" class="text-base text-gray-400 line-through {{ ($product->original_price && $product->original_price > $product->price && !$hasVariants) ? '' : 'hidden' }}">
                             Rp{{ number_format($product->original_price, 0, ',', '.') }}
                         </span>
 
-                        <span id="display-price" class="text-2xl lg:text-3xl font-bold text-red-600 dark:text-red-500">
+                        <span id="display-price" class="text-2xl lg:text-3xl font-bold text-red-600">
                            Rp{{ number_format($product->price, 0, ',', '.') }}
                         </span>
 
@@ -208,11 +208,11 @@ if (!function_exists('formatWaNumber')) {
 
                         {{-- === TATA LETAK SESUAI PERMINTAAN: VARIAN DI ATAS KUANTITAS === --}}
                         @if ($hasVariants)
-                            <div class="space-y-4 mb-6 pt-4 border-t border-gray-100 dark:border-gray-700">
+                            <div class="space-y-4 mb-6 pt-4 border-t border-gray-100">
                                 @foreach ($product->productVariantTypes as $type)
                                 <div class="variant-group" data-type-name="{{ $type->name }}">
                                     <div class="flex flex-col sm:flex-row sm:items-center">
-                                        <label class="w-24 text-sm text-gray-500 dark:text-gray-400 flex-shrink-0 mb-2 sm:mb-0">{{ $type->name }}</label>
+                                        <label class="w-24 text-sm text-gray-500 flex-shrink-0 mb-2 sm:mb-0">{{ $type->name }}</label>
                                         <div class="variant-btn-container">
                                             @foreach ($type->options as $option)
                                             <button type="button" class="variant-btn" data-option-value="{{ $option->value }}">
@@ -230,22 +230,22 @@ if (!function_exists('formatWaNumber')) {
 
                         {{-- Quantity Selector --}}
                         <div class="mt-6 flex items-center">
-                            <label for="quantity" class="w-24 text-sm text-gray-500 dark:text-gray-400 flex-shrink-0">Kuantitas</label>
+                            <label for="quantity" class="w-24 text-sm text-gray-500 flex-shrink-0">Kuantitas</label>
                             <div class="flex items-center">
-                                <div class="flex items-center border border-gray-300 dark:border-gray-600 rounded-sm overflow-hidden">
-                                    <button id="button-minus" type="button" class="w-9 h-9 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-500 transition-colors disabled:text-gray-300 dark:disabled:text-gray-500" disabled>
+                                <div class="flex items-center border border-gray-300 rounded-sm overflow-hidden">
+                                    <button id="button-minus" type="button" class="w-9 h-9 flex items-center justify-center text-gray-600 hover:text-red-600 transition-colors disabled:text-gray-300" disabled>
                                         <i class="fas fa-minus text-xs"></i>
                                     </button>
-                                    <input type="number" id="quantity" name="quantity" class="w-12 h-9 text-center text-sm bg-transparent border-x border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-0 disabled:bg-gray-100 dark:disabled:bg-gray-700" 
+                                    <input type="number" id="quantity" name="quantity" class="w-12 h-9 text-center text-sm bg-transparent border-x border-gray-300 focus:outline-none focus:ring-0 disabled:bg-gray-100" 
                                            value="1" min="1" 
                                            max="{{ $initialStock > 0 ? $initialStock : 1 }}" 
                                            {{ $initialStock <= 0 ? 'disabled' : '' }}>
-                                    <button id="button-plus" type="button" class="w-9 h-9 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-500 transition-colors disabled:text-gray-300 dark:disabled:text-gray-500" {{ $initialStock <= 1 ? 'disabled' : '' }}>
+                                    <button id="button-plus" type="button" class="w-9 h-9 flex items-center justify-center text-gray-600 hover:text-red-600 transition-colors disabled:text-gray-300" {{ $initialStock <= 1 ? 'disabled' : '' }}>
                                         <i class="fas fa-plus text-xs"></i>
                                     </button>
                                 </div>
                                 
-                                <span id="display-stock" class="ml-4 text-sm text-gray-500 dark:text-gray-400">
+                                <span id="display-stock" class="ml-4 text-sm text-gray-500">
                                     @if($initialStock > 0)
                                         Tersisa {{ $initialStock }} buah
                                     @elseif (!$hasVariants && $initialStock <= 0)
@@ -258,7 +258,7 @@ if (!function_exists('formatWaNumber')) {
                         </div>
 
                         {{-- Action Buttons --}}
-                        <div class="mt-8 pt-6 border-t border-gray-100 dark:border-gray-700">
+                        <div class="mt-8 pt-6 border-t border-gray-100">
                             <div class="flex flex-col sm:flex-row items-center gap-3">
                                 <button id="add-to-cart-button" type="submit" name="action" value="add_to_cart" class="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 px-6 py-3 text-sm btn-shopee-outline rounded-sm font-medium" {{ $initialStock <= 0 ? 'disabled' : '' }}>
                                     <i class="fas fa-cart-plus text-base"></i> Masukkan Keranjang
@@ -276,7 +276,7 @@ if (!function_exists('formatWaNumber')) {
 
  
 @if ($product->store && $product->store->user)
-<div class="mt-8 bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 md:p-6">
+<div class="mt-8 bg-white rounded-lg shadow-sm p-4 md:p-6">
     <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
 @php
     // 1. Ambil path logo dari relasi 'store.user'
@@ -300,12 +300,12 @@ if (!function_exists('formatWaNumber')) {
         <a href="{{ Route::has('toko.profile') ? route('toko.profile', ['name' => $tokoProfileParam]) : '#' }}" class="flex-shrink-0">
             <img src="{{ $sellerLogoUrl }}"
                  alt="Logo {{ $sellerStoreName }}"
-                 class="w-16 h-16 rounded-full border border-gray-200 dark:border-gray-700 object-cover">
+                 class="w-16 h-16 rounded-full border border-gray-200 object-cover">
         </a>
 
         <div class="flex-grow">
             <a href="{{ Route::has('toko.profile') ? route('toko.profile', ['name' => $tokoProfileParam]) : '#' }}" class="hover:underline">
-                <h3 class="text-base font-bold text-gray-900 dark:text-white">{{ $sellerStoreName }}</h3>
+                <h3 class="text-base font-bold text-gray-900">{{ $sellerStoreName }}</h3>
             </a>
 
             {{-- ✅ [PERBAIKAN DINAMIS] Dari 'Offline' menjadi dinamis --}}
@@ -313,13 +313,13 @@ if (!function_exists('formatWaNumber')) {
                             $lastSeen = \Carbon\Carbon::parse($product->store->user->last_seen_at);
                             $isOnline = $lastSeen->diffInMinutes(now()) < 10;
                         @endphp
-                        <div class="flex items-center text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        <div class="flex items-center text-xs text-gray-500 mt-1">
                             <span class="w-2 h-2 {{ $isOnline ? 'bg-green-500' : 'bg-gray-400' }} rounded-full mr-1.5"></span>
                             <span>{{ $isOnline ? 'Online' : 'Aktif ' . $lastSeen->diffForHumans() }}</span>
                         </div>
 
             @if($product->store->user->regency)
-                <div class="flex items-center text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <div class="flex items-center text-xs text-gray-500 mt-1">
                     <i class="fas fa-map-marker-alt mr-1.5"></i> {{ $product->store->user->regency }}
                 </div>
             @endif
@@ -330,15 +330,15 @@ if (!function_exists('formatWaNumber')) {
                 @php $wa_number = formatWaNumber($product->store->user->no_wa); @endphp
                 <a href="https://wa.me/{{ $wa_number }}?text=Halo%2C%20saya%20tertarik%20dengan%20produk%20Anda%3A%20{{ urlencode($product->name) }}"
                    target="_blank"
-                   class="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded transition-colors hover:bg-gray-100 dark:hover:bg-gray-700">
+                   class="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 text-sm border border-gray-300 rounded transition-colors hover:bg-gray-100">
                     <i class="fab fa-whatsapp text-green-500"></i> Chat
                 </a>
             @endif
 
             @if(Route::has('toko.profile'))
                 <a href="{{ route('toko.profile', ['name' => $tokoProfileParam]) }}"
-                   class="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                    <i class="fas fa-store text-gray-500 dark:text-gray-400"></i> Kunjungi Toko
+                   class="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 text-sm border border-gray-300 rounded hover:bg-gray-100 transition-colors">
+                    <i class="fas fa-store text-gray-500"></i> Kunjungi Toko
                 </a>
             @endif
         </div>
@@ -369,15 +369,15 @@ if (!function_exists('formatWaNumber')) {
         
         {{-- Tampilkan blok jika salah satu dari data di atas ada isinya --}}
         @if ($namedAttributes->isNotEmpty() || !empty($unnamedValues))
-            <div class="mt-8 bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 md:p-6">
-                <h2 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Spesifikasi Produk</h2>
+            <div class="mt-8 bg-white rounded-lg shadow-sm p-4 md:p-6">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4">Spesifikasi Produk</h2>
                 <div class="space-y-3">
 
                     {{-- Bagian 1: Tampilkan atribut yang punya NAMA (Data Bagus) --}}
                     @foreach ($namedAttributes as $name => $attributes)
                         <div class="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-1 text-sm">
-                            <dt class="text-gray-500 dark:text-gray-400">{{ $name }}</dt>
-                            <dd class="col-span-1 md:col-span-2 font-medium text-gray-800 dark:text-gray-200">
+                            <dt class="text-gray-500">{{ $name }}</dt>
+                            <dd class="col-span-1 md:col-span-2 font-medium text-gray-800">
                                 {{ $attributes->pluck('value')->implode(', ') }}
                             </dd>
                         </div>
@@ -386,8 +386,8 @@ if (!function_exists('formatWaNumber')) {
                     {{-- Bagian 2: Tampilkan atribut yang TIDAK punya NAMA (Data Lama/Jelek) --}}
                     @if (!empty($unnamedValues))
                          <div class="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-1 text-sm">
-                            <dt class="text-gray-500 dark:text-gray-400">Info Lainnya</dt>
-                            <dd class="col-span-1 md:col-span-2 font-medium text-gray-800 dark:text-gray-200">
+                            <dt class="text-gray-500">Info Lainnya</dt>
+                            <dd class="col-span-1 md:col-span-2 font-medium text-gray-800">
                                 {{ $unnamedValues }}
                             </dd>
                         </div>
@@ -400,17 +400,17 @@ if (!function_exists('formatWaNumber')) {
 
 
         {{-- Product Description Section --}}
-        <div class="mt-8 bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 md:p-6">
-            <h2 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Deskripsi Produk</h2>
-            <div id="short-description" class="prose prose-sm dark:prose-invert max-w-none break-words leading-relaxed">
+        <div class="mt-8 bg-white rounded-lg shadow-sm p-4 md:p-6">
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">Deskripsi Produk</h2>
+            <div id="short-description" class="prose prose-sm max-w-none break-words leading-relaxed">
                 {!! nl2br(e(Str::limit($product->description, 350))) !!}
             </div>
-            <div id="full-description" class="prose prose-sm dark:prose-invert max-w-none break-words leading-relaxed hidden">
+            <div id="full-description" class="prose prose-sm max-w-none break-words leading-relaxed hidden">
                 {!! nl2br(e($product->description)) !!}
             </div>
             @if(strlen($product->description ?? '') > 350)
             <div class="text-center mt-4">
-                 <button id="toggle-description" class="text-sm text-red-600 dark:text-red-500 font-medium hover:underline">
+                 <button id="toggle-description" class="text-sm text-red-600 font-medium hover:underline">
                      Baca Selengkapnya <i class="fas fa-chevron-down text-xs ml-1"></i>
                  </button>
             </div>

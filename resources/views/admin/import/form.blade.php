@@ -5,8 +5,8 @@
     <!-- Header Halaman -->
     <div class="flex flex-col space-y-6 md:space-y-0 md:flex-row justify-between">
         <div class="mr-6">
-            <h1 class="text-4xl font-semibold mb-2 text-gray-800 dark:text-gray-200">Import Postingan</h1>
-            <h2 class="text-gray-600 dark:text-gray-400 ml-0.5">Upload file XML dari WordPress untuk impor massal.</h2>
+            <h1 class="text-4xl font-semibold mb-2 text-gray-800">Import Postingan</h1>
+            <h2 class="text-gray-600 ml-0.5">Upload file XML dari WordPress untuk impor massal.</h2>
         </div>
         <div class="flex flex-wrap items-start justify-end -mb-3">
             <a href="{{ route('admin.posts.index') }}" class="inline-flex px-5 py-3 text-white bg-purple-600 hover:bg-purple-700 focus:bg-purple-700 rounded-md ml-6 mb-3">
@@ -17,7 +17,7 @@
     </div>
 
     <!-- Konten Utama: Form Upload -->
-    <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-8">
+    <div class="bg-white shadow-md rounded-lg p-8">
         @if (session('success'))
             <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6 rounded" role="alert">
                 <p class="font-bold">Berhasil</p>
@@ -39,12 +39,12 @@
 
             <!-- Zona Drag and Drop -->
             <div>
-                <label for="wordpress_xml" id="drop-zone" class="flex flex-col items-center justify-center w-full h-64 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:hover:bg-bray-800 dark:bg-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-600 transition-colors">
+                <label for="wordpress_xml" id="drop-zone" class="flex flex-col items-center justify-center w-full h-64 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors">
                     <div class="flex flex-col items-center justify-center pt-5 pb-6">
                         <svg class="w-10 h-10 mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-4-4V6a4 4 0 014-4h10a4 4 0 014 4v6a4 4 0 01-4 4H7z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 16v2a2 2 0 01-2 2H10a2 2 0 01-2-2v-2m-3-10V4a2 2 0 012-2h10a2 2 0 012 2v2"></path></svg>
-                        <p class="mb-2 text-sm text-gray-500 dark:text-gray-400"><span class="font-semibold">Klik untuk mengunggah</span> atau seret dan lepas</p>
-                        <p class="text-xs text-gray-500 dark:text-gray-400">Hanya file XML (Maks. 128MB)</p>
-                        <p id="file-name-display" class="mt-4 text-sm font-semibold text-purple-700 dark:text-purple-300"></p>
+                        <p class="mb-2 text-sm text-gray-500"><span class="font-semibold">Klik untuk mengunggah</span> atau seret dan lepas</p>
+                        <p class="text-xs text-gray-500">Hanya file XML (Maks. 128MB)</p>
+                        <p id="file-name-display" class="mt-4 text-sm font-semibold text-purple-700"></p>
                     </div>
                     <input type="file" name="wordpress_xml" id="wordpress_xml" class="hidden" accept=".xml" required>
                 </label>
@@ -60,7 +60,7 @@
             <!-- Status Message Section -->
             <div id="upload-status" class="mt-4 text-sm font-medium"></div>
 
-            <div class="mt-8 border-t border-gray-200 dark:border-gray-700 pt-5">
+            <div class="mt-8 border-t border-gray-200 pt-5">
                 <div class="flex justify-end">
                     <button type="submit" id="submit-button" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500">
                         <i class="fas fa-upload mr-2"></i>

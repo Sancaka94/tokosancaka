@@ -52,7 +52,7 @@
         @else
         wire:navigate href="{{ route(WireChat::viewRouteName(), $conversation->id) }}" @endif
             @style(['border-color:var(--wc-brand-primary)' => $selectedConversationId == $conversation?->id])
-            class="py-3 flex gap-4 dark:hover:bg-[var(--wc-dark-secondary)]  hover:bg-[var(--wc-light-secondary)]  rounded-xs transition-colors duration-150  relative w-full cursor-pointer px-2"
+            class="py-3 flex gap-4  hover:bg-[var(--wc-light-secondary)]  rounded-xs transition-colors duration-150  relative w-full cursor-pointer px-2"
             :class="$wire.selectedConversationId == conversationID &&
                 'dark:bg-[var(--wc-dark-secondary)] bg-[var(--wc-light-secondary)] border-r-4  border-opacity-20 border-[var(--wc-brand-primary)]'">
 
@@ -64,16 +64,16 @@
 
             <aside class="grid  grid-cols-12 w-full">
                 <div
-                    class="col-span-10 border-b pb-2 border-[var(--wc-light-border)] dark:border-[var(--wc-dark-border)] relative overflow-hidden truncate leading-5 w-full flex-nowrap p-1">
+                    class="col-span-10 border-b pb-2 border-[var(--wc-light-border)] relative overflow-hidden truncate leading-5 w-full flex-nowrap p-1">
 
                     {{-- name --}}
                     <div class="flex gap-1 mb-1 w-full items-center">
-                        <h6 class="truncate font-medium text-gray-900 dark:text-white">
+                        <h6 class="truncate font-medium text-gray-900">
                             {{ $group ? $group?->name : $receiver?->display_name }}
                         </h6>
 
                         @if ($conversation->isSelfConversation())
-                            <span class="font-medium dark:text-white">({{__('wirechat::chats.labels.you')  }})</span>
+                            <span class="font-medium">({{__('wirechat::chats.labels.you')  }})</span>
                         @endif
 
                     </div>

@@ -160,11 +160,60 @@
                 <div class="mt-2 pt-2">
                     <p class="label"><strong>Rincian Paket:</strong></p>
                     <p class="value">- Berat: {{ $pesanan->weight }} Gram</p>
+                    <p class="value">- Isi Paket: {{ $pesanan->item_description }}</p>
                     <p class="value">- Dimensi: {{ $pesanan->length ?? 0 }} x {{ $pesanan->width ?? 0 }} x {{ $pesanan->height ?? 0 }} cm</p>
-                    <p class="value">- Layanan: {{ strtoupper($expeditionService) }}</p><br><br>
-
+                    <p class="value">- Layanan: {{ strtoupper($expeditionService) }}</p><br>
                     <p class="label"><strong>Total Ongkir:</strong></p>
-                    <p class="value"><strong>Rp {{ number_format($pesanan->shipping_cost, 0, ',', '.') }}</strong></p>
+                    <p class="value"><strong>Rp {{ number_format($pesanan->shipping_cost, 0, ',', '.') }}</strong></p><br>
+                    <p class="value">CV. SANCAKA KARYA HUTAMA</p>
+                     {{-- BAGIAN YANG DIPERBAIKI: LOGIKA COD ONGKIR vs COD BARANG --}}
+        @php
+            $pm = strtoupper($pesanan->payment_method);
+            $isCodBarang = ($pm === 'CODBARANG');
+            $isCodOngkir = ($pm === 'COD');
+            
+            // Variabel Default
+            $labelCod = "NILAI COD";
+            $nilaiCodFinal = 0;
+            $showCodBlock = false;
+
+            if ($isCodBarang) {
+                // KASUS 1: COD BARANG (User bayar Barang + Ongkir)
+                // Kita percaya angka di database ($pesanan->price) karena biasanya sudah benar totalnya
+                $nilaiCodFinal = $pesanan->price;
+                $labelCod = "NILAI COD (BARANG + ONGKIR)";
+                $showCodBlock = true;
+
+            } elseif ($isCodOngkir) {
+                // KASUS 2: COD ONGKIR (User CUMA bayar Ongkir)
+                // Kita lakukan HITUNG ULANG agar data lama yang salah (59rb) tidak muncul
+                // Rumus: Ongkir Asli + Asuransi + Fee (2500)
+                $ongkirAsli = $pesanan->shipping_cost ?? 0;
+                $asuransiAsli = $pesanan->insurance_cost ?? 0;
+                
+                // Hitung Fee Layanan (Logic sama dengan OrderService)
+                $feeLayanan = 2500;
+                $feeHitung = max($feeLayanan, floor($ongkirAsli * 0.03));
+                
+                $nilaiCodFinal = $ongkirAsli + $asuransiAsli + $feeHitung;
+                $labelCod = "NILAI COD (ONGKIR SAJA)";
+                $showCodBlock = true;
+            }
+        @endphp
+
+        @if($showCodBlock)
+        
+            <p class="label text-[8px] mb-1"><strong>{{ $labelCod }}</strong></p>
+            <p class="value text-red-600 font-bold" style="font-size: 8px;">Rp {{ number_format($nilaiCodFinal, 0, ',', '.') }}</p>
+            
+            @if($isCodOngkir)
+                <p class="text-[10px] italic mt-1 font-bold text-gray-500">(JANGAN TAGIH HARGA BARANG)</p>
+            @endif
+       
+        @endif
+        {{-- AKHIR PERBAIKAN --}}
+
+                    
                 </div>
             </div>
 
@@ -184,27 +233,28 @@
                 </p>
 
                 <div class="flex justify-center mt-4">
-                    {{-- WADAH QR CODE (BARCODE 2D) --}}
-                    <div id="qrcode"></div> 
+    <div class="border border-gray-400 rounded-md p-3 inline-block">
+        <div id="qrcode"></div>
+    </div>
                 </div>
+
+                <p class="flex justify-center"><strong>TRACKING ME</strong></p>
             </div>
         </div>
 
         <div class="grid grid-cols-3 gap-2 text-center mt-2 border-b border-dashed border-gray-400 pb-2">
-            <div><p class="label"><strong>ORDER ID</strong></p><p class="value">{{ $pesanan->nomor_invoice }}</p></div>
+            <div><p class="label"><strong>ORDER ID / RESI</strong></p><p class="value">{{ $pesanan->nomor_invoice }}</p></div>
             <div><p class="label"><strong>BERAT</strong></p><p class="value">{{ $pesanan->weight }} Gram</p></div>
-            <div><p class="label"><strong>VOLUME</strong></p><p class="value">{{ $pesanan->length ?? 0 }} x {{ $pesanan->width ?? 0 }} x {{ $pesanan->height ?? 0 }} cm</p></div>
+            <div><p class="label"><strong>VOLUME (cm)</strong></p><p class="value">{{ $pesanan->length ?? 0 }} x {{ $pesanan->width ?? 0 }} x {{ $pesanan->height ?? 0 }}</p></div>
             <div><p class="label"><strong>LAYANAN</strong></p><p class="value">{{ strtoupper($expeditionService) }}</p></div>
             <div><p class="label"><strong>EKSPEDISI</strong></p><p class="value">{{ strtoupper($expeditionName) }}</p></div>
-            <div><p class="label"><strong>Pembayaran</strong></p><p class="value">{{ $pesanan->payment_method }}</p></div>
+            <div>
+    <p class="label"><strong>Pembayaran</strong></p>
+    <p class="value">{{ strtoupper($pesanan->payment_method) === 'POTONG SALDO' ? 'SALDO / CASH' : $pesanan->payment_method }}</p></div>
+
         </div>
 
-        @if($pesanan->payment_method == 'COD' || $pesanan->payment_method == 'CODBARANG')
-        <div class="text-center mt-2 border-b border-dashed border-gray-400 pb-2">
-            <p class="label"><strong>NILAI COD</strong></p>
-            <p class="value text-red-600">Rp {{ number_format($pesanan->price, 0, ',', '.') }}</p>
-        </div>
-        @endif
+       
 
         @if($pesanan->resi_aktual)
         <div class="text-center mt-3 pt-2 border-t border-dashed border-gray-400">
@@ -262,8 +312,8 @@
             try {
                  new QRCode(document.getElementById("qrcode"), {
                      text: "https://tokosancaka.com/tracking/search?resi=" + RESI, 
-                     width: 100,
-                     height: 100
+                     width: 75,
+                     height: 75
                  });
             } catch (e) {
                 console.error("Gagal membuat QR Code:", e);

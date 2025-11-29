@@ -14,15 +14,15 @@
 
         <div class="mr-6">
 
-            <h1 class="text-4xl font-semibold mb-2 text-gray-800 dark:text-gray-200">Tambah Postingan Baru</h1>
+            <h1 class="text-4xl font-semibold mb-2 text-gray-800">Tambah Postingan Baru</h1>
 
-            <h2 class="text-gray-600 dark:text-gray-400 ml-0.5">Tulis manual atau pilih bantuan AI untuk membuat artikel.</h2>
+            <h2 class="text-gray-600 ml-0.5">Tulis manual atau pilih bantuan AI untuk membuat artikel.</h2>
 
         </div>
 
     </div>
 
-    <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-6">
+    <div class="bg-white shadow-md rounded-lg p-6">
 
         <form action="{{ route('admin.posts.store') }}" method="POST" enctype="multipart/form-data">
 
@@ -32,21 +32,21 @@
 
             <!-- PERUBAHAN: Desain Toggle Switch dengan 3 Pilihan -->
 
-            <div class="mb-6 p-4 bg-red-50 dark:bg-gray-700 rounded-lg">
+            <div class="mb-6 p-4 bg-red-50 rounded-lg">
 
                 <div class="flex items-center justify-between">
 
-                    <label class="text-sm font-medium text-gray-900 dark:text-gray-300">Bantuan AI</label>
+                    <label class="text-sm font-medium text-gray-900">Bantuan AI</label>
 
-                    <div id="ai-toggle-container" class="relative flex w-72 items-center rounded-full bg-gray-200 dark:bg-gray-600 p-1">
+                    <div id="ai-toggle-container" class="relative flex w-72 items-center rounded-full bg-gray-200 p-1">
 
                         <div id="ai-toggle-slider" class="absolute h-8 w-1/3 transform rounded-full bg-red-600 shadow-md transition-transform"></div>
 
                         <button type="button" data-model="none" class="ai-choice-btn relative z-10 w-1/3 py-1 text-sm font-bold text-white">None</button>
 
-                        <button type="button" data-model="openai" class="ai-choice-btn relative z-10 w-1/3 py-1 text-sm font-bold text-gray-600 dark:text-gray-300">OpenAI</button>
+                        <button type="button" data-model="openai" class="ai-choice-btn relative z-10 w-1/3 py-1 text-sm font-bold text-gray-600">OpenAI</button>
 
-                        <button type="button" data-model="gemini" class="ai-choice-btn relative z-10 w-1/3 py-1 text-sm font-bold text-gray-600 dark:text-gray-300">Gemini</button>
+                        <button type="button" data-model="gemini" class="ai-choice-btn relative z-10 w-1/3 py-1 text-sm font-bold text-gray-600">Gemini</button>
 
                     </div>
 
@@ -68,11 +68,11 @@
 
                     <div>
 
-                        <label for="title" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Judul</label>
+                        <label for="title" class="block text-sm font-medium text-gray-700">Judul</label>
 
                         <div class="flex items-center space-x-2 mt-1">
 
-                            <input type="text" name="title" id="title" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm" placeholder="Ketik judul di sini..." required>
+                            <input type="text" name="title" id="title" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="Ketik judul di sini..." required>
 
                             <!-- Tombol Generate disembunyikan secara default -->
 
@@ -96,11 +96,11 @@
 
                     <div>
 
-                        <label for="content" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Konten</label>
+                        <label for="content" class="block text-sm font-medium text-gray-700">Konten</label>
 
                         <div id="loading-indicator" class="hidden my-2 text-sm text-red-500 font-semibold flex items-center space-x-2"><i class="fas fa-spinner fa-spin mr-2"></i>Menghasilkan artikel, mohon tunggu...</div>
 
-                        <textarea name="content" id="content" rows="20" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm">{{ old('content') }}</textarea>
+                        <textarea name="content" id="content" rows="20" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">{{ old('content') }}</textarea>
 
                     </div>
 
@@ -112,9 +112,9 @@
 
                     <div>
 
-                        <label for="category_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Kategori</label>
+                        <label for="category_id" class="block text-sm font-medium text-gray-700">Kategori</label>
 
-                        <select id="category_id" name="category_id" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm" required>
+                        <select id="category_id" name="category_id" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
 
                             <option value="">Pilih Kategori</option>
 
@@ -132,9 +132,9 @@
 
                     <div>
 
-                        <label for="tags" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Tag</label>
+                        <label for="tags" class="block text-sm font-medium text-gray-700">Tag</label>
 
-                        <select id="tags" name="tags[]" multiple class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm">
+                        <select id="tags" name="tags[]" multiple class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
 
                             @foreach ($tags as $tag)
 
@@ -150,9 +150,9 @@
 
                     <div>
 
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Gambar Unggulan</label>
+                        <label class="block text-sm font-medium text-gray-700">Gambar Unggulan</label>
 
-                        <input id="featured_image" name="featured_image" type="file" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100 dark:file:bg-gray-700 dark:file:text-gray-300">
+                        <input id="featured_image" name="featured_image" type="file" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100">
 
                     </div>
 

@@ -10,7 +10,7 @@
 
 <!-- Latar belakang gelap saat sidebar mobile terbuka -->
 
-<div x-show="sidebarOpen" @click="sidebarOpen = false" class="fixed inset-0 z-20 bg-black bg-opacity-50 transition-opacity lg:hidden" x-cloak></div>
+<div x-show="sidebarOpen" @click="sidebarOpen = false" class="fixed inset-0 z-20 bg-blue-900 bg-opacity-50 transition-opacity lg:hidden" x-cloak></div>
 
 
 
@@ -20,7 +20,7 @@
 
     :class="sidebarOpen ? 'translate-x-0 ease-out' : '-translate-x-full ease-in'"
 
-    class="fixed inset-y-0 left-0 z-30 w-64 overflow-y-auto bg-gray-800 text-white transition duration-300 transform lg:translate-x-0 lg:static lg:inset-0"
+    class="fixed inset-y-0 left-0 z-30 w-64 overflow-y-auto bg-blue-900 text-white transition duration-300 transform lg:translate-x-0 lg:static lg:inset-0"
 
     x-cloak>
 
@@ -89,12 +89,26 @@
 
 
         <a href="{{ route('customer.pesanan.create') }}" class="flex items-center px-4 py-2.5 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors duration-200 {{ request()->routeIs('customer.pesanan.create') ? 'bg-gray-900 text-white' : '' }}">
-
             <i class="fas fa-plus-circle fa-fw w-6"></i>
-
-            <span class="ml-3">Kirim Paket</span>
-
+            <span class="ml-3">Kirim Paket (Satuan)</span>
         </a>
+        
+        {{-- [BARU] Link Halaman Multi Koli --}}
+<a href="{{ route('customer.koli.create') }}"
+   class="flex items-center px-4 py-2.5 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors duration-200
+          {{ request()->routeIs('customer.koli.create') ? 'bg-gray-900 text-white' : '' }}">
+
+    <i class="fas fa-boxes fa-fw w-6"></i>
+
+    <span class="ml-3 flex items-center">
+        Kirim Massal
+        <span class="ml-2 bg-red-600 text-white text-[10px] px-1.5 py-0.5 rounded">
+            BARU
+        </span>
+    </span>
+
+</a>
+
 
         
 

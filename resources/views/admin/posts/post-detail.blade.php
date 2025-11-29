@@ -8,8 +8,8 @@
     <!-- Header Halaman -->
     <div class="flex flex-col space-y-6 md:space-y-0 md:flex-row justify-between">
         <div class="mr-6">
-            <h1 class="text-4xl font-semibold mb-2 text-gray-800 dark:text-gray-200">{{ $post->title }}</h1>
-            <h2 class="text-gray-600 dark:text-gray-400 ml-0.5">Detail lengkap untuk postingan ini.</h2>
+            <h1 class="text-4xl font-semibold mb-2 text-gray-800">{{ $post->title }}</h1>
+            <h2 class="text-gray-600 ml-0.5">Detail lengkap untuk postingan ini.</h2>
         </div>
         <div class="flex flex-wrap items-start justify-end -mb-3">
             <a href="{{ route('admin.posts.index') }}" class="inline-flex px-5 py-3 text-white bg-red-500 hover:bg-red-700 rounded-md ml-6 mb-3">
@@ -20,10 +20,10 @@
     </div>
 
     <!-- Konten Utama: Detail Postingan -->
-    <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-8">
-        <article class="prose dark:prose-invert max-w-none">
+    <div class="bg-white shadow-md rounded-lg p-8">
+        <article class="prose max-w-none">
             <!-- Meta Postingan -->
-            <div class="mb-6 text-sm text-gray-500 dark:text-gray-400">
+            <div class="mb-6 text-sm text-gray-500">
                 <span>Ditulis oleh: <strong>{{ $post->author->nama_lengkap ?? 'N/A' }}</strong></span>
                 <span class="mx-2">|</span>
                 <span>Kategori: <strong>{{ $post->category->name ?? 'Tanpa Kategori' }}</strong></span>
@@ -45,11 +45,11 @@
 
             <!-- Tampilkan Tags -->
             @if($post->tags->isNotEmpty())
-                <div class="mt-8 border-t pt-4 dark:border-gray-600">
-                    <h3 class="text-lg font-semibold mb-2 text-gray-700 dark:text-gray-300">Tags:</h3>
+                <div class="mt-8 border-t pt-4">
+                    <h3 class="text-lg font-semibold mb-2 text-gray-700">Tags:</h3>
                     <div class="flex flex-wrap gap-2">
                         @foreach($post->tags as $tag)
-                            <span class="bg-red-100 text-red-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded dark:bg-red-200 dark:text-red-800">{{ $tag->name }}</span>
+                            <span class="bg-red-100 text-red-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded">{{ $tag->name }}</span>
                         @endforeach
                     </div>
                 </div>

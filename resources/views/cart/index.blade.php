@@ -102,9 +102,9 @@
 
 @section('content')
 
-<div class="bg-gray-100 dark:bg-gray-900 min-h-screen">
+<div class="bg-gray-100 min-h-screen">
     <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <h1 class="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white mb-8">Keranjang Belanja Anda</h1>
+        <h1 class="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-8">Keranjang Belanja Anda</h1>
 
         {{-- [PERBAIKAN] Notifikasi langsung di sini --}}
         @if (session('success'))
@@ -157,20 +157,20 @@
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
                     <!-- Daftar Item Keranjang (Kolom Kiri) -->
-                    <div class="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl shadow-sm">
-                         <div class="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-                             <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Item di Keranjang</h2>
+                    <div class="lg:col-span-2 bg-white rounded-xl shadow-sm">
+                         <div class="p-4 sm:p-6 border-b border-gray-200 flex justify-between items-center">
+                             <h2 class="text-lg font-semibold text-gray-900">Item di Keranjang</h2>
                              {{-- Pastikan route 'cart.clear' ada dan metodenya POST --}}
                              @if(Route::has('cart.clear'))
                              <form action="{{ route('cart.clear') }}" method="POST" onsubmit="return confirm('Anda yakin ingin mengosongkan keranjang?');">
                                  @csrf
-                                 <button type="submit" class="text-sm font-medium text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300">
+                                 <button type="submit" class="text-sm font-medium text-red-600 hover:text-red-800">
                                      <i class="fas fa-trash-alt mr-1"></i> Kosongkan Keranjang
                                 </button>
                             </form>
                             @endif
                         </div>
-                        <ul role="list" class="divide-y divide-gray-200 dark:divide-gray-700">
+                        <ul role="list" class="divide-y divide-gray-200">
                             @php $totalWeight = 0; $grandTotal = 0; @endphp
                             @foreach($cart as $cartKey => $details)
                                 @php
@@ -185,7 +185,7 @@
                                 {{-- Calculate total weight if available --}}
                                 {{-- @php $totalWeight += ($details['weight'] ?? 0) * $quantity; @endphp --}}
                                 <li class="flex flex-col sm:flex-row py-4 sm:py-6 px-4 sm:px-6 cart-item relative" data-id="{{ $cartKey }}">
-                                    <div class="h-24 w-24 sm:h-28 sm:w-28 flex-shrink-0 overflow-hidden rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
+                                    <div class="h-24 w-24 sm:h-28 sm:w-28 flex-shrink-0 overflow-hidden rounded-md border border-gray-200 bg-gray-50">
                                         <img src="{{ $details['image_url'] ? asset('public/storage/' . $details['image_url']) : 'https://placehold.co/112x112/EFEFEF/AAAAAA?text=N/A' }}"
                                              alt="{{ $details['name'] ?? 'Produk' }}"
                                              class="h-full w-full object-cover object-center"
@@ -194,42 +194,42 @@
 
                                     <div class="ml-0 sm:ml-4 mt-4 sm:mt-0 flex flex-1 flex-col">
                                         <div>
-                                            <div class="flex justify-between text-base font-medium text-gray-900 dark:text-white">
+                                            <div class="flex justify-between text-base font-medium text-gray-900">
                                                 <h3>
                                                     {{-- Link kembali ke halaman produk (gunakan slug jika ada) --}}
                                                     {{-- Pastikan route 'products.show' ada dan menerima slug --}}
                                                     @if(isset($details['slug']) && Route::has('products.show'))
-                                                        <a href="{{ route('products.show', $details['slug']) }}" class="hover:text-orange-600 dark:hover:text-orange-400 line-clamp-2">{{ $details['name'] ?? 'Nama Produk Tidak Tersedia' }}</a>
+                                                        <a href="{{ route('products.show', $details['slug']) }}" class="hover:text-orange-600 line-clamp-2">{{ $details['name'] ?? 'Nama Produk Tidak Tersedia' }}</a>
                                                     @else
                                                          <span class="line-clamp-2">{{ $details['name'] ?? 'Nama Produk Tidak Tersedia' }}</span>
                                                      @endif
                                                 </h3>
                                                 <p class="ml-4 item-subtotal flex-shrink-0">Rp{{ number_format($subtotal, 0, ',', '.') }}</p>
                                             </div>
-                                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Rp{{ number_format($price, 0, ',', '.') }} / item</p>
+                                            <p class="mt-1 text-sm text-gray-500">Rp{{ number_format($price, 0, ',', '.') }} / item</p>
                                         </div>
                                         <div class="flex flex-1 items-end justify-between text-sm mt-4">
                                             {{-- Update Kuantitas (AJAX) --}}
                                             <div class="flex items-center">
-                                                <button type="button" class="quantity-change px-2 py-1 border border-gray-300 rounded-l dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed" data-action="decrease" data-id="{{ $cartKey }}" {{ $quantity <= 1 ? 'disabled' : '' }}>
+                                                <button type="button" class="quantity-change px-2 py-1 border border-gray-300 rounded-l text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed" data-action="decrease" data-id="{{ $cartKey }}" {{ $quantity <= 1 ? 'disabled' : '' }}>
                                                     <i class="fas fa-minus text-xs"></i>
                                                 </button>
                                                 <input type="number"
-                                                       class="quantity-input w-12 h-8 text-center text-sm border-t border-b border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-1 focus:ring-orange-500 dark:bg-gray-700 dark:text-white"
+                                                       class="quantity-input w-12 h-8 text-center text-sm border-t border-b border-gray-300 focus:outline-none focus:ring-1 focus:ring-orange-500"
                                                        value="{{ $quantity }}"
                                                        min="1"
                                                        {{-- Set max stock --}}
                                                        max="{{ $currentStock }}"
                                                        data-id="{{ $cartKey }}">
-                                                <button type="button" class="quantity-change px-2 py-1 border border-gray-300 rounded-r dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed" data-action="increase" data-id="{{ $cartKey }}" {{ $quantity >= $currentStock ? 'disabled' : '' }}>
+                                                <button type="button" class="quantity-change px-2 py-1 border border-gray-300 rounded-r text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed" data-action="increase" data-id="{{ $cartKey }}" {{ $quantity >= $currentStock ? 'disabled' : '' }}>
                                                     <i class="fas fa-plus text-xs"></i>
                                                 </button>
-                                                <span class="update-status ml-2 text-xs text-gray-500 dark:text-gray-400" data-id="{{ $cartKey }}"></span> {{-- Status update --}}
+                                                <span class="update-status ml-2 text-xs text-gray-500" data-id="{{ $cartKey }}"></span> {{-- Status update --}}
                                             </div>
 
                                             {{-- Tombol Hapus (AJAX) --}}
                                             <div class="flex">
-                                                <button type="button" class="remove-item font-medium text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300" data-id="{{ $cartKey }}">
+                                                <button type="button" class="remove-item font-medium text-red-600 hover:text-red-800" data-id="{{ $cartKey }}">
                                                     <i class="fas fa-trash-alt mr-1"></i> Hapus
                                                 </button>
                                             </div>
@@ -246,22 +246,22 @@
 
                     <!-- Ringkasan Pesanan (Kolom Kanan) -->
                     <div class="lg:col-span-1">
-                        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 sticky top-24"> {{-- Make summary sticky --}}
-                            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Ringkasan Pesanan</h2>
-                            <div class="mt-6 space-y-4 border-b border-gray-200 dark:border-gray-700 pb-4">
+                        <div class="bg-white rounded-xl shadow-sm p-6 sticky top-24"> {{-- Make summary sticky --}}
+                            <h2 class="text-lg font-semibold text-gray-900">Ringkasan Pesanan</h2>
+                            <div class="mt-6 space-y-4 border-b border-gray-200 pb-4">
                                 <div class="flex items-center justify-between">
-                                    <dt class="text-sm text-gray-600 dark:text-gray-400">Subtotal (<span id="total-items">{{ count($cart) }}</span> item)</dt>
-                                    <dd class="text-sm font-medium text-gray-900 dark:text-white" id="subtotal-amount">Rp{{ number_format($grandTotal, 0, ',', '.') }}</dd>
+                                    <dt class="text-sm text-gray-600">Subtotal (<span id="total-items">{{ count($cart) }}</span> item)</dt>
+                                    <dd class="text-sm font-medium text-gray-900" id="subtotal-amount">Rp{{ number_format($grandTotal, 0, ',', '.') }}</dd>
                                 </div>
                                {{-- Add Shipping Estimation if needed --}}
                                {{-- <div class="flex items-center justify-between">
-                                    <dt class="text-sm text-gray-600 dark:text-gray-400">Estimasi Ongkir</dt>
-                                    <dd class="text-sm font-medium text-gray-900 dark:text-white" id="shipping-amount">Rp?</dd>
+                                    <dt class="text-sm text-gray-600">Estimasi Ongkir</dt>
+                                    <dd class="text-sm font-medium text-gray-900" id="shipping-amount">Rp?</dd>
                                </div> --}}
                             </div>
-                            <div class="flex items-center justify-between border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
-                                <dt class="text-base font-semibold text-gray-900 dark:text-white">Total Pesanan</dt>
-                                <dd class="text-base font-semibold text-gray-900 dark:text-white" id="total-amount">Rp{{ number_format($grandTotal, 0, ',', '.') }}</dd>
+                            <div class="flex items-center justify-between border-t border-gray-200 pt-4 mt-4">
+                                <dt class="text-base font-semibold text-gray-900">Total Pesanan</dt>
+                                <dd class="text-base font-semibold text-gray-900" id="total-amount">Rp{{ number_format($grandTotal, 0, ',', '.') }}</dd>
                             </div>
                             <div class="mt-6">
                                 {{-- Gunakan route 'checkout.index' (tanpa prefix customer) --}}
@@ -269,11 +269,11 @@
                                     Lanjut ke Checkout
                                 </a>
                             </div>
-                            <div class="mt-6 flex justify-center text-center text-sm text-gray-500 dark:text-gray-400">
+                            <div class="mt-6 flex justify-center text-center text-sm text-gray-500">
                                 <p>
                                     atau
                                     {{-- Pastikan route 'etalase.index' ada --}}
-                                    <a href="{{ route('etalase.index') }}" class="font-medium text-orange-600 hover:text-orange-500 dark:text-orange-500 dark:hover:text-orange-400">
+                                    <a href="{{ route('etalase.index') }}" class="font-medium text-orange-600 hover:text-orange-500">
                                         Lanjut Belanja
                                         <span aria-hidden="true"> &rarr;</span>
                                     </a>
@@ -294,14 +294,14 @@
 {{-- Partial view untuk keranjang kosong --}}
 {{-- resources/views/partials/empty-cart.blade.php (buat file ini jika belum ada) --}}
 {{--
-<div class="text-center bg-white dark:bg-gray-800 p-12 rounded-xl shadow-sm col-span-1 lg:col-span-3">
+<div class="text-center bg-white p-12 rounded-xl shadow-sm col-span-1 lg:col-span-3">
      <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
          <path vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
      </svg>
-    <h3 class="mt-2 text-lg font-medium text-gray-900 dark:text-white">Keranjang Anda Kosong</h3>
-    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Ayo cari produk menarik!</p>
+    <h3 class="mt-2 text-lg font-medium text-gray-900">Keranjang Anda Kosong</h3>
+    <p class="mt-1 text-sm text-gray-500">Ayo cari produk menarik!</p>
     <div class="mt-6">
-        <a href="https://tokosancaka.com/etalase" class="inline-flex items-center rounded-md border border-transparent btn-shopee-solid px-4 py-2 text-sm font-medium text-white shadow-sm hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900">
+        <a href="https://tokosancaka.com/etalase" class="inline-flex items-center rounded-md border border-transparent btn-shopee-solid px-4 py-2 text-sm font-medium text-white shadow-sm hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2">
            <i class="fas fa-shopping-bag mr-2"></i> Mulai Belanja
         </a>
     </div>
@@ -603,14 +603,14 @@ $(document).ready(function () {
          if (cartContent.find('ul[role="list"]').length > 0 && cartContent.find('.cart-item').length === 0) {
               // Replace the entire grid container content with the empty cart message
               cartContent.html(`
-                 <div class="text-center bg-white dark:bg-gray-800 p-12 rounded-xl shadow-sm col-span-1 lg:col-span-3">
+                 <div class="text-center bg-white p-12 rounded-xl shadow-sm col-span-1 lg:col-span-3">
                      <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                          <path vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                      </svg>
-                     <h3 class="mt-2 text-lg font-medium text-gray-900 dark:text-white">Keranjang Anda Kosong</h3>
-                     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Ayo cari produk menarik!</p>
+                     <h3 class="mt-2 text-lg font-medium text-gray-900">Keranjang Anda Kosong</h3>
+                     <p class="mt-1 text-sm text-gray-500">Ayo cari produk menarik!</p>
                      <div class="mt-6">
-                         <a href="{{ route('etalase.index') }}" class="inline-flex items-center rounded-md border border-transparent btn-shopee-solid px-4 py-2 text-sm font-medium text-white shadow-sm hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900">
+                         <a href="{{ route('etalase.index') }}" class="inline-flex items-center rounded-md border border-transparent btn-shopee-solid px-4 py-2 text-sm font-medium text-white shadow-sm hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2">
                             <i class="fas fa-shopping-bag mr-2"></i> Mulai Belanja
                          </a>
                      </div>

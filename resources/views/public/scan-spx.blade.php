@@ -11,9 +11,9 @@
 
     <title>Daftarkan Paket SPX Express - Sancaka Express</title>
 
-    <link rel="icon" type="image/png" href="https://tokosancaka.biz.id/storage/uploads/sancaka.png">
+    <link rel="icon" type="image/png" href="https://tokosancaka.com/storage/uploads/sancaka.png">
 
-    <link rel="apple-touch-icon" href="https://tokosancaka.biz.id/storage/uploads/sancaka.png">
+    <link rel="apple-touch-icon" href="https://tokosancaka.com/storage/uploads/sancaka.png">
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">

@@ -519,5 +519,25 @@ private function normalizeKiriminAjaResponse(array $rawResponse, $pesanan): arra
     ];
 }
 
+  public function cetakThermal($resi)
+    {
+        // Logika cetak thermal
+        $pesanan = Pesanan::where('resi', $resi)
+            ->orWhere('nomor_invoice', $resi)
+            ->first();
+
+        if (!$pesanan) {
+            abort(404, 'Pesanan tidak ditemukan untuk dicetak.');
+        }
+        
+        return view('admin.pesanan.cetak_thermal', compact('pesanan'));
+    }
+    
+    public function refreshTimeline()
+    {
+        return redirect()->back()->with('success', 'Timeline diperbarui');
+    }
+
+
 }
 

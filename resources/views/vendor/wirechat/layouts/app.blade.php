@@ -48,7 +48,7 @@
 </head>
 
 <body  x-data x-cloak class="font-sans antialiased">
-    <div class="min-h-screen bg-[var(--wc-light-primary)] dark:bg-[var(--wc-dark-primary)]">
+    <div class="min-h-screen bg-[var(--wc-light-primary)]">
 
         <!-- Page Content -->
         <main class="h-[calc(100vh_-_0.0rem)]">

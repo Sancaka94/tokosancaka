@@ -30,7 +30,7 @@
 
     <div class="flex flex-col items-center p-6 border-b border-gray-700">
 
-        <img src="https://tokosancaka.biz.id/storage/uploads/sancaka.png" class="rounded-full mb-3" alt="User Image" width="80" height="80" onerror="this.onerror=null;this.src='https://placehold.co/80x80/1f2937/ffffff?text=Logo';">
+        <img src="https://tokosancaka.com/storage/uploads/sancaka.png" class="rounded-full mb-3" alt="User Image" width="80" height="80" onerror="this.onerror=null;this.src='https://placehold.co/80x80/1f2937/ffffff?text=Logo';">
 
         <div class="font-bold text-lg text-white">{{ Auth::user()->nama_lengkap ?? 'Sancaka Express' }}</div>
 
@@ -345,6 +345,15 @@
 
                     <li><a href="{{ route('admin.pesanan.create') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-gray-700 {{ request()->routeIs('admin.pesanan.create') ? 'text-white' : 'text-gray-400' }}">Tambah Pesanan</a></li>
 
+                    {{-- ✅ TEMPEL KODE BARU DI SINI --}}
+        <li>
+            <a href="{{ route('admin.pesanan.create_multi') }}" 
+               class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-gray-700 {{ request()->routeIs('admin.pesanan.create_multi') ? 'text-white' : 'text-gray-400' }}">
+               Kirim Massal <span class="ml-2 bg-red-600 text-[10px] text-white px-1.5 py-0.5 rounded">BARU</span>
+            </a>
+        </li>
+        {{-- ✅ AKHIR KODE BARU --}}
+                    
                     <li>
 
                         <a href="{{ route('admin.pesanan.index') }}" class="sidebar-link flex justify-between items-center px-4 py-2 text-sm rounded-md hover:text-white hover:bg-gray-700 {{ request()->routeIs('admin.pesanan.index') ? 'text-white' : 'text-gray-400' }}">
@@ -610,6 +619,8 @@
 
                     <li><a href="{{ route('admin.settings.index') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-gray-700 {{ request()->routeIs('admin.settings.index') ? 'text-white' : 'text-gray-400' }}">Pengaturan Aplikasi</a></li>
 
+                    <li><a href="{{ route('admin.settings.api.index') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-gray-700 {{ request()->routeIs('admin.settings.api.index') ? 'text-white' : 'text-gray-400' }}">Konfigurasi API</a></li>
+                    
                     <li><a href="{{ route('admin.settings.banners.index') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-gray-700 {{ request()->routeIs('admin.settings.banners.index') ? 'text-white' : 'text-gray-400' }}">Pengaturan Marketplace</a></li>
 
                     {{-- PERBAIKAN: Menambahkan link baru untuk atribut kategori --}}
@@ -627,6 +638,7 @@
                         </a>
                     </li>
 
+                    <li><a href="{{ route('admin.info.edit') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-gray-700 {{ request()->routeIs('info.edit') ? 'text-white' : 'text-gray-400' }}">Info Halaman Pesanan</a></li>
 
                 </ul>
 
