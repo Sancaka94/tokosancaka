@@ -370,7 +370,7 @@
                 </div>
             </div>
 
-            {{-- A. KATEGORI & SPESIFIKASI (MODIFIKASI: HANYA TOMBOL) --}}
+            {{-- A. KATEGORI & SPESIFIKASI (FIXED) --}}
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 <div class="px-6 py-4 border-b border-gray-100 bg-indigo-50/50 flex justify-between items-center">
                     <h2 class="text-lg font-semibold text-gray-800">Kategori & Data</h2>
@@ -382,11 +382,28 @@
                         <p class="font-bold text-gray-800 text-lg flex items-center">
                             <i class="fa-solid fa-folder-open text-indigo-500 mr-2"></i>
                             
-                            {{-- Pengecekan Aman (Safe Check) --}}
-                            @if(isset($product->category) && is_object($product->category))
-                                {{ $product->category->name }}
+                            {{-- LOGIKA BARU: Cari nama dari list categories berdasarkan ID --}}
+                            @php
+                                $categoryName = 'Belum ada kategori';
+                                $categoryId = $product->category_id;
+
+                                // 1. Coba cari dari koleksi $categories yang dikirim controller
+                                $foundCategory = $categories->firstWhere('id', $categoryId);
+                                
+                                if ($foundCategory) {
+                                    $categoryName = $foundCategory->name;
+                                } 
+                                // 2. Fallback: Coba cek relasi langsung jika ada
+                                elseif (isset($product->category) && is_object($product->category)) {
+                                    $categoryName = $product->category->name;
+                                }
+                            @endphp
+
+                            {{-- Tampilkan Hasil --}}
+                            @if($categoryId && $foundCategory)
+                                <span class="text-indigo-700">{{ $categoryName }}</span>
                             @else
-                                <span class="text-red-500 italic">Belum ada kategori</span>
+                                <span class="text-red-500 italic">{{ $categoryName }}</span>
                             @endif
                         </p>
                     </div>
