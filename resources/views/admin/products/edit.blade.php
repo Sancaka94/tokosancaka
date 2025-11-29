@@ -228,77 +228,77 @@
                         <i class="fa-solid fa-store text-indigo-500 mr-2"></i> Informasi Toko / Penjual
                     </h2>
                 </div>
-                <div class="p-6 space-y-5">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                
+                <div class="p-6 space-y-6">
+                    
+                    {{-- Baris 1: Nama Toko & Kota --}}
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label for="store_name" class="block text-sm font-medium text-gray-700 mb-1">Nama Toko</label>
-                            <input type="text" name="store_name" id="store_name" value="{{ old('store_name', $product->store_name) }}" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                            <p class="mt-1 text-xs text-gray-400">Biarkan kosong untuk default admin.</p>
+                            <input type="text" name="store_name" id="store_name" value="{{ old('store_name', $product->store_name) }}" 
+                                   class="w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors">
+                            <p class="mt-1 text-xs text-gray-400">Biarkan kosong untuk menggunakan default admin.</p>
                         </div>
                         <div>
                             <label for="seller_city" class="block text-sm font-medium text-gray-700 mb-1">Kota Asal</label>
-                            <input type="text" name="seller_city" id="seller_city" value="{{ old('seller_city', $product->seller_city) }}" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                            <input type="text" name="seller_city" id="seller_city" value="{{ old('seller_city', $product->seller_city) }}" 
+                                   class="w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors">
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    {{-- Baris 2: Nama Penjual & WhatsApp --}}
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label for="seller_name" class="block text-sm font-medium text-gray-700 mb-1">Nama Penjual (Opsional)</label>
-                            <input type="text" name="seller_name" id="seller_name" value="{{ old('seller_name', $product->seller_name) }}" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                            <input type="text" name="seller_name" id="seller_name" value="{{ old('seller_name', $product->seller_name) }}" 
+                                   class="w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors">
                         </div>
                         <div>
                             <label for="seller_wa" class="block text-sm font-medium text-gray-700 mb-1">WhatsApp (Opsional)</label>
                             <div class="relative">
-                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500 font-bold">+62</span>
-                                <input type="text" name="seller_wa" id="seller_wa" value="{{ old('seller_wa', $product->seller_wa ? ltrim($product->seller_wa, '62') : '') }}" class="w-full border-gray-300 rounded-lg shadow-sm pl-12 focus:border-indigo-500 focus:ring-indigo-500" placeholder="8123xxxx">
+                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500 font-bold bg-gray-50 rounded-l-lg border-r border-gray-300 text-xs tracking-wide px-2">+62</span>
+                                <input type="text" name="seller_wa" id="seller_wa" value="{{ old('seller_wa', $product->seller_wa ? ltrim($product->seller_wa, '62') : '') }}" 
+                                       class="w-full border-gray-300 rounded-lg shadow-sm pl-14 focus:border-indigo-500 focus:ring-indigo-500 transition-colors" 
+                                       placeholder="8123xxxx">
                             </div>
                         </div>
                     </div>
 
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Logo Toko (Opsional)</label>
-                        <div class="flex items-start gap-4">
-                            <div id="seller-logo-uploader" class="image-uploader py-4 px-6 flex-1" tabindex="0">
-                                <p class="font-semibold text-indigo-600 text-sm">Upload Logo</p>
+                    {{-- Baris 3: Logo Toko (Upload Area) --}}
+                    <div class="border-t border-gray-100 pt-4 mt-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Logo Toko (Opsional)</label>
+                        
+                        <div class="flex items-center gap-5">
+                            {{-- IMAGE WRAPPER (KLIK UNTUK UPLOAD) --}}
+                            <div class="relative w-24 h-24 flex-shrink-0 rounded-xl overflow-hidden border-2 border-gray-200 group cursor-pointer hover:border-indigo-500 transition-all duration-300 shadow-sm bg-gray-50"
+                                 title="Klik untuk mengganti logo"
+                                 onclick="document.getElementById('seller_logo').click();">
+                                
+                                {{-- Gambar (Dengan Fallback Anti-Error) --}}
+                                <img id="seller-logo-preview" 
+                                     class="w-full h-full object-contain p-1"
+                                     alt="Logo Toko"
+                                     src="{{ $product->seller_logo ? asset('public/storage/' . $product->seller_logo) : 'https://tokosancaka.com/storage/uploads/sancaka.png' }}"
+                                     onerror="this.onerror=null; this.src='https://tokosancaka.com/storage/uploads/sancaka.png';">
+
+                                {{-- Overlay Pensil (Muncul saat Hover) --}}
+                                <div class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                    <i class="fa-solid fa-pen text-white text-lg drop-shadow-md"></i>
+                                </div>
                             </div>
-                         
-                        <div>
-    <label class="block text-sm font-medium text-gray-700 mb-1">Logo Toko (Opsional)</label>
-    
-    <div class="flex items-start gap-4">
-        {{-- AREA UPLOAD (DIPAKSA KLIK DENGAN ONCLICK) --}}
-        <div id="seller-logo-uploader" 
-             class="relative w-24 h-24 rounded-lg overflow-hidden group border border-gray-200 bg-gray-50 cursor-pointer hover:border-indigo-400 transition-colors shadow-sm"
-             title="Klik untuk ganti logo"
-             onclick="document.getElementById('seller_logo').click();">
-            
-            {{-- 1. GAMBAR UTAMA --}}
-            <img id="seller-logo-preview" 
-                 class="w-full h-full object-contain transition-opacity duration-300 group-hover:opacity-75"
-                 alt="Logo Toko"
-                 src="{{ $product->seller_logo ? asset('public/storage/' . $product->seller_logo) : 'https://tokosancaka.com/storage/uploads/sancaka.png' }}"
-                 onerror="this.onerror=null; this.src='https://tokosancaka.com/storage/uploads/sancaka.png';">
 
-            {{-- 2. OVERLAY PENSIL (MUNCUL SAAT HOVER) --}}
-            <div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-300 pointer-events-none">
-                <i class="fa-solid fa-pen text-white opacity-0 group-hover:opacity-100 drop-shadow-md text-lg transform scale-75 group-hover:scale-100 transition-all"></i>
-            </div>
-        </div>
-
-        {{-- TEKS BANTUAN --}}
-        <div class="flex-1 mt-2 text-xs text-gray-500">
-            <p class="font-medium text-gray-700 mb-1">Klik gambar di samping untuk mengganti logo.</p>
-            <p>Format: PNG, JPG, WEBP (Maks. 2MB)</p>
-        </div>
-    </div>
-
-    {{-- INPUT FILE (WAJIB ADA ID: seller_logo) --}}
-    <input type="file" name="seller_logo" id="seller_logo" class="hidden" accept="image/png, image/jpeg, image/webp">
-</div>
-
+                            {{-- Teks Bantuan --}}
+                            <div class="text-sm text-gray-500">
+                                <p class="font-semibold text-gray-700 mb-1">Ganti Logo Toko</p>
+                                <p class="text-xs text-gray-400 mb-1">Klik gambar di samping untuk memilih file baru.</p>
+                                <p class="text-xs text-gray-400">Format: PNG, JPG, WEBP (Maks. 2MB)</p>
+                            </div>
                         </div>
+
+                        {{-- Input File Tersembunyi --}}
                         <input type="file" name="seller_logo" id="seller_logo" class="hidden" accept="image/png, image/jpeg, image/webp">
                     </div>
+
                 </div>
             </div>
 
