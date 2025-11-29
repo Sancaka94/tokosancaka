@@ -255,23 +255,26 @@
                         </div>
                     </div>
 
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Logo Toko (Opsional)</label>
-                        <div class="flex items-start gap-4">
-                            <div id="seller-logo-uploader" class="image-uploader py-4 px-6 flex-1" tabindex="0">
-                                <p class="font-semibold text-indigo-600 text-sm">Upload Logo</p>
-                            </div>
-                            <div class="w-24 h-24 border rounded-lg bg-gray-50 flex items-center justify-center overflow-hidden">
-                                @if($product->seller_logo)
-                                    <img id="seller-logo-preview" src="{{ asset('public/storage/' . $product->seller_logo) }}" class="w-full h-full object-contain">
-                                @else
-                                    <img id="seller-logo-preview" class="w-full h-full object-contain hidden">
-                                    <span class="text-xs text-gray-400 text-center px-2">Preview Logo</span>
-                                @endif
-                            </div>
-                        </div>
-                        <input type="file" name="seller_logo" id="seller_logo" class="hidden" accept="image/png, image/jpeg, image/webp">
-                    </div>
+                    {{-- KODE BARU DENGAN PLACEHOLDER --}}
+<div class="w-24 h-24 border border-gray-200 rounded-lg bg-gray-50 flex items-center justify-center overflow-hidden relative group">
+    @if($product->seller_logo)
+        {{-- 1. Jika Logo SUDAH ADA di database --}}
+        <img id="seller-logo-preview" 
+             src="{{ asset('public/storage/' . $product->seller_logo) }}" 
+             class="w-full h-full object-contain" 
+             alt="Logo Toko">
+    @else
+        {{-- 2. Jika Logo BELUM ADA, gunakan Placeholder Image --}}
+        {{-- Saya gunakan layanan pihak ketiga placehold.co untuk membuat gambar "LOGO" otomatis --}}
+        <img id="seller-logo-preview" 
+             src="https://placehold.co/150x150/e2e8f0/94a3b8?text=LOGO&font=roboto" 
+             class="w-full h-full object-cover opacity-75 p-1" 
+             alt="Placeholder Logo">
+    @endif
+    
+    {{-- Overlay ikon mata saat di-hover (pemanis UI) --}}
+    <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-300"></div>
+</div>
                 </div>
             </div>
 
