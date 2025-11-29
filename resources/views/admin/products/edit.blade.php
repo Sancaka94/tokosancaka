@@ -144,7 +144,7 @@
         ============================= */
     html, body {
         height: 100%;
-        overflow: hidden;
+        
     }
 
     /* Penyesuaian 'content-wrapper' agar pas dengan layout AdminLTE Anda */
