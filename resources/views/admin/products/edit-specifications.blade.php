@@ -11,43 +11,45 @@
             <h1 class="text-3xl font-bold text-gray-900 tracking-tight">Edit Spesifikasi</h1>
             <p class="text-sm text-gray-500 mt-1">
                 Produk:
-                <span class="font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
+                <span class="font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-lg border border-blue-100">
                     {{ $product->name }}
                 </span>
             </p>
         </div>
 
         <a href="{{ route('admin.products.edit', $product->slug) }}"
-           class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 shadow-sm transition-colors">
+            class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 shadow-sm transition">
             <i class="fa-solid fa-arrow-left mr-2 text-gray-400"></i> Kembali
         </a>
     </div>
 
-    {{-- FORM UTAMA (Update Spesifikasi) --}}
+    {{-- FORM UTAMA --}}
     <form action="{{ route('admin.products.update.specifications', $product->id) }}" method="POST">
         @csrf
         @method('PUT')
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
-            {{-- === KOLOM KIRI (FORM INPUT) === --}}
-            <div class="lg:col-span-8 space-y-6">
+            {{-- ===================== KOLOM KIRI ===================== --}}
+            <div class="lg:col-span-8 space-y-8">
 
                 {{-- CARD 1: KATEGORI --}}
-                <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-                    <div class="px-6 py-4 bg-gray-50 border-b border-gray-200 text-blue-800 font-bold text-sm uppercase tracking-wide flex items-center gap-2">
-                        <i class="fa-solid fa-layer-group"></i> 1. Kategori Produk
+                <div class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+                    <div class="px-6 py-4 bg-gray-50 border-b border-gray-200 font-semibold text-gray-700 flex items-center gap-2">
+                        <i class="fa-solid fa-layer-group text-blue-600"></i>
+                        <span>1. Kategori Produk</span>
                     </div>
 
-                    <div class="p-6">
-                        {{-- SELECT READONLY --}}
-                        <div class="mb-4">
+                    <div class="p-6 space-y-6">
+
+                        {{-- Select Readonly --}}
+                        <div>
                             <label class="block mb-2 text-sm font-semibold text-gray-700">
                                 Kategori Terpilih <span class="text-red-600">*</span>
                             </label>
                             <div class="relative">
                                 <select name="category_id" id="category_id"
-                                    class="w-full bg-gray-100 border border-gray-300 text-gray-500 text-sm rounded-lg p-2.5 cursor-not-allowed appearance-none"
+                                    class="w-full bg-gray-100 border border-gray-300 text-gray-500 text-sm rounded-xl p-3 cursor-not-allowed appearance-none"
                                     readonly required>
                                     <option value="">-- Pilih Kategori --</option>
                                     @foreach($categories as $category)
@@ -58,107 +60,116 @@
                                         </option>
                                     @endforeach
                                 </select>
-                                <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-gray-400">
+                                <div class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400">
                                     <i class="fa-solid fa-lock text-xs"></i>
                                 </div>
                             </div>
                         </div>
 
-                        {{-- INFO BOX --}}
-                        <div class="flex gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-sm items-start">
-                            <i class="fa-solid fa-circle-info mt-1 text-amber-600"></i>
-                            <div>
-                                <span class="font-bold">Info:</span> Ubah kategori melalui sidebar di kanan. Perubahan kategori akan mereset form spesifikasi di bawah.
-                            </div>
+                        {{-- Info Box --}}
+                        <div class="flex gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-sm">
+                            <i class="fa-solid fa-circle-info text-lg mt-0.5 text-amber-600"></i>
+                            <p><strong>Info:</strong> Ubah kategori melalui daftar di sebelah kanan. Mengubah kategori akan mereset form spesifikasi.</p>
                         </div>
+
                     </div>
                 </div>
 
-                {{-- CARD 2: FORM SPESIFIKASI (DINAMIS) --}}
-                <div id="attributes-card" class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden hidden transition-all duration-300">
-                    <div class="px-6 py-4 bg-gray-50 border-b border-gray-200 text-gray-800 font-bold text-sm uppercase tracking-wide flex items-center gap-2">
-                        <i class="fa-solid fa-list-check text-blue-600"></i> 2. Isi Spesifikasi
+                {{-- CARD 2: SPESIFIKASI --}}
+                <div id="attributes-card" class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden hidden">
+                    <div class="px-6 py-4 bg-gray-50 border-b border-gray-200 font-semibold text-gray-700 flex items-center gap-2">
+                        <i class="fa-solid fa-list-check text-blue-600"></i>
+                        <span>2. Isi Spesifikasi</span>
                     </div>
+
                     <div id="dynamic-attributes-container" class="p-6 space-y-6">
-                        {{-- JS Injects Inputs Here --}}
+                        {{-- JS Inject Here --}}
                     </div>
                 </div>
 
                 {{-- CARD 3: DATA TAMBAHAN --}}
-                <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-                    <div class="px-6 py-4 bg-gray-50 border-b border-gray-200 text-gray-800 font-bold text-sm uppercase tracking-wide flex items-center gap-2">
-                        <i class="fa-solid fa-tags text-blue-600"></i> 3. Data Tambahan
+                <div class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+                    <div class="px-6 py-4 bg-gray-50 border-b border-gray-200 font-semibold text-gray-700 flex items-center gap-2">
+                        <i class="fa-solid fa-tags text-blue-600"></i>
+                        <span>3. Data Tambahan</span>
                     </div>
 
                     <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+
                         {{-- SKU --}}
                         <div>
                             <label class="block mb-2 text-sm font-semibold text-gray-700">SKU Induk</label>
                             <div class="relative">
-                                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 pointer-events-none">
-                                    <i class="fa-solid fa-barcode"></i>
-                                </span>
-                                <input type="text" name="sku" value="{{ old('sku', $product->sku) }}"
-                                    class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 p-2.5 font-mono uppercase placeholder-gray-400"
+                                <i class="fa-solid fa-barcode absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                                <input type="text" name="sku"
+                                    value="{{ old('sku', $product->sku) }}"
+                                    class="w-full bg-white border border-gray-300 rounded-xl p-3 pl-10 text-sm focus:ring-blue-500 focus:border-blue-500 font-mono uppercase placeholder-gray-400"
                                     placeholder="AUTO-GEN">
                             </div>
                         </div>
 
-                        {{-- TAGS --}}
+                        {{-- Tags --}}
                         <div>
                             <label class="block mb-2 text-sm font-semibold text-gray-700">Tags</label>
                             @php
                                 $tags = $product->tags;
                                 if(is_string($tags) && str_starts_with($tags, '[')) {
                                     $decoded = json_decode($tags, true);
-                                    if(is_array($decoded)) $tags = implode(', ', $decoded);
+                                    $tags = is_array($decoded) ? implode(', ', $decoded) : $tags;
                                 }
                             @endphp
                             <div class="relative">
-                                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 pointer-events-none">
-                                    <i class="fa-solid fa-hashtag"></i>
-                                </span>
-                                <input type="text" name="tags" value="{{ old('tags', $tags) }}"
-                                    class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 p-2.5 placeholder-gray-400"
+                                <i class="fa-solid fa-hashtag absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                                <input type="text" name="tags"
+                                    value="{{ old('tags', $tags) }}"
+                                    class="w-full bg-white border border-gray-300 rounded-xl p-3 pl-10 text-sm focus:ring-blue-500 focus:border-blue-500 placeholder-gray-400"
                                     placeholder="Contoh: Promo, Terbaru">
                             </div>
                         </div>
+
                     </div>
                 </div>
 
             </div>
 
-            {{-- === KOLOM KANAN (SIDEBAR PILIH KATEGORI) === --}}
-            <div class="lg:col-span-4">
-                <div class="bg-white border border-gray-200 rounded-xl shadow-sm sticky top-6 overflow-hidden">
 
-                    {{-- HEADER SIDEBAR --}}
-                    <div class="px-5 py-3 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
-                        <span class="font-bold text-sm text-gray-700 uppercase flex items-center gap-2">
-                            <i class="fa-solid fa-magnifying-glass text-blue-500"></i> Pilih Kategori
-                        </span>
-                        <span class="bg-blue-100 text-blue-700 text-xs font-bold px-2.5 py-0.5 rounded-full border border-blue-200">
+
+            {{-- ===================== KOLOM KANAN (SIDEBAR) ===================== --}}
+            <div class="lg:col-span-4">
+
+                <div class="bg-white border border-gray-200 rounded-2xl shadow-sm sticky top-6 overflow-hidden">
+
+                    {{-- Sidebar Header --}}
+                    <div class="px-5 py-3 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
+                        <h3 class="text-sm font-bold text-gray-700 flex items-center gap-2">
+                            <i class="fa-solid fa-magnifying-glass text-blue-600"></i>
+                            Pilih Kategori
+                        </h3>
+                        <span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full border border-blue-200 font-semibold">
                             {{ $categories->count() }}
                         </span>
                     </div>
 
-                    {{-- INPUT PENCARIAN --}}
-                    <div class="p-3 border-b border-gray-100 bg-white">
-                        <input id="searchCategory" type="text" placeholder="Ketik nama kategori..."
-                            class="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 transition-all">
+                    {{-- Search --}}
+                    <div class="p-3 border-b border-gray-100">
+                        <input id="searchCategory" type="text"
+                            placeholder="Cari kategori..."
+                            class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5 text-sm focus:ring-blue-500 focus:border-blue-500">
                     </div>
 
-                    {{-- LIST KATEGORI --}}
-                    <div class="p-2 overflow-y-auto bg-white custom-scrollbar" style="max-height: 350px;">
+                    {{-- List --}}
+                    <div class="p-2 overflow-y-auto" style="max-height: 350px;">
                         <ul id="categoryListUL" class="space-y-1">
                             @foreach($categories as $cat)
                                 <li>
-                                    <button type="button" onclick="selectCategory('{{ $cat->id }}')"
-                                        class="w-full text-left px-3 py-2.5 rounded-lg text-sm transition-all duration-200 flex items-center justify-between group border border-transparent
-                                        {{ $product->category_id == $cat->id
-                                            ? 'bg-blue-600 text-white font-semibold shadow-md'
-                                            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 hover:border-gray-200' }}">
+                                    <button type="button"
+                                        onclick="selectCategory('{{ $cat->id }}')"
+                                        class="w-full text-left px-3 py-2.5 rounded-xl text-sm flex justify-between items-center transition border
+                                            {{ $product->category_id == $cat->id
+                                                ? 'bg-blue-600 text-white font-semibold shadow'
+                                                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' }}">
                                         <span>{{ $cat->name }}</span>
+
                                         @if($product->category_id == $cat->id)
                                             <i class="fa-solid fa-check text-white text-xs"></i>
                                         @endif
@@ -168,48 +179,55 @@
                         </ul>
                     </div>
 
-                    {{-- === FORM TAMBAH KATEGORI BARU (BAWAH) === --}}
+                    {{-- Tambah Kategori --}}
                     <div class="p-4 border-t border-gray-200 bg-gray-50">
-                        <label class="block text-xs font-bold text-gray-500 uppercase mb-2">
-                            <i class="fa-solid fa-plus-circle mr-1"></i> Buat Kategori Baru
+                        <label class="text-xs font-bold text-gray-600 mb-2 block uppercase">
+                            <i class="fa-solid fa-plus-circle mr-1"></i>
+                            Tambah Kategori Baru
                         </label>
+
                         <div class="flex gap-2">
-                            {{-- Input tidak boleh punya 'name' agar tidak tersubmit form utama --}}
-                            <input type="text" id="new_category_name" 
-                                class="flex-1 bg-white border border-gray-300 text-gray-900 text-xs rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2" 
+                            <input type="text" id="new_category_name"
+                                class="flex-1 bg-white border border-gray-300 rounded-xl p-2 text-sm focus:ring-blue-500 focus:border-blue-500"
                                 placeholder="Nama kategori...">
-                            
-                            <button type="button" onclick="addNewCategory()" 
-                                class="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition shadow-sm flex items-center justify-center">
+
+                            <button type="button" onclick="addNewCategory()"
+                                class="px-3 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition text-sm shadow">
                                 <i class="fa-solid fa-plus"></i>
                             </button>
                         </div>
+
                         <p id="add-cat-msg" class="text-xs mt-1 hidden"></p>
                     </div>
 
                 </div>
+
             </div>
 
         </div>
 
-        {{-- STICKY FOOTER ACTION --}}
-        <div class="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 p-4 shadow-[0_-4px_10px_rgba(0,0,0,0.05)] md:pl-[280px]">
-            <div class="max-w-7xl mx-auto flex justify-end gap-3">
+        {{-- FOOTER --}}
+        <div class="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-lg py-4 md:pl-[280px]">
+            <div class="max-w-7xl mx-auto flex justify-end gap-3 px-4">
+
                 <a href="{{ route('admin.products.edit', $product->slug) }}"
-                    class="px-5 py-2.5 text-sm font-bold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-900 focus:ring-4 focus:ring-gray-100 transition-all">
+                    class="px-5 py-2.5 text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50">
                     Batal
                 </a>
+
                 <button type="submit"
-                    class="px-6 py-2.5 text-sm font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-lg shadow-blue-500/30 transition-all flex items-center gap-2 transform active:scale-95">
+                    class="px-6 py-2.5 text-sm font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-500/20 flex items-center gap-2">
                     <i class="fa-solid fa-floppy-disk"></i>
                     Simpan Spesifikasi
                 </button>
+
             </div>
         </div>
 
     </form>
 </div>
 @endsection
+
 
 
 @push('scripts')
