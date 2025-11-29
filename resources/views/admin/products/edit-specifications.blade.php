@@ -3,7 +3,7 @@
 @section('title', 'Edit Spesifikasi Produk')
 
 @section('content')
-<div class="max-w-7xl mx-auto pb-40 px-4 sm:px-6 lg:px-8 pt-6">
+<div class="bg-white max-w-7xl mx-auto pb-40 px-4 sm:px-6 lg:px-8 pt-6">
 
     {{-- HEADER --}}
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
