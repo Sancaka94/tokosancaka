@@ -370,53 +370,93 @@
         {{-- KOLOM KANAN (SIDEBAR) --}}
         <div class="space-y-8">
 
-            {{-- A. HARGA & STOK --}}
+           {{-- A. HARGA & STOK (AUTO FORMAT RUPIAH) --}}
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
-                    <h2 class="text-lg font-semibold text-gray-800">Harga & Stok</h2>
+                    <h2 class="text-lg font-semibold text-gray-800 flex items-center">
+                        <i class="fa-solid fa-tags text-blue-500 mr-2"></i> Harga & Stok
+                    </h2>
                 </div>
-                <div class="p-6 space-y-5">
+                <div class="p-6 space-y-6">
+                    
+                    {{-- Harga Jual --}}
                     <div>
                         <label for="price" class="block text-sm font-medium text-gray-700 mb-1 required-label">Harga Jual</label>
-                        <div class="relative">
-                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500 font-bold">Rp</span>
-                            <input type="number" name="price" id="price" value="{{ old('price', $product->price) }}" class="w-full border-gray-300 rounded-lg shadow-sm pl-10 focus:border-indigo-500 focus:ring-indigo-500 text-lg font-bold text-gray-800" placeholder="0" required>
+                        <div class="flex relative rounded-lg shadow-sm">
+                            <span class="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 text-gray-500 font-bold text-sm">
+                                Rp
+                            </span>
+                            {{-- Input diganti type="text" dan tambah class 'currency-input' --}}
+                            <input type="text" name="price" id="price" 
+                                   value="{{ old('price', number_format($product->price, 0, ',', '.')) }}" 
+                                   class="currency-input flex-1 w-full h-11 px-3 border border-gray-300 rounded-none rounded-r-lg focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-colors text-gray-800 font-bold text-lg" 
+                                   placeholder="0" inputmode="numeric" required>
                         </div>
                         @error('price') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
                     </div>
 
+                    {{-- Harga Coret --}}
                     <div>
                         <label for="original_price" class="block text-sm font-medium text-gray-700 mb-1">Harga Coret (Asli)</label>
-                        <div class="relative">
-                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500 font-bold">Rp</span>
-                            <input type="number" name="original_price" id="original_price" value="{{ old('original_price', $product->original_price) }}" class="w-full border-gray-300 rounded-lg shadow-sm pl-10 focus:border-indigo-500 focus:ring-indigo-500 text-gray-500 line-through" placeholder="0">
+                        <div class="flex relative rounded-lg shadow-sm">
+                            <span class="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 text-gray-500 font-bold text-sm">
+                                Rp
+                            </span>
+                            <input type="text" name="original_price" id="original_price" 
+                                   value="{{ old('original_price', $product->original_price ? number_format($product->original_price, 0, ',', '.') : '') }}" 
+                                   class="currency-input flex-1 w-full h-11 px-3 border border-gray-300 rounded-none rounded-r-lg focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-colors text-gray-500 line-through" 
+                                   placeholder="0" inputmode="numeric">
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-4">
+                    {{-- Stok & Berat --}}
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label for="stock" class="block text-sm font-medium text-gray-700 mb-1 required-label">Stok</label>
-                            <input type="number" name="stock" id="stock" value="{{ old('stock', $product->stock) }}" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 font-semibold">
+                            <input type="number" name="stock" id="stock" value="{{ old('stock', $product->stock) }}" 
+                                   class="w-full h-11 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-colors font-semibold" 
+                                   required>
                         </div>
                         <div>
                             <label for="weight" class="block text-sm font-medium text-gray-700 mb-1 required-label">Berat</label>
-                            <div class="relative">
-                                <input type="number" name="weight" id="weight" value="{{ old('weight', $product->weight) }}" class="w-full border-gray-300 rounded-lg shadow-sm pr-12 focus:border-indigo-500 focus:ring-indigo-500">
-                                <span class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 text-xs font-bold bg-gray-50 rounded-r-lg border-l px-2">Gram</span>
+                            <div class="flex relative w-full">
+                                <input type="number" name="weight" id="weight" value="{{ old('weight', $product->weight) }}" 
+                                       class="flex-1 w-full h-11 px-3 border border-gray-300 rounded-none rounded-l-lg focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-colors" 
+                                       required>
+                                <span class="inline-flex items-center px-3 rounded-r-lg border border-l-0 border-gray-300 bg-gray-50 text-gray-500 font-bold text-xs uppercase">
+                                    Gram
+                                </span>
                             </div>
                         </div>
                     </div>
 
+                    {{-- Dimensi --}}
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Dimensi (PxLxT) cm</label>
-                        <div class="flex items-center gap-2">
-                            <input type="number" name="length" placeholder="P" value="{{ old('length', $product->length) }}" class="w-full border-gray-300 rounded-md text-center text-sm">
-                            <span class="text-gray-400">x</span>
-                            <input type="number" name="width" placeholder="L" value="{{ old('width', $product->width) }}" class="w-full border-gray-300 rounded-md text-center text-sm">
-                            <span class="text-gray-400">x</span>
-                            <input type="number" name="height" placeholder="T" value="{{ old('height', $product->height) }}" class="w-full border-gray-300 rounded-md text-center text-sm">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Dimensi (PxLxT) cm</label>
+                        <div class="grid grid-cols-3 gap-3 items-center">
+                            <div class="relative">
+                                <input type="number" name="length" value="{{ old('length', $product->length) }}" 
+                                       class="w-full h-11 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 text-center" 
+                                       placeholder="P">
+                                <span class="absolute right-2 top-3 text-xs text-gray-400 font-bold pointer-events-none">cm</span>
+                            </div>
+                            
+                            <div class="relative">
+                                <input type="number" name="width" value="{{ old('width', $product->width) }}" 
+                                       class="w-full h-11 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 text-center" 
+                                       placeholder="L">
+                                <span class="absolute right-2 top-3 text-xs text-gray-400 font-bold pointer-events-none">cm</span>
+                            </div>
+
+                            <div class="relative">
+                                <input type="number" name="height" value="{{ old('height', $product->height) }}" 
+                                       class="w-full h-11 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 text-center" 
+                                       placeholder="T">
+                                <span class="absolute right-2 top-3 text-xs text-gray-400 font-bold pointer-events-none">cm</span>
+                            </div>
                         </div>
                     </div>
+
                 </div>
             </div>
 
@@ -797,5 +837,42 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     updateTypes();
 });
+
+// === LOGIC FORMAT RUPIAH ===
+    const currencyInputs = document.querySelectorAll('.currency-input');
+
+    // 1. Fungsi Format Angka (Tambah Titik)
+    function formatRupiah(angka) {
+        let number_string = angka.replace(/[^,\d]/g, '').toString(),
+            split = number_string.split(','),
+            sisa = split[0].length % 3,
+            rupiah = split[0].substr(0, sisa),
+            ribuan = split[0].substr(sisa).match(/\d{3}/gi);
+
+        if (ribuan) {
+            separator = sisa ? '.' : '';
+            rupiah += separator + ribuan.join('.');
+        }
+
+        return split[1] != undefined ? rupiah + ',' + split[1] : rupiah;
+    }
+
+    // 2. Event Listener saat mengetik
+    currencyInputs.forEach(input => {
+        input.addEventListener('input', function(e) {
+            this.value = formatRupiah(this.value);
+        });
+    });
+
+    // 3. PENTING: Hapus titik sebelum form disubmit agar controller tidak error
+    const productForm = document.getElementById('product-form');
+    if(productForm) {
+        productForm.addEventListener('submit', function() {
+            currencyInputs.forEach(input => {
+                // Hapus semua titik sebelum kirim ke server
+                input.value = input.value.replace(/\./g, '');
+            });
+        });
+    }
 </script>
 @endpush
