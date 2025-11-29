@@ -1,175 +1,148 @@
 @extends('layouts.admin')
 
 @section('title', 'Edit Produk: ' . $product->name)
-@section('page-title', 'Edit Produk: ' . $product->name)
+@section('page-title', 'Edit Produk')
 
 @push('styles')
 <style>
-    /* =============================
-        STYLE EDIT PRODUK - FIXED
-        ============================= */
-
+    /* --- RESET & IMAGE UPLOADER --- */
+    /* Kita hapus settingan html, body agar mengikuti template bawaan */
+    
     .image-uploader {
-        border: 2px dashed #d1d5db;
-        border-radius: 0.5rem;
-        padding: 2rem;
+        border: 2px dashed #cbd5e1;
+        border-radius: 0.75rem;
+        padding: 3rem 1.5rem;
         text-align: center;
         cursor: pointer;
-        transition: border-color 0.3s ease;
-        background-color: #fafafa;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        background-color: #f8fafc;
+        position: relative;
+        overflow: hidden;
     }
 
     .image-uploader:hover,
     .image-uploader.dragging {
-        border-color: #4f46e5;
-        background-color: #f3f4ff;
+        border-color: #6366f1;
+        background-color: #eef2ff;
+        transform: scale-[1.01];
+    }
+
+    .image-uploader i {
+        font-size: 2.5rem;
+        color: #94a3b8;
+        margin-bottom: 1rem;
+        transition: color 0.3s;
+    }
+
+    .image-uploader:hover i {
+        color: #6366f1;
     }
 
     .image-preview {
         margin-top: 1rem;
-        max-width: 100%;
-        max-height: 300px;
+        width: 100%;
+        height: auto;
+        max-height: 350px;
         border-radius: 0.5rem;
-        display: block; /* Tampilkan default jika ada gambar */
-        object-fit: contain; /* Agar gambar tidak terpotong */
+        object-fit: contain;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        display: none;
     }
-    .image-preview:not([src]) {
-        display: none; /* Sembunyikan jika tidak ada src */
+    
+    .image-preview[src] {
+        display: block;
     }
 
+    /* --- PERBAIKAN FOOTER (STICKY ACTION BAR) --- */
+    .sticky-action {
+        /* Ubah dari fixed ke sticky agar tidak melayang sembarangan */
+        position: sticky; 
+        bottom: 0;
+        z-index: 999; /* Pastikan di atas elemen lain */
+        
+        background-color: rgba(255, 255, 255, 0.95); /* Sedikit lebih solid */
+        backdrop-filter: blur(5px);
+        border-top: 1px solid #e2e8f0;
+        
+        /* Spacing */
+        padding: 1rem 1.5rem;
+        margin-top: 2rem; /* Jarak dari konten di atasnya */
+        margin-left: -1rem; /* Kompensasi padding container admin default (sesuaikan jika perlu) */
+        margin-right: -1rem; /* Kompensasi padding container admin default */
+        
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 1rem;
+        box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    /* --- VARIANT TABLE STYLING --- */
+    .variant-table-container {
+        border: 1px solid #e2e8f0;
+        border-radius: 0.5rem;
+        overflow: hidden;
+        margin-top: 1.5rem;
+    }
+
+    .variant-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.875rem;
+    }
+
+    .variant-table th {
+        background-color: #f1f5f9;
+        color: #475569;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid #e2e8f0;
+        white-space: nowrap;
+    }
+
+    .variant-table td {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid #e2e8f0;
+        vertical-align: middle;
+    }
+
+    .variant-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .variant-table input {
+        width: 100%;
+        border: 1px solid #cbd5e1;
+        border-radius: 0.375rem;
+        padding: 0.4rem 0.6rem;
+        font-size: 0.875rem;
+        transition: border-color 0.2s;
+    }
+
+    .variant-table input:focus {
+        outline: none;
+        border-color: #6366f1;
+        box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+    }
+
+    /* --- BUTTONS & UTILS --- */
     .spinner {
         display: inline-block;
         width: 1rem;
         height: 1rem;
-        vertical-align: text-bottom;
-        border: 0.2em solid currentColor;
+        border: 2px solid currentColor;
         border-right-color: transparent;
         border-radius: 50%;
         animation: spinner-border .75s linear infinite;
     }
 
-    @keyframes spinner-border {
-        to {
-            transform: rotate(360deg);
-        }
-    }
+    @keyframes spinner-border { to { transform: rotate(360deg); } }
 
-    /* Style tambahan untuk tombol varian */
-    .btn {
-        padding: 0.5rem 1rem;
-        border-radius: 0.375rem;
-        font-weight: 600;
-        transition: all 0.2s ease-in-out;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        line-height: 1.25;
-    }
-    .btn-primary {
-        background-color: #4f46e5;
-        color: white;
-        border: 1px solid transparent;
-    }
-    .btn-primary:hover {
-        background-color: #4338ca;
-    }
-    .btn-secondary {
-        background-color: #e5e7eb;
-        color: #374151;
-        border: 1px solid #d1d5db;
-    }
-    .btn-secondary:hover {
-        background-color: #d1d5db;
-    }
-    .btn-outline-primary {
-        background-color: transparent;
-        color: #4f46e5;
-        border: 1px solid #4f46e5;
-    }
-    .btn-outline-primary:hover {
-        background-color: #eef2ff;
-    }
-    .btn-sm {
-        padding: 0.25rem 0.75rem;
-        font-size: 0.875rem;
-    }
-    /* Mengubah cursor untuk input disabled */
-    input:disabled, textarea:disabled, select:disabled {
-        cursor: not-allowed;
-        background-color: #f3f4f6;
-    }
-
-    /* Gaya untuk tabel varian */
-    .variant-table-container {
-        overflow-x: auto;
-        border: 1px solid #e5e7eb;
-        border-radius: 0.375rem;
-        margin-top: 1rem;
-        padding: 0.5rem;
-    }
-    .variant-table {
-        width: 100%;
-        min-width: 600px; /* Minimal lebar tabel untuk mencegah terlalu sempit */
-        border-collapse: collapse;
-    }
-    .variant-table th, .variant-table td {
-        padding: 0.75rem 1rem;
-        border: 1px solid #e5e7eb;
-        text-align: left;
-        font-size: 0.875rem;
-    }
-    .variant-table th {
-        background-color: #f9fafb;
-        font-weight: 600;
-        color: #374151;
-        white-space: nowrap; /* Mencegah header wrap */
-    }
-    .variant-table input[type="number"],
-    .variant-table input[type="text"] {
-        width: 100%;
-        padding: 0.5rem 0.75rem;
-        border: 1px solid #d1d5db;
-        border-radius: 0.25rem;
-        font-size: 0.875rem;
-    }
-    .variant-table td:last-child {
-        text-align: center;
-    }
-    .variant-table .text-red-500 {
-        cursor: pointer;
-    }
-
-    /* =============================
-        FIX LAYOUT SCROLLING
-        ============================= */
-    html, body {
-        height: 100%;
-        
-    }
-
-    /* Penyesuaian 'content-wrapper' agar pas dengan layout AdminLTE Anda */
-    .content-wrapper {
-        height: calc(100vh - (3.5rem + 1px)); /* (tinggi navbar + border) */
-        overflow-y: auto;
-        padding-bottom: 100px; /* Ruang untuk sticky action */
-    }
-
-    .content {
-        padding-bottom: 100px; /* Fallback jika .content-wrapper tidak ada */
-    }
-
-    /* Sticky footer button agar tidak menutupi input */
-    .sticky-action {
-        position: sticky;
-        bottom: 0;
-        z-index: 10;
-        background-color: #fff;
-        border-top: 1px solid #e5e7eb;
-        padding: 1rem 1.5rem;
-        display: flex;
-        justify-content: flex-end;
-        gap: 0.5rem;
-        box-shadow: 0 -2px 6px rgba(0,0,0,0.05);
+    .required-label::after {
+        content: " *";
+        color: #ef4444;
     }
 </style>
 @endpush
@@ -177,195 +150,244 @@
 @section('content')
 @include('layouts.partials.notifications')
 
-{{-- Form Anda sudah benar, enctype="multipart/form-data" sudah ada --}}
 <form id="product-form" action="{{ route('admin.products.update', $product->slug) }}" method="POST" enctype="multipart/form-data" novalidate>
     @csrf
     @method('PUT')
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    {{-- Breadcrumb / Header Kecil --}}
+    <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800">Edit Produk</h1>
+            <p class="text-sm text-gray-500 mt-1">Perbarui informasi produk: <span class="font-semibold">{{ $product->name }}</span></p>
+        </div>
+        <div class="mt-4 sm:mt-0">
+            <a href="{{ route('admin.products.index') }}" class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-25 transition ease-in-out duration-150">
+                <i class="fa-solid fa-arrow-left mr-2"></i> Kembali
+            </a>
+        </div>
+    </div>
 
-        {{-- Kolom Kiri --}}
-        <div class="lg:col-span-2 space-y-6">
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
 
-            {{-- Informasi Produk --}}
-            <div class="bg-white p-6 rounded-lg shadow-md">
-                <h2 class="text-lg font-semibold text-gray-800 mb-4">Informasi Produk</h2>
-                <div class="space-y-4">
+        {{-- KOLOM KIRI (UTAMA) --}}
+        <div class="xl:col-span-2 space-y-8">
+
+            {{-- 1. INFORMASI PRODUK --}}
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+                    <h2 class="text-lg font-semibold text-gray-800 flex items-center">
+                        <i class="fa-solid fa-box-open text-indigo-500 mr-2"></i> Informasi Dasar
+                    </h2>
+                </div>
+                <div class="p-6 space-y-5">
                     <div>
-                        <label for="name" class="block text-sm font-medium text-gray-700">Nama Produk</label>
-                        <input type="text" name="name" id="name" value="{{ old('name', $product->name) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('name') border-red-500 @enderror" required>
-                        @error('name') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
+                        <label for="name" class="block text-sm font-medium text-gray-700 mb-1 required-label">Nama Produk</label>
+                        <input type="text" name="name" id="name" value="{{ old('name', $product->name) }}" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors" placeholder="Contoh: Kemeja Pria Slim Fit" required>
+                        @error('name') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
                     </div>
+                    
                     <div>
-                        <label for="description" class="block text-sm font-medium text-gray-700">Deskripsi</label>
-                        <textarea name="description" id="description" rows="6" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('description') border-red-500 @enderror">{{ old('description', $product->description) }}</textarea>
-                        @error('description') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
+                        <label for="description" class="block text-sm font-medium text-gray-700 mb-1">Deskripsi Produk</label>
+                        <textarea name="description" id="description" rows="6" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors" placeholder="Jelaskan detail produk Anda...">{{ old('description', $product->description) }}</textarea>
+                        @error('description') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
                     </div>
                 </div>
             </div>
 
-            {{-- Gambar Produk --}}
-            <div class="bg-white p-6 rounded-lg shadow-md">
-                <h2 class="text-lg font-semibold text-gray-800 mb-4">Gambar Utama Produk</h2>
-                <div id="image-uploader" class="image-uploader" tabindex="0">
-                    <p class="font-semibold text-indigo-600">Klik untuk upload</p>
-                    <p class="text-xs text-gray-500">atau seret file ke sini (PNG, JPG, WEBP hingga 2MB)</p>
+            {{-- 2. MEDIA / GAMBAR --}}
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+                    <h2 class="text-lg font-semibold text-gray-800 flex items-center">
+                        <i class="fa-solid fa-images text-indigo-500 mr-2"></i> Media Produk
+                    </h2>
                 </div>
-                <input type="file" name="product_image" id="product_image" class="hidden" accept="image/png, image/jpeg, image/webp">
-                
-                {{-- [PERBAIKAN] Menggunakan $product->image_url --}}
-                @if($product->image_url)
-                    <img id="image-preview" src="{{ asset('public/storage/' . $product->image_url) }}" alt="Pratinjau Gambar Produk" class="image-preview" />
-                @else
-                    <img id="image-preview" alt="Pratinjau Gambar Produk" class="image-preview" />
-                @endif
-                {{-- [AKHIR PERBAIKAN] --}}
-                
-                @error('product_image') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
+                <div class="p-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Gambar Utama</label>
+                    <div id="image-uploader" class="image-uploader" tabindex="0">
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
+                        <p class="font-semibold text-indigo-600 text-lg">Klik atau Drag & Drop</p>
+                        <p class="text-sm text-gray-500 mt-1">Format: PNG, JPG, WEBP (Maks. 2MB)</p>
+                    </div>
+                    <input type="file" name="product_image" id="product_image" class="hidden" accept="image/png, image/jpeg, image/webp">
+                    
+                    {{-- Preview Gambar --}}
+                    @if($product->image_url)
+                        <div class="mt-4 p-2 border rounded-lg bg-gray-50 inline-block">
+                            <img id="image-preview" src="{{ asset('public/storage/' . $product->image_url) }}" alt="Preview" class="image-preview" style="display: block;">
+                        </div>
+                    @else
+                        <img id="image-preview" alt="Preview" class="image-preview mt-4">
+                    @endif
+                    
+                    @error('product_image') <p class="mt-2 text-sm text-red-500 font-medium">{{ $message }}</p> @enderror
+                </div>
             </div>
 
-            {{-- Informasi Penjual --}}
-            <div class="bg-white p-6 rounded-lg shadow-md">
-                <h2 class="text-lg font-semibold text-gray-800 mb-4">Informasi Penjual</h2>
-                <div class="space-y-4">
-                    <div>
-                        <label for="store_name" class="block text-sm font-medium text-gray-700">Nama Toko</label>
-                        <input type="text" name="store_name" id="store_name" value="{{ old('store_name', $product->store_name) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('store_name') border-red-500 @enderror">
-                        <p class="mt-1 text-xs text-gray-500">Kosongkan untuk menggunakan data admin default.</p>
-                        @error('store_name') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
+            {{-- 3. INFORMASI PENJUAL --}}
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+                    <h2 class="text-lg font-semibold text-gray-800 flex items-center">
+                        <i class="fa-solid fa-store text-indigo-500 mr-2"></i> Informasi Toko / Penjual
+                    </h2>
+                </div>
+                <div class="p-6 space-y-5">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div>
+                            <label for="store_name" class="block text-sm font-medium text-gray-700 mb-1">Nama Toko</label>
+                            <input type="text" name="store_name" id="store_name" value="{{ old('store_name', $product->store_name) }}" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                            <p class="mt-1 text-xs text-gray-400">Biarkan kosong untuk default admin.</p>
+                        </div>
+                        <div>
+                            <label for="seller_city" class="block text-sm font-medium text-gray-700 mb-1">Kota Asal</label>
+                            <input type="text" name="seller_city" id="seller_city" value="{{ old('seller_city', $product->seller_city) }}" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        </div>
                     </div>
-                    <div>
-                        <label for="seller_name" class="block text-sm font-medium text-gray-700">Nama Penjual (Opsional)</label>
-                        <input type="text" name="seller_name" id="seller_name" value="{{ old('seller_name', $product->seller_name) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('seller_name') border-red-500 @enderror">
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div>
+                            <label for="seller_name" class="block text-sm font-medium text-gray-700 mb-1">Nama Penjual (Opsional)</label>
+                            <input type="text" name="seller_name" id="seller_name" value="{{ old('seller_name', $product->seller_name) }}" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        </div>
+                        <div>
+                            <label for="seller_wa" class="block text-sm font-medium text-gray-700 mb-1">WhatsApp (Opsional)</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500 font-bold">+62</span>
+                                <input type="text" name="seller_wa" id="seller_wa" value="{{ old('seller_wa', $product->seller_wa ? ltrim($product->seller_wa, '62') : '') }}" class="w-full border-gray-300 rounded-lg shadow-sm pl-12 focus:border-indigo-500 focus:ring-indigo-500" placeholder="8123xxxx">
+                            </div>
+                        </div>
                     </div>
+
                     <div>
-                        <label for="seller_city" class="block text-sm font-medium text-gray-700">Kota Penjual</label>
-                        <input type="text" name="seller_city" id="seller_city" value="{{ old('seller_city', $product->seller_city) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('seller_city') border-red-500 @enderror">
-                        <p class="mt-1 text-xs text-gray-500">Kosongkan untuk menggunakan data admin default.</p>
-                        @error('seller_city') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
-                    </div>
-                    <div>
-                        <label for="seller_wa" class="block text-sm font-medium text-gray-700">WhatsApp Penjual (Opsional)</label>
-                        <input type="text" name="seller_wa" id="seller_wa" value="{{ old('seller_wa', $product->seller_wa ? ltrim($product->seller_wa, '62') : '') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('seller_wa') border-red-500 @enderror" placeholder="Contoh: 8123456789 (tanpa 0 atau 62)">
-                        <p class="mt-1 text-xs text-gray-500">Nomor akan diformat otomatis ke 62.</p>
-                        @error('seller_wa') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Logo Penjual (Opsional)</label>
-                        <div id="seller-logo-uploader" class="image-uploader mt-1" tabindex="0">
-                            <p class="font-semibold text-indigo-600">Klik untuk upload</p>
-                            <p class="text-xs text-gray-500">Logo (PNG, JPG, WEBP maks 1MB)</p>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Logo Toko (Opsional)</label>
+                        <div class="flex items-start gap-4">
+                            <div id="seller-logo-uploader" class="image-uploader py-4 px-6 flex-1" tabindex="0">
+                                <p class="font-semibold text-indigo-600 text-sm">Upload Logo</p>
+                            </div>
+                            <div class="w-24 h-24 border rounded-lg bg-gray-50 flex items-center justify-center overflow-hidden">
+                                @if($product->seller_logo)
+                                    <img id="seller-logo-preview" src="{{ asset('public/storage/' . $product->seller_logo) }}" class="w-full h-full object-contain">
+                                @else
+                                    <img id="seller-logo-preview" class="w-full h-full object-contain hidden">
+                                    <span class="text-xs text-gray-400 text-center px-2">Preview Logo</span>
+                                @endif
+                            </div>
                         </div>
                         <input type="file" name="seller_logo" id="seller_logo" class="hidden" accept="image/png, image/jpeg, image/webp">
-                        
-                        {{-- Bagian ini sudah benar --}}
-                        @if($product->seller_logo)
-                            <img id="seller-logo-preview" src="{{ asset('public/storage/' . $product->seller_logo) }}" alt="Pratinjau Logo Penjual" class="image-preview" />
-                        @else
-                            <img id="seller-logo-preview" alt="Pratinjau Logo Penjual" class="image-preview" />
-                        @endif
-                        @error('seller_logo') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
                     </div>
                 </div>
             </div>
 
-            {{-- Varian Produk (BARU) --}}
-            <div class="bg-white p-6 rounded-lg shadow-md">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-lg font-semibold text-gray-800">Varian Produk (Opsional)</h2>
-                    <button type="button" id="add-variant-group" class="btn btn-sm btn-outline-primary">Tambah Varian</button>
+            {{-- 4. VARIAN PRODUK --}}
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
+                    <h2 class="text-lg font-semibold text-gray-800 flex items-center">
+                        <i class="fa-solid fa-layer-group text-indigo-500 mr-2"></i> Varian Produk
+                    </h2>
+                    <button type="button" id="add-variant-group" class="inline-flex items-center px-3 py-1.5 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded text-sm font-medium hover:bg-indigo-100 transition">
+                        <i class="fa-solid fa-plus mr-1"></i> Tambah Varian
+                    </button>
                 </div>
-                <p class="text-sm text-gray-600 mb-4">Tambahkan varian jika produk Anda memiliki pilihan seperti warna atau ukuran. Ini akan menonaktifkan input stok utama.</p>
-                <div id="variant-groups-container" class="space-y-6">
-                    {{-- Grup varian dinamis akan ditambahkan di sini oleh JavaScript --}}
-                </div>
+                <div class="p-6">
+                    <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 rounded-r-md">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <i class="fa-solid fa-circle-info text-blue-500"></i>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm text-blue-700">
+                                    Menambahkan varian akan menonaktifkan stok utama. Stok akan dihitung berdasarkan total stok varian.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
 
-                {{-- Tabel untuk harga/stok varian --}}
-                <div id="variant-combinations-section" class="hidden">
-                    <h3 class="text-md font-semibold text-gray-700 mt-6 mb-3">Harga & Stok Kombinasi Varian</h3>
-                    <div class="variant-table-container">
-                        <table id="variant-combinations-table" class="variant-table">
-                            <thead>
-                                <tr id="variant-table-headers">
-                                    {{-- Headers dinamis akan ditambahkan di sini --}}
-                                </tr>
-                            </thead>
-                            <tbody id="variant-combinations-body">
-                                {{-- Rows dinamis akan ditambahkan di sini --}}
-                            </tbody>
-                        </table>
+                    <div id="variant-groups-container" class="space-y-4">
+                        {{-- Container Dinamis --}}
+                    </div>
+
+                    <div id="variant-combinations-section" class="hidden mt-8">
+                        <h3 class="text-md font-bold text-gray-800 mb-3 pl-1 border-l-4 border-indigo-500">Atur Harga & Stok Varian</h3>
+                        <div class="variant-table-container">
+                            <table id="variant-combinations-table" class="variant-table">
+                                <thead>
+                                    <tr id="variant-table-headers"></tr>
+                                </thead>
+                                <tbody id="variant-combinations-body"></tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
 
         </div>
 
-        {{-- Kolom Kanan --}}
-        <div class="space-y-6">
-            <div class="bg-white p-6 rounded-lg shadow-md">
-                <h2 class="text-lg font-semibold text-gray-800 mb-4">Harga, Stok & Pengiriman</h2>
-                <div class="space-y-4">
+        {{-- KOLOM KANAN (SIDEBAR) --}}
+        <div class="space-y-8">
+
+            {{-- A. HARGA & STOK --}}
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+                    <h2 class="text-lg font-semibold text-gray-800">Harga & Stok</h2>
+                </div>
+                <div class="p-6 space-y-5">
                     <div>
-                        <label for="price" class="block text-sm font-medium text-gray-700">Harga Jual</label>
-                        <div class="relative mt-1">
-                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">Rp</span>
-                            <input type="number" name="price" id="price" value="{{ old('price', $product->price) }}" class="pl-8 block w-full border-gray-300 rounded-md shadow-sm @error('price') border-red-500 @enderror" placeholder="100000" required>
+                        <label for="price" class="block text-sm font-medium text-gray-700 mb-1 required-label">Harga Jual</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500 font-bold">Rp</span>
+                            <input type="number" name="price" id="price" value="{{ old('price', $product->price) }}" class="w-full border-gray-300 rounded-lg shadow-sm pl-10 focus:border-indigo-500 focus:ring-indigo-500 text-lg font-bold text-gray-800" placeholder="0" required>
                         </div>
-                        @error('price') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
+                        @error('price') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
                     </div>
+
                     <div>
-                        <label for="original_price" class="block text-sm font-medium text-gray-700">Harga Asli (Harga Coret)</label>
-                        <div class="relative mt-1">
-                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">Rp</span>
-                            <input type="number" name="original_price" id="original_price" value="{{ old('original_price', $product->original_price) }}" class="pl-8 block w-full border-gray-300 rounded-md shadow-sm @error('original_price') border-red-500 @enderror" placeholder="120000">
+                        <label for="original_price" class="block text-sm font-medium text-gray-700 mb-1">Harga Coret (Asli)</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500 font-bold">Rp</span>
+                            <input type="number" name="original_price" id="original_price" value="{{ old('original_price', $product->original_price) }}" class="w-full border-gray-300 rounded-lg shadow-sm pl-10 focus:border-indigo-500 focus:ring-indigo-500 text-gray-500 line-through" placeholder="0">
                         </div>
-                        <p class="mt-1 text-xs text-gray-500">Opsional. Isi untuk menampilkan diskon.</p>
-                        @error('original_price') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
                     </div>
-                    <div>
-                        <label for="stock" class="block text-sm font-medium text-gray-700">Stok</label>
-                        <input type="number" name="stock" id="stock" value="{{ old('stock', $product->stock) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('stock') border-red-500 @enderror" required>
-                        {{-- Pesan warning stok akan ditambahkan oleh JS jika ada varian --}}
-                        @error('stock') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
-                    </div>
-                    <div>
-                        <label for="weight" class="block text-sm font-medium text-gray-700">Berat</label>
-                        <div class="relative mt-1">
-                            <input type="number" name="weight" id="weight" value="{{ old('weight', $product->weight) }}" class="pr-12 block w-full border-gray-300 rounded-md shadow-sm @error('weight') border-red-500 @enderror" placeholder="100" required>
-                            <span class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500">gram</span>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="stock" class="block text-sm font-medium text-gray-700 mb-1 required-label">Stok</label>
+                            <input type="number" name="stock" id="stock" value="{{ old('stock', $product->stock) }}" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 font-semibold">
                         </div>
-                        @error('weight') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
+                        <div>
+                            <label for="weight" class="block text-sm font-medium text-gray-700 mb-1 required-label">Berat</label>
+                            <div class="relative">
+                                <input type="number" name="weight" id="weight" value="{{ old('weight', $product->weight) }}" class="w-full border-gray-300 rounded-lg shadow-sm pr-12 focus:border-indigo-500 focus:ring-indigo-500">
+                                <span class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 text-xs font-bold bg-gray-50 rounded-r-lg border-l px-2">Gram</span>
+                            </div>
+                        </div>
                     </div>
+
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Dimensi Paket (Opsional)</label>
-                        <div class="grid grid-cols-3 gap-4 mt-1">
-                            <div>
-                                <label for="length" class="text-xs text-gray-500">Panjang (cm)</label>
-                                <input type="number" name="length" id="length" value="{{ old('length', $product->length) }}" class="block w-full border-gray-300 rounded-md shadow-sm">
-                            </div>
-                            <div>
-                                <label for="width" class="text-xs text-gray-500">Lebar (cm)</label>
-                                <input type="number" name="width" id="width" value="{{ old('width', $product->width) }}" class="block w-full border-gray-300 rounded-md shadow-sm">
-                            </div>
-                            <div>
-                                <label for="height" class="text-xs text-gray-500">Tinggi (cm)</label>
-                                <input type="number" name="height" id="height" value="{{ old('height', $product->height) }}" class="block w-full border-gray-300 rounded-md shadow-sm">
-                            </div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Dimensi (PxLxT) cm</label>
+                        <div class="flex items-center gap-2">
+                            <input type="number" name="length" placeholder="P" value="{{ old('length', $product->length) }}" class="w-full border-gray-300 rounded-md text-center text-sm">
+                            <span class="text-gray-400">x</span>
+                            <input type="number" name="width" placeholder="L" value="{{ old('width', $product->width) }}" class="w-full border-gray-300 rounded-md text-center text-sm">
+                            <span class="text-gray-400">x</span>
+                            <input type="number" name="height" placeholder="T" value="{{ old('height', $product->height) }}" class="w-full border-gray-300 rounded-md text-center text-sm">
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="bg-white p-6 rounded-lg shadow-md">
-                <h2 class="text-lg font-semibold text-gray-800 mb-4">Organisasi Produk</h2>
-                <div class="space-y-4">
+            {{-- B. ORGANISASI --}}
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+                    <h2 class="text-lg font-semibold text-gray-800">Pengaturan Data</h2>
+                </div>
+                <div class="p-6 space-y-5">
                     <div>
-                        <label for="sku" class="block text-sm font-medium text-gray-700">SKU (Stock Keeping Unit)</label>
-                        <input type="text" name="sku" id="sku" value="{{ old('sku', $product->sku) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="Otomatis jika kosong">
+                        <label for="sku" class="block text-sm font-medium text-gray-700 mb-1">SKU Induk</label>
+                        <input type="text" name="sku" id="sku" value="{{ old('sku', $product->sku) }}" class="w-full border-gray-300 rounded-lg shadow-sm uppercase tracking-wider focus:border-indigo-500 focus:ring-indigo-500" placeholder="AUTO-GEN">
                     </div>
+
                     <div>
-                        <label for="category_id" class="block text-sm font-medium text-gray-700">Kategori</label>
-                        <select name="category_id" id="category_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
+                        <label for="category_id" class="block text-sm font-medium text-gray-700 mb-1 required-label">Kategori</label>
+                        <select name="category_id" id="category_id" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500" required>
                             <option value="">-- Pilih Kategori --</option>
                             @foreach($categories as $category)
                                 <option value="{{ $category->id }}" data-attributes-url="{{ route('admin.categories.attributes', $category->id) }}" {{ old('category_id', $product->category_id) == $category->id ? 'selected' : '' }}>
@@ -373,51 +395,66 @@
                                 </option>
                             @endforeach
                         </select>
-                        @error('category_id') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
                     </div>
+
                     <div>
-                        <label for="tags" class="block text-sm font-medium text-gray-700">Tags (pisahkan koma)</label>
-                        <input type="text" name="tags" id="tags" value="{{ old('tags', $product->tags) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="Otomatis dari kategori jika kosong">
+                        <label for="tags" class="block text-sm font-medium text-gray-700 mb-1">Tags</label>
+                        <input type="text" name="tags" id="tags" value="{{ old('tags', $product->tags) }}" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="Fashion, Pria, Murah...">
                     </div>
                 </div>
             </div>
 
-            {{-- Card untuk Atribut Dinamis --}}
-            <div id="attributes-card" class="bg-white p-6 rounded-lg shadow-md hidden">
-                <h2 class="text-lg font-semibold text-gray-800 mb-4">Spesifikasi Produk</h2>
-                <div id="dynamic-attributes-container" class="space-y-4">
-                    {{-- Field dinamis akan muncul di sini oleh JavaScript --}}
+            {{-- C. ATRIBUT DINAMIS (Muncul jika ada) --}}
+            <div id="attributes-card" class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hidden">
+                <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+                    <h2 class="text-lg font-semibold text-gray-800">Spesifikasi Tambahan</h2>
+                </div>
+                <div id="dynamic-attributes-container" class="p-6 space-y-4">
+                    {{-- Diisi JS --}}
                 </div>
             </div>
 
-            <div class="bg-white p-6 rounded-lg shadow-md">
-                <h2 class="text-lg font-semibold text-gray-800 mb-4">Status & Label</h2>
-                <div class="space-y-4">
+            {{-- D. STATUS --}}
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+                    <h2 class="text-lg font-semibold text-gray-800">Status & Visibilitas</h2>
+                </div>
+                <div class="p-6 space-y-4">
                     <div>
-                        <label for="status" class="block text-sm font-medium text-gray-700">Status Produk</label>
-                        <select name="status" id="status" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
-                            <option value="active" {{ old('status', $product->status) == 'active' ? 'selected' : '' }}>Aktif (Dijual)</option>
-                            <option value="inactive" {{ old('status', $product->status) == 'inactive' ? 'selected' : '' }}>Nonaktif (Disimpan)</option>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Status Publikasi</label>
+                        <select name="status" id="status" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                            <option value="active" {{ old('status', $product->status) == 'active' ? 'selected' : '' }}>✅ Aktif (Tayang)</option>
+                            <option value="inactive" {{ old('status', $product->status) == 'inactive' ? 'selected' : '' }}>⛔ Nonaktif (Gudang)</option>
                         </select>
                     </div>
-                    <div class="flex items-center">
-                        <input type="checkbox" name="is_new" id="is_new" value="1" {{ old('is_new', $product->is_new) ? 'checked' : '' }} class="h-4 w-4 text-indigo-600 border-gray-300 rounded">
-                        <label for="is_new" class="ml-2 block text-sm text-gray-900">Tandai sebagai Produk Baru</label>
-                    </div>
-                    <div class="flex items-center">
-                        <input type="checkbox" name="is_bestseller" id="is_bestseller" value="1" {{ old('is_bestseller', $product->is_bestseller) ? 'checked' : '' }} class="h-4 w-4 text-indigo-600 border-gray-300 rounded">
-                        <label for="is_bestseller" class="ml-2 block text-sm text-gray-900">Tandai sebagai Bestseller</label>
+
+                    <div class="space-y-2 pt-2">
+                        <label class="inline-flex items-center cursor-pointer">
+                            <input type="checkbox" name="is_new" value="1" {{ old('is_new', $product->is_new) ? 'checked' : '' }} class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                            <span class="ml-2 text-sm text-gray-700">Label "Produk Baru"</span>
+                        </label>
+                        <br>
+                        <label class="inline-flex items-center cursor-pointer">
+                            <input type="checkbox" name="is_bestseller" value="1" {{ old('is_bestseller', $product->is_bestseller) ? 'checked' : '' }} class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                            <span class="ml-2 text-sm text-gray-700">Label "Bestseller"</span>
+                        </label>
                     </div>
                 </div>
             </div>
+
         </div>
     </div>
 
-    {{-- Tombol Aksi Sticky --}}
+    {{-- STICKY ACTION BAR --}}
     <div class="sticky-action">
-        <a href="{{ route('admin.products.index') }}" class="btn btn-secondary">Batal</a>
-        <button id="submit-button" type="submit" class="btn btn-primary flex items-center gap-2">Update Produk</button>
+        <a href="{{ route('admin.products.index') }}" class="px-6 py-2.5 bg-white text-gray-700 font-semibold rounded-lg border border-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-200 transition-colors">
+            Batal
+        </a>
+        <button id="submit-button" type="submit" class="px-6 py-2.5 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors flex items-center">
+            <i class="fa-solid fa-save mr-2"></i> Simpan Perubahan
+        </button>
     </div>
+
 </form>
 
 @endsection
@@ -426,29 +463,12 @@
 <script>
 document.addEventListener('DOMContentLoaded', () => {
 
-    // Data produk dari Blade ke JavaScript
     const product = @json($product);
-
-   
-    
-    // existing_attributes_json adalah object: { 'slug-name': 'value', 'slug-lain': ['val1', 'val2'] }
     const existingAttributes = {!! $product->existing_attributes_json ?? '{}' !!};
-    
-    // existing_variant_types_json adalah array: [ { name: 'Warna', options: 'Merah, Biru' }, ... ]
     const existingVariantTypes = {!! $product->existing_variant_types_json ?? '[]' !!};
-    
-    // existing_variant_combinations_json adalah object: { 'Warna:Merah;Ukuran:S': { price: 100, ... }, ... }
     const existingVariantCombinations = {!! $product->existing_variant_combinations_json ?? '{}' !!};
-    // --- [AKHIR PERBAIKAN] ---
 
-
-    // console.log('Product Data:', product);
-    // console.log('Existing Attributes:', existingAttributes);
-    // console.log('Existing Variant Types:', existingVariantTypes);
-    // console.log('Existing Variant Combinations:', existingVariantCombinations);
-
-
-    // --- Fungsi Reusable untuk Image Uploader ---
+    // --- SETUP IMAGE UPLOADER (Modern) ---
     function setupImageUploader(uploaderId, inputId, previewId) {
         const uploader = document.getElementById(uploaderId);
         const input = document.getElementById(inputId);
@@ -458,11 +478,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const openFileDialog = () => input.click();
         uploader.addEventListener('click', openFileDialog);
-        uploader.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.key === ' ') openFileDialog();
-        });
-
-        // Drag and Drop
+        
         uploader.addEventListener('dragover', (e) => {
             e.preventDefault();
             uploader.classList.add('dragging');
@@ -484,23 +500,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 reader.onload = (event) => {
                     preview.src = event.target.result;
                     preview.style.display = 'block';
+                    
+                    // Sembunyikan teks di uploader jika perlu, atau biarkan sebagai area ganti gambar
+                    // uploader.style.display = 'none'; 
                 };
                 reader.readAsDataURL(file);
-            } else {
-                // Jika tidak ada file baru dipilih, sembunyikan preview jika src kosong
-                if (!preview.getAttribute('src')) {
-                    preview.style.display = 'none';
-                }
             }
         };
         input.addEventListener('change', handleFileChange);
     }
 
-    // Inisialisasi kedua uploader
     setupImageUploader('image-uploader', 'product_image', 'image-preview');
     setupImageUploader('seller-logo-uploader', 'seller_logo', 'seller-logo-preview');
 
-    // --- Form Submission Loading Spinner ---
+    // --- FORM SUBMIT LOADING ---
     const form = document.getElementById('product-form');
     const submitButton = document.getElementById('submit-button');
     if (form && submitButton) {
@@ -511,14 +524,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             submitButton.disabled = true;
-            submitButton.innerHTML = `
-                <span class="spinner" role="status" aria-hidden="true"></span>
-                Menyimpan...
-            `;
+            submitButton.innerHTML = `<span class="spinner mr-2"></span> Menyimpan...`;
         });
     }
 
-    // --- WhatsApp Input Formatter ---
+    // --- FORMAT WA ---
     const waInput = document.getElementById('seller_wa');
     if (waInput) {
         waInput.addEventListener('input', (e) => {
@@ -526,7 +536,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- Script Atribut Dinamis ---
+    // --- DYNAMIC ATTRIBUTES ---
     const categorySelect = document.getElementById('category_id');
     const attributesCard = document.getElementById('attributes-card');
     const attributesContainer = document.getElementById('dynamic-attributes-container');
@@ -542,10 +552,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            attributesContainer.innerHTML = '<p class="text-gray-500">Memuat spesifikasi...</p>';
+            attributesContainer.innerHTML = '<div class="text-center text-gray-500 py-4"><span class="spinner text-indigo-500"></span> Memuat spesifikasi...</div>';
             attributesCard.classList.remove('hidden');
             const response = await fetch(url);
-            if (!response.ok) throw new Error(`Gagal memuat atribut (status: ${response.status}).`);
+            if (!response.ok) throw new Error(`Status: ${response.status}`);
 
             const attributes = await response.json();
             attributesContainer.innerHTML = '';
@@ -555,374 +565,223 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (typeof attr === 'object' && attr !== null && attr.slug) {
                         const field = createAttributeField(attr);
                         attributesContainer.appendChild(field);
-                        // Mengisi nilai yang sudah ada
-                        // [PERBAIKAN] Menggunakan existingAttributes[attr.slug]
                         if (existingAttributes && existingAttributes[attr.slug] !== undefined) {
                             fillAttributeValue(field, attr, existingAttributes[attr.slug]);
                         }
-                    } else {
-                        console.warn('Data atribut tidak valid:', attr);
                     }
                 });
             } else {
-                attributesContainer.innerHTML = '<p class="text-gray-500">Tidak ada spesifikasi tambahan untuk kategori ini.</p>';
+                attributesContainer.innerHTML = '<p class="text-gray-400 text-sm italic text-center">Tidak ada spesifikasi khusus untuk kategori ini.</p>';
             }
         } catch (error) {
-            console.error('Error fetching attributes:', error);
-            attributesContainer.innerHTML = `<p class="text-red-500">Gagal memuat spesifikasi. ${error.message}</p>`;
+            console.error(error);
+            attributesContainer.innerHTML = `<p class="text-red-500 text-sm">Gagal memuat spesifikasi.</p>`;
         }
     }
 
     function createAttributeField(attribute) {
         const wrapper = document.createElement('div');
-        let fieldHtml = '';
         const isRequired = attribute.is_required ? 'required' : '';
-        const requiredAsterisk = attribute.is_required ? '<span class="text-red-500">*</span>' : '';
-        const attributeName = attribute.name || 'Atribut Tanpa Nama';
-        const label = `<label for="attr_${attribute.slug}" class="block text-sm font-medium text-gray-700">${attributeName} ${requiredAsterisk}</label>`;
+        const requiredMark = attribute.is_required ? '<span class="text-red-500">*</span>' : '';
+        const label = `<label class="block text-sm font-medium text-gray-700 mb-1">${attribute.name || 'Atribut'} ${requiredMark}</label>`;
         const inputName = `attributes[${attribute.slug}]`;
-        const optionsString = typeof attribute.options === 'string' ? attribute.options : '';
+        let inputHtml = '';
 
-        switch (attribute.type) {
-            case 'number':
-            case 'text':
-                fieldHtml = `${label}<input type="${attribute.type}" name="${inputName}" id="attr_${attribute.slug}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" ${isRequired}>`;
-                break;
-            case 'textarea':
-                fieldHtml = `${label}<textarea name="${inputName}" id="attr_${attribute.slug}" rows="3" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" ${isRequired}></textarea>`;
-                break;
-            case 'select':
-                const options = optionsString.split(',')
-                                        .map(opt => opt.trim())
-                                        .filter(opt => opt)
-                                        .map(opt => `<option value="${opt}">${opt}</option>`)
-                                        .join('');
-                fieldHtml = `${label}<select name="${inputName}" id="attr_${attribute.slug}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" ${isRequired}><option value="">-- Pilih ${attributeName} --</option>${options}</select>`;
-                break;
-            case 'checkbox':
-                const checkboxes = optionsString.split(',')
-                                        .map(opt => opt.trim())
-                                        .filter(opt => opt)
-                                        .map((opt, index) => `
-                        <div class="flex items-center">
-                            <input type="checkbox" name="${inputName}[]" id="attr_${attribute.slug}_${index}" value="${opt}" class="h-4 w-4 text-indigo-600 border-gray-300 rounded">
-                            <label for="attr_${attribute.slug}_${index}" class="ml-2 block text-sm text-gray-900">${opt}</label>
-                        </div>`).join('');
-                fieldHtml = `<label class="block text-sm font-medium text-gray-700">${attributeName} ${requiredAsterisk}</label><div class="mt-2 space-y-2">${checkboxes}</div>`;
-                break;
-            default:
-                console.warn(`Tipe atribut tidak dikenali: ${attribute.type} untuk ${attributeName}`);
-                fieldHtml = `${label}<input type="text" name="${inputName}" id="attr_${attribute.slug}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" ${isRequired} title="Tipe asli: ${attribute.type}">`;
+        const commonClass = "w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500";
+
+        if (attribute.type === 'select') {
+            const opts = (attribute.options || '').split(',').map(o=>o.trim()).filter(o=>o).map(o=>`<option value="${o}">${o}</option>`).join('');
+            inputHtml = `<select name="${inputName}" class="${commonClass}" ${isRequired}><option value="">-- Pilih --</option>${opts}</select>`;
+        } else if (attribute.type === 'textarea') {
+            inputHtml = `<textarea name="${inputName}" rows="3" class="${commonClass}" ${isRequired}></textarea>`;
+        } else if (attribute.type === 'checkbox') {
+            const checks = (attribute.options || '').split(',').map(o=>o.trim()).filter(o=>o).map((o,i) => `
+                <label class="inline-flex items-center mr-4 mb-2">
+                    <input type="checkbox" name="${inputName}[]" value="${o}" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500">
+                    <span class="ml-2 text-sm text-gray-700">${o}</span>
+                </label>
+            `).join('');
+            inputHtml = `<div class="mt-1">${checks}</div>`;
+        } else {
+            inputHtml = `<input type="${attribute.type === 'number' ? 'number' : 'text'}" name="${inputName}" class="${commonClass}" ${isRequired}>`;
         }
-        wrapper.innerHTML = fieldHtml;
+
+        wrapper.innerHTML = label + inputHtml;
         return wrapper;
     }
 
-    function fillAttributeValue(fieldElement, attribute, value) {
-        if (value === null || value === undefined) return;
-
-        const input = fieldElement.querySelector(`[name^="attributes[${attribute.slug}]"]`);
-
-        if (input) {
-            if (attribute.type === 'checkbox') {
-                // Value for checkbox can be an array or a string (JSON string)
-                let valuesToCheck = [];
-                if (Array.isArray(value)) {
-                    valuesToCheck = value;
-                } else if (typeof value === 'string') {
-                    try {
-                        valuesToCheck = JSON.parse(value);
-                        if (!Array.isArray(valuesToCheck)) valuesToCheck = [value]; // Fallback if not an array after parse
-                    } catch (e) {
-                        valuesToCheck = [value]; // If not JSON, treat as single string
-                    }
-                }
-
-                fieldElement.querySelectorAll(`input[type="checkbox"][name^="attributes[${attribute.slug}]"]`).forEach(checkbox => {
-                    if (valuesToCheck.includes(checkbox.value)) {
-                        checkbox.checked = true;
-                    }
-                });
-            } else if (input.type === 'textarea') {
-                input.value = value;
-            } else {
-                input.value = value;
-            }
+    function fillAttributeValue(el, attr, val) {
+        if (val === null || val === undefined) return;
+        if (attr.type === 'checkbox') {
+            let arr = Array.isArray(val) ? val : (typeof val === 'string' ? [val] : []);
+            // Try parse json string
+            if(typeof val === 'string' && val.startsWith('[')) { try { arr = JSON.parse(val); } catch(e){} }
+            
+            el.querySelectorAll(`input[type="checkbox"]`).forEach(chk => {
+                if(arr.includes(chk.value)) chk.checked = true;
+            });
+        } else {
+            const inp = el.querySelector(`[name^="attributes"]`);
+            if(inp) inp.value = val;
         }
     }
-
 
     if (categorySelect) {
         categorySelect.addEventListener('change', fetchAndRenderAttributes);
-        // Panggil saat DOMContentLoaded untuk memuat atribut saat halaman dimuat
         fetchAndRenderAttributes();
     }
 
-
-    // --- Script Varian Dinamis (BARU) ---
+    // --- VARIANT LOGIC ---
     const variantContainer = document.getElementById('variant-groups-container');
     const addVariantBtn = document.getElementById('add-variant-group');
-    const mainStockInput = document.getElementById('stock');
-    const mainPriceInput = document.getElementById('price');
-    const mainOriginalPriceInput = document.getElementById('original_price');
-    const variantCombinationsSection = document.getElementById('variant-combinations-section');
-    const variantCombinationsTable = document.getElementById('variant-combinations-table');
-    const variantTableHeaders = document.getElementById('variant-table-headers');
-    const variantTableBody = document.getElementById('variant-combinations-body');
+    const mainStock = document.getElementById('stock');
+    const mainPrice = document.getElementById('price');
+    const mainOriginalPrice = document.getElementById('original_price');
+    const variantSection = document.getElementById('variant-combinations-section');
+    const variantHead = document.getElementById('variant-table-headers');
+    const variantBody = document.getElementById('variant-combinations-body');
+    let variantIndex = 0;
+    let currentTypes = [];
 
-    let variantIndex = 0; // Untuk ID unik saat menambahkan grup varian baru
-
-    // Array untuk menyimpan data tipe varian saat ini
-    let currentVariantTypes = []; // [{ name: 'Warna', options: ['Merah', 'Biru'] }, { name: 'Ukuran', options: ['S', 'M'] }]
-
-    // Fungsi untuk memperbarui `currentVariantTypes` dari input form
-    function updateCurrentVariantTypes() {
-        currentVariantTypes = [];
-        variantContainer.querySelectorAll('.border.rounded-md').forEach(groupWrapper => {
-            const nameInput = groupWrapper.querySelector('input[name$="[name]"]');
-            const optionsInput = groupWrapper.querySelector('input[name$="[options]"]');
-
-            if (nameInput && nameInput.value.trim() && optionsInput && optionsInput.value.trim()) {
-                currentVariantTypes.push({
-                    name: nameInput.value.trim(),
-                    options: optionsInput.value.split(',').map(o => o.trim()).filter(o => o !== '')
-                });
-            }
+    function updateTypes() {
+        currentTypes = [];
+        variantContainer.querySelectorAll('.variant-group-item').forEach(el => {
+            const n = el.querySelector('input[name$="[name]"]').value.trim();
+            const o = el.querySelector('input[name$="[options]"]').value.trim();
+            if(n && o) currentTypes.push({ name: n, options: o.split(',').map(x=>x.trim()).filter(x=>x) });
         });
-        generateVariantCombinations();
-        toggleMainStock();
+        generateTable();
+        toggleMainInputs();
     }
 
-    function createVariantGroup(index, variantTypeData = { name: '', options: '' }) {
-        const groupWrapper = document.createElement('div');
-        groupWrapper.classList.add('border', 'rounded-md', 'p-4', 'space-y-3', 'bg-gray-50');
-        groupWrapper.innerHTML = `
-            <div class="flex justify-between items-center">
-                <h3 class="font-semibold text-gray-700">Tipe Varian #${index + 1}</h3>
-                <button type="button" class="text-red-500 hover:text-red-700 remove-variant-group" title="Hapus Tipe Varian">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                </button>
-            </div>
-            <div>
-                <label for="variant_${index}_name" class="block text-sm font-medium text-gray-700">Nama Tipe Varian</label>
-                <input type="text" name="variant_types[${index}][name]" id="variant_${index}_name" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="Contoh: Warna, Ukuran" value="${variantTypeData.name}" required>
-            </div>
-            <div>
-                <label for="variant_${index}_options" class="block text-sm font-medium text-gray-700">Pilihan Varian (pisahkan koma)</label>
-                <input type="text" name="variant_types[${index}][options]" id="variant_${index}_options" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="Contoh: Merah, Biru, Hijau" value="${variantTypeData.options}" required>
+    function createGroup(idx, data = {name:'', options:''}) {
+        const div = document.createElement('div');
+        div.className = 'variant-group-item bg-gray-50 border border-gray-200 rounded-lg p-4 relative';
+        div.innerHTML = `
+            <button type="button" class="absolute top-2 right-2 text-gray-400 hover:text-red-500 remove-group transition">
+                <i class="fa-solid fa-times"></i>
+            </button>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Nama Varian</label>
+                    <input type="text" name="variant_types[${idx}][name]" value="${data.name}" class="w-full border-gray-300 rounded-md text-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="Contoh: Warna">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Pilihan (Koma)</label>
+                    <input type="text" name="variant_types[${idx}][options]" value="${data.options}" class="w-full border-gray-300 rounded-md text-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="Merah, Biru, Hijau">
+                </div>
             </div>
         `;
-
-        // Tambahkan event listener untuk menghapus grup varian
-        groupWrapper.querySelector('.remove-variant-group').addEventListener('click', (e) => {
-            e.preventDefault();
-            groupWrapper.remove();
-            updateCurrentVariantTypes(); // Perbarui dan generate ulang kombinasi
+        div.querySelector('.remove-group').addEventListener('click', () => {
+            div.remove();
+            updateTypes();
         });
-
-        // Tambahkan event listener untuk input agar selalu mengupdate kombinasi
-        groupWrapper.querySelectorAll('input').forEach(input => {
-            input.addEventListener('input', updateCurrentVariantTypes);
-        });
-
-        return groupWrapper;
+        div.querySelectorAll('input').forEach(i => i.addEventListener('input', updateTypes));
+        return div;
     }
 
-    if (addVariantBtn && variantContainer && mainStockInput) {
-        addVariantBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            variantContainer.appendChild(createVariantGroup(variantIndex));
-            variantIndex++;
-            updateCurrentVariantTypes(); // Panggil ini setelah menambahkan
+    if(addVariantBtn) {
+        addVariantBtn.addEventListener('click', () => {
+            variantContainer.appendChild(createGroup(variantIndex++));
+            updateTypes();
         });
     }
 
-    // Fungsi untuk menghasilkan kombinasi varian
-    function generateVariantCombinations() {
-        variantTableHeaders.innerHTML = '';
-        variantTableBody.innerHTML = '';
-
-        if (currentVariantTypes.length === 0) {
-            variantCombinationsSection.classList.add('hidden');
+    function generateTable() {
+        variantHead.innerHTML = '';
+        variantBody.innerHTML = '';
+        
+        if(currentTypes.length === 0) {
+            variantSection.classList.add('hidden');
             return;
         }
+        variantSection.classList.remove('hidden');
 
-        variantCombinationsSection.classList.remove('hidden');
-
-        // Tambahkan header untuk nama varian
-        currentVariantTypes.forEach(type => {
+        // Headers
+        currentTypes.forEach(t => {
             const th = document.createElement('th');
-            th.textContent = type.name;
-            variantTableHeaders.appendChild(th);
+            th.textContent = t.name;
+            variantHead.appendChild(th);
+        });
+        ['Harga', 'Stok', 'SKU (Opsional)'].forEach(h => {
+            const th = document.createElement('th');
+            th.textContent = h;
+            variantHead.appendChild(th);
         });
 
-        // Tambahkan header untuk harga, stok, SKU, dan aksi
-        const priceTh = document.createElement('th'); priceTh.textContent = 'Harga'; variantTableHeaders.appendChild(priceTh);
-        const stockTh = document.createElement('th'); stockTh.textContent = 'Stok'; variantTableHeaders.appendChild(stockTh);
-        const skuTh = document.createElement('th'); skuTh.textContent = 'SKU Varian (Opsional)'; variantTableHeaders.appendChild(skuTh);
-        const actionTh = document.createElement('th'); actionTh.textContent = 'Aksi'; variantTableHeaders.appendChild(actionTh);
-
-
-        const combinations = generateAllCombinations(currentVariantTypes);
-
-        combinations.forEach((combination, combIndex) => {
+        // Rows
+        const combos = getCombos(currentTypes.map(t => t.options));
+        combos.forEach((combo, cIdx) => {
             const tr = document.createElement('tr');
-            let combinationString = []; // Untuk kunci lookup di existingVariantCombinations
-
-            combination.forEach((variantOption, optionIndex) => {
+            
+            // Kolom Nama Varian
+            combo.forEach(val => {
                 const td = document.createElement('td');
-                td.textContent = variantOption;
+                td.textContent = val;
+                td.className = "bg-gray-50 text-gray-600 font-medium";
                 tr.appendChild(td);
-
-                // Buat string kombinasi untuk lookup
-                combinationString.push(`${currentVariantTypes[optionIndex].name}:${variantOption}`);
             });
 
-            // [PERBAIKAN] Menggunakan existingVariantCombinations
-            // const comboKey = combinationString.join(';'); // "Warna:Merah;Ukuran:S"
-            const comboKey = generateCombinationKey(combination, currentVariantTypes); // Gunakan helper
-            const existingComboData = existingVariantCombinations[comboKey] || { price: mainPriceInput.value, stock: 0, sku_code: '' }; // Default values
+            // Key untuk lookup data lama
+            const key = combo.map((v,i) => `${currentTypes[i].name}:${v}`).sort().join(';');
+            const oldData = existingVariantCombinations[key] || { price: mainPrice.value, stock: 0, sku_code: '' };
 
             // Input Harga
-            const priceTd = document.createElement('td');
-            priceTd.innerHTML = `<div class="relative"><span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">Rp</span><input type="number" name="product_variants[${combIndex}][price]" class="pl-8" value="${existingComboData.price}" required></div>`;
-            tr.appendChild(priceTd);
+            const tdPrice = document.createElement('td');
+            tdPrice.innerHTML = `<input type="number" name="product_variants[${cIdx}][price]" value="${oldData.price}" class="w-full min-w-[100px] border-gray-300 rounded-md text-sm" required>`;
+            tr.appendChild(tdPrice);
 
             // Input Stok
-            const stockTd = document.createElement('td');
-            stockTd.innerHTML = `<input type="number" name="product_variants[${combIndex}][stock]" value="${existingComboData.stock}" required>`;
-            tr.appendChild(stockTd);
+            const tdStock = document.createElement('td');
+            tdStock.innerHTML = `<input type="number" name="product_variants[${cIdx}][stock]" value="${oldData.stock}" class="w-full min-w-[80px] border-gray-300 rounded-md text-sm" required>`;
+            tr.appendChild(tdStock);
 
-            // Input SKU Varian
-            const skuTd = document.createElement('td');
-            skuTd.innerHTML = `<input type="text" name="product_variants[${combIndex}][sku_code]" value="${existingComboData.sku_code || ''}" placeholder="SKU Varian">`; // Tambah || ''
-            tr.appendChild(skuTd);
+            // Input SKU
+            const tdSku = document.createElement('td');
+            tdSku.innerHTML = `<input type="text" name="product_variants[${cIdx}][sku_code]" value="${oldData.sku_code || ''}" class="w-full min-w-[100px] border-gray-300 rounded-md text-sm">`;
+            tr.appendChild(tdSku);
 
-            // Hidden inputs untuk menyimpan tipe dan nilai varian
-            combination.forEach((variantOption, optionIndex) => {
-                const hiddenInputType = document.createElement('input');
-                hiddenInputType.type = 'hidden';
-                hiddenInputType.name = `product_variants[${combIndex}][variant_options][${optionIndex}][type_name]`;
-                hiddenInputType.value = currentVariantTypes[optionIndex].name;
-                tr.appendChild(hiddenInputType);
+            // Hidden Inputs
+            combo.forEach((val, i) => {
+                const hType = document.createElement('input'); hType.type='hidden';
+                hType.name = `product_variants[${cIdx}][variant_options][${i}][type_name]`; hType.value = currentTypes[i].name;
+                tr.appendChild(hType);
 
-                const hiddenInputValue = document.createElement('input');
-                hiddenInputValue.type = 'hidden';
-                hiddenInputValue.name = `product_variants[${combIndex}][variant_options][${optionIndex}][value]`;
-                hiddenInputValue.value = variantOption;
-                tr.appendChild(hiddenInputValue);
+                const hVal = document.createElement('input'); hVal.type='hidden';
+                hVal.name = `product_variants[${cIdx}][variant_options][${i}][value]`; hVal.value = val;
+                tr.appendChild(hVal);
             });
 
-            // Aksi (Opsional: Hapus baris kombinasi, dll)
-            const actionTd = document.createElement('td');
-            // Untuk saat ini, tidak ada aksi langsung untuk menghapus kombinasi spesifik
-            // karena mereka dihasilkan secara otomatis dari tipe varian.
-            // Anda bisa menambahkan tombol untuk "reset" stok/harga, misalnya.
-            actionTd.innerHTML = '<span class="text-gray-400">N/A</span>';
-            tr.appendChild(actionTd);
-
-
-            variantTableBody.appendChild(tr);
+            variantBody.appendChild(tr);
         });
+    }
 
-        // Sinkronkan stok/harga utama dengan nilai default dari varian pertama jika ada
-        if (combinations.length > 0) {
-            const firstCombinationData = existingVariantCombinations[generateCombinationKey(combinations[0], currentVariantTypes)] || { price: product.price, stock: 0 };
-            mainPriceInput.value = firstCombinationData.price !== undefined ? firstCombinationData.price : product.price;
-            mainOriginalPriceInput.value = product.original_price; // Tetap pakai original_price produk utama
+    function getCombos(arrays) {
+        if(arrays.length === 0) return [];
+        return arrays.reduce((a, b) => a.flatMap(d => b.map(e => [d, e].flat())));
+    }
+
+    function toggleMainInputs() {
+        const hasVar = variantContainer.children.length > 0;
+        const msg = "Diatur di varian";
+        
+        if(hasVar) {
+            mainStock.disabled = true; mainStock.value = ''; mainStock.placeholder = msg;
+            mainPrice.disabled = true; mainPrice.value = ''; mainPrice.placeholder = msg;
+            mainOriginalPrice.disabled = true; mainOriginalPrice.value = ''; 
         } else {
-            // Jika tidak ada varian, kembalikan ke harga produk utama
-            mainPriceInput.value = product.price;
-            mainOriginalPriceInput.value = product.original_price;
+            mainStock.disabled = false; mainStock.value = product.stock; mainStock.placeholder = '0';
+            mainPrice.disabled = false; mainPrice.value = product.price; mainPrice.placeholder = '0';
+            mainOriginalPrice.disabled = false; mainOriginalPrice.value = product.original_price;
         }
     }
 
-
-    // Fungsi rekursif untuk menghasilkan semua kombinasi
-    function generateAllCombinations(variantTypes) {
-        if (variantTypes.length === 0) {
-            return [];
-        }
-
-        function combine(arr) {
-            if (arr.length === 0) return [[]];
-            const first = arr[0];
-            const rest = arr.slice(1);
-            const subCombinations = combine(rest);
-            const result = [];
-            for (const item of first) {
-                for (const subCombo of subCombinations) {
-                    result.push([item, ...subCombo]);
-                }
-            }
-            return result;
-        }
-
-        const optionsPerType = variantTypes.map(type => type.options);
-        return combine(optionsPerType);
-    }
-
-    // Fungsi helper untuk generate combination key yang sama dengan di backend
-    function generateCombinationKey(combinationValues, variantTypes) {
-        // [PERBAIKAN] Pastikan variantTypes tidak kosong sebelum di-map
-        if (!variantTypes || variantTypes.length === 0) return '';
-        return combinationValues.map((value, index) => `${variantTypes[index].name}:${value}`)
-            .sort() // Sortir untuk konsistensi
-            .join(';');
-    }
-
-
-    function toggleMainStock() {
-        if (!mainStockInput || !mainPriceInput || !mainOriginalPriceInput) return;
-
-        const warningId = 'stock-warning';
-        const existingWarning = document.getElementById(warningId);
-        if (existingWarning) existingWarning.remove();
-
-        // Cek jika ada grup varian yang terdefinisi
-        const hasVariantGroups = variantContainer.children.length > 0;
-
-        if (hasVariantGroups) {
-            mainStockInput.disabled = true;
-            mainStockInput.value = ''; // Kosongkan stok utama
-            mainPriceInput.disabled = true; // Nonaktifkan harga utama
-            mainOriginalPriceInput.disabled = true; // Nonaktifkan harga coret utama
-
-            if (mainStockInput.parentElement) {
-                mainStockInput.parentElement.insertAdjacentHTML('afterend', `
-                    <p id="${warningId}" class="mt-1 text-xs text-indigo-600">
-                        Input stok & harga utama dinonaktifkan. Anda mengatur stok & harga per kombinasi varian.
-                    </p>
-                `);
-            }
-        } else {
-            mainStockInput.disabled = false;
-            // Kembalikan stok dan harga utama ke nilai produk (jika tidak ada varian)
-            mainStockInput.value = product.stock;
-            mainPriceInput.disabled = false;
-            mainPriceInput.value = product.price;
-            mainOriginalPriceInput.disabled = false;
-            mainOriginalPriceInput.value = product.original_price;
-        }
-    }
-
-    // Inisialisasi: Muat varian yang sudah ada
-    // [PERBAIKAN] Menggunakan existingVariantTypes dari JSON
-    existingVariantTypes.forEach((variantType, index) => {
-        const groupWrapper = createVariantGroup(variantIndex, {
-            name: variantType.name,
-            options: variantType.options // 'options' di sini adalah string (Contoh: "Merah, Biru")
-        });
-        variantContainer.appendChild(groupWrapper);
-        variantIndex++; // Tingkatkan index untuk varian baru
+    // INIT VARIANTS
+    existingVariantTypes.forEach(t => {
+        const g = createGroup(variantIndex++, { name: t.name, options: t.options });
+        variantContainer.appendChild(g);
     });
-
-    // Panggil updateCurrentVariantTypes setelah semua varian existing dimuat
-    updateCurrentVariantTypes();
-
-    // Pastikan toggleMainStock dipanggil terakhir setelah semua inisialisasi varian
-    toggleMainStock();
-
+    updateTypes();
 });
 </script>
 @endpush
