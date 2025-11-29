@@ -156,242 +156,163 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. Ambil Data Lama
+    // === 1. SETUP DATA ===
     const rawAttributes = {!! $product->existing_attributes_json ?? '{}' !!};
     const existingAttributes = Array.isArray(rawAttributes) && rawAttributes.length === 0 ? {} : rawAttributes;
-
-    // === DEBUGGING: Cek Data di Console Browser (Tekan F12 -> Console) ===
-    console.group("DEBUG SPESIFIKASI");
-    console.log("Data dari Database (JSON):", existingAttributes);
-    console.groupEnd();
 
     const categorySelect = document.getElementById('category_id');
     const attributesCard = document.getElementById('attributes-card');
     const attributesContainer = document.getElementById('dynamic-attributes-container');
 
-    // Fungsi Normalisasi Slug (Ubah underscore jadi dash agar cocok)
+    // Helper: Normalisasi Slug
     function normalizeSlug(str) {
         return str.toLowerCase().replace(/_/g, '-').replace(/\s+/g, '-');
     }
 
+    // === 2. LOGIC FETCH SPESIFIKASI ===
     async function fetchAndRenderAttributes() {
         const selectedOption = categorySelect.options[categorySelect.selectedIndex];
-        const url = selectedOption ? selectedOption.dataset.attributesUrl : null;
+        
+        // Cek apakah ada opsi yang dipilih
+        if (!selectedOption || !selectedOption.value) {
+            attributesCard.classList.add('hidden'); // Sembunyikan jika tidak ada kategori
+            return;
+        }
 
-        if (!url) return;
+        const url = selectedOption.dataset.attributesUrl;
+        
+        // Debugging URL (Cek Console F12 jika masih error)
+        console.log("URL Fetch:", url); 
+
+        if (!url) {
+            console.error("URL Atribut tidak ditemukan di opsi kategori.");
+            return;
+        }
+
+        // [PERBAIKAN UTAMA] Tampilkan Card LANGSUNG sebelum fetch dimulai
+        attributesCard.classList.remove('hidden');
+        
+        // Tampilkan Loading State
+        attributesContainer.innerHTML = `
+            <div class="py-8 text-center text-gray-500 animate-pulse">
+                <i class="fas fa-circle-notch fa-spin text-indigo-500 text-2xl mb-2"></i>
+                <p>Memuat spesifikasi...</p>
+            </div>
+        `;
 
         try {
-            // Tampilkan Loading jika container kosong
-            if(attributesContainer.innerHTML.trim() === '') {
-                attributesContainer.innerHTML = '<div class="py-4 text-center text-gray-500"><i class="fas fa-spinner fa-spin"></i> Memuat form...</div>';
-                attributesCard.classList.remove('hidden');
-            }
-
             const response = await fetch(url);
+            
+            if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+            
             const attributesStructure = await response.json();
-
-            attributesContainer.innerHTML = ''; // Reset Form
+            attributesContainer.innerHTML = ''; // Hapus loading
 
             if (attributesStructure && attributesStructure.length > 0) {
                 attributesStructure.forEach(attr => {
-                    // Render HTML
+                    // Render Input Field
                     const fieldHtml = createAttributeField(attr);
                     attributesContainer.appendChild(fieldHtml);
 
-                    // === LOGIKA PENGISIAN NILAI (AUTO-FILL) YANG LEBIH KUAT ===
-                    
-                    // 1. Cek Exact Match (slug asli)
+                    // --- LOGIC AUTO-FILL NILAI LAMA ---
                     let value = existingAttributes[attr.slug];
 
-                    // 2. Jika kosong, Cek Normalized Match (antisipasi beda _ dan -)
+                    // Fallback: Coba cocokkan slug jika beda format (misal: 'jenis_izin' vs 'jenis-izin')
                     if (value === undefined) {
                         const normalizedKey = normalizeSlug(attr.slug);
-                        // Cari key di existingAttributes yang jika dinormalisasi sama dengan slug ini
                         const matchingKey = Object.keys(existingAttributes).find(key => normalizeSlug(key) === normalizedKey);
-                        if (matchingKey) {
-                            value = existingAttributes[matchingKey];
-                        }
+                        if (matchingKey) value = existingAttributes[matchingKey];
                     }
 
-                    // 3. Isi Nilai
+                    // Isi value jika ada
                     if (value !== undefined && value !== null) {
-                        console.log(`✅ MATCH: Field [${attr.slug}] diisi dengan nilai:`, value);
                         fillAttributeValue(fieldHtml, attr, value);
-                    } else {
-                        console.warn(`❌ NO MATCH: Field [${attr.slug}] tidak punya data tersimpan.`);
                     }
                 });
-                attributesCard.classList.remove('hidden');
             } else {
-                attributesContainer.innerHTML = '<p class="text-gray-400 italic">Tidak ada spesifikasi khusus.</p>';
+                attributesContainer.innerHTML = `
+                    <div class="text-center py-6 border-2 border-dashed border-gray-200 rounded-lg">
+                        <p class="text-gray-400 italic">Tidak ada spesifikasi khusus untuk kategori ini.</p>
+                    </div>
+                `;
             }
 
         } catch (error) {
             console.error("Error Fetching:", error);
-            attributesContainer.innerHTML = '<p class="text-red-500">Gagal memuat data.</p>';
+            attributesContainer.innerHTML = `
+                <div class="p-4 bg-red-50 text-red-600 rounded-lg text-sm text-center">
+                    <i class="fa-solid fa-triangle-exclamation mr-1"></i> Gagal memuat data spesifikasi.
+                    <br><span class="text-xs text-red-400">${error.message}</span>
+                </div>
+            `;
         }
     }
 
+    // Helper: Buat HTML Input
     function createAttributeField(attr) {
         const wrapper = document.createElement('div');
         const inputName = `attributes[${attr.slug}]`; 
-        const commonClass = "w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500";
+        const commonClass = "w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors";
         let inputHtml = '';
 
         if (attr.type === 'select') {
             const opts = (attr.options||'').split(',').map(o => `<option value="${o.trim()}">${o.trim()}</option>`).join('');
             inputHtml = `<select name="${inputName}" class="${commonClass}"><option value="">-- Pilih --</option>${opts}</select>`;
         } else if (attr.type === 'textarea') {
-             inputHtml = `<textarea name="${inputName}" rows="2" class="${commonClass}"></textarea>`;
+             inputHtml = `<textarea name="${inputName}" rows="3" class="${commonClass}"></textarea>`;
         } else if (attr.type === 'checkbox') {
-             // Logic checkbox khusus
              const opts = (attr.options||'').split(',').map(o => `
-                <label class="inline-flex items-center mr-4 mt-2">
-                    <input type="checkbox" name="${inputName}[]" value="${o.trim()}" class="rounded border-gray-300 text-indigo-600 shadow-sm">
-                    <span class="ml-2 text-sm">${o.trim()}</span>
+                <label class="inline-flex items-center mr-4 mt-2 cursor-pointer">
+                    <input type="checkbox" name="${inputName}[]" value="${o.trim()}" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500">
+                    <span class="ml-2 text-sm text-gray-700">${o.trim()}</span>
                 </label>`).join('');
-             inputHtml = `<div class="block">${opts}</div>`;
+             inputHtml = `<div class="block pt-1">${opts}</div>`;
         } else {
-            inputHtml = `<input type="text" name="${inputName}" class="${commonClass}">`;
+            const type = attr.type === 'number' ? 'number' : 'text';
+            inputHtml = `<input type="${type}" name="${inputName}" class="${commonClass}">`;
         }
         
-        // Tandai Required
         const reqLabel = attr.is_required ? ' <span class="text-red-500">*</span>' : '';
         wrapper.innerHTML = `<label class="block text-sm font-medium text-gray-700 mb-1">${attr.name}${reqLabel}</label>${inputHtml}`;
         return wrapper;
     }
 
+    // Helper: Isi Value
     function fillAttributeValue(wrapper, attr, val) {
-        // Handle Checkbox (Array)
         if (attr.type === 'checkbox') {
             const arr = Array.isArray(val) ? val : [val];
             wrapper.querySelectorAll('input[type="checkbox"]').forEach(chk => {
                 if(arr.includes(chk.value)) chk.checked = true;
             });
-        } 
-        // Handle Select/Text/Textarea
-        else {
+        } else {
             const inp = wrapper.querySelector(`[name="attributes[${attr.slug}]"]`);
             if(inp) inp.value = val;
         }
     }
 
-    // Jalankan saat load
+    // === 3. EVENT LISTENERS ===
+    
+    // Jalankan saat load halaman (PENTING AGAR FORM MUNCUL)
     if (categorySelect && categorySelect.value) {
         fetchAndRenderAttributes();
     }
-    // Jalankan saat ganti kategori
+
+    // Jalankan saat user ganti kategori
     if (categorySelect) {
         categorySelect.addEventListener('change', fetchAndRenderAttributes);
     }
-});
-    // === 2. LOGIC TAMBAH / HAPUS KATEGORI (AJAX Mockup) ===
     
-    // Toggle Form Tambah
+    // === 4. LOGIC KATEGORI BARU/HAPUS (Opsional/UI Only) ===
     const btnToggleAdd = document.getElementById('btn-toggle-add-cat');
     const addWrapper = document.getElementById('add-category-wrapper');
-    const btnSaveCat = document.getElementById('btn-save-new-cat');
     const inputNewCat = document.getElementById('new_category_name');
-    const btnDeleteCat = document.getElementById('btn-delete-cat');
-
-    btnToggleAdd.addEventListener('click', () => {
-        addWrapper.classList.toggle('hidden');
-        if(!addWrapper.classList.contains('hidden')) inputNewCat.focus();
-    });
-
-    // Action Tambah Kategori
-    btnSaveCat.addEventListener('click', async () => {
-        const name = inputNewCat.value.trim();
-        if(!name) { alert('Nama kategori tidak boleh kosong'); return; }
-
-        // Button Loading State
-        const originalHtml = btnSaveCat.innerHTML;
-        btnSaveCat.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-        btnSaveCat.disabled = true;
-
-        try {
-            // TODO: Ganti URL ini dengan route store kategori Anda yang sebenarnya
-            // const res = await fetch("{{ route('admin.categories.store') }}", { 
-            //    method: 'POST', 
-            //    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-            //    body: JSON.stringify({ name: name }) 
-            // });
-            
-            // --- MOCKUP SUCCESS (Hapus blok ini jika sudah ada route backend) ---
-            // Simulasi delay server
-            await new Promise(r => setTimeout(r, 500)); 
-            // Simulasi response data baru
-            const newCat = { id: Date.now(), name: name, attributes_url: '' }; 
-            // ------------------------------------------------------------------
-
-            // Jika Backend Response OK:
-            // const newCat = await res.json(); 
-
-            // Tambahkan ke dropdown dan pilih
-            const option = new Option(newCat.name, newCat.id);
-            // option.dataset.attributesUrl = newCat.attributes_url; // Set URL atribut jika ada
-            categorySelect.add(option);
-            categorySelect.value = newCat.id;
-            
-            // Trigger change event agar spesifikasi mereset/update
-            categorySelect.dispatchEvent(new Event('change'));
-
-            // Reset Form
-            inputNewCat.value = '';
-            addWrapper.classList.add('hidden');
-            alert('Kategori berhasil ditambahkan!');
-
-        } catch (e) {
-            console.error(e);
-            alert('Gagal menambah kategori.');
-        } finally {
-            btnSaveCat.innerHTML = originalHtml;
-            btnSaveCat.disabled = false;
-        }
-    });
-
-    // Action Hapus Kategori
-    btnDeleteCat.addEventListener('click', async () => {
-        const id = categorySelect.value;
-        const text = categorySelect.options[categorySelect.selectedIndex]?.text;
-
-        if(!id) { alert('Pilih kategori yang ingin dihapus.'); return; }
-        
-        if(!confirm(`Apakah Anda yakin ingin menghapus kategori "${text}" secara permanen?`)) return;
-
-        // Button Loading State
-        const originalHtml = btnDeleteCat.innerHTML;
-        btnDeleteCat.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-        btnDeleteCat.disabled = true;
-
-        try {
-            // TODO: Ganti URL dengan route destroy kategori Anda
-            // await fetch(`/admin/categories/${id}`, { 
-            //    method: 'DELETE',
-            //    headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
-            // });
-
-            // --- MOCKUP SUCCESS (Hapus jika sudah ada route) ---
-            await new Promise(r => setTimeout(r, 500));
-            // ---------------------------------------------------
-
-            // Hapus dari dropdown
-            categorySelect.remove(categorySelect.selectedIndex);
-            
-            // Reset ke default
-            categorySelect.value = "";
-            categorySelect.dispatchEvent(new Event('change')); // Clear specs panel
-            
-            alert('Kategori berhasil dihapus.');
-
-        } catch (e) {
-            console.error(e);
-            alert('Gagal menghapus kategori.');
-        } finally {
-            btnDeleteCat.innerHTML = originalHtml;
-            btnDeleteCat.disabled = false;
-        }
-    });
+    
+    if(btnToggleAdd) {
+        btnToggleAdd.addEventListener('click', () => {
+            addWrapper.classList.toggle('hidden');
+            if(!addWrapper.classList.contains('hidden')) inputNewCat.focus();
+        });
+    }
 });
 </script>
 @endpush
