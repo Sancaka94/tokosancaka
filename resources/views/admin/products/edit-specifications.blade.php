@@ -135,10 +135,6 @@
                 </div>
             </div>
 
-        </div>
-
-        {{-- STICKY FOOTER ACTION --}}
-        <div class="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] md:pl-[280px]">
             <div class="max-w-7xl mx-auto flex items-center justify-end gap-3">
                 <a href="{{ route('admin.products.edit', $product->slug) }}" 
                    class="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-4 focus:ring-gray-200 transition-all">
@@ -149,7 +145,10 @@
                     <i class="fa-solid fa-floppy-disk mr-2"></i> Simpan Spesifikasi
                 </button>
             </div>
+
         </div>
+
+       
 
     </form>
 </div>
