@@ -131,7 +131,7 @@ class CategoryController extends Controller
         return redirect()->route('admin.categories.edit', $category);
     }
 
-     public function storeAjax(Request $request)
+    public function storeAjax(Request $request)
 {
     // 1. Validasi sederhana
     $request->validate([
@@ -141,8 +141,9 @@ class CategoryController extends Controller
     // 2. Buat Slug & Simpan
     $category = \App\Models\Category::create([
         'name' => $request->name,
-        'slug' => Str::slug($request->name),
-        'type' => 'product', // Pastikan diset type-nya agar muncul di filter produk
+        'slug' => \Illuminate\Support\Str::slug($request->name),
+        'type' => 'product', 
+        'user_id' => auth()->id(), // <--- TAMBAHKAN BARIS INI (Ambil ID user yg login)
     ]);
 
     // 3. Kembalikan JSON Response
@@ -152,8 +153,7 @@ class CategoryController extends Controller
         'data' => [
             'id' => $category->id,
             'name' => $category->name,
-            // URL untuk ambil atribut (jika nanti kategori baru ini diisi atribut)
-            'attributes_url' => route('admin.categories.attributes', $category->id) 
+            'attributes_url' => route('categories.attributes', $category->id) 
         ]
     ]);
 }
