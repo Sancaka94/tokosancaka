@@ -77,61 +77,88 @@
             {{-- === RIGHT COLUMN (Sidebar: Category & Actions) === --}}
             <div class="lg:col-span-4 space-y-6">
 
-                {{-- CARD: SAVE ACTIONS --}}
-                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sticky top-6">
-                    <h3 class="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4">Aksi</h3>
-                    <button type="submit" class="w-full py-2.5 bg-indigo-600 text-white rounded-lg font-medium shadow-md hover:bg-indigo-700 transition flex items-center justify-center mb-3">
-                        <i class="fa-solid fa-save mr-2"></i> Simpan Perubahan
-                    </button>
-                    <a href="{{ route('admin.products.edit', $product->slug) }}" class="w-full block text-center py-2.5 bg-white border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition">
-                        Batal
-                    </a>
-                </div>
+                {{-- CARD: KATEGORI (UPDATED UI) --}}
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+    <div class="flex justify-between items-center mb-4">
+        <h2 class="text-lg font-semibold text-gray-800">Kategori</h2>
+        
+        {{-- Tombol Toggle Tambah --}}
+        <button type="button" id="btn-toggle-add-cat" class="text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-3 py-1.5 rounded-full transition flex items-center gap-1 font-medium" title="Tambah Kategori Baru">
+            <i class="fa-solid fa-plus"></i> Baru
+        </button>
+    </div>
 
-                {{-- CARD: KATEGORI --}}
-                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-lg font-semibold text-gray-800">Kategori</h2>
+    {{-- Form Tambah Kategori (Hidden by default) --}}
+    <div id="add-category-wrapper" class="hidden mb-4 p-3 bg-indigo-50 rounded-lg border border-indigo-100 animate-fade-in-down">
+        <label class="text-xs font-semibold text-indigo-700 mb-1 block">Nama Kategori Baru</label>
+        <div class="flex gap-2">
+            <input type="text" id="new_category_name" class="w-full text-sm border-gray-300 rounded shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="Misal: Elektronik">
+            <button type="button" id="btn-save-new-cat" class="bg-indigo-600 text-white px-3 rounded hover:bg-indigo-700 shadow-sm">
+                <i class="fa-solid fa-check"></i>
+            </button>
+        </div>
+    </div>
+
+    {{-- AREA PENCARIAN & LIST --}}
+    <div class="relative">
+        <label class="block text-sm font-medium text-gray-700 mb-2 required-label">Pilih Kategori <span class="text-red-500">*</span></label>
+
+        {{-- 1. Input Pencarian --}}
+        <div class="relative mb-2">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <i class="fa-solid fa-magnifying-glass text-gray-400 text-xs"></i>
+            </div>
+            <input type="text" id="cat-search" class="block w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition duration-150 ease-in-out" placeholder="Cari kategori...">
+        </div>
+
+        {{-- 2. Input Hidden (Menyimpan Value Asli untuk Form Submit) --}}
+        <input type="hidden" name="category_id" id="category_id" value="{{ old('category_id', $product->category_id) }}" required>
+
+        {{-- 3. Custom Scrollable List --}}
+        <div class="border border-gray-200 rounded-lg overflow-hidden">
+            {{-- Header List --}}
+            <div class="bg-gray-50 px-3 py-2 border-b border-gray-200 flex justify-between items-center">
+                <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Daftar Kategori</span>
+                
+                {{-- Tombol Hapus (Aktif jika ada yang dipilih) --}}
+                <button type="button" id="btn-delete-cat" class="text-gray-400 hover:text-red-600 transition disabled:opacity-50 disabled:cursor-not-allowed" title="Hapus Kategori Terpilih" disabled>
+                    <i class="fa-solid fa-trash-can"></i>
+                </button>
+            </div>
+
+            {{-- List Item Container (Max Height + Scrollbar) --}}
+            <ul id="category-list" class="max-h-[250px] overflow-y-auto divide-y divide-gray-100 bg-white">
+                @foreach($categories as $category)
+                    <li class="category-item relative cursor-pointer hover:bg-indigo-50 transition-colors group"
+                        data-id="{{ $category->id }}"
+                        data-name="{{ $category->name }}"
+                        data-url="{{ route('admin.categories.attributes', $category->id) }}">
                         
-                        {{-- Tombol Toggle Tambah --}}
-                        <button type="button" id="btn-toggle-add-cat" class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 py-1 rounded transition" title="Tambah Kategori Baru">
-                            <i class="fa-solid fa-plus"></i> Baru
-                        </button>
-                    </div>
-
-                    {{-- Form Tambah Kategori (Hidden by default) --}}
-                    <div id="add-category-wrapper" class="hidden mb-4 p-3 bg-indigo-50 rounded-lg border border-indigo-100">
-                        <label class="text-xs font-semibold text-indigo-700 mb-1 block">Nama Kategori Baru</label>
-                        <div class="flex gap-2">
-                            <input type="text" id="new_category_name" class="w-full text-sm border-gray-300 rounded shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="Misal: Elektronik">
-                            <button type="button" id="btn-save-new-cat" class="bg-indigo-600 text-white px-3 rounded hover:bg-indigo-700">
-                                <i class="fa-solid fa-check"></i>
-                            </button>
+                        <div class="px-4 py-3 flex items-center justify-between">
+                            <span class="text-sm text-gray-700 font-medium group-hover:text-indigo-700 category-text">{{ $category->name }}</span>
+                            
+                            {{-- Check Icon (Visible only when selected) --}}
+                            <i class="fa-solid fa-check text-indigo-600 hidden check-icon"></i>
                         </div>
-                    </div>
+                    </li>
+                @endforeach
+            </ul>
+        </div>
+    </div>
 
-                    {{-- Dropdown Kategori --}}
-                    <div class="relative">
-                        <label for="category_id" class="block text-sm font-medium text-gray-700 mb-1 required-label">Pilih Kategori <span class="text-red-500">*</span></label>
-                        
-                        <div class="flex gap-2">
-                            <select name="category_id" id="category_id" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500" required>
-                                <option value="">-- Pilih --</option>
-                                @foreach($categories as $category)
-                                    <option value="{{ $category->id }}" 
-                                        data-attributes-url="{{ route('admin.categories.attributes', $category->id) }}" 
-                                        {{ old('category_id', $product->category_id) == $category->id ? 'selected' : '' }}>
-                                        {{ $category->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-
-                            {{-- Tombol Hapus Kategori --}}
-                            <button type="button" id="btn-delete-cat" class="px-3 py-2 bg-red-50 text-red-600 border border-red-200 rounded-lg hover:bg-red-100 transition" title="Hapus Kategori Terpilih">
-                                <i class="fa-solid fa-trash-can"></i>
-                            </button>
-                        </div>
-                    </div>
+    <div id="cat-warning" class="mt-3 p-3 bg-yellow-50 rounded-lg border border-yellow-100 hidden">
+        <div class="flex">
+            <div class="flex-shrink-0">
+                <i class="fa-solid fa-triangle-exclamation text-yellow-500 mt-0.5"></i>
+            </div>
+            <div class="ml-3">
+                <p class="text-xs text-yellow-700">
+                    Mengubah kategori akan <strong>mereset</strong> form spesifikasi di kolom kiri.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
 
                     <div class="mt-3 p-3 bg-yellow-50 rounded-lg border border-yellow-100">
                         <div class="flex">
@@ -156,90 +183,145 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // ============================================================
-    // 1. TERIMA DATA DARI CONTROLLER
-    // ============================================================
-    // Perhatikan: Kita menggunakan variable $existingAttributesJson (bukan $product->...)
-    const rawData = {!! $existingAttributesJson ?? '{}' !!}; 
-    const existingAttributes = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
+    // === 1. SETUP DATA & VARIABLE ===
+    const rawAttributes = {!! $existingAttributesJson ?? '{}' !!};
+    const existingAttributes = typeof rawAttributes === 'string' ? JSON.parse(rawAttributes) : rawAttributes;
 
-    // DEBUG: Cek di Console Browser (F12)
-    console.log("🔥 DATA LAMA DARI CONTROLLER:", existingAttributes);
+    const categoryInput = document.getElementById('category_id'); // Hidden Input
+    const listContainer = document.getElementById('category-list');
+    const searchInput = document.getElementById('cat-search');
+    const deleteBtn = document.getElementById('btn-delete-cat');
+    const items = document.querySelectorAll('.category-item');
+    const warningBox = document.getElementById('cat-warning');
 
-    // ============================================================
-    // 2. SETUP DOM ELEMENTS
-    // ============================================================
-    const categorySelect = document.getElementById('category_id');
     const attributesCard = document.getElementById('attributes-card');
     const attributesContainer = document.getElementById('dynamic-attributes-container');
 
-    // ============================================================
-    // 3. FUNGSI UTAMA (FETCH & FILL)
-    // ============================================================
-    async function fetchAndRenderAttributes() {
-        // Ambil URL dari option yang terpilih
-        const selectedOption = categorySelect.options[categorySelect.selectedIndex];
-        if (!selectedOption || !selectedOption.value) {
-            attributesCard.classList.add('hidden');
-            return;
-        }
+    // === 2. LOGIC PENCARIAN (SEARCH) ===
+    searchInput.addEventListener('input', (e) => {
+        const term = e.target.value.toLowerCase();
+        let hasResult = false;
 
-        const url = selectedOption.dataset.attributesUrl;
-        if (!url) return;
-
-        // Tampilkan Card & Loading
-        attributesCard.classList.remove('hidden');
-        attributesContainer.innerHTML = `
-            <div class="text-center py-6 text-gray-500">
-                <i class="fas fa-circle-notch fa-spin text-indigo-500 mb-2 text-xl"></i>
-                <p>Memuat formulir...</p>
-            </div>`;
-
-        try {
-            // Fetch struktur form dari server
-            const response = await fetch(url);
-            const attributesStructure = await response.json();
-            
-            attributesContainer.innerHTML = ''; // Hapus loading
-
-            if (attributesStructure && attributesStructure.length > 0) {
-                attributesStructure.forEach(attr => {
-                    // A. Render Input HTML
-                    const fieldElement = createAttributeField(attr);
-                    attributesContainer.appendChild(fieldElement);
-
-                    // B. Isi Nilai (Auto-Fill)
-                    // Cek slug asli
-                    let dbValue = existingAttributes[attr.slug];
-
-                    // Fallback: Cek slug dengan format berbeda (misal database "jenis_izin" vs form "jenis-izin")
-                    if (dbValue === undefined) {
-                         const normalizedSlug = attr.slug.replace(/-/g, '_'); // coba ubah - jadi _
-                         dbValue = existingAttributes[normalizedSlug];
-                    }
-
-                    if (dbValue !== undefined && dbValue !== null) {
-                        console.log(`✅ Mengisi [${attr.slug}] dengan nilai:`, dbValue);
-                        fillAttributeValue(fieldElement, attr, dbValue);
-                    } else {
-                        console.log(`❌ Data kosong untuk [${attr.slug}]`);
-                    }
-                });
+        items.forEach(item => {
+            const text = item.querySelector('.category-text').textContent.toLowerCase();
+            if (text.includes(term)) {
+                item.classList.remove('hidden');
+                hasResult = true;
             } else {
-                attributesContainer.innerHTML = '<p class="text-gray-400 italic text-center">Tidak ada spesifikasi khusus.</p>';
+                item.classList.add('hidden');
             }
+        });
 
-        } catch (error) {
-            console.error("Error:", error);
-            attributesContainer.innerHTML = '<p class="text-red-500 text-center">Gagal memuat form.</p>';
+        // Optional: Tampilkan pesan jika tidak ada hasil
+        // if(!hasResult) ...
+    });
+
+    // === 3. LOGIC SELEKSI KATEGORI (CUSTOM LIST) ===
+    function selectCategoryUI(element) {
+        // Reset semua style active
+        items.forEach(el => {
+            el.classList.remove('bg-indigo-50', 'bg-indigo-100', 'border-l-4', 'border-indigo-500');
+            el.querySelector('.check-icon').classList.add('hidden');
+            el.querySelector('.category-text').classList.remove('text-indigo-800', 'font-bold');
+        });
+
+        // Set style active pada element yang dipilih
+        if (element) {
+            element.classList.add('bg-indigo-50', 'border-l-4', 'border-indigo-500');
+            element.querySelector('.check-icon').classList.remove('hidden');
+            element.querySelector('.category-text').classList.add('text-indigo-800', 'font-bold');
+            
+            // Scroll ke element jika perlu (optional)
+            // element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+            deleteBtn.disabled = false;
+            deleteBtn.classList.remove('text-gray-400');
+            deleteBtn.classList.add('text-red-500', 'hover:bg-red-50', 'p-1', 'rounded');
+        } else {
+            deleteBtn.disabled = true;
+            deleteBtn.classList.add('text-gray-400');
+            deleteBtn.classList.remove('text-red-500');
         }
     }
 
-    //Helper: Membuat HTML Field
+    // Event Listener untuk setiap Item List
+    items.forEach(item => {
+        item.addEventListener('click', () => {
+            const id = item.dataset.id;
+            const url = item.dataset.url;
+            
+            // Update Hidden Input
+            categoryInput.value = id;
+            
+            // Update UI List
+            selectCategoryUI(item);
+
+            // Tampilkan Warning
+            warningBox.classList.remove('hidden');
+
+            // Trigger Fetch Spesifikasi
+            fetchAndRenderAttributes(url);
+        });
+    });
+
+    // Initial Load (Jika Edit Mode dan sudah ada kategori terpilih)
+    if (categoryInput.value) {
+        const selectedItem = document.querySelector(`.category-item[data-id="${categoryInput.value}"]`);
+        if (selectedItem) {
+            selectCategoryUI(selectedItem);
+            // Panggil render tapi jangan reset value (biar auto fill jalan)
+            const url = selectedItem.dataset.url;
+            fetchAndRenderAttributes(url, true); // true = mode init
+        }
+    }
+
+    // === 4. LOGIC FETCH SPESIFIKASI ===
+    async function fetchAndRenderAttributes(url, isInit = false) {
+        if (!url) return;
+
+        attributesCard.classList.remove('hidden');
+        
+        // Hanya tampilkan loading jika bukan init load (agar user tidak kaget saat refresh)
+        if(!isInit) {
+            attributesContainer.innerHTML = '<div class="py-6 text-center text-gray-500"><i class="fas fa-circle-notch fa-spin text-indigo-500 mb-2"></i><p>Memuat form...</p></div>';
+        }
+
+        try {
+            const response = await fetch(url);
+            const attributesStructure = await response.json();
+            
+            attributesContainer.innerHTML = ''; 
+
+            if (attributesStructure && attributesStructure.length > 0) {
+                attributesStructure.forEach(attr => {
+                    const fieldElement = createAttributeField(attr);
+                    attributesContainer.appendChild(fieldElement);
+
+                    // AUTO FILL LOGIC
+                    let dbValue = existingAttributes[attr.slug];
+                    if (dbValue === undefined) {
+                         // Fallback slug format
+                         dbValue = existingAttributes[attr.slug.replace(/-/g, '_')];
+                    }
+
+                    if (dbValue !== undefined && dbValue !== null) {
+                        fillAttributeValue(fieldElement, attr, dbValue);
+                    }
+                });
+            } else {
+                attributesContainer.innerHTML = '<div class="text-center py-4 border-2 border-dashed border-gray-200 rounded text-gray-400 text-sm">Tidak ada spesifikasi khusus.</div>';
+            }
+        } catch (error) {
+            console.error("Error:", error);
+            attributesContainer.innerHTML = '<p class="text-red-500 text-sm">Gagal memuat data.</p>';
+        }
+    }
+
+    // Helper functions (Tetap sama seperti sebelumnya)
     function createAttributeField(attr) {
         const wrapper = document.createElement('div');
         const inputName = `attributes[${attr.slug}]`;
-        const commonClass = "w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500";
+        const commonClass = "w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm";
         let inputHtml = '';
 
         if (attr.type === 'select') {
@@ -248,8 +330,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (attr.type === 'textarea') {
             inputHtml = `<textarea name="${inputName}" rows="3" class="${commonClass}"></textarea>`;
         } else if (attr.type === 'checkbox') {
-             // Checkbox mockup sederhana
-             inputHtml = `<input type="text" name="${inputName}" class="${commonClass}" placeholder="Isi manual (Multi-select belum aktif)">`;
+             inputHtml = `<input type="text" name="${inputName}" class="${commonClass}" placeholder="Isi manual (Multi-select)">`;
         } else {
             inputHtml = `<input type="text" name="${inputName}" class="${commonClass}">`;
         }
@@ -259,25 +340,74 @@ document.addEventListener('DOMContentLoaded', () => {
         return wrapper;
     }
 
-    // Helper: Mengisi Nilai ke Input
     function fillAttributeValue(wrapper, attr, val) {
         const input = wrapper.querySelector(`[name="attributes[${attr.slug}]"]`);
-        if (input) {
-            input.value = val;
-        }
+        if (input) input.value = val;
     }
 
-    // ============================================================
-    // 4. EVENT LISTENER
-    // ============================================================
-    if (categorySelect) {
-        categorySelect.addEventListener('change', fetchAndRenderAttributes);
+    // === 5. LOGIC TAMBAH & HAPUS KATEGORI ===
+    
+    // Toggle Form Tambah
+    const btnToggleAdd = document.getElementById('btn-toggle-add-cat');
+    const addWrapper = document.getElementById('add-category-wrapper');
+    const inputNewCat = document.getElementById('new_category_name');
+    const btnSaveCat = document.getElementById('btn-save-new-cat');
+
+    btnToggleAdd.addEventListener('click', () => {
+        addWrapper.classList.toggle('hidden');
+        if (!addWrapper.classList.contains('hidden')) inputNewCat.focus();
+    });
+
+    // Simpan Kategori Baru (Mockup)
+    btnSaveCat.addEventListener('click', async () => {
+        const name = inputNewCat.value.trim();
+        if(!name) return alert('Nama kategori wajib diisi');
         
-        // Trigger otomatis saat halaman dimuat jika kategori sudah terpilih
-        if (categorySelect.value) {
-            fetchAndRenderAttributes();
-        }
-    }
+        // TODO: AJAX Call ke Backend Anda (Route store category)
+        // ... Logika Fetch disini ...
+        
+        // Simulasi Tambah UI
+        const newLi = document.createElement('li');
+        newLi.className = "category-item relative cursor-pointer hover:bg-indigo-50 transition-colors group bg-indigo-50 border-l-4 border-indigo-500";
+        newLi.dataset.id = Date.now(); // Dummy ID
+        newLi.dataset.name = name;
+        newLi.dataset.url = ""; // Dummy URL
+        newLi.innerHTML = `
+            <div class="px-4 py-3 flex items-center justify-between">
+                <span class="text-sm text-indigo-800 font-bold category-text">${name}</span>
+                <i class="fa-solid fa-check text-indigo-600 check-icon"></i>
+            </div>
+        `;
+        
+        // Prepend ke list (paling atas)
+        listContainer.insertBefore(newLi, listContainer.firstChild);
+        
+        // Auto select
+        categoryInput.value = newLi.dataset.id;
+        selectCategoryUI(newLi);
+        
+        // Reset form
+        inputNewCat.value = '';
+        addWrapper.classList.add('hidden');
+    });
+
+    // Hapus Kategori
+    deleteBtn.addEventListener('click', () => {
+        const id = categoryInput.value;
+        if(!id) return;
+        
+        if(!confirm('Hapus kategori ini?')) return;
+
+        // TODO: AJAX Call ke Backend
+        
+        // Remove UI
+        const itemToRemove = document.querySelector(`.category-item[data-id="${id}"]`);
+        if(itemToRemove) itemToRemove.remove();
+        
+        categoryInput.value = '';
+        selectCategoryUI(null);
+        attributesContainer.innerHTML = '';
+        attributesCard.classList.add('hidden');
+    });
 });
 </script>
-@endpush
