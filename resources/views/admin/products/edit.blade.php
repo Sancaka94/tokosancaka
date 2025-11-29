@@ -255,7 +255,13 @@
                         </div>
                     </div>
 
-                    {{-- KODE BARU DENGAN PLACEHOLDER --}}
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Logo Toko (Opsional)</label>
+                        <div class="flex items-start gap-4">
+                            <div id="seller-logo-uploader" class="image-uploader py-4 px-6 flex-1" tabindex="0">
+                                <p class="font-semibold text-indigo-600 text-sm">Upload Logo</p>
+                            </div>
+                            {{-- KODE BARU DENGAN PLACEHOLDER --}}
 <div class="w-24 h-24 border border-gray-200 rounded-lg bg-gray-50 flex items-center justify-center overflow-hidden relative group">
     @if($product->seller_logo)
         {{-- 1. Jika Logo SUDAH ADA di database --}}
@@ -275,6 +281,9 @@
     {{-- Overlay ikon mata saat di-hover (pemanis UI) --}}
     <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-300"></div>
 </div>
+                        </div>
+                        <input type="file" name="seller_logo" id="seller_logo" class="hidden" accept="image/png, image/jpeg, image/webp">
+                    </div>
                 </div>
             </div>
 
