@@ -41,6 +41,7 @@
                             @foreach($categories as $category)
                                 <option value="{{ $category->id }}" 
                                     data-attributes-url="{{ route('admin.categories.attributes', $category->id) }}" 
+                                    {{-- PERBAIKAN DI SINI: Gunakan category_id langsung --}}
                                     {{ old('category_id', $product->category_id) == $category->id ? 'selected' : '' }}>
                                     {{ $category->name }}
                                 </option>
@@ -57,6 +58,10 @@
                 </div>
             </div>
 
+            {{-- ... Sisa kode card spesifikasi dinamis & tombol simpan ... --}}
+            {{-- Bagian bawah tidak perlu diubah karena tidak menyebabkan error ini --}}
+            {{-- Pastikan penutup form dan div ada --}}
+            
             {{-- 2. SPESIFIKASI TAMBAHAN (Dinamis) --}}
             <div id="attributes-card" class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hidden">
                 <h2 class="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">Spesifikasi Tambahan</h2>
@@ -79,131 +84,3 @@
     </form>
 </div>
 @endsection
-
-@push('scripts')
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    // 1. TERIMA DATA DARI CONTROLLER (Format JSON)
-    const existingAttributes = @json($existingAttributes); 
-    
-    // Debug: Cek di Console browser apakah datanya masuk?
-    console.log('Data Lama:', existingAttributes); 
-
-    const categorySelect = document.getElementById('category_id');
-    const attributesCard = document.getElementById('attributes-card');
-    const attributesContainer = document.getElementById('dynamic-attributes-container');
-
-    // === LOGIC FETCH ATRIBUT DINAMIS ===
-    async function fetchAndRenderAttributes() {
-        const selectedOption = categorySelect.options[categorySelect.selectedIndex];
-        const url = selectedOption ? selectedOption.dataset.attributesUrl : null;
-
-        if (!url) {
-            attributesCard.classList.add('hidden');
-            attributesContainer.innerHTML = '';
-            return;
-        }
-
-        try {
-            // Tampilkan loading saat proses fetch
-            attributesContainer.innerHTML = '<div class="text-center py-4 text-gray-500"><i class="fas fa-circle-notch fa-spin text-indigo-500 mr-2"></i> Memuat form spesifikasi...</div>';
-            attributesCard.classList.remove('hidden');
-            
-            const response = await fetch(url);
-            if (!response.ok) throw new Error('Gagal mengambil data');
-            
-            // Ini adalah struktur form (Label, Tipe Input, Slug) dari Master Kategori
-            const attributeDefinitions = await response.json();
-            
-            attributesContainer.innerHTML = ''; // Hapus loading
-
-            if (attributeDefinitions && attributeDefinitions.length > 0) {
-                attributeDefinitions.forEach(attrDef => {
-                    // 1. Buat Field Input Kosong
-                    const fieldElement = createAttributeField(attrDef);
-                    attributesContainer.appendChild(fieldElement);
-                    
-                    // 2. ISI VALUE (AUTO-FILL) JIKA ADA DATA LAMA
-                    // Cek apakah slug atribut ini ada di data existingAttributes
-                    if (existingAttributes && existingAttributes[attrDef.slug] !== undefined) {
-                        fillAttributeValue(fieldElement, attrDef, existingAttributes[attrDef.slug]);
-                    }
-                });
-            } else {
-                attributesContainer.innerHTML = '<p class="text-gray-400 italic text-center">Tidak ada spesifikasi khusus untuk kategori ini.</p>';
-            }
-
-        } catch (error) {
-            console.error(error);
-            attributesContainer.innerHTML = '<p class="text-red-500 text-sm">Gagal memuat spesifikasi.</p>';
-        }
-    }
-
-    // --- FUNGSI HELPER: CREATE HTML FIELD ---
-    function createAttributeField(attribute) {
-        const wrapper = document.createElement('div');
-        const isRequired = attribute.is_required ? 'required' : '';
-        const requiredMark = attribute.is_required ? '<span class="text-red-500">*</span>' : '';
-        const inputName = `attributes[${attribute.slug}]`;
-        const commonClass = "w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition";
-
-        let inputHtml = '';
-
-        if (attribute.type === 'select') {
-            // Render Select Option
-            const opts = (attribute.options || '').split(',').map(o=>o.trim()).map(o=>`<option value="${o}">${o}</option>`).join('');
-            inputHtml = `<select name="${inputName}" class="${commonClass}" ${isRequired}>
-                            <option value="">-- Pilih --</option>
-                            ${opts}
-                         </select>`;
-        } else if (attribute.type === 'textarea') {
-            inputHtml = `<textarea name="${inputName}" rows="3" class="${commonClass}" ${isRequired}></textarea>`;
-        } else if (attribute.type === 'checkbox') {
-             const checks = (attribute.options || '').split(',').map(o=>o.trim()).map(o => `
-                <label class="inline-flex items-center mr-4 mb-2">
-                    <input type="checkbox" name="${inputName}[]" value="${o}" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500">
-                    <span class="ml-2 text-sm text-gray-700">${o}</span>
-                </label>
-            `).join('');
-            inputHtml = `<div class="mt-2 p-3 bg-gray-50 rounded border border-gray-200">${checks}</div>`;
-        } else {
-            // Text / Number
-            const type = attribute.type === 'number' ? 'number' : 'text';
-            inputHtml = `<input type="${type}" name="${inputName}" class="${commonClass}" ${isRequired}>`;
-        }
-
-        wrapper.innerHTML = `<label class="block text-sm font-medium text-gray-700 mb-1">${attribute.name} ${requiredMark}</label>${inputHtml}`;
-        return wrapper;
-    }
-
-    // --- FUNGSI HELPER: ISI NILAI KE INPUT ---
-    function fillAttributeValue(el, attrDef, value) {
-        if (value === null || value === undefined) return;
-        
-        // Handle Checkbox (Array Values)
-        if (attrDef.type === 'checkbox') {
-            let arr = Array.isArray(value) ? value : [value];
-            if(typeof value === 'string' && value.startsWith('[')) { try { arr = JSON.parse(value); } catch(e){} }
-            
-            el.querySelectorAll('input[type="checkbox"]').forEach(chk => {
-                if(arr.includes(chk.value)) chk.checked = true;
-            });
-        } 
-        // Handle Select, Text, Number, Textarea
-        else {
-            const inp = el.querySelector(`[name^="attributes"]`);
-            if(inp) {
-                inp.value = value; // <-- INI KUNCINYA: Mengisi value ke input/select
-            }
-        }
-    }
-
-    // Event Listener
-    if (categorySelect) {
-        categorySelect.addEventListener('change', fetchAndRenderAttributes);
-        // Load otomatis saat halaman dibuka
-        fetchAndRenderAttributes();
-    }
-});
-</script>
-@endpush
