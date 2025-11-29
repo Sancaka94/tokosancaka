@@ -262,24 +262,19 @@
                                 <p class="font-semibold text-indigo-600 text-sm">Upload Logo</p>
                             </div>
                             {{-- KODE BARU DENGAN PLACEHOLDER --}}
+{{-- LOGO TOKO DENGAN SVG BASE64 (ANTI ERROR) --}}
 <div class="w-24 h-24 border border-gray-200 rounded-lg bg-gray-50 flex items-center justify-center overflow-hidden relative group">
-    @if($product->seller_logo)
-        {{-- 1. Jika Logo SUDAH ADA di database --}}
-        <img id="seller-logo-preview" 
-             src="{{ asset('public/storage/' . $product->seller_logo) }}" 
-             class="w-full h-full object-contain" 
-             alt="Logo Toko">
-    @else
-        {{-- 2. Jika Logo BELUM ADA, gunakan Placeholder Image --}}
-        {{-- Saya gunakan layanan pihak ketiga placehold.co untuk membuat gambar "LOGO" otomatis --}}
-        <img id="seller-logo-preview" 
-             src="https://placehold.co/150x150/e2e8f0/94a3b8?text=LOGO&font=roboto" 
-             class="w-full h-full object-cover opacity-75 p-1" 
-             alt="Placeholder Logo">
-    @endif
     
-    {{-- Overlay ikon mata saat di-hover (pemanis UI) --}}
-    <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-300"></div>
+    {{-- Logic: Jika ada logo di DB pakai itu, jika tidak pakai Base64 SVG --}}
+    <img id="seller-logo-preview" 
+         src="{{ $product->seller_logo ? asset('public/storage/' . $product->seller_logo) : 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiB2aWV3Qm94PSIwIDAgMTAwIDEwMCIgZmlsbD0ibm9uZSI+PHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIGZpbGw9IiNmM2Y0ZjYiLz48dGV4dCB4PSI1MCIgeT0iNTAiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjE0IiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0iIzljYTNhZiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkxPR088L3RleHQ+PC9zdmc+' }}"
+         class="w-full h-full object-cover" 
+         alt="Logo Toko">
+
+    {{-- Overlay ikon saat hover --}}
+    <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-300 flex items-center justify-center">
+        <i class="fa-solid fa-pen text-white opacity-0 group-hover:opacity-100 drop-shadow-md"></i>
+    </div>
 </div>
                         </div>
                         <input type="file" name="seller_logo" id="seller_logo" class="hidden" accept="image/png, image/jpeg, image/webp">
