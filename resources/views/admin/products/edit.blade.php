@@ -262,13 +262,14 @@
                                 <p class="font-semibold text-indigo-600 text-sm">Upload Logo</p>
                             </div>
                          
-{{-- LOGO TOKO: KOSONG JIKA BELUM ADA --}}
+{{-- LOGO TOKO: PASTI HILANG JIKA KOSONG --}}
 <div class="w-24 h-24 border border-gray-200 rounded-lg bg-gray-50 flex items-center justify-center overflow-hidden">
     
     <img id="seller-logo-preview" 
-         src="{{ $product->seller_logo ? asset('public/storage/' . $product->seller_logo) : '' }}"
-         class="w-full h-full object-contain {{ $product->seller_logo ? '' : 'hidden' }}" 
-         alt="Logo Toko">
+         src="{{ $product->seller_logo ? asset('public/storage/' . $product->seller_logo) : '#' }}"
+         class="w-full h-full object-contain" 
+         alt="Logo Toko"
+         style="{{ $product->seller_logo ? 'display: block;' : 'display: none;' }}">
 
 </div>
                         </div>
