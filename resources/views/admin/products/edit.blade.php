@@ -262,13 +262,16 @@
                                 <p class="font-semibold text-indigo-600 text-sm">Upload Logo</p>
                             </div>
                          
-{{-- LOGO TOKO: DEFAULT SANCAKA JIKA KOSONG --}}
+{{-- LOGO TOKO: ANTI PECAH (AUTO-FALLBACK) --}}
 <div class="w-24 h-24 border border-gray-200 rounded-lg bg-gray-50 flex items-center justify-center overflow-hidden">
     
     <img id="seller-logo-preview" 
-         src="{{ $product->seller_logo ? asset('public/storage/' . $product->seller_logo) : 'https://tokosancaka.com/public/storage/uploads/sancaka.png' }}"
          class="w-full h-full object-contain" 
-         alt="Logo Toko">
+         alt="Logo Toko"
+         {{-- 1. Coba load gambar dari DB --}}
+         src="{{ $product->seller_logo ? asset('public/storage/' . $product->seller_logo) : 'https://tokosancaka.com/storage/uploads/sancaka.png' }}"
+         {{-- 2. JIKA GAGAL/PECAH/ERROR -> Paksa ganti ke gambar default Sancaka --}}
+         onerror="this.onerror=null; this.src='https://tokosancaka.com/storage/uploads/sancaka.png';">
 
 </div>
                         </div>
