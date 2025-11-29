@@ -156,107 +156,135 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // === 1. LOGIC SPESIFIKASI DINAMIS (Original) ===
-    const existingAttributes = {!! $product->existing_attributes_json ?? '{}' !!};
+    // 1. Ambil Data Lama
+    const rawAttributes = {!! $product->existing_attributes_json ?? '{}' !!};
+    const existingAttributes = Array.isArray(rawAttributes) && rawAttributes.length === 0 ? {} : rawAttributes;
+
+    // === DEBUGGING: Cek Data di Console Browser (Tekan F12 -> Console) ===
+    console.group("DEBUG SPESIFIKASI");
+    console.log("Data dari Database (JSON):", existingAttributes);
+    console.groupEnd();
+
     const categorySelect = document.getElementById('category_id');
     const attributesCard = document.getElementById('attributes-card');
     const attributesContainer = document.getElementById('dynamic-attributes-container');
 
+    // Fungsi Normalisasi Slug (Ubah underscore jadi dash agar cocok)
+    function normalizeSlug(str) {
+        return str.toLowerCase().replace(/_/g, '-').replace(/\s+/g, '-');
+    }
+
     async function fetchAndRenderAttributes() {
         const selectedOption = categorySelect.options[categorySelect.selectedIndex];
-        // Pastikan ada opsi yang dipilih dan memiliki dataset
-        const url = selectedOption && selectedOption.dataset.attributesUrl ? selectedOption.dataset.attributesUrl : null;
+        const url = selectedOption ? selectedOption.dataset.attributesUrl : null;
 
-        if (!url) {
-            attributesCard.classList.add('hidden');
-            attributesContainer.innerHTML = '';
-            return;
-        }
+        if (!url) return;
 
         try {
-            attributesContainer.innerHTML = '<div class="text-center py-8 text-gray-500"><i class="fas fa-circle-notch fa-spin text-indigo-500 text-2xl mb-2"></i><br>Memuat form spesifikasi...</div>';
-            attributesCard.classList.remove('hidden');
-            
-            const response = await fetch(url);
-            if (!response.ok) throw new Error('Gagal mengambil data');
-            const attributes = await response.json();
-            
-            attributesContainer.innerHTML = ''; // Clear loading
+            // Tampilkan Loading jika container kosong
+            if(attributesContainer.innerHTML.trim() === '') {
+                attributesContainer.innerHTML = '<div class="py-4 text-center text-gray-500"><i class="fas fa-spinner fa-spin"></i> Memuat form...</div>';
+                attributesCard.classList.remove('hidden');
+            }
 
-            if (attributes && attributes.length > 0) {
-                attributes.forEach(attr => {
-                    const field = createAttributeField(attr);
-                    attributesContainer.appendChild(field);
+            const response = await fetch(url);
+            const attributesStructure = await response.json();
+
+            attributesContainer.innerHTML = ''; // Reset Form
+
+            if (attributesStructure && attributesStructure.length > 0) {
+                attributesStructure.forEach(attr => {
+                    // Render HTML
+                    const fieldHtml = createAttributeField(attr);
+                    attributesContainer.appendChild(fieldHtml);
+
+                    // === LOGIKA PENGISIAN NILAI (AUTO-FILL) YANG LEBIH KUAT ===
                     
-                    if (existingAttributes && existingAttributes[attr.slug] !== undefined) {
-                        fillAttributeValue(field, attr, existingAttributes[attr.slug]);
+                    // 1. Cek Exact Match (slug asli)
+                    let value = existingAttributes[attr.slug];
+
+                    // 2. Jika kosong, Cek Normalized Match (antisipasi beda _ dan -)
+                    if (value === undefined) {
+                        const normalizedKey = normalizeSlug(attr.slug);
+                        // Cari key di existingAttributes yang jika dinormalisasi sama dengan slug ini
+                        const matchingKey = Object.keys(existingAttributes).find(key => normalizeSlug(key) === normalizedKey);
+                        if (matchingKey) {
+                            value = existingAttributes[matchingKey];
+                        }
+                    }
+
+                    // 3. Isi Nilai
+                    if (value !== undefined && value !== null) {
+                        console.log(`✅ MATCH: Field [${attr.slug}] diisi dengan nilai:`, value);
+                        fillAttributeValue(fieldHtml, attr, value);
+                    } else {
+                        console.warn(`❌ NO MATCH: Field [${attr.slug}] tidak punya data tersimpan.`);
                     }
                 });
+                attributesCard.classList.remove('hidden');
             } else {
-                attributesContainer.innerHTML = `
-                    <div class="text-center py-6 border-2 border-dashed border-gray-200 rounded-lg">
-                        <p class="text-gray-400 italic">Tidak ada spesifikasi khusus untuk kategori ini.</p>
-                    </div>`;
+                attributesContainer.innerHTML = '<p class="text-gray-400 italic">Tidak ada spesifikasi khusus.</p>';
             }
 
         } catch (error) {
-            console.error(error);
-            attributesContainer.innerHTML = '<p class="text-red-500 text-sm bg-red-50 p-3 rounded">Gagal memuat spesifikasi. Silakan coba pilih ulang kategori.</p>';
+            console.error("Error Fetching:", error);
+            attributesContainer.innerHTML = '<p class="text-red-500">Gagal memuat data.</p>';
         }
     }
 
-    function createAttributeField(attribute) {
+    function createAttributeField(attr) {
         const wrapper = document.createElement('div');
-        const isRequired = attribute.is_required ? 'required' : '';
-        const requiredMark = attribute.is_required ? '<span class="text-red-500">*</span>' : '';
-        const inputName = `attributes[${attribute.slug}]`;
-        const commonClass = "w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition";
-
+        const inputName = `attributes[${attr.slug}]`; 
+        const commonClass = "w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500";
         let inputHtml = '';
 
-        if (attribute.type === 'select') {
-            const opts = (attribute.options || '').split(',').map(o=>o.trim()).map(o=>`<option value="${o}">${o}</option>`).join('');
-            inputHtml = `<select name="${inputName}" class="${commonClass}" ${isRequired}><option value="">-- Pilih --</option>${opts}</select>`;
-        } else if (attribute.type === 'textarea') {
-            inputHtml = `<textarea name="${inputName}" rows="3" class="${commonClass}" ${isRequired}></textarea>`;
-        } else if (attribute.type === 'checkbox') {
-             const checks = (attribute.options || '').split(',').map(o=>o.trim()).map(o => `
-                <label class="inline-flex items-center mr-4 mb-2">
-                    <input type="checkbox" name="${inputName}[]" value="${o}" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500">
-                    <span class="ml-2 text-sm text-gray-700">${o}</span>
-                </label>
-            `).join('');
-            inputHtml = `<div class="mt-1 p-3 bg-gray-50 rounded-lg border border-gray-200">${checks}</div>`;
+        if (attr.type === 'select') {
+            const opts = (attr.options||'').split(',').map(o => `<option value="${o.trim()}">${o.trim()}</option>`).join('');
+            inputHtml = `<select name="${inputName}" class="${commonClass}"><option value="">-- Pilih --</option>${opts}</select>`;
+        } else if (attr.type === 'textarea') {
+             inputHtml = `<textarea name="${inputName}" rows="2" class="${commonClass}"></textarea>`;
+        } else if (attr.type === 'checkbox') {
+             // Logic checkbox khusus
+             const opts = (attr.options||'').split(',').map(o => `
+                <label class="inline-flex items-center mr-4 mt-2">
+                    <input type="checkbox" name="${inputName}[]" value="${o.trim()}" class="rounded border-gray-300 text-indigo-600 shadow-sm">
+                    <span class="ml-2 text-sm">${o.trim()}</span>
+                </label>`).join('');
+             inputHtml = `<div class="block">${opts}</div>`;
         } else {
-            const type = attribute.type === 'number' ? 'number' : 'text';
-            inputHtml = `<input type="${type}" name="${inputName}" class="${commonClass}" ${isRequired}>`;
+            inputHtml = `<input type="text" name="${inputName}" class="${commonClass}">`;
         }
-
-        wrapper.innerHTML = `<label class="block text-sm font-medium text-gray-700 mb-1">${attribute.name} ${requiredMark}</label>${inputHtml}`;
+        
+        // Tandai Required
+        const reqLabel = attr.is_required ? ' <span class="text-red-500">*</span>' : '';
+        wrapper.innerHTML = `<label class="block text-sm font-medium text-gray-700 mb-1">${attr.name}${reqLabel}</label>${inputHtml}`;
         return wrapper;
     }
 
-    function fillAttributeValue(el, attr, val) {
-        if (val === null || val === undefined) return;
-        
+    function fillAttributeValue(wrapper, attr, val) {
+        // Handle Checkbox (Array)
         if (attr.type === 'checkbox') {
-            let arr = Array.isArray(val) ? val : [val];
-            if(typeof val === 'string' && val.startsWith('[')) { try { arr = JSON.parse(val); } catch(e){} }
-            
-            el.querySelectorAll('input[type="checkbox"]').forEach(chk => {
+            const arr = Array.isArray(val) ? val : [val];
+            wrapper.querySelectorAll('input[type="checkbox"]').forEach(chk => {
                 if(arr.includes(chk.value)) chk.checked = true;
             });
-        } else {
-            const inp = el.querySelector(`[name^="attributes"]`);
+        } 
+        // Handle Select/Text/Textarea
+        else {
+            const inp = wrapper.querySelector(`[name="attributes[${attr.slug}]"]`);
             if(inp) inp.value = val;
         }
     }
 
-    if (categorySelect) {
-        categorySelect.addEventListener('change', fetchAndRenderAttributes);
+    // Jalankan saat load
+    if (categorySelect && categorySelect.value) {
         fetchAndRenderAttributes();
     }
-
+    // Jalankan saat ganti kategori
+    if (categorySelect) {
+        categorySelect.addEventListener('change', fetchAndRenderAttributes);
+    }
+});
     // === 2. LOGIC TAMBAH / HAPUS KATEGORI (AJAX Mockup) ===
     
     // Toggle Form Tambah
