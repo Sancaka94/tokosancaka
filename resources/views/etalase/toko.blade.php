@@ -32,11 +32,11 @@ if (!function_exists('formatWaNumber')) {
 }
 @endphp
 
-<div class="bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 min-h-screen">
+<div class="bg-gray-50 text-gray-800 min-h-screen">
     <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
         {{-- Profile Toko --}}
-        <div class="mt-8 bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
+        <div class="mt-8 bg-white rounded-2xl shadow-lg p-6">
             <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
 
                 @php
@@ -56,17 +56,17 @@ if (!function_exists('formatWaNumber')) {
 
                 <img src="{{ $sellerLogoUrl }}"
                      alt="Logo {{ $sellerStoreName }}"
-                     class="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-2 border-gray-200 dark:border-gray-700 object-cover">
+                     class="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-2 border-gray-200 object-cover">
 
                 <div class="flex-grow">
-                    <h3 class="text-lg font-bold text-gray-900 dark:text-white">{{ $sellerStoreName }}</h3>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">{{ $sellerCity }}</p>
+                    <h3 class="text-lg font-bold text-gray-900">{{ $sellerStoreName }}</h3>
+                    <p class="text-sm text-gray-500">{{ $sellerCity }}</p>
                    {{-- ✅ [PERBAIKAN DINAMIS] Dari 'Aktif 5 menit lalu' menjadi dinamis --}}
                         @php
                             $lastSeen = \Carbon\Carbon::parse($store->user->last_seen_at);
                             $isOnline = $lastSeen->diffInMinutes(now()) < 10;
                         @endphp
-                        <div class="flex items-center text-sm text-gray-500 dark:text-gray-400 mt-1">
+                        <div class="flex items-center text-sm text-gray-500 mt-1">
                             <span class="w-2.5 h-2.5 {{ $isOnline ? 'bg-green-500' : 'bg-gray-400' }} rounded-full mr-2"></span>
                             <span>{{ $isOnline ? 'Online' : 'Aktif ' . $lastSeen->diffForHumans() }}</span>
                         </div>
@@ -76,14 +76,14 @@ if (!function_exists('formatWaNumber')) {
                     @if(Auth::check() && $sellerWa)
                         <a href="https://wa.me/{{ formatWaNumber($sellerWa) }}"
                            target="_blank"
-                           class="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg transition-colors hover:bg-gray-100 dark:hover:bg-gray-700">
+                           class="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 text-sm border border-gray-300 rounded-lg transition-colors hover:bg-gray-100">
                             <i class="fab fa-whatsapp text-green-500"></i> Chat Penjual
                         </a>
                     @elseif($sellerWa)
                         <button type="button"
                                 data-modal-target="waModal"
                                 data-modal-toggle="waModal"
-                                class="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg opacity-80 cursor-pointer">
+                                class="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 text-sm border border-gray-300 rounded-lg opacity-80 cursor-pointer">
                             <i class="fab fa-whatsapp text-green-500"></i> Chat Penjual
                         </button>
                     @endif
@@ -91,18 +91,18 @@ if (!function_exists('formatWaNumber')) {
 
                 <div id="waModal" tabindex="-1" aria-hidden="true"
                      class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-md w-full p-6 relative">
+                    <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 relative">
 
                         <div class="flex justify-center mb-4">
                             <img src="{{ asset('public/assets/logo.jpg') }}" alt="Logo Toko"
                                  class="w-16 h-16 shadow-md">
                         </div>
 
-                        <h2 class="text-xl font-bold text-center text-gray-800 dark:text-white mb-3">
+                        <h2 class="text-xl font-bold text-center text-gray-800 mb-3">
                             Mohon Maaf
                         </h2>
 
-                        <p class="text-center text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+                        <p class="text-center text-gray-600 mb-6 leading-relaxed">
                             <strong>Apakah kakak ingin menghubungi Penjual Via Whatsapp???</strong><br>
                             Jika iya, silahkan klik tombol di bawah ini untuk mendaftar sebagai <span class="font-semibold">customer terdaftar</span>.
                         </p>
@@ -114,7 +114,7 @@ if (!function_exists('formatWaNumber')) {
                             </a>
                             <button type="button"
                                     data-modal-hide="waModal"
-                                    class="px-5 py-2 bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-white font-medium rounded-lg hover:bg-gray-400 dark:hover:bg-gray-600 transition">
+                                    class="px-5 py-2 bg-gray-300 text-gray-800 font-medium rounded-lg hover:bg-gray-400 transition">
                                 Close
                             </button>
                         </div>

@@ -38,6 +38,10 @@
     @stack('styles')
 </head>
 {{-- ✅ DIUBAH: Menghapus flex-col dan min-h-screen dari body --}}
+
+{{-- Include Notifikasi Sandbox --}}
+@include('components.sandbox_alert')
+
 <body class="bg-gray-100 text-gray-800">
 
     {{-- ✅ DIUBAH: Mengubah container utama menjadi flex dengan tinggi layar penuh (h-screen) --}}
@@ -134,13 +138,13 @@
             // const notificationId = notification.id; 
 
             return `
-                <a href="${url}" class="flex items-start p-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                    <div class="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-indigo-100 dark:bg-indigo-700 rounded-full">
-                        <i class="${icon} text-indigo-500 dark:text-indigo-200 text-sm"></i>
+                <a href="${url}" class="flex items-start p-3 hover:bg-gray-100 transition-colors">
+                    <div class="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-indigo-100 rounded-full">
+                        <i class="${icon} text-indigo-500 text-sm"></i>
                     </div>
                     <div class="ml-3 w-0 flex-1">
-                        <p class="text-sm font-semibold text-gray-800 dark:text-gray-200">${title}</p>
-                        <p class="text-sm text-gray-500 dark:text-gray-400 truncate">${message}</p>
+                        <p class="text-sm font-semibold text-gray-800">${title}</p>
+                        <p class="text-sm text-gray-500 truncate">${message}</p>
                     </div>
                 </a>
             `;

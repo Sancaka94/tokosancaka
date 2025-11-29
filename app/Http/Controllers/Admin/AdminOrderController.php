@@ -32,126 +32,143 @@ class AdminOrderController extends Controller
      * @return \Illuminate\View\View      Objek view Blade 'admin.orders.index' beserta data gabungan
      */
     public function index(Request $request)
-    {
-        // Ambil nilai filter 'status' dari URL, contoh: /admin/orders?status=pending
-        $statusFilter = $request->query('status');
-        // Ambil nilai 'search' dari URL, contoh: /admin/orders?search=INV-123
-        $searchQuery = $request->query('search');
+{
+    // Ambil nilai filter dari URL
+    $statusFilter = $request->query('status');
+    $searchQuery = $request->query('search');
+    $perPage = $request->query('per_page', 5); // Default 15 item per halaman
 
-        // Tentukan jumlah item per halaman untuk pagination
-        // Ambil dari query string 'per_page', jika tidak ada, gunakan 15
-        $perPage = $request->query('per_page', 5);
+    // =========================================================================
+    // BAGIAN 1: QUERY DATA UTAMA (Orders & Pesanan)
+    // =========================================================================
 
-        // --- 1. Query 'Orders' ---
-        $orderQuery = Order::query()
-            ->with([
-                'user:id_pengguna,nama_lengkap,no_wa,village,district,regency',
-                'store:id,name,address_detail,village,district,regency',
-                'items:id,order_id,product_id,product_variant_id,quantity',
-                'items.product:id,name,weight,length,width,height',
-                'items.variant:id,product_variant_id,combination_string,sku_code'
-            ])
-            ->when($statusFilter, function ($query, $statusTab) {
-                // Mapping status filter (dari URL) ke status di tabel 'orders'
-                $statusMap = [
-                    'pending' => ['pending'],
-                    'menunggu-pickup' => ['paid', 'processing'],
-                    'diproses' => ['shipping'],
-                    'terkirim' => ['delivered'],
-                    'selesai' => ['completed'],
-                    'batal' => ['cancelled', 'failed', 'rejected'],
-                ];
-                if (isset($statusMap[$statusTab])) {
-                    return $query->whereIn('status', $statusMap[$statusTab]);
-                }
-                return $query;
-            })
-            ->when($searchQuery, function ($query, $search) {
-                // Pencarian untuk tabel 'orders'
-                return $query->where(function($q) use ($search) {
-                    $q->where('invoice_number', 'like', "%{$search}%")
-                      ->orWhere('shipping_reference', 'like', "%{$search}%")
-                      ->orWhereHas('user', function($userQuery) use ($search) {
-                          $userQuery->where('nama_lengkap', 'like', "%{$search}%")
-                                    ->orWhere('no_wa', 'like', "%{$search}%");
-                      })
-                      ->orWhereHas('store', function($storeQuery) use ($search) {
-                          $storeQuery->where('name', 'like', "%{$search}%");
-                      });
-                });
+    // --- 1. Query 'Orders' (Web/Otomatis) ---
+    $orderQuery = Order::query()
+        ->with([
+            'user:id_pengguna,nama_lengkap,no_wa,village,district,regency',
+            'store:id,name,address_detail,village,district,regency',
+            'items:id,order_id,product_id,product_variant_id,quantity',
+            'items.product:id,name,weight,length,width,height',
+            'items.variant:id,product_variant_id,combination_string,sku_code'
+        ])
+        ->when($statusFilter, function ($query, $statusTab) {
+            $statusMap = [
+                'pending' => ['pending'],
+                'menunggu-pickup' => ['paid', 'processing'],
+                'diproses' => ['shipping'],
+                'terkirim' => ['delivered'],
+                'selesai' => ['completed'],
+                'batal' => ['cancelled', 'failed', 'rejected'],
+            ];
+            if (isset($statusMap[$statusTab])) {
+                return $query->whereIn('status', $statusMap[$statusTab]);
+            }
+            return $query;
+        })
+        ->when($searchQuery, function ($query, $search) {
+            return $query->where(function($q) use ($search) {
+                $q->where('invoice_number', 'like', "%{$search}%")
+                  ->orWhere('shipping_reference', 'like', "%{$search}%")
+                  ->orWhereHas('user', function($userQuery) use ($search) {
+                      $userQuery->where('nama_lengkap', 'like', "%{$search}%")
+                                ->orWhere('no_wa', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('store', function($storeQuery) use ($search) {
+                      $storeQuery->where('name', 'like', "%{$search}%");
+                  });
             });
-
-        // --- 2. Query 'Pesanan' ---
-        $pesananQuery = Pesanan::query()
-            // Catatan: Tidak bisa menambahkan ->with() karena Model 'Pesanan'
-            // mungkin tidak memiliki relasi 'user', 'store', dll.
-            // Data 'Pesanan' diambil apa adanya (langsung dari kolom).
-            ->when($statusFilter, function ($query, $statusTab) {
-                // Mapping status filter (dari URL) ke status di tabel 'Pesanan'
-                $statusMap = [
-                    // 'pending' => [], // Tidak ada status 'pending' di Pesanan
-                    'menunggu-pickup' => ['Menunggu Pickup'],
-                    // 'diproses' => [], // Tidak ada status 'diproses' di Pesanan
-                    'terkirim' => ['Sedang Dikirim'],
-                    'selesai' => ['Selesai'], // Asumsi nama statusnya 'Selesai'
-                    'batal' => ['Batal'], // Asumsi nama statusnya 'Batal'
-                ];
-                if (isset($statusMap[$statusTab])) {
-                    return $query->whereIn('status_pesanan', $statusMap[$statusTab]);
-                }
-                return $query;
-            })
-            ->when($searchQuery, function ($query, $search) {
-                // Pencarian untuk tabel 'Pesanan'
-                return $query->where(function($q) use ($search) {
-                    $q->where('nomor_invoice', 'like', "%{$search}%")
-                      ->orWhere('resi', 'like', "%{$search}%")
-                      ->orWhere('resi_aktual', 'like', "%{$search}%")
-                      ->orWhere('nama_pembeli', 'like', "%{$search}%")
-                      ->orWhere('telepon_pembeli', 'like', "%{$search}%")
-                      ->orWhere('receiver_name', 'like', "%{$search}%")
-                      ->orWhere('receiver_phone', 'like', "%{$search}%")
-                      ->orWhere('sender_name', 'like', "%{$search}%");
-                });
-            });
-
-        // --- 3. Eksekusi Query dan Standarisasi Tanggal ---
-        $orders = $orderQuery->get();
-        $pesanans = $pesananQuery->get();
-
-        // Standarisasi 'created_at' untuk sorting
-        // Blade file Anda sudah menangani ini untuk tampilan, tapi kita butuh untuk sorting
-        $standardizedPesanans = $pesanans->map(function ($pesanan) {
-            // Gunakan 'created_at' jika ada, jika tidak, gunakan 'tanggal_pesanan'
-            $pesanan->created_at = $pesanan->created_at ?? $pesanan->tanggal_pesanan;
-            return $pesanan;
         });
 
-        // --- 4. Gabungkan dan Urutkan ---
-        $merged = $orders->merge($standardizedPesanans);
-        $sorted = $merged->sortByDesc('created_at'); // Urutkan berdasarkan tanggal (terbaru dulu)
+    // --- 2. Query 'Pesanan' (Manual) ---
+    $pesananQuery = Pesanan::query()
+        ->when($statusFilter, function ($query, $statusTab) {
+            $statusMap = [
+                'menunggu-pickup' => ['Menunggu Pickup'],
+                'terkirim' => ['Sedang Dikirim'],
+                'selesai' => ['Selesai'],
+                'batal' => ['Batal'],
+            ];
+            if (isset($statusMap[$statusTab])) {
+                return $query->whereIn('status_pesanan', $statusMap[$statusTab]);
+            }
+            return $query;
+        })
+        ->when($searchQuery, function ($query, $search) {
+            return $query->where(function($q) use ($search) {
+                $q->where('nomor_invoice', 'like', "%{$search}%")
+                  ->orWhere('resi', 'like', "%{$search}%")
+                  ->orWhere('resi_aktual', 'like', "%{$search}%")
+                  ->orWhere('nama_pembeli', 'like', "%{$search}%")
+                  ->orWhere('telepon_pembeli', 'like', "%{$search}%")
+                  ->orWhere('receiver_name', 'like', "%{$search}%")
+                  ->orWhere('receiver_phone', 'like', "%{$search}%")
+                  ->orWhere('sender_name', 'like', "%{$search}%");
+            });
+        });
 
-        // --- 5. Pagination Manual ---
-        $currentPage = Paginator::resolveCurrentPage('page'); // Ambil halaman saat ini
-        // "Iris" koleksi yang sudah diurutkan sesuai halaman
-        $currentPageItems = $sorted->slice(($currentPage - 1) * $perPage, $perPage);
+    // --- 3. Eksekusi Query ---
+    $orders = $orderQuery->get();
+    $pesanans = $pesananQuery->get();
 
-        // Buat objek Paginator baru
-        $paginatedItems = new LengthAwarePaginator(
-            $currentPageItems, // Item untuk halaman ini
-            $sorted->count(),  // Total semua item (untuk menghitung total halaman)
-            $perPage,          // Item per halaman
-            $currentPage,      // Halaman saat ini
-            [
-                'path' => Paginator::resolveCurrentPath(), // URL dasar
-                'query' => $request->query() // <-- PENTING: Meneruskan filter (status, search) ke link pagination
-            ]
-        );
+    // Standarisasi tanggal 'created_at' untuk sorting
+    $standardizedPesanans = $pesanans->map(function ($pesanan) {
+        $pesanan->created_at = $pesanan->created_at ?? $pesanan->tanggal_pesanan;
+        return $pesanan;
+    });
 
-        // 6. Kirim data hasil pagination ($paginatedItems) ke view
-        // Kita tetap mengirimkannya sebagai variabel 'orders'
-        return view('admin.orders.index', ['orders' => $paginatedItems]);
-    }
+    // --- 4. Gabungkan dan Urutkan ---
+    $merged = $orders->merge($standardizedPesanans);
+    $sorted = $merged->sortByDesc('created_at');
+
+    // --- 5. Pagination Manual ---
+    $currentPage = \Illuminate\Pagination\Paginator::resolveCurrentPage('page');
+    $currentPageItems = $sorted->slice(($currentPage - 1) * $perPage, $perPage);
+
+    $paginatedItems = new \Illuminate\Pagination\LengthAwarePaginator(
+        $currentPageItems,
+        $sorted->count(),
+        $perPage,
+        $currentPage,
+        [
+            'path' => \Illuminate\Pagination\Paginator::resolveCurrentPath(),
+            'query' => $request->query()
+        ]
+    );
+
+    // =========================================================================
+    // BAGIAN 2: LOGIKA HITUNG PENDAPATAN (GABUNGAN)
+    // =========================================================================
+
+    // 1. Hitung dari Tabel 'Pesanan' (Manual)
+    $pSelesai = Pesanan::where('status_pesanan', 'Selesai')->sum('price');
+    $pPickup  = Pesanan::whereIn('status_pesanan', ['Menunggu Pickup', 'Pembayaran Lunas (Gagal Auto-Resi)'])->sum('price');
+    $pDikirim = Pesanan::whereIn('status_pesanan', ['Diproses', 'Terkirim', 'Sedang Dikirim'])->sum('price');
+    $pGagal   = Pesanan::whereIn('status_pesanan', ['Batal', 'Kadaluarsa', 'Gagal Bayar'])->sum('price');
+
+    // 2. Hitung dari Tabel 'Order' (Website/Otomatis)
+    $oSelesai = Order::where('status', 'completed')->sum('total_amount');
+    $oPickup  = Order::where('status', 'paid')->sum('total_amount');
+    $oDikirim = Order::whereIn('status', ['processing', 'shipment', 'delivered'])->sum('total_amount');
+    $oGagal   = Order::whereIn('status', ['cancelled', 'failed', 'rejected'])->sum('total_amount');
+
+    // 3. Gabungkan Keduanya
+    $incomeSelesai = $pSelesai + $oSelesai;
+    $incomePickup  = $pPickup + $oPickup;
+    $incomeDikirim = $pDikirim + $oDikirim;
+    $incomeGagal   = $pGagal + $oGagal;
+
+    // =========================================================================
+    // BAGIAN 3: RETURN VIEW
+    // =========================================================================
+
+    return view('admin.orders.index', [
+        'orders' => $paginatedItems,        // Data Tabel dengan Pagination
+        'incomeSelesai' => $incomeSelesai, // Data Card 1
+        'incomePickup' => $incomePickup,    // Data Card 2
+        'incomeDikirim' => $incomeDikirim, // Data Card 3
+        'incomeGagal' => $incomeGagal      // Data Card 4
+    ]);
+}
 
 
     /**
@@ -172,14 +189,21 @@ class AdminOrderController extends Controller
         $user->village = $pesanan->receiver_village;
         $user->district = $pesanan->receiver_district;
         $user->regency = $pesanan->receiver_regency;
+        // Tambahan data lengkap penerima
+        $user->province = $pesanan->receiver_province;
+        $user->postal_code = $pesanan->receiver_postal_code;
 
         // 2. Store (Pengirim/Sender)
         $store = new \stdClass();
         $store->name = $pesanan->sender_name ?? 'N/A';
+        // PERBAIKAN UTAMA: Tambahkan phone, province, dll
+        $store->phone = $pesanan->sender_phone; 
         $store->address_detail = $pesanan->sender_address ?? 'N/A';
         $store->village = $pesanan->sender_village;
         $store->district = $pesanan->sender_district;
         $store->regency = $pesanan->sender_regency;
+        $store->province = $pesanan->sender_province;
+        $store->postal_code = $pesanan->sender_postal_code;
 
         // 3. Items (Mockup 1 item)
         $item = new \stdClass();
@@ -210,6 +234,10 @@ class AdminOrderController extends Controller
         $order->shipping_address = $pesanan->receiver_address ?? $pesanan->alamat_pengiriman;
         $order->shipping_reference = $pesanan->resi_aktual ?? $pesanan->resi;
         $order->payment_method = $pesanan->payment_method;
+        
+        // Agar blade tidak bingung, mapping sender_phone juga ke root object (opsional tapi aman)
+        $order->sender_phone = $pesanan->sender_phone;
+        $order->receiver_phone = $pesanan->receiver_phone;
 
         // ===== PERBAIKAN LOGIKA BIAYA =====
         $order->total_amount = $pesanan->price ?? 0;
@@ -534,7 +562,7 @@ class AdminOrderController extends Controller
                 return $item;
             });
 
-            $mergedReportItems = $standardizedOrders->merge($standardizedPesanans);
+            $mergedReportItems = $standardizedOrders->concat($standardizedPesanans);
             $sortedReportItems = $mergedReportItems->sortBy('created_at'); // Urutkan asc
 
             // Hitung total ringkasan untuk laporan
@@ -574,4 +602,3 @@ class AdminOrderController extends Controller
         }
      }
 }
-

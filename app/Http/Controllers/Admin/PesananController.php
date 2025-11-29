@@ -29,13 +29,15 @@ class PesananController extends Controller
      */
     public function index(Request $request)
     {
-        // Tandai pesanan 'baru' sebagai 'telah_dilihat'
+        // 1. Tandai pesanan 'baru' sebagai 'telah_dilihat'
         Pesanan::where('status', 'baru')
             ->where('telah_dilihat', false)
             ->update(['telah_dilihat' => true]);
 
+        // 2. Mulai Query
         $query = Pesanan::query();
 
+        // 3. Logic SEARCH GLOBAL (Ketik Manual di Search Box)
         if ($request->filled('search')) {
             $search = $request->input('search');
             $query->where(function($q) use ($search) {
@@ -44,17 +46,63 @@ class PesananController extends Controller
                     ->orWhere('sender_name', 'like', "%{$search}%")
                     ->orWhere('receiver_name', 'like', "%{$search}%")
                     ->orWhere('sender_phone', 'like', "%{$search}%")
-                    ->orWhere('receiver_phone', 'like', "%{$search}%");
+                    ->orWhere('receiver_phone', 'like', "%{$search}%")
+                    // TAMBAHAN: Agar bisa cari nama ekspedisi (misal: "lion", "jne")
+                    ->orWhere('expedition', 'like', "%{$search}%")
+                    ->orWhere('status_pesanan', 'like', "%{$search}%");
+            });
+        }
+        
+        // 4. Logic FILTER KLIK TOMBOL DASHBOARD (?ekspedisi=...)
+        if ($request->has('ekspedisi') && $request->ekspedisi != '') {
+            $filterKurir = $request->ekspedisi;
+            $query->where(function($q) use ($filterKurir) {
+                $q->where('expedition', 'LIKE', '%-' . $filterKurir . '-%')
+                  ->orWhere('expedition', 'LIKE', $filterKurir . '-%'); 
             });
         }
 
+        // 5. Logic Filter STATUS
         if ($request->filled('status')) {
             $query->where('status', $request->input('status'));
         }
 
-        // Urutkan berdasarkan tanggal terbaru
+        // 6. Urutkan dan Pagination
         $orders = $query->orderBy('tanggal_pesanan', 'desc')->paginate(15);
-        return view('admin.pesanan.index', compact('orders'));
+        $orders->appends($request->all());
+
+        // 1. Total Pendapatan: SELESAI
+    $incomeSelesai = Pesanan::where('status_pesanan', 'Selesai')->sum('price');
+
+    // 2. Total Pendapatan: MENUNGGU PICKUP (Uang masuk, tapi barang belum jalan)
+    // Kita masukan juga yang "Gagal Resi" disini karena itu artinya sudah bayar tapi macet di sistem
+    $incomePickup = Pesanan::whereIn('status_pesanan', [
+        'Menunggu Pickup', 
+        'Pembayaran Lunas (Gagal Auto-Resi)',
+        'Pembayaran Lunas (Error Kirim API)'
+    ])->sum('price');
+
+    // 3. Total Pendapatan: SEDANG DIKIRIM (Uang di jalan / Diproses)
+    $incomeDikirim = Pesanan::whereIn('status_pesanan', ['Diproses', 'Terkirim', 'Sedang Dikirim'])->sum('price');
+
+    // 4. Potensi Pendapatan Hilang: GAGAL (Batal/Kadaluarsa)
+    $incomeGagal = Pesanan::whereIn('status_pesanan', ['Batal', 'Kadaluarsa', 'Gagal Bayar'])->sum('price');
+
+    // ---------------------------------------------------------
+
+    // 6. Urutkan dan Pagination (Kode lama Anda)
+    $orders = $query->orderBy('tanggal_pesanan', 'desc')->paginate(15);
+    $orders->appends($request->all());
+
+    // 7. Return View (JANGAN LUPA TAMBAHKAN VARIABLE BARU KE COMPACT)
+    return view('admin.pesanan.index', compact(
+        'orders', 
+        'incomeSelesai', 
+        'incomePickup', 
+        'incomeDikirim', 
+        'incomeGagal'
+    ));
+    
     }
 
     /**
@@ -286,10 +334,13 @@ if (($kiriminResponse['status'] ?? false) !== true) {
 
     public function edit($resi)
     {
-        $order = Pesanan::where('resi', $resi)->orWhere('nomor_invoice', $resi)->firstOrFail();
-        // Anda mungkin perlu mengambil data customer lagi jika form edit butuh dropdown
+        // UBAH NAMA VARIABEL DARI $order MENJADI $pesanan
+        $pesanan = Pesanan::where('resi', $resi)->orWhere('nomor_invoice', $resi)->firstOrFail();
+        
         $customers = User::orderBy('nama_lengkap', 'asc')->get();
-        return view('admin.pesanan.edit', compact('order', 'customers'));
+        
+        // Pastikan di compact tertulis 'pesanan' (bukan 'order')
+        return view('admin.pesanan.edit', compact('pesanan', 'customers'));
     }
 
     public function update(Request $request, $resi)
@@ -396,7 +447,7 @@ if (($kiriminResponse['status'] ?? false) !== true) {
                 'item_price' => 'required|numeric|min:1', // Harga barang bisa 0? Minimal 1?
                 'weight' => 'required|numeric|min:1',
                 'service_type' => 'required|string|in:regular,express,sameday,instant,cargo',
-                'item_type' => 'required|integer|exists:package_types,id',
+                'item_type' => 'required|integer',
                 'ansuransi' => 'required|string|in:iya,tidak',
                 'length' => 'nullable|numeric|min:1',
                 'width' => 'nullable|numeric|min:1',
@@ -652,7 +703,7 @@ if (($kiriminResponse['status'] ?? false) !== true) {
             'sender_lat' => 'nullable|numeric', 'sender_lng' => 'nullable|numeric',
             'receiver_lat' => 'nullable|numeric', 'receiver_lng' => 'nullable|numeric',
             'sender_note' => 'nullable|string|max:255', 'receiver_note' => 'nullable|string|max:255',
-            'item_type' => 'required|integer|exists:package_types,id',
+            'item_type' => 'required|integer',
             'customer_email' => 'nullable|email', // Tambahkan jika perlu kirim email customer ke Tripay
         ]);
     }
@@ -833,33 +884,80 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
         return compact('total_paid_ongkir', 'cod_value', 'shipping_cost', 'ansuransi_fee', 'cod_fee');
     }
 
+   /**
+     * FUNGSI UNTUK MEMBUAT ORDER DI KIRIMIN AJA
+     */
     private function _createKiriminAjaOrder(
-        array $data, Pesanan $pesanan, KiriminAjaService $kirimaja,
+        array $data, Pesanan $order, KiriminAjaService $kirimaja,
         array $senderData, array $receiverData, int $cod_value,
-        int $shipping_cost, int $insurance_cost // Terima biaya terpisah
+        int $shipping_cost, int $insurance_cost 
     ): array
     {
-        // ... (fungsi _createKiriminAjaOrder - gunakan $shipping_cost & $insurance_cost dari parameter) ...
-        $expeditionParts = explode('-', $data['expedition'] ?? ''); // Default string kosong jika null
-        $serviceGroup = $expeditionParts[0] ?? null; $courier = $expeditionParts[1] ?? null; $service_type = $expeditionParts[2] ?? null;
+        $expeditionParts = explode('-', $data['expedition'] ?? '');
+        $serviceGroup = $expeditionParts[0] ?? null; 
+        $courier = $expeditionParts[1] ?? null; 
+        $service_type = $expeditionParts[2] ?? null;
 
-        // Validasi data penting sebelum melanjutkan
         if (empty($data['sender_address']) || empty($data['sender_phone']) || empty($data['sender_name']) ||
             empty($data['receiver_name']) || empty($data['receiver_phone']) || empty($data['receiver_address']) ||
             empty($data['item_description']) || !isset($data['item_price']) || !isset($data['weight']) ||
             !isset($data['item_type']) || empty($courier) || empty($service_type)) {
-                Log::error('_createKiriminAjaOrder: Missing required data from $data array.', ['invoice' => $pesanan->nomor_invoice]);
+                Log::error('_createKiriminAjaOrder (Customer): Missing required data.', ['invoice' => $order->nomor_invoice]);
                 return ['status' => false, 'text' => 'Data pesanan tidak lengkap untuk dikirim ke ekspedisi.'];
         }
 
+        // ============================================================
+        // LOGIKA FINAL: FEE (Min 2.500) + PPN 11% + PEMBULATAN 500
+        // ============================================================
+        
+        $apiItemPrice = (float) $data['item_price'];
+        $finalInsuranceAmount = ($data['ansuransi'] == 'iya') ? (int)$insurance_cost : 0; 
+        $finalCodValue = $cod_value; 
+
+        // JIKA METODE 'COD' (COD Ongkir):
+        if (isset($data['payment_method']) && $data['payment_method'] === 'COD') {
+            
+            // 1. Tentukan Asuransi & Harga Barang untuk API
+            if ($data['ansuransi'] == 'iya') {
+                $apiItemPrice = (float) $data['item_price']; 
+                $finalInsuranceAmount = (int) $insurance_cost; 
+            } else {
+                $apiItemPrice = 10000; 
+                $finalInsuranceAmount = 0;
+            }
+
+            // 2. Hitung Total Dasar (Ongkir + Asuransi)
+            $totalBasic = (int)$shipping_cost + (int)$finalInsuranceAmount;
+
+            // 3. Hitung COD Fee (3% dari Total Dasar, Minimal 2.500)
+            // Contoh: 3% dari 72.000 = 2.160 -> Dipaksa jadi 2.500
+            $calculatedFee = $totalBasic * 0.03; 
+            $codFeeValue = max(2500, $calculatedFee);
+
+            // 4. Hitung PPN 11% HANYA DARI FEE COD
+            $ppnFee = $codFeeValue * 0.11;
+
+            // 5. Jumlahkan Semua (Total Mentah)
+            $grandTotalMentah = $totalBasic + $codFeeValue + $ppnFee;
+
+            // 6. LOGIKA PEMBULATAN (REQUEST BAPAK)
+            // 1-499 -> 500 | 501-999 -> 1000
+            $finalCodValue = (int) (ceil($grandTotalMentah / 500) * 500);
+
+            // Update harga di database
+            $order->price = $finalCodValue;
+            $order->save();
+        }
+        // ============================================================
 
         if (in_array($serviceGroup, ['instant', 'sameday'])) {
             if (empty($senderData['lat']) || empty($senderData['lng']) || empty($receiverData['lat']) || empty($receiverData['lng'])) {
                 return ['status' => false, 'text' => 'Koordinat alamat tidak valid untuk pengiriman instan/sameday.'];
             }
+            
             $payload = [
                 'service' => $courier, 'service_type' => $service_type, 'vehicle' => 'motor',
-                'order_prefix' => $pesanan->nomor_invoice,
+                'order_prefix' => $order->nomor_invoice,
                 'packages' => [[
                     'destination_name' => $data['receiver_name'], 'destination_phone' => $data['receiver_phone'],
                     'destination_lat' => $receiverData['lat'], 'destination_long' => $receiverData['lng'],
@@ -869,41 +967,36 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
                     'origin_address' => $data['sender_address'], 'origin_address_note' => $data['sender_note'] ?? '-',
                     'shipping_price' => (int)$shipping_cost,
                     'item' => [
-                        'name' => $data['item_description'], 'description' => 'Pesanan ' . $pesanan->nomor_invoice,
+                        'name' => $data['item_description'], 'description' => 'Pesanan ' . $order->nomor_invoice,
                         'price' => (int)$data['item_price'], 'weight' => (int)$data['weight'],
                     ]
                 ]]
             ];
-            Log::info('KiriminAja Create Instant Order Payload:', $payload);
+            Log::info('KiriminAja Create Instant Order Payload (Customer):', $payload);
             return $kirimaja->createInstantOrder($payload);
 
-        } else { // Express, Regular, Cargo
-            $scheduleResponse = $kirimaja->getSchedules(); $scheduleClock = $scheduleResponse['clock'] ?? null;
+        } else { 
+            $scheduleResponse = $kirimaja->getSchedules(); 
+            $scheduleClock = $scheduleResponse['clock'] ?? null;
             $category = ($data['service_type'] ?? $serviceGroup) === 'cargo' ? 'trucking' : 'regular';
 
-            // Hitung final weight (termasuk volumetrik jika dimensi ada)
             $weightInput = (int) $data['weight'];
-            $lengthInput = (int) ($data['length'] ?? 1);
-            $widthInput = (int) ($data['width'] ?? 1);
+            $lengthInput = (int) ($data['length'] ?? 1); 
+            $widthInput = (int) ($data['width'] ?? 1); 
             $heightInput = (int) ($data['height'] ?? 1);
+            
             $volumetricWeight = 0;
             if ($lengthInput > 0 && $widthInput > 0 && $heightInput > 0) {
                 $volumetricWeight = ($widthInput * $lengthInput * $heightInput) / ($category === 'trucking' ? 4000 : 6000) * 1000;
             }
             $finalWeight = max($weightInput, $volumetricWeight);
 
-            // SESUDAH
-            // Tentukan insuranceAmount berdasarkan PILIHAN USER ($data['ansuransi'])
-            $insuranceAmount = ($data['ansuransi'] == 'iya') ? (int)$data['item_price'] : 0;
-
-            // Validasi Kirimaja Data IDs
             if (empty($senderData['kirimaja_data']['district_id']) || empty($senderData['kirimaja_data']['subdistrict_id']) ||
                 empty($receiverData['kirimaja_data']['district_id']) || empty($receiverData['kirimaja_data']['subdistrict_id']) ||
                 empty($senderData['kirimaja_data']['postal_code']) || empty($receiverData['kirimaja_data']['postal_code'])) {
-                    Log::error('_createKiriminAjaOrder: Missing KiriminAja address IDs.', ['invoice' => $pesanan->nomor_invoice, 'sender_data' => $senderData, 'receiver_data' => $receiverData]);
+                    Log::error('_createKiriminAjaOrder (Customer): Missing KiriminAja address IDs.', ['invoice' => $order->nomor_invoice]);
                     return ['status' => false, 'text' => 'ID alamat KiriminAja tidak lengkap.'];
             }
-
 
             $payload = [
                 'address' => $data['sender_address'], 'phone' => $data['sender_phone'], 'name' => $data['sender_name'],
@@ -912,22 +1005,26 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
                 'platform_name' => 'tokosancaka.com', 'category' => $category,
                 'latitude' => $senderData['lat'], 'longitude' => $senderData['lng'],
                 'packages' => [[
-                    'order_id' => $pesanan->nomor_invoice, 'item_name' => $data['item_description'],
+                    'order_id' => $order->nomor_invoice, 'item_name' => $data['item_description'],
                     'package_type_id' => (int)$data['item_type'],
                     'destination_name' => $data['receiver_name'], 'destination_phone' => $data['receiver_phone'],
                     'destination_address' => $data['receiver_address'],
                     'destination_kecamatan_id' => $receiverData['kirimaja_data']['district_id'], 'destination_kelurahan_id' => $receiverData['kirimaja_data']['subdistrict_id'],
                     'destination_zipcode' => $receiverData['kirimaja_data']['postal_code'],
-                    'weight' => ceil($finalWeight), // Bulatkan ke atas
+                    'weight' => (int) ceil($finalWeight), 
                     'width' => $widthInput, 'height' => $heightInput, 'length' => $lengthInput,
-                    'item_value' => (int)$data['item_price'], // Harga barang
+                    
+                    // --- DATA FINAL KE API ---
+                    'item_value' => (int)$apiItemPrice, 
+                    'insurance_amount' => (int)$finalInsuranceAmount, 
+                    'cod' => (int)$finalCodValue, 
+                    // -------------------------
+
                     'service' => $courier, 'service_type' => $service_type,
-                    'insurance_amount' => $insuranceAmount, // Jumlah nilai yg diasuransikan
-                    'cod' => $cod_value, // Gunakan $cod_value dari parameter
-                    'shipping_cost' => (int)$shipping_cost // Gunakan $shipping_cost dari parameter
+                    'shipping_cost' => (int)$shipping_cost
                 ]]
             ];
-            Log::info('KiriminAja Create Express/Cargo Order Payload:', $payload);
+            Log::info('KiriminAja Create Express/Cargo Order Payload (Customer):', $payload);
             return $kirimaja->createExpressOrder($payload);
         }
     }
@@ -1020,157 +1117,6 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
         }
         // Kembalikan nomor jika sudah diawali 0 atau biarkan apa adanya
         return $phone;
-    }
-
-   private function _sendWhatsappNotification(
-        Pesanan $pesanan, array $validatedData, int $shipping_cost,
-        int $ansuransi_fee, int $cod_fee, int $total_paid,
-        Request $request // Tambahkan $request di sini
-    ) {
-        // Ambil nomor asli dari request jika ada, fallback ke data yg mungkin disimpan sebelumnya, fallback ke data pesanan
-        $displaySenderPhone = $request->input('sender_phone') ?? $validatedData['sender_phone_original'] ?? $pesanan->sender_phone;
-        $displayReceiverPhone = $request->input('receiver_phone') ?? $validatedData['receiver_phone_original'] ?? $pesanan->receiver_phone;
-
-
-        $detailPaket = "*Detail Paket:*\n";
-        $detailPaket .= "Deskripsi: " . ($pesanan->item_description ?? '-') . "\n";
-        $detailPaket .= "Berat: " . ($pesanan->weight ?? 0) . " Gram\n";
-        if ($pesanan->length && $pesanan->width && $pesanan->height) {
-            $detailPaket .= "Dimensi: {$pesanan->length}x{$pesanan->width}x{$pesanan->height} cm\n";
-        }
-        $expeditionParts = explode('-', $pesanan->expedition ?? '');
-        $exp_vendor = $expeditionParts[1] ?? '';
-        $exp_service_type = $expeditionParts[2] ?? '';
-        $service_display = trim(ucwords(strtolower(str_replace('_', ' ', $exp_vendor))) . ' ' . ucwords(strtolower(str_replace('_', ' ', $exp_service_type))));
-        $detailPaket .= "Ekspedisi: " . ($service_display ?: '-') . "\n";
-        $detailPaket .= "Layanan: " . ucwords($pesanan->service_type ?? '-');
-        
-        // --- PERBAIKAN 1: Logika Resi ---
-        if ($pesanan->resi) {
-            $detailPaket .= "\nResi: *" . $pesanan->resi . "*";
-        } else {
-            // Tampilkan 'Menunggu Resi' jika $pesanan->resi masih null
-            $detailPaket .= "\nResi: Menunggu Resi";
-        }
-        // --- AKHIR PERBAIKAN 1 ---
-
-
-        // --- PERBAIKAN 2: Logika Rincian Biaya ---
-        $rincianBiaya = "*Rincian Biaya:*\n- Ongkir: Rp " . number_format($shipping_cost, 0, ',', '.');
-        $itemPrice = $validatedData['item_price'] ?? $pesanan->item_price ?? 0;
-        
-        $use_insurance = $ansuransi_fee > 0;
-        $is_cod_barang = $pesanan->payment_method === 'CODBARANG';
-        $is_cod_custom = $pesanan->payment_method === 'COD';
-        $is_lunas_or_saldo = !$is_cod_barang && !$is_cod_custom;
-
-        // Aturan tampilkan Nilai Barang:
-        // 1. Jika pakai asuransi
-        // 2. Jika CODBARANG
-        // 3. Jika Lunas (Tripay/Saldo)
-        if ($use_insurance || $is_cod_barang || $is_lunas_or_saldo) {
-            if ($itemPrice > 0) { // Hanya tampilkan jika harga barang di atas 0
-                $rincianBiaya .= "\n- Nilai Barang: Rp " . number_format($itemPrice, 0, ',', '.');
-            }
-        }
-        
-        if ($use_insurance) { // Tampilkan HANYA jika > 0
-            $rincianBiaya .= "\n- Asuransi: Rp " . number_format($ansuransi_fee, 0, ',', '.');
-        }
-        if ($cod_fee > 0) { // Tampilkan HANYA jika > 0
-            $rincianBiaya .= "\n- Biaya COD: Rp " . number_format($cod_fee, 0, ',', '.');
-        }
-        // --- AKHIR PERBAIKAN 2 ---
-
-
-        // --- PERBAIKAN 3: Logika Status Pembayaran ---
-        $statusBayar = "⏳ Menunggu Pembayaran"; // Default
-
-        // Cek COD/CODBARANG harus di urutan PERTAMA
-        if (in_array($pesanan->payment_method, ['COD', 'CODBARANG'])) {
-            $statusBayar = "⏳ Bayar di Tempat (COD)";
-        } 
-        // Cek Lunas via Saldo
-        elseif ($pesanan->payment_method === 'Potong Saldo') {
-            $statusBayar = "✅ Lunas via Saldo";
-        } 
-        // Cek Lunas via Tripay (status 'Menunggu Pickup' dll BUKAN COD)
-        elseif ($pesanan->status_pesanan === 'PAID' || in_array($pesanan->status, ['Menunggu Pickup', 'Diproses', 'Terkirim', 'Pembayaran Lunas (Gagal Auto-Resi)', 'Pembayaran Lunas (Error Kirim API)'])) {
-            $statusBayar = "✅ Lunas";
-        } 
-        // Cek Gagal
-        elseif (in_array($pesanan->status, ['Gagal Bayar', 'Kadaluarsa'])) {
-            $statusBayar = "❌ Pembayaran Gagal/Kadaluarsa";
-        }
-        // --- AKHIR PERBAIKAN 3 ---
-
-
-        $messageTemplate = <<<TEXT
-*Terimakasih Ya Kak Atas Orderannya 🙏*
-
-Berikut adalah Nomor Order ID / Nomor Invoice Kakak:
-*{NOMOR_INVOICE}*
-
-📦 Dari: *{SENDER_NAME}* ( {SENDER_PHONE} )
-➡️ Ke: *{RECEIVER_NAME}* ( {RECEIVER_PHONE} )
-
-----------------------------------------
-{DETAIL_PAKET}
-----------------------------------------
-{RINCIAN_BIAYA}
-----------------------------------------
-*Total Bayar: Rp {TOTAL_BAYAR}*
-Status Pembayaran: {STATUS_BAYAR}
-----------------------------------------
-
-Semoga Paket Kakak aman dan selamat sampai tujuan. ✅
-
-Cek status pesanan/resi dengan klik link berikut:
-https://tokosancaka.com/tracking/search?resi={LINK_RESI}
-
-*Manajemen Sancaka*
-TEXT;
-
-        // Logika $linkResi sudah benar, ia akan pakai invoice jika resi belum ada
-        $linkResi = $pesanan->resi ?? $pesanan->nomor_invoice;
-        $message = str_replace(
-            [
-                '{NOMOR_INVOICE}',
-                '{SENDER_NAME}', '{SENDER_PHONE}',
-                '{RECEIVER_NAME}', '{RECEIVER_PHONE}',
-                '{DETAIL_PAKET}',
-                '{RINCIAN_BIAYA}',
-                '{TOTAL_BAYAR}',
-                '{STATUS_BAYAR}',
-                '{LINK_RESI}'
-            ],
-            [
-                $pesanan->nomor_invoice,
-                $pesanan->sender_name, $displaySenderPhone, // Gunakan nomor display
-                $pesanan->receiver_name, $displayReceiverPhone, // Gunakan nomor display
-                $detailPaket,
-                $rincianBiaya,
-                number_format($total_paid, 0, ',', '.'),
-                $statusBayar,
-                $linkResi
-            ],
-            $messageTemplate
-        );
-
-        // Sanitasi nomor untuk pengiriman Fonnte
-        $senderWa = preg_replace('/^0/', '62', $this->_sanitizePhoneNumber($pesanan->sender_phone));
-        $receiverWa = preg_replace('/^0/', '62', $this->_sanitizePhoneNumber($pesanan->receiver_phone));
-
-        try {
-            Log::info("Mengirim WA Notif ke Pengirim ($senderWa) untuk {$pesanan->nomor_invoice}");
-            if ($senderWa) FonnteService::sendMessage($senderWa, $message);
-
-            Log::info("Mengirim WA Notif ke Penerima ($receiverWa) untuk {$pesanan->nomor_invoice}");
-            if ($receiverWa) FonnteService::sendMessage($receiverWa, $message);
-            Log::info("Notifikasi WA Terkirim (atau attempt) untuk Invoice: " . $pesanan->nomor_invoice);
-        } catch (Exception $e) {
-            Log::error('Fonnte Service sendMessage failed: ' . $e->getMessage(), ['invoice' => $pesanan->nomor_invoice]);
-        }
     }
     
    /**
@@ -1324,6 +1270,264 @@ TEXT;
             Log::error("DOKU Callback (Admin): Exception during process.", [ 'ref' => $merchantRef, 'error' => $e->getMessage()]);
             // Kirim 500 agar DOKU mencoba lagi
             return response()->json(['message' => 'Internal server error during processing.'], 500);
+        }
+    }
+    
+    private function _sendWhatsappNotification(
+        Pesanan $pesanan, array $validatedData, int $shipping_cost,
+        int $ansuransi_fee, int $cod_fee, int $total_paid,
+        Request $request
+    ) {
+        // 1. Ambil nomor HP
+        $displaySenderPhone = $request->input('sender_phone') ?? $validatedData['sender_phone_original'] ?? $pesanan->sender_phone;
+        $displayReceiverPhone = $request->input('receiver_phone') ?? $validatedData['receiver_phone_original'] ?? $pesanan->receiver_phone;
+
+        // 2. LOGIKA HITUNG ULANG (AGAR SINKRON DENGAN BLADE & CONTROLLER)
+        $pmClean = strtoupper(trim($pesanan->payment_method));
+        $isCodOngkir = ($pmClean === 'COD');
+        $isCodBarang = ($pmClean === 'CODBARANG');
+        
+        // Ambil Harga Barang Asli
+        $realItemPrice = $validatedData['item_price'] ?? $pesanan->item_price ?? 0;
+
+        if ($isCodOngkir) {
+            // === RUMUS COD ONGKIR (Sesuai Request) ===
+            
+            // A. Aturan Harga Barang (> 1jt dianggap 10rb)
+            if ($realItemPrice > 1000000) {
+                $basisBarang = 10000;
+            } else {
+                $basisBarang = $realItemPrice;
+            }
+
+            // B. Hitung Fee Murni (3% dari Ongkir + BasisBarang)
+            $basisHitung = $shipping_cost + $basisBarang;
+            $feeHitung   = $basisHitung * 0.03;
+            $feeCodMurni = max(2500, $feeHitung); // Minimal 2.500
+
+            // C. Hitung PPN 11% dari Fee
+            $ppnFee = $feeCodMurni * 0.11;
+
+            // D. Hitung Total Mentah (Ongkir + Asuransi + Fee + PPN)
+            $grandTotalMentah = $shipping_cost + $ansuransi_fee + $feeCodMurni + $ppnFee;
+
+            // E. Pembulatan Kelipatan 500 ke Atas (Total Final)
+            $finalTotal = (int) (ceil($grandTotalMentah / 500) * 500);
+
+            // F. Tentukan Fee Layanan Tampilan (Sisa dari Total)
+            // Agar di WA: Ongkir + Asuransi + Fee = Total (Klop)
+            $finalCodFee = $finalTotal - $shipping_cost - $ansuransi_fee;
+
+        } elseif ($isCodBarang) {
+            // COD BARANG: Ambil data DB/Param apa adanya
+            $finalCodFee = $cod_fee;
+            $finalTotal  = $pesanan->price; // Total DB (Include Barang)
+        } else {
+            // TRANSFER: Ambil data DB
+            $finalCodFee = $cod_fee;
+            $finalTotal  = $pesanan->price;
+        }
+
+        // 3. Susun Detail Paket
+        $detailPaket = "*Detail Paket:*\n";
+        $detailPaket .= "Deskripsi: " . ($pesanan->item_description ?? '-') . "\n";
+        $detailPaket .= "Berat: " . ($pesanan->weight ?? 0) . " Gram\n";
+        
+        $expeditionParts = explode('-', $pesanan->expedition ?? '');
+        $exp_vendor = $expeditionParts[1] ?? '';
+        $exp_service_type = $expeditionParts[2] ?? '';
+        $service_display = trim(ucwords(strtolower(str_replace('_', ' ', $exp_vendor))) . ' ' . ucwords(strtolower(str_replace('_', ' ', $exp_service_type))));
+        
+        $detailPaket .= "Ekspedisi: " . ($service_display ?: '-') . "\n";
+        $detailPaket .= "Layanan: " . ucwords($pesanan->service_type ?? '-');
+        
+        if ($pesanan->resi) {
+            $detailPaket .= "\nResi: *" . $pesanan->resi . "*";
+        } else {
+            $detailPaket .= "\nResi: Menunggu Resi";
+        }
+
+        // 4. Susun Rincian Biaya
+        $rincianBiaya = "*Rincian Biaya:*\n";
+        
+        // A. Nilai Barang
+        if ($realItemPrice > 0) {
+            $rincianBiaya .= "- Nilai Barang: Rp " . number_format($realItemPrice, 0, ',', '.');
+            if ($isCodOngkir) {
+                $rincianBiaya .= " (Tidak Masuk Tagihan COD)\n"; 
+            } else {
+                $rincianBiaya .= "\n";
+            }
+        }
+
+        // B. Ongkir
+        $rincianBiaya .= "- Ongkir: Rp " . number_format($shipping_cost, 0, ',', '.') . "\n";
+
+        // C. Asuransi
+        if ($ansuransi_fee > 0) {
+            $rincianBiaya .= "- Asuransi: Rp " . number_format($ansuransi_fee, 0, ',', '.') . "\n";
+        }
+
+        // D. Biaya Layanan / COD
+        // Tampilkan Fee yang sudah disesuaikan dengan pembulatan
+        if ($finalCodFee > 0) {
+            $rincianBiaya .= "- Biaya Layanan: Rp " . number_format($finalCodFee, 0, ',', '.') . "\n";
+        }
+
+        // 5. Tentukan Status Pembayaran
+        $statusBayar = "⏳ Menunggu Pembayaran"; 
+
+        if (in_array($pmClean, ['COD', 'CODBARANG'])) {
+            $statusBayar = "⏳ Bayar di Tempat (COD)";
+        } elseif ($pesanan->payment_method === 'Potong Saldo') {
+            $statusBayar = "✅ Lunas via Saldo";
+        } elseif ($pesanan->status_pesanan === 'PAID' || in_array($pesanan->status, ['Menunggu Pickup', 'Diproses', 'Terkirim', 'Pembayaran Lunas (Gagal Auto-Resi)', 'Pembayaran Lunas (Error Kirim API)'])) {
+            $statusBayar = "✅ Lunas";
+        } elseif (in_array($pesanan->status, ['Gagal Bayar', 'Kadaluarsa'])) {
+            $statusBayar = "❌ Pembayaran Gagal/Kadaluarsa";
+        }
+
+        // 6. Susun Template Pesan Akhir
+        $messageTemplate = <<<TEXT
+*Terimakasih Ya Kak Atas Orderannya 🙏*
+
+Berikut adalah Nomor Order ID / Nomor Invoice Kakak:
+*{NOMOR_INVOICE}*
+
+📦 Dari: *{SENDER_NAME}* ( {SENDER_PHONE} )
+➡️ Ke: *{RECEIVER_NAME}* ( {RECEIVER_PHONE} )
+
+----------------------------------------
+{DETAIL_PAKET}
+----------------------------------------
+{RINCIAN_BIAYA}
+----------------------------------------
+*Total Tagihan: Rp {TOTAL_BAYAR}*
+Status Pembayaran: {STATUS_BAYAR}
+----------------------------------------
+
+Semoga Paket Kakak aman dan selamat sampai tujuan. ✅
+
+Cek status pesanan/resi dengan klik link berikut:
+https://tokosancaka.com/tracking/search?resi={LINK_RESI}
+
+*Manajemen Sancaka*
+TEXT;
+
+        $linkResi = $pesanan->resi ?? $pesanan->nomor_invoice;
+        
+        $message = str_replace(
+            [
+                '{NOMOR_INVOICE}',
+                '{SENDER_NAME}', '{SENDER_PHONE}',
+                '{RECEIVER_NAME}', '{RECEIVER_PHONE}',
+                '{DETAIL_PAKET}',
+                '{RINCIAN_BIAYA}',
+                '{TOTAL_BAYAR}',
+                '{STATUS_BAYAR}',
+                '{LINK_RESI}'
+            ],
+            [
+                $pesanan->nomor_invoice,
+                $pesanan->sender_name, $displaySenderPhone,
+                $pesanan->receiver_name, $displayReceiverPhone,
+                $detailPaket,
+                $rincianBiaya,
+                number_format($finalTotal, 0, ',', '.'), // Total Final yang sudah dibulatkan
+                $statusBayar,
+                $linkResi
+            ],
+            $messageTemplate
+        );
+
+        // 7. Kirim Pesan via Fonnte
+        $senderWa = preg_replace('/^0/', '62', $this->_sanitizePhoneNumber($pesanan->sender_phone));
+        $receiverWa = preg_replace('/^0/', '62', $this->_sanitizePhoneNumber($pesanan->receiver_phone));
+
+        try {
+            if ($senderWa) {
+                FonnteService::sendMessage($senderWa, $message);
+            }
+
+            if ($receiverWa) {
+                FonnteService::sendMessage($receiverWa, $message);
+            }
+        } catch (Exception $e) {
+            Log::error('Fonnte Service sendMessage failed: ' . $e->getMessage(), ['invoice' => $pesanan->nomor_invoice]);
+        }
+    }
+    
+    /**
+     * FUNGSI API: Kirim Resi via WhatsApp (Dipanggil AJAX dari View Cetak Resi)
+     * Menangani request dari tombol "Kirim WA (Penerima/Pengirim)"
+     */
+    public function sendResiViaWhatsappApi(Request $request)
+    {
+        try {
+            // 1. Validasi Input dari AJAX
+            $request->validate([
+                'resi'   => 'required|string',
+                'target' => 'required|in:sender,receiver'
+            ]);
+
+            $resi = $request->input('resi');
+            $target = $request->input('target');
+
+            // 2. Cari Pesanan Berdasarkan Resi (Admin bisa akses semua pesanan)
+            $pesanan = Pesanan::where('resi', $resi)->first();
+
+            if (!$pesanan) {
+                return response()->json(['status' => 'error', 'message' => 'Data pesanan dengan resi tersebut tidak ditemukan.']);
+            }
+
+            // 3. Tentukan Data Target
+            $targetName = '';
+            $targetPhoneRaw = '';
+            $roleName = '';
+
+            if ($target === 'receiver') {
+                $targetName = $pesanan->receiver_name;
+                $targetPhoneRaw = $pesanan->receiver_phone;
+                $roleName = 'Penerima';
+            } else {
+                $targetName = $pesanan->sender_name;
+                $targetPhoneRaw = $pesanan->sender_phone;
+                $roleName = 'Pengirim';
+            }
+
+            // 4. Sanitize Nomor HP
+            $targetPhone = $this->_sanitizePhoneNumber($targetPhoneRaw);
+
+            // 5. Susun Pesan WhatsApp
+            $trackingLink = "https://tokosancaka.com/tracking/search?resi=" . $pesanan->resi; 
+            
+            $message = "Halo Kak {$targetName} ({$roleName}) 👋,\n\n";
+            $message .= "Berikut adalah *Soft Copy Resi* untuk paket Anda:\n\n";
+            $message .= "📜 No. Invoice: *{$pesanan->nomor_invoice}*\n";
+            $message .= "📦 No. Resi: *{$pesanan->resi}*\n";
+            $message .= "🚚 Ekspedisi: {$pesanan->expedition} ({$pesanan->service_type})\n";
+            $message .= "⚖️ Berat: {$pesanan->weight} Gram\n\n";
+            $message .= "🔍 *Lacak status paket secara real-time di sini:*\n";
+            $message .= "{$trackingLink}\n\n";
+            $message .= "Simpan bukti resi ini ya Kak. Terima kasih telah menggunakan Sancaka Express! 🙏";
+
+            // 6. Kirim via Fonnte Service
+            // Pastikan Anda sudah use App\Services\FonnteService di atas
+            $response = FonnteService::sendMessage($targetPhone, $message);
+
+            // 7. Return JSON
+            return response()->json([
+                'status' => 'success',
+                'message' => "Resi berhasil dikirim ke WhatsApp {$roleName} ({$targetName}).",
+                'debug' => $response
+            ]);
+
+        } catch (Exception $e) {
+            Log::error("API WA Resi Error (Admin): " . $e->getMessage());
+            return response()->json([
+                'status' => 'error', 
+                'message' => 'Gagal memproses pengiriman: ' . $e->getMessage()
+            ], 500);
         }
     }
 } // Akhir Class

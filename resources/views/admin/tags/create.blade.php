@@ -8,9 +8,9 @@
 
         <div class="mr-6">
 
-            <h1 class="text-4xl font-semibold mb-2 text-gray-800 dark:text-gray-200">Tambah Tag Baru</h1>
+            <h1 class="text-4xl font-semibold mb-2 text-gray-800">Tambah Tag Baru</h1>
 
-            <h2 class="text-gray-600 dark:text-gray-400 ml-0.5">Buat tag baru untuk dikelompokkan pada postingan.</h2>
+            <h2 class="text-gray-600 ml-0.5">Buat tag baru untuk dikelompokkan pada postingan.</h2>
 
         </div>
 
@@ -18,7 +18,7 @@
 
 
 
-    <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-6">
+    <div class="bg-white shadow-md rounded-lg p-6">
 
         <form action="{{ route('admin.tags.store') }}" method="POST">
 
@@ -28,19 +28,19 @@
 
                 <div>
 
-                    <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nama Tag</label>
+                    <label for="name" class="block text-sm font-medium text-gray-700">Nama Tag</label>
 
-                    <input type="text" name="name" id="name" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600" required>
+                    <input type="text" name="name" id="name" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" required>
 
                 </div>
 
                 <div>
 
-                    <label for="slug" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Slug</label>
+                    <label for="slug" class="block text-sm font-medium text-gray-700">Slug</label>
 
-                    <input type="text" name="slug" id="slug" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600">
+                    <input type="text" name="slug" id="slug" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
 
-                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">Opsional. Jika dikosongkan, slug akan dibuat otomatis dari nama.</p>
+                    <p class="mt-2 text-xs text-gray-500">Opsional. Jika dikosongkan, slug akan dibuat otomatis dari nama.</p>
 
                 </div>
 

@@ -220,4 +220,52 @@ class KiriminAjaService
 
         return null; // Kembalikan null jika tidak ada jadwal
     }
+    
+     /**
+     * Melacak paket berdasarkan Nomor Resi atau Order ID
+     * (Fungsi ini yang sebelumnya hilang)
+     */
+    public function trackPackage($resi)
+    {
+        if (empty($this->token)) {
+            return ['status' => false, 'message' => 'API Token tidak ditemukan.'];
+        }
+
+        try {
+            // Endpoint Tracking Mitra KiriminAja
+            $endpoint = '/api/mitra/tracking';
+            
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . $this->token,
+                'Content-Type' => 'application/json',
+                'Accept' => 'application/json'
+            ])->post($this->baseUrl . $endpoint, [
+                'order_id' => $resi // Bisa resi (AWB) atau Order ID
+            ]);
+
+            if (!$response->successful()) {
+                Log::error('KiriminAja Track Error:', ['body' => $response->body()]);
+                return ['status' => false, 'text' => 'Gagal mengambil data tracking.'];
+            }
+            
+            // Bungkus dalam format standar
+            $responseData = $response->json();
+            
+            return [
+                'status' => $responseData['status'] ?? false,
+                'text' => $responseData['text'] ?? '',
+                'data' => [
+                    'summary' => $responseData['details'] ?? [],
+                    'histories' => $responseData['histories'] ?? []
+                ]
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('KiriminAja Track Exception: ' . $e->getMessage());
+            return [
+                'status' => false,
+                'text' => 'Gagal koneksi ke server tracking.'
+            ];
+        }
+    }
 }

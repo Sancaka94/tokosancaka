@@ -112,7 +112,7 @@
         {{-- } --}}
     });
 }, 120);"
-    class="w-full transition bg-[var(--wc-light-primary)] dark:bg-[var(--wc-dark-primary)] overflow-hidden h-full relative" style="contain:content">
+    class="w-full transition bg-[var(--wc-light-primary)] overflow-hidden h-full relative" style="contain:content">
 
     <div class=" flex flex-col  grow h-full   relative ">
         {{-- ---------- --}}

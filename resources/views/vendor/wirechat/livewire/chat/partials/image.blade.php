@@ -13,7 +13,7 @@
 
 <img @class([ 
 
-        'max-w-max  h-[200px] min-h-[210px] bg-[var(--wc-light-secondary)] dark:bg-[var(--wc-dark-secondary)]   object-scale-down  grow-0 shrink  overflow-hidden  rounded-3xl',
+        'max-w-max  h-[200px] min-h-[210px] bg-[var(--wc-light-secondary)]   object-scale-down  grow-0 shrink  overflow-hidden  rounded-3xl',
 
         'rounded-br-md rounded-tr-2xl' => ($isSameAsNext && $isNotSameAsPrevious && $belongsToAuth),
 

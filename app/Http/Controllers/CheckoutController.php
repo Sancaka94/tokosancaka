@@ -14,6 +14,7 @@ use App\Models\TopUp;
 use App\Models\User;
 use App\Models\Pesanan;
 use App\Models\Product;
+use App\Models\Koli;
 use App\Models\ProductVariant;
 use App\Models\Store; // <-- Pastikan Model Store di-import
 use App\Events\SaldoUpdated;
@@ -23,7 +24,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Exception;
 use Illuminate\Validation\ValidationException;
-use App\Services\FonnteService; // 🔑 TAMBAHKAN INI
+use App\Services\FonnteService; // ðŸ”‘ TAMBAHKAN INI
 use Carbon\Carbon; // Digunakan untuk waktu
 
 // IMPORT SEMUA CONTROLLER YANG MEMILIKI FUNGSI PROSESOR CALLBACK
@@ -32,6 +33,7 @@ use App\Http\Controllers\Customer\PesananController as CustomerPesananController
 use App\Http\Controllers\CustomerOrderController;
 use App\Http\Controllers\Customer\TopUpController;
 use App\Http\Controllers\Toko\ProdukController;
+use App\Http\Controllers\Customer\KoliController;
 use App\Http\Controllers\Toko\CheckoutController as TokoCheckoutController;
 
 
@@ -579,6 +581,9 @@ class CheckoutController extends Controller
                     Log::info('Memulai proses TRIPAY Marketplace untuk ' . $order->invoice_number);
                     
                     $apiKey       = config('tripay.api_key');
+                    
+                    Log::info('DEBUG TRIPAY KEY:', ['key' => $apiKey]);
+                    
                     $privateKey   = config('tripay.private_key');
                     $merchantCode = config('tripay.merchant_code');
                     $mode         = config('tripay.mode');
@@ -756,367 +761,482 @@ class CheckoutController extends Controller
     }
 
 
-    /**
+   /**
      * =========================================================================
-     * HANDLER WEBHOOK DOKU (JOKUL)
+     * 1. HANDLER WEBHOOK DOKU (JOKUL) - FULL VERSION
      * =========================================================================
      */
     public function handleDokuCallback(array $data)
     {
-        $merchantRef = $data['order']['invoice_number'];
+        // Ambil data referensi & status
+        $merchantRef = $data['order']['invoice_number']; 
         $status = $data['transaction']['status'];
 
-        Log::info('Processing DOKU Callback (di CheckoutController)...', [
-            'ref' => $merchantRef, 'status' => $status
-        ]);
+        Log::info('Processing DOKU Callback...', ['ref' => $merchantRef, 'status' => $status]);
         
-        $tripayStatus = 'FAILED';
-        if ($status === 'SUCCESS') {
-            $tripayStatus = 'PAID';
-        }
+        // Mapping status
+        $internalStatus = ($status === 'SUCCESS') ? 'PAID' : 'FAILED';
 
         DB::beginTransaction();
         try {
-            
-             // ========================================================
-            // ==== PERBAIKAN: Tambahkan logika routing "TOPUP-" ====
-            // ========================================================
-
+            // Routing berdasarkan prefix
             if (Str::startsWith($merchantRef, 'TOPUP-')) {
-                
                 Log::info('Routing DOKU callback to TopUpController', ['ref' => $merchantRef]);
-                
-                // Panggil prosesor Top Up Mbah (sama seperti yang dipakai Tripay)
-                // Pastikan Mbah sudah membuat method ini di TopUpController
-                TopUpController::processTopUpCallback($merchantRef, $internalStatus, $amount, $data);
+                TopUpController::processTopUpCallback($merchantRef, $internalStatus, $data['order']['amount'], $data);
             
-            } elseif (Str::startsWith($merchantRef, 'ORD-') || Str::startsWith($merchantRef, 'SCK-ORD-')) {
-                
-                Log::info('Routing DOKU callback to processOrderCallback (this controller)', ['ref' => $merchantRef]);
-                
-                // Panggil prosesor internal Anda yang sudah ada
+            } elseif (Str::startsWith($merchantRef, 'ORD-') || Str::startsWith($merchantRef, 'SCK-ORD-') || Str::startsWith($merchantRef, 'SCK-')) {
+                Log::info('Routing DOKU callback to processOrderCallback', ['ref' => $merchantRef]);
+                // Panggil fungsi prosesor lengkap
                 $this->processOrderCallback($merchantRef, $internalStatus, $data);
-            
+
             } else {
                 Log::warning('DOKU Callback: Unrecognized merchant_ref prefix.', ['merchant_ref' => $merchantRef]);
             }
-            // ========================================================
-            // ==== AKHIR PERBAIKAN ====
-            // ========================================================
             
             DB::commit();
             return response()->json(['message' => 'Webhook processed successfully.'], 200);
 
         } catch (Exception $e) {
             DB::rollBack();
-            Log::error("DOKU Callback (Checkout): Exception during process.", [ 'ref' => $merchantRef, 'error' => $e->getMessage()]);
-            return response()->json(['message' => 'Internal server error during processing.'], 500);
+            Log::error("DOKU Callback Exception", ['ref' => $merchantRef, 'error' => $e->getMessage()]);
+            return response()->json(['message' => 'Internal server error.'], 500);
         }
     }
 
-
     /**
      * =========================================================================
-     * FUNGSI PROSESOR CALLBACK (TRIPAY & DOKU)
+     * 2. FUNGSI PROSESOR UTAMA (LENGKAP DENGAN AUTO RETRY & NOTIF CUSTOMER)
      * =========================================================================
      */
     public function processOrderCallback($merchantRef, $status, $callbackData)
     {
-        Log::info('Processing Order Callback (ORD-)...', ['ref' => $merchantRef, 'status' => $status]);
-        
+        Log::info('Processing Order Callback (ORD-/SCK-)...', ['ref' => $merchantRef, 'status' => $status]);
         $fonnteService = app(FonnteService::class);
+        $cleanRef = trim($merchantRef);
+
+        // -----------------------------------------------------------
+        // 1. PENCARIAN HYBRID
+        // -----------------------------------------------------------
+        $isLegacy = false; 
         
+        // Cari di Orders (Baru)
         $order = Order::with('items.product.store.user', 'items.variant', 'user')
-                            ->where('invoice_number', $merchantRef)
+                    ->where('invoice_number', $cleanRef)
+                    ->lockForUpdate()
+                    ->first();
+
+        // Cari di Pesanan (Lama)
+        if (!$order) {
+            Log::info("Order tidak ditemukan di tabel 'orders', mencari di tabel 'Pesanan'...", ['ref' => $cleanRef]);
+            if (class_exists(\App\Models\Pesanan::class)) {
+                $order = \App\Models\Pesanan::where('nomor_invoice', $cleanRef)
                             ->lockForUpdate()
                             ->first();
+                $isLegacy = true;
+            }
+        }
 
         if (!$order) {
-            Log::error('Order Callback (ORD-): Order not found.', ['ref' => $merchantRef]);
+            Log::error('FATAL: Order tidak ditemukan.', ['ref' => $cleanRef]);
             return;
         }
 
-        if ($order->status !== 'pending') {
-            Log::info('Order Callback (ORD-): Order already processed or not pending.', ['ref' => $merchantRef, 'current_status' => $order->status]);
-            return;
+        // -----------------------------------------------------------
+        // 2. VALIDASI STATUS
+        // -----------------------------------------------------------
+        $statusBoleh = ['pending', 'menunggu pembayaran', 'unpaid', 'menunggu_pembayaran'];
+        if (!in_array(strtolower($order->status), $statusBoleh)) {
+            return; // Order sudah diproses sebelumnya
         }
 
+        // -----------------------------------------------------------
+        // 3. PROSES UTAMA (LUNAS)
+        // -----------------------------------------------------------
         if ($status === 'PAID') {
+            
+            // A. Update Status Database
             $order->status = 'paid';
             $order->save();
+            Log::info("Order {$merchantRef} PAID. Memulai proses booking KiriminAja...");
 
-            // --- Logika Kirim ke KiriminAja SETELAH LUNAS ---
+            // B. Proses Logika Pengiriman (KiriminAja)
             try {
                 $kiriminAja = app(KiriminAjaService::class);
 
-                $shippingParts = explode('-', $order->shipping_method);
-                if (count($shippingParts) < 4) throw new Exception('Format shipping_method di order tidak valid');
-                $type = $shippingParts[0]; $courier = $shippingParts[1]; $service = $shippingParts[2];
-                $shipCost = (int) $order->shipping_cost;
-                $insurance_cost = (int) $order->insurance_cost;
-
-                $store = $order->store; $user = $order->user;
-                if (!$store || !$user || !$store->user) throw new Exception('Data store atau user pada order tidak valid.');
-
-                $storeSearch = $store->village . ', ' . $store->regency . ', ' . $store->province;
-                $userSearch  = $user->village . ', ' . $user->regency . ', ' . $user->province;
-                $storeLat = $store->latitude; $storeLng = $store->longitude; $userLat = $user->latitude; $userLng = $user->longitude;
-                if (!$storeLat || !$storeLng) { $geo = $this->geocode($storeSearch); if ($geo) { $storeLat = $geo['lat']; $storeLng = $geo['lng']; } }
-                if (!$userLat || !$userLng) { $geo = $this->geocode($userSearch); if ($geo) { $userLat = $geo['lat']; $userLng = $geo['lng']; } }
-                $storeAddrRes = $kiriminAja->searchAddress($storeSearch); $userAddrRes = $kiriminAja->searchAddress($userSearch);
-                $storeAddr = $storeAddrRes['data'][0] ?? null; $userAddr = $userAddrRes['data'][0] ?? null;
-                $storeDistrictId = $storeAddr['district_id'] ?? null; $storeSubdistrictId = $storeAddr['subdistrict_id'] ?? null;
-                $userDistrictId = $userAddr['district_id'] ?? null; $userSubdistrictId = $userAddr['subdistrict_id'] ?? null;
-                $schedule = $kiriminAja->getSchedules();
-                $calculatedWeight = $order->items->sum(function($item) { 
-                    if(!$item->product) return 1000;
-                    return ($item->product->weight ?? 1000) * $item->quantity; 
-                });
-                $finalWeight = max(1000, $calculatedWeight);
-                $category = $finalWeight >= 30000 ? 'trucking' : 'regular';
-                $firstItem = $order->items->first();
-                if (!$firstItem || !$firstItem->product) throw new Exception('Item atau produk pertama tidak ditemukan di order.');
-                $itemTypeFirstProduct = (int) ($firstItem->product->jenis_barang ?? 1);
-                $mandatoryTypes = [1, 3, 4, 8];
-                $isMandatoryInsurance = in_array($itemTypeFirstProduct, $mandatoryTypes);
-                $useInsurance = $isMandatoryInsurance || ($insurance_cost > 0);
-
-                $packages = $order->items->map(function ($item) use ($order, $userDistrictId, $userSubdistrictId, $shipping_cost, $courier, $service, $useInsurance, $user) {
-                    if (!$item->product) return null;
-                    $product = $item->product; $variant = $item->variant;
-                    $weight = $product->weight ?? 1000; $width = $product->width ?? 5; $height = $product->height ?? 5; $length = $product->length ?? 5;
-                    $jenis_barang = $product->jenis_barang ?? 1;
-                    $itemName = $product->name . ($variant ? ' (' . ($variant->combination_string ? str_replace(';', ', ', $variant->combination_string) : $variant->sku_code) . ')' : '');
-                    return [
-                        'order_id' => $order->invoice_number,
-                        'destination_name' => $user->nama_lengkap, 'destination_phone' => $user->no_wa,
-                        'destination_address' => $order->shipping_address,
-                        'destination_kecamatan_id' => $userDistrictId, 'destination_kelurahan_id' => $userSubdistrictId,
-                        'destination_zipcode' => $user->postal_code ?? 55598,
-                        'weight' => $weight * $item->quantity, 'width' => $width, 'height' => $height, 'length' => $length,
-                        'item_value' => $item->price * $item->quantity,
-                        'shipping_cost' => $shipping_cost, 'service' => $courier, 'service_type' => $service,
-                        'insurance_amount' => $useInsurance ? ($item->price * $item->quantity) : 0,
-                        'item_name' => $itemName, 'package_type_id' => (int) $jenis_barang,
-                        'cod' => 0, // Pembayaran online, jadi 0
-                    ];
-                })->filter()->toArray();
-
-                if (empty($packages)) { throw new Exception('Tidak ada item valid untuk dikirim ke KiriminAja.'); }
-
-                $kiriminResponse = null;
-                if ($type === 'express' || $type === 'cargo' || $type === 'regular') { // <-- TAMBAHKAN 'regular' DI SINI JUGA
-                    if (!$storeDistrictId || !$storeSubdistrictId || !$userDistrictId || !$userSubdistrictId) { throw new \Exception('ID Kecamatan/Kelurahan tidak valid untuk KiriminAja Express/Cargo.'); }
-                    $payload = [
-                        'address' => $store->address_detail, 'phone' => $store->user->no_wa,
-                        'kecamatan_id' => $storeDistrictId, 'kelurahan_id' => $storeSubdistrictId,
-                        'latitude' => $storeLat, 'longitude' => $storeLng,
-                        'packages' => $packages, 'name' => $store->name,
-                        'zipcode' => $store->postal_code ?? '63271',
-                        'platform_name' => 'TOKOSANCAKA.COM',
-                        'schedule' => $schedule['clock'] ?? null,
-                        'category' => $category,
-                    ];
-                    $kiriminResponse = $kiriminAja->createExpressOrder($payload);
-                    
-                    // ======================================================
-                    // ==== JEBAKAN LOG UNTUK FUNGSI CALLBACK ====
-                    // ======================================================
-                    Log::info('RESPON JSON CREATE ORDER (Callback):', $kiriminResponse);
-                    // ======================================================
+                // --- SMART PARSER (Format Lama & Baru) ---
+                $rawShipping = !empty($order->expedition) ? $order->expedition : $order->shipping_method;
+                $parts = explode('-', $rawShipping ?? '');
                 
-                } elseif ($type === 'instant') {
-                    if (!$storeLat || !$storeLng || !$userLat || !$userLng) { throw new \Exception('Koordinat tidak valid untuk KiriminAja Instant.'); }
-                    $totalItemValue = $order->items->sum(fn($item) => $item->price * $item->quantity);
-                    $firstPackageItem = $packages[0];
-                    $payload = [
-                        'service' => $courier, 'service_type' => $service, 'vehicle' => 'motor',
-                        'order_prefix' => $order->invoice_number,
-                        'packages' => [[
-                            'destination_name' => $user->nama_lengkap, 'destination_phone' => $user->no_wa,
-                            'destination_lat' => $userLat, 'destination_long' => $userLng,
-                            'destination_address' => $order->shipping_address,
-                            'origin_name' => $store->name, 'origin_phone' => $store->user->no_wa,
-                            'origin_lat' => $storeLat, 'origin_long' => $storeLng,
-                            'origin_address' => $store->address_detail,
-                            'shipping_price' => (int) $shipping_cost,
-                            'item' => [
-                                'name' => 'Pesanan ' . $order->invoice_number,
-                                'description' => $firstPackageItem['item_name'] ?? 'Pesanan dari toko',
-                                'price' => $totalItemValue,
-                                'weight' => $finalWeight,
-                            ]
-                        ]]
-                    ];
-                    $kiriminResponse = $kiriminAja->createInstantOrder($payload);
-                    
-                    // ======================================================
-                    // ==== KITA TAMBAHKAN JUGA DI SINI (JAGA-JAGA) ====
-                    // ======================================================
-                    Log::info('RESPON JSON CREATE ORDER (Callback-Instant):', $kiriminResponse);
-                    // ======================================================
+                $type = 'regular'; $courier = 'jne'; $service = 'REG'; // Default
+
+                if (count($parts) >= 3) {
+                    if ($parts[0] === 'mix') { // Format Legacy: mix-jtcargo-REG...
+                        $courier = $parts[1]; $service = $parts[2];
+                        $type = (str_contains(strtolower($courier), 'cargo') || str_contains(strtolower($service), 'trc')) ? 'cargo' : 'regular';
+                    } else { // Format Baru
+                        $type = $parts[0]; $courier = $parts[1]; $service = $parts[2];
+                    }
+                } elseif (count($parts) == 2) {
+                    $courier = $parts[0]; $service = $parts[1];
                 } else {
-                    throw new \Exception('Tipe pengiriman tidak didukung untuk callback order ini.');
+                    Log::warning("Format pengiriman tidak valid, skip booking.", ['raw' => $rawShipping]);
+                    goto skip_kiriminaja;
                 }
 
+                $validTypes = ['regular', 'cargo', 'instant', 'trucking'];
+                if (!in_array($type, $validTypes)) $type = 'regular';
+                $service = strtoupper(trim($service));
+
+                // --- BUILD PAYLOAD BOOKING ---
+                $payload = [];
+                $kiriminResponse = null;
+
+                // ========================================================
+                // SKENARIO 1: DATA LAMA (TABEL PESANAN)
+                // ========================================================
+                if ($isLegacy) {
+                    
+                    if (!$order->sender_district_id || !$order->receiver_district_id) {
+                        Log::warning("Data wilayah tidak lengkap.", ['id' => $order->id_pesanan]);
+                        goto skip_kiriminaja;
+                    }
+
+                    $estimasiDimensi = ($order->weight > 10000) ? 40 : 10;
+
+                    $packageData = [
+                        'order_id' => $order->nomor_invoice,
+                        'destination_name' => $order->nama_pembeli ?? $order->receiver_name,
+                        'destination_phone' => $order->telepon_pembeli ?? $order->receiver_phone,
+                        'destination_address' => $order->alamat_pengiriman ?? $order->receiver_address,
+                        'destination_kecamatan_id' => $order->receiver_district_id,
+                        'destination_kelurahan_id' => $order->receiver_subdistrict_id,
+                        'weight' => (int) $order->weight,
+                        'width' => (int) ($order->width ?? $estimasiDimensi),
+                        'height' => (int) ($order->height ?? $estimasiDimensi),
+                        'length' => (int) ($order->length ?? $estimasiDimensi),
+                        'item_value' => (int) ($order->total_harga_barang ?? 1000),
+                        'item_name' => $order->item_description ?? 'Paket',
+                        'package_type_id' => (int) ($order->item_type ?? 1), 
+                        'service' => $courier, 
+                        'service_type' => $service,
+                        'shipping_cost' => (int) $order->shipping_cost,
+                        'cod' => 0
+                    ];
+
+                    $payload = [
+                        'kecamatan_id' => $order->sender_district_id, 
+                        'kelurahan_id' => $order->sender_subdistrict_id,
+                        'address' => $order->sender_address,
+                        'phone' => $order->sender_phone, 
+                        'name' => $order->sender_name,
+                        'zipcode' => $order->sender_postal_code ?? '',
+                        'latitude' => $order->sender_lat ?? 0, 
+                        'longitude' => $order->sender_lng ?? 0,
+                        'packages' => [$packageData],
+                        'category' => ($type == 'cargo') ? 'trucking' : 'regular',
+                        'schedule' => \Carbon\Carbon::now()->format('Y-m-d H:i:s'), 
+                        'platform_name' => 'TOKOSANCAKA.COM'
+                    ];
+
+                    // 1. PERCOBAAN PERTAMA: Set Jadwal HARI INI (Sekarang)
+                    $kiriminResponse = $kiriminAja->createExpressOrder($payload);
+
+                    // 2. AUTO RETRY JIKA GAGAL JADWAL (Coba Besok)
+                    if (isset($kiriminResponse['status']) && $kiriminResponse['status'] === false) {
+                        $pesanError = strtolower($kiriminResponse['text'] ?? '');
+                        if (str_contains($pesanError, 'jadwal') || str_contains($pesanError, 'schedule')) {
+                            Log::info("Booking hari ini gagal ({$pesanError}). Mencoba booking ulang untuk BESOK PAGI...");
+                            $payload['schedule'] = \Carbon\Carbon::now()->addDay()->format('Y-m-d 09:00:00');
+                            $kiriminResponse = $kiriminAja->createExpressOrder($payload);
+                        }
+                    }
+                } 
+                // ========================================================
+                // SKENARIO 2: DATA BARU (TABEL ORDERS)
+                // ========================================================
+                else {
+                    $store = $order->store;
+                    $user = $order->user;
+                    if (!$store || !$user) goto skip_kiriminaja;
+
+                    $storeSearch = $store->village . ', ' . $store->regency . ', ' . $store->province;
+                    $storeAddrRes = $kiriminAja->searchAddress($storeSearch);
+                    $storeData = $storeAddrRes['data'][0] ?? null;
+                    
+                    $userSearch = $user->village . ', ' . $user->regency . ', ' . $user->province;
+                    $userAddrRes = $kiriminAja->searchAddress($userSearch);
+                    $userData = $userAddrRes['data'][0] ?? null;
+
+                    if (!$storeData || !$userData) goto skip_kiriminaja;
+
+                    $packagesPayload = [];
+                    $totalWeight = 0;
+                    $jenisBarang = $item->product->jenis_barang ?? 1;
+                    foreach($order->items as $item) {
+                        $w = $item->product->weight ?? 1000;
+                        $totalWeight += ($w * $item->quantity);
+                        $packagesPayload[] = [
+                            'order_id' => $order->invoice_number,
+                            'destination_name' => $user->nama_lengkap,
+                            'destination_phone' => $user->no_wa,
+                            'destination_address' => $order->shipping_address,
+                            'destination_kecamatan_id' => $userData['district_id'],
+                            'destination_kelurahan_id' => $userData['subdistrict_id'],
+                            'weight' => $w * $item->quantity,
+                            'width' => 10, 'height' => 10, 'length' => 10,
+                            'item_value' => $item->price * $item->quantity,
+                            'item_name' => $item->product->name,
+                            'service' => $courier, 'service_type' => $service,
+                            'shipping_cost' => (int) $order->shipping_cost,
+                            'package_type_id' => (int) $jenisBarang,
+                            'cod' => 0
+                        ];
+                    }
+
+                    if ($type === 'instant') {
+                        $payload = [
+                            'service' => $courier, 'service_type' => $service, 'vehicle' => 'motor',
+                            'order_prefix' => $order->invoice_number,
+                            'packages' => [[
+                                'origin_lat' => $store->latitude, 'origin_long' => $store->longitude,
+                                'origin_name' => $store->name, 'origin_phone' => $store->user->no_wa,
+                                'origin_address' => $store->address_detail,
+                                'destination_lat' => $user->latitude, 'destination_long' => $user->longitude,
+                                'destination_name' => $user->nama_lengkap, 'destination_phone' => $user->no_wa,
+                                'destination_address' => $order->shipping_address,
+                                'item' => ['name' => 'Pesanan '.$order->invoice_number, 'price' => $order->subtotal, 'weight' => max(1000, $totalWeight)],
+                                'shipping_price' => (int) $order->shipping_cost
+                            ]]
+                        ];
+                        $kiriminResponse = $kiriminAja->createInstantOrder($payload);
+                    } else {
+                        $payload = [
+                            'kecamatan_id' => $storeData['district_id'], 
+                            'kelurahan_id' => $storeData['subdistrict_id'],
+                            'address' => $store->address_detail, 
+                            'phone' => $store->user->no_wa, 
+                            'name' => $store->name,
+                            'zipcode' => $store->postal_code,
+                            'latitude' => $store->latitude, 
+                            'longitude' => $store->longitude,
+                            'packages' => $packagesPayload,
+                            'category' => ($type == 'cargo') ? 'trucking' : 'regular',
+                            
+                            // FIX: Tambahkan Schedule (Wajib)
+                            'schedule' => \Carbon\Carbon::now()->format('Y-m-d H:i:s'),
+                            'platform_name' => 'TOKOSANCAKA.COM'
+                        ];
+                        $kiriminResponse = $kiriminAja->createExpressOrder($payload);
+                        
+                        // AUTO RETRY LOGIC (Order Baru)
+                        if (isset($kiriminResponse['status']) && $kiriminResponse['status'] === false) {
+                            $pesanError = strtolower($kiriminResponse['text'] ?? '');
+                            if (str_contains($pesanError, 'jadwal') || str_contains($pesanError, 'schedule')) {
+                                Log::info("Booking Order Baru hari ini gagal. Mencoba besok...");
+                                $payload['schedule'] = \Carbon\Carbon::now()->addDay()->format('Y-m-d 09:00:00');
+                                $kiriminResponse = $kiriminAja->createExpressOrder($payload);
+                            }
+                        }
+                    }
+                }
+
+                Log::info('KiriminAja Response:', ['res' => $kiriminResponse]);
+
+                // --- CEK STATUS BOOKING ---
                 if (!empty($kiriminResponse['status']) && $kiriminResponse['status'] === true) {
+                    // SUKSES
+                    $resi = $kiriminResponse['packages'][0]['awb'] ?? 
+                            ($kiriminResponse['result']['awb_no'] ?? 
+                            ($kiriminResponse['results'][0]['awb'] ?? null));
                     
-                    // INI BARIS YANG MASIH SALAH, TAPI KITA BIARKAN DULU
-                    $resi = $kiriminResponse['packages'][0]['awb'] ?? ($kiriminResponse['result']['awb_no'] ?? ($kiriminResponse['results'][0]['awb'] ?? null));
-                    
-                    if ($resi) { $order->shipping_resi = $resi; }
-                    $order->status = 'processing';
-                    Log::info('Order Callback (ORD-): KiriminAja order created successfully.', ['ref' => $merchantRef, 'resi' => $resi]);
-                    
-                    try {
-                         broadcast(new AdminNotificationEvent(
-                             'Pesanan Lunas ('. ($status === 'PAID' ? 'Tripay' : 'DOKU') .')',
-                             "Pesanan #{$order->invoice_number} (Rp " . number_format($order->total_amount) . ") telah dibayar.",
-                             route('admin.orders.show', $order->id)
-                         ));
-                    } catch (Exception $e) {
-                         Log::error('Gagal broadcast AdminNotificationEvent untuk PAID', ['order_id' => $order->id, 'error' => $e->getMessage()]);
+                    if ($resi) {
+                        $order->shipping_resi = $resi;
+                        if ($isLegacy) $order->resi = $resi;
+                        $order->status = 'processing';
+                        $order->save();
+                        Log::info("Booking Sukses! Resi: {$resi}");
                     }
                 } else {
-                    Log::error("Order Callback (ORD-): KiriminAja order creation FAILED for PAID order.", ['ref' => $merchantRef, 'response' => $kiriminResponse]);
+                    // GAGAL -> NOTIF CUSTOMER
+                    $failReason = $kiriminResponse['text'] ?? 'Sedang diproses manual.';
+                    Log::error("Booking Gagal (Status tetap PAID). Alasan: " . $failReason);
+
+                    try {
+                        $customer = $order->user; 
+                        if (!$customer) {
+                            $userId = $order->user_id ?? ($order->id_pengguna_pembeli ?? null);
+                            if ($userId) $customer = \App\Models\User::find($userId);
+                        }
+
+                        if ($customer) {
+                            $pesanCustomer = "Pembayaran diterima! Pengiriman sedang diproses manual oleh Admin karena: {$failReason}. Mohon ditunggu.";
+                            $customer->notify(new \App\Notifications\NotifikasiUmum([
+                                'tipe' => 'Info Pesanan', 'judul' => "Pembayaran Berhasil",
+                                'pesan_utama' => $pesanCustomer,
+                                'url' => route('customer.pesanan.index'), 'icon' => 'fas fa-box-open'
+                            ]));
+                            Log::info("Notifikasi kegagalan booking terkirim ke Customer.");
+                        }
+                    } catch (\Exception $e) {
+                        Log::error("Gagal mengirim notif ke Customer: " . $e->getMessage());
+                    }
                 }
-                $order->save();
-                
-                
-                
-                // ==========================================================
-                // DITAMBAHKAN: KIRIM NOTIFIKASI (UNTUK ORDER LUNAS)
-                // ==========================================================
-                $this->kirimNotifikasiPesananLengkap($order, 'Lunas', $fonnteService);
-                // ==========================================================
 
             } catch (\Exception $e) {
-                Log::error("Order Callback (ORD-): Exception during KiriminAja process for PAID order.", [ 'ref' => $merchantRef, 'error' => $e->getMessage(), 'line' => $e->getLine(), 'file' => $e->getFile() ]);
+                Log::error("KiriminAja Error (Status tetap PAID): " . $e->getMessage());
             }
-            
+
+            skip_kiriminaja:
+
+            // 3. KIRIM NOTIF WA
+            $this->kirimNotifikasiPesananLengkap($order, 'Lunas');
+
         } elseif (in_array($status, ['EXPIRED', 'FAILED', 'UNPAID'])) {
             $order->status = ($status === 'EXPIRED') ? 'expired' : 'failed';
             $order->save();
-            Log::info('Order Callback (ORD-): Order status updated to failed/expired.', ['ref' => $merchantRef, 'status' => $order->status]);
-        } else {
-            Log::warning('Order Callback (ORD-): Received unknown status.', ['ref' => $merchantRef, 'status' => $status]);
         }
     }
     
-/**
- * =========================================================================
- * FUNGSI HELPER BARU UNTUK MENGIRIM NOTIFIKASI LENGKAP (Internal & WA)
- * =========================================================================
- *
- * @param Order $order Instance order yang sudah di-save
- * @param string $tipeNotifikasi Tipe notifikasi ('Baru' atau 'Lunas')
- */
-private function kirimNotifikasiPesananLengkap(Order $order, string $tipeNotifikasi)
-{
-    // Pastikan app(\App\Services\FonnteService::class) di-resolve dengan benar
-    $fonnteService = app(\App\Services\FonnteService::class); 
+private function kirimNotifikasiPesananLengkap($order, string $tipeNotifikasi)
+    {
+        // Pastikan app(\App\Services\FonnteService::class) di-resolve dengan benar
+        $fonnteService = app(\App\Services\FonnteService::class); 
 
-    try {
-        // Eager load semua relasi
-        $order->loadMissing('user', 'store.user', 'items.product', 'items.variant');
-
-        // 1. Dapatkan semua penerima & data dasar
-        $customer = $order->user;
-        $sellerUser = $order->store ? $order->store->user : null;
-        $admins = User::where('role', 'admin')->get();
-        $nomorAdminKhusus = '6285745808809';
-
-        // 2. Rakit daftar produk (sebagai string sederhana)
-        $produkList = $order->items->map(function ($item) {
-            $namaProduk = $item->product ? $item->product->name : 'Produk Dihapus';
-            if ($item->variant) {
-                $namaProduk .= ' (' . str_replace(';', ', ', $item->variant->combination_string) . ')';
+        try {
+            // Eager load semua relasi
+            // Cek dulu apakah ini model Order (baru) atau Pesanan (lama) agar tidak error
+            if (get_class($order) === 'App\Models\Order') {
+                $order->loadMissing('user', 'store.user', 'items.product', 'items.variant');
             }
-            return $namaProduk . ' x ' . $item->quantity;
-        })->implode('; ');
 
-        // 3. OLAH VARIABEL UNTUK PESAN WHATSAPP (Mengatasi ParseError)
-        $totalAmountFormatted = number_format($order->total_amount, 0, ',', '.');
-        $waktuOrderFormatted = $order->created_at->translatedFormat('d M Y, H:i');
-        
-        $statusTeks = ($tipeNotifikasi === 'Lunas') ? 'LUNAS (Siap Diproses)' : 'BARU DIBUAT (Menunggu Bayar)';
-        $judulPesanan = ($tipeNotifikasi === 'Lunas') ? 'PESANAN LUNAS' : 'PESANAN BARU';
+            // 1. Dapatkan semua penerima & data dasar
+            $customer = $order->user;
+            $sellerUser = $order->store ? $order->store->user : null;
+            $admins = User::where('role', 'admin')->get();
+            $nomorAdminKhusus = '6285745808809';
 
-        // Menggunakan operator null coalescing sederhana di luar heredoc
-        $sellerStoreName = $order->store->name ?? 'N/A';
-        $sellerNoWa = $sellerUser->no_wa ?? 'N/A';
-        $customerName = $customer->nama_lengkap ?? 'N/A';
-        $customerNoWa = $customer->no_wa ?? 'N/A';
-        
-        $waMessage = <<<TEXT
-*🔔 {$judulPesanan} (ID: {$order->invoice_number})*
+            // 2. Rakit daftar produk (Support Order & Pesanan)
+            if (get_class($order) === 'App\Models\Order') {
+                $produkList = $order->items->map(function ($item) {
+                    $namaProduk = $item->product ? $item->product->name : 'Produk Dihapus';
+                    if ($item->variant) {
+                        $namaProduk .= ' (' . str_replace(';', ', ', $item->variant->combination_string) . ')';
+                    }
+                    return $namaProduk . ' x ' . $item->quantity;
+                })->implode('; ');
+            } else {
+                // Fallback untuk data legacy (Pesanan)
+                $produkList = $order->item_description ?? 'Paket';
+            }
 
-Halo! Pesanan *{$order->invoice_number}* telah {$statusTeks}.
+            // 3. OLAH VARIABEL UNTUK PESAN WHATSAPP
+            $invoiceNumber = $order->invoice_number ?? $order->nomor_invoice;
+            $totalAmount = $order->total_amount ?? $order->total_harga_barang;
+            $totalAmountFormatted = number_format($totalAmount, 0, ',', '.');
+            $shippingAddress = $order->shipping_address ?? $order->alamat_pengiriman;
+            
+            $statusTeks = ($tipeNotifikasi === 'Lunas') ? 'LUNAS (Siap Diproses)' : 'BARU DIBUAT (Menunggu Bayar)';
+            $judulPesanan = ($tipeNotifikasi === 'Lunas') ? 'PESANAN LUNAS' : 'PESANAN BARU';
+
+            // --- PERBAIKAN LOGIKA NAMA METODE BAYAR ---
+            $rawMethod = strtoupper(trim($order->payment_method));
+            
+            // Mapping nama metode bayar sesuai request
+            if ($rawMethod === 'POTONG SALDO') {
+                $paymentDisplay = 'CASH / SALDO';
+            } elseif ($rawMethod === 'DOKU_JOKUL') {
+                $paymentDisplay = 'DOMPET SANCAKA';
+            } elseif ($rawMethod === 'COD') {
+                $paymentDisplay = 'COD ONGKIR';
+            } elseif ($rawMethod === 'CODBARANG') {
+                $paymentDisplay = 'COD BARANG';
+            } else {
+                $paymentDisplay = $rawMethod; // Default (misal: TRANSFER, OVO, dll)
+            }
+            // -------------------------------------------
+
+            // Data Penjual & Pembeli
+            $sellerStoreName = $order->store->name ?? 'Sancaka Store';
+            $sellerNoWa = $sellerUser->no_wa ?? ($order->sender_phone ?? '-');
+            
+            $customerName = $customer->nama_lengkap ?? ($order->nama_pembeli ?? 'Pelanggan');
+            $customerNoWa = $customer->no_wa ?? ($order->telepon_pembeli ?? '-');
+            
+            // Susun Pesan (Gunakan variabel $paymentDisplay yang sudah diolah tadi)
+            $waMessage = <<<TEXT
+*🔔 {$judulPesanan} (ID: {$invoiceNumber})*
+
+Halo! Pesanan *{$invoiceNumber}* telah {$statusTeks}.
 
 *— Detail Order —*
 - *Total Tagihan:* Rp {$totalAmountFormatted}
-- *Metode Bayar:* {$order->payment_method}
+- *Metode Bayar:* {$paymentDisplay}
 - *Status:* {$statusTeks}
 - *Produk:* {$produkList}
 
 *— Pengiriman —*
 - *Penjual:* {$sellerStoreName} ({$sellerNoWa})
 - *Pembeli:* {$customerName} ({$customerNoWa})
-- *Alamat:* {$order->shipping_address}
+- *Alamat:* {$shippingAddress}
 
 Hormat kami,
 *Sancaka Express*
 TEXT;
-        
-        // --- 4. KIRIM NOTIFIKASI INTERNAL & WHATSAPP ---
+            
+            // --- 4. KIRIM NOTIFIKASI INTERNAL & WHATSAPP ---
 
-        // a. Ke CUSTOMER (Pembeli)
-        if ($customer) {
-            $dataNotifCustomer = [
-                'tipe' => $tipeNotifikasi, 'judul' => ($tipeNotifikasi === 'Lunas') ? 'Pembayaran Berhasil' : 'Pesanan Dibuat',
-                'pesan_utama' => 'Pesanan Anda ' . $order->invoice_number . ' telah ' . ($tipeNotifikasi === 'Lunas' ? 'lunas.' : 'dibuat. Segera bayar.'),
-                'url' => route('checkout.invoice', ['invoice' => $order->invoice_number]),
-                'icon' => 'fas fa-check-circle',
-            ];
-            $customer->notify(new \App\Notifications\NotifikasiUmum($dataNotifCustomer));
-            $fonnteService->sendMessage(preg_replace('/^0/', '62', $customerNoWa), $waMessage);
+            // a. Ke CUSTOMER (Pembeli)
+            if ($customer) {
+                $dataNotifCustomer = [
+                    'tipe' => $tipeNotifikasi, 'judul' => ($tipeNotifikasi === 'Lunas') ? 'Pembayaran Berhasil' : 'Pesanan Dibuat',
+                    'pesan_utama' => 'Pesanan Anda ' . $invoiceNumber . ' telah ' . ($tipeNotifikasi === 'Lunas' ? 'lunas.' : 'dibuat. Segera bayar.'),
+                    'url' => route('checkout.invoice', ['invoice' => $invoiceNumber]),
+                    'icon' => 'fas fa-check-circle',
+                ];
+                $customer->notify(new \App\Notifications\NotifikasiUmum($dataNotifCustomer));
+                
+                if($customerNoWa && $customerNoWa !== '-') {
+                     $fonnteService->sendMessage(preg_replace('/^0/', '62', $customerNoWa), $waMessage);
+                }
+            }
+
+            // b. Ke SELLER (Penjual)
+            if ($sellerUser) {
+                $dataNotifSeller = [
+                    'tipe' => $tipeNotifikasi, 'judul' => ($tipeNotifikasi === 'Lunas') ? 'Pesanan Lunas!' : 'Pesanan Baru!',
+                    'pesan_utama' => "Pesanan {$invoiceNumber} dari {$customerName} telah " . ($tipeNotifikasi === 'Lunas' ? 'lunas.' : 'dibuat.'),
+                    'url' => url('seller/pesanan-marketplace'), 
+                    'icon' => 'fas fa-money-check-alt',
+                ];
+                $sellerUser->notify(new \App\Notifications\NotifikasiUmum($dataNotifSeller));
+                
+                if($sellerNoWa && $sellerNoWa !== '-') {
+                    $fonnteService->sendMessage(preg_replace('/^0/', '62', $sellerNoWa), $waMessage);
+                }
+            }
+
+            // c. Ke ADMIN (Semua Admin + Admin Khusus)
+            if ($admins->count() > 0) {
+                $dataNotifAdmin = [
+                    'tipe' => $tipeNotifikasi, 'judul' => ($tipeNotifikasi === 'Lunas') ? 'ORDER LUNAS (MarketPlace)!' : 'ORDER BARU (MarketPlace)!',
+                    'pesan_utama' => "Pesanan {$invoiceNumber} dari {$customerName}. Total: Rp {$totalAmountFormatted}.",
+                    'url' => route('admin.orders.show', $order->id ?? 0),
+                    'icon' => 'fas fa-money-check-alt',
+                ];
+                // Kirim notifikasi database ke semua admin
+                Notification::send($admins, new \App\Notifications\NotifikasiUmum($dataNotifAdmin));
+            }
+            
+            // d. Nomor Khusus (085745808809)
+            $fonnteService->sendMessage($nomorAdminKhusus, $waMessage);
+
+        } catch (Exception $e) {
+            // Catat error
+            Log::error('Gagal mengirim Notifikasi Pesanan Lengkap: ' . $e->getMessage(), [
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ]);
         }
-
-        // b. Ke SELLER (Penjual)
-        if ($sellerUser) {
-            $dataNotifSeller = [
-                'tipe' => $tipeNotifikasi, 'judul' => ($tipeNotifikasi === 'Lunas') ? 'Pesanan Lunas!' : 'Pesanan Baru!',
-                'pesan_utama' => "Pesanan {$order->invoice_number} dari {$customerName} telah " . ($tipeNotifikasi === 'Lunas' ? 'lunas.' : 'dibuat.'),
-                'url' => url('seller/pesanan-marketplace'), 
-                'icon' => 'fas fa-money-check-alt',
-            ];
-            $sellerUser->notify(new \App\Notifications\NotifikasiUmum($dataNotifSeller));
-            $fonnteService->sendMessage(preg_replace('/^0/', '62', $sellerNoWa), $waMessage);
-        }
-
-        // c. Ke ADMIN (Semua Admin + Admin Khusus)
-        if ($admins->count() > 0) {
-            $dataNotifAdmin = [
-                'tipe' => $tipeNotifikasi, 'judul' => ($tipeNotifikasi === 'Lunas') ? 'ORDER LUNAS (MP)!' : 'ORDER BARU (MP)!',
-                'pesan_utama' => "Pesanan {$order->invoice_number} dari {$customerName}. Total: Rp {$totalAmountFormatted}.",
-                'url' => route('admin.orders.show', $order->id),
-                'icon' => 'fas fa-money-check-alt',
-            ];
-            // Kirim notifikasi database ke semua admin
-            Notification::send($admins, new \App\Notifications\NotifikasiUmum($dataNotifAdmin));
-        }
-        
-        // d. Nomor Khusus (085745808809)
-        $fonnteService->sendMessage($nomorAdminKhusus, $waMessage);
-
-    } catch (Exception $e) {
-        // Catat error
-        Log::error('Gagal mengirim Notifikasi Pesanan Lengkap: ' . $e->getMessage(), [
-            'order_id' => $order->id,
-            'file' => $e->getFile(),
-            'line' => $e->getLine()
-        ]);
     }
-}
 
 } // Akhir Class

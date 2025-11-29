@@ -5,7 +5,7 @@
 @endphp
 
 <header
-    class="w-full  sticky inset-x-0 flex pb-[5px] pt-[7px] top-0 z-10 dark:bg-[var(--wc-dark-secondary)] bg-[var(--wc-light-secondary)] border-[var(--wc-light-primary)] dark:border-[var(--wc-dark-secondary)]   border-b">
+    class="w-full  sticky inset-x-0 flex pb-[5px] pt-[7px] top-0 z-10 bg-[var(--wc-light-secondary)] border-[var(--wc-light-primary)]   border-b">
 
     <div class="  flex  w-full items-center   px-2 py-2   lg:px-4 gap-2 md:gap-5 ">
 
@@ -16,7 +16,7 @@
             href="{{ route(WireChat::indexRouteName(), $conversation->id) }}"
             dusk="return_to_home_button_link" @endif
             @class([
-                'shrink-0  cursor-pointer dark:text-white',
+                'shrink-0  cursor-pointer',
                 'lg:hidden' => !$this->isWidget(),
             ]) id="chatReturn">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.6"
@@ -37,7 +37,7 @@
                             <x-wirechat::avatar disappearing="{{ $conversation->hasDisappearingTurnedOn() }}"
                                 :group="true" :src="$group?->cover_url ?? null "
                                 class="h-8 w-8 lg:w-10 lg:h-10 " />
-                            <h6 class="font-bold text-base text-gray-800 dark:text-white w-full truncate">
+                            <h6 class="font-bold text-base text-gray-800 w-full truncate">
                                 {{ $group?->name }}
                             </h6>
                         </div>
@@ -50,7 +50,7 @@
                             <x-wirechat::avatar disappearing="{{ $conversation->hasDisappearingTurnedOn() }}"
                                 :group="false" :src="$receiver?->cover_url ?? null"
                                 class="h-8 w-8 lg:w-10 lg:h-10 " />
-                            <h6 class="font-bold text-base text-gray-800 dark:text-white w-full truncate">
+                            <h6 class="font-bold text-base text-gray-800 w-full truncate">
                                 {{ $receiver?->display_name }} @if ($conversation->isSelfConversation())
                                     ({{ __('wirechat::chat.labels.you') }})
                                 @endif
@@ -66,7 +66,7 @@
             <div class="flex gap-2 items-center ml-auto col-span-1">
                 <x-wirechat::dropdown align="right" width="48">
                     <x-slot name="trigger">
-                        <button class="cursor-pointer inline-flex px-0 text-gray-700 dark:text-gray-400">
+                        <button class="cursor-pointer inline-flex px-0 text-gray-700">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
                                 stroke-width="1.9" stroke="currentColor" class="size-6 w-7 h-7">
                                 <path stroke-linecap="round" stroke-linejoin="round"
@@ -126,7 +126,7 @@
                                 wire:confirm="{{ __('wirechat::chat.actions.delete_chat.confirmation_message') }}"
                                 class="w-full text-start">
 
-                                <x-wirechat::dropdown-link class="text-red-500 dark:text-red-500">
+                                <x-wirechat::dropdown-link class="text-red-500">
                                     @lang('wirechat::chat.actions.delete_chat.label')
                                 </x-wirechat::dropdown-link>
 
@@ -139,7 +139,7 @@
                                 wire:confirm="{{ __('wirechat::chat.actions.exit_group.confirmation_message') }}"
                                 class="w-full text-start ">
 
-                                <x-wirechat::dropdown-link class="text-red-500 dark:text-gray-500">
+                                <x-wirechat::dropdown-link class="text-red-500">
                                     @lang('wirechat::chat.actions.exit_group.label')
                                 </x-wirechat::dropdown-link>
 

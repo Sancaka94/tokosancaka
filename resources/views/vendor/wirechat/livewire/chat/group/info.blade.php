@@ -1,4 +1,4 @@
-<div id="group-info-modal" class="bg-[var(--wc-light-primary)] dark:bg-[var(--wc-dark-primary)]     min-h-screen">
+<div id="group-info-modal" class="bg-[var(--wc-light-primary)]     min-h-screen">
 
 
     @php
@@ -8,7 +8,7 @@
         $group = $conversation?->group;
     @endphp
 
-    <section class="cursor-pointer flex gap-4 z-10  items-center p-5 sticky top-0 bg-[var(--wc-light-primary)] dark:bg-[var(--wc-dark-primary)]  ">
+    <section class="cursor-pointer flex gap-4 z-10  items-center p-5 sticky top-0 bg-[var(--wc-light-primary)]  ">
         <button wire:click="$dispatch('closeChatDrawer')" class="focus:outline-hidden cursor-pointer"> <svg class="w-7 h-7"
                 xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8"
                 stroke="currentColor">
@@ -40,7 +40,7 @@
                             {{-- penceil --}}
                             <label wire:target="photo" wire:loading.class="cursor-not-allowed"
                                 wire:loading.class.remove="cursor-pointer" for="photo"
-                                class=" cursor-pointer bottom-0 inset-x-0 bg-gray-500/40 hover:bg-gray-500/80 dark:bg-white/40 dark:hover:bg-gray-700  transition-colors text-gray-600 flex items-center justify-center  absolute ">
+                                class=" cursor-pointer bottom-0 inset-x-0 bg-gray-500/40 hover:bg-gray-500/80  transition-colors text-gray-600 flex items-center justify-center  absolute ">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
                                     class="size-6  w-5 h-5">
                                     <path
@@ -50,7 +50,7 @@
                             </label>
                         @else
                             <button type="button" wire:target="photo" wire:loading.attr="disabled"
-                                class="disabled:cursor-not-allowed bottom-0 inset-x-0 bg-gray-500/40 hover:bg-gray-500/80 m-0 p-0 border-0  dark:bg-white/40  dark:hover:bg-gray-700 transition-colors  text-red-800 flex items-center justify-center  absolute "
+                                class="disabled:cursor-not-allowed bottom-0 inset-x-0 bg-gray-500/40 hover:bg-gray-500/80 m-0 p-0 border-0   transition-colors  text-red-800 flex items-center justify-center  absolute "
                                 wire:confirm="Are you sure you want to delete photo ?" wire:click="deletePhoto">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
                                     stroke-width="1.5" stroke="currentColor" class="size-6 w-5 h-5">
@@ -83,7 +83,7 @@
 
                             <input x-cloak maxlength="110" x-show="editing" id='groupName' type="text"
                                 wire:model='groupName'
-                                class="resize-none text-2xl font-medium  border-0 px-0 py-0 py-0 border-b border-[var(--wc-light-border)] dark:border-[var(--wc-dark-border)]  bg-inherit dark:text-white outline-hidden w-full focus:outline-hidden  focus:ring-0 hover:ring-0">
+                                class="resize-none text-2xl font-medium  border-0 px-0 py-0 py-0 border-b border-[var(--wc-light-border)]  bg-inherit outline-hidden w-full focus:outline-hidden  focus:ring-0 hover:ring-0">
 
 
                             @error('groupName')
@@ -140,7 +140,7 @@
                             </div>
 
                             <textarea x-cloak maxlength="501" x-show="editing" id='description' type="text" wire:model.blur='description'
-                                class="resize-none font-medium w-full border-0 px-0 py-0 py-0 border-b border-[var(--wc-light-border)] dark:border-[var(--wc-dark-border)] bg-inherit dark:text-white outline-hidden w-full focus:outline-hidden  focus:ring-0 hover:ring-0">
+                                class="resize-none font-medium w-full border-0 px-0 py-0 py-0 border-b border-[var(--wc-light-border)] bg-inherit outline-hidden w-full focus:outline-hidden  focus:ring-0 hover:ring-0">
                             </textarea>
 
                             @error('description')
@@ -204,7 +204,7 @@
             conversation="{{ $conversation?->id }}" widget="{{ $this->isWidget() }}">
             {{-- Members count --}}
             <button class="cursor-pointer flex w-full justify-between items-center px-8 focus:outline-hidden ">
-                <span class="text-gray-600 dark:text-gray-300">{{ __('wirechat::chat.group.info.labels.members') }}  {{ $totalParticipants }}</span>
+                <span class="text-gray-600">{{ __('wirechat::chat.group.info.labels.members') }}  {{ $totalParticipants }}</span>
                 {{-- Search icon --}}
                 <span>
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
@@ -221,7 +221,7 @@
             <x-wirechat::actions.open-modal component="wirechat.chat.group.add-members"
                 conversation="{{ $conversation?->id }}" widget="{{ $this->isWidget() }}">
                 <button @dusk="open_add_members_modal_button"
-                    class="cursor-pointer w-full py-5 px-8 hover:bg-[var(--wc-light-secondary)] dark:hover:bg-[var(--wc-dark-secondary)] focus:outline-hidden transition  flex gap-3 items-center">
+                    class="cursor-pointer w-full py-5 px-8 hover:bg-[var(--wc-light-secondary)] focus:outline-hidden transition  flex gap-3 items-center">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
                         class="size-6 w-5 h-5">
                         <path
@@ -245,7 +245,7 @@
 
             {{-- Delete group --}}
             <button wire:confirm="{{ __('wirechat::chat.group.info.actions.delete_group.confirmation_message') }}" wire:click="deleteGroup"
-                class="cursor-pointer w-full py-5 px-8 hover:bg-[var(--wc-light-secondary)] dark:hover:bg-[var(--wc-dark-secondary)] transition text-start space-y-2   gap-3   text-red-500">
+                class="cursor-pointer w-full py-5 px-8 hover:bg-[var(--wc-light-secondary)] transition text-start space-y-2   gap-3   text-red-500">
                 <div class="flex gap-3 items-center ">
 
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
@@ -264,10 +264,10 @@
                 <x-wirechat::actions.open-chat-drawer component='wirechat.chat.group.permissions'
                     conversation="{{ $conversation?->id }}">
                     <button
-                        class="cursor-pointer w-full py-5 px-8 hover:bg-[var(--wc-light-secondary)] dark:hover:bg-[var(--wc-dark-secondary)] transition text-start space-y-2   gap-3   dark:text-white/90">
+                        class="cursor-pointer w-full py-5 px-8 hover:bg-[var(--wc-light-secondary)] transition text-start space-y-2   gap-3  ">
                         <div class="flex gap-3 items-center ">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                                stroke-width="1.5" stroke="currentColor" class="size-6 w-5 h-5 dark:text-gray-400">
+                                stroke-width="1.5" stroke="currentColor" class="size-6 w-5 h-5">
                                 <path stroke-linecap="round" stroke-linejoin="round"
                                     d="M4.5 12a7.5 7.5 0 0 0 15 0m-15 0a7.5 7.5 0 1 1 15 0m-15 0H3m16.5 0H21m-1.5 0H12m-8.457 3.077 1.41-.513m14.095-5.13 1.41-.513M5.106 17.785l1.15-.964m11.49-9.642 1.149-.964M7.501 19.795l.75-1.3m7.5-12.99.75-1.3m-6.063 16.658.26-1.477m2.605-14.772.26-1.477m0 17.726-.26-1.477M10.698 4.614l-.26-1.477M16.5 19.794l-.75-1.299M7.5 4.205 12 12m6.894 5.785-1.149-.964M6.256 7.178l-1.15-.964m15.352 8.864-1.41-.513M4.954 9.435l-1.41-.514M12.002 12l-3.75 6.495" />
                             </svg>
@@ -280,7 +280,7 @@
         @else
         {{-- Exit Group --}}
             <button wire:confirm="{{ __('wirechat::chat.group.info.actions.exit_group.confirmation_message') }}" wire:click="exitConversation"
-                class="cursor-pointer w-full py-5 px-8 hover:bg-[var(--wc-light-secondary)] dark:hover:bg-[var(--wc-dark-secondary)] transition flex gap-3 items-center text-red-500">
+                class="cursor-pointer w-full py-5 px-8 hover:bg-[var(--wc-light-secondary)] transition flex gap-3 items-center text-red-500">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                     class="bi bi-box-arrow-right w-5 h-5" viewBox="0 0 16 16">
                     <path fill-rule="evenodd"

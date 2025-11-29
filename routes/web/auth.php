@@ -7,6 +7,8 @@ use App\Http\Controllers\Auth\Customer\CustomerLoginController;
 use App\Http\Controllers\Auth\Customer\CustomerRegisterController;
 use App\Http\Controllers\Auth\Customer\CustomerForgotPasswordController;
 use App\Http\Controllers\Auth\Customer\CustomerResetPasswordController;
+use App\Http\Controllers\Auth\Customer\LoginController; 
+
 
 
 // PERBAIKAN: Ganti 'guest' dengan 'auth.redirect'. 
@@ -31,3 +33,22 @@ Route::middleware('guest')->group(function () {
 
 
  Route::post('/logout', [CustomerLoginController::class, 'logout'])->name('logout')->middleware('auth');
+ 
+ Route::prefix('customer')->name('customer.')->group(function () {
+    
+    // Menampilkan Form (Method: GET)
+    Route::get('password/reset', [CustomerForgotPasswordController::class, 'showLinkRequestForm'])
+        ->name('password.request');
+
+    // Memproses Form & Kirim WA (Method: POST)
+    // Nama route ini ('customer.password.email') harus sama dengan $formAction di blade di atas
+    Route::post('password/email', [CustomerForgotPasswordController::class, 'sendResetLinkRequest'])
+        ->name('password.email');
+
+    // --- TAMBAHAN PENTING ---
+    // Definisi Route Login
+    // Error 'Target class does not exist' akan hilang setelah file CustomerLoginController dibuat di bawah
+    Route::get('login', [CustomerLoginController::class, 'showLoginForm'])->name('login');
+    Route::post('login', [CustomerLoginController::class, 'login']);
+    Route::post('logout', [CustomerLoginController::class, 'logout'])->name('logout');
+});

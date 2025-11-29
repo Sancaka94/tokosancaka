@@ -4,16 +4,16 @@
 
 @section('content')
 <div class="w-full max-w-7xl mx-auto"> {{-- Dibuat lebih lebar (max-w-7xl) untuk tabel --}}
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden">
+    <div class="bg-white rounded-xl shadow-lg overflow-hidden">
         
         {{-- Header Halaman --}}
-        <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+        <div class="p-6 border-b border-gray-200">
             <div class="flex justify-between items-center">
                 <div>
-                    <h2 class="text-2xl font-semibold text-gray-900 dark:text-gray-100">
+                    <h2 class="text-2xl font-semibold text-gray-900">
                         Semua Notifikasi
                     </h2>
-                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    <p class="text-sm text-gray-600 mt-1">
                         Menampilkan semua notifikasi yang telah Anda terima.
                     </p>
                 </div>
@@ -36,28 +36,28 @@
           Wrapper 'overflow-x-auto' sangat penting untuk responsivitas di layar kecil.
         --}}
         <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <table class="min-w-full divide-y divide-gray-200">
                 
                 {{-- Table Header (thead) --}}
-                <thead class="bg-gray-50 dark:bg-gray-700/50">
+                <thead class="bg-gray-50">
                     <tr>
-                        <th scope="col" class="w-16 px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        <th scope="col" class="w-16 px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                             {{-- Kolom Ikon (tidak perlu judul) --}}
                         </th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Notifikasi
                         </th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Waktu
                         </th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Aksi
                         </th>
                     </tr>
                 </thead>
 
                 {{-- Table Body (tbody) --}}
-                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                <tbody class="bg-white divide-y divide-gray-200">
                     
                     @forelse($notifications as $notification)
                         @php
@@ -75,13 +75,13 @@
                           - Diberi 'onclick' untuk navigasi.
                           - Jika sudah dibaca (!isUnread), teks akan dibuat redup (text-gray-500).
                         --}}
-                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer {{ !$isUnread ? 'text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-gray-100' }}"
+                        <tr class="hover:bg-gray-50 cursor-pointer {{ !$isUnread ? 'text-gray-500' : 'text-gray-900' }}"
                             onclick="window.location.href='{{ $url }}';">
                             
                             {{-- Kolom 1: Ikon --}}
                             <td class="px-6 py-4">
-                                <div class="flex-shrink-0 w-10 h-10 flex items-center justify-center {{ $isUnread ? 'bg-indigo-100 dark:bg-indigo-700' : 'bg-gray-100 dark:bg-gray-700' }} rounded-full">
-                                    <i class="{{ $icon }} {{ $isUnread ? 'text-indigo-500 dark:text-indigo-200' : 'text-gray-500 dark:text-gray-400' }} text-lg"></i>
+                                <div class="flex-shrink-0 w-10 h-10 flex items-center justify-center {{ $isUnread ? 'bg-indigo-100' : 'bg-gray-100' }} rounded-full">
+                                    <i class="{{ $icon }} {{ $isUnread ? 'text-indigo-500' : 'text-gray-500' }} text-lg"></i>
                                 </div>
                             </td>
 
@@ -97,7 +97,7 @@
                                         </span>
                                     @endif
                                 </div>
-                                <p class="text-sm mt-1 {{ $isUnread ? 'text-gray-600 dark:text-gray-300' : 'text-gray-500 dark:text-gray-400' }} truncate">
+                                <p class="text-sm mt-1 {{ $isUnread ? 'text-gray-600' : 'text-gray-500' }} truncate">
                                     {{ $message }}
                                 </p>
                             </td>
@@ -113,7 +113,7 @@
                                     <a href="https://www.google.com/maps?q={{ $data['latitude'] }},{{ $data['longitude'] }}"
                                        target="_blank"
                                        onclick="event.stopPropagation();" {{-- PENTING: Mencegah 'onclick' baris --}}
-                                       class="inline-flex items-center gap-1.5 text-xs px-2 py-0.5 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 rounded-full hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors font-medium">
+                                       class="inline-flex items-center gap-1.5 text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors font-medium">
                                         <i class="fas fa-map-marker-alt w-3 h-3"></i>
                                         Lacak
                                     </a>
@@ -125,8 +125,8 @@
                         {{-- Tampilan jika tabel kosong --}}
                         <tr>
                             <td colspan="4" class="text-center p-10">
-                                <i class="fas fa-bell-slash text-4xl text-gray-300 dark:text-gray-600"></i>
-                                <p class="mt-4 text-gray-500 dark:text-gray-400">
+                                <i class="fas fa-bell-slash text-4xl text-gray-300"></i>
+                                <p class="mt-4 text-gray-500">
                                     Tidak ada notifikasi untuk ditampilkan.
                                 </p>
                             </td>
@@ -139,7 +139,7 @@
 
         {{-- Footer Paginasi (jika ada) --}}
         @if($notifications->hasPages())
-            <div class="p-6 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700">
+            <div class="p-6 bg-gray-50 border-t border-gray-200">
                 {{ $notifications->links() }}
             </div>
         @endif

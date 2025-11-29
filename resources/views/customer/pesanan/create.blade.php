@@ -54,6 +54,34 @@
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
             <div class="lg:col-span-2 space-y-8">
+                
+                {{-- MULAI KODE DINAMIS --}}
+    @php
+        // Mengambil data langsung dari Database menggunakan Model Setting
+        // Key harus sama persis dengan yang di Controller ('info_pesanan')
+        $infoAdmin = \App\Models\Setting::where('key', 'info_pesanan')->value('value');
+    @endphp
+
+    @if(!empty($infoAdmin)) 
+        {{-- Alert hanya muncul jika admin mengisi pesan --}}
+        <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg shadow-sm mb-6">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-info-circle text-red-500 mt-0.5"></i>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-sm font-bold text-red-800">
+                        Informasi Penting Admin
+                    </h3>
+                    <div class="mt-1 text-sm text-red-700">
+                        {{-- nl2br agar ENTER yang diketik admin menjadi baris baru --}}
+                        <p>{!! nl2br(e($infoAdmin)) !!}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+    {{-- SELESAI KODE DINAMIS --}}
 
                 <div class="bg-white p-6 rounded-lg shadow-md">
                     <div class="flex justify-between items-center border-b pb-4 mb-6">
@@ -235,16 +263,20 @@
                             @enderror
                         </div>
                         <div>
-                            <label for="service_type" class="block mb-2 text-sm font-medium text-gray-700 required-label">Jenis Layanan</label>
-                            <select name="service_type" id="service_type" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 @error('service_type') is-invalid @enderror" required>
-                                <option value="" disabled selected>Pilih...</option>
-                                <option value="regular">Regular</option><option value="express">Express</option><option value="sameday">Sameday</option>
-                                <option value="instant">Instant</option><option value="cargo">Cargo</option>
-                            </select>
-                            @error('service_type')
-                                <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div>
-                            @enderror
-                        </div>
+    <label for="service_type" class="block mb-2 text-sm font-medium text-gray-700 required-label">Jenis Layanan</label>
+    <select name="service_type" id="service_type" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 @error('service_type') is-invalid @enderror" required>
+        <option value="" disabled {{ old('service_type') == '' ? 'selected' : '' }}>Pilih...</option>
+        
+        {{-- Menambahkan logika 'selected' menggunakan old() --}}
+        <option value="regular" {{ old('service_type') == 'regular' ? 'selected' : '' }}>Regular / Cargo</option>
+        <option value="sameday" {{ old('service_type') == 'sameday' ? 'selected' : '' }}>Grab / Gosend</option>
+
+
+    </select>
+    @error('service_type')
+        <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div>
+    @enderror
+</div>
                         <div>
                             <label for="ansuransi" class="block mb-2 text-sm font-medium text-gray-700 required-label">Asuransi</label>
                             <select name="ansuransi" id="ansuransi" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 @error('ansuransi') is-invalid @enderror" required>

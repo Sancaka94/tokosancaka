@@ -86,7 +86,7 @@ body {
     
     @stack('styles')
 </head>
-<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
+<body class="bg-gray-100 text-gray-800">
 
 @if(isset($error_message))
     <div class="alert alert-danger text-center">
@@ -94,7 +94,7 @@ body {
     </div>
 @endif
 
-<div x-data="{ sidebarOpen: window.innerWidth > 1024 ? true : false }" @resize.window="sidebarOpen = window.innerWidth > 1024 ? true : false" class="flex main-layout-container bg-gray-100 dark:bg-gray-800">
+<div x-data="{ sidebarOpen: window.innerWidth > 1024 ? true : false }" @resize.window="sidebarOpen = window.innerWidth > 1024 ? true : false" class="flex main-layout-container bg-gray-100">
         @include('layouts.partials.sidebar')
 
         <div class="flex-1 flex flex-col overflow-hidden">
@@ -103,7 +103,7 @@ body {
             {{-- 'notification-list-body', 'notification-empty-state', 'notification-count-badge' --}}
             @include('layouts.partials.header')
 
-            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 dark:bg-gray-900 custom-scrollbar">
+            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 custom-scrollbar">
                 <div class="w-full px-4 sm:px-6 lg:px-8 py-8">
                     @yield('content')
                 </div>
@@ -285,7 +285,7 @@ body {
                             if (hasLocation) {
                                 lacakButtonHtml = `
                                     <a href="${locationUrl}" target="_blank" onclick="event.stopPropagation()"
-                                       class="inline-flex items-center gap-1.5 text-xs px-2 py-0.5 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 rounded-full hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors font-medium">
+                                       class="inline-flex items-center gap-1.5 text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors font-medium">
                                         <i class="fas fa-map-marker-alt w-3 h-3"></i>
                                         Lacak
                                     </a>`;
@@ -294,21 +294,21 @@ body {
                              // Tombol "Lihat"
                             const lihatButtonHtml = `
                                 <button onclick="event.preventDefault(); markAndRedirect('${notification.id}', '${url}')"
-                                   class="inline-flex items-center gap-1.5 text-xs px-2 py-1 bg-green dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-md hover:bg-green-50 dark:hover:bg-gray-600 transition-colors font-medium">
+                                   class="inline-flex items-center gap-1.5 text-xs px-2 py-1 bg-green border border-gray-300 text-gray-700 rounded-md hover:bg-green-50 transition-colors font-medium">
                                     <i class="fas fa-eye w-3 h-3"></i>
                                     Lihat
                                 </button>`;
 
                             // Buat baris tabel (tr)
                             const row = document.createElement('tr');
-                            row.className = 'hover:bg-gray-50 dark:hover:bg-gray-700/50';
+                            row.className = 'hover:bg-gray-50';
                             
                             // [PERBAIKAN DARI ANDA] Menggunakan break-words alih-alih truncate
                             row.innerHTML = `
                                 <td class="px-4 py-3 align-top w-2/3 overflow-hidden break-words">
-                                    <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">${title}</p>
-                                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">${message}</p>
-                                    <p class="text-xs text-gray-400 dark:text-gray-500 mt-2">${timeAgo(notification.created_at)}</p>
+                                    <p class="text-sm font-semibold text-gray-900">${title}</p>
+                                    <p class="text-sm text-gray-600 mt-1">${message}</p>
+                                    <p class="text-xs text-gray-400 mt-2">${timeAgo(notification.created_at)}</p>
                                 </td>
                                 <td class="px-4 py-3 align-top text-center w-1/3">
                                     <div class="flex flex-col items-center justify-center gap-2">

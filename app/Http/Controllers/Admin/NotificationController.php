@@ -139,7 +139,7 @@ class NotificationController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $notifications = $user->notifications()->paginate(15);
+        $notifications = $user->notifications()->paginate(3);
 
         if ($request->wantsJson()) {
             return response()->json($notifications);

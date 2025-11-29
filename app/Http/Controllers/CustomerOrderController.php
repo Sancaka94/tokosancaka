@@ -563,34 +563,78 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
     }
 
     /**
-     * =========================================================================
-     * FUNGSI KIRIMINAJA BARU (SINKRONISASI)
-     * =========================================================================
+     * FUNGSI UNTUK MEMBUAT ORDER DI KIRIMIN AJA
      */
     private function _createKiriminAjaOrder(
-        array $data, Pesanan $pesanan, KiriminAjaService $kirimaja,
+        array $data, Pesanan $order, KiriminAjaService $kirimaja,
         array $senderData, array $receiverData, int $cod_value,
-        int $shipping_cost, int $insurance_cost
+        int $shipping_cost, int $insurance_cost 
     ): array
     {
         $expeditionParts = explode('-', $data['expedition'] ?? '');
-        $serviceGroup = $expeditionParts[0] ?? null; $courier = $expeditionParts[1] ?? null; $service_type = $expeditionParts[2] ?? null;
+        $serviceGroup = $expeditionParts[0] ?? null; 
+        $courier = $expeditionParts[1] ?? null; 
+        $service_type = $expeditionParts[2] ?? null;
 
         if (empty($data['sender_address']) || empty($data['sender_phone']) || empty($data['sender_name']) ||
             empty($data['receiver_name']) || empty($data['receiver_phone']) || empty($data['receiver_address']) ||
             empty($data['item_description']) || !isset($data['item_price']) || !isset($data['weight']) ||
             !isset($data['item_type']) || empty($courier) || empty($service_type)) {
-                Log::error('_createKiriminAjaOrder (Public): Missing required data.', ['invoice' => $pesanan->nomor_invoice]);
-                return ['status' => false, 'text' => 'Data pesanan tidak lengkap (Public).'];
+                Log::error('_createKiriminAjaOrder (Customer): Missing required data.', ['invoice' => $order->nomor_invoice]);
+                return ['status' => false, 'text' => 'Data pesanan tidak lengkap untuk dikirim ke ekspedisi.'];
         }
 
+         // ============================================================
+        // LOGIKA FINAL: FEE (Min 2.500) + PPN 11% + PEMBULATAN 500
+        // ============================================================
+        
+        $apiItemPrice = (float) $data['item_price'];
+        $finalInsuranceAmount = ($data['ansuransi'] == 'iya') ? (int)$insurance_cost : 0; 
+        $finalCodValue = $cod_value; 
+
+        // JIKA METODE 'COD' (COD Ongkir):
+        if (isset($data['payment_method']) && $data['payment_method'] === 'COD') {
+            
+            // 1. Tentukan Asuransi & Harga Barang untuk API
+            if ($data['ansuransi'] == 'iya') {
+                $apiItemPrice = (float) $data['item_price']; 
+                $finalInsuranceAmount = (int) $insurance_cost; 
+            } else {
+                $apiItemPrice = 10000; 
+                $finalInsuranceAmount = 0;
+            }
+
+            // 2. Hitung Total Dasar (Ongkir + Asuransi)
+            $totalBasic = (int)$shipping_cost + (int)$finalInsuranceAmount;
+
+            // 3. Hitung COD Fee (3% dari Total Dasar, Minimal 2.500)
+            // Contoh: 3% dari 72.000 = 2.160 -> Dipaksa jadi 2.500
+            $calculatedFee = $totalBasic * 0.03; 
+            $codFeeValue = max(2500, $calculatedFee);
+
+            // 4. Hitung PPN 11% HANYA DARI FEE COD
+            $ppnFee = $codFeeValue * 0.11;
+
+            // 5. Jumlahkan Semua (Total Mentah)
+            $grandTotalMentah = $totalBasic + $codFeeValue + $ppnFee;
+
+            // 6. LOGIKA PEMBULATAN (REQUEST BAPAK)
+            // 1-499 -> 500 | 501-999 -> 1000
+            $finalCodValue = (int) (ceil($grandTotalMentah / 500) * 500);
+
+            // Update harga di database
+            $order->price = $finalCodValue;
+            $order->save();
+        }
+        // ============================================================
         if (in_array($serviceGroup, ['instant', 'sameday'])) {
             if (empty($senderData['lat']) || empty($senderData['lng']) || empty($receiverData['lat']) || empty($receiverData['lng'])) {
-                return ['status' => false, 'text' => 'Koordinat alamat tidak valid (Public).'];
+                return ['status' => false, 'text' => 'Koordinat alamat tidak valid untuk pengiriman instan/sameday.'];
             }
+            
             $payload = [
                 'service' => $courier, 'service_type' => $service_type, 'vehicle' => 'motor',
-                'order_prefix' => $pesanan->nomor_invoice,
+                'order_prefix' => $order->nomor_invoice,
                 'packages' => [[
                     'destination_name' => $data['receiver_name'], 'destination_phone' => $data['receiver_phone'],
                     'destination_lat' => $receiverData['lat'], 'destination_long' => $receiverData['lng'],
@@ -600,32 +644,35 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
                     'origin_address' => $data['sender_address'], 'origin_address_note' => $data['sender_note'] ?? '-',
                     'shipping_price' => (int)$shipping_cost,
                     'item' => [
-                        'name' => $data['item_description'], 'description' => 'Pesanan ' . $pesanan->nomor_invoice,
+                        'name' => $data['item_description'], 'description' => 'Pesanan ' . $order->nomor_invoice,
                         'price' => (int)$data['item_price'], 'weight' => (int)$data['weight'],
                     ]
                 ]]
             ];
-            Log::info('KiriminAja Create Instant Order Payload (Public):', $payload);
+            Log::info('KiriminAja Create Instant Order Payload (Customer):', $payload);
             return $kirimaja->createInstantOrder($payload);
 
-        } else { // Express, Regular, Cargo
-            $scheduleResponse = $kirimaja->getSchedules(); $scheduleClock = $scheduleResponse['clock'] ?? null;
+        } else { 
+            $scheduleResponse = $kirimaja->getSchedules(); 
+            $scheduleClock = $scheduleResponse['clock'] ?? null;
             $category = ($data['service_type'] ?? $serviceGroup) === 'cargo' ? 'trucking' : 'regular';
 
             $weightInput = (int) $data['weight'];
-            $lengthInput = (int) ($data['length'] ?? 1); $widthInput = (int) ($data['width'] ?? 1); $heightInput = (int) ($data['height'] ?? 1);
+            $lengthInput = (int) ($data['length'] ?? 1); 
+            $widthInput = (int) ($data['width'] ?? 1); 
+            $heightInput = (int) ($data['height'] ?? 1);
+            
             $volumetricWeight = 0;
             if ($lengthInput > 0 && $widthInput > 0 && $heightInput > 0) {
                 $volumetricWeight = ($widthInput * $lengthInput * $heightInput) / ($category === 'trucking' ? 4000 : 6000) * 1000;
             }
             $finalWeight = max($weightInput, $volumetricWeight);
-            $insuranceAmount = ($data['ansuransi'] == 'iya') ? (int)$data['item_price'] : 0;
 
             if (empty($senderData['kirimaja_data']['district_id']) || empty($senderData['kirimaja_data']['subdistrict_id']) ||
                 empty($receiverData['kirimaja_data']['district_id']) || empty($receiverData['kirimaja_data']['subdistrict_id']) ||
                 empty($senderData['kirimaja_data']['postal_code']) || empty($receiverData['kirimaja_data']['postal_code'])) {
-                    Log::error('_createKiriminAjaOrder (Public): Missing KiriminAja address IDs.', ['invoice' => $pesanan->nomor_invoice, 'sender_data' => $senderData, 'receiver_data' => $receiverData]);
-                    return ['status' => false, 'text' => 'ID alamat KiriminAja tidak lengkap (Public).'];
+                    Log::error('_createKiriminAjaOrder (Customer): Missing KiriminAja address IDs.', ['invoice' => $order->nomor_invoice]);
+                    return ['status' => false, 'text' => 'ID alamat KiriminAja tidak lengkap.'];
             }
 
             $payload = [
@@ -635,22 +682,26 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
                 'platform_name' => 'tokosancaka.com', 'category' => $category,
                 'latitude' => $senderData['lat'], 'longitude' => $senderData['lng'],
                 'packages' => [[
-                    'order_id' => $pesanan->nomor_invoice, 'item_name' => $data['item_description'],
+                    'order_id' => $order->nomor_invoice, 'item_name' => $data['item_description'],
                     'package_type_id' => (int)$data['item_type'],
                     'destination_name' => $data['receiver_name'], 'destination_phone' => $data['receiver_phone'],
                     'destination_address' => $data['receiver_address'],
                     'destination_kecamatan_id' => $receiverData['kirimaja_data']['district_id'], 'destination_kelurahan_id' => $receiverData['kirimaja_data']['subdistrict_id'],
                     'destination_zipcode' => $receiverData['kirimaja_data']['postal_code'],
-                    'weight' => ceil($finalWeight), 
+                    'weight' => (int) ceil($finalWeight), 
                     'width' => $widthInput, 'height' => $heightInput, 'length' => $lengthInput,
-                    'item_value' => (int)$data['item_price'],
+                    
+                    // --- DATA FINAL KE API ---
+                    'item_value' => (int)$apiItemPrice, 
+                    'insurance_amount' => (int)$finalInsuranceAmount, 
+                    'cod' => (int)$finalCodValue, 
+                    // -------------------------
+
                     'service' => $courier, 'service_type' => $service_type,
-                    'insurance_amount' => $insuranceAmount,
-                    'cod' => $cod_value,
                     'shipping_cost' => (int)$shipping_cost
                 ]]
             ];
-            Log::info('KiriminAja Create Express/Cargo Order Payload (Public):', $payload);
+            Log::info('KiriminAja Create Express/Cargo Order Payload (Customer):', $payload);
             return $kirimaja->createExpressOrder($payload);
         }
     }
