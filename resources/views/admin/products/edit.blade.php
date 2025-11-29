@@ -192,19 +192,27 @@
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
                     <h2 class="text-lg font-semibold text-gray-800 flex items-center">
-                        <i class="fa-solid fa-box-open text-indigo-500 mr-2"></i> Informasi Dasar
+                        {{-- Icon diubah jadi Blue agar seragam --}}
+                        <i class="fa-solid fa-box-open text-blue-500 mr-2"></i> Informasi Dasar
                     </h2>
                 </div>
-                <div class="p-6 space-y-5">
+                
+                <div class="p-6 space-y-6">
+                    {{-- Input Nama Produk --}}
                     <div>
                         <label for="name" class="block text-sm font-medium text-gray-700 mb-1 required-label">Nama Produk</label>
-                        <input type="text" name="name" id="name" value="{{ old('name', $product->name) }}" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors" placeholder="Contoh: Kemeja Pria Slim Fit" required>
+                        <input type="text" name="name" id="name" value="{{ old('name', $product->name) }}" 
+                               class="w-full h-11 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-colors text-gray-700" 
+                               placeholder="Contoh: Kemeja Pria Slim Fit" required>
                         @error('name') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
                     </div>
                     
+                    {{-- Textarea Deskripsi --}}
                     <div>
                         <label for="description" class="block text-sm font-medium text-gray-700 mb-1">Deskripsi Produk</label>
-                        <textarea name="description" id="description" rows="6" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors" placeholder="Jelaskan detail produk Anda...">{{ old('description', $product->description) }}</textarea>
+                        <textarea name="description" id="description" rows="6" 
+                                  class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-colors text-gray-700 leading-relaxed" 
+                                  placeholder="Jelaskan detail spesifikasi, keunggulan, dan fitur produk Anda...">{{ old('description', $product->description) }}</textarea>
                         @error('description') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
                     </div>
                 </div>
