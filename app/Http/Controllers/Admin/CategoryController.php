@@ -131,5 +131,52 @@ class CategoryController extends Controller
         return redirect()->route('admin.categories.edit', $category);
     }
 
+     public function storeAjax(Request $request)
+{
+    // 1. Validasi sederhana
+    $request->validate([
+        'name' => 'required|string|max:255|unique:categories,name'
+    ]);
+
+    // 2. Buat Slug & Simpan
+    $category = \App\Models\Category::create([
+        'name' => $request->name,
+        'slug' => Str::slug($request->name),
+        'type' => 'product', // Pastikan diset type-nya agar muncul di filter produk
+    ]);
+
+    // 3. Kembalikan JSON Response
+    return response()->json([
+        'success' => true,
+        'message' => 'Kategori berhasil ditambahkan',
+        'data' => [
+            'id' => $category->id,
+            'name' => $category->name,
+            // URL untuk ambil atribut (jika nanti kategori baru ini diisi atribut)
+            'attributes_url' => route('admin.categories.attributes', $category->id) 
+        ]
+    ]);
+}
+
+public function destroyAjax($id)
+{
+    $category = \App\Models\Category::findOrFail($id);
+    
+    // Cek apakah sedang dipakai produk (Opsional, untuk keamanan)
+    if ($category->products()->exists()) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Gagal! Kategori ini sedang digunakan oleh produk lain.'
+        ], 422);
+    }
+
+    $category->delete();
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Kategori berhasil dihapus'
+    ]);
+}
+
 }
 

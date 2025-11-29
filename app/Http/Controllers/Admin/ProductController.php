@@ -772,4 +772,7 @@ class ProductController extends Controller
             $variantToDel->delete();
         }
     }
+
+   
+
 }

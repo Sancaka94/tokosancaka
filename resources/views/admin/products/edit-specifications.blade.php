@@ -342,69 +342,150 @@ document.addEventListener('DOMContentLoaded', () => {
         if (input) input.value = val;
     }
 
-    // === 5. LOGIC TAMBAH & HAPUS KATEGORI ===
+    // === 5. LOGIC TAMBAH & HAPUS KATEGORI (REAL AJAX) ===
     
-    // Toggle Form Tambah
     const btnToggleAdd = document.getElementById('btn-toggle-add-cat');
     const addWrapper = document.getElementById('add-category-wrapper');
     const inputNewCat = document.getElementById('new_category_name');
     const btnSaveCat = document.getElementById('btn-save-new-cat');
+    
+    // Ambil CSRF Token dari meta tag header (bawaan Laravel)
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
+    // Toggle Tampilan Form
     btnToggleAdd.addEventListener('click', () => {
         addWrapper.classList.toggle('hidden');
         if (!addWrapper.classList.contains('hidden')) inputNewCat.focus();
     });
 
-    // Simpan Kategori Baru (Mockup)
+    // --- FUNGSI SIMPAN KATEGORI (REAL) ---
     btnSaveCat.addEventListener('click', async () => {
         const name = inputNewCat.value.trim();
         if(!name) return alert('Nama kategori wajib diisi');
-        
-        // TODO: AJAX Call ke Backend Anda (Route store category)
-        // ... Logika Fetch disini ...
-        
-        // Simulasi Tambah UI
-        const newLi = document.createElement('li');
-        newLi.className = "category-item relative cursor-pointer hover:bg-indigo-50 transition-colors group bg-indigo-50 border-l-4 border-indigo-500";
-        newLi.dataset.id = Date.now(); // Dummy ID
-        newLi.dataset.name = name;
-        newLi.dataset.url = ""; // Dummy URL
-        newLi.innerHTML = `
-            <div class="px-4 py-3 flex items-center justify-between">
-                <span class="text-sm text-indigo-800 font-bold category-text">${name}</span>
-                <i class="fa-solid fa-check text-indigo-600 check-icon"></i>
-            </div>
-        `;
-        
-        // Prepend ke list (paling atas)
-        listContainer.insertBefore(newLi, listContainer.firstChild);
-        
-        // Auto select
-        categoryInput.value = newLi.dataset.id;
-        selectCategoryUI(newLi);
-        
-        // Reset form
-        inputNewCat.value = '';
-        addWrapper.classList.add('hidden');
+
+        // Loading State
+        const originalContent = btnSaveCat.innerHTML;
+        btnSaveCat.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        btnSaveCat.disabled = true;
+
+        try {
+            // 1. Kirim Request ke Laravel
+            const response = await fetch("{{ route('admin.categories.storeAjax') }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken, // Wajib ada
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ name: name })
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                // Jika error validasi atau server error
+                throw new Error(result.message || 'Gagal menyimpan kategori');
+            }
+
+            // 2. Jika Sukses: Update UI List
+            const newCat = result.data;
+            
+            const newLi = document.createElement('li');
+            newLi.className = "category-item relative cursor-pointer hover:bg-indigo-50 transition-colors group";
+            newLi.dataset.id = newCat.id;
+            newLi.dataset.name = newCat.name;
+            newLi.dataset.url = newCat.attributes_url;
+
+            newLi.innerHTML = `
+                <div class="px-4 py-3 flex items-center justify-between">
+                    <span class="text-sm text-gray-700 font-medium group-hover:text-indigo-700 category-text">${newCat.name}</span>
+                    <i class="fa-solid fa-check text-indigo-600 hidden check-icon"></i>
+                </div>
+            `;
+            
+            // Tambahkan event listener click ke item baru ini
+            newLi.addEventListener('click', () => {
+                categoryInput.value = newCat.id;
+                selectCategoryUI(newLi);
+                warningBox.classList.remove('hidden');
+                fetchAndRenderAttributes(newCat.attributes_url);
+            });
+
+            // Masukkan ke paling atas list
+            listContainer.insertBefore(newLi, listContainer.firstChild);
+
+            // Langsung pilih kategori baru tersebut
+            categoryInput.value = newCat.id;
+            selectCategoryUI(newLi);
+            
+            // Bersihkan form
+            inputNewCat.value = '';
+            addWrapper.classList.add('hidden');
+            
+            // Tampilkan Notifikasi (Opsional)
+            // alert('Kategori berhasil dibuat!'); 
+
+        } catch (error) {
+            console.error(error);
+            alert('Error: ' + error.message);
+        } finally {
+            // Reset Tombol
+            btnSaveCat.innerHTML = originalContent;
+            btnSaveCat.disabled = false;
+        }
     });
 
-    // Hapus Kategori
-    deleteBtn.addEventListener('click', () => {
+    // --- FUNGSI HAPUS KATEGORI (REAL) ---
+    deleteBtn.addEventListener('click', async () => {
         const id = categoryInput.value;
         if(!id) return;
         
-        if(!confirm('Hapus kategori ini?')) return;
+        if(!confirm('Apakah Anda yakin ingin menghapus kategori ini dari database?')) return;
 
-        // TODO: AJAX Call ke Backend
-        
-        // Remove UI
-        const itemToRemove = document.querySelector(`.category-item[data-id="${id}"]`);
-        if(itemToRemove) itemToRemove.remove();
-        
-        categoryInput.value = '';
-        selectCategoryUI(null);
-        attributesContainer.innerHTML = '';
-        attributesCard.classList.add('hidden');
+        // Loading State
+        const originalContent = deleteBtn.innerHTML;
+        deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        deleteBtn.disabled = true;
+
+        try {
+            // 1. Kirim Request Delete ke Laravel
+            // Kita perlu URL route yang dinamis berdasarkan ID
+            const url = "{{ route('admin.categories.destroyAjax', ':id') }}".replace(':id', id);
+
+            const response = await fetch(url, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json'
+                }
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.message || 'Gagal menghapus kategori');
+            }
+
+            // 2. Jika Sukses: Hapus dari UI
+            const itemToRemove = document.querySelector(`.category-item[data-id="${id}"]`);
+            if(itemToRemove) {
+                itemToRemove.remove();
+            }
+            
+            // Reset Pilihan
+            categoryInput.value = '';
+            selectCategoryUI(null);
+            attributesContainer.innerHTML = '';
+            attributesCard.classList.add('hidden');
+            warningBox.classList.add('hidden');
+
+        } catch (error) {
+            console.error(error);
+            alert('Gagal: ' + error.message);
+        } finally {
+            deleteBtn.innerHTML = originalContent;
+            deleteBtn.disabled = false;
+        }
     });
-});
+    
 </script>

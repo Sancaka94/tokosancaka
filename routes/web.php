@@ -443,6 +443,11 @@ Route::middleware(['auth', RoleMiddleware::class . ':Pelanggan|Seller'])
 
 Route::prefix('admin')->name('admin.')->group(function () {
     
+
+    // Route khusus untuk simpan kategori via AJAX
+Route::post('/admin/categories/ajax-store', [App\Http\Controllers\Admin\CategoryController::class, 'storeAjax'])->name('admin.categories.storeAjax');
+// Route untuk hapus kategori via AJAX
+Route::delete('/admin/categories/ajax-delete/{id}', [App\Http\Controllers\Admin\CategoryController::class, 'destroyAjax'])->name('admin.categories.destroyAjax');
     
     // Fitur Multi Koli Admin (YANG BARU ANDA BUAT)
     Route::get('/pesanan/buat-multi', [AdminKoliController::class, 'create'])->name('pesanan.create_multi');
