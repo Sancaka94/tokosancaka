@@ -156,162 +156,127 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // === 1. SETUP DATA ===
-    const rawAttributes = {!! $product->existing_attributes_json ?? '{}' !!};
-    const existingAttributes = Array.isArray(rawAttributes) && rawAttributes.length === 0 ? {} : rawAttributes;
+    // ============================================================
+    // 1. TERIMA DATA DARI CONTROLLER
+    // ============================================================
+    // Perhatikan: Kita menggunakan variable $existingAttributesJson (bukan $product->...)
+    const rawData = {!! $existingAttributesJson ?? '{}' !!}; 
+    const existingAttributes = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
 
+    // DEBUG: Cek di Console Browser (F12)
+    console.log("🔥 DATA LAMA DARI CONTROLLER:", existingAttributes);
+
+    // ============================================================
+    // 2. SETUP DOM ELEMENTS
+    // ============================================================
     const categorySelect = document.getElementById('category_id');
     const attributesCard = document.getElementById('attributes-card');
     const attributesContainer = document.getElementById('dynamic-attributes-container');
 
-    // Helper: Normalisasi Slug
-    function normalizeSlug(str) {
-        return str.toLowerCase().replace(/_/g, '-').replace(/\s+/g, '-');
-    }
-
-    // === 2. LOGIC FETCH SPESIFIKASI ===
+    // ============================================================
+    // 3. FUNGSI UTAMA (FETCH & FILL)
+    // ============================================================
     async function fetchAndRenderAttributes() {
+        // Ambil URL dari option yang terpilih
         const selectedOption = categorySelect.options[categorySelect.selectedIndex];
-        
-        // Cek apakah ada opsi yang dipilih
         if (!selectedOption || !selectedOption.value) {
-            attributesCard.classList.add('hidden'); // Sembunyikan jika tidak ada kategori
+            attributesCard.classList.add('hidden');
             return;
         }
 
         const url = selectedOption.dataset.attributesUrl;
-        
-        // Debugging URL (Cek Console F12 jika masih error)
-        console.log("URL Fetch:", url); 
+        if (!url) return;
 
-        if (!url) {
-            console.error("URL Atribut tidak ditemukan di opsi kategori.");
-            return;
-        }
-
-        // [PERBAIKAN UTAMA] Tampilkan Card LANGSUNG sebelum fetch dimulai
+        // Tampilkan Card & Loading
         attributesCard.classList.remove('hidden');
-        
-        // Tampilkan Loading State
         attributesContainer.innerHTML = `
-            <div class="py-8 text-center text-gray-500 animate-pulse">
-                <i class="fas fa-circle-notch fa-spin text-indigo-500 text-2xl mb-2"></i>
-                <p>Memuat spesifikasi...</p>
-            </div>
-        `;
+            <div class="text-center py-6 text-gray-500">
+                <i class="fas fa-circle-notch fa-spin text-indigo-500 mb-2 text-xl"></i>
+                <p>Memuat formulir...</p>
+            </div>`;
 
         try {
+            // Fetch struktur form dari server
             const response = await fetch(url);
-            
-            if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
-            
             const attributesStructure = await response.json();
+            
             attributesContainer.innerHTML = ''; // Hapus loading
 
             if (attributesStructure && attributesStructure.length > 0) {
                 attributesStructure.forEach(attr => {
-                    // Render Input Field
-                    const fieldHtml = createAttributeField(attr);
-                    attributesContainer.appendChild(fieldHtml);
+                    // A. Render Input HTML
+                    const fieldElement = createAttributeField(attr);
+                    attributesContainer.appendChild(fieldElement);
 
-                    // --- LOGIC AUTO-FILL NILAI LAMA ---
-                    let value = existingAttributes[attr.slug];
+                    // B. Isi Nilai (Auto-Fill)
+                    // Cek slug asli
+                    let dbValue = existingAttributes[attr.slug];
 
-                    // Fallback: Coba cocokkan slug jika beda format (misal: 'jenis_izin' vs 'jenis-izin')
-                    if (value === undefined) {
-                        const normalizedKey = normalizeSlug(attr.slug);
-                        const matchingKey = Object.keys(existingAttributes).find(key => normalizeSlug(key) === normalizedKey);
-                        if (matchingKey) value = existingAttributes[matchingKey];
+                    // Fallback: Cek slug dengan format berbeda (misal database "jenis_izin" vs form "jenis-izin")
+                    if (dbValue === undefined) {
+                         const normalizedSlug = attr.slug.replace(/-/g, '_'); // coba ubah - jadi _
+                         dbValue = existingAttributes[normalizedSlug];
                     }
 
-                    // Isi value jika ada
-                    if (value !== undefined && value !== null) {
-                        fillAttributeValue(fieldHtml, attr, value);
+                    if (dbValue !== undefined && dbValue !== null) {
+                        console.log(`✅ Mengisi [${attr.slug}] dengan nilai:`, dbValue);
+                        fillAttributeValue(fieldElement, attr, dbValue);
+                    } else {
+                        console.log(`❌ Data kosong untuk [${attr.slug}]`);
                     }
                 });
             } else {
-                attributesContainer.innerHTML = `
-                    <div class="text-center py-6 border-2 border-dashed border-gray-200 rounded-lg">
-                        <p class="text-gray-400 italic">Tidak ada spesifikasi khusus untuk kategori ini.</p>
-                    </div>
-                `;
+                attributesContainer.innerHTML = '<p class="text-gray-400 italic text-center">Tidak ada spesifikasi khusus.</p>';
             }
 
         } catch (error) {
-            console.error("Error Fetching:", error);
-            attributesContainer.innerHTML = `
-                <div class="p-4 bg-red-50 text-red-600 rounded-lg text-sm text-center">
-                    <i class="fa-solid fa-triangle-exclamation mr-1"></i> Gagal memuat data spesifikasi.
-                    <br><span class="text-xs text-red-400">${error.message}</span>
-                </div>
-            `;
+            console.error("Error:", error);
+            attributesContainer.innerHTML = '<p class="text-red-500 text-center">Gagal memuat form.</p>';
         }
     }
 
-    // Helper: Buat HTML Input
+    //Helper: Membuat HTML Field
     function createAttributeField(attr) {
         const wrapper = document.createElement('div');
-        const inputName = `attributes[${attr.slug}]`; 
-        const commonClass = "w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors";
+        const inputName = `attributes[${attr.slug}]`;
+        const commonClass = "w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500";
         let inputHtml = '';
 
         if (attr.type === 'select') {
-            const opts = (attr.options||'').split(',').map(o => `<option value="${o.trim()}">${o.trim()}</option>`).join('');
+            const opts = (attr.options || '').split(',').map(o=>o.trim()).map(o=>`<option value="${o}">${o}</option>`).join('');
             inputHtml = `<select name="${inputName}" class="${commonClass}"><option value="">-- Pilih --</option>${opts}</select>`;
         } else if (attr.type === 'textarea') {
-             inputHtml = `<textarea name="${inputName}" rows="3" class="${commonClass}"></textarea>`;
+            inputHtml = `<textarea name="${inputName}" rows="3" class="${commonClass}"></textarea>`;
         } else if (attr.type === 'checkbox') {
-             const opts = (attr.options||'').split(',').map(o => `
-                <label class="inline-flex items-center mr-4 mt-2 cursor-pointer">
-                    <input type="checkbox" name="${inputName}[]" value="${o.trim()}" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500">
-                    <span class="ml-2 text-sm text-gray-700">${o.trim()}</span>
-                </label>`).join('');
-             inputHtml = `<div class="block pt-1">${opts}</div>`;
+             // Checkbox mockup sederhana
+             inputHtml = `<input type="text" name="${inputName}" class="${commonClass}" placeholder="Isi manual (Multi-select belum aktif)">`;
         } else {
-            const type = attr.type === 'number' ? 'number' : 'text';
-            inputHtml = `<input type="${type}" name="${inputName}" class="${commonClass}">`;
+            inputHtml = `<input type="text" name="${inputName}" class="${commonClass}">`;
         }
-        
-        const reqLabel = attr.is_required ? ' <span class="text-red-500">*</span>' : '';
-        wrapper.innerHTML = `<label class="block text-sm font-medium text-gray-700 mb-1">${attr.name}${reqLabel}</label>${inputHtml}`;
+
+        const req = attr.is_required ? '<span class="text-red-500">*</span>' : '';
+        wrapper.innerHTML = `<label class="block text-sm font-medium text-gray-700 mb-1">${attr.name} ${req}</label>${inputHtml}`;
         return wrapper;
     }
 
-    // Helper: Isi Value
+    // Helper: Mengisi Nilai ke Input
     function fillAttributeValue(wrapper, attr, val) {
-        if (attr.type === 'checkbox') {
-            const arr = Array.isArray(val) ? val : [val];
-            wrapper.querySelectorAll('input[type="checkbox"]').forEach(chk => {
-                if(arr.includes(chk.value)) chk.checked = true;
-            });
-        } else {
-            const inp = wrapper.querySelector(`[name="attributes[${attr.slug}]"]`);
-            if(inp) inp.value = val;
+        const input = wrapper.querySelector(`[name="attributes[${attr.slug}]"]`);
+        if (input) {
+            input.value = val;
         }
     }
 
-    // === 3. EVENT LISTENERS ===
-    
-    // Jalankan saat load halaman (PENTING AGAR FORM MUNCUL)
-    if (categorySelect && categorySelect.value) {
-        fetchAndRenderAttributes();
-    }
-
-    // Jalankan saat user ganti kategori
+    // ============================================================
+    // 4. EVENT LISTENER
+    // ============================================================
     if (categorySelect) {
         categorySelect.addEventListener('change', fetchAndRenderAttributes);
-    }
-    
-    // === 4. LOGIC KATEGORI BARU/HAPUS (Opsional/UI Only) ===
-    const btnToggleAdd = document.getElementById('btn-toggle-add-cat');
-    const addWrapper = document.getElementById('add-category-wrapper');
-    const inputNewCat = document.getElementById('new_category_name');
-    
-    if(btnToggleAdd) {
-        btnToggleAdd.addEventListener('click', () => {
-            addWrapper.classList.toggle('hidden');
-            if(!addWrapper.classList.contains('hidden')) inputNewCat.focus();
-        });
+        
+        // Trigger otomatis saat halaman dimuat jika kategori sudah terpilih
+        if (categorySelect.value) {
+            fetchAndRenderAttributes();
+        }
     }
 });
 </script>
