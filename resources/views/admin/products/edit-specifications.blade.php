@@ -180,145 +180,156 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // === 1. SETUP DATA & VARIABLE ===
-    const rawAttributes = {!! $existingAttributesJson ?? '{}' !!};
-    const existingAttributes = typeof rawAttributes === 'string' ? JSON.parse(rawAttributes) : rawAttributes;
+    // =========================================================================
+    // 1. PERSIAPAN DATA & VARIABEL
+    // =========================================================================
+    
+    // Ambil CSRF Token untuk AJAX Request
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
 
+    // Parsing Data Atribut Lama dari Controller
+    let existingAttributes = {};
+    try {
+        const rawData = {!! $existingAttributesJson ?? '{}' !!};
+        existingAttributes = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
+        console.log("📦 Data Atribut Tersimpan:", existingAttributes);
+    } catch (e) {
+        console.error("Gagal memproses data atribut:", e);
+    }
+
+    // Seleksi Element DOM
     const categoryInput = document.getElementById('category_id'); // Hidden Input
     const listContainer = document.getElementById('category-list');
     const searchInput = document.getElementById('cat-search');
     const deleteBtn = document.getElementById('btn-delete-cat');
-    const items = document.querySelectorAll('.category-item');
+    const items = document.querySelectorAll('.category-item'); // List awal
     const warningBox = document.getElementById('cat-warning');
 
     const attributesCard = document.getElementById('attributes-card');
     const attributesContainer = document.getElementById('dynamic-attributes-container');
 
-    // === 2. LOGIC PENCARIAN (SEARCH) ===
-    searchInput.addEventListener('input', (e) => {
-        const term = e.target.value.toLowerCase();
-        let hasResult = false;
+    // Element Tambah Kategori
+    const btnToggleAdd = document.getElementById('btn-toggle-add-cat');
+    const addWrapper = document.getElementById('add-category-wrapper');
+    const inputNewCat = document.getElementById('new_category_name');
+    const btnSaveCat = document.getElementById('btn-save-new-cat');
 
-        items.forEach(item => {
-            const text = item.querySelector('.category-text').textContent.toLowerCase();
-            if (text.includes(term)) {
-                item.classList.remove('hidden');
-                hasResult = true;
-            } else {
-                item.classList.add('hidden');
-            }
-        });
+    // =========================================================================
+    // 2. FUNGSI LOGIKA UTAMA (UI & FETCH)
+    // =========================================================================
 
-        // Optional: Tampilkan pesan jika tidak ada hasil
-        // if(!hasResult) ...
-    });
-
-    // === 3. LOGIC SELEKSI KATEGORI (CUSTOM LIST) ===
+    /**
+     * Mengatur tampilan visual item list (Aktif/Tidak)
+     */
     function selectCategoryUI(element) {
-        // Reset semua style active
-        items.forEach(el => {
+        // Reset semua item menjadi tampilan default
+        const allItems = document.querySelectorAll('.category-item');
+        allItems.forEach(el => {
             el.classList.remove('bg-indigo-50', 'bg-indigo-100', 'border-l-4', 'border-indigo-500');
-            el.querySelector('.check-icon').classList.add('hidden');
-            el.querySelector('.category-text').classList.remove('text-indigo-800', 'font-bold');
+            const icon = el.querySelector('.check-icon');
+            if(icon) icon.classList.add('hidden');
+            const text = el.querySelector('.category-text');
+            if(text) text.classList.remove('text-indigo-800', 'font-bold');
         });
 
-        // Set style active pada element yang dipilih
+        // Highlight item yang dipilih
         if (element) {
             element.classList.add('bg-indigo-50', 'border-l-4', 'border-indigo-500');
-            element.querySelector('.check-icon').classList.remove('hidden');
-            element.querySelector('.category-text').classList.add('text-indigo-800', 'font-bold');
-            
-            // Scroll ke element jika perlu (optional)
-            // element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            const icon = element.querySelector('.check-icon');
+            if(icon) icon.classList.remove('hidden');
+            const text = element.querySelector('.category-text');
+            if(text) text.classList.add('text-indigo-800', 'font-bold');
 
-            deleteBtn.disabled = false;
-            deleteBtn.classList.remove('text-gray-400');
-            deleteBtn.classList.add('text-red-500', 'hover:bg-red-50', 'p-1', 'rounded');
+            // Aktifkan tombol hapus
+            if(deleteBtn) {
+                deleteBtn.disabled = false;
+                deleteBtn.classList.remove('text-gray-400');
+                deleteBtn.classList.add('text-red-500', 'hover:bg-red-50', 'cursor-pointer');
+            }
         } else {
-            deleteBtn.disabled = true;
-            deleteBtn.classList.add('text-gray-400');
-            deleteBtn.classList.remove('text-red-500');
+            // Matikan tombol hapus jika tidak ada yang dipilih
+            if(deleteBtn) {
+                deleteBtn.disabled = true;
+                deleteBtn.classList.add('text-gray-400');
+                deleteBtn.classList.remove('text-red-500', 'hover:bg-red-50', 'cursor-pointer');
+            }
         }
     }
 
-    // Event Listener untuk setiap Item List
-    items.forEach(item => {
-        item.addEventListener('click', () => {
-            const id = item.dataset.id;
-            const url = item.dataset.url;
-            
-            // Update Hidden Input
-            categoryInput.value = id;
-            
-            // Update UI List
-            selectCategoryUI(item);
-
-            // Tampilkan Warning
-            warningBox.classList.remove('hidden');
-
-            // Trigger Fetch Spesifikasi
-            fetchAndRenderAttributes(url);
-        });
-    });
-
-    // Initial Load (Jika Edit Mode dan sudah ada kategori terpilih)
-    if (categoryInput.value) {
-        const selectedItem = document.querySelector(`.category-item[data-id="${categoryInput.value}"]`);
-        if (selectedItem) {
-            selectCategoryUI(selectedItem);
-            // Panggil render tapi jangan reset value (biar auto fill jalan)
-            const url = selectedItem.dataset.url;
-            fetchAndRenderAttributes(url, true); // true = mode init
-        }
-    }
-
-    // === 4. LOGIC FETCH SPESIFIKASI ===
+    /**
+     * Mengambil Form Spesifikasi dari Server (AJAX) dan Mengisinya
+     */
     async function fetchAndRenderAttributes(url, isInit = false) {
         if (!url) return;
 
+        // Tampilkan Card
         attributesCard.classList.remove('hidden');
-        
-        // Hanya tampilkan loading jika bukan init load (agar user tidak kaget saat refresh)
-        if(!isInit) {
-            attributesContainer.innerHTML = '<div class="py-6 text-center text-gray-500"><i class="fas fa-circle-notch fa-spin text-indigo-500 mb-2"></i><p>Memuat form...</p></div>';
-        }
+
+        // Tampilkan Loading hanya jika user klik manual (bukan saat load awal agar tidak kedip)
+        // Atau tetap tampilkan agar user tahu proses sedang berjalan
+        attributesContainer.innerHTML = `
+            <div class="py-8 text-center text-gray-500 animate-pulse">
+                <i class="fas fa-circle-notch fa-spin text-indigo-500 text-2xl mb-2"></i>
+                <p>Memuat formulir spesifikasi...</p>
+            </div>
+        `;
 
         try {
             const response = await fetch(url);
+            if(!response.ok) throw new Error("Gagal mengambil data");
+            
             const attributesStructure = await response.json();
             
+            // Bersihkan container
             attributesContainer.innerHTML = ''; 
 
             if (attributesStructure && attributesStructure.length > 0) {
                 attributesStructure.forEach(attr => {
+                    // 1. Buat HTML Input
                     const fieldElement = createAttributeField(attr);
                     attributesContainer.appendChild(fieldElement);
 
-                    // AUTO FILL LOGIC
+                    // 2. AUTO FILL VALUE (Pencocokan Data Lama)
                     let dbValue = existingAttributes[attr.slug];
+
+                    // Fallback: Coba format slug lain (underscore vs dash)
                     if (dbValue === undefined) {
-                         // Fallback slug format
                          dbValue = existingAttributes[attr.slug.replace(/-/g, '_')];
                     }
+                    if (dbValue === undefined) {
+                         dbValue = existingAttributes[attr.slug.replace(/_/g, '-')];
+                    }
 
+                    // Jika nilai ditemukan, isikan ke input
                     if (dbValue !== undefined && dbValue !== null) {
                         fillAttributeValue(fieldElement, attr, dbValue);
                     }
                 });
             } else {
-                attributesContainer.innerHTML = '<div class="text-center py-4 border-2 border-dashed border-gray-200 rounded text-gray-400 text-sm">Tidak ada spesifikasi khusus.</div>';
+                attributesContainer.innerHTML = `
+                    <div class="text-center py-6 border-2 border-dashed border-gray-200 rounded-lg bg-gray-50">
+                        <p class="text-gray-500 text-sm font-medium">Tidak ada spesifikasi khusus.</p>
+                        <p class="text-gray-400 text-xs mt-1">Anda bisa langsung menyimpan produk.</p>
+                    </div>`;
             }
+
         } catch (error) {
-            console.error("Error:", error);
-            attributesContainer.innerHTML = '<p class="text-red-500 text-sm">Gagal memuat data.</p>';
+            console.error("Error Fetching Attributes:", error);
+            attributesContainer.innerHTML = `
+                <div class="p-4 bg-red-50 text-red-600 rounded-lg text-sm flex items-center">
+                    <i class="fa-solid fa-triangle-exclamation mr-2"></i> 
+                    Gagal memuat spesifikasi. Silakan refresh halaman.
+                </div>`;
         }
     }
 
-    // Helper functions (Tetap sama seperti sebelumnya)
+    /**
+     * Helper: Membuat HTML Input Field
+     */
     function createAttributeField(attr) {
         const wrapper = document.createElement('div');
         const inputName = `attributes[${attr.slug}]`;
-        const commonClass = "w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm";
+        const commonClass = "w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors";
         let inputHtml = '';
 
         if (attr.type === 'select') {
@@ -327,9 +338,18 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (attr.type === 'textarea') {
             inputHtml = `<textarea name="${inputName}" rows="3" class="${commonClass}"></textarea>`;
         } else if (attr.type === 'checkbox') {
-             inputHtml = `<input type="text" name="${inputName}" class="${commonClass}" placeholder="Isi manual (Multi-select)">`;
+             // Checkbox mockup (bisa dikembangkan jadi multi-checkbox jika perlu)
+             // Saat ini input text biasa untuk menampung array json
+             const opts = (attr.options || '').split(',').map(o=>o.trim()).map(o=> `
+                <label class="inline-flex items-center mr-4 mb-2">
+                    <input type="checkbox" name="${inputName}[]" value="${o}" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500">
+                    <span class="ml-2 text-sm text-gray-700">${o}</span>
+                </label>
+             `).join('');
+             inputHtml = `<div class="mt-2 space-y-2">${opts}</div>`;
         } else {
-            inputHtml = `<input type="text" name="${inputName}" class="${commonClass}">`;
+            const type = attr.type === 'number' ? 'number' : 'text';
+            inputHtml = `<input type="${type}" name="${inputName}" class="${commonClass}">`;
         }
 
         const req = attr.is_required ? '<span class="text-red-500">*</span>' : '';
@@ -337,155 +357,215 @@ document.addEventListener('DOMContentLoaded', () => {
         return wrapper;
     }
 
+    /**
+     * Helper: Mengisi Nilai ke Input Field
+     */
     function fillAttributeValue(wrapper, attr, val) {
-        const input = wrapper.querySelector(`[name="attributes[${attr.slug}]"]`);
-        if (input) input.value = val;
+        if (attr.type === 'checkbox') {
+            const arr = Array.isArray(val) ? val : [val];
+            wrapper.querySelectorAll('input[type="checkbox"]').forEach(chk => {
+                if(arr.includes(chk.value)) chk.checked = true;
+            });
+        } else {
+            const input = wrapper.querySelector(`[name="attributes[${attr.slug}]"]`);
+            if (input) input.value = val;
+        }
     }
 
-    // === 5. LOGIC TAMBAH & HAPUS KATEGORI (REAL AJAX) ===
-    
-    const btnToggleAdd = document.getElementById('btn-toggle-add-cat');
-    const addWrapper = document.getElementById('add-category-wrapper');
-    const inputNewCat = document.getElementById('new_category_name');
-    const btnSaveCat = document.getElementById('btn-save-new-cat');
-    
-    // Ambil CSRF Token dari meta tag header (bawaan Laravel)
-    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    // =========================================================================
+    // 3. EVENT LISTENERS & INTERAKSI
+    // =========================================================================
 
-    // Toggle Tampilan Form
-    btnToggleAdd.addEventListener('click', () => {
-        addWrapper.classList.toggle('hidden');
-        if (!addWrapper.classList.contains('hidden')) inputNewCat.focus();
-    });
-
-    // --- FUNGSI SIMPAN KATEGORI (REAL) ---
-    btnSaveCat.addEventListener('click', async () => {
-        const name = inputNewCat.value.trim();
-        if(!name) return alert('Nama kategori wajib diisi');
-
-        // Loading State
-        const originalContent = btnSaveCat.innerHTML;
-        btnSaveCat.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-        btnSaveCat.disabled = true;
-
-        try {
-            // 1. Kirim Request ke Laravel
-            const response = await fetch("{{ route('admin.categories.storeAjax') }}", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken, // Wajib ada
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({ name: name })
-            });
-
-            const result = await response.json();
-
-            if (!response.ok) {
-                // Jika error validasi atau server error
-                throw new Error(result.message || 'Gagal menyimpan kategori');
-            }
-
-            // 2. Jika Sukses: Update UI List
-            const newCat = result.data;
-            
-            const newLi = document.createElement('li');
-            newLi.className = "category-item relative cursor-pointer hover:bg-indigo-50 transition-colors group";
-            newLi.dataset.id = newCat.id;
-            newLi.dataset.name = newCat.name;
-            newLi.dataset.url = newCat.attributes_url;
-
-            newLi.innerHTML = `
-                <div class="px-4 py-3 flex items-center justify-between">
-                    <span class="text-sm text-gray-700 font-medium group-hover:text-indigo-700 category-text">${newCat.name}</span>
-                    <i class="fa-solid fa-check text-indigo-600 hidden check-icon"></i>
-                </div>
-            `;
-            
-            // Tambahkan event listener click ke item baru ini
-            newLi.addEventListener('click', () => {
-                categoryInput.value = newCat.id;
-                selectCategoryUI(newLi);
-                warningBox.classList.remove('hidden');
-                fetchAndRenderAttributes(newCat.attributes_url);
-            });
-
-            // Masukkan ke paling atas list
-            listContainer.insertBefore(newLi, listContainer.firstChild);
-
-            // Langsung pilih kategori baru tersebut
-            categoryInput.value = newCat.id;
-            selectCategoryUI(newLi);
-            
-            // Bersihkan form
-            inputNewCat.value = '';
-            addWrapper.classList.add('hidden');
-            
-            // Tampilkan Notifikasi (Opsional)
-            // alert('Kategori berhasil dibuat!'); 
-
-        } catch (error) {
-            console.error(error);
-            alert('Error: ' + error.message);
-        } finally {
-            // Reset Tombol
-            btnSaveCat.innerHTML = originalContent;
-            btnSaveCat.disabled = false;
-        }
-    });
-
-    // --- FUNGSI HAPUS KATEGORI (REAL) ---
-    deleteBtn.addEventListener('click', async () => {
-        const id = categoryInput.value;
-        if(!id) return;
-        
-        if(!confirm('Apakah Anda yakin ingin menghapus kategori ini dari database?')) return;
-
-        // Loading State
-        const originalContent = deleteBtn.innerHTML;
-        deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-        deleteBtn.disabled = true;
-
-        try {
-            // 1. Kirim Request Delete ke Laravel
-            // Kita perlu URL route yang dinamis berdasarkan ID
-            const url = "{{ route('admin.categories.destroyAjax', ':id') }}".replace(':id', id);
-
-            const response = await fetch(url, {
-                method: 'DELETE',
-                headers: {
-                    'X-CSRF-TOKEN': csrfToken,
-                    'Accept': 'application/json'
+    // A. Fitur Pencarian Kategori
+    if(searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            const currentItems = document.querySelectorAll('.category-item'); // Ambil ulang krn bisa ada item baru
+            currentItems.forEach(item => {
+                const text = item.querySelector('.category-text').textContent.toLowerCase();
+                if (text.includes(term)) {
+                    item.classList.remove('hidden');
+                } else {
+                    item.classList.add('hidden');
                 }
             });
+        });
+    }
 
-            const result = await response.json();
-
-            if (!response.ok) {
-                throw new Error(result.message || 'Gagal menghapus kategori');
-            }
-
-            // 2. Jika Sukses: Hapus dari UI
-            const itemToRemove = document.querySelector(`.category-item[data-id="${id}"]`);
-            if(itemToRemove) {
-                itemToRemove.remove();
-            }
+    // B. Klik pada Item Kategori (Event Delegation tidak dipakai agar simple, tapi perlu re-attach utk item baru)
+    function attachClickEvent(item) {
+        item.addEventListener('click', () => {
+            const id = item.dataset.id;
+            const url = item.dataset.url;
             
-            // Reset Pilihan
-            categoryInput.value = '';
-            selectCategoryUI(null);
-            attributesContainer.innerHTML = '';
-            attributesCard.classList.add('hidden');
-            warningBox.classList.add('hidden');
+            // 1. Update Hidden Input
+            categoryInput.value = id;
+            
+            // 2. Update UI
+            selectCategoryUI(item);
+            
+            // 3. Tampilkan Warning
+            if(warningBox) warningBox.classList.remove('hidden');
 
-        } catch (error) {
-            console.error(error);
-            alert('Gagal: ' + error.message);
-        } finally {
-            deleteBtn.innerHTML = originalContent;
-            deleteBtn.disabled = false;
+            // 4. Fetch Data
+            fetchAndRenderAttributes(url);
+        });
+    }
+
+    // Pasang event ke semua item yang sudah ada saat load
+    items.forEach(item => attachClickEvent(item));
+
+    // C. Tombol Toggle Form Tambah
+    if(btnToggleAdd) {
+        btnToggleAdd.addEventListener('click', () => {
+            addWrapper.classList.toggle('hidden');
+            if (!addWrapper.classList.contains('hidden')) inputNewCat.focus();
+        });
+    }
+
+    // =========================================================================
+    // 4. AJAX: TAMBAH KATEGORI
+    // =========================================================================
+    if(btnSaveCat) {
+        btnSaveCat.addEventListener('click', async () => {
+            const name = inputNewCat.value.trim();
+            if(!name) { alert('Nama kategori wajib diisi'); return; }
+
+            // UI Loading
+            const originalContent = btnSaveCat.innerHTML;
+            btnSaveCat.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            btnSaveCat.disabled = true;
+
+            try {
+                // Fetch ke Laravel
+                const response = await fetch("{{ route('categories.storeAjax') }}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ name: name })
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) throw new Error(result.message || 'Gagal menyimpan');
+
+                // Sukses: Buat elemen List Item baru
+                const newLi = document.createElement('li');
+                newLi.className = "category-item relative cursor-pointer hover:bg-indigo-50 transition-colors group";
+                newLi.dataset.id = result.data.id;
+                newLi.dataset.name = result.data.name;
+                newLi.dataset.url = result.data.attributes_url;
+
+                newLi.innerHTML = `
+                    <div class="px-4 py-3 flex items-center justify-between">
+                        <span class="text-sm text-gray-700 font-medium group-hover:text-indigo-700 category-text">${result.data.name}</span>
+                        <i class="fa-solid fa-check text-indigo-600 hidden check-icon"></i>
+                    </div>
+                `;
+
+                // Pasang Click Event ke item baru
+                attachClickEvent(newLi);
+
+                // Masukkan ke paling atas list
+                listContainer.insertBefore(newLi, listContainer.firstChild);
+
+                // Langsung pilih item baru tersebut
+                categoryInput.value = result.data.id;
+                selectCategoryUI(newLi);
+                
+                // Fetch atribut kosong (karena baru)
+                fetchAndRenderAttributes(result.data.attributes_url);
+
+                // Reset Form
+                inputNewCat.value = '';
+                addWrapper.classList.add('hidden');
+
+            } catch (error) {
+                console.error(error);
+                alert(error.message);
+            } finally {
+                btnSaveCat.innerHTML = originalContent;
+                btnSaveCat.disabled = false;
+            }
+        });
+    }
+
+    // =========================================================================
+    // 5. AJAX: HAPUS KATEGORI
+    // =========================================================================
+    if(deleteBtn) {
+        deleteBtn.addEventListener('click', async () => {
+            const id = categoryInput.value;
+            if(!id) return;
+            
+            if(!confirm('Apakah Anda yakin ingin menghapus kategori ini secara permanen?')) return;
+
+            // UI Loading
+            const originalContent = deleteBtn.innerHTML;
+            deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            deleteBtn.disabled = true;
+
+            try {
+                // Construct URL delete
+                const url = "{{ route('categories.destroyAjax', ':id') }}".replace(':id', id);
+
+                const response = await fetch(url, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json'
+                    }
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) throw new Error(result.message || 'Gagal menghapus');
+
+                // Sukses: Hapus dari DOM
+                const itemToRemove = document.querySelector(`.category-item[data-id="${id}"]`);
+                if(itemToRemove) itemToRemove.remove();
+
+                // Reset Selection
+                categoryInput.value = '';
+                selectCategoryUI(null);
+                attributesContainer.innerHTML = '';
+                attributesCard.classList.add('hidden');
+                if(warningBox) warningBox.classList.add('hidden');
+
+            } catch (error) {
+                console.error(error);
+                alert(error.message);
+            } finally {
+                deleteBtn.innerHTML = originalContent;
+                deleteBtn.disabled = false;
+            }
+        });
+    }
+
+    // =========================================================================
+    // 6. INITIAL LOAD (AUTO SELECT SAAT EDIT)
+    // =========================================================================
+    if (categoryInput.value) {
+        // Cari item yang ID-nya sesuai dengan data tersimpan
+        const selectedItem = document.querySelector(`.category-item[data-id="${categoryInput.value}"]`);
+        
+        if (selectedItem) {
+            console.log("🔄 Auto-selecting category ID:", categoryInput.value);
+            
+            // 1. Visual Select
+            selectCategoryUI(selectedItem);
+            
+            // 2. Scroll ke item tersebut
+            selectedItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+            // 3. Load Form Spesifikasi
+            const url = selectedItem.dataset.url;
+            fetchAndRenderAttributes(url, true); // true = mode init
         }
-    });
-    
+    }
+});
 </script>
+@endpush
