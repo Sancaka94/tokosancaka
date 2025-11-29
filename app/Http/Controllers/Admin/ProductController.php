@@ -854,65 +854,79 @@ $validatedDataForUpdate['is_free_shipping'] = $request->has('is_free_shipping');
     }
 
     /**
-     * Memproses update Kategori & Spesifikasi.
-     */
-    public function updateSpecifications(Request $request, $id)
-    {
-        $product = Product::findOrFail($id);
+ * Memproses update Kategori & Spesifikasi.
+ */
+public function updateSpecifications(Request $request, $id)
+{
+    $product = Product::findOrFail($id);
 
-        // 1. Validasi Input
-        $validated = $request->validate([
-            'sku' => ['nullable', 'string', 'max:100', Rule::unique('products', 'sku')->ignore($product->id)],
-            'category_id' => 'required|exists:categories,id',
-            'tags' => 'nullable|string',
-            'attributes' => 'nullable|array', // Array atribut dinamis
-        ]);
-
-        try {
-            DB::transaction(function () use ($product, $request, $validated) {
-                
-                // 2. Logic Update Tags (Sama seperti di method store/update)
-                $manualTags = [];
-                if (!empty($request->tags)) {
-                    $manualTags = array_map('trim', explode(',', $request->tags));
-                    $manualTags = array_filter($manualTags);
-                }
-                
-                // Tambahkan nama kategori otomatis ke tags
-                $category = Category::find($validated['category_id']);
-                $categoryTag = $category->name ?? null;
-                $allTags = $manualTags;
-                if ($categoryTag && !in_array($categoryTag, $allTags)) {
-                    $allTags[] = $categoryTag;
-                }
-                
-                $jsonTags = !empty($allTags) ? json_encode(array_values(array_unique($allTags))) : null;
-
-                // 3. Update Data Utama Produk (SKU, Kategori, Tags)
-                $product->update([
-                    'sku' => $validated['sku'],
-                    'category_id' => $validated['category_id'],
-                    'tags' => $jsonTags,
-                ]);
-
-                // 4. Update Spesifikasi / Atribut Dinamis
-                // PENTING: Gunakan method syncAttributes yang sudah Anda buat,
-                // JANGAN simpan manual ke kolom 'attributes_json' jika pakai tabel terpisah.
-                $attributesInput = $request->input('attributes', []);
-                
-                // Jika kategori berubah, mungkin atribut lama tidak relevan, 
-                // tapi syncAttributes akan menangani penghapusan jika nama atribut tidak ada di input baru.
-                $this->syncAttributes($product, $attributesInput);
-            });
-
-            return redirect()->route('admin.products.edit', $product->slug)
-                ->with('success', 'Kategori dan Spesifikasi berhasil diperbarui.');
-
-        } catch (Exception $e) {
-            Log::error('Error updating specifications for Product ID ' . $product->id . ': ' . $e->getMessage());
-            return back()->with('error', 'Gagal memperbarui spesifikasi: ' . $e->getMessage())->withInput();
-        }
+    // 1. LOGIC SKU AUTO-GENERATE
+    // Kita cek apakah input kosong
+    if (empty($request->input('sku'))) {
+        // Generate SKU otomatis
+        $generatedSku = 'SKU-' . date('Ymd') . '-' . strtoupper(Str::random(3));
+        
+        // PENTING: Suntikkan (Merge) kembali ke request agar terbaca oleh validator
+        $request->merge(['sku' => $generatedSku]);
     }
+
+    // 2. Validasi Input
+    $validated = $request->validate([
+        // 'required' aman digunakan di sini karena jika kosong sudah diisi otomatis di atas
+        'sku' => ['required', 'string', 'max:100', Rule::unique('products', 'sku')->ignore($product->id)],
+        'category_id' => 'required|exists:categories,id',
+        'tags' => 'nullable|string',
+        'attributes' => 'nullable|array', // Array atribut dinamis
+    ]);
+
+    try {
+        DB::transaction(function () use ($product, $request, $validated) {
+            
+            // 3. Logic Update Tags
+            $manualTags = [];
+            if (!empty($request->tags)) {
+                $manualTags = array_map('trim', explode(',', $request->tags));
+                $manualTags = array_filter($manualTags);
+            }
+            
+            // Tambahkan nama kategori otomatis ke tags
+            $category = Category::find($validated['category_id']);
+            $categoryTag = $category->name ?? null;
+            $allTags = $manualTags;
+            
+            // Hindari duplikasi tag kategori
+            if ($categoryTag && !in_array($categoryTag, $allTags)) {
+                $allTags[] = $categoryTag;
+            }
+            
+            // Encode ke JSON (atau string dipisah koma, tergantung struktur DB Anda)
+            // Asumsi kolom 'tags' di DB tipe JSON/TEXT
+            $jsonTags = !empty($allTags) ? implode(',', array_unique($allTags)) : null; 
+            // Catatan: Jika kolom DB Anda JSON, gunakan json_encode(array_values(array_unique($allTags)));
+
+            // 4. Update Data Utama Produk
+            $product->update([
+                'sku' => $validated['sku'], // Ini sekarang aman karena sudah di-merge
+                'category_id' => $validated['category_id'],
+                'tags' => $jsonTags,
+            ]);
+
+            // 5. Update Spesifikasi / Atribut Dinamis
+            // Mengambil input atribut
+            $attributesInput = $request->input('attributes', []);
+            
+            // Panggil helper syncAttributes (asumsi method ini ada di Controller yang sama atau Trait)
+            $this->syncAttributes($product, $attributesInput);
+        });
+
+        return redirect()->route('admin.products.edit', $product->slug)
+            ->with('success', 'Kategori dan Spesifikasi berhasil diperbarui.');
+
+    } catch (Exception $e) {
+        Log::error('Error updating specifications for Product ID ' . $product->id . ': ' . $e->getMessage());
+        return back()->with('error', 'Gagal memperbarui spesifikasi: ' . $e->getMessage())->withInput();
+    }
+}
 
 } // End of ProductController class
 
