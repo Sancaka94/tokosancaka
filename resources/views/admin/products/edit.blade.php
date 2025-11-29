@@ -374,45 +374,35 @@
                 </div>
             </div>
 
-            {{-- B. ORGANISASI --}}
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
-                    <h2 class="text-lg font-semibold text-gray-800">Pengaturan Data</h2>
-                </div>
-                <div class="p-6 space-y-5">
-                    <div>
-                        <label for="sku" class="block text-sm font-medium text-gray-700 mb-1">SKU Induk</label>
-                        <input type="text" name="sku" id="sku" value="{{ old('sku', $product->sku) }}" class="w-full border-gray-300 rounded-lg shadow-sm uppercase tracking-wider focus:border-indigo-500 focus:ring-indigo-500" placeholder="AUTO-GEN">
-                    </div>
+            {{-- A. KATEGORI & SPESIFIKASI (MODIFIKASI: HANYA TOMBOL) --}}
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-100 bg-indigo-50/50 flex justify-between items-center">
+        <h2 class="text-lg font-semibold text-gray-800">Kategori & Data</h2>
+        <span class="bg-indigo-100 text-indigo-700 text-xs px-2 py-1 rounded-full font-bold">Penting</span>
+    </div>
+    <div class="p-6">
+        <div class="mb-4">
+            <p class="text-sm text-gray-500 mb-1">Kategori Saat Ini:</p>
+            <p class="font-bold text-gray-800 text-lg flex items-center">
+                <i class="fa-solid fa-folder-open text-indigo-500 mr-2"></i>
+                {{ $product->category->name ?? 'Belum ada kategori' }}
+            </p>
+        </div>
+        
+        <div class="mb-4">
+            <p class="text-sm text-gray-500 mb-1">SKU:</p>
+            <p class="font-mono text-gray-700 bg-gray-100 px-2 py-1 rounded inline-block">
+                {{ $product->sku ?? '-' }}
+            </p>
+        </div>
 
-                    <div>
-                        <label for="category_id" class="block text-sm font-medium text-gray-700 mb-1 required-label">Kategori</label>
-                        <select name="category_id" id="category_id" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500" required>
-                            <option value="">-- Pilih Kategori --</option>
-                            @foreach($categories as $category)
-                                <option value="{{ $category->id }}" data-attributes-url="{{ route('admin.categories.attributes', $category->id) }}" {{ old('category_id', $product->category_id) == $category->id ? 'selected' : '' }}>
-                                    {{ $category->name }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <div>
-                        <label for="tags" class="block text-sm font-medium text-gray-700 mb-1">Tags</label>
-                        <input type="text" name="tags" id="tags" value="{{ old('tags', $product->tags) }}" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="Fashion, Pria, Murah...">
-                    </div>
-                </div>
-            </div>
-
-            {{-- C. ATRIBUT DINAMIS (Muncul jika ada) --}}
-            <div id="attributes-card" class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hidden">
-                <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
-                    <h2 class="text-lg font-semibold text-gray-800">Spesifikasi Tambahan</h2>
-                </div>
-                <div id="dynamic-attributes-container" class="p-6 space-y-4">
-                    {{-- Diisi JS --}}
-                </div>
-            </div>
+        <a href="{{ route('admin.products.edit.specifications', $product->id) }}" 
+           class="w-full inline-flex justify-center items-center px-4 py-2.5 bg-white border-2 border-indigo-100 text-indigo-600 font-semibold rounded-lg hover:bg-indigo-50 hover:border-indigo-200 transition-colors">
+            <i class="fa-solid fa-sliders mr-2"></i>
+            Edit Kategori & Spesifikasi
+        </a>
+    </div>
+</div>
 
             {{-- D. STATUS --}}
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">

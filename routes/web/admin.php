@@ -292,6 +292,13 @@ Route::resource('customers', CustomerController::class);
 
     Route::resource('products', ProductController::class);
 
+    // Route untuk Halaman Edit Spesifikasi & Kategori
+Route::get('/products/{product}/specifications', [ProductController::class, 'editSpecifications'])
+    ->name('products.edit.specifications');
+
+Route::put('/products/{product}/specifications', [ProductController::class, 'updateSpecifications'])
+    ->name('products.update.specifications');
+
 // Pesanan
 
 Route::prefix('pesanan')->name('pesanan.')->group(function () {

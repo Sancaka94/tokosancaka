@@ -828,5 +828,37 @@ $validatedDataForUpdate['is_free_shipping'] = $request->has('is_free_shipping');
          }
     }
 
+    public function editSpecifications($id)
+{
+    $product = Product::findOrFail($id); // Sesuaikan model Anda
+    $categories = Category::all(); // Sesuaikan model Category Anda
+
+    return view('admin.products.edit-specifications', compact('product', 'categories'));
+}
+
+public function updateSpecifications(Request $request, $id)
+{
+    $product = Product::findOrFail($id);
+
+    $validated = $request->validate([
+        'sku' => 'nullable|string|max:255',
+        'category_id' => 'required|exists:categories,id',
+        'tags' => 'nullable|string',
+        'attributes' => 'nullable|array', // Validasi atribut dinamis
+    ]);
+
+    // Update Data
+    $product->update([
+        'sku' => $validated['sku'],
+        'category_id' => $validated['category_id'],
+        'tags' => $validated['tags'],
+        // Simpan atribut dinamis (sesuaikan logic penyimpanan Anda, misal json_encode)
+        'attributes_json' => isset($validated['attributes']) ? json_encode($validated['attributes']) : null, 
+    ]);
+
+    return redirect()->route('admin.products.edit', $product->slug)
+        ->with('success', 'Kategori dan Spesifikasi berhasil diperbarui.');
+}
+
 } // End of ProductController class
 
