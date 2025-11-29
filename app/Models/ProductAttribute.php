@@ -60,4 +60,31 @@ class ProductAttribute extends Model
         // Pastikan foreign key 'attribute_id' ada di tabel ini
         return $this->belongsTo(Attribute::class);
     }
+
+    /**
+     * ACCESSOR MAGIC: get_name_attribute
+     * Ini membuat kita bisa memanggil $attr->name meskipun di database
+     * kolomnya bernama 'attribute_name' atau 'attribute_slug'.
+     */
+    public function getNameAttribute($value)
+    {
+        // 1. Jika kolom 'name' asli ada isinya, kembalikan itu.
+        if (!empty($value)) {
+            return $value;
+        }
+
+        // 2. Jika kosong, coba ambil dari kolom 'attribute_name'
+        if (!empty($this->attributes['attribute_name'])) {
+            return $this->attributes['attribute_name'];
+        }
+
+        // 3. Jika masih kosong, coba ambil dari relasi attribute (jika pakai master data)
+        // (Pastikan relasi 'attribute' dimuat jika ingin menggunakan ini untuk menghindari N+1 problem)
+        if ($this->relationLoaded('attribute') && $this->attribute) {
+            return $this->attribute->name;
+        }
+
+        // 4. Terakhir, jika terpaksa, kembalikan attribute_slug
+        return $this->attributes['attribute_slug'] ?? null;
+    }
 }
