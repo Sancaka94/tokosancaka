@@ -381,13 +381,20 @@
         <span class="bg-indigo-100 text-indigo-700 text-xs px-2 py-1 rounded-full font-bold">Penting</span>
     </div>
     <div class="p-6">
-        <div class="mb-4">
-            <p class="text-sm text-gray-500 mb-1">Kategori Saat Ini:</p>
-            <p class="font-bold text-gray-800 text-lg flex items-center">
-                <i class="fa-solid fa-folder-open text-indigo-500 mr-2"></i>
-                {{ $product->category->name ?? 'Belum ada kategori' }}
-            </p>
-        </div>
+        {{-- Ganti bagian display Kategori di Card "Kategori & Data" --}}
+<div class="mb-4">
+    <p class="text-sm text-gray-500 mb-1">Kategori Saat Ini:</p>
+    <p class="font-bold text-gray-800 text-lg flex items-center">
+        <i class="fa-solid fa-folder-open text-indigo-500 mr-2"></i>
+        
+        {{-- Logika Pengecekan --}}
+        @if($product->category)
+            {{ $product->category->name }}
+        @else
+            <span class="text-red-500 italic">Belum ada kategori</span>
+        @endif
+    </p>
+</div>
         
         <div class="mb-4">
             <p class="text-sm text-gray-500 mb-1">SKU:</p>
