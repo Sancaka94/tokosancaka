@@ -427,7 +427,67 @@
         {{-- KOLOM KANAN (SIDEBAR) --}}
         <div class="space-y-8">
 
-           {{-- Dimensi (Panah Kiri, CM Kanan) --}}
+           {{-- A. HARGA & STOK (AUTO FORMAT RUPIAH) --}}
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+                    <h2 class="text-lg font-semibold text-gray-800 flex items-center">
+                        <i class="fa-solid fa-tags text-blue-500 mr-2"></i> Harga & Stok
+                    </h2>
+                </div>
+                <div class="p-6 space-y-6">
+                    
+                    {{-- Harga Jual --}}
+                    <div>
+                        <label for="price" class="block text-sm font-medium text-gray-700 mb-1 required-label">Harga Jual</label>
+                        <div class="flex relative rounded-lg shadow-sm">
+                            <span class="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 text-gray-500 font-bold text-sm">
+                                Rp
+                            </span>
+                            {{-- Input diganti type="text" dan tambah class 'currency-input' --}}
+                            <input type="text" name="price" id="price" 
+                                   value="{{ old('price', number_format($product->price, 0, ',', '.')) }}" 
+                                   class="currency-input flex-1 w-full h-11 px-3 border border-gray-300 rounded-none rounded-r-lg focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-colors text-gray-800 font-bold text-lg" 
+                                   placeholder="0" inputmode="numeric" required>
+                        </div>
+                        @error('price') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
+                    </div>
+
+                    {{-- Harga Coret --}}
+                    <div>
+                        <label for="original_price" class="block text-sm font-medium text-gray-700 mb-1">Harga Coret (Asli)</label>
+                        <div class="flex relative rounded-lg shadow-sm">
+                            <span class="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 text-gray-500 font-bold text-sm">
+                                Rp
+                            </span>
+                            <input type="text" name="original_price" id="original_price" 
+                                   value="{{ old('original_price', $product->original_price ? number_format($product->original_price, 0, ',', '.') : '') }}" 
+                                   class="currency-input flex-1 w-full h-11 px-3 border border-gray-300 rounded-none rounded-r-lg focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-colors text-gray-500 line-through" 
+                                   placeholder="0" inputmode="numeric">
+                        </div>
+                    </div>
+
+                    {{-- Stok & Berat --}}
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label for="stock" class="block text-sm font-medium text-gray-700 mb-1 required-label">Stok</label>
+                            <input type="number" name="stock" id="stock" value="{{ old('stock', $product->stock) }}" 
+                                   class="w-full h-11 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-colors font-semibold" 
+                                   required>
+                        </div>
+                        <div>
+                            <label for="weight" class="block text-sm font-medium text-gray-700 mb-1 required-label">Berat</label>
+                            <div class="flex relative w-full">
+                                <input type="number" name="weight" id="weight" value="{{ old('weight', $product->weight) }}" 
+                                       class="flex-1 w-full h-11 px-3 border border-gray-300 rounded-none rounded-l-lg focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-colors" 
+                                       required>
+                                <span class="inline-flex items-center px-3 rounded-r-lg border border-l-0 border-gray-300 bg-gray-50 text-gray-500 font-bold text-xs uppercase">
+                                    Gram
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Dimensi (Panah Kiri, CM Kanan) --}}
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Dimensi (PxLxT) cm</label>
                         <div class="grid grid-cols-3 gap-3 items-center">
@@ -464,6 +524,9 @@
 
                         </div>
                     </div>
+
+                </div>
+            </div>
 
             {{-- A. KATEGORI & SPESIFIKASI (FIXED) --}}
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -895,5 +958,6 @@ document.addEventListener('DOMContentLoaded', () => {
             reader.readAsDataURL(file);
         }
     }
+    
 </script>
 @endpush
