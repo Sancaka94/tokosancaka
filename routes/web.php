@@ -445,9 +445,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
     
 
     // Route khusus untuk simpan kategori via AJAX
-Route::post('/categories/ajax-store', [App\Http\Controllers\Admin\CategoryController::class, 'storeAjax'])->name('categories.storeAjax');
+Route::post('/categories/ajax-store', [App\Http\Controllers\Admin\CategoryController::class, 'storeAjax'])->name('admin.categories.storeAjax');
 // Route untuk hapus kategori via AJAX
-Route::delete('/categories/ajax-delete/{id}', [App\Http\Controllers\Admin\CategoryController::class, 'destroyAjax'])->name('categories.destroyAjax');
+Route::delete('/categories/ajax-delete/{id}', [App\Http\Controllers\Admin\CategoryController::class, 'destroyAjax'])->name('admin.categories.destroyAjax');
     
     // Fitur Multi Koli Admin (YANG BARU ANDA BUAT)
     Route::get('/pesanan/buat-multi', [AdminKoliController::class, 'create'])->name('pesanan.create_multi');
