@@ -462,10 +462,10 @@
                             <span class="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 text-gray-500 font-bold text-sm">
                                 Rp
                             </span>
-                            <input type="text" name="price" id="price" 
-       value="{{ old('price', number_format($product->price, 0, ',', '.')) }}" 
-       class="currency-input flex-1 w-full h-11 px-3 border border-gray-300 rounded-none rounded-r-lg focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-colors text-gray-800 font-bold text-lg" 
-       placeholder="0" inputmode="numeric" required>
+                            <input type="text" name="original_price" id="original_price" 
+                                   value="{{ old('original_price', $product->original_price ? number_format($product->original_price, 0, ',', '.') : '') }}" 
+                                   class="currency-input flex-1 w-full h-11 px-3 border border-gray-300 rounded-none rounded-r-lg focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-colors text-gray-500 line-through" 
+                                   placeholder="0" inputmode="numeric">
                         </div>
                     </div>
 
@@ -584,7 +584,7 @@
                 </div>
             </div>
 
-           {{-- F. MONITOR SPESIFIKASI --}}
+            {{-- F. MONITOR SPESIFIKASI --}}
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mt-6">
                 <div class="px-6 py-4 border-b border-gray-100 bg-white flex justify-between items-center">
                     <h2 class="text-lg font-semibold text-gray-800">
@@ -612,32 +612,15 @@
 
                     @if ($namedAttributes->isNotEmpty() || !empty($unnamedValues))
                         <div class="space-y-4">
-                            {{-- LOOP UTAMA: Atribut Bernama --}}
-                            @foreach ($namedAttributes as $name => $attrs)
-                                <div class="flex justify-between items-center border-b border-gray-50 pb-2 last:border-0">
+                            @foreach ($namedAttributes as $name => $attributes)
+                                <div class="flex justify-between items-start border-b border-gray-50 pb-2 last:border-0">
                                     <span class="text-sm text-gray-500 font-medium capitalize">{{ $name }}</span>
-                                    <div class="text-right max-w-[60%] flex flex-wrap justify-end gap-1">
-                                        @foreach($attrs as $item)
-                                            @php
-                                                // Decode JSON Array
-                                                $decoded = json_decode($item->value, true);
-                                                $values = (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) 
-                                                          ? $decoded 
-                                                          : [$item->value];
-                                            @endphp
-
-                                            {{-- Tampilkan Badge --}}
-                                            @foreach($values as $val)
-                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-100">
-                                                    {{ $val }}
-                                                </span>
-                                            @endforeach
-                                        @endforeach
-                                    </div>
+                                    <span class="text-sm font-bold text-gray-800 text-right max-w-[60%] leading-tight">
+                                        {{ $attributes->pluck('value')->implode(', ') }}
+                                    </span>
                                 </div>
                             @endforeach
 
-                            {{-- Info Lainnya (Atribut Tanpa Nama) --}}
                             @if (!empty($unnamedValues))
                                 <div class="flex justify-between items-start border-b border-gray-50 pb-2 last:border-0">
                                     <span class="text-sm text-gray-500 font-medium">Info Lainnya</span>
@@ -648,7 +631,6 @@
                             @endif
                         </div>
                     @else
-                        {{-- Empty State --}}
                         <div class="text-center py-4 bg-gray-50 rounded-lg border border-dashed border-gray-200">
                             <span class="text-gray-400 text-sm italic">Belum ada spesifikasi.</span>
                         </div>
