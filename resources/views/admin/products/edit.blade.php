@@ -262,14 +262,13 @@
                                 <p class="font-semibold text-indigo-600 text-sm">Upload Logo</p>
                             </div>
                          
-{{-- LOGO TOKO: PASTI HILANG JIKA KOSONG --}}
+{{-- LOGO TOKO: DEFAULT SANCAKA JIKA KOSONG --}}
 <div class="w-24 h-24 border border-gray-200 rounded-lg bg-gray-50 flex items-center justify-center overflow-hidden">
     
     <img id="seller-logo-preview" 
-         src="{{ $product->seller_logo ? asset('public/storage/' . $product->seller_logo) : '#' }}"
+         src="{{ $product->seller_logo ? asset('public/storage/' . $product->seller_logo) : 'https://tokosancaka.com/storage/uploads/sancaka.png' }}"
          class="w-full h-full object-contain" 
-         alt="Logo Toko"
-         style="{{ $product->seller_logo ? 'display: block;' : 'display: none;' }}">
+         alt="Logo Toko">
 
 </div>
                         </div>
