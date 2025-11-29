@@ -613,27 +613,30 @@
                     @if ($namedAttributes->isNotEmpty() || !empty($unnamedValues))
                         <div class="space-y-4">
                             @foreach ($namedAttributes as $name => $attrs)
-    <div class="flex justify-between items-start border-b border-gray-50 pb-2 last:border-0">
+    <div class="flex justify-between items-center border-b border-gray-50 pb-2 last:border-0">
         <span class="text-sm text-gray-500 font-medium capitalize">{{ $name }}</span>
-        <span class="text-sm font-bold text-gray-800 text-right max-w-[60%] leading-tight">
+        <div class="text-right max-w-[60%] flex flex-wrap justify-end gap-1">
+            {{-- Loop setiap item atribut (jika ada duplikat nama) --}}
             @foreach($attrs as $item)
                 @php
-                    // Coba decode JSON
+                    // 1. Coba decode JSON (misal: ["Merah","Biru"])
                     $decoded = json_decode($item->value, true);
+                    
+                    // 2. Pastikan datanya jadi array. 
+                    // Jika gagal decode (teks biasa), jadikan array manual.
+                    $values = (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) 
+                              ? $decoded 
+                              : [$item->value];
                 @endphp
 
-                @if(json_last_error() === JSON_ERROR_NONE && is_array($decoded))
-                    {{-- Jika formatnya Array JSON, gabungkan dengan koma --}}
-                    {{ implode(', ', $decoded) }}
-                @else
-                    {{-- Jika teks biasa, tampilkan langsung --}}
-                    {{ $item->value }}
-                @endif
-
-                {{-- Tambahkan koma jika ada lebih dari 1 row data (jarang terjadi tapi aman) --}}
-                @if(!$loop->last), @endif
+                {{-- 3. Tampilkan setiap nilai sebagai Badge --}}
+                @foreach($values as $val)
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-100">
+                        {{ $val }}
+                    </span>
+                @endforeach
             @endforeach
-        </span>
+        </div>
     </div>
 @endforeach
                                 <div class="flex justify-between items-start border-b border-gray-50 pb-2 last:border-0">
