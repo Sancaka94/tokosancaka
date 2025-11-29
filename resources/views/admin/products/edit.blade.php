@@ -266,7 +266,7 @@
 <div class="w-24 h-24 border border-gray-200 rounded-lg bg-gray-50 flex items-center justify-center overflow-hidden">
     
     <img id="seller-logo-preview" 
-         src="{{ $product->seller_logo ? asset('public/storage/' . $product->seller_logo) : 'https://tokosancaka.com/storage/uploads/sancaka.png' }}"
+         src="{{ $product->seller_logo ? asset('public/storage/' . $product->seller_logo) : 'https://tokosancaka.com/public/storage/uploads/sancaka.png' }}"
          class="w-full h-full object-contain" 
          alt="Logo Toko">
 
