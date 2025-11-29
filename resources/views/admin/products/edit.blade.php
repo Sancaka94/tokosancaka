@@ -5,8 +5,8 @@
 
 @push('styles')
 <style>
-    /* --- RESET & IMAGE UPLOADER --- */
-    /* Kita hapus settingan html, body agar mengikuti template bawaan */
+    /* --- RESET & BASIC SETUP --- */
+    /* Hapus html, body height 100% agar scrollbar browser bawaan muncul */
     
     .image-uploader {
         border: 2px dashed #cbd5e1;
@@ -53,22 +53,21 @@
         display: block;
     }
 
-    /* --- PERBAIKAN FOOTER (STICKY ACTION BAR) --- */
+    /* --- STICKY FOOTER ACTION BAR --- */
     .sticky-action {
-        /* Ubah dari fixed ke sticky agar tidak melayang sembarangan */
-        position: sticky; 
+        position: sticky; /* Sticky ke bawah container, bukan layar */
         bottom: 0;
-        z-index: 999; /* Pastikan di atas elemen lain */
+        z-index: 50;
         
-        background-color: rgba(255, 255, 255, 0.95); /* Sedikit lebih solid */
+        background-color: rgba(255, 255, 255, 0.95);
         backdrop-filter: blur(5px);
         border-top: 1px solid #e2e8f0;
         
-        /* Spacing */
         padding: 1rem 1.5rem;
-        margin-top: 2rem; /* Jarak dari konten di atasnya */
-        margin-left: -1rem; /* Kompensasi padding container admin default (sesuaikan jika perlu) */
-        margin-right: -1rem; /* Kompensasi padding container admin default */
+        margin-top: 2rem;
+        /* Negatif margin untuk melebar menutupi padding container parent */
+        margin-left: -1.5rem; 
+        margin-right: -1.5rem;
         
         display: flex;
         justify-content: flex-end;
@@ -210,7 +209,6 @@
                     </div>
                     <input type="file" name="product_image" id="product_image" class="hidden" accept="image/png, image/jpeg, image/webp">
                     
-                    {{-- Preview Gambar --}}
                     @if($product->image_url)
                         <div class="mt-4 p-2 border rounded-lg bg-gray-50 inline-block">
                             <img id="image-preview" src="{{ asset('public/storage/' . $product->image_url) }}" alt="Preview" class="image-preview" style="display: block;">
@@ -301,9 +299,7 @@
                         </div>
                     </div>
 
-                    <div id="variant-groups-container" class="space-y-4">
-                        {{-- Container Dinamis --}}
-                    </div>
+                    <div id="variant-groups-container" class="space-y-4"></div>
 
                     <div id="variant-combinations-section" class="hidden mt-8">
                         <h3 class="text-md font-bold text-gray-800 mb-3 pl-1 border-l-4 border-indigo-500">Atur Harga & Stok Varian</h3>
@@ -375,43 +371,42 @@
             </div>
 
             {{-- A. KATEGORI & SPESIFIKASI (MODIFIKASI: HANYA TOMBOL) --}}
-<div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-    <div class="px-6 py-4 border-b border-gray-100 bg-indigo-50/50 flex justify-between items-center">
-        <h2 class="text-lg font-semibold text-gray-800">Kategori & Data</h2>
-        <span class="bg-indigo-100 text-indigo-700 text-xs px-2 py-1 rounded-full font-bold">Penting</span>
-    </div>
-    <div class="p-6">
-        {{-- Ganti bagian display Kategori di Card "Kategori & Data" --}}
-<div class="mb-4">
-    <p class="text-sm text-gray-500 mb-1">Kategori Saat Ini:</p>
-    <p class="font-bold text-gray-800 text-lg flex items-center">
-        <i class="fa-solid fa-folder-open text-indigo-500 mr-2"></i>
-        
-        {{-- Logika Pengecekan --}}
-        @if($product->category)
-            {{ $product->category->name }}
-        @else
-            <span class="text-red-500 italic">Belum ada kategori</span>
-        @endif
-    </p>
-</div>
-        
-        <div class="mb-4">
-            <p class="text-sm text-gray-500 mb-1">SKU:</p>
-            <p class="font-mono text-gray-700 bg-gray-100 px-2 py-1 rounded inline-block">
-                {{ $product->sku ?? '-' }}
-            </p>
-        </div>
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-100 bg-indigo-50/50 flex justify-between items-center">
+                    <h2 class="text-lg font-semibold text-gray-800">Kategori & Data</h2>
+                    <span class="bg-indigo-100 text-indigo-700 text-xs px-2 py-1 rounded-full font-bold">Penting</span>
+                </div>
+                <div class="p-6">
+                    <div class="mb-4">
+                        <p class="text-sm text-gray-500 mb-1">Kategori Saat Ini:</p>
+                        <p class="font-bold text-gray-800 text-lg flex items-center">
+                            <i class="fa-solid fa-folder-open text-indigo-500 mr-2"></i>
+                            
+                            {{-- Pengecekan Aman (Safe Check) --}}
+                            @if(isset($product->category) && is_object($product->category))
+                                {{ $product->category->name }}
+                            @else
+                                <span class="text-red-500 italic">Belum ada kategori</span>
+                            @endif
+                        </p>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <p class="text-sm text-gray-500 mb-1">SKU:</p>
+                        <p class="font-mono text-gray-700 bg-gray-100 px-2 py-1 rounded inline-block">
+                            {{ $product->sku ?? '-' }}
+                        </p>
+                    </div>
 
-        <a href="{{ route('admin.products.edit.specifications', $product->id) }}" 
-           class="w-full inline-flex justify-center items-center px-4 py-2.5 bg-white border-2 border-indigo-100 text-indigo-600 font-semibold rounded-lg hover:bg-indigo-50 hover:border-indigo-200 transition-colors">
-            <i class="fa-solid fa-sliders mr-2"></i>
-            Edit Kategori & Spesifikasi
-        </a>
-    </div>
-</div>
+                    <a href="{{ route('admin.products.edit.specifications', $product->id) }}" 
+                       class="w-full inline-flex justify-center items-center px-4 py-2.5 bg-white border-2 border-indigo-100 text-indigo-600 font-semibold rounded-lg hover:bg-indigo-50 hover:border-indigo-200 transition-colors">
+                        <i class="fa-solid fa-sliders mr-2"></i>
+                        Edit Kategori & Spesifikasi
+                    </a>
+                </div>
+            </div>
 
-{{-- F. MONITOR SPESIFIKASI (LOGIKA CUSTOM DARI ANDA) --}}
+            {{-- F. MONITOR SPESIFIKASI --}}
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mt-6">
                 <div class="px-6 py-4 border-b border-gray-100 bg-white flex justify-between items-center">
                     <h2 class="text-lg font-semibold text-gray-800">
@@ -420,17 +415,15 @@
                 </div>
 
                 <div class="p-6">
-                    {{-- === LOGIKA PHP DARI ANDA === --}}
                     @php
-                        // Pastikan relasi ada untuk menghindari error jika null
                         $attributesCollection = $product->productAttributes ?? collect();
 
-                        // 1. Ambil atribut yang punya NAMA dan NILAI
+                        // 1. Ambil atribut yang punya NAMA
                         $namedAttributes = $attributesCollection->filter(function($attr) {
                             return !empty($attr->name) && !empty($attr->value);
                         })->groupBy('name'); 
                         
-                        // 2. Ambil atribut yang HANYA punya NILAI (Nama-nya NULL)
+                        // 2. Ambil atribut yang TIDAK punya NAMA
                         $unnamedValues = $attributesCollection->filter(function($attr) {
                             return empty($attr->name) && !empty($attr->value);
                         })
@@ -439,37 +432,27 @@
                         ->implode(', ');  
                     @endphp
 
-                    {{-- TAMPILAN DATA --}}
                     @if ($namedAttributes->isNotEmpty() || !empty($unnamedValues))
                         <div class="space-y-4">
-                            
-                            {{-- Bagian 1: Atribut dengan Nama --}}
                             @foreach ($namedAttributes as $name => $attributes)
                                 <div class="flex justify-between items-start border-b border-gray-50 pb-2 last:border-0">
-                                    <span class="text-sm text-gray-500 font-medium capitalize">
-                                        {{ $name }}
-                                    </span>
+                                    <span class="text-sm text-gray-500 font-medium capitalize">{{ $name }}</span>
                                     <span class="text-sm font-bold text-gray-800 text-right max-w-[60%] leading-tight">
                                         {{ $attributes->pluck('value')->implode(', ') }}
                                     </span>
                                 </div>
                             @endforeach
 
-                            {{-- Bagian 2: Info Lainnya (Tanpa Nama) --}}
                             @if (!empty($unnamedValues))
                                 <div class="flex justify-between items-start border-b border-gray-50 pb-2 last:border-0">
-                                    <span class="text-sm text-gray-500 font-medium">
-                                        Info Lainnya
-                                    </span>
+                                    <span class="text-sm text-gray-500 font-medium">Info Lainnya</span>
                                     <span class="text-sm font-bold text-gray-800 text-right max-w-[60%] leading-tight">
                                         {{ $unnamedValues }}
                                     </span>
                                 </div>
                             @endif
-
                         </div>
                     @else
-                        {{-- Tampilan Kosong --}}
                         <div class="text-center py-4 bg-gray-50 rounded-lg border border-dashed border-gray-200">
                             <span class="text-gray-400 text-sm italic">Belum ada spesifikasi.</span>
                         </div>
@@ -505,8 +488,6 @@
                 </div>
             </div>
 
-            
-
         </div>
     </div>
 
@@ -529,7 +510,6 @@
 document.addEventListener('DOMContentLoaded', () => {
 
     const product = @json($product);
-    const existingAttributes = {!! $product->existing_attributes_json ?? '{}' !!};
     const existingVariantTypes = {!! $product->existing_variant_types_json ?? '[]' !!};
     const existingVariantCombinations = {!! $product->existing_variant_combinations_json ?? '{}' !!};
 
@@ -565,9 +545,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 reader.onload = (event) => {
                     preview.src = event.target.result;
                     preview.style.display = 'block';
-                    
-                    // Sembunyikan teks di uploader jika perlu, atau biarkan sebagai area ganti gambar
-                    // uploader.style.display = 'none'; 
                 };
                 reader.readAsDataURL(file);
             }
@@ -599,101 +576,6 @@ document.addEventListener('DOMContentLoaded', () => {
         waInput.addEventListener('input', (e) => {
             e.target.value = e.target.value.replace(/\D/g, '');
         });
-    }
-
-    // --- DYNAMIC ATTRIBUTES ---
-    const categorySelect = document.getElementById('category_id');
-    const attributesCard = document.getElementById('attributes-card');
-    const attributesContainer = document.getElementById('dynamic-attributes-container');
-
-    async function fetchAndRenderAttributes() {
-        const selectedOption = categorySelect.options[categorySelect.selectedIndex];
-        const url = selectedOption ? selectedOption.dataset.attributesUrl : null;
-
-        if (!url) {
-            attributesCard.classList.add('hidden');
-            attributesContainer.innerHTML = '';
-            return;
-        }
-
-        try {
-            attributesContainer.innerHTML = '<div class="text-center text-gray-500 py-4"><span class="spinner text-indigo-500"></span> Memuat spesifikasi...</div>';
-            attributesCard.classList.remove('hidden');
-            const response = await fetch(url);
-            if (!response.ok) throw new Error(`Status: ${response.status}`);
-
-            const attributes = await response.json();
-            attributesContainer.innerHTML = '';
-
-            if (attributes && attributes.length > 0) {
-                attributes.forEach(attr => {
-                    if (typeof attr === 'object' && attr !== null && attr.slug) {
-                        const field = createAttributeField(attr);
-                        attributesContainer.appendChild(field);
-                        if (existingAttributes && existingAttributes[attr.slug] !== undefined) {
-                            fillAttributeValue(field, attr, existingAttributes[attr.slug]);
-                        }
-                    }
-                });
-            } else {
-                attributesContainer.innerHTML = '<p class="text-gray-400 text-sm italic text-center">Tidak ada spesifikasi khusus untuk kategori ini.</p>';
-            }
-        } catch (error) {
-            console.error(error);
-            attributesContainer.innerHTML = `<p class="text-red-500 text-sm">Gagal memuat spesifikasi.</p>`;
-        }
-    }
-
-    function createAttributeField(attribute) {
-        const wrapper = document.createElement('div');
-        const isRequired = attribute.is_required ? 'required' : '';
-        const requiredMark = attribute.is_required ? '<span class="text-red-500">*</span>' : '';
-        const label = `<label class="block text-sm font-medium text-gray-700 mb-1">${attribute.name || 'Atribut'} ${requiredMark}</label>`;
-        const inputName = `attributes[${attribute.slug}]`;
-        let inputHtml = '';
-
-        const commonClass = "w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500";
-
-        if (attribute.type === 'select') {
-            const opts = (attribute.options || '').split(',').map(o=>o.trim()).filter(o=>o).map(o=>`<option value="${o}">${o}</option>`).join('');
-            inputHtml = `<select name="${inputName}" class="${commonClass}" ${isRequired}><option value="">-- Pilih --</option>${opts}</select>`;
-        } else if (attribute.type === 'textarea') {
-            inputHtml = `<textarea name="${inputName}" rows="3" class="${commonClass}" ${isRequired}></textarea>`;
-        } else if (attribute.type === 'checkbox') {
-            const checks = (attribute.options || '').split(',').map(o=>o.trim()).filter(o=>o).map((o,i) => `
-                <label class="inline-flex items-center mr-4 mb-2">
-                    <input type="checkbox" name="${inputName}[]" value="${o}" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500">
-                    <span class="ml-2 text-sm text-gray-700">${o}</span>
-                </label>
-            `).join('');
-            inputHtml = `<div class="mt-1">${checks}</div>`;
-        } else {
-            inputHtml = `<input type="${attribute.type === 'number' ? 'number' : 'text'}" name="${inputName}" class="${commonClass}" ${isRequired}>`;
-        }
-
-        wrapper.innerHTML = label + inputHtml;
-        return wrapper;
-    }
-
-    function fillAttributeValue(el, attr, val) {
-        if (val === null || val === undefined) return;
-        if (attr.type === 'checkbox') {
-            let arr = Array.isArray(val) ? val : (typeof val === 'string' ? [val] : []);
-            // Try parse json string
-            if(typeof val === 'string' && val.startsWith('[')) { try { arr = JSON.parse(val); } catch(e){} }
-            
-            el.querySelectorAll(`input[type="checkbox"]`).forEach(chk => {
-                if(arr.includes(chk.value)) chk.checked = true;
-            });
-        } else {
-            const inp = el.querySelector(`[name^="attributes"]`);
-            if(inp) inp.value = val;
-        }
-    }
-
-    if (categorySelect) {
-        categorySelect.addEventListener('change', fetchAndRenderAttributes);
-        fetchAndRenderAttributes();
     }
 
     // --- VARIANT LOGIC ---
