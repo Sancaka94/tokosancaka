@@ -2,6 +2,35 @@
 
 @section('title', 'Edit Spesifikasi: ' . $product->name)
 
+<style>
+    .card-wrapper { @apply bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden; }
+    .card-header { @apply px-6 py-4 bg-gray-50 border-b border-gray-200 font-semibold text-gray-700 flex items-center gap-2; }
+    .card-body { @apply p-6; }
+    .form-label { @apply block mb-2 text-sm font-semibold text-gray-700; }
+    .form-input { @apply w-full bg-white border border-gray-300 rounded-xl p-3 text-sm focus:ring-blue-500 focus:border-blue-500 placeholder-gray-400; }
+    .form-select { @apply w-full border border-gray-300 rounded-xl p-3 text-sm focus:ring-blue-500 focus:border-blue-500; }
+    .icon-left { @apply absolute left-3 top-1/2 -translate-y-1/2 text-gray-400; }
+    .icon-right { @apply absolute right-3 inset-y-0 flex items-center text-gray-400; }
+    .info-box { @apply flex gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-sm; }
+    .footer-fixed { @apply bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-lg py-4 md:pl-[280px]; }
+
+    .btn-primary { @apply px-6 py-2.5 text-sm font-bold rounded-xl bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-500/20 flex items-center gap-2; }
+    .btn-cancel { @apply px-5 py-2.5 text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50; }
+
+    .card-sidebar { @apply bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden sticky top-6; }
+    .sidebar-header { @apply px-5 py-3 bg-gray-50 border-b border-gray-200 flex justify-between items-center; }
+    .badge-count { @apply text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full border border-blue-200 font-semibold; }
+    .sidebar-search { @apply p-3 border-b border-gray-100; }
+    .sidebar-list { @apply p-2 overflow-y-auto max-h-[350px]; }
+
+    .sidebar-item { @apply w-full text-left px-3 py-2.5 rounded-xl text-sm flex justify-between items-center transition border text-gray-600 hover:bg-gray-100 hover:text-gray-900; }
+    .sidebar-item.active { @apply bg-blue-600 text-white font-semibold shadow; }
+
+    .sidebar-add { @apply p-4 border-t border-gray-200 bg-gray-50 space-y-2; }
+    .add-label { @apply text-xs font-bold text-gray-600 uppercase flex items-center gap-1; }
+</style>
+
+
 @section('content')
 <div class="max-w-7xl mx-auto pb-40">
 
