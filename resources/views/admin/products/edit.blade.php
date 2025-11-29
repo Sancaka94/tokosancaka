@@ -638,6 +638,12 @@
                 </div>
             </div>
 
+            {{-- DEBUG START --}}
+<div class="bg-yellow-100 p-4 mb-4">
+    <pre>{{ json_encode($product->productAttributes, JSON_PRETTY_PRINT) }}</pre>
+</div>
+{{-- DEBUG END --}}
+
             {{-- D. STATUS --}}
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
