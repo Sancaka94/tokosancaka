@@ -438,7 +438,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             try {
                 // Fetch ke Laravel
-                const response = await fetch("{{ route('categories.storeAjax') }}", {
+                const response = await fetch("{{ route('admin.categories.storeAjax') }}", {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
