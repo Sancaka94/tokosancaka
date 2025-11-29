@@ -432,7 +432,7 @@
                 </div>
             </div>
 
-            {{-- F. MONITOR SPESIFIKASI ATRIBUT (BARU) --}}
+            {{-- F. MONITOR SPESIFIKASI (LOGIKA CUSTOM DARI ANDA) --}}
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mt-6">
                 <div class="px-6 py-4 border-b border-gray-100 bg-white flex justify-between items-center">
                     <h2 class="text-lg font-semibold text-gray-800">
@@ -441,44 +441,58 @@
                 </div>
 
                 <div class="p-6">
+                    {{-- === LOGIKA PHP DARI ANDA === --}}
                     @php
-                        // 1. Ambil data atribut. Sesuaikan 'attributes_json' dengan nama kolom di database Anda
-                        // Bisa $product->attributes_json atau $product->specifications
-                        $specs = $product->attributes_json ?? [];
+                        // Pastikan relasi ada untuk menghindari error jika null
+                        $attributesCollection = $product->productAttributes ?? collect();
 
-                        // 2. Jika data masih berupa JSON String, decode dulu
-                        if (is_string($specs)) {
-                            $specs = json_decode($specs, true);
-                        }
+                        // 1. Ambil atribut yang punya NAMA dan NILAI
+                        $namedAttributes = $attributesCollection->filter(function($attr) {
+                            return !empty($attr->name) && !empty($attr->value);
+                        })->groupBy('name'); 
+                        
+                        // 2. Ambil atribut yang HANYA punya NILAI (Nama-nya NULL)
+                        $unnamedValues = $attributesCollection->filter(function($attr) {
+                            return empty($attr->name) && !empty($attr->value);
+                        })
+                        ->pluck('value')  
+                        ->unique()        
+                        ->implode(', ');  
                     @endphp
 
-                    @if(!empty($specs) && is_array($specs) && count($specs) > 0)
+                    {{-- TAMPILAN DATA --}}
+                    @if ($namedAttributes->isNotEmpty() || !empty($unnamedValues))
                         <div class="space-y-4">
-                            @foreach($specs as $key => $value)
+                            
+                            {{-- Bagian 1: Atribut dengan Nama --}}
+                            @foreach ($namedAttributes as $name => $attributes)
                                 <div class="flex justify-between items-start border-b border-gray-50 pb-2 last:border-0">
-                                    {{-- Label: Ubah 'jenis_izin' menjadi 'Jenis Izin' --}}
                                     <span class="text-sm text-gray-500 font-medium capitalize">
-                                        {{ str_replace(['_', '-'], ' ', $key) }}
+                                        {{ $name }}
                                     </span>
-
-                                    {{-- Value --}}
                                     <span class="text-sm font-bold text-gray-800 text-right max-w-[60%] leading-tight">
-                                        @if(is_array($value))
-                                            {{-- Jika checkbox (array), gabungkan dengan koma --}}
-                                            {{ implode(', ', $value) }}
-                                        @elseif($value === null || $value === '')
-                                            <span class="text-gray-300">-</span>
-                                        @else
-                                            {{ $value }}
-                                        @endif
+                                        {{ $attributes->pluck('value')->implode(', ') }}
                                     </span>
                                 </div>
                             @endforeach
+
+                            {{-- Bagian 2: Info Lainnya (Tanpa Nama) --}}
+                            @if (!empty($unnamedValues))
+                                <div class="flex justify-between items-start border-b border-gray-50 pb-2 last:border-0">
+                                    <span class="text-sm text-gray-500 font-medium">
+                                        Info Lainnya
+                                    </span>
+                                    <span class="text-sm font-bold text-gray-800 text-right max-w-[60%] leading-tight">
+                                        {{ $unnamedValues }}
+                                    </span>
+                                </div>
+                            @endif
+
                         </div>
                     @else
-                        {{-- Tampilan jika kosong --}}
+                        {{-- Tampilan Kosong --}}
                         <div class="text-center py-4 bg-gray-50 rounded-lg border border-dashed border-gray-200">
-                            <span class="text-gray-400 text-sm italic">Belum ada spesifikasi khusus.</span>
+                            <span class="text-gray-400 text-sm italic">Belum ada spesifikasi.</span>
                         </div>
                     @endif
                 </div>
