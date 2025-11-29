@@ -106,7 +106,7 @@
                             <div class="flex items-center">
                                 <input type="text" id="category_display" 
                                     class="input-field bg-gray-100 text-gray-500 cursor-not-allowed border-gray-200 font-medium pl-10" 
-                                    value="{{ $product->category ? $product->category->name : 'Belum ada kategori' }}" 
+                                    value="{{ $categories->firstWhere('id', $product->category_id ?? $product->category)?->name ?? 'Belum ada kategori' }}"
                                     readonly>
                                 <i class="fa-solid fa-lock absolute left-3.5 bottom-3 text-gray-400"></i>
                             </div>
