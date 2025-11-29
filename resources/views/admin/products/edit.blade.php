@@ -236,13 +236,13 @@
                         <div>
                             <label for="store_name" class="block text-sm font-medium text-gray-700 mb-1">Nama Toko</label>
                             <input type="text" name="store_name" id="store_name" value="{{ old('store_name', $product->store_name) }}" 
-                                   class="w-full h-14 border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors">
+                                   class="w-full h-10 border-gray-400 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors">
                             <p class="mt-1 text-xs text-gray-400">Biarkan kosong untuk menggunakan default admin.</p>
                         </div>
                         <div>
                             <label for="seller_city" class="block text-sm font-medium text-gray-700 mb-1">Kota Asal</label>
                             <input type="text" name="seller_city" id="seller_city" value="{{ old('seller_city', $product->seller_city) }}" 
-                                   class="w-full h-14 border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors">
+                                   class="w-full h-10 border-gray-400 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors">
                         </div>
                     </div>
 
@@ -251,14 +251,14 @@
                         <div>
                             <label for="seller_name" class="block text-sm font-medium text-gray-700 mb-1">Nama Penjual (Opsional)</label>
                             <input type="text" name="seller_name" id="seller_name" value="{{ old('seller_name', $product->seller_name) }}" 
-                                   class="w-full h-14 border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors">
+                                   class="w-full h-10 border-gray-400 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors">
                         </div>
                         <div>
                             <label for="seller_wa" class="block text-sm font-medium text-gray-700 mb-1">WhatsApp (Opsional)</label>
                             <div class="relative">
                                 <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500 font-bold bg-gray-50 rounded-l-lg border-r border-gray-300 text-xs tracking-wide px-2">+62</span>
                                 <input type="text" name="seller_wa" id="seller_wa" value="{{ old('seller_wa', $product->seller_wa ? ltrim($product->seller_wa, '62') : '') }}" 
-                                       class="w-full h-14 border-gray-300 rounded-lg shadow-sm pl-14 focus:border-indigo-500 focus:ring-indigo-500 transition-colors" 
+                                       class="w-full h-10 border-gray-400 rounded-lg shadow-sm pl-14 focus:border-indigo-500 focus:ring-indigo-500 transition-colors" 
                                        placeholder="8123xxxx">
                             </div>
                         </div>
