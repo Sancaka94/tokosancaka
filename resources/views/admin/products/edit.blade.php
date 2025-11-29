@@ -612,7 +612,30 @@
 
                     @if ($namedAttributes->isNotEmpty() || !empty($unnamedValues))
                         <div class="space-y-4">
-                            @foreach ($namedAttributes as $name => $attributes)
+                            @foreach ($namedAttributes as $name => $attrs)
+    <div class="flex justify-between items-start border-b border-gray-50 pb-2 last:border-0">
+        <span class="text-sm text-gray-500 font-medium capitalize">{{ $name }}</span>
+        <span class="text-sm font-bold text-gray-800 text-right max-w-[60%] leading-tight">
+            @foreach($attrs as $item)
+                @php
+                    // Coba decode JSON
+                    $decoded = json_decode($item->value, true);
+                @endphp
+
+                @if(json_last_error() === JSON_ERROR_NONE && is_array($decoded))
+                    {{-- Jika formatnya Array JSON, gabungkan dengan koma --}}
+                    {{ implode(', ', $decoded) }}
+                @else
+                    {{-- Jika teks biasa, tampilkan langsung --}}
+                    {{ $item->value }}
+                @endif
+
+                {{-- Tambahkan koma jika ada lebih dari 1 row data (jarang terjadi tapi aman) --}}
+                @if(!$loop->last), @endif
+            @endforeach
+        </span>
+    </div>
+@endforeach
                                 <div class="flex justify-between items-start border-b border-gray-50 pb-2 last:border-0">
                                     <span class="text-sm text-gray-500 font-medium capitalize">{{ $name }}</span>
                                     <span class="text-sm font-bold text-gray-800 text-right max-w-[60%] leading-tight">
