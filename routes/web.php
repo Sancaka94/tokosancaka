@@ -514,6 +514,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
     // Grup ini memastikan semua URL diawali dengan '/category-attributes'
     // dan semua nama rute diawali dengan 'category-attributes.'
     Route::prefix('category-attributes')->name('category-attributes.')->group(function () {
+
+        Route::post('/{category}', [App\Http\Controllers\Admin\CategoryAttributeController::class, 'store'])->name('store');
         
         // Menampilkan halaman utama (daftar atribut)
         // URL: /admin/category-attributes

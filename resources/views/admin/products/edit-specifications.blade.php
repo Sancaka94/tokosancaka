@@ -69,6 +69,69 @@
                     </div>
                     
                     <div id="dynamic-attributes-container" class="space-y-4">
+
+                        {{-- AREA SPESIFIKASI (Existing) --}}
+<div id="attributes-card" class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hidden">
+    <div class="flex items-center justify-between mb-4 border-b pb-2">
+        <h2 class="text-lg font-semibold text-gray-800">Spesifikasi Tambahan</h2>
+        <div class="flex gap-2">
+            <span class="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded" id="label-category-name">Sesuai Kategori</span>
+            {{-- Tombol Tambah Atribut Manual --}}
+            <button type="button" id="btn-show-add-attr" class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 py-1 rounded border border-gray-300 transition">
+                <i class="fa-solid fa-plus"></i> Tambah Field
+            </button>
+        </div>
+    </div>
+    
+    {{-- Container Input Dinamis --}}
+    <div id="dynamic-attributes-container" class="space-y-4">
+        {{-- Diisi via JS --}}
+    </div>
+
+    {{-- === FORM TAMBAH ATRIBUT BARU (Hidden by Default) === --}}
+    <div id="form-add-attribute" class="hidden mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg animate-fade-in-down">
+        <h3 class="text-sm font-bold text-gray-800 mb-3"><i class="fa-solid fa-layer-group text-indigo-500 mr-1"></i> Buat Spesifikasi Baru</h3>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+            {{-- Nama Atribut --}}
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Nama Field (Label)</label>
+                <input type="text" id="new_attr_name" class="w-full text-sm border-gray-300 rounded focus:border-indigo-500 focus:ring-indigo-500" placeholder="Contoh: Warna / Bahan">
+            </div>
+
+            {{-- Tipe Input --}}
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Tipe Input</label>
+                <select id="new_attr_type" class="w-full text-sm border-gray-300 rounded focus:border-indigo-500 focus:ring-indigo-500">
+                    <option value="text">Text Singkat (Input)</option>
+                    <option value="select">Pilihan (Dropdown)</option>
+                    <option value="checkbox">Pilihan Banyak (Checkbox)</option>
+                    <option value="number">Angka</option>
+                    <option value="textarea">Text Panjang</option>
+                </select>
+            </div>
+        </div>
+
+        {{-- Opsi (Hanya muncul jika Select/Checkbox) --}}
+        <div id="new_attr_options_wrapper" class="mb-3 hidden">
+            <label class="block text-xs font-medium text-gray-600 mb-1">Opsi Pilihan (Pisahkan dengan koma)</label>
+            <input type="text" id="new_attr_options" class="w-full text-sm border-gray-300 rounded focus:border-indigo-500 focus:ring-indigo-500" placeholder="Contoh: Merah, Hijau, Biru">
+        </div>
+
+        <div class="flex items-center justify-between mt-4">
+            <label class="inline-flex items-center">
+                <input type="checkbox" id="new_attr_required" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" checked>
+                <span class="ml-2 text-xs text-gray-600">Wajib Diisi</span>
+            </label>
+            <div class="flex gap-2">
+                <button type="button" id="btn-cancel-attr" class="px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-800">Batal</button>
+                <button type="button" id="btn-save-attr" class="px-4 py-1.5 text-xs font-medium text-white bg-indigo-600 rounded hover:bg-indigo-700 shadow-sm flex items-center">
+                    Simpan Field
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
                         {{-- Diisi via JS --}}
                     </div>
                 </div>
@@ -256,71 +319,161 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    /**
-     * Mengambil Form Spesifikasi dari Server (AJAX) dan Mengisinya
-     */
+    // =========================================================================
+    // UPDATE FUNGSI FETCH: Handle Empty State
+    // =========================================================================
     async function fetchAndRenderAttributes(url, isInit = false) {
         if (!url) return;
-
-        // Tampilkan Card
         attributesCard.classList.remove('hidden');
 
-        // Tampilkan Loading hanya jika user klik manual (bukan saat load awal agar tidak kedip)
-        // Atau tetap tampilkan agar user tahu proses sedang berjalan
-        attributesContainer.innerHTML = `
-            <div class="py-8 text-center text-gray-500 animate-pulse">
-                <i class="fas fa-circle-notch fa-spin text-indigo-500 text-2xl mb-2"></i>
-                <p>Memuat formulir spesifikasi...</p>
-            </div>
-        `;
+        if(!isInit) {
+            attributesContainer.innerHTML = '<div class="py-4 text-center text-gray-500"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+        }
 
         try {
             const response = await fetch(url);
-            if(!response.ok) throw new Error("Gagal mengambil data");
-            
+            if(!response.ok) throw new Error("Gagal load data");
             const attributesStructure = await response.json();
             
-            // Bersihkan container
             attributesContainer.innerHTML = ''; 
 
             if (attributesStructure && attributesStructure.length > 0) {
+                // RENDER NORMAL
                 attributesStructure.forEach(attr => {
-                    // 1. Buat HTML Input
                     const fieldElement = createAttributeField(attr);
                     attributesContainer.appendChild(fieldElement);
-
-                    // 2. AUTO FILL VALUE (Pencocokan Data Lama)
+                    
+                    // Auto Fill Logic
                     let dbValue = existingAttributes[attr.slug];
-
-                    // Fallback: Coba format slug lain (underscore vs dash)
-                    if (dbValue === undefined) {
-                         dbValue = existingAttributes[attr.slug.replace(/-/g, '_')];
-                    }
-                    if (dbValue === undefined) {
-                         dbValue = existingAttributes[attr.slug.replace(/_/g, '-')];
-                    }
-
-                    // Jika nilai ditemukan, isikan ke input
-                    if (dbValue !== undefined && dbValue !== null) {
-                        fillAttributeValue(fieldElement, attr, dbValue);
-                    }
+                    if (dbValue === undefined) dbValue = existingAttributes[attr.slug.replace(/-/g, '_')];
+                    if (dbValue !== undefined && dbValue !== null) fillAttributeValue(fieldElement, attr, dbValue);
                 });
             } else {
+                // RENDER EMPTY STATE: Tampilkan tombol buat baru
                 attributesContainer.innerHTML = `
-                    <div class="text-center py-6 border-2 border-dashed border-gray-200 rounded-lg bg-gray-50">
-                        <p class="text-gray-500 text-sm font-medium">Tidak ada spesifikasi khusus.</p>
-                        <p class="text-gray-400 text-xs mt-1">Anda bisa langsung menyimpan produk.</p>
+                    <div class="text-center py-8 border-2 border-dashed border-gray-200 rounded-lg bg-gray-50">
+                        <i class="fa-solid fa-box-open text-gray-300 text-4xl mb-3"></i>
+                        <p class="text-gray-500 text-sm font-medium">Belum ada spesifikasi untuk kategori ini.</p>
+                        <button type="button" onclick="document.getElementById('btn-show-add-attr').click()" class="mt-3 text-indigo-600 hover:text-indigo-800 text-sm font-semibold underline">
+                            + Buat Spesifikasi Baru
+                        </button>
                     </div>`;
             }
 
         } catch (error) {
-            console.error("Error Fetching Attributes:", error);
-            attributesContainer.innerHTML = `
-                <div class="p-4 bg-red-50 text-red-600 rounded-lg text-sm flex items-center">
-                    <i class="fa-solid fa-triangle-exclamation mr-2"></i> 
-                    Gagal memuat spesifikasi. Silakan refresh halaman.
-                </div>`;
+            console.error(error);
+            attributesContainer.innerHTML = '<p class="text-red-500 text-sm text-center">Gagal memuat data.</p>';
         }
+    }
+
+    // =========================================================================
+    // BARU: LOGIC TAMBAH ATRIBUT DINAMIS
+    // =========================================================================
+    const btnShowAttrForm = document.getElementById('btn-show-add-attr');
+    const formAttrWrapper = document.getElementById('form-add-attribute');
+    const btnCancelAttr = document.getElementById('btn-cancel-attr');
+    const btnSaveAttr = document.getElementById('btn-save-attr');
+    const inputAttrType = document.getElementById('new_attr_type');
+    const inputAttrOptionsDiv = document.getElementById('new_attr_options_wrapper');
+
+    // 1. Toggle Form
+    if(btnShowAttrForm) {
+        btnShowAttrForm.addEventListener('click', () => {
+            formAttrWrapper.classList.remove('hidden');
+            // Scroll ke form
+            formAttrWrapper.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            document.getElementById('new_attr_name').focus();
+        });
+    }
+
+    if(btnCancelAttr) {
+        btnCancelAttr.addEventListener('click', () => {
+            formAttrWrapper.classList.add('hidden');
+        });
+    }
+
+    // 2. Tampilkan Input Opsi jika Select/Checkbox dipilih
+    if(inputAttrType) {
+        inputAttrType.addEventListener('change', (e) => {
+            const val = e.target.value;
+            if(val === 'select' || val === 'checkbox') {
+                inputAttrOptionsDiv.classList.remove('hidden');
+            } else {
+                inputAttrOptionsDiv.classList.add('hidden');
+            }
+        });
+    }
+
+    // 3. Simpan Atribut Baru (AJAX)
+    if(btnSaveAttr) {
+        btnSaveAttr.addEventListener('click', async () => {
+            const catId = categoryInput.value;
+            const name = document.getElementById('new_attr_name').value.trim();
+            const type = document.getElementById('new_attr_type').value;
+            const options = document.getElementById('new_attr_options').value;
+            const isRequired = document.getElementById('new_attr_required').checked;
+
+            if(!catId) { alert('Pilih kategori dulu!'); return; }
+            if(!name) { alert('Nama field wajib diisi!'); return; }
+            if((type === 'select' || type === 'checkbox') && !options) {
+                alert('Untuk tipe Pilihan, kolom Opsi wajib diisi (pisahkan dengan koma).'); return;
+            }
+
+            // UI Loading
+            const originalBtnHtml = btnSaveAttr.innerHTML;
+            btnSaveAttr.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
+            btnSaveAttr.disabled = true;
+
+            try {
+                // Generate URL dinamis: admin/category-attributes/{category_id}
+                // Pastikan route ini ada di web.php: admin.category-attributes.store
+                const url = "{{ route('admin.category-attributes.store', ':id') }}".replace(':id', catId);
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name: name,
+                        type: type,
+                        options: options,
+                        is_required: isRequired
+                    })
+                });
+
+                const result = await response.json();
+
+                if(!response.ok) throw new Error(result.message || 'Gagal menyimpan atribut');
+
+                // BERHASIL:
+                // 1. Hapus pesan "Belum ada spesifikasi" jika ada
+                if(attributesContainer.innerText.includes('Belum ada spesifikasi')) {
+                    attributesContainer.innerHTML = '';
+                }
+
+                // 2. Render field baru langsung ke layar
+                const newFieldHtml = createAttributeField(result.data);
+                
+                // Tambahkan animasi fade-in
+                newFieldHtml.classList.add('animate-fade-in-down');
+                attributesContainer.appendChild(newFieldHtml);
+
+                // 3. Reset Form & Sembunyikan
+                document.getElementById('new_attr_name').value = '';
+                document.getElementById('new_attr_options').value = '';
+                formAttrWrapper.classList.add('hidden');
+
+            } catch (error) {
+                console.error(error);
+                alert('Error: ' + error.message);
+            } finally {
+                btnSaveAttr.innerHTML = originalBtnHtml;
+                btnSaveAttr.disabled = false;
+            }
+        });
     }
 
     /**
