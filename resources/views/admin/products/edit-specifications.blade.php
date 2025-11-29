@@ -130,6 +130,24 @@
                     </div>
                 </div>
 
+                {{-- FOOTER --}}
+        <div class="bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-lg py-4 md:pl-[280px] pt-10">
+            <div class="max-w-7xl mx-auto flex justify-end gap-3 px-4">
+
+                <a href="{{ route('admin.products.edit', $product->slug) }}"
+                    class="px-5 py-2.5 text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50">
+                    Batal
+                </a>
+
+                <button type="submit"
+                    class="px-6 py-2.5 text-sm font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-500/20 flex items-center gap-2">
+                    <i class="fa-solid fa-floppy-disk"></i>
+                    Simpan Spesifikasi
+                </button>
+
+            </div>
+        </div>
+
             </div>
 
 
@@ -206,23 +224,7 @@
 
         </div>
 
-        {{-- FOOTER --}}
-        <div class="bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-lg py-4 md:pl-[280px] pt-10">
-            <div class="max-w-7xl mx-auto flex justify-end gap-3 px-4">
-
-                <a href="{{ route('admin.products.edit', $product->slug) }}"
-                    class="px-5 py-2.5 text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50">
-                    Batal
-                </a>
-
-                <button type="submit"
-                    class="px-6 py-2.5 text-sm font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-500/20 flex items-center gap-2">
-                    <i class="fa-solid fa-floppy-disk"></i>
-                    Simpan Spesifikasi
-                </button>
-
-            </div>
-        </div>
+        
 
     </form>
 </div>
