@@ -16,8 +16,8 @@
     .step-progress-active { position: absolute; top: 50%; left: 0; height: 3px; background-color: #ef4444; transform: translateY(-50%); z-index: 0; transition: width 0.4s ease; }
     .step-item { position: relative; z-index: 10; background-color: #f1f5f9; padding: 0 5px; display: flex; flex-direction: column; align-items: center; cursor: default; }
     .step-circle { width: 35px; height: 35px; border-radius: 50%; background-color: #fff; border: 3px solid #cbd5e1; color: #64748b; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; transition: all 0.3s ease; }
-    .step-item.active .step-circle { border-color: #3b82f6; background-color: #3b82f6; color: #fff; box-shadow: 0 0 0 4px #dbeafe; transform: scale(1.1); }
-    .step-item.active .step-label { color: #3b82f6; }
+    .step-item.active .step-circle { border-color: #ef4444; background-color: #ef4444; color: #fff; box-shadow: 0 0 0 4px #dbeafe; transform: scale(1.1); }
+    .step-item.active .step-label { color: #ef4444; }
     .step-item.completed .step-circle { border-color: #10b981; background-color: #10b981; color: #fff; }
     .step-item.completed .step-label { color: #10b981; }
     
@@ -25,7 +25,7 @@
     .search-group { position: relative; }
     .search-results { position: absolute; top: 100%; left: 0; right: 0; z-index: 9999 !important; background: white; border: 1px solid #e2e8f0; border-radius: 0.5rem; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.15); max-height: 250px; overflow-y: auto; margin-top: 4px; }
     .result-item { padding: 10px 15px; border-bottom: 1px solid #f1f5f9; cursor: pointer; font-size: 13px; color: #334155; transition: background 0.2s; }
-    .result-item:hover { background-color: #eff6ff; color: #1e40af; }
+    .result-item:hover { background-color: #eff6ff; color: #ef4444; }
     
     /* Animations & Utilities */
     .step-content { display: none; animation: slideUp 0.4s ease-out; }
