@@ -828,46 +828,91 @@ $validatedDataForUpdate['is_free_shipping'] = $request->has('is_free_shipping');
          }
     }
 
-   public function editSpecifications($id)
-{
-    $product = Product::findOrFail($id);
-    $categories = Category::all();
+   // ... (Kode method index, store, edit, update, dll biarkan sama) ...
 
-    // --- PERBAIKAN DI SINI ---
-    // Kita ubah collection productAttributes menjadi array sederhana:
-    // Format: ['jenis-izin' => 'SIUP', 'lokasi' => 'Jakarta']
-    $existingAttributes = $product->productAttributes->mapWithKeys(function ($item) {
-        // Asumsi: di tabel product_attributes ada kolom 'slug' dan 'value'
-        // Jika kolomnya 'name', ganti $item->slug menjadi Str::slug($item->name)
-        return [$item->slug => $item->value]; 
-    });
+    /**
+     * Menampilkan form khusus untuk edit Kategori & Spesifikasi.
+     */
+    public function editSpecifications($id)
+    {
+        $product = Product::findOrFail($id);
+        $categories = Category::where('type', 'product')->orderBy('name')->get();
 
-    return view('admin.products.edit-specifications', compact('product', 'categories', 'existingAttributes'));
-}
+        // --- PERBAIKAN LOGIC PENGAMBILAN DATA LAMA ---
+        // Kita ambil data dari tabel product_attributes
+        // Lalu kita ubah formatnya menjadi [ 'slug-atribut' => 'Nilai' ]
+        // Agar JavaScript bisa mencocokkan dengan name="attributes[slug-atribut]"
+        
+        $existingAttributes = $product->productAttributes->mapWithKeys(function ($item) {
+            // Karena di tabel product_attributes biasanya kolomnya 'name' (bukan slug),
+            // Kita convert Name ke Slug agar cocok dengan definisi atribut master.
+            // Contoh: Name "Jenis Izin" -> Slug "jenis-izin"
+            return [\Illuminate\Support\Str::slug($item->name) => $item->value];
+        });
 
-public function updateSpecifications(Request $request, $id)
-{
-    $product = Product::findOrFail($id);
+        return view('admin.products.edit-specifications', compact('product', 'categories', 'existingAttributes'));
+    }
 
-    $validated = $request->validate([
-        'sku' => 'nullable|string|max:255',
-        'category_id' => 'required|exists:categories,id',
-        'tags' => 'nullable|string',
-        'attributes' => 'nullable|array', // Validasi atribut dinamis
-    ]);
+    /**
+     * Memproses update Kategori & Spesifikasi.
+     */
+    public function updateSpecifications(Request $request, $id)
+    {
+        $product = Product::findOrFail($id);
 
-    // Update Data
-    $product->update([
-        'sku' => $validated['sku'],
-        'category_id' => $validated['category_id'],
-        'tags' => $validated['tags'],
-        // Simpan atribut dinamis (sesuaikan logic penyimpanan Anda, misal json_encode)
-        'attributes_json' => isset($validated['attributes']) ? json_encode($validated['attributes']) : null, 
-    ]);
+        // 1. Validasi Input
+        $validated = $request->validate([
+            'sku' => ['nullable', 'string', 'max:100', Rule::unique('products', 'sku')->ignore($product->id)],
+            'category_id' => 'required|exists:categories,id',
+            'tags' => 'nullable|string',
+            'attributes' => 'nullable|array', // Array atribut dinamis
+        ]);
 
-    return redirect()->route('admin.products.edit', $product->slug)
-        ->with('success', 'Kategori dan Spesifikasi berhasil diperbarui.');
-}
+        try {
+            DB::transaction(function () use ($product, $request, $validated) {
+                
+                // 2. Logic Update Tags (Sama seperti di method store/update)
+                $manualTags = [];
+                if (!empty($request->tags)) {
+                    $manualTags = array_map('trim', explode(',', $request->tags));
+                    $manualTags = array_filter($manualTags);
+                }
+                
+                // Tambahkan nama kategori otomatis ke tags
+                $category = Category::find($validated['category_id']);
+                $categoryTag = $category->name ?? null;
+                $allTags = $manualTags;
+                if ($categoryTag && !in_array($categoryTag, $allTags)) {
+                    $allTags[] = $categoryTag;
+                }
+                
+                $jsonTags = !empty($allTags) ? json_encode(array_values(array_unique($allTags))) : null;
+
+                // 3. Update Data Utama Produk (SKU, Kategori, Tags)
+                $product->update([
+                    'sku' => $validated['sku'],
+                    'category_id' => $validated['category_id'],
+                    'tags' => $jsonTags,
+                ]);
+
+                // 4. Update Spesifikasi / Atribut Dinamis
+                // PENTING: Gunakan method syncAttributes yang sudah Anda buat,
+                // JANGAN simpan manual ke kolom 'attributes_json' jika pakai tabel terpisah.
+                $attributesInput = $request->input('attributes', []);
+                
+                // Jika kategori berubah, mungkin atribut lama tidak relevan, 
+                // tapi syncAttributes akan menangani penghapusan jika nama atribut tidak ada di input baru.
+                $this->syncAttributes($product, $attributesInput);
+            });
+
+            return redirect()->route('admin.products.edit', $product->slug)
+                ->with('success', 'Kategori dan Spesifikasi berhasil diperbarui.');
+
+        } catch (Exception $e) {
+            Log::error('Error updating specifications for Product ID ' . $product->id . ': ' . $e->getMessage());
+            return back()->with('error', 'Gagal memperbarui spesifikasi: ' . $e->getMessage())->withInput();
+        }
+    }
 
 } // End of ProductController class
 
