@@ -83,9 +83,12 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // Ambil data atribut lama (values) dari database
-    const existingAttributes = {!! $product->existing_attributes_json ?? '{}' !!};
+    // 1. TERIMA DATA DARI CONTROLLER (Format JSON)
+    const existingAttributes = @json($existingAttributes); 
     
+    // Debug: Cek di Console browser apakah datanya masuk?
+    console.log('Data Lama:', existingAttributes); 
+
     const categorySelect = document.getElementById('category_id');
     const attributesCard = document.getElementById('attributes-card');
     const attributesContainer = document.getElementById('dynamic-attributes-container');
@@ -102,23 +105,28 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
+            // Tampilkan loading saat proses fetch
             attributesContainer.innerHTML = '<div class="text-center py-4 text-gray-500"><i class="fas fa-circle-notch fa-spin text-indigo-500 mr-2"></i> Memuat form spesifikasi...</div>';
             attributesCard.classList.remove('hidden');
             
             const response = await fetch(url);
             if (!response.ok) throw new Error('Gagal mengambil data');
-            const attributes = await response.json();
             
-            attributesContainer.innerHTML = ''; // Clear loading
+            // Ini adalah struktur form (Label, Tipe Input, Slug) dari Master Kategori
+            const attributeDefinitions = await response.json();
+            
+            attributesContainer.innerHTML = ''; // Hapus loading
 
-            if (attributes && attributes.length > 0) {
-                attributes.forEach(attr => {
-                    const field = createAttributeField(attr);
-                    attributesContainer.appendChild(field);
+            if (attributeDefinitions && attributeDefinitions.length > 0) {
+                attributeDefinitions.forEach(attrDef => {
+                    // 1. Buat Field Input Kosong
+                    const fieldElement = createAttributeField(attrDef);
+                    attributesContainer.appendChild(fieldElement);
                     
-                    // Isi value jika ada di database (Mode Edit)
-                    if (existingAttributes && existingAttributes[attr.slug] !== undefined) {
-                        fillAttributeValue(field, attr, existingAttributes[attr.slug]);
+                    // 2. ISI VALUE (AUTO-FILL) JIKA ADA DATA LAMA
+                    // Cek apakah slug atribut ini ada di data existingAttributes
+                    if (existingAttributes && existingAttributes[attrDef.slug] !== undefined) {
+                        fillAttributeValue(fieldElement, attrDef, existingAttributes[attrDef.slug]);
                     }
                 });
             } else {
@@ -131,7 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Fungsi Helper Membuat HTML Field
+    // --- FUNGSI HELPER: CREATE HTML FIELD ---
     function createAttributeField(attribute) {
         const wrapper = document.createElement('div');
         const isRequired = attribute.is_required ? 'required' : '';
@@ -142,8 +150,12 @@ document.addEventListener('DOMContentLoaded', () => {
         let inputHtml = '';
 
         if (attribute.type === 'select') {
+            // Render Select Option
             const opts = (attribute.options || '').split(',').map(o=>o.trim()).map(o=>`<option value="${o}">${o}</option>`).join('');
-            inputHtml = `<select name="${inputName}" class="${commonClass}" ${isRequired}><option value="">-- Pilih --</option>${opts}</select>`;
+            inputHtml = `<select name="${inputName}" class="${commonClass}" ${isRequired}>
+                            <option value="">-- Pilih --</option>
+                            ${opts}
+                         </select>`;
         } else if (attribute.type === 'textarea') {
             inputHtml = `<textarea name="${inputName}" rows="3" class="${commonClass}" ${isRequired}></textarea>`;
         } else if (attribute.type === 'checkbox') {
@@ -164,28 +176,32 @@ document.addEventListener('DOMContentLoaded', () => {
         return wrapper;
     }
 
-    // Fungsi Helper Mengisi Nilai (Edit Mode)
-    function fillAttributeValue(el, attr, val) {
-        if (val === null || val === undefined) return;
+    // --- FUNGSI HELPER: ISI NILAI KE INPUT ---
+    function fillAttributeValue(el, attrDef, value) {
+        if (value === null || value === undefined) return;
         
-        if (attr.type === 'checkbox') {
-            let arr = Array.isArray(val) ? val : [val];
-            // Handle JSON string if necessary
-            if(typeof val === 'string' && val.startsWith('[')) { try { arr = JSON.parse(val); } catch(e){} }
+        // Handle Checkbox (Array Values)
+        if (attrDef.type === 'checkbox') {
+            let arr = Array.isArray(value) ? value : [value];
+            if(typeof value === 'string' && value.startsWith('[')) { try { arr = JSON.parse(value); } catch(e){} }
             
             el.querySelectorAll('input[type="checkbox"]').forEach(chk => {
                 if(arr.includes(chk.value)) chk.checked = true;
             });
-        } else {
+        } 
+        // Handle Select, Text, Number, Textarea
+        else {
             const inp = el.querySelector(`[name^="attributes"]`);
-            if(inp) inp.value = val;
+            if(inp) {
+                inp.value = value; // <-- INI KUNCINYA: Mengisi value ke input/select
+            }
         }
     }
 
     // Event Listener
     if (categorySelect) {
         categorySelect.addEventListener('change', fetchAndRenderAttributes);
-        // Load on start
+        // Load otomatis saat halaman dibuka
         fetchAndRenderAttributes();
     }
 });

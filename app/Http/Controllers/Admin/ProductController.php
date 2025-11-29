@@ -828,12 +828,21 @@ $validatedDataForUpdate['is_free_shipping'] = $request->has('is_free_shipping');
          }
     }
 
-    public function editSpecifications($id)
+   public function editSpecifications($id)
 {
-    $product = Product::findOrFail($id); // Sesuaikan model Anda
-    $categories = Category::all(); // Sesuaikan model Category Anda
+    $product = Product::findOrFail($id);
+    $categories = Category::all();
 
-    return view('admin.products.edit-specifications', compact('product', 'categories'));
+    // --- PERBAIKAN DI SINI ---
+    // Kita ubah collection productAttributes menjadi array sederhana:
+    // Format: ['jenis-izin' => 'SIUP', 'lokasi' => 'Jakarta']
+    $existingAttributes = $product->productAttributes->mapWithKeys(function ($item) {
+        // Asumsi: di tabel product_attributes ada kolom 'slug' dan 'value'
+        // Jika kolomnya 'name', ganti $item->slug menjadi Str::slug($item->name)
+        return [$item->slug => $item->value]; 
+    });
+
+    return view('admin.products.edit-specifications', compact('product', 'categories', 'existingAttributes'));
 }
 
 public function updateSpecifications(Request $request, $id)
