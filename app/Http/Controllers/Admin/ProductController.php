@@ -701,35 +701,47 @@ class ProductController extends Controller
          return '';
     }
 
+    // GANTI TOTAL function syncAttributes DENGAN INI:
     protected function syncAttributes(Product $product, ?array $attributesData)
     {
-        if ($attributesData === null) {
-            $product->productAttributes()->delete();
+        // 1. Cek apakah ada data yang dikirim
+        if (empty($attributesData)) {
             return;
         }
 
-        $currentAttributeNames = [];
-        // Ambil info atribut valid untuk cek tipe/nama asli
-        $validAttributesInfo = Attribute::where('category_id', $product->category_id)
-                                    ->whereIn('slug', array_keys($attributesData))
-                                    ->get()
-                                    ->keyBy('slug');
+        // 2. Debugging (Opsional: Cek di Laravel.log kalau masih gagal)
+        // \Illuminate\Support\Facades\Log::info('Syncing Attributes:', $attributesData);
 
+        // 3. Loop dan Simpan Langsung (Tanpa Filter Kategori)
         foreach ($attributesData as $slug => $value) {
-            $attributeInfo = $validAttributesInfo->get($slug);
-            $attributeName = $attributeInfo->name ?? str_replace('-', ' ', Str::title($slug));
-
-            if (!empty($attributeName) && ($value !== null && $value !== '' && (!is_array($value) || !empty(array_filter($value)))))
-            {
-                $processedValue = is_array($value) ? json_encode(array_values(array_filter($value))) : $value;
-                ProductAttribute::updateOrCreate(
-                    ['product_id' => $product->id, 'name' => $attributeName],
-                    ['value' => $processedValue]
-                );
-                $currentAttributeNames[] = $attributeName;
+            
+            // Skip jika value kosong/null
+            if ($value === null || $value === '') {
+                continue;
             }
+
+            // Bersihkan format nama (slug-jadi-text -> Slug Jadi Text)
+            // Ini agar kolom 'name' terisi rapi
+            $prettyName = ucwords(str_replace(['-', '_'], ' ', $slug));
+
+            // Proses value (Array/Checkbox jadi JSON)
+            $processedValue = is_array($value) ? json_encode(array_values($value)) : $value;
+
+            // 4. Update atau Buat Baru (Jurus Paksa Simpan)
+            // Kita gunakan 'name' sebagai kunci pencarian
+            ProductAttribute::updateOrCreate(
+                [
+                    'product_id' => $product->id, 
+                    'name'       => $prettyName // Kuncinya di sini (Nama Atribut)
+                ],
+                [
+                    'value'          => $processedValue,
+                    'attribute_slug' => $slug, // Simpan slugnya juga biar aman
+                    // Hapus baris ini jika kolom attribute_name tidak ada di DB
+                    'attribute_name' => $prettyName 
+                ]
+            );
         }
-        $product->productAttributes()->whereNotIn('name', $currentAttributeNames)->delete();
     }
 
     protected function syncVariantTypesAndCombinations(Product $product, ?array $variantTypesData, ?array $productVariantsData)
