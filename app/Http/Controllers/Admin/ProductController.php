@@ -587,10 +587,14 @@ class ProductController extends Controller
         return view('admin.products.edit-specifications', compact('product', 'categories', 'existingAttributesJson'));
     }
 
-    // GANTI $id MENJADI $slug
-    public function updateSpecifications(Request $request, $slug)
+    // GANTI method updateSpecifications dengan yang ini:
+    public function updateSpecifications(Request $request, $idOrSlug)
     {
-        $product = Product::where('slug', $slug)->firstOrFail();
+        // LOGIC PINTAR: Cek apakah input berupa Angka (ID) atau Teks (Slug)
+        // Jadi URL .../5/specifications ATAU .../jasa-izin/specifications DUA-DUANYA BISA JALAN
+        $product = Product::where('id', $idOrSlug)
+                          ->orWhere('slug', $idOrSlug)
+                          ->firstOrFail();
 
         // 1. LOGIC SKU AUTO-GENERATE
         if (empty($request->input('sku'))) {
@@ -600,7 +604,7 @@ class ProductController extends Controller
 
         // 2. Validasi
         $validated = $request->validate([
-            'sku' => ['required', 'string', 'max:100', Rule::unique('products', 'sku')->ignore($product->id)],
+            'sku' => ['required', 'string', 'max:100', \Illuminate\Validation\Rule::unique('products', 'sku')->ignore($product->id)],
             'category_id' => 'required|exists:categories,id',
             'tags' => 'nullable|string',
             'attributes' => 'nullable|array',
@@ -633,7 +637,7 @@ class ProductController extends Controller
                 $this->syncAttributes($product, $attributesInput);
             });
 
-            // Redirect kembali ke halaman spesifikasi (bukan edit utama) agar user tidak bingung
+            // Redirect menggunakan slug agar URL browser menjadi cantik kembali
             return redirect()->route('admin.products.edit.specifications', $product->slug)
                 ->with('success', 'Kategori dan Spesifikasi berhasil diperbarui.');
 
