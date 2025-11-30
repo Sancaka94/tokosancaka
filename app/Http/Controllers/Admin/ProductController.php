@@ -550,9 +550,161 @@ class ProductController extends Controller
         }
     }
 
-    // --- SPESIAL: Method untuk Edit Kategori & Spesifikasi Terpisah ---
+    protected function generateUniqueSlug(string $name, int $ignoreId = null): string
+    {
+        $slug = Str::slug($name);
+        $originalSlug = $slug;
+        $count = 1;
+        while (Product::where('slug', $slug)->when($ignoreId, fn($q) => $q->where('id', '!=', $ignoreId))->exists()) {
+            $slug = $originalSlug . '-' . $count++;
+        }
+        return $slug;
+    }
 
-    // GANTI $id MENJADI $slug AGAR SUPPORT URL SLUG
+    protected function generateSku(string $productName, int $categoryId): string
+    {
+        $category = Category::find($categoryId);
+        $categoryInitial = $category ? strtoupper(substr(preg_replace('/[^a-zA-Z0-9]/', '', $category->name), 0, 3)) : 'GEN';
+        $productInitial = strtoupper(substr(preg_replace('/[^a-zA-Z0-9]/', '', $productName), 0, 3));
+        $randomNum = mt_rand(100, 999);
+        $sku = "{$categoryInitial}-{$productInitial}-{$randomNum}";
+        while (Product::where('sku', $sku)->exists()) {
+             $randomNum = mt_rand(100, 999);
+             $sku = "{$categoryInitial}-{$productInitial}-{$randomNum}";
+        }
+        return $sku;
+    }
+
+    protected function decodeTags($tags): string
+    {
+         if (is_string($tags)) {
+             try {
+                 $decodedTags = json_decode($tags, true, 512, JSON_THROW_ON_ERROR);
+                 return is_array($decodedTags) ? implode(', ', $decodedTags) : $tags;
+             } catch (\JsonException $e) { return $tags; }
+         } elseif (is_array($tags)) { return implode(', ', $tags); }
+         return '';
+    }
+
+    protected function syncAttributes(Product $product, ?array $attributesData)
+    {
+        // 1. Cek apakah ada data
+        if (empty($attributesData)) {
+            return;
+        }
+
+        // 2. Loop dan Simpan Langsung
+        foreach ($attributesData as $slug => $value) {
+            
+            // Skip jika value kosong
+            if ($value === null || $value === '') {
+                continue;
+            }
+
+            // Ubah slug jadi Nama Cantik (jenis-izin -> Jenis Izin)
+            $prettyName = ucwords(str_replace(['-', '_'], ' ', $slug));
+
+            // Proses value array jadi JSON
+            $processedValue = is_array($value) ? json_encode(array_values($value)) : $value;
+
+            // 3. Update atau Buat Baru (VERSI FIX)
+            ProductAttribute::updateOrCreate(
+                [
+                    // Kunci Pencarian: ID Produk & Nama Atribut
+                    'product_id' => $product->id, 
+                    'name'       => $prettyName 
+                ],
+                [
+                    // Data yang diupdate
+                    'value'          => $processedValue,
+                    'attribute_slug' => $slug,
+                    
+                    // BARIS DI BAWAH INI SUDAH DIHAPUS KARENA BIKIN ERROR
+                    // 'attribute_name' => $prettyName 
+                ]
+            );
+        }
+    }
+
+    protected function syncVariantTypesAndCombinations(Product $product, ?array $variantTypesData, ?array $productVariantsData)
+    {
+        if ($variantTypesData === null || $productVariantsData === null) {
+            $product->productVariants()->each(fn($v) => $v->options()->detach());
+            $product->productVariants()->delete();
+            $product->productVariantTypes()->delete();
+            return;
+        }
+
+        $currentTypeIds = [];
+        $optionIdMap = [];
+
+        foreach ($variantTypesData as $typeData) {
+            $typeName = trim($typeData['name'] ?? '');
+            $optionsInputRaw = trim($typeData['options'] ?? '');
+            if (empty($typeName) || empty($optionsInputRaw)) continue;
+
+            $optionsInput = array_values(array_filter(array_unique(array_map('trim', explode(',', $optionsInputRaw)))));
+            if (empty($optionsInput)) continue;
+
+            $variantType = ProductVariantType::updateOrCreate(
+                ['product_id' => $product->id, 'name' => $typeName]
+            );
+            $currentTypeIds[] = $variantType->id;
+
+            $currentOptionIds = [];
+            foreach ($optionsInput as $optionName) {
+                $option = ProductVariantOption::updateOrCreate(
+                    ['product_variant_type_id' => $variantType->id, 'name' => $optionName]
+                );
+                $currentOptionIds[] = $option->id;
+                $optionIdMap[$typeName . ':' . $optionName] = $option->id;
+            }
+            $variantType->options()->whereNotIn('id', $currentOptionIds)->delete();
+        }
+        $product->productVariantTypes()->whereNotIn('id', $currentTypeIds)->delete();
+
+        $currentVariantIds = [];
+        foreach ($productVariantsData as $comboData) {
+            $variantOptions = $comboData['variant_options'] ?? [];
+            if (empty($variantOptions)) continue;
+
+            $combinationStringParts = [];
+            $optionIdsForCombination = [];
+            usort($variantOptions, fn($a, $b) => strcmp($a['type_name'], $b['type_name']));
+
+            foreach ($variantOptions as $optionDetail) {
+                 $typeName = trim($optionDetail['type_name'] ?? '');
+                 $valueName = trim($optionDetail['value'] ?? '');
+                 $mapKey = $typeName . ':' . $valueName;
+                 if (isset($optionIdMap[$mapKey])) {
+                     $combinationStringParts[] = $mapKey;
+                     $optionIdsForCombination[] = $optionIdMap[$mapKey];
+                 } else { continue 2; }
+            }
+
+            if (count($optionIdsForCombination) !== count($variantOptions)) continue;
+
+            $combinationString = implode(';', $combinationStringParts);
+            $variant = ProductVariant::updateOrCreate(
+                ['product_id' => $product->id, 'combination_string' => $combinationString],
+                [
+                    'price' => $comboData['price'] ?? 0,
+                    'stock' => $comboData['stock'] ?? 0,
+                    'sku_code' => $comboData['sku_code'] ?? null,
+                ]
+            );
+            $currentVariantIds[] = $variant->id;
+            if ($variant) { $variant->options()->sync($optionIdsForCombination); }
+        }
+        
+        $variantsToDelete = ProductVariant::where('product_id', $product->id)->whereNotIn('id', $currentVariantIds)->get();
+        foreach($variantsToDelete as $variantToDel) {
+            $variantToDel->options()->detach();
+            $variantToDel->delete();
+        }
+    }
+
+   // GANTI $id MENJADI $slug AGAR SUPPORT URL SLUG
     public function editSpecifications($slug)
     {
         // 1. Cari Produk Berdasarkan Slug (Lebih aman daripada ID)
@@ -662,166 +814,5 @@ class ProductController extends Controller
         }
     }
 
-
-    // --- Helpers ---
-
-    protected function generateUniqueSlug(string $name, int $ignoreId = null): string
-    {
-        $slug = Str::slug($name);
-        $originalSlug = $slug;
-        $count = 1;
-        while (Product::where('slug', $slug)->when($ignoreId, fn($q) => $q->where('id', '!=', $ignoreId))->exists()) {
-            $slug = $originalSlug . '-' . $count++;
-        }
-        return $slug;
-    }
-
-    protected function generateSku(string $productName, int $categoryId): string
-    {
-        $category = Category::find($categoryId);
-        $categoryInitial = $category ? strtoupper(substr(preg_replace('/[^a-zA-Z0-9]/', '', $category->name), 0, 3)) : 'GEN';
-        $productInitial = strtoupper(substr(preg_replace('/[^a-zA-Z0-9]/', '', $productName), 0, 3));
-        $randomNum = mt_rand(100, 999);
-        $sku = "{$categoryInitial}-{$productInitial}-{$randomNum}";
-        while (Product::where('sku', $sku)->exists()) {
-             $randomNum = mt_rand(100, 999);
-             $sku = "{$categoryInitial}-{$productInitial}-{$randomNum}";
-        }
-        return $sku;
-    }
-
-    protected function decodeTags($tags): string
-    {
-         if (is_string($tags)) {
-             try {
-                 $decodedTags = json_decode($tags, true, 512, JSON_THROW_ON_ERROR);
-                 return is_array($decodedTags) ? implode(', ', $decodedTags) : $tags;
-             } catch (\JsonException $e) { return $tags; }
-         } elseif (is_array($tags)) { return implode(', ', $tags); }
-         return '';
-    }
-
-    // GANTI TOTAL function syncAttributes DENGAN INI:
-    protected function syncAttributes(Product $product, ?array $attributesData)
-    {
-        // 1. Cek apakah ada data yang dikirim
-        if (empty($attributesData)) {
-            return;
-        }
-
-        // 2. Debugging (Opsional: Cek di Laravel.log kalau masih gagal)
-        // \Illuminate\Support\Facades\Log::info('Syncing Attributes:', $attributesData);
-
-        // 3. Loop dan Simpan Langsung (Tanpa Filter Kategori)
-        foreach ($attributesData as $slug => $value) {
-            
-            // Skip jika value kosong/null
-            if ($value === null || $value === '') {
-                continue;
-            }
-
-            // Bersihkan format nama (slug-jadi-text -> Slug Jadi Text)
-            // Ini agar kolom 'name' terisi rapi
-            $prettyName = ucwords(str_replace(['-', '_'], ' ', $slug));
-
-            // Proses value (Array/Checkbox jadi JSON)
-            $processedValue = is_array($value) ? json_encode(array_values($value)) : $value;
-
-            // 4. Update atau Buat Baru (Jurus Paksa Simpan)
-            // Kita gunakan 'name' sebagai kunci pencarian
-            ProductAttribute::updateOrCreate(
-                [
-                    'product_id' => $product->id, 
-                    'name'       => $prettyName // Kuncinya di sini (Nama Atribut)
-                ],
-                [
-                    'value'          => $processedValue,
-                    'attribute_slug' => $slug, // Simpan slugnya juga biar aman
-                    // Hapus baris ini jika kolom attribute_name tidak ada di DB
-                    'attribute_name' => $prettyName 
-                ]
-            );
-        }
-    }
-
-    protected function syncVariantTypesAndCombinations(Product $product, ?array $variantTypesData, ?array $productVariantsData)
-    {
-        if ($variantTypesData === null || $productVariantsData === null) {
-            $product->productVariants()->each(fn($v) => $v->options()->detach());
-            $product->productVariants()->delete();
-            $product->productVariantTypes()->delete();
-            return;
-        }
-
-        $currentTypeIds = [];
-        $optionIdMap = [];
-
-        foreach ($variantTypesData as $typeData) {
-            $typeName = trim($typeData['name'] ?? '');
-            $optionsInputRaw = trim($typeData['options'] ?? '');
-            if (empty($typeName) || empty($optionsInputRaw)) continue;
-
-            $optionsInput = array_values(array_filter(array_unique(array_map('trim', explode(',', $optionsInputRaw)))));
-            if (empty($optionsInput)) continue;
-
-            $variantType = ProductVariantType::updateOrCreate(
-                ['product_id' => $product->id, 'name' => $typeName]
-            );
-            $currentTypeIds[] = $variantType->id;
-
-            $currentOptionIds = [];
-            foreach ($optionsInput as $optionName) {
-                $option = ProductVariantOption::updateOrCreate(
-                    ['product_variant_type_id' => $variantType->id, 'name' => $optionName]
-                );
-                $currentOptionIds[] = $option->id;
-                $optionIdMap[$typeName . ':' . $optionName] = $option->id;
-            }
-            $variantType->options()->whereNotIn('id', $currentOptionIds)->delete();
-        }
-        $product->productVariantTypes()->whereNotIn('id', $currentTypeIds)->delete();
-
-        $currentVariantIds = [];
-        foreach ($productVariantsData as $comboData) {
-            $variantOptions = $comboData['variant_options'] ?? [];
-            if (empty($variantOptions)) continue;
-
-            $combinationStringParts = [];
-            $optionIdsForCombination = [];
-            usort($variantOptions, fn($a, $b) => strcmp($a['type_name'], $b['type_name']));
-
-            foreach ($variantOptions as $optionDetail) {
-                 $typeName = trim($optionDetail['type_name'] ?? '');
-                 $valueName = trim($optionDetail['value'] ?? '');
-                 $mapKey = $typeName . ':' . $valueName;
-                 if (isset($optionIdMap[$mapKey])) {
-                     $combinationStringParts[] = $mapKey;
-                     $optionIdsForCombination[] = $optionIdMap[$mapKey];
-                 } else { continue 2; }
-            }
-
-            if (count($optionIdsForCombination) !== count($variantOptions)) continue;
-
-            $combinationString = implode(';', $combinationStringParts);
-            $variant = ProductVariant::updateOrCreate(
-                ['product_id' => $product->id, 'combination_string' => $combinationString],
-                [
-                    'price' => $comboData['price'] ?? 0,
-                    'stock' => $comboData['stock'] ?? 0,
-                    'sku_code' => $comboData['sku_code'] ?? null,
-                ]
-            );
-            $currentVariantIds[] = $variant->id;
-            if ($variant) { $variant->options()->sync($optionIdsForCombination); }
-        }
-        
-        $variantsToDelete = ProductVariant::where('product_id', $product->id)->whereNotIn('id', $currentVariantIds)->get();
-        foreach($variantsToDelete as $variantToDel) {
-            $variantToDel->options()->detach();
-            $variantToDel->delete();
-        }
-    }
-
-   
 
 }
