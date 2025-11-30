@@ -348,56 +348,74 @@ if (!function_exists('formatWaNumber')) {
 @endif
 {{-- === AKHIR BLOK PERBAIKAN === --}}
 
+{{-- === TATA LETAK SESUAI PERMINTAAN: SPESIFIKASI DI ATAS DESKRIPSI === --}}
+@php
+    // Helper untuk Decode JSON Value (Array Detection)
+    $parseSpecValue = function($value) {
+        if (is_string($value) && str_starts_with(trim($value), '[')) {
+            $decoded = json_decode($value, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                return $decoded; // Return Array
+            }
+        }
+        return $value; // Return String Biasa
+    };
 
+    // 1. Ambil semua atribut yang memiliki NILAI
+    $groupedAttributes = $product->productAttributes->filter(function($attr) {
+        return !empty($attr->value);
+    })->groupBy(function($attr) {
+        // Jika nama kosong, masukkan ke grup "Info Lainnya"
+        return !empty($attr->name) ? $attr->name : 'Info Lainnya';
+    });
+@endphp
 
-
-        {{-- === TATA LETAK SESUAI PERMINTAAN: SPESIFIKASI DI ATAS DESKRIPSI === --}}
-        @php
-            // 1. Ambil atribut yang punya NAMA dan NILAI
-            $namedAttributes = $product->productAttributes->filter(function($attr) {
-                return !empty($attr->name) && !empty($attr->value);
-            })->groupBy('name'); // Kelompokkan berdasarkan Nama
-            
-            // 2. Ambil atribut yang HANYA punya NILAI (Nama-nya NULL)
-            $unnamedValues = $product->productAttributes->filter(function($attr) {
-                return empty($attr->name) && !empty($attr->value);
-            })
-            ->pluck('value')  // Ambil nilainya
-            ->unique()        // Buat unik (hapus duplikat)
-            ->implode(', ');  // Gabung dengan koma
-        @endphp
+{{-- Tampilkan blok jika ada data spesifikasi --}}
+@if ($groupedAttributes->isNotEmpty())
+    <div class="mt-8 bg-white rounded-lg shadow-sm border border-gray-100 p-4 md:p-6">
+        <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+            <span class="bg-indigo-100 text-indigo-600 p-1 rounded">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+            </span>
+            Spesifikasi Produk
+        </h2>
         
-        {{-- Tampilkan blok jika salah satu dari data di atas ada isinya --}}
-        @if ($namedAttributes->isNotEmpty() || !empty($unnamedValues))
-            <div class="mt-8 bg-white rounded-lg shadow-sm p-4 md:p-6">
-                <h2 class="text-lg font-semibold text-gray-800 mb-4">Spesifikasi Produk</h2>
-                <div class="space-y-3">
+        <div class="space-y-4 divide-y divide-gray-100">
+            @foreach ($groupedAttributes as $name => $items)
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 py-3 first:pt-0">
+                    {{-- Nama Atribut --}}
+                    <dt class="text-sm font-medium text-gray-500 capitalize pt-1">
+                        {{ $name }}
+                    </dt>
+                    
+                    {{-- Nilai Atribut --}}
+                    <dd class="col-span-1 sm:col-span-2 text-sm text-gray-800 font-medium">
+                        @foreach ($items as $item)
+                            @php $parsedVal = $parseSpecValue($item->value); @endphp
 
-                    {{-- Bagian 1: Tampilkan atribut yang punya NAMA (Data Bagus) --}}
-                    @foreach ($namedAttributes as $name => $attributes)
-                        <div class="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-1 text-sm">
-                            <dt class="text-gray-500">{{ $name }}</dt>
-                            <dd class="col-span-1 md:col-span-2 font-medium text-gray-800">
-                                {{ $attributes->pluck('value')->implode(', ') }}
-                            </dd>
-                        </div>
-                    @endforeach
-
-                    {{-- Bagian 2: Tampilkan atribut yang TIDAK punya NAMA (Data Lama/Jelek) --}}
-                    @if (!empty($unnamedValues))
-                         <div class="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-1 text-sm">
-                            <dt class="text-gray-500">Info Lainnya</dt>
-                            <dd class="col-span-1 md:col-span-2 font-medium text-gray-800">
-                                {{ $unnamedValues }}
-                            </dd>
-                        </div>
-                    @endif
-
+                            @if (is_array($parsedVal))
+                                {{-- Jika Array (Checkbox) -> Tampilkan Badge --}}
+                                <div class="flex flex-wrap gap-2">
+                                    @foreach ($parsedVal as $val)
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-100">
+                                            {{ $val }}
+                                        </span>
+                                    @endforeach
+                                </div>
+                            @else
+                                {{-- Jika String Biasa -> Teks --}}
+                                <p class="leading-relaxed">{{ $parsedVal }}</p>
+                            @endif
+                        @endforeach
+                    </dd>
                 </div>
-            </div>
-        @endif
-        {{-- === AKHIR SPESIFIKASI PRODUK === --}}
-
+            @endforeach
+        </div>
+    </div>
+@endif
+{{-- === AKHIR SPESIFIKASI PRODUK === --}}
 
         {{-- Product Description Section --}}
         <div class="mt-8 bg-white rounded-lg shadow-sm p-4 md:p-6">
