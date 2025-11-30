@@ -450,7 +450,7 @@
                     <span class="text-gray-500 font-medium sm:text-sm">Rp</span>
                 </div>
                 <input type="text" name="price" id="price" 
-                    class="currency-input block w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors font-semibold text-gray-900 placeholder-gray-300"
+                    class="currency-input block w-full pl-10 pr-4 py-2.5 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors font-semibold text-gray-900 placeholder-gray-300"
                     placeholder="0"
                     value="{{ old('price', number_format($product->price ?? 0, 0, ',', '.')) }}" required>
             </div>
@@ -467,7 +467,7 @@
                     <span class="text-gray-500 font-medium sm:text-sm">Rp</span>
                 </div>
                 <input type="text" name="original_price" id="original_price" 
-                    class="currency-input block w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-gray-700 placeholder-gray-300"
+                    class="currency-input block w-full pl-10 pr-4 py-2.5 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-gray-700 placeholder-gray-300"
                     placeholder="0"
                     value="{{ old('original_price', ($product->original_price ?? 0) > 0 ? number_format($product->original_price, 0, ',', '.') : '') }}">
             </div>
@@ -486,7 +486,7 @@
                         <i class="fa-solid fa-box text-gray-400 text-xs"></i>
                     </div>
                     <input type="number" name="stock" id="stock" min="0"
-                        class="block w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        class="block w-full pl-9 pr-4 py-2.5 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                         value="{{ old('stock', $product->stock ?? 0) }}" required>
                 </div>
             </div>
@@ -498,7 +498,7 @@
                 </label>
                 <div class="flex rounded-lg shadow-sm">
                     <input type="number" name="weight" id="weight" min="0"
-                        class="block w-full min-w-0 flex-1 rounded-none rounded-l-lg border-gray-300 focus:ring-2 focus:ring-blue-600 focus:border-blue-500 py-2.5 pl-3 transition-colors"
+                        class="block w-full min-w-0 flex-1 rounded-none rounded-l-lg border-blue-300 focus:ring-2 focus:ring-blue-600 focus:border-blue-500 py-2.5 pl-3 transition-colors"
                         value="{{ old('weight', $product->weight ?? 0) }}" required>
                     <span class="inline-flex items-center rounded-r-lg border border-l-0 border-gray-300 bg-gray-50 px-3 text-gray-500 text-xs font-bold tracking-wider">
                         GRAM
@@ -517,7 +517,7 @@
                 {{-- Panjang --}}
                 <div class="relative rounded-lg shadow-sm">
                     <input type="number" name="length" placeholder="0" min="0"
-                        class="block w-full pr-8 pl-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        class="block w-full pr-8 pl-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                         value="{{ old('length', $product->length) }}">
                     <div class="absolute inset-y-0 right-0 pr-2.5 flex items-center pointer-events-none">
                         <span class="text-gray-400 text-xs">cm</span>
@@ -528,7 +528,7 @@
                 {{-- Lebar --}}
                 <div class="relative rounded-lg shadow-sm">
                     <input type="number" name="width" placeholder="0" min="0"
-                        class="block w-full pr-8 pl-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        class="block w-full pr-8 pl-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                         value="{{ old('width', $product->width) }}">
                     <div class="absolute inset-y-0 right-0 pr-2.5 flex items-center pointer-events-none">
                         <span class="text-gray-400 text-xs">cm</span>
@@ -539,7 +539,7 @@
                 {{-- Tinggi --}}
                 <div class="relative rounded-lg shadow-sm">
                     <input type="number" name="height" placeholder="0" min="0"
-                        class="block w-full pr-8 pl-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        class="block w-full pr-8 pl-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                         value="{{ old('height', $product->height) }}">
                     <div class="absolute inset-y-0 right-0 pr-2.5 flex items-center pointer-events-none">
                         <span class="text-gray-400 text-xs">cm</span>
