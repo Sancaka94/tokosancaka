@@ -604,7 +604,7 @@ class ProductController extends Controller
      */
     public function updateSpecifications(Request $request, $idOrSlug)
     {
-        dd($request->all());
+        //dd($request->all());
         $product = Product::where('id', $idOrSlug)->orWhere('slug', $idOrSlug)->firstOrFail();
 
         // Generate SKU jika kosong
