@@ -232,79 +232,67 @@
                 </div>
             </div>
 
-            {{-- 2. MEDIA / GAMBAR (MULTI UPLOAD 5X) --}}
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
-                    <h2 class="text-lg font-semibold text-gray-800 flex items-center">
-                        <i class="fa-solid fa-images text-indigo-500 mr-2"></i> Media Produk (Maks. 5 Gambar)
-                    </h2>
-                </div>
-                <div class="p-6">
-                    {{-- Grid 5 Kolom --}}
-                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                        
-                        @for ($i = 1; $i <= 5; $i++)
-                            @php
-                                // Tentukan nama kolom di database: image_url, image_url_2, image_url_3, dst.
-                                // Asumsi: Kolom di DB bernama product_image_1 s/d product_image_5 atau image_url_1...
-                                // Tapi biasanya di Laravel pakai array product_images[].
-                                // Di sini saya asumsikan Anda akan handle di controller.
-                                // Untuk tampilan, kita pakai logic sederhana.
-                                
-                                // Ganti logika ini sesuai nama kolom di DB Anda.
-                                // Contoh: Jika kolomnya image_url (utama), image_url_2, image_url_3...
-                                $imgKey = ($i == 1) ? 'image_url' : 'image_url_' . $i;
-                                $existingImg = $product->$imgKey ?? null;
-                                $inputId = 'product_image_' . $i;
-                            @endphp
+           <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mt-6">
+    <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+        <span class="bg-indigo-100 text-indigo-600 p-1.5 rounded-lg">
+            <i class="fa-solid fa-images text-sm"></i>
+        </span>
+        Media Produk (Maks. 5 Gambar)
+    </h2>
 
-                            <div class="relative group">
-                                {{-- Label Kecil --}}
-                                <span class="absolute top-2 left-2 z-10 bg-black/50 text-white text-[10px] px-2 py-0.5 rounded backdrop-blur-sm">
-                                    {{ $i == 1 ? 'Utama' : 'Gbr ' . $i }}
-                                </span>
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+        @for ($i = 0; $i < 5; $i++)
+            <div class="relative w-full aspect-square group">
+                
+                {{-- Input File Tersembunyi --}}
+                <input type="file" 
+                       name="product_images[]" 
+                       id="input-img-{{ $i }}" 
+                       class="hidden" 
+                       accept="image/*"
+                       onchange="previewImage(this, {{ $i }})">
 
-                                {{-- Area Upload (Klik Wrapper) --}}
-                                <div id="uploader-{{ $i }}" 
-                                     class="relative w-full aspect-square bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl overflow-hidden cursor-pointer hover:border-indigo-500 hover:bg-indigo-50 transition-all flex flex-col items-center justify-center text-center p-2"
-                                     onclick="document.getElementById('{{ $inputId }}').click();">
-                                    
-                                    {{-- Preview Gambar (Anti Pecah + Placeholder Default) --}}
-                                    <img id="preview-{{ $i }}" 
-                                         src="{{ $existingImg ? asset('public/storage/' . $existingImg) : 'https://tokosancaka.com/storage/uploads/sancaka.png' }}" 
-                                         class="w-full h-full object-contain p-1 {{ $existingImg ? '' : 'opacity-50 grayscale' }} transition-all duration-300"
-                                         alt="Preview {{ $i }}"
-                                         onerror="this.onerror=null; this.src='https://tokosancaka.com/storage/uploads/sancaka.png';">
-
-                                    {{-- Overlay Icon Upload saat Hover --}}
-                                    <div class="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all flex items-center justify-center">
-                                        <i class="fa-solid fa-cloud-arrow-up text-white opacity-0 group-hover:opacity-100 text-2xl drop-shadow-md transform scale-75 group-hover:scale-100 transition-transform"></i>
-                                    </div>
-                                </div>
-
-                                {{-- Input File Hidden --}}
-                                <input type="file" name="{{ $i == 1 ? 'product_image' : 'product_image_' . $i }}" 
-                                       id="{{ $inputId }}" class="hidden" accept="image/png, image/jpeg, image/webp"
-                                       onchange="previewImage(this, 'preview-{{ $i }}', 'uploader-{{ $i }}')">
-                                
-                                {{-- Tombol Hapus (Opsional, jika ingin fitur hapus) --}}
-                                @if($existingImg)
-                                    <button type="button" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center shadow-md hover:bg-red-600 transition transform hover:scale-110 z-20"
-                                            onclick="alert('Fitur hapus gambar ke-' + {{ $i }} + ' bisa ditambahkan di controller');">
-                                        <i class="fa-solid fa-times text-xs"></i>
-                                    </button>
-                                @endif
-                            </div>
-                        @endfor
-
-                    </div>
+                {{-- Label sebagai Trigger Klik --}}
+                <label for="input-img-{{ $i }}" 
+                       class="block w-full h-full border-2 {{ $i === 0 ? 'border-indigo-500' : 'border-dashed border-gray-300' }} rounded-xl cursor-pointer hover:border-indigo-400 transition relative overflow-hidden bg-gray-50 flex flex-col items-center justify-center text-center">
                     
-                    <p class="text-xs text-gray-400 mt-4 text-center">
-                        <i class="fa-solid fa-circle-info mr-1"></i> Klik kotak untuk mengunggah. Gambar pertama akan menjadi cover produk.
-                    </p>
-                    @error('product_image') <p class="mt-2 text-sm text-red-500 font-medium text-center">{{ $message }}</p> @enderror
-                </div>
+                    {{-- 1. Placeholder (Akan disembunyikan via JS jika ada gambar) --}}
+                    <div id="placeholder-{{ $i }}" class="p-2 {{ isset($product->images[$i]) ? 'hidden' : '' }}">
+                        @if($i === 0)
+                            <span class="absolute top-2 left-2 bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-sm z-10">
+                                Utama
+                            </span>
+                        @else
+                            <span class="absolute top-2 left-2 bg-gray-500 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-sm z-10">
+                                Gbr {{ $i + 1 }}
+                            </span>
+                        @endif
+                        
+                        <i class="fa-solid fa-cloud-arrow-up text-3xl text-gray-300 mb-2"></i>
+                        <span class="text-[10px] text-gray-400 block">Upload</span>
+                    </div>
+
+                    {{-- 2. Preview Image (Default Hidden, muncul via JS atau Data Lama) --}}
+                    <img id="preview-img-{{ $i }}" 
+                         src="{{ isset($product->images[$i]) ? asset('storage/'.$product->images[$i]->path) : '' }}" 
+                         class="absolute inset-0 w-full h-full object-cover {{ isset($product->images[$i]) ? '' : 'hidden' }}">
+                </label>
+
+                {{-- Tombol Hapus (X) --}}
+                <button type="button" 
+                        id="btn-remove-{{ $i }}"
+                        onclick="removeImage({{ $i }})"
+                        class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center shadow-md hover:bg-red-600 transition z-20 {{ isset($product->images[$i]) ? '' : 'hidden' }}">
+                    <i class="fa-solid fa-times text-xs"></i>
+                </button>
             </div>
+        @endfor
+    </div>
+    <p class="text-xs text-gray-400 mt-3 flex items-center gap-1">
+        <i class="fa-solid fa-circle-info text-indigo-400"></i>
+        Klik kotak untuk mengunggah. Gambar pertama akan menjadi cover produk.
+    </p>
+</div>
 
             {{-- 3. INFORMASI PENJUAL --}}
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -989,5 +977,52 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Fungsi untuk menampilkan preview saat file dipilih
+    function previewImage(input, index) {
+        const file = input.files[0];
+        
+        if (file) {
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                // 1. Set src gambar dengan data hasil bacaan browser
+                const imgElement = document.getElementById(`preview-img-${index}`);
+                imgElement.src = e.target.result;
+                imgElement.classList.remove('hidden');
+
+                // 2. Sembunyikan placeholder ikon upload
+                document.getElementById(`placeholder-${index}`).classList.add('hidden');
+
+                // 3. Tampilkan tombol hapus (X)
+                document.getElementById(`btn-remove-${index}`).classList.remove('hidden');
+            }
+
+            // Baca file sebagai URL data base64
+            reader.readAsDataURL(file);
+        }
+    }
+
+    // Fungsi untuk menghapus/reset gambar
+    function removeImage(index) {
+        // 1. Reset input file value
+        const input = document.getElementById(`input-img-${index}`);
+        input.value = ""; 
+
+        // 2. Sembunyikan gambar preview
+        const imgElement = document.getElementById(`preview-img-${index}`);
+        imgElement.src = "";
+        imgElement.classList.add('hidden');
+
+        // 3. Tampilkan kembali placeholder
+        document.getElementById(`placeholder-${index}`).classList.remove('hidden');
+
+        // 4. Sembunyikan tombol hapus
+        document.getElementById(`btn-remove-${index}`).classList.add('hidden');
+        
+        // (Opsional) Jika edit mode, tambahkan input hidden untuk menandai gambar dihapus di backend
+    }
+
 </script>
+
+
 @endpush
