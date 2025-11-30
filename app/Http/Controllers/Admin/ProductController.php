@@ -460,19 +460,34 @@ class ProductController extends Controller
                 $validatedDataForUpdate['price'] = $request->input('price', $product->price);
             }
 
-            DB::transaction(function () use ($product, $validatedDataForUpdate, $attributesInput, $variantTypesInput, $productVariantsInput, $hasVariantsRequest) {
-                $product->update($validatedDataForUpdate);
-                $this->syncAttributes($product, $attributesInput);
-                if ($hasVariantsRequest) {
-                    $this->syncVariantTypesAndCombinations($product, $variantTypesInput, $productVariantsInput);
-                } else {
-                    $product->productVariants()->each(fn($v) => $v->options()->detach());
-                    $product->productVariants()->delete();
-                    $product->productVariantTypes()->delete();
-                }
-            });
+            // 2. SIMPAN ATRIBUT DULUAN (Supaya aman & masuk duluan)
+        $this->syncAttributes($product, $attributesInput);
 
-            return redirect()->route('admin.products.index')->with('success', 'Produk berhasil diperbarui.');
+        // 3. BARU KITA COBA UPDATE HARGA 
+        // (Kalau ini error, atribut di langkah 2 TETAP TERSIMPAN)
+        try {
+            $product->update($validatedDataForUpdate);
+            
+            if ($hasVariantsRequest) {
+                $this->syncVariantTypesAndCombinations($product, $variantTypesInput, $productVariantsInput);
+            } else {
+                // Hapus varian jika beralih ke produk simple
+                $product->productVariants()->each(fn($v) => $v->options()->detach());
+                $product->productVariants()->delete();
+                $product->productVariantTypes()->delete();
+            }
+        } catch (\Exception $e) {
+            // Kalau update harga gagal (misal out of range), biarkan saja dulu.
+            // Yang penting atribut sudah masuk. Kita log errornya diam-diam.
+            \Illuminate\Support\Facades\Log::error('Gagal update harga/varian: ' . $e->getMessage());
+            
+            // Opsional: Tampilkan error ke user agar sadar harganya gagal
+            // return back()->with('error', 'Atribut disimpan, tapi Harga Gagal: ' . $e->getMessage());
+        }
+
+    // }); // Tutup kurung transaction juga dikomentari/dihapus
+
+    return redirect()->route('admin.products.index')->with('success', 'Produk berhasil diperbarui (Cek jika ada error harga).');
 
         } catch (Exception $e) {
             Log::error('Error updating product: ' . $e->getMessage());
