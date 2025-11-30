@@ -344,27 +344,19 @@ class ProductController extends Controller
         return view('admin.products.edit', compact('product', 'categories'));
     }
 
-    /**
+  /**
      * Memperbarui data produk di database.
      */
     public function update(Request $request, Product $product)
     {
-
-        // --- TAMBAHKAN KODE INI DI PALING ATAS METHOD UPDATE ---
-    // Hapus titik (.) dari input harga sebelum validasi berjalan
-    $request->merge([
-        'price' => str_replace('.', '', $request->price),
-        'original_price' => str_replace('.', '', $request->original_price),
-        // 'weight' => str_replace('.', '', $request->weight), // Optional jika berat juga diformat
-    ]);
-    // -------------------------------------------------------
+        // 1. Rules Validasi Dasar
         $baseRules = [
             'name'             => ['required', 'string', 'max:255', Rule::unique('products', 'name')->ignore($product->id)],
             'description'      => 'nullable|string',
             'price'            => 'required|numeric|min:0',
             'original_price'   => 'nullable|numeric|min:0|gte:price',
             'weight'           => 'required|integer|min:0',
-            'category_id'      => 'required|exists:categories,id',
+            'category_id'      => 'required|exists:categories,id', // Pastikan input type="hidden" ada di blade
             'product_image'    => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
             'store_name'       => 'nullable|string|max:255',
             'seller_city'      => 'nullable|string|max:255',
@@ -379,13 +371,14 @@ class ProductController extends Controller
             'length'           => 'nullable|numeric|min:0',
             'width'            => 'nullable|numeric|min:0',
             'height'           => 'nullable|numeric|min:0',
-            'attributes'       => 'nullable|array',
+            // 'attributes'    => 'nullable|array', // <-- DIHAPUS: Agar tidak mereset spesifikasi
             'variant_types'    => 'nullable|array',
             'is_promo'         => 'nullable|boolean',
             'is_shipping_discount' => 'nullable|boolean',
             'is_free_shipping' => 'nullable|boolean',
         ];
 
+        // 2. Cek apakah request mengandung varian
         $hasVariantsRequest = $request->has('variant_types') && !empty($request->variant_types);
 
         if ($hasVariantsRequest) {
@@ -406,20 +399,22 @@ class ProductController extends Controller
             ];
         }
 
+        // 3. Jalankan Validasi
+        // Menggabungkan rules dasar dengan rules kondisional
         $validated = $request->validate(array_merge($baseRules, $conditionalRules));
         $validatedDataForUpdate = $validated;
 
         try {
             DB::transaction(function () use ($request, $product, $validatedDataForUpdate, $hasVariantsRequest) {
                 
-                // 1. Handle File Update
+                // --- A. Handle File Uploads ---
                 if ($request->hasFile('product_image')) {
                     if ($product->image_url && Storage::disk('public')->exists($product->image_url)) {
                         Storage::disk('public')->delete($product->image_url);
                     }
                     $validatedDataForUpdate['image_url'] = $request->file('product_image')->store('products', 'public');
                 }
-                unset($validatedDataForUpdate['product_image']);
+                unset($validatedDataForUpdate['product_image']); // Hapus dari array agar tidak double save
 
                 if ($request->hasFile('seller_logo')) {
                     if ($product->seller_logo && Storage::disk('public')->exists($product->seller_logo)) {
@@ -429,7 +424,8 @@ class ProductController extends Controller
                 }
                 unset($validatedDataForUpdate['seller_logo']);
 
-                // 2. Handle Seller Data
+                // --- B. Format Data Tambahan ---
+                // Format No WA
                 if ($request->filled('seller_wa')) {
                     $wa = preg_replace('/[^0-9]/', '', $request->seller_wa);
                     if (!Str::startsWith($wa, '62')) $wa = '62' . ltrim($wa, '0');
@@ -438,53 +434,65 @@ class ProductController extends Controller
                     $validatedDataForUpdate['seller_wa'] = null;
                 }
 
+                // Default Store Info
                 if (empty($validatedDataForUpdate['store_name'])) $validatedDataForUpdate['store_name'] = Auth::user()->store->name ?? config('app.default_store_name');
                 if (empty($validatedDataForUpdate['seller_city'])) $validatedDataForUpdate['seller_city'] = Auth::user()->store->city ?? config('app.default_store_city');
 
-                // 3. Slug & SKU
+                // Update Slug jika nama berubah
                 if ($request->name !== $product->name) {
                      $validatedDataForUpdate['slug'] = $this->generateUniqueSlug($validatedDataForUpdate['name'], $product->id);
                 }
 
+                // Auto Generate SKU jika kosong dan produk simple
                 if (empty($validatedDataForUpdate['sku']) && empty($product->sku) && !$hasVariantsRequest && !empty($validatedDataForUpdate['category_id'])) {
                      $validatedDataForUpdate['sku'] = $this->generateSku($validatedDataForUpdate['name'], $validatedDataForUpdate['category_id']);
                 }
 
-                // 4. Tags
+                // Process Tags (String to JSON)
                 $validatedDataForUpdate['tags'] = $this->processTagsToJson($request->tags, $validatedDataForUpdate['category_id']);
 
-                // 5. Flags
+                // Process Boolean Flags
                 $validatedDataForUpdate['is_new'] = $request->has('is_new');
                 $validatedDataForUpdate['is_bestseller'] = $request->has('is_bestseller');
                 $validatedDataForUpdate['is_promo'] = $request->has('is_promo');
                 $validatedDataForUpdate['is_shipping_discount'] = $request->has('is_shipping_discount');
                 $validatedDataForUpdate['is_free_shipping'] = $request->has('is_free_shipping');
 
-                // Extract Inputs
-                $attributesInput = $request->input('attributes', []);
+                // --- C. Pisahkan Data Varian ---
+                // Kita ambil input varian dari request, lalu hapus dari array utama 
+                // agar tidak error saat $product->update()
                 $variantTypesInput = $request->input('variant_types', []);
                 $productVariantsInput = $request->input('product_variants', []);
                 
-                unset($validatedDataForUpdate['attributes'], $validatedDataForUpdate['variant_types'], $validatedDataForUpdate['product_variants']);
+                // Hapus key yang bukan kolom tabel 'products'
+                unset($validatedDataForUpdate['attributes']); // Hapus attributes (jika ada sisa)
+                unset($validatedDataForUpdate['variant_types']);
+                unset($validatedDataForUpdate['product_variants']);
 
+                // Logika Harga & Stok untuk Varian vs Simple
                 if ($hasVariantsRequest) {
-                    $validatedDataForUpdate['stock'] = 0;
+                    $validatedDataForUpdate['stock'] = 0; // Stok dihandle oleh varian
+                    // Opsional: Ambil harga varian pertama sebagai harga display
                     $validatedDataForUpdate['price'] = $productVariantsInput[0]['price'] ?? $validatedDataForUpdate['price'];
                 } else {
                     $validatedDataForUpdate['stock'] = $request->input('stock', $product->stock);
                     $validatedDataForUpdate['price'] = $request->input('price', $product->price);
                 }
 
-                // 6. Update Product
+                // --- D. EKSEKUSI UPDATE UTAMA ---
                 $product->update($validatedDataForUpdate);
 
-                // 7. Sync Relations
-                $this->syncAttributes($product, $attributesInput);
-
+                // --- E. Sync Data Relasi ---
+                
+                // PENTING: Kita TIDAK memanggil syncAttributes() di sini.
+                // Atribut (Spesifikasi) dibiarkan apa adanya di database.
+                
+                // Sync Varian
                 if ($hasVariantsRequest) {
                     $this->syncVariantTypesAndCombinations($product, $variantTypesInput, $productVariantsInput);
                 } else {
-                    // Hapus varian jika switch ke Simple Product
+                    // Jika user mengubah produk menjadi Simple Product (menghapus semua varian)
+                    // Maka hapus semua data varian di database
                     $product->productVariants()->each(fn($v) => $v->options()->detach());
                     $product->productVariants()->delete();
                     $product->productVariantTypes()->delete();
