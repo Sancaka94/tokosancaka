@@ -537,46 +537,62 @@ class ProductController extends Controller
 
     // --- SPESIAL: Method untuk Edit Kategori & Spesifikasi Terpisah ---
 
-    public function editSpecifications($id)
+    // GANTI $id MENJADI $slug AGAR SUPPORT URL SLUG
+    public function editSpecifications($slug)
     {
+        // 1. Cari Produk Berdasarkan Slug (Lebih aman daripada ID)
+        $product = Product::where('slug', $slug)->firstOrFail();
+
+        // 2. Load relasi attribute agar pasti terbaca
+        $product->load(['category', 'productAttributes']);
         
-        $product = Product::findOrFail($id);
         $categories = Category::where('type', 'product')->orderBy('name')->get();
 
-        // LOGIC ROBUST UNTUK MENGAMBIL DATA ATRIBUT (MATCHING SLUG)
-        // Agar Frontend JavaScript bisa membaca data lama dengan benar
+        // 3. LOGIC ROBUST UNTUK MENGAMBIL DATA ATRIBUT
         $existingAttributesData = [];
         $attributeDefinitions = Attribute::where('category_id', $product->category_id)->get()->keyBy('name');
 
         foreach($product->productAttributes as $pa) {
+            // FALLBACK LOGIC: Jika kolom 'name' NULL, ambil dari 'attribute_name'
+            // Ini untuk mengatasi data lama yang kolom name-nya kosong
             $name = $pa->name;
+            if (empty($name) && !empty($pa->attribute_name)) {
+                $name = $pa->attribute_name;
+            }
+            if (empty($name)) continue; // Skip jika benar-benar tidak ada nama
+
             $value = $pa->value;
             $definition = $attributeDefinitions->get($name);
             
-            // PENTING: Gunakan slug master jika ada, agar cocok dengan field HTML frontend
-            $slug = $definition ? $definition->slug : Str::slug($name);
+            // Gunakan slug master jika ada, agar cocok dengan field HTML frontend
+            $slugAttr = $definition ? $definition->slug : Str::slug($name);
             $type = $definition ? $definition->type : 'text';
 
-            if ($type === 'checkbox' && is_string($value)) {
+            // Decode Checkbox/JSON value
+            if (($type === 'checkbox' || str_starts_with($value, '[')) && is_string($value)) {
                 try {
                     $decoded = json_decode($value, true, 512, JSON_THROW_ON_ERROR);
                     $value = is_array($decoded) ? $decoded : [$value];
                 } catch (\Exception $e) { $value = [$value]; }
             }
-            $existingAttributesData[$slug] = $value;
+            $existingAttributesData[$slugAttr] = $value;
         }
 
         // Encode ke JSON string agar siap dikonsumsi JavaScript
         $existingAttributesJson = json_encode($existingAttributesData);
 
+        // Debugging di sisi Server (Opsional, bisa dihapus nanti)
+        // dd($existingAttributesJson); 
+
         return view('admin.products.edit-specifications', compact('product', 'categories', 'existingAttributesJson'));
     }
 
-    public function updateSpecifications(Request $request, $id)
+    // GANTI $id MENJADI $slug
+    public function updateSpecifications(Request $request, $slug)
     {
-        $product = Product::findOrFail($id);
+        $product = Product::where('slug', $slug)->firstOrFail();
 
-        // 1. LOGIC SKU AUTO-GENERATE (Merge ke Request agar tervalidasi)
+        // 1. LOGIC SKU AUTO-GENERATE
         if (empty($request->input('sku'))) {
             $generatedSku = 'SKU-' . date('Ymd') . '-' . strtoupper(Str::random(3));
             $request->merge(['sku' => $generatedSku]);
@@ -617,7 +633,8 @@ class ProductController extends Controller
                 $this->syncAttributes($product, $attributesInput);
             });
 
-            return redirect()->route('admin.products.edit', $product->slug)
+            // Redirect kembali ke halaman spesifikasi (bukan edit utama) agar user tidak bingung
+            return redirect()->route('admin.products.edit.specifications', $product->slug)
                 ->with('success', 'Kategori dan Spesifikasi berhasil diperbarui.');
 
         } catch (Exception $e) {
