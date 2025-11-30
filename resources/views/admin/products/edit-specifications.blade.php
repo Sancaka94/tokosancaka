@@ -36,42 +36,69 @@
                 {{-- === LEFT COLUMN (Main Form Area) === --}}
                 <div class="lg:col-span-8 space-y-6">
                     
-                    {{-- 1. INFORMASI DASAR (Compact Card) --}}
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                        <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
-                            <h2 class="text-base font-semibold text-gray-900">
-                                <i class="fa-solid fa-cube text-gray-400 mr-2"></i>Informasi Dasar
-                            </h2>
-                        </div>
-                        <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {{-- SKU --}}
-                            <div class="space-y-1">
-                                <label for="sku" class="block text-sm font-medium text-gray-700">SKU Induk</label>
-                                <div class="relative rounded-md shadow-sm">
-                                    <input type="text" name="sku" id="sku" value="{{ old('sku', $product->sku) }}" 
-                                        class="block w-full rounded-md border-gray-300 pr-10 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm placeholder-gray-400"
-                                        placeholder="Auto-Generate jika kosong">
-                                    <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                                        <i class="fa-solid fa-barcode text-gray-400"></i>
-                                    </div>
-                                </div>
-                                <p class="text-xs text-gray-500">Biarkan kosong untuk generate otomatis.</p>
-                            </div>
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+    <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+        <span class="bg-gray-100 text-gray-600 p-1.5 rounded-lg">
+            <i class="fa-solid fa-cube text-sm"></i>
+        </span>
+        Informasi Dasar
+    </h2>
 
-                            {{-- Tags --}}
-                            <div class="space-y-1">
-                                <label for="tags" class="block text-sm font-medium text-gray-700">Tags</label>
-                                <div class="relative rounded-md shadow-sm">
-                                    <input type="text" name="tags" id="tags" value="{{ old('tags', $product->tags) }}" 
-                                        class="block w-full rounded-md border-gray-300 pr-10 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                                        placeholder="Separated by comma">
-                                    <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                                        <i class="fa-solid fa-tags text-gray-400"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {{-- 1. SKU Section (Kiri) --}}
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">SKU Induk</label>
+            <div class="relative flex items-center">
+                <input type="text" value="{{ $product->sku ?? '-' }}" disabled
+                    class="block w-full rounded-lg border-gray-300 bg-gray-50 text-gray-600 sm:text-sm cursor-not-allowed pr-10">
+                <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                    <i class="fa-solid fa-barcode text-gray-400"></i>
+                </div>
+            </div>
+            <p class="mt-1 text-xs text-gray-500">
+                SKU dibuat otomatis oleh sistem jika dibiarkan kosong saat pembuatan.
+            </p>
+        </div>
+
+        {{-- 2. Tags Section (Kanan - PERBAIKAN DISINI) --}}
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1 flex items-center justify-between">
+                <span>Tags</span>
+                <i class="fa-solid fa-tags text-gray-400"></i>
+            </label>
+            
+            <div class="min-h-[42px] p-2 bg-gray-50 rounded-lg border border-gray-200 flex items-center">
+                @php
+                    // Logika untuk decode tags:
+                    // 1. Cek apakah datanya ada.
+                    // 2. Coba decode JSON.
+                    // 3. Jika gagal decode atau bukan array, jadikan array kosong.
+                    $rawTags = $product->tags;
+                    $tagsList = [];
+                    
+                    if (!empty($rawTags)) {
+                        $decoded = json_decode($rawTags, true);
+                        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                            $tagsList = $decoded;
+                        }
+                    }
+                @endphp
+
+                <div class="flex flex-wrap gap-2">
+                    @forelse($tagsList as $tag)
+                        {{-- Tampilan Badge untuk setiap Tag --}}
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 border border-blue-200 capitalize">
+                            {{ $tag }}
+                        </span>
+                    @empty
+                        {{-- Tampilan jika tidak ada tags --}}
+                        <span class="text-gray-400 text-sm italic pl-1">Tidak ada tags</span>
+                    @endforelse
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
                     {{-- 2. SPESIFIKASI DINAMIS (Main Feature) --}}
                     <div id="attributes-card" class="bg-white rounded-xl shadow-sm border border-gray-200 min-h-[400px] flex flex-col hidden">
