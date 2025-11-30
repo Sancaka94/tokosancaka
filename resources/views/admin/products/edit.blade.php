@@ -585,58 +585,84 @@
             </div>
 
             {{-- F. MONITOR SPESIFIKASI --}}
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mt-6">
-                <div class="px-6 py-4 border-b border-gray-100 bg-white flex justify-between items-center">
-                    <h2 class="text-lg font-semibold text-gray-800">
-                        <i class="fa-solid fa-clipboard-list text-indigo-500 mr-2"></i> Spesifikasi Produk
-                    </h2>
-                </div>
+<div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mt-6">
+    {{-- Header --}}
+    <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
+        <h2 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+            <span class="bg-indigo-100 text-indigo-600 p-1.5 rounded-lg">
+                <i class="fa-solid fa-clipboard-list text-sm"></i>
+            </span>
+            Spesifikasi Produk
+        </h2>
+    </div>
 
-                <div class="p-6">
-                    @php
-                        $attributesCollection = $product->productAttributes ?? collect();
+    <div class="p-0">
+        @php
+            $attributesCollection = $product->productAttributes ?? collect();
 
-                        // 1. Ambil atribut yang punya NAMA
-                        $namedAttributes = $attributesCollection->filter(function($attr) {
-                            return !empty($attr->name) && !empty($attr->value);
-                        })->groupBy('name'); 
-                        
-                        // 2. Ambil atribut yang TIDAK punya NAMA
-                        $unnamedValues = $attributesCollection->filter(function($attr) {
-                            return empty($attr->name) && !empty($attr->value);
-                        })
-                        ->pluck('value')  
-                        ->unique()        
-                        ->implode(', ');  
-                    @endphp
+            // Helper untuk decode JSON aman
+            $decodeValue = function($value) {
+                $decoded = json_decode($value, true);
+                return (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) ? $decoded : $value;
+            };
 
-                    @if ($namedAttributes->isNotEmpty() || !empty($unnamedValues))
-                        <div class="space-y-4">
-                            @foreach ($namedAttributes as $name => $attributes)
-                                <div class="flex justify-between items-start border-b border-gray-50 pb-2 last:border-0">
-                                    <span class="text-sm text-gray-500 font-medium capitalize">{{ $name }}</span>
-                                    <span class="text-sm font-bold text-gray-800 text-right max-w-[60%] leading-tight">
-                                        {{ $attributes->pluck('value')->implode(', ') }}
-                                    </span>
-                                </div>
-                            @endforeach
+            // 1. Grouping atribut berdasarkan Nama
+            $groupedAttributes = $attributesCollection->filter(function($attr) {
+                return !empty($attr->value); // Ambil yang ada isinya saja
+            })->groupBy(function($attr) {
+                return !empty($attr->name) ? $attr->name : 'Info Lainnya'; // Grouping 'Info Lainnya' jika nama kosong
+            });
+        @endphp
 
-                            @if (!empty($unnamedValues))
-                                <div class="flex justify-between items-start border-b border-gray-50 pb-2 last:border-0">
-                                    <span class="text-sm text-gray-500 font-medium">Info Lainnya</span>
-                                    <span class="text-sm font-bold text-gray-800 text-right max-w-[60%] leading-tight">
-                                        {{ $unnamedValues }}
-                                    </span>
-                                </div>
-                            @endif
-                        </div>
-                    @else
-                        <div class="text-center py-4 bg-gray-50 rounded-lg border border-dashed border-gray-200">
-                            <span class="text-gray-400 text-sm italic">Belum ada spesifikasi.</span>
-                        </div>
-                    @endif
-                </div>
+        @if ($groupedAttributes->isNotEmpty())
+            <div class="divide-y divide-gray-100">
+                @foreach ($groupedAttributes as $name => $items)
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 px-6 py-4 hover:bg-gray-50 transition-colors">
+                        {{-- Label (Kiri) --}}
+                        <dt class="text-sm font-medium text-gray-500 capitalize pt-1">
+                            {{ $name }}
+                        </dt>
+
+                        {{-- Value (Kanan - Span 2 Kolom) --}}
+                        <dd class="text-sm text-gray-900 sm:col-span-2 font-medium">
+                            <div class="flex flex-col gap-2">
+                                @foreach ($items as $item)
+                                    @php
+                                        // Cek apakah valuenya JSON Array atau String biasa
+                                        $parsedValue = $decodeValue($item->value);
+                                    @endphp
+
+                                    @if (is_array($parsedValue))
+                                        {{-- TAMPILAN ARRAY (Tags/Badges) --}}
+                                        <div class="flex flex-wrap gap-2">
+                                            @foreach ($parsedValue as $val)
+                                                <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-100">
+                                                    {{ $val }}
+                                                </span>
+                                            @endforeach
+                                        </div>
+                                    @else
+                                        {{-- TAMPILAN STRING BIASA --}}
+                                        <span class="leading-relaxed">{{ $parsedValue }}</span>
+                                    @endif
+                                @endforeach
+                            </div>
+                        </dd>
+                    </div>
+                @endforeach
             </div>
+        @else
+            {{-- EMPTY STATE --}}
+            <div class="flex flex-col items-center justify-center py-8 text-center px-4">
+                <div class="bg-gray-100 rounded-full p-3 mb-3">
+                    <i class="fa-solid fa-scroll text-gray-400 text-xl"></i>
+                </div>
+                <p class="text-gray-500 text-sm font-medium">Belum ada data spesifikasi.</p>
+                <p class="text-gray-400 text-xs mt-1">Tambahkan atribut pada menu edit produk.</p>
+            </div>
+        @endif
+    </div>
+</div>
 
             {{-- DEBUG START --}}
 <div class="bg-yellow-100 p-4 mb-4">
