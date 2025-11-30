@@ -11,14 +11,8 @@ class ProductAttribute extends Model
     use HasFactory;
 
     /**
-     * Tentukan nama tabel jika tidak standar (opsional).
-     * Default: product_attributes
-     */
-    // protected $table = 'product_attributes';
-
-    /**
-     * KOLOM YANG BOLEH DIISI (Sangat Penting!)
-     * Harus cocok dengan updateOrCreate di ProductController.
+     * KOLOM YANG BOLEH DIISI (Mass Assignment)
+     * Ini WAJIB ada agar Controller bisa menyimpan data.
      */
     protected $fillable = [
         'product_id',      // ID Produk
@@ -26,7 +20,7 @@ class ProductAttribute extends Model
         'name',            // Label Cantik (misal: Warna, Bahan Utama)
         'value',           // Isi data (Bisa text biasa atau JSON String)
         
-        // Kolom Opsional (Hanya jika database Anda memilikinya)
+        // Kolom Opsional (Hanya jika database Anda memilikinya, untuk data lama)
         'attribute_id',    
         'attribute_name',  
         'attribute_type', 
@@ -42,7 +36,6 @@ class ProductAttribute extends Model
 
     /**
      * Relasi ke Master Attribute (Opsional).
-     * Digunakan jika Anda ingin mengambil data tipe input dsb.
      */
     public function attribute(): BelongsTo
     {
@@ -52,8 +45,7 @@ class ProductAttribute extends Model
 
     /**
      * Accessor Cerdas untuk Nama Atribut.
-     * Memastikan $attr->name selalu mengembalikan sesuatu, 
-     * meskipun kolom 'name' di database kosong.
+     * Memastikan $attr->name selalu mengembalikan sesuatu yang bisa dibaca.
      */
     public function getNameAttribute($value)
     {
@@ -73,19 +65,6 @@ class ProductAttribute extends Model
         }
 
         // 4. Fallback Terakhir: Gunakan slug dan rapikan (contoh: jenis-kain -> Jenis Kain)
-        $slug = $this->attributes['attribute_slug'] ?? '';
-        return ucwords(str_replace(['-', '_'], ' ', $slug));
-    }
-    
-    /**
-     * Accessor untuk Value (Opsional).
-     * Jika Anda ingin otomatis decode JSON saat memanggil $attr->value.
-     * Namun, karena di Controller kita handle manual, ini opsional.
-     */
-    // Helper agar saat dipanggil, namanya otomatis rapi (opsional tapi bagus)
-    public function getNameAttribute($value)
-    {
-        if (!empty($value)) return $value;
         $slug = $this->attributes['attribute_slug'] ?? '';
         return ucwords(str_replace(['-', '_'], ' ', $slug));
     }
