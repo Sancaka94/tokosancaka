@@ -430,105 +430,127 @@
         {{-- KOLOM KANAN (SIDEBAR) --}}
         <div class="space-y-8">
 
-           {{-- A. HARGA & STOK (AUTO FORMAT RUPIAH) --}}
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
-                    <h2 class="text-lg font-semibold text-gray-800 flex items-center">
-                        <i class="fa-solid fa-tags text-blue-500 mr-2"></i> Harga & Stok
-                    </h2>
+           <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mt-6">
+    <h2 class="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
+        <span class="bg-indigo-100 text-indigo-600 p-1.5 rounded-lg">
+            <i class="fa-solid fa-tag text-sm"></i>
+        </span>
+        Harga & Stok
+    </h2>
+
+    <div class="space-y-6">
+        
+        {{-- Row 1: Harga Jual --}}
+        <div>
+            <label for="price" class="block text-sm font-medium text-gray-700 mb-1">
+                Harga Jual <span class="text-red-500">*</span>
+            </label>
+            <div class="relative rounded-lg shadow-sm group">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <span class="text-gray-500 font-medium sm:text-sm">Rp</span>
                 </div>
-                <div class="p-6 space-y-6">
-                    
-                    {{-- Input Harga Jual --}}
-<div class="form-group">
-    <label>Harga Jual <span class="text-danger">*</span></label>
-    <div class="input-group">
-        <div class="input-group-prepend">
-            <span class="input-group-text">Rp</span>
+                <input type="text" name="price" id="price" 
+                    class="currency-input block w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors font-semibold text-gray-900 placeholder-gray-300"
+                    placeholder="0"
+                    value="{{ old('price', number_format($product->price ?? 0, 0, ',', '.')) }}" required>
+            </div>
+            <p class="text-[10px] text-gray-400 mt-1">Harga final yang akan dibayar pembeli.</p>
         </div>
-        <input type="text" 
-               name="price" 
-               class="form-control currency-input" 
-               value="{{ old('price', number_format($product->price ?? 0, 0, ',', '.')) }}" 
-               required>
-    </div>
-</div>
 
-{{-- Input Harga Coret (Asli) --}}
-<div class="form-group">
-    <label>Harga Coret (Asli)</label>
-    <div class="input-group">
-        <div class="input-group-prepend">
-            <span class="input-group-text">Rp</span>
+        {{-- Row 2: Harga Coret --}}
+        <div>
+            <label for="original_price" class="block text-sm font-medium text-gray-700 mb-1">
+                Harga Coret <span class="text-xs text-gray-400 font-normal">(Opsional)</span>
+            </label>
+            <div class="relative rounded-lg shadow-sm">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <span class="text-gray-500 font-medium sm:text-sm">Rp</span>
+                </div>
+                <input type="text" name="original_price" id="original_price" 
+                    class="currency-input block w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors text-gray-700 placeholder-gray-300"
+                    placeholder="0"
+                    value="{{ old('original_price', ($product->original_price ?? 0) > 0 ? number_format($product->original_price, 0, ',', '.') : '') }}">
+            </div>
+            <p class="text-[10px] text-gray-400 mt-1">Isi jika ingin menampilkan diskon (harga asli lebih tinggi).</p>
         </div>
-        <input type="text" 
-               name="original_price" 
-               class="form-control currency-input" 
-               value="{{ old('original_price', ($product->original_price ?? 0) > 0 ? number_format($product->original_price, 0, ',', '.') : '') }}">
-    </div>
-</div>
 
-                    {{-- Stok & Berat --}}
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label for="stock" class="block text-sm font-medium text-gray-700 mb-1 required-label">Stok</label>
-                            <input type="number" name="stock" id="stock" value="{{ old('stock', $product->stock) }}" 
-                                   class="w-full h-11 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-colors font-semibold" 
-                                   required>
-                        </div>
-                        <div>
-                            <label for="weight" class="block text-sm font-medium text-gray-700 mb-1 required-label">Berat</label>
-                            <div class="flex relative w-full">
-                                <input type="number" name="weight" id="weight" value="{{ old('weight', $product->weight) }}" 
-                                       class="flex-1 w-full h-11 px-3 border border-gray-300 rounded-none rounded-l-lg focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-colors" 
-                                       required>
-                                <span class="inline-flex items-center px-3 rounded-r-lg border border-l-0 border-gray-300 bg-gray-50 text-gray-500 font-bold text-xs uppercase">
-                                    Gram
-                                </span>
-                            </div>
-                        </div>
+        {{-- Row 3: Stok & Berat (Grid 2 Kolom) --}}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {{-- Stok --}}
+            <div>
+                <label for="stock" class="block text-sm font-medium text-gray-700 mb-1">
+                    Stok <span class="text-red-500">*</span>
+                </label>
+                <div class="relative rounded-lg shadow-sm">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fa-solid fa-box text-gray-400 text-xs"></i>
                     </div>
-
-                    {{-- Dimensi (Panah Kiri, CM Kanan) --}}
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Dimensi (PxLxT) cm</label>
-                        <div class="grid grid-cols-3 gap-3 items-center">
-                            
-                            {{-- Panjang --}}
-                            <div class="relative">
-                                {{-- Input dengan class spinner-left --}}
-                                <input type="number" name="length" value="{{ old('length', $product->length) }}" 
-                                       class="spinner-left w-full h-11 border border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400" 
-                                       placeholder="0">
-                                {{-- Label P (Kecil di tengah atas/placeholder style) --}}
-                                <span class="absolute left-0 right-0 top-1 text-[10px] text-gray-400 text-center pointer-events-none font-bold uppercase">Panjang</span>
-                                {{-- Satuan CM (Di Kanan) --}}
-                                <span class="absolute right-3 top-3 text-sm text-gray-500 font-bold pointer-events-none">cm</span>
-                            </div>
-                            
-                            {{-- Lebar --}}
-                            <div class="relative">
-                                <input type="number" name="width" value="{{ old('width', $product->width) }}" 
-                                       class="spinner-left w-full h-11 border border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400" 
-                                       placeholder="0">
-                                <span class="absolute left-0 right-0 top-1 text-[10px] text-gray-400 text-center pointer-events-none font-bold uppercase">Lebar</span>
-                                <span class="absolute right-3 top-3 text-sm text-gray-500 font-bold pointer-events-none">cm</span>
-                            </div>
-
-                            {{-- Tinggi --}}
-                            <div class="relative">
-                                <input type="number" name="height" value="{{ old('height', $product->height) }}" 
-                                       class="spinner-left w-full h-11 border border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400" 
-                                       placeholder="0">
-                                <span class="absolute left-0 right-0 top-1 text-[10px] text-gray-400 text-center pointer-events-none font-bold uppercase">Tinggi</span>
-                                <span class="absolute right-3 top-3 text-sm text-gray-500 font-bold pointer-events-none">cm</span>
-                            </div>
-
-                        </div>
-                    </div>
-
+                    <input type="number" name="stock" id="stock" min="0"
+                        class="block w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                        value="{{ old('stock', $product->stock ?? 0) }}" required>
                 </div>
             </div>
+
+            {{-- Berat --}}
+            <div>
+                <label for="weight" class="block text-sm font-medium text-gray-700 mb-1">
+                    Berat <span class="text-red-500">*</span>
+                </label>
+                <div class="flex rounded-lg shadow-sm">
+                    <input type="number" name="weight" id="weight" min="0"
+                        class="block w-full min-w-0 flex-1 rounded-none rounded-l-lg border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 py-2.5 pl-3 transition-colors"
+                        value="{{ old('weight', $product->weight ?? 0) }}" required>
+                    <span class="inline-flex items-center rounded-r-lg border border-l-0 border-gray-300 bg-gray-50 px-3 text-gray-500 text-xs font-bold tracking-wider">
+                        GRAM
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        {{-- Row 4: Dimensi (Grid 3 Kolom) --}}
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                Dimensi Paket <span class="text-xs text-gray-400 font-normal">(PxLxT)</span>
+                <i class="fa-solid fa-ruler-combined text-gray-300"></i>
+            </label>
+            <div class="grid grid-cols-3 gap-4">
+                {{-- Panjang --}}
+                <div class="relative rounded-lg shadow-sm">
+                    <input type="number" name="length" placeholder="0" min="0"
+                        class="block w-full pr-8 pl-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                        value="{{ old('length', $product->length) }}">
+                    <div class="absolute inset-y-0 right-0 pr-2.5 flex items-center pointer-events-none">
+                        <span class="text-gray-400 text-xs">cm</span>
+                    </div>
+                    <div class="absolute -top-2 left-2 bg-white px-1 text-[10px] text-gray-400">Panjang</div>
+                </div>
+
+                {{-- Lebar --}}
+                <div class="relative rounded-lg shadow-sm">
+                    <input type="number" name="width" placeholder="0" min="0"
+                        class="block w-full pr-8 pl-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                        value="{{ old('width', $product->width) }}">
+                    <div class="absolute inset-y-0 right-0 pr-2.5 flex items-center pointer-events-none">
+                        <span class="text-gray-400 text-xs">cm</span>
+                    </div>
+                    <div class="absolute -top-2 left-2 bg-white px-1 text-[10px] text-gray-400">Lebar</div>
+                </div>
+
+                {{-- Tinggi --}}
+                <div class="relative rounded-lg shadow-sm">
+                    <input type="number" name="height" placeholder="0" min="0"
+                        class="block w-full pr-8 pl-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                        value="{{ old('height', $product->height) }}">
+                    <div class="absolute inset-y-0 right-0 pr-2.5 flex items-center pointer-events-none">
+                        <span class="text-gray-400 text-xs">cm</span>
+                    </div>
+                    <div class="absolute -top-2 left-2 bg-white px-1 text-[10px] text-gray-400">Tinggi</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
 
             {{-- CARD 1: KATEGORI & DATA (READ ONLY) --}}
     <div class="bg-white rounded-xl shadow-sm border border-red-100 overflow-hidden">
