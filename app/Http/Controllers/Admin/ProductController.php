@@ -588,41 +588,50 @@ class ProductController extends Controller
 
     protected function syncAttributes(Product $product, ?array $attributesData)
     {
-        // 1. Cek apakah ada data
+        // 1. Jika data kosong (user menghapus semua), hapus semua atribut di DB
         if (empty($attributesData)) {
+            $product->productAttributes()->delete();
             return;
         }
 
-        // 2. Loop dan Simpan Langsung
+        // Array untuk menampung nama-nama atribut yang valid (yang baru diinput)
+        $validAttributeNames = [];
+
         foreach ($attributesData as $slug => $value) {
             
-            // Skip jika value kosong
+            // Skip jika value kosong/null
             if ($value === null || $value === '') {
                 continue;
             }
 
-            // Ubah slug jadi Nama Cantik (jenis-izin -> Jenis Izin)
+            // Ubah slug jadi Nama Cantik
             $prettyName = ucwords(str_replace(['-', '_'], ' ', $slug));
 
-            // Proses value array jadi JSON
+            // Proses value (Array/Checkbox jadi JSON)
             $processedValue = is_array($value) ? json_encode(array_values($value)) : $value;
 
-            // 3. Update atau Buat Baru (VERSI FIX)
+            // Update atau Buat Baru
             ProductAttribute::updateOrCreate(
                 [
-                    // Kunci Pencarian: ID Produk & Nama Atribut
                     'product_id' => $product->id, 
                     'name'       => $prettyName 
                 ],
                 [
-                    // Data yang diupdate
                     'value'          => $processedValue,
                     'attribute_slug' => $slug,
-                    
-                    // BARIS DI BAWAH INI SUDAH DIHAPUS KARENA BIKIN ERROR
-                    // 'attribute_name' => $prettyName 
                 ]
             );
+
+            // 2. CATAT NAMA ATRIBUT YANG BARU SAJA DISIMPAN
+            $validAttributeNames[] = $prettyName;
+        }
+
+        // 3. MEMBERSIHKAN SAMPAH (CLEANUP)
+        // Hapus semua atribut milik produk ini yang NAMANYA TIDAK ADA dalam daftar inputan baru
+        if (!empty($validAttributeNames)) {
+            $product->productAttributes()
+                    ->whereNotIn('name', $validAttributeNames)
+                    ->delete();
         }
     }
 
