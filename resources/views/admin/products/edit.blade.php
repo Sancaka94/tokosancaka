@@ -942,11 +942,23 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // === LOGIC FORMAT RUPIAH ===
+    // === LOGIC FORMAT RUPIAH YANG DIPERBAIKI ===
     const currencyInputs = document.querySelectorAll('.currency-input');
 
-    // 1. Fungsi Format Angka (Tambah Titik)
+    // 1. Fungsi Format: Tambah Titik
     function formatRupiah(angka) {
-        let number_string = angka.replace(/[^,\d]/g, '').toString(),
+        if (!angka) return '';
+        
+        // Hapus karakter selain angka
+        // PENTING: Kita hapus juga .00 di belakang jika ada, agar tidak dikali 100
+        let rawValue = angka.toString();
+        
+        // Jika ada titik desimal (.00), buang bagian desimalnya
+        if (rawValue.includes('.') && rawValue.indexOf('.') > 0) {
+            rawValue = rawValue.split('.')[0];
+        }
+
+        let number_string = rawValue.replace(/[^,\d]/g, '').toString(),
             split = number_string.split(','),
             sisa = split[0].length % 3,
             rupiah = split[0].substr(0, sisa),
@@ -960,23 +972,29 @@ document.addEventListener('DOMContentLoaded', () => {
         return split[1] != undefined ? rupiah + ',' + split[1] : rupiah;
     }
 
-    // 2. Event Listener saat mengetik
+    // 2. Event Listener: Format Saat Mengetik
     currencyInputs.forEach(input => {
+        // A. FORMAT SAAT HALAMAN DIMUAT (Supaya angka dari DB langsung rapi)
+        // Ini yang memperbaiki bug "angka mentah"
+        input.value = formatRupiah(input.value);
+
+        // B. Format saat mengetik
         input.addEventListener('input', function(e) {
             this.value = formatRupiah(this.value);
         });
     });
 
-    // 3. PENTING: Hapus titik sebelum form disubmit agar controller tidak error
+    // 3. Bersihkan Titik Sebelum Submit
     const productForm = document.getElementById('product-form');
     if(productForm) {
         productForm.addEventListener('submit', function() {
             currencyInputs.forEach(input => {
-                // Hapus semua titik sebelum kirim ke server
+                // Hapus titik sebelum kirim ke server
                 input.value = input.value.replace(/\./g, '');
             });
         });
     }
+});
 
     // Fungsi Preview Gambar Multi
     function previewImage(input, previewId, uploaderId) {
