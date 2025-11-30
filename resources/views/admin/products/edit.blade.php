@@ -511,7 +511,7 @@
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                 Dimensi Paket <span class="text-xs text-gray-400 font-normal">(PxLxT)</span>
-                <i class="fa-solid fa-ruler-combined text-gray-300"></i>
+                <i class="text-gray-300"></i>
             </label>
             <div class="grid grid-cols-3 gap-4">
                 {{-- Panjang --}}
