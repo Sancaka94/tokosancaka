@@ -11,41 +11,29 @@ class ProductAttribute extends Model
     use HasFactory;
 
     /**
-     * Nama tabel yang terhubung dengan model.
-     * Opsional jika nama tabel adalah 'product_attributes'.
-     *
-     * @var string
+     * Tentukan nama tabel jika tidak standar (opsional).
+     * Default: product_attributes
      */
     // protected $table = 'product_attributes';
 
     /**
-     * Atribut yang dapat diisi secara massal.
-     * Sesuaikan dengan kolom di tabel product_attributes Anda.
-     *
-     * @var array<int, string>
+     * KOLOM YANG BOLEH DIISI (Sangat Penting!)
+     * Harus cocok dengan updateOrCreate di ProductController.
      */
     protected $fillable = [
-        'product_id',
-        'attribute_id',
-        'attribute_slug', // Slug dari tabel 'attributes'
-        'attribute_name', // Opsional, bisa diambil dari relasi
-        'attribute_type', // Opsional, bisa diambil dari relasi
-        'value',
-        'name',       // <-- TAMBAHKAN BARIS INI
+        'product_id',      // ID Produk
+        'attribute_slug',  // Kunci Unik (misal: warna, bahan, jenis-kain)
+        'name',            // Label Cantik (misal: Warna, Bahan Utama)
+        'value',           // Isi data (Bisa text biasa atau JSON String)
+        
+        // Kolom Opsional (Hanya jika database Anda memilikinya)
+        'attribute_id',    
+        'attribute_name',  
+        'attribute_type', 
     ];
 
     /**
-     * Atribut yang harus di-cast.
-     *
-     * @var array<string, string>
-     */
-    protected $casts = [
-        // Jika Anda menyimpan value checkbox sebagai JSON
-        // 'value' => 'array',
-    ];
-
-    /**
-     * Mendapatkan produk yang memiliki atribut ini.
+     * Relasi balik ke Produk.
      */
     public function product(): BelongsTo
     {
@@ -53,38 +41,56 @@ class ProductAttribute extends Model
     }
 
     /**
-     * Mendapatkan detail atribut (dari tabel 'attributes').
+     * Relasi ke Master Attribute (Opsional).
+     * Digunakan jika Anda ingin mengambil data tipe input dsb.
      */
     public function attribute(): BelongsTo
     {
-        // Pastikan foreign key 'attribute_id' ada di tabel ini
-        return $this->belongsTo(Attribute::class);
+        // Pastikan tabel product_attributes punya kolom 'attribute_id' jika ingin pakai ini
+        return $this->belongsTo(Attribute::class, 'attribute_id');
     }
 
     /**
-     * ACCESSOR MAGIC: get_name_attribute
-     * Ini membuat kita bisa memanggil $attr->name meskipun di database
-     * kolomnya bernama 'attribute_name' atau 'attribute_slug'.
+     * Accessor Cerdas untuk Nama Atribut.
+     * Memastikan $attr->name selalu mengembalikan sesuatu, 
+     * meskipun kolom 'name' di database kosong.
      */
     public function getNameAttribute($value)
     {
-        // 1. Jika kolom 'name' asli ada isinya, kembalikan itu.
+        // 1. Jika kolom 'name' sudah terisi (dari Controller), gunakan itu.
         if (!empty($value)) {
             return $value;
         }
 
-        // 2. Jika kosong, coba ambil dari kolom 'attribute_name'
+        // 2. Fallback: Coba ambil dari attribute_name (jika kolom lama masih ada)
         if (!empty($this->attributes['attribute_name'])) {
             return $this->attributes['attribute_name'];
         }
 
-        // 3. Jika masih kosong, coba ambil dari relasi attribute (jika pakai master data)
-        // (Pastikan relasi 'attribute' dimuat jika ingin menggunakan ini untuk menghindari N+1 problem)
+        // 3. Fallback: Coba ambil dari relasi Master Attribute
         if ($this->relationLoaded('attribute') && $this->attribute) {
             return $this->attribute->name;
         }
 
-        // 4. Terakhir, jika terpaksa, kembalikan attribute_slug
-        return $this->attributes['attribute_slug'] ?? null;
+        // 4. Fallback Terakhir: Gunakan slug dan rapikan (contoh: jenis-kain -> Jenis Kain)
+        $slug = $this->attributes['attribute_slug'] ?? '';
+        return ucwords(str_replace(['-', '_'], ' ', $slug));
+    }
+    
+    /**
+     * Accessor untuk Value (Opsional).
+     * Jika Anda ingin otomatis decode JSON saat memanggil $attr->value.
+     * Namun, karena di Controller kita handle manual, ini opsional.
+     */
+    public function getValueAttribute($value)
+    {
+        // Cek apakah string terlihat seperti JSON Array ["A", "B"]
+        if (is_string($value) && str_starts_with(trim($value), '[')) {
+            $decoded = json_decode($value, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                return $decoded; // Kembalikan sebagai Array PHP
+            }
+        }
+        return $value; // Kembalikan sebagai String biasa
     }
 }
