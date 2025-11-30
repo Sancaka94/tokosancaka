@@ -349,6 +349,14 @@ class ProductController extends Controller
      */
     public function update(Request $request, Product $product)
     {
+
+            // --- TAMBAHKAN KODE INI DI PALING ATAS METHOD STORE ---
+    // Hapus titik (.) dari input harga sebelum validasi berjalan
+    $request->merge([
+        'price' => str_replace('.', '', $request->price),
+        'original_price' => str_replace('.', '', $request->original_price),
+        'weight' => str_replace('.', '', $request->weight), // Jika berat juga pakai titik
+    ]);
         // 1. Rules Validasi Dasar
         $baseRules = [
             'name'             => ['required', 'string', 'max:255', Rule::unique('products', 'name')->ignore($product->id)],
