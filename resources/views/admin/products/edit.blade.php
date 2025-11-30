@@ -530,138 +530,98 @@
                 </div>
             </div>
 
-            {{-- A. KATEGORI & SPESIFIKASI (FIXED) --}}
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <div class="px-6 py-4 border-b border-gray-100 bg-red-200 flex justify-between items-center">
-                    <h2 class="text-lg font-semibold text-gray-800">Kategori & Data</h2>
-                    <span class="bg-red-100 text-red-700 text-xs px-2 py-1 rounded-full font-bold">Penting</span>
-                </div>
-                <div class="p-6">
-                    <div class="mb-4">
-                        <p class="text-sm text-gray-500 mb-1">Kategori Saat Ini:</p>
-                        <p class="font-bold text-gray-800 text-lg flex items-center">
-                            <i class="fa-solid fa-folder-open text-indigo-500 mr-2"></i>
-                            
-                            {{-- LOGIKA BARU: Cari nama dari list categories berdasarkan ID --}}
-                            @php
-                                $categoryName = 'Belum ada kategori';
-                                $categoryId = $product->category_id;
+            {{-- CARD 1: KATEGORI & DATA (READ ONLY) --}}
+    <div class="bg-white rounded-xl shadow-sm border border-red-100 overflow-hidden">
+        {{-- Header Merah Muda --}}
+        <div class="bg-red-50 px-5 py-3 border-b border-red-100 flex justify-between items-center">
+            <h3 class="text-sm font-bold text-gray-800">Kategori & Data</h3>
+            <span class="text-[10px] font-semibold bg-white text-red-500 px-2 py-0.5 rounded-full border border-red-200">
+                Read Only
+            </span>
+        </div>
 
-                                // 1. Coba cari dari koleksi $categories yang dikirim controller
-                                $foundCategory = $categories->firstWhere('id', $categoryId);
-                                
-                                if ($foundCategory) {
-                                    $categoryName = $foundCategory->name;
-                                } 
-                                // 2. Fallback: Coba cek relasi langsung jika ada
-                                elseif (isset($product->category) && is_object($product->category)) {
-                                    $categoryName = $product->category->name;
-                                }
+        <div class="p-5">
+            {{-- Kategori (Teks Statis) --}}
+            <div class="mb-4">
+                <label class="block text-xs font-medium text-gray-500 mb-1">Kategori Saat Ini:</label>
+                <div class="flex items-center gap-2 text-indigo-700 font-semibold text-base">
+                    <i class="fa-solid fa-folder-open"></i>
+                    <span>{{ $product->category->name ?? 'Tidak ada kategori' }}</span>
+                </div>
+            </div>
+
+            {{-- SKU (Teks Statis) --}}
+            <div class="mb-5">
+                <label class="block text-xs font-medium text-gray-500 mb-1">SKU:</label>
+                <div class="bg-gray-100 text-gray-700 px-3 py-2 rounded-lg font-mono text-sm border border-gray-200">
+                    {{ $product->sku ?? '-' }}
+                </div>
+            </div>
+
+            {{-- Tombol Pindah ke Halaman Edit Spesifikasi --}}
+            <a href="{{ route('admin.products.edit.specifications', $product->slug) }}" 
+               class="block w-full text-center py-2.5 bg-emerald-400 hover:bg-emerald-500 text-white rounded-lg font-bold shadow-sm shadow-emerald-200 transition-all transform hover:-translate-y-0.5">
+                <i class="fa-solid fa-sliders mr-1"></i> Edit Kategori & Spesifikasi
+            </a>
+            <p class="text-[10px] text-gray-400 text-center mt-2">
+                Klik tombol di atas untuk mengubah Kategori, SKU, atau Atribut.
+            </p>
+        </div>
+    </div>
+
+    {{-- CARD 2: PREVIEW SPESIFIKASI (READ ONLY) --}}
+    <div class="bg-white rounded-xl shadow-sm border border-indigo-50 overflow-hidden">
+        <div class="px-5 py-3 border-b border-gray-50 flex items-center gap-2">
+            <div class="bg-indigo-100 text-indigo-600 p-1.5 rounded-md">
+                <i class="fa-solid fa-clipboard-list text-xs"></i>
+            </div>
+            <h3 class="text-sm font-bold text-gray-800">Preview Spesifikasi</h3>
+        </div>
+
+        <div class="p-0">
+            @php
+                // Logika sederhana untuk mengambil atribut
+                $attributes = $product->productAttributes;
+            @endphp
+
+            @if($attributes->count() > 0)
+                <div class="divide-y divide-gray-50 max-h-[300px] overflow-y-auto">
+                    @foreach($attributes as $attr)
+                        <div class="px-5 py-3 hover:bg-gray-50 transition">
+                            <p class="text-xs text-gray-500 mb-0.5 capitalize">{{ $attr->name }}</p>
+                            
+                            {{-- Cek apakah value JSON (Array) atau String biasa --}}
+                            @php
+                                $val = $attr->value;
+                                $isJson = is_string($val) && str_starts_with(trim($val), '[') && is_array(json_decode($val, true));
                             @endphp
 
-                            {{-- Tampilkan Hasil --}}
-                            @if($categoryId && $foundCategory)
-                                <span class="text-indigo-700">{{ $categoryName }}</span>
+                            @if($isJson)
+                                <div class="flex flex-wrap gap-1 mt-1">
+                                    @foreach(json_decode($val, true) as $item)
+                                        <span class="inline-block px-2 py-0.5 bg-indigo-50 text-indigo-600 text-[10px] font-medium rounded border border-indigo-100">
+                                            {{ $item }}
+                                        </span>
+                                    @endforeach
+                                </div>
                             @else
-                                <span class="text-red-500 italic">{{ $categoryName }}</span>
+                                <p class="text-sm font-semibold text-gray-800 leading-tight">{{ $val }}</p>
                             @endif
-                        </p>
-                    </div>
-                    
-                    <div class="mb-4">
-                        <p class="text-sm text-gray-500 mb-1">SKU:</p>
-                        <p class="font-mono text-gray-700 bg-gray-100 px-2 py-1 rounded inline-block">
-                            {{ $product->sku ?? '-' }}
-                        </p>
-                    </div>
-
-                    <a href="{{ route('admin.products.edit.specifications', $product->slug) }}" 
-                       class="w-full inline-flex justify-center items-center px-4 py-2.5 bg-green-300 border-2 border-indigo-100 text-indigo-600 font-semibold rounded-lg hover:bg-indigo-50 hover:border-indigo-200 transition-colors">
-                        <i class="fa-solid fa-sliders mr-2"></i>
-                        Edit Kategori & Spesifikasi
-                    </a>
+                        </div>
+                    @endforeach
                 </div>
-            </div>
-
-            {{-- F. MONITOR SPESIFIKASI --}}
-<div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mt-6">
-    {{-- Header --}}
-    <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
-        <h2 class="text-lg font-bold text-gray-800 flex items-center gap-2">
-            <span class="bg-indigo-100 text-indigo-600 p-1.5 rounded-lg">
-                <i class="fa-solid fa-clipboard-list text-sm"></i>
-            </span>
-            Spesifikasi Produk
-        </h2>
-    </div>
-
-    <div class="p-0">
-        @php
-            $attributesCollection = $product->productAttributes ?? collect();
-
-            // Helper untuk decode JSON aman
-            $decodeValue = function($value) {
-                $decoded = json_decode($value, true);
-                return (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) ? $decoded : $value;
-            };
-
-            // 1. Grouping atribut berdasarkan Nama
-            $groupedAttributes = $attributesCollection->filter(function($attr) {
-                return !empty($attr->value); // Ambil yang ada isinya saja
-            })->groupBy(function($attr) {
-                return !empty($attr->name) ? $attr->name : 'Info Lainnya'; // Grouping 'Info Lainnya' jika nama kosong
-            });
-        @endphp
-
-        @if ($groupedAttributes->isNotEmpty())
-            <div class="divide-y divide-gray-100">
-                @foreach ($groupedAttributes as $name => $items)
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 px-6 py-4 hover:bg-gray-50 transition-colors">
-                        {{-- Label (Kiri) --}}
-                        <dt class="text-sm font-medium text-gray-500 capitalize pt-1">
-                            {{ $name }}
-                        </dt>
-
-                        {{-- Value (Kanan - Span 2 Kolom) --}}
-                        <dd class="text-sm text-gray-900 sm:col-span-2 font-medium">
-                            <div class="flex flex-col gap-2">
-                                @foreach ($items as $item)
-                                    @php
-                                        // Cek apakah valuenya JSON Array atau String biasa
-                                        $parsedValue = $decodeValue($item->value);
-                                    @endphp
-
-                                    @if (is_array($parsedValue))
-                                        {{-- TAMPILAN ARRAY (Tags/Badges) --}}
-                                        <div class="flex flex-wrap gap-2">
-                                            @foreach ($parsedValue as $val)
-                                                <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-100">
-                                                    {{ $val }}
-                                                </span>
-                                            @endforeach
-                                        </div>
-                                    @else
-                                        {{-- TAMPILAN STRING BIASA --}}
-                                        <span class="leading-relaxed">{{ $parsedValue }}</span>
-                                    @endif
-                                @endforeach
-                            </div>
-                        </dd>
+            @else
+                {{-- Empty State --}}
+                <div class="p-8 text-center">
+                    <div class="bg-gray-50 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 text-gray-300">
+                        <i class="fa-solid fa-scroll text-xl"></i>
                     </div>
-                @endforeach
-            </div>
-        @else
-            {{-- EMPTY STATE --}}
-            <div class="flex flex-col items-center justify-center py-8 text-center px-4">
-                <div class="bg-gray-100 rounded-full p-3 mb-3">
-                    <i class="fa-solid fa-scroll text-gray-400 text-xl"></i>
+                    <p class="text-sm text-gray-500 font-medium">Belum ada data spesifikasi.</p>
+                    <p class="text-xs text-gray-400 mt-1">Tambahkan atribut pada menu edit kategori.</p>
                 </div>
-                <p class="text-gray-500 text-sm font-medium">Belum ada data spesifikasi.</p>
-                <p class="text-gray-400 text-xs mt-1">Tambahkan atribut pada menu edit produk.</p>
-            </div>
-        @endif
+            @endif
+        </div>
     </div>
-</div>
 
             {{-- DEBUG START --}}
 <div class="bg-yellow-100 p-4 mb-4">
