@@ -455,7 +455,12 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::post('/pesanan/store-single', [AdminKoliController::class, 'storeSingle'])->name('koli.store_single');
     Route::post('/cek-ongkir', [AdminKoliController::class, 'cek_Ongkir'])->name('koli.cek_ongkir');
     
+    // Perhatikan '{slug}' di dalam URL, bukan '{id}'
+Route::get('products/{slug}/specifications', [ProductController::class, 'editSpecifications'])
+    ->name('admin.products.edit.specifications');
 
+Route::put('products/{slug}/specifications', [ProductController::class, 'updateSpecifications'])
+    ->name('admin.products.update.specifications');
 
     Route::get('/post/{post:slug}', [PostController::class, 'show'])->name('posts.post-detail');
 
