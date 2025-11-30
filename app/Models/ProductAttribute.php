@@ -82,15 +82,11 @@ class ProductAttribute extends Model
      * Jika Anda ingin otomatis decode JSON saat memanggil $attr->value.
      * Namun, karena di Controller kita handle manual, ini opsional.
      */
-    public function getValueAttribute($value)
+    // Helper agar saat dipanggil, namanya otomatis rapi (opsional tapi bagus)
+    public function getNameAttribute($value)
     {
-        // Cek apakah string terlihat seperti JSON Array ["A", "B"]
-        if (is_string($value) && str_starts_with(trim($value), '[')) {
-            $decoded = json_decode($value, true);
-            if (json_last_error() === JSON_ERROR_NONE) {
-                return $decoded; // Kembalikan sebagai Array PHP
-            }
-        }
-        return $value; // Kembalikan sebagai String biasa
+        if (!empty($value)) return $value;
+        $slug = $this->attributes['attribute_slug'] ?? '';
+        return ucwords(str_replace(['-', '_'], ' ', $slug));
     }
 }
