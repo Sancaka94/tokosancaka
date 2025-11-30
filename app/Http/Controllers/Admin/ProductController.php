@@ -157,6 +157,15 @@ class ProductController extends Controller
      */
     public function store(Request $request)
     {
+
+        // --- TAMBAHKAN KODE INI DI PALING ATAS METHOD STORE ---
+    // Hapus titik (.) dari input harga sebelum validasi berjalan
+    $request->merge([
+        'price' => str_replace('.', '', $request->price),
+        'original_price' => str_replace('.', '', $request->original_price),
+        'weight' => str_replace('.', '', $request->weight), // Jika berat juga pakai titik
+    ]);
+    // -------------------------------------------------------
         $baseRules = [
             'name'             => ['required', 'string', 'max:255', Rule::unique('products', 'name')],
             'description'      => 'nullable|string',
@@ -340,6 +349,15 @@ class ProductController extends Controller
      */
     public function update(Request $request, Product $product)
     {
+
+        // --- TAMBAHKAN KODE INI DI PALING ATAS METHOD UPDATE ---
+    // Hapus titik (.) dari input harga sebelum validasi berjalan
+    $request->merge([
+        'price' => str_replace('.', '', $request->price),
+        'original_price' => str_replace('.', '', $request->original_price),
+        // 'weight' => str_replace('.', '', $request->weight), // Optional jika berat juga diformat
+    ]);
+    // -------------------------------------------------------
         $baseRules = [
             'name'             => ['required', 'string', 'max:255', Rule::unique('products', 'name')->ignore($product->id)],
             'description'      => 'nullable|string',

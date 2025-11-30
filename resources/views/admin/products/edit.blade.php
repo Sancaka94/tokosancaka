@@ -439,35 +439,34 @@
                 </div>
                 <div class="p-6 space-y-6">
                     
-                    {{-- Harga Jual --}}
-                    <div>
-                        <label for="price" class="block text-sm font-medium text-gray-700 mb-1 required-label">Harga Jual</label>
-                        <div class="flex relative rounded-lg shadow-sm">
-                            <span class="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 text-gray-500 font-bold text-sm">
-                                Rp
-                            </span>
-                            {{-- Input diganti type="text" dan tambah class 'currency-input' --}}
-                            <input type="text" name="price" id="price" 
-                                   value="{{ old('price', number_format($product->price, 0, ',', '.')) }}" 
-                                   class="currency-input flex-1 w-full h-11 px-3 border border-gray-300 rounded-none rounded-r-lg focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-colors text-gray-800 font-bold text-lg" 
-                                   placeholder="0" inputmode="numeric" required>
-                        </div>
-                        @error('price') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
-                    </div>
+                    {{-- Input Harga Jual --}}
+<div class="form-group">
+    <label>Harga Jual <span class="text-danger">*</span></label>
+    <div class="input-group">
+        <div class="input-group-prepend">
+            <span class="input-group-text">Rp</span>
+        </div>
+        <input type="text" 
+               name="price" 
+               class="form-control currency-input" 
+               value="{{ old('price', number_format($product->price ?? 0, 0, ',', '.')) }}" 
+               required>
+    </div>
+</div>
 
-                    {{-- Harga Coret --}}
-                    <div>
-                        <label for="original_price" class="block text-sm font-medium text-gray-700 mb-1">Harga Coret (Asli)</label>
-                        <div class="flex relative rounded-lg shadow-sm">
-                            <span class="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 text-gray-500 font-bold text-sm">
-                                Rp
-                            </span>
-                            <input type="text" name="original_price" id="original_price" 
-                                   value="{{ old('original_price', $product->original_price ? number_format($product->original_price, 0, ',', '.') : '') }}" 
-                                   class="currency-input flex-1 w-full h-11 px-3 border border-gray-300 rounded-none rounded-r-lg focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-colors text-gray-500 line-through" 
-                                   placeholder="0" inputmode="numeric">
-                        </div>
-                    </div>
+{{-- Input Harga Coret (Asli) --}}
+<div class="form-group">
+    <label>Harga Coret (Asli)</label>
+    <div class="input-group">
+        <div class="input-group-prepend">
+            <span class="input-group-text">Rp</span>
+        </div>
+        <input type="text" 
+               name="original_price" 
+               class="form-control currency-input" 
+               value="{{ old('original_price', ($product->original_price ?? 0) > 0 ? number_format($product->original_price, 0, ',', '.') : '') }}">
+    </div>
+</div>
 
                     {{-- Stok & Berat --}}
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -941,35 +940,37 @@ document.addEventListener('DOMContentLoaded', () => {
     updateTypes();
 });
 
-// === LOGIC FORMAT RUPIAH ===
-    // === LOGIC FORMAT RUPIAH YANG DIPERBAIKI ===
+ // Seleksi semua input dengan class 'currency-input'
     const currencyInputs = document.querySelectorAll('.currency-input');
 
-    // 1. Fungsi Format: Tambah Titik
-    function formatRupiah(angka) {
+    currencyInputs.forEach(function(input) {
+        // Format saat halaman pertama kali diload (jika ada error validasi old input)
+        input.value = formatRupiah(input.value);
+
+        // Format saat user mengetik
+        input.addEventListener('keyup', function(e) {
+            input.value = formatRupiah(this.value);
+        });
+    });
+
+    function formatRupiah(angka, prefix) {
         if (!angka) return '';
         
         // Hapus karakter selain angka
-        // PENTING: Kita hapus juga .00 di belakang jika ada, agar tidak dikali 100
-        let rawValue = angka.toString();
-        
-        // Jika ada titik desimal (.00), buang bagian desimalnya
-        if (rawValue.includes('.') && rawValue.indexOf('.') > 0) {
-            rawValue = rawValue.split('.')[0];
-        }
-
-        let number_string = rawValue.replace(/[^,\d]/g, '').toString(),
+        var number_string = angka.replace(/[^,\d]/g, '').toString(),
             split = number_string.split(','),
             sisa = split[0].length % 3,
             rupiah = split[0].substr(0, sisa),
             ribuan = split[0].substr(sisa).match(/\d{3}/gi);
 
+        // Tambahkan titik jika yang diinput sudah menjadi ribuan
         if (ribuan) {
             separator = sisa ? '.' : '';
             rupiah += separator + ribuan.join('.');
         }
 
-        return split[1] != undefined ? rupiah + ',' + split[1] : rupiah;
+        rupiah = split[1] != undefined ? rupiah + ',' + split[1] : rupiah;
+        return rupiah;
     }
 
     // 2. Event Listener: Format Saat Mengetik
