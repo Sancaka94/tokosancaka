@@ -365,13 +365,18 @@ Route::get('/tracking/cetak-thermal/{resi}', [App\Http\Controllers\TrackingContr
 
 // =========================================================================
 
+// --- PERBAIKAN: Taruh Route ini DI LUAR rantai middleware group ---
+Route::get('/seller/reviews', [SellerReviewController::class, 'index'])
+    ->middleware(['auth'])
+    ->name('seller.reviews.index');
+
 Route::middleware(['auth', RoleMiddleware::class . ':Pelanggan|Seller'])
 
     ->prefix('customer')->name('customer.')
 
     ->group(function () {
         
-        Route::get('/seller/reviews', [SellerReviewController::class, 'index'])->name('seller.reviews.index');
+        // Route::get('/seller/reviews', [SellerReviewController::class, 'index'])->name('seller.reviews.index');
         // 1. Menampilkan Halaman Form Multi-Koli (GET)
         // URL: /customer/pesanan/multi/create
         // Nama Rute: customer.koli.create
