@@ -102,19 +102,56 @@
         .prose a { color: #2563eb; }
         .dark .prose-invert a { color: #60a5fa; }
 
-        /* STYLE RATING INPUT */
-        .rate { float: left; height: 46px; padding: 0 10px; }
-        .rate:not(:checked) > input { position:absolute; top:-9999px; }
-        .rate:not(:checked) > label { float:right; width:1em; overflow:hidden; white-space:nowrap; cursor:pointer; font-size:30px; color:#ccc; }
-        .rate:not(:checked) > label:before { content: '★'; }
-        .rate > input:checked ~ label { color: #ffc700; }
+        /* STYLE RATING INPUT (UPDATED: UKURAN LEBIH KECIL & RAPI) */
+        .rate { 
+            display: inline-block;
+            height: 30px; 
+            padding: 0;
+            border: none;
+        }
+        
+        /* Sembunyikan radio button asli */
+        .rate:not(:checked) > input { 
+            position:absolute; 
+            top:-9999px; 
+        }
+        
+        /* Tampilan Bintang (Label) */
+        .rate:not(:checked) > label { 
+            float: right; 
+            width: 1em; 
+            overflow: hidden; 
+            white-space: nowrap; 
+            cursor: pointer; 
+            font-size: 20px; /* <-- UKURAN BINTANG DIKECILKAN DISINI (sebelumnya 30px) */
+            line-height: 30px;
+            color: #d1d5db; /* Abu-abu terang (Tailwind gray-300) */
+            margin-bottom: 0;
+        }
+        
+        .rate:not(:checked) > label:before { 
+            content: '★'; 
+        }
+        
+        /* Warna saat dipilih (Checked) */
+        .rate > input:checked ~ label { 
+            color: #fbbf24; /* Kuning (Tailwind amber-400) */
+        }
+        
+        /* Warna saat di-hover */
         .rate:not(:checked) > label:hover,
-        .rate:not(:checked) > label:hover ~ label { color: #deb217; }
+        .rate:not(:checked) > label:hover ~ label { 
+            color: #fbbf24; 
+        }
+        
+        /* Warna saat di-hover ketika sudah ada yang dipilih */
         .rate > input:checked + label:hover,
         .rate > input:checked + label:hover ~ label,
         .rate > input:checked ~ label:hover,
         .rate > input:checked ~ label:hover ~ label,
-        .rate > label:hover ~ input:checked ~ label { color: #c59b08; }
+        .rate > label:hover ~ input:checked ~ label { 
+            color: #f59e0b; /* Kuning lebih gelap (Tailwind amber-500) */
+        }
     </style>
 @endpush
 
