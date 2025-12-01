@@ -15,20 +15,94 @@
             --shopee-red-dark: #d73210;
             --shopee-red-light: rgba(255, 87, 34, 0.1);
         }
-        /* ... Style lama Anda tetap di sini ... */
-        .thumbnail-active { outline: 2px solid var(--shopee-red); outline-offset: 1px; border-color: var(--shopee-red) !important; }
-        .btn-shopee-outline { background-color: var(--shopee-red-light); border: 1px solid var(--shopee-red); color: var(--shopee-red); transition: background-color 0.2s ease; }
-        .btn-shopee-outline:hover:not(:disabled) { background-color: rgba(255, 87, 34, 0.15); }
-        .btn-shopee-solid { background-color: var(--shopee-red); border: 1px solid var(--shopee-red); color: white; transition: background-color 0.2s ease; }
-        .btn-shopee-solid:hover:not(:disabled) { background-color: var(--shopee-red-dark); }
-        .discount-badge { background-color: var(--shopee-red); color: white; padding: 0.25rem 0.5rem; border-radius: 0.125rem; font-size: 0.75rem; font-weight: 600; display: inline-flex; align-items: center; }
-        .variant-btn { border: 1px solid #e5e7eb; padding: 0.5rem 1rem; border-radius: 0.25rem; cursor: pointer; transition: all 0.2s ease; background-color: white; color: #374151; font-size: 0.875rem; line-height: 1.25rem; }
-        .variant-btn:hover:not(:disabled) { border-color: var(--shopee-red); color: var(--shopee-red); }
-        .variant-btn.active { border-color: var(--shopee-red); background-color: var(--shopee-red-light); color: var(--shopee-red); font-weight: 600; }
-        .variant-btn:disabled { background-color: #f3f4f6; color: #9ca3af; cursor: not-allowed; border-color: #e5e7eb; text-decoration: line-through; }
+        .thumbnail-active { 
+            outline: 2px solid var(--shopee-red); 
+            outline-offset: 1px;
+            border-color: var(--shopee-red) !important;
+        }
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+        input[type=number] { 
+            -moz-appearance: textfield; 
+        }
+        button:disabled, input:disabled { 
+            opacity: 0.6; 
+            cursor: not-allowed; 
+        }
+        .btn-shopee-outline { 
+            background-color: var(--shopee-red-light); 
+            border: 1px solid var(--shopee-red); 
+            color: var(--shopee-red); 
+            transition: background-color 0.2s ease;
+        }
+        .btn-shopee-outline:hover:not(:disabled) { 
+            background-color: rgba(255, 87, 34, 0.15); 
+        }
+        .btn-shopee-solid { 
+            background-color: var(--shopee-red); 
+            border: 1px solid var(--shopee-red); 
+            color: white; 
+            transition: background-color 0.2s ease;
+        }
+        .btn-shopee-solid:hover:not(:disabled) { 
+            background-color: var(--shopee-red-dark); 
+        }
+        .discount-badge {
+            background-color: var(--shopee-red);
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.125rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+        }
+        .variant-btn-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        .variant-btn {
+            border: 1px solid #e5e7eb;
+            padding: 0.5rem 1rem;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background-color: white;
+            color: #374151;
+            font-size: 0.875rem;
+            line-height: 1.25rem;
+        }
+        .variant-btn:hover:not(:disabled) {
+            border-color: var(--shopee-red);
+            color: var(--shopee-red);
+        }
+        .variant-btn.active {
+            border-color: var(--shopee-red);
+            background-color: var(--shopee-red-light);
+            color: var(--shopee-red);
+            font-weight: 600;
+        }
+        .variant-btn:disabled {
+            background-color: #f3f4f6;
+            color: #9ca3af;
+            cursor: not-allowed;
+            border-color: #e5e7eb;
+            text-decoration: line-through;
+        }
         .prose { font-size: 0.9375rem; line-height: 1.6; }
-        
-        /* STYLE KHUSUS RATING INPUT */
+        .prose p, .prose ul, .prose ol { margin-top: 0.75em; margin-bottom: 0.75em; }
+        .prose li { margin-top: 0.25em; margin-bottom: 0.25em; }
+        .dark .prose-invert { color: #d1d5db; }
+        .prose h1, .prose h2, .prose h3 { color: #111827; margin-bottom: 0.5em; }
+        .dark .prose-invert h1, .dark .prose-invert h2, .dark .prose-invert h3 { color: #f3f4f6; }
+        .prose a { color: #2563eb; }
+        .dark .prose-invert a { color: #60a5fa; }
+
+        /* STYLE RATING INPUT */
         .rate { float: left; height: 46px; padding: 0 10px; }
         .rate:not(:checked) > input { position:absolute; top:-9999px; }
         .rate:not(:checked) > label { float:right; width:1em; overflow:hidden; white-space:nowrap; cursor:pointer; font-size:30px; color:#ccc; }
@@ -50,13 +124,19 @@ if (!function_exists('formatWaNumber')) {
     function formatWaNumber($number) {
         if(empty($number)) return '';
         $number = preg_replace('/[^0-9]/', '', $number);
-        if (substr($number, 0, 1) === '0') { return '62' . substr($number, 1); } 
-        elseif (substr($number, 0, 2) !== '62') { return '62' . $number; }
+        if (substr($number, 0, 1) === '0') {
+            return '62' . substr($number, 1);
+        } elseif (substr($number, 0, 2) !== '62') {
+            return '62' . $number;
+        }
         return $number;
     }
 }
-$hasVariants = $product->productVariantTypes->isNotEmpty() && $product->productVariants->isNotEmpty();
-$initialStock = (int)(!$hasVariants ? $product->stock : 0);
+@endphp
+
+@php
+    $hasVariants = $product->productVariantTypes->isNotEmpty() && $product->productVariants->isNotEmpty();
+    $initialStock = (int)(!$hasVariants ? $product->stock : 0);
 @endphp
 
 <div class="bg-gray-100 text-gray-800 min-h-screen">
@@ -66,10 +146,12 @@ $initialStock = (int)(!$hasVariants ? $product->stock : 0);
              <ol class="flex items-center space-x-2 overflow-x-auto whitespace-nowrap py-1">
                  <li><a href="{{ route('etalase.index') }}" class="hover:text-red-600">Sancaka</a></li>
                  <li><i class="fas fa-chevron-right text-xs mx-1"></i></li>
+                 
                  @if($product->categoryData)
                  <li><a href="{{ route('etalase.index', ['categories' => [$product->categoryData->id]]) }}" class="hover:text-red-600">{{ $product->categoryData->name }}</a></li>
                  <li><i class="fas fa-chevron-right text-xs mx-1"></i></li>
                  @endif
+                 
                  <li class="font-medium text-gray-700 truncate">{{ $product->name }}</li>
              </ol>
         </nav>
@@ -80,23 +162,37 @@ $initialStock = (int)(!$hasVariants ? $product->stock : 0);
                 {{-- Product Image Gallery --}}
                 <div class="md:col-span-2 image-gallery">
                     @php
+                        // URL Gambar Utama (Default)
                         $imageUrl = $product->image_url ? asset('public/storage/' . $product->image_url) : 'https://placehold.co/600x600/EFEFEF/AAAAAA?text=Gambar+Tidak+Ada';
                     @endphp
                     
+                    {{-- Gambar Besar (Preview) --}}
                     <div class="aspect-w-1 aspect-h-1 w-full overflow-hidden rounded-md shadow-sm mb-3 border border-gray-200">
-                        <img id="main-product-image" src="{{ $imageUrl }}" alt="{{ $product->name }}" class="w-full h-full object-contain object-center" onerror="this.onerror=null;this.src='https://placehold.co/600x600/EFEFEF/AAAAAA?text=Gambar+Error';">
+                        <img id="main-product-image"
+                             src="{{ $imageUrl }}"
+                             alt="{{ $product->name }}"
+                             class="w-full h-full object-contain object-center"
+                             onerror="this.onerror=null;this.src='https://placehold.co/600x600/EFEFEF/AAAAAA?text=Gambar+Error';">
                     </div>
 
+                    {{-- === GALERI THUMBNAIL === --}}
                     <div class="grid grid-cols-5 gap-2 mt-2">
                         @if($product->images && $product->images->count() > 0)
                             @foreach($product->images->sortBy('sort_order') as $media)
                                 <div class="aspect-square w-full h-full overflow-hidden rounded cursor-pointer">
-                                    <img src="{{ asset('public/storage/' . $media->path) }}" alt="Gambar {{ $loop->iteration }}" class="thumbnail-img w-full h-full object-cover border-2 {{ $loop->first ? 'thumbnail-active' : 'border-transparent' }} hover:border-red-500 transition-all duration-200" onclick="changeImage(this)" onerror="this.onerror=null;this.style.display='none';">
+                                    <img src="{{ asset('public/storage/' . $media->path) }}" 
+                                         alt="Gambar {{ $loop->iteration }}" 
+                                         class="thumbnail-img w-full h-full object-cover border-2 {{ $loop->first ? 'thumbnail-active' : 'border-transparent' }} hover:border-red-500 transition-all duration-200" 
+                                         onclick="changeImage(this)" 
+                                         onerror="this.onerror=null;this.style.display='none';">
                                 </div>
                             @endforeach
                         @else
                             <div class="aspect-square w-full h-full overflow-hidden rounded cursor-pointer">
-                                <img src="{{ $imageUrl }}" alt="Thumbnail" class="thumbnail-img w-full h-full object-cover border-2 thumbnail-active hover:border-red-500" onclick="changeImage(this)">
+                                <img src="{{ $imageUrl }}" 
+                                     alt="Thumbnail" 
+                                     class="thumbnail-img w-full h-full object-cover border-2 thumbnail-active hover:border-red-500" 
+                                     onclick="changeImage(this)">
                             </div>
                         @endif
                     </div>
@@ -108,15 +204,20 @@ $initialStock = (int)(!$hasVariants ? $product->stock : 0);
 
                     <div class="flex items-center space-x-3 mb-4 text-sm text-gray-500 border-b border-gray-100 pb-4">
                         <div class="flex items-center">
-                            <span class="font-semibold text-red-500 mr-1">{{ number_format($product->reviews->avg('rating') ?? 0, 1) }}</span>
+                            {{-- HITUNG RATA-RATA RATING DARI MODEL --}}
+                            @php 
+                                $avgRating = $product->reviews->avg('rating') ?? 0;
+                                $countRating = $product->reviews->count();
+                            @endphp
+                            <span class="font-semibold text-red-500 mr-1">{{ number_format($avgRating, 1) }}</span>
                             <div class="flex text-red-400">
                                 @for ($i = 1; $i <= 5; $i++)
-                                    <i class="fas fa-star {{ ($product->reviews->avg('rating') ?? 0) >= $i ? 'text-red-400' : 'text-gray-300' }} text-xs"></i>
+                                    <i class="fas fa-star {{ $avgRating >= $i ? 'text-red-400' : 'text-gray-300' }} text-xs"></i>
                                 @endfor
                             </div>
                         </div>
                         <span class="text-gray-300 mx-1">|</span>
-                        <div><span class="font-semibold text-gray-700">{{ $product->reviews->count() }}</span> Ulasan</div>
+                        <div><span class="font-semibold text-gray-700">{{ $countRating }}</span> Penilaian</div>
                         <span class="text-gray-300 mx-1">|</span>
                         <div><span class="font-semibold text-gray-700">{{ $product->sold_count ?? 0 }}</span> Terjual</div>
                     </div>
@@ -125,9 +226,11 @@ $initialStock = (int)(!$hasVariants ? $product->stock : 0);
                         <span id="display-original-price" class="text-base text-gray-400 line-through {{ ($product->original_price && $product->original_price > $product->price && !$hasVariants) ? '' : 'hidden' }}">
                             Rp{{ number_format($product->original_price, 0, ',', '.') }}
                         </span>
+
                         <span id="display-price" class="text-2xl lg:text-3xl font-bold text-red-600">
                            Rp{{ number_format($product->price, 0, ',', '.') }}
                         </span>
+
                         @if($product->original_price && $product->original_price > $product->price && !$hasVariants)
                         <span id="display-discount" class="discount-badge">
                             {{ round((($product->original_price - $product->price) / $product->original_price) * 100) }}% OFF
@@ -148,7 +251,7 @@ $initialStock = (int)(!$hasVariants ? $product->stock : 0);
                                 <div class="variant-group" data-type-name="{{ $type->name }}">
                                     <div class="flex flex-col sm:flex-row sm:items-center">
                                         <label class="w-24 text-sm text-gray-500 flex-shrink-0 mb-2 sm:mb-0">{{ $type->name }}</label>
-                                        <div class="flex flex-wrap gap-2">
+                                        <div class="variant-btn-container">
                                             @foreach ($type->options as $option)
                                             <button type="button" class="variant-btn" data-option-value="{{ $option->value }}">
                                                 {{ $option->value }}
@@ -168,13 +271,23 @@ $initialStock = (int)(!$hasVariants ? $product->stock : 0);
                                     <button id="button-minus" type="button" class="w-9 h-9 flex items-center justify-center text-gray-600 hover:text-red-600 transition-colors disabled:text-gray-300" disabled>
                                         <i class="fas fa-minus text-xs"></i>
                                     </button>
-                                    <input type="number" id="quantity" name="quantity" class="w-12 h-9 text-center text-sm bg-transparent border-x border-gray-300 focus:outline-none focus:ring-0 disabled:bg-gray-100" value="1" min="1" max="{{ $initialStock > 0 ? $initialStock : 1 }}" {{ $initialStock <= 0 ? 'disabled' : '' }}>
+                                    <input type="number" id="quantity" name="quantity" class="w-12 h-9 text-center text-sm bg-transparent border-x border-gray-300 focus:outline-none focus:ring-0 disabled:bg-gray-100" 
+                                           value="1" min="1" 
+                                           max="{{ $initialStock > 0 ? $initialStock : 1 }}" 
+                                           {{ $initialStock <= 0 ? 'disabled' : '' }}>
                                     <button id="button-plus" type="button" class="w-9 h-9 flex items-center justify-center text-gray-600 hover:text-red-600 transition-colors disabled:text-gray-300" {{ $initialStock <= 1 ? 'disabled' : '' }}>
                                         <i class="fas fa-plus text-xs"></i>
                                     </button>
                                 </div>
+                                
                                 <span id="display-stock" class="ml-4 text-sm text-gray-500">
-                                    @if($initialStock > 0) Tersisa {{ $initialStock }} buah @elseif (!$hasVariants && $initialStock <= 0) Stok habis @else Pilih varian @endif
+                                    @if($initialStock > 0)
+                                        Tersisa {{ $initialStock }} buah
+                                    @elseif (!$hasVariants && $initialStock <= 0)
+                                        Stok habis
+                                    @else
+                                        Pilih varian
+                                    @endif
                                 </span>
                             </div>
                         </div>
@@ -190,103 +303,139 @@ $initialStock = (int)(!$hasVariants ? $product->stock : 0);
                             </div>
                         </div>
                     </form>
+                    
                 </div>
             </div>
         </main>
 
-        @if ($product->store && $product->store->user)
-        <div class="mt-8 bg-white rounded-lg shadow-sm p-4 md:p-6">
-            <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                @php
-                    $sellerLogo = $product->store->user->store_logo_path;
-                    $sellerStoreName = $product->store->user->store_name;
-                    if ($sellerLogo && Str::startsWith($sellerLogo, 'public/')) { $sellerLogo = Str::remove('public/', $sellerLogo); }
-                    $sellerLogoUrl = $sellerLogo ? asset('public/storage/' . $sellerLogo) : 'https://placehold.co/64x64/E2E8F0/AAAAAA?text=Toko';
-                    $tokoProfileParam = $product->store->slug ?? $product->store->name;
-                @endphp
-                <a href="{{ Route::has('toko.profile') ? route('toko.profile', ['name' => $tokoProfileParam]) : '#' }}" class="flex-shrink-0">
-                    <img src="{{ $sellerLogoUrl }}" alt="Logo {{ $sellerStoreName }}" class="w-16 h-16 rounded-full border border-gray-200 object-cover">
-                </a>
-                <div class="flex-grow">
-                    <a href="{{ Route::has('toko.profile') ? route('toko.profile', ['name' => $tokoProfileParam]) : '#' }}" class="hover:underline">
-                        <h3 class="text-base font-bold text-gray-900">{{ $sellerStoreName }}</h3>
-                    </a>
-                    @php
-                        $lastSeen = \Carbon\Carbon::parse($product->store->user->last_seen_at);
-                        $isOnline = $lastSeen->diffInMinutes(now()) < 10;
-                    @endphp
-                    <div class="flex items-center text-xs text-gray-500 mt-1">
-                        <span class="w-2 h-2 {{ $isOnline ? 'bg-green-500' : 'bg-gray-400' }} rounded-full mr-1.5"></span>
-                        <span>{{ $isOnline ? 'Online' : 'Aktif ' . $lastSeen->diffForHumans() }}</span>
-                    </div>
-                    @if($product->store->user->regency)
+ 
+@if ($product->store && $product->store->user)
+<div class="mt-8 bg-white rounded-lg shadow-sm p-4 md:p-6">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+@php
+    $sellerLogo = $product->store->user->store_logo_path;
+    $sellerStoreName = $product->store->user->store_name;
+
+    if ($sellerLogo && Str::startsWith($sellerLogo, 'public/')) {
+        $sellerLogo = Str::remove('public/', $sellerLogo);
+    }
+
+    $sellerLogoUrl = $sellerLogo
+        ? asset('public/storage/' . $sellerLogo)
+        : 'https://placehold.co/64x64/E2E8F0/AAAAAA?text=Toko';
+
+    $tokoProfileParam = $product->store->slug ?? $product->store->name;
+@endphp
+
+        <a href="{{ Route::has('toko.profile') ? route('toko.profile', ['name' => $tokoProfileParam]) : '#' }}" class="flex-shrink-0">
+            <img src="{{ $sellerLogoUrl }}"
+                 alt="Logo {{ $sellerStoreName }}"
+                 class="w-16 h-16 rounded-full border border-gray-200 object-cover">
+        </a>
+
+        <div class="flex-grow">
+            <a href="{{ Route::has('toko.profile') ? route('toko.profile', ['name' => $tokoProfileParam]) : '#' }}" class="hover:underline">
+                <h3 class="text-base font-bold text-gray-900">{{ $sellerStoreName }}</h3>
+            </a>
+
+                        @php
+                            $lastSeen = \Carbon\Carbon::parse($product->store->user->last_seen_at);
+                            $isOnline = $lastSeen->diffInMinutes(now()) < 10;
+                        @endphp
                         <div class="flex items-center text-xs text-gray-500 mt-1">
-                            <i class="fas fa-map-marker-alt mr-1.5"></i> {{ $product->store->user->regency }}
+                            <span class="w-2 h-2 {{ $isOnline ? 'bg-green-500' : 'bg-gray-400' }} rounded-full mr-1.5"></span>
+                            <span>{{ $isOnline ? 'Online' : 'Aktif ' . $lastSeen->diffForHumans() }}</span>
                         </div>
-                    @endif
+
+            @if($product->store->user->regency)
+                <div class="flex items-center text-xs text-gray-500 mt-1">
+                    <i class="fas fa-map-marker-alt mr-1.5"></i> {{ $product->store->user->regency }}
                 </div>
-                <div class="flex w-full sm:w-auto flex-col sm:flex-row gap-3 mt-4 sm:mt-0 self-stretch sm:self-center">
-                    @if(Auth::check() && $product->store->user->no_wa)
-                        @php $wa_number = formatWaNumber($product->store->user->no_wa); @endphp
-                        <a href="https://wa.me/{{ $wa_number }}?text=Halo%2C%20saya%20tertarik%20dengan%20produk%20Anda%3A%20{{ urlencode($product->name) }}" target="_blank" class="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 text-sm border border-gray-300 rounded transition-colors hover:bg-gray-100">
-                            <i class="fab fa-whatsapp text-green-500"></i> Chat
-                        </a>
-                    @endif
-                    @if(Route::has('toko.profile'))
-                        <a href="{{ route('toko.profile', ['name' => $tokoProfileParam]) }}" class="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 text-sm border border-gray-300 rounded hover:bg-gray-100 transition-colors">
-                            <i class="fas fa-store text-gray-500"></i> Kunjungi Toko
-                        </a>
-                    @endif
-                </div>
-            </div>
+            @endif
         </div>
-        @endif
 
-        {{-- Spesifikasi Produk --}}
-        @php
-            $parseSpecValue = function($value) {
-                if (is_string($value) && str_starts_with(trim($value), '[')) {
-                    $decoded = json_decode($value, true);
-                    if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) { return $decoded; }
-                }
-                return $value;
-            };
-            $groupedAttributes = $product->productAttributes->filter(function($attr) { return !empty($attr->value); })->groupBy(function($attr) { return !empty($attr->name) ? $attr->name : 'Info Lainnya'; });
-        @endphp
+        <div class="flex w-full sm:w-auto flex-col sm:flex-row gap-3 mt-4 sm:mt-0 self-stretch sm:self-center">
+            @if(Auth::check() && $product->store->user->no_wa)
+                @php $wa_number = formatWaNumber($product->store->user->no_wa); @endphp
+                <a href="https://wa.me/{{ $wa_number }}?text=Halo%2C%20saya%20tertarik%20dengan%20produk%20Anda%3A%20{{ urlencode($product->name) }}"
+                   target="_blank"
+                   class="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 text-sm border border-gray-300 rounded transition-colors hover:bg-gray-100">
+                    <i class="fab fa-whatsapp text-green-500"></i> Chat
+                </a>
+            @endif
 
-        @if ($groupedAttributes->isNotEmpty())
-            <div class="mt-8 bg-white rounded-lg shadow-sm border border-gray-100 p-4 md:p-6">
-                <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                    <span class="bg-indigo-100 text-indigo-600 p-1 rounded">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
-                    </span>
-                    Spesifikasi Produk
-                </h2>
-                <div class="space-y-4 divide-y divide-gray-100">
-                    @foreach ($groupedAttributes as $name => $items)
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 py-3 first:pt-0">
-                            <dt class="text-sm font-medium text-gray-500 capitalize pt-1">{{ $name }}</dt>
-                            <dd class="col-span-1 sm:col-span-2 text-sm text-gray-800 font-medium">
-                                @foreach ($items as $item)
-                                    @php $parsedVal = $parseSpecValue($item->value); @endphp
-                                    @if (is_array($parsedVal))
-                                        <div class="flex flex-wrap gap-2">
-                                            @foreach ($parsedVal as $val)
-                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-100">{{ $val }}</span>
-                                            @endforeach
-                                        </div>
-                                    @else
-                                        <p class="leading-relaxed">{{ $parsedVal }}</p>
-                                    @endif
-                                @endforeach
-                            </dd>
-                        </div>
-                    @endforeach
+            @if(Route::has('toko.profile'))
+                <a href="{{ route('toko.profile', ['name' => $tokoProfileParam]) }}"
+                   class="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 text-sm border border-gray-300 rounded hover:bg-gray-100 transition-colors">
+                    <i class="fas fa-store text-gray-500"></i> Kunjungi Toko
+                </a>
+            @endif
+        </div>
+
+    </div>
+</div>
+@endif
+
+@php
+    $parseSpecValue = function($value) {
+        if (is_string($value) && str_starts_with(trim($value), '[')) {
+            $decoded = json_decode($value, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                return $decoded; 
+            }
+        }
+        return $value;
+    };
+
+    $groupedAttributes = $product->productAttributes->filter(function($attr) {
+        return !empty($attr->value);
+    })->groupBy(function($attr) {
+        return !empty($attr->name) ? $attr->name : 'Info Lainnya';
+    });
+@endphp
+
+@if ($groupedAttributes->isNotEmpty())
+    <div class="mt-8 bg-white rounded-lg shadow-sm border border-gray-100 p-4 md:p-6">
+        <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+            <span class="bg-indigo-100 text-indigo-600 p-1 rounded">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+            </span>
+            Spesifikasi Produk
+        </h2>
+        
+        <div class="space-y-4 divide-y divide-gray-100">
+            @foreach ($groupedAttributes as $name => $items)
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 py-3 first:pt-0">
+                    <dt class="text-sm font-medium text-gray-500 capitalize pt-1">
+                        {{ $name }}
+                    </dt>
+                    
+                    <dd class="col-span-1 sm:col-span-2 text-sm text-gray-800 font-medium">
+                        @foreach ($items as $item)
+                            @php $parsedVal = $parseSpecValue($item->value); @endphp
+
+                            @if (is_array($parsedVal))
+                                <div class="flex flex-wrap gap-2">
+                                    @foreach ($parsedVal as $val)
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-100">
+                                            {{ $val }}
+                                        </span>
+                                    @endforeach
+                                </div>
+                            @else
+                                <p class="leading-relaxed">{{ $parsedVal }}</p>
+                            @endif
+                        @endforeach
+                    </dd>
                 </div>
-            </div>
-        @endif
+            @endforeach
+        </div>
+    </div>
+@endif
 
-        {{-- Deskripsi Produk --}}
+        {{-- Product Description Section --}}
         <div class="mt-8 bg-white rounded-lg shadow-sm p-4 md:p-6">
             <h2 class="text-lg font-semibold text-gray-800 mb-4">Deskripsi Produk</h2>
             <div id="short-description" class="prose prose-sm max-w-none break-words leading-relaxed">
@@ -305,12 +454,17 @@ $initialStock = (int)(!$hasVariants ? $product->stock : 0);
         </div>
 
         {{-- ========================================================================= --}}
-        {{-- BAGIAN ULASAN & TESTIMONI (DINAMIS & AUTH ONLY) --}}
+        {{-- BAGIAN ULASAN & TESTIMONI --}}
         {{-- ========================================================================= --}}
         <div class="mt-8 bg-white rounded-lg shadow-sm p-4 md:p-6" id="reviews-section">
-            <h2 class="text-lg font-bold text-gray-800 mb-6">Ulasan Pembeli</h2>
+            <h2 class="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
+                Ulasan Produk
+                <span class="bg-gray-100 text-gray-600 text-xs font-normal px-2 py-0.5 rounded-full">
+                    {{ $product->reviews->count() }}
+                </span>
+            </h2>
 
-            {{-- 1. FORM INPUT ULASAN (Hanya user AUTH) --}}
+            {{-- A. FORM INPUT ULASAN (HANYA MUNCUL JIKA USER LOGIN/AUTH) --}}
             @auth
             <div class="bg-gray-50 rounded-lg p-5 mb-8 border border-gray-200">
                 <h3 class="text-sm font-semibold text-gray-700 mb-3">Tulis Ulasan Anda</h3>
@@ -339,42 +493,42 @@ $initialStock = (int)(!$hasVariants ? $product->stock : 0);
 
                     {{-- Textarea Komentar --}}
                     <div class="mb-4">
-                        <label for="comment" class="block text-xs font-medium text-gray-500 mb-1">Bagaimana pengalaman Anda tentang produk ini?</label>
+                        <label for="comment" class="block text-xs font-medium text-gray-500 mb-1">Ceritakan pengalaman Anda (opsional)</label>
                         <textarea name="comment" id="comment" rows="3" class="w-full text-sm border-gray-300 rounded focus:ring-red-500 focus:border-red-500" placeholder="Tulis ulasan Anda disini..."></textarea>
                         @error('comment') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
                     </div>
 
                     <div class="text-right">
-                        <button type="submit" class="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700 transition">Kirim Ulasan</button>
+                        <button type="submit" class="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700 transition shadow-sm">Kirim Ulasan</button>
                     </div>
                 </form>
             </div>
             @else
+            {{-- Pesan ajakan login (Opsional, agar user tahu mereka bisa review jika login) --}}
             <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-8">
-                <div class="flex">
+                <div class="flex items-center">
                     <div class="flex-shrink-0">
                         <i class="fas fa-info-circle text-blue-400"></i>
                     </div>
                     <div class="ml-3">
                         <p class="text-sm text-blue-700">
-                            Silakan <a href="{{ route('login') }}" class="font-bold underline">Login</a> untuk menulis ulasan.
+                            Sudah membeli produk ini? <a href="{{ route('login') }}" class="font-bold underline">Login</a> untuk memberikan ulasan.
                         </p>
                     </div>
                 </div>
             </div>
             @endauth
 
-            {{-- 2. LIST TESTIMONI --}}
+            {{-- B. DAFTAR ULASAN (DAPAT DILIHAT SEMUA USER/PUBLIC) --}}
             <div class="space-y-6">
                 @forelse($product->reviews as $review)
-                <div class="flex items-start space-x-4 border-b border-gray-100 pb-6 last:border-0">
-                    {{-- Logo Pembeli --}}
+                <div class="flex items-start space-x-4 border-b border-gray-100 pb-6 last:border-0 last:pb-0">
+                    {{-- Logo/Avatar Pembeli --}}
                     <div class="flex-shrink-0">
                         @php
-                            // Cek avatar user, kalau tidak ada pakai placeholder
-                            // Asumsi di User model ada method/attribute avatar atau profile_photo_path
+                            // Ambil avatar user
                             $avatarPath = $review->user->profile_photo_path ?? null; 
-                            $avatarUrl = $avatarPath ? asset('storage/'.$avatarPath) : 'https://ui-avatars.com/api/?name='.urlencode($review->user->name).'&background=random';
+                            $avatarUrl = $avatarPath ? asset('storage/'.$avatarPath) : 'https://ui-avatars.com/api/?name='.urlencode($review->user->name).'&background=random&color=fff';
                         @endphp
                         <img class="h-10 w-10 rounded-full object-cover border border-gray-200" src="{{ $avatarUrl }}" alt="{{ $review->user->name }}">
                     </div>
@@ -386,27 +540,38 @@ $initialStock = (int)(!$hasVariants ? $product->stock : 0);
                         </div>
                         
                         {{-- Kota & Provinsi Pembeli --}}
-                        <div class="text-xs text-gray-500 mb-1">
-                            {{ $review->user->regency ?? 'Kota Tidak Diketahui' }}, {{ $review->user->province ?? 'Provinsi Tidak Diketahui' }}
+                        <div class="text-xs text-gray-500 mb-1 flex items-center">
+                            @if($review->user->regency)
+                                <span>{{ $review->user->regency }}</span>
+                            @endif
+                            @if($review->user->regency && $review->user->province)
+                                <span class="mx-1">,</span>
+                            @endif
+                            @if($review->user->province)
+                                <span>{{ $review->user->province }}</span>
+                            @endif
                         </div>
 
-                        {{-- Bintang --}}
+                        {{-- Bintang Rating --}}
                         <div class="flex items-center mb-2">
                             @for($i = 1; $i <= 5; $i++)
                                 <i class="fas fa-star text-xs {{ $i <= $review->rating ? 'text-yellow-400' : 'text-gray-200' }}"></i>
                             @endfor
                         </div>
 
-                        {{-- Isi Ulasan --}}
+                        {{-- Isi Komentar --}}
+                        @if($review->comment)
                         <p class="text-sm text-gray-700 leading-relaxed">
                             {{ $review->comment }}
                         </p>
+                        @endif
                     </div>
                 </div>
                 @empty
-                <div class="text-center py-8">
+                <div class="text-center py-8 bg-gray-50 rounded-lg border border-dashed border-gray-200">
                     <i class="far fa-comment-dots text-gray-300 text-4xl mb-3"></i>
-                    <p class="text-gray-500">Belum ada ulasan untuk produk ini.</p>
+                    <p class="text-gray-500 text-sm font-medium">Belum ada ulasan untuk produk ini.</p>
+                    <p class="text-xs text-gray-400 mt-1">Jadilah yang pertama memberikan ulasan!</p>
                 </div>
                 @endforelse
             </div>

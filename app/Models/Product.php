@@ -15,6 +15,7 @@ use App\Models\ProductAttribute; // Tambahkan ini
 use App\Models\ProductVariantType; // Tambahkan ini
 use App\Models\ProductVariant; // Tambahkan ini
 use App\Models\ProductImage;
+use App\Models\ProductReview;
 // use App\Models\User; // <-- Dihapus, tidak perlu di sini
 
 class Product extends Model
