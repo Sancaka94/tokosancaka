@@ -35,7 +35,7 @@
                                 {{ $review->product->name }}
                             </div>
                             <div class="text-xs text-gray-500 flex items-center mt-1">
-                                <i class="fas fa-store mr-1"></i> {{ $review->product->store->name ?? 'Toko Hapus' }}
+                                <i class="fas fa-store mr-1"></i> {{ $review->product->store->store_name ?? 'Toko Hapus' }}
                             </div>
                         </td>
 
