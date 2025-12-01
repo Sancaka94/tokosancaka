@@ -70,7 +70,7 @@ use App\Http\Controllers\Admin\ApiSettingsController;
 use App\Http\Controllers\Admin\KoliController as AdminKoliController;
 use App\Http\Controllers\ProductReviewController;
 use App\Http\Controllers\SellerReviewController;
-
+use App\Http\Controllers\Admin\AdminReviewController;
 
 
 Route::post('/reviews', [ProductReviewController::class, 'store'])->name('reviews.store')->middleware('auth');
@@ -572,6 +572,12 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])
         
         Route::resource('customers/data/pengguna', DataPenggunaController::class)
     ->names('customers.data.pengguna');
+
+    // Route Manajemen Ulasan
+    Route::resource('reviews', AdminReviewController::class);
+    
+    // Route khusus untuk membalas (Reply)
+    Route::post('reviews/{review}/reply', [AdminReviewController::class, 'reply'])->name('reviews.reply');
     
 // Halaman Pengaturan API All-in-One
     Route::get('/settings/api', [ApiSettingsController::class, 'index'])->name('settings.api.index');

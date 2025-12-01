@@ -15,13 +15,12 @@ class ProductReview extends Model
         'user_id',
         'rating',
         'comment',
+        'reply',     // <--- TAMBAHAN
+        'reply_at',  // <--- TAMBAHAN
     ];
 
-    // Relasi ke User
     public function user()
     {
-        // belongsTo(Model, Foreign Key Lokal, Owner Key)
-        // Owner Key harus 'id_pengguna'
         return $this->belongsTo(User::class, 'user_id', 'id_pengguna');
     }
 
