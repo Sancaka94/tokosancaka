@@ -17,7 +17,7 @@
         }
         .thumbnail-active { 
             outline: 2px solid var(--shopee-red); 
-            outline-offset: 2px;
+            outline-offset: 1px;
             border-color: var(--shopee-red) !important;
         }
         input[type=number]::-webkit-inner-spin-button, 
@@ -148,8 +148,11 @@ if (!function_exists('formatWaNumber')) {
                 {{-- Product Image Gallery --}}
                 <div class="md:col-span-2 image-gallery">
                     @php
+                        // URL Gambar Utama (Default)
                         $imageUrl = $product->image_url ? asset('public/storage/' . $product->image_url) : 'https://placehold.co/600x600/EFEFEF/AAAAAA?text=Gambar+Tidak+Ada';
                     @endphp
+                    
+                    {{-- Gambar Besar (Preview) --}}
                     <div class="aspect-w-1 aspect-h-1 w-full overflow-hidden rounded-md shadow-sm mb-3 border border-gray-200">
                         <img id="main-product-image"
                              src="{{ $imageUrl }}"
@@ -157,11 +160,31 @@ if (!function_exists('formatWaNumber')) {
                              class="w-full h-full object-contain object-center"
                              onerror="this.onerror=null;this.src='https://placehold.co/600x600/EFEFEF/AAAAAA?text=Gambar+Error';">
                     </div>
-                    <div class="grid grid-cols-5 gap-2">
-                        <div class="flex items-center justify-center">
-                            <img src="{{ $imageUrl }}" alt="Thumbnail 1" class="thumbnail-img w-full h-full object-cover rounded cursor-pointer border-2 border-transparent hover:border-red-500 thumbnail-active" onclick="changeImage(this)" onerror="this.onerror=null;this.style.display='none';">
-                        </div>
+
+                    {{-- === GALERI THUMBNAIL (DIPERBAIKI) === --}}
+                    <div class="grid grid-cols-5 gap-2 mt-2">
+                        @if($product->images && $product->images->count() > 0)
+                            {{-- Loop Gambar dari Database (ProductImage) --}}
+                            @foreach($product->images->sortBy('sort_order') as $media)
+                                <div class="aspect-square w-full h-full overflow-hidden rounded cursor-pointer">
+                                    <img src="{{ asset('public/storage/' . $media->path) }}" 
+                                         alt="Gambar {{ $loop->iteration }}" 
+                                         class="thumbnail-img w-full h-full object-cover border-2 {{ $loop->first ? 'thumbnail-active' : 'border-transparent' }} hover:border-red-500 transition-all duration-200" 
+                                         onclick="changeImage(this)" 
+                                         onerror="this.onerror=null;this.style.display='none';">
+                                </div>
+                            @endforeach
+                        @else
+                            {{-- Fallback jika hanya ada 1 gambar di tabel products --}}
+                            <div class="aspect-square w-full h-full overflow-hidden rounded cursor-pointer">
+                                <img src="{{ $imageUrl }}" 
+                                     alt="Thumbnail" 
+                                     class="thumbnail-img w-full h-full object-cover border-2 thumbnail-active hover:border-red-500" 
+                                     onclick="changeImage(this)">
+                            </div>
+                        @endif
                     </div>
+                    {{-- === AKHIR GALERI THUMBNAIL === --}}
                 </div>
 
                 {{-- Product Info & Action --}}
