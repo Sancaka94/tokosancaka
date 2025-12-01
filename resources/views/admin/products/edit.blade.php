@@ -240,19 +240,37 @@
         Media Produk (Maks. 5 Gambar)
     </h2>
 
+    {{-- LOGIKA PENTING: Petakan gambar berdasarkan sort_order --}}
+    @php
+        // Mengubah Collection menjadi array dengan key 'sort_order'
+        // Pastikan di Controller Anda menyimpan kolom 'sort_order' (0,1,2,3,4)
+        $existingImages = $product->images->keyBy('sort_order'); 
+    @endphp
+
     <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
         @for ($i = 0; $i < 5; $i++)
+            @php
+                // Cek apakah ada gambar di urutan/slot ini
+                $hasImage = isset($existingImages[$i]);
+                $imagePath = $hasImage ? asset('storage/' . $existingImages[$i]->path) : '';
+            @endphp
+
             <div class="relative w-full aspect-square group">
                 
-                {{-- Input File Tersembunyi --}}
-                <input type="file" name="product_images[{{ $i }}]" id="input-img-{{ $i }}" class="hidden" accept="image/*" onchange="previewImage(this, {{ $i }})">
+                {{-- Input File (Hidden) --}}
+                <input type="file" 
+                       name="product_images[{{ $i }}]" 
+                       id="input-img-{{ $i }}" 
+                       class="hidden" 
+                       accept="image/*"
+                       onchange="previewImage(this, {{ $i }})">
 
-                {{-- Label sebagai Trigger Klik --}}
+                {{-- Label / Kotak Klik --}}
                 <label for="input-img-{{ $i }}" 
                        class="block w-full h-full border-2 {{ $i === 0 ? 'border-indigo-500' : 'border-dashed border-gray-300' }} rounded-xl cursor-pointer hover:border-indigo-400 transition relative overflow-hidden bg-gray-50 flex flex-col items-center justify-center text-center">
                     
-                    {{-- 1. Placeholder (Akan disembunyikan via JS jika ada gambar) --}}
-                    <div id="placeholder-{{ $i }}" class="p-2 {{ isset($product->images[$i]) ? 'hidden' : '' }}">
+                    {{-- 1. Placeholder (Tampil jika TIDAK ADA gambar) --}}
+                    <div id="placeholder-{{ $i }}" class="p-2 {{ $hasImage ? 'hidden' : '' }}">
                         @if($i === 0)
                             <span class="absolute top-2 left-2 bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-sm z-10">
                                 Utama
@@ -267,17 +285,17 @@
                         <span class="text-[10px] text-gray-400 block">Upload</span>
                     </div>
 
-                    {{-- 2. Preview Image (Default Hidden, muncul via JS atau Data Lama) --}}
+                    {{-- 2. Preview Image (Tampil jika ADA gambar) --}}
                     <img id="preview-img-{{ $i }}" 
-                         src="{{ isset($product->images[$i]) ? asset('storage/'.$product->images[$i]->path) : '' }}" 
-                         class="absolute inset-0 w-full h-full object-cover {{ isset($product->images[$i]) ? '' : 'hidden' }}">
+                         src="{{ $imagePath }}" 
+                         class="absolute inset-0 w-full h-full object-cover {{ $hasImage ? '' : 'hidden' }}">
                 </label>
 
                 {{-- Tombol Hapus (X) --}}
                 <button type="button" 
                         id="btn-remove-{{ $i }}"
                         onclick="removeImage({{ $i }})"
-                        class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center shadow-md hover:bg-red-600 transition z-20 {{ isset($product->images[$i]) ? '' : 'hidden' }}">
+                        class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center shadow-md hover:bg-red-600 transition z-20 {{ $hasImage ? '' : 'hidden' }}">
                     <i class="fa-solid fa-times text-xs"></i>
                 </button>
             </div>
