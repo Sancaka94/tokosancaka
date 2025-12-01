@@ -564,12 +564,12 @@ if (!function_exists('formatWaNumber')) {
                     {{-- PERBAIKAN: Cek apakah user ada --}}
                     @php
                         $user = $review->user; // Simpan ke variabel biar gampang dicek
-                        $userName = $user ? $user->name : 'Pengguna Tidak Dikenal';
+                        $userName = $user ? $user->nama_lengkap : 'Pengguna Tidak Dikenal';
                         
                         // Avatar Logic (Aman dari null)
                         $avatarPath = $user->profile_photo_path ?? null; 
                         $avatarUrl = $avatarPath 
-                            ? asset('storage/'.$avatarPath) 
+                            ? asset('public/storage/'.$avatarPath) 
                             : 'https://ui-avatars.com/api/?name='.urlencode($userName).'&background=random&color=fff';
                     @endphp
 
