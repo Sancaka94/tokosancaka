@@ -269,7 +269,7 @@
 
                        {{-- ✅ LINK BARU DITAMBAHKAN DI SINI --}}
 
-                    {{-- PERBAIKAN: Menambahkan link Kategori Produk di dalam menu Marketplace --}}
+                    {{-- PERBAIKAN: Menambahkan link Produk di dalam menu Marketplace --}}
                     <li>
                         <a href="{{ route('admin.categories.index', ['type' => 'marketplace']) }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-gray-700 {{ request()->routeIs('admin.categories.*') && request('type') == 'marketplace' ? 'text-white' : 'text-gray-400' }}">
                             Kategori Produk
