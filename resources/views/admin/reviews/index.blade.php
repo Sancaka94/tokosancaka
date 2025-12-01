@@ -44,7 +44,7 @@
                             <div class="flex items-center">
                                 @php
                                     $avatar = $review->user->profile_photo_path 
-                                        ? asset('storage/'.$review->user->profile_photo_path) 
+                                        ? asset('public/storage/'.$review->user->store_photo_path) 
                                         : 'https://ui-avatars.com/api/?name='.urlencode($review->user->name);
                                 @endphp
                                 <img src="{{ $avatar }}" class="w-8 h-8 rounded-full mr-2 border">
