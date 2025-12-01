@@ -43,8 +43,8 @@
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="flex items-center">
                                 @php
-                                    $avatar = $review->user->store_photo_path 
-                                        ? asset('public/storage/'.$review->user->store_photo_path) 
+                                    $avatar = $review->user->store_logo_path 
+                                        ? asset('public/storage/'.$review->user->store_logo_path) 
                                         : 'https://ui-avatars.com/api/?name='.urlencode($review->user->nama_lengkap);
                                 @endphp
                                 <img src="{{ $avatar }}" class="w-8 h-8 rounded-full mr-2 border">
