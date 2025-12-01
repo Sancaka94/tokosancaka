@@ -68,12 +68,12 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\Customer\KoliController;
 use App\Http\Controllers\Admin\ApiSettingsController;
 use App\Http\Controllers\Admin\KoliController as AdminKoliController;
+use App\Http\Controllers\ProductReviewController;
 
 
 
 
-
-
+Route::post('/reviews', [ProductReviewController::class, 'store'])->name('reviews.store')->middleware('auth');
 
 Route::post('/koli/cek-ongkir', [KoliController::class, 'cekOngkirMulti'])->name('koli.cekOngkirMulti');
 

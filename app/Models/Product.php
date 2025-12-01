@@ -172,6 +172,18 @@ class Product extends Model
         return $this->hasMany(ProductImage::class, 'product_id');
     }
 
+    // Di dalam class Product
+public function reviews()
+{
+    return $this->hasMany(\App\Models\ProductReview::class)->latest();
+}
+
+// Untuk menghitung rata-rata rating (opsional, helper)
+public function getAverageRatingAttribute()
+{
+    return $this->reviews()->avg('rating') ?? 0;
+}
+
     // OPSIONAL: Accessor untuk image_url jika kolom Anda adalah 'image'
     // public function getImageUrlAttribute()
     // {
