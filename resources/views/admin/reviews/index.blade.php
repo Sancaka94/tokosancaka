@@ -49,7 +49,7 @@
                                 @endphp
                                 <img src="{{ $avatar }}" class="w-8 h-8 rounded-full mr-2 border">
                                 <div>
-                                    <div class="font-medium text-gray-800">{{ $review->user->name }}</div>
+                                    <div class="font-medium text-gray-800">{{ $review->user->nama_lengkap }}</div>
                                     <div class="text-xs text-gray-400">{{ $review->created_at->format('d M Y') }}</div>
                                 </div>
                             </div>
