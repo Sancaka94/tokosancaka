@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Product;
+use App\Models\User; 
 
 class ProductReview extends Model
 {
@@ -17,13 +17,14 @@ class ProductReview extends Model
         'comment',
     ];
 
-    // Relasi ke User (Pembeli)
+    // Relasi ke User
     public function user()
     {
-        return $this->belongsTo(User::class);
+        // belongsTo(Model, Foreign Key Lokal, Owner Key)
+        // Owner Key harus 'id_pengguna'
+        return $this->belongsTo(User::class, 'user_id', 'id_pengguna');
     }
 
-    // Relasi ke Produk
     public function product()
     {
         return $this->belongsTo(Product::class);

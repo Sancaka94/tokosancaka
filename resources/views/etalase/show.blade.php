@@ -560,34 +560,44 @@ if (!function_exists('formatWaNumber')) {
             <div class="space-y-6">
                 @forelse($product->reviews as $review)
                 <div class="flex items-start space-x-4 border-b border-gray-100 pb-6 last:border-0 last:pb-0">
+                    
+                    {{-- PERBAIKAN: Cek apakah user ada --}}
+                    @php
+                        $user = $review->user; // Simpan ke variabel biar gampang dicek
+                        $userName = $user ? $user->name : 'Pengguna Tidak Dikenal';
+                        
+                        // Avatar Logic (Aman dari null)
+                        $avatarPath = $user->profile_photo_path ?? null; 
+                        $avatarUrl = $avatarPath 
+                            ? asset('storage/'.$avatarPath) 
+                            : 'https://ui-avatars.com/api/?name='.urlencode($userName).'&background=random&color=fff';
+                    @endphp
+
                     {{-- Logo/Avatar Pembeli --}}
                     <div class="flex-shrink-0">
-                        @php
-                            // Ambil avatar user
-                            $avatarPath = $review->user->profile_photo_path ?? null; 
-                            $avatarUrl = $avatarPath ? asset('storage/'.$avatarPath) : 'https://ui-avatars.com/api/?name='.urlencode($review->user->name).'&background=random&color=fff';
-                        @endphp
-                        <img class="h-10 w-10 rounded-full object-cover border border-gray-200" src="{{ $avatarUrl }}" alt="{{ $review->user->name }}">
+                        <img class="h-10 w-10 rounded-full object-cover border border-gray-200" src="{{ $avatarUrl }}" alt="{{ $userName }}">
                     </div>
 
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center justify-between">
-                            <h4 class="text-sm font-bold text-gray-900">{{ $review->user->name }}</h4>
+                            <h4 class="text-sm font-bold text-gray-900">{{ $userName }}</h4>
                             <span class="text-xs text-gray-400">{{ $review->created_at->format('d M Y') }}</span>
                         </div>
                         
-                        {{-- Kota & Provinsi Pembeli --}}
-                        <div class="text-xs text-gray-500 mb-1 flex items-center">
-                            @if($review->user->regency)
-                                <span>{{ $review->user->regency }}</span>
-                            @endif
-                            @if($review->user->regency && $review->user->province)
-                                <span class="mx-1">,</span>
-                            @endif
-                            @if($review->user->province)
-                                <span>{{ $review->user->province }}</span>
-                            @endif
-                        </div>
+                        {{-- Kota & Provinsi Pembeli (Cek jika user ada) --}}
+                        @if($user)
+                            <div class="text-xs text-gray-500 mb-1 flex items-center">
+                                @if($user->regency)
+                                    <span>{{ $user->regency }}</span>
+                                @endif
+                                @if($user->regency && $user->province)
+                                    <span class="mx-1">,</span>
+                                @endif
+                                @if($user->province)
+                                    <span>{{ $user->province }}</span>
+                                @endif
+                            </div>
+                        @endif
 
                         {{-- Bintang Rating --}}
                         <div class="flex items-center mb-2">
