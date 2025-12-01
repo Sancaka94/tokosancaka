@@ -245,12 +245,7 @@
             <div class="relative w-full aspect-square group">
                 
                 {{-- Input File Tersembunyi --}}
-                <input type="file" 
-                       name="product_images[]" 
-                       id="input-img-{{ $i }}" 
-                       class="hidden" 
-                       accept="image/*"
-                       onchange="previewImage(this, {{ $i }})">
+                <input type="file" name="product_images[{{ $i }}]" id="input-img-{{ $i }}" class="hidden" accept="image/*" onchange="previewImage(this, {{ $i }})">
 
                 {{-- Label sebagai Trigger Klik --}}
                 <label for="input-img-{{ $i }}" 
