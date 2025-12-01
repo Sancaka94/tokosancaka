@@ -11,7 +11,7 @@
     <style>
         body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
         :root {
-            --shopee-red: #EE4D2D;
+            --shopee-red: #d73210;
             --shopee-red-dark: #d73210;
             --shopee-red-light: rgba(255, 87, 34, 0.1);
         }
