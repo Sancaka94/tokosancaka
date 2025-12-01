@@ -252,7 +252,7 @@
             @php
                 // Cek apakah ada gambar di urutan/slot ini
                 $hasImage = isset($existingImages[$i]);
-                $imagePath = $hasImage ? asset('storage/' . $existingImages[$i]->path) : '';
+                $imagePath = $hasImage ? asset('public/storage/' . $existingImages[$i]->path) : '';
             @endphp
 
             <div class="relative w-full aspect-square group">
@@ -305,6 +305,17 @@
         <i class="fa-solid fa-circle-info text-indigo-400"></i>
         Klik kotak untuk mengunggah. Gambar pertama akan menjadi cover produk.
     </p>
+</div>
+
+{{-- DEBUGGING TEMPORARY --}}
+<div class="bg-yellow-100 p-4 mb-4 text-xs font-mono">
+    DEBUG DATA GAMBAR: <br>
+    Jumlah Gambar: {{ $product->images->count() }} <br>
+    
+    @foreach($product->images as $img)
+        - Slot: {{ $img->sort_order }} | Path: {{ $img->path }} <br>
+        - URL Aset: {{ asset('public/storage/' . $img->path) }} <br>
+    @endforeach
 </div>
 
             {{-- 3. INFORMASI PENJUAL --}}
