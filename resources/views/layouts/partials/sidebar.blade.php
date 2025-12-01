@@ -259,6 +259,14 @@
 
                 <ul class="pl-8 pr-2 py-1 space-y-1">
 
+                {{-- [BARU] Link Manajemen Ulasan --}}
+                    <li>
+                        <a href="{{ route('admin.reviews.index') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-gray-700 {{ request()->routeIs('admin.reviews.*') ? 'text-white' : 'text-gray-400' }}">
+                            <i class="fas fa-star mr-2 text-yellow-500"></i> Manajemen Ulasan
+                        </a>
+                    </li>
+                    {{-- --------------------------------- --}}
+
                        {{-- ✅ LINK BARU DITAMBAHKAN DI SINI --}}
 
                     {{-- PERBAIKAN: Menambahkan link Kategori Produk di dalam menu Marketplace --}}
