@@ -567,7 +567,7 @@ if (!function_exists('formatWaNumber')) {
                         $userName = $user ? $user->nama_lengkap : 'Pengguna Tidak Dikenal';
                         
                         // Avatar Logic (Aman dari null)
-                        $avatarPath = $user->profile_photo_path ?? null; 
+                        $avatarPath = $user->store_logo_path ?? null; 
                         $avatarUrl = $avatarPath 
                             ? asset('public/storage/'.$avatarPath) 
                             : 'https://ui-avatars.com/api/?name='.urlencode($userName).'&background=random&color=fff';
