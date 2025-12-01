@@ -14,6 +14,7 @@ use App\Models\Review; // Jika Anda menggunakan Review
 use App\Models\ProductAttribute; // Tambahkan ini
 use App\Models\ProductVariantType; // Tambahkan ini
 use App\Models\ProductVariant; // Tambahkan ini
+use App\Models\ProductImage;
 // use App\Models\User; // <-- Dihapus, tidak perlu di sini
 
 class Product extends Model
@@ -163,6 +164,12 @@ class Product extends Model
     public function getRouteKeyName(): string
     {
         return 'slug';
+    }
+
+    // TAMBAHKAN KODE INI
+    public function images()
+    {
+        return $this->hasMany(ProductImage::class, 'product_id');
     }
 
     // OPSIONAL: Accessor untuk image_url jika kolom Anda adalah 'image'
