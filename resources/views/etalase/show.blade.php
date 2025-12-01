@@ -119,7 +119,7 @@
         /* Tampilan Bintang (Label) */
         .rate:not(:checked) > label { 
             float: right; 
-            width: 1.2em; 
+            width: 1.5em; 
             overflow: hidden; 
             white-space: nowrap; 
             cursor: pointer; 
