@@ -25,10 +25,39 @@ class ProductController extends Controller
     /**
      * Menampilkan halaman manajemen produk.
      */
+    /**
+     * Menampilkan halaman manajemen produk.
+     */
     public function index(Request $request)
     {
+        // 1. Ambil Kategori untuk filter
         $categories = Category::where('type', 'product')->orderBy('name')->get(['name', 'slug']);
-        return view('admin.products.index', compact('categories'));
+        
+        // 2. Mulai Query Produk
+        $query = Product::with('category');
+
+        // 3. Logika Pencarian (Search)
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('sku', 'like', "%{$search}%");
+            });
+        }
+
+        // 4. Logika Filter Kategori
+        if ($request->filled('category')) {
+            $categorySlug = $request->category;
+            $query->whereHas('category', function($q) use ($categorySlug) {
+                $q->where('slug', $categorySlug);
+            });
+        }
+
+        // 5. Eksekusi Pagination (PENTING: Ini yang hilang sebelumnya)
+        $products = $query->latest()->paginate(10);
+
+        // 6. Kirim variabel $products ke View
+        return view('admin.products.index', compact('categories', 'products'));
     }
 
     /**
