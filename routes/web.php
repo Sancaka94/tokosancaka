@@ -367,13 +367,11 @@ Route::get('/tracking/cetak-thermal/{resi}', [App\Http\Controllers\TrackingContr
 
 Route::middleware(['auth', RoleMiddleware::class . ':Pelanggan|Seller'])
 
-Route::get('/seller/reviews', [SellerReviewController::class, 'index'])->name('seller.reviews.index');
-
     ->prefix('customer')->name('customer.')
 
     ->group(function () {
         
-        
+        Route::get('/seller/reviews', [SellerReviewController::class, 'index'])->name('seller.reviews.index');
         // 1. Menampilkan Halaman Form Multi-Koli (GET)
         // URL: /customer/pesanan/multi/create
         // Nama Rute: customer.koli.create
