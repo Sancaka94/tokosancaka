@@ -69,7 +69,7 @@ use App\Http\Controllers\Customer\KoliController;
 use App\Http\Controllers\Admin\ApiSettingsController;
 use App\Http\Controllers\Admin\KoliController as AdminKoliController;
 use App\Http\Controllers\ProductReviewController;
-
+use App\Http\Controllers\SellerReviewController;
 
 
 
@@ -366,6 +366,8 @@ Route::get('/tracking/cetak-thermal/{resi}', [App\Http\Controllers\TrackingContr
 // =========================================================================
 
 Route::middleware(['auth', RoleMiddleware::class . ':Pelanggan|Seller'])
+
+Route::get('/seller/reviews', [SellerReviewController::class, 'index'])->name('seller.reviews.index');
 
     ->prefix('customer')->name('customer.')
 

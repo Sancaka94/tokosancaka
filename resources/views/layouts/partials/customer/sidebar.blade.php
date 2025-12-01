@@ -349,6 +349,11 @@
 
         </a>
 
+        <a href="{{ route('seller.reviews.index') }}" class="flex items-center px-4 py-2 mt-2 text-gray-600 hover:bg-gray-200 hover:text-gray-700 rounded-md">
+    <i class="fas fa-star mr-2"></i>
+    <span>Ulasan Produk</span>
+        </a>
+
 
 
         
