@@ -281,16 +281,36 @@ if (!function_exists('formatWaNumber')) {
                         </div>
 
                         {{-- Action Buttons --}}
-                        <div class="mt-8 pt-6 border-t border-gray-100">
-                            <div class="flex flex-col sm:flex-row items-center gap-3">
-                                <button id="add-to-cart-button" type="submit" name="action" value="add_to_cart" class="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 px-6 py-3 text-sm btn-shopee-outline rounded-sm font-medium" {{ $initialStock <= 0 ? 'disabled' : '' }}>
-                                    <i class="fas fa-cart-plus text-base"></i> Masukkan Keranjang
-                                </button>
-                                 <button id="buy-now-button" type="submit" name="action" value="buy_now" class="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 px-6 py-3 text-sm btn-shopee-solid rounded-sm font-medium" {{ $initialStock <= 0 ? 'disabled' : '' }}>
-                                    Beli Sekarang
-                                 </button>
-                            </div>
-                        </div>
+<div class="mt-8 pt-6 border-t border-gray-100">
+    <div class="flex flex-col sm:flex-row items-center gap-3">
+
+        {{-- Tombol Masukkan Keranjang (Merah Outline) --}}
+        <button id="add-to-cart-button"
+            type="submit"
+            name="action"
+            value="add_to_cart"
+            class="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 px-6 py-3 
+                   text-sm rounded-sm font-medium border border-red-600 text-red-600
+                   hover:bg-red-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            {{ $initialStock <= 0 ? 'disabled' : '' }}>
+            <i class="fas fa-cart-plus text-base"></i> Masukkan Keranjang
+        </button>
+
+        {{-- Tombol Beli Sekarang (Merah Solid) --}}
+        <button id="buy-now-button"
+            type="submit"
+            name="action"
+            value="buy_now"
+            class="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 px-6 py-3 
+                   text-sm rounded-sm font-medium bg-red-600 text-white
+                   hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            {{ $initialStock <= 0 ? 'disabled' : '' }}>
+            Beli Sekarang
+        </button>
+
+    </div>
+</div>
+
                     </form>
                     
                 </div>
