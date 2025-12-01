@@ -509,24 +509,33 @@ if (!function_exists('formatWaNumber')) {
                     @csrf
                     <input type="hidden" name="product_id" value="{{ $product->id }}">
                     
-                    {{-- Rating Bintang --}}
-                    <div class="mb-4">
-                        <label class="block text-xs font-medium text-gray-500 mb-1">Berikan Rating</label>
-                        <div class="rate">
-                            <input type="radio" id="star5" name="rating" value="5" />
-                            <label for="star5" title="5 stars">5 stars</label>
-                            <input type="radio" id="star4" name="rating" value="4" />
-                            <label for="star4" title="4 stars">4 stars</label>
-                            <input type="radio" id="star3" name="rating" value="3" />
-                            <label for="star3" title="3 stars">3 stars</label>
-                            <input type="radio" id="star2" name="rating" value="2" />
-                            <label for="star2" title="2 stars">2 stars</label>
-                            <input type="radio" id="star1" name="rating" value="1" />
-                            <label for="star1" title="1 star">1 star</label>
+                    {{-- Rating Bintang (Hanya Icon) --}}
+                        <div class="mb-4">
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Berikan Rating</label>
+                            <div class="rate">
+                                {{-- Star 5 --}}
+                                <input type="radio" id="star5" name="rating" value="5" />
+                                <label for="star5" title="Sangat Baik"></label> {{-- Teks dihapus --}}
+                                
+                                {{-- Star 4 --}}
+                                <input type="radio" id="star4" name="rating" value="4" />
+                                <label for="star4" title="Baik"></label> {{-- Teks dihapus --}}
+                                
+                                {{-- Star 3 --}}
+                                <input type="radio" id="star3" name="rating" value="3" />
+                                <label for="star3" title="Cukup"></label> {{-- Teks dihapus --}}
+                                
+                                {{-- Star 2 --}}
+                                <input type="radio" id="star2" name="rating" value="2" />
+                                <label for="star2" title="Buruk"></label> {{-- Teks dihapus --}}
+                                
+                                {{-- Star 1 --}}
+                                <input type="radio" id="star1" name="rating" value="1" />
+                                <label for="star1" title="Sangat Buruk"></label> {{-- Teks dihapus --}}
+                            </div>
+                            <div class="clear-both"></div>
+                            @error('rating') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
                         </div>
-                        <div class="clear-both"></div>
-                        @error('rating') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
-                    </div>
 
                     {{-- Textarea Komentar --}}
                     <div class="mb-4">
