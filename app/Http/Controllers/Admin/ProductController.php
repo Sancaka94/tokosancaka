@@ -69,46 +69,46 @@ class ProductController extends Controller
         return view('admin.products.create', compact('categories'));
     }
 
-    /**
-     * Menyimpan produk baru.
-     */
     public function store(Request $request)
     {
-        $this->normalizeInput($request); // Hapus titik dari harga
-        $validatedData = $this->validateProduct($request); // Validasi terpusat
+        $this->normalizeInput($request);
+        $validatedData = $this->validateProduct($request);
 
         try {
             DB::beginTransaction();
 
-            // 1. Handle File Uploads
-            $validatedData['image_url'] = $this->handleUpload($request, 'product_image', 'products');
+            // 1. Handle File Upload (Logo Penjual & Image URL Default)
             $validatedData['seller_logo'] = $this->handleUpload($request, 'seller_logo', 'seller_logos');
+            
+            // Note: Kita handle product_image nanti via handleMultiImageUpload, tapi kita set default null dulu
+            $validatedData['image_url'] = null; 
 
-            // 2. Data Pelengkap (Slug, SKU, Default Values)
+            // 2. Siapkan Data
             $this->prepareAdditionalData($validatedData, $request);
 
-            // 3. Logic Varian vs Simple
+            // 3. Logic Varian
             $hasVariants = $request->has('variant_types') && !empty($request->variant_types);
             $variantTypesInput = $request->input('variant_types', []);
             $productVariantsInput = $request->input('product_variants', []);
 
-            // Bersihkan array dari data yang tidak masuk tabel products
             $productData = collect($validatedData)->except(['attributes', 'variant_types', 'product_variants'])->toArray();
 
             if ($hasVariants) {
-                $productData['stock'] = 0; // Stok dihandle varian
+                $productData['stock'] = 0;
                 $productData['price'] = $productVariantsInput[0]['price'] ?? $productData['price'];
             }
 
             // 4. Create Product
             $product = Product::create($productData);
 
-            // 5. Sync Relasi
+            // 5. Sync Attributes & Variants
             $this->syncAttributes($product, $request->input('attributes', []));
-            
             if ($hasVariants) {
                 $this->syncVariantTypesAndCombinations($product, $variantTypesInput, $productVariantsInput);
             }
+
+            // 6. SIMPAN GAMBAR KE TABEL BARU (INI YANG SEBELUMNYA HILANG)
+            $this->handleMultiImageUpload($request, $product);
 
             DB::commit();
             return redirect()->route('admin.products.index')->with('success', 'Produk berhasil ditambahkan.');
@@ -165,9 +165,6 @@ class ProductController extends Controller
         return view('admin.products.edit', compact('product', 'categories'));
     }
 
-    /**
-     * Update produk.
-     */
     public function update(Request $request, Product $product)
     {
         $this->normalizeInput($request);
@@ -176,17 +173,13 @@ class ProductController extends Controller
         try {
             DB::beginTransaction();
 
-            // 1. Handle Uploads (Hapus lama jika ada baru)
-            if ($request->hasFile('product_image')) {
-                if ($product->image_url) Storage::disk('public')->delete($product->image_url);
-                $validatedData['image_url'] = $this->handleUpload($request, 'product_image', 'products');
-            }
+            // 1. Update Logo Toko (jika ada)
             if ($request->hasFile('seller_logo')) {
                 if ($product->seller_logo) Storage::disk('public')->delete($product->seller_logo);
                 $validatedData['seller_logo'] = $this->handleUpload($request, 'seller_logo', 'seller_logos');
             }
 
-            // 2. Data Pelengkap
+            // 2. Siapkan Data
             $this->prepareAdditionalData($validatedData, $request, $product);
 
             // 3. Logic Varian
@@ -198,24 +191,25 @@ class ProductController extends Controller
 
             if ($hasVariants) {
                 $productData['stock'] = 0;
-                // Update harga utama dari varian pertama jika diperlukan
                 if(isset($productVariantsInput[0]['price'])) {
                     $productData['price'] = $productVariantsInput[0]['price'];
                 }
             }
 
-            // 4. Update Product
+            // 4. Update Product Utama
             $product->update($productData);
 
-            // 5. Sync Varian
+            // 5. Sync Variants
             if ($hasVariants) {
                 $this->syncVariantTypesAndCombinations($product, $variantTypesInput, $productVariantsInput);
             } else {
-                // Hapus semua varian jika user beralih ke Simple Product
                 $product->productVariants()->each(fn($v) => $v->options()->detach());
                 $product->productVariants()->delete();
                 $product->productVariantTypes()->delete();
             }
+
+            // 6. SIMPAN GAMBAR KE TABEL BARU (INI YANG SEBELUMNYA HILANG)
+            $this->handleMultiImageUpload($request, $product);
 
             DB::commit();
             return redirect()->route('admin.products.index')->with('success', 'Produk berhasil diperbarui.');
@@ -564,5 +558,51 @@ class ProductController extends Controller
             return is_array($decoded) ? implode(',', $decoded) : $tags;
         }
         return $tags;
+    }
+
+    /**
+     * Helper khusus untuk menangani upload 5 gambar
+     */
+    private function handleMultiImageUpload(Request $request, Product $product)
+    {
+        // Loop cek index 0 sampai 4 (sesuai 5 kotak di view)
+        for ($i = 0; $i < 5; $i++) {
+            // Cek apakah ada file yang dikirim dari form dengan nama product_images[0], product_images[1], dst
+            if ($request->hasFile("product_images.$i")) {
+                
+                // 1. Cek apakah sudah ada gambar lama di slot ini?
+                $existingImage = ProductImage::where('product_id', $product->id)
+                                             ->where('sort_order', $i)
+                                             ->first();
+
+                // 2. Jika ada, hapus file lamanya & recordnya dari DB biar bersih
+                if ($existingImage) {
+                    if (Storage::disk('public')->exists($existingImage->path)) {
+                        Storage::disk('public')->delete($existingImage->path);
+                    }
+                    $existingImage->delete();
+                }
+
+                // 3. Upload File Baru
+                $file = $request->file("product_images.$i");
+                // Buat nama file unik: slug-urutan-waktu.jpg
+                $filename = $product->slug . "-img-$i-" . time() . '.' . $file->getClientOriginalExtension();
+                
+                // Simpan ke folder uploads/product_media
+                $path = $file->storeAs('uploads/product_media', $filename, 'public');
+
+                // 4. Simpan ke Tabel product_images
+                ProductImage::create([
+                    'product_id' => $product->id,
+                    'path'       => $path,
+                    'sort_order' => $i,
+                ]);
+
+                // 5. (PENTING) Update juga cover utama di tabel products agar kompatibel dengan kode lama
+                if ($i === 0) {
+                    $product->update(['image_url' => $path]);
+                }
+            }
+        }
     }
 }
