@@ -14,11 +14,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Yajra\DataTables\Facades\DataTables;
 use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
+use App\Models\ProductImage; // <--- JANGAN LUPA INI
 
 class ProductController extends Controller
 {
@@ -126,6 +126,7 @@ class ProductController extends Controller
     public function edit(Product $product)
     {
         $product->load([
+            'images', // <--- TAMBAHKAN INI (PENTING!)
             'category', 
             'productAttributes', 
             'productVariantTypes.options' => fn($q) => $q->orderBy('id'),
