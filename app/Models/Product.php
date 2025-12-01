@@ -5,18 +5,16 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany; // Pastikan HasMany di-import
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 // Import model-model yang direlasikan
 use App\Models\Store;
 use App\Models\Category;
-use App\Models\Review; // Jika Anda menggunakan Review
-use App\Models\ProductAttribute; // Tambahkan ini
-use App\Models\ProductVariantType; // Tambahkan ini
-use App\Models\ProductVariant; // Tambahkan ini
+use App\Models\ProductAttribute;
+use App\Models\ProductVariantType;
+use App\Models\ProductVariant;
 use App\Models\ProductImage;
-use App\Models\ProductReview; // <--- Pastikan baris ini ada
-// use App\Models\User; // <-- Dihapus, tidak perlu di sini
+use App\Models\ProductReview; // Pastikan ini di-import
 
 class Product extends Model
 {
@@ -24,19 +22,17 @@ class Product extends Model
 
     /**
      * Atribut yang dapat diisi secara massal.
-     *
-     * @var array<int, string>
      */
     protected $fillable = [
         'name',
         'slug',
         'store_id',
         'sku',
-        'category_id', // Pastikan ini ada
-        'category', // Hapus kolom 'category' jika tidak ada di DB
+        'category_id',
+        'category',
         'tags',
         'description',
-        'image_url', // Ganti image_url ke image jika nama kolom di DB adalah image
+        'image_url', 
         'store_name',
         'seller_name',
         'seller_city',
@@ -44,120 +40,109 @@ class Product extends Model
         'seller_wa',
         'price',
         'original_price',
-        'discount_percentage', // Periksa apakah kolom ini ada
+        'discount_percentage',
         'stock',
         'weight',
         'status',
         'is_new',
         'is_bestseller',
-        'rating', // Periksa apakah kolom ini ada
-        'sold_count', // Periksa apakah kolom ini ada
+        'rating',
+        'sold_count',
         'width',
         'height',
         'length',
-        'image_url',
-        'jenis_barang', // <-- DITAMBAHKAN: Pastikan kolom ini ada di DB Anda
-        'is_promo',             // Baru
-        'is_shipping_discount', // Baru
-        'is_free_shipping',     // Baru
-        // 'attributes_data', // Hapus jika Anda beralih ke tabel relasi
+        'jenis_barang', 
+        'is_promo',             
+        'is_shipping_discount', 
+        'is_free_shipping',     
     ];
 
     /**
-     * Atribut yang harus di-cast ke tipe data asli.
-     *
-     * @var array<string, string>
+     * Casting tipe data.
      */
     protected $casts = [
         'tags' => 'array',
         'is_new' => 'boolean',
         'is_bestseller' => 'boolean',
-    'is_promo' => 'boolean',
-    'is_shipping_discount' => 'boolean',
-    'is_free_shipping' => 'boolean',
+        'is_promo' => 'boolean',
+        'is_shipping_discount' => 'boolean',
+        'is_free_shipping' => 'boolean',
     ];
 
-
     /**
-     * =========================================================================
-     * INI ADALAH FUNGSI YANG DIPERBAIKI
-     * =========================================================================
-     *
-     * Mendefinisikan relasi BelongsTo ke model Store.
-     * Product 'belongsTo' Store.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     * Relasi ke Store.
      */
     public function store(): BelongsTo
     {
-        /**
-         * Keterangan:
-         * - Store::class: Model tujuannya.
-         * - 'store_id': Nama kolom foreign key di tabel 'products' (INI).
-         * - 'id': Nama kolom primary key di tabel 'stores' (TUJUAN).
-         *
-         * Ini adalah relasi yang benar.
-         */
         return $this->belongsTo(Store::class, 'store_id', 'id');
     }
 
     /**
-     * Mendefinisikan relasi bahwa produk ini dimiliki oleh satu kategori.
+     * Relasi ke Category.
      */
     public function category(): BelongsTo
     {
-        // Pastikan ini menunjuk ke 'category_id'
         return $this->belongsTo(Category::class, 'category_id'); 
     }
     
+    // --- PERBAIKAN DI SINI: HANYA ADA SATU FUNGSI REVIEWS ---
     /**
      * Dapatkan semua ulasan untuk produk ini.
+     * Menggunakan model ProductReview.
      */
     public function reviews(): HasMany
     {
-        return $this->hasMany(Review::class);
+        return $this->hasMany(ProductReview::class)->latest();
     }
 
-    // --- RELASI BARU YANG DITAMBAHKAN ---
+    // --- ACCESSOR RATA-RATA RATING ---
+    public function getAverageRatingAttribute()
+    {
+        return (float) $this->reviews()->avg('rating') ?: 0;
+    }
 
     /**
-     * Mendapatkan semua atribut yang terkait dengan produk ini.
+     * Relasi ke Atribut Produk.
      */
     public function productAttributes(): HasMany
     {
-        // Nama relasi harus sama persis dengan yang dipanggil di Controller ('productAttributes')
-        // Foreign key defaultnya adalah 'product_id'
         return $this->hasMany(ProductAttribute::class);
     }
 
     /**
-     * Mendapatkan semua tipe varian yang dimiliki produk ini (misal: Warna, Ukuran).
+     * Relasi ke Tipe Varian.
      */
     public function productVariantTypes(): HasMany
     {
-        // Nama relasi harus sama persis ('productVariantTypes')
         return $this->hasMany(ProductVariantType::class);
     }
 
     /**
-     * Mendapatkan semua kombinasi varian (SKU) yang dimiliki produk ini.
+     * Relasi ke Kombinasi Varian.
      */
     public function productVariants(): HasMany
     {
-         // Nama relasi harus sama persis ('productVariants')
         return $this->hasMany(ProductVariant::class);
     }
 
     /**
-     * Relasi ke item order (Tambahan dari file sebelumnya)
+     * Relasi ke Gambar Produk (Multi Image).
+     */
+    public function images(): HasMany
+    {
+        return $this->hasMany(ProductImage::class, 'product_id');
+    }
+
+    /**
+     * Relasi ke Item Order (Opsional, jika ada order).
      */
     public function orderItems(): HasMany
     {
-        return $this->hasMany(OrderItem::class, 'product_id', 'id');
+        // Pastikan model OrderItem ada jika ingin menggunakan ini, 
+        // jika belum ada biarkan dikomentari atau hapus.
+        // return $this->hasMany(OrderItem::class, 'product_id', 'id');
+        return $this->hasMany(\App\Models\OrderItem::class, 'product_id');
     }
-
-    // --- AKHIR RELASI BARU ---
-
 
     /**
      * Menggunakan 'slug' untuk route model binding.
@@ -166,28 +151,4 @@ class Product extends Model
     {
         return 'slug';
     }
-
-    // TAMBAHKAN KODE INI
-    public function images()
-    {
-        return $this->hasMany(ProductImage::class, 'product_id');
-    }
-
-    // Di dalam class Product
-public function reviews()
-{
-    return $this->hasMany(\App\Models\ProductReview::class)->latest();
-}
-
-// Untuk menghitung rata-rata rating (opsional, helper)
-public function getAverageRatingAttribute()
-{
-    return $this->reviews()->avg('rating') ?? 0;
-}
-
-    // OPSIONAL: Accessor untuk image_url jika kolom Anda adalah 'image'
-    // public function getImageUrlAttribute()
-    // {
-    //     return $this->image;
-    // }
 }
