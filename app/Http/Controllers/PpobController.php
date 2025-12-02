@@ -235,4 +235,37 @@ class PpobController extends Controller
         }
         return response()->json(['status' => 'error', 'message' => 'Gagal terhubung ke server.']);
     }
+
+    /**
+     * AJAX: Cek ID Pelanggan PLN Prabayar
+     * URL: /digital/ajax/check-pln-prabayar
+     */
+    public function checkPlnPrabayar(Request $request)
+    {
+        $request->validate(['customer_no' => 'required']);
+
+        $response = $this->digiflazz->inquiryPln($request->customer_no);
+
+        if (isset($response['data'])) {
+            $data = $response['data'];
+            
+            // Cek status RC 00 (Sukses)
+            if ($data['rc'] === '00' || $data['status'] === 'Sukses') {
+                return response()->json([
+                    'status' => 'success',
+                    'name' => $data['name'],
+                    'meter_no' => $data['meter_no'] ?? $data['customer_no'],
+                    'segment_power' => $data['segment_power'], // R1 / 1300VA
+                    'subscriber_id' => $data['subscriber_id'] ?? '-'
+                ]);
+            } else {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => $data['message'] ?? 'Nomor meter tidak ditemukan.'
+                ]);
+            }
+        }
+
+        return response()->json(['status' => 'error', 'message' => 'Gagal terhubung ke server PLN.']);
+    }
 }

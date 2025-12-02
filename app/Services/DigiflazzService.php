@@ -241,4 +241,27 @@ class DigiflazzService
         return view('ppob.category', compact('products', 'brands', 'weblogo', 'pageInfo'));
     }
 
+    /**
+     * Cek Validasi ID PLN (Khusus Token Listrik / Prabayar)
+     * Dokumentasi: https://api.digiflazz.com/v1/inquiry-pln
+     */
+    public function inquiryPln($customerNo)
+    {
+        // Signature = md5(username + apiKey + customer_no)
+        $sign = md5($this->username . $this->apiKey . $customerNo);
+
+        try {
+            $response = Http::post($this->baseUrl . '/inquiry-pln', [
+                'username' => $this->username,
+                'customer_no' => $customerNo,
+                'sign' => $sign
+            ]);
+
+            return $response->json();
+        } catch (\Exception $e) {
+            Log::error('Digiflazz Inquiry PLN Error: ' . $e->getMessage());
+            return ['data' => ['status' => 'Gagal', 'message' => 'Koneksi Error']];
+        }
+    }
+
 }
