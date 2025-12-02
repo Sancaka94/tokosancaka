@@ -110,13 +110,24 @@
                                  onclick="selectProduct(this)">
                                 
                                 <div class="flex justify-between items-start mb-2">
-                                    <span class="bg-gray-100 text-gray-600 text-[10px] font-bold px-2 py-1 rounded uppercase">
-                                        {{ $product->brand }}
-                                    </span>
-                                    @if($product->stock < 5 && !$product->unlimited_stock)
-                                        <span class="bg-red-100 text-red-600 text-[10px] font-bold px-2 py-1 rounded">Sisa {{ $product->stock }}</span>
-                                    @endif
-                                </div>
+        {{-- IMPLEMENTASI HELPER DISINI --}}
+        <div class="h-8 w-auto">
+            {{-- Cara 1: Tampilkan Logo Saja --}}
+            <img src="{{ get_operator_logo($product->brand) }}" 
+                 alt="{{ $product->brand }}" 
+                 class="h-full object-contain"
+                 onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+            
+            {{-- Fallback: Jika gambar error/tidak ada, tampilkan Teks --}}
+            <span class="bg-gray-100 text-gray-600 text-[10px] font-bold px-2 py-1 rounded uppercase hidden">
+                {{ $product->brand }}
+            </span>
+        </div>
+
+        @if($product->stock < 5 && !$product->unlimited_stock)
+            <span class="bg-red-100 text-red-600 text-[10px] font-bold px-2 py-1 rounded">Sisa {{ $product->stock }}</span>
+        @endif
+    </div>
 
                                 <h3 class="text-sm font-bold text-gray-800 mb-1 leading-tight">{{ $product->product_name }}</h3>
                                 <p class="text-xs text-gray-500 mb-3 line-clamp-1">{{ $product->desc }}</p>
