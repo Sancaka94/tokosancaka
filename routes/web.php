@@ -1115,3 +1115,7 @@ Route::get('/controllers-list', function () {
          ->name('seller.address.geocode');
          
     // ==========================================================
+
+    // Route untuk menangkap URL: /etalase/ppob/digital/{kategori}
+Route::get('/etalase/ppob/digital/{slug}', [PpobController::class, 'category'])
+    ->name('ppob.category');
