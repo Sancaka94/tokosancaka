@@ -27,55 +27,32 @@ class PpobController extends Controller
     }
 
     /**
-     * 1. Halaman Utama PPOB
+     * 1. Halaman Utama PPOB (Dashboard)
+     * URL: /admin/digital  atau  /etalase/ppob/digital
      */
     public function index()
     {
         $weblogo = $this->getWebLogo();
-        // 2. Deteksi Pengunjung (Admin vs Public)
+        
+        // --- 1. LOGIKA CERDAS DETEKSI PENGUNJUNG ---
         $prefix = request()->segment(1);
 
         // Jika URL diawali 'admin' ATAU user yang login adalah Admin
+        // Maka arahkan ke Dashboard Admin
         if ($prefix == 'admin' || (auth()->check() && auth()->user()->hasRole('Admin'))) {
-            
-            // Arahkan ke View Dashboard Admin (yang ada tombol Cek Saldo)
-            // Pastikan file ini ada: resources/views/admin/ppob/index.blade.php
+            // Pastikan view ini ada: resources/views/admin/ppob/index.blade.php
             return view('admin.ppob.index'); 
         }
 
-        // Jika Public / Customer
-        // Pastikan file ini ada: resources/views/ppob/index.blade.php
+        // Jika Pengunjung Biasa (Public / Customer)
+        // Pastikan view ini ada: resources/views/ppob/index.blade.php
         return view('ppob.index');
     }
 
     /**
-     * 2. Sinkronisasi Data (Update Harga)
+     * 2. Halaman Kategori (Pulsa, Data, Token, dll)
+     * URL: /admin/digital/{slug}  atau  /etalase/ppob/digital/{slug}
      */
-    public function sync()
-    {
-        $success = $this->digiflazz->syncProducts();
-
-        if ($success) {
-            return redirect()->back()->with('success', 'Daftar harga berhasil diperbarui dari pusat!');
-        } else {
-            return redirect()->back()->with('error', 'Gagal mengambil data dari Digiflazz.');
-        }
-    }
-
-    /**
-     * 3. Cek Saldo Admin (AJAX)
-     */
-    public function cekSaldo()
-    {
-        $result = $this->digiflazz->checkDeposit();
-
-        if (request()->ajax()) {
-            $result['formatted'] = 'Rp ' . number_format($result['deposit'], 0, ',', '.');
-            return response()->json($result);
-        }
-        return redirect()->back();
-    }
-
     public function category($slug)
     {
         $weblogo = $this->getWebLogo();
@@ -126,7 +103,7 @@ class PpobController extends Controller
             $pageInfo['is_postpaid'] = true; 
         }
 
-        // 3. Ambil Produk
+        // 3. Ambil Produk dari DB
         $products = PpobProduct::whereIn('category', $dbCategories)
             ->where('buyer_product_status', true)
             ->where('seller_product_status', true)
@@ -136,36 +113,58 @@ class PpobController extends Controller
         $brands = $products->pluck('brand')->unique()->values();
         $data   = compact('products', 'brands', 'weblogo', 'pageInfo');
 
-        // ============================================================
-        // 🧠 SMART VIEW DETECTION (DETEKSI ROLE & URL)
-        // ============================================================
-        
+        // --- 4. LOGIKA CERDAS DETEKSI VIEW ---
         $prefix = request()->segment(1); 
 
-        // 1. ETALASE (PUBLIC)
-        if ($prefix == 'etalase') {
-            return view('etalase.ppob.category', $data);
-        }
-
-        // 2. ADMIN (URL 'admin' ATAU User Login sbg Admin)
-        // Tambahan: Jika prefix 'digital' tapi user login adalah admin, anggap admin (Legacy Support)
-        if ($prefix == 'admin' || (auth()->check() && auth()->user()->hasRole('admin'))) {
+        // A. JIKA ADMIN
+        if ($prefix == 'admin' || (auth()->check() && auth()->user()->hasRole('Admin'))) {
+            // Pastikan view ini ada: resources/views/admin/ppob/category.blade.php
+            // Jika belum ada, copy dari resources/views/ppob/category.blade.php
             return view('admin.ppob.category', $data); 
         }
 
-        // 3. SELLER
-        if ($prefix == 'seller' || (auth()->check() && auth()->user()->hasRole('seller'))) {
+        // B. JIKA SELLER
+        if ($prefix == 'seller' || (auth()->check() && auth()->user()->hasRole('Seller'))) {
             return view('seller.ppob.category', $data);
         }
 
-        // 4. MEMBER / CUSTOMER
-        if ($prefix == 'member' || $prefix == 'customer' || (auth()->check() && auth()->user()->hasRole('customer'))) {
+        // C. JIKA MEMBER / CUSTOMER
+        if ($prefix == 'member' || $prefix == 'customer' || (auth()->check() && auth()->user()->hasRole('Customer'))) {
             return view('customer.ppob.category', $data);
         }
 
-        // 5. FALLBACK (Jika tidak ada yang cocok)
-        // Default ke Etalase (Public)
+        // D. FALLBACK (ETALASE PUBLIC)
+        // View utama: resources/views/etalase/ppob/category.blade.php
         return view('etalase.ppob.category', $data);
+    }
+
+    /**
+     * 3. Sinkronisasi Data (Update Harga)
+     */
+    public function sync()
+    {
+        $success = $this->digiflazz->syncProducts();
+
+        if ($success) {
+            return redirect()->back()->with('success', 'Daftar harga berhasil diperbarui dari pusat!');
+        } else {
+            return redirect()->back()->with('error', 'Gagal mengambil data dari Digiflazz.');
+        }
+    }
+
+    /**
+     * 4. Cek Saldo Admin (AJAX)
+     */
+    public function cekSaldo()
+    {
+        $result = $this->digiflazz->checkDeposit();
+
+        if (request()->ajax()) {
+            $result['formatted'] = 'Rp ' . number_format($result['deposit'], 0, ',', '.');
+            return response()->json($result);
+        }
+        return redirect()->back();
+    }
 
     /**
      * 5. Proses Transaksi Prabayar (Checkout)
@@ -207,7 +206,7 @@ class PpobController extends Controller
                 'message' => 'Sedang diproses...',
             ]);
 
-            // Hit API Digiflazz (dengan Max Price Protection)
+            // Hit API Digiflazz
             $maxPrice = (int) $product->sell_price; 
             $response = $this->digiflazz->transaction($sku, $noHp, $refId, $maxPrice);
 
@@ -270,8 +269,7 @@ class PpobController extends Controller
     }
 
     /**
-     * AJAX: Cek ID Pelanggan PLN Prabayar
-     * URL: /digital/ajax/check-pln-prabayar
+     * 7. AJAX: Cek ID Pelanggan PLN Prabayar
      */
     public function checkPlnPrabayar(Request $request)
     {
@@ -288,7 +286,7 @@ class PpobController extends Controller
                     'status' => 'success',
                     'name' => $data['name'],
                     'meter_no' => $data['meter_no'] ?? $data['customer_no'],
-                    'segment_power' => $data['segment_power'], // R1 / 1300VA
+                    'segment_power' => $data['segment_power'], 
                     'subscriber_id' => $data['subscriber_id'] ?? '-'
                 ]);
             } else {
