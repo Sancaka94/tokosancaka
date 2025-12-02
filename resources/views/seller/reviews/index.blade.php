@@ -130,31 +130,73 @@
                         </div>
 
                         {{-- === FITUR BALASAN === --}}
-<div class="mt-4" x-data="{ openReply: false }">
+<div class="mt-4" x-data="{ openReply: false, isEditing: false }">
     
     @if($review->reply)
-        {{-- Jika sudah dibalas --}}
-        <div class="ml-4 pl-4 border-l-2 border-indigo-200">
-            <div class="bg-indigo-50 p-3 rounded-r-lg rounded-bl-lg">
-                <p class="text-xs font-bold text-indigo-700 mb-1">
-                    <i class="fas fa-store mr-1"></i> Respon Penjual
-                    <span class="text-gray-400 font-normal ml-1">• {{ \Carbon\Carbon::parse($review->reply_at)->diffForHumans() }}</span>
-                </p>
-                <p class="text-sm text-gray-700">{{ $review->reply }}</p>
+        {{-- TAMPILAN BALASAN (Mode Lihat) --}}
+        <div x-show="!isEditing">
+            <div class="ml-4 pl-4 border-l-2 border-indigo-200">
+                <div class="bg-indigo-50 p-3 rounded-r-lg rounded-bl-lg relative group">
+                    
+                    {{-- Header Balasan --}}
+                    <div class="flex justify-between items-start mb-1">
+                        <p class="text-xs font-bold text-indigo-700">
+                            <i class="fas fa-store mr-1"></i> Respon Penjual
+                            <span class="text-gray-400 font-normal ml-1">• {{ \Carbon\Carbon::parse($review->reply_at)->diffForHumans() }}</span>
+                        </p>
+                        
+                        {{-- Tombol Aksi (Edit & Hapus) - Muncul saat hover --}}
+                        <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                            {{-- Tombol Edit --}}
+                            <button @click="isEditing = true" class="text-gray-400 hover:text-blue-600" title="Edit Balasan">
+                                <i class="fas fa-pencil-alt text-xs"></i>
+                            </button>
+                            
+                            {{-- Tombol Hapus --}}
+                            <form action="{{ route('seller.reviews.reply.delete', $review->id) }}" method="POST" onsubmit="return confirm('Hapus balasan ini?');" class="inline">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="text-gray-400 hover:text-red-600" title="Hapus Balasan">
+                                    <i class="fas fa-trash text-xs"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    {{-- Isi Balasan --}}
+                    <p class="text-sm text-gray-700 whitespace-pre-line">{{ $review->reply }}</p>
+                </div>
             </div>
         </div>
+
+        {{-- FORM EDIT BALASAN (Hidden by default) --}}
+        <div x-show="isEditing" class="ml-4 mt-2" x-cloak>
+            <form action="{{ route('seller.reviews.reply.update', $review->id) }}" method="POST">
+                @csrf
+                @method('PUT')
+                <div class="relative">
+                    <textarea name="reply" rows="3" class="w-full text-sm border-indigo-300 rounded focus:ring-indigo-500 focus:border-indigo-500 bg-indigo-50" required>{{ $review->reply }}</textarea>
+                    <div class="flex justify-end gap-2 mt-2">
+                        <button type="button" @click="isEditing = false" class="px-3 py-1 text-xs font-medium text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-50">Batal</button>
+                        <button type="submit" class="px-3 py-1 text-xs font-bold text-white bg-indigo-600 rounded hover:bg-indigo-700">Simpan Perubahan</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
     @else
-        {{-- Jika belum dibalas, tampilkan tombol --}}
+        {{-- JIKA BELUM DIBALAS (Tombol & Form Reply Baru) --}}
         <button @click="openReply = !openReply" class="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center">
             <i class="fas fa-reply mr-1"></i> Balas Ulasan
         </button>
 
-        {{-- Form Balasan (Hidden by default) --}}
-        <div x-show="openReply" class="mt-3 ml-4" x-transition>
+        {{-- Form Balasan Baru --}}
+        <div x-show="openReply" class="mt-3 ml-4" x-transition x-cloak>
             <form action="{{ route('seller.reviews.reply', $review->id) }}" method="POST">
                 @csrf
                 <textarea name="reply" rows="2" class="w-full text-sm border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500" placeholder="Tulis balasan Anda..." required></textarea>
                 <div class="mt-2 text-right">
+                    <button type="button" @click="openReply = false" class="mr-2 px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700">Batal</button>
                     <button type="submit" class="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded hover:bg-blue-700">Kirim Balasan</button>
                 </div>
             </form>
