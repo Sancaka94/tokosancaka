@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Services\DigiflazzService;
-use Illuminate\Support\Facades\Cache;
-use App\Models\Setting; // Pastikan Model Setting di-import
+use App\Models\Setting;
+use App\Models\PpobProduct; // Pastikan Model ini di-import
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class PpobController extends Controller
 {
@@ -16,46 +18,152 @@ class PpobController extends Controller
         $this->digiflazz = $digiflazz;
     }
 
-    // --- PERBAIKAN DI SINI (SESUAI TABEL DATABASE ANDA) ---
+    /**
+     * Helper: Ambil Logo Website dari Database Settings (Key-Value)
+     */
     private function getWebLogo()
     {
-        // Cari setting dengan key 'logo'
+        // Mencari setting dengan key 'logo'
         $setting = Setting::where('key', 'logo')->first();
-        
-        // Ambil value-nya (path gambar), atau null jika tidak ketemu
+        // Mengembalikan value (path gambar) atau null
         return $setting ? $setting->value : null;
     }
-    // ------------------------------------------------------
 
+    /**
+     * Fitur Utama: Sinkronisasi Data dari API ke Database
+     * Diakses via URL: /digital/sync-produk
+     */
+    public function sync()
+    {
+        // 1. Ambil data terbaru dari API Digiflazz (Prepaid)
+        // Pastikan DigiflazzService Anda sudah menggunakan signature 'pricelist'
+        $products = $this->digiflazz->getPriceList('prepaid');
+
+        if (empty($products)) {
+            return redirect()->back()->with('error', 'Gagal mengambil data dari Digiflazz. Cek koneksi atau IP Whitelist.');
+        }
+
+        DB::beginTransaction();
+        try {
+            $count = 0;
+            foreach ($products as $item) {
+                // Filter sederhana: Lewati jika kategori pascabayar nyasar (opsional)
+                // if ($item['category'] == 'Pascabayar') continue;
+
+                // --- LOGIKA HARGA JUAL ---
+                // Modal dari API
+                $modal = (float) $item['price'];
+                
+                // Margin keuntungan (Misal: Rp 2.000)
+                $margin = 2000; 
+                
+                // Harga Jual Default
+                $hargaJualBaru = $modal + $margin;
+
+                // Kita gunakan updateOrCreate agar data yang sudah ada diupdate, yang belum ada dibuat baru
+                // Kuncinya adalah 'buyer_sku_code' (SKU Unik)
+                $product = PpobProduct::updateOrCreate(
+                    ['buyer_sku_code' => $item['buyer_sku_code']], 
+                    [
+                        'product_name'          => $item['product_name'],
+                        'category'              => $item['category'],
+                        'brand'                 => $item['brand'],
+                        'type'                  => $item['type'],
+                        'seller_name'           => $item['seller_name'],
+                        'price'                 => $modal, // Update harga modal terbaru
+                        
+                        // Status Produk
+                        'buyer_product_status'  => $item['buyer_product_status'],
+                        'seller_product_status' => $item['seller_product_status'],
+                        'unlimited_stock'       => $item['unlimited_stock'],
+                        'stock'                 => $item['stock'],
+                        'multi'                 => $item['multi'],
+                        
+                        // Cut Off Time
+                        'start_cut_off'         => $item['start_cut_off'],
+                        'end_cut_off'           => $item['end_cut_off'],
+                        'desc'                  => $item['desc'],
+                    ]
+                );
+
+                // --- LOGIKA PINTAR HARGA JUAL ---
+                // Jika produk ini BARU dibuat (sell_price masih 0 atau default), set harga jual + margin.
+                // Jika produk LAMA, biarkan harga jual yang sudah disetting admin (jangan ditimpa), 
+                // KECUALI jika Anda ingin selalu mereset harga jual, hapus kondisi if ini.
+                if ($product->wasRecentlyCreated || $product->sell_price <= 0) {
+                    $product->sell_price = $hargaJualBaru;
+                    $product->save();
+                } else {
+                    // Opsi Tambahan: Jika harga modal NAIK drastis melebihi harga jual saat ini,
+                    // maka update harga jual otomatis agar tidak rugi.
+                    if ($product->sell_price < $modal) {
+                        $product->sell_price = $hargaJualBaru;
+                        $product->save();
+                    }
+                }
+
+                $count++;
+            }
+            
+            DB::commit();
+            return redirect()->back()->with('success', "Sukses! $count produk berhasil diperbarui dari Digiflazz.");
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("Sync PPOB Error: " . $e->getMessage());
+            return redirect()->back()->with('error', 'Terjadi kesalahan saat menyimpan ke database: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Halaman Utama PPOB
+     */
     public function index()
     {
         $weblogo = $this->getWebLogo();
         return view('ppob.index', compact('weblogo'));
     }
 
+    /**
+     * Halaman Pulsa & Data
+     */
     public function pulsa()
     {
         $weblogo = $this->getWebLogo();
 
-        // Cache price list selama 60 menit
-        $products = Cache::remember('digiflazz_pulsa', 60 * 60, function () {
-            $allProducts = $this->digiflazz->getPriceList('prepaid');
-            
-            // Filter hanya kategori Pulsa
-            return collect($allProducts)->filter(function ($item) {
-                return $item['category'] === 'Pulsa' && $item['buyer_product_status'] === true && $item['seller_product_status'] === true;
-            })->values();
-        });
+        // --- AMBIL DARI DATABASE LOKAL ---
+        // 1. Ambil data dari tabel ppob_products
+        // 2. Filter Kategori 'Pulsa' atau 'Data' (sesuaikan dengan nama kategori di Digiflazz)
+        // 3. Hanya tampilkan yang statusnya AKTIF (buyer & seller true)
+        // 4. Urutkan berdasarkan harga jual termurah
+        
+        $products = PpobProduct::whereIn('category', ['Pulsa', 'Data']) // Bisa sesuaikan kategorinya
+            ->where('buyer_product_status', true)
+            ->where('seller_product_status', true)
+            ->orderBy('sell_price', 'asc')
+            ->get();
 
-        // Kelompokkan berdasarkan Operator
-        $operators = $products->groupBy('brand')->keys();
+        // Ambil daftar Brand unik untuk filter tombol operator (Telkomsel, XL, dll)
+        // pluck('brand') mengambil kolom brand, unique() menghapus duplikat, values() reset index array
+        $operators = $products->pluck('brand')->unique()->values();
 
         return view('ppob.pulsa', compact('products', 'operators', 'weblogo'));
     }
 
+    /**
+     * Halaman Token PLN
+     */
     public function pln()
     {
         $weblogo = $this->getWebLogo();
-        return view('ppob.pln', compact('weblogo'));
+        
+        // Contoh untuk PLN
+        $products = PpobProduct::where('category', 'PLN')
+            ->where('buyer_product_status', true)
+            ->where('seller_product_status', true)
+            ->orderBy('sell_price', 'asc')
+            ->get();
+
+        return view('ppob.pln', compact('weblogo', 'products'));
     }
 }
