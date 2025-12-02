@@ -522,11 +522,6 @@ Route::middleware(['auth', RoleMiddleware::class . ':Pelanggan|Seller'])
     Route::get('/digital/{slug}', [PpobController::class, 'category'])
         ->name('admin.ppob.category'); // <-- INI YANG DICARI OLEH BLADE ANDA
         
-    // Cek Saldo Digiflazz (Khusus Admin)
-    Route::get('/ppob/cek-saldo', [PpobController::class, 'checkSaldo'])
-        ->name('ppob.cek-saldo');
-
-
 
 
 Route::prefix('admin')->name('admin.')->group(function () {
