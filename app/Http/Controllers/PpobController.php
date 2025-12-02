@@ -63,15 +63,11 @@ class PpobController extends Controller
         return redirect()->back();
     }
 
-    /**
-     * 4. Halaman Kategori Dinamis (FIX ERROR ANDA DISINI)
-     * Menangani: Pulsa, Data, PLN Token, E-Money, Games
-     */
     public function category($slug)
     {
         $weblogo = $this->getWebLogo();
 
-        // Mapping Slug URL ke Kategori Database
+        // 1. Mapping Slug URL ke Kategori Database
         $categoriesMap = [
             'pulsa'       => ['Pulsa'],
             'data'        => ['Data'],
@@ -89,15 +85,17 @@ class PpobController extends Controller
 
         $dbCategories = $categoriesMap[$slug];
 
-        // Konfigurasi Tampilan Halaman
+        // 2. Konfigurasi Tampilan Halaman
         $pageInfo = [
             'title'       => ucfirst(str_replace('-', ' ', $slug)),
             'slug'        => $slug,
             'input_label' => 'Nomor Handphone',
             'input_place' => 'Contoh: 0812xxxx',
-            'icon'        => 'fa-mobile-alt'
+            'icon'        => 'fa-mobile-alt',
+            'is_postpaid' => false
         ];
 
+        // Logika Icon & Input Label
         if ($slug == 'pln-token') {
             $pageInfo['input_label'] = 'Nomor Meter / ID Pelanggan';
             $pageInfo['input_place'] = 'Contoh: 141234567890';
@@ -108,21 +106,14 @@ class PpobController extends Controller
             $pageInfo['input_label'] = 'ID Pemain (User ID)';
             $pageInfo['input_place'] = 'Masukkan ID Game';
             $pageInfo['icon']        = 'fa-gamepad';
-        }
-
-        // --- TAMBAHKAN LOGIKA KHUSUS UNTUK PASCABAYAR ---
-        if ($slug == 'pln-bill') {
+        } elseif ($slug == 'pln-bill') {
             $pageInfo['input_label'] = 'ID Pelanggan / Nomor Meter';
             $pageInfo['input_place'] = 'Contoh: 53xxxxxxxxx';
             $pageInfo['icon']        = 'fa-file-invoice-dollar';
-            
-            // Mode Pascabayar (Inquiry)
             $pageInfo['is_postpaid'] = true; 
-        } else {
-            $pageInfo['is_postpaid'] = false;
         }
 
-        // Ambil Produk dari Database Lokal
+        // 3. Ambil Produk
         $products = PpobProduct::whereIn('category', $dbCategories)
             ->where('buyer_product_status', true)
             ->where('seller_product_status', true)
@@ -130,8 +121,43 @@ class PpobController extends Controller
             ->get();
 
         $brands = $products->pluck('brand')->unique()->values();
+        $data   = compact('products', 'brands', 'weblogo', 'pageInfo');
 
-        return view('ppob.category', compact('products', 'brands', 'weblogo', 'pageInfo'));
+        // ============================================================
+        // 🧠 SMART VIEW DETECTION (DETEKSI ROLE & URL)
+        // ============================================================
+        
+        // Ambil segmen pertama dari URL (contoh: tokosancaka.com/admin/...)
+        $prefix = request()->segment(1); 
+
+        // A. JIKA DIAKSES DARI ETALASE (PUBLIC MARKETPLACE)
+        if ($prefix == 'etalase') {
+            return view('etalase.ppob.category', $data);
+        }
+
+        // B. JIKA DIAKSES OLEH ADMIN (URL 'admin' atau Role Admin)
+        if ($prefix == 'admin' || (auth()->check() && auth()->user()->hasRole('admin'))) {
+            // Pastikan Anda punya view khusus admin, misal: resources/views/admin/ppob/category.blade.php
+            // Jika belum ada, bisa pakai view default dulu
+            return view('admin.ppob.category', $data); 
+        }
+
+        // C. JIKA DIAKSES OLEH SELLER (URL 'seller' atau Role Seller)
+        if ($prefix == 'seller' || (auth()->check() && auth()->user()->hasRole('seller'))) {
+            return view('seller.ppob.category', $data);
+        }
+
+        // D. JIKA DIAKSES OLEH CUSTOMER (MEMBER DASHBOARD)
+        // Biasanya URL 'member', 'dashboard', atau user biasa yang login
+        if ($prefix == 'member' || $prefix == 'customer' || (auth()->check() && auth()->user()->hasRole('customer'))) {
+            return view('customer.ppob.category', $data);
+        }
+
+        // E. FALLBACK (DEFAULT)
+        // Jika tidak terdeteksi (misal akses langsung /digital/pulsa tanpa prefix),
+        // Kita bisa arahkan ke Etalase atau Admin tergantung kebijakan Anda.
+        // Di sini saya arahkan ke Etalase (Public) agar aman.
+        return view('etalase.ppob.category', $data);
     }
 
     /**
