@@ -8,6 +8,7 @@ use App\Models\Setting;
 use App\Models\PpobProduct; // Pastikan Model ini di-import
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 
 class PpobController extends Controller
 {
