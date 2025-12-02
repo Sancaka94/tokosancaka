@@ -611,7 +611,7 @@ if (!function_exists('formatWaNumber')) {
                                 <h4 class="text-sm font-bold text-gray-900">{{ $userName }}</h4>
                                 {{-- BADGE PEMBELI --}}
                                 <span class="bg-green-100 text-green-700 text-[10px] px-2 py-0.5 rounded-full font-bold border border-green-200">
-                                    PEMBELI
+                                    CUSTOMER
                                 </span>
                             </div>
                             <span class="text-xs text-gray-400">{{ $review->created_at->format('d M Y') }}</span>
