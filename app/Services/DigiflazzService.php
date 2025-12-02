@@ -55,25 +55,35 @@ class DigiflazzService
 
    /**
      * 2. Sinkronisasi Produk dari API ke Database Lokal
-     * (VERSI PERBAIKAN: TANPA DB::raw)
      */
     public function syncProducts()
     {
         $products = $this->getPriceList('prepaid');
 
+        // Debug: Cek apakah data kosong atau error
         if (empty($products)) {
             return false;
         }
 
         foreach ($products as $item) {
+            // ==================================================
+            // [FIX] PENGAMAN ERROR STRING OFFSET
+            // Lewati jika $item bukan array (misal string "Sukses" atau "00")
+            // ==================================================
+            if (!is_array($item)) continue; 
+            
+            // Pastikan key yang dibutuhkan ada sebelum diproses
+            if (!isset($item['buyer_sku_code']) || !isset($item['price'])) continue;
+            // ==================================================
+
             $margin = 2000;
             $modal = (float)$item['price'];
             $hargaJual = $modal + $margin;
 
-            // 1. Cari data lama atau buat objek baru (Belum disimpan ke DB)
+            // 1. Cari data lama atau buat objek baru
             $product = PpobProduct::firstOrNew(['buyer_sku_code' => $item['buyer_sku_code']]);
 
-            // 2. Update data-datanya
+            // 2. Update data
             $product->product_name = $item['product_name'];
             $product->category     = $item['category'];
             $product->brand        = $item['brand'];
@@ -81,13 +91,12 @@ class DigiflazzService
             $product->seller_name  = $item['seller_name'];
             $product->price        = $modal;
 
-            // 3. LOGIKA HARGA JUAL (PHP):
-            // Jika ini produk baru (belum ada di DB) ATAU harga jualnya masih 0
+            // 3. Logika Harga Jual
             if (!$product->exists || $product->sell_price <= 0) {
                 $product->sell_price = $hargaJual;
             }
-            // Jika sudah ada harga jual (settingan admin), biarkan tetap (jangan ditimpa)
 
+            // Update status & stok
             $product->buyer_product_status  = $item['buyer_product_status'];
             $product->seller_product_status = $item['seller_product_status'];
             $product->unlimited_stock       = $item['unlimited_stock'];
@@ -97,7 +106,7 @@ class DigiflazzService
             $product->end_cut_off           = $item['end_cut_off'];
             $product->desc                  = $item['desc'];
 
-            // 4. Simpan ke Database
+            // 4. Simpan
             $product->save();
         }
 
