@@ -621,6 +621,21 @@ if (!function_exists('formatWaNumber')) {
                             {{ $review->comment }}
                         </p>
                         @endif
+
+                        {{-- TAMPILKAN BALASAN SELLER (JIKA ADA) --}}
+@if($review->reply)
+    <div class="mt-3 ml-2 pl-3 border-l-2 border-gray-200">
+        <div class="bg-gray-50 p-3 rounded-lg">
+            <div class="flex items-center mb-1">
+                <span class="text-xs font-bold text-gray-600 bg-gray-200 px-1.5 py-0.5 rounded mr-2">Penjual</span>
+                <span class="text-[10px] text-gray-400">{{ \Carbon\Carbon::parse($review->reply_at)->format('d M Y') }}</span>
+            </div>
+            <p class="text-sm text-gray-600">
+                {{ $review->reply }}
+            </p>
+        </div>
+    </div>
+@endif
                     </div>
                 </div>
                 @empty
