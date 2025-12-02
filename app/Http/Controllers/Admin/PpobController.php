@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers; // Atau App\Http\Controllers\Admin jika dipindah
+namespace App\Http\Controllers\admin; // Atau App\Http\Controllers\Admin jika dipindah
 
 use Illuminate\Http\Request;
 use App\Services\DigiflazzService;
