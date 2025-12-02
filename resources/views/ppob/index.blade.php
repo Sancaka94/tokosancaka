@@ -1,4 +1,4 @@
-@extends('layouts.marketplace')
+@extends('layouts.admin')
 
 @section('title', 'Produk Digital & PPOB')
 
