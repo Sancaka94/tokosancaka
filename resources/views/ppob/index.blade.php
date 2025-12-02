@@ -79,7 +79,7 @@
             <div class="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-y-8 gap-x-4">
                 
                 {{-- Pulsa --}}
-                <a href="{{ route('ppob.category', 'pulsa') }}" class="ppob-menu-item flex flex-col items-center group">
+                <a href="{{ route('admin.ppob.category', 'pulsa') }}" class="ppob-menu-item flex flex-col items-center group">
                     <div class="icon-box w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-red-50 text-red-500 flex items-center justify-center mb-2 group-hover:bg-red-500 group-hover:text-white transition-colors border border-red-100">
                         <i class="fas fa-mobile-alt text-xl md:text-2xl"></i>
                     </div>
@@ -87,7 +87,7 @@
                 </a>
 
                 {{-- Paket Data --}}
-                <a href="{{ route('ppob.category', 'data') }}" class="ppob-menu-item flex flex-col items-center group">
+                <a href="{{ route('admin.ppob.category', 'data') }}" class="ppob-menu-item flex flex-col items-center group">
                     <div class="icon-box w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-blue-50 text-blue-500 flex items-center justify-center mb-2 group-hover:bg-blue-500 group-hover:text-white transition-colors border border-blue-100">
                         <i class="fas fa-wifi text-xl md:text-2xl"></i>
                     </div>
@@ -95,7 +95,7 @@
                 </a>
 
                 {{-- Token PLN --}}
-                <a href="{{ route('ppob.category', 'pln-token') }}" class="ppob-menu-item flex flex-col items-center group">
+                <a href="{{ route('admin.ppob.category', 'pln-token') }}" class="ppob-menu-item flex flex-col items-center group">
                     <div class="icon-box w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-yellow-50 text-yellow-500 flex items-center justify-center mb-2 group-hover:bg-yellow-500 group-hover:text-white transition-colors border border-yellow-100">
                         <i class="fas fa-bolt text-xl md:text-2xl"></i>
                     </div>
@@ -103,7 +103,7 @@
                 </a>
 
                 {{-- Tagihan Listrik (Pascabayar) --}}
-                <a href="{{ route('ppob.category', 'pln-bill') }}" class="ppob-menu-item flex flex-col items-center group">
+                <a href="{{ route('admin.ppob.category', 'pln-bill') }}" class="ppob-menu-item flex flex-col items-center group">
                     <div class="icon-box w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-orange-50 text-orange-500 flex items-center justify-center mb-2 group-hover:bg-orange-500 group-hover:text-white transition-colors border border-orange-100">
                         <i class="fas fa-file-invoice-dollar text-xl md:text-2xl"></i>
                     </div>
@@ -111,7 +111,7 @@
                 </a>
 
                 {{-- E-Wallet --}}
-                <a href="{{ route('ppob.category', 'e-money') }}" class="ppob-menu-item flex flex-col items-center group">
+                <a href="{{ route('admin.ppob.category', 'e-money') }}" class="ppob-menu-item flex flex-col items-center group">
                     <div class="icon-box w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-purple-50 text-purple-500 flex items-center justify-center mb-2 group-hover:bg-purple-500 group-hover:text-white transition-colors border border-purple-100">
                         <i class="fas fa-wallet text-xl md:text-2xl"></i>
                     </div>
@@ -119,7 +119,7 @@
                 </a>
 
                 {{-- Voucher Game --}}
-                <a href="{{ route('ppob.category', 'voucher-game') }}" class="ppob-menu-item flex flex-col items-center group">
+                <a href="{{ route('admin.ppob.category', 'voucher-game') }}" class="ppob-menu-item flex flex-col items-center group">
                     <div class="icon-box w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-indigo-50 text-indigo-500 flex items-center justify-center mb-2 group-hover:bg-indigo-500 group-hover:text-white transition-colors border border-indigo-100">
                         <i class="fas fa-gamepad text-xl md:text-2xl"></i>
                     </div>
