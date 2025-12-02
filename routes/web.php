@@ -518,21 +518,20 @@ Route::middleware(['auth', RoleMiddleware::class . ':Pelanggan|Seller'])
 // == ADMIN-SPECIFIC ROUTES
 
 // =========================================================================
-
+  // Halaman Kategori PPOB (Pulsa, Data, PLN, dll)
+    Route::get('/digital/{slug}', [PpobController::class, 'category'])
+        ->name('admin.ppob.category'); // <-- INI YANG DICARI OLEH BLADE ANDA
+        
+    // Cek Saldo Digiflazz (Khusus Admin)
+    Route::get('/ppob/cek-saldo', [PpobController::class, 'checkSaldo'])
+        ->name('ppob.cek-saldo');
 
 
 
 
 Route::prefix('admin')->name('admin.')->group(function () {
 
-            // Halaman Kategori PPOB (Pulsa, Data, PLN, dll)
-    Route::get('/digital/{slug}', [PpobController::class, 'category'])
-        ->name('ppob.category'); // <-- INI YANG DICARI OLEH BLADE ANDA
-        
-    // Cek Saldo Digiflazz (Khusus Admin)
-    Route::get('/ppob/cek-saldo', [PpobController::class, 'checkSaldo'])
-        ->name('ppob.cek-saldo');
-    
+    // Rute AJAX untuk Manajemen Kategori
     Route::post('/categories/ajax-store', [App\Http\Controllers\Admin\CategoryController::class, 'storeAjax'])
     ->name('categories.storeAjax'); // HAPUS 'admin.' di sini
 
