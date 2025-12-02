@@ -41,6 +41,16 @@ class PpobController extends Controller
 
         dd($products);
 
+        // ======================================================
+        // [DEBUG] TAMPILKAN JSON KE LOG LARAVEL
+        // ======================================================
+        // Cek file di folder: storage/logs/laravel.log
+        \Illuminate\Support\Facades\Log::info('DATA JSON DARI DIGIFLAZZ:', [
+            'jumlah_data' => count($products),
+            'sample_data' => $products // Ini akan mencetak semua array ke log
+        ]);
+        // ======================================================
+
         if (empty($products)) {
             return redirect()->back()->with('error', 'Gagal mengambil data dari Digiflazz. Cek koneksi atau IP Whitelist.');
         }
