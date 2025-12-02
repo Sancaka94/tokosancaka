@@ -11,14 +11,21 @@ class DigiflazzService
     protected $apiKey;
     protected $baseUrl;
 
-    public function __construct()
+ public function __construct()
     {
-        $this->username = env('DIGIFLAZZ_USERNAME');
-        $this->apiKey = env('DIGIFLAZZ_KEY');
-        // Gunakan URL development jika testing, production jika live
-        $this->baseUrl = env('DIGIFLAZZ_MODE') === 'production' 
-            ? 'https://api.digiflazz.com/v1' 
-            : 'https://api.digiflazz.com/v1'; 
+        // --- UBAH BAGIAN INI (HARDCODE SEMENTARA) ---
+        // Kita tulis langsung untuk memastikan tidak ada spasi/error dari .env
+        
+        $this->username = 'mihetiDVGdeW'; // Sesuai screenshot
+        $this->apiKey   = 'dev-d54808c0-87ed-11f0-bdb6-8d5622821215'; // Sesuai screenshot
+        $this->baseUrl  = 'https://api.digiflazz.com/v1'; 
+        
+        // --- KOMENTARI KODE LAMA ---
+        // $this->username = env('DIGIFLAZZ_USERNAME');
+        // $this->apiKey = env('DIGIFLAZZ_KEY');
+        // $this->baseUrl = env('DIGIFLAZZ_MODE') === 'production' 
+        //     ? 'https://api.digiflazz.com/v1' 
+        //     : 'https://api.digiflazz.com/v1'; 
     }
 
     /**
