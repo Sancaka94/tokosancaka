@@ -237,6 +237,9 @@ Route::middleware(['auth', 'verified'])->prefix('digital')->name('ppob.')->group
 
     // 5. Cek Status Transaksi (AJAX - Opsional untuk refresh status)
     Route::get('/status/{ref_id}', [PpobController::class, 'checkStatus'])->name('status');
+
+    // Update Harga Ke Database
+    Route::get('/sync-produk', [PpobController::class, 'sync'])->name('sync');
 });
 
 
