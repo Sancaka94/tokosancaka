@@ -127,38 +127,32 @@ class PpobController extends Controller
         // 🧠 SMART VIEW DETECTION (DETEKSI ROLE & URL)
         // ============================================================
         
-        // Ambil segmen pertama dari URL (contoh: tokosancaka.com/admin/...)
         $prefix = request()->segment(1); 
 
-        // A. JIKA DIAKSES DARI ETALASE (PUBLIC MARKETPLACE)
+        // 1. ETALASE (PUBLIC)
         if ($prefix == 'etalase') {
             return view('etalase.ppob.category', $data);
         }
 
-        // B. JIKA DIAKSES OLEH ADMIN (URL 'admin' atau Role Admin)
+        // 2. ADMIN (URL 'admin' ATAU User Login sbg Admin)
+        // Tambahan: Jika prefix 'digital' tapi user login adalah admin, anggap admin (Legacy Support)
         if ($prefix == 'admin' || (auth()->check() && auth()->user()->hasRole('admin'))) {
-            // Pastikan Anda punya view khusus admin, misal: resources/views/admin/ppob/category.blade.php
-            // Jika belum ada, bisa pakai view default dulu
             return view('admin.ppob.category', $data); 
         }
 
-        // C. JIKA DIAKSES OLEH SELLER (URL 'seller' atau Role Seller)
+        // 3. SELLER
         if ($prefix == 'seller' || (auth()->check() && auth()->user()->hasRole('seller'))) {
             return view('seller.ppob.category', $data);
         }
 
-        // D. JIKA DIAKSES OLEH CUSTOMER (MEMBER DASHBOARD)
-        // Biasanya URL 'member', 'dashboard', atau user biasa yang login
+        // 4. MEMBER / CUSTOMER
         if ($prefix == 'member' || $prefix == 'customer' || (auth()->check() && auth()->user()->hasRole('customer'))) {
             return view('customer.ppob.category', $data);
         }
 
-        // E. FALLBACK (DEFAULT)
-        // Jika tidak terdeteksi (misal akses langsung /digital/pulsa tanpa prefix),
-        // Kita bisa arahkan ke Etalase atau Admin tergantung kebijakan Anda.
-        // Di sini saya arahkan ke Etalase (Public) agar aman.
+        // 5. FALLBACK (Jika tidak ada yang cocok)
+        // Default ke Etalase (Public)
         return view('etalase.ppob.category', $data);
-    }
 
     /**
      * 5. Proses Transaksi Prabayar (Checkout)
