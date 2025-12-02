@@ -372,13 +372,15 @@ Route::get('/seller/reviews', [SellerReviewController::class, 'index'])
     ->middleware(['auth'])
     ->name('seller.reviews.index');
 
+Route::post('/seller/reviews/{review}/reply', [SellerReviewController::class, 'reply'])->name('seller.reviews.reply');
+
+
 Route::middleware(['auth', RoleMiddleware::class . ':Pelanggan|Seller'])
 
     ->prefix('customer')->name('customer.')
 
     ->group(function () {
 
-        Route::post('/seller/reviews/{review}/reply', [SellerReviewController::class, 'reply'])->name('seller.reviews.reply');
         
         // Route::get('/seller/reviews', [SellerReviewController::class, 'index'])->name('seller.reviews.index');
         // 1. Menampilkan Halaman Form Multi-Koli (GET)
