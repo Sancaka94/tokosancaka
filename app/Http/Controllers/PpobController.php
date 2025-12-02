@@ -39,6 +39,8 @@ class PpobController extends Controller
         // Pastikan DigiflazzService Anda sudah menggunakan signature 'pricelist'
         $products = $this->digiflazz->getPriceList('prepaid');
 
+        dd($products);
+
         if (empty($products)) {
             return redirect()->back()->with('error', 'Gagal mengambil data dari Digiflazz. Cek koneksi atau IP Whitelist.');
         }
