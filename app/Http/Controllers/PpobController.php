@@ -166,4 +166,27 @@ class PpobController extends Controller
 
         return view('ppob.pln', compact('weblogo', 'products'));
     }
+
+    /**
+     * Halaman Cek Saldo (Bisa diakses via AJAX atau Halaman Khusus)
+     */
+    public function cekSaldo()
+    {
+        $result = $this->digiflazz->checkDeposit();
+
+        if (request()->ajax()) {
+            // Format Rupiah untuk AJAX response
+            $result['formatted'] = 'Rp ' . number_format($result['deposit'], 0, ',', '.');
+            return response()->json($result);
+        }
+
+        // Jika diakses langsung via browser, kembalikan ke halaman sebelumnya dengan pesan
+        if ($result['status']) {
+            $saldoFormatted = number_format($result['deposit'], 0, ',', '.');
+            return redirect()->back()->with('success', "Sisa Saldo Digiflazz: Rp $saldoFormatted");
+        } else {
+            return redirect()->back()->with('error', "Gagal Cek Saldo: " . $result['message']);
+        }
+    }
+    
 }

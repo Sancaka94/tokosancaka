@@ -240,6 +240,9 @@ Route::middleware(['auth', 'verified'])->prefix('digital')->name('ppob.')->group
 
     // Update Harga Ke Database
     Route::get('/sync-produk', [PpobController::class, 'sync'])->name('sync');
+
+    // Cek Saldo
+    Route::get('/cek-saldo', [PpobController::class, 'cekSaldo'])->name('cek-saldo');
 });
 
 
