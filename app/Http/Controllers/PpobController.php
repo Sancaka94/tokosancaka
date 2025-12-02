@@ -188,5 +188,60 @@ class PpobController extends Controller
             return redirect()->back()->with('error', "Gagal Cek Saldo: " . $result['message']);
         }
     }
-    
+
+    public function store(Request $request)
+    {
+        $request->validate([
+            'buyer_sku_code' => 'required|exists:ppob_products,buyer_sku_code',
+            'customer_no'    => 'required|numeric|digits_between:9,15',
+        ]);
+
+        $user = Auth::user();
+        $sku = $request->buyer_sku_code;
+        $noHp = $request->customer_no;
+
+        // 1. Ambil Data Produk dari Database Lokal
+        $product = PpobProduct::where('buyer_sku_code', $sku)->first();
+
+        // 2. Cek Saldo User (Pastikan kolom 'saldo' ada di tabel users)
+        if ($user->saldo < $product->sell_price) {
+            return redirect()->back()->with('error', 'Saldo Anda tidak cukup. Silakan Top Up terlebih dahulu.');
+        }
+
+        // 3. Buat Ref ID Unik (Format: TRX-USERID-TIMESTAMP)
+        $refId = 'TRX-' . $user->id . '-' . time();
+
+        // 4. TEMBAK API DIGIFLAZZ dengan MAX PRICE
+        // Kita set max_price = harga jual kita.
+        // Jika harga modal Digiflazz tiba-tiba naik melebihi harga jual kita, transaksi DITOLAK otomatis.
+        // Ini mencegah Anda rugi (jual rugi).
+        $maxPrice = (int) $product->sell_price; 
+
+        $response = $this->digiflazz->transaction($sku, $noHp, $refId, $maxPrice);
+
+        // 5. Cek Response
+        if (isset($response['data'])) {
+            $data = $response['data'];
+            
+            // Status: Sukses / Pending -> Potong Saldo
+            if (in_array($data['status'], ['Sukses', 'Pending'])) {
+                
+                // POTONG SALDO USER
+                $user->decrement('saldo', $product->sell_price);
+
+                // TODO: Simpan ke tabel 'transactions' atau 'orders' Anda di sini
+                // Order::create([...]);
+
+                $pesan = $data['status'] == 'Sukses' ? 'Transaksi Berhasil!' : 'Transaksi sedang diproses.';
+                return redirect()->back()->with('success', $pesan . ' SN: ' . ($data['sn'] ?? '-'));
+            } 
+            // Status Gagal
+            else {
+                return redirect()->back()->with('error', 'Transaksi Gagal: ' . ($data['message'] ?? 'Unknown Error'));
+            }
+        }
+
+        return redirect()->back()->with('error', 'Gagal terhubung ke server PPOB.');
+    }
+
 }

@@ -44,12 +44,12 @@ class DigiflazzService
         return [];
     }
 
-    /**
+   /**
      * Melakukan Transaksi (Top Up)
+     * Tambahkan parameter $maxPrice untuk proteksi harga
      */
-    public function transaction($sku, $customerNo, $refId)
+    public function transaction($sku, $customerNo, $refId, $maxPrice = 0)
     {
-        // Signature Transaksi = md5(username + key + ref_id)
         $sign = md5($this->username . $this->apiKey . $refId);
 
         $payload = [
@@ -58,11 +58,22 @@ class DigiflazzService
             'customer_no' => $customerNo,
             'ref_id' => $refId,
             'sign' => $sign,
+            'max_price' => $maxPrice, // <--- FITUR PROTEKSI DIGIFLAZZ
+            'testing' => env('DIGIFLAZZ_MODE') === 'development' ? true : false, // Auto testing mode
         ];
 
-        $response = Http::post($this->baseUrl . '/transaction', $payload);
-
-        return $response->json();
+        try {
+            $response = Http::post($this->baseUrl . '/transaction', $payload);
+            return $response->json();
+        } catch (\Exception $e) {
+            Log::error('Digiflazz Transaction Error: ' . $e->getMessage());
+            return [
+                'data' => [
+                    'status' => 'Gagal',
+                    'message' => 'Koneksi Error: ' . $e->getMessage()
+                ]
+            ];
+        }
     }
     
 
