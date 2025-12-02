@@ -606,8 +606,14 @@ if (!function_exists('formatWaNumber')) {
                     </div>
 
                     <div class="flex-1 min-w-0">
-                        <div class="flex items-center justify-between">
-                            <h4 class="text-sm font-bold text-gray-900">{{ $userName }}</h4>
+                        <div class="flex items-center justify-between mb-1">
+                            <div class="flex items-center gap-2">
+                                <h4 class="text-sm font-bold text-gray-900">{{ $userName }}</h4>
+                                {{-- BADGE PEMBELI --}}
+                                <span class="bg-green-100 text-green-700 text-[10px] px-2 py-0.5 rounded-full font-bold border border-green-200">
+                                    Customer
+                                </span>
+                            </div>
                             <span class="text-xs text-gray-400">{{ $review->created_at->format('d M Y') }}</span>
                         </div>
                         
@@ -683,7 +689,7 @@ if (!function_exists('formatWaNumber')) {
                     <div class="flex items-center justify-between mb-2">
                         <div class="flex items-center gap-2">
                             <span class="text-sm font-bold text-gray-900">{{ $sellerUser->nama_lengkap }}</span>
-                            <span class="bg-blue-100 text-blue-700 text-[10px] px-2 py-0.5 rounded-full font-bold">Penjual</span>
+                            <span class="bg-blue-100 text-blue-700 text-[10px] px-2 py-0.5 rounded-full font-bold">Seller</span>
                         </div>
                         <span class="text-[10px] text-gray-400">{{ \Carbon\Carbon::parse($review->reply_at)->format('d M Y') }}</span>
                     </div>
