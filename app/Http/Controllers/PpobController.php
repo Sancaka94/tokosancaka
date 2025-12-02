@@ -255,4 +255,47 @@ class PpobController extends Controller
         return redirect()->back()->with('error', 'Gagal terhubung ke server PPOB.');
     }
 
+    /**
+     * AJAX: Cek Tagihan Pascabayar
+     * URL: /digital/ajax/check-bill
+     */
+    public function checkBill(Request $request)
+    {
+        $request->validate([
+            'customer_no' => 'required',
+            'sku' => 'required'
+        ]);
+
+        // Buat RefID Unik untuk Inquiry
+        $refId = 'INQ-' . time() . rand(100,999);
+
+        // Panggil Service Inquiry
+        $response = $this->digiflazz->inquiryPasca($request->sku, $request->customer_no, $refId);
+
+        if (isset($response['data'])) {
+            $data = $response['data'];
+            
+            // RC 00 = Sukses Inquiry (Data ditemukan)
+            if ($data['rc'] === '00' || $data['status'] === 'Sukses') {
+                return response()->json([
+                    'status' => 'success',
+                    'customer_name' => $data['customer_name'],
+                    'customer_no' => $data['customer_no'],
+                    'admin_fee' => $data['admin'],
+                    'amount' => $data['selling_price'], // Total yang harus dibayar user
+                    // Deskripsi detail (periode, lembar tagihan, dll)
+                    'desc' => $data['desc'] ?? [], 
+                    'ref_id' => $refId // Simpan ref_id inquiry untuk dipakai saat bayar nanti
+                ]);
+            } else {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => $data['message'] ?? 'Tagihan tidak ditemukan atau sudah terbayar.'
+                ]);
+            }
+        }
+
+        return response()->json(['status' => 'error', 'message' => 'Gagal terhubung ke server tagihan.']);
+    }
+
 }

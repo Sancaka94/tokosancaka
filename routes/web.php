@@ -251,6 +251,8 @@ Route::middleware(['auth', 'verified'])->prefix('digital')->name('ppob.')->group
     // PENTING: Taruh di paling bawah agar tidak bentrok dengan route lain
     // URL: /digital/kategori/pulsa, /digital/kategori/pln-token, dll
     Route::get('/kategori/{slug}', [PpobController::class, 'category'])->name('category');
+
+    Route::post('/ajax/check-bill', [PpobController::class, 'checkBill'])->name('check.bill');
 });
 
 
