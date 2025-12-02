@@ -156,10 +156,11 @@ class DigiflazzService
         $sign = md5($this->username . $this->apiKey . "depo");
 
         try {
-            $response = Http::post($this->baseUrl . '/cek-saldo', [
+            $response = Http::timeout(30)->post($this->baseUrl . '/cek-saldo', [
                 'cmd' => 'deposit',
                 'username' => $this->username,
                 'sign' => $sign
+            
             ]);
 
             $result = $response->json();
