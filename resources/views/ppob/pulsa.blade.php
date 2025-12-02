@@ -237,6 +237,13 @@
     </div>
 </div>
 
+{{-- FORM HIDDEN UNTUK CHECKOUT --}}
+<form id="checkout_form" action="{{ route('ppob.store') }}" method="POST" class="hidden">
+    @csrf
+    <input type="hidden" name="buyer_sku_code" id="form_sku">
+    <input type="hidden" name="customer_no" id="form_no">
+</form>
+
 @endsection
 
 @push('scripts')
@@ -441,6 +448,6 @@
             refreshSaldo();
         }
     });
-    
+
 </script>
 @endpush
