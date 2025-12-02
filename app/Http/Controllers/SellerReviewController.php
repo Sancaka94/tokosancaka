@@ -62,4 +62,47 @@ public function reply(Request $request, $id)
 
     return back()->with('success', 'Balasan berhasil dikirim.');
 }
+
+// Method untuk Mengupdate Balasan
+    public function updateReply(Request $request, $id)
+    {
+        $request->validate([
+            'reply' => 'required|string|max:1000',
+        ]);
+
+        $review = ProductReview::findOrFail($id);
+
+        // Pastikan review ini milik produk seller yang sedang login
+        if ($review->product->store_id != Auth::user()->store->id) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $review->update([
+            'reply' => $request->reply,
+            // Opsional: Update waktu reply_at jika ingin menunjukkan waktu edit terakhir
+            // 'reply_at' => now(), 
+        ]);
+
+        return back()->with('success', 'Balasan berhasil diperbarui.');
+    }
+
+    // Method untuk Menghapus Balasan
+    public function deleteReply($id)
+    {
+        $review = ProductReview::findOrFail($id);
+
+        // Pastikan review ini milik produk seller yang sedang login
+        if ($review->product->store_id != Auth::user()->store->id) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        // Kosongkan kolom balasan
+        $review->update([
+            'reply' => null,
+            'reply_at' => null,
+        ]);
+
+        return back()->with('success', 'Balasan berhasil dihapus.');
+    }
+    
 }
