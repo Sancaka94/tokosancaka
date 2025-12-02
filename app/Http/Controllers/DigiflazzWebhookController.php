@@ -4,74 +4,103 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use App\Models\User; // Sesuaikan dengan model user Anda
-// use App\Models\Transaction; // Sesuaikan jika Anda punya model transaksi PPOB
+use App\Models\User;
+use App\Models\PpobTransaction;
+use Illuminate\Support\Facades\DB;
 
 class DigiflazzWebhookController extends Controller
 {
     public function handle(Request $request)
     {
-        // 1. Ambil Data dari Digiflazz
-        // Digiflazz mengirim JSON di body request
-        $data = $request->all();
-        
-        // Log data masuk untuk debugging (bisa dihapus nanti)
-        Log::info('Digiflazz Webhook:', $data);
+        // 1. Definisikan Secret Key (SAMA PERSIS dengan di Dashboard Digiflazz)
+        // Sebaiknya taruh di .env: DIGIFLAZZ_WEBHOOK_SECRET=SancakaSecure2025
+        $secret = 'SancakaSecretKey2025'; // Ganti dengan secret buatan Anda
 
-        // Pastikan ada data yang dikirim
+        // 2. Ambil Signature dari Header
+        $incomingSignature = $request->header('X-Hub-Signature');
+        
+        // 3. Ambil Raw Content (Payload)
+        $postData = $request->getContent();
+
+        // 4. Hitung Signature Lokal
+        // Rumus dari dokumentasi: HMAC-SHA1
+        $localSignature = 'sha1=' . hash_hmac('sha1', $postData, $secret);
+
+        // 5. Verifikasi: Apakah Signature Cocok?
+        // Gunakan hash_equals untuk keamanan (mencegah timing attack)
+        if (!hash_equals($localSignature, $incomingSignature)) {
+            Log::warning("Webhook Digiflazz Ditolak: Signature Salah! Masuk: $incomingSignature | Lokal: $localSignature");
+            return response()->json(['status' => 'failed', 'message' => 'Invalid Signature'], 401);
+        }
+
+        // --- JIKA LOLOS VERIFIKASI, PROSES DATA ---
+
+        $data = json_decode($postData, true); // Decode manual karena kita pakai getContent()
+        
+        // Log data masuk (Opsional, matikan jika sudah production)
+        // Log::info('Digiflazz Webhook Data:', $data);
+
         if (!isset($data['data'])) {
-            return response()->json(['status' => 'failed', 'message' => 'Invalid data'], 400);
+            return response()->json(['status' => 'failed', 'message' => 'No data'], 400);
         }
 
         $trxData = $data['data'];
-        $refId = $trxData['ref_id'];     // ID Transaksi kita (TRX-USERID-TIMESTAMP)
-        $status = $trxData['status'];    // Sukses, Gagal, Pending
-        $sn = $trxData['sn'];            // Serial Number (bukti sukses)
-        $message = $trxData['message'];  // Pesan error jika gagal
-        $price = $trxData['price'];      // Harga modal yang terpotong
+        $refId   = $trxData['ref_id'];
+        $status  = $trxData['status']; // Sukses, Gagal, Pending
+        $sn      = $trxData['sn'] ?? '';
+        $message = $trxData['message'];
+        $price   = $trxData['price'] ?? 0; 
 
-        // 2. Verifikasi Signature (Keamanan)
-        // Rumus: md5(username + apiKey + ref_id)
-        // $secret = env('DIGIFLAZZ_KEY');
-        // $username = env('DIGIFLAZZ_USERNAME');
-        // $signature = md5($username . $secret . $refId);
-        
-        // Cek header X-Hub-Signature jika ada, atau abaikan dulu untuk tahap awal
-        
-        // 3. Proses Transaksi di Database Lokal
-        // Karena di contoh controller sebelumnya kita belum simpan ke tabel 'transactions',
-        // di sini kita hanya akan melakukan log/notifikasi sederhana.
-        // Nanti Anda perlu buat tabel 'ppob_transactions' untuk mencatat ini.
+        // 6. Cari Transaksi di Database
+        $transaction = PpobTransaction::where('order_id', $refId)->first();
 
-        if ($status === 'Sukses') {
-            // Transaksi Berhasil
-            Log::info("PPOB Sukses: RefID $refId, SN: $sn");
+        if (!$transaction) {
+            Log::error("Webhook: Transaksi ID $refId tidak ditemukan.");
+            return response()->json(['status' => 'not found'], 404);
+        }
+
+        // 7. Cek Jika Status Sudah Final (Agar tidak diproses ganda)
+        if (in_array($transaction->status, ['Sukses', 'Gagal'])) {
+            return response()->json(['status' => 'already processed']);
+        }
+
+        DB::beginTransaction();
+        try {
+            // Update Data Transaksi
+            $transaction->sn = $sn;
+            $transaction->message = $message;
             
-            // TODO: Update status transaksi di database Anda jadi 'success'
-            // $trx = Transaction::where('ref_id', $refId)->first();
-            // if ($trx) { $trx->update(['status' => 'success', 'sn' => $sn]); }
+            // Update harga beli real jika ada perubahan harga dari Digiflazz
+            if($price > 0) {
+                $transaction->price = $price;
+                // Hitung ulang profit: Harga Jual - Harga Beli Baru
+                $transaction->profit = $transaction->selling_price - $price;
+            }
 
-        } elseif ($status === 'Gagal') {
-            // Transaksi Gagal -> REFUND SALDO USER
-            Log::info("PPOB Gagal: RefID $refId. Pesan: $message");
-
-            // Ambil User ID dari RefID (TRX-123-99999)
-            $parts = explode('-', $refId);
-            if (count($parts) >= 2) {
-                $userId = $parts[1];
-                $user = User::find($userId);
-
+            if ($status === 'Sukses') {
+                $transaction->status = 'Sukses';
+                // Opsional: Kirim notifikasi WA ke user "Pulsa sukses masuk"
+            } 
+            elseif ($status === 'Gagal') {
+                $transaction->status = 'Gagal';
+                
+                // === AUTO REFUND LOGIC ===
+                $user = $transaction->user;
                 if ($user) {
-                    // Kembalikan Saldo (Refund)
-                    // Hati-hati: Pastikan belum pernah direfund sebelumnya!
-                    // Cek di database transaksi Anda.
+                    // Kembalikan Saldo ke User
+                    $user->increment('saldo', $transaction->selling_price);
                     
-                    // Contoh logika refund sederhana (perlu tabel transaksi untuk validasi ganda):
-                    // $user->increment('saldo', $hargaJualProduk); 
-                    
-                    Log::warning("Perlu Refund Manual untuk User ID $userId (RefID: $refId)");
+                    Log::info("REFUND BERHASIL: User {$user->id} senilai {$transaction->selling_price} (Order: $refId)");
                 }
             }
+
+            $transaction->save();
+            DB::commit();
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("Webhook Error Processing: " . $e->getMessage());
+            return response()->json(['status' => 'error'], 500);
         }
 
         return response()->json(['status' => 'ok']);
