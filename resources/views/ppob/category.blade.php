@@ -38,7 +38,25 @@
                         <p class="text-xs text-gray-400 mt-1">Pastikan nomor tujuan benar.</p>
                     </div>
 
-                    {{-- TOMBOL CEK TAGIHAN (HANYA UNTUK PASCABAYAR) --}}
+                    {{-- FITUR BARU: INFO PELANGGAN PLN PRABAYAR --}}
+                    @if($pageInfo['slug'] == 'pln-token')
+                        <button onclick="cekPlnPrabayar()" id="btn-cek-pln" class="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg transition mb-4 text-sm">
+                            <i class="fas fa-search mr-1"></i> Cek ID Pelanggan
+                        </button>
+
+                        <div id="pln_info" class="hidden bg-yellow-50 p-3 rounded-lg border border-yellow-200 text-sm mb-4">
+                            <div class="flex justify-between mb-1">
+                                <span class="text-gray-500">Nama:</span>
+                                <span class="font-bold text-gray-800" id="pln_name">-</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-500">Daya:</span>
+                                <span class="font-bold text-gray-800" id="pln_power">-</span>
+                            </div>
+                        </div>
+                    @endif
+
+                    {{-- TOMBOL CEK TAGIHAN (PASCABAYAR) --}}
                     @if(isset($pageInfo['is_postpaid']) && $pageInfo['is_postpaid'])
                         <button onclick="cekTagihan()" id="btn-cek-tagihan" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition flex justify-center items-center gap-2">
                             <span id="btn-text">Cek Tagihan</span>
