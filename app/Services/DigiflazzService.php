@@ -66,7 +66,7 @@ class DigiflazzService
             'ref_id' => $refId,
             'sign' => $sign,
             'max_price' => $maxPrice, // <--- FITUR PROTEKSI DIGIFLAZZ
-            'testing' => env('DIGIFLAZZ_MODE') === 'development' ? true : false, // Auto testing mode
+            'testing' => true,
         ];
 
         try {
