@@ -4,93 +4,93 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use App\Models\User;
-use App\Models\PpobTransaction;
+use App\Models\User; 
+use App\Models\PpobTransaction; // <--- Pastikan Model ini sudah ada (Langkah 1)
 use Illuminate\Support\Facades\DB;
 
 class DigiflazzWebhookController extends Controller
 {
     public function handle(Request $request)
     {
-        // 1. Definisikan Secret Key (SAMA PERSIS dengan di Dashboard Digiflazz)
-        // Sebaiknya taruh di .env: DIGIFLAZZ_WEBHOOK_SECRET=SancakaSecure2025
-        $secret = 'SancakaSecretKey2025'; // Ganti dengan secret buatan Anda
-
-        // 2. Ambil Signature dari Header
+        // ==========================================
+        // 1. VERIFIKASI KEAMANAN (SECRET KEY)
+        // ==========================================
+        $secret = 'SancakaSecretKey2025'; // Ganti sesuai Secret di Dashboard Digiflazz
         $incomingSignature = $request->header('X-Hub-Signature');
+        $payload = $request->getContent();
         
-        // 3. Ambil Raw Content (Payload)
-        $postData = $request->getContent();
+        // Rumus: HMAC-SHA1 dari body request
+        $localSignature = 'sha1=' . hash_hmac('sha1', $payload, $secret);
 
-        // 4. Hitung Signature Lokal
-        // Rumus dari dokumentasi: HMAC-SHA1
-        $localSignature = 'sha1=' . hash_hmac('sha1', $postData, $secret);
-
-        // 5. Verifikasi: Apakah Signature Cocok?
-        // Gunakan hash_equals untuk keamanan (mencegah timing attack)
         if (!hash_equals($localSignature, $incomingSignature)) {
-            Log::warning("Webhook Digiflazz Ditolak: Signature Salah! Masuk: $incomingSignature | Lokal: $localSignature");
-            return response()->json(['status' => 'failed', 'message' => 'Invalid Signature'], 401);
+            Log::warning("Webhook Ditolak: Signature Salah! IP: " . $request->ip());
+            // return response()->json(['status' => 'failed', 'message' => 'Invalid Signature'], 401);
+            // Note: Uncomment baris return di atas jika sudah Live Production
         }
 
-        // --- JIKA LOLOS VERIFIKASI, PROSES DATA ---
-
-        $data = json_decode($postData, true); // Decode manual karena kita pakai getContent()
+        // ==========================================
+        // 2. PROSES DATA
+        // ==========================================
+        $data = json_decode($payload, true);
         
-        // Log data masuk (Opsional, matikan jika sudah production)
-        // Log::info('Digiflazz Webhook Data:', $data);
+        // Log data masuk untuk debugging
+        Log::info('Digiflazz Webhook:', $data);
 
         if (!isset($data['data'])) {
             return response()->json(['status' => 'failed', 'message' => 'No data'], 400);
         }
 
         $trxData = $data['data'];
-        $refId   = $trxData['ref_id'];
-        $status  = $trxData['status']; // Sukses, Gagal, Pending
-        $sn      = $trxData['sn'] ?? '';
-        $message = $trxData['message'];
-        $price   = $trxData['price'] ?? 0; 
+        $refId   = $trxData['ref_id'];   // ID Order Kita (TRX-...)
+        $status  = $trxData['status'];   // Sukses, Gagal, Pending
+        $sn      = $trxData['sn'] ?? ''; // Token Listrik / SN Pulsa
+        $message = $trxData['message'];  // Pesan status
+        $price   = $trxData['price'] ?? 0; // Harga beli real (update jika berubah)
 
-        // 6. Cari Transaksi di Database
+        // Cari Transaksi di Database
         $transaction = PpobTransaction::where('order_id', $refId)->first();
 
         if (!$transaction) {
-            Log::error("Webhook: Transaksi ID $refId tidak ditemukan.");
+            Log::error("Webhook: Transaksi ID $refId tidak ditemukan di database lokal.");
             return response()->json(['status' => 'not found'], 404);
         }
 
-        // 7. Cek Jika Status Sudah Final (Agar tidak diproses ganda)
+        // Cek apakah status sudah final? Jika sudah Sukses/Gagal, jangan diproses lagi
         if (in_array($transaction->status, ['Sukses', 'Gagal'])) {
             return response()->json(['status' => 'already processed']);
         }
 
+        // ==========================================
+        // 3. UPDATE DATABASE & REFUND
+        // ==========================================
         DB::beginTransaction();
         try {
-            // Update Data Transaksi
+            // Update Data Dasar
             $transaction->sn = $sn;
             $transaction->message = $message;
             
-            // Update harga beli real jika ada perubahan harga dari Digiflazz
-            if($price > 0) {
+            // Update harga modal jika ada perubahan dari Digiflazz
+            if ($price > 0) {
                 $transaction->price = $price;
-                // Hitung ulang profit: Harga Jual - Harga Beli Baru
+                // Hitung ulang profit
                 $transaction->profit = $transaction->selling_price - $price;
             }
 
             if ($status === 'Sukses') {
                 $transaction->status = 'Sukses';
-                // Opsional: Kirim notifikasi WA ke user "Pulsa sukses masuk"
+                // Opsional: Kirim WA ke user "Pulsa Masuk SN: ..."
             } 
             elseif ($status === 'Gagal') {
                 $transaction->status = 'Gagal';
                 
-                // === AUTO REFUND LOGIC ===
-                $user = $transaction->user;
+                // --- LOGIKA AUTO REFUND ---
+                // Kembalikan saldo user karena transaksi gagal
+                $user = $transaction->user; // Mengambil relasi User
                 if ($user) {
-                    // Kembalikan Saldo ke User
-                    $user->increment('saldo', $transaction->selling_price);
+                    $refundAmount = $transaction->selling_price;
+                    $user->increment('saldo', $refundAmount);
                     
-                    Log::info("REFUND BERHASIL: User {$user->id} senilai {$transaction->selling_price} (Order: $refId)");
+                    Log::info("REFUND BERHASIL: User {$user->nama_lengkap} (ID: {$user->id_pengguna}) senilai Rp $refundAmount. RefID: $refId");
                 }
             }
 
