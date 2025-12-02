@@ -620,6 +620,8 @@ if (!function_exists('formatWaNumber')) {
                         {{-- Kota & Provinsi Pembeli (Cek jika user ada) --}}
                         @if($user)
                             <div class="text-xs text-gray-500 mb-1 flex items-center">
+                                <i class="fas fa-map-marker-alt text-red-500 mr-1.5"></i> {{-- Pin Merah --}}
+
                                 @if($user->regency)
                                     <span>{{ $user->regency }}</span>
                                 @endif
