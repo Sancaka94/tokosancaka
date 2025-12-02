@@ -36,8 +36,12 @@ class AppServiceProvider extends ServiceProvider
         // ----------------------------------------
         // 2. INJECT CONFIG API DARI DATABASE
         // ----------------------------------------
-        if (Schema::hasTable('API')) {
-            try {
+        
+        // PERBAIKAN: "try" dimulai DULUAN sebelum cek database
+        try {
+            // Cek apakah tabel API ada (dilakukan di dalam blok try agar aman)
+            if (Schema::hasTable('API')) { 
+                
                 // --- A. INJECT KIRIMINAJA ---
                 $kaMode = Api::getValue('KIRIMINAJA_MODE', 'global', 'staging');
                 $kaToken = Api::getValue('KIRIMINAJA_TOKEN', $kaMode);
@@ -57,21 +61,13 @@ class AppServiceProvider extends ServiceProvider
                 Config::set('tripay.merchant_code', Api::getValue('TRIPAY_MERCHANT_CODE', $tpMode));
 
                 // --- D. INJECT DOKU (LENGKAP) ---
-                // Ambil mode DOKU saat ini (Sandbox/Production)
                 $dokuEnv = Api::getValue('DOKU_ENV', 'global', 'sandbox');
                 
-                // Override config 'doku.php'
                 Config::set('doku.mode', $dokuEnv);
-                
-                // Inject Kredensial sesuai mode
                 Config::set('doku.client_id', Api::getValue('DOKU_CLIENT_ID', $dokuEnv));
                 Config::set('doku.secret_key', Api::getValue('DOKU_SECRET_KEY', $dokuEnv));
-                
-                // Jika SAC Client ID sama dengan Client ID utama (atau sesuaikan jika ada key terpisah di DB)
                 Config::set('doku.sac_client_id', Api::getValue('DOKU_CLIENT_ID', $dokuEnv));
                 Config::set('doku.sac_secret_key', Api::getValue('DOKU_SECRET_KEY', $dokuEnv));
-                
-                // Inject Main SAC ID
                 Config::set('doku.main_sac_id', Api::getValue('DOKU_MAIN_SAC_ID', 'global'));
 
                 // Inject Keys
@@ -84,10 +80,10 @@ class AppServiceProvider extends ServiceProvider
                 } else {
                     Config::set('doku.url', 'https://api-sandbox.doku.com');
                 }
-
-            } catch (\Exception $e) {
-                // Silent fail agar aplikasi tetap jalan via .env jika DB bermasalah
             }
+        } catch (\Throwable $e) {
+            // Jika koneksi DB gagal, diam saja (jangan crash).
+            // Aplikasi akan lanjut jalan pakai settingan dari .env
         }
     }
 }
