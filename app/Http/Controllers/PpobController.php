@@ -16,12 +16,16 @@ class PpobController extends Controller
         $this->digiflazz = $digiflazz;
     }
 
-    // Helper untuk mengambil logo
+    // --- PERBAIKAN DI SINI (SESUAI TABEL DATABASE ANDA) ---
     private function getWebLogo()
     {
-        $setting = Setting::first();
-        return $setting ? $setting->web_logo : null;
+        // Cari setting dengan key 'logo'
+        $setting = Setting::where('key', 'logo')->first();
+        
+        // Ambil value-nya (path gambar), atau null jika tidak ketemu
+        return $setting ? $setting->value : null;
     }
+    // ------------------------------------------------------
 
     public function index()
     {
@@ -31,7 +35,6 @@ class PpobController extends Controller
 
     public function pulsa()
     {
-        // Ambil Logo
         $weblogo = $this->getWebLogo();
 
         // Cache price list selama 60 menit
@@ -47,7 +50,6 @@ class PpobController extends Controller
         // Kelompokkan berdasarkan Operator
         $operators = $products->groupBy('brand')->keys();
 
-        // Kirim $weblogo ke view bersama data lainnya
         return view('ppob.pulsa', compact('products', 'operators', 'weblogo'));
     }
 
