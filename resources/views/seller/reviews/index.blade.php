@@ -73,7 +73,7 @@
                             {{-- Profil Pembeli --}}
                             <div class="flex items-center gap-2">
                                 @php
-                                    $avatarPath = $review->user->store_log_path ?? null; 
+                                    $avatarPath = $review->user->store_logo_path ?? null; 
                                     $avatarUrl = $avatarPath 
                                         ? asset('public/storage/'.$avatarPath) 
                                         : 'https://ui-avatars.com/api/?name='.urlencode($review->user->nama_lengkap).'&background=random&color=fff&size=64';
