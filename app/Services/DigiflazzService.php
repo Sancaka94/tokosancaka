@@ -156,11 +156,10 @@ class DigiflazzService
         $sign = md5($this->username . $this->apiKey . "depo");
 
         try {
-            $response = Http::timeout(30)->post($this->baseUrl . '/cek-saldo', [
+            $response = Http::post($this->baseUrl . '/cek-saldo', [
                 'cmd' => 'deposit',
                 'username' => $this->username,
                 'sign' => $sign
-            
             ]);
 
             $result = $response->json();
@@ -242,14 +241,6 @@ class DigiflazzService
             Log::error('Digiflazz Pay Pasca Error: ' . $e->getMessage());
             return ['data' => ['status' => 'Gagal', 'message' => 'Koneksi Error']];
         }
-    }
-
-    /**
-     * Get Web Logo
-     */
-    private function getWebLogo()
-    {
-        return config('app.logo', 'logo.png');
     }
 
     /**
