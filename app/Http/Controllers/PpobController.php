@@ -32,7 +32,7 @@ class PpobController extends Controller
     public function index()
     {
         $weblogo = $this->getWebLogo();
-        return view('ppob.index', compact('weblogo'));
+        return view('admin.ppob.index', compact('weblogo'));
     }
 
     /**
