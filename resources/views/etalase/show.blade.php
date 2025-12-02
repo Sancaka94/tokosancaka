@@ -249,7 +249,7 @@ if (!function_exists('formatWaNumber')) {
                             <span class="font-semibold text-red-500 mr-1">{{ number_format($avgRating, 1) }}</span>
                             <div class="flex text-red-400">
                                 @for ($i = 1; $i <= 5; $i++)
-                                    <i class="fas fa-star {{ $avgRating >= $i ? 'text-red-400' : 'text-gray-300' }} text-xs"></i>
+                                    <i class="fas fa-star {{ $avgRating >= $i ? 'text-yellow-400' : 'text-gray-300' }} text-xs"></i>
                                 @endfor
                             </div>
                         </div>
