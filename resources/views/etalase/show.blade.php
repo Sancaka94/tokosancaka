@@ -622,17 +622,61 @@ if (!function_exists('formatWaNumber')) {
                         </p>
                         @endif
 
-                        {{-- TAMPILKAN BALASAN SELLER (JIKA ADA) --}}
+                       {{-- TAMPILKAN BALASAN SELLER (JIKA ADA) --}}
 @if($review->reply)
-    <div class="mt-3 ml-2 pl-3 border-l-2 border-gray-200">
-        <div class="bg-gray-50 p-3 rounded-lg">
-            <div class="flex items-center mb-1">
-                <span class="text-xs font-bold text-gray-600 bg-gray-200 px-1.5 py-0.5 rounded mr-2">Penjual</span>
-                <span class="text-[10px] text-gray-400">{{ \Carbon\Carbon::parse($review->reply_at)->format('d M Y') }}</span>
+    <div class="mt-4 ml-4 pl-4 border-l-2 border-gray-200">
+        <div class="bg-gray-50 p-4 rounded-lg">
+            
+            <div class="flex items-start gap-4">
+                {{-- KOLOM KIRI: Foto & Lokasi --}}
+                <div class="flex flex-col items-center text-center flex-shrink-0 w-20">
+                    @php
+                        // Ambil data user pemilik toko
+                        $sellerUser = $product->store->user;
+                        
+                        // Logika Foto Profil
+                        $sellerAvatarPath = $sellerUser->store_logo_path ?? null; 
+                        if ($sellerAvatarPath && Str::startsWith($sellerAvatarPath, 'public/')) {
+                            $sellerAvatarPath = Str::remove('public/', $sellerAvatarPath);
+                        }
+                        
+                        $sellerAvatarUrl = $sellerAvatarPath 
+                            ? asset('public/storage/'.$sellerAvatarPath) 
+                            : 'https://ui-avatars.com/api/?name='.urlencode($sellerUser->nama_lengkap).'&background=random&color=fff&size=64';
+                    @endphp
+                    
+                    {{-- Foto --}}
+                    <img src="{{ $sellerAvatarUrl }}" alt="{{ $sellerUser->nama_lengkap }}" class="w-10 h-10 rounded-full border border-gray-200 object-cover mb-2">
+                    
+                    {{-- Lokasi (Kota & Provinsi) di bawah foto --}}
+                    <div class="leading-tight">
+                        @if($sellerUser->regency)
+                            <p class="text-[10px] text-gray-600 font-semibold break-words w-full">{{ Str::limit($sellerUser->regency, 15) }}</p>
+                        @endif
+                        @if($sellerUser->province)
+                            <p class="text-[9px] text-gray-400 break-words w-full mt-0.5">{{ Str::limit($sellerUser->province, 15) }}</p>
+                        @endif
+                    </div>
+                </div>
+
+                {{-- KOLOM KANAN: Nama & Isi Balasan --}}
+                <div class="flex-grow pt-1">
+                    {{-- Header Nama & Badge --}}
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm font-bold text-gray-900">{{ $sellerUser->nama_lengkap }}</span>
+                            <span class="bg-blue-100 text-blue-700 text-[10px] px-2 py-0.5 rounded-full font-bold">Penjual</span>
+                        </div>
+                        <span class="text-[10px] text-gray-400">{{ \Carbon\Carbon::parse($review->reply_at)->format('d M Y') }}</span>
+                    </div>
+
+                    {{-- Isi Balasan --}}
+                    <p class="text-sm text-gray-700 leading-relaxed bg-white p-3 rounded border border-gray-100 shadow-sm">
+                        {{ $review->reply }}
+                    </p>
+                </div>
             </div>
-            <p class="text-sm text-gray-600">
-                {{ $review->reply }}
-            </p>
+
         </div>
     </div>
 @endif
