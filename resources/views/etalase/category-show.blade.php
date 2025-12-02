@@ -77,7 +77,7 @@
     @endif
     
     {{-- ============================================================ --}}
-    {{-- ⚡ MODIFIKASI: SECTION KHUSUS PRODUK DIGITAL / PPOB ⚡ --}}
+    {{-- ⚡ UPDATE: LINK PPOB SUDAH DISESUAIKAN ⚡ --}}
     {{-- ============================================================ --}}
     @if($category->slug == 'e-wallet-pulsa' || $category->slug == 'digital' || request()->segment(2) == 'digital')
     <section class="mb-10" data-aos="fade-up">
@@ -88,37 +88,37 @@
             
             <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4">
                 {{-- MENU PULSA --}}
-                <a href="{{ url('/digital/pulsa') }}" class="ppob-icon flex flex-col items-center p-4 border rounded-xl hover:shadow-lg hover:border-blue-500 transition bg-blue-50">
+                <a href="{{ url('/etalase/ppob/digital/pulsa') }}" class="ppob-icon flex flex-col items-center p-4 border rounded-xl hover:shadow-lg hover:border-blue-500 transition bg-blue-50">
                     <i class="fas fa-mobile-screen-button text-3xl text-blue-600 mb-2"></i>
                     <span class="text-sm font-bold text-gray-700">Pulsa</span>
                 </a>
 
                 {{-- MENU DATA --}}
-                <a href="{{ url('/digital/data') }}" class="ppob-icon flex flex-col items-center p-4 border rounded-xl hover:shadow-lg hover:border-green-500 transition bg-green-50">
+                <a href="{{ url('/etalase/ppob/digital/data') }}" class="ppob-icon flex flex-col items-center p-4 border rounded-xl hover:shadow-lg hover:border-green-500 transition bg-green-50">
                     <i class="fas fa-wifi text-3xl text-green-600 mb-2"></i>
                     <span class="text-sm font-bold text-gray-700">Paket Data</span>
                 </a>
 
                 {{-- MENU PLN TOKEN --}}
-                <a href="{{ url('/digital/pln-token') }}" class="ppob-icon flex flex-col items-center p-4 border rounded-xl hover:shadow-lg hover:border-yellow-500 transition bg-yellow-50">
+                <a href="{{ url('/etalase/ppob/digital/pln-token') }}" class="ppob-icon flex flex-col items-center p-4 border rounded-xl hover:shadow-lg hover:border-yellow-500 transition bg-yellow-50">
                     <i class="fas fa-bolt text-3xl text-yellow-500 mb-2"></i>
                     <span class="text-sm font-bold text-gray-700">Token PLN</span>
                 </a>
 
                 {{-- MENU E-MONEY --}}
-                <a href="{{ url('/digital/e-money') }}" class="ppob-icon flex flex-col items-center p-4 border rounded-xl hover:shadow-lg hover:border-purple-500 transition bg-purple-50">
+                <a href="{{ url('/etalase/ppob/digital/e-money') }}" class="ppob-icon flex flex-col items-center p-4 border rounded-xl hover:shadow-lg hover:border-purple-500 transition bg-purple-50">
                     <i class="fas fa-wallet text-3xl text-purple-600 mb-2"></i>
                     <span class="text-sm font-bold text-gray-700">E-Wallet</span>
                 </a>
 
                 {{-- MENU GAMES --}}
-                <a href="{{ url('/digital/voucher-game') }}" class="ppob-icon flex flex-col items-center p-4 border rounded-xl hover:shadow-lg hover:border-red-500 transition bg-red-50">
+                <a href="{{ url('/etalase/ppob/digital/voucher-game') }}" class="ppob-icon flex flex-col items-center p-4 border rounded-xl hover:shadow-lg hover:border-red-500 transition bg-red-50">
                     <i class="fas fa-gamepad text-3xl text-red-600 mb-2"></i>
                     <span class="text-sm font-bold text-gray-700">Voucher Game</span>
                 </a>
 
                 {{-- MENU TV / STREAMING --}}
-                <a href="{{ url('/digital/streaming') }}" class="ppob-icon flex flex-col items-center p-4 border rounded-xl hover:shadow-lg hover:border-pink-500 transition bg-pink-50">
+                <a href="{{ url('/etalase/ppob/digital/streaming') }}" class="ppob-icon flex flex-col items-center p-4 border rounded-xl hover:shadow-lg hover:border-pink-500 transition bg-pink-50">
                     <i class="fas fa-tv text-3xl text-pink-600 mb-2"></i>
                     <span class="text-sm font-bold text-gray-700">TV Kabel</span>
                 </a>
@@ -126,7 +126,6 @@
         </div>
     </section>
     @endif
-    {{-- ============================================================ --}}
 
 
     @if(isset($flashSaleProducts) && $flashSaleProducts->isNotEmpty())
