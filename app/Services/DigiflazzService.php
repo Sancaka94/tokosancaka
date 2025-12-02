@@ -65,21 +65,6 @@ class DigiflazzService
         return $response->json();
     }
     
-    /**
-     * Cek Saldo Digiflazz
-     */
-    public function checkDeposit()
-    {
-        $sign = md5($this->username . $this->apiKey . "depo");
-        
-        $response = Http::post($this->baseUrl . '/ceksaldo', [
-            'cmd' => 'deposit',
-            'username' => $this->username,
-            'sign' => $sign
-        ]);
-        
-        return $response->json();
-    }
 
     /**
      * Cek Sisa Saldo Deposit Digiflazz
@@ -123,5 +108,5 @@ class DigiflazzService
             ];
         }
     }
-    
+
 }
