@@ -526,6 +526,16 @@ Route::middleware(['auth', RoleMiddleware::class . ':Pelanggan|Seller'])
 
 Route::prefix('admin')->name('admin.')->group(function () {
 
+    // 1. Halaman Dashboard / Menu Utama Digital (INI YANG KURANG)
+    // URL: /admin/digital
+    Route::get('/digital', [PpobController::class, 'index'])
+        ->name('admin.ppob.index'); 
+
+    // 2. Halaman Kategori (Pulsa, Data, dll)
+    // URL: /admin/digital/{slug}
+    Route::get('/digital/{slug}', [PpobController::class, 'category'])
+        ->name('admin.ppob.category');
+
     // Rute AJAX untuk Manajemen Kategori
     Route::post('/categories/ajax-store', [App\Http\Controllers\Admin\CategoryController::class, 'storeAjax'])
     ->name('categories.storeAjax'); // HAPUS 'admin.' di sini
