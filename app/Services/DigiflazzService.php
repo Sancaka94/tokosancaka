@@ -244,6 +244,14 @@ class DigiflazzService
     }
 
     /**
+     * Get Web Logo
+     */
+    private function getWebLogo()
+    {
+        return config('app.logo', 'logo.png');
+    }
+
+    /**
      * Halaman Dinamis untuk Semua Kategori (Pulsa, Data, PLN, Games, E-Money)
      * URL: /digital/kategori/{slug}
      */
