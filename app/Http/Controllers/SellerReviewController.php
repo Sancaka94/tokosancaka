@@ -39,4 +39,27 @@ class SellerReviewController extends Controller
 
         return view('seller.reviews.index', compact('reviews', 'totalReviews', 'avgRating'));
     }
+
+    // app/Http/Controllers/SellerReviewController.php
+
+public function reply(Request $request, $id)
+{
+    $request->validate([
+        'reply' => 'required|string|max:1000',
+    ]);
+
+    $review = ProductReview::findOrFail($id);
+
+    // Pastikan review ini milik produk seller yang sedang login
+    if ($review->product->store_id != Auth::user()->store->id) {
+        abort(403, 'Unauthorized action.');
+    }
+
+    $review->update([
+        'reply' => $request->reply,
+        'reply_at' => now(),
+    ]);
+
+    return back()->with('success', 'Balasan berhasil dikirim.');
+}
 }
