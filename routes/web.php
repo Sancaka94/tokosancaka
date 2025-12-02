@@ -229,7 +229,7 @@ Route::middleware(['auth', 'verified'])->prefix('digital')->name('ppob.')->group
     
     // 1. Halaman Utama Menu PPOB (Dashboard Digital)
     // URL: /digital
-    Route::get('/', [PpobController::class, 'index'])->name('index');
+    // Route::get('/', [PpobController::class, 'index'])->name('index');
 
     // 2. Proses Transaksi / Checkout PPOB
     // URL: /digital/checkout
