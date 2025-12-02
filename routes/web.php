@@ -376,6 +376,16 @@ Route::post('/seller/reviews/{review}/reply', [SellerReviewController::class, 'r
 ->middleware(['auth'])
 ->name('seller.reviews.reply');
 
+// Route untuk Edit Balasan
+Route::put('/seller/reviews/{review}/reply', [SellerReviewController::class, 'updateReply'])
+->middleware(['auth'])
+->name('seller.reviews.reply.update');
+
+// Route untuk Hapus Balasan
+Route::delete('/seller/reviews/{review}/reply', [SellerReviewController::class, 'deleteReply'])
+->middleware(['auth'])
+->name('seller.reviews.reply.delete');
+
 
 Route::middleware(['auth', RoleMiddleware::class . ':Pelanggan|Seller'])
 
