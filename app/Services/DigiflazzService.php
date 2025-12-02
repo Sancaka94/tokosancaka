@@ -53,6 +53,50 @@ class DigiflazzService
         return [];
     }
 
+    /**
+     * 2. Sinkronisasi Produk dari API ke Database Lokal (YANG HILANG)
+     */
+    public function syncProducts()
+    {
+        $products = $this->getPriceList('prepaid');
+
+        if (empty($products)) {
+            return false;
+        }
+
+        foreach ($products as $item) {
+            // Margin keuntungan Rp 2.000
+            $margin = 2000;
+            $modal = (float)$item['price'];
+            $hargaJual = $modal + $margin;
+
+            PpobProduct::updateOrCreate(
+                ['buyer_sku_code' => $item['buyer_sku_code']],
+                [
+                    'product_name' => $item['product_name'],
+                    'category' => $item['category'],
+                    'brand' => $item['brand'],
+                    'type' => $item['type'],
+                    'seller_name' => $item['seller_name'],
+                    'price' => $modal,
+                    // Logika harga jual: Set awal, jangan ubah jika sudah diset manual admin
+                    'sell_price' => DB::raw("CASE WHEN sell_price = 0 THEN $hargaJual ELSE sell_price END"),
+                    
+                    'buyer_product_status' => $item['buyer_product_status'],
+                    'seller_product_status' => $item['seller_product_status'],
+                    'unlimited_stock' => $item['unlimited_stock'],
+                    'stock' => $item['stock'],
+                    'multi' => $item['multi'],
+                    'start_cut_off' => $item['start_cut_off'],
+                    'end_cut_off' => $item['end_cut_off'],
+                    'desc' => $item['desc'],
+                ]
+            );
+        }
+
+        return true;
+    }
+
    /**
      * Melakukan Transaksi (Top Up)
      * Tambahkan parameter $maxPrice untuk proteksi harga
