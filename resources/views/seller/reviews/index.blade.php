@@ -73,14 +73,14 @@
                             {{-- Profil Pembeli --}}
                             <div class="flex items-center gap-2">
                                 @php
-                                    $avatarPath = $review->user->store_photo_path ?? null; 
+                                    $avatarPath = $review->user->store_log_path ?? null; 
                                     $avatarUrl = $avatarPath 
                                         ? asset('public/storage/'.$avatarPath) 
-                                        : 'https://ui-avatars.com/api/?name='.urlencode($review->user->name).'&background=random&color=fff&size=64';
+                                        : 'https://ui-avatars.com/api/?name='.urlencode($review->user->nama_lengkap).'&background=random&color=fff&size=64';
                                 @endphp
                                 <img src="{{ $avatarUrl }}" class="w-8 h-8 rounded-full border border-gray-200">
                                 <div>
-                                    <p class="text-sm font-bold text-gray-800">{{ $review->user->name }}</p>
+                                    <p class="text-sm font-bold text-gray-800">{{ $review->user->nama_lengkap }}</p>
                                     <p class="text-[10px] text-gray-400">
                                         {{ $review->user->regency ?? 'Lokasi tidak diketahui' }} • {{ $review->created_at->diffForHumans() }}
                                     </p>
