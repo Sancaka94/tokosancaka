@@ -15,6 +15,43 @@
 @endpush
 
 @section('content')
+
+{{-- ================================================================= --}}
+    {{-- WIDGET SALDO DIGIFLAZZ (HANYA UNTUK ADMIN) --}}
+    {{-- ================================================================= --}}
+    @if(auth()->check() && auth()->user()->role === 'Admin')
+    <div class="container mx-auto px-4 mt-6 max-w-3xl">
+        <div class="bg-gradient-to-r from-indigo-600 to-blue-600 rounded-xl shadow-lg p-6 text-white relative overflow-hidden">
+            
+            {{-- Dekorasi Background --}}
+            <div class="absolute right-0 top-0 opacity-10 transform translate-x-4 -translate-y-4">
+                <i class="fas fa-wallet text-9xl"></i>
+            </div>
+
+            <div class="relative z-10 flex flex-col md:flex-row justify-between items-center gap-4">
+                {{-- Info Saldo --}}
+                <div>
+                    <p class="text-blue-100 text-sm font-medium mb-1 flex items-center gap-2">
+                        <i class="fas fa-coins"></i> Saldo Modal (Digiflazz)
+                    </p>
+                    <h2 class="text-3xl font-bold tracking-tight" id="digi-saldo">
+                        Rp ...
+                    </h2>
+                    <p class="text-xs text-blue-200 mt-1">Pastikan saldo cukup sebelum transaksi.</p>
+                </div>
+
+                {{-- Tombol Refresh --}}
+                <button onclick="refreshSaldo()" id="btn-refresh-saldo" 
+                        class="group bg-white/20 hover:bg-white/30 text-white px-5 py-2.5 rounded-lg backdrop-blur-sm transition-all flex items-center gap-2 text-sm font-semibold border border-white/10 shadow-sm">
+                    <i class="fas fa-sync-alt transition-transform group-hover:rotate-180" id="icon-refresh"></i> 
+                    Cek Saldo Terbaru
+                </button>
+            </div>
+        </div>
+    </div>
+    @endif
+    {{-- ================================================================= --}}
+
 <div class="bg-gray-100 min-h-screen py-8">
     <div class="container mx-auto px-4 max-w-3xl">
         
@@ -346,5 +383,64 @@
         
         document.getElementById('checkout_form').submit();
     }
+
+    // --- SKRIP CEK SALDO DIGIFLAZZ ---
+    function refreshSaldo() {
+        const saldoEl = document.getElementById('digi-saldo');
+        const icon = document.getElementById('icon-refresh');
+        const btn = document.getElementById('btn-refresh-saldo');
+        
+        // Cek jika elemen ada (karena hanya admin yg punya elemen ini)
+        if (!saldoEl) return;
+
+        // Efek Loading
+        saldoEl.innerText = 'Memuat...';
+        saldoEl.classList.add('animate-pulse');
+        icon.classList.add('fa-spin');
+        btn.disabled = true;
+        btn.classList.add('opacity-75', 'cursor-not-allowed');
+
+        // Panggil Route Controller
+        fetch("{{ route('ppob.cek-saldo') }}", {
+            headers: {
+                "X-Requested-With": "XMLHttpRequest",
+                "Accept": "application/json"
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Hentikan Loading
+            icon.classList.remove('fa-spin');
+            saldoEl.classList.remove('animate-pulse');
+            btn.disabled = false;
+            btn.classList.remove('opacity-75', 'cursor-not-allowed');
+
+            if(data.status) {
+                // Sukses
+                saldoEl.innerText = data.formatted;
+            } else {
+                // Gagal
+                saldoEl.innerText = 'Error';
+                console.error(data.message);
+                alert('Gagal cek saldo: ' + data.message);
+            }
+        })
+        .catch(error => {
+            // Error Jaringan
+            icon.classList.remove('fa-spin');
+            saldoEl.classList.remove('animate-pulse');
+            btn.disabled = false;
+            saldoEl.innerText = 'Gagal Koneksi';
+            console.error('Error:', error);
+        });
+    }
+
+    // Jalankan otomatis saat halaman selesai dimuat (khusus Admin)
+    document.addEventListener('DOMContentLoaded', () => {
+        if(document.getElementById('digi-saldo')) {
+            refreshSaldo();
+        }
+    });
+    
 </script>
 @endpush
