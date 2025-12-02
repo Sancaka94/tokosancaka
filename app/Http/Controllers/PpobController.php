@@ -32,7 +32,20 @@ class PpobController extends Controller
     public function index()
     {
         $weblogo = $this->getWebLogo();
-        return view('admin.ppob.index', compact('weblogo'));
+        // 2. Deteksi Pengunjung (Admin vs Public)
+        $prefix = request()->segment(1);
+
+        // Jika URL diawali 'admin' ATAU user yang login adalah Admin
+        if ($prefix == 'admin' || (auth()->check() && auth()->user()->hasRole('Admin'))) {
+            
+            // Arahkan ke View Dashboard Admin (yang ada tombol Cek Saldo)
+            // Pastikan file ini ada: resources/views/admin/ppob/index.blade.php
+            return view('admin.ppob.index'); 
+        }
+
+        // Jika Public / Customer
+        // Pastikan file ini ada: resources/views/ppob/index.blade.php
+        return view('ppob.index');
     }
 
     /**
