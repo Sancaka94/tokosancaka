@@ -75,7 +75,8 @@ class PpobController extends Controller
         $categoriesMap = [
             'pulsa'       => ['Pulsa'],
             'data'        => ['Data'],
-            'pln-token'   => ['PLN'],      
+            'pln-token'   => ['PLN'],
+            'pln-bill'    => ['PLN Pascabayar', 'Tagihan PLN'],      
             'e-money'     => ['E-Money'],
             'voucher-game'=> ['Games'],
             'streaming'   => ['TV', 'Streaming'],
@@ -107,6 +108,18 @@ class PpobController extends Controller
             $pageInfo['input_label'] = 'ID Pemain (User ID)';
             $pageInfo['input_place'] = 'Masukkan ID Game';
             $pageInfo['icon']        = 'fa-gamepad';
+        }
+
+        // --- TAMBAHKAN LOGIKA KHUSUS UNTUK PASCABAYAR ---
+        if ($slug == 'pln-bill') {
+            $pageInfo['input_label'] = 'ID Pelanggan / Nomor Meter';
+            $pageInfo['input_place'] = 'Contoh: 53xxxxxxxxx';
+            $pageInfo['icon']        = 'fa-file-invoice-dollar';
+            
+            // Mode Pascabayar (Inquiry)
+            $pageInfo['is_postpaid'] = true; 
+        } else {
+            $pageInfo['is_postpaid'] = false;
         }
 
         // Ambil Produk dari Database Lokal

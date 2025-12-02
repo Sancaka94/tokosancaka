@@ -102,6 +102,14 @@
                     <span class="text-xs md:text-sm text-gray-600 text-center font-medium group-hover:text-yellow-600">Token PLN</span>
                 </a>
 
+                {{-- Tagihan Listrik (Pascabayar) --}}
+                <a href="{{ route('ppob.category', 'pln-bill') }}" class="ppob-menu-item flex flex-col items-center group">
+                    <div class="icon-box w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-orange-50 text-orange-500 flex items-center justify-center mb-2 group-hover:bg-orange-500 group-hover:text-white transition-colors border border-orange-100">
+                        <i class="fas fa-file-invoice-dollar text-xl md:text-2xl"></i>
+                    </div>
+                    <span class="text-xs md:text-sm text-gray-600 text-center font-medium group-hover:text-orange-600">Tagihan PLN</span>
+                </a>
+
                 {{-- E-Wallet --}}
                 <a href="{{ route('ppob.category', 'e-money') }}" class="ppob-menu-item flex flex-col items-center group">
                     <div class="icon-box w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-purple-50 text-purple-500 flex items-center justify-center mb-2 group-hover:bg-purple-500 group-hover:text-white transition-colors border border-purple-100">
