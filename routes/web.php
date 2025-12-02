@@ -72,8 +72,16 @@ use App\Http\Controllers\ProductReviewController;
 use App\Http\Controllers\SellerReviewController;
 use App\Http\Controllers\Admin\AdminReviewController;
 use App\Http\Controllers\PpobController; // <--- Jangan lupa import ini di paling atas
+use App\Http\Controllers\DigiflazzWebhookController;
 
 
+
+
+
+
+
+// Route Webhook Digiflazz (Harus POST)
+Route::post('/digiflazz/webhook', [DigiflazzWebhookController::class, 'handle'])->name('digiflazz.webhook');
 
 Route::post('/reviews', [ProductReviewController::class, 'store'])->name('reviews.store')->middleware('auth');
 
