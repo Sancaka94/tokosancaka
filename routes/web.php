@@ -243,6 +243,22 @@ Route::middleware(['auth', 'verified'])->prefix('digital')->name('ppob.')->group
 });
 
 
+// Route Cek IP Hosting
+Route::get('/cek-ip-hosting', function () {
+    try {
+        // Minta server hosting nanya ke layanan cek IP publik
+        $response = Http::withoutVerifying()->get('https://api.ipify.org?format=json');
+        
+        return response()->json([
+            'message' => 'Copy IP di bawah ini dan masukkan ke Whitelist Digiflazz',
+            'real_ip_hosting' => $response->json()['ip'],
+            'keterangan' => 'Ini adalah IP asli yang digunakan server Anda untuk keluar.'
+        ]);
+    } catch (\Exception $e) {
+        return "Gagal cek IP: " . $e->getMessage();
+    }
+});
+
 
 Route::prefix('customer')->name('customer.')->group(function () {
     Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
