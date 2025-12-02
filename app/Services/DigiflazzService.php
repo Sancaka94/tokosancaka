@@ -53,8 +53,9 @@ class DigiflazzService
         return [];
     }
 
-    /**
-     * 2. Sinkronisasi Produk dari API ke Database Lokal (YANG HILANG)
+   /**
+     * 2. Sinkronisasi Produk dari API ke Database Lokal
+     * (VERSI PERBAIKAN: TANPA DB::raw)
      */
     public function syncProducts()
     {
@@ -65,33 +66,39 @@ class DigiflazzService
         }
 
         foreach ($products as $item) {
-            // Margin keuntungan Rp 2.000
             $margin = 2000;
             $modal = (float)$item['price'];
             $hargaJual = $modal + $margin;
 
-            PpobProduct::updateOrCreate(
-                ['buyer_sku_code' => $item['buyer_sku_code']],
-                [
-                    'product_name' => $item['product_name'],
-                    'category' => $item['category'],
-                    'brand' => $item['brand'],
-                    'type' => $item['type'],
-                    'seller_name' => $item['seller_name'],
-                    'price' => $modal,
-                    // Logika harga jual: Set awal, jangan ubah jika sudah diset manual admin
-                    'sell_price' => DB::raw("CASE WHEN sell_price = 0 THEN $hargaJual ELSE sell_price END"),
-                    
-                    'buyer_product_status' => $item['buyer_product_status'],
-                    'seller_product_status' => $item['seller_product_status'],
-                    'unlimited_stock' => $item['unlimited_stock'],
-                    'stock' => $item['stock'],
-                    'multi' => $item['multi'],
-                    'start_cut_off' => $item['start_cut_off'],
-                    'end_cut_off' => $item['end_cut_off'],
-                    'desc' => $item['desc'],
-                ]
-            );
+            // 1. Cari data lama atau buat objek baru (Belum disimpan ke DB)
+            $product = PpobProduct::firstOrNew(['buyer_sku_code' => $item['buyer_sku_code']]);
+
+            // 2. Update data-datanya
+            $product->product_name = $item['product_name'];
+            $product->category     = $item['category'];
+            $product->brand        = $item['brand'];
+            $product->type         = $item['type'];
+            $product->seller_name  = $item['seller_name'];
+            $product->price        = $modal;
+
+            // 3. LOGIKA HARGA JUAL (PHP):
+            // Jika ini produk baru (belum ada di DB) ATAU harga jualnya masih 0
+            if (!$product->exists || $product->sell_price <= 0) {
+                $product->sell_price = $hargaJual;
+            }
+            // Jika sudah ada harga jual (settingan admin), biarkan tetap (jangan ditimpa)
+
+            $product->buyer_product_status  = $item['buyer_product_status'];
+            $product->seller_product_status = $item['seller_product_status'];
+            $product->unlimited_stock       = $item['unlimited_stock'];
+            $product->stock                 = $item['stock'];
+            $product->multi                 = $item['multi'];
+            $product->start_cut_off         = $item['start_cut_off'];
+            $product->end_cut_off           = $item['end_cut_off'];
+            $product->desc                  = $item['desc'];
+
+            // 4. Simpan ke Database
+            $product->save();
         }
 
         return true;
