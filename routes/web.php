@@ -231,26 +231,26 @@ Route::middleware(['auth', 'verified'])->prefix('digital')->name('ppob.')->group
     // URL: /digital
     Route::get('/', [PpobController::class, 'index'])->name('index');
 
-    // 2. Halaman Isi Ulang Pulsa & Paket Data
-    // URL: /digital/pulsa
-    Route::get('/pulsa', [PpobController::class, 'pulsa'])->name('pulsa');
-
-    // 3. Halaman Token Listrik / PLN (Persiapan)
-    // URL: /digital/pln
-    Route::get('/pln', [PpobController::class, 'pln'])->name('pln');
-
-    // 4. Proses Transaksi / Checkout PPOB (Untuk nanti saat tombol Beli diklik)
+    // 2. Proses Transaksi / Checkout PPOB
     // URL: /digital/checkout
     Route::post('/checkout', [PpobController::class, 'store'])->name('store');
 
-    // 5. Cek Status Transaksi (AJAX - Opsional untuk refresh status)
+    // 3. Cek Status Transaksi (AJAX)
+    // URL: /digital/status/{ref_id}
     Route::get('/status/{ref_id}', [PpobController::class, 'checkStatus'])->name('status');
 
-    // Update Harga Ke Database
+    // 4. Update Harga Ke Database (Sync)
+    // URL: /digital/sync-produk
     Route::get('/sync-produk', [PpobController::class, 'sync'])->name('sync');
 
-    // Cek Saldo
+    // 5. Cek Saldo Digiflazz (Khusus Admin)
+    // URL: /digital/cek-saldo
     Route::get('/cek-saldo', [PpobController::class, 'cekSaldo'])->name('cek-saldo');
+
+    // 6. Halaman Kategori Dinamis (Pulsa, Data, PLN, Games, dll)
+    // PENTING: Taruh di paling bawah agar tidak bentrok dengan route lain
+    // URL: /digital/kategori/pulsa, /digital/kategori/pln-token, dll
+    Route::get('/kategori/{slug}', [PpobController::class, 'category'])->name('category');
 });
 
 
