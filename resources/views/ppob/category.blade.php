@@ -337,4 +337,3 @@
     @endif
 </script>
 @endpush
-@endsection
