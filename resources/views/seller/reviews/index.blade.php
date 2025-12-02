@@ -102,6 +102,40 @@
                         <div class="mt-2 bg-gray-50 p-3 rounded-lg border border-dashed border-gray-200">
                             <p class="text-sm text-gray-600 italic">"{{ $review->comment }}"</p>
                         </div>
+
+                        {{-- === FITUR BALASAN === --}}
+<div class="mt-4" x-data="{ openReply: false }">
+    
+    @if($review->reply)
+        {{-- Jika sudah dibalas --}}
+        <div class="ml-4 pl-4 border-l-2 border-indigo-200">
+            <div class="bg-indigo-50 p-3 rounded-r-lg rounded-bl-lg">
+                <p class="text-xs font-bold text-indigo-700 mb-1">
+                    <i class="fas fa-store mr-1"></i> Respon Penjual
+                    <span class="text-gray-400 font-normal ml-1">• {{ \Carbon\Carbon::parse($review->reply_at)->diffForHumans() }}</span>
+                </p>
+                <p class="text-sm text-gray-700">{{ $review->reply }}</p>
+            </div>
+        </div>
+    @else
+        {{-- Jika belum dibalas, tampilkan tombol --}}
+        <button @click="openReply = !openReply" class="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center">
+            <i class="fas fa-reply mr-1"></i> Balas Ulasan
+        </button>
+
+        {{-- Form Balasan (Hidden by default) --}}
+        <div x-show="openReply" class="mt-3 ml-4" x-transition>
+            <form action="{{ route('seller.reviews.reply', $review->id) }}" method="POST">
+                @csrf
+                <textarea name="reply" rows="2" class="w-full text-sm border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500" placeholder="Tulis balasan Anda..." required></textarea>
+                <div class="mt-2 text-right">
+                    <button type="submit" class="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded hover:bg-blue-700">Kirim Balasan</button>
+                </div>
+            </form>
+        </div>
+    @endif
+</div>
+{{-- === AKHIR FITUR BALASAN === --}}
                     </div>
 
                 </div>
