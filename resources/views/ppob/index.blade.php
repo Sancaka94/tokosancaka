@@ -126,7 +126,7 @@
                     <span class="text-xs md:text-sm text-gray-600 text-center font-medium group-hover:text-indigo-600">Voucher Game</span>
                 </a>
 
-                {{-- Streaming --}}
+                {{-- Streaming (Placeholder) --}}
                 <a href="#" class="ppob-menu-item flex flex-col items-center group opacity-50 cursor-not-allowed" title="Segera Hadir">
                     <div class="icon-box w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-pink-50 text-pink-500 flex items-center justify-center mb-2 border border-pink-100">
                         <i class="fas fa-tv text-xl md:text-2xl"></i>
@@ -142,7 +142,7 @@
                     <span class="text-xs md:text-sm text-gray-400 text-center font-medium">PDAM</span>
                 </a>
 
-                {{-- Lainnya --}}
+                {{-- Lainnya (Placeholder) --}}
                 <a href="#" class="ppob-menu-item flex flex-col items-center group">
                     <div class="icon-box w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-gray-100 text-gray-500 flex items-center justify-center mb-2 group-hover:bg-gray-600 group-hover:text-white transition-colors border border-gray-200">
                         <i class="fas fa-ellipsis-h text-xl md:text-2xl"></i>
@@ -159,12 +159,10 @@
         <div class="mt-8 mb-8">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-lg font-bold text-gray-800">Riwayat Transaksi Terakhir</h3>
-                {{-- Anda bisa arahkan ini ke halaman riwayat lengkap jika sudah ada --}}
                 <a href="#" class="text-sm text-blue-600 font-medium hover:underline">Lihat Semua</a>
             </div>
             
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 divide-y divide-gray-100 overflow-hidden">
-                {{-- Placeholder jika belum ada data --}}
                 <div class="p-8 text-center text-gray-400">
                     <div class="bg-gray-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3">
                         <i class="fas fa-receipt text-2xl text-gray-300"></i>
@@ -193,7 +191,7 @@
         btn.disabled = true;
         btn.classList.add('opacity-75', 'cursor-not-allowed');
 
-        // Panggil Route Controller
+        // Panggil Route Controller (PASTIKAN ROUTE INI ADA DI web.php PREFIX ADMIN)
         fetch("{{ route('ppob.cek-saldo') }}", {
             headers: {
                 "X-Requested-With": "XMLHttpRequest",
