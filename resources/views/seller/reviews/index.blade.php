@@ -71,18 +71,44 @@
                     <div class="md:w-3/4">
                         <div class="flex justify-between items-start mb-2">
                             {{-- Profil Pembeli --}}
-                            <div class="flex items-center gap-2">
+                            <div class="flex items-start gap-3">
                                 @php
-                                    $avatarPath = $review->user->store_logo_path ?? null; 
+                                    $avatarPath = $review->user->seller_logo_path ?? null; 
                                     $avatarUrl = $avatarPath 
                                         ? asset('public/storage/'.$avatarPath) 
                                         : 'https://ui-avatars.com/api/?name='.urlencode($review->user->nama_lengkap).'&background=random&color=fff&size=64';
                                 @endphp
-                                <img src="{{ $avatarUrl }}" class="w-8 h-8 rounded-full border border-gray-200">
+                                <img src="{{ $avatarUrl }}" class="w-9 h-9 rounded-full border border-gray-200 mt-1">
+                                
                                 <div>
-                                    <p class="text-sm font-bold text-gray-800">{{ $review->user->nama_lengkap }}</p>
-                                    <p class="text-[10px] text-gray-400">
-                                        {{ $review->user->regency ?? 'Lokasi tidak diketahui' }} • {{ $review->created_at->diffForHumans() }}
+                                    <div class="flex items-center gap-2 mb-0.5">
+                                        <p class="text-sm font-bold text-gray-800">{{ $review->user->nama_lengkap }}</p>
+                                        {{-- BADGE PEMBELI --}}
+                                        <span class="bg-green-100 text-green-700 text-[10px] px-2 py-0.5 rounded-full font-bold border border-green-200">
+                                            Customer
+                                        </span>
+                                    </div>
+                                    
+                                    {{-- LOKASI LENGKAP (KOTA & PROVINSI) --}}
+                                    <p class="text-[11px] text-gray-500 leading-tight">
+                                        @if($review->user->regency)
+                                            {{ $review->user->regency }}
+                                        @endif
+                                        
+                                        @if($review->user->regency && $review->user->province)
+                                            , 
+                                        @endif
+                                        
+                                        @if($review->user->province)
+                                            {{ $review->user->province }}
+                                        @endif
+                                        
+                                        @if(!$review->user->regency && !$review->user->province)
+                                            Lokasi tidak diketahui
+                                        @endif
+                                        
+                                        <span class="mx-1 text-gray-300">•</span> 
+                                        {{ $review->created_at->diffForHumans() }}
                                     </p>
                                 </div>
                             </div>
