@@ -1117,19 +1117,19 @@ Route::get('/controllers-list', function () {
     // ==========================================================
 
 // 1. Route Public (Etalase)
-Route::get('/etalase/ppob/digital/{slug}', [DigiflazzController::class, 'category']);
+Route::get('/etalase/ppob/digital/{slug}', [PpobController::class, 'category']);
 
 // 2. Route Admin (Perlu Middleware Admin)
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
-    Route::get('/digital/{slug}', [DigiflazzController::class, 'category']);
+    Route::get('/digital/{slug}', [PpobController::class, 'category']);
 });
 
 // 3. Route Seller (Perlu Middleware Seller)
 Route::middleware(['auth', 'role:seller'])->prefix('seller')->group(function () {
-    Route::get('/digital/{slug}', [DigiflazzController::class, 'category']);
+    Route::get('/digital/{slug}', [PpobController::class, 'category']);
 });
 
 // 4. Route Customer (Perlu Middleware Auth)
 Route::middleware(['auth'])->prefix('member')->group(function () {
-    Route::get('/digital/{slug}', [DigiflazzController::class, 'category']);
+    Route::get('/digital/{slug}', [PpobController::class, 'category']);
 });
