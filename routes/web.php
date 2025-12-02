@@ -71,7 +71,7 @@ use App\Http\Controllers\Admin\KoliController as AdminKoliController;
 use App\Http\Controllers\ProductReviewController;
 use App\Http\Controllers\SellerReviewController;
 use App\Http\Controllers\Admin\AdminReviewController;
-
+use App\Http\Controllers\PpobController; // <--- Jangan lupa import ini di paling atas
 
 
 
@@ -213,6 +213,31 @@ Route::get('/kontak/search', [KontakController::class, 'search'])->name('api.sea
 Route::get('/kontak/search', [KontakController::class, 'search'])->name('kontak.search');
 
 Route::get('/marketplace', [CustomerMarketplaceController::class, 'index'])->name('katalog.index');
+
+// =========================================================================
+// == RUTE PPOB / PRODUK DIGITAL (DIGIFLAZZ)
+// =========================================================================
+Route::middleware(['auth', 'verified'])->prefix('digital')->name('ppob.')->group(function () {
+    
+    // 1. Halaman Utama Menu PPOB (Dashboard Digital)
+    // URL: /digital
+    Route::get('/', [PpobController::class, 'index'])->name('index');
+
+    // 2. Halaman Isi Ulang Pulsa & Paket Data
+    // URL: /digital/pulsa
+    Route::get('/pulsa', [PpobController::class, 'pulsa'])->name('pulsa');
+
+    // 3. Halaman Token Listrik / PLN (Persiapan)
+    // URL: /digital/pln
+    Route::get('/pln', [PpobController::class, 'pln'])->name('pln');
+
+    // 4. Proses Transaksi / Checkout PPOB (Untuk nanti saat tombol Beli diklik)
+    // URL: /digital/checkout
+    Route::post('/checkout', [PpobController::class, 'store'])->name('store');
+
+    // 5. Cek Status Transaksi (AJAX - Opsional untuk refresh status)
+    Route::get('/status/{ref_id}', [PpobController::class, 'checkStatus'])->name('status');
+});
 
 
 
