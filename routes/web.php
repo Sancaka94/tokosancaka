@@ -372,7 +372,9 @@ Route::get('/seller/reviews', [SellerReviewController::class, 'index'])
     ->middleware(['auth'])
     ->name('seller.reviews.index');
 
-Route::post('/seller/reviews/{review}/reply', [SellerReviewController::class, 'reply'])->name('seller.reviews.reply');
+Route::post('/seller/reviews/{review}/reply', [SellerReviewController::class, 'reply'])
+->middleware(['auth'])
+->name('seller.reviews.reply');
 
 
 Route::middleware(['auth', RoleMiddleware::class . ':Pelanggan|Seller'])
