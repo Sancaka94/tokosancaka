@@ -353,5 +353,48 @@
             alert("Fitur bayar pascabayar akan segera aktif!");
         }
     @endif
+
+    // --- TAMBAHAN SCRIPT CEK PLN PRABAYAR ---
+    @if($pageInfo['slug'] == 'pln-token')
+    function cekPlnPrabayar() {
+        const no = inputNo.value;
+        if(no.length < 10) { alert("Masukkan Nomor Meter dengan benar!"); return; }
+
+        const btn = document.getElementById('btn-cek-pln');
+        const infoBox = document.getElementById('pln_info');
+        
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengecek...';
+        btn.disabled = true;
+        infoBox.classList.add('hidden');
+
+        fetch('{{ route("ppob.check.pln.prabayar") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({ customer_no: no })
+        })
+        .then(res => res.json())
+        .then(data => {
+            btn.innerHTML = '<i class="fas fa-search mr-1"></i> Cek ID Pelanggan';
+            btn.disabled = false;
+
+            if(data.status === 'success') {
+                document.getElementById('pln_name').innerText = data.name;
+                document.getElementById('pln_power').innerText = data.segment_power;
+                infoBox.classList.remove('hidden');
+            } else {
+                alert(data.message);
+            }
+        })
+        .catch(err => {
+            btn.innerHTML = 'Cek ID Pelanggan';
+            btn.disabled = false;
+            alert("Gagal koneksi server.");
+        });
+    }
+    @endif
+    
 </script>
 @endpush
