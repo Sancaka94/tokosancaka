@@ -8,6 +8,9 @@
     <style>
         .brand-radio:checked + div { border-color: #2563eb; background-color: #eff6ff; color: #1d4ed8; }
         .product-item:hover { transform: translateY(-2px); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        /* Loading Spinner */
+        .loader { border: 3px solid #f3f3f3; border-radius: 50%; border-top: 3px solid #3498db; width: 20px; height: 20px; -webkit-animation: spin 1s linear infinite; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 @endpush
 
@@ -15,16 +18,13 @@
 <div class="bg-gray-100 min-h-screen py-8">
     <div class="container mx-auto px-4 max-w-4xl">
         
-        {{-- Pesan Flash --}}
         @if(session('success')) <div class="bg-green-100 text-green-700 p-4 rounded mb-4">{{ session('success') }}</div> @endif
         @if(session('error')) <div class="bg-red-100 text-red-700 p-4 rounded mb-4">{{ session('error') }}</div> @endif
 
         <div class="flex flex-col md:flex-row gap-6">
             
-            {{-- KOLOM KIRI: Input & Filter Brand --}}
+            {{-- KOLOM KIRI: Input & Filter --}}
             <div class="md:w-1/3 space-y-6">
-                
-                {{-- Card Input --}}
                 <div class="bg-white rounded-xl shadow-sm p-6">
                     <h1 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
                         <i class="fas {{ $pageInfo['icon'] }} text-blue-600"></i> {{ $pageInfo['title'] }}
@@ -37,21 +37,27 @@
                                placeholder="{{ $pageInfo['input_place'] }}">
                         <p class="text-xs text-gray-400 mt-1">Pastikan nomor tujuan benar.</p>
                     </div>
+
+                    {{-- TOMBOL CEK TAGIHAN (HANYA UNTUK PASCABAYAR) --}}
+                    @if(isset($pageInfo['is_postpaid']) && $pageInfo['is_postpaid'])
+                        <button onclick="cekTagihan()" id="btn-cek-tagihan" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition flex justify-center items-center gap-2">
+                            <span id="btn-text">Cek Tagihan</span>
+                            <div id="loading-spinner" class="loader hidden"></div>
+                        </button>
+                    @endif
                 </div>
 
-                {{-- Card Pilih Brand / Operator --}}
+                {{-- FILTER BRAND (HANYA UNTUK PRABAYAR / TOKEN / GAME) --}}
+                @if(!isset($pageInfo['is_postpaid']) || !$pageInfo['is_postpaid'])
                 <div class="bg-white rounded-xl shadow-sm p-6">
-                    <h2 class="text-sm font-bold text-gray-700 mb-3">Pilih Operator / Produk</h2>
+                    <h2 class="text-sm font-bold text-gray-700 mb-3">Pilih Produk</h2>
                     <div class="grid grid-cols-2 gap-2 max-h-96 overflow-y-auto pr-1">
-                        {{-- Tombol "Semua" --}}
                         <label class="cursor-pointer">
                             <input type="radio" name="brand_filter" value="all" class="brand-radio hidden" checked onchange="filterProducts('all')">
                             <div class="border border-gray-200 rounded-lg p-2 text-center text-xs font-bold hover:bg-gray-50 transition">
                                 SEMUA
                             </div>
                         </label>
-
-                        {{-- Loop Brand dari Database --}}
                         @foreach($brands as $brand)
                         <label class="cursor-pointer">
                             <input type="radio" name="brand_filter" value="{{ $brand }}" class="brand-radio hidden" onchange="filterProducts('{{ $brand }}')">
@@ -62,63 +68,89 @@
                         @endforeach
                     </div>
                 </div>
+                @endif
             </div>
 
-            {{-- KOLOM KANAN: Daftar Produk --}}
+            {{-- KOLOM KANAN: Hasil --}}
             <div class="md:w-2/3">
                 <div class="bg-white rounded-xl shadow-sm p-6 min-h-[500px]">
-                    <h2 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2 flex justify-between items-center">
-                        <span>Daftar Harga</span>
-                        <a href="{{ route('ppob.sync') }}" class="text-xs text-blue-600 hover:underline"><i class="fas fa-sync"></i> Update</a>
-                    </h2>
+                    
+                    {{-- HEADER: PRABAYAR (Token, Pulsa) --}}
+                    @if(!isset($pageInfo['is_postpaid']) || !$pageInfo['is_postpaid'])
+                        <h2 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2 flex justify-between items-center">
+                            <span>Daftar Harga</span>
+                            <a href="{{ route('ppob.sync') }}" class="text-xs text-blue-600 hover:underline"><i class="fas fa-sync"></i> Update</a>
+                        </h2>
 
-                    <div id="product_list" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        @foreach($products as $product)
-                        <div class="product-item border border-gray-200 rounded-lg p-4 cursor-pointer relative bg-white transition-all duration-200"
-                             data-brand="{{ $product->brand }}"
-                             data-sku="{{ $product->buyer_sku_code }}"
-                             data-name="{{ $product->product_name }}"
-                             data-price="{{ $product->sell_price }}"
-                             onclick="selectProduct(this)">
-                            
-                            {{-- Header Produk --}}
-                            <div class="flex justify-between items-start mb-2">
-                                <span class="bg-gray-100 text-gray-600 text-[10px] font-bold px-2 py-1 rounded uppercase">
-                                    {{ $product->brand }}
-                                </span>
-                                @if($product->stock < 5 && !$product->unlimited_stock)
-                                    <span class="bg-red-100 text-red-600 text-[10px] font-bold px-2 py-1 rounded">Sisa {{ $product->stock }}</span>
-                                @endif
-                            </div>
-
-                            <h3 class="text-sm font-bold text-gray-800 mb-1 leading-tight">{{ $product->product_name }}</h3>
-                            <p class="text-xs text-gray-500 mb-3 line-clamp-1">{{ $product->desc }}</p>
-                            
-                            <div class="flex justify-between items-end border-t border-dashed pt-2">
-                                <div>
-                                    <p class="text-[10px] text-gray-400">Harga</p>
-                                    <p class="text-lg font-bold text-blue-600">Rp{{ number_format($product->sell_price, 0, ',', '.') }}</p>
+                        <div id="product_list" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            @foreach($products as $product)
+                            <div class="product-item border border-gray-200 rounded-lg p-4 cursor-pointer relative bg-white transition-all duration-200"
+                                 data-brand="{{ $product->brand }}"
+                                 data-sku="{{ $product->buyer_sku_code }}"
+                                 data-name="{{ $product->product_name }}"
+                                 data-price="{{ $product->sell_price }}"
+                                 onclick="selectProduct(this)">
+                                
+                                <div class="flex justify-between items-start mb-2">
+                                    <span class="bg-gray-100 text-gray-600 text-[10px] font-bold px-2 py-1 rounded uppercase">
+                                        {{ $product->brand }}
+                                    </span>
+                                    @if($product->stock < 5 && !$product->unlimited_stock)
+                                        <span class="bg-red-100 text-red-600 text-[10px] font-bold px-2 py-1 rounded">Sisa {{ $product->stock }}</span>
+                                    @endif
                                 </div>
-                                <button class="bg-blue-50 text-blue-600 w-8 h-8 rounded-full flex items-center justify-center hover:bg-blue-600 hover:text-white transition">
-                                    <i class="fas fa-shopping-cart text-xs"></i>
-                                </button>
-                            </div>
-                        </div>
-                        @endforeach
-                    </div>
 
-                    {{-- State Kosong --}}
-                    <div id="empty_state" class="hidden flex flex-col items-center justify-center py-10 text-gray-400">
-                        <i class="fas fa-search text-4xl mb-2"></i>
-                        <p>Produk tidak ditemukan untuk operator ini.</p>
-                    </div>
+                                <h3 class="text-sm font-bold text-gray-800 mb-1 leading-tight">{{ $product->product_name }}</h3>
+                                <p class="text-xs text-gray-500 mb-3 line-clamp-1">{{ $product->desc }}</p>
+                                
+                                <div class="flex justify-between items-end border-t border-dashed pt-2">
+                                    <div>
+                                        <p class="text-[10px] text-gray-400">Harga</p>
+                                        <p class="text-lg font-bold text-blue-600">Rp{{ number_format($product->sell_price, 0, ',', '.') }}</p>
+                                    </div>
+                                    <button class="bg-blue-50 text-blue-600 w-8 h-8 rounded-full flex items-center justify-center hover:bg-blue-600 hover:text-white transition">
+                                        <i class="fas fa-shopping-cart text-xs"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
+                    
+                    {{-- HEADER: PASCABAYAR (Tagihan) --}}
+                    @else
+                        <h2 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2">Rincian Tagihan</h2>
+                        
+                        <div id="bill_result" class="hidden">
+                            <div class="bg-blue-50 p-4 rounded-lg mb-4 border border-blue-100">
+                                <div class="grid grid-cols-2 gap-2 text-sm">
+                                    <div class="text-gray-500">Nama Pelanggan</div>
+                                    <div class="font-bold text-right" id="bill_name">-</div>
+                                    
+                                    <div class="text-gray-500">ID Pelanggan</div>
+                                    <div class="font-bold text-right" id="bill_id">-</div>
+                                    
+                                    <div class="text-gray-500">Total Tagihan</div>
+                                    <div class="font-bold text-right text-lg text-blue-600" id="bill_amount">-</div>
+                                </div>
+                            </div>
+                            <button onclick="bayarTagihan()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition">
+                                Bayar Sekarang
+                            </button>
+                        </div>
+
+                        <div id="bill_empty" class="flex flex-col items-center justify-center py-10 text-gray-400">
+                            <i class="fas fa-file-invoice text-4xl mb-2"></i>
+                            <p>Masukkan nomor pelanggan lalu klik "Cek Tagihan"</p>
+                        </div>
+                    @endif
+
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-{{-- MODAL KONFIRMASI CHECKOUT --}}
+{{-- MODAL KONFIRMASI (PRABAYAR) --}}
 <div id="confirmModal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
     <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
         <div class="fixed inset-0 bg-gray-900 bg-opacity-50 transition-opacity" onclick="closeModal()"></div>
@@ -145,7 +177,6 @@
                                 <span class="font-bold text-blue-600 text-lg" id="modal_price">-</span>
                             </div>
                         </div>
-                        <p class="text-xs text-gray-400 mt-2 text-center">Saldo Anda akan terpotong otomatis.</p>
                     </div>
                 </div>
             </div>
@@ -170,79 +201,140 @@
 
 @push('scripts')
 <script>
-    const items = document.querySelectorAll('.product-item');
-    const emptyState = document.getElementById('empty_state');
     const inputNo = document.getElementById('customer_no');
     
-    // Logic Filter Brand
-    function filterProducts(brand) {
-        let count = 0;
-        items.forEach(item => {
-            if (brand === 'all' || item.dataset.brand === brand) {
-                item.classList.remove('hidden');
-                count++;
-            } else {
-                item.classList.add('hidden');
-            }
-        });
-
-        if (count === 0) {
-            emptyState.classList.remove('hidden');
-        } else {
-            emptyState.classList.add('hidden');
+    // ==========================================
+    // LOGIKA UNTUK PRABAYAR (TOKEN, PULSA, GAME)
+    // ==========================================
+    @if(!isset($pageInfo['is_postpaid']) || !$pageInfo['is_postpaid'])
+        const items = document.querySelectorAll('.product-item');
+        
+        function filterProducts(brand) {
+            items.forEach(item => {
+                if (brand === 'all' || item.dataset.brand === brand) {
+                    item.classList.remove('hidden');
+                } else {
+                    item.classList.add('hidden');
+                }
+            });
         }
-    }
 
-    // Logic Deteksi Operator Otomatis (Opsional untuk Pulsa/Data)
-    // Jika slugnya 'pulsa' atau 'data', kita aktifkan auto detect
-    @if($pageInfo['slug'] == 'pulsa' || $pageInfo['slug'] == 'data')
-    inputNo.addEventListener('input', function(e) {
-        const val = e.target.value;
-        if(val.length >= 4) {
-            let operator = null;
-            if(/^08(11|12|13|21|22|52|53|51)/.test(val)) operator = 'TELKOMSEL';
-            else if(/^08(14|15|16|55|56|57|58)/.test(val)) operator = 'INDOSAT';
-            else if(/^08(17|18|19|59|77|78)/.test(val)) operator = 'XL';
-            else if(/^08(95|96|97|98|99)/.test(val)) operator = 'TRI';
-            else if(/^08(81|82|83|84|85|86|87|88|89)/.test(val)) operator = 'SMARTFREN';
-            else if(/^08(31|32|33|38)/.test(val)) operator = 'AXIS';
+        // Auto Detect Operator (Hanya untuk Pulsa & Data)
+        @if($pageInfo['slug'] == 'pulsa' || $pageInfo['slug'] == 'data')
+        inputNo.addEventListener('input', function(e) {
+            const val = e.target.value;
+            if(val.length >= 4) {
+                let operator = null;
+                if(/^08(11|12|13|21|22|52|53|51)/.test(val)) operator = 'TELKOMSEL';
+                else if(/^08(14|15|16|55|56|57|58)/.test(val)) operator = 'INDOSAT';
+                else if(/^08(17|18|19|59|77|78)/.test(val)) operator = 'XL';
+                else if(/^08(95|96|97|98|99)/.test(val)) operator = 'TRI';
+                else if(/^08(81|82|83|84|85|86|87|88|89)/.test(val)) operator = 'SMARTFREN';
+                else if(/^08(31|32|33|38)/.test(val)) operator = 'AXIS';
 
-            if(operator) {
-                // Cari radio button yg value-nya operator ini dan klik
-                const radio = document.querySelector(`input[name="brand_filter"][value="${operator}"]`);
-                if(radio) {
-                    radio.checked = true;
-                    filterProducts(operator);
+                if(operator) {
+                    const radio = document.querySelector(`input[name="brand_filter"][value="${operator}"]`);
+                    if(radio) {
+                        radio.checked = true;
+                        filterProducts(operator);
+                    }
                 }
             }
+        });
+        @endif
+
+        // Modal Checkout Prabayar
+        function selectProduct(el) {
+            const no = inputNo.value;
+            if(no.length < 5) {
+                alert("Nomor tujuan belum diisi!");
+                inputNo.focus();
+                return;
+            }
+            document.getElementById('modal_no').innerText = no;
+            document.getElementById('modal_product').innerText = el.dataset.name;
+            document.getElementById('modal_price').innerText = 'Rp ' + parseInt(el.dataset.price).toLocaleString('id-ID');
+            document.getElementById('form_sku').value = el.dataset.sku;
+            document.getElementById('form_no').value = no;
+            document.getElementById('confirmModal').classList.remove('hidden');
         }
-    });
+
+        function closeModal() {
+            document.getElementById('confirmModal').classList.add('hidden');
+        }
+
+    // ==========================================
+    // LOGIKA UNTUK PASCABAYAR (CEK TAGIHAN)
+    // ==========================================
+    @else
+        let inquiryRefId = null;
+
+        function cekTagihan() {
+            const no = inputNo.value;
+            if(no.length < 5) { alert("Masukkan ID Pelanggan!"); return; }
+
+            const btn = document.getElementById('btn-cek-tagihan');
+            const spinner = document.getElementById('loading-spinner');
+            const text = document.getElementById('btn-text');
+            const resultDiv = document.getElementById('bill_result');
+            const emptyDiv = document.getElementById('bill_empty');
+
+            // Loading State
+            btn.disabled = true;
+            spinner.classList.remove('hidden');
+            text.innerText = "Mengecek...";
+            resultDiv.classList.add('hidden');
+            emptyDiv.classList.add('hidden');
+
+            // AJAX Call
+            fetch('{{ route("ppob.check.bill") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({
+                    customer_no: no,
+                    // SKU Pascabayar biasanya fix, misal 'PLN' untuk listrik. 
+                    // Nanti bisa disesuaikan logic-nya di controller.
+                    sku: 'PLN' 
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                btn.disabled = false;
+                spinner.classList.add('hidden');
+                text.innerText = "Cek Tagihan";
+
+                if(data.status === 'success') {
+                    // Tampilkan Hasil
+                    document.getElementById('bill_name').innerText = data.customer_name;
+                    document.getElementById('bill_id').innerText = data.customer_no;
+                    document.getElementById('bill_amount').innerText = 'Rp ' + parseInt(data.amount).toLocaleString('id-ID');
+                    
+                    inquiryRefId = data.ref_id; // Simpan Ref ID untuk bayar
+                    resultDiv.classList.remove('hidden');
+                } else {
+                    alert(data.message);
+                    emptyDiv.classList.remove('hidden');
+                }
+            })
+            .catch(err => {
+                btn.disabled = false;
+                spinner.classList.add('hidden');
+                text.innerText = "Cek Tagihan";
+                alert("Terjadi kesalahan koneksi.");
+                console.error(err);
+            });
+        }
+
+        function bayarTagihan() {
+            if(!inquiryRefId) return;
+            // Arahkan ke route bayar (logic bayar pascabayar belum dibuat di controller store, 
+            // tapi bisa menggunakan logic yang sama dengan prabayar jika disesuaikan).
+            alert("Fitur bayar pascabayar akan segera aktif!");
+        }
     @endif
-
-    // Logic Modal Checkout
-    function selectProduct(el) {
-        const no = inputNo.value;
-        if(no.length < 5) {
-            alert("{{ $pageInfo['input_label'] }} belum diisi dengan benar!");
-            inputNo.focus();
-            return;
-        }
-
-        // Isi data modal
-        document.getElementById('modal_no').innerText = no;
-        document.getElementById('modal_product').innerText = el.dataset.name;
-        document.getElementById('modal_price').innerText = 'Rp ' + parseInt(el.dataset.price).toLocaleString('id-ID');
-        
-        // Isi form hidden
-        document.getElementById('form_sku').value = el.dataset.sku;
-        document.getElementById('form_no').value = no;
-
-        // Tampilkan modal
-        document.getElementById('confirmModal').classList.remove('hidden');
-    }
-
-    function closeModal() {
-        document.getElementById('confirmModal').classList.add('hidden');
-    }
 </script>
 @endpush
+@endsection
