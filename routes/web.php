@@ -646,6 +646,14 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])
         // All general admin routes should go in this file
 
         require __DIR__.'/web/admin.php';
+
+        // Halaman Kategori PPOB (Pulsa, Data, PLN, dll)
+    Route::get('/digital/{slug}', [PpobController::class, 'category'])
+        ->name('admin.ppob.category'); // <-- INI YANG DICARI OLEH BLADE ANDA
+        
+    // Cek Saldo Digiflazz (Khusus Admin)
+    Route::get('/ppob/cek-saldo', [PpobController::class, 'checkSaldo'])
+        ->name('ppob.cek-saldo');
         
         Route::resource('customers/data/pengguna', DataPenggunaController::class)
     ->names('customers.data.pengguna');
