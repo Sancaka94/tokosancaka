@@ -39,8 +39,6 @@ class PpobController extends Controller
         // Pastikan DigiflazzService Anda sudah menggunakan signature 'pricelist'
         $products = $this->digiflazz->getPriceList('prepaid');
 
-        dd($products);
-
         // ======================================================
         // [DEBUG] TAMPILKAN JSON KE LOG LARAVEL
         // ======================================================
