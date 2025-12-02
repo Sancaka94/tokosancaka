@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Services\DigiflazzService;
 use Illuminate\Support\Facades\Cache;
+use App\Models\Setting; // Pastikan Model Setting di-import
 
 class PpobController extends Controller
 {
@@ -15,14 +16,25 @@ class PpobController extends Controller
         $this->digiflazz = $digiflazz;
     }
 
+    // Helper untuk mengambil logo
+    private function getWebLogo()
+    {
+        $setting = Setting::first();
+        return $setting ? $setting->web_logo : null;
+    }
+
     public function index()
     {
-        return view('ppob.index');
+        $weblogo = $this->getWebLogo();
+        return view('ppob.index', compact('weblogo'));
     }
 
     public function pulsa()
     {
-        // Cache price list selama 60 menit agar tidak request ke API terus menerus (hemat bandwidth & cepat)
+        // Ambil Logo
+        $weblogo = $this->getWebLogo();
+
+        // Cache price list selama 60 menit
         $products = Cache::remember('digiflazz_pulsa', 60 * 60, function () {
             $allProducts = $this->digiflazz->getPriceList('prepaid');
             
@@ -32,11 +44,16 @@ class PpobController extends Controller
             })->values();
         });
 
-        // Kelompokkan berdasarkan Operator (Telkomsel, Indosat, dll)
+        // Kelompokkan berdasarkan Operator
         $operators = $products->groupBy('brand')->keys();
 
-        return view('ppob.pulsa', compact('products', 'operators'));
+        // Kirim $weblogo ke view bersama data lainnya
+        return view('ppob.pulsa', compact('products', 'operators', 'weblogo'));
     }
-    
-    // ... method pln() dll
+
+    public function pln()
+    {
+        $weblogo = $this->getWebLogo();
+        return view('ppob.pln', compact('weblogo'));
+    }
 }
