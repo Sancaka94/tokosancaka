@@ -528,12 +528,12 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
     // 1. Halaman Dashboard / Menu Utama Digital (INI YANG KURANG)
     // URL: /admin/digital
-    Route::get('/digital', [PpobController::class, 'index'])
+    Route::get('/digital', [AdminPpobController::class, 'index'])
         ->name('admin.ppob.index'); 
 
     // 2. Halaman Kategori (Pulsa, Data, dll)
     // URL: /admin/digital/{slug}
-    Route::get('/digital/{slug}', [PpobController::class, 'category'])
+    Route::get('/digital/{slug}', [AdminPpobController::class, 'category'])
         ->name('admin.ppob.category');
 
     // Rute AJAX untuk Manajemen Kategori
