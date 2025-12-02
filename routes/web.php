@@ -72,13 +72,7 @@ use App\Http\Controllers\ProductReviewController;
 use App\Http\Controllers\SellerReviewController;
 use App\Http\Controllers\Admin\AdminReviewController;
 
-Route::get('/cek-config-ka', function () {
-    return [
-        'mode_env' => env('KIRIMINAJA_MODE'), // Baca langsung dr .env
-        'token_config' => config('services.kiriminaja.token'), // Baca yg sedang aktif di Laravel
-        'url_config' => config('services.kiriminaja.base_url'),
-    ];
-});
+
 
 
 Route::post('/reviews', [ProductReviewController::class, 'store'])->name('reviews.store')->middleware('auth');
