@@ -5,7 +5,8 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Services\DigiflazzService;
 use App\Models\Setting;
-use App\Models\PpobProduct; // Pastikan Model ini di-import
+use App\Models\PpobProduct;
+use App\Models\PpobTransaction;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
@@ -19,115 +20,14 @@ class PpobController extends Controller
         $this->digiflazz = $digiflazz;
     }
 
-    /**
-     * Helper: Ambil Logo Website dari Database Settings (Key-Value)
-     */
     private function getWebLogo()
     {
-        // Mencari setting dengan key 'logo'
         $setting = Setting::where('key', 'logo')->first();
-        // Mengembalikan value (path gambar) atau null
         return $setting ? $setting->value : null;
     }
 
     /**
-     * Fitur Utama: Sinkronisasi Data dari API ke Database
-     * Diakses via URL: /digital/sync-produk
-     */
-    public function sync()
-    {
-        // 1. Ambil data terbaru dari API Digiflazz (Prepaid)
-        // Pastikan DigiflazzService Anda sudah menggunakan signature 'pricelist'
-        $products = $this->digiflazz->getPriceList('prepaid');
-
-        // ======================================================
-        // [DEBUG] TAMPILKAN JSON KE LOG LARAVEL
-        // ======================================================
-        // Cek file di folder: storage/logs/laravel.log
-        \Illuminate\Support\Facades\Log::info('DATA JSON DARI DIGIFLAZZ:', [
-            'jumlah_data' => count($products),
-            'sample_data' => $products // Ini akan mencetak semua array ke log
-        ]);
-        // ======================================================
-
-        if (empty($products)) {
-            return redirect()->back()->with('error', 'Gagal mengambil data dari Digiflazz. Cek koneksi atau IP Whitelist.');
-        }
-
-        DB::beginTransaction();
-        try {
-            $count = 0;
-            foreach ($products as $item) {
-                // Filter sederhana: Lewati jika kategori pascabayar nyasar (opsional)
-                // if ($item['category'] == 'Pascabayar') continue;
-
-                // --- LOGIKA HARGA JUAL ---
-                // Modal dari API
-                $modal = (float) $item['price'];
-                
-                // Margin keuntungan (Misal: Rp 2.000)
-                $margin = 2000; 
-                
-                // Harga Jual Default
-                $hargaJualBaru = $modal + $margin;
-
-                // Kita gunakan updateOrCreate agar data yang sudah ada diupdate, yang belum ada dibuat baru
-                // Kuncinya adalah 'buyer_sku_code' (SKU Unik)
-                $product = PpobProduct::updateOrCreate(
-                    ['buyer_sku_code' => $item['buyer_sku_code']], 
-                    [
-                        'product_name'          => $item['product_name'],
-                        'category'              => $item['category'],
-                        'brand'                 => $item['brand'],
-                        'type'                  => $item['type'],
-                        'seller_name'           => $item['seller_name'],
-                        'price'                 => $modal, // Update harga modal terbaru
-                        
-                        // Status Produk
-                        'buyer_product_status'  => $item['buyer_product_status'],
-                        'seller_product_status' => $item['seller_product_status'],
-                        'unlimited_stock'       => $item['unlimited_stock'],
-                        'stock'                 => $item['stock'],
-                        'multi'                 => $item['multi'],
-                        
-                        // Cut Off Time
-                        'start_cut_off'         => $item['start_cut_off'],
-                        'end_cut_off'           => $item['end_cut_off'],
-                        'desc'                  => $item['desc'],
-                    ]
-                );
-
-                // --- LOGIKA PINTAR HARGA JUAL ---
-                // Jika produk ini BARU dibuat (sell_price masih 0 atau default), set harga jual + margin.
-                // Jika produk LAMA, biarkan harga jual yang sudah disetting admin (jangan ditimpa), 
-                // KECUALI jika Anda ingin selalu mereset harga jual, hapus kondisi if ini.
-                if ($product->wasRecentlyCreated || $product->sell_price <= 0) {
-                    $product->sell_price = $hargaJualBaru;
-                    $product->save();
-                } else {
-                    // Opsi Tambahan: Jika harga modal NAIK drastis melebihi harga jual saat ini,
-                    // maka update harga jual otomatis agar tidak rugi.
-                    if ($product->sell_price < $modal) {
-                        $product->sell_price = $hargaJualBaru;
-                        $product->save();
-                    }
-                }
-
-                $count++;
-            }
-            
-            DB::commit();
-            return redirect()->back()->with('success', "Sukses! $count produk berhasil diperbarui dari Digiflazz.");
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error("Sync PPOB Error: " . $e->getMessage());
-            return redirect()->back()->with('error', 'Terjadi kesalahan saat menyimpan ke database: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * Halaman Utama PPOB
+     * 1. Halaman Utama PPOB
      */
     public function index()
     {
@@ -136,166 +36,190 @@ class PpobController extends Controller
     }
 
     /**
-     * Halaman Pulsa & Data
+     * 2. Sinkronisasi Data (Update Harga)
      */
-    public function pulsa()
+    public function sync()
     {
-        $weblogo = $this->getWebLogo();
+        $success = $this->digiflazz->syncProducts();
 
-        // --- AMBIL DARI DATABASE LOKAL ---
-        // 1. Ambil data dari tabel ppob_products
-        // 2. Filter Kategori 'Pulsa' atau 'Data' (sesuaikan dengan nama kategori di Digiflazz)
-        // 3. Hanya tampilkan yang statusnya AKTIF (buyer & seller true)
-        // 4. Urutkan berdasarkan harga jual termurah
-        
-        $products = PpobProduct::whereIn('category', ['Pulsa', 'Data']) // Bisa sesuaikan kategorinya
-            ->where('buyer_product_status', true)
-            ->where('seller_product_status', true)
-            ->orderBy('sell_price', 'asc')
-            ->get();
-
-        // Ambil daftar Brand unik untuk filter tombol operator (Telkomsel, XL, dll)
-        // pluck('brand') mengambil kolom brand, unique() menghapus duplikat, values() reset index array
-        $operators = $products->pluck('brand')->unique()->values();
-
-        return view('ppob.pulsa', compact('products', 'operators', 'weblogo'));
+        if ($success) {
+            return redirect()->back()->with('success', 'Daftar harga berhasil diperbarui dari pusat!');
+        } else {
+            return redirect()->back()->with('error', 'Gagal mengambil data dari Digiflazz.');
+        }
     }
 
     /**
-     * Halaman Token PLN
-     */
-    public function pln()
-    {
-        $weblogo = $this->getWebLogo();
-        
-        // Contoh untuk PLN
-        $products = PpobProduct::where('category', 'PLN')
-            ->where('buyer_product_status', true)
-            ->where('seller_product_status', true)
-            ->orderBy('sell_price', 'asc')
-            ->get();
-
-        return view('ppob.pln', compact('weblogo', 'products'));
-    }
-
-    /**
-     * Halaman Cek Saldo (Bisa diakses via AJAX atau Halaman Khusus)
+     * 3. Cek Saldo Admin (AJAX)
      */
     public function cekSaldo()
     {
         $result = $this->digiflazz->checkDeposit();
 
         if (request()->ajax()) {
-            // Format Rupiah untuk AJAX response
             $result['formatted'] = 'Rp ' . number_format($result['deposit'], 0, ',', '.');
             return response()->json($result);
         }
-
-        // Jika diakses langsung via browser, kembalikan ke halaman sebelumnya dengan pesan
-        if ($result['status']) {
-            $saldoFormatted = number_format($result['deposit'], 0, ',', '.');
-            return redirect()->back()->with('success', "Sisa Saldo Digiflazz: Rp $saldoFormatted");
-        } else {
-            return redirect()->back()->with('error', "Gagal Cek Saldo: " . $result['message']);
-        }
+        return redirect()->back();
     }
 
+    /**
+     * 4. Halaman Kategori Dinamis (FIX ERROR ANDA DISINI)
+     * Menangani: Pulsa, Data, PLN Token, E-Money, Games
+     */
+    public function category($slug)
+    {
+        $weblogo = $this->getWebLogo();
+
+        // Mapping Slug URL ke Kategori Database
+        $categoriesMap = [
+            'pulsa'       => ['Pulsa'],
+            'data'        => ['Data'],
+            'pln-token'   => ['PLN'],      
+            'e-money'     => ['E-Money'],
+            'voucher-game'=> ['Games'],
+            'streaming'   => ['TV', 'Streaming'],
+        ];
+
+        // Validasi Slug
+        if (!array_key_exists($slug, $categoriesMap)) {
+            abort(404);
+        }
+
+        $dbCategories = $categoriesMap[$slug];
+
+        // Konfigurasi Tampilan Halaman
+        $pageInfo = [
+            'title'       => ucfirst(str_replace('-', ' ', $slug)),
+            'slug'        => $slug,
+            'input_label' => 'Nomor Handphone',
+            'input_place' => 'Contoh: 0812xxxx',
+            'icon'        => 'fa-mobile-alt'
+        ];
+
+        if ($slug == 'pln-token') {
+            $pageInfo['input_label'] = 'Nomor Meter / ID Pelanggan';
+            $pageInfo['input_place'] = 'Contoh: 141234567890';
+            $pageInfo['icon']        = 'fa-bolt';
+        } elseif ($slug == 'e-money') {
+            $pageInfo['icon']        = 'fa-wallet';
+        } elseif ($slug == 'voucher-game') {
+            $pageInfo['input_label'] = 'ID Pemain (User ID)';
+            $pageInfo['input_place'] = 'Masukkan ID Game';
+            $pageInfo['icon']        = 'fa-gamepad';
+        }
+
+        // Ambil Produk dari Database Lokal
+        $products = PpobProduct::whereIn('category', $dbCategories)
+            ->where('buyer_product_status', true)
+            ->where('seller_product_status', true)
+            ->orderBy('sell_price', 'asc')
+            ->get();
+
+        $brands = $products->pluck('brand')->unique()->values();
+
+        return view('ppob.category', compact('products', 'brands', 'weblogo', 'pageInfo'));
+    }
+
+    /**
+     * 5. Proses Transaksi Prabayar (Checkout)
+     */
     public function store(Request $request)
     {
         $request->validate([
             'buyer_sku_code' => 'required|exists:ppob_products,buyer_sku_code',
-            'customer_no'    => 'required|numeric|digits_between:9,15',
+            'customer_no'    => 'required|numeric|digits_between:9,20',
         ]);
 
         $user = Auth::user();
         $sku = $request->buyer_sku_code;
         $noHp = $request->customer_no;
 
-        // 1. Ambil Data Produk dari Database Lokal
         $product = PpobProduct::where('buyer_sku_code', $sku)->first();
 
-        // 2. Cek Saldo User (Pastikan kolom 'saldo' ada di tabel users)
         if ($user->saldo < $product->sell_price) {
-            return redirect()->back()->with('error', 'Saldo Anda tidak cukup. Silakan Top Up terlebih dahulu.');
+            return redirect()->back()->with('error', 'Saldo tidak cukup. Silakan Top Up.');
         }
 
-        // 3. Buat Ref ID Unik (Format: TRX-USERID-TIMESTAMP)
-        $refId = 'TRX-' . $user->id . '-' . time();
+        $refId = 'TRX-' . time() . rand(100, 999);
 
-        // 4. TEMBAK API DIGIFLAZZ dengan MAX PRICE
-        // Kita set max_price = harga jual kita.
-        // Jika harga modal Digiflazz tiba-tiba naik melebihi harga jual kita, transaksi DITOLAK otomatis.
-        // Ini mencegah Anda rugi (jual rugi).
-        $maxPrice = (int) $product->sell_price; 
+        DB::beginTransaction();
+        try {
+            // Potong Saldo
+            $user->decrement('saldo', $product->sell_price);
 
-        $response = $this->digiflazz->transaction($sku, $noHp, $refId, $maxPrice);
+            // Catat Transaksi
+            $trx = PpobTransaction::create([
+                'user_id' => $user->id_pengguna, // Sesuaikan dengan PK tabel user Anda
+                'order_id' => $refId,
+                'buyer_sku_code' => $sku,
+                'customer_no' => $noHp,
+                'price' => $product->price,
+                'selling_price' => $product->sell_price,
+                'profit' => $product->sell_price - $product->price,
+                'status' => 'Pending',
+                'message' => 'Sedang diproses...',
+            ]);
 
-        // 5. Cek Response
-        if (isset($response['data'])) {
-            $data = $response['data'];
-            
-            // Status: Sukses / Pending -> Potong Saldo
-            if (in_array($data['status'], ['Sukses', 'Pending'])) {
+            // Hit API Digiflazz (dengan Max Price Protection)
+            $maxPrice = (int) $product->sell_price; 
+            $response = $this->digiflazz->transaction($sku, $noHp, $refId, $maxPrice);
+
+            if (isset($response['data'])) {
+                $data = $response['data'];
                 
-                // POTONG SALDO USER
-                $user->decrement('saldo', $product->sell_price);
-
-                // TODO: Simpan ke tabel 'transactions' atau 'orders' Anda di sini
-                // Order::create([...]);
-
-                $pesan = $data['status'] == 'Sukses' ? 'Transaksi Berhasil!' : 'Transaksi sedang diproses.';
-                return redirect()->back()->with('success', $pesan . ' SN: ' . ($data['sn'] ?? '-'));
-            } 
-            // Status Gagal
-            else {
-                return redirect()->back()->with('error', 'Transaksi Gagal: ' . ($data['message'] ?? 'Unknown Error'));
+                if ($data['status'] == 'Gagal') {
+                    // Refund jika gagal langsung
+                    $user->increment('saldo', $product->sell_price);
+                    $trx->update(['status' => 'Gagal', 'message' => $data['message'], 'sn' => $data['sn'] ?? null]);
+                    DB::commit();
+                    return redirect()->back()->with('error', 'Transaksi Gagal: ' . $data['message']);
+                } else {
+                    // Sukses / Pending
+                    $trx->update(['status' => $data['status'], 'message' => $data['message'], 'sn' => $data['sn'] ?? null]);
+                    DB::commit();
+                    return redirect()->back()->with('success', 'Transaksi Diproses! SN: ' . ($data['sn'] ?? 'Menunggu...'));
+                }
+            } else {
+                // Error Koneksi -> Refund
+                $user->increment('saldo', $product->sell_price);
+                $trx->update(['status' => 'Gagal', 'message' => 'Koneksi ke server gagal']);
+                DB::commit();
+                return redirect()->back()->with('error', 'Gagal terhubung ke provider.');
             }
-        }
 
-        return redirect()->back()->with('error', 'Gagal terhubung ke server PPOB.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("Transaksi Error: " . $e->getMessage());
+            return redirect()->back()->with('error', 'Terjadi kesalahan sistem.');
+        }
     }
 
     /**
-     * AJAX: Cek Tagihan Pascabayar
-     * URL: /digital/ajax/check-bill
+     * 6. AJAX: Cek Tagihan Pascabayar (PLN/PDAM)
      */
     public function checkBill(Request $request)
     {
-        $request->validate([
-            'customer_no' => 'required',
-            'sku' => 'required'
-        ]);
+        $request->validate(['customer_no' => 'required', 'sku' => 'required']);
 
-        // Buat RefID Unik untuk Inquiry
         $refId = 'INQ-' . time() . rand(100,999);
-
-        // Panggil Service Inquiry
         $response = $this->digiflazz->inquiryPasca($request->sku, $request->customer_no, $refId);
 
         if (isset($response['data'])) {
             $data = $response['data'];
-            
-            // RC 00 = Sukses Inquiry (Data ditemukan)
             if ($data['rc'] === '00' || $data['status'] === 'Sukses') {
                 return response()->json([
                     'status' => 'success',
                     'customer_name' => $data['customer_name'],
                     'customer_no' => $data['customer_no'],
-                    'admin_fee' => $data['admin'],
-                    'amount' => $data['selling_price'], // Total yang harus dibayar user
-                    // Deskripsi detail (periode, lembar tagihan, dll)
+                    'amount' => $data['selling_price'],
                     'desc' => $data['desc'] ?? [], 
-                    'ref_id' => $refId // Simpan ref_id inquiry untuk dipakai saat bayar nanti
+                    'ref_id' => $refId 
                 ]);
             } else {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => $data['message'] ?? 'Tagihan tidak ditemukan atau sudah terbayar.'
-                ]);
+                return response()->json(['status' => 'error', 'message' => $data['message'] ?? 'Tagihan tidak ditemukan.']);
             }
         }
-
-        return response()->json(['status' => 'error', 'message' => 'Gagal terhubung ke server tagihan.']);
+        return response()->json(['status' => 'error', 'message' => 'Gagal terhubung ke server.']);
     }
-
 }
