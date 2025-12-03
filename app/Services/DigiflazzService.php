@@ -188,29 +188,43 @@ class DigiflazzService
     }
 
     /**
-     * 5. Cek Tagihan Pascabayar (Inquiry)
-     * Digunakan untuk: PLN Pasca, PDAM, BPJS, Internet, dll
+     * 5. Cek Tagihan Pascabayar (Inquiry) - DENGAN LOGGING LENGKAP
      */
     public function inquiryPasca($sku, $customerNo, $refId)
     {
         $sign = md5($this->username . $this->apiKey . $refId);
 
         $payload = [
-            'commands' => 'inq-pasca', // Command Wajib
+            'commands' => 'inq-pasca',
             'username' => $this->username,
             'buyer_sku_code' => $sku,
             'customer_no' => $customerNo,
             'ref_id' => $refId,
             'sign' => $sign,
-            'testing' => true, // HAPUS JIKA LIVE
+            'testing' => true,
         ];
 
         try {
+            // 1. Log Data yang Dikirim (Request)
+            Log::info("➡️ [Digiflazz Inquiry Request] RefID: $refId", $payload);
+
             $response = Http::post($this->baseUrl . '/transaction', $payload);
+            
+            // 2. Log Data yang Diterima (Response)
+            Log::info("⬅️ [Digiflazz Inquiry Response] RefID: $refId", $response->json() ?? []);
+
             return $response->json();
+
         } catch (\Exception $e) {
-            Log::error('Digiflazz Inquiry Pasca Error: ' . $e->getMessage());
-            return ['data' => ['status' => 'Gagal', 'message' => 'Koneksi Error']];
+            // 3. Log Error Koneksi (Curl/Timeout)
+            Log::error("❌ [Digiflazz Connection Error] RefID: $refId - " . $e->getMessage());
+            
+            return [
+                'data' => [
+                    'status' => 'Gagal', 
+                    'message' => 'Koneksi Server Gagal: ' . $e->getMessage()
+                ]
+            ];
         }
     }
 
