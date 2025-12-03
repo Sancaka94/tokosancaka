@@ -4,7 +4,6 @@
     // --- LOGIKA SAKTI: DETEKSI PASCABAYAR (FORCE TRUE) ---
     // Kita cek langsung URL-nya. Jika mengandung kata-kata kunci ini,
     // maka OTOMATIS dianggap halaman Tagihan (Pascabayar).
-    // Tidak peduli apa kata Controller, View akan memaksa tombol muncul.
     
     $isUrlPostpaid = request()->is('*pasca*') || 
                      request()->is('*bill*') || 
@@ -20,8 +19,9 @@
     $isPostpaid = ($pageInfo['is_postpaid'] ?? false) || $isUrlPostpaid;
     
     // Fallback Judul Halaman
-    $slugUrl = request()->segment(count(request()->segments())); // Ambil segment terakhir URL
-    $pageTitle = $pageInfo['title'] ?? ucfirst(str_replace('-', ' ', $slugUrl));
+    $slugUrl = request()->segment(count(request()->segments())); 
+    $currentSlug = $pageInfo['slug'] ?? $slugUrl ?? 'pulsa';
+    $pageTitle = $pageInfo['title'] ?? ucfirst(str_replace('-', ' ', $currentSlug));
 @endphp
 
 @section('title', $pageTitle)
@@ -57,7 +57,7 @@
             <div class="lg:col-span-2 rounded-2xl shadow-lg overflow-hidden relative group h-[200px] md:h-[350px] lg:h-[420px]">
                 <div class="swiper heroSwiper w-full h-full">
                     <div class="swiper-wrapper">
-                        @forelse($banners as $banner)
+                        @forelse($banners ?? [] as $banner)
                             <div class="swiper-slide"><img src="{{ asset('public/storage/' . $banner->image) }}" class="w-full h-full object-fill" alt="Promo"></div>
                         @empty
                             <div class="swiper-slide"><img src="https://placehold.co/800x420/ee4d2d/ffffff?text=Promo+Sancaka+1" class="w-full h-full object-fill"></div>
@@ -106,14 +106,15 @@
                     </h3>
 
                     {{-- [NEW] TAB PILIHAN KHUSUS PLN (TOKEN / PASCA) --}}
-                    @if(str_contains($currentSlug, 'pln'))
+                    {{-- Menggunakan str_contains dengan pengaman null safe --}}
+                    @if(str_contains($currentSlug ?? '', 'pln'))
                     <div class="flex p-1 bg-gray-100 rounded-xl mb-4">
                         <a href="{{ url('/etalase/ppob/digital/pln-token') }}" 
-                           class="flex-1 text-center py-2 text-sm font-bold rounded-lg transition {{ str_contains($currentSlug, 'token') ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}">
+                           class="flex-1 text-center py-2 text-sm font-bold rounded-lg transition {{ str_contains($currentSlug ?? '', 'token') ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}">
                            Token Listrik
                         </a>
                         <a href="{{ url('/etalase/ppob/digital/pln-pascabayar') }}" 
-                           class="flex-1 text-center py-2 text-sm font-bold rounded-lg transition {{ str_contains($currentSlug, 'pasca') ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}">
+                           class="flex-1 text-center py-2 text-sm font-bold rounded-lg transition {{ str_contains($currentSlug ?? '', 'pasca') ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}">
                            Tagihan PLN
                         </a>
                     </div>
@@ -135,7 +136,7 @@
                     </div>
 
                     {{-- 1. Tombol Cek PLN Token (Prabayar) --}}
-                    @if(request()->is('*pln-token*') || ($pageInfo['slug'] ?? '') == 'pln-token')
+                    @if(request()->is('*pln-token*') || ($currentSlug ?? '') == 'pln-token')
                         <button onclick="cekPlnPrabayar()" id="btn-cek-pln" class="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-4 rounded-xl transition shadow flex items-center justify-center gap-2 mb-3">
                             <i class="fas fa-search"></i> Cek Nama Pelanggan
                         </button>
@@ -202,8 +203,9 @@
                     <div id="mobileCategoryList" class="hidden absolute w-full z-50 bg-white shadow-xl rounded-xl mt-2 border border-gray-100 overflow-hidden">
                         <div class="max-h-60 overflow-y-auto custom-scrollbar">
                             <div onclick="filterCategory('all')" class="px-4 py-3 border-b border-gray-50 hover:bg-blue-50 cursor-pointer text-sm font-bold text-gray-600">SEMUA KATEGORI</div>
-                            @foreach($categories as $cat)
-                                <div onclick="filterCategory('{{ $cat }}')" class="px-4 py-3 border-b border-gray-50 hover:bg-blue-50 cursor-pointer text-sm font-bold text-gray-600 uppercase">{{ $cat }}</div>
+                            @foreach($categories ?? [] as $cat)
+                                @php $catName = is_object($cat) ? ($cat->slug ?? $cat->name ?? '') : $cat; @endphp
+                                <div onclick="filterCategory('{{ $catName }}')" class="px-4 py-3 border-b border-gray-50 hover:bg-blue-50 cursor-pointer text-sm font-bold text-gray-600 uppercase">{{ $catName }}</div>
                             @endforeach
                         </div>
                     </div>
@@ -212,8 +214,9 @@
 
             <div class="hidden lg:flex bg-white p-3 rounded-2xl shadow-sm mb-6 overflow-x-auto whitespace-nowrap custom-scrollbar gap-3 border border-gray-100 sticky top-4 z-30 pb-4">
                 <button onclick="filterCategory('all')" data-cat="all" class="cat-btn active px-6 py-2.5 rounded-xl font-bold text-sm transition bg-blue-600 text-white shadow-md transform hover:scale-105">SEMUA</button>
-                @foreach($categories as $cat)
-                    <button onclick="filterCategory('{{ $cat }}')" data-cat="{{ $cat }}" class="cat-btn px-6 py-2.5 rounded-xl font-bold text-sm transition bg-gray-50 text-gray-600 hover:bg-blue-50 hover:text-blue-600 border border-gray-200">{{ strtoupper($cat) }}</button>
+                @foreach($categories ?? [] as $cat)
+                    @php $catName = is_object($cat) ? ($cat->slug ?? $cat->name ?? '') : $cat; @endphp
+                    <button onclick="filterCategory('{{ $catName }}')" data-cat="{{ $catName }}" class="cat-btn px-6 py-2.5 rounded-xl font-bold text-sm transition bg-gray-50 text-gray-600 hover:bg-blue-50 hover:text-blue-600 border border-gray-200">{{ strtoupper($catName) }}</button>
                 @endforeach
             </div>
 
@@ -229,7 +232,7 @@
                             <tr><th class="p-5 border-b">Produk</th><th class="p-5 border-b">Keterangan</th><th class="p-5 border-b text-center hidden sm:table-cell">Status</th><th class="p-5 border-b text-right">Harga</th></tr>
                         </thead>
                         <tbody id="productTableBody" class="text-sm divide-y divide-gray-100">
-                            @forelse($products as $product)
+                            @forelse($products ?? [] as $product)
                             <tr class="product-row hover:bg-blue-50/50 transition duration-150 cursor-pointer" data-category="{{ $product->category }}" data-name="{{ strtolower($product->product_name . ' ' . $product->brand . ' ' . $product->buyer_sku_code) }}" onclick="selectProduct('{{ $product->product_name }}', '{{ $product->sell_price }}', '{{ $product->buyer_sku_code }}')">
                                 <td class="p-5">
                                     <div class="flex items-center gap-4">
@@ -356,10 +359,12 @@
 
         // Deteksi SKU Pasca via URL
         let skuPasca = 'pln'; 
-        const url = window.location.href;
-        if(url.includes('pdam')) skuPasca = 'pdam';
-        else if(url.includes('bpjs')) skuPasca = 'bpjs';
-        else if(url.includes('gas')) skuPasca = 'gas';
+        // Gunakan variable PHP yang sudah di-safe untuk JS
+        const currentSlug = '{{ $currentSlug ?? "pulsa" }}';
+        
+        if(currentSlug.includes('pdam')) skuPasca = 'pdam';
+        else if(currentSlug.includes('bpjs')) skuPasca = 'bpjs';
+        else if(currentSlug.includes('gas')) skuPasca = 'gas';
 
         fetch('{{ route("ppob.check.bill") }}', {
             method: 'POST',
