@@ -154,138 +154,209 @@ class PpobController extends Controller
         return view('layouts.marketplace', compact('pageInfo', 'products', 'banners', 'settings'));
     }
 
-    /**
+   /**
      * 2. Halaman Kategori (Pulsa, Data, Token, dll)
      * URL: /admin/digital/{slug}  atau  /etalase/ppob/digital/{slug}
      */
-   public function category($slug)
+    public function category($slug)
     {
+        // Ambil Logo Web (Sesuaikan dengan helper/method Anda)
         $weblogo = $this->getWebLogo();
 
         // -----------------------------------------------------------
-        // 1. TAMBAHAN PENTING: DEFINISI BANNERS & SETTINGS
-        // (Agar error Undefined variable hilang)
+        // 1. DATA PENDUKUNG (Banner & Setting)
         // -----------------------------------------------------------
+        // Pastikan model BannerEtalase dan Setting di-import di atas:
+        // use App\Models\BannerEtalase;
+        // use App\Models\Setting;
         
-        // OPSI A: Jika Anda punya Model Banner, aktifkan baris ini:
-        //$banners = \App\Models\Banner::where('status', 'active')->get();
-        //$settings = \App\Models\Setting::pluck('value', 'key')->toArray();
-
-        $banners = BannerEtalase::latest()->get(); 
-        $settings = Setting::whereIn('key', ['banner_2','banner_3'])->pluck('value','key');
+        $banners = \App\Models\BannerEtalase::latest()->get(); 
+        $settings = \App\Models\Setting::whereIn('key', ['banner_2','banner_3'])->pluck('value','key');
 
         // -----------------------------------------------------------
-
-        // 1. Mapping Slug URL ke Kategori Database
-        // Pastikan nama kategori di array value SAMA dengan di database 'ppob_products' -> column 'category'
+        // 2. MAPPING SLUG URL KE KATEGORI DATABASE
+        // -----------------------------------------------------------
+        // Kiri: Slug URL (harus sama dengan route)
+        // Kanan: Nama Kategori di Database (table ppob_products column category)
         $categoriesMap = [
-            'pulsa'          => ['Pulsa'],
-            'data'           => ['Data'],
-            'pln-token'      => ['PLN', 'Token PLN'],
-            // Sesuaikan slug dengan link di view sebelumnya
-            'pln-pascabayar' => ['PLN Pascabayar', 'PLN Postpaid', 'Tagihan PLN'],       
-            'pdam'           => ['PDAM', 'Air PDAM'], // [BARU] Tambahan PDAM
-            'e-money'        => ['E-Money', 'E-Wallet'],
-            'voucher-game'   => ['Games', 'Voucher Game'],
-            'streaming'      => ['TV', 'Streaming'],
+            // --- PRABAYAR ---
+            'pulsa'             => ['Pulsa', 'Pulsa Reguler'],
+            'data'              => ['Data', 'Paket Data'],
+            'pln-token'         => ['PLN', 'Token PLN'],
+            'games'             => ['Games', 'Voucher Game'],
+            'voucher'           => ['Voucher', 'Voucher Digital'],
+            'e-money'           => ['E-Money', 'E-Wallet'],
+            'paket-sms-telpon'  => ['Paket SMS & Telpon', 'SMS & Telpon'],
+            'masa-aktif'        => ['Masa Aktif'],
+            'streaming'         => ['Streaming', 'TV Prabayar'],
+            'aktivasi-voucher'  => ['Aktivasi Voucher'],
+            'aktivasi-perdana'  => ['Aktivasi Perdana'],
+            'gas'               => ['Gas Token', 'Pertagas'],
+            'esim'              => ['eSIM'],
+            // Topup Internasional
+            'china-topup'       => ['China Topup'],
+            'malaysia-topup'    => ['Malaysia Topup'],
+            'philippines-topup' => ['Philippines Topup'],
+            'singapore-topup'   => ['Singapore Topup'],
+            'thailand-topup'    => ['Thailand Topup'],
+            'vietnam-topup'     => ['Vietnam Topup'],
+            
+            // --- PASCABAYAR (Tagihan) ---
+            'pln-pascabayar'       => ['PLN Pascabayar', 'Tagihan PLN'],
+            'pdam'                 => ['PDAM', 'Air PDAM'],
+            'bpjs-kesehatan'       => ['BPJS', 'BPJS Kesehatan'],
+            'bpjs-ketenagakerjaan' => ['BPJS Ketenagakerjaan', 'BPJS TK'],
+            'hp-pascabayar'        => ['HP Pascabayar', 'Pascabayar'],
+            'internet-pascabayar'  => ['Internet', 'Internet Pascabayar', 'Wifi'],
+            'tv-pascabayar'        => ['TV Kabel', 'TV Pascabayar'],
+            'multifinance'         => ['Multifinance', 'Cicilan', 'Angsuran Kredit'],
+            'pbb'                  => ['PBB', 'Pajak PBB'],
+            'gas-negara'           => ['Gas Negara', 'PGN', 'Gas Pascabayar'],
+            'samsat'               => ['Samsat', 'E-Samsat'],
+            'pln-nontaglis'        => ['PLN Non Taglis', 'Non Taglis'],
         ];
 
-        // Validasi Slug
+        // Validasi: Jika slug tidak ada di map, tampilkan 404
         if (!array_key_exists($slug, $categoriesMap)) {
             abort(404);
         }
 
         $dbCategories = $categoriesMap[$slug];
 
-        // 2. Konfigurasi Tampilan Halaman (Default)
+        // -----------------------------------------------------------
+        // 3. KONFIGURASI TAMPILAN (DEFAULT)
+        // -----------------------------------------------------------
         $pageInfo = [
-            'title'             => ucfirst(str_replace('-', ' ', $slug)),
+            'title'             => ucwords(str_replace('-', ' ', $slug)),
             'slug'              => $slug,
             'input_label'       => 'Nomor Handphone',
             'input_place'       => 'Contoh: 0812xxxx',
             'icon'              => 'fa-mobile-alt',
-            'is_postpaid'       => false, // Default Prabayar
-            'has_region_select' => false  // Default tidak butuh pilih wilayah
+            'is_postpaid'       => false, // Default: Tampil daftar produk (Prabayar)
+            'has_region_select' => false  // Default: Tidak butuh dropdown wilayah
         ];
 
-        // Logika Icon, Input Label & Tipe Transaksi
+        // -----------------------------------------------------------
+        // 4. LOGIKA SPESIFIK PER KATEGORI (Override Default)
+        // -----------------------------------------------------------
+        
+        // --- GROUP 1: PRABAYAR KHUSUS ---
         if ($slug == 'pln-token') {
-            $pageInfo['input_label'] = 'Nomor Meter / ID Pelanggan';
-            $pageInfo['input_place'] = 'Contoh: 141234567890';
+            $pageInfo['input_label'] = 'ID Pelanggan / No. Meter';
+            $pageInfo['input_place'] = 'Contoh: 14xxxxxxxx';
             $pageInfo['icon']        = 'fa-bolt';
-
+        
         } elseif ($slug == 'e-money') {
             $pageInfo['icon']        = 'fa-wallet';
+            $pageInfo['input_place'] = 'Nomor HP / Nomor Kartu';
 
-        } elseif ($slug == 'voucher-game') {
+        } elseif ($slug == 'voucher-game' || $slug == 'games') {
             $pageInfo['input_label'] = 'ID Pemain (User ID)';
-            $pageInfo['input_place'] = 'Masukkan ID Game';
+            $pageInfo['input_place'] = 'Masukkan ID Game / Server';
             $pageInfo['icon']        = 'fa-gamepad';
 
-        // [BARU] Konfigurasi PLN PASCABAYAR
-        } elseif ($slug == 'pln-pascabayar') {
-            $pageInfo['title']       = 'PLN Pascabayar';
-            $pageInfo['input_label'] = 'ID Pelanggan / Nomor Meter';
-            $pageInfo['input_place'] = 'Contoh: 53xxxxxxxxx';
-            $pageInfo['icon']        = 'fa-file-invoice-dollar';
-            $pageInfo['is_postpaid'] = true; // Mode Cek Tagihan
+        } elseif (str_contains($slug, 'topup')) { // China, Malaysia, dll
+            $pageInfo['icon']        = 'fa-globe-asia';
 
-        // [BARU] Konfigurasi PDAM
+        // --- GROUP 2: PASCABAYAR (TAGIHAN) ---
+        } elseif ($slug == 'pln-pascabayar') {
+            $pageInfo['title']       = 'Tagihan Listrik PLN';
+            $pageInfo['input_label'] = 'ID Pelanggan / No. Meter';
+            $pageInfo['input_place'] = 'Contoh: 53xxxxxxxx';
+            $pageInfo['icon']        = 'fa-file-invoice-dollar';
+            $pageInfo['is_postpaid'] = true;
+
         } elseif ($slug == 'pdam') {
             $pageInfo['title']       = 'Tagihan Air PDAM';
-            $pageInfo['input_label'] = 'Nomor Pelanggan'; // PDAM butuh ID Pelanggan
-            $pageInfo['input_place'] = 'Masukan Nomor Pelanggan';
+            $pageInfo['input_label'] = 'Nomor Pelanggan';
+            $pageInfo['input_place'] = 'Masukan ID Pelanggan';
             $pageInfo['icon']        = 'fa-faucet';
-            $pageInfo['is_postpaid'] = true; // Mode Cek Tagihan
-            $pageInfo['has_region_select'] = true; // Perlu dropdown wilayah
+            $pageInfo['is_postpaid'] = true;
+            $pageInfo['has_region_select'] = true; // Muncul dropdown pilih wilayah
+
+        } elseif ($slug == 'bpjs-kesehatan') {
+            $pageInfo['input_label'] = 'Nomor VA Keluarga';
+            $pageInfo['input_place'] = 'Contoh: 88888xxxx';
+            $pageInfo['icon']        = 'fa-heartbeat';
+            $pageInfo['is_postpaid'] = true;
+
+        } elseif ($slug == 'multifinance') {
+            $pageInfo['title']       = 'Bayar Cicilan / Kredit';
+            $pageInfo['input_label'] = 'Nomor Kontrak';
+            $pageInfo['input_place'] = 'Masukan Nomor Kontrak';
+            $pageInfo['icon']        = 'fa-money-bill-wave';
+            $pageInfo['is_postpaid'] = true;
+            $pageInfo['has_region_select'] = true; // Dropdown pilih Leasing
+
+        } elseif ($slug == 'internet-pascabayar' || $slug == 'tv-pascabayar') {
+            $pageInfo['input_label'] = 'ID Pelanggan';
+            $pageInfo['icon']        = ($slug == 'tv-pascabayar') ? 'fa-tv' : 'fa-wifi';
+            $pageInfo['is_postpaid'] = true;
+            $pageInfo['has_region_select'] = true; // Dropdown pilih Provider
+
+        } elseif ($slug == 'pbb') {
+            $pageInfo['input_label'] = 'Nomor Objek Pajak (NOP)';
+            $pageInfo['input_place'] = 'Masukan NOP';
+            $pageInfo['icon']        = 'fa-building';
+            $pageInfo['is_postpaid'] = true;
+            $pageInfo['has_region_select'] = true; // Dropdown pilih Wilayah
+
+        } elseif ($slug == 'gas-negara') {
+            $pageInfo['input_label'] = 'ID Pelanggan Gas';
+            $pageInfo['icon']        = 'fa-fire';
+            $pageInfo['is_postpaid'] = true;
         }
 
-
-        // 3. Ambil Produk dari DB
-        $query = PpobProduct::whereIn('category', $dbCategories)
+        // -----------------------------------------------------------
+        // 5. QUERY DATABASE PRODUK
+        // -----------------------------------------------------------
+        $query = \App\Models\PpobProduct::whereIn('category', $dbCategories)
             ->where('buyer_product_status', true)
             ->where('seller_product_status', true);
 
-        // GANTI MENJADI (Mengurutkan sesuai Brand/Nama agar konsisten dengan Admin)
-        if ($slug == 'pdam') {
+        // Sorting Logic:
+        // - Untuk Pascabayar/Tagihan: Urutkan berdasarkan Brand (Nama Wilayah/Leasing)
+        // - Untuk Prabayar (Pulsa/Data): Urutkan berdasarkan Harga Termurah
+        if ($pageInfo['is_postpaid'] || $pageInfo['has_region_select']) {
             $query->orderBy('brand', 'asc');
         } else {
-            // Ubah ini agar tidak loncat-loncat harganya
-            $query->orderBy('sell_price', 'asc'); 
-            // ATAU jika ingin urut abjad:
-            // $query->orderBy('product_name', 'asc');
+            $query->orderBy('sell_price', 'asc');
         }
 
         $products = $query->get();
 
-        // Ambil list Brand (Provider/Wilayah) untuk filter/dropdown
+        // Ambil list Brand (Provider/Wilayah) untuk dropdown/filter di Frontend
         $brands = $products->pluck('brand')->unique()->values();
         
         $data = compact('products', 'brands', 'weblogo', 'pageInfo', 'banners', 'settings');
 
-        // --- 4. LOGIKA CERDAS DETEKSI VIEW ---
+        // -----------------------------------------------------------
+        // 6. DETEKSI VIEW BERDASARKAN ROLE (Admin/Seller/Customer/Guest)
+        // -----------------------------------------------------------
         $prefix = request()->segment(1); 
 
-        // A. JIKA ADMIN
+        // A. VIEW ADMIN
         if ($prefix == 'admin' || (auth()->check() && auth()->user()->hasRole('Admin'))) {
+            // Pastikan file view ada: resources/views/admin/ppob/category.blade.php
             return view('admin.ppob.category', $data); 
         }
 
-        // B. JIKA SELLER
+        // B. VIEW SELLER
         if ($prefix == 'seller' || (auth()->check() && auth()->user()->hasRole('Seller'))) {
+            // Pastikan file view ada: resources/views/seller/ppob/category.blade.php
             return view('seller.ppob.category', $data);
         }
 
-        // C. JIKA MEMBER / CUSTOMER
+        // C. VIEW CUSTOMER (MEMBER LOGIN)
         if ($prefix == 'member' || $prefix == 'customer' || (auth()->check() && auth()->user()->hasRole('Customer'))) {
+            // Pastikan file view ada: resources/views/customer/ppob/category.blade.php
             return view('customer.ppob.category', $data);
         }
 
-        // D. FALLBACK (ETALASE PUBLIC)
-        // View utama: resources/views/etalase/ppob/category.blade.php
-        return view('etalase.ppob.category', $data);
+        // D. VIEW PUBLIC (GUEST / ETALASE UTAMA)
+        // View ini yang Anda kirim screenshot-nya sebelumnya
+        return view('layouts.marketplace', $data);
     }
-
     /**
      * 3. Sinkronisasi Data (Update Harga)
      */
