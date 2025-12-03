@@ -53,19 +53,22 @@ class PpobController extends Controller
      * 2. Halaman Kategori (Pulsa, Data, Token, dll)
      * URL: /admin/digital/{slug}  atau  /etalase/ppob/digital/{slug}
      */
-    public function category($slug)
+   public function category($slug)
     {
         $weblogo = $this->getWebLogo();
 
         // 1. Mapping Slug URL ke Kategori Database
+        // Pastikan nama kategori di array value SAMA dengan di database 'ppob_products' -> column 'category'
         $categoriesMap = [
-            'pulsa'       => ['Pulsa'],
-            'data'        => ['Data'],
-            'pln-token'   => ['PLN'],
-            'pln-bill'    => ['PLN Pascabayar', 'Tagihan PLN'],      
-            'e-money'     => ['E-Money'],
-            'voucher-game'=> ['Games'],
-            'streaming'   => ['TV', 'Streaming'],
+            'pulsa'          => ['Pulsa'],
+            'data'           => ['Data'],
+            'pln-token'      => ['PLN', 'Token PLN'],
+            // Sesuaikan slug dengan link di view sebelumnya
+            'pln-pascabayar' => ['PLN Pascabayar', 'PLN Postpaid', 'Tagihan PLN'],       
+            'pdam'           => ['PDAM', 'Air PDAM'], // [BARU] Tambahan PDAM
+            'e-money'        => ['E-Money', 'E-Wallet'],
+            'voucher-game'   => ['Games', 'Voucher Game'],
+            'streaming'      => ['TV', 'Streaming'],
         ];
 
         // Validasi Slug
@@ -75,42 +78,69 @@ class PpobController extends Controller
 
         $dbCategories = $categoriesMap[$slug];
 
-        // 2. Konfigurasi Tampilan Halaman
+        // 2. Konfigurasi Tampilan Halaman (Default)
         $pageInfo = [
-            'title'       => ucfirst(str_replace('-', ' ', $slug)),
-            'slug'        => $slug,
-            'input_label' => 'Nomor Handphone',
-            'input_place' => 'Contoh: 0812xxxx',
-            'icon'        => 'fa-mobile-alt',
-            'is_postpaid' => false
+            'title'             => ucfirst(str_replace('-', ' ', $slug)),
+            'slug'              => $slug,
+            'input_label'       => 'Nomor Handphone',
+            'input_place'       => 'Contoh: 0812xxxx',
+            'icon'              => 'fa-mobile-alt',
+            'is_postpaid'       => false, // Default Prabayar
+            'has_region_select' => false  // Default tidak butuh pilih wilayah
         ];
 
-        // Logika Icon & Input Label
+        // Logika Icon, Input Label & Tipe Transaksi
         if ($slug == 'pln-token') {
             $pageInfo['input_label'] = 'Nomor Meter / ID Pelanggan';
             $pageInfo['input_place'] = 'Contoh: 141234567890';
             $pageInfo['icon']        = 'fa-bolt';
+
         } elseif ($slug == 'e-money') {
             $pageInfo['icon']        = 'fa-wallet';
+
         } elseif ($slug == 'voucher-game') {
             $pageInfo['input_label'] = 'ID Pemain (User ID)';
             $pageInfo['input_place'] = 'Masukkan ID Game';
             $pageInfo['icon']        = 'fa-gamepad';
-        } elseif ($slug == 'pln-bill') {
+
+        // [BARU] Konfigurasi PLN PASCABAYAR
+        } elseif ($slug == 'pln-pascabayar') {
+            $pageInfo['title']       = 'PLN Pascabayar';
             $pageInfo['input_label'] = 'ID Pelanggan / Nomor Meter';
             $pageInfo['input_place'] = 'Contoh: 53xxxxxxxxx';
             $pageInfo['icon']        = 'fa-file-invoice-dollar';
-            $pageInfo['is_postpaid'] = true; 
+            $pageInfo['is_postpaid'] = true; // Mode Cek Tagihan
+
+        // [BARU] Konfigurasi PDAM
+        } elseif ($slug == 'pdam') {
+            $pageInfo['title']       = 'Tagihan Air PDAM';
+            $pageInfo['input_label'] = 'Nomor Pelanggan'; // PDAM butuh ID Pelanggan
+            $pageInfo['input_place'] = 'Masukan Nomor Pelanggan';
+            $pageInfo['icon']        = 'fa-faucet';
+            $pageInfo['is_postpaid'] = true; // Mode Cek Tagihan
+            $pageInfo['has_region_select'] = true; // Perlu dropdown wilayah
         }
 
-        // 3. Ambil Produk dari DB
-        $products = PpobProduct::whereIn('category', $dbCategories)
-            ->where('buyer_product_status', true)
-            ->where('seller_product_status', true)
-            ->orderBy('sell_price', 'asc')
-            ->get();
 
+        // 3. Ambil Produk dari DB
+        $query = PpobProduct::whereIn('category', $dbCategories)
+            ->where('buyer_product_status', true)
+            ->where('seller_product_status', true);
+
+        // Sorting khusus
+        if ($slug == 'pdam') {
+            // Untuk PDAM, urutkan berdasarkan Nama Wilayah (Brand) A-Z agar dropdown rapi
+            $query->orderBy('brand', 'asc');
+        } else {
+            // Default urutkan harga termurah (untuk pulsa/data/token)
+            $query->orderBy('sell_price', 'asc');
+        }
+
+        $products = $query->get();
+
+        // Ambil list Brand (Provider/Wilayah) untuk filter/dropdown
         $brands = $products->pluck('brand')->unique()->values();
+        
         $data   = compact('products', 'brands', 'weblogo', 'pageInfo');
 
         // --- 4. LOGIKA CERDAS DETEKSI VIEW ---
@@ -118,8 +148,6 @@ class PpobController extends Controller
 
         // A. JIKA ADMIN
         if ($prefix == 'admin' || (auth()->check() && auth()->user()->hasRole('Admin'))) {
-            // Pastikan view ini ada: resources/views/admin/ppob/category.blade.php
-            // Jika belum ada, copy dari resources/views/ppob/category.blade.php
             return view('admin.ppob.category', $data); 
         }
 
