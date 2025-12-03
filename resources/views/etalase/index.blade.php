@@ -403,7 +403,7 @@
     <section class="mb-6 bg-white shadow-sm rounded overflow-hidden border border-gray-100">
         {{-- Header --}}
         <div class="p-3 border-b border-gray-100 flex items-center justify-between">
-            <h2 class="text-lg md:text-xl font-bold text-[#ee4d2d] uppercase tracking-wide flex items-center gap-2">
+            <h2 class="text-lg md:text-xl font-bold text-[#d0011b] uppercase tracking-wide flex items-center gap-2">
                 <i class="fas fa-trophy text-yellow-400"></i> PRODUK TERLARIS
             </h2>
             <a href="#" class="text-[#ee4d2d] text-xs font-semibold hover:underline">Lihat Semua ></a>
