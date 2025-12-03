@@ -80,7 +80,6 @@ Route::get('/debug-digi', [PpobController::class, 'debugDirect']);
 
 Route::get('/daftar-harga', [PublicController::class, 'pricelist'])->name('public.pricelist');
 // Route untuk membuka halaman kategori spesifik (agar form cek tagihan muncul)
-Route::post('/ppob/check-bill', [PpobController::class, 'checkBill'])->name('ppob.check.bill');
 // ====================================================
 // RUTE HALAMAN PUBLIK (TANPA LOGIN)
 // ====================================================
