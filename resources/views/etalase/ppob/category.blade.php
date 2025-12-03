@@ -504,34 +504,45 @@
             .then(data => {
                 btn.disabled = false; spinner.classList.add('hidden'); text.innerText = "Cek Tagihan";
                 if(data.status === 'success') {
-    // 1. Data Dasar
+    // --- 1. Data Dasar ---
     document.getElementById('bill_name').innerText = data.customer_name;
     document.getElementById('bill_id').innerText = data.customer_no;
     
-    // Gunakan 'selling_price' sesuai gambar debug Anda (Rp 11.000), bukan amount (Rp 10.000)
-    // agar admin fee sudah termasuk.
+    // Total Bayar
     let totalBayar = data.selling_price ? data.selling_price : data.amount;
     document.getElementById('bill_amount').innerText = 'Rp ' + parseInt(totalBayar).toLocaleString('id-ID');
     
-    // 2. Data Rinci dari array 'desc' (Sesuai gambar debug)
+    // --- 2. Data Rinci (Menyesuaikan PLN vs PDAM) ---
     if (data.desc) {
-        // Tarif & Daya (Contoh: R1 / 1300)
+        // A. LOGIKA TARIF / DAYA
+        // Cek apakah ada data 'daya'. PLN punya, PDAM tidak punya.
         let tarif = data.desc.tarif || '-';
-        let daya = data.desc.daya || '-';
-        document.getElementById('bill_power').innerText = tarif + ' / ' + daya + ' VA';
-        
-        // Admin
-        // Update bagian ini di dalam function cekTagihan()
-// Tujuannya mengecek 3 lokasi: root, dalam desc, atau dalam detail array
-let rawAdmin = data.admin || (data.desc ? data.desc.admin : 0) || (data.desc.detail && data.desc.detail[0] ? data.desc.detail[0].admin : 0);
-let admin = parseInt(rawAdmin);
+        let daya = data.desc.daya; // Jangan pakai default '-' dulu agar bisa dicek if-nya
 
-document.getElementById('bill_admin').innerText = 'Rp ' + admin.toLocaleString('id-ID');
+        if (daya) {
+            // Jika ada daya (PLN), tampilkan format "R1 / 1300 VA"
+            document.getElementById('bill_power').innerText = tarif + ' / ' + daya + ' VA';
+        } else {
+            // Jika tidak ada daya (PDAM), tampilkan Tarif saja "3A"
+            document.getElementById('bill_power').innerText = tarif;
+        }
         
-        // Lembar Tagihan
+        // B. LOGIKA BIAYA ADMIN (Anti NaN)
+        // Cari admin di root, kalau tidak ada cari di desc, kalau tidak ada cari di detail, terakhir 0
+        let rawAdmin = (data.admin !== undefined ? data.admin : null) || 
+                       (data.desc.admin !== undefined ? data.desc.admin : null) || 
+                       (data.desc.detail && data.desc.detail[0] ? data.desc.detail[0].admin : 0);
+                       
+        let admin = parseInt(rawAdmin);
+        // Pastikan hasilnya angka valid, jika NaN paksa jadi 0
+        if (isNaN(admin)) admin = 0;
+        
+        document.getElementById('bill_admin').innerText = 'Rp ' + admin.toLocaleString('id-ID');
+        
+        // C. LOGIKA LEMBAR TAGIHAN
         document.getElementById('bill_sheet').innerText = (data.desc.lembar_tagihan || '1') + ' Lembar';
 
-        // Periode (Ada di dalam array detail index ke-0)
+        // D. LOGIKA PERIODE
         if (data.desc.detail && data.desc.detail.length > 0) {
             document.getElementById('bill_period').innerText = data.desc.detail[0].periode;
         } else {
