@@ -176,12 +176,35 @@
         
 
         {{-- Category Filters --}}
-        <div class="bg-white p-3 rounded-2xl shadow-sm mb-6 overflow-x-auto whitespace-nowrap scrollbar-hide flex gap-3 border border-gray-100 sticky top-4 z-30">
-            <button onclick="filterCategory('all')" class="cat-btn active px-6 py-2.5 rounded-xl font-bold text-sm transition bg-blue-600 text-white shadow-md transform hover:scale-105">
+        
+        {{-- 1. TAMPILAN MOBILE & TABLET (DROPDOWN MENU) --}}
+        {{-- 'lg:hidden' artinya sembunyi di layar besar (Desktop) --}}
+        <div class="lg:hidden mb-6 sticky top-4 z-30">
+            <div class="relative bg-white rounded-xl shadow-md border border-gray-100">
+                <div class="pointer-events-none absolute inset-y-0 left-0 pl-3 flex items-center text-blue-600">
+                    <i class="fas fa-filter"></i>
+                </div>
+                <select id="mobileCategoryFilter" onchange="filterCategory(this.value)" 
+                        class="block w-full pl-10 pr-10 py-3.5 text-sm font-bold border-none rounded-xl bg-transparent focus:ring-2 focus:ring-blue-500 text-gray-700 appearance-none cursor-pointer">
+                    <option value="all">SEMUA KATEGORI</option>
+                    @foreach($categories as $cat)
+                        <option value="{{ $cat }}">{{ strtoupper($cat) }}</option>
+                    @endforeach
+                </select>
+                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
+                    <i class="fas fa-chevron-down text-xs"></i>
+                </div>
+            </div>
+        </div>
+
+        {{-- 2. TAMPILAN DESKTOP (TOMBOL HORIZONTAL) --}}
+        {{-- 'hidden lg:flex' artinya sembunyi di mobile, tampil flex di layar besar --}}
+        <div class="hidden lg:flex bg-white p-3 rounded-2xl shadow-sm mb-6 overflow-x-auto whitespace-nowrap scrollbar-hide gap-3 border border-gray-100 sticky top-4 z-30">
+            <button onclick="filterCategory('all')" data-cat="all" class="cat-btn active px-6 py-2.5 rounded-xl font-bold text-sm transition bg-blue-600 text-white shadow-md transform hover:scale-105">
                 SEMUA
             </button>
             @foreach($categories as $cat)
-                <button onclick="filterCategory('{{ $cat }}')" class="cat-btn px-6 py-2.5 rounded-xl font-bold text-sm transition bg-gray-50 text-gray-600 hover:bg-blue-50 hover:text-blue-600 border border-gray-200">
+                <button onclick="filterCategory('{{ $cat }}')" data-cat="{{ $cat }}" class="cat-btn px-6 py-2.5 rounded-xl font-bold text-sm transition bg-gray-50 text-gray-600 hover:bg-blue-50 hover:text-blue-600 border border-gray-200">
                     {{ strtoupper($cat) }}
                 </button>
             @endforeach
@@ -211,7 +234,7 @@
                                              class="h-full w-full object-contain"
                                              loading="lazy"
                                              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                        
+                                    
                                         <span class="hidden h-full w-full items-center justify-center bg-gray-100 text-gray-500 text-[10px] font-bold rounded-lg uppercase">
                                             {{ substr($product->brand, 0, 3) }}
                                         </span>
@@ -297,12 +320,25 @@
 
     function filterCategory(category) {
         currentCategory = category;
+
+        // 1. Update UI Tombol Desktop (Hapus class aktif semua, lalu tambahkan ke yang dipilih)
         document.querySelectorAll('.cat-btn').forEach(btn => {
             btn.classList.remove('bg-blue-600', 'text-white', 'shadow-md', 'transform', 'scale-105');
             btn.classList.add('bg-gray-50', 'text-gray-600');
+            
+            // Cek jika tombol ini sesuai dengan kategori yang dipilih
+            if (btn.getAttribute('data-cat') === category) {
+                btn.classList.remove('bg-gray-50', 'text-gray-600');
+                btn.classList.add('bg-blue-600', 'text-white', 'shadow-md', 'transform', 'scale-105');
+            }
         });
-        event.target.classList.remove('bg-gray-50', 'text-gray-600');
-        event.target.classList.add('bg-blue-600', 'text-white', 'shadow-md', 'transform', 'scale-105');
+
+        // 2. Update Nilai Dropdown Mobile (Agar sinkron)
+        const mobileSelect = document.getElementById('mobileCategoryFilter');
+        if(mobileSelect) {
+            mobileSelect.value = category;
+        }
+
         filterTable();
     }
 
