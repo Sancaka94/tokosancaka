@@ -275,17 +275,20 @@
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
 <script>
-    // Slider Banner
+    // 1. Slider Banner
     var swiper = new Swiper(".heroSwiper", {
         loop: true, autoplay: { delay: 4000, disableOnInteraction: false },
         pagination: { el: ".swiper-pagination", clickable: true },
         navigation: { nextEl: ".swiper-button-next", prevEl: ".swiper-button-prev" },
     });
 
-    // === LOGIKA FILTER PRABAYAR ===
+    // ==========================================
+    // LOGIK A: UNTUK HALAMAN PRABAYAR (PULSA/DATA/DLL)
+    // ==========================================
     @if(!isset($pageInfo['is_postpaid']) || !$pageInfo['is_postpaid'])
         const searchInput = document.getElementById('searchInput');
-        const rows = document.querySelectorAll('#productTableBody tr');
+        // Gunakan selector yang lebih aman jika tabel tidak ada
+        const tableRows = document.querySelectorAll('#productTableBody tr'); 
         const emptyState = document.getElementById('emptyState');
         let currentCategory = 'all';
 
@@ -299,35 +302,53 @@
                 btn.classList.remove('bg-blue-600', 'text-white', 'shadow-md');
                 btn.classList.add('bg-gray-100', 'text-gray-600');
             });
-            event.target.classList.remove('bg-gray-100', 'text-gray-600');
-            event.target.classList.add('bg-blue-600', 'text-white', 'shadow-md');
+            // Highlight tombol aktif
+            const activeBtn = Array.from(document.querySelectorAll('.cat-btn')).find(b => b.textContent.trim() === cat.toUpperCase() || (cat === 'all' && b.textContent.trim() === 'SEMUA'));
+            if(activeBtn) {
+                activeBtn.classList.remove('bg-gray-100', 'text-gray-600');
+                activeBtn.classList.add('bg-blue-600', 'text-white', 'shadow-md');
+            }
             filterTable();
         }
 
         function filterTable() {
+            if(!searchInput) return;
             const filter = searchInput.value.toLowerCase();
             let visibleCount = 0;
-            rows.forEach(row => {
+            
+            tableRows.forEach(row => {
                 const name = row.getAttribute('data-name');
                 const cat = row.getAttribute('data-category');
-                const matchSearch = name.includes(filter);
-                const matchCat = currentCategory === 'all' || cat === currentCategory;
                 
-                if (matchSearch && matchCat) { row.style.display = ""; visibleCount++; } 
-                else { row.style.display = "none"; }
+                // Pastikan atribut ada sebelum cek includes
+                const matchSearch = name && name.includes(filter);
+                const matchCat = currentCategory === 'all' || (cat && cat === currentCategory);
+                
+                if (matchSearch && matchCat) { 
+                    row.style.display = ""; 
+                    visibleCount++; 
+                } else { 
+                    row.style.display = "none"; 
+                }
             });
-            emptyState.classList.toggle('hidden', visibleCount > 0);
+
+            if(emptyState) {
+                emptyState.classList.toggle('hidden', visibleCount > 0);
+            }
         }
     @endif
 
-    // === LOGIKA PASCABAYAR (CEK TAGIHAN) ===
+    // ==========================================
+    // LOGIK B: UNTUK HALAMAN PASCABAYAR (CEK TAGIHAN)
+    // ==========================================
     @if(isset($pageInfo['is_postpaid']) && $pageInfo['is_postpaid'])
         let inquiryRefId = null;
 
         function cekTagihan() {
             const no = document.getElementById('customer_no').value;
-            // Tentukan SKU Pascabayar Otomatis dari Slug Halaman
-            let skuPasca = 'pln'; // Default
+            let skuPasca = 'pln'; 
+            
+            // Mapping SKU Otomatis
             @if(isset($pageInfo['slug']))
                 @if($pageInfo['slug'] == 'pdam') skuPasca = 'pdam'; @endif
                 @if($pageInfo['slug'] == 'bpjs') skuPasca = 'bpjs'; @endif
@@ -335,6 +356,7 @@
 
             if(no.length < 5) { alert("Masukkan ID Pelanggan yang valid!"); return; }
 
+            // UI Elements
             const btn = document.getElementById('btn-cek-tagihan');
             const spinner = document.getElementById('loading-spinner');
             const resultBox = document.getElementById('bill_result');
@@ -345,9 +367,10 @@
             btn.disabled = true;
             btn.classList.add('opacity-75');
             spinner.classList.remove('hidden');
-            resultBox.classList.add('hidden');
-            errorBox.classList.add('hidden');
+            if(resultBox) resultBox.classList.add('hidden');
+            if(errorBox) errorBox.classList.add('hidden');
 
+            // AJAX Request
             fetch('{{ route("ppob.check.bill") }}', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
@@ -366,21 +389,21 @@
                     inquiryRefId = data.ref_id;
                     resultBox.classList.remove('hidden');
                 } else {
-                    errorMsg.innerText = data.message || 'Tagihan tidak ditemukan / sudah dibayar.';
+                    if(errorMsg) errorMsg.innerText = data.message || 'Tagihan tidak ditemukan.';
                     errorBox.classList.remove('hidden');
                 }
             })
             .catch(err => {
                 btn.disabled = false;
                 spinner.classList.add('hidden');
-                errorMsg.innerText = "Terjadi kesalahan koneksi server.";
+                if(errorMsg) errorMsg.innerText = "Terjadi kesalahan koneksi.";
                 errorBox.classList.remove('hidden');
             });
         }
 
         function bayarTagihan() {
             if(!inquiryRefId) return;
-            window.location.href = "{{ route('login') }}"; // Arahkan ke login
+            window.location.href = "{{ route('login') }}"; 
         }
     @endif
 </script>
