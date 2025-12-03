@@ -33,6 +33,38 @@
 
 @section('content')
 <div class="bg-gray-50 min-h-screen py-10">
+
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-2 mb-4">
+        
+        <div class="lg:col-span-2 rounded shadow-sm overflow-hidden h-full sm:h-full md:h-full w-full">
+            <div class="swiper heroSwiper w-full h-full">
+                <div class="swiper-wrapper">
+                    @forelse($banners as $banner)
+                        <div class="swiper-slide">
+                            <img src="{{ asset('public/storage/' . $banner->image) }}" class="w-full h-full object-cover" alt="Banner">
+                        </div>
+                    @empty
+                        <div class="swiper-slide">
+                            <img src="https://placehold.co/800x400/ee4d2d/ffffff?text=Sancaka+Promo" class="w-full h-full object-cover">
+                        </div>
+                    @endforelse
+                </div>
+                <div class="swiper-pagination"></div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 lg:grid-cols-1 lg:grid-rows-2 gap-2 h-auto lg:h-full">
+            
+            <div class="rounded shadow-sm overflow-hidden h-full sm:h-full lg:h-full w-full">
+                <img src="{{ isset($settings['banner_2']) ? asset('public/storage/' . $settings['banner_2']) : 'https://placehold.co/400x200/ee4d2d/ffffff?text=Promo+1' }}" class="w-full h-full object-cover">
+            </div>
+            
+            <div class="rounded shadow-sm overflow-hidden h-full sm:h-full lg:h-full w-full">
+                <img src="{{ isset($settings['banner_3']) ? asset('public/storage/' . $settings['banner_3']) : 'https://placehold.co/400x200/d0011b/ffffff?text=Promo+2' }}" class="w-full h-full object-cover">
+            </div>
+        </div>
+    </section>
+    
     <div class="container mx-auto px-4">
         
         {{-- Breadcrumb Simple --}}
