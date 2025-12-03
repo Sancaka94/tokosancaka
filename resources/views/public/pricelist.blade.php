@@ -576,5 +576,53 @@
         document.getElementById('confirmModal').classList.remove('hidden');
     }
     function closeModal() { document.getElementById('confirmModal').classList.add('hidden'); }
+
+    // 2. Logic Tabs (Prabayar vs Pascabayar) - SESUAI DESAIN BARU
+    function switchTab(type) {
+        const btnPre = document.getElementById('tab-prepaid');
+        const btnPost = document.getElementById('tab-postpaid');
+        const conPre = document.getElementById('content-prepaid');
+        const conPost = document.getElementById('content-postpaid');
+
+        if(type === 'prepaid') {
+            btnPre.className = "flex-1 py-4 text-center font-bold text-sm md:text-base border-b-2 border-blue-600 text-blue-600 transition hover:bg-gray-50 flex items-center justify-center gap-2";
+            btnPost.className = "flex-1 py-4 text-center font-bold text-sm md:text-base border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition hover:bg-gray-50 flex items-center justify-center gap-2";
+            
+            conPre.classList.remove('hidden');
+            conPost.classList.add('hidden');
+        } else {
+            btnPost.className = "flex-1 py-4 text-center font-bold text-sm md:text-base border-b-2 border-blue-600 text-blue-600 transition hover:bg-gray-50 flex items-center justify-center gap-2";
+            btnPre.className = "flex-1 py-4 text-center font-bold text-sm md:text-base border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition hover:bg-gray-50 flex items-center justify-center gap-2";
+
+            conPost.classList.remove('hidden');
+            conPre.classList.add('hidden');
+        }
+    }
+
+    // 3. Logic "Lihat Semua" (Expand Grid)
+    function toggleExpand(type) {
+        const wrapper = document.getElementById('grid-' + type + '-wrapper');
+        const btn = document.getElementById('btn-expand-' + type);
+        const items = wrapper.querySelectorAll('.menu-item-' + type);
+        const isExpanded = btn.getAttribute('data-expanded') === 'true';
+
+        items.forEach((item, index) => {
+            if (index >= 16) {
+                if (isExpanded) item.classList.add('hidden');
+                else item.classList.remove('hidden');
+            }
+        });
+
+        if (isExpanded) {
+            btn.innerHTML = '<span>Lihat Semua Layanan</span> <i class="fas fa-chevron-down text-[10px]"></i>';
+            btn.setAttribute('data-expanded', 'false');
+        } else {
+            btn.innerHTML = '<span>Sembunyikan</span> <i class="fas fa-chevron-up text-[10px]"></i>';
+            btn.setAttribute('data-expanded', 'true');
+        }
+    }
+
+    // Default: Set active tab berdasarkan halaman (Jika halaman pascabayar, buka tab pascabayar)
+    @if($isPostpaid) switchTab('postpaid'); @endif
 </script>
 @endpush
