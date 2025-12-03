@@ -79,8 +79,6 @@ use App\Http\Controllers\PublicController;
 
 Route::get('/daftar-harga', [PublicController::class, 'pricelist'])->name('public.pricelist');
 // Route untuk membuka halaman kategori spesifik (agar form cek tagihan muncul)
-use App\Http\Controllers\PublicController;
-use App\Http\Controllers\PpobController;
 
 // ====================================================
 // RUTE HALAMAN PUBLIK (TANPA LOGIN)
