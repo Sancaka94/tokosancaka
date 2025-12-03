@@ -288,20 +288,34 @@ class PpobController extends Controller
 
    public function checkBill(Request $request)
     {
+        // 1. Validasi
         $request->validate([
             'customer_no' => 'required', 
             'sku' => 'required' 
         ]);
 
+        // 2. Generate Ref ID
         $refId = 'INQ-' . time() . rand(100,999);
 
-        try {
-            if (!$this->digiflazz) {
-                throw new \Exception('Service Digiflazz belum di-inject.');
-            }
+        // --- DEBUGGING MODE ON (PAKSA MUNCUL ERROR) ---
+        
+        // Cek apakah class service terload
+        if (!$this->digiflazz) {
+            dd("Service Digiflazz Kosong/Null. Cek __construct");
+        }
 
-            // Panggil Service
-            $response = $this->digiflazz->inquiryPasca($request->sku, $request->customer_no, $refId);
+        // Tembak API dan matikan proses untuk melihat hasilnya
+        $response = $this->digiflazz->inquiryPasca($request->sku, $request->customer_no, $refId);
+        
+        // TAMPILKAN HASIL MENTAH DARI DIGIFLAZZ DI LAYAR
+        dd([
+            'Ref ID' => $refId,
+            'Request Data' => [
+                'sku' => $request->sku,
+                'customer_no' => $request->customer_no
+            ],
+            'Response Digiflazz' => $response
+        ]);
 
             // Cek Response
             if (isset($response['data'])) {
