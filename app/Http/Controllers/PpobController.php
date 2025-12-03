@@ -364,7 +364,7 @@ class PpobController extends Controller
             return view('customer.ppob.category', $data);
         }
 
-        return view('etalase.ppob.category', $data);
+        return view('layouts.marketplace', $data);
     }
     /**
      * 3. Sinkronisasi Data (Update Harga)
