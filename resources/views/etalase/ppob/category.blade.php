@@ -321,21 +321,52 @@
                         <h2 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2">Rincian Tagihan</h2>
                         
                         <div id="bill_result" class="hidden">
-                            <div class="bg-blue-50 p-6 rounded-2xl mb-6 border border-blue-100 relative overflow-hidden">
-                                <div class="absolute -right-6 -top-6 bg-blue-100 w-24 h-24 rounded-full opacity-50"></div>
-                                <div class="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                                    <div><p class="text-gray-500 text-xs uppercase">Nama Pelanggan</p><p class="font-bold text-gray-800 text-lg" id="bill_name">-</p></div>
-                                    <div><p class="text-gray-500 text-xs uppercase">ID Pelanggan</p><p class="font-bold text-gray-800 text-lg" id="bill_id">-</p></div>
-                                    <div class="md:col-span-2 border-t border-blue-200 my-2 pt-2">
-                                        <p class="text-gray-500 text-xs uppercase text-right">Total Tagihan</p>
-                                        <p class="font-extrabold text-right text-3xl text-blue-600" id="bill_amount">-</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <button onclick="bayarTagihan()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg shadow-green-200 transition transform hover:-translate-y-1">
-                                <i class="fas fa-check-circle mr-2"></i> Bayar Sekarang
-                            </button>
-                        </div>
+    <div class="bg-blue-50 p-6 rounded-2xl mb-6 border border-blue-100 relative overflow-hidden">
+        <div class="absolute -right-6 -top-6 bg-blue-100 w-24 h-24 rounded-full opacity-50"></div>
+        
+        <div class="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            {{-- Data Utama --}}
+            <div>
+                <p class="text-gray-500 text-xs uppercase">Nama Pelanggan</p>
+                <p class="font-bold text-gray-800 text-lg" id="bill_name">-</p>
+            </div>
+            <div>
+                <p class="text-gray-500 text-xs uppercase">ID Pelanggan</p>
+                <p class="font-bold text-gray-800 text-lg" id="bill_id">-</p>
+            </div>
+
+            {{-- Data Tambahan (Tarif, Daya, Periode) --}}
+            <div class="md:col-span-2 grid grid-cols-2 gap-y-3 border-t border-blue-200 mt-2 pt-3">
+                <div>
+                    <p class="text-gray-500 text-xs uppercase">Tarif / Daya</p>
+                    <p class="font-bold text-gray-700" id="bill_power">-</p>
+                </div>
+                <div>
+                    <p class="text-gray-500 text-xs uppercase">Periode Tagihan</p>
+                    <p class="font-bold text-gray-700" id="bill_period">-</p>
+                </div>
+                 <div>
+                    <p class="text-gray-500 text-xs uppercase">Biaya Admin</p>
+                    <p class="font-bold text-gray-700" id="bill_admin">-</p>
+                </div>
+                 <div>
+                    <p class="text-gray-500 text-xs uppercase">Jumlah Lembar</p>
+                    <p class="font-bold text-gray-700" id="bill_sheet">-</p>
+                </div>
+            </div>
+
+            {{-- Total Tagihan --}}
+            <div class="md:col-span-2 border-t border-blue-200 mt-2 pt-2 bg-blue-100/50 p-2 rounded -mx-2">
+                <p class="text-gray-500 text-xs uppercase text-right">Total Bayar</p>
+                <p class="font-extrabold text-right text-3xl text-blue-600" id="bill_amount">-</p>
+            </div>
+        </div>
+    </div>
+    
+    <button onclick="bayarTagihan()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg shadow-green-200 transition transform hover:-translate-y-1">
+        <i class="fas fa-check-circle mr-2"></i> Bayar Sekarang
+    </button>
+</div>
 
                         <div id="bill_empty" class="flex flex-col items-center justify-center py-20 text-gray-400">
                             <div class="bg-gray-100 p-6 rounded-full mb-4"><i class="fas fa-file-invoice-dollar text-4xl text-gray-300"></i></div>
@@ -473,15 +504,40 @@
             .then(data => {
                 btn.disabled = false; spinner.classList.add('hidden'); text.innerText = "Cek Tagihan";
                 if(data.status === 'success') {
-                    document.getElementById('bill_name').innerText = data.customer_name;
-                    document.getElementById('bill_id').innerText = data.customer_no;
-                    document.getElementById('bill_amount').innerText = 'Rp ' + parseInt(data.amount).toLocaleString('id-ID');
-                    inquiryRefId = data.ref_id;
-                    resultDiv.classList.remove('hidden');
-                } else {
-                    alert(data.message || 'Tagihan tidak ditemukan');
-                    emptyDiv.classList.remove('hidden');
-                }
+    // 1. Data Dasar
+    document.getElementById('bill_name').innerText = data.customer_name;
+    document.getElementById('bill_id').innerText = data.customer_no;
+    
+    // Gunakan 'selling_price' sesuai gambar debug Anda (Rp 11.000), bukan amount (Rp 10.000)
+    // agar admin fee sudah termasuk.
+    let totalBayar = data.selling_price ? data.selling_price : data.amount;
+    document.getElementById('bill_amount').innerText = 'Rp ' + parseInt(totalBayar).toLocaleString('id-ID');
+    
+    // 2. Data Rinci dari array 'desc' (Sesuai gambar debug)
+    if (data.desc) {
+        // Tarif & Daya (Contoh: R1 / 1300)
+        let tarif = data.desc.tarif || '-';
+        let daya = data.desc.daya || '-';
+        document.getElementById('bill_power').innerText = tarif + ' / ' + daya + ' VA';
+        
+        // Admin
+        let admin = parseInt(data.admin || 0);
+        document.getElementById('bill_admin').innerText = 'Rp ' + admin.toLocaleString('id-ID');
+        
+        // Lembar Tagihan
+        document.getElementById('bill_sheet').innerText = (data.desc.lembar_tagihan || '1') + ' Lembar';
+
+        // Periode (Ada di dalam array detail index ke-0)
+        if (data.desc.detail && data.desc.detail.length > 0) {
+            document.getElementById('bill_period').innerText = data.desc.detail[0].periode;
+        } else {
+            document.getElementById('bill_period').innerText = '-';
+        }
+    }
+
+    inquiryRefId = data.ref_id;
+    resultDiv.classList.remove('hidden');
+}
             })
             .catch(err => {
                 btn.disabled = false; spinner.classList.add('hidden'); text.innerText = "Cek Tagihan";
