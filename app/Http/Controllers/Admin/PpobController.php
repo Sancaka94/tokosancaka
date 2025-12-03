@@ -30,22 +30,118 @@ class PpobController extends Controller
         return $setting ? $setting->value : null;
     }
 
-    /**
-     * 1. Halaman Utama Dashboard PPOB (ADMIN)
-     * URL: /admin/digital
+      /**
+     * Halaman Daftar Harga / Kategori
+     * URL: /daftar-harga/{slug?}
      */
-    public function index()
+    public function index($slug = 'pulsa') // Default ke pulsa jika slug kosong
     {
-        // Pastikan User adalah Admin
-        if (!auth()->check() || !auth()->user()->hasRole('Admin')) {
-            abort(403, 'Unauthorized access.');
+        // 1. Mapping Kategori (Sama seperti di Admin)
+        $categoriesMap = [
+            'pulsa'         => ['Pulsa'],
+            'data'          => ['Data'],
+            'pln-token'     => ['PLN'],
+            'pln-pascabayar'=> ['PLN Pascabayar', 'Tagihan PLN'], // Sesuaikan dengan slug di blade
+            'pdam'          => ['PDAM'],
+            'e-money'       => ['E-Money'],
+            'voucher-game'  => ['Games'],
+            'streaming'     => ['TV', 'Streaming'],
+        ];
+
+        // Jika slug tidak valid, default ke pulsa atau 404
+        if (!array_key_exists($slug, $categoriesMap)) {
+            abort(404);
         }
 
-        $weblogo = $this->getWebLogo();
+        $dbCategories = $categoriesMap[$slug];
+
+        // 2. Setup Variable $pageInfo (INI YANG MENYEBABKAN ERROR SEBELUMNYA)
+        $pageInfo = [
+            'title'       => ucfirst(str_replace('-', ' ', $slug)),
+            'slug'        => $slug,
+            'input_label' => 'Nomor Handphone',
+            'input_place' => 'Contoh: 0812xxxx',
+            'icon'        => 'fa-mobile-alt',
+            'is_postpaid' => false
+        ];
+
+        // Custom Logic per Kategori untuk UI
+        switch ($slug) {
+            case 'pln-token':
+                $pageInfo['title'] = 'Token Listrik PLN';
+                $pageInfo['input_label'] = 'Nomor Meter / ID Pelanggan';
+                $pageInfo['input_place'] = 'Contoh: 141234567890';
+                $pageInfo['icon'] = 'fa-bolt';
+                break;
+            case 'pln-pascabayar':
+                $pageInfo['title'] = 'Tagihan Listrik Pasca';
+                $pageInfo['input_label'] = 'ID Pelanggan';
+                $pageInfo['input_place'] = 'Contoh: 53xxxxxxxxx';
+                $pageInfo['icon'] = 'fa-file-invoice-dollar';
+                $pageInfo['is_postpaid'] = true;
+                break;
+            case 'pdam':
+                $pageInfo['title'] = 'Tagihan Air PDAM';
+                $pageInfo['input_label'] = 'ID Pelanggan';
+                $pageInfo['icon'] = 'fa-faucet';
+                $pageInfo['is_postpaid'] = true;
+                break;
+            case 'e-money':
+                $pageInfo['title'] = 'Top Up E-Wallet';
+                $pageInfo['icon'] = 'fa-wallet';
+                break;
+            case 'voucher-game':
+                $pageInfo['title'] = 'Voucher Game';
+                $pageInfo['input_label'] = 'ID Pemain (User ID)';
+                $pageInfo['input_place'] = 'Masukkan ID Game';
+                $pageInfo['icon'] = 'fa-gamepad';
+                break;
+            case 'streaming':
+                $pageInfo['title'] = 'Voucher TV & Streaming';
+                $pageInfo['icon'] = 'fa-tv';
+                break;
+        }
+
+        // 3. Ambil Data Produk
+        // Query produk aktif untuk customer
+        $products = PpobProduct::whereIn('category', $dbCategories)
+            ->where('buyer_product_status', true) // Hanya yang aktif untuk pembeli
+            ->where('seller_product_status', true) // Hanya yang aktif dari provider
+            ->orderBy('sell_price', 'asc')
+            ->get();
+
+        // 4. Data Pendukung Lainnya untuk View
+        // List Kategori untuk Menu Icon (sesuai blade line 68)
+        $categories = [
+            (object)['slug' => 'pulsa', 'name' => 'Pulsa'],
+            (object)['slug' => 'data', 'name' => 'Paket Data'],
+            (object)['slug' => 'pln-token', 'name' => 'Token PLN'],
+            (object)['slug' => 'pln-pascabayar', 'name' => 'PLN Pasca'],
+            (object)['slug' => 'pdam', 'name' => 'PDAM'],
+            (object)['slug' => 'e-money', 'name' => 'E-Money'],
+            (object)['slug' => 'voucher-game', 'name' => 'Games'],
+            (object)['slug' => 'streaming', 'name' => 'Streaming'],
+        ];
         
-        // Return View Khusus Admin
-        // Pastikan file: resources/views/admin/ppob/index.blade.php ADA
-        return view('admin.ppob.index'); 
+        // Ambil Brands untuk Filter
+        $brands = $products->pluck('brand')->unique()->values();
+
+        // Ambil Banners (Jika tabel banners ada, jika tidak kosongkan array)
+        // $banners = Banner::where('status', 'active')->get(); 
+        $banners = []; // Default kosong agar tidak error jika tabel belum ada
+        
+        // Ambil Settings untuk Banner Promo Kecil
+        $settings = Setting::whereIn('key', ['banner_2', 'banner_3'])->pluck('value', 'key');
+
+        // 5. Return View Public
+        return view('public.pricelist', compact(
+            'products', 
+            'pageInfo', 
+            'categories', 
+            'brands', 
+            'banners', 
+            'settings'
+        ));
     }
 
     /**
