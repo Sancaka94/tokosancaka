@@ -1,73 +1,69 @@
 @extends('layouts.marketplace')
 
 @php
-    // --- 1. SETUP DATA KATEGORI (DARI ANDA) ---
-    // Logika Deteksi Halaman & Slug
-    $urlSlug = request()->segment(4); // Sesuaikan segment dengan route Anda
+    // --- 1. SETUP DATA KATEGORI (Sesuai List Kamu) ---
+    $urlSlug = request()->segment(4); 
     $pageInfo = $pageInfo ?? [];
     $currentSlug = $pageInfo['slug'] ?? $urlSlug ?? 'pulsa'; 
 
-    // Daftar Slug Pascabayar
+    // Daftar Slug Pascabayar untuk deteksi otomatis halaman
     $postpaidSlugs = [
         'pln-pascabayar', 'pdam', 'bpjs-kesehatan', 'bpjs-ketenagakerjaan', 
         'hp-pascabayar', 'internet-pascabayar', 'tv-pascabayar', 
         'multifinance', 'pbb', 'samsat', 'gas-negara', 'pln-nontaglis'
     ];
     
-    // Tentukan tipe halaman saat ini
     $isPostpaid = ($pageInfo['is_postpaid'] ?? false) || in_array($currentSlug, $postpaidSlugs);
-    
-    // Judul Halaman
     $pageTitle = $pageInfo['title'] ?? ucwords(str_replace('-', ' ', $currentSlug));
 
-    // --- ARRAY MENU PRABAYAR ---
+    // --- ARRAY MENU PRABAYAR (LENGKAP) ---
     $prepaidMenus = [
-        ['slug' => 'pulsa', 'name' => 'Pulsa', 'icon' => 'fa-mobile-alt', 'style' => 'text-red-500 bg-red-50 border-red-200'],
-        ['slug' => 'data', 'name' => 'Paket Data', 'icon' => 'fa-wifi', 'style' => 'text-blue-500 bg-blue-50 border-blue-200'],
-        ['slug' => 'pln-token', 'name' => 'Token PLN', 'icon' => 'fa-bolt', 'style' => 'text-yellow-500 bg-yellow-50 border-yellow-200'],
-        ['slug' => 'e-money', 'name' => 'E-Money', 'icon' => 'fa-wallet', 'style' => 'text-purple-500 bg-purple-50 border-purple-200'],
-        ['slug' => 'voucher-game', 'name' => 'Games', 'icon' => 'fa-gamepad', 'style' => 'text-indigo-500 bg-indigo-50 border-indigo-200'],
-        ['slug' => 'voucher', 'name' => 'Voucher', 'icon' => 'fa-ticket-alt', 'style' => 'text-pink-500 bg-pink-50 border-pink-200'],
-        ['slug' => 'paket-sms-telpon', 'name' => 'SMS & Telpon', 'icon' => 'fa-phone-volume', 'style' => 'text-green-500 bg-green-50 border-green-200'],
-        ['slug' => 'masa-aktif', 'name' => 'Masa Aktif', 'icon' => 'fa-hourglass-half', 'style' => 'text-orange-500 bg-orange-50 border-orange-200'],
+        ['slug' => 'pulsa', 'name' => 'Pulsa', 'icon' => 'fa-mobile-alt', 'style' => 'text-red-500 bg-red-50 border-red-100'],
+        ['slug' => 'data', 'name' => 'Paket Data', 'icon' => 'fa-wifi', 'style' => 'text-blue-500 bg-blue-50 border-blue-100'],
+        ['slug' => 'pln-token', 'name' => 'Token PLN', 'icon' => 'fa-bolt', 'style' => 'text-yellow-500 bg-yellow-50 border-yellow-100'],
+        ['slug' => 'e-money', 'name' => 'E-Money', 'icon' => 'fa-wallet', 'style' => 'text-purple-500 bg-purple-50 border-purple-100'],
+        ['slug' => 'voucher-game', 'name' => 'Games', 'icon' => 'fa-gamepad', 'style' => 'text-indigo-500 bg-indigo-50 border-indigo-100'],
+        ['slug' => 'voucher', 'name' => 'Voucher', 'icon' => 'fa-ticket-alt', 'style' => 'text-pink-500 bg-pink-50 border-pink-100'],
+        ['slug' => 'paket-sms-telpon', 'name' => 'SMS & Telpon', 'icon' => 'fa-phone-volume', 'style' => 'text-green-500 bg-green-50 border-green-100'],
+        ['slug' => 'masa-aktif', 'name' => 'Masa Aktif', 'icon' => 'fa-hourglass-half', 'style' => 'text-orange-500 bg-orange-50 border-orange-100'],
         ['slug' => 'aktivasi-voucher', 'name' => 'Akt. Voucher', 'icon' => 'fa-barcode', 'style' => 'text-gray-600 bg-gray-50 border-gray-200'],
         ['slug' => 'aktivasi-perdana', 'name' => 'Akt. Perdana', 'icon' => 'fa-sim-card', 'style' => 'text-slate-600 bg-slate-50 border-slate-200'],
-        ['slug' => 'streaming', 'name' => 'Streaming', 'icon' => 'fa-play-circle', 'style' => 'text-red-600 bg-red-50 border-red-200'],
-        ['slug' => 'tv', 'name' => 'TV Prabayar', 'icon' => 'fa-tv', 'style' => 'text-teal-500 bg-teal-50 border-teal-200'],
-        ['slug' => 'china-topup', 'name' => 'China Topup', 'icon' => 'fa-globe-asia', 'style' => 'text-red-500 bg-red-50 border-red-200'],
-        ['slug' => 'malaysia-topup', 'name' => 'Mly. Topup', 'icon' => 'fa-globe-asia', 'style' => 'text-blue-600 bg-blue-50 border-blue-200'],
-        ['slug' => 'philippines-topup', 'name' => 'Phil. Topup', 'icon' => 'fa-globe-asia', 'style' => 'text-yellow-500 bg-yellow-50 border-yellow-200'],
-        ['slug' => 'singapore-topup', 'name' => 'S\'pore Topup', 'icon' => 'fa-globe-asia', 'style' => 'text-red-600 bg-red-50 border-red-200'],
-        ['slug' => 'thailand-topup', 'name' => 'Thai Topup', 'icon' => 'fa-globe-asia', 'style' => 'text-blue-500 bg-blue-50 border-blue-200'],
-        ['slug' => 'vietnam-topup', 'name' => 'Viet. Topup', 'icon' => 'fa-globe-asia', 'style' => 'text-red-500 bg-red-50 border-red-200'],
-        ['slug' => 'bundling', 'name' => 'Bundling', 'icon' => 'fa-box-open', 'style' => 'text-cyan-500 bg-cyan-50 border-cyan-200'],
-        ['slug' => 'gas', 'name' => 'Gas Token', 'icon' => 'fa-burn', 'style' => 'text-orange-600 bg-orange-50 border-orange-200'],
-        ['slug' => 'esim', 'name' => 'eSIM', 'icon' => 'fa-qrcode', 'style' => 'text-indigo-600 bg-indigo-50 border-indigo-200'],
-        ['slug' => 'media-sosial', 'name' => 'Media Sosial', 'icon' => 'fa-thumbs-up', 'style' => 'text-blue-500 bg-blue-50 border-blue-200'],
-        ['slug' => 'telkomsel-omni', 'name' => 'Tsel Omni', 'icon' => 'fa-tower-cell', 'style' => 'text-red-600 bg-red-50 border-red-200'],
-        ['slug' => 'indosat-only4u', 'name' => 'Isat Only4u', 'icon' => 'fa-star', 'style' => 'text-yellow-500 bg-yellow-50 border-yellow-200'],
-        ['slug' => 'tri-cuanmax', 'name' => 'Tri CuanMax', 'icon' => 'fa-percent', 'style' => 'text-purple-600 bg-purple-50 border-purple-200'],
-        ['slug' => 'xl-axis-cuanku', 'name' => 'XL Cuanku', 'icon' => 'fa-gift', 'style' => 'text-blue-600 bg-blue-50 border-blue-200'],
-        ['slug' => 'by-u', 'name' => 'by.U', 'icon' => 'fa-ghost', 'style' => 'text-orange-500 bg-orange-50 border-orange-200'],
+        ['slug' => 'streaming', 'name' => 'Streaming', 'icon' => 'fa-play-circle', 'style' => 'text-red-600 bg-red-50 border-red-100'],
+        ['slug' => 'tv', 'name' => 'TV Prabayar', 'icon' => 'fa-tv', 'style' => 'text-teal-500 bg-teal-50 border-teal-100'],
+        ['slug' => 'china-topup', 'name' => 'China Topup', 'icon' => 'fa-globe-asia', 'style' => 'text-red-500 bg-red-50 border-red-100'],
+        ['slug' => 'malaysia-topup', 'name' => 'Mly. Topup', 'icon' => 'fa-globe-asia', 'style' => 'text-blue-600 bg-blue-50 border-blue-100'],
+        ['slug' => 'philippines-topup', 'name' => 'Phil. Topup', 'icon' => 'fa-globe-asia', 'style' => 'text-yellow-500 bg-yellow-50 border-yellow-100'],
+        ['slug' => 'singapore-topup', 'name' => 'S\'pore Topup', 'icon' => 'fa-globe-asia', 'style' => 'text-red-600 bg-red-50 border-red-100'],
+        ['slug' => 'thailand-topup', 'name' => 'Thai Topup', 'icon' => 'fa-globe-asia', 'style' => 'text-blue-500 bg-blue-50 border-blue-100'],
+        ['slug' => 'vietnam-topup', 'name' => 'Viet. Topup', 'icon' => 'fa-globe-asia', 'style' => 'text-red-500 bg-red-50 border-red-100'],
+        ['slug' => 'bundling', 'name' => 'Bundling', 'icon' => 'fa-box-open', 'style' => 'text-cyan-500 bg-cyan-50 border-cyan-100'],
+        ['slug' => 'gas', 'name' => 'Gas Token', 'icon' => 'fa-burn', 'style' => 'text-orange-600 bg-orange-50 border-orange-100'],
+        ['slug' => 'esim', 'name' => 'eSIM', 'icon' => 'fa-qrcode', 'style' => 'text-indigo-600 bg-indigo-50 border-indigo-100'],
+        ['slug' => 'media-sosial', 'name' => 'Media Sosial', 'icon' => 'fa-thumbs-up', 'style' => 'text-blue-500 bg-blue-50 border-blue-100'],
+        ['slug' => 'telkomsel-omni', 'name' => 'Tsel Omni', 'icon' => 'fa-tower-cell', 'style' => 'text-red-600 bg-red-50 border-red-100'],
+        ['slug' => 'indosat-only4u', 'name' => 'Isat Only4u', 'icon' => 'fa-star', 'style' => 'text-yellow-500 bg-yellow-50 border-yellow-100'],
+        ['slug' => 'tri-cuanmax', 'name' => 'Tri CuanMax', 'icon' => 'fa-percent', 'style' => 'text-purple-600 bg-purple-50 border-purple-100'],
+        ['slug' => 'xl-axis-cuanku', 'name' => 'XL Cuanku', 'icon' => 'fa-gift', 'style' => 'text-blue-600 bg-blue-50 border-blue-100'],
+        ['slug' => 'by-u', 'name' => 'by.U', 'icon' => 'fa-ghost', 'style' => 'text-orange-500 bg-orange-50 border-orange-100'],
     ];
 
     // --- ARRAY MENU PASCABAYAR ---
     $postpaidMenus = [
-        ['slug' => 'pln-pascabayar', 'name' => 'PLN Pasca', 'icon' => 'fa-file-invoice-dollar', 'style' => 'text-yellow-600 bg-yellow-50 border-yellow-200'],
-        ['slug' => 'pdam', 'name' => 'PDAM', 'icon' => 'fa-faucet', 'style' => 'text-cyan-600 bg-cyan-50 border-cyan-200'],
-        ['slug' => 'bpjs-kesehatan', 'name' => 'BPJS Kes.', 'icon' => 'fa-heartbeat', 'style' => 'text-green-600 bg-green-50 border-green-200'],
-        ['slug' => 'bpjs-ketenagakerjaan', 'name' => 'BPJS TK', 'icon' => 'fa-hard-hat', 'style' => 'text-green-700 bg-green-50 border-green-200'],
-        ['slug' => 'hp-pascabayar', 'name' => 'HP Pasca', 'icon' => 'fa-mobile-screen', 'style' => 'text-blue-600 bg-blue-50 border-blue-200'],
-        ['slug' => 'internet-pascabayar', 'name' => 'Internet', 'icon' => 'fa-network-wired', 'style' => 'text-indigo-600 bg-indigo-50 border-indigo-200'],
-        ['slug' => 'tv-pascabayar', 'name' => 'TV Kabel', 'icon' => 'fa-satellite-dish', 'style' => 'text-pink-600 bg-pink-50 border-pink-200'],
-        ['slug' => 'multifinance', 'name' => 'Cicilan', 'icon' => 'fa-money-bill-wave', 'style' => 'text-emerald-600 bg-emerald-50 border-emerald-200'],
+        ['slug' => 'pln-pascabayar', 'name' => 'PLN Pasca', 'icon' => 'fa-file-invoice-dollar', 'style' => 'text-yellow-600 bg-yellow-50 border-yellow-100'],
+        ['slug' => 'pdam', 'name' => 'PDAM', 'icon' => 'fa-faucet', 'style' => 'text-cyan-600 bg-cyan-50 border-cyan-100'],
+        ['slug' => 'bpjs-kesehatan', 'name' => 'BPJS Kes.', 'icon' => 'fa-heartbeat', 'style' => 'text-green-600 bg-green-50 border-green-100'],
+        ['slug' => 'bpjs-ketenagakerjaan', 'name' => 'BPJS TK', 'icon' => 'fa-hard-hat', 'style' => 'text-green-700 bg-green-50 border-green-100'],
+        ['slug' => 'hp-pascabayar', 'name' => 'HP Pasca', 'icon' => 'fa-mobile-screen', 'style' => 'text-blue-600 bg-blue-50 border-blue-100'],
+        ['slug' => 'internet-pascabayar', 'name' => 'Internet', 'icon' => 'fa-network-wired', 'style' => 'text-indigo-600 bg-indigo-50 border-indigo-100'],
+        ['slug' => 'tv-pascabayar', 'name' => 'TV Kabel', 'icon' => 'fa-satellite-dish', 'style' => 'text-pink-600 bg-pink-50 border-pink-100'],
+        ['slug' => 'multifinance', 'name' => 'Cicilan', 'icon' => 'fa-money-bill-wave', 'style' => 'text-emerald-600 bg-emerald-50 border-emerald-100'],
         ['slug' => 'pbb', 'name' => 'Pajak PBB', 'icon' => 'fa-building', 'style' => 'text-gray-600 bg-gray-50 border-gray-200'],
-        ['slug' => 'samsat', 'name' => 'SAMSAT', 'icon' => 'fa-car', 'style' => 'text-blue-700 bg-blue-50 border-blue-200'],
-        ['slug' => 'gas-negara', 'name' => 'Gas Negara', 'icon' => 'fa-fire', 'style' => 'text-orange-600 bg-orange-50 border-orange-200'],
-        ['slug' => 'pln-nontaglis', 'name' => 'PLN NonTag', 'icon' => 'fa-plug', 'style' => 'text-yellow-600 bg-yellow-50 border-yellow-200'],
+        ['slug' => 'samsat', 'name' => 'SAMSAT', 'icon' => 'fa-car', 'style' => 'text-blue-700 bg-blue-50 border-blue-100'],
+        ['slug' => 'gas-negara', 'name' => 'Gas Negara', 'icon' => 'fa-fire', 'style' => 'text-orange-600 bg-orange-50 border-orange-100'],
+        ['slug' => 'pln-nontaglis', 'name' => 'PLN NonTag', 'icon' => 'fa-plug', 'style' => 'text-yellow-600 bg-yellow-50 border-yellow-100'],
     ];
 
-    // --- LOGIKA LABEL INPUT ---
+    // --- LOGIKA LABEL INPUT DINAMIS ---
     $dynamicLabel = 'Nomor Pelanggan';
     $dynamicPlaceholder = 'Masukkan Nomor...';
     
@@ -104,7 +100,7 @@
 <div class="bg-gray-50 min-h-screen pb-20 font-sans">
     <div class="container mx-auto px-4 pt-6 relative z-10 max-w-7xl">
         
-        {{-- HERO SECTION --}}
+        {{-- HERO SECTION (BANNER) --}}
         <section class="mb-6">
             <div class="rounded-2xl shadow-sm border border-gray-100 overflow-hidden relative group h-[180px] md:h-[320px]">
                 <div class="swiper heroSwiper w-full h-full bg-gray-200">
@@ -121,55 +117,60 @@
             </div>
         </section>
 
-        {{-- MENU GRID SECTION (TABS) --}}
+        {{-- === KATEGORI MENU SECTION (REVISI SESUAI GAMBAR) === --}}
         <section class="mb-8" data-aos="fade-up">
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100">
                 
-                {{-- Tabs Header --}}
-                <div class="flex border-b border-gray-100">
-                    <button onclick="switchTab('prepaid')" id="tab-prepaid" class="flex-1 py-4 text-center font-bold text-sm md:text-base border-b-2 border-blue-600 text-blue-600 transition hover:bg-gray-50">
-                        <i class="fas fa-mobile-alt mr-2"></i> Prabayar / Topup
+                {{-- 1. TAB HEADER (Prabayar vs Pascabayar) --}}
+                <div class="flex border-b border-gray-200">
+                    <button onclick="switchTab('prepaid')" id="tab-prepaid" class="flex-1 py-4 text-center font-bold text-sm md:text-base border-b-2 border-blue-600 text-blue-600 transition hover:bg-gray-50 flex items-center justify-center gap-2">
+                        <i class="fas fa-mobile-alt"></i> Prabayar / Topup
                     </button>
-                    <button onclick="switchTab('postpaid')" id="tab-postpaid" class="flex-1 py-4 text-center font-bold text-sm md:text-base border-b-2 border-transparent text-gray-500 hover:text-blue-600 transition hover:bg-gray-50">
-                        <i class="fas fa-file-invoice mr-2"></i> Pascabayar / Tagihan
+                    <button onclick="switchTab('postpaid')" id="tab-postpaid" class="flex-1 py-4 text-center font-bold text-sm md:text-base border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition hover:bg-gray-50 flex items-center justify-center gap-2">
+                        <i class="fas fa-file-invoice"></i> Pascabayar / Tagihan
                     </button>
                 </div>
 
-                <div class="p-6">
-                    {{-- CONTENT: PRABAYAR --}}
+                <div class="p-6 md:p-8">
+                    {{-- 2. KONTEN PRABAYAR (GRID 8 KOLOM) --}}
                     <div id="content-prepaid" class="animate-fade">
-                        <div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-y-6 gap-x-2 transition-all duration-300" id="grid-prepaid-wrapper">
+                        <div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-y-8 gap-x-4" id="grid-prepaid-wrapper">
                             @foreach($prepaidMenus as $index => $menu)
-                                {{-- Link Logic: Ubah sesuai route Anda --}}
+                                {{-- Item Menu --}}
                                 <a href="{{ url('/etalase/ppob/digital/' . $menu['slug']) }}" 
-                                   class="menu-item-prepaid group flex flex-col items-center gap-2 {{ $index >= 16 ? 'hidden' : '' }}">
-                                    <div class="w-12 h-12 md:w-14 md:h-14 rounded-xl flex items-center justify-center transition shadow-sm border {{ $menu['style'] }} {{ $currentSlug == $menu['slug'] ? 'ring-2 ring-offset-2 ring-blue-400' : 'group-hover:scale-110' }}">
+                                   class="menu-item-prepaid group flex flex-col items-center gap-3 {{ $index >= 16 ? 'hidden' : '' }}">
+                                    
+                                    {{-- Icon Container (Rounded) --}}
+                                    <div class="w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center transition border {{ $menu['style'] }} {{ $currentSlug == $menu['slug'] ? 'ring-2 ring-offset-2 ring-blue-400' : 'group-hover:scale-105' }}">
                                         <i class="fas {{ $menu['icon'] }} text-xl md:text-2xl"></i>
                                     </div>
-                                    <span class="text-[10px] md:text-xs font-semibold text-gray-600 text-center leading-tight px-1">{{ $menu['name'] }}</span>
+                                    
+                                    {{-- Text Label --}}
+                                    <span class="text-[11px] md:text-xs font-medium text-gray-600 text-center leading-tight px-1">{{ $menu['name'] }}</span>
                                 </a>
                             @endforeach
                         </div>
                         
-                        {{-- Tombol Lihat Semua (Jika item > 16) --}}
+                        {{-- Tombol Lihat Semua (Accordion) --}}
                         @if(count($prepaidMenus) > 16)
-                            <div class="mt-4 text-center">
-                                <button onclick="toggleExpand('prepaid')" id="btn-expand-prepaid" class="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center justify-center mx-auto bg-blue-50 py-2 px-4 rounded-full transition">
-                                    <span>Lihat Semua Layanan</span> <i class="fas fa-chevron-down ml-2"></i>
+                            <div class="mt-8 text-center">
+                                <button onclick="toggleExpand('prepaid')" id="btn-expand-prepaid" class="inline-flex items-center gap-2 px-6 py-2 bg-blue-50 text-blue-600 text-xs font-bold rounded-full hover:bg-blue-100 transition">
+                                    <span>Lihat Semua Layanan</span> 
+                                    <i class="fas fa-chevron-down text-[10px]"></i>
                                 </button>
                             </div>
                         @endif
                     </div>
 
-                    {{-- CONTENT: PASCABAYAR --}}
+                    {{-- 3. KONTEN PASCABAYAR (GRID 8 KOLOM) --}}
                     <div id="content-postpaid" class="hidden animate-fade">
-                        <div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-y-6 gap-x-2">
+                        <div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-y-8 gap-x-4">
                             @foreach($postpaidMenus as $menu)
-                                <a href="{{ url('/etalase/ppob/digital/' . $menu['slug']) }}" class="group flex flex-col items-center gap-2">
-                                    <div class="w-12 h-12 md:w-14 md:h-14 rounded-xl flex items-center justify-center transition shadow-sm border {{ $menu['style'] }} {{ $currentSlug == $menu['slug'] ? 'ring-2 ring-offset-2 ring-blue-400' : 'group-hover:scale-110' }}">
+                                <a href="{{ url('/etalase/ppob/digital/' . $menu['slug']) }}" class="group flex flex-col items-center gap-3">
+                                    <div class="w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center transition border {{ $menu['style'] }} {{ $currentSlug == $menu['slug'] ? 'ring-2 ring-offset-2 ring-blue-400' : 'group-hover:scale-105' }}">
                                         <i class="fas {{ $menu['icon'] }} text-xl md:text-2xl"></i>
                                     </div>
-                                    <span class="text-[10px] md:text-xs font-semibold text-gray-600 text-center leading-tight px-1">{{ $menu['name'] }}</span>
+                                    <span class="text-[11px] md:text-xs font-medium text-gray-600 text-center leading-tight px-1">{{ $menu['name'] }}</span>
                                 </a>
                             @endforeach
                         </div>
@@ -179,11 +180,11 @@
             </div>
         </section>
 
-        {{-- INPUT & TRANSACTION SECTION --}}
+        {{-- INPUT & TRANSACTION SECTION (TIDAK BERUBAH) --}}
         <section class="mb-8">
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col md:flex-row gap-8">
                 
-                {{-- LEFT: INPUT --}}
+                {{-- LEFT: INPUT FORM --}}
                 <div class="w-full md:w-1/3">
                     <h3 class="font-bold text-gray-800 text-lg mb-4 flex items-center">
                         <span class="bg-blue-100 text-blue-600 p-2 rounded-lg mr-2"><i class="fas {{ $isPostpaid ? 'fa-file-invoice' : 'fa-shopping-cart' }}"></i></span>
@@ -201,14 +202,12 @@
                                 <i class="fas fa-keyboard text-lg"></i>
                             </div>
                             
-                            {{-- Badge Operator (Hidden Default) --}}
                             <div id="operator-badge" class="absolute right-4 top-1/2 transform -translate-y-1/2 hidden bg-gray-100 text-gray-600 text-[10px] font-bold px-2 py-1 rounded border border-gray-200 uppercase">
                                 -
                             </div>
                         </div>
                     </div>
 
-                    {{-- Action Button --}}
                     @if($isPostpaid)
                         <button onclick="cekTagihan()" id="btn-cek-tagihan" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-4 rounded-xl transition shadow-lg shadow-blue-100 flex justify-center items-center gap-2">
                             <span id="btn-text">Cek Tagihan</span>
@@ -216,7 +215,6 @@
                         </button>
                         <div id="bill_error_msg" class="hidden mt-3 text-red-600 text-sm bg-red-50 p-2 rounded border border-red-100 text-center"></div>
                     @else
-                        {{-- Button Khusus PLN Token / Games jika diperlukan, jika Pulsa otomatis filter --}}
                         @if(str_contains($currentSlug, 'pln-token'))
                              <button onclick="cekPlnPrabayar()" class="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 rounded-xl mb-3">Cek Meteran</button>
                              <div id="pln_info" class="hidden text-sm bg-yellow-50 p-3 rounded border border-yellow-200 mb-3"></div>
@@ -285,7 +283,7 @@
     </div>
 </div>
 
-{{-- MODAL KONFIRMASI --}}
+{{-- MODAL KONFIRMASI (TIDAK BERUBAH) --}}
 <div id="confirmModal" class="fixed inset-0 z-[999] hidden">
     <div class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onclick="closeModal()"></div>
     <div class="flex items-center justify-center min-h-screen p-4">
@@ -316,10 +314,10 @@
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
 <script>
-    // 1. Swiper
+    // 1. Swiper Banner
     var swiper = new Swiper(".heroSwiper", { loop: true, autoplay: { delay: 4000 }, pagination: { el: ".swiper-pagination", clickable: true } });
 
-    // 2. Logic Tabs (Prabayar vs Pascabayar)
+    // 2. Logic Tabs (Prabayar vs Pascabayar) - SESUAI DESAIN BARU
     function switchTab(type) {
         const btnPre = document.getElementById('tab-prepaid');
         const btnPost = document.getElementById('tab-postpaid');
@@ -327,25 +325,21 @@
         const conPost = document.getElementById('content-postpaid');
 
         if(type === 'prepaid') {
-            btnPre.classList.add('border-blue-600', 'text-blue-600');
-            btnPre.classList.remove('border-transparent', 'text-gray-500');
-            btnPost.classList.remove('border-blue-600', 'text-blue-600');
-            btnPost.classList.add('border-transparent', 'text-gray-500');
+            btnPre.className = "flex-1 py-4 text-center font-bold text-sm md:text-base border-b-2 border-blue-600 text-blue-600 transition hover:bg-gray-50 flex items-center justify-center gap-2";
+            btnPost.className = "flex-1 py-4 text-center font-bold text-sm md:text-base border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition hover:bg-gray-50 flex items-center justify-center gap-2";
             
             conPre.classList.remove('hidden');
             conPost.classList.add('hidden');
         } else {
-            btnPost.classList.add('border-blue-600', 'text-blue-600');
-            btnPost.classList.remove('border-transparent', 'text-gray-500');
-            btnPre.classList.remove('border-blue-600', 'text-blue-600');
-            btnPre.classList.add('border-transparent', 'text-gray-500');
+            btnPost.className = "flex-1 py-4 text-center font-bold text-sm md:text-base border-b-2 border-blue-600 text-blue-600 transition hover:bg-gray-50 flex items-center justify-center gap-2";
+            btnPre.className = "flex-1 py-4 text-center font-bold text-sm md:text-base border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition hover:bg-gray-50 flex items-center justify-center gap-2";
 
             conPost.classList.remove('hidden');
             conPre.classList.add('hidden');
         }
     }
 
-    // 3. Logic "Lihat Semua" (Expand)
+    // 3. Logic "Lihat Semua" (Expand Grid)
     function toggleExpand(type) {
         const wrapper = document.getElementById('grid-' + type + '-wrapper');
         const btn = document.getElementById('btn-expand-' + type);
@@ -360,10 +354,10 @@
         });
 
         if (isExpanded) {
-            btn.innerHTML = '<span>Lihat Semua Layanan</span> <i class="fas fa-chevron-down ml-2"></i>';
+            btn.innerHTML = '<span>Lihat Semua Layanan</span> <i class="fas fa-chevron-down text-[10px]"></i>';
             btn.setAttribute('data-expanded', 'false');
         } else {
-            btn.innerHTML = '<span>Sembunyikan</span> <i class="fas fa-chevron-up ml-2"></i>';
+            btn.innerHTML = '<span>Sembunyikan</span> <i class="fas fa-chevron-up text-[10px]"></i>';
             btn.setAttribute('data-expanded', 'true');
         }
     }
@@ -371,14 +365,13 @@
     // Default: Set active tab berdasarkan halaman (Jika halaman pascabayar, buka tab pascabayar)
     @if($isPostpaid) switchTab('postpaid'); @endif
 
-    // 4. Input & Search Logic
+    // 4. Input & Search Logic (TIDAK BERUBAH)
     const inputNo = document.getElementById('customer_no');
     const tableRows = document.querySelectorAll('#productTableBody tr');
     const searchInput = document.getElementById('searchInput');
 
     if(inputNo) {
         inputNo.addEventListener('input', function() {
-            // Deteksi sederhana operator cellular
             const val = this.value;
             const badge = document.getElementById('operator-badge');
             let op = '';
@@ -394,7 +387,7 @@
                 badge.innerText = op;
                 badge.classList.remove('hidden');
                 if(searchInput) {
-                    searchInput.value = op; // Auto filter tabel
+                    searchInput.value = op;
                     filterTable(op);
                 }
             } else if(badge) {
@@ -434,7 +427,7 @@
         fetch('{{ route("ppob.check.bill") }}', {
             method: 'POST',
             headers: {'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}'},
-            body: JSON.stringify({ customer_no: no, sku: '{{ $currentSlug }}' }) // Kirim slug saat ini
+            body: JSON.stringify({ customer_no: no, sku: '{{ $currentSlug }}' })
         })
         .then(res => res.json())
         .then(data => {
@@ -456,7 +449,7 @@
         });
     }
 
-    // 6. Modal
+    // 6. Modal Logic
     function selectProduct(name, price, sku) {
         const no = inputNo.value;
         if(no.length < 4) { alert('Masukkan nomor tujuan dulu!'); inputNo.focus(); return; }
