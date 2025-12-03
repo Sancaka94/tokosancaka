@@ -296,7 +296,7 @@
     <section class="mb-6 bg-white shadow-sm rounded overflow-hidden border border-gray-100">
         
         {{-- Header Merah --}}
-        <div class="bg-[#ee4d2d] p-3 flex items-center justify-between">
+        <div class="bg-[#d0011b] p-3 flex items-center justify-between">
             <div class="flex items-center gap-2">
                 <h2 class="text-lg md:text-xl font-bold text-white italic flex items-center gap-1">
                     <i class="fas fa-bolt text-yellow-300"></i> FLASH SALE
@@ -503,7 +503,7 @@
     @endif
 
     <section class="mb-10">
-        <div class="bg-[#ee4d2d] py-3 mb-2 z-30 shadow-md">
+        <div class="bg-[#d0011b] py-3 mb-2 z-30 shadow-md">
     <h2 class="text-center text-white font-bold text-base uppercase tracking-widest">REKOMENDASI</h2>
         </div>
 
