@@ -7,6 +7,8 @@
     {{-- <script src="https://cdn.tailwindcss.com"></script> --}}
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+
     <style>
         .brand-radio:checked + div { 
             border-color: #ef4444; /* Merah Sancaka */
@@ -28,6 +30,14 @@
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+
+        /* Styling Navigasi Custom agar tidak menabrak konten */
+    .swiper-button-next::after, .swiper-button-prev::after { font-size: 18px; font-weight: bold; }
+    .flash-sale-next, .flash-sale-prev, .category-next, .category-prev {
+        width: 35px; height: 35px; background: white; border-radius: 50%;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1); color: #333;
+    }
+    .flash-sale-next:after, .flash-sale-prev:after { font-size: 14px; }
     </style>
 @endpush
 
@@ -516,5 +526,68 @@
     }
     @endif
     
+    document.addEventListener('DOMContentLoaded', function () {
+        
+        // ==========================================
+        // 1. HERO SLIDER (BANNER UTAMA)
+        // ==========================================
+        var heroSwiper = new Swiper(".heroSwiper", {
+            loop: true,                 // Looping terus menerus
+            effect: "fade",             // Efek transisi fade (opsional, ganti 'slide' jika ingin geser)
+            speed: 1000,                // Kecepatan transisi
+            autoplay: {
+                delay: 4000,            // Pindah setiap 4 detik
+                disableOnInteraction: false, // Tetap autoplay meski diklik user
+            },
+            pagination: {
+                el: ".swiper-pagination",
+                clickable: true,
+            },
+            navigation: {
+                nextEl: ".swiper-button-next",
+                prevEl: ".swiper-button-prev",
+            },
+        });
+
+        // ==========================================
+        // 2. FLASH SALE SLIDER (RESPONSIF)
+        // ==========================================
+        var flashSaleSwiper = new Swiper(".flashSaleSwiper", {
+            slidesPerView: 2,           // Tampilan HP (Default)
+            spaceBetween: 10,           // Jarak antar slide
+            navigation: {
+                nextEl: ".flash-sale-next", // Class tombol next custom kita
+                prevEl: ".flash-sale-prev", // Class tombol prev custom kita
+            },
+            breakpoints: {
+                640: {
+                    slidesPerView: 3,   // Tablet Kecil
+                    spaceBetween: 15,
+                },
+                768: {
+                    slidesPerView: 4,   // Tablet
+                    spaceBetween: 20,
+                },
+                1024: {
+                    slidesPerView: 5,   // Desktop / Laptop
+                    spaceBetween: 20,
+                },
+            },
+        });
+
+        // ==========================================
+        // 3. CATEGORIES SLIDER (Jika ada icon kategori)
+        // ==========================================
+        var categoriesSwiper = new Swiper(".categoriesSwiper", {
+            slidesPerView: 1,
+            spaceBetween: 20,
+            navigation: {
+                nextEl: ".category-next",
+                prevEl: ".category-prev",
+            },
+        });
+
+    });
 </script>
+
 @endpush
