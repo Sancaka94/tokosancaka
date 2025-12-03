@@ -32,9 +32,8 @@
 @endpush
 
 @section('content')
-<div class="bg-gray-50 min-h-screen py-10">
 
-    <section class="grid grid-cols-1 lg:grid-cols-3 gap-2 mb-4">
+<section class="grid grid-cols-1 lg:grid-cols-3 gap-2 mb-4">
         
         <div class="lg:col-span-2 rounded shadow-sm overflow-hidden h-full sm:h-full md:h-full w-full">
             <div class="swiper heroSwiper w-full h-full">
@@ -64,7 +63,11 @@
             </div>
         </div>
     </section>
+
+<div class="bg-gray-50 min-h-screen py-10">
+
     
+
     <div class="container mx-auto px-4">
         
         {{-- Breadcrumb Simple --}}
