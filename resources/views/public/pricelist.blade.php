@@ -399,7 +399,8 @@
         resultDiv.classList.add('hidden'); emptyDiv.classList.add('hidden'); errorMsg.classList.add('hidden');
 
         // Menggunakan SKU 'pln' sesuai hasil debug sukses Anda
-        const skuPasca = '{{ $pageInfo["slug"] == "pdam" ? "pdam" : "pln" }}'; 
+        // FIX: Gunakan Null Coalescing Operator (??) untuk mencegah error Undefined variable $pageInfo
+        const skuPasca = '{{ ($pageInfo["slug"] ?? "") == "pdam" ? "pdam" : "pln" }}'; 
 
         fetch('{{ route("ppob.check.bill") }}', {
             method: 'POST',
