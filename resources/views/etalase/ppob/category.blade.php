@@ -74,8 +74,6 @@
         </div>
     </section>
 
-<div class="bg-gray-50 min-h-screen py-10">
-
     {{-- ============================================================ --}}
     {{-- ⚡ UPDATE: MENU PPOB TAMPIL PUBLIC (TANPA SYARAT) ⚡ --}}
     {{-- ============================================================ --}}
@@ -137,6 +135,10 @@
             </div>
         </div>
     </section>
+
+<div class="bg-gray-50 min-h-screen py-10">
+
+    
 
     <div class="container mx-auto px-4">
         
