@@ -76,6 +76,38 @@ use App\Http\Controllers\DigiflazzWebhookController;
 use App\Http\Controllers\PpobProductController;
 use App\Http\Controllers\PublicController;
 
+
+
+
+
+
+// Grouping URL agar rapi: domain.com/etalase/ppob/...
+Route::prefix('etalase/ppob')->name('ppob.')->group(function () {
+
+    // ====================================================
+    // 1. ROUTE UTAMA (Menangani SEMUA Menu/Kategori)
+    // ====================================================
+    // Route ini adalah "Kunci Ajaib"-nya. 
+    // {slug} akan otomatis menangkap: pulsa, data, bpjs-kesehatan, pln-token, dll.
+    Route::get('/digital/{slug}', [PpobController::class, 'index'])
+        ->name('category');
+
+    // ====================================================
+    // 2. ROUTE KHUSUS API (Untuk Tombol Cek & Bayar)
+    // ====================================================
+    // Untuk tombol "Cek Tagihan" (Pascabayar)
+    Route::post('/check-bill', [PpobController::class, 'checkBill'])
+        ->name('check.bill');
+
+    // Untuk tombol "Cek Nama" (PLN Token)
+    Route::post('/check-pln-prabayar', [PpobController::class, 'checkPlnPrabayar'])
+        ->name('check.pln.prabayar');
+
+    // Untuk tombol "Bayar Sekarang" (Transaksi)
+    Route::post('/transaction', [PpobController::class, 'store'])
+        ->name('store');
+});
+
 Route::get('/debug-digi', [PpobController::class, 'debugDirect']);
 
 Route::get('/daftar-harga', [PublicController::class, 'pricelist'])->name('public.pricelist');
@@ -89,6 +121,8 @@ Route::get('/daftar-harga', [PublicController::class, 'pricelist'])->name('publi
 Route::get('/layanan/{slug}', [PublicController::class, 'showCategory'])->name('public.category'); // Halaman Kategori Spesifik
 Route::post('/ppob/check-bill', [PpobController::class, 'checkBill'])->name('ppob.check.bill'); // AJAX Cek Tagihan
 Route::post('/ppob/check-pln-prabayar', [PpobController::class, 'checkPlnPrabayar'])->name('ppob.check.pln.prabayar'); // AJAX Cek Nama PLN
+
+
 Route::prefix('admin/ppob')->name('admin.ppob.')->middleware(['auth'])->group(function () {
     
     // 1. Halaman Index (Tabel Produk)
