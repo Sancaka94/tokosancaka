@@ -66,9 +66,8 @@ class PpobController extends Controller
         //$banners = \App\Models\Banner::where('status', 'active')->get();
         //$settings = \App\Models\Setting::pluck('value', 'key')->toArray();
 
-        // OPSI B (SAFE MODE): Gunakan array kosong dulu agar tidak error
-        $banners = collect([]); // Collection kosong
-        $settings = [];         // Array kosong
+        $banners = BannerEtalase::latest()->get(); 
+        $settings = Setting::whereIn('key', ['banner_2','banner_3'])->pluck('value','key');
 
         // -----------------------------------------------------------
 
