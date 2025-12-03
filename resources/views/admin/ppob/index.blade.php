@@ -1,237 +1,176 @@
-@extends('layouts.admin') {{-- Sesuaikan dengan layout admin Anda --}}
+@extends('layouts.admin')
 
 @section('title', 'Manajemen Produk PPOB')
 
 @section('content')
-<div class="container mx-auto px-4 py-6">
+<div class="container mx-auto px-4 py-8">
     
     {{-- Header Section --}}
-    <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-bold text-gray-800">Daftar Produk PPOB</h1>
+    <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800">Daftar Produk PPOB</h1>
+            <p class="text-sm text-gray-500 mt-1">Kelola harga dan status produk digital.</p>
+        </div>
         <div class="flex gap-2">
-            <a href="{{ route('ppob.sync') }}" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow transition flex items-center gap-2">
-                <i class="fas fa-sync-alt"></i> Sinkronisasi Produk
+            <a href="{{ route('ppob.sync') }}" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition flex items-center gap-2">
+                <i class="fas fa-sync-alt animate-spin-hover"></i> Sinkronisasi Produk
             </a>
         </div>
     </div>
 
-    {{-- Alert --}}
+    {{-- Alert Notification --}}
     @if(session('success'))
-        <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-4 rounded shadow-sm">
-            <p>{{ session('success') }}</p>
+        <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6 rounded shadow-sm flex items-center justify-between">
+            <div class="flex items-center">
+                <i class="fas fa-check-circle mr-2"></i> {{ session('success') }}
+            </div>
+            <button onclick="this.parentElement.remove()" class="text-green-700 hover:text-green-900"><i class="fas fa-times"></i></button>
         </div>
     @endif
 
-    {{-- Table Card --}}
-    <div class="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
+    {{-- Filter & Search Bar --}}
+    <div class="bg-white p-4 rounded-t-xl border-b border-gray-200 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
+        <div class="text-gray-600 text-sm">
+            Menampilkan <span class="font-bold">{{ $products->firstItem() ?? 0 }}</span> sampai <span class="font-bold">{{ $products->lastItem() ?? 0 }}</span> dari <span class="font-bold">{{ $products->total() }}</span> produk
+        </div>
+        <form action="{{ route('admin.ppob.index') }}" method="GET" class="relative w-full md:w-1/3">
+            <input type="text" name="q" value="{{ request('q') }}" placeholder="Cari SKU, Nama Produk, atau Brand..." 
+                   class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <i class="fas fa-search text-gray-400"></i>
+            </div>
+        </form>
+    </div>
+
+    {{-- Table Section --}}
+    <div class="bg-white shadow-md rounded-b-xl overflow-hidden">
         <div class="overflow-x-auto">
-            <table class="w-full text-sm text-left text-gray-600" id="table-ppob">
-                <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b">
+            <table class="w-full text-sm text-left">
+                <thead class="bg-gray-50 text-gray-600 uppercase text-xs font-semibold tracking-wider">
                     <tr>
-                        <th class="px-4 py-3">SKU</th>
-                        <th class="px-4 py-3">Nama Produk</th>
-                        <th class="px-4 py-3">Kategori</th>
-                        <th class="px-4 py-3">Brand</th>
-                        <th class="px-4 py-3 text-right">Harga Beli</th>
-                        <th class="px-4 py-3 text-right">Harga Jual</th>
-                        <th class="px-4 py-3 text-center">Status</th>
-                        <th class="px-4 py-3 text-center">Aksi</th>
+                        <th class="px-6 py-4">SKU</th>
+                        <th class="px-6 py-4">Nama Produk</th>
+                        <th class="px-6 py-4">Kategori</th>
+                        <th class="px-6 py-4">Brand</th>
+                        <th class="px-6 py-4 text-right">Harga Beli</th>
+                        <th class="px-6 py-4 text-right">Harga Jual</th>
+                        <th class="px-6 py-4 text-center">Status</th>
+                        <th class="px-6 py-4 text-center">Aksi</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-100">
-                    @foreach($products as $product)
-                    <tr class="hover:bg-gray-50 transition">
-                        <td class="px-4 py-3 font-mono text-xs font-bold">{{ $product->buyer_sku_code }}</td>
-                        <td class="px-4 py-3 font-medium text-gray-900">
-                            {{ Str::limit($product->product_name, 30) }}
+                <tbody class="divide-y divide-gray-200 bg-white">
+                    @forelse($products as $product)
+                    <tr class="hover:bg-blue-50 transition duration-150 ease-in-out group">
+                        <td class="px-6 py-4 font-mono text-xs font-bold text-gray-500 group-hover:text-blue-600">
+                            {{ $product->buyer_sku_code }}
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="font-medium text-gray-900">{{ Str::limit($product->product_name, 40) }}</div>
                             @if($product->multi)
-                                <span class="bg-purple-100 text-purple-700 text-[10px] px-1 rounded ml-1">Promo</span>
+                                <span class="inline-block mt-1 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-purple-100 text-purple-700 border border-purple-200">
+                                    Promo
+                                </span>
                             @endif
                         </td>
-                        <td class="px-4 py-3">{{ $product->category }}</td>
-                        <td class="px-4 py-3">
-                            <span class="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs">{{ $product->brand }}</span>
+                        <td class="px-6 py-4 text-gray-600">
+                            {{ $product->category }}
                         </td>
-                        <td class="px-4 py-3 text-right font-medium text-red-500">
+                        <td class="px-6 py-4">
+                            <span class="px-2 py-1 text-xs font-semibold rounded bg-gray-100 text-gray-600 border border-gray-200">
+                                {{ $product->brand }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-right text-gray-500 font-medium">
                             Rp{{ number_format($product->price, 0, ',', '.') }}
                         </td>
-                        <td class="px-4 py-3 text-right font-bold text-green-600">
-                            Rp{{ number_format($product->sell_price, 0, ',', '.') }}
+                        <td class="px-6 py-4 text-right">
+                            <span class="font-bold text-green-600 text-base">
+                                Rp{{ number_format($product->sell_price, 0, ',', '.') }}
+                            </span>
                         </td>
-                        <td class="px-4 py-3 text-center">
-                            @if($product->seller_product_status && $product->buyer_product_status)
-                                <span class="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-bold">Aktif</span>
-                            @elseif(!$product->buyer_product_status)
-                                <span class="bg-red-100 text-red-700 px-2 py-1 rounded-full text-xs font-bold">Gangguan</span>
+                        <td class="px-6 py-4 text-center">
+                            @if(!$product->buyer_product_status)
+                                <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 border border-red-200">
+                                    Gangguan
+                                </span>
+                            @elseif($product->seller_product_status)
+                                <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 border border-green-200">
+                                    Aktif
+                                </span>
                             @else
-                                <span class="bg-gray-100 text-gray-500 px-2 py-1 rounded-full text-xs font-bold">Nonaktif</span>
+                                <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800 border border-gray-200">
+                                    Nonaktif
+                                </span>
                             @endif
                         </td>
-                        <td class="px-4 py-3 text-center">
-                            <div class="flex items-center justify-center gap-2">
-                                {{-- Tombol View (Detail) --}}
-                                <button onclick="showDetail({{ $product->id }})" class="text-blue-500 hover:text-blue-700 tooltip" title="Lihat Detail">
-                                    <i class="fas fa-eye"></i>
+                        <td class="px-6 py-4 text-center">
+                            <div class="flex items-center justify-center space-x-3">
+                                <button onclick="editPrice('{{ $product->id }}', '{{ $product->product_name }}', '{{ $product->price }}', '{{ $product->sell_price }}', '{{ $product->seller_product_status }}')" 
+                                        class="text-yellow-500 hover:text-yellow-600 transition transform hover:scale-110 tooltip" title="Edit Harga">
+                                    <i class="fas fa-edit text-lg"></i>
                                 </button>
                                 
-                                {{-- Tombol Update Harga (Modal) --}}
-                                <button onclick="editPrice('{{ $product->id }}', '{{ $product->product_name }}', '{{ $product->price }}', '{{ $product->sell_price }}', '{{ $product->seller_product_status }}')" 
-                                    class="text-yellow-500 hover:text-yellow-700 tooltip" title="Update Harga">
-                                    <i class="fas fa-edit"></i>
-                                </button>
-
-                                {{-- Tombol Hapus --}}
-                                <form action="{{ route('admin.ppob.destroy', $product->id) }}" method="POST" onsubmit="return confirm('Yakin ingin menghapus produk ini?');">
+                                <form action="{{ route('admin.ppob.destroy', $product->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus produk ini?');" class="inline">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" class="text-red-500 hover:text-red-700 tooltip" title="Hapus">
-                                        <i class="fas fa-trash-alt"></i>
+                                    <button type="submit" class="text-red-500 hover:text-red-600 transition transform hover:scale-110 tooltip" title="Hapus">
+                                        <i class="fas fa-trash-alt text-lg"></i>
                                     </button>
                                 </form>
                             </div>
                         </td>
                     </tr>
-                    @endforeach
+                    @empty
+                    <tr>
+                        <td colspan="8" class="px-6 py-10 text-center text-gray-500 bg-gray-50">
+                            <div class="flex flex-col items-center justify-center">
+                                <i class="fas fa-box-open text-4xl text-gray-300 mb-3"></i>
+                                <p class="text-base font-medium">Data produk tidak ditemukan.</p>
+                                <p class="text-sm mt-1">Coba kata kunci lain atau lakukan sinkronisasi.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    @endforelse
                 </tbody>
             </table>
         </div>
-        {{-- Jika pakai pagination --}}
-        {{-- <div class="p-4">{{ $products->links() }}</div> --}}
-    </div>
-</div>
 
-{{-- ================= MODAL UPDATE HARGA ================= --}}
-<div id="priceModal" class="fixed inset-0 z-50 hidden bg-gray-900 bg-opacity-50 flex items-center justify-center backdrop-blur-sm">
-    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 transform transition-all scale-100">
-        <div class="flex justify-between items-center mb-4 border-b pb-2">
-            <h3 class="text-lg font-bold text-gray-800">Update Harga Jual</h3>
-            <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
-        </div>
-        
-        <form id="priceForm" action="" method="POST">
-            @csrf
-            @method('PUT')
-            
-            <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Nama Produk</label>
-                <input type="text" id="modal_product_name" class="w-full bg-gray-100 border border-gray-300 rounded-lg px-3 py-2 text-gray-600" readonly>
-            </div>
-
-            <div class="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Harga Beli (Pusat)</label>
-                    <input type="text" id="modal_base_price" class="w-full bg-red-50 border border-red-200 text-red-600 font-bold rounded-lg px-3 py-2" readonly>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Harga Jual (Agen)</label>
-                    <input type="number" name="sell_price" id="modal_sell_price" class="w-full border border-gray-300 focus:ring-blue-500 focus:border-blue-500 rounded-lg px-3 py-2 font-bold text-gray-900" required>
-                </div>
-            </div>
-
-            <div class="mb-6 flex items-center">
-                <input type="checkbox" name="status" id="modal_status" value="1" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
-                <label for="modal_status" class="ml-2 text-sm font-medium text-gray-900">Aktifkan Produk untuk Dijual?</label>
-            </div>
-
-            <div class="flex justify-end gap-2">
-                <button type="button" onclick="closeModal()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300">Batal</button>
-                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-bold">Simpan Perubahan</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-{{-- ================= MODAL DETAIL PRODUK ================= --}}
-<div id="detailModal" class="fixed inset-0 z-50 hidden bg-gray-900 bg-opacity-50 flex items-center justify-center backdrop-blur-sm">
-    <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6">
-        <h3 class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">Detail Produk</h3>
-        <div id="detailContent" class="space-y-2 text-sm text-gray-600">
-            {{-- Konten diisi via JS --}}
-            <div class="animate-pulse flex space-x-4">
-                <div class="flex-1 space-y-4 py-1">
-                    <div class="h-4 bg-gray-200 rounded w-3/4"></div>
-                    <div class="space-y-2">
-                        <div class="h-4 bg-gray-200 rounded"></div>
-                        <div class="h-4 bg-gray-200 rounded w-5/6"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="mt-6 flex justify-end">
-            <button onclick="document.getElementById('detailModal').classList.add('hidden')" class="bg-gray-800 text-white px-4 py-2 rounded-lg">Tutup</button>
+        {{-- Pagination Section --}}
+        <div class="bg-gray-50 px-6 py-4 border-t border-gray-200">
+            {{ $products->links() }} 
         </div>
     </div>
 </div>
+
+{{-- Modal Update Harga (Tetap Sama) --}}
+@include('admin.ppob.partials.modal_edit_price') 
 
 @endsection
 
 @push('scripts')
-{{-- Pastikan load library DataTables jika ingin fitur search/paging --}}
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.tailwindcss.min.css">
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
-
+{{-- Script Edit Price --}}
 <script>
-    $(document).ready(function() {
-        $('#table-ppob').DataTable({
-            "pageLength": 10,
-            "lengthMenu": [10, 25, 50, 100],
-            "language": {
-                "search": "Cari Produk:",
-                "lengthMenu": "Tampilkan _MENU_ data",
-                "info": "Menampilkan _START_ sampai _END_ dari _TOTAL_ produk",
-                "paginate": { "next": ">", "previous": "<" }
-            }
-        });
-    });
-
-    // Fungsi Modal Update Harga
     function editPrice(id, name, basePrice, sellPrice, status) {
         document.getElementById('modal_product_name').value = name;
-        document.getElementById('modal_base_price').value = parseInt(basePrice).toLocaleString('id-ID');
-        document.getElementById('modal_sell_price').value = parseInt(sellPrice); // Input number butuh raw value
+        document.getElementById('modal_base_price').value = 'Rp ' + parseInt(basePrice).toLocaleString('id-ID');
+        document.getElementById('modal_sell_price').value = parseInt(sellPrice);
         
-        // Checkbox status
         const statusCheckbox = document.getElementById('modal_status');
-        if(status == 1) { statusCheckbox.checked = true; } else { statusCheckbox.checked = false; }
+        if(statusCheckbox) statusCheckbox.checked = (status == 1);
 
-        // Set Action URL
         let url = "{{ route('admin.ppob.update-price', ':id') }}";
         url = url.replace(':id', id);
-        document.getElementById('priceForm').action = url;
+        
+        const form = document.getElementById('priceForm');
+        if(form) form.action = url;
 
-        document.getElementById('priceModal').classList.remove('hidden');
-    }
-
-    // Fungsi View Detail (Simple Fetch)
-    function showDetail(id) {
-        document.getElementById('detailModal').classList.remove('hidden');
-        const content = document.getElementById('detailContent');
-        content.innerHTML = '<p class="text-center">Memuat data...</p>';
-
-        let url = "{{ route('admin.ppob.show', ':id') }}";
-        url = url.replace(':id', id);
-
-        fetch(url)
-            .then(response => response.json())
-            .then(data => {
-                let html = `
-                    <div class="grid grid-cols-3 gap-2">
-                        <span class="font-bold">Nama:</span> <span class="col-span-2">${data.product_name}</span>
-                        <span class="font-bold">SKU:</span> <span class="col-span-2">${data.buyer_sku_code}</span>
-                        <span class="font-bold">Kategori:</span> <span class="col-span-2">${data.category} (${data.brand})</span>
-                        <span class="font-bold">Deskripsi:</span> <span class="col-span-2 italic">${data.desc}</span>
-                        <span class="font-bold">Jam Cut Off:</span> <span class="col-span-2">${data.start_cut_off} - ${data.end_cut_off}</span>
-                        <span class="font-bold">Stok:</span> <span class="col-span-2">${data.unlimited_stock ? 'Unlimited' : data.stock}</span>
-                        <span class="font-bold">Multi Trx:</span> <span class="col-span-2">${data.multi ? 'Ya' : 'Tidak'}</span>
-                    </div>
-                `;
-                content.innerHTML = html;
-            });
+        const modal = document.getElementById('priceModal');
+        if(modal) modal.classList.remove('hidden');
     }
 
     function closeModal() {
-        document.getElementById('priceModal').classList.add('hidden');
+        const modal = document.getElementById('priceModal');
+        if(modal) modal.classList.add('hidden');
     }
 </script>
 @endpush
