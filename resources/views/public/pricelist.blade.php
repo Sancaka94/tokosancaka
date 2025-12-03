@@ -138,7 +138,6 @@
         </div>
 
         {{-- Search Bar --}}
-        <div class="bg-white p-2 rounded-2xl shadow-md mb-8 border border-gray-100 max-w-4xl mx-auto -mt-4 relative z-20">
             <div class="relative">
                 <input type="text" id="searchInput" placeholder="Cari Produk (Telkomsel, Token, Dana)..." 
                     class="w-full py-4 pl-14 pr-6 rounded-xl bg-transparent text-gray-800 focus:outline-none text-lg">
@@ -149,8 +148,8 @@
                     Cari
                 </button>
             </div>
-        </div>
         
+
     </section>
 
 
