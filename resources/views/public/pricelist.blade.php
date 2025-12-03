@@ -1,15 +1,29 @@
 @extends('layouts.marketplace')
 
-{{-- 1. LOGIC PHP: Pastikan Variable Aman & Deteksi Otomatis Postpaid --}}
+{{-- 1. LOGIC PHP: Deteksi Otomatis Slug dari URL (Fallback jika Controller Kosong) --}}
 @php
-    // Cegah error undefined variable
-    $pageInfo = $pageInfo ?? [];
-    $currentSlug = $pageInfo['slug'] ?? 'pulsa'; // Default pulsa
+    // Ambil slug langsung dari URL (Segment ke-4) jika variable controller tidak ada
+    // Contoh URL: /etalase/ppob/digital/pln-pascabayar -> Segment 4 adalah 'pln-pascabayar'
+    $urlSlug = request()->segment(4);
     
-    // Deteksi apakah ini layanan Pascabayar (Tagihan)
-    // Cek dari controller ATAU cek manual berdasarkan slug URL
-    $isPostpaid = ($pageInfo['is_postpaid'] ?? false) || 
-                  in_array($currentSlug, ['pln-pascabayar', 'pdam', 'bpjs', 'gas', 'pbb', 'internet-pasca']);
+    $pageInfo = $pageInfo ?? [];
+    $currentSlug = $pageInfo['slug'] ?? $urlSlug ?? 'pulsa'; 
+    
+    // Daftar Kategori yang Wajib Muncul Tombol "CEK TAGIHAN"
+    $postpaidSlugs = [
+        'pln-pascabayar', 
+        'pdam', 
+        'bpjs', 
+        'gas', 
+        'pbb', 
+        'internet-pasca', 
+        'tv-kabel-pasca', 
+        'angsuran-kredit',
+        'pln-bill' // jaga-jaga jika pakai slug lama
+    ];
+    
+    // Tentukan apakah halaman ini Pascabayar
+    $isPostpaid = ($pageInfo['is_postpaid'] ?? false) || in_array($currentSlug, $postpaidSlugs);
     
     $pageTitle = $pageInfo['title'] ?? ucfirst(str_replace('-', ' ', $currentSlug));
 @endphp
@@ -138,7 +152,7 @@
                     @endif
 
                     {{-- Tombol Khusus: Cek Tagihan (PASCABAYAR: PLN Pasca, PDAM, BPJS, dll) --}}
-                    {{-- Kita menggunakan variabel $isPostpaid yang sudah kita hitung di atas --}}
+                    {{-- Menggunakan variable $isPostpaid yang sudah kita perbaiki logikanya --}}
                     @if($isPostpaid)
                         <button onclick="cekTagihan()" id="btn-cek-tagihan" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition flex justify-center items-center gap-2 shadow-lg">
                             <span id="btn-text">Cek Tagihan</span>
