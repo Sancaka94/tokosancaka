@@ -524,6 +524,27 @@
 
 </div>
 
+{{-- [INSERT NEW PPOB MENU HERE] --}}
+        {{-- PPOB (Payment Point Online Bank) --}}
+        <div>
+            <button onclick="toggleMenu('menuPpob')" class="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium text-left rounded-lg hover:bg-gray-700 hover:text-white focus:outline-none {{ request()->routeIs('admin.ppob.*') ? 'bg-gray-700 text-white' : '' }}">
+                <span class="flex items-center">
+                    <i class="fa-solid fa-mobile-screen-button fa-fw w-5 h-5 mr-3"></i>
+                    <span>PPOB</span>
+                </span>
+                <i id="arrow-menuPpob" class="fa-solid fa-chevron-down w-4 h-4 transform transition-transform duration-200"></i>
+            </button>
+            <div id="menuPpob" class="submenu mt-1">
+                <ul class="pl-8 pr-2 py-1 space-y-1">
+                    <li>
+                        <a href="{{ route('admin.ppob.index') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-gray-700 {{ request()->routeIs('admin.ppob.index') ? 'text-white' : 'text-gray-400' }}">
+                            Produk PPOB
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
 
 
         {{-- Laporan Keuangan --}}
