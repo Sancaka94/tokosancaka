@@ -346,36 +346,43 @@ class PpobController extends Controller
 
     /**
      * 7. AJAX: Cek ID Pelanggan PLN Prabayar
+     * Route: /ppob/check-pln-prabayar
      */
     public function checkPlnPrabayar(Request $request)
     {
         $request->validate(['customer_no' => 'required']);
 
-        $response = $this->digiflazz->inquiryPln($request->customer_no);
+        try {
+            // Panggil Service yang baru diupdate
+            $response = $this->digiflazz->inquiryPln($request->customer_no);
 
-        if (isset($response['data'])) {
-            $data = $response['data'];
-            
-            // Cek status RC 00 (Sukses)
-            if ($data['rc'] === '00' || $data['status'] === 'Sukses') {
-                return response()->json([
-                    'status' => 'success',
-                    'name' => $data['name'],
-                    'meter_no' => $data['meter_no'] ?? $data['customer_no'],
-                    'segment_power' => $data['segment_power'], 
-                    'subscriber_id' => $data['subscriber_id'] ?? '-'
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => $data['message'] ?? 'Nomor meter tidak ditemukan.'
-                ]);
+            if (isset($response['data'])) {
+                $data = $response['data'];
+                
+                // Cek status RC 00 (Sukses)
+                if ($data['rc'] === '00' || $data['status'] === 'Sukses') {
+                    return response()->json([
+                        'status' => 'success',
+                        'name' => $data['name'],                 // Nama: DAVID
+                        'meter_no' => $data['meter_no'],         // No Meter
+                        'subscriber_id' => $data['subscriber_id'], // ID Pelanggan
+                        'segment_power' => $data['segment_power']  // Daya: R1 /000001300
+                    ]);
+                } else {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => $data['message'] ?? 'Nomor ID/Meter tidak ditemukan.'
+                    ]);
+                }
             }
+
+            return response()->json(['status' => 'error', 'message' => 'Gagal terhubung ke server PLN.']);
+
+        } catch (\Exception $e) {
+            Log::error("CheckPlnPrabayar Error: " . $e->getMessage());
+            return response()->json(['status' => 'error', 'message' => 'Terjadi kesalahan sistem.']);
         }
-
-        return response()->json(['status' => 'error', 'message' => 'Gagal terhubung ke server PLN.']);
     }
-
     /**
      * Menampilkan Halaman Kategori Spesifik
      * URL: /layanan/pln-pascabayar, /layanan/pulsa, dll

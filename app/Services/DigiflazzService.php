@@ -259,28 +259,36 @@ class DigiflazzService
      * 7. Cek Validasi ID PLN (Khusus Token Listrik / Prabayar)
      * Memastikan nomor meter valid dan menampilkan nama pelanggan
      */
+    /**
+     * 7. Cek Validasi ID PLN (Khusus Token Listrik / Prabayar)
+     * Dokumentasi: https://api.digiflazz.com/v1/inquiry-pln
+     */
     public function inquiryPln($customerNo)
     {
-        // Endpoint Khusus /inquiry-pln
-        // Signature = md5(username + apiKey + customer_no)
+        // 1. Generate Signature sesuai dokumentasi: md5(username + apiKey + customer_no)
         $sign = md5($this->username . $this->apiKey . $customerNo);
 
+        // 2. Payload Request
+        $payload = [
+            'username' => $this->username,
+            'customer_no' => $customerNo,
+            'sign' => $sign
+        ];
+
         try {
-            $response = Http::post($this->baseUrl . '/transaction', [
-                'commands' => 'pln-subscribe', // Menggunakan command transaction umum jika endpoint khusus tidak aktif
-                'username' => $this->username,
-                'customer_no' => $customerNo,
-                'sign' => $sign
-            ]);
+            // 3. Log Request untuk Debugging
+            Log::info("➡️ [Digiflazz Inquiry PLN Request] Customer: $customerNo", $payload);
+
+            // 4. Tembak Endpoint Khusus /inquiry-pln
+            $response = Http::post($this->baseUrl . '/inquiry-pln', $payload);
             
-            // NOTE: Digiflazz biasanya menyarankan pakai API Transaksi dengan SKU 'PLN' untuk inquiry pasca, 
-            // atau endpoint khusus /transaction dengan body tertentu untuk cek ID prepaid.
-            // Jika endpoint /inquiry-pln tidak available, gunakan endpoint /transaction dengan payload yang sesuai.
-            // Kode di bawah menggunakan endpoint /transaction standard untuk cek nama (biasanya via API pasca 'pln' juga bisa untuk cek nama).
-            
+            // 5. Log Response
+            Log::info("⬅️ [Digiflazz Inquiry PLN Response] Customer: $customerNo", $response->json() ?? []);
+
             return $response->json();
+
         } catch (\Exception $e) {
-            Log::error('Digiflazz Inquiry PLN Error: ' . $e->getMessage());
+            Log::error("❌ [Digiflazz Inquiry PLN Error] " . $e->getMessage());
             return ['data' => ['status' => 'Gagal', 'message' => 'Koneksi Error']];
         }
     }
