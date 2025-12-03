@@ -7,10 +7,27 @@ use Illuminate\Http\Request;
 
 class PpobProductController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        // Mengambil semua data, diurutkan terbaru
-        $products = PpobProduct::orderBy('category', 'asc')->orderBy('brand', 'asc')->get();
+        // Ambil query pencarian jika ada
+        $search = $request->input('q');
+
+        $query = PpobProduct::query();
+
+        if ($search) {
+            $query->where('product_name', 'like', "%{$search}%")
+                  ->orWhere('buyer_sku_code', 'like', "%{$search}%")
+                  ->orWhere('brand', 'like', "%{$search}%");
+        }
+
+        // Gunakan paginate(10) untuk membatasi 10 data per halaman
+        $products = $query->orderBy('category', 'asc')
+                          ->orderBy('brand', 'asc')
+                          ->paginate(10); 
+                          
+        // Pastikan parameter pencarian tetap ada saat pindah halaman
+        $products->appends(['q' => $search]);
+
         return view('admin.ppob.index', compact('products'));
     }
 
