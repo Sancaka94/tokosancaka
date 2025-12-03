@@ -521,8 +521,12 @@
         document.getElementById('bill_power').innerText = tarif + ' / ' + daya + ' VA';
         
         // Admin
-        let admin = parseInt(data.admin || 0);
-        document.getElementById('bill_admin').innerText = 'Rp ' + admin.toLocaleString('id-ID');
+        // Update bagian ini di dalam function cekTagihan()
+// Tujuannya mengecek 3 lokasi: root, dalam desc, atau dalam detail array
+let rawAdmin = data.admin || (data.desc ? data.desc.admin : 0) || (data.desc.detail && data.desc.detail[0] ? data.desc.detail[0].admin : 0);
+let admin = parseInt(rawAdmin);
+
+document.getElementById('bill_admin').innerText = 'Rp ' + admin.toLocaleString('id-ID');
         
         // Lembar Tagihan
         document.getElementById('bill_sheet').innerText = (data.desc.lembar_tagihan || '1') + ' Lembar';
