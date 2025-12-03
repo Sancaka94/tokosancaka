@@ -111,10 +111,10 @@ Route::prefix('etalase/ppob')->name('ppob.')->group(function () {
 Route::get('/debug-digi', [PpobController::class, 'debugDirect']);
 
 // PPOB Public (Daftar Harga & Cek Tagihan)
-//Route::get('/daftar-harga', [PublicController::class, 'pricelist'])->name('public.pricelist');
-//Route::get('/layanan/{slug}', [PublicController::class, 'showCategory'])->name('public.category'); // Halaman Kategori Spesifik
-//Route::post('/ppob/check-bill', [PpobController::class, 'checkBill'])->name('ppob.check.bill'); // AJAX Cek Tagihan
-//Route::post('/ppob/check-pln-prabayar', [PpobController::class, 'checkPlnPrabayar'])->name('ppob.check.pln.prabayar'); // AJAX Cek Nama PLN
+Route::get('/daftar-harga', [PublicController::class, 'pricelist'])->name('public.pricelist');
+Route::get('/layanan/{slug}', [PublicController::class, 'showCategory'])->name('public.category'); // Halaman Kategori Spesifik
+Route::post('/ppob/check-bill', [PpobController::class, 'checkBill'])->name('ppob.check.bill'); // AJAX Cek Tagihan
+Route::post('/ppob/check-pln-prabayar', [PpobController::class, 'checkPlnPrabayar'])->name('ppob.check.pln.prabayar'); // AJAX Cek Nama PLN
 
 
 Route::prefix('admin/ppob')->name('admin.ppob.')->middleware(['auth'])->group(function () {
@@ -1205,20 +1205,3 @@ Route::get('/controllers-list', function () {
          
     // ==========================================================
 
-// 1. Route Public (Etalase)
-Route::get('/etalase/ppob/digital/{slug}', [PpobController::class, 'category']);
-
-// 2. Route Admin (Perlu Middleware Admin)
-Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
-    Route::get('/digital/{slug}', [PpobController::class, 'category']);
-});
-
-// 3. Route Seller (Perlu Middleware Seller)
-Route::middleware(['auth', 'role:seller'])->prefix('seller')->group(function () {
-    Route::get('/digital/{slug}', [PpobController::class, 'category']);
-});
-
-// 4. Route Customer (Perlu Middleware Auth)
-Route::middleware(['auth'])->prefix('member')->group(function () {
-    Route::get('/digital/{slug}', [PpobController::class, 'category']);
-});
