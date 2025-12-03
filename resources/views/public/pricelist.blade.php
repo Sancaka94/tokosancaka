@@ -222,7 +222,7 @@
                 SEMUA
             </button>
             @foreach($categories as $cat)
-                <button onclick="filterCategory('{{ $cat }}')" data-cat="{{ $cat }}" class="cat-btn px-6 py-2.5 rounded-xl font-bold text-sm transition bg-gray-50 text-gray-600 hover:bg-blue-50 hover:text-blue-600 border border-gray-200">
+                <button onclick="filterCategory('{{ $cat }}')" data-cat="{{ $cat }}" class="cat-btn px-6 py-2.5 rounded-xl font-bold text-sm transition bg-gray-50 text-gray-600 hover:bg-blue-150 hover:text-blue-600 border border-gray-200">
                     {{ strtoupper($cat) }}
                 </button>
             @endforeach
