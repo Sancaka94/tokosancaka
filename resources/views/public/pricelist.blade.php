@@ -6,8 +6,26 @@
     {{-- CSS Swiper (Slider) --}}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
     <style>
+        /* Utility untuk menyembunyikan scrollbar (digunakan di mobile jika perlu) */
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* Custom Scrollbar Horizontal untuk Desktop */
+        .custom-scrollbar::-webkit-scrollbar {
+            height: 8px; /* Tinggi scrollbar horizontal */
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1; /* slate-300 */
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; /* slate-400 */
+        }
+
         .swiper-pagination-bullet-active { background-color: #ef4444 !important; width: 20px; border-radius: 5px; }
         
         /* Tombol Navigasi Slider */
@@ -197,9 +215,9 @@
             </div>
         </div>
 
-        {{-- 2. TAMPILAN DESKTOP (TOMBOL HORIZONTAL) --}}
-        {{-- 'hidden lg:flex' artinya sembunyi di mobile, tampil flex di layar besar --}}
-        <div class="hidden lg:flex bg-white p-3 rounded-2xl shadow-sm mb-6 overflow-x-auto whitespace-nowrap scrollbar-hide gap-3 border border-gray-100 sticky top-4 z-30">
+        {{-- 2. TAMPILAN DESKTOP (TOMBOL HORIZONTAL DENGAN SCROLLBAR) --}}
+        {{-- Mengganti 'scrollbar-hide' dengan 'custom-scrollbar' --}}
+        <div class="hidden lg:flex bg-white p-3 rounded-2xl shadow-sm mb-6 overflow-x-auto whitespace-nowrap custom-scrollbar gap-3 border border-gray-100 sticky top-4 z-30 pb-4">
             <button onclick="filterCategory('all')" data-cat="all" class="cat-btn active px-6 py-2.5 rounded-xl font-bold text-sm transition bg-blue-600 text-white shadow-md transform hover:scale-105">
                 SEMUA
             </button>
