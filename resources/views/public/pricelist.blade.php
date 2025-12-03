@@ -272,7 +272,7 @@
     // 1. Inisialisasi Slider Banner
     var swiper = new Swiper(".heroSwiper", {
         loop: true,
-        effect: "fade", // Efek fade agar transisi halus
+        effect: "fade",
         autoplay: {
             delay: 4000,
             disableOnInteraction: false,
@@ -289,11 +289,18 @@
 
     // 2. Logika Search & Filter
     const searchInput = document.getElementById('searchInput');
-    const rows = document.getElementById('productTableBody').getElementsByTagName('tr');
+    // Check if table body exists before accessing (prevent error on pages without table)
+    const tableBody = document.getElementById('productTableBody');
+    let rows = [];
+    if (tableBody) {
+        rows = tableBody.getElementsByTagName('tr');
+    }
     const emptyState = document.getElementById('emptyState');
     let currentCategory = 'all';
 
-    searchInput.addEventListener('keyup', filterTable);
+    if (searchInput) {
+        searchInput.addEventListener('keyup', filterTable);
+    }
 
     function filterCategory(category) {
         currentCategory = category;
@@ -307,6 +314,8 @@
     }
 
     function filterTable() {
+        if (!searchInput || rows.length === 0) return;
+        
         const filter = searchInput.value.toLowerCase();
         let visibleCount = 0;
 
@@ -323,26 +332,36 @@
                 row.style.display = "none";
             }
         }
-        emptyState.classList.toggle('hidden', visibleCount > 0);
+        if (emptyState) {
+            emptyState.classList.toggle('hidden', visibleCount > 0);
+        }
     }
 
     // ==========================================
     // LOGIKA UNTUK PASCABAYAR
     // ==========================================
-    @else
+    // Hanya render script ini jika variabel pageInfo is_postpaid bernilai true
+    @if(isset($pageInfo['is_postpaid']) && $pageInfo['is_postpaid'])
+        
         let inquiryRefId = null;
 
         function cekTagihan() {
-            const no = inputNo.value;
-            // SKU Pasca: Sesuaikan dengan kategori halaman. 
-            // Jika halaman PLN Pasca, sku='pln'. Jika PDAM, sku='pdam'.
-            // Di sini kita ambil logika sederhana berdasarkan slug halaman atau default 'pln'
-            let skuPasca = 'pln'; 
-            @if($pageInfo['slug'] == 'pdam') skuPasca = 'pdam'; @endif
-            @if($pageInfo['slug'] == 'bpjs') skuPasca = 'bpjs'; @endif
-            // Tambahkan logika lain sesuai slug kategori Anda
+            const no = document.getElementById('customer_no').value;
+            
+            // Tentukan SKU Pascabayar berdasarkan halaman saat ini
+            let skuPasca = 'pln'; // Default PLN
+            
+            @if(isset($pageInfo['slug']))
+                @if($pageInfo['slug'] == 'pdam') skuPasca = 'pdam'; @endif
+                @if($pageInfo['slug'] == 'bpjs') skuPasca = 'bpjs'; @endif
+                @if($pageInfo['slug'] == 'pln-pascabayar') skuPasca = 'pln'; @endif
+                // Tambahkan mapping lain sesuai kebutuhan (internet, tv, dll)
+            @endif
 
-            if(no.length < 5) { alert("Masukkan Nomor Pelanggan!"); return; }
+            if(no.length < 5) { 
+                alert("Masukkan Nomor Pelanggan dengan benar!"); 
+                return; 
+            }
 
             const btn = document.getElementById('btn-cek-tagihan');
             const spinner = document.getElementById('loading-spinner');
@@ -350,12 +369,12 @@
             const resultDiv = document.getElementById('bill_result');
             const emptyDiv = document.getElementById('bill_empty');
 
-            // UI Loading
+            // UI Loading State
             btn.disabled = true;
             spinner.classList.remove('hidden');
             text.innerText = "Mengecek...";
-            resultDiv.classList.add('hidden');
-            emptyDiv.classList.add('hidden');
+            if(resultDiv) resultDiv.classList.add('hidden');
+            if(emptyDiv) emptyDiv.classList.add('hidden');
 
             fetch('{{ route("ppob.check.bill") }}', {
                 method: 'POST',
@@ -375,34 +394,37 @@
                 text.innerText = "Cek Tagihan";
 
                 if(data.status === 'success') {
-                    // Update UI dengan Data Tagihan
+                    // Update UI dengan Data Tagihan yang didapat
                     document.getElementById('bill_name').innerText = data.customer_name;
                     document.getElementById('bill_id').innerText = data.customer_no;
                     
-                    // Format Rupiah
+                    // Format Angka ke Rupiah
                     let formattedPrice = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(data.amount);
                     document.getElementById('bill_amount').innerText = formattedPrice;
                     
-                    inquiryRefId = data.ref_id; // Simpan untuk tahap pembayaran
-                    resultDiv.classList.remove('hidden');
+                    inquiryRefId = data.ref_id; // Simpan Ref ID untuk tahap pembayaran
+                    
+                    if(resultDiv) resultDiv.classList.remove('hidden');
                 } else {
+                    // Tampilkan Error
                     alert(data.message);
-                    emptyDiv.classList.remove('hidden');
+                    if(emptyDiv) emptyDiv.classList.remove('hidden');
                 }
             })
             .catch(err => {
                 btn.disabled = false;
                 spinner.classList.add('hidden');
                 text.innerText = "Cek Tagihan";
-                alert("Terjadi kesalahan sistem.");
+                alert("Terjadi kesalahan sistem atau koneksi.");
                 console.error(err);
             });
         }
 
         function bayarTagihan() {
             if(!inquiryRefId) return;
-            // Logic pembayaran pascabayar biasanya membutuhkan login
-            // Arahkan ke halaman login atau checkout khusus
+            
+            // Karena pembayaran pascabayar butuh saldo, user wajib login.
+            // Kita redirect user ke halaman login (atau checkout jika sudah login)
             window.location.href = "{{ route('login') }}"; 
         }
     @endif
