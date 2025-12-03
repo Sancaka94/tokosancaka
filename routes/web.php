@@ -73,12 +73,18 @@ use App\Http\Controllers\SellerReviewController;
 use App\Http\Controllers\Admin\AdminReviewController;
 use App\Http\Controllers\PpobController; // <--- Jangan lupa import ini di paling atas
 use App\Http\Controllers\DigiflazzWebhookController;
-// use App\Http\Controllers\Admin\PpobController; // <--- Jangan lupa import ini di paling atas
+use App\Http\Controllers\PpobProductController;
 
 
 
 
-
+Route::prefix('admin/ppob')->name('admin.ppob.')->middleware(['auth', 'role:Admin'])->group(function () {
+    Route::get('/', [PpobProductController::class, 'index'])->name('index');
+    Route::get('/{id}', [PpobProductController::class, 'show'])->name('show'); // Lihat Detail
+    Route::get('/edit/{id}', [PpobProductController::class, 'edit'])->name('edit'); // Form Edit
+    Route::put('/update-price/{id}', [PpobProductController::class, 'updatePrice'])->name('update-price'); // Update Harga Cepat
+    Route::delete('/destroy/{id}', [PpobProductController::class, 'destroy'])->name('destroy'); // Hapus
+});
 
 
 

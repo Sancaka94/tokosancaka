@@ -1,228 +1,237 @@
-@extends('layouts.admin')
+@extends('layouts.admin') {{-- Sesuaikan dengan layout admin Anda --}}
 
-@section('title', 'Produk Digital & PPOB')
-
-@push('styles')
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <style>
-        .ppob-menu-item { transition: all 0.3s ease; }
-        .ppob-menu-item:hover .icon-box { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
-        .bg-pattern { background-image: radial-gradient(#ffffff 1px, transparent 1px); background-size: 20px 20px; opacity: 0.1; }
-    </style>
-@endpush
+@section('title', 'Manajemen Produk PPOB')
 
 @section('content')
-<div class="bg-gray-50 min-h-screen pb-12">
-
-    {{-- ================================================================= --}}
-    {{-- 1. WIDGET SALDO DIGIFLAZZ (HANYA UNTUK ADMIN) --}}
-    {{-- ================================================================= --}}
-    @if(auth()->check() && auth()->user()->role === 'Admin')
-    <div class="bg-blue-900 pt-6 pb-12">
-        <div class="container mx-auto px-4">
-            <div class="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-xl shadow-lg p-6 text-white relative overflow-hidden border border-white/10">
-                
-                {{-- Dekorasi Background --}}
-                <div class="absolute right-0 top-0 opacity-10 transform translate-x-4 -translate-y-4">
-                    <i class="fas fa-wallet text-9xl"></i>
-                </div>
-
-                <div class="relative z-10 flex flex-col md:flex-row justify-between items-center gap-4">
-                    {{-- Info Saldo --}}
-                    <div>
-                        <p class="text-blue-100 text-sm font-medium mb-1 flex items-center gap-2">
-                            <i class="fas fa-coins"></i> Saldo Modal (Digiflazz)
-                        </p>
-                        <h2 class="text-3xl font-bold tracking-tight" id="digi-saldo">
-                            Rp ...
-                        </h2>
-                        <p class="text-[10px] text-blue-200 mt-1 opacity-80">Digunakan untuk memproses transaksi user.</p>
-                    </div>
-
-                    {{-- Tombol Refresh --}}
-                    <button onclick="refreshSaldo()" id="btn-refresh-saldo" 
-                            class="group bg-white/20 hover:bg-white/30 text-white px-5 py-2.5 rounded-lg backdrop-blur-sm transition-all flex items-center gap-2 text-sm font-semibold border border-white/10 shadow-sm">
-                        <i class="fas fa-sync-alt transition-transform group-hover:rotate-180" id="icon-refresh"></i> 
-                        Cek Saldo
-                    </button>
-                </div>
-            </div>
+<div class="container mx-auto px-4 py-6">
+    
+    {{-- Header Section --}}
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-gray-800">Daftar Produk PPOB</h1>
+        <div class="flex gap-2">
+            <a href="{{ route('ppob.sync') }}" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow transition flex items-center gap-2">
+                <i class="fas fa-sync-alt"></i> Sinkronisasi Produk
+            </a>
         </div>
     </div>
-    @else
-    {{-- Banner untuk User Biasa --}}
-    <div class="bg-blue-600 text-white pt-8 pb-16 relative overflow-hidden">
-        <div class="absolute inset-0 bg-pattern"></div>
-        <div class="container mx-auto px-4 relative z-10 text-center">
-            <h1 class="text-2xl md:text-3xl font-bold mb-2">Produk Digital Terlengkap</h1>
-            <p class="text-blue-100 text-sm">Isi pulsa, bayar listrik, dan top up game dalam satu genggaman.</p>
+
+    {{-- Alert --}}
+    @if(session('success'))
+        <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-4 rounded shadow-sm">
+            <p>{{ session('success') }}</p>
         </div>
-    </div>
     @endif
 
-    {{-- ================================================================= --}}
-    {{-- 2. MENU UTAMA (GRID KATEGORI) --}}
-    {{-- ================================================================= --}}
-    <div class="container mx-auto px-4 -mt-10 relative z-20">
-        <div class="bg-white rounded-xl shadow-lg p-6 md:p-8 border border-gray-100">
-            <div class="flex items-center justify-between mb-6 border-b border-gray-100 pb-4">
-                <h2 class="text-lg font-bold text-gray-800 flex items-center gap-2">
-                    <span class="bg-blue-100 text-blue-600 p-1.5 rounded-lg">
-                        <i class="fas fa-th-large"></i>
-                    </span>
-                    Pilih Layanan
-                </h2>
-                <span class="text-xs text-gray-400">Layanan Aktif 24 Jam</span>
-            </div>
-            
-            <div class="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-y-8 gap-x-4">
-                
-                {{-- Pulsa --}}
-                <a href="{{ route('admin.ppob.category', 'pulsa') }}" class="ppob-menu-item flex flex-col items-center group">
-                    <div class="icon-box w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-red-50 text-red-500 flex items-center justify-center mb-2 group-hover:bg-red-500 group-hover:text-white transition-colors border border-red-100">
-                        <i class="fas fa-mobile-alt text-xl md:text-2xl"></i>
-                    </div>
-                    <span class="text-xs md:text-sm text-gray-600 text-center font-medium group-hover:text-red-600">Pulsa</span>
-                </a>
+    {{-- Table Card --}}
+    <div class="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left text-gray-600" id="table-ppob">
+                <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b">
+                    <tr>
+                        <th class="px-4 py-3">SKU</th>
+                        <th class="px-4 py-3">Nama Produk</th>
+                        <th class="px-4 py-3">Kategori</th>
+                        <th class="px-4 py-3">Brand</th>
+                        <th class="px-4 py-3 text-right">Harga Beli</th>
+                        <th class="px-4 py-3 text-right">Harga Jual</th>
+                        <th class="px-4 py-3 text-center">Status</th>
+                        <th class="px-4 py-3 text-center">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    @foreach($products as $product)
+                    <tr class="hover:bg-gray-50 transition">
+                        <td class="px-4 py-3 font-mono text-xs font-bold">{{ $product->buyer_sku_code }}</td>
+                        <td class="px-4 py-3 font-medium text-gray-900">
+                            {{ Str::limit($product->product_name, 30) }}
+                            @if($product->multi)
+                                <span class="bg-purple-100 text-purple-700 text-[10px] px-1 rounded ml-1">Promo</span>
+                            @endif
+                        </td>
+                        <td class="px-4 py-3">{{ $product->category }}</td>
+                        <td class="px-4 py-3">
+                            <span class="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs">{{ $product->brand }}</span>
+                        </td>
+                        <td class="px-4 py-3 text-right font-medium text-red-500">
+                            Rp{{ number_format($product->price, 0, ',', '.') }}
+                        </td>
+                        <td class="px-4 py-3 text-right font-bold text-green-600">
+                            Rp{{ number_format($product->sell_price, 0, ',', '.') }}
+                        </td>
+                        <td class="px-4 py-3 text-center">
+                            @if($product->seller_product_status && $product->buyer_product_status)
+                                <span class="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-bold">Aktif</span>
+                            @elseif(!$product->buyer_product_status)
+                                <span class="bg-red-100 text-red-700 px-2 py-1 rounded-full text-xs font-bold">Gangguan</span>
+                            @else
+                                <span class="bg-gray-100 text-gray-500 px-2 py-1 rounded-full text-xs font-bold">Nonaktif</span>
+                            @endif
+                        </td>
+                        <td class="px-4 py-3 text-center">
+                            <div class="flex items-center justify-center gap-2">
+                                {{-- Tombol View (Detail) --}}
+                                <button onclick="showDetail({{ $product->id }})" class="text-blue-500 hover:text-blue-700 tooltip" title="Lihat Detail">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                
+                                {{-- Tombol Update Harga (Modal) --}}
+                                <button onclick="editPrice('{{ $product->id }}', '{{ $product->product_name }}', '{{ $product->price }}', '{{ $product->sell_price }}', '{{ $product->seller_product_status }}')" 
+                                    class="text-yellow-500 hover:text-yellow-700 tooltip" title="Update Harga">
+                                    <i class="fas fa-edit"></i>
+                                </button>
 
-                {{-- Paket Data --}}
-                <a href="{{ route('admin.ppob.category', 'data') }}" class="ppob-menu-item flex flex-col items-center group">
-                    <div class="icon-box w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-blue-50 text-blue-500 flex items-center justify-center mb-2 group-hover:bg-blue-500 group-hover:text-white transition-colors border border-blue-100">
-                        <i class="fas fa-wifi text-xl md:text-2xl"></i>
-                    </div>
-                    <span class="text-xs md:text-sm text-gray-600 text-center font-medium group-hover:text-blue-600">Paket Data</span>
-                </a>
-
-                {{-- Token PLN --}}
-                <a href="{{ route('admin.ppob.category', 'pln-token') }}" class="ppob-menu-item flex flex-col items-center group">
-                    <div class="icon-box w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-yellow-50 text-yellow-500 flex items-center justify-center mb-2 group-hover:bg-yellow-500 group-hover:text-white transition-colors border border-yellow-100">
-                        <i class="fas fa-bolt text-xl md:text-2xl"></i>
-                    </div>
-                    <span class="text-xs md:text-sm text-gray-600 text-center font-medium group-hover:text-yellow-600">Token PLN</span>
-                </a>
-
-                {{-- Tagihan Listrik (Pascabayar) --}}
-                <a href="{{ route('admin.ppob.category', 'pln-bill') }}" class="ppob-menu-item flex flex-col items-center group">
-                    <div class="icon-box w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-orange-50 text-orange-500 flex items-center justify-center mb-2 group-hover:bg-orange-500 group-hover:text-white transition-colors border border-orange-100">
-                        <i class="fas fa-file-invoice-dollar text-xl md:text-2xl"></i>
-                    </div>
-                    <span class="text-xs md:text-sm text-gray-600 text-center font-medium group-hover:text-orange-600">Tagihan PLN</span>
-                </a>
-
-                {{-- E-Wallet --}}
-                <a href="{{ route('admin.ppob.category', 'e-money') }}" class="ppob-menu-item flex flex-col items-center group">
-                    <div class="icon-box w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-purple-50 text-purple-500 flex items-center justify-center mb-2 group-hover:bg-purple-500 group-hover:text-white transition-colors border border-purple-100">
-                        <i class="fas fa-wallet text-xl md:text-2xl"></i>
-                    </div>
-                    <span class="text-xs md:text-sm text-gray-600 text-center font-medium group-hover:text-purple-600">E-Wallet</span>
-                </a>
-
-                {{-- Voucher Game --}}
-                <a href="{{ route('admin.ppob.category', 'voucher-game') }}" class="ppob-menu-item flex flex-col items-center group">
-                    <div class="icon-box w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-indigo-50 text-indigo-500 flex items-center justify-center mb-2 group-hover:bg-indigo-500 group-hover:text-white transition-colors border border-indigo-100">
-                        <i class="fas fa-gamepad text-xl md:text-2xl"></i>
-                    </div>
-                    <span class="text-xs md:text-sm text-gray-600 text-center font-medium group-hover:text-indigo-600">Voucher Game</span>
-                </a>
-
-                {{-- Streaming (Placeholder) --}}
-                <a href="#" class="ppob-menu-item flex flex-col items-center group opacity-50 cursor-not-allowed" title="Segera Hadir">
-                    <div class="icon-box w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-pink-50 text-pink-500 flex items-center justify-center mb-2 border border-pink-100">
-                        <i class="fas fa-tv text-xl md:text-2xl"></i>
-                    </div>
-                    <span class="text-xs md:text-sm text-gray-400 text-center font-medium">TV Kabel</span>
-                </a>
-
-                {{-- PDAM (Placeholder) --}}
-                <a href="#" class="ppob-menu-item flex flex-col items-center group opacity-50 cursor-not-allowed">
-                    <div class="icon-box w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-cyan-50 text-cyan-500 flex items-center justify-center mb-2 border border-cyan-100">
-                        <i class="fas fa-water text-xl md:text-2xl"></i>
-                    </div>
-                    <span class="text-xs md:text-sm text-gray-400 text-center font-medium">PDAM</span>
-                </a>
-
-                {{-- Lainnya (Placeholder) --}}
-                <a href="#" class="ppob-menu-item flex flex-col items-center group">
-                    <div class="icon-box w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-gray-100 text-gray-500 flex items-center justify-center mb-2 group-hover:bg-gray-600 group-hover:text-white transition-colors border border-gray-200">
-                        <i class="fas fa-ellipsis-h text-xl md:text-2xl"></i>
-                    </div>
-                    <span class="text-xs md:text-sm text-gray-600 text-center font-medium group-hover:text-gray-800">Lainnya</span>
-                </a>
-
-            </div>
+                                {{-- Tombol Hapus --}}
+                                <form action="{{ route('admin.ppob.destroy', $product->id) }}" method="POST" onsubmit="return confirm('Yakin ingin menghapus produk ini?');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="text-red-500 hover:text-red-700 tooltip" title="Hapus">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
         </div>
+        {{-- Jika pakai pagination --}}
+        {{-- <div class="p-4">{{ $products->links() }}</div> --}}
+    </div>
+</div>
 
-        {{-- ================================================================= --}}
-        {{-- 3. SECTION RIWAYAT TRANSAKSI (STATIC UI) --}}
-        {{-- ================================================================= --}}
-        <div class="mt-8 mb-8">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-bold text-gray-800">Riwayat Transaksi Terakhir</h3>
-                <a href="#" class="text-sm text-blue-600 font-medium hover:underline">Lihat Semua</a>
-            </div>
+{{-- ================= MODAL UPDATE HARGA ================= --}}
+<div id="priceModal" class="fixed inset-0 z-50 hidden bg-gray-900 bg-opacity-50 flex items-center justify-center backdrop-blur-sm">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 transform transition-all scale-100">
+        <div class="flex justify-between items-center mb-4 border-b pb-2">
+            <h3 class="text-lg font-bold text-gray-800">Update Harga Jual</h3>
+            <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+        </div>
+        
+        <form id="priceForm" action="" method="POST">
+            @csrf
+            @method('PUT')
             
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 divide-y divide-gray-100 overflow-hidden">
-                <div class="p-8 text-center text-gray-400">
-                    <div class="bg-gray-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <i class="fas fa-receipt text-2xl text-gray-300"></i>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Nama Produk</label>
+                <input type="text" id="modal_product_name" class="w-full bg-gray-100 border border-gray-300 rounded-lg px-3 py-2 text-gray-600" readonly>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Harga Beli (Pusat)</label>
+                    <input type="text" id="modal_base_price" class="w-full bg-red-50 border border-red-200 text-red-600 font-bold rounded-lg px-3 py-2" readonly>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Harga Jual (Agen)</label>
+                    <input type="number" name="sell_price" id="modal_sell_price" class="w-full border border-gray-300 focus:ring-blue-500 focus:border-blue-500 rounded-lg px-3 py-2 font-bold text-gray-900" required>
+                </div>
+            </div>
+
+            <div class="mb-6 flex items-center">
+                <input type="checkbox" name="status" id="modal_status" value="1" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                <label for="modal_status" class="ml-2 text-sm font-medium text-gray-900">Aktifkan Produk untuk Dijual?</label>
+            </div>
+
+            <div class="flex justify-end gap-2">
+                <button type="button" onclick="closeModal()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300">Batal</button>
+                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-bold">Simpan Perubahan</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{{-- ================= MODAL DETAIL PRODUK ================= --}}
+<div id="detailModal" class="fixed inset-0 z-50 hidden bg-gray-900 bg-opacity-50 flex items-center justify-center backdrop-blur-sm">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6">
+        <h3 class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">Detail Produk</h3>
+        <div id="detailContent" class="space-y-2 text-sm text-gray-600">
+            {{-- Konten diisi via JS --}}
+            <div class="animate-pulse flex space-x-4">
+                <div class="flex-1 space-y-4 py-1">
+                    <div class="h-4 bg-gray-200 rounded w-3/4"></div>
+                    <div class="space-y-2">
+                        <div class="h-4 bg-gray-200 rounded"></div>
+                        <div class="h-4 bg-gray-200 rounded w-5/6"></div>
                     </div>
-                    <p class="text-sm">Belum ada riwayat transaksi produk digital.</p>
                 </div>
             </div>
         </div>
-
+        <div class="mt-6 flex justify-end">
+            <button onclick="document.getElementById('detailModal').classList.add('hidden')" class="bg-gray-800 text-white px-4 py-2 rounded-lg">Tutup</button>
+        </div>
     </div>
 </div>
+
 @endsection
 
 @push('scripts')
+{{-- Pastikan load library DataTables jika ingin fitur search/paging --}}
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.tailwindcss.min.css">
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+
 <script>
-    // --- SKRIP CEK SALDO DIGIFLAZZ (KHUSUS ADMIN) ---
-    function refreshSaldo() {
-        const saldoEl = document.getElementById('digi-saldo');
-        const icon = document.getElementById('icon-refresh');
-        const btn = document.getElementById('btn-refresh-saldo');
-        
-        if (!saldoEl) return;
-
-        saldoEl.innerText = 'Memuat...';
-        icon.classList.add('fa-spin');
-        btn.disabled = true;
-        btn.classList.add('opacity-75', 'cursor-not-allowed');
-
-        // Panggil Route Controller (PASTIKAN ROUTE INI ADA DI web.php PREFIX ADMIN)
-        fetch("{{ route('ppob.cek-saldo') }}", {
-            headers: {
-                "X-Requested-With": "XMLHttpRequest",
-                "Accept": "application/json"
+    $(document).ready(function() {
+        $('#table-ppob').DataTable({
+            "pageLength": 10,
+            "lengthMenu": [10, 25, 50, 100],
+            "language": {
+                "search": "Cari Produk:",
+                "lengthMenu": "Tampilkan _MENU_ data",
+                "info": "Menampilkan _START_ sampai _END_ dari _TOTAL_ produk",
+                "paginate": { "next": ">", "previous": "<" }
             }
-        })
-        .then(response => response.json())
-        .then(data => {
-            icon.classList.remove('fa-spin');
-            btn.disabled = false;
-            btn.classList.remove('opacity-75', 'cursor-not-allowed');
-
-            if(data.status) {
-                saldoEl.innerText = data.formatted;
-            } else {
-                saldoEl.innerText = 'Error';
-                console.error(data.message);
-            }
-        })
-        .catch(error => {
-            icon.classList.remove('fa-spin');
-            btn.disabled = false;
-            saldoEl.innerText = 'Gagal';
-            console.error('Error:', error);
         });
+    });
+
+    // Fungsi Modal Update Harga
+    function editPrice(id, name, basePrice, sellPrice, status) {
+        document.getElementById('modal_product_name').value = name;
+        document.getElementById('modal_base_price').value = parseInt(basePrice).toLocaleString('id-ID');
+        document.getElementById('modal_sell_price').value = parseInt(sellPrice); // Input number butuh raw value
+        
+        // Checkbox status
+        const statusCheckbox = document.getElementById('modal_status');
+        if(status == 1) { statusCheckbox.checked = true; } else { statusCheckbox.checked = false; }
+
+        // Set Action URL
+        let url = "{{ route('admin.ppob.update-price', ':id') }}";
+        url = url.replace(':id', id);
+        document.getElementById('priceForm').action = url;
+
+        document.getElementById('priceModal').classList.remove('hidden');
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
-        if(document.getElementById('digi-saldo')) {
-            refreshSaldo();
-        }
-    });
+    // Fungsi View Detail (Simple Fetch)
+    function showDetail(id) {
+        document.getElementById('detailModal').classList.remove('hidden');
+        const content = document.getElementById('detailContent');
+        content.innerHTML = '<p class="text-center">Memuat data...</p>';
+
+        let url = "{{ route('admin.ppob.show', ':id') }}";
+        url = url.replace(':id', id);
+
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                let html = `
+                    <div class="grid grid-cols-3 gap-2">
+                        <span class="font-bold">Nama:</span> <span class="col-span-2">${data.product_name}</span>
+                        <span class="font-bold">SKU:</span> <span class="col-span-2">${data.buyer_sku_code}</span>
+                        <span class="font-bold">Kategori:</span> <span class="col-span-2">${data.category} (${data.brand})</span>
+                        <span class="font-bold">Deskripsi:</span> <span class="col-span-2 italic">${data.desc}</span>
+                        <span class="font-bold">Jam Cut Off:</span> <span class="col-span-2">${data.start_cut_off} - ${data.end_cut_off}</span>
+                        <span class="font-bold">Stok:</span> <span class="col-span-2">${data.unlimited_stock ? 'Unlimited' : data.stock}</span>
+                        <span class="font-bold">Multi Trx:</span> <span class="col-span-2">${data.multi ? 'Ya' : 'Tidak'}</span>
+                    </div>
+                `;
+                content.innerHTML = html;
+            });
+    }
+
+    function closeModal() {
+        document.getElementById('priceModal').classList.add('hidden');
+    }
 </script>
 @endpush
