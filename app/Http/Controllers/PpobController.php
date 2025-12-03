@@ -288,7 +288,7 @@ class PpobController extends Controller
 
    public function checkBill(Request $request)
     {
-        // 1. Validasi
+        // 1. Validasi Input
         $request->validate([
             'customer_no' => 'required', 
             'sku' => 'required' 
@@ -297,27 +297,35 @@ class PpobController extends Controller
         // 2. Generate Ref ID
         $refId = 'INQ-' . time() . rand(100,999);
 
-        // --- DEBUGGING MODE ON (PAKSA MUNCUL ERROR) ---
-        
-        // Cek apakah class service terload
-        if (!$this->digiflazz) {
-            dd("Service Digiflazz Kosong/Null. Cek __construct");
-        }
+        try {
+            // Cek Service
+            if (!$this->digiflazz) {
+                dd("ERROR: Service Digiflazz belum terhubung (null).");
+            }
 
-        // Tembak API dan matikan proses untuk melihat hasilnya
-        $response = $this->digiflazz->inquiryPasca($request->sku, $request->customer_no, $refId);
-        
-        // TAMPILKAN HASIL MENTAH DARI DIGIFLAZZ DI LAYAR
-        dd([
-            'Ref ID' => $refId,
-            'Request Data' => [
-                'sku' => $request->sku,
-                'customer_no' => $request->customer_no
-            ],
-            'Response Digiflazz' => $response
-        ]);
+            // 3. Tembak API Digiflazz
+            $response = $this->digiflazz->inquiryPasca($request->sku, $request->customer_no, $refId);
 
-            // Cek Response
+            // ==========================================================
+            // 🔥 DEBUGGING MODE: DD (DUMP AND DIE)
+            // ==========================================================
+            // Kode akan berhenti di sini dan menampilkan isi variabel
+            
+            dd([
+                'STATUS' => 'DEBUGGING MODE AKTIF',
+                '1. Data Dikirim ke Controller' => [
+                    'sku' => $request->sku,
+                    'customer_no' => $request->customer_no,
+                    'ref_id_generated' => $refId
+                ],
+                '2. Hasil Balasan Digiflazz (RAW)' => $response
+            ]);
+
+            // ==========================================================
+            // KODE DI BAWAH INI TIDAK AKAN DIJALANKAN SELAMA ADA DD()
+            // ==========================================================
+
+            // 4. Cek Response
             if (isset($response['data'])) {
                 $data = $response['data'];
                 
@@ -332,9 +340,6 @@ class PpobController extends Controller
                         'desc' => $data['desc'] ?? []
                     ]);
                 } else {
-                    // Log alasan gagal dari API (Misal: Saldo kurang, ID salah)
-                    Log::warning("⚠️ [CheckBill Gagal] RefID: $refId. Pesan: " . ($data['message'] ?? 'Unknown'));
-                    
                     return response()->json([
                         'status' => 'error', 
                         'message' => $data['message'] ?? 'Tagihan tidak ditemukan.'
@@ -342,20 +347,19 @@ class PpobController extends Controller
                 }
             }
 
-            // Jika sampai sini, berarti response API aneh (tidak ada key 'data')
-            Log::error("❌ [CheckBill Invalid Response] RefID: $refId. Raw: " . json_encode($response));
-            return response()->json(['status' => 'error', 'message' => 'Respon server vendor tidak valid.']);
+            return response()->json(['status' => 'error', 'message' => 'Respon server vendor tidak valid (Data kosong).']);
 
-       } catch (\Exception $e) {
-        // --- UBAH BAGIAN INI ---
-        // Kita kirim pesan error aslinya langsung ke JSON response
-        // Supaya bisa dibaca di alert browser
-        return response()->json([
-            'status' => 'error', 
-            'message' => 'DEBUG ERROR: ' . $e->getMessage() . ' (Line: ' . $e->getLine() . ')'
-        ], 200); 
+        } catch (\Exception $e) {
+            
+            // Jika masuk sini, berarti ada error kodingan / sistem
+            dd([
+                'STATUS' => 'TERJADI EXCEPTION (ERROR SISTEM)',
+                'Pesan Error' => $e->getMessage(),
+                'Baris Error' => $e->getLine(),
+                'File' => $e->getFile()
+            ]);
+        }
     }
-
 
 
     /**
