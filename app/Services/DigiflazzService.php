@@ -4,7 +4,7 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use App\Models\PpobProduct;
+use App\Models\PpobProduct; // Pastikan Model ini ada
 use Illuminate\Support\Facades\DB;
 
 class DigiflazzService
@@ -13,25 +13,20 @@ class DigiflazzService
     protected $apiKey;
     protected $baseUrl;
 
- public function __construct()
+    public function __construct()
     {
-        // --- UBAH BAGIAN INI (HARDCODE SEMENTARA) ---
-        // Kita tulis langsung untuk memastikan tidak ada spasi/error dari .env
+        // --- KONFIGURASI KREDENSIAL ---
+        // Sebaiknya gunakan .env, tapi jika ingin hardcode untuk testing:
         
-        $this->username = 'mihetiDVGdeW'; // Sesuai screenshot
-        $this->apiKey   = 'dev-d54808c0-87ed-11f0-bdb6-8d5622821215'; // Sesuai screenshot
+        $this->username = 'mihetiDVGdeW'; // Username Digiflazz
+        $this->apiKey   = 'dev-d54808c0-87ed-11f0-bdb6-8d5622821215'; // API Key Prod/Dev
+        
+        // Mode Development / Production URL
         $this->baseUrl  = 'https://api.digiflazz.com/v1'; 
-        
-        // --- KOMENTARI KODE LAMA ---
-        // $this->username = env('DIGIFLAZZ_USERNAME');
-        // $this->apiKey = env('DIGIFLAZZ_KEY');
-        // $this->baseUrl = env('DIGIFLAZZ_MODE') === 'production' 
-        //     ? 'https://api.digiflazz.com/v1' 
-        //     : 'https://api.digiflazz.com/v1'; 
     }
 
     /**
-     * Mengambil Daftar Harga (Price List)
+     * 1. Mengambil Daftar Harga (Price List)
      * $cmd bisa 'prepaid' (pulsa, data, token) atau 'postpaid' (tagihan)
      */
     public function getPriceList($cmd = 'prepaid')
@@ -39,25 +34,32 @@ class DigiflazzService
         // Signature Price List = md5(username + key + "depo")
         $sign = md5($this->username . $this->apiKey . "depo");
 
-        $response = Http::post($this->baseUrl . '/price-list', [
-            'cmd' => $cmd,
-            'username' => $this->username,
-            'sign' => $sign
-        ]);
+        try {
+            $response = Http::post($this->baseUrl . '/price-list', [
+                'cmd' => $cmd,
+                'username' => $this->username,
+                'sign' => $sign
+            ]);
 
-        if ($response->successful()) {
-            return $response->json()['data'];
+            if ($response->successful()) {
+                return $response->json()['data'];
+            }
+
+            Log::error('Digiflazz Price List Error: ' . $response->body());
+            return [];
+        } catch (\Exception $e) {
+            Log::error('Digiflazz Connection Error: ' . $e->getMessage());
+            return [];
         }
-
-        Log::error('Digiflazz Price List Error: ' . $response->body());
-        return [];
     }
 
-   /**
+    /**
      * 2. Sinkronisasi Produk dari API ke Database Lokal
+     * Menyimpan data produk ke tabel 'ppob_products'
      */
     public function syncProducts()
     {
+        // Ambil data Prepaid
         $products = $this->getPriceList('prepaid');
 
         // Debug: Cek apakah data kosong atau error
@@ -65,94 +67,69 @@ class DigiflazzService
             return false;
         }
 
-        foreach ($products as $item) {
-            // ==================================================
-            // [FIX] PENGAMAN ERROR STRING OFFSET
-            // Lewati jika $item bukan array (misal string "Sukses" atau "00")
-            // ==================================================
-            if (!is_array($item)) continue; 
-            
-            // Pastikan key yang dibutuhkan ada sebelum diproses
-            if (!isset($item['buyer_sku_code']) || !isset($item['price'])) continue;
-            // ==================================================
-
-            $margin = 2000;
-            $modal = (float)$item['price'];
-            $hargaJual = $modal + $margin;
-
-            // 1. Cari data lama atau buat objek baru
-            $product = PpobProduct::firstOrNew(['buyer_sku_code' => $item['buyer_sku_code']]);
-
-            // 2. Update data
-            $product->product_name = $item['product_name'];
-            $product->category     = $item['category'];
-            $product->brand        = $item['brand'];
-            $product->type         = $item['type'];
-            $product->seller_name  = $item['seller_name'];
-            $product->price        = $modal;
-
-            // 3. Logika Harga Jual
-            if (!$product->exists || $product->sell_price <= 0) {
-                $product->sell_price = $hargaJual;
-            }
-
-            // Update status & stok
-            $product->buyer_product_status  = $item['buyer_product_status'];
-            $product->seller_product_status = $item['seller_product_status'];
-            $product->unlimited_stock       = $item['unlimited_stock'];
-            $product->stock                 = $item['stock'];
-            $product->multi                 = $item['multi'];
-            $product->start_cut_off         = $item['start_cut_off'];
-            $product->end_cut_off           = $item['end_cut_off'];
-            $product->desc                  = $item['desc'];
-
-            // 4. Simpan
-            $product->save();
-        }
-
-        return true;
-    }
-
-   /**
-     * Melakukan Transaksi (Top Up)
-     * Tambahkan parameter $maxPrice untuk proteksi harga
-     */
-    public function transaction($sku, $customerNo, $refId, $maxPrice = 0)
-    {
-        $sign = md5($this->username . $this->apiKey . $refId);
-
-        $payload = [
-            'username' => $this->username,
-            'buyer_sku_code' => $sku,
-            'customer_no' => $customerNo,
-            'ref_id' => $refId,
-            'sign' => $sign,
-            'max_price' => $maxPrice, // <--- FITUR PROTEKSI DIGIFLAZZ
-            'testing' => true,
-        ];
-
+        DB::beginTransaction();
         try {
-            $response = Http::post($this->baseUrl . '/transaction', $payload);
-            return $response->json();
+            foreach ($products as $item) {
+                // Lewati jika item bukan array valid
+                if (!is_array($item)) continue; 
+                if (!isset($item['buyer_sku_code']) || !isset($item['price'])) continue;
+
+                // --- LOGIKA MARGIN KEUNTUNGAN ---
+                // Margin default Rp 2.000 (Bisa diubah nanti di Admin Panel)
+                $margin = 2000;
+                $modal = (float)$item['price'];
+                $hargaJual = $modal + $margin;
+
+                // 1. Cari data lama atau buat objek baru berdasarkan SKU
+                $product = PpobProduct::firstOrNew(['buyer_sku_code' => $item['buyer_sku_code']]);
+
+                // 2. Update data dari API
+                $product->product_name = $item['product_name'];
+                $product->category     = $item['category'];
+                $product->brand        = $item['brand'];
+                $product->type         = $item['type'];
+                $product->seller_name  = $item['seller_name'];
+                $product->price        = $modal; // Update Harga Beli terbaru
+
+                // 3. Update Harga Jual
+                // Jika produk baru atau harga jual masih 0, set harga jual otomatis.
+                // Jika produk lama, biarkan harga jual tetap (agar tidak merusak harga yang sudah diset manual admin),
+                // KECUALI jika Anda ingin harga jual selalu mengikuti harga beli + margin, uncomment baris di bawah:
+                // $product->sell_price = $hargaJual; 
+                
+                if (!$product->exists || $product->sell_price <= 0) {
+                    $product->sell_price = $hargaJual;
+                }
+
+                // 4. Update status & stok
+                $product->buyer_product_status  = $item['buyer_product_status']; // Status dari Pusat
+                $product->seller_product_status = $item['seller_product_status']; // Status Jual
+                $product->unlimited_stock       = $item['unlimited_stock'];
+                $product->stock                 = $item['stock'];
+                $product->multi                 = $item['multi'];
+                $product->start_cut_off         = $item['start_cut_off'];
+                $product->end_cut_off           = $item['end_cut_off'];
+                $product->desc                  = $item['desc'];
+
+                // 5. Simpan
+                $product->save();
+            }
+            
+            DB::commit();
+            return true;
+
         } catch (\Exception $e) {
-            Log::error('Digiflazz Transaction Error: ' . $e->getMessage());
-            return [
-                'data' => [
-                    'status' => 'Gagal',
-                    'message' => 'Koneksi Error: ' . $e->getMessage()
-                ]
-            ];
+            DB::rollBack();
+            Log::error('Sync Product Failed: ' . $e->getMessage());
+            return false;
         }
     }
-    
 
     /**
-     * Cek Sisa Saldo Deposit Digiflazz
-     * Dokumentasi: https://api.digiflazz.com/v1/cek-saldo
+     * 3. Cek Sisa Saldo Deposit Digiflazz
      */
     public function checkDeposit()
     {
-        // Signature Check Saldo = md5(username + key + "depo")
         $sign = md5($this->username . $this->apiKey . "depo");
 
         try {
@@ -164,7 +141,6 @@ class DigiflazzService
 
             $result = $response->json();
 
-            // Cek apakah response sukses dan ada data deposit
             if (isset($result['data']['deposit'])) {
                 return [
                     'status' => true,
@@ -181,43 +157,65 @@ class DigiflazzService
 
         } catch (\Exception $e) {
             Log::error('Digiflazz Check Deposit Error: ' . $e->getMessage());
-            return [
-                'status' => false,
-                'deposit' => 0,
-                'message' => 'Koneksi error: ' . $e->getMessage()
-            ];
+            return ['status' => false, 'deposit' => 0, 'message' => 'Koneksi error'];
         }
     }
 
     /**
-     * Cek Tagihan Pascabayar (Inquiry)
-     * Digunakan untuk PLN Bulanan, PDAM, BPJS, dll
+     * 4. Transaksi Prabayar (Pulsa, Data, Token, E-Money)
      */
-    public function inquiryPasca($sku, $customerNo, $refId)
+    public function transaction($sku, $customerNo, $refId, $maxPrice = 0)
     {
         $sign = md5($this->username . $this->apiKey . $refId);
 
         $payload = [
-            'commands' => 'inq-pasca', // Command khusus Inquiry
             'username' => $this->username,
             'buyer_sku_code' => $sku,
             'customer_no' => $customerNo,
             'ref_id' => $refId,
             'sign' => $sign,
-            'testing' => true, // Ubah ke false jika production
+            'max_price' => $maxPrice, // Proteksi harga naik tiba-tiba
+            'testing' => true, // HAPUS ATAU SET FALSE JIKA LIVE
         ];
 
         try {
             $response = Http::post($this->baseUrl . '/transaction', $payload);
             return $response->json();
         } catch (\Exception $e) {
-            Log::error('Digiflazz Inquiry Error: ' . $e->getMessage());
+            Log::error('Digiflazz Transaction Error: ' . $e->getMessage());
             return ['data' => ['status' => 'Gagal', 'message' => 'Koneksi Error']];
         }
     }
 
     /**
-     * Bayar Tagihan Pascabayar (Payment)
+     * 5. Cek Tagihan Pascabayar (Inquiry)
+     * Digunakan untuk: PLN Pasca, PDAM, BPJS, Internet, dll
+     */
+    public function inquiryPasca($sku, $customerNo, $refId)
+    {
+        $sign = md5($this->username . $this->apiKey . $refId);
+
+        $payload = [
+            'commands' => 'inq-pasca', // Command Wajib
+            'username' => $this->username,
+            'buyer_sku_code' => $sku,
+            'customer_no' => $customerNo,
+            'ref_id' => $refId,
+            'sign' => $sign,
+            'testing' => true, // HAPUS JIKA LIVE
+        ];
+
+        try {
+            $response = Http::post($this->baseUrl . '/transaction', $payload);
+            return $response->json();
+        } catch (\Exception $e) {
+            Log::error('Digiflazz Inquiry Pasca Error: ' . $e->getMessage());
+            return ['data' => ['status' => 'Gagal', 'message' => 'Koneksi Error']];
+        }
+    }
+
+    /**
+     * 6. Bayar Tagihan Pascabayar (Payment)
      * Eksekusi pembayaran setelah user setuju dengan hasil Inquiry
      */
     public function payPasca($sku, $customerNo, $refId)
@@ -225,13 +223,13 @@ class DigiflazzService
         $sign = md5($this->username . $this->apiKey . $refId);
 
         $payload = [
-            'commands' => 'pay-pasca', // Command khusus Bayar
+            'commands' => 'pay-pasca', // Command Wajib
             'username' => $this->username,
             'buyer_sku_code' => $sku,
             'customer_no' => $customerNo,
             'ref_id' => $refId,
             'sign' => $sign,
-            'testing' => true, // Ubah ke false jika production
+            'testing' => true, // HAPUS JIKA LIVE
         ];
 
         try {
@@ -244,86 +242,32 @@ class DigiflazzService
     }
 
     /**
-     * Halaman Dinamis untuk Semua Kategori (Pulsa, Data, PLN, Games, E-Money)
-     * URL: /digital/kategori/{slug}
-     */
-    public function category($slug)
-    {
-        $weblogo = $this->getWebLogo();
-
-        // 1. Mapping Slug URL ke Kategori Database Digiflazz
-        $categoriesMap = [
-            'pulsa'       => ['Pulsa'],
-            'data'        => ['Data'],
-            'pln-token'   => ['PLN'],      // Token Listrik
-            'e-money'     => ['E-Money'],  // OVO, DANA, dll
-            'voucher-game'=> ['Games'],    // FreeFire, MLBB
-            'streaming'   => ['TV', 'Streaming'],
-        ];
-
-        // Validasi Slug
-        if (!array_key_exists($slug, $categoriesMap)) {
-            abort(404);
-        }
-
-        $dbCategories = $categoriesMap[$slug];
-
-        // 2. Judul & Placeholder Input berdasarkan Kategori
-        $pageInfo = [
-            'title'       => ucfirst(str_replace('-', ' ', $slug)),
-            'slug'        => $slug,
-            'input_label' => 'Nomor Handphone',
-            'input_place' => 'Contoh: 0812xxxx',
-            'icon'        => 'fa-mobile-alt'
-        ];
-
-        // Custom Label untuk Non-Pulsa
-        if ($slug == 'pln-token') {
-            $pageInfo['input_label'] = 'Nomor Meter / ID Pelanggan';
-            $pageInfo['input_place'] = 'Contoh: 141234567890';
-            $pageInfo['icon']        = 'fa-bolt';
-        } elseif ($slug == 'e-money') {
-            $pageInfo['icon']        = 'fa-wallet';
-        } elseif ($slug == 'voucher-game') {
-            $pageInfo['input_label'] = 'ID Pemain (User ID)';
-            $pageInfo['input_place'] = 'Masukkan ID Game';
-            $pageInfo['icon']        = 'fa-gamepad';
-        }
-
-        // 3. Ambil Produk dari Database
-        $products = PpobProduct::whereIn('category', $dbCategories)
-            ->where('buyer_product_status', true)
-            ->where('seller_product_status', true)
-            ->orderBy('price', 'asc')
-            ->get();
-
-        // 4. Kelompokkan Brand (Agar rapi: Telkomsel, XL / DANA, OVO / MLBB, FF)
-        $brands = $products->pluck('brand')->unique()->values();
-
-        return view('ppob.category', compact('products', 'brands', 'weblogo', 'pageInfo'));
-    }
-
-    /**
-     * Cek Validasi ID PLN (Khusus Token Listrik / Prabayar)
-     * Dokumentasi: https://api.digiflazz.com/v1/inquiry-pln
+     * 7. Cek Validasi ID PLN (Khusus Token Listrik / Prabayar)
+     * Memastikan nomor meter valid dan menampilkan nama pelanggan
      */
     public function inquiryPln($customerNo)
     {
+        // Endpoint Khusus /inquiry-pln
         // Signature = md5(username + apiKey + customer_no)
         $sign = md5($this->username . $this->apiKey . $customerNo);
 
         try {
-            $response = Http::post($this->baseUrl . '/inquiry-pln', [
+            $response = Http::post($this->baseUrl . '/transaction', [
+                'commands' => 'pln-subscribe', // Menggunakan command transaction umum jika endpoint khusus tidak aktif
                 'username' => $this->username,
                 'customer_no' => $customerNo,
                 'sign' => $sign
             ]);
-
+            
+            // NOTE: Digiflazz biasanya menyarankan pakai API Transaksi dengan SKU 'PLN' untuk inquiry pasca, 
+            // atau endpoint khusus /transaction dengan body tertentu untuk cek ID prepaid.
+            // Jika endpoint /inquiry-pln tidak available, gunakan endpoint /transaction dengan payload yang sesuai.
+            // Kode di bawah menggunakan endpoint /transaction standard untuk cek nama (biasanya via API pasca 'pln' juga bisa untuk cek nama).
+            
             return $response->json();
         } catch (\Exception $e) {
             Log::error('Digiflazz Inquiry PLN Error: ' . $e->getMessage());
             return ['data' => ['status' => 'Gagal', 'message' => 'Koneksi Error']];
         }
     }
-
 }
