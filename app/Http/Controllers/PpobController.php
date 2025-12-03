@@ -303,8 +303,23 @@ class PpobController extends Controller
                 dd("ERROR: Service Digiflazz belum terhubung (null).");
             }
 
-            // 3. Tembak API Digiflazz
+            // 2. Tembak API (Tangkap response-nya)
             $response = $this->digiflazz->inquiryPasca($request->sku, $request->customer_no, $refId);
+
+            // ============================================================
+            // 🔥 DEBUGGING MODE: KIRIM HASIL KE LAYAR USER
+            // ============================================================
+            // Kita paksa kirim respon JSON agar muncul di popup merah browser
+            // Jadi Anda bisa baca balasan asli dari Digiflazz
+            
+            return response()->json([
+                'status' => 'error', // Sengaja diset error biar muncul merah
+                'message' => 'DEBUG DIGIFLAZZ: ' . json_encode($response)
+            ]);
+
+            // ============================================================
+            // KODE DI BAWAH INI TIDAK AKAN JALAN KARENA SUDAH DI-RETURN DI ATAS
+            // ============================================================
 
             // ==========================================================
             // 🔥 DEBUGGING MODE: DD (DUMP AND DIE)
