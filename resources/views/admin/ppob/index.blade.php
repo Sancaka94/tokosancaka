@@ -142,22 +142,77 @@
     </div>
 </div>
 
-{{-- Modal Update Harga (Tetap Sama) --}}
-@include('admin.ppob.partials.modal_edit_price') 
+{{-- ========================================== --}}
+{{-- MODAL EDIT HARGA (LANGSUNG DI SINI)        --}}
+{{-- ========================================== --}}
+<div id="priceModal" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity backdrop-blur-sm" onclick="closeModal()"></div>
+    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        <div class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
+            <form id="priceForm" action="" method="POST" class="p-6">
+                @csrf
+                @method('PUT')
+                <div class="flex justify-between items-center mb-5 border-b pb-4">
+                    <h3 class="text-lg font-bold text-gray-900" id="modal-title">Update Harga Produk</h3>
+                    <button type="button" onclick="closeModal()" class="text-gray-400 hover:text-gray-500 transition">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Nama Produk</label>
+                    <input type="text" id="modal_product_name" class="w-full bg-gray-100 border-transparent rounded-lg px-3 py-2 text-gray-600 text-sm focus:ring-0 cursor-not-allowed" readonly>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Harga Beli (Pusat)</label>
+                        <input type="text" id="modal_base_price" class="w-full bg-red-50 text-red-600 font-bold border-red-100 rounded-lg px-3 py-2 text-sm focus:ring-0 cursor-not-allowed" readonly>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Harga Jual (Baru)</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500 font-bold text-sm">Rp</span>
+                            <input type="number" name="sell_price" id="modal_sell_price" class="w-full pl-10 border-gray-300 rounded-lg px-3 py-2 text-gray-900 font-bold focus:ring-blue-500 focus:border-blue-500" required>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-6 bg-blue-50 p-3 rounded-lg flex items-start border border-blue-100">
+                    <div class="flex h-5 items-center">
+                        <input type="checkbox" name="status" id="modal_status" value="1" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                    </div>
+                    <div class="ml-3 text-sm">
+                        <label for="modal_status" class="font-medium text-blue-900 cursor-pointer">Aktifkan produk ini?</label>
+                        <p class="text-blue-500 text-xs mt-0.5">Jika tidak dicentang, produk akan disembunyikan dari pelanggan.</p>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-2">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium transition">Batal</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold shadow-lg shadow-blue-200 transition transform hover:-translate-y-0.5">Simpan Perubahan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
 @endsection
 
 @push('scripts')
-{{-- Script Edit Price --}}
 <script>
     function editPrice(id, name, basePrice, sellPrice, status) {
         document.getElementById('modal_product_name').value = name;
+        // Format harga beli ke Rupiah
         document.getElementById('modal_base_price').value = 'Rp ' + parseInt(basePrice).toLocaleString('id-ID');
+        // Harga jual tetap angka agar bisa diedit di input number
         document.getElementById('modal_sell_price').value = parseInt(sellPrice);
         
         const statusCheckbox = document.getElementById('modal_status');
         if(statusCheckbox) statusCheckbox.checked = (status == 1);
 
+        // Update URL form action
         let url = "{{ route('admin.ppob.update-price', ':id') }}";
         url = url.replace(':id', id);
         
