@@ -35,6 +35,9 @@ class PpobController extends Controller
      */
     public function index($slug = 'pulsa')
     {
+        // Ambil data logo dari tabel settings (sesuaikan key 'web_logo' jika beda)
+        $logoData = \App\Models\Setting::where('key', 'web_logo')->first();
+        $weblogo  = $logoData ? $logoData->value : 'logo.png'; // Fallback jika kosong
         // --- 1. LOGIKA CERDAS DETEKSI PENGUNJUNG (ADMIN VS PUBLIC) ---
         $prefix = request()->segment(1);
 
