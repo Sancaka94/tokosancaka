@@ -231,17 +231,17 @@ Route::middleware(['auth', 'verified'])->prefix('digital')->name('ppob.')->group
     
     // 1. Halaman Utama Menu PPOB (Dashboard Digital)
     // URL: /digital
-    //Route::get('/', [PpobController::class, 'index'])->name('index');
+    // Route::get('/', [PpobController::class, 'index'])->name('index');
 
-    // 2. Proses Transaksi / Checkout PPOB
+    // 2. Proses Transaksi / Checkout PPOB (Bayar)
     // URL: /digital/checkout
     Route::post('/checkout', [PpobController::class, 'store'])->name('store');
 
-    // 3. Cek Status Transaksi (AJAX)
+    // 3. Cek Status Transaksi (AJAX - Realtime Update)
     // URL: /digital/status/{ref_id}
     Route::get('/status/{ref_id}', [PpobController::class, 'checkStatus'])->name('status');
 
-    // 4. Update Harga Ke Database (Sync)
+    // 4. Update Harga/Produk Ke Database (Sync Manual Admin)
     // URL: /digital/sync-produk
     Route::get('/sync-produk', [PpobController::class, 'sync'])->name('sync');
 
@@ -249,16 +249,31 @@ Route::middleware(['auth', 'verified'])->prefix('digital')->name('ppob.')->group
     // URL: /digital/cek-saldo
     Route::get('/cek-saldo', [PpobController::class, 'cekSaldo'])->name('cek-saldo');
 
-    // 6. Halaman Kategori Dinamis (Pulsa, Data, PLN, Games, dll)
-    // PENTING: Taruh di paling bawah agar tidak bentrok dengan route lain
-    // URL: /digital/kategori/pulsa, /digital/kategori/pln-token, dll
-    Route::get('/kategori/{slug}', [PpobController::class, 'category'])->name('category');
+    // =====================================================================
+    // == SECTION AJAX REQUEST (Inquiry & Data Fetching)
+    // =====================================================================
 
+    // A. Cek Nama PLN Prabayar (Token Listrik)
+    // Digunakan saat user mengetik No Meter/ID Pel untuk Token
+    Route::post('/ajax/check-pln-prabayar', [PpobController::class, 'checkPlnPrabayar'])->name('check.pln.prabayar');
+
+    // B. Cek Tagihan Pascabayar (PLN Pasca & PDAM & BPJS)
+    // Digunakan untuk inquiry tagihan sebelum bayar
     Route::post('/ajax/check-bill', [PpobController::class, 'checkBill'])->name('check.bill');
 
-    Route::post('/ajax/check-pln-prabayar', [PpobController::class, 'checkPlnPrabayar'])->name('check.pln.prabayar');
-});
+    // C. [LENGKAP] Ambil Daftar Wilayah/Produk PDAM
+    // Digunakan untuk Dropdown pilih wilayah PDAM
+    Route::get('/ajax/pdam-products', [PpobController::class, 'getPdamProducts'])->name('ajax.pdam-products');
 
+    // =====================================================================
+    // == SECTION HALAMAN KATEGORI (Dynamic View)
+    // =====================================================================
+    
+    // 6. Halaman Kategori Dinamis 
+    // Menangani: /digital/kategori/pulsa, /digital/kategori/pln-pascabayar, /digital/kategori/pdam
+    // PENTING: Taruh di paling bawah agar tidak bentrok dengan route statis lain
+    Route::get('/kategori/{slug}', [PpobController::class, 'category'])->name('category');
+});
 
 // Route Cek IP Hosting
 Route::get('/cek-ip-hosting', function () {
