@@ -74,10 +74,10 @@ use App\Http\Controllers\Admin\AdminReviewController;
 use App\Http\Controllers\PpobController; // <--- Jangan lupa import ini di paling atas
 use App\Http\Controllers\DigiflazzWebhookController;
 use App\Http\Controllers\PpobProductController;
+use App\Http\Controllers\PublicController;
 
 
-
-
+Route::get('/daftar-harga', [PublicController::class, 'pricelist'])->name('public.pricelist');
 // HAPUS 'role:Admin' dari array middleware, cukup 'auth' saja dulu
 Route::prefix('admin/ppob')->name('admin.ppob.')->middleware(['auth'])->group(function () {
     
