@@ -100,6 +100,22 @@
 
         .loader { border: 3px solid #f3f3f3; border-radius: 50%; border-top: 3px solid #ef4444; width: 20px; height: 20px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* WARNA BG & TEXT SESUAI GAMBAR */
+        .bg-blue-50 { background-color: #eff6ff; } .text-blue-600 { color: #2563eb; } .border-blue-400 { border-color: #60a5fa; }
+        .bg-green-50 { background-color: #f0fdf4; } .text-green-600 { color: #16a34a; } .border-green-400 { border-color: #4ade80; }
+        .bg-yellow-50 { background-color: #fefce8; } .text-yellow-500 { color: #eab308; } .border-yellow-400 { border-color: #facc15; }
+        .bg-orange-50 { background-color: #fff7ed; } .text-orange-500 { color: #f97316; } .border-orange-400 { border-color: #fb923c; }
+        .bg-cyan-50 { background-color: #ecfeff; } .text-cyan-500 { color: #06b6d4; } .border-cyan-400 { border-color: #22d3ee; }
+        .bg-purple-50 { background-color: #faf5ff; } .text-purple-600 { color: #9333ea; } .border-purple-400 { border-color: #c084fc; }
+        .bg-red-50 { background-color: #fef2f2; } .text-red-500 { color: #ef4444; } .border-red-400 { border-color: #f87171; }
+        .bg-pink-50 { background-color: #fdf2f8; } .text-pink-500 { color: #ec4899; } .border-pink-400 { border-color: #f472b6; }
+        .bg-indigo-50 { background-color: #eef2ff; } .text-indigo-500 { color: #6366f1; }
+        .bg-teal-50 { background-color: #f0fdfa; } .text-teal-500 { color: #14b8a6; }
+        .bg-slate-50 { background-color: #f8fafc; } .text-slate-600 { color: #475569; }
+        .bg-gray-50 { background-color: #f9fafb; } .text-gray-600 { color: #4b5563; }
+        .bg-emerald-50 { background-color: #ecfdf5; } .text-emerald-600 { color: #059669; }
+        
     </style>
 @endpush
 
