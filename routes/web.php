@@ -81,20 +81,27 @@ use App\Http\Controllers\PpobProductController;
 // HAPUS 'role:Admin' dari array middleware, cukup 'auth' saja dulu
 Route::prefix('admin/ppob')->name('admin.ppob.')->middleware(['auth'])->group(function () {
     
-    // Halaman Index (Tabel Produk)
+    // 1. Halaman Index (Tabel Produk)
     Route::get('/', [PpobProductController::class, 'index'])->name('index');
+
+    // =============================================================
+    // PENTING: Route KHUSUS (Static) harus ditaruh DI ATAS route {id}
+    // =============================================================
     
-    // Fitur Pendukung (Edit, Update, Hapus, Detail)
+    // Route Export & Bulk Update
+    Route::post('/bulk-update', [PpobProductController::class, 'bulkUpdate'])->name('bulk-update');
+    Route::get('/export-excel', [PpobProductController::class, 'exportExcel'])->name('export-excel');
+    Route::get('/export-pdf', [PpobProductController::class, 'exportPdf'])->name('export-pdf'); // <-- Sekarang ini aman dibaca duluan
+
+    // =============================================================
+    // Route DINAMIS ({id}) ditaruh PALING BAWAH
+    // =============================================================
+    
+    // Fitur Pendukung yang butuh ID (Edit, Update, Hapus, Detail)
     Route::get('/{id}', [PpobProductController::class, 'show'])->name('show');
     Route::put('/update-price/{id}', [PpobProductController::class, 'updatePrice'])->name('update-price');
     Route::delete('/destroy/{id}', [PpobProductController::class, 'destroy'])->name('destroy');
-
-    // ROUTE BARU
-    Route::post('/bulk-update', [PpobProductController::class, 'bulkUpdate'])->name('bulk-update');
-    Route::get('/export-excel', [PpobProductController::class, 'exportExcel'])->name('export-excel');
-    Route::get('/export-pdf', [PpobProductController::class, 'exportPdf'])->name('export-pdf');
 });
-
 
 
 // Route Webhook Digiflazz (Harus POST)
