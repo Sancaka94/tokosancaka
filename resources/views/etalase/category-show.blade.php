@@ -76,7 +76,7 @@
     </section>
     @endif
     
-    {{-- ============================================================ --}}
+{{-- ============================================================ --}}
     {{-- ⚡ UPDATE: LINK PPOB SUDAH DISESUAIKAN ⚡ --}}
     {{-- ============================================================ --}}
     @if($category->slug == 'e-wallet-pulsa' || $category->slug == 'digital' || request()->segment(2) == 'digital')
@@ -90,37 +90,49 @@
                 {{-- MENU PULSA --}}
                 <a href="{{ url('/etalase/ppob/digital/pulsa') }}" class="ppob-icon flex flex-col items-center p-4 border rounded-xl hover:shadow-lg hover:border-blue-500 transition bg-blue-50">
                     <i class="fas fa-mobile-screen-button text-3xl text-blue-600 mb-2"></i>
-                    <span class="text-sm font-bold text-gray-700">Pulsa</span>
+                    <span class="text-sm font-bold text-gray-700 text-center">Pulsa</span>
                 </a>
 
                 {{-- MENU DATA --}}
                 <a href="{{ url('/etalase/ppob/digital/data') }}" class="ppob-icon flex flex-col items-center p-4 border rounded-xl hover:shadow-lg hover:border-green-500 transition bg-green-50">
                     <i class="fas fa-wifi text-3xl text-green-600 mb-2"></i>
-                    <span class="text-sm font-bold text-gray-700">Paket Data</span>
+                    <span class="text-sm font-bold text-gray-700 text-center">Paket Data</span>
                 </a>
 
                 {{-- MENU PLN TOKEN --}}
                 <a href="{{ url('/etalase/ppob/digital/pln-token') }}" class="ppob-icon flex flex-col items-center p-4 border rounded-xl hover:shadow-lg hover:border-yellow-500 transition bg-yellow-50">
                     <i class="fas fa-bolt text-3xl text-yellow-500 mb-2"></i>
-                    <span class="text-sm font-bold text-gray-700">Token PLN</span>
+                    <span class="text-sm font-bold text-gray-700 text-center">Token PLN</span>
+                </a>
+
+                {{-- [BARU] MENU PLN PASCABAYAR --}}
+                <a href="{{ url('/etalase/ppob/digital/pln-pascabayar') }}" class="ppob-icon flex flex-col items-center p-4 border rounded-xl hover:shadow-lg hover:border-orange-500 transition bg-orange-50">
+                    <i class="fas fa-file-invoice-dollar text-3xl text-orange-500 mb-2"></i>
+                    <span class="text-sm font-bold text-gray-700 text-center">PLN Pasca</span>
+                </a>
+
+                {{-- [BARU] MENU PDAM --}}
+                <a href="{{ url('/etalase/ppob/digital/pdam') }}" class="ppob-icon flex flex-col items-center p-4 border rounded-xl hover:shadow-lg hover:border-cyan-500 transition bg-cyan-50">
+                    <i class="fas fa-faucet text-3xl text-cyan-600 mb-2"></i>
+                    <span class="text-sm font-bold text-gray-700 text-center">PDAM</span>
                 </a>
 
                 {{-- MENU E-MONEY --}}
                 <a href="{{ url('/etalase/ppob/digital/e-money') }}" class="ppob-icon flex flex-col items-center p-4 border rounded-xl hover:shadow-lg hover:border-purple-500 transition bg-purple-50">
                     <i class="fas fa-wallet text-3xl text-purple-600 mb-2"></i>
-                    <span class="text-sm font-bold text-gray-700">E-Wallet</span>
+                    <span class="text-sm font-bold text-gray-700 text-center">E-Wallet</span>
                 </a>
 
                 {{-- MENU GAMES --}}
                 <a href="{{ url('/etalase/ppob/digital/voucher-game') }}" class="ppob-icon flex flex-col items-center p-4 border rounded-xl hover:shadow-lg hover:border-red-500 transition bg-red-50">
                     <i class="fas fa-gamepad text-3xl text-red-600 mb-2"></i>
-                    <span class="text-sm font-bold text-gray-700">Voucher Game</span>
+                    <span class="text-sm font-bold text-gray-700 text-center">Voucher Game</span>
                 </a>
 
                 {{-- MENU TV / STREAMING --}}
                 <a href="{{ url('/etalase/ppob/digital/streaming') }}" class="ppob-icon flex flex-col items-center p-4 border rounded-xl hover:shadow-lg hover:border-pink-500 transition bg-pink-50">
                     <i class="fas fa-tv text-3xl text-pink-600 mb-2"></i>
-                    <span class="text-sm font-bold text-gray-700">TV Kabel</span>
+                    <span class="text-sm font-bold text-gray-700 text-center">TV Kabel</span>
                 </a>
             </div>
         </div>
