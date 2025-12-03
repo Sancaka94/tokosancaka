@@ -154,18 +154,19 @@
         </div>
 
         {{-- SEARCH BAR --}}
-        <div class="bg-white p-2 rounded-2xl shadow-md mt-6 mb-4 border border-gray-100 max-w-4xl mx-auto relative z-20">
-            <div class="relative">
-                <input type="text" id="searchInput" placeholder="Cari Produk (Telkomsel, Token, Dana)..."
-                       class="w-full py-3 pl-12 pr-6 rounded-xl bg-transparent text-gray-800 focus:outline-none text-base">
-                <div class="absolute top-1/2 left-4 transform -translate-y-1/2 text-blue-600">
-                    <i class="fas fa-search text-xl"></i>
-                </div>
-                <button class="absolute right-2 top-1.5 bottom-1.5 bg-blue-600 text-white px-5 rounded-lg font-bold hover:bg-blue-700 transition">
-                    Cari
-                </button>
-            </div>
+<div class="bg-white p-2 rounded-2xl shadow-md mt-10 mb-4 border border-gray-100 max-w-4xl mx-auto relative">
+    <div class="relative">
+        <input type="text" id="searchInput" placeholder="Cari Produk (Telkomsel, Token, Dana)..."
+               class="w-full py-3 pl-12 pr-6 rounded-xl bg-transparent text-gray-800 focus:outline-none text-base">
+        <div class="absolute top-1/2 left-4 transform -translate-y-1/2 text-blue-600">
+            <i class="fas fa-search text-xl"></i>
         </div>
+        <button class="absolute right-2 top-1.5 bottom-1.5 bg-blue-600 text-white px-5 rounded-lg font-bold hover:bg-blue-700 transition">
+            Cari
+        </button>
+    </div>
+</div>
+
 
     </div>
 </section>
