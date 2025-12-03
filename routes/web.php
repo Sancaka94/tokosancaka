@@ -88,6 +88,11 @@ Route::prefix('admin/ppob')->name('admin.ppob.')->middleware(['auth'])->group(fu
     Route::get('/{id}', [PpobProductController::class, 'show'])->name('show');
     Route::put('/update-price/{id}', [PpobProductController::class, 'updatePrice'])->name('update-price');
     Route::delete('/destroy/{id}', [PpobProductController::class, 'destroy'])->name('destroy');
+
+    // ROUTE BARU
+    Route::post('/bulk-update', [PpobProductController::class, 'bulkUpdate'])->name('bulk-update');
+    Route::get('/export-excel', [PpobProductController::class, 'exportExcel'])->name('export-excel');
+    Route::get('/export-pdf', [PpobProductController::class, 'exportPdf'])->name('export-pdf');
 });
 
 
