@@ -288,59 +288,60 @@ class PpobController extends Controller
 
    public function checkBill(Request $request)
     {
+        // 1. Validasi Input
         $request->validate([
             'customer_no' => 'required', 
             'sku' => 'required' 
         ]);
 
+        // 2. Generate Ref ID
         $refId = 'INQ-' . time() . rand(100,999);
 
         try {
-            if (!$this->digiflazz) {
-                throw new \Exception("Service Digiflazz belum terhubung.");
-            }
-
-            // Panggil Service (Mode Testing aktif di service)
+            // 3. Tembak API Digiflazz
+            // (Service Anda sudah terbukti benar di langkah debug sebelumnya)
             $response = $this->digiflazz->inquiryPasca($request->sku, $request->customer_no, $refId);
 
-            // Cek jika response sukses (ada key 'data')
+            // 4. Cek Response dari API
             if (isset($response['data'])) {
                 $data = $response['data'];
                 
-                // RC 00 = Sukses, RC 03 = Pending (anggap sukses inquiry)
-                if (in_array($data['rc'], ['00', '03']) || $data['status'] === 'Sukses' || $data['status'] === 'Pending') {
+                // Status Sukses (RC 00, Sukses, atau Pending)
+                if ($data['rc'] === '00' || $data['status'] === 'Sukses' || $data['status'] === 'Pending') {
                     
                     return response()->json([
                         'status' => 'success',
-                        'customer_name' => $data['customer_name'] ?? 'Pelanggan',
-                        'customer_no' => $data['customer_no'],
-                        'admin_fee' => $data['admin'] ?? 0,
-                        'amount' => $data['selling_price'], // Total Bayar
-                        'ref_id' => $refId,
-                        'desc' => $data['desc'] ?? [] // Detail (Tarif, Daya, Lembar Tagihan)
+                        'customer_name' => $data['customer_name'],
+                        'customer_no'   => $data['customer_no'],
+                        'admin_fee'     => $data['admin'],
+                        // selling_price adalah harga yg harus dibayar user (sudah termasuk admin)
+                        'amount'        => $data['selling_price'], 
+                        'ref_id'        => $refId,
+                        'desc'          => $data['desc'] ?? []
                     ]);
-                } 
-                
-                // Handle Error dari API (RC 02 = Gagal, Saldo Kurang, ID Salah)
-                else {
-                    $msg = $data['message'] ?? 'Tagihan tidak ditemukan.';
-                    // Tambahkan info RC untuk debugging
-                    if(isset($data['rc'])) $msg .= " (RC: " . $data['rc'] . ")"; 
-                    
-                    return response()->json(['status' => 'error', 'message' => $msg]);
+
+                } else {
+                    // Jika Gagal (Misal: Tagihan sudah dibayar)
+                    return response()->json([
+                        'status' => 'error', 
+                        'message' => $data['message'] ?? 'Tagihan tidak ditemukan atau Gagal.'
+                    ]);
                 }
             }
-
-            // Handle Error di luar format data (misal: "Sign Salah", "Saldo Kurang")
+            
+            // Jika response ada message tapi tidak ada data (Error dari Digiflazz langsung)
             if (isset($response['message'])) {
-                return response()->json(['status' => 'error', 'message' => 'API Error: ' . $response['message']]);
+                 return response()->json(['status' => 'error', 'message' => $response['message']]);
             }
 
-            return response()->json(['status' => 'error', 'message' => 'Respon tidak valid dari server.']);
+            return response()->json(['status' => 'error', 'message' => 'Gagal terhubung ke server provider.']);
 
         } catch (\Exception $e) {
-            Log::error("CheckBill Exception: " . $e->getMessage());
-            return response()->json(['status' => 'error', 'message' => 'System Error: ' . $e->getMessage()], 500);
+            // Tangkap error sistem agar tidak muncul layar putih
+            return response()->json([
+                'status' => 'error', 
+                'message' => 'Kesalahan Sistem: ' . $e->getMessage()
+            ], 500);
         }
     }
 
