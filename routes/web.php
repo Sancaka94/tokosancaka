@@ -110,17 +110,11 @@ Route::prefix('etalase/ppob')->name('ppob.')->group(function () {
 
 Route::get('/debug-digi', [PpobController::class, 'debugDirect']);
 
-Route::get('/daftar-harga', [PublicController::class, 'pricelist'])->name('public.pricelist');
-// Route untuk membuka halaman kategori spesifik (agar form cek tagihan muncul)
-// ====================================================
-// RUTE HALAMAN PUBLIK (TANPA LOGIN)
-// ====================================================
-
 // PPOB Public (Daftar Harga & Cek Tagihan)
-Route::get('/daftar-harga', [PublicController::class, 'pricelist'])->name('public.pricelist');
-Route::get('/layanan/{slug}', [PublicController::class, 'showCategory'])->name('public.category'); // Halaman Kategori Spesifik
-Route::post('/ppob/check-bill', [PpobController::class, 'checkBill'])->name('ppob.check.bill'); // AJAX Cek Tagihan
-Route::post('/ppob/check-pln-prabayar', [PpobController::class, 'checkPlnPrabayar'])->name('ppob.check.pln.prabayar'); // AJAX Cek Nama PLN
+//Route::get('/daftar-harga', [PublicController::class, 'pricelist'])->name('public.pricelist');
+//Route::get('/layanan/{slug}', [PublicController::class, 'showCategory'])->name('public.category'); // Halaman Kategori Spesifik
+//Route::post('/ppob/check-bill', [PpobController::class, 'checkBill'])->name('ppob.check.bill'); // AJAX Cek Tagihan
+//Route::post('/ppob/check-pln-prabayar', [PpobController::class, 'checkPlnPrabayar'])->name('ppob.check.pln.prabayar'); // AJAX Cek Nama PLN
 
 
 Route::prefix('admin/ppob')->name('admin.ppob.')->middleware(['auth'])->group(function () {
