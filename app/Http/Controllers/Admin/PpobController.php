@@ -1,148 +1,139 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\admin; // Atau App\Http\Controllers\Admin jika dipindah
 
 use Illuminate\Http\Request;
 use App\Services\DigiflazzService;
 use App\Models\Setting;
 use App\Models\PpobProduct;
 use App\Models\PpobTransaction;
-use App\Models\Banner;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 
-class PublicPpobController extends Controller
+class PpobController extends Controller
 {
     protected $digiflazz;
 
     public function __construct(DigiflazzService $digiflazz)
     {
+        // Middleware Auth & Role Admin sudah dihandle di routes/web.php
+        // Tapi kita bisa tambahkan double protection di sini jika mau
+        // $this->middleware(['auth', 'role:admin']);
+        
         $this->digiflazz = $digiflazz;
     }
 
-    /**
-     * Halaman Utama Daftar Harga / Kategori (Frontend)
-     * URL: /etalase/ppob/digital/{slug}
-     */
-    public function index($slug = 'pulsa') 
+    private function getWebLogo()
     {
-        // 1. Mapping Kategori Database
-        // Pastikan key array ini SAMA PERSIS dengan slug di URL
+        $setting = Setting::where('key', 'logo')->first();
+        return $setting ? $setting->value : null;
+    }
+
+      /**
+     * Halaman Daftar Harga / Kategori
+     * URL: /daftar-harga/{slug?}
+     */
+    public function index($slug = 'pulsa') // Default ke pulsa jika slug kosong
+    {
+        // 1. Mapping Kategori (Sama seperti di Admin)
         $categoriesMap = [
-            'pulsa'          => ['Pulsa'],
-            'data'           => ['Data'],
-            'pln-token'      => ['PLN'],
-            'pln-pascabayar' => ['PLN Pascabayar', 'Tagihan PLN'], // Slug URL: pln-pascabayar
-            'pdam'           => ['PDAM'],
-            'e-money'        => ['E-Money'],
-            'voucher-game'   => ['Games'],
-            'streaming'      => ['TV', 'Streaming'],
-            'bpjs'           => ['BPJS'],
+            'pulsa'         => ['Pulsa'],
+            'data'          => ['Data'],
+            'pln-token'     => ['PLN'],
+            'pln-pascabayar'=> ['PLN Pascabayar', 'Tagihan PLN'], // Sesuaikan dengan slug di blade
+            'pdam'          => ['PDAM'],
+            'e-money'       => ['E-Money'],
+            'voucher-game'  => ['Games'],
+            'streaming'     => ['TV', 'Streaming'],
         ];
 
-        // Jika slug tidak valid, default ke pulsa
+        // Jika slug tidak valid, default ke pulsa atau 404
         if (!array_key_exists($slug, $categoriesMap)) {
-            $slug = 'pulsa';
+            abort(404);
         }
 
         $dbCategories = $categoriesMap[$slug];
 
-        // 2. Setup Variable $pageInfo Default
+        // 2. Setup Variable $pageInfo (INI YANG MENYEBABKAN ERROR SEBELUMNYA)
         $pageInfo = [
             'title'       => ucfirst(str_replace('-', ' ', $slug)),
             'slug'        => $slug,
             'input_label' => 'Nomor Handphone',
             'input_place' => 'Contoh: 0812xxxx',
             'icon'        => 'fa-mobile-alt',
-            'is_postpaid' => false // Default false (Prabayar)
+            'is_postpaid' => false
         ];
 
-        // 3. Custom Logic UI per Kategori (PERBAIKAN DISINI)
-        // Gunakan switch case agar lebih rapi dan mudah dibaca
+        // Custom Logic per Kategori untuk UI
         switch ($slug) {
             case 'pln-token':
-                $pageInfo['title']       = 'Token Listrik PLN';
+                $pageInfo['title'] = 'Token Listrik PLN';
                 $pageInfo['input_label'] = 'Nomor Meter / ID Pelanggan';
                 $pageInfo['input_place'] = 'Contoh: 141234567890';
-                $pageInfo['icon']        = 'fa-bolt';
+                $pageInfo['icon'] = 'fa-bolt';
                 break;
-
-            case 'pln-pascabayar': 
-                // Slug ini HARUS cocok dengan URL. 
-                // Di sini kita set is_postpaid = true agar tombol "Cek Tagihan" muncul.
-                $pageInfo['title']       = 'Tagihan Listrik Pasca';
+            case 'pln-pascabayar':
+                $pageInfo['title'] = 'Tagihan Listrik Pasca';
                 $pageInfo['input_label'] = 'ID Pelanggan';
                 $pageInfo['input_place'] = 'Contoh: 53xxxxxxxxx';
-                $pageInfo['icon']        = 'fa-file-invoice-dollar';
-                $pageInfo['is_postpaid'] = true; 
+                $pageInfo['icon'] = 'fa-file-invoice-dollar';
+                $pageInfo['is_postpaid'] = true;
                 break;
-
             case 'pdam':
-                $pageInfo['title']       = 'Tagihan Air PDAM';
-                $pageInfo['input_label'] = 'ID Pelanggan / No Sambungan';
-                $pageInfo['icon']        = 'fa-faucet';
+                $pageInfo['title'] = 'Tagihan Air PDAM';
+                $pageInfo['input_label'] = 'ID Pelanggan';
+                $pageInfo['icon'] = 'fa-faucet';
                 $pageInfo['is_postpaid'] = true;
                 break;
-            
-            case 'bpjs':
-                $pageInfo['title']       = 'Bayar BPJS Kesehatan';
-                $pageInfo['input_label'] = 'Nomor VA Keluarga';
-                $pageInfo['icon']        = 'fa-heartbeat';
-                $pageInfo['is_postpaid'] = true;
-                break;
-
             case 'e-money':
-                $pageInfo['title']       = 'Top Up E-Wallet';
-                $pageInfo['icon']        = 'fa-wallet';
+                $pageInfo['title'] = 'Top Up E-Wallet';
+                $pageInfo['icon'] = 'fa-wallet';
                 break;
-
             case 'voucher-game':
-                $pageInfo['title']       = 'Voucher Game';
+                $pageInfo['title'] = 'Voucher Game';
                 $pageInfo['input_label'] = 'ID Pemain (User ID)';
                 $pageInfo['input_place'] = 'Masukkan ID Game';
-                $pageInfo['icon']        = 'fa-gamepad';
+                $pageInfo['icon'] = 'fa-gamepad';
                 break;
-                
             case 'streaming':
-                $pageInfo['title']       = 'Voucher TV & Streaming';
-                $pageInfo['icon']        = 'fa-tv';
+                $pageInfo['title'] = 'Voucher TV & Streaming';
+                $pageInfo['icon'] = 'fa-tv';
                 break;
         }
 
-        // 4. Ambil Produk (Query Standar)
+        // 3. Ambil Data Produk
+        // Query produk aktif untuk customer
         $products = PpobProduct::whereIn('category', $dbCategories)
-            ->where('buyer_product_status', true)
-            ->where('seller_product_status', true)
+            ->where('buyer_product_status', true) // Hanya yang aktif untuk pembeli
+            ->where('seller_product_status', true) // Hanya yang aktif dari provider
             ->orderBy('sell_price', 'asc')
             ->get();
 
-        // 5. Data Pendukung View Public
-        $brands = $products->pluck('brand')->unique()->values();
-        
-        // List Kategori untuk Menu Slider (Hardcoded agar urutan tetap)
+        // 4. Data Pendukung Lainnya untuk View
+        // List Kategori untuk Menu Icon (sesuai blade line 68)
         $categories = [
             (object)['slug' => 'pulsa', 'name' => 'Pulsa'],
-            (object)['slug' => 'data', 'name' => 'Data'],
+            (object)['slug' => 'data', 'name' => 'Paket Data'],
             (object)['slug' => 'pln-token', 'name' => 'Token PLN'],
             (object)['slug' => 'pln-pascabayar', 'name' => 'PLN Pasca'],
             (object)['slug' => 'pdam', 'name' => 'PDAM'],
-            (object)['slug' => 'e-money', 'name' => 'E-Wallet'],
+            (object)['slug' => 'e-money', 'name' => 'E-Money'],
             (object)['slug' => 'voucher-game', 'name' => 'Games'],
             (object)['slug' => 'streaming', 'name' => 'Streaming'],
         ];
+        
+        // Ambil Brands untuk Filter
+        $brands = $products->pluck('brand')->unique()->values();
 
-        // Ambil Banners (Gunakan try-catch agar aman jika tabel belum ada)
-        try {
-            $banners = Banner::where('status', 'active')->get();
-        } catch (\Exception $e) {
-            $banners = [];
-        }
-
-        // Ambil Settings untuk Banner Kecil
+        // Ambil Banners (Jika tabel banners ada, jika tidak kosongkan array)
+        // $banners = Banner::where('status', 'active')->get(); 
+        $banners = []; // Default kosong agar tidak error jika tabel belum ada
+        
+        // Ambil Settings untuk Banner Promo Kecil
         $settings = Setting::whereIn('key', ['banner_2', 'banner_3'])->pluck('value', 'key');
 
-        // 6. Return ke View PUBLIC
+        // 5. Return View Public
         return view('public.pricelist', compact(
             'products', 
             'pageInfo', 
@@ -154,120 +145,156 @@ class PublicPpobController extends Controller
     }
 
     /**
-     * AJAX: Cek Tagihan Pascabayar (PLN/PDAM/BPJS)
+     * 2. Halaman Kategori PPOB (ADMIN)
+     * URL: /admin/digital/{slug}
      */
-    public function checkBill(Request $request)
+    public function category($slug)
     {
-        $request->validate([
-            'customer_no' => 'required',
-            'sku' => 'required'
-        ]);
-
-        $refId = 'INQ-' . time() . rand(100,999);
-        
-        // Panggil service Digiflazz
-        $response = $this->digiflazz->inquiryPasca($request->sku, $request->customer_no, $refId);
-
-        // Validasi Response
-        if (isset($response['data'])) {
-            $data = $response['data'];
-            
-            // Cek sukses (RC 00 atau Status Sukses)
-            if ($data['rc'] === '00' || $data['status'] === 'Sukses' || $data['status'] === 'Pending') {
-                return response()->json([
-                    'status'        => 'success',
-                    'customer_name' => $data['customer_name'],
-                    'customer_no'   => $data['customer_no'],
-                    'amount'        => $data['selling_price'], // Harga Jual ke User
-                    'desc'          => $data['desc'] ?? [], 
-                    'ref_id'        => $refId 
-                ]);
-            } else {
-                return response()->json([
-                    'status'  => 'error', 
-                    'message' => $data['message'] ?? 'Tagihan tidak ditemukan atau sudah terbayar.'
-                ]);
-            }
+        // Pastikan User adalah Admin
+        if (!auth()->check() || !auth()->user()->hasRole('Admin')) {
+            abort(403, 'Unauthorized access.');
         }
-        
-        return response()->json([
-            'status'  => 'error', 
-            'message' => 'Gagal terhubung ke server provider.'
-        ]);
+
+        $weblogo = $this->getWebLogo();
+
+        // Mapping Slug URL
+        $categoriesMap = [
+            'pulsa'       => ['Pulsa'],
+            'data'        => ['Data'],
+            'pln-token'   => ['PLN'],
+            'pln-bill'    => ['PLN Pascabayar', 'Tagihan PLN'],      
+            'e-money'     => ['E-Money'],
+            'voucher-game'=> ['Games'],
+            'streaming'   => ['TV', 'Streaming'],
+        ];
+
+        if (!array_key_exists($slug, $categoriesMap)) {
+            abort(404);
+        }
+
+        $dbCategories = $categoriesMap[$slug];
+
+        // Konfigurasi Halaman
+        $pageInfo = [
+            'title'       => ucfirst(str_replace('-', ' ', $slug)),
+            'slug'        => $slug,
+            'input_label' => 'Nomor Handphone',
+            'input_place' => 'Contoh: 0812xxxx',
+            'icon'        => 'fa-mobile-alt',
+            'is_postpaid' => false
+        ];
+
+        // Custom Logic per Kategori
+        if ($slug == 'pln-token') {
+            $pageInfo['input_label'] = 'Nomor Meter / ID Pelanggan';
+            $pageInfo['input_place'] = 'Contoh: 141234567890';
+            $pageInfo['icon']        = 'fa-bolt';
+        } elseif ($slug == 'e-money') {
+            $pageInfo['icon']        = 'fa-wallet';
+        } elseif ($slug == 'voucher-game') {
+            $pageInfo['input_label'] = 'ID Pemain (User ID)';
+            $pageInfo['input_place'] = 'Masukkan ID Game';
+            $pageInfo['icon']        = 'fa-gamepad';
+        } elseif ($slug == 'pln-bill') {
+            $pageInfo['input_label'] = 'ID Pelanggan / Nomor Meter';
+            $pageInfo['input_place'] = 'Contoh: 53xxxxxxxxx';
+            $pageInfo['icon']        = 'fa-file-invoice-dollar';
+            $pageInfo['is_postpaid'] = true; 
+        }
+
+        // Ambil Produk
+        $products = PpobProduct::whereIn('category', $dbCategories)
+            ->where('buyer_product_status', true)
+            ->where('seller_product_status', true)
+            ->orderBy('sell_price', 'asc')
+            ->get();
+
+        $brands = $products->pluck('brand')->unique()->values();
+        $data   = compact('products', 'brands', 'weblogo', 'pageInfo');
+
+        // Return View Khusus Admin
+        // Pastikan file: resources/views/admin/ppob/category.blade.php ADA
+        return view('admin.ppob.category', $data); 
     }
 
     /**
-     * AJAX: Cek Nama PLN Prabayar (Token)
+     * 3. Sync Produk (ADMIN ONLY)
      */
-    public function checkPlnPrabayar(Request $request)
+    public function sync()
     {
-        $request->validate(['customer_no' => 'required']);
-        
-        $response = $this->digiflazz->inquiryPln($request->customer_no);
+        // Proteksi Tambahan
+        if (!auth()->user()->hasRole('Admin')) abort(403);
 
-        if (isset($response['data']) && ($response['data']['rc'] === '00' || $response['data']['status'] === 'Sukses')) {
-            return response()->json([
-                'status'        => 'success',
-                'name'          => $response['data']['name'],
-                'segment_power' => $response['data']['segment_power'] ?? '-'
-            ]);
+        $success = $this->digiflazz->syncProducts();
+
+        if ($success) {
+            return redirect()->back()->with('success', 'Sync Produk Berhasil!');
         }
-        
-        return response()->json([
-            'status'  => 'error', 
-            'message' => 'Nomor meter tidak ditemukan atau salah.'
-        ]);
+        return redirect()->back()->with('error', 'Gagal Sync Produk.');
     }
 
     /**
-     * Proses Transaksi (Checkout)
+     * 4. Cek Saldo Modal (ADMIN ONLY)
+     */
+    public function cekSaldo()
+    {
+        // Proteksi Tambahan
+        if (!auth()->user()->hasRole('Admin')) abort(403);
+
+        $result = $this->digiflazz->checkDeposit();
+
+        if (request()->ajax()) {
+            $result['formatted'] = 'Rp ' . number_format($result['deposit'], 0, ',', '.');
+            return response()->json($result);
+        }
+        return redirect()->back();
+    }
+
+    // ... Method store, checkBill, checkPlnPrabayar bisa tetap sama ...
+    // Karena method tersebut logic transaksinya universal.
+    
+    // ... (Sertakan method store, checkBill, checkPlnPrabayar dari kode sebelumnya di sini) ...
+    /**
+     * 5. Proses Transaksi Prabayar (Checkout)
      */
     public function store(Request $request)
     {
-        // 1. Cek Login
-        if (!Auth::check()) {
-            return redirect()->route('login')->with('error', 'Silakan login terlebih dahulu.');
-        }
-
         $request->validate([
             'buyer_sku_code' => 'required|exists:ppob_products,buyer_sku_code',
-            'customer_no'    => 'required|numeric',
+            'customer_no'    => 'required|numeric|digits_between:9,20',
         ]);
 
         $user = Auth::user();
-        $sku  = $request->buyer_sku_code;
+        $sku = $request->buyer_sku_code;
         $noHp = $request->customer_no;
 
-        // 2. Ambil Data Produk
         $product = PpobProduct::where('buyer_sku_code', $sku)->first();
 
-        // 3. Cek Saldo User
         if ($user->saldo < $product->sell_price) {
-            return redirect()->back()->with('error', 'Saldo tidak mencukupi. Silakan Top Up.');
+            return redirect()->back()->with('error', 'Saldo tidak cukup. Silakan Top Up.');
         }
 
         $refId = 'TRX-' . time() . rand(100, 999);
 
         DB::beginTransaction();
         try {
-            // A. Potong Saldo
+            // Potong Saldo
             $user->decrement('saldo', $product->sell_price);
 
-            // B. Simpan Transaksi ke DB (Status Pending)
+            // Catat Transaksi
             $trx = PpobTransaction::create([
-                'user_id'        => $user->id, // Sesuaikan dengan primary key user (id / id_pengguna)
-                'order_id'       => $refId,
+                'user_id' => $user->id_pengguna, // Sesuaikan dengan PK tabel user Anda
+                'order_id' => $refId,
                 'buyer_sku_code' => $sku,
-                'customer_no'    => $noHp,
-                'price'          => $product->price,
-                'selling_price'  => $product->sell_price,
-                'profit'         => $product->sell_price - $product->price,
-                'status'         => 'Pending',
-                'message'        => 'Sedang diproses...',
+                'customer_no' => $noHp,
+                'price' => $product->price,
+                'selling_price' => $product->sell_price,
+                'profit' => $product->sell_price - $product->price,
+                'status' => 'Pending',
+                'message' => 'Sedang diproses...',
             ]);
 
-            // C. Kirim Request ke Digiflazz
-            // MaxPrice diset agar tidak over budget jika harga provider naik mendadak
+            // Hit API Digiflazz
             $maxPrice = (int) $product->sell_price; 
             $response = $this->digiflazz->transaction($sku, $noHp, $refId, $maxPrice);
 
@@ -275,37 +302,89 @@ class PublicPpobController extends Controller
                 $data = $response['data'];
                 
                 if ($data['status'] == 'Gagal') {
-                    // D. Refund jika response langsung Gagal
+                    // Refund jika gagal langsung
                     $user->increment('saldo', $product->sell_price);
-                    $trx->update([
-                        'status'  => 'Gagal', 
-                        'message' => $data['message'], 
-                        'sn'      => $data['sn'] ?? null
-                    ]);
+                    $trx->update(['status' => 'Gagal', 'message' => $data['message'], 'sn' => $data['sn'] ?? null]);
                     DB::commit();
                     return redirect()->back()->with('error', 'Transaksi Gagal: ' . $data['message']);
                 } else {
-                    // E. Sukses / Pending -> Update DB
-                    $trx->update([
-                        'status'  => $data['status'], 
-                        'message' => $data['message'], 
-                        'sn'      => $data['sn'] ?? null
-                    ]);
+                    // Sukses / Pending
+                    $trx->update(['status' => $data['status'], 'message' => $data['message'], 'sn' => $data['sn'] ?? null]);
                     DB::commit();
-                    return redirect()->back()->with('success', 'Transaksi Berhasil Diproses! Status: ' . $data['status']);
+                    return redirect()->back()->with('success', 'Transaksi Diproses! SN: ' . ($data['sn'] ?? 'Menunggu...'));
                 }
             } else {
-                // F. Error Koneksi -> Refund
+                // Error Koneksi -> Refund
                 $user->increment('saldo', $product->sell_price);
-                $trx->update(['status' => 'Gagal', 'message' => 'Koneksi ke provider gagal']);
+                $trx->update(['status' => 'Gagal', 'message' => 'Koneksi ke server gagal']);
                 DB::commit();
-                return redirect()->back()->with('error', 'Gagal terhubung ke provider (Timeout). Saldo dikembalikan.');
+                return redirect()->back()->with('error', 'Gagal terhubung ke provider.');
             }
 
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error("Transaksi Error: " . $e->getMessage());
-            return redirect()->back()->with('error', 'Terjadi kesalahan sistem: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Terjadi kesalahan sistem.');
         }
+    }
+
+    /**
+     * 6. AJAX: Cek Tagihan Pascabayar (PLN/PDAM)
+     */
+    public function checkBill(Request $request)
+    {
+        $request->validate(['customer_no' => 'required', 'sku' => 'required']);
+
+        $refId = 'INQ-' . time() . rand(100,999);
+        $response = $this->digiflazz->inquiryPasca($request->sku, $request->customer_no, $refId);
+
+        if (isset($response['data'])) {
+            $data = $response['data'];
+            if ($data['rc'] === '00' || $data['status'] === 'Sukses') {
+                return response()->json([
+                    'status' => 'success',
+                    'customer_name' => $data['customer_name'],
+                    'customer_no' => $data['customer_no'],
+                    'amount' => $data['selling_price'],
+                    'desc' => $data['desc'] ?? [], 
+                    'ref_id' => $refId 
+                ]);
+            } else {
+                return response()->json(['status' => 'error', 'message' => $data['message'] ?? 'Tagihan tidak ditemukan.']);
+            }
+        }
+        return response()->json(['status' => 'error', 'message' => 'Gagal terhubung ke server.']);
+    }
+
+    /**
+     * 7. AJAX: Cek ID Pelanggan PLN Prabayar
+     */
+    public function checkPlnPrabayar(Request $request)
+    {
+        $request->validate(['customer_no' => 'required']);
+
+        $response = $this->digiflazz->inquiryPln($request->customer_no);
+
+        if (isset($response['data'])) {
+            $data = $response['data'];
+            
+            // Cek status RC 00 (Sukses)
+            if ($data['rc'] === '00' || $data['status'] === 'Sukses') {
+                return response()->json([
+                    'status' => 'success',
+                    'name' => $data['name'],
+                    'meter_no' => $data['meter_no'] ?? $data['customer_no'],
+                    'segment_power' => $data['segment_power'], 
+                    'subscriber_id' => $data['subscriber_id'] ?? '-'
+                ]);
+            } else {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => $data['message'] ?? 'Nomor meter tidak ditemukan.'
+                ]);
+            }
+        }
+
+        return response()->json(['status' => 'error', 'message' => 'Gagal terhubung ke server PLN.']);
     }
 }
