@@ -78,12 +78,16 @@ use App\Http\Controllers\PpobProductController;
 
 
 
-Route::prefix('admin/ppob')->name('admin.ppob.')->middleware(['auth', 'role:Admin'])->group(function () {
+// HAPUS 'role:Admin' dari array middleware, cukup 'auth' saja dulu
+Route::prefix('admin/ppob')->name('admin.ppob.')->middleware(['auth'])->group(function () {
+    
+    // Halaman Index (Tabel Produk)
     Route::get('/', [PpobProductController::class, 'index'])->name('index');
-    Route::get('/{id}', [PpobProductController::class, 'show'])->name('show'); // Lihat Detail
-    Route::get('/edit/{id}', [PpobProductController::class, 'edit'])->name('edit'); // Form Edit
-    Route::put('/update-price/{id}', [PpobProductController::class, 'updatePrice'])->name('update-price'); // Update Harga Cepat
-    Route::delete('/destroy/{id}', [PpobProductController::class, 'destroy'])->name('destroy'); // Hapus
+    
+    // Fitur Pendukung (Edit, Update, Hapus, Detail)
+    Route::get('/{id}', [PpobProductController::class, 'show'])->name('show');
+    Route::put('/update-price/{id}', [PpobProductController::class, 'updatePrice'])->name('update-price');
+    Route::delete('/destroy/{id}', [PpobProductController::class, 'destroy'])->name('destroy');
 });
 
 
