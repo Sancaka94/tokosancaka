@@ -4,10 +4,10 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\PpobProduct;
-use App\Models\BannerEtalase; // Model Banner Sesuai Kode Anda
+use App\Models\BannerEtalase; 
 use App\Models\Setting;
-use App\Models\PpobTransaction; // Wajib untuk simpan transaksi
-use App\Services\DigiflazzService; // Service API
+use App\Models\PpobTransaction; 
+use App\Services\DigiflazzService; 
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -16,15 +16,11 @@ class PublicController extends Controller
 {
     protected $digiflazz;
 
-    // Inject Service Digiflazz
     public function __construct(DigiflazzService $digiflazz)
     {
         $this->digiflazz = $digiflazz;
     }
 
-    /**
-     * Helper: Ambil Logo Web untuk Layout
-     */
     private function getWebLogo()
     {
         try {
@@ -36,28 +32,24 @@ class PublicController extends Controller
     }
 
     /**
-     * Halaman Utama Pricelist (Semua Kategori)
-     * URL: /daftar-harga
+     * Halaman Utama Pricelist
      */
     public function pricelist()
     {
         $weblogo = $this->getWebLogo();
 
-        // 1. Ambil Banner Utama
         try {
             $banners = BannerEtalase::latest()->get();
         } catch (\Exception $e) {
             $banners = collect([]); 
         }
 
-        // 2. Ambil Setting Banner Samping
         try {
             $settings = Setting::whereIn('key', ['banner_2', 'banner_3'])->pluck('value', 'key')->toArray();
         } catch (\Exception $e) {
             $settings = [];
         }
 
-        // 3. Ambil Produk Aktif (Default Prabayar)
         $products = PpobProduct::where('seller_product_status', 1)
             ->orderBy('category', 'asc')
             ->orderBy('brand', 'asc')
@@ -66,7 +58,6 @@ class PublicController extends Controller
 
         $categories = $products->pluck('category')->unique()->values();
 
-        // Data Page Info Default
         $pageInfo = [
             'title'       => 'Daftar Harga & Layanan',
             'slug'        => 'all',
@@ -76,18 +67,19 @@ class PublicController extends Controller
             'is_postpaid' => false,
         ];
 
-        return view('public.pricelist', compact('products', 'categories', 'banners', 'settings', 'pageInfo', 'weblogo'));
+        // Tambahkan variabel default untuk isPostpaid
+        $isPostpaid = false;
+
+        return view('public.pricelist', compact('products', 'categories', 'banners', 'settings', 'pageInfo', 'weblogo', 'isPostpaid'));
     }
 
     /**
      * Menampilkan Halaman Kategori Spesifik
-     * URL: /layanan/{slug} atau /etalase/ppob/digital/{slug}
      */
     public function showCategory($slug)
     {
         $weblogo = $this->getWebLogo();
         
-        // 1. Ambil Data Banner & Setting
         try {
             $banners = BannerEtalase::latest()->get();
             $settings = Setting::whereIn('key', ['banner_2', 'banner_3'])->pluck('value', 'key')->toArray();
@@ -96,12 +88,13 @@ class PublicController extends Controller
             $settings = [];
         }
 
-        // 2. Konfigurasi Halaman & Deteksi Otomatis
         $slug = strtolower(trim($slug));
         
-        // Daftar Slug yang WAJIB tombol Cek Tagihan
+        // 1. DETEKSI OTOMATIS MODE PASCABAYAR
         $postpaidSlugs = ['pln-pascabayar', 'pdam', 'bpjs', 'gas', 'pbb', 'internet-pasca', 'tv-kabel-pasca'];
-        $isPostpaid = in_array($slug, $postpaidSlugs) || str_contains($slug, 'pasca');
+        
+        // Cek jika slug ada di daftar ATAU mengandung kata kunci 'pasca' / 'bill'
+        $isPostpaid = in_array($slug, $postpaidSlugs) || str_contains($slug, 'pasca') || str_contains($slug, 'bill');
 
         $pageInfo = [
             'title'       => ucfirst(str_replace('-', ' ', $slug)),
@@ -109,16 +102,18 @@ class PublicController extends Controller
             'input_label' => 'Nomor Handphone',
             'input_place' => 'Contoh: 0812xxxx',
             'icon'        => 'fa-mobile-alt',
-            'is_postpaid' => $isPostpaid, // KUNCI: Set true jika pascabayar
+            'is_postpaid' => $isPostpaid, 
         ];
 
-        // 3. Custom UI per Kategori (Agar Label & Icon Sesuai)
+        // 2. Custom UI per Kategori
         if ($slug == 'pln-pascabayar') {
             $pageInfo['title']       = 'Cek Tagihan PLN';
             $pageInfo['input_label'] = 'ID Pelanggan PLN';
             $pageInfo['input_place'] = 'Contoh: 53xxxx';
             $pageInfo['icon']        = 'fa-file-invoice-dollar';
-            
+            $pageInfo['is_postpaid'] = true; // Paksa True
+            $isPostpaid = true; // Update variable lokal juga
+
         } elseif ($slug == 'pln-token') {
             $pageInfo['title']       = 'Token Listrik PLN';
             $pageInfo['input_label'] = 'Nomor Meter / ID Pelanggan';
@@ -130,12 +125,16 @@ class PublicController extends Controller
             $pageInfo['input_label'] = 'ID Pelanggan PDAM';
             $pageInfo['input_place'] = 'Nomor Pelanggan';
             $pageInfo['icon']        = 'fa-faucet';
+            $pageInfo['is_postpaid'] = true;
+            $isPostpaid = true;
         
         } elseif ($slug == 'bpjs') {
             $pageInfo['title']       = 'Cek Tagihan BPJS';
             $pageInfo['input_label'] = 'Nomor VA Keluarga';
             $pageInfo['input_place'] = '88888xxxx';
             $pageInfo['icon']        = 'fa-heartbeat';
+            $pageInfo['is_postpaid'] = true;
+            $isPostpaid = true;
         
         } elseif ($slug == 'voucher-game') {
             $pageInfo['title']       = 'Voucher Game';
@@ -144,12 +143,11 @@ class PublicController extends Controller
             $pageInfo['icon']        = 'fa-gamepad';
         }
 
-        // 4. Ambil Produk (Hanya jika Mode Prabayar)
+        // 3. Ambil Produk (Hanya jika Mode Prabayar)
         $products = collect([]);
-        $categories = collect([]); // Kategori untuk filter button
+        $categories = collect([]); 
         
-        if (!$pageInfo['is_postpaid']) {
-            // Mapping Slug ke Kategori Database (Opsional, sesuaikan dengan nama di DB Anda)
+        if (!$isPostpaid) {
             $dbCategory = match($slug) {
                 'pulsa' => 'Pulsa',
                 'data' => 'Data',
@@ -161,7 +159,6 @@ class PublicController extends Controller
 
             $query = PpobProduct::where('seller_product_status', 1);
             
-            // Jika ada mapping kategori spesifik, filter. Jika tidak ('all'), ambil semua.
             if ($dbCategory) {
                 $query->where('category', $dbCategory);
             }
@@ -173,12 +170,12 @@ class PublicController extends Controller
             $categories = $products->pluck('category')->unique()->values();
         }
 
-        // 5. Return View
-        return view('public.pricelist', compact('products', 'categories', 'banners', 'settings', 'pageInfo', 'weblogo'));
+        // 4. Return View (PENTING: Kirim $isPostpaid)
+        return view('public.pricelist', compact('products', 'categories', 'banners', 'settings', 'pageInfo', 'weblogo', 'isPostpaid'));
     }
 
     /**
-     * AJAX: Cek Tagihan Pascabayar (PLN/PDAM/BPJS)
+     * AJAX: Cek Tagihan Pascabayar
      */
     public function checkBill(Request $request)
     {
@@ -190,12 +187,10 @@ class PublicController extends Controller
 
             $refId = 'INQ-' . time() . rand(100,999);
             
-            // Panggil Service Digiflazz
             $response = $this->digiflazz->inquiryPasca($request->sku, $request->customer_no, $refId);
 
             if (isset($response['data'])) {
                 $data = $response['data'];
-                // Cek status sukses (Bisa 'Sukses', 'Pending', atau RC '00')
                 if ($data['rc'] === '00' || $data['status'] === 'Sukses' || $data['status'] === 'Pending') {
                     return response()->json([
                         'status'        => 'success',
@@ -242,7 +237,7 @@ class PublicController extends Controller
     }
 
     /**
-     * Proses Transaksi (Checkout)
+     * Proses Transaksi
      */
     public function store(Request $request)
     {
@@ -272,7 +267,7 @@ class PublicController extends Controller
             $user->decrement('saldo', $product->sell_price);
 
             $trx = PpobTransaction::create([
-                'user_id'        => $user->id, // Pastikan 'id' adalah primary key user Anda
+                'user_id'        => $user->id, 
                 'order_id'       => $refId,
                 'buyer_sku_code' => $sku,
                 'customer_no'    => $noHp,
@@ -291,7 +286,7 @@ class PublicController extends Controller
                 $status = $data['status'] == 'Gagal' ? 'Gagal' : $data['status'];
                 
                 if ($status == 'Gagal') {
-                    $user->increment('saldo', $product->sell_price); // Refund
+                    $user->increment('saldo', $product->sell_price); 
                 }
 
                 $trx->update([
