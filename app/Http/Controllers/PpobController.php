@@ -286,49 +286,65 @@ class PpobController extends Controller
         }
     }
 
+   /**
+     * AJAX: Cek Tagihan Pascabayar (PLN/PDAM)
+     * Rute: /ppob/check-bill
+     */
     public function checkBill(Request $request)
     {
+        // 1. Validasi Input
         $request->validate([
             'customer_no' => 'required', 
-            'sku' => 'required' // SKU Pascabayar (pln, pdam, bpjs, dll)
+            'sku' => 'required' 
         ]);
 
-        // Generate Ref ID Unik
-        $refId = 'INQ-' . time() . rand(100,999);
-
-        // Panggil Service Digiflazz
-        $response = $this->digiflazz->inquiryPasca($request->sku, $request->customer_no, $refId);
-
-        // Cek Response
-        if (isset($response['data'])) {
-            $data = $response['data'];
-            
-            // RC '00' berarti Sukses, atau status 'Sukses'/'Pending' (biasanya inq-pasca sukses langsung 'Sukses' atau RC 00)
-            if ($data['rc'] === '00' || $data['status'] === 'Sukses') {
-                
-                // Ambil Detail Tagihan (Desc)
-                $desc = $data['desc'] ?? [];
-                
-                // Format Data untuk dikirim ke Frontend
-                return response()->json([
-                    'status' => 'success',
-                    'customer_name' => $data['customer_name'],
-                    'customer_no' => $data['customer_no'],
-                    'admin_fee' => $data['admin'],
-                    'amount' => $data['selling_price'], // Total yang harus dibayar user
-                    'ref_id' => $refId, // Penting untuk proses bayar nanti
-                    'desc' => $desc // Data tambahan (Tarif, Daya, Alamat, Lembar Tagihan)
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 'error', 
-                    'message' => $data['message'] ?? 'Tagihan tidak ditemukan atau sudah terbayar.'
-                ]);
+        try {
+            // 2. Cek apakah Service Digiflazz terbaca
+            if (!$this->digiflazz) {
+                throw new \Exception('Service Digiflazz tidak terinisialisasi.');
             }
-        }
 
-        return response()->json(['status' => 'error', 'message' => 'Gagal menghubungi server provider.']);
+            // 3. Generate Ref ID & Call API
+            $refId = 'INQ-' . time() . rand(100,999);
+            $response = $this->digiflazz->inquiryPasca($request->sku, $request->customer_no, $refId);
+
+            // 4. Proses Response
+            if (isset($response['data'])) {
+                $data = $response['data'];
+                
+                // Sukses jika RC 00 atau Status Sukses/Pending
+                if ($data['rc'] === '00' || $data['status'] === 'Sukses' || $data['status'] === 'Pending') {
+                    return response()->json([
+                        'status' => 'success',
+                        'customer_name' => $data['customer_name'],
+                        'customer_no' => $data['customer_no'],
+                        'admin_fee' => $data['admin'],
+                        'amount' => $data['selling_price'],
+                        'ref_id' => $refId,
+                        'desc' => $data['desc'] ?? []
+                    ]);
+                } else {
+                    return response()->json([
+                        'status' => 'error', 
+                        'message' => $data['message'] ?? 'Tagihan tidak ditemukan / Gagal.'
+                    ]);
+                }
+            }
+
+            return response()->json(['status' => 'error', 'message' => 'Gagal terhubung ke server provider (No Data).']);
+
+        } catch (\Exception $e) {
+            // Log error asli ke file laravel.log agar bisa dicek admin
+            Log::error("CheckBill Error: " . $e->getMessage());
+            
+            // Return JSON Error (bukan HTML 500)
+            return response()->json([
+                'status' => 'error', 
+                'message' => 'System Error: ' . $e->getMessage()
+            ], 500);
+        }
     }
+
 
     /**
      * 7. AJAX: Cek ID Pelanggan PLN Prabayar
