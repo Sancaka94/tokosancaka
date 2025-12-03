@@ -234,7 +234,7 @@
     {{-- ============================================================ --}}
     
     <section class="mb-10" data-aos="fade-up">
-        <div class="bg-white p-6 rounded-2xl shadow-md border-t-4 border-blue-500">
+        <div class="bg-white p-6 rounded-2xl shadow-md border-t-4 border-red-500">
             <h2 class="text-xl font-bold mb-6 text-gray-800 flex items-center">
                 <i class="fas fa-mobile-alt text-blue-500 mr-2"></i> Layanan Top Up & Tagihan
             </h2>
