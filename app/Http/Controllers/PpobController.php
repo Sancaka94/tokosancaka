@@ -57,6 +57,21 @@ class PpobController extends Controller
     {
         $weblogo = $this->getWebLogo();
 
+        // -----------------------------------------------------------
+        // 1. TAMBAHAN PENTING: DEFINISI BANNERS & SETTINGS
+        // (Agar error Undefined variable hilang)
+        // -----------------------------------------------------------
+        
+        // OPSI A: Jika Anda punya Model Banner, aktifkan baris ini:
+        $banners = \App\Models\Banner::where('status', 'active')->get();
+        $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
+
+        // OPSI B (SAFE MODE): Gunakan array kosong dulu agar tidak error
+        $banners = collect([]); // Collection kosong
+        $settings = [];         // Array kosong
+
+        // -----------------------------------------------------------
+
         // 1. Mapping Slug URL ke Kategori Database
         // Pastikan nama kategori di array value SAMA dengan di database 'ppob_products' -> column 'category'
         $categoriesMap = [
