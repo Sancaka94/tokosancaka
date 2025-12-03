@@ -192,7 +192,7 @@
         </div>
     </section>
 
-    <section class="bg-gray-100 p-4 rounded shadow-sm mb-4 border-b border-gray-200">
+    <section class="bg-gray-250 p-4 rounded shadow-sm mb-4 border-b border-gray-200">
         <h2 class="text-sm font-bold text-gray-700 mb-4 uppercase">KATEGORI</h2>
         
         <div class="swiper categoriesSwiper relative pb-8">
