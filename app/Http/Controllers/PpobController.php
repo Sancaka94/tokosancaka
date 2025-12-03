@@ -286,33 +286,27 @@ class PpobController extends Controller
         }
     }
 
-   /**
-     * AJAX: Cek Tagihan Pascabayar (PLN/PDAM)
-     * Rute: /ppob/check-bill
-     */
-    public function checkBill(Request $request)
+   public function checkBill(Request $request)
     {
-        // 1. Validasi Input
         $request->validate([
             'customer_no' => 'required', 
             'sku' => 'required' 
         ]);
 
+        $refId = 'INQ-' . time() . rand(100,999);
+
         try {
-            // 2. Cek apakah Service Digiflazz terbaca
             if (!$this->digiflazz) {
-                throw new \Exception('Service Digiflazz tidak terinisialisasi.');
+                throw new \Exception('Service Digiflazz belum di-inject.');
             }
 
-            // 3. Generate Ref ID & Call API
-            $refId = 'INQ-' . time() . rand(100,999);
+            // Panggil Service
             $response = $this->digiflazz->inquiryPasca($request->sku, $request->customer_no, $refId);
 
-            // 4. Proses Response
+            // Cek Response
             if (isset($response['data'])) {
                 $data = $response['data'];
                 
-                // Sukses jika RC 00 atau Status Sukses/Pending
                 if ($data['rc'] === '00' || $data['status'] === 'Sukses' || $data['status'] === 'Pending') {
                     return response()->json([
                         'status' => 'success',
@@ -324,23 +318,27 @@ class PpobController extends Controller
                         'desc' => $data['desc'] ?? []
                     ]);
                 } else {
+                    // Log alasan gagal dari API (Misal: Saldo kurang, ID salah)
+                    Log::warning("⚠️ [CheckBill Gagal] RefID: $refId. Pesan: " . ($data['message'] ?? 'Unknown'));
+                    
                     return response()->json([
                         'status' => 'error', 
-                        'message' => $data['message'] ?? 'Tagihan tidak ditemukan / Gagal.'
+                        'message' => $data['message'] ?? 'Tagihan tidak ditemukan.'
                     ]);
                 }
             }
 
-            return response()->json(['status' => 'error', 'message' => 'Gagal terhubung ke server provider (No Data).']);
+            // Jika sampai sini, berarti response API aneh (tidak ada key 'data')
+            Log::error("❌ [CheckBill Invalid Response] RefID: $refId. Raw: " . json_encode($response));
+            return response()->json(['status' => 'error', 'message' => 'Respon server vendor tidak valid.']);
 
         } catch (\Exception $e) {
-            // Log error asli ke file laravel.log agar bisa dicek admin
-            Log::error("CheckBill Error: " . $e->getMessage());
+            // Log Error Sistem (Syntax error, codingan salah, dll)
+            Log::error("🔥 [CheckBill Exception] " . $e->getMessage() . " on Line " . $e->getLine());
             
-            // Return JSON Error (bukan HTML 500)
             return response()->json([
                 'status' => 'error', 
-                'message' => 'System Error: ' . $e->getMessage()
+                'message' => 'System Error (Cek Log): ' . $e->getMessage()
             ], 500);
         }
     }
