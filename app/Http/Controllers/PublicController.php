@@ -32,10 +32,17 @@ class PublicController extends Controller
     }
 
     /**
-     * Halaman Utama Pricelist
+     * Halaman Utama Pricelist (Handle Semua Kondisi)
+     * Bisa dipanggil dengan parameter slug atau tanpa parameter
      */
-    public function pricelist()
+    public function pricelist($slug = 'all')
     {
+        // Jika route mengirim slug ke sini, kita oper ke showCategory biar logicnya nyambung
+        if ($slug !== 'all' && $slug !== null) {
+            return $this->showCategory($slug);
+        }
+
+        // Logic Default Halaman Utama (Tanpa Slug Spesifik)
         $weblogo = $this->getWebLogo();
 
         try {
@@ -67,7 +74,6 @@ class PublicController extends Controller
             'is_postpaid' => false,
         ];
 
-        // Tambahkan variabel default untuk isPostpaid
         $isPostpaid = false;
 
         return view('public.pricelist', compact('products', 'categories', 'banners', 'settings', 'pageInfo', 'weblogo', 'isPostpaid'));
@@ -75,6 +81,7 @@ class PublicController extends Controller
 
     /**
      * Menampilkan Halaman Kategori Spesifik
+     * Logic inti penentuan Tombol Cek Tagihan ada di sini
      */
     public function showCategory($slug)
     {
@@ -90,35 +97,37 @@ class PublicController extends Controller
 
         $slug = strtolower(trim($slug));
         
-        // 1. DETEKSI OTOMATIS MODE PASCABAYAR
+        // --- LOGIC DETEKSI PASCABAYAR (PERBAIKAN UTAMA) ---
         $postpaidSlugs = ['pln-pascabayar', 'pdam', 'bpjs', 'gas', 'pbb', 'internet-pasca', 'tv-kabel-pasca'];
         
-        // Cek jika slug ada di daftar ATAU mengandung kata kunci 'pasca' / 'bill'
+        // Deteksi "Cerdas": Cek array slug, atau cari kata kunci 'pasca' / 'bill' di URL
         $isPostpaid = in_array($slug, $postpaidSlugs) || str_contains($slug, 'pasca') || str_contains($slug, 'bill');
 
+        // Setup Page Info
         $pageInfo = [
             'title'       => ucfirst(str_replace('-', ' ', $slug)),
             'slug'        => $slug,
             'input_label' => 'Nomor Handphone',
             'input_place' => 'Contoh: 0812xxxx',
             'icon'        => 'fa-mobile-alt',
-            'is_postpaid' => $isPostpaid, 
+            'is_postpaid' => $isPostpaid, // Pass variable hasil deteksi
         ];
 
-        // 2. Custom UI per Kategori
+        // Override UI untuk Kategori Tertentu
         if ($slug == 'pln-pascabayar') {
             $pageInfo['title']       = 'Cek Tagihan PLN';
             $pageInfo['input_label'] = 'ID Pelanggan PLN';
             $pageInfo['input_place'] = 'Contoh: 53xxxx';
             $pageInfo['icon']        = 'fa-file-invoice-dollar';
             $pageInfo['is_postpaid'] = true; // Paksa True
-            $isPostpaid = true; // Update variable lokal juga
+            $isPostpaid = true;
 
         } elseif ($slug == 'pln-token') {
             $pageInfo['title']       = 'Token Listrik PLN';
             $pageInfo['input_label'] = 'Nomor Meter / ID Pelanggan';
             $pageInfo['input_place'] = 'Contoh: 14xxxx';
             $pageInfo['icon']        = 'fa-bolt';
+            // isPostpaid tetap false (karena token itu prabayar)
 
         } elseif ($slug == 'pdam') {
             $pageInfo['title']       = 'Cek Tagihan PDAM';
@@ -143,7 +152,7 @@ class PublicController extends Controller
             $pageInfo['icon']        = 'fa-gamepad';
         }
 
-        // 3. Ambil Produk (Hanya jika Mode Prabayar)
+        // Ambil Produk (Hanya jika Mode Prabayar, biar ringan)
         $products = collect([]);
         $categories = collect([]); 
         
@@ -170,7 +179,7 @@ class PublicController extends Controller
             $categories = $products->pluck('category')->unique()->values();
         }
 
-        // 4. Return View (PENTING: Kirim $isPostpaid)
+        // Return View dengan variable yang lengkap
         return view('public.pricelist', compact('products', 'categories', 'banners', 'settings', 'pageInfo', 'weblogo', 'isPostpaid'));
     }
 
