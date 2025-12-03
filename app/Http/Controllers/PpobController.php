@@ -33,23 +33,125 @@ class PpobController extends Controller
      * 1. Halaman Utama PPOB (Dashboard)
      * URL: /admin/digital  atau  /etalase/ppob/digital
      */
-    public function index()
+    public function index($slug = 'pulsa')
     {
-        $weblogo = $this->getWebLogo();
-        
-        // --- 1. LOGIKA CERDAS DETEKSI PENGUNJUNG ---
+        // --- 1. LOGIKA CERDAS DETEKSI PENGUNJUNG (ADMIN VS PUBLIC) ---
         $prefix = request()->segment(1);
 
         // Jika URL diawali 'admin' ATAU user yang login adalah Admin
-        // Maka arahkan ke Dashboard Admin
         if ($prefix == 'admin' || (auth()->check() && auth()->user()->hasRole('Admin'))) {
-            // Pastikan view ini ada: resources/views/admin/ppob/index.blade.php
+            // Pastikan view admin ini ada
             return view('admin.ppob.index'); 
         }
 
-        // Jika Pengunjung Biasa (Public / Customer)
-        // Pastikan view ini ada: resources/views/ppob/index.blade.php
-        return view('ppob.index');
+        // --- 2. LOGIKA UNTUK PENGUNJUNG PUBLIC (FRONTEND) ---
+
+        // A. Daftar Pemetaan Judul Kategori (Slug -> Nama Asli)
+        $titles = [
+            // PRABAYAR
+            'pulsa' => 'Pulsa Reguler',
+            'data'  => 'Paket Data',
+            'pln-token' => 'Token PLN',
+            'games' => 'Voucher Games',
+            'voucher' => 'Voucher Digital',
+            'e-money' => 'E-Money',
+            'china-topup' => 'China TOPUP',
+            'malaysia-topup' => 'Malaysia TOPUP',
+            'philippines-topup' => 'Philippines TOPUP',
+            'singapore-topup' => 'Singapore TOPUP',
+            'thailand-topup' => 'Thailand TOPUP',
+            'vietnam-topup' => 'Vietnam TOPUP',
+            'paket-sms-telpon' => 'Paket SMS & Telpon',
+            'streaming' => 'Streaming Premium',
+            'tv' => 'TV Prabayar',
+            'aktivasi-voucher' => 'Aktivasi Voucher',
+            'masa-aktif' => 'Perpanjang Masa Aktif',
+            'bundling' => 'Paket Bundling',
+            'aktivasi-perdana' => 'Aktivasi Perdana',
+            'gas' => 'Token Gas',
+            'esim' => 'eSIM',
+            'media-sosial' => 'Media Sosial',
+            
+            // SPECIAL OFFERS
+            'telkomsel-omni' => 'Telkomsel Omni',
+            'indosat-only4u' => 'Indosat Only4u',
+            'tri-cuanmax' => 'Tri CuanMax',
+            'xl-axis-cuanku' => 'XL Axis Cuanku',
+            'by-u' => 'by.U',
+
+            // PASCABAYAR
+            'pln-pascabayar' => 'PLN Pascabayar',
+            'pdam' => 'PDAM',
+            'hp-pascabayar' => 'HP Pascabayar',
+            'internet-pascabayar' => 'Internet Pascabayar',
+            'bpjs-kesehatan' => 'BPJS Kesehatan',
+            'multifinance' => 'Multifinance / Cicilan',
+            'pbb' => 'Pajak PBB',
+            'gas-negara' => 'Gas Negara (PGN)',
+            'tv-pascabayar' => 'TV Pascabayar',
+            'samsat' => 'E-Samsat',
+            'bpjs-ketenagakerjaan' => 'BPJS Ketenagakerjaan',
+            'pln-nontaglis' => 'PLN Non-Taglis',
+        ];
+
+        // B. Tentukan Judul Halaman
+        // Jika slug tidak ada di daftar, ubah slug-jadi-teks biasa
+        $pageTitle = $titles[$slug] ?? ucwords(str_replace('-', ' ', $slug));
+
+        // C. Deteksi Kategori Pascabayar (Untuk Logic Frontend)
+        $postpaidSlugs = [
+            'pln-pascabayar', 'pdam', 'hp-pascabayar', 'internet-pascabayar', 
+            'bpjs-kesehatan', 'multifinance', 'pbb', 'gas-negara', 
+            'tv-pascabayar', 'samsat', 'bpjs-ketenagakerjaan', 'pln-nontaglis'
+        ];
+        
+        $isPostpaid = in_array($slug, $postpaidSlugs);
+
+        // D. Tentukan Label Input & Icon secara dinamis
+        $inputLabel = 'Nomor Telepon / Tujuan';
+        $inputPlaceholder = 'Contoh: 0812xxxx';
+        $icon = 'fa-mobile-alt';
+
+        if (str_contains($slug, 'pln')) {
+            $inputLabel = 'ID Pelanggan / No. Meter';
+            $inputPlaceholder = 'Contoh: 5300xxxx';
+            $icon = 'fa-bolt';
+        } elseif (str_contains($slug, 'bpjs')) {
+            $inputLabel = 'Nomor VA BPJS';
+            $inputPlaceholder = 'Contoh: 88888xxxx';
+            $icon = 'fa-heartbeat';
+        } elseif (str_contains($slug, 'pdam')) {
+            $inputLabel = 'ID Pelanggan PDAM';
+            $inputPlaceholder = 'Nomor Pelanggan...';
+            $icon = 'fa-faucet';
+        } elseif (str_contains($slug, 'game')) {
+            $inputLabel = 'User ID Game';
+            $inputPlaceholder = 'Masukkan ID Game...';
+            $icon = 'fa-gamepad';
+        }
+
+        // E. Siapkan Data PageInfo untuk View
+        $pageInfo = [
+            'slug'        => $slug,
+            'title'       => $pageTitle,
+            'is_postpaid' => $isPostpaid,
+            'input_label' => $inputLabel,
+            'input_place' => $inputPlaceholder,
+            'icon'        => $icon,
+        ];
+
+        // F. Ambil Data Produk (Contoh Query - Sesuaikan dengan Model Anda)
+        // $products = \App\Models\Product::where('category_slug', $slug)->where('status', 'active')->get();
+        // $banners  = \App\Models\Banner::where('position', 'ppob')->get();
+        
+        // Untuk saat ini kita kirim array kosong dulu agar tidak error jika DB belum siap
+        $products = []; 
+        $banners = [];
+        $settings = [];
+
+        // G. Return View Public
+        // Menggunakan view 'layouts.marketplace' sesuai struktur HTML yang kamu kirim sebelumnya
+        return view('layouts.marketplace', compact('pageInfo', 'products', 'banners', 'settings'));
     }
 
     /**
