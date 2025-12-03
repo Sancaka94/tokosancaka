@@ -144,13 +144,14 @@ class PpobController extends Controller
             ->where('buyer_product_status', true)
             ->where('seller_product_status', true);
 
-        // Sorting khusus
+        // GANTI MENJADI (Mengurutkan sesuai Brand/Nama agar konsisten dengan Admin)
         if ($slug == 'pdam') {
-            // Untuk PDAM, urutkan berdasarkan Nama Wilayah (Brand) A-Z agar dropdown rapi
             $query->orderBy('brand', 'asc');
         } else {
-            // Default urutkan harga termurah (untuk pulsa/data/token)
-            $query->orderBy('sell_price', 'asc');
+            // Ubah ini agar tidak loncat-loncat harganya
+            $query->orderBy('sell_price', 'asc'); 
+            // ATAU jika ingin urut abjad:
+            // $query->orderBy('product_name', 'asc');
         }
 
         $products = $query->get();
