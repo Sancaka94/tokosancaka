@@ -9,7 +9,7 @@
     <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
         <div>
             <h1 class="text-2xl font-bold text-gray-800">Daftar Produk PPOB</h1>
-            <p class="text-sm text-gray-500 mt-1">Kelola harga dan status produk digital.</p>
+            <p class="text-sm text-gray-500 mt-1">Kelola harga dan margin keuntungan produk.</p>
         </div>
         <div class="flex gap-2">
             <a href="{{ route('ppob.sync') }}" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition flex items-center gap-2">
@@ -143,7 +143,7 @@
 </div>
 
 {{-- ========================================== --}}
-{{-- MODAL EDIT HARGA (LANGSUNG DI SINI)        --}}
+{{-- MODAL EDIT HARGA & PROFIT OTOMATIS         --}}
 {{-- ========================================== --}}
 <div id="priceModal" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
     <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity backdrop-blur-sm" onclick="closeModal()"></div>
@@ -154,38 +154,64 @@
                 @csrf
                 @method('PUT')
                 <div class="flex justify-between items-center mb-5 border-b pb-4">
-                    <h3 class="text-lg font-bold text-gray-900" id="modal-title">Update Harga Produk</h3>
+                    <h3 class="text-lg font-bold text-gray-900" id="modal-title">Update Harga & Profit</h3>
                     <button type="button" onclick="closeModal()" class="text-gray-400 hover:text-gray-500 transition">
                         <i class="fas fa-times text-xl"></i>
                     </button>
                 </div>
                 
+                {{-- Nama Produk & Harga Beli --}}
                 <div class="mb-4">
                     <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Nama Produk</label>
                     <input type="text" id="modal_product_name" class="w-full bg-gray-100 border-transparent rounded-lg px-3 py-2 text-gray-600 text-sm focus:ring-0 cursor-not-allowed" readonly>
                 </div>
+                <div class="mb-4">
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Harga Beli (Dari Pusat)</label>
+                    <input type="text" id="modal_base_price_display" class="w-full bg-red-50 text-red-600 font-bold border-red-100 rounded-lg px-3 py-2 text-sm focus:ring-0 cursor-not-allowed" readonly>
+                    {{-- Hidden input untuk menyimpan angka murni --}}
+                    <input type="hidden" id="modal_base_price_raw"> 
+                </div>
 
-                <div class="grid grid-cols-2 gap-4 mb-4">
-                    <div>
-                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Harga Beli (Pusat)</label>
-                        <input type="text" id="modal_base_price" class="w-full bg-red-50 text-red-600 font-bold border-red-100 rounded-lg px-3 py-2 text-sm focus:ring-0 cursor-not-allowed" readonly>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Harga Jual (Baru)</label>
-                        <div class="relative">
-                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500 font-bold text-sm">Rp</span>
-                            <input type="number" name="sell_price" id="modal_sell_price" class="w-full pl-10 border-gray-300 rounded-lg px-3 py-2 text-gray-900 font-bold focus:ring-blue-500 focus:border-blue-500" required>
+                <hr class="border-gray-100 mb-4">
+
+                {{-- Bagian Kalkulator Profit --}}
+                <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 mb-4">
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-2">Ambil Profit Otomatis</label>
+                    
+                    <div class="grid grid-cols-2 gap-3 mb-3">
+                        <div class="flex items-center ps-4 border border-gray-200 rounded-lg bg-white">
+                            <input id="type_rupiah" type="radio" value="rupiah" name="profit_type" checked onchange="calculatePrice()" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500">
+                            <label for="type_rupiah" class="w-full py-2 ms-2 text-sm font-medium text-gray-900 cursor-pointer">Rupiah (Rp)</label>
                         </div>
+                        <div class="flex items-center ps-4 border border-gray-200 rounded-lg bg-white">
+                            <input id="type_percent" type="radio" value="percent" name="profit_type" onchange="calculatePrice()" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500">
+                            <label for="type_percent" class="w-full py-2 ms-2 text-sm font-medium text-gray-900 cursor-pointer">Persen (%)</label>
+                        </div>
+                    </div>
+
+                    <div class="relative">
+                        <label class="block text-xs text-gray-500 mb-1">Masukkan Nominal / Persentase Profit</label>
+                        <input type="number" id="profit_input" oninput="calculatePrice()" placeholder="Contoh: 1000 atau 5" class="w-full border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:ring-blue-500 focus:border-blue-500">
                     </div>
                 </div>
 
-                <div class="mb-6 bg-blue-50 p-3 rounded-lg flex items-start border border-blue-100">
+                {{-- Harga Jual Akhir --}}
+                <div class="mb-4">
+                    <label class="block text-xs font-bold text-green-700 uppercase mb-1">Harga Jual Akhir</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500 font-bold text-sm">Rp</span>
+                        <input type="number" name="sell_price" id="modal_sell_price" class="w-full pl-10 border-green-300 bg-green-50 text-green-800 rounded-lg px-3 py-2 font-bold text-lg focus:ring-green-500 focus:border-green-500" required>
+                    </div>
+                    <p class="text-[10px] text-gray-400 mt-1">*Harga jual akan terisi otomatis, namun bisa Anda edit manual jika perlu.</p>
+                </div>
+
+                {{-- Status Checkbox --}}
+                <div class="mb-6 flex items-start">
                     <div class="flex h-5 items-center">
                         <input type="checkbox" name="status" id="modal_status" value="1" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
                     </div>
                     <div class="ml-3 text-sm">
-                        <label for="modal_status" class="font-medium text-blue-900 cursor-pointer">Aktifkan produk ini?</label>
-                        <p class="text-blue-500 text-xs mt-0.5">Jika tidak dicentang, produk akan disembunyikan dari pelanggan.</p>
+                        <label for="modal_status" class="font-medium text-gray-700 cursor-pointer">Aktifkan produk ini?</label>
                     </div>
                 </div>
 
@@ -202,13 +228,22 @@
 
 @push('scripts')
 <script>
+    // Fungsi Membuka Modal
     function editPrice(id, name, basePrice, sellPrice, status) {
         document.getElementById('modal_product_name').value = name;
-        // Format harga beli ke Rupiah
-        document.getElementById('modal_base_price').value = 'Rp ' + parseInt(basePrice).toLocaleString('id-ID');
-        // Harga jual tetap angka agar bisa diedit di input number
+        
+        // Simpan harga beli murni (integer) untuk kalkulasi
+        document.getElementById('modal_base_price_raw').value = parseInt(basePrice);
+        // Tampilkan harga beli format Rupiah untuk user
+        document.getElementById('modal_base_price_display').value = 'Rp ' + parseInt(basePrice).toLocaleString('id-ID');
+        
+        // Isi harga jual saat ini
         document.getElementById('modal_sell_price').value = parseInt(sellPrice);
         
+        // Reset input profit setiap kali buka modal
+        document.getElementById('profit_input').value = '';
+        document.getElementById('type_rupiah').checked = true;
+
         const statusCheckbox = document.getElementById('modal_status');
         if(statusCheckbox) statusCheckbox.checked = (status == 1);
 
@@ -221,6 +256,33 @@
 
         const modal = document.getElementById('priceModal');
         if(modal) modal.classList.remove('hidden');
+    }
+
+    // Fungsi Kalkulasi Otomatis
+    function calculatePrice() {
+        // Ambil harga beli dasar (Raw)
+        let basePrice = parseFloat(document.getElementById('modal_base_price_raw').value) || 0;
+        
+        // Ambil nilai profit yang diketik user
+        let profitInput = parseFloat(document.getElementById('profit_input').value) || 0;
+        
+        // Cek tipe profit (Rupiah atau Persen)
+        let profitType = document.querySelector('input[name="profit_type"]:checked').value;
+        
+        let finalPrice = basePrice; // Default harga jual = harga beli
+
+        if (profitType === 'rupiah') {
+            // Rumus: Harga Beli + Nominal
+            finalPrice = basePrice + profitInput;
+        } else {
+            // Rumus: Harga Beli + (Harga Beli * Persen / 100)
+            let margin = basePrice * (profitInput / 100);
+            finalPrice = basePrice + margin;
+        }
+
+        // Bulatkan ke atas (Ceil) agar aman, lalu masukkan ke input Harga Jual
+        // User masih bisa edit manual setelahnya jika angka keriting
+        document.getElementById('modal_sell_price').value = Math.ceil(finalPrice);
     }
 
     function closeModal() {
