@@ -63,13 +63,13 @@
             <div class="grid grid-cols-2 lg:grid-cols-1 lg:grid-rows-2 gap-4 h-auto lg:h-[420px]">
                 {{-- Banner Samping Atas --}}
                 <div class="rounded-2xl shadow-lg overflow-hidden h-[100px] md:h-[170px] lg:h-full w-full">
-                    <img src="{{ isset($settings['banner_2']) ? asset('storage/' . $settings['banner_2']) : 'https://placehold.co/400x200/fbbf24/ffffff?text=Promo+Samping+1' }}" 
+                    <img src="{{ isset($settings['banner_2']) ? asset('public/storage/' . $settings['banner_2']) : 'https://placehold.co/400x200/fbbf24/ffffff?text=Promo+Samping+1' }}" 
                          class="w-full h-full object-fill hover:scale-105 transition duration-500">
                 </div>
                 
                 {{-- Banner Samping Bawah --}}
                 <div class="rounded-2xl shadow-lg overflow-hidden h-[100px] md:h-[170px] lg:h-full w-full">
-                    <img src="{{ isset($settings['banner_3']) ? asset('storage/' . $settings['banner_3']) : 'https://placehold.co/400x200/10b981/ffffff?text=Promo+Samping+2' }}" 
+                    <img src="{{ isset($settings['banner_3']) ? asset('public/storage/' . $settings['banner_3']) : 'https://placehold.co/400x200/10b981/ffffff?text=Promo+Samping+2' }}" 
                          class="w-full h-full object-fill hover:scale-105 transition duration-500">
                 </div>
             </div>
