@@ -8,87 +8,91 @@
     <style>
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-        .swiper-pagination-bullet-active { background-color: #ffffff !important; width: 20px; border-radius: 5px; }
+        .swiper-pagination-bullet-active { background-color: #ef4444 !important; width: 20px; border-radius: 5px; }
+        
+        /* Navigasi Custom */
+        .swiper-button-next, .swiper-button-prev {
+            color: white; 
+            background-color: rgba(0,0,0,0.3); 
+            width: 30px; height: 30px; 
+            border-radius: 50%;
+        }
+        .swiper-button-next:after, .swiper-button-prev:after { font-size: 12px; font-weight: bold; }
     </style>
 @endpush
 
 @section('content')
 <div class="bg-gray-50 min-h-screen pb-20">
     
-    {{-- Hero Header & Banner --}}
-    <div class="bg-gradient-to-b from-blue-900 via-blue-800 to-blue-600 pt-8 pb-24 px-4 relative overflow-hidden">
-        {{-- Background Decoration --}}
-        <div class="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
-            <i class="fas fa-wifi text-9xl absolute -top-10 -left-10 text-white"></i>
-            <i class="fas fa-bolt text-9xl absolute bottom-20 right-0 text-white"></i>
-        </div>
-
-        <div class="relative z-10 max-w-4xl mx-auto">
-            
-            {{-- Header Text --}}
-            <div class="text-center text-white mb-6">
-                <h1 class="text-2xl md:text-4xl font-bold mb-2">Pricelist Sancaka Express</h1>
-                <p class="text-blue-200 text-sm md:text-base">Daftar harga termurah, terlengkap, dan update otomatis.</p>
-            </div>
-
-            {{-- BANNER SLIDER SECTION --}}
-            <div class="mb-8 rounded-2xl overflow-hidden shadow-2xl border-4 border-white/20">
-                <div class="swiper bannerSwiper w-full h-[180px] md:h-[320px] bg-gray-200">
+    <div class="container mx-auto px-4 pt-4 relative z-10 max-w-6xl">
+        
+        {{-- ================================================= --}}
+        {{-- 1. HERO SECTION (SLIDER GRID SESUAI REQUEST)      --}}
+        {{-- ================================================= --}}
+        <section class="grid grid-cols-1 lg:grid-cols-3 gap-2 mb-6">
+            {{-- Slider Utama --}}
+            <div class="lg:col-span-2 rounded-xl shadow-md overflow-hidden h-[200px] md:h-[300px] lg:h-[350px] w-full relative group">
+                <div class="swiper heroSwiper w-full h-full">
                     <div class="swiper-wrapper">
                         @forelse($banners as $banner)
                             <div class="swiper-slide">
-                                <img src="{{ asset('public/storage/' . $banner->image) }}" 
-                                     class="w-full h-full object-cover" 
-                                     alt="Promo Banner"
-                                     onerror="this.src='https://placehold.co/800x320/1e3a8a/ffffff?text=Promo+Spesial'">
+                                {{-- Sesuaikan path storage Anda --}}
+                                <img src="{{ asset('public/storage/' . $banner->image) }}" class="w-full h-full object-cover" alt="Banner">
                             </div>
                         @empty
                             <div class="swiper-slide">
-                                <img src="https://placehold.co/800x320/1e3a8a/ffffff?text=Promo+Sancaka+Express" class="w-full h-full object-cover">
+                                <img src="https://placehold.co/800x400/ee4d2d/ffffff?text=Promo+Spesial+Hari+Ini" class="w-full h-full object-cover">
                             </div>
                             <div class="swiper-slide">
-                                <img src="https://placehold.co/800x320/dc2626/ffffff?text=Diskon+Pulsa+Murah" class="w-full h-full object-cover">
+                                <img src="https://placehold.co/800x400/1e3a8a/ffffff?text=Diskon+Pulsa+Murah" class="w-full h-full object-cover">
                             </div>
                         @endforelse
                     </div>
                     <div class="swiper-pagination"></div>
+                    <div class="swiper-button-next opacity-0 group-hover:opacity-100 transition"></div>
+                    <div class="swiper-button-prev opacity-0 group-hover:opacity-100 transition"></div>
                 </div>
             </div>
-            
-            {{-- Search Bar --}}
-            <div class="relative max-w-xl mx-auto -mb-8">
-                <div class="relative group">
-                    <div class="absolute -inset-1 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
-                    <div class="relative">
-                        <input type="text" id="searchInput" placeholder="Cari Produk (Telkomsel, Token, Dana)..." 
-                            class="w-full py-4 pl-14 pr-6 rounded-full text-gray-800 shadow-xl border-none focus:ring-4 focus:ring-blue-300 outline-none transition text-base md:text-lg bg-white placeholder-gray-400">
-                        <div class="absolute top-1/2 left-5 transform -translate-y-1/2 text-blue-600">
-                            <i class="fas fa-search text-xl"></i>
-                        </div>
-                    </div>
+    
+            {{-- Banner Samping (Kanan) --}}
+            <div class="grid grid-cols-2 lg:grid-cols-1 lg:grid-rows-2 gap-2 h-auto lg:h-[350px]">
+                <div class="rounded-xl shadow-md overflow-hidden h-[100px] md:h-[150px] lg:h-full w-full">
+                    <img src="{{ isset($settings['banner_2']) ? asset('storage/' . $settings['banner_2']) : 'https://placehold.co/400x200/fbbf24/ffffff?text=Promo+2' }}" class="w-full h-full object-cover hover:scale-105 transition duration-500">
+                </div>
+                
+                <div class="rounded-xl shadow-md overflow-hidden h-[100px] md:h-[150px] lg:h-full w-full">
+                    <img src="{{ isset($settings['banner_3']) ? asset('storage/' . $settings['banner_3']) : 'https://placehold.co/400x200/10b981/ffffff?text=Promo+3' }}" class="w-full h-full object-cover hover:scale-105 transition duration-500">
                 </div>
             </div>
+        </section>
+        {{-- ================================================= --}}
 
+
+        {{-- Search Bar --}}
+        <div class="bg-white p-4 rounded-xl shadow-sm mb-6 border border-gray-100">
+            <div class="relative">
+                <input type="text" id="searchInput" placeholder="Cari Produk (Telkomsel, Token, Dana, Mobile Legends)..." 
+                    class="w-full py-3 pl-12 pr-4 rounded-lg bg-gray-50 border border-gray-200 text-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+                <div class="absolute top-1/2 left-4 transform -translate-y-1/2 text-gray-400">
+                    <i class="fas fa-search text-lg"></i>
+                </div>
+            </div>
         </div>
-    </div>
 
-    {{-- Main Content --}}
-    <div class="container mx-auto px-4 mt-8 relative z-20 max-w-5xl">
-        
         {{-- Category Filters --}}
-        <div class="bg-white p-2 rounded-xl shadow-md mb-6 overflow-x-auto whitespace-nowrap scrollbar-hide flex gap-2 sticky top-4 z-30 border border-gray-100">
+        <div class="bg-white p-2 rounded-xl shadow-sm mb-6 overflow-x-auto whitespace-nowrap scrollbar-hide flex gap-2 border border-gray-100 sticky top-2 z-30">
             <button onclick="filterCategory('all')" class="cat-btn active px-5 py-2 rounded-lg font-bold text-xs md:text-sm transition bg-blue-600 text-white shadow-md">
                 SEMUA
             </button>
             @foreach($categories as $cat)
-                <button onclick="filterCategory('{{ $cat }}')" class="cat-btn px-5 py-2 rounded-lg font-bold text-xs md:text-sm transition bg-gray-50 text-gray-600 hover:bg-blue-50 hover:text-blue-600">
+                <button onclick="filterCategory('{{ $cat }}')" class="cat-btn px-5 py-2 rounded-lg font-bold text-xs md:text-sm transition bg-gray-50 text-gray-600 hover:bg-blue-50 hover:text-blue-600 border border-gray-100">
                     {{ strtoupper($cat) }}
                 </button>
             @endforeach
         </div>
 
         {{-- Product Table --}}
-        <div class="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100 min-h-[300px]">
+        <div class="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100 min-h-[300px]">
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
                     <thead class="bg-gray-50 text-gray-500 uppercase text-[10px] md:text-xs font-bold tracking-wider">
@@ -105,23 +109,18 @@
                             <td class="p-4">
                                 <div class="flex items-center gap-3">
                                     
-                                    {{-- ==================================================== --}}
-                                    {{-- 🖼️ BAGIAN LOGO: MENGGUNAKAN HELPER --}}
-                                    {{-- ==================================================== --}}
+                                    {{-- 🖼️ LOGO DENGAN HELPER --}}
                                     <div class="h-10 w-10 flex-shrink-0 relative">
-                                        {{-- 1. Coba Tampilkan Gambar dari Helper --}}
                                         <img src="{{ get_operator_logo($product->brand) }}" 
                                              alt="{{ $product->brand }}" 
-                                             class="h-full w-full object-contain bg-white rounded-xl p-1 shadow-sm border border-gray-100"
+                                             class="h-full w-full object-contain bg-white rounded-lg p-1 shadow-sm border border-gray-100"
                                              loading="lazy"
                                              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                                         
-                                        {{-- 2. Fallback Teks (Jika gambar error/tidak ada) --}}
-                                        <span class="hidden h-full w-full items-center justify-center bg-gray-100 text-gray-500 text-[10px] font-bold rounded-xl border border-gray-200 uppercase">
+                                        <span class="hidden h-full w-full items-center justify-center bg-gray-100 text-gray-500 text-[10px] font-bold rounded-lg border border-gray-200 uppercase">
                                             {{ substr($product->brand, 0, 3) }}
                                         </span>
                                     </div>
-                                    {{-- ==================================================== --}}
 
                                     <div class="block sm:hidden">
                                         <p class="font-bold text-gray-800 text-sm line-clamp-1">{{ $product->product_name }}</p>
@@ -163,7 +162,7 @@
             </div>
         </div>
         
-        <div class="mt-8 text-center">
+        <div class="mt-8 text-center pb-8">
             <a href="{{ route('login') }}" class="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-full text-white bg-blue-600 hover:bg-blue-700 shadow-lg hover:shadow-xl transition transform hover:-translate-y-1">
                 <i class="fas fa-sign-in-alt mr-2"></i> Login untuk Transaksi
             </a>
@@ -179,18 +178,21 @@
 <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
 
 <script>
-    // 1. Inisialisasi Slider Banner
-    var swiper = new Swiper(".bannerSwiper", {
-        spaceBetween: 0,
-        centeredSlides: true,
+    // 1. Inisialisasi Slider Banner (Class diganti jadi heroSwiper sesuai request)
+    var swiper = new Swiper(".heroSwiper", {
         loop: true,
+        effect: "fade",
         autoplay: {
-            delay: 3500,
+            delay: 4000,
             disableOnInteraction: false,
         },
         pagination: {
             el: ".swiper-pagination",
             clickable: true,
+        },
+        navigation: {
+            nextEl: ".swiper-button-next",
+            prevEl: ".swiper-button-prev",
         },
     });
 
