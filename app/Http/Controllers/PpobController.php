@@ -346,16 +346,16 @@ class PpobController extends Controller
             Log::error("❌ [CheckBill Invalid Response] RefID: $refId. Raw: " . json_encode($response));
             return response()->json(['status' => 'error', 'message' => 'Respon server vendor tidak valid.']);
 
-        } catch (\Exception $e) {
-            // Log Error Sistem (Syntax error, codingan salah, dll)
-            Log::error("🔥 [CheckBill Exception] " . $e->getMessage() . " on Line " . $e->getLine());
-            
-            return response()->json([
-                'status' => 'error', 
-                'message' => 'System Error (Cek Log): ' . $e->getMessage()
-            ], 500);
-        }
+       } catch (\Exception $e) {
+        // --- UBAH BAGIAN INI ---
+        // Kita kirim pesan error aslinya langsung ke JSON response
+        // Supaya bisa dibaca di alert browser
+        return response()->json([
+            'status' => 'error', 
+            'message' => 'DEBUG ERROR: ' . $e->getMessage() . ' (Line: ' . $e->getLine() . ')'
+        ], 200); 
     }
+}
 
 
     /**
