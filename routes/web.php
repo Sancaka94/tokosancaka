@@ -78,6 +78,11 @@ use App\Http\Controllers\PublicController;
 
 
 Route::get('/daftar-harga', [PublicController::class, 'pricelist'])->name('public.pricelist');
+// Route untuk membuka halaman kategori spesifik (agar form cek tagihan muncul)
+Route::get('/layanan/{slug}', [App\Http\Controllers\PublicController::class, 'showCategory'])->name('public.category');
+
+// Route AJAX Cek Tagihan (Pastikan di luar middleware auth jika ingin akses publik)
+Route::post('/ppob/check-bill', [App\Http\Controllers\PpobController::class, 'checkBill'])->name('ppob.check.bill');
 // HAPUS 'role:Admin' dari array middleware, cukup 'auth' saja dulu
 Route::prefix('admin/ppob')->name('admin.ppob.')->middleware(['auth'])->group(function () {
     
