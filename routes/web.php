@@ -77,6 +77,21 @@ use App\Http\Controllers\PpobProductController;
 use App\Http\Controllers\PublicController;
 
 
+
+
+// Grouping URL PPOB
+Route::prefix('etalase/ppob')->name('ppob.')->group(function () {
+
+    // INI ROUTE KUNCI YANG MENANGANI /pulsa, /data, dll
+    Route::get('/digital/{slug}', [PpobController::class, 'index'])
+        ->name('category');
+
+    // Route untuk tombol Cek & Bayar
+    Route::post('/check-bill', [PpobController::class, 'checkBill'])->name('check.bill');
+    Route::post('/check-pln-prabayar', [PpobController::class, 'checkPlnPrabayar'])->name('check.pln.prabayar');
+    Route::post('/transaction', [PpobController::class, 'store'])->name('store');
+});
+
 Route::get('/debug-digi', [PpobController::class, 'debugDirect']);
 
 // PPOB Public (Daftar Harga & Cek Tagihan)
