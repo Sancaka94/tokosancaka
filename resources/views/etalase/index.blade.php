@@ -5,7 +5,7 @@
 @push('styles')
 <style>
     :root {
-        --primary-red: #ee4d2d;
+        --primary-red: #d0011b;
         --bg-gray: #f5f5f5;
     }
 
