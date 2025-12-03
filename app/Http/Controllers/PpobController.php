@@ -160,26 +160,25 @@ class PpobController extends Controller
      */
     public function category($slug)
     {
-        // Ambil Logo Web (Sesuaikan dengan helper/method Anda)
-        $weblogo = $this->getWebLogo();
-
-        // -----------------------------------------------------------
-        // 1. DATA PENDUKUNG (Banner & Setting)
-        // -----------------------------------------------------------
-        // Pastikan model BannerEtalase dan Setting di-import di atas:
-        // use App\Models\BannerEtalase;
-        // use App\Models\Setting;
+        // ===============================================================
+        // 1. PERBAIKAN: AMBIL WEBLOGO & SETTING (Agar tidak Error Undefined)
+        // ===============================================================
         
-        $banners = \App\Models\BannerEtalase::latest()->get(); 
+        // Ambil data logo dari tabel settings (sesuaikan key 'web_logo' jika beda)
+        $logoData = \App\Models\Setting::where('key', 'web_logo')->first();
+        $weblogo  = $logoData ? $logoData->value : 'logo.png'; // Fallback jika kosong
+
+        // Ambil Banner untuk slider
+        $banners  = \App\Models\BannerEtalase::latest()->get(); 
+        
+        // Ambil Setting Banner Promo
         $settings = \App\Models\Setting::whereIn('key', ['banner_2','banner_3'])->pluck('value','key');
 
-        // -----------------------------------------------------------
-        // 2. MAPPING SLUG URL KE KATEGORI DATABASE
-        // -----------------------------------------------------------
-        // Kiri: Slug URL (harus sama dengan route)
-        // Kanan: Nama Kategori di Database (table ppob_products column category)
+        // ===============================================================
+        // 2. MAPPING KATEGORI (Sesuai Database)
+        // ===============================================================
         $categoriesMap = [
-            // --- PRABAYAR ---
+            // PRABAYAR
             'pulsa'             => ['Pulsa', 'Pulsa Reguler'],
             'data'              => ['Data', 'Paket Data'],
             'pln-token'         => ['PLN', 'Token PLN'],
@@ -193,15 +192,14 @@ class PpobController extends Controller
             'aktivasi-perdana'  => ['Aktivasi Perdana'],
             'gas'               => ['Gas Token', 'Pertagas'],
             'esim'              => ['eSIM'],
-            // Topup Internasional
+            // TOPUP LUAR NEGERI
             'china-topup'       => ['China Topup'],
             'malaysia-topup'    => ['Malaysia Topup'],
             'philippines-topup' => ['Philippines Topup'],
             'singapore-topup'   => ['Singapore Topup'],
             'thailand-topup'    => ['Thailand Topup'],
             'vietnam-topup'     => ['Vietnam Topup'],
-            
-            // --- PASCABAYAR (Tagihan) ---
+            // PASCABAYAR
             'pln-pascabayar'       => ['PLN Pascabayar', 'Tagihan PLN'],
             'pdam'                 => ['PDAM', 'Air PDAM'],
             'bpjs-kesehatan'       => ['BPJS', 'BPJS Kesehatan'],
@@ -211,36 +209,32 @@ class PpobController extends Controller
             'tv-pascabayar'        => ['TV Kabel', 'TV Pascabayar'],
             'multifinance'         => ['Multifinance', 'Cicilan', 'Angsuran Kredit'],
             'pbb'                  => ['PBB', 'Pajak PBB'],
-            'gas-negara'           => ['Gas Negara', 'PGN', 'Gas Pascabayar'],
+            'gas-negara'           => ['Gas Negara', 'PGN'],
             'samsat'               => ['Samsat', 'E-Samsat'],
             'pln-nontaglis'        => ['PLN Non Taglis', 'Non Taglis'],
         ];
 
-        // Validasi: Jika slug tidak ada di map, tampilkan 404
+        // Validasi Slug
         if (!array_key_exists($slug, $categoriesMap)) {
             abort(404);
         }
 
         $dbCategories = $categoriesMap[$slug];
 
-        // -----------------------------------------------------------
-        // 3. KONFIGURASI TAMPILAN (DEFAULT)
-        // -----------------------------------------------------------
+        // ===============================================================
+        // 3. KONFIGURASI TAMPILAN (JUDUL, ICON, INPUT)
+        // ===============================================================
         $pageInfo = [
             'title'             => ucwords(str_replace('-', ' ', $slug)),
             'slug'              => $slug,
             'input_label'       => 'Nomor Handphone',
             'input_place'       => 'Contoh: 0812xxxx',
             'icon'              => 'fa-mobile-alt',
-            'is_postpaid'       => false, // Default: Tampil daftar produk (Prabayar)
-            'has_region_select' => false  // Default: Tidak butuh dropdown wilayah
+            'is_postpaid'       => false,
+            'has_region_select' => false
         ];
 
-        // -----------------------------------------------------------
-        // 4. LOGIKA SPESIFIK PER KATEGORI (Override Default)
-        // -----------------------------------------------------------
-        
-        // --- GROUP 1: PRABAYAR KHUSUS ---
+        // LOGIKA KHUSUS PER KATEGORI
         if ($slug == 'pln-token') {
             $pageInfo['input_label'] = 'ID Pelanggan / No. Meter';
             $pageInfo['input_place'] = 'Contoh: 14xxxxxxxx';
@@ -255,10 +249,10 @@ class PpobController extends Controller
             $pageInfo['input_place'] = 'Masukkan ID Game / Server';
             $pageInfo['icon']        = 'fa-gamepad';
 
-        } elseif (str_contains($slug, 'topup')) { // China, Malaysia, dll
+        } elseif (str_contains($slug, 'topup')) {
             $pageInfo['icon']        = 'fa-globe-asia';
 
-        // --- GROUP 2: PASCABAYAR (TAGIHAN) ---
+        // LOGIKA PASCABAYAR
         } elseif ($slug == 'pln-pascabayar') {
             $pageInfo['title']       = 'Tagihan Listrik PLN';
             $pageInfo['input_label'] = 'ID Pelanggan / No. Meter';
@@ -272,7 +266,7 @@ class PpobController extends Controller
             $pageInfo['input_place'] = 'Masukan ID Pelanggan';
             $pageInfo['icon']        = 'fa-faucet';
             $pageInfo['is_postpaid'] = true;
-            $pageInfo['has_region_select'] = true; // Muncul dropdown pilih wilayah
+            $pageInfo['has_region_select'] = true;
 
         } elseif ($slug == 'bpjs-kesehatan') {
             $pageInfo['input_label'] = 'Nomor VA Keluarga';
@@ -286,37 +280,17 @@ class PpobController extends Controller
             $pageInfo['input_place'] = 'Masukan Nomor Kontrak';
             $pageInfo['icon']        = 'fa-money-bill-wave';
             $pageInfo['is_postpaid'] = true;
-            $pageInfo['has_region_select'] = true; // Dropdown pilih Leasing
-
-        } elseif ($slug == 'internet-pascabayar' || $slug == 'tv-pascabayar') {
-            $pageInfo['input_label'] = 'ID Pelanggan';
-            $pageInfo['icon']        = ($slug == 'tv-pascabayar') ? 'fa-tv' : 'fa-wifi';
-            $pageInfo['is_postpaid'] = true;
-            $pageInfo['has_region_select'] = true; // Dropdown pilih Provider
-
-        } elseif ($slug == 'pbb') {
-            $pageInfo['input_label'] = 'Nomor Objek Pajak (NOP)';
-            $pageInfo['input_place'] = 'Masukan NOP';
-            $pageInfo['icon']        = 'fa-building';
-            $pageInfo['is_postpaid'] = true;
-            $pageInfo['has_region_select'] = true; // Dropdown pilih Wilayah
-
-        } elseif ($slug == 'gas-negara') {
-            $pageInfo['input_label'] = 'ID Pelanggan Gas';
-            $pageInfo['icon']        = 'fa-fire';
-            $pageInfo['is_postpaid'] = true;
+            $pageInfo['has_region_select'] = true; 
         }
 
-        // -----------------------------------------------------------
-        // 5. QUERY DATABASE PRODUK
-        // -----------------------------------------------------------
+        // ===============================================================
+        // 4. QUERY PRODUK DARI DATABASE
+        // ===============================================================
         $query = \App\Models\PpobProduct::whereIn('category', $dbCategories)
             ->where('buyer_product_status', true)
             ->where('seller_product_status', true);
 
-        // Sorting Logic:
-        // - Untuk Pascabayar/Tagihan: Urutkan berdasarkan Brand (Nama Wilayah/Leasing)
-        // - Untuk Prabayar (Pulsa/Data): Urutkan berdasarkan Harga Termurah
+        // Sorting: Pascabayar by Brand, Prabayar by Harga
         if ($pageInfo['is_postpaid'] || $pageInfo['has_region_select']) {
             $query->orderBy('brand', 'asc');
         } else {
@@ -324,38 +298,29 @@ class PpobController extends Controller
         }
 
         $products = $query->get();
-
-        // Ambil list Brand (Provider/Wilayah) untuk dropdown/filter di Frontend
-        $brands = $products->pluck('brand')->unique()->values();
+        $brands   = $products->pluck('brand')->unique()->values();
         
+        // PASTI ADA WEBLOGO DISINI
         $data = compact('products', 'brands', 'weblogo', 'pageInfo', 'banners', 'settings');
 
-        // -----------------------------------------------------------
-        // 6. DETEKSI VIEW BERDASARKAN ROLE (Admin/Seller/Customer/Guest)
-        // -----------------------------------------------------------
+        // ===============================================================
+        // 5. RETURN VIEW SESUAI ROLE
+        // ===============================================================
         $prefix = request()->segment(1); 
 
-        // A. VIEW ADMIN
         if ($prefix == 'admin' || (auth()->check() && auth()->user()->hasRole('Admin'))) {
-            // Pastikan file view ada: resources/views/admin/ppob/category.blade.php
             return view('admin.ppob.category', $data); 
         }
 
-        // B. VIEW SELLER
         if ($prefix == 'seller' || (auth()->check() && auth()->user()->hasRole('Seller'))) {
-            // Pastikan file view ada: resources/views/seller/ppob/category.blade.php
             return view('seller.ppob.category', $data);
         }
 
-        // C. VIEW CUSTOMER (MEMBER LOGIN)
         if ($prefix == 'member' || $prefix == 'customer' || (auth()->check() && auth()->user()->hasRole('Customer'))) {
-            // Pastikan file view ada: resources/views/customer/ppob/category.blade.php
             return view('customer.ppob.category', $data);
         }
 
-        // D. VIEW PUBLIC (GUEST / ETALASE UTAMA)
-        // View ini yang Anda kirim screenshot-nya sebelumnya
-        return view('layouts.marketplace', $data);
+        return view('etalase.ppob.category', $data);
     }
     /**
      * 3. Sinkronisasi Data (Update Harga)
