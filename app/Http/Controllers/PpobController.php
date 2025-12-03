@@ -158,7 +158,7 @@ class PpobController extends Controller
         // Ambil list Brand (Provider/Wilayah) untuk filter/dropdown
         $brands = $products->pluck('brand')->unique()->values();
         
-        $data   = compact('products', 'brands', 'weblogo', 'pageInfo');
+        $data = compact('products', 'brands', 'weblogo', 'pageInfo', 'banners', 'settings');
 
         // --- 4. LOGIKA CERDAS DETEKSI VIEW ---
         $prefix = request()->segment(1); 
