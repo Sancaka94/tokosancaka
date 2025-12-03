@@ -1,6 +1,20 @@
 @extends('layouts.marketplace')
 
-@section('title', $pageInfo['title'] ?? 'Daftar Harga & Promo Terbaru')
+{{-- 1. LOGIC PHP: Pastikan Variable Aman & Deteksi Otomatis Postpaid --}}
+@php
+    // Cegah error undefined variable
+    $pageInfo = $pageInfo ?? [];
+    $currentSlug = $pageInfo['slug'] ?? 'pulsa'; // Default pulsa
+    
+    // Deteksi apakah ini layanan Pascabayar (Tagihan)
+    // Cek dari controller ATAU cek manual berdasarkan slug URL
+    $isPostpaid = ($pageInfo['is_postpaid'] ?? false) || 
+                  in_array($currentSlug, ['pln-pascabayar', 'pdam', 'bpjs', 'gas', 'pbb', 'internet-pasca']);
+    
+    $pageTitle = $pageInfo['title'] ?? ucfirst(str_replace('-', ' ', $currentSlug));
+@endphp
+
+@section('title', $pageTitle)
 
 @push('styles')
     {{-- CSS Swiper (Slider) --}}
@@ -92,11 +106,11 @@
                 <div class="w-full md:w-1/3">
                     <h3 class="font-bold text-gray-800 text-lg mb-4 flex items-center">
                         <i class="fas {{ $pageInfo['icon'] ?? 'fa-edit' }} text-blue-600 mr-2"></i> 
-                        {{ $pageInfo['title'] ?? 'Layanan Digital' }}
+                        {{ $pageTitle }}
                     </h3>
                     
                     <div class="mb-4">
-                        <label class="block text-xs font-bold text-gray-500 uppercase mb-2">{{ $pageInfo['input_label'] ?? 'Nomor Tujuan' }}</label>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-2">{{ $pageInfo['input_label'] ?? 'Nomor Tujuan / ID Pelanggan' }}</label>
                         <div class="relative group">
                             <input type="text" id="customer_no" 
                                 class="w-full border border-gray-300 rounded-xl px-4 py-3 pl-12 font-bold text-lg text-gray-700 focus:ring-2 focus:ring-blue-500 outline-none transition" 
@@ -112,8 +126,8 @@
                         </div>
                     </div>
 
-                    {{-- Tombol Khusus: Cek PLN Token --}}
-                    @if(isset($pageInfo['slug']) && $pageInfo['slug'] == 'pln-token')
+                    {{-- Tombol Khusus: Cek PLN Token (Prabayar) --}}
+                    @if($currentSlug == 'pln-token')
                         <button onclick="cekPlnPrabayar()" id="btn-cek-pln" class="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-4 rounded-xl transition shadow flex items-center justify-center gap-2 mb-3">
                             <i class="fas fa-search"></i> Cek Nama Pelanggan
                         </button>
@@ -123,8 +137,9 @@
                         </div>
                     @endif
 
-                    {{-- Tombol Khusus: Cek Tagihan Pascabayar --}}
-                    @if(isset($pageInfo['is_postpaid']) && $pageInfo['is_postpaid'])
+                    {{-- Tombol Khusus: Cek Tagihan (PASCABAYAR: PLN Pasca, PDAM, BPJS, dll) --}}
+                    {{-- Kita menggunakan variabel $isPostpaid yang sudah kita hitung di atas --}}
+                    @if($isPostpaid)
                         <button onclick="cekTagihan()" id="btn-cek-tagihan" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition flex justify-center items-center gap-2 shadow-lg">
                             <span id="btn-text">Cek Tagihan</span>
                             <div id="loading-spinner" class="loader hidden !border-t-white"></div>
@@ -134,7 +149,7 @@
                 </div>
 
                 {{-- Result Area (Untuk Pascabayar) --}}
-                @if(isset($pageInfo['is_postpaid']) && $pageInfo['is_postpaid'])
+                @if($isPostpaid)
                     <div class="w-full md:w-2/3 border-t md:border-t-0 md:border-l border-gray-100 md:pl-6 pt-6 md:pt-0">
                         <h4 class="font-bold text-gray-700 mb-4">Rincian Tagihan</h4>
                         
@@ -176,7 +191,7 @@
         {{-- ================================================= --}}
         {{-- 4. FILTER & PRODUCT TABLE (PRABAYAR ONLY)         --}}
         {{-- ================================================= --}}
-        @if(!isset($pageInfo['is_postpaid']) || !$pageInfo['is_postpaid'])
+        @if(!$isPostpaid)
             
             {{-- Filter Mobile (Dropdown) --}}
             <div class="lg:hidden mb-6 sticky top-4 z-30" id="mobileDropdownContainer">
@@ -325,8 +340,8 @@
             const operatorBadge = document.getElementById('operator-badge');
 
             if(operator) {
-                // 1. Auto Filter Search
-                if(searchInput && operator !== 'PLN') {
+                // 1. Auto Filter Search (Only if not in Postpaid Page like PLN Pasca)
+                if(searchInput && operator !== 'PLN' && !{{ $isPostpaid ? 'true' : 'false' }}) {
                     searchInput.value = operator;
                     filterTable(); // Trigger filter produk
                 }
@@ -337,14 +352,14 @@
                     operatorBadge.classList.remove('hidden');
                 }
                 
-                // Ubah Icon (Opsional: jika ada icon class specific)
+                // Ubah Icon
                 if(iconContainer) {
                     iconContainer.innerHTML = '<i class="fas fa-check-circle text-green-500 text-lg"></i>';
                 }
 
             } else {
                 // Reset jika tidak terdeteksi atau kosong
-                if(val.length < 4 && searchInput) {
+                if(val.length < 4 && searchInput && !{{ $isPostpaid ? 'true' : 'false' }}) {
                     searchInput.value = '';
                     filterTable();
                 }
@@ -361,23 +376,17 @@
         
         // TELKOMSEL
         if (/^08(11|12|13|21|22|23|51|52|53)/.test(prefix)) return 'telkomsel';
-        
         // INDOSAT
         if (/^08(14|15|16|55|56|57|58)/.test(prefix)) return 'indosat';
-        
         // XL
         if (/^08(17|18|19|59|77|78)/.test(prefix)) return 'xl';
-        
         // AXIS
         if (/^08(31|32|33|38)/.test(prefix)) return 'axis';
-        
         // TRI (3)
         if (/^08(95|96|97|98|99)/.test(prefix)) return 'tri';
-        
         // SMARTFREN
         if (/^08(81|82|83|84|85|86|87|88|89)/.test(prefix)) return 'smartfren';
-
-        // DETEKSI PLN (Bukan awalan 08, panjang > 10 digit)
+        // DETEKSI PLN
         if (!number.startsWith('08') && number.length >= 11) return 'PLN';
 
         return null;
@@ -473,10 +482,15 @@
         btn.disabled = true; spinner.classList.remove('hidden'); text.innerText = "Mengecek...";
         resultDiv.classList.add('hidden'); emptyDiv.classList.add('hidden'); errorMsg.classList.add('hidden');
 
-        // Menggunakan SKU 'pln' sesuai hasil debug sukses Anda
-        // FIX: Gunakan Null Coalescing Operator (??) untuk mencegah error Undefined variable $pageInfo
-        const skuPasca = '{{ ($pageInfo["slug"] ?? "") == "pdam" ? "pdam" : "pln" }}'; 
+        // AUTO MAP SLUG -> SKU (Agar Dinamis untuk BPJS, PDAM, dll)
+        const currentSlug = '{{ $currentSlug }}';
+        let skuPasca = 'pln'; // Default
 
+        if (currentSlug.includes('pdam')) skuPasca = 'pdam';
+        else if (currentSlug.includes('bpjs')) skuPasca = 'bpjs';
+        else if (currentSlug.includes('gas')) skuPasca = 'gas';
+        else if (currentSlug === 'pln-pascabayar') skuPasca = 'pln';
+        
         fetch('{{ route("ppob.check.bill") }}', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
