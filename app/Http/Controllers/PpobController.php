@@ -33,75 +33,89 @@ class PpobController extends Controller
      * 1. Halaman Utama PPOB (Dashboard)
      * URL: /admin/digital  atau  /etalase/ppob/digital
      */
-    public function index($slug = 'pulsa')
+   public function index($slug = 'pulsa')
     {
-        // Ambil data logo dari tabel settings (sesuaikan key 'web_logo' jika beda)
+        // ============================================================
+        // 1. AMBIL DATA PENDUKUNG (Logo, Banner, Setting)
+        // ============================================================
+        
+        // Ambil Logo (PENTING: Agar tidak error undefined variable)
         $logoData = \App\Models\Setting::where('key', 'web_logo')->first();
-        $weblogo  = $logoData ? $logoData->value : 'logo.png'; // Fallback jika kosong
-        // --- 1. LOGIKA CERDAS DETEKSI PENGUNJUNG (ADMIN VS PUBLIC) ---
+        $weblogo  = $logoData ? $logoData->value : 'logo.png'; 
+
+        // Ambil Banner Slider
+        $banners = \App\Models\BannerEtalase::latest()->get(); 
+        
+        // Ambil Setting Banner Promo (Banner kecil di samping slider)
+        $settings = \App\Models\Setting::whereIn('key', ['banner_2','banner_3'])->pluck('value','key');
+
+        // ============================================================
+        // 2. LOGIKA ADMIN / REDIRECT
+        // ============================================================
         $prefix = request()->segment(1);
 
         // Jika URL diawali 'admin' ATAU user yang login adalah Admin
         if ($prefix == 'admin' || (auth()->check() && auth()->user()->hasRole('Admin'))) {
-            // Pastikan view admin ini ada
-            return view('admin.ppob.index'); 
+            // Pastikan Anda mengirim data yang sama ke admin view juga
+            return view('admin.ppob.index', compact('weblogo', 'banners')); 
         }
 
-        // --- 2. LOGIKA UNTUK PENGUNJUNG PUBLIC (FRONTEND) ---
-
-        // A. Daftar Pemetaan Judul Kategori (Slug -> Nama Asli)
+        // ============================================================
+        // 3. LOGIKA JUDUL & SLUG (MAPPING)
+        // ============================================================
         $titles = [
             // PRABAYAR
-            'pulsa' => 'Pulsa Reguler',
-            'data'  => 'Paket Data',
-            'pln-token' => 'Token PLN',
-            'games' => 'Voucher Games',
-            'voucher' => 'Voucher Digital',
-            'e-money' => 'E-Money',
-            'china-topup' => 'China TOPUP',
-            'malaysia-topup' => 'Malaysia TOPUP',
-            'philippines-topup' => 'Philippines TOPUP',
-            'singapore-topup' => 'Singapore TOPUP',
-            'thailand-topup' => 'Thailand TOPUP',
-            'vietnam-topup' => 'Vietnam TOPUP',
-            'paket-sms-telpon' => 'Paket SMS & Telpon',
-            'streaming' => 'Streaming Premium',
-            'tv' => 'TV Prabayar',
-            'aktivasi-voucher' => 'Aktivasi Voucher',
-            'masa-aktif' => 'Perpanjang Masa Aktif',
-            'bundling' => 'Paket Bundling',
-            'aktivasi-perdana' => 'Aktivasi Perdana',
-            'gas' => 'Token Gas',
-            'esim' => 'eSIM',
-            'media-sosial' => 'Media Sosial',
+            'pulsa'             => 'Pulsa Reguler',
+            'data'              => 'Paket Data',
+            'pln-token'         => 'Token PLN',
+            'games'             => 'Voucher Games',
+            'voucher'           => 'Voucher Digital',
+            'e-money'           => 'E-Money',
+            'paket-sms-telpon'  => 'Paket SMS & Telpon',
+            'masa-aktif'        => 'Masa Aktif',
+            'streaming'         => 'Streaming Premium',
+            'tv'                => 'TV Prabayar',
+            'aktivasi-voucher'  => 'Aktivasi Voucher',
+            'aktivasi-perdana'  => 'Aktivasi Perdana',
+            'gas'               => 'Token Gas',
+            'esim'              => 'eSIM',
+            'media-sosial'      => 'Media Sosial',
             
+            // INTERNATIONAL TOPUP
+            'china-topup'       => 'China TOPUP',
+            'malaysia-topup'    => 'Malaysia TOPUP',
+            'philippines-topup' => 'Philippines TOPUP',
+            'singapore-topup'   => 'Singapore TOPUP',
+            'thailand-topup'    => 'Thailand TOPUP',
+            'vietnam-topup'     => 'Vietnam TOPUP',
+
             // SPECIAL OFFERS
-            'telkomsel-omni' => 'Telkomsel Omni',
-            'indosat-only4u' => 'Indosat Only4u',
-            'tri-cuanmax' => 'Tri CuanMax',
-            'xl-axis-cuanku' => 'XL Axis Cuanku',
-            'by-u' => 'by.U',
+            'telkomsel-omni'    => 'Telkomsel Omni',
+            'indosat-only4u'    => 'Indosat Only4u',
+            'tri-cuanmax'       => 'Tri CuanMax',
+            'xl-axis-cuanku'    => 'XL Axis Cuanku',
+            'by-u'              => 'by.U',
 
             // PASCABAYAR
-            'pln-pascabayar' => 'PLN Pascabayar',
-            'pdam' => 'PDAM',
-            'hp-pascabayar' => 'HP Pascabayar',
-            'internet-pascabayar' => 'Internet Pascabayar',
-            'bpjs-kesehatan' => 'BPJS Kesehatan',
-            'multifinance' => 'Multifinance / Cicilan',
-            'pbb' => 'Pajak PBB',
-            'gas-negara' => 'Gas Negara (PGN)',
-            'tv-pascabayar' => 'TV Pascabayar',
-            'samsat' => 'E-Samsat',
+            'pln-pascabayar'       => 'PLN Pascabayar',
+            'pdam'                 => 'PDAM',
+            'hp-pascabayar'        => 'HP Pascabayar',
+            'internet-pascabayar'  => 'Internet Pascabayar',
+            'bpjs-kesehatan'       => 'BPJS Kesehatan',
+            'multifinance'         => 'Multifinance / Cicilan',
+            'pbb'                  => 'Pajak PBB',
+            'gas-negara'           => 'Gas Negara (PGN)',
+            'tv-pascabayar'        => 'TV Pascabayar',
+            'samsat'               => 'E-Samsat',
             'bpjs-ketenagakerjaan' => 'BPJS Ketenagakerjaan',
-            'pln-nontaglis' => 'PLN Non-Taglis',
+            'pln-nontaglis'        => 'PLN Non-Taglis',
         ];
 
-        // B. Tentukan Judul Halaman
-        // Jika slug tidak ada di daftar, ubah slug-jadi-teks biasa
         $pageTitle = $titles[$slug] ?? ucwords(str_replace('-', ' ', $slug));
 
-        // C. Deteksi Kategori Pascabayar (Untuk Logic Frontend)
+        // ============================================================
+        // 4. LOGIKA PASCABAYAR & INPUT LABEL
+        // ============================================================
         $postpaidSlugs = [
             'pln-pascabayar', 'pdam', 'hp-pascabayar', 'internet-pascabayar', 
             'bpjs-kesehatan', 'multifinance', 'pbb', 'gas-negara', 
@@ -110,30 +124,32 @@ class PpobController extends Controller
         
         $isPostpaid = in_array($slug, $postpaidSlugs);
 
-        // D. Tentukan Label Input & Icon secara dinamis
-        $inputLabel = 'Nomor Telepon / Tujuan';
+        // Default Config
+        $inputLabel       = 'Nomor Telepon / Tujuan';
         $inputPlaceholder = 'Contoh: 0812xxxx';
-        $icon = 'fa-mobile-alt';
+        $icon             = 'fa-mobile-alt';
 
+        // Custom Config per Kategori
         if (str_contains($slug, 'pln')) {
-            $inputLabel = 'ID Pelanggan / No. Meter';
+            $inputLabel       = 'ID Pelanggan / No. Meter';
             $inputPlaceholder = 'Contoh: 5300xxxx';
-            $icon = 'fa-bolt';
+            $icon             = 'fa-bolt';
         } elseif (str_contains($slug, 'bpjs')) {
-            $inputLabel = 'Nomor VA BPJS';
+            $inputLabel       = 'Nomor VA BPJS';
             $inputPlaceholder = 'Contoh: 88888xxxx';
-            $icon = 'fa-heartbeat';
+            $icon             = 'fa-heartbeat';
         } elseif (str_contains($slug, 'pdam')) {
-            $inputLabel = 'ID Pelanggan PDAM';
+            $inputLabel       = 'ID Pelanggan PDAM';
             $inputPlaceholder = 'Nomor Pelanggan...';
-            $icon = 'fa-faucet';
+            $icon             = 'fa-faucet';
         } elseif (str_contains($slug, 'game')) {
-            $inputLabel = 'User ID Game';
+            $inputLabel       = 'User ID Game';
             $inputPlaceholder = 'Masukkan ID Game...';
-            $icon = 'fa-gamepad';
+            $icon             = 'fa-gamepad';
+        } elseif ($slug == 'e-money') {
+            $icon             = 'fa-wallet';
         }
 
-        // E. Siapkan Data PageInfo untuk View
         $pageInfo = [
             'slug'        => $slug,
             'title'       => $pageTitle,
@@ -143,18 +159,43 @@ class PpobController extends Controller
             'icon'        => $icon,
         ];
 
-        // F. Ambil Data Produk (Contoh Query - Sesuaikan dengan Model Anda)
-        // $products = \App\Models\Product::where('category_slug', $slug)->where('status', 'active')->get();
-        // $banners  = \App\Models\Banner::where('position', 'ppob')->get();
+        // ============================================================
+        // 5. QUERY PRODUK (Agar Produk Muncul, Tidak Kosong)
+        // ============================================================
         
-        // Untuk saat ini kita kirim array kosong dulu agar tidak error jika DB belum siap
-        $products = []; 
-        $banners = [];
-        $settings = [];
+        // Mapping slug URL ke nama kategori di Database Anda
+        $dbCategoryMap = [
+            'pulsa' => 'Pulsa', 'data' => 'Data', 'pln-token' => 'PLN', 
+            'games' => 'Games', 'e-money' => 'E-Money'
+            // Tambahkan mapping lain jika perlu, atau gunakan logic LIKE
+        ];
 
-        // G. Return View Public
-        // Menggunakan view 'layouts.marketplace' sesuai struktur HTML yang kamu kirim sebelumnya
-        return view('layouts.marketplace', compact('pageInfo', 'products', 'banners', 'settings'));
+        $dbCategory = $dbCategoryMap[$slug] ?? ucwords(str_replace('-', ' ', $slug));
+
+        // Ambil produk dari DB (Sesuaikan model Anda: PpobProduct atau Product)
+        // Saya pakai query LIKE agar lebih fleksibel menangkap variasi nama kategori
+        $products = \App\Models\PpobProduct::where('category', 'LIKE', "%{$dbCategory}%")
+            ->where('buyer_product_status', true) // Hanya yang aktif
+            ->where('seller_product_status', true)
+            ->orderBy('sell_price', 'asc') // Urutkan termurah
+            ->get();
+
+        // Ambil list Brand untuk filter
+        $brands = $products->pluck('brand')->unique()->values();
+
+        // ============================================================
+        // 6. RETURN VIEW (FIXED)
+        // ============================================================
+        // Kuncinya ada di sini: Menambahkan 'weblogo' dan 'brands' ke compact
+        
+        return view('layouts.marketplace', compact(
+            'pageInfo', 
+            'products', 
+            'banners', 
+            'settings', 
+            'weblogo',   // <--- INI PERBAIKANNYA (Agar tidak error undefined variable)
+            'brands'     // <--- INI JUGA PERLU (Untuk filter operator)
+        ));
     }
 
    /**
