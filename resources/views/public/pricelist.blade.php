@@ -101,7 +101,14 @@
                             <input type="text" id="customer_no" 
                                 class="w-full border border-gray-300 rounded-xl px-4 py-3 pl-12 font-bold text-lg text-gray-700 focus:ring-2 focus:ring-blue-500 outline-none transition" 
                                 placeholder="{{ $pageInfo['input_place'] ?? 'Masukkan Nomor...' }}">
-                            <div class="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500"><i class="fas fa-keyboard"></i></div>
+                            {{-- Icon Prefix: Diberi ID untuk diganti JS --}}
+                            <div id="prefix-icon-container" class="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 flex items-center justify-center w-6 h-6">
+                                <i class="fas fa-keyboard text-lg"></i>
+                            </div>
+                            {{-- Badge Nama Operator (Hidden Default) --}}
+                            <div id="operator-badge" class="absolute right-4 top-1/2 transform -translate-y-1/2 hidden bg-blue-100 text-blue-700 text-xs font-bold px-2 py-1 rounded">
+                                -
+                            </div>
                         </div>
                     </div>
 
@@ -307,6 +314,74 @@
 
     // 2. Transaksi Logic Variables
     const inputNo = document.getElementById('customer_no');
+    
+    // --- SMART DETECTION LOGIC ---
+    if(inputNo) {
+        inputNo.addEventListener('input', function() {
+            const val = this.value;
+            const operator = detectOperator(val);
+            const searchInput = document.getElementById('searchInput');
+            const iconContainer = document.getElementById('prefix-icon-container');
+            const operatorBadge = document.getElementById('operator-badge');
+
+            if(operator) {
+                // 1. Auto Filter Search
+                if(searchInput && operator !== 'PLN') {
+                    searchInput.value = operator;
+                    filterTable(); // Trigger filter produk
+                }
+
+                // 2. Visual Feedback (Icon/Badge)
+                if(operatorBadge) {
+                    operatorBadge.innerText = operator.toUpperCase();
+                    operatorBadge.classList.remove('hidden');
+                }
+                
+                // Ubah Icon (Opsional: jika ada icon class specific)
+                if(iconContainer) {
+                    iconContainer.innerHTML = '<i class="fas fa-check-circle text-green-500 text-lg"></i>';
+                }
+
+            } else {
+                // Reset jika tidak terdeteksi atau kosong
+                if(val.length < 4 && searchInput) {
+                    searchInput.value = '';
+                    filterTable();
+                }
+                if(operatorBadge) operatorBadge.classList.add('hidden');
+                if(iconContainer) iconContainer.innerHTML = '<i class="fas fa-keyboard text-lg"></i>';
+            }
+        });
+    }
+
+    function detectOperator(number) {
+        if (!number || number.length < 4) return null;
+
+        const prefix = number.substring(0, 4);
+        
+        // TELKOMSEL
+        if (/^08(11|12|13|21|22|23|51|52|53)/.test(prefix)) return 'telkomsel';
+        
+        // INDOSAT
+        if (/^08(14|15|16|55|56|57|58)/.test(prefix)) return 'indosat';
+        
+        // XL
+        if (/^08(17|18|19|59|77|78)/.test(prefix)) return 'xl';
+        
+        // AXIS
+        if (/^08(31|32|33|38)/.test(prefix)) return 'axis';
+        
+        // TRI (3)
+        if (/^08(95|96|97|98|99)/.test(prefix)) return 'tri';
+        
+        // SMARTFREN
+        if (/^08(81|82|83|84|85|86|87|88|89)/.test(prefix)) return 'smartfren';
+
+        // DETEKSI PLN (Bukan awalan 08, panjang > 10 digit)
+        if (!number.startsWith('08') && number.length >= 11) return 'PLN';
+
+        return null;
+    }
 
     // --- LOGIKA FILTER KATEGORI (DROPDOWN & SCROLL) ---
     const searchInput = document.getElementById('searchInput');
