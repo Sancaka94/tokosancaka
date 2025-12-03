@@ -37,9 +37,9 @@
         
         {{-- Breadcrumb Simple --}}
         <div class="text-sm text-gray-500 mb-6 flex items-center gap-2">
-            <a href="{{ url('/') }}" class="hover:text-red-500 transition">Beranda</a> 
+            <a href="https://tokosancaka.com/etalase" class="hover:text-red-500 transition">Beranda</a> 
             <i class="fas fa-chevron-right text-xs text-gray-300"></i>
-            <a href="{{ url('/etalase/category/digital') }}" class="hover:text-red-500 transition">Digital</a>
+            <a href="{{ url('/etalase/category/e-wallet-pulsa') }}" class="hover:text-red-500 transition">Digital</a>
             <i class="fas fa-chevron-right text-xs text-gray-300"></i>
             <span class="font-bold text-gray-700">{{ $pageInfo['title'] }}</span>
         </div>
