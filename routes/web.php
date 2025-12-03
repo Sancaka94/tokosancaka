@@ -84,12 +84,11 @@ Route::get('/daftar-harga', [PublicController::class, 'pricelist'])->name('publi
 // RUTE HALAMAN PUBLIK (TANPA LOGIN)
 // ====================================================
 
-// 1. Halaman Kategori Spesifik (Untuk membedakan tampilan Pasca/Prabayar)
-Route::get('/layanan/{slug}', [PublicController::class, 'showCategory'])->name('public.category');
-
-// 2. AJAX Cek Tagihan (Public)
-Route::post('/ppob/check-bill', [PpobController::class, 'checkBill'])->name('ppob.check.bill');
-// HAPUS 'role:Admin' dari array middleware, cukup 'auth' saja dulu
+// PPOB Public (Daftar Harga & Cek Tagihan)
+Route::get('/daftar-harga', [PublicController::class, 'pricelist'])->name('public.pricelist');
+Route::get('/layanan/{slug}', [PublicController::class, 'showCategory'])->name('public.category'); // Halaman Kategori Spesifik
+Route::post('/ppob/check-bill', [PpobController::class, 'checkBill'])->name('ppob.check.bill'); // AJAX Cek Tagihan
+Route::post('/ppob/check-pln-prabayar', [PpobController::class, 'checkPlnPrabayar'])->name('ppob.check.pln.prabayar'); // AJAX Cek Nama PLN
 Route::prefix('admin/ppob')->name('admin.ppob.')->middleware(['auth'])->group(function () {
     
     // 1. Halaman Index (Tabel Produk)
@@ -569,9 +568,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Pelanggan|Seller'])
 
 // =========================================================================
   // Halaman Kategori PPOB (Pulsa, Data, PLN, dll)
-    Route::get('/digital/{slug}', [PpobController::class, 'category'])
-        ->name('admin.ppob.category'); // <-- INI YANG DICARI OLEH BLADE ANDA
-        
+
 
 
 Route::prefix('admin')->name('admin.')->group(function () {
