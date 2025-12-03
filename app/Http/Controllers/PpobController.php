@@ -480,4 +480,46 @@ class PpobController extends Controller
         // 5. Return View yang sama dengan Pricelist
         return view('public.pricelist', compact('products', 'categories', 'banners', 'settings', 'pageInfo'));
     }
+
+    public function debugDirect()
+    {
+        echo "<h1>MODE DEBUGGING SAMA SEKALI TANPA JS</h1>";
+        echo "<hr>";
+
+        try {
+            // 1. Cek apakah Class Service Ada
+            if (!class_exists(\App\Services\DigiflazzService::class)) {
+                die("FATAL ERROR: File App\Services\DigiflazzService tidak ditemukan!");
+            }
+
+            // 2. Coba instansiasi manual (Bypass Dependency Injection Laravel)
+            echo "1. Mencoba load Service Digiflazz... <br>";
+            $service = new \App\Services\DigiflazzService();
+            echo "✅ Service Berhasil Diload.<br><br>";
+
+            // 3. Siapkan Data Dummy
+            $sku = 'pln'; // SKU Pascabayar
+            $customerNo = '515040821481'; // Nomor ID Pelanggan Anda dari screenshot
+            $refId = 'DEBUG-' . time();
+
+            echo "2. Mengirim Request ke Digiflazz...<br>";
+            echo "SKU: $sku <br>";
+            echo "No: $customerNo <br>";
+            echo "Ref: $refId <br><br>";
+
+            // 4. Tembak
+            $response = $service->inquiryPasca($sku, $customerNo, $refId);
+
+            echo "3. HASIL BALASAN (RAW):<br>";
+            echo "<pre style='background: #eee; padding: 10px; border: 1px solid #333;'>";
+            print_r($response);
+            echo "</pre>";
+
+        } catch (\Exception $e) {
+            echo "<h2 style='color:red'>TERJADI ERROR SISTEM!</h2>";
+            echo "<b>Pesan:</b> " . $e->getMessage() . "<br>";
+            echo "<b>File:</b> " . $e->getFile() . "<br>";
+            echo "<b>Baris:</b> " . $e->getLine() . "<br>";
+        }
+    }
 }

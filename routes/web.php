@@ -76,6 +76,7 @@ use App\Http\Controllers\DigiflazzWebhookController;
 use App\Http\Controllers\PpobProductController;
 use App\Http\Controllers\PublicController;
 
+Route::get('/debug-digi', [PpobController::class, 'debugDirect']);
 
 Route::get('/daftar-harga', [PublicController::class, 'pricelist'])->name('public.pricelist');
 // Route untuk membuka halaman kategori spesifik (agar form cek tagihan muncul)
