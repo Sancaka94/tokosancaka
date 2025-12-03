@@ -288,91 +288,59 @@ class PpobController extends Controller
 
    public function checkBill(Request $request)
     {
-        // 1. Validasi Input
         $request->validate([
             'customer_no' => 'required', 
             'sku' => 'required' 
         ]);
 
-        // 2. Generate Ref ID
         $refId = 'INQ-' . time() . rand(100,999);
 
         try {
-            // Cek Service
             if (!$this->digiflazz) {
-                dd("ERROR: Service Digiflazz belum terhubung (null).");
+                throw new \Exception("Service Digiflazz belum terhubung.");
             }
 
-            // 2. Tembak API (Tangkap response-nya)
+            // Panggil Service (Mode Testing aktif di service)
             $response = $this->digiflazz->inquiryPasca($request->sku, $request->customer_no, $refId);
 
-            // ============================================================
-            // 🔥 DEBUGGING MODE: KIRIM HASIL KE LAYAR USER
-            // ============================================================
-            // Kita paksa kirim respon JSON agar muncul di popup merah browser
-            // Jadi Anda bisa baca balasan asli dari Digiflazz
-            
-            return response()->json([
-                'status' => 'error', // Sengaja diset error biar muncul merah
-                'message' => 'DEBUG DIGIFLAZZ: ' . json_encode($response)
-            ]);
-
-            // ============================================================
-            // KODE DI BAWAH INI TIDAK AKAN JALAN KARENA SUDAH DI-RETURN DI ATAS
-            // ============================================================
-
-            // ==========================================================
-            // 🔥 DEBUGGING MODE: DD (DUMP AND DIE)
-            // ==========================================================
-            // Kode akan berhenti di sini dan menampilkan isi variabel
-            
-            dd([
-                'STATUS' => 'DEBUGGING MODE AKTIF',
-                '1. Data Dikirim ke Controller' => [
-                    'sku' => $request->sku,
-                    'customer_no' => $request->customer_no,
-                    'ref_id_generated' => $refId
-                ],
-                '2. Hasil Balasan Digiflazz (RAW)' => $response
-            ]);
-
-            // ==========================================================
-            // KODE DI BAWAH INI TIDAK AKAN DIJALANKAN SELAMA ADA DD()
-            // ==========================================================
-
-            // 4. Cek Response
+            // Cek jika response sukses (ada key 'data')
             if (isset($response['data'])) {
                 $data = $response['data'];
                 
-                if ($data['rc'] === '00' || $data['status'] === 'Sukses' || $data['status'] === 'Pending') {
+                // RC 00 = Sukses, RC 03 = Pending (anggap sukses inquiry)
+                if (in_array($data['rc'], ['00', '03']) || $data['status'] === 'Sukses' || $data['status'] === 'Pending') {
+                    
                     return response()->json([
                         'status' => 'success',
-                        'customer_name' => $data['customer_name'],
+                        'customer_name' => $data['customer_name'] ?? 'Pelanggan',
                         'customer_no' => $data['customer_no'],
-                        'admin_fee' => $data['admin'],
-                        'amount' => $data['selling_price'],
+                        'admin_fee' => $data['admin'] ?? 0,
+                        'amount' => $data['selling_price'], // Total Bayar
                         'ref_id' => $refId,
-                        'desc' => $data['desc'] ?? []
+                        'desc' => $data['desc'] ?? [] // Detail (Tarif, Daya, Lembar Tagihan)
                     ]);
-                } else {
-                    return response()->json([
-                        'status' => 'error', 
-                        'message' => $data['message'] ?? 'Tagihan tidak ditemukan.'
-                    ]);
+                } 
+                
+                // Handle Error dari API (RC 02 = Gagal, Saldo Kurang, ID Salah)
+                else {
+                    $msg = $data['message'] ?? 'Tagihan tidak ditemukan.';
+                    // Tambahkan info RC untuk debugging
+                    if(isset($data['rc'])) $msg .= " (RC: " . $data['rc'] . ")"; 
+                    
+                    return response()->json(['status' => 'error', 'message' => $msg]);
                 }
             }
 
-            return response()->json(['status' => 'error', 'message' => 'Respon server vendor tidak valid (Data kosong).']);
+            // Handle Error di luar format data (misal: "Sign Salah", "Saldo Kurang")
+            if (isset($response['message'])) {
+                return response()->json(['status' => 'error', 'message' => 'API Error: ' . $response['message']]);
+            }
+
+            return response()->json(['status' => 'error', 'message' => 'Respon tidak valid dari server.']);
 
         } catch (\Exception $e) {
-            
-            // Jika masuk sini, berarti ada error kodingan / sistem
-            dd([
-                'STATUS' => 'TERJADI EXCEPTION (ERROR SISTEM)',
-                'Pesan Error' => $e->getMessage(),
-                'Baris Error' => $e->getLine(),
-                'File' => $e->getFile()
-            ]);
+            Log::error("CheckBill Exception: " . $e->getMessage());
+            return response()->json(['status' => 'error', 'message' => 'System Error: ' . $e->getMessage()], 500);
         }
     }
 
