@@ -63,8 +63,8 @@ class PpobController extends Controller
         // -----------------------------------------------------------
         
         // OPSI A: Jika Anda punya Model Banner, aktifkan baris ini:
-        $banners = \App\Models\Banner::where('status', 'active')->get();
-        $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
+        //$banners = \App\Models\Banner::where('status', 'active')->get();
+        //$settings = \App\Models\Setting::pluck('value', 'key')->toArray();
 
         // OPSI B (SAFE MODE): Gunakan array kosong dulu agar tidak error
         $banners = collect([]); // Collection kosong
