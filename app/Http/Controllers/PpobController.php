@@ -158,7 +158,7 @@ class PpobController extends Controller
         }
 
         // Return ke Layout Marketplace (Public)
-        return view('layouts.marketplace', compact(
+        return view('etalase.ppob.category', compact(
             'pageInfo', 
             'products', 
             'banners', 
