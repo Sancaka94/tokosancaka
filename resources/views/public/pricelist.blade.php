@@ -87,7 +87,7 @@
         <div class="text-sm text-gray-500 mb-6 flex items-center gap-2">
             <a href="/" class="hover:text-red-500 transition">Beranda</a> 
             <i class="fas fa-chevron-right text-xs text-gray-300"></i>
-            <span class="font-bold text-gray-700">{{ $pageInfo['title'] }}</span>
+            <span class="font-bold text-gray-700">{{ $pageInfo['title'] ?? 'Layanan' }}</span>
         </div>
 
         {{-- Notifikasi --}}
