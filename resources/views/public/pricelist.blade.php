@@ -104,6 +104,20 @@
                         <i class="fas {{ $pageInfo['icon'] ?? 'fa-edit' }} text-blue-600 mr-2"></i> 
                         {{ $pageTitle }}
                     </h3>
+
+                    {{-- [NEW] TAB PILIHAN KHUSUS PLN (TOKEN / PASCA) --}}
+                    @if(str_contains($currentSlug, 'pln'))
+                    <div class="flex p-1 bg-gray-100 rounded-xl mb-4">
+                        <a href="{{ url('/etalase/ppob/digital/pln-token') }}" 
+                           class="flex-1 text-center py-2 text-sm font-bold rounded-lg transition {{ str_contains($currentSlug, 'token') ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}">
+                           Token Listrik
+                        </a>
+                        <a href="{{ url('/etalase/ppob/digital/pln-pascabayar') }}" 
+                           class="flex-1 text-center py-2 text-sm font-bold rounded-lg transition {{ str_contains($currentSlug, 'pasca') ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}">
+                           Tagihan PLN
+                        </a>
+                    </div>
+                    @endif
                     
                     <div class="mb-4">
                         <label class="block text-xs font-bold text-gray-500 uppercase mb-2">{{ $pageInfo['input_label'] ?? 'Nomor Tujuan / ID Pelanggan' }}</label>
