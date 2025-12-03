@@ -12,8 +12,58 @@
     $isPostpaid = ($pageInfo['is_postpaid'] ?? false) || in_array($currentSlug, $postpaidSlugs);
     $pageTitle = $pageInfo['title'] ?? ucfirst(str_replace('-', ' ', $currentSlug));
 
-    // Variable $menus sekarang dikirim dari Controller, jadi kita beri fallback kosong saja
-    $menus = $menus ?? [];
+    // --- 2. KONFIGURASI MENU ARRAY (Agar Tampilan Rapi & Dinamis) ---
+    // Gunakan full class name untuk warna agar Tailwind mendeteksinya saat compile
+    $menus = [
+        [
+            'slug'  => 'pulsa', 
+            'name'  => 'Pulsa', 
+            'icon'  => 'fa-mobile-screen-button', 
+            'style' => 'hover:border-blue-500 bg-blue-50 text-blue-600'
+        ],
+        [
+            'slug'  => 'data', 
+            'name'  => 'Paket Data', 
+            'icon'  => 'fa-wifi', 
+            'style' => 'hover:border-green-500 bg-green-50 text-green-600'
+        ],
+        [
+            'slug'  => 'pln-token', 
+            'name'  => 'Token PLN', 
+            'icon'  => 'fa-bolt', 
+            'style' => 'hover:border-yellow-500 bg-yellow-50 text-yellow-500'
+        ],
+        [
+            'slug'  => 'pln-pascabayar', 
+            'name'  => 'PLN Pasca', 
+            'icon'  => 'fa-file-invoice-dollar', 
+            'style' => 'hover:border-orange-500 bg-orange-50 text-orange-500'
+        ],
+        [
+            'slug'  => 'pdam', 
+            'name'  => 'PDAM', 
+            'icon'  => 'fa-faucet', 
+            'style' => 'hover:border-cyan-500 bg-cyan-50 text-cyan-600'
+        ],
+        [
+            'slug'  => 'e-money', 
+            'name'  => 'E-Wallet', 
+            'icon'  => 'fa-wallet', 
+            'style' => 'hover:border-purple-500 bg-purple-50 text-purple-600'
+        ],
+        [
+            'slug'  => 'voucher-game', 
+            'name'  => 'Games', 
+            'icon'  => 'fa-gamepad', 
+            'style' => 'hover:border-red-500 bg-red-50 text-red-600'
+        ],
+        [
+            'slug'  => 'streaming', 
+            'name'  => 'TV Kabel', 
+            'icon'  => 'fa-tv', 
+            'style' => 'hover:border-pink-500 bg-pink-50 text-pink-600'
+        ],
+    ];
 @endphp
 
 @section('title', $pageTitle)
@@ -67,7 +117,7 @@
 </section>
 
 {{-- ============================================================ --}}
-{{-- ⚡ MENU LAYANAN (LOOPING DARI ARRAY CONTROLLER) ⚡ --}}
+{{-- ⚡ MENU LAYANAN (LOOPING DARI ARRAY) ⚡ --}}
 {{-- ============================================================ --}}
 
 <section class="mb-10" data-aos="fade-up">
