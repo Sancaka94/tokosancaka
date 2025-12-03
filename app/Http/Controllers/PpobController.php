@@ -286,32 +286,48 @@ class PpobController extends Controller
         }
     }
 
-    /**
-     * 6. AJAX: Cek Tagihan Pascabayar (PLN/PDAM)
-     */
     public function checkBill(Request $request)
     {
-        $request->validate(['customer_no' => 'required', 'sku' => 'required']);
+        $request->validate([
+            'customer_no' => 'required', 
+            'sku' => 'required' // SKU Pascabayar (pln, pdam, bpjs, dll)
+        ]);
 
+        // Generate Ref ID Unik
         $refId = 'INQ-' . time() . rand(100,999);
+
+        // Panggil Service Digiflazz
         $response = $this->digiflazz->inquiryPasca($request->sku, $request->customer_no, $refId);
 
+        // Cek Response
         if (isset($response['data'])) {
             $data = $response['data'];
+            
+            // RC '00' berarti Sukses, atau status 'Sukses'/'Pending' (biasanya inq-pasca sukses langsung 'Sukses' atau RC 00)
             if ($data['rc'] === '00' || $data['status'] === 'Sukses') {
+                
+                // Ambil Detail Tagihan (Desc)
+                $desc = $data['desc'] ?? [];
+                
+                // Format Data untuk dikirim ke Frontend
                 return response()->json([
                     'status' => 'success',
                     'customer_name' => $data['customer_name'],
                     'customer_no' => $data['customer_no'],
-                    'amount' => $data['selling_price'],
-                    'desc' => $data['desc'] ?? [], 
-                    'ref_id' => $refId 
+                    'admin_fee' => $data['admin'],
+                    'amount' => $data['selling_price'], // Total yang harus dibayar user
+                    'ref_id' => $refId, // Penting untuk proses bayar nanti
+                    'desc' => $desc // Data tambahan (Tarif, Daya, Alamat, Lembar Tagihan)
                 ]);
             } else {
-                return response()->json(['status' => 'error', 'message' => $data['message'] ?? 'Tagihan tidak ditemukan.']);
+                return response()->json([
+                    'status' => 'error', 
+                    'message' => $data['message'] ?? 'Tagihan tidak ditemukan atau sudah terbayar.'
+                ]);
             }
         }
-        return response()->json(['status' => 'error', 'message' => 'Gagal terhubung ke server.']);
+
+        return response()->json(['status' => 'error', 'message' => 'Gagal menghubungi server provider.']);
     }
 
     /**

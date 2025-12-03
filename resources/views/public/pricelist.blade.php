@@ -325,5 +325,86 @@
         }
         emptyState.classList.toggle('hidden', visibleCount > 0);
     }
+
+    // ==========================================
+    // LOGIKA UNTUK PASCABAYAR
+    // ==========================================
+    @else
+        let inquiryRefId = null;
+
+        function cekTagihan() {
+            const no = inputNo.value;
+            // SKU Pasca: Sesuaikan dengan kategori halaman. 
+            // Jika halaman PLN Pasca, sku='pln'. Jika PDAM, sku='pdam'.
+            // Di sini kita ambil logika sederhana berdasarkan slug halaman atau default 'pln'
+            let skuPasca = 'pln'; 
+            @if($pageInfo['slug'] == 'pdam') skuPasca = 'pdam'; @endif
+            @if($pageInfo['slug'] == 'bpjs') skuPasca = 'bpjs'; @endif
+            // Tambahkan logika lain sesuai slug kategori Anda
+
+            if(no.length < 5) { alert("Masukkan Nomor Pelanggan!"); return; }
+
+            const btn = document.getElementById('btn-cek-tagihan');
+            const spinner = document.getElementById('loading-spinner');
+            const text = document.getElementById('btn-text');
+            const resultDiv = document.getElementById('bill_result');
+            const emptyDiv = document.getElementById('bill_empty');
+
+            // UI Loading
+            btn.disabled = true;
+            spinner.classList.remove('hidden');
+            text.innerText = "Mengecek...";
+            resultDiv.classList.add('hidden');
+            emptyDiv.classList.add('hidden');
+
+            fetch('{{ route("ppob.check.bill") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({
+                    customer_no: no,
+                    sku: skuPasca 
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                btn.disabled = false;
+                spinner.classList.add('hidden');
+                text.innerText = "Cek Tagihan";
+
+                if(data.status === 'success') {
+                    // Update UI dengan Data Tagihan
+                    document.getElementById('bill_name').innerText = data.customer_name;
+                    document.getElementById('bill_id').innerText = data.customer_no;
+                    
+                    // Format Rupiah
+                    let formattedPrice = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(data.amount);
+                    document.getElementById('bill_amount').innerText = formattedPrice;
+                    
+                    inquiryRefId = data.ref_id; // Simpan untuk tahap pembayaran
+                    resultDiv.classList.remove('hidden');
+                } else {
+                    alert(data.message);
+                    emptyDiv.classList.remove('hidden');
+                }
+            })
+            .catch(err => {
+                btn.disabled = false;
+                spinner.classList.add('hidden');
+                text.innerText = "Cek Tagihan";
+                alert("Terjadi kesalahan sistem.");
+                console.error(err);
+            });
+        }
+
+        function bayarTagihan() {
+            if(!inquiryRefId) return;
+            // Logic pembayaran pascabayar biasanya membutuhkan login
+            // Arahkan ke halaman login atau checkout khusus
+            window.location.href = "{{ route('login') }}"; 
+        }
+    @endif
 </script>
 @endpush
