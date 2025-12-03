@@ -37,7 +37,7 @@
                     <div class="swiper-wrapper">
                         @forelse($banners as $banner)
                             <div class="swiper-slide">
-                                <img src="{{ asset('storage/' . $banner->image) }}" 
+                                <img src="{{ asset('public/storage/' . $banner->image) }}" 
                                      class="w-full h-full object-cover" 
                                      alt="Promo Banner"
                                      onerror="this.src='https://placehold.co/800x320/1e3a8a/ffffff?text=Promo+Spesial'">
