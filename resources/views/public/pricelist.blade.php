@@ -37,14 +37,12 @@
                     <div class="swiper-wrapper">
                         @forelse($banners as $banner)
                             <div class="swiper-slide">
-                                {{-- Sesuaikan path image dengan penyimpanan Anda --}}
                                 <img src="{{ asset('storage/' . $banner->image) }}" 
                                      class="w-full h-full object-cover" 
                                      alt="Promo Banner"
                                      onerror="this.src='https://placehold.co/800x320/1e3a8a/ffffff?text=Promo+Spesial'">
                             </div>
                         @empty
-                            {{-- Placeholder jika tidak ada banner --}}
                             <div class="swiper-slide">
                                 <img src="https://placehold.co/800x320/1e3a8a/ffffff?text=Promo+Sancaka+Express" class="w-full h-full object-cover">
                             </div>
@@ -56,7 +54,6 @@
                     <div class="swiper-pagination"></div>
                 </div>
             </div>
-            {{-- END BANNER --}}
             
             {{-- Search Bar --}}
             <div class="relative max-w-xl mx-auto -mb-8">
@@ -107,9 +104,25 @@
                         <tr class="product-row hover:bg-blue-50/50 transition duration-150 cursor-default" data-category="{{ $product->category }}" data-name="{{ strtolower($product->product_name . ' ' . $product->brand . ' ' . $product->buyer_sku_code) }}">
                             <td class="p-4">
                                 <div class="flex items-center gap-3">
-                                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-gray-500 font-bold text-[10px] shadow-sm border border-gray-200">
-                                        {{ substr($product->brand, 0, 3) }}
+                                    
+                                    {{-- ==================================================== --}}
+                                    {{-- 🖼️ BAGIAN LOGO: MENGGUNAKAN HELPER --}}
+                                    {{-- ==================================================== --}}
+                                    <div class="h-10 w-10 flex-shrink-0 relative">
+                                        {{-- 1. Coba Tampilkan Gambar dari Helper --}}
+                                        <img src="{{ get_operator_logo($product->brand) }}" 
+                                             alt="{{ $product->brand }}" 
+                                             class="h-full w-full object-contain bg-white rounded-xl p-1 shadow-sm border border-gray-100"
+                                             loading="lazy"
+                                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                        
+                                        {{-- 2. Fallback Teks (Jika gambar error/tidak ada) --}}
+                                        <span class="hidden h-full w-full items-center justify-center bg-gray-100 text-gray-500 text-[10px] font-bold rounded-xl border border-gray-200 uppercase">
+                                            {{ substr($product->brand, 0, 3) }}
+                                        </span>
                                     </div>
+                                    {{-- ==================================================== --}}
+
                                     <div class="block sm:hidden">
                                         <p class="font-bold text-gray-800 text-sm line-clamp-1">{{ $product->product_name }}</p>
                                         <p class="text-[10px] text-gray-400">{{ $product->brand }}</p>
@@ -181,7 +194,7 @@
         },
     });
 
-    // 2. Logika Search & Filter (Sama seperti sebelumnya)
+    // 2. Logika Search & Filter
     const searchInput = document.getElementById('searchInput');
     const rows = document.getElementById('productTableBody').getElementsByTagName('tr');
     const emptyState = document.getElementById('emptyState');
