@@ -374,7 +374,7 @@
                                         
                                         {{-- Progress Bar Flash Sale --}}
                                         <div class="relative w-full h-3 bg-red-100 rounded-full overflow-hidden">
-                                            <div class="absolute top-0 left-0 h-full bg-[#ee4d2d]" style="width: {{ $soldPercentage }}%"></div>
+                                            <div class="absolute top-0 left-0 h-full bg-[#d0011b]" style="width: {{ $soldPercentage }}%"></div>
                                             <div class="absolute top-0 left-0 w-full h-full flex items-center justify-center">
                                                 <span class="text-[8px] text-white font-bold tracking-wider drop-shadow-md">SEGERA HABIS</span>
                                             </div>
