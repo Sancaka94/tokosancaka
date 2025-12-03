@@ -136,8 +136,6 @@
                 </a>
             </div>
         </div>
-    </section>
-
 
         {{-- Search Bar --}}
         <div class="bg-white p-2 rounded-2xl shadow-md mb-8 border border-gray-100 max-w-4xl mx-auto -mt-4 relative z-20">
@@ -152,6 +150,11 @@
                 </button>
             </div>
         </div>
+        
+    </section>
+
+
+        
 
         {{-- Category Filters --}}
         <div class="bg-white p-3 rounded-2xl shadow-sm mb-6 overflow-x-auto whitespace-nowrap scrollbar-hide flex gap-3 border border-gray-100 sticky top-4 z-30">
