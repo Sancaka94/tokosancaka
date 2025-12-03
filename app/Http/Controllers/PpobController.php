@@ -467,7 +467,7 @@ class PpobController extends Controller
 
             // 3. Siapkan Data Dummy
             $sku = 'pln'; // SKU Pascabayar
-            $customerNo = '515040821481'; // Nomor ID Pelanggan Anda dari screenshot
+            $customerNo = '530000000001'; // Nomor ID Pelanggan Anda dari screenshot
             $refId = 'DEBUG-' . time();
 
             echo "2. Mengirim Request ke Digiflazz...<br>";
