@@ -102,7 +102,7 @@
                                         {{ substr($trx->user->name ?? 'G', 0, 1) }}
                                     </div>
                                     <div>
-                                        <div class="text-sm font-bold text-gray-900">{{ $trx->user->name ?? 'User Terhapus' }}</div>
+                                        <div class="text-sm font-bold text-gray-900">{{ $trx->user->nama_lengkap ?? 'User Terhapus' }}</div>
                                         <div class="text-xs text-gray-500">{{ $trx->user->email ?? '-' }}</div>
                                     </div>
                                 </div>
