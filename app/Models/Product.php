@@ -14,7 +14,9 @@ use App\Models\ProductAttribute;
 use App\Models\ProductVariantType;
 use App\Models\ProductVariant;
 use App\Models\ProductImage;
-use App\Models\ProductReview; // Pastikan ini di-import
+use App\Models\ProductReview;
+use App\Models\PpobProduct;
+ 
 
 class Product extends Model
 {
@@ -24,12 +26,13 @@ class Product extends Model
      * Atribut yang dapat diisi secara massal.
      */
     protected $fillable = [
+        // --- ATRIBUT PRODUK UMUM (FISIK) ---
         'name',
         'slug',
         'store_id',
         'sku',
         'category_id',
-        'category',
+        'category', // Nama kategori (string)
         'tags',
         'description',
         'image_url', 
@@ -51,10 +54,21 @@ class Product extends Model
         'width',
         'height',
         'length',
-        'jenis_barang', 
+        'jenis_barang', // 1=Fisik, 2=Dokumen, 3=Mudah Pecah, dll
         'is_promo',             
         'is_shipping_discount', 
         'is_free_shipping',     
+
+        // --- ATRIBUT PPOB (DIGITAL) ---
+        'is_digital',           // Boolean: 1 = PPOB/Digital, 0 = Fisik
+        'buyer_sku_code',       // Kode SKU dari Provider PPOB (Digiflazz/Tripay)
+        'brand',                // Nama Operator (Telkomsel, PLN, dll)
+        'type',                 // Tipe PPOB (Pulsa, Data, E-Money, Game)
+        'start_cut_off',        // Jam mulai gangguan (00:00)
+        'end_cut_off',          // Jam selesai gangguan
+        'seller_product_status', // Status dari Provider (1=Aktif, 0=Gangguan)
+        'multi',                // Boolean: Bisa transaksi ganda/tidak
+        'unlimited_stock'       // Boolean: Stok tak terbatas (untuk digital)
     ];
 
     /**
@@ -67,6 +81,12 @@ class Product extends Model
         'is_promo' => 'boolean',
         'is_shipping_discount' => 'boolean',
         'is_free_shipping' => 'boolean',
+        
+        // Casting PPOB
+        'is_digital' => 'boolean',
+        'seller_product_status' => 'boolean',
+        'multi' => 'boolean',
+        'unlimited_stock' => 'boolean',
     ];
 
     /**
@@ -80,15 +100,13 @@ class Product extends Model
     /**
      * Relasi ke Category.
      */
-    public function category(): BelongsTo
+    public function categoryRelation(): BelongsTo // Nama func diganti agar tidak bentrok dengan kolom 'category'
     {
         return $this->belongsTo(Category::class, 'category_id'); 
     }
     
-    // --- PERBAIKAN DI SINI: HANYA ADA SATU FUNGSI REVIEWS ---
     /**
      * Dapatkan semua ulasan untuk produk ini.
-     * Menggunakan model ProductReview.
      */
     public function reviews(): HasMany
     {
@@ -134,13 +152,10 @@ class Product extends Model
     }
 
     /**
-     * Relasi ke Item Order (Opsional, jika ada order).
+     * Relasi ke Item Order.
      */
     public function orderItems(): HasMany
     {
-        // Pastikan model OrderItem ada jika ingin menggunakan ini, 
-        // jika belum ada biarkan dikomentari atau hapus.
-        // return $this->hasMany(OrderItem::class, 'product_id', 'id');
         return $this->hasMany(\App\Models\OrderItem::class, 'product_id');
     }
 
