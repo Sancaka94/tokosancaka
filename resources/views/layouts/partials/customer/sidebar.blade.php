@@ -93,14 +93,14 @@
             <div x-show="open" x-cloak class="ml-10 space-y-1">
                 {{-- Link Beli Pulsa --}}
                 <a href="https://tokosancaka.com/etalase/ppob/digital/pulsa" target="_blank"
-                   class="block px-4 py-2 text-gray-300 hover:bg-gray-600 hover:text-white rounded-md transition-colors duration-200">
+                   class="block px-4 py-2 text-gray-300 hover:bg-red-600 hover:text-white rounded-md transition-colors duration-200">
                     <i class="fas fa-sim-card fa-fw w-4"></i>
                     <span class="ml-2">Isi Pulsa / Data</span>
                 </a>
                 
                 {{-- Link Bayar Tagihan (PLN) --}}
                 <a href="https://tokosancaka.com/etalase/ppob/digital/pln-pascabayar" target="_blank"
-                   class="block px-4 py-2 text-gray-300 hover:bg-gray-600 hover:text-white rounded-md transition-colors duration-200">
+                   class="block px-4 py-2 text-gray-300 hover:bg-red-600 hover:text-white rounded-md transition-colors duration-200">
                     <i class="fas fa-file-invoice-dollar fa-fw w-4"></i>
                     <span class="ml-2">Bayar Tagihan</span>
                 </a>
