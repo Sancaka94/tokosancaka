@@ -17,10 +17,65 @@ class CartController extends Controller
     /**
      * Menampilkan halaman keranjang.
      */
+    /**
+     * Menampilkan halaman keranjang belanja.
+     */
     public function index()
     {
         $cart = session()->get('cart', []);
-        return view('customer.cart.index', compact('cart'));
+        $hasChanges = false; // Penanda jika ada data yang berubah otomatis
+
+        // Loop semua item di keranjang untuk validasi stok/harga terbaru
+        foreach ($cart as $key => $details) {
+            
+            // -----------------------------------------------------------
+            // ⚡ FIX: LEWATI VALIDASI DATABASE JIKA ITEM ADALAH PPOB ⚡
+            // -----------------------------------------------------------
+            if (isset($details['is_ppob']) && $details['is_ppob'] == true) {
+                continue; // Langsung lanjut ke item berikutnya, jangan cek di tabel products
+            }
+
+            // --- VALIDASI PRODUK FISIK (Logic Asli) ---
+            // Cek apakah ini varian atau produk simple
+            if (isset($details['variant_id']) && $details['variant_id']) {
+                $variant = ProductVariant::find($details['variant_id']);
+                
+                // Jika varian dihapus dari DB / Stok habis
+                if (!$variant || $variant->stock <= 0) {
+                    unset($cart[$key]);
+                    $hasChanges = true;
+                    continue;
+                }
+                
+                // Update harga & stok terbaru (jika admin ubah harga saat user belanja)
+                $cart[$key]['price'] = $variant->price;
+                $cart[$key]['current_stock'] = $variant->stock; // Simpan stok update untuk validasi frontend
+
+            } else {
+                // Produk Simple
+                $product = Product::find($details['product_id']);
+
+                // Jika produk dihapus dari DB
+                if (!$product) {
+                    unset($cart[$key]);
+                    $hasChanges = true;
+                    continue;
+                }
+
+                // Update harga & stok terbaru
+                $cart[$key]['price'] = $product->price;
+                $cart[$key]['current_stock'] = $product->stock;
+            }
+        }
+
+        // Jika ada item yang dihapus otomatis karena tidak valid, simpan session baru
+        if ($hasChanges) {
+            session()->put('cart', $cart);
+            // Opsional: Redirect dengan pesan error agar user sadar itemnya hilang
+            // return redirect()->route('cart.index')->with('error', 'Beberapa produk tidak tersedia dan telah dihapus.');
+        }
+
+        return view('cart.index', compact('cart'));
     }
 
     /**
