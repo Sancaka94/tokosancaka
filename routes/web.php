@@ -336,13 +336,14 @@ Route::get('/cek-ip-hosting', function () {
     }
 });
 
+Route::post('/cart/add-ppob', [CartController::class, 'addPpob'])->name('cart.addPpob');
+
 
 Route::prefix('customer')->name('customer.')->group(function () {
     Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
     Route::post('/cart/add/{product}', [CartController::class, 'add'])->name('cart.add');
     Route::patch('/cart/update', [CartController::class, 'update'])->name('cart.update');
     Route::delete('/cart/remove', [CartController::class, 'remove'])->name('cart.remove');
-    Route::post('/cart/add-ppob', [CartController::class, 'addPpob'])->name('cart.addPpob');
        // INI ADALAH PERBAIKANNYA: Rute untuk halaman checkout
  
     Route::get('/marketplace', [CustomerMarketplaceController::class, 'index'])->name('marketplace.index');
