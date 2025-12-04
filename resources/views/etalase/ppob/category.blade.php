@@ -807,7 +807,8 @@
         fetch('{{ route("cart.addPpob") }}', {
             method: 'POST',
             headers: { 
-                'Content-Type': 'application/json', 
+                'Content-Type': 'application/json',
+                'Accept': 'application/json', // <--- WAJIB AGAR ERROR JADI JSON, BUKAN HTML
                 'X-CSRF-TOKEN': '{{ csrf_token() }}' 
             },
             body: JSON.stringify(currentBillData)
