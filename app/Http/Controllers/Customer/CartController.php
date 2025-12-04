@@ -136,7 +136,6 @@ class CartController extends Controller
     public function addPpob(Request $request)
     {
         try {
-            // 1. Validasi Data yang dikirim JS
             $data = $request->validate([
                 'sku' => 'required',
                 'name' => 'required',
@@ -146,19 +145,18 @@ class CartController extends Controller
             ]);
     
             $cart = session()->get('cart', []);
-            
-            // 2. Buat ID Unik untuk keranjang (pakai ref_id)
             $cartKey = 'ppob_' . $data['ref_id'];
+            
+            // 🔥 PAKAI HELPER DISINI (Simple & Clean)
+            $logoImage = get_operator_logo($data['sku']);
     
-            // 3. Masukkan data ke Session Cart
-            // Format array ini HARUS SAMA dengan produk biasa agar tidak error di view
             $cart[$cartKey] = [
-                "product_id" => 0, // ID 0 (Penanda bukan produk fisik)
+                "product_id" => 0, 
                 "variant_id" => null,
                 "name"       => $data['name'],
                 "quantity"   => 1,
                 "price"      => (int) $data['price'],
-                "image_url"  => "https://placehold.co/100x100/2563eb/ffffff?text=PPOB", 
+                "image_url"  => $logoImage, // <--- Hasil dari helper
                 "slug"       => $data['sku'],
                 "weight"     => 0,
                 "is_ppob"    => true, 
@@ -171,7 +169,6 @@ class CartController extends Controller
             return response()->json(['success' => true]);
 
         } catch (\Exception $e) {
-            // Log error biar tau salahnya dimana (Cek storage/logs/laravel.log)
             Log::error("Error addPpob: " . $e->getMessage());
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
