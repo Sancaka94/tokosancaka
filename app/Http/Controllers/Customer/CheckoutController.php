@@ -107,13 +107,43 @@ class CheckoutController
         $validCart = [];
         $invalidItems = [];
         $firstValidStore = null; 
+        $hasPhysicalProduct = false; 
 
         foreach ($cart as $cartKey => $item) {
-            $productId = $item['product_id'] ?? null;
-            if (!$productId) {
-                $invalidItems[] = $item['name'] ?? 'Produk tidak dikenal';
+            
+            // --------------------------------------------------------
+            // ⚡ VALIDASI ITEM PPOB (DIGITAL) ⚡
+            // --------------------------------------------------------
+            if (isset($item['is_ppob']) && $item['is_ppob'] == true) {
+                
+                // Cek apakah ini produk Database (Prabayar) atau Inquiry (Pascabayar)
+                $sku = $item['slug'] ?? ''; // SKU disimpan di slug
+                $ppobDb = \App\Models\PpobProduct::where('buyer_sku_code', $sku)->first();
+
+                if ($ppobDb) {
+                    // KASUS 1: PRODUK ADA DI DB (Pulsa/Data)
+                    // Cek status aktif
+                    if ($ppobDb->seller_product_status == 0) {
+                        $invalidItems[] = $item['name'] . ' (Produk Gangguan)';
+                        continue; // Hapus dari keranjang
+                    }
+                    // Update harga terbaru dari DB (jika admin ubah harga saat user checkout)
+                    $item['price'] = (int) $ppobDb->sell_price;
+                    $item['product_id'] = $ppobDb->id; // Pastikan ID sinkron
+                } else {
+                    // KASUS 2: PRODUK TIDAK ADA DI DB (Tagihan Pasca/Inquiry Dinamis)
+                    // Loloskan saja karena harganya dari API Inquiry
+                }
+
+                $validCart[$cartKey] = $item;
                 continue; 
             }
+
+            // --------------------------------------------------------
+            // LOGIKA PRODUK FISIK (TETAP SAMA SEPERTI SEBELUMNYA)
+            // --------------------------------------------------------
+            $productId = $item['product_id'] ?? null;
+            if (!$productId) { $invalidItems[] = $item['name']; continue; }
 
             $product = Marketplace::find($productId);
 
@@ -132,6 +162,9 @@ class CheckoutController
                 ]);
             }
         }
+
+            
+        
 
         session()->put('cart', $validCart);
         
