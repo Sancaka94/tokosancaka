@@ -447,6 +447,15 @@
                         </div>
                     @endif
 
+                    <div id="detail_container" class="mt-6 border-t border-dashed border-gray-200 pt-4 hidden">
+    <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+        <i class="fas fa-list-ul"></i> Rincian Item Tagihan
+    </h4>
+    
+    <div id="detail_list" class="space-y-3">
+        </div>
+</div>
+
                 </div>
             </div>
         </div>
@@ -717,6 +726,65 @@
                 inquiryRefId = d.ref_id;
                 resultDiv.classList.remove('hidden');
 
+                // ... (Kode sebelumnya: mapping bill_name, bill_id, dll)
+
+// ============================================================
+// LOGIKA LOOPING ARRAY "DETAIL"
+// ============================================================
+const detailContainer = document.getElementById('detail_container');
+const detailList = document.getElementById('detail_list');
+
+// Reset isi list dulu biar gak numpuk kalau klik 2x
+detailList.innerHTML = ''; 
+
+if (d.desc && d.desc.detail && Array.isArray(d.desc.detail) && d.desc.detail.length > 0) {
+    
+    // Tampilkan container
+    detailContainer.classList.remove('hidden');
+
+    // Loop setiap item di dalam array
+    d.desc.detail.forEach((item, index) => {
+        
+        // Format Periode (Opsional: pakai fungsi formatPeriodeID yg sudah ada)
+        let periodeDisplay = formatPeriodeID(item.periode);
+        
+        // Format Nilai Tagihan (jika ada)
+        let nilaiDisplay = item.nilai_tagihan ? 'Rp ' + parseInt(item.nilai_tagihan).toLocaleString('id-ID') : '-';
+        
+        // Format Denda (jika ada)
+        let dendaDisplay = item.denda && parseInt(item.denda) > 0 ? 
+                           `<span class="text-red-500 text-[10px] ml-2">(Denda: Rp ${parseInt(item.denda).toLocaleString('id-ID')})</span>` : '';
+
+        // Info Tambahan (Meteran untuk PLN/PDAM)
+        let meterInfo = '';
+        if(item.meter_awal && item.meter_akhir) {
+            meterInfo = `<div class="text-[10px] text-gray-400 mt-1">Meter: ${item.meter_awal} - ${item.meter_akhir}</div>`;
+        }
+
+        // HTML Template per Item
+        let itemHtml = `
+            <div class="bg-gray-50 border border-gray-200 rounded-lg p-3 flex justify-between items-start">
+                <div>
+                    <p class="text-xs font-bold text-gray-700">Periode: ${periodeDisplay}</p>
+                    ${meterInfo}
+                    ${dendaDisplay}
+                </div>
+                <div class="text-right">
+                    <p class="text-xs font-bold text-gray-800">${nilaiDisplay}</p>
+                    ${item.admin ? `<p class="text-[10px] text-gray-400">Adm: Rp ${parseInt(item.admin).toLocaleString('id-ID')}</p>` : ''}
+                </div>
+            </div>
+        `;
+
+        // Masukkan ke dalam div list
+        detailList.insertAdjacentHTML('beforeend', itemHtml);
+    });
+
+} else {
+    // Sembunyikan container jika tidak ada array detail
+    detailContainer.classList.add('hidden');
+}
+
             } else {
                 // Tampilkan Error
                 let msg = d.message || "Tagihan tidak ditemukan / Sudah lunas.";
@@ -736,5 +804,7 @@
         window.location.href = "{{ route('login') }}?ref_id=" + inquiryRefId;
     }
     @endif
+
+
 </script>
 @endpush
