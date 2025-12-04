@@ -185,7 +185,10 @@ class CartController extends Controller
         return response()->json(['success' => false, 'message' => 'Gagal menghapus produk.'], 404);
     }
 
-     public function addPpob(Request $request)
+      /**
+     * TAMBAHKAN FUNCTION INI SEBELUM KURUNG KURAWAL TERAKHIR '}'
+     */
+    public function addPpob(Request $request)
     {
         try {
             $data = $request->validate([
@@ -196,47 +199,24 @@ class CartController extends Controller
                 'customer_no' => 'required',
             ]);
     
-            // ⚡ CEK DATABASE PPOB ⚡
-            // Cari produk berdasarkan SKU (buyer_sku_code)
-            $ppobDb = \App\Models\PpobProduct::where('buyer_sku_code', $data['sku'])->first();
-
-            $finalPrice = (int) $data['price'];
-            $productId = 0; // Default untuk Pasca (tidak ada di DB produk fisik)
-            $isDatabaseProduct = false;
-
-            if ($ppobDb) {
-                // Jika produk ada di DB (Prabayar: Pulsa, Data, dll)
-                // Kita PAKSA pakai harga dari DB agar tidak dimanipulasi
-                $finalPrice = (int) $ppobDb->sell_price;
-                $productId = $ppobDb->id; // Gunakan ID asli dari tabel ppob_products
-                $isDatabaseProduct = true;
-
-                // Cek Status Produk
-                if ($ppobDb->seller_product_status == 0) {
-                    return response()->json(['success' => false, 'message' => 'Produk ini sedang gangguan/tidak aktif.'], 400);
-                }
-            }
-
-            // Simpan ke Session Cart
             $cart = session()->get('cart', []);
             $cartKey = 'ppob_' . $data['ref_id'];
             
-            // Helper logo
-            $logoImage = function_exists('get_operator_logo') ? get_operator_logo($data['sku']) : 'https://placehold.co/100';
+            // 🔥 PAKAI HELPER DISINI (Simple & Clean)
+            $logoImage = get_operator_logo($data['sku']);
     
             $cart[$cartKey] = [
-                "product_id" => $productId, // ID dari tabel ppob_products (jika ada)
+                "product_id" => 0, 
                 "variant_id" => null,
-                "name"       => $ppobDb ? $ppobDb->product_name : $data['name'], // Gunakan nama resmi dari DB jika ada
+                "name"       => $data['name'],
                 "quantity"   => 1,
-                "price"      => $finalPrice,
-                "image_url"  => $logoImage,
-                "slug"       => $data['sku'], // Kita simpan SKU di slug
+                "price"      => (int) $data['price'],
+                "image_url"  => $logoImage, // <--- Hasil dari helper
+                "slug"       => $data['sku'],
                 "weight"     => 0,
                 "is_ppob"    => true, 
                 "ref_id"     => $data['ref_id'],
-                "customer_no"=> $data['customer_no'],
-                "ppob_type"  => $isDatabaseProduct ? 'prepaid' : 'postpaid' // Penanda tambahan
+                "customer_no"=> $data['customer_no']
             ];
     
             session()->put('cart', $cart);

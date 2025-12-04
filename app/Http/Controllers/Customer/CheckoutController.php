@@ -74,254 +74,255 @@ class CheckoutController
     }
 
 
- public function index(\App\Services\KiriminAjaService $kiriminAja)
+   /**
+     * ==========================================================
+     * FUNGSI INDEX (DIPERBAIKI DENGAN LOGIKA PARSING YANG BENAR)
+     * ==========================================================
+     */
+    public function index(KiriminAjaService $kiriminAja)
     {
-        // 1. AMBIL SESSION CART
+        if (!Auth::check()) {
+            return redirect()->route('customer.login')
+                ->with('info', 'Anda harus login untuk melanjutkan ke checkout.');
+        }
+
         $cart = session()->get('cart', []);
-
-        // =================================================================
-        // 🛑 DEBUGGING BRUTAL: CEK ISI CART SEBELUM DIAPA-APAKAN
-        // =================================================================
-        
-        // OPSI A: LIHAT DI LOG FILE (storage/logs/laravel.log)
-        \Illuminate\Support\Facades\Log::emergency('========== DEBUG CHECKOUT START ==========');
-        \Illuminate\Support\Facades\Log::info('Total Item di Cart: ' . count($cart));
-        
-        foreach($cart as $key => $val) {
-            \Illuminate\Support\Facades\Log::info("Item Key: $key");
-            \Illuminate\Support\Facades\Log::info("Data Item:", $val);
-            
-            $isPpob = isset($val['is_ppob']) ? 'ADA ('. $val['is_ppob'] .')' : 'TIDAK ADA';
-            \Illuminate\Support\Facades\Log::info("Cek Flag is_ppob: $isPpob");
-            
-            $prodId = $val['product_id'] ?? 'NULL';
-            \Illuminate\Support\Facades\Log::info("Product ID: $prodId");
-        }
-        \Illuminate\Support\Facades\Log::emergency('========== DEBUG CHECKOUT END ==========');
-
-        // OPSI B: TAMPILKAN LANGSUNG DI LAYAR (Browser akan berhenti disini)
-        // Hapus tanda komentar (//) di bawah ini jika ingin melihat langsung di layar:
-        
-        dd('DEBUG MODE AKTIF', $cart); 
-
-        // =================================================================
-
-        if (!\Illuminate\Support\Facades\Auth::check()) {
-            return redirect()->route('customer.login')->with('info', 'Login dulu.');
-        }
-
         if (empty($cart)) {
-            return redirect()->route('customer.cart.index')->with('info', 'Keranjang kosong.');
+            return redirect()->route('customer.cart.index') 
+                ->with('info', 'Keranjang Anda kosong. Silakan belanja terlebih dahulu.');
         }
 
-        $user = \Illuminate\Support\Facades\Auth::user();
+        $user = Auth::user();
         
-        // --- VALIDASI KERANJANG DENGAN LOGGING ---
+        if (isset($user->role) && strtolower($user->role) === 'pelanggan') {
+            Log::warning('Pelanggan (bukan seller) mencoba mengakses halaman checkout', ['user_id' => $user->id_pengguna]);
+            return redirect()->route('customer.dashboard') 
+                ->with('info', 'Halaman checkout ini hanya untuk Seller.');
+        }
+
+        // ==========================================================
+        // VALIDASI KERANJANG (KODE ANDA SUDAH BENAR)
+        // ==========================================================
+        
         $validCart = [];
         $invalidItems = [];
         $firstValidStore = null; 
-        $hasPhysicalProduct = false;
 
         foreach ($cart as $cartKey => $item) {
-            
-            // LOGIC DETEKSI
-            if (isset($item['is_ppob']) && $item['is_ppob'] == true) {
-                \Illuminate\Support\Facades\Log::info("✅ Item $cartKey lolos validasi karena PPOB.");
-                $validCart[$cartKey] = $item; 
+            $productId = $item['product_id'] ?? null;
+            if (!$productId) {
+                $invalidItems[] = $item['name'] ?? 'Produk tidak dikenal';
                 continue; 
             }
 
-            // LOGIC FISIK
-            $productId = $item['product_id'] ?? null;
-            \Illuminate\Support\Facades\Log::info("🔍 Cek Database untuk Product ID: $productId");
-            
-            $product = \App\Models\Marketplace::find($productId);
+            $product = Marketplace::find($productId);
 
-            if ($product) {
-                \Illuminate\Support\Facades\Log::info("✅ Produk fisik ditemukan: " . $product->name);
+            if ($product && $product->store && $product->store->user) {
                 $validCart[$cartKey] = $item;
-                $hasPhysicalProduct = true;
-                if ($firstValidStore === null) $firstValidStore = $product->store;
+                if ($firstValidStore === null) {
+                    $firstValidStore = $product->store;
+                }
             } else {
-                \Illuminate\Support\Facades\Log::error("❌ Produk ID $productId TIDAK DITEMUKAN di database. Dihapus dari cart.");
-                $invalidItems[] = $item['name'] ?? 'Unknown';
+                $invalidItems[] = $item['name'] ?? $product->name ?? 'Produk ID ' . $productId;
+                Log::warning('Checkout Index Validation: Item tidak valid dihapus.', [
+                    'product_id' => $productId,
+                    'product_exists' => !is_null($product),
+                    'store_exists' => $product ? !is_null($product->store) : false,
+                    'store_user_exists' => ($product && $product->store) ? !is_null($product->store->user) : false,
+                ]);
             }
         }
 
-        // Simpan hasil validasi
         session()->put('cart', $validCart);
         
+        if (!empty($invalidItems)) {
+            $invalidItemNames = implode(', ', $invalidItems);
+            session()->flash('warning', "Beberapa item ($invalidItemNames) tidak lagi tersedia dan telah dihapus dari keranjang Anda.");
+        }
+
         if (empty($validCart)) {
-            \Illuminate\Support\Facades\Log::error("🔥 Keranjang jadi kosong setelah validasi!");
-            // dd("STOP: Keranjang kosong karena semua item dianggap tidak valid. Cek Log.");
-            session()->forget('cart');
-            return redirect()->route('customer.cart.index')->with('error', 'Keranjang dikosongkan system.');
+            Log::warning('Checkout Index: Keranjang menjadi kosong setelah validasi.');
+            session()->forget('cart'); 
+            return redirect()->route('customer.cart.index')
+                ->with('error', 'Semua produk di keranjang Anda tidak lagi tersedia atau tidak valid. Keranjang telah dikosongkan.');
+        }
+        
+        $store = $firstValidStore; 
+        $cart = $validCart; 
+
+        // ==========================================================
+        // VALIDASI ALAMAT (KODE ANDA SUDAH BENAR)
+        // ==========================================================
+
+        if (empty($store->village) || empty($store->district) || empty($store->regency) || empty($store->province)) {
+             Log::error('Alamat toko tidak lengkap', ['store_id' => $store->id]);
+           return redirect()->route('customer.cart.index')
+                ->with('error', 'Alamat toko asal pengiriman tidak lengkap. Silakan hubungi penjual.');
+        }
+        
+        if (empty($user->village) || empty($user->district) || empty($user->regency) || empty($user->province)) {
+             Log::warning('Alamat user tidak lengkap', ['user_id' => $user->id_pengguna]);
+           return redirect()->route('customer.profile.edit')
+                ->with('warning', 'Alamat pengiriman Anda belum lengkap. Mohon lengkapi data lokasi Anda terlebih dahulu.');
         }
 
-        $cart = $validCart;
-        
-        // ... (Sisa kode ke bawah biarkan saja atau comment dulu agar fokus debug) ...
-        // Agar tidak error view, kita return text dulu
-        // return "DEBUG SELESAI. Cek Log atau hapus dd() di controller.";
-        
-        // KEMBALIKAN KE VIEW ASLI JIKA DEBUG SUDAH OKE
-        $expressOptions = [];
-        $instantOptions = [];
-        $tripayChannels = [];
-        $paymentChannels = []; // definisikan array kosong dulu
-        
-        return view('customer.checkout.index', compact('cart', 'expressOptions', 'instantOptions', 'user', 'tripayChannels', 'paymentChannels', 'hasPhysicalProduct'));
-    }
+        $storeSearch = $store->village . ', ' . $store->district . ', ' . $store->regency . ', ' . $store->province;
+        $userSearch  = $user->village . ', ' . $user->district . ', ' . $user->regency . ', ' . $user->province;
 
-    /**
-     * ==========================================================
-     * FUNGSI STORE (PROSES CHECKOUT)
-     * ==========================================================
-     */
-    public function store(Request $request, KiriminAjaService $kiriminAja)
-    {
-        $request->validate([
-            'payment_method' => 'required|string',
-            'shipping_method' => 'nullable|string', 
-        ]);
-
-        $cart = session()->get('cart', []);
-        $user = Auth::user();
-
-        if (empty($cart)) return redirect()->route('etalase.index')->with('error', 'Keranjang kosong.');
-
-        // --- 1. VALIDASI & PEMISAHAN PPOB ---
-        // Cek apakah ada minimal satu item PPOB
-        $isPpobOrder = collect($cart)->contains(fn($i) => isset($i['is_ppob']) && $i['is_ppob']);
-        
-        // Jika TIDAK ADA PPOB (murni fisik), wajib ada alamat & shipping
-        if (!$isPpobOrder) {
-            if (empty($user->address_detail)) return redirect()->route('profile.edit')->with('warning', 'Lengkapi alamat.');
-            if (empty($request->shipping_method)) return back()->with('error', 'Pilih metode pengiriman.');
-        }
-
-        DB::beginTransaction();
         try {
-            // --- 2. KALKULASI TOTAL ---
-            $subtotal = collect($cart)->sum(fn($d) => $d['price'] * $d['quantity']);
-            $shipping_cost = 0;
-            $insurance_cost = 0;
-            $cod_add_cost = 0;
-            $shipping_desc = 'Digital Delivery'; // Default jika PPOB
-
-            if (!$isPpobOrder) {
-                // Parsing Ongkir Fisik
-                $parts = explode('-', $request->shipping_method);
-                if (count($parts) >= 4) {
-                    $shipping_desc = $parts[0] . ' - ' . $parts[1] . ' (' . $parts[2] . ')';
-                    $shipping_cost = (int) $parts[3];
-                }
-            }
-
-            $grand_total = $subtotal + $shipping_cost + $insurance_cost + $cod_add_cost;
-
-            // --- 3. GENERATE INVOICE ---
-            do {
-                $invoiceNumber = ($isPpobOrder ? 'PPOB-' : 'INV-') . strtoupper(Str::random(9));
-            } while (OrderMarketplace::where('invoice_number', $invoiceNumber)->exists());
-
-            // --- 4. BUAT ORDER ---
-            // Cari Store ID (hanya jika fisik)
-            $storeId = null;
-            if (!$isPpobOrder) {
-                $firstItem = reset($cart);
-                $prod = Marketplace::find($firstItem['product_id']);
-                $storeId = $prod->store_id ?? null;
-            }
-
-            $order = new OrderMarketplace([
-                'store_id'         => $storeId,
-                'user_id'          => $user->id_pengguna,
-                'invoice_number'   => $invoiceNumber,
-                'subtotal'         => $subtotal,
-                'shipping_cost'    => $shipping_cost,
-                'total_amount'     => $grand_total,
-                'shipping_method'  => $shipping_desc,
-                'payment_method'   => $request->payment_method,
-                // Jika Saldo -> Processing, Lainnya -> Pending
-                'status'           => ($request->payment_method === 'saldo') ? 'processing' : 'pending', 
-                'shipping_address' => $isPpobOrder ? 'Produk Digital' : ($user->address_detail ?? 'Alamat User'),
-                'is_digital'       => $isPpobOrder ? 1 : 0
-            ]);
-            $order->save();
-
-            // --- 5. BUAT ORDER ITEMS ---
-            $orderItemsPayload = [];
-            foreach ($cart as $key => $details) {
-                OrderItemMerketplace::create([
-                    'order_id' => $order->id,
-                    'product_id' => $details['product_id'], // 0 jika PPOB (tidak masalah krn tidak ada relation constraint di DB)
-                    'product_variant_id' => $details['variant_id'],
-                    'quantity' => $details['quantity'],
-                    'price' => $details['price'],
-                    'sku' => $details['slug'] ?? 'PPOB',
-                    'name' => $details['name'],
-                    // Simpan data detail PPOB (customer_no, ref_id) ke kolom json/note jika ada di tabel Anda
-                ]);
-
-                // Kurangi stok jika fisik
-                if (!$isPpobOrder && !empty($details['product_id'])) {
-                    if ($details['variant_id']) { ProductVariant::where('id', $details['variant_id'])->decrement('stock', $details['quantity']); }
-                    else { Marketplace::where('id', $details['product_id'])->decrement('stock', $details['quantity']); }
-                }
-
-                $orderItemsPayload[] = [
-                    'sku' => $key,
-                    'name' => $details['name'],
-                    'price' => (int) $details['price'],
-                    'quantity' => (int) $details['quantity']
-                ];
-            }
-
-            if ($shipping_cost > 0) {
-                $orderItemsPayload[] = ['sku' => 'SHIP', 'name' => 'Ongkir', 'price' => $shipping_cost, 'quantity' => 1];
-            }
-
-            // --- 6. PROSES PEMBAYARAN ---
-            
-            // A. PEMBAYARAN SALDO
-            if ($request->payment_method === 'saldo') {
-                if ($user->saldo < $grand_total) {
-                    throw ValidationException::withMessages(['payment_method' => 'Saldo tidak mencukupi.']);
-                }
-                
-                $user->decrement('saldo', $grand_total);
-                Log::info("Order $invoiceNumber dibayar via SALDO.");
-                
-                // Jika FISIK, Panggil API KiriminAja (Pickup)
-                if (!$isPpobOrder) {
-                    $this->triggerKiriminAjaPickup($order, $kiriminAja);
-                } 
-                // Jika PPOB, Anda bisa trigger proses ke Digiflazz di sini (opsional)
-                
-            } 
-            
-            // B. PEMBAYARAN DOKU / TRIPAY (Online)
-            else {
-                // ... (Gunakan logika pembayaran online Tripay/Doku Anda sebelumnya) ...
-                // Contoh Sederhana Tripay:
-                $this->processTripayPayment($order, $user, $orderItemsPayload);
-            }
-
-            $order->save();
-            DB::commit();
-            session()->forget('cart');
-
-            return redirect()->route('customer.checkout.invoice', ['invoice' => $order->invoice_number]);
-
-        } catch (ValidationException $e) {
-            DB::rollBack();
-            return redirect()->back()->withErrors($e->errors())->withInput();
+            $storeAddrRes = $kiriminAja->searchAddress($storeSearch);
+            $userAddrRes  = $kiriminAja->searchAddress($userSearch);
         } catch (Exception $e) {
-            DB::rollBack();
-            Log::error('Checkout Error: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+             Log::error('Gagal mencari alamat KiriminAja di Checkout Index', ['error' => $e->getMessage()]);
+             return redirect()->route('customer.cart.index')->with('error', 'Gagal memvalidasi alamat pengiriman. Silakan coba lagi nanti.');
         }
+
+        $storeAddr = $storeAddrRes['data'][0] ?? null;
+        $userAddr  = $userAddrRes['data'][0] ?? null;
+
+        if (!$storeAddr || !$userAddr) {
+             Log::error('Alamat tidak ditemukan oleh KiriminAja', ['store_search' => $storeSearch, 'user_search' => $userSearch, 'store_res' => $storeAddrRes, 'user_res' => $userAddrRes]);
+           return redirect()->route('customer.cart.index')
+                ->with('error', 'Alamat pengiriman atau alamat toko tidak dapat divalidasi oleh sistem ekspedisi.');
+        }
+
+        // ==========================================================
+        // AMBIL OPSI PENGIRIMAN
+        // ==========================================================
+        $storeLat = $store->latitude ? (float) $store->latitude : null;
+        $storeLng = $store->longitude ? (float) $store->longitude : null;
+        $userLat  = $user->latitude ? (float) $user->latitude : null;
+        $userLng  = $user->longitude ? (float) $user->longitude : null;
+
+        $totalWeight = (int) collect($cart)->sum(function($item) {
+            $product = Marketplace::find($item['product_id']);
+            $weight = $product->weight ?? 1000;
+            return $weight * $item['quantity'];
+        });
+        $finalWeight = max(1000, $totalWeight);
+
+        $itemValue    = (int) collect($cart)->sum(fn($item) => $item['price'] * $item['quantity']);
+        $category = $finalWeight >= 30000 ? 'trucking' : 'regular';
+        
+        $firstValidItemData = reset($cart);
+        $firstValidProduct = Marketplace::find($firstValidItemData['product_id']);
+
+        $defaultLength = $firstValidProduct->length ?? 5;
+        $defaultWidth  = $firstValidProduct->width  ?? 5;
+        $defaultHeight = $firstValidProduct->height ?? 5;
+        
+        $expressOptions = null;
+        try {
+             $expressOptions = $kiriminAja->getExpressPricing(
+                 $storeAddr['district_id'], $storeAddr['subdistrict_id'],
+                 $userAddr['district_id'], $userAddr['subdistrict_id'],
+                 $finalWeight, $defaultLength, $defaultWidth, $defaultHeight,
+                 $itemValue, null, $category, 1 
+             );
+        } catch (Exception $e) { 
+            Log::error('Gagal mendapatkan ongkir Express/Cargo', ['error' => $e->getMessage()]);
+        }
+
+        if (!$storeLat || !$storeLng) { $geo = $this->geocode($storeSearch); if ($geo) { $storeLat = $geo['lat']; $storeLng = $geo['lng']; } }
+        if (!$userLat || !$userLng) { $geo = $this->geocode($userSearch); if ($geo) { $userLat = $geo['lat']; $userLng = $geo['lng']; } }
+
+        $instantOptions = null;
+        if ($storeLat && $storeLng && $userLat && $userLng) {
+            try {
+                 $instantOptions = $kiriminAja->getInstantPricing(
+                      $storeLat, $storeLng, $store->address_detail ?? $storeSearch,
+                      $userLat, $userLng, $user->address_detail ?? $userSearch,
+                      $finalWeight, $itemValue, 'motor'
+                 );
+            } catch (Exception $e) { 
+                Log::error('Gagal mendapatkan ongkir Instant/Sameday', ['error' => $e->getMessage()]);
+            }
+        } else { 
+            Log::warning('Koordinat tidak lengkap untuk cek ongkir Instant', ['storeLL' => "$storeLat,$storeLng", 'userLL' => "$userLat,$userLng"]);
+        }
+
+        // Parsing Express/Cargo (Sudah Benar)
+        if (isset($expressOptions['status']) && $expressOptions['status'] === true && isset($expressOptions['results'])) {
+            $cleanedExpress = [];
+            foreach ($expressOptions['results'] as $opt) {
+                $cost = (int) ($opt['cost'] ?? 0);
+                if ($cost > 0) { 
+                    $opt['final_price'] = $cost; 
+                    $opt['group'] = $opt['group'] ?? 'regular'; 
+                    $cleanedExpress[] = $opt; 
+                }
+            }
+            $expressOptions['results'] = $cleanedExpress;
+        } else {
+            $expressOptions = ['status' => false, 'text' => 'Gagal mengambil opsi Express.', 'results' => []];
+        }
+
+        // ==========================================================
+        // PERBAIKAN LOGIKA PARSING 'INSTANT' (INI YANG RUSAK)
+        // ==========================================================
+        if (isset($instantOptions['status']) && $instantOptions['status'] === true && isset($instantOptions['result'])) {
+            $parsedInstantOptions = [];
+            foreach ($instantOptions['result'] as $provider) {
+                if (isset($provider['costs']) && is_array($provider['costs'])) {
+                    foreach ($provider['costs'] as $cost) {
+                        $price = $cost['price']['total_price'] ?? 0;
+                        if ($price > 0) {
+                            // KITA MASUKKAN SEMUA DATA YANG DIBUTUHKAN VIEW
+                            $parsedInstantOptions[] = [
+                                'service' => $provider['name'],
+                                'service_name' => ucfirst($provider['name']) . ' ' . ucfirst($cost['service_type']),
+                                'service_type' => $cost['service_type'],
+                                'cost' => $cost['price']['shipping_costs'] ?? $price,
+                                'insurance' => 0,
+                                'final_price' => $price,
+                                'etd' => $cost['estimation'] ?? '1-3 Jam',
+                                'cod' => false, 
+                                'group' => 'instant',
+                            ];
+                        }
+                    }
+                }
+            }
+            $instantOptions['results'] = $parsedInstantOptions;
+        } else {
+            $instantOptions = ['status' => false, 'text' => 'Gagal mengambil opsi Instant.', 'results' => []];
+        }
+        // ==========================================================
+        // AKHIR PERBAIKAN PARSING 'INSTANT'
+        // ==========================================================
+
+
+        // ==========================================================
+        // Ambil Channel Pembayaran Tripay (Sudah Benar)
+        // ==========================================================
+        
+        $tripayChannels = [];
+        try {
+            $apiKey = config('tripay.api_key');
+            $mode   = config('tripay.mode');
+            $baseUrl = ($mode === 'production') 
+                ? 'https://tripay.co.id/api/merchant/payment-channel' 
+                : 'https://tripay.co.id/api-sandbox/merchant/payment-channel';
+
+            $response = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])
+                            ->timeout(10)->withoutVerifying()->get($baseUrl);
+
+            if ($response->successful() && $response->json()['success'] === true) {
+                $allChannels = $response->json()['data'];
+                // Filter hanya yang aktif dan favorit Anda
+                $tripayChannels = array_filter($allChannels, function($channel) {
+                    return $channel['active'] === true && in_array($channel['group'], ['QRIS', 'E-Wallet', 'Virtual Account']);
+                });
+            } else {
+                Log::error('Gagal mengambil channel pembayaran Tripay', ['response' => $response->body()]);
+            }
+        } catch (Exception $e) {
+            Log::error('Exception saat mengambil channel Tripay', ['error' => $e->getMessage()]);
+        }
+        
+        // ==========================================================
+        
+        return view('customer.checkout.index', compact('cart', 'expressOptions', 'instantOptions', 'user', 'tripayChannels'));
     }
 
     /**
