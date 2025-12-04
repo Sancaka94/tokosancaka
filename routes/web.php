@@ -76,7 +76,17 @@ use App\Http\Controllers\DigiflazzWebhookController;
 use App\Http\Controllers\PpobProductController;
 use App\Http\Controllers\PublicController;
 use App\Http\Controllers\Customer\PpobCheckoutController;
+use App\Http\Controllers\Customer\PpobHistoryController;
 
+
+
+
+
+Route::prefix('customer/ppob')->name('customer.ppob.')->middleware('auth')->group(function () {
+    Route::get('/history', [PpobHistoryController::class, 'index'])->name('history');
+    Route::get('/export/excel', [PpobHistoryController::class, 'exportExcel'])->name('export.excel');
+    Route::get('/export/pdf', [PpobHistoryController::class, 'exportPdf'])->name('export.pdf');
+});
 
 // Tambahkan Route ini (di luar group middleware admin, pastikan bisa diakses public/user)
 
