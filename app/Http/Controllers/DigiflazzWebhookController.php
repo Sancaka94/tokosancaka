@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use App\Models\User; 
-use App\Models\PpobTransaction; // <--- Pastikan Model ini sudah ada (Langkah 1)
+use App\Models\PpobTransaction; 
 use Illuminate\Support\Facades\DB;
 
 class DigiflazzWebhookController extends Controller
@@ -15,17 +15,16 @@ class DigiflazzWebhookController extends Controller
         // ==========================================
         // 1. VERIFIKASI KEAMANAN (SECRET KEY)
         // ==========================================
-        $secret = 'SancakaSecretKey2025'; // Ganti sesuai Secret di Dashboard Digiflazz
+        // Pastikan Secret Key ini SAMA PERSIS dengan di Dashboard Digiflazz
+        $secret = config('services.digiflazz.secret_key') ?? 'SancakaSecretKey2025'; 
+        
         $incomingSignature = $request->header('X-Hub-Signature');
         $payload = $request->getContent();
-        
-        // Rumus: HMAC-SHA1 dari body request
         $localSignature = 'sha1=' . hash_hmac('sha1', $payload, $secret);
 
         if (!hash_equals($localSignature, $incomingSignature)) {
             Log::warning("Webhook Ditolak: Signature Salah! IP: " . $request->ip());
             // return response()->json(['status' => 'failed', 'message' => 'Invalid Signature'], 401);
-            // Note: Uncomment baris return di atas jika sudah Live Production
         }
 
         // ==========================================
@@ -33,8 +32,10 @@ class DigiflazzWebhookController extends Controller
         // ==========================================
         $data = json_decode($payload, true);
         
-        // Log data masuk untuk debugging
-        Log::info('Digiflazz Webhook:', $data);
+        // Cek Ping Event (Tes Koneksi)
+        if (isset($data['ping'])) {
+            return response()->json(['status' => 'pong']);
+        }
 
         if (!isset($data['data'])) {
             return response()->json(['status' => 'failed', 'message' => 'No data'], 400);
@@ -45,18 +46,21 @@ class DigiflazzWebhookController extends Controller
         $status  = $trxData['status'];   // Sukses, Gagal, Pending
         $sn      = $trxData['sn'] ?? ''; // Token Listrik / SN Pulsa
         $message = $trxData['message'];  // Pesan status
-        $price   = $trxData['price'] ?? 0; // Harga beli real (update jika berubah)
+        $price   = $trxData['price'] ?? 0; // Harga beli real
+        
+        // [TAMBAHAN] Ambil Data Deskripsi (Rincian Tagihan Pasca)
+        $desc    = $trxData['desc'] ?? null; 
 
-        // Cari Transaksi di Database
+        // Cari Transaksi
         $transaction = PpobTransaction::where('order_id', $refId)->first();
 
         if (!$transaction) {
-            Log::error("Webhook: Transaksi ID $refId tidak ditemukan di database lokal.");
+            Log::error("Webhook: Transaksi ID $refId tidak ditemukan.");
             return response()->json(['status' => 'not found'], 404);
         }
 
-        // Cek apakah status sudah final? Jika sudah Sukses/Gagal, jangan diproses lagi
-        if (in_array($transaction->status, ['Sukses', 'Gagal'])) {
+        // Cek apakah status sudah final? (Mencegah double proses)
+        if (in_array($transaction->status, ['Success', 'Failed', 'Sukses', 'Gagal'])) {
             return response()->json(['status' => 'already processed']);
         }
 
@@ -69,33 +73,46 @@ class DigiflazzWebhookController extends Controller
             $transaction->sn = $sn;
             $transaction->message = $message;
             
-            // Update harga modal jika ada perubahan dari Digiflazz
+            // [TAMBAHAN PENTING] Update kolom 'desc' jika ada data rincian baru dari webhook
+            if (!empty($desc)) {
+                $transaction->desc = $desc; // Pastikan kolom 'desc' di model dicasting 'array'
+            }
+
+            // Update Harga Modal (Jika berubah dari estimasi awal)
             if ($price > 0) {
                 $transaction->price = $price;
-                // Hitung ulang profit
                 $transaction->profit = $transaction->selling_price - $price;
             }
 
+            // STATUS SUKSES
             if ($status === 'Sukses') {
-                $transaction->status = 'Sukses';
-                // Opsional: Kirim WA ke user "Pulsa Masuk SN: ..."
-            } 
-            elseif ($status === 'Gagal') {
-                $transaction->status = 'Gagal';
+                $transaction->status = 'Success'; // Gunakan standar 'Success' di DB Anda
                 
-                // --- LOGIKA AUTO REFUND ---
-                // Kembalikan saldo user karena transaksi gagal
-                $user = $transaction->user; // Mengambil relasi User
-                if ($user) {
-                    $refundAmount = $transaction->selling_price;
-                    $user->increment('saldo', $refundAmount);
-                    
-                    Log::info("REFUND BERHASIL: User {$user->nama_lengkap} (ID: {$user->id_pengguna}) senilai Rp $refundAmount. RefID: $refId");
+                // Opsional: Kirim Notifikasi WA/Email Sukses ke User
+                // NotificationService::sendSuccess($transaction);
+            } 
+            // STATUS GAGAL (REFUND)
+            elseif ($status === 'Gagal') {
+                $transaction->status = 'Failed'; // Gunakan standar 'Failed' di DB Anda
+                
+                // Logika Auto Refund Saldo
+                // Cek dulu apakah metode bayarnya 'saldo' agar tidak double refund (jika bayar pakai QRIS tripay biasanya refund manual/beda flow)
+                if ($transaction->payment_method === 'saldo') {
+                    $user = $transaction->user;
+                    if ($user) {
+                        $refundAmount = $transaction->selling_price;
+                        $user->increment('saldo', $refundAmount);
+                        
+                        Log::info("REFUND BERHASIL: User {$user->nama_lengkap} (ID: {$user->id_pengguna}) senilai Rp $refundAmount. RefID: $refId");
+                        $transaction->message .= " (Saldo Dikembalikan)";
+                    }
                 }
             }
 
             $transaction->save();
             DB::commit();
+            
+            Log::info("Webhook Success: $refId status updated to $status");
 
         } catch (\Exception $e) {
             DB::rollBack();
