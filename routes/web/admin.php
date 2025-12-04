@@ -107,11 +107,10 @@ Route::prefix('ppob')->name('ppob.')->group(function () {
     Route::post('/bulk-update', [App\Http\Controllers\PpobProductController::class, 'bulkUpdate'])->name('bulk-update');
     Route::get('/product-export/excel', [App\Http\Controllers\PpobProductController::class, 'exportExcel'])->name('product.export.excel');
     
-    // -------------------------------------------------------------
-    // 3. WILDCARD ROUTE (HARUS PALING BAWAH)
-    // -------------------------------------------------------------
-    // Route {id} menangkap semua URL dinamis. 
-    // Wajib ditaruh paling akhir agar tidak memakan route '/data' di atas.
+     // ===> TAMBAHKAN INI (FIX ERROR ANDA) <===
+    // Nama route harus persis 'export-excel' dan 'export-pdf' agar cocok dengan view Anda
+    Route::get('/export-excel', [App\Http\Controllers\PpobProductController::class, 'exportExcel'])->name('export-excel');
+    Route::get('/export-pdf', [App\Http\Controllers\PpobProductController::class, 'exportPdf'])->name('export-pdf');
     
     Route::get('/{id}', [App\Http\Controllers\PpobProductController::class, 'show'])->name('show');
     Route::put('/update-price/{id}', [App\Http\Controllers\PpobProductController::class, 'updatePrice'])->name('update-price');
