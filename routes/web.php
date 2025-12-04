@@ -720,18 +720,16 @@ Route::put('products/{slug}/specifications', [\App\Http\Controllers\Admin\Produc
 });
 
 
-// Group khusus PPOB
-    Route::prefix('ppob')->name('ppob.')->group(function () {
         
         // Halaman Utama Data Transaksi
         // URL: /admin/ppob/data
         // Route Name: admin.ppob.data.index
-        Route::get('/data', [AdminPpobController::class, 'index'])->name('data.index');
+        Route::get('/admin/ppob/data', [AdminPpobController::class, 'index'])->name('data.index');
 
         // Route Export (Placeholder agar tidak error 404 saat tombol diklik)
-        Route::get('/export/excel', [AdminPpobController::class, 'exportExcel'])->name('export.excel');
-        Route::get('/export/pdf', [AdminPpobController::class, 'exportPdf'])->name('export.pdf');
-    });
+        Route::get('/admin/ppob/export/excel', [AdminPpobController::class, 'exportExcel'])->name('export.excel');
+        Route::get('/admin/ppob/export/pdf', [AdminPpobController::class, 'exportPdf'])->name('export.pdf');
+  
 
 
 
