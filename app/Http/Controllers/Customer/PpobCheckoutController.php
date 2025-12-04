@@ -10,11 +10,8 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Exception;
-use Illuminate\Validation\ValidationException;
 
-// Models
-use App\Models\OrderMarketplace; 
-use App\Models\OrderItemMerketplace; 
+// --- IMPORT MODEL (WAJIB ADA) ---
 use App\Models\User;
 use App\Models\PpobTransaction; 
 
@@ -29,22 +26,25 @@ class PpobCheckoutController extends Controller
     public function prepare(Request $request)
     {
         try {
+            // Validasi input dari JavaScript fetch()
             $data = $request->validate([
-                'sku' => 'required',
-                'name' => 'required',
-                'price' => 'required|numeric',
-                'ref_id' => 'required',
+                'sku'         => 'required',
+                'name'        => 'required',
+                'price'       => 'required|numeric',
+                'ref_id'      => 'required',
                 'customer_no' => 'required',
+                'desc'        => 'nullable' // <--- MENERIMA ARRAY DETAIL DARI JS
             ]);
 
             // Simpan ke session khusus 'ppob_session'
-            // Agar tidak tercampur dengan keranjang belanja fisik
+            // desc disimpan agar nanti bisa ditampilkan di invoice
             $ppobItem = [
                 'sku'         => $data['sku'],
                 'name'        => $data['name'],
                 'price'       => (int) $data['price'],
                 'ref_id'      => $data['ref_id'],
                 'customer_no' => $data['customer_no'],
+                'desc'        => $data['desc'] ?? [], // Simpan array rincian
                 'quantity'    => 1,
                 'is_ppob'     => true
             ];
@@ -66,7 +66,7 @@ class PpobCheckoutController extends Controller
         $item = session()->get('ppob_session');
 
         if (!$item) {
-            return redirect()->route('customer.dashboard')->with('error', 'Sesi transaksi PPOB berakhir atau kadaluarsa. Silakan ulangi cek tagihan.');
+            return redirect()->route('customer.dashboard')->with('error', 'Sesi transaksi berakhir. Silakan ulangi cek tagihan.');
         }
 
         $user = Auth::user();
@@ -74,18 +74,18 @@ class PpobCheckoutController extends Controller
 
         // --- A. SALDO AKUN ---
         $paymentChannels['saldo'] = [
-            'code' => 'SALDO', 
-            'name' => 'Saldo Akun', 
+            'code'        => 'SALDO', 
+            'name'        => 'Saldo Akun', 
             'description' => 'Sisa: Rp ' . number_format($user->saldo ?? 0),
-            'balance' => $user->saldo ?? 0,
-            'active' => true,
-            'icon_url' => 'https://cdn-icons-png.flaticon.com/512/217/217853.png'
+            'balance'     => $user->saldo ?? 0,
+            'active'      => true,
+            'icon_url'    => 'https://cdn-icons-png.flaticon.com/512/217/217853.png'
         ];
 
         // --- B. TRIPAY CHANNELS ---
         try {
-            $apiKey = config('tripay.api_key');
-            $mode   = config('tripay.mode');
+            $apiKey  = config('tripay.api_key');
+            $mode    = config('tripay.mode');
             $baseUrl = ($mode === 'production') 
                 ? 'https://tripay.co.id/api/merchant/payment-channel' 
                 : 'https://tripay.co.id/api-sandbox/merchant/payment-channel';
@@ -107,126 +107,109 @@ class PpobCheckoutController extends Controller
         }
 
         // --- C. DOKU CHANNELS ---
-        // Anda bisa mengambil dari config atau statis array
         $paymentChannels['doku'] = [
-            ['code' => 'DOKU_CC', 'name' => 'Kartu Kredit (DOKU)', 'icon_url' => 'https://cdn-icons-png.flaticon.com/512/6963/6963703.png'],
-            ['code' => 'DOKU_VA', 'name' => 'Virtual Account (DOKU)', 'icon_url' => 'https://cdn-icons-png.flaticon.com/512/2331/2331922.png'],
+            ['code' => 'DOKU_CC', 'name' => 'Kartu Kredit', 'icon_url' => 'https://cdn-icons-png.flaticon.com/512/6963/6963703.png'],
+            ['code' => 'DOKU_VA', 'name' => 'DOKU VA', 'icon_url' => 'https://cdn-icons-png.flaticon.com/512/2331/2331922.png'],
         ];
 
         return view('customer.ppob.checkout', compact('item', 'user', 'paymentChannels'));
     }
 
     /**
-     * 3. STORE: Proses Pembayaran PPOB (LENGKAP: SALDO, DOKU, TRIPAY)
+     * 3. STORE: Proses Pembayaran & Simpan Transaksi
      */
     public function store(Request $request)
     {
-        $request->validate([
-            'payment_method' => 'required'
-        ]);
+        $request->validate(['payment_method' => 'required']);
         
         $item = session()->get('ppob_session');
         if (!$item) {
-            return redirect()->route('customer.dashboard')->with('error', 'Transaksi kadaluarsa. Silakan ulangi.');
+            return redirect()->route('customer.dashboard')->with('error', 'Transaksi kadaluarsa.');
         }
 
         $user = Auth::user();
-        
-        // Hitung Angka
-        $sellingPrice = (int) $item['price']; 
-        $modalPrice = 0; // Nanti diupdate saat sukses
+        $sellingPrice = (int) $item['price'];
+        $modalPrice = 0; // Akan diupdate saat callback sukses dari provider
         $profit = $sellingPrice - $modalPrice;
 
         DB::beginTransaction();
         try {
-            // 1. Generate Order ID Unik (TRX-...)
+            // 1. Buat Order ID Unik (TRX-...)
             do {
                 $orderId = 'TRX-' . now()->timestamp . rand(100, 999);
-            } while (\App\Models\PpobTransaction::where('order_id', $orderId)->exists());
+            } while (PpobTransaction::where('order_id', $orderId)->exists());
 
-            // 2. Simpan Data Awal ke Database (Status Pending)
-            $transaction = new \App\Models\PpobTransaction();
-            $transaction->user_id = $user->id_pengguna;
-            $transaction->order_id = $orderId;
-            $transaction->buyer_sku_code = $item['sku'];
-            $transaction->customer_no = $item['customer_no'];
-            $transaction->price = $modalPrice;          
-            $transaction->selling_price = $sellingPrice;
-            $transaction->profit = $profit;
-            $transaction->payment_method = $request->payment_method;
-            // Default status
-            $transaction->status = ($request->payment_method === 'saldo') ? 'Processing' : 'Pending';
-            $transaction->message = 'Menunggu Pembayaran';
-            $transaction->save();
+            // 2. Simpan ke Tabel ppob_transactions
+            $trx = new PpobTransaction();
+            $trx->user_id        = $user->id_pengguna;
+            $trx->order_id       = $orderId;
+            $trx->buyer_sku_code = $item['sku'];
+            $trx->customer_no    = $item['customer_no'];
+            $trx->price          = $modalPrice;
+            $trx->selling_price  = $sellingPrice;
+            $trx->profit         = $profit;
+            $trx->payment_method = $request->payment_method;
+            
+            // Simpan JSON desc agar invoice bisa menampilkan detail array
+            // Pastikan kolom 'desc' ada di database, tipe JSON atau TEXT
+            $trx->desc           = $item['desc'] ?? null; 
+            
+            // Status awal
+            $trx->status  = ($request->payment_method === 'saldo') ? 'Processing' : 'Pending';
+            $trx->message = 'Menunggu Pembayaran';
+            $trx->save();
 
-            // ==========================================================
-            // LOGIKA PEMBAYARAN (SWITCH CASE)
-            // ==========================================================
-
-            // --- KASUS A: PEMBAYARAN SALDO ---
+            // =========================================================
+            // A. PEMBAYARAN SALDO
+            // =========================================================
             if ($request->payment_method === 'saldo') {
-                
                 if ($user->saldo < $sellingPrice) {
-                    throw new Exception('Saldo akun tidak mencukupi.');
+                    throw new Exception('Saldo akun Anda tidak mencukupi.');
                 }
-
+                
                 // Potong Saldo User
                 $user->decrement('saldo', $sellingPrice);
                 
-                Log::info("PPOB Paid via Saldo: $orderId");
+                // Update Status Transaksi
+                $trx->status  = 'Processing'; // Processing = Sudah bayar, sedang diproses ke operator
+                $trx->message = 'Pembayaran Berhasil via Saldo';
+                $trx->save();
 
-                // Update Transaksi jadi Sukses (atau Processing jika menunggu provider)
-                $transaction->status = 'Processing'; 
-                $transaction->message = 'Sedang diproses provider';
-                $transaction->save();
+                // TODO: TRIGGER API DIGIFLAZZ DISINI (Topup / Bayar Tagihan)
+                // $this->processDigiflazz($trx);
 
-                // TODO: Trigger API Digiflazz disini (Background Job / Direct)
-                // $this->processDigiflazz($transaction); 
-                
                 DB::commit();
                 session()->forget('ppob_session');
                 
-                // Redirect ke Dashboard / Riwayat
                 return redirect()->route('ppob.invoice', ['invoice' => $orderId]);
+            }
 
-            } 
-            
-            // --- KASUS B: PEMBAYARAN DOKU ---
+            // =========================================================
+            // B. PEMBAYARAN DOKU
+            // =========================================================
             elseif (str_contains(strtoupper($request->payment_method), 'DOKU')) {
                 
-                Log::info("PPOB Request via DOKU: $orderId");
+                $dokuService = new DokuJokulService();
                 
-                // Panggil Service DOKU
-                $dokuService = new \App\Services\DokuJokulService();
-                
-                // Siapkan Data Customer
                 $customerData = [
                     'name'  => $user->nama_lengkap,
                     'email' => $user->email,
                     'phone' => $user->no_wa ?? '08123456789'
                 ];
-
-                // Siapkan Item (Format DOKU biasanya butuh array item)
-                $dokuItems = [[
+                
+                $dokuItem = [[
                     'name'     => $item['name'],
                     'quantity' => 1,
                     'price'    => $sellingPrice,
                     'sku'      => $item['sku']
                 ]];
 
-                // Generate Link Pembayaran
-                $paymentUrl = $dokuService->createPayment(
-                    $orderId,
-                    $sellingPrice,
-                    $customerData,
-                    $dokuItems
-                );
+                $paymentUrl = $dokuService->createPayment($orderId, $sellingPrice, $customerData, $dokuItem);
+                
+                if (!$paymentUrl) throw new Exception('Gagal generate link pembayaran DOKU.');
 
-                if (!$paymentUrl) throw new Exception('Gagal generate link DOKU.');
-
-                // Simpan URL Pembayaran & Redirect
-                $transaction->payment_url = $paymentUrl; // Pastikan kolom ini ada di DB, atau simpan di 'message'
-                $transaction->save();
+                $trx->payment_url = $paymentUrl;
+                $trx->save();
                 
                 DB::commit();
                 session()->forget('ppob_session');
@@ -234,15 +217,15 @@ class PpobCheckoutController extends Controller
                 return redirect($paymentUrl);
             }
 
-            // --- KASUS C: PEMBAYARAN TRIPAY (Default/Else) ---
+            // =========================================================
+            // C. PEMBAYARAN TRIPAY
+            // =========================================================
             else {
-                Log::info("PPOB Request via TRIPAY: $orderId");
-
                 $apiKey       = config('tripay.api_key');
                 $privateKey   = config('tripay.private_key');
                 $merchantCode = config('tripay.merchant_code');
                 $isProd       = config('tripay.mode') === 'production';
-                $apiUrl       = $isProd 
+                $url          = $isProd 
                                 ? 'https://tripay.co.id/api/transaction/create' 
                                 : 'https://tripay.co.id/api-sandbox/transaction/create';
 
@@ -263,24 +246,25 @@ class PpobCheckoutController extends Controller
                     ]],
                     'expired_time'   => time() + (60 * 60), // 1 Jam
                     'signature'      => $signature,
-                    'return_url'     => route('customer.dashboard') // Redirect balik setelah bayar
+                    'return_url'     => route('ppob.invoice', ['invoice' => $orderId])
                 ];
 
                 $response = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])
                                 ->timeout(30)
                                 ->withoutVerifying()
-                                ->post($apiUrl, $payload);
+                                ->post($url, $payload);
                 
                 if ($response->successful() && $response->json()['success']) {
                     $d = $response->json()['data'];
+                    // Ambil URL yang tersedia
                     $payUrl = $d['checkout_url'] ?? $d['pay_url'] ?? $d['qr_url'] ?? null;
                     
-                    $transaction->payment_url = $payUrl;
-                    $transaction->save();
+                    $trx->payment_url = $payUrl;
+                    $trx->save();
 
                     DB::commit();
                     session()->forget('ppob_session');
-                    
+
                     return redirect($payUrl);
                 } else {
                     throw new Exception('Tripay Error: ' . ($response->json()['message'] ?? 'Gagal connect gateway'));
@@ -290,7 +274,7 @@ class PpobCheckoutController extends Controller
         } catch (Exception $e) {
             DB::rollBack();
             Log::error('PPOB Store Error: ' . $e->getMessage());
-            return back()->with('error', 'Gagal memproses: ' . $e->getMessage());
+            return back()->with('error', 'Gagal memproses transaksi: ' . $e->getMessage());
         }
     }
 
@@ -300,8 +284,8 @@ class PpobCheckoutController extends Controller
     public function invoice($invoice)
     {
         $user = Auth::user();
-
-        // Cari transaksi berdasarkan Order ID dan User yang login
+        
+        // Ambil data dari tabel ppob_transactions
         $transaction = PpobTransaction::where('order_id', $invoice)
                         ->where('user_id', $user->id_pengguna)
                         ->firstOrFail();

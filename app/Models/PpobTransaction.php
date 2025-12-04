@@ -33,6 +33,7 @@ class PpobTransaction extends Model
         'sn',             // Serial Number / Token Listrik
         'message',        // Pesan dari Provider
         'payment_method', // Cth: saldo, DOKU_VA, TRIPAY_QRIS
+        'desc',
         'payment_url'     // Link pembayaran (jika ada)
     ];
 
@@ -42,6 +43,7 @@ class PpobTransaction extends Model
      */
     protected $casts = [
         'price' => 'integer',
+        'desc' => 'array',
         'selling_price' => 'integer',
         'profit' => 'integer',
         'created_at' => 'datetime',
