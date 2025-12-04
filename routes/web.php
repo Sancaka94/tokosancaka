@@ -75,7 +75,7 @@ use App\Http\Controllers\PpobController; // <--- Jangan lupa import ini di palin
 use App\Http\Controllers\DigiflazzWebhookController;
 use App\Http\Controllers\PpobProductController;
 use App\Http\Controllers\PublicController;
-
+use App\Http\Controllers\Customer\PpobCheckoutController;
 
 
 // Tambahkan Route ini (di luar group middleware admin, pastikan bisa diakses public/user)
@@ -968,6 +968,15 @@ Route::post('/setting-info-pesanan', [AdminController::class, 'updateInfoPesanan
 
 
 Route::middleware('auth')->group(function () {
+
+    // 1. Simpan Data PPOB Sementara ke Session (Dipanggil via AJAX dari tombol Bayar)
+    Route::post('/ppob/prepare', [PpobCheckoutController::class, 'prepare'])->name('ppob.prepare');
+
+    // 2. Halaman Checkout Khusus PPOB
+    Route::get('/checkout-ppob', [PpobCheckoutController::class, 'index'])->name('ppob.checkout.index');
+
+    // 3. Proses Bayar PPOB
+    Route::post('/checkout-ppob/process', [PpobCheckoutController::class, 'store'])->name('ppob.checkout.store');
     
         // Rute untuk mengambil data notifikasi (via JavaScript/AJAX)
     // Ini yang akan kita pakai di layout Anda
