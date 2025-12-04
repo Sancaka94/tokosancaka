@@ -75,10 +75,12 @@ use App\Http\Controllers\PpobController; // <--- Jangan lupa import ini di palin
 use App\Http\Controllers\DigiflazzWebhookController;
 use App\Http\Controllers\PpobProductController;
 use App\Http\Controllers\PublicController;
+use App\Http\Controllers\CartController;
 
 
-
+// Tambahkan Route ini (di luar group middleware admin, pastikan bisa diakses public/user)
 Route::post('/cart/add-ppob', [CartController::class, 'addPpob'])->name('cart.addPpob');
+Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
 // Grouping URL PPOB
 Route::prefix('etalase/ppob')->name('ppob.')->group(function () {
 
