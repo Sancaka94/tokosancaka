@@ -353,24 +353,42 @@
                 <p class="font-bold text-gray-800 text-lg" id="bill_id">-</p>
             </div>
 
-            {{-- Data Tambahan (Tarif, Daya, Periode) --}}
-<div class="md:col-span-2 grid grid-cols-2 gap-y-3 border-t border-blue-200 mt-2 pt-3">
+          {{-- Data Rinci Tagihan --}}
+<div class="md:col-span-2 grid grid-cols-2 gap-y-4 border-t border-blue-200 mt-4 pt-4">
+    
+    {{-- Baris 1: Ref ID & Periode --}}
     <div>
-        {{-- TAMBAHKAN ID DISINI (label_power) --}}
-        <p class="text-gray-500 text-xs uppercase" id="label_power">Tarif / Daya</p>
-        <p class="font-bold text-gray-700" id="bill_power">-</p>
+        <p class="text-gray-500 text-[10px] uppercase tracking-wider">No. Referensi</p>
+        <p class="font-bold text-gray-700 text-sm" id="bill_ref">-</p>
     </div>
     <div>
-        <p class="text-gray-500 text-xs uppercase">Periode Tagihan</p>
-        <p class="font-bold text-gray-700" id="bill_period">-</p>
+        <p class="text-gray-500 text-[10px] uppercase tracking-wider">Periode</p>
+        <p class="font-bold text-gray-700 text-sm" id="bill_period">-</p>
     </div>
-     <div>
-        <p class="text-gray-500 text-xs uppercase">Biaya Admin</p>
-        <p class="font-bold text-gray-700" id="bill_admin">-</p>
+
+    {{-- Baris 2: Data Dinamis (Tarif/Daya/Peserta) & Lembar --}}
+    <div>
+        {{-- ID INI PENTING UNTUK JUDUL DINAMIS --}}
+        <p class="text-gray-500 text-[10px] uppercase tracking-wider" id="label_power">Keterangan</p>
+        <p class="font-bold text-gray-700 text-sm" id="bill_power">-</p>
     </div>
-     <div>
-        <p class="text-gray-500 text-xs uppercase">Jumlah Lembar</p>
-        <p class="font-bold text-gray-700" id="bill_sheet">-</p>
+    <div>
+        <p class="text-gray-500 text-[10px] uppercase tracking-wider">Jml. Lembar</p>
+        <p class="font-bold text-gray-700 text-sm" id="bill_sheet">-</p>
+    </div>
+
+    {{-- Baris 3: Alamat (Full Width) --}}
+    <div class="col-span-2">
+        <p class="text-gray-500 text-[10px] uppercase tracking-wider">Alamat</p>
+        <p class="font-bold text-gray-700 text-sm break-words" id="bill_address">-</p>
+    </div>
+
+    {{-- Baris 4: Admin --}}
+    <div class="col-span-2 border-t border-dashed border-gray-200 pt-2">
+        <div class="flex justify-between items-center">
+            <p class="text-gray-500 text-xs">Biaya Admin</p>
+            <p class="font-bold text-gray-700" id="bill_admin">-</p>
+        </div>
     </div>
 </div>
 
@@ -438,6 +456,23 @@
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
 <script>
+    // 1. FUNGSI HELPER FORMATTER (Taruh di paling atas script)
+    function formatPeriodeID(periodeStr) {
+        if (!periodeStr) return '-';
+        let str = periodeStr.toString().replace(/[^0-9]/g, ''); // Ambil angka saja
+
+        // Jika format YYYYMM (Standar PPOB: 202305)
+        if (str.length === 6) {
+            let year = str.substring(0, 4);
+            let month = parseInt(str.substring(4, 6));
+            const months = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+            if (months[month]) return months[month] + ' ' + year;
+        }
+        
+        // Jika API BPJS kadang mengirim format aneh atau cuma "01", kembalikan aslinya
+        return periodeStr;
+    }
+
     var swiper = new Swiper(".heroSwiper", { loop: true, autoplay: { delay: 4000 }, pagination: { el: ".swiper-pagination", clickable: true }, navigation: { nextEl: ".swiper-button-next", prevEl: ".swiper-button-prev" } });
     const inputNo = document.getElementById('customer_no');
 
@@ -522,88 +557,70 @@
             .then(res => res.json())
             .then(data => {
                 btn.disabled = false; spinner.classList.add('hidden'); text.innerText = "Cek Tagihan";
-                if(data.status === 'success') {
-    // --- 1. Data Dasar ---
-    document.getElementById('bill_name').innerText = data.customer_name;
-    document.getElementById('bill_id').innerText = data.customer_no;
-    
-    // Total Bayar
-    let totalBayar = data.selling_price ? data.selling_price : data.amount;
-    document.getElementById('bill_amount').innerText = 'Rp ' + parseInt(totalBayar).toLocaleString('id-ID');
-    
-    // --- 2. Data Rinci (LOGIKA DINAMIS Sesuai Produk) ---
-if (data.desc) {
-    let labelEl = document.getElementById('label_power');
-    let valueEl = document.getElementById('bill_power');
+                if(data.data && data.data.status === 'Sukses') {
+                const d = data.data;
 
-    // A. LOGIKA DETEKSI PRODUK BERDASARKAN SKU / RESPONSE
-    // Kita gunakan variabel 'skuPasca' yang sudah Anda definisikan sebelumnya atau deteksi dari data
-    
-    // CASE 1: PLN (Ada Daya & Tarif)
-    if (skuPasca.includes('pln') && data.desc.daya) {
-        labelEl.innerText = "TARIF / DAYA";
-        valueEl.innerText = (data.desc.tarif || '-') + ' / ' + data.desc.daya + ' VA';
-    } 
-    // CASE 2: BPJS Kesehatan (Biasanya ada Jumlah Peserta / Cabang)
-    else if (skuPasca.includes('bpjs')) {
-        labelEl.innerText = "JUMLAH PESERTA";
-        // Cek field yang biasa dikembalikan API BPJS (sesuaikan dengan API provider Anda)
-        let peserta = data.desc.jumlah_peserta || data.desc.peserta || '1';
-        let cabang = data.desc.kantor_cabang || data.desc.cabang || '';
-        
-        valueEl.innerText = peserta + " Orang" + (cabang ? " (" + cabang + ")" : "");
-    }
-    // CASE 3: PDAM (Biasanya Tarif/Golongan atau Alamat)
-    else if (skuPasca.includes('pdam')) {
-        labelEl.innerText = "GOLONGAN / TARIF"; // Atau bisa diganti "ALAMAT" jika lebih relevan
-        valueEl.innerText = data.desc.tarif || data.desc.golongan || '-';
-    }
-    // CASE 4: Multifinance (Biasanya Tenor / Item Name)
-    else if (skuPasca.includes('multifinance') || skuPasca.includes('finance')) {
-        labelEl.innerText = "ITEM / TENOR";
-        let item = data.desc.item_name || '-';
-        let tenor = data.desc.tenor || '';
-        valueEl.innerText = item + (tenor ? " (" + tenor + " Bln)" : "");
-    }
-    // CASE 5: PBB (Biasanya Luas Tanah/Bumi)
-    else if (skuPasca.includes('pbb')) {
-        labelEl.innerText = "LUAS BUMI / BANGUNAN";
-        let lt = data.desc.luas_tanah || data.desc.lt || '0';
-        let lb = data.desc.luas_bangunan || data.desc.lb || '0';
-        valueEl.innerText = lt + "m² / " + lb + "m²";
-    }
-    // DEFAULT (Jika tidak dikenali)
-    else {
-        labelEl.innerText = "KETERANGAN";
-        // Ambil data apa saja yang ada
-        valueEl.innerText = data.desc.tarif || data.desc.alamat || '-';
-    }
+                // --- DATA UMUM ---
+                document.getElementById('bill_ref').innerText = d.ref_id || '-';
+                document.getElementById('bill_name').innerText = d.customer_name;
+                document.getElementById('bill_id').innerText = d.customer_no;
+                
+                // Harga
+                let totalBayar = d.selling_price; 
+                document.getElementById('bill_amount').innerText = 'Rp ' + parseInt(totalBayar).toLocaleString('id-ID');
 
-    // B. LOGIKA BIAYA ADMIN (Sama seperti kode lama Anda, sudah oke)
-    let rawAdmin = (data.admin !== undefined ? data.admin : null) || 
-                   (data.desc.admin !== undefined ? data.desc.admin : null) || 
-                   (data.desc.detail && data.desc.detail[0] ? data.desc.detail[0].admin : 0);
-                   
-    let admin = parseInt(rawAdmin);
-    if (isNaN(admin)) admin = 0;
-    
-    document.getElementById('bill_admin').innerText = 'Rp ' + admin.toLocaleString('id-ID');
-    
-    // C. LOGIKA LEMBAR TAGIHAN
-    document.getElementById('bill_sheet').innerText = (data.desc.lembar_tagihan || '1') + ' Lembar';
+                // Admin
+                let admin = parseInt(d.admin);
+                document.getElementById('bill_admin').innerText = 'Rp ' + (isNaN(admin) ? '0' : admin.toLocaleString('id-ID'));
 
-    // D. LOGIKA PERIODE
-    if (data.desc.detail && data.desc.detail.length > 0) {
-        document.getElementById('bill_period').innerText = data.desc.detail[0].periode;
-    } else {
-        document.getElementById('bill_period').innerText = '-';
-    }
-}
+                // --- RINCIAN (DESC) ---
+                if (d.desc) {
+                    const desc = d.desc;
+                    const detail = (desc.detail && desc.detail.length > 0) ? desc.detail[0] : {};
 
-    inquiryRefId = data.ref_id;
-    resultDiv.classList.remove('hidden');
-}
-            })
+                    // 1. ALAMAT
+                    document.getElementById('bill_address').innerText = desc.alamat || '-';
+
+                    // 2. PERIODE (SUDAH DIPERBAIKI DENGAN LOGIC CARBON-LIKE)
+                    let rawPeriode = detail.periode || desc.periode || '-';
+                    document.getElementById('bill_period').innerText = formatPeriodeID(rawPeriode);
+
+                    // 3. LEMBAR TAGIHAN
+                    document.getElementById('bill_sheet').innerText = (desc.lembar_tagihan || '1') + ' Lembar';
+
+                    // 4. LOGIKA DINAMIS (LABEL & VALUE)
+                    let labelEl = document.getElementById('label_power');
+                    let valueEl = document.getElementById('bill_power');
+                    let sku = d.buyer_sku_code;
+
+                    if (sku.includes('bpjs')) {
+                        labelEl.innerText = "JUMLAH PESERTA";
+                        valueEl.innerText = (desc.jumlah_peserta || '1') + " Orang";
+                    }
+                    else if (sku.includes('pln')) {
+                        labelEl.innerText = "TARIF / DAYA";
+                        valueEl.innerText = (desc.tarif || '-') + ' / ' + (desc.daya || '-') + ' VA';
+                    }
+                    else if (sku.includes('pdam')) {
+                        labelEl.innerText = "GOLONGAN";
+                        valueEl.innerText = desc.tarif || desc.golongan || '-';
+                    }
+                    else if (sku.includes('finance') || sku.includes('cicilan')) {
+                        labelEl.innerText = "ITEM / TENOR";
+                        valueEl.innerText = (desc.item_name || '-') + ' / ' + (desc.tenor || '-') + ' Bln';
+                    }
+                    else {
+                        labelEl.innerText = "KETERANGAN";
+                        valueEl.innerText = "-";
+                    }
+                }
+
+                inquiryRefId = d.ref_id;
+                resultDiv.classList.remove('hidden');
+            } else {
+                alert(data.data ? data.data.message : "Tagihan tidak ditemukan.");
+            }
+        })
             .catch(err => {
                 btn.disabled = false; spinner.classList.add('hidden'); text.innerText = "Cek Tagihan";
                 alert("Terjadi kesalahan koneksi.");
