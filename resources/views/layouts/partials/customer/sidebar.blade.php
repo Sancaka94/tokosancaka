@@ -76,6 +76,44 @@
 
          @if(!$hideMenus)
 
+        {{-- ========================================================== --}}
+        {{-- MENU PPOB (PRODUK DIGITAL) - DITAMBAHKAN DISINI --}}
+        {{-- ========================================================== --}}
+        
+        <p class="px-4 pt-4 pb-2 text-xs text-gray-400 uppercase tracking-wider">Produk Digital</p>
+
+        <div x-data="{ open: {{ request()->routeIs('customer.ppob.*') ? 'true' : 'false' }} }" class="space-y-1">
+            <button @click="open = !open" 
+                class="flex items-center w-full px-4 py-2.5 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors duration-200">
+                <i class="fas fa-mobile-alt fa-fw w-6"></i>
+                <span class="ml-3 flex-1 text-left">Isi Ulang & Tagihan</span>
+                <i :class="open ? 'fas fa-chevron-up' : 'fas fa-chevron-down'" class="ml-auto text-xs"></i>
+            </button>
+
+            <div x-show="open" x-cloak class="ml-10 space-y-1">
+                {{-- Link Beli Pulsa --}}
+                <a href="{{ route('etalase.index') }}/ppob/digital/pulsa" target="_blank"
+                   class="block px-4 py-2 text-gray-300 hover:bg-gray-600 hover:text-white rounded-md transition-colors duration-200">
+                    <i class="fas fa-sim-card fa-fw w-4"></i>
+                    <span class="ml-2">Isi Pulsa / Data</span>
+                </a>
+                
+                {{-- Link Bayar Tagihan (PLN) --}}
+                <a href="{{ route('etalase.index') }}/ppob/digital/pln-pascabayar" target="_blank"
+                   class="block px-4 py-2 text-gray-300 hover:bg-gray-600 hover:text-white rounded-md transition-colors duration-200">
+                    <i class="fas fa-file-invoice-dollar fa-fw w-4"></i>
+                    <span class="ml-2">Bayar Tagihan</span>
+                </a>
+
+                {{-- Link Riwayat PPOB --}}
+                <a href="{{ route('customer.ppob.history') }}"
+                   class="block px-4 py-2 text-gray-300 hover:bg-gray-600 hover:text-white rounded-md transition-colors duration-200 {{ request()->routeIs('customer.ppob.history') ? 'bg-gray-600 text-white' : '' }}">
+                    <i class="fas fa-history fa-fw w-4"></i>
+                    <span class="ml-2">Riwayat Transaksi</span>
+                </a>
+            </div>
+        </div> 
+
         {{-- GRUP MANAJEMEN PESANAN --}}
 
         <p class="px-4 pt-4 pb-2 text-xs text-gray-400 uppercase tracking-wider">Manajemen Pengiriman</p>
