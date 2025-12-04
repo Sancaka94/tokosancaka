@@ -64,6 +64,7 @@ use App\Models\BannerEtalase; // [BARU] Import model Banner
 
 use App\Http\Controllers\Admin\DokuBalanceController; // ✅ DITAMBAHKAN
 
+use App\Http\Controllers\Admin\AdminPpobController;
 
 /*
 
@@ -82,6 +83,20 @@ use App\Http\Controllers\Admin\DokuBalanceController; // ✅ DITAMBAHKAN
 |
 
 */
+
+
+// Group khusus PPOB
+    Route::prefix('ppob')->name('ppob.')->group(function () {
+        
+        // Halaman Utama Data Transaksi
+        // URL: /admin/ppob/data
+        // Route Name: admin.ppob.data.index
+        Route::get('/data', [AdminPpobController::class, 'index'])->name('data.index');
+
+        // Route Export (Placeholder agar tidak error 404 saat tombol diklik)
+        Route::get('/export/excel', [AdminPpobController::class, 'exportExcel'])->name('export.excel');
+        Route::get('/export/pdf', [AdminPpobController::class, 'exportPdf'])->name('export.pdf');
+    });
 
 // ===================================================================
 // RUTE-RUTE YANG HILANG (DITAMBAHKAN DI SINI)
