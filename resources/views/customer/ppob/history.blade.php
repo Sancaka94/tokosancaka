@@ -99,7 +99,7 @@
                                     $sku = strtolower($trx->buyer_sku_code);
                                     // Logika Logo Sederhana
                                     $logo = 'https://cdn-icons-png.flaticon.com/512/1067/1067566.png'; // Default
-                                    if(str_contains($sku, 'pln')) $logo = 'https://upload.wikimedia.org/wikipedia/commons/9/97/Logo_PLN.png';
+                                    if(str_contains($sku, 'pln')) $logo = 'https://tokosancaka.com/public/storage/logo-ppob/pln.png';
                                     elseif(str_contains($sku, 'bpjs')) $logo = 'https://tokosancaka.com/public/storage/logo-ppob/bpjs.png';
                                     elseif(str_contains($sku, 'telkomsel') || str_contains($sku, 'simpati')) $logo = 'https://upload.wikimedia.org/wikipedia/commons/b/bc/Telkomsel_2021_icon.svg';
                                     elseif(str_contains($sku, 'indosat')) $logo = 'https://upload.wikimedia.org/wikipedia/commons/a/ac/Indosat_Ooredoo_Logo.png';
