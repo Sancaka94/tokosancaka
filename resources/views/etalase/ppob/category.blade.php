@@ -9,7 +9,6 @@
     $currentSlug = $pageInfo['slug'] ?? $urlSlug ?? 'pulsa'; 
 
     // MAPPING: Ubah Slug URL menjadi Kode SKU API yang Benar
-    // Ini memastikan saat buka 'bpjs-kesehatan', sistem tahu itu 'bpjs', bukan 'pln'
     $skuMap = [
         // Kategori Pascabayar
         'pln-pascabayar'     => 'pln',
@@ -21,7 +20,7 @@
         'tv-pascabayar'      => 'tv',
         'multifinance'       => 'multifinance',
         'cicilan'            => 'multifinance',
-        'pbb'                => 'pbb',       
+        'pbb'                => 'cimahi',       // Sesuai Dokumen PBB (biasanya cimahi/dki)
         'samsat'             => 'samsat',
         'gas-negara'         => 'pgas',
         'pln-nontaglis'      => 'plnnontaglist',
@@ -33,26 +32,22 @@
         'data' => 'data',
     ];
 
-    // Ambil SKU Aktif. Jika tidak ketemu di map, default gunakan 'pln' (jika pascabayar)
+    // Ambil SKU Aktif. Jika tidak ketemu di map, default gunakan 'pln'
     $activeSku = $skuMap[$currentSlug] ?? 'pln';
 
     // Logika penentuan apakah halaman ini Pascabayar atau Prabayar
-    $postpaidKeys = ['pln', 'pdam', 'bpjs', 'bpjstk', 'hp', 'internet', 'tv', 'multifinance', 'pbb', 'samsat', 'pgas', 'plnnontaglist', 'emoney'];
-    
-    // Cek flag dari controller atau cek apakah slug ada di daftar pascabayar
+    $postpaidKeys = ['pln', 'pdam', 'bpjs', 'bpjstk', 'hp', 'internet', 'tv', 'multifinance', 'cimahi', 'pbb', 'samsat', 'pgas', 'plnnontaglist', 'emoney'];
     $isPostpaid = ($pageInfo['is_postpaid'] ?? false) || in_array($activeSku, $postpaidKeys);
     
-    // Judul Halaman
+    // Judul Halaman & Label Input
     $pageTitle = $pageInfo['title'] ?? ucfirst(str_replace('-', ' ', $currentSlug));
-
-    // Label & Placeholder Input Dinamis
     $inputLabel = "Nomor Pelanggan";
     $inputPlace = "Contoh: 08123456789";
     
     if($activeSku == 'samsat') {
         $inputLabel = "Kode Bayar, No. KTP / Identitas";
         $inputPlace = "Contoh: 8821...,3201...";
-    } elseif ($activeSku == 'pbb') {
+    } elseif ($activeSku == 'pbb' || $activeSku == 'cimahi') {
         $inputLabel = "Nomor Objek Pajak (NOP)";
         $inputPlace = "Masukkan NOP";
     }
@@ -131,7 +126,7 @@
 
 @section('content')
 
-{{-- SECTION BANNER (DIKEMBALIKAN SESUAI PERMINTAAN) --}}
+{{-- SECTION BANNER --}}
 <section class="grid grid-cols-1 lg:grid-cols-3 gap-2 mb-4">
     <div class="lg:col-span-2 rounded shadow-sm overflow-hidden h-full sm:h-full md:h-full w-full">
         <div class="swiper heroSwiper w-full h-full">
@@ -159,10 +154,10 @@
     </div>
 </section>
 
-{{-- SECTION MENU KATEGORI (FULL VERSION) --}}
+{{-- SECTION MENU KATEGORI --}}
 <section class="mb-10 space-y-8" data-aos="fade-up">
     
-    {{-- BAGIAN 1: PRABAYAR --}}
+    {{-- PRABAYAR --}}
     <div class="bg-white p-6 rounded-2xl shadow-md border-t-4 border-red-500">
         <h2 class="text-xl font-bold mb-6 text-gray-800 flex items-center border-b pb-2">
             <i class="fas fa-wallet text-red-500 mr-2"></i> Layanan Top Up & Prabayar
@@ -178,7 +173,7 @@
         </div>
     </div>
 
-    {{-- BAGIAN 2: PASCABAYAR --}}
+    {{-- PASCABAYAR --}}
     <div class="bg-white p-6 rounded-2xl shadow-md border-t-4 border-blue-500">
         <h2 class="text-xl font-bold mb-6 text-gray-800 flex items-center border-b pb-2">
             <i class="fas fa-file-invoice text-blue-500 mr-2"></i> Layanan Tagihan & Pascabayar
@@ -444,17 +439,19 @@
                             <button onclick="bayarTagihan()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg shadow-green-200 transition transform hover:-translate-y-1">
                                 <i class="fas fa-check-circle mr-2"></i> Bayar Sekarang
                             </button>
+
+                            {{-- ⚡ FITUR BARU: CONTAINER ARRAY DETAIL (HIDDEN BY DEFAULT) ⚡ --}}
+                            <div id="detail_container" class="mt-6 border-t border-dashed border-gray-200 pt-4 hidden">
+                                <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                    <i class="fas fa-list-ul"></i> Rincian Item Tagihan
+                                </h4>
+                                <div id="detail_list" class="space-y-3">
+                                    {{-- ITEM AKAN DIMASUKKAN VIA JS DISINI --}}
+                                </div>
+                            </div>
+
                         </div>
                     @endif
-
-                    <div id="detail_container" class="mt-6 border-t border-dashed border-gray-200 pt-4 hidden">
-    <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
-        <i class="fas fa-list-ul"></i> Rincian Item Tagihan
-    </h4>
-    
-    <div id="detail_list" class="space-y-3">
-        </div>
-</div>
 
                 </div>
             </div>
@@ -623,28 +620,34 @@
     // ==========================================
     @else
     function cekTagihan() {
-        const no = inputNo.value.replace(/[^0-9]/g, '');
-        if(no.length < 5) { alert("Masukkan ID Pelanggan yang valid!"); inputNo.focus(); return; }
+        const no = inputNo.value.trim();
+        // Samsat pakai koma, jangan dihapus non-digitnya kecuali spasi
+        let cleanNo = ACTIVE_SKU === 'samsat' ? no : no.replace(/[^0-9]/g, ''); 
+
+        if(cleanNo.length < 5) { alert("Masukkan ID Pelanggan yang valid!"); inputNo.focus(); return; }
 
         const btn = document.getElementById('btn-cek-tagihan');
         const spinner = document.getElementById('loading-spinner');
         const text = document.getElementById('btn-text');
         const resultDiv = document.getElementById('bill_result');
         const emptyDiv = document.getElementById('bill_empty');
+        const detailContainer = document.getElementById('detail_container');
+        const detailList = document.getElementById('detail_list');
 
         // Reset UI
         btn.disabled = true; spinner.classList.remove('hidden'); text.innerText = "Mengecek...";
         resultDiv.classList.add('hidden'); emptyDiv.classList.add('hidden');
+        detailContainer.classList.add('hidden'); // Sembunyikan detail array dulu
 
         // REQUEST API (Forward ke Backend Laravel)
         fetch('{{ route("ppob.check.bill") }}', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
             body: JSON.stringify({ 
-                customer_no: no, 
+                customer_no: cleanNo, 
                 sku: ACTIVE_SKU,
                 buyer_sku_code: ACTIVE_SKU,
-                ref_id: generateRefID() // <--- CRITICAL
+                ref_id: generateRefID() // <--- CRITICAL REF ID
             })
         })
         .then(res => res.json())
@@ -671,11 +674,12 @@
                 // --- MAPPING RINCIAN (DESC) ---
                 if (d.desc) {
                     const desc = d.desc;
-                    // Ambil item pertama jika detail berupa array
+                    // Ambil item pertama jika detail berupa array untuk tampilan utama
                     const detail = (desc.detail && Array.isArray(desc.detail) && desc.detail.length > 0) ? desc.detail[0] : (desc.detail || desc);
 
-                    // 1. Periode
-                    document.getElementById('bill_period').innerText = formatPeriodeID(detail.periode || desc.periode || '-');
+                    // 1. Periode & Alamat
+                    let periodeUtama = detail.periode || desc.periode || d.periode || '-';
+                    document.getElementById('bill_period').innerText = formatPeriodeID(periodeUtama);
                     
                     // 2. Logic Dinamis (Label & Value)
                     let lbl1 = "Info", val1 = "-", lbl2 = "Lembar", val2 = (desc.lembar_tagihan || '1') + ' Lembar';
@@ -721,69 +725,54 @@
                     document.getElementById('val_info_2').innerText = val2;
                     document.getElementById('label_address').innerText = lblAddr;
                     document.getElementById('val_address').innerText = valAddr;
+
+                    // --------------------------------------------------------
+                    // ⚡ LOGIC BARU: PARSING ARRAY DETAIL (LOOPING DIV) ⚡
+                    // --------------------------------------------------------
+                    detailList.innerHTML = ''; // Reset isi list
+
+                    if (desc.detail && Array.isArray(desc.detail) && desc.detail.length > 0) {
+                        
+                        // Tampilkan Container
+                        detailContainer.classList.remove('hidden');
+
+                        // Loop Setiap Item
+                        desc.detail.forEach((item) => {
+                            let itemPeriode = formatPeriodeID(item.periode);
+                            let itemNilai = item.nilai_tagihan ? parseInt(item.nilai_tagihan).toLocaleString('id-ID') : '0';
+                            let itemDenda = item.denda ? parseInt(item.denda).toLocaleString('id-ID') : '0';
+                            let itemAdmin = item.admin ? parseInt(item.admin).toLocaleString('id-ID') : '0';
+                            
+                            // Meteran (Khusus PDAM/PLN)
+                            let meterHtml = '';
+                            if(item.meter_awal && item.meter_akhir) {
+                                meterHtml = `<div class="text-[10px] text-gray-400 mt-1">Meter: ${item.meter_awal} - ${item.meter_akhir}</div>`;
+                            }
+
+                            // Template HTML Item
+                            let htmlItem = `
+                                <div class="bg-gray-50 border border-gray-200 rounded-lg p-3 flex justify-between items-start">
+                                    <div>
+                                        <p class="text-xs font-bold text-gray-700">Periode: ${itemPeriode}</p>
+                                        ${meterHtml}
+                                        ${itemDenda != '0' ? `<span class="text-red-500 text-[10px]">(Denda: Rp ${itemDenda})</span>` : ''}
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="text-xs font-bold text-gray-800">Rp ${itemNilai}</p>
+                                        ${itemAdmin != '0' ? `<p class="text-[10px] text-gray-400">Adm: Rp ${itemAdmin}</p>` : ''}
+                                    </div>
+                                </div>
+                            `;
+                            detailList.insertAdjacentHTML('beforeend', htmlItem);
+                        });
+                    } else {
+                        // Sembunyikan jika tidak ada array detail
+                        detailContainer.classList.add('hidden');
+                    }
                 }
 
                 inquiryRefId = d.ref_id;
                 resultDiv.classList.remove('hidden');
-
-                // ... (Kode sebelumnya: mapping bill_name, bill_id, dll)
-
-// ============================================================
-// LOGIKA LOOPING ARRAY "DETAIL"
-// ============================================================
-const detailContainer = document.getElementById('detail_container');
-const detailList = document.getElementById('detail_list');
-
-// Reset isi list dulu biar gak numpuk kalau klik 2x
-detailList.innerHTML = ''; 
-
-if (d.desc && d.desc.detail && Array.isArray(d.desc.detail) && d.desc.detail.length > 0) {
-    
-    // Tampilkan container
-    detailContainer.classList.remove('hidden');
-
-    // Loop setiap item di dalam array
-    d.desc.detail.forEach((item, index) => {
-        
-        // Format Periode (Opsional: pakai fungsi formatPeriodeID yg sudah ada)
-        let periodeDisplay = formatPeriodeID(item.periode);
-        
-        // Format Nilai Tagihan (jika ada)
-        let nilaiDisplay = item.nilai_tagihan ? 'Rp ' + parseInt(item.nilai_tagihan).toLocaleString('id-ID') : '-';
-        
-        // Format Denda (jika ada)
-        let dendaDisplay = item.denda && parseInt(item.denda) > 0 ? 
-                           `<span class="text-red-500 text-[10px] ml-2">(Denda: Rp ${parseInt(item.denda).toLocaleString('id-ID')})</span>` : '';
-
-        // Info Tambahan (Meteran untuk PLN/PDAM)
-        let meterInfo = '';
-        if(item.meter_awal && item.meter_akhir) {
-            meterInfo = `<div class="text-[10px] text-gray-400 mt-1">Meter: ${item.meter_awal} - ${item.meter_akhir}</div>`;
-        }
-
-        // HTML Template per Item
-        let itemHtml = `
-            <div class="bg-gray-50 border border-gray-200 rounded-lg p-3 flex justify-between items-start">
-                <div>
-                    <p class="text-xs font-bold text-gray-700">Periode: ${periodeDisplay}</p>
-                    ${meterInfo}
-                    ${dendaDisplay}
-                </div>
-                <div class="text-right">
-                    <p class="text-xs font-bold text-gray-800">${nilaiDisplay}</p>
-                    ${item.admin ? `<p class="text-[10px] text-gray-400">Adm: Rp ${parseInt(item.admin).toLocaleString('id-ID')}</p>` : ''}
-                </div>
-            </div>
-        `;
-
-        // Masukkan ke dalam div list
-        detailList.insertAdjacentHTML('beforeend', itemHtml);
-    });
-
-} else {
-    // Sembunyikan container jika tidak ada array detail
-    detailContainer.classList.add('hidden');
-}
 
             } else {
                 // Tampilkan Error
@@ -804,7 +793,5 @@ if (d.desc && d.desc.detail && Array.isArray(d.desc.detail) && d.desc.detail.len
         window.location.href = "{{ route('login') }}?ref_id=" + inquiryRefId;
     }
     @endif
-
-
 </script>
 @endpush
