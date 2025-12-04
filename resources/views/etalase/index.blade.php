@@ -318,10 +318,10 @@
                 
                 {{-- 1. TAB HEADER (Prabayar vs Pascabayar) --}}
                 <div class="flex border-b border-gray-200">
-                    <button onclick="switchTab('prepaid')" id="tab-prepaid" class="flex-1 py-4 text-center font-bold text-sm md:text-base border-b-2 border-blue-600 text-blue-600 transition hover:bg-red-500 flex items-center justify-center gap-2">
+                    <button onclick="switchTab('prepaid')" id="tab-prepaid" class="flex-1 py-4 text-center font-bold text-sm md:text-base border-b-2 border-blue-600 text-blue-600 transition hover:bg-red-600 flex items-center justify-center gap-2">
                         <i class="fas fa-mobile-alt"></i> Prabayar / Topup
                     </button>
-                    <button onclick="switchTab('postpaid')" id="tab-postpaid" class="flex-1 py-4 text-center font-bold text-sm md:text-base border-b-2 border-transparent text-gray-500 hover:text-white transition hover:bg-red-500 flex items-center justify-center gap-2">
+                    <button onclick="switchTab('postpaid')" id="tab-postpaid" class="flex-1 py-4 text-center font-bold text-sm md:text-base border-b-2 border-transparent text-gray-500 hover:text-white transition hover:bg-red-600 flex items-center justify-center gap-2">
                         <i class="fas fa-file-invoice"></i> Pascabayar / Tagihan
                     </button>
                 </div>
@@ -349,7 +349,7 @@
                         {{-- Tombol Lihat Semua (Accordion) --}}
                         @if(count($prepaidMenus) > 16)
                             <div class="mt-8 text-center">
-                                <button onclick="toggleExpand('prepaid')" id="btn-expand-prepaid" class="inline-flex items-center gap-2 px-6 py-2 bg-red-50 text-blue-600 text-xs font-bold rounded-full hover:bg-red-100 transition">
+                                <button onclick="toggleExpand('prepaid')" id="btn-expand-prepaid" class="inline-flex items-center gap-2 px-6 py-2 bg-red-200 text-red-600 text-xs font-bold rounded-full hover:bg-red-500 transition">
                                     <span>Lihat Semua Layanan</span> 
                                     <i class="fas fa-chevron-down text-[10px]"></i>
                                 </button>
