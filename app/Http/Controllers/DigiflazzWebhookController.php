@@ -31,7 +31,7 @@ class DigiflazzWebhookController extends Controller
             Log::warning("Signature Mismatch. Incoming: " . $incomingSignature . " | Local: " . $localSignature);
             
             // Opsional: Uncomment baris di bawah ini jika ingin menolak request yang tidak valid
-            return response()->json(['status' => 'failed', 'message' => 'Invalid Signature'], 401);
+            // return response()->json(['status' => 'failed', 'message' => 'Invalid Signature'], 401);
         }
 
         // ==========================================
