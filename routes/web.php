@@ -79,8 +79,7 @@ use App\Http\Controllers\PublicController;
 
 
 // Tambahkan Route ini (di luar group middleware admin, pastikan bisa diakses public/user)
-Route::post('/cart/add-ppob', [CartController::class, 'addPpob'])->name('cart.addPpob');
-Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
+
 // Grouping URL PPOB
 Route::prefix('etalase/ppob')->name('ppob.')->group(function () {
 
@@ -343,6 +342,7 @@ Route::prefix('customer')->name('customer.')->group(function () {
     Route::post('/cart/add/{product}', [CartController::class, 'add'])->name('cart.add');
     Route::patch('/cart/update', [CartController::class, 'update'])->name('cart.update');
     Route::delete('/cart/remove', [CartController::class, 'remove'])->name('cart.remove');
+    Route::post('/cart/add-ppob', [CartController::class, 'addPpob'])->name('cart.addPpob');
        // INI ADALAH PERBAIKANNYA: Rute untuk halaman checkout
  
     Route::get('/marketplace', [CustomerMarketplaceController::class, 'index'])->name('marketplace.index');
