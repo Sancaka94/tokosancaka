@@ -46,7 +46,7 @@ if (!function_exists('get_operator_logo')) {
             return asset('public/storage/' . $path);
         }
 
-        // 5. Fallback: Jika gambar tidak ditemukan, return URL gambar default 
+        // 5. Fallback: Jika gambar tidak ditemukan, return URL gambar defaul
         // atau return null agar di Blade bisa di-handle error-nya
         return asset('public/storage/logo-ppob/default.png'); 
     }
