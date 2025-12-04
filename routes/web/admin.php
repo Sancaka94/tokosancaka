@@ -85,18 +85,38 @@ use App\Http\Controllers\Admin\AdminPpobController;
 */
 
 
-// Group khusus PPOB
-    Route::prefix('ppob')->name('ppob.')->group(function () {
-        
-        // Halaman Utama Data Transaksi
-        // URL: /admin/ppob/data
-        // Route Name: admin.ppob.data.index
-        Route::get('/data', [AdminPpobController::class, 'index'])->name('data.index');
+// =================================================================
+// GROUP ROUTE PPOB (DIGIFLAZZ) - GABUNGAN TRANSAKSI & PRODUK
+// =================================================================
+Route::prefix('ppob')->name('ppob.')->group(function () {
+    
+    // -------------------------------------------------------------
+    // 1. DATA TRANSAKSI (HARUS PALING ATAS)
+    // -------------------------------------------------------------
+    // URL: /admin/ppob/data
+    Route::get('/data', [AdminPpobController::class, 'index'])->name('data.index');
+    Route::get('/export/excel', [AdminPpobController::class, 'exportExcel'])->name('export.excel');
+    Route::get('/export/pdf', [AdminPpobController::class, 'exportPdf'])->name('export.pdf');
 
-        // Route Export (Placeholder agar tidak error 404 saat tombol diklik)
-        Route::get('/export/excel', [AdminPpobController::class, 'exportExcel'])->name('export.excel');
-        Route::get('/export/pdf', [AdminPpobController::class, 'exportPdf'])->name('export.pdf');
-    });
+    // -------------------------------------------------------------
+    // 2. MANAJEMEN PRODUK PPOB (HARUS DI TENGAH)
+    // -------------------------------------------------------------
+    // URL: /admin/ppob/ (List Produk)
+    // Pastikan Controller PpobProductController sudah di-use di paling atas file ini
+    Route::get('/', [App\Http\Controllers\PpobProductController::class, 'index'])->name('index'); 
+    Route::post('/bulk-update', [App\Http\Controllers\PpobProductController::class, 'bulkUpdate'])->name('bulk-update');
+    Route::get('/product-export/excel', [App\Http\Controllers\PpobProductController::class, 'exportExcel'])->name('product.export.excel');
+    
+    // -------------------------------------------------------------
+    // 3. WILDCARD ROUTE (HARUS PALING BAWAH)
+    // -------------------------------------------------------------
+    // Route {id} menangkap semua URL dinamis. 
+    // Wajib ditaruh paling akhir agar tidak memakan route '/data' di atas.
+    
+    Route::get('/{id}', [App\Http\Controllers\PpobProductController::class, 'show'])->name('show');
+    Route::put('/update-price/{id}', [App\Http\Controllers\PpobProductController::class, 'updatePrice'])->name('update-price');
+    Route::delete('/destroy/{id}', [App\Http\Controllers\PpobProductController::class, 'destroy'])->name('destroy');
+});
 
 // ===================================================================
 // RUTE-RUTE YANG HILANG (DITAMBAHKAN DI SINI)
