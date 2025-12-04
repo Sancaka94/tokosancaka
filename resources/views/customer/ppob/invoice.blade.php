@@ -1,6 +1,6 @@
 @extends('layouts.marketplace')
 
-@section('title', 'Invoice Transaksi #' . $transaction->order_id)
+@section('title', 'Invoice #' . $transaction->order_id)
 
 @section('content')
 <div class="bg-gray-50 min-h-screen py-10">
@@ -43,11 +43,11 @@
                             <i class="fas fa-times-circle"></i>
                         </div>
                         <h2 class="text-2xl font-extrabold text-gray-900">Transaksi Gagal</h2>
-                        <p class="text-gray-500 mt-1">Mohon hubungi admin jika ada kendala.</p>
+                        <p class="text-gray-500 mt-1">{{ $transaction->message ?? 'Mohon hubungi admin.' }}</p>
                     @endif
                 </div>
 
-                {{-- Detail Transaksi (Tabel Style) --}}
+                {{-- Tabel Informasi Utama --}}
                 <div class="border-t border-b border-dashed border-gray-200 py-6 mb-6 space-y-3">
                     <div class="flex justify-between">
                         <span class="text-gray-500 text-sm">No. Invoice</span>
@@ -77,11 +77,12 @@
                     </div>
                 </div>
 
-                {{-- Rincian Produk --}}
+                {{-- Rincian Produk & Detail Array --}}
                 <div class="bg-gray-50 rounded-xl p-5 mb-6 border border-gray-100">
                     <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Rincian Produk</p>
                     
-                    <div class="flex justify-between items-start mb-1">
+                    {{-- Info Produk Utama --}}
+                    <div class="flex justify-between items-start mb-2">
                         <div>
                             <h3 class="font-bold text-gray-900 text-lg">{{ $transaction->buyer_sku_code }}</h3>
                             <p class="text-sm text-gray-500 mt-1">
@@ -92,6 +93,62 @@
                             <p class="font-extrabold text-xl text-blue-600">Rp {{ number_format($transaction->selling_price, 0, ',', '.') }}</p>
                         </div>
                     </div>
+
+                    {{-- ⚡ LOGIKA MENAMPILKAN ARRAY DETAIL (PENTING) ⚡ --}}
+                    @php
+                        // Ambil data desc dari kolom database (otomatis di-cast ke array oleh model)
+                        $desc = $transaction->desc ?? [];
+                        $details = $desc['detail'] ?? []; 
+                    @endphp
+
+                    @if(!empty($details) && is_array($details))
+                        <div class="mt-4 pt-4 border-t border-dashed border-gray-300">
+                            <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                <i class="fas fa-list-ul"></i> Detail Tagihan
+                            </h4>
+                            
+                            <div class="space-y-2">
+                                @foreach($details as $item)
+                                    <div class="bg-white border border-gray-200 p-3 rounded-lg flex justify-between items-start text-sm shadow-sm">
+                                        <div>
+                                            {{-- Periode --}}
+                                            <p class="font-bold text-gray-700">
+                                                Periode: {{ $item['periode'] ?? '-' }}
+                                            </p>
+
+                                            {{-- Meteran (Khusus PLN/PDAM) --}}
+                                            @if(isset($item['meter_awal']) && isset($item['meter_akhir']))
+                                                <div class="text-[10px] text-gray-500 mt-1 bg-gray-100 px-1.5 py-0.5 rounded inline-block">
+                                                    Meter: {{ $item['meter_awal'] }} - {{ $item['meter_akhir'] }}
+                                                </div>
+                                            @endif
+
+                                            {{-- Denda --}}
+                                            @if(isset($item['denda']) && $item['denda'] > 0)
+                                                <div class="text-[10px] text-red-600 font-bold mt-1">
+                                                    (Denda: Rp {{ number_format($item['denda'], 0, ',', '.') }})
+                                                </div>
+                                            @endif
+                                        </div>
+
+                                        <div class="text-right">
+                                            {{-- Nilai Tagihan per Item --}}
+                                            <p class="font-bold text-gray-800">
+                                                Rp {{ number_format($item['nilai_tagihan'] ?? 0, 0, ',', '.') }}
+                                            </p>
+                                            
+                                            {{-- Admin per Item (jika ada) --}}
+                                            @if(isset($item['admin']) && $item['admin'] > 0)
+                                                <p class="text-[10px] text-gray-400">
+                                                    Adm: Rp {{ number_format($item['admin'], 0, ',', '.') }}
+                                                </p>
+                                            @endif
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
 
                     {{-- Tampilkan SN / Token Listrik Jika Sukses --}}
                     @if($transaction->sn && $status === 'success')
@@ -106,15 +163,6 @@
                                 </span>
                             </div>
                             <p class="text-[10px] text-center text-gray-400 mt-2">Salin kode di atas untuk digunakan.</p>
-                        </div>
-                    @endif
-
-                    {{-- Pesan Error Jika Gagal --}}
-                    @if($status === 'failed')
-                        <div class="mt-4 pt-4 border-t border-red-200 border-dashed text-center">
-                            <p class="text-sm text-red-600 italic">
-                                "{{ $transaction->message ?? 'Transaksi gagal diproses provider.' }}"
-                            </p>
                         </div>
                     @endif
                 </div>
@@ -134,7 +182,7 @@
                         <i class="fas fa-print"></i> Cetak Struk
                     </button>
 
-                    {{-- Tombol Beli Lagi (Jika Sukses/Gagal) --}}
+                    {{-- Tombol Beli Lagi --}}
                     @if(in_array($status, ['success', 'failed']))
                          <a href="{{ route('etalase.index') }}" class="flex-1 bg-gray-800 hover:bg-gray-900 text-white font-bold py-3.5 rounded-xl text-center transition flex items-center justify-center gap-2">
                             <i class="fas fa-shopping-cart"></i> Beli Lagi
@@ -147,7 +195,7 @@
 
         {{-- Bantuan --}}
         <div class="text-center mt-8 pb-8">
-            <p class="text-sm text-gray-500">Butuh bantuan? Hubungi <a href="https://wa.me/6281234567890" class="text-blue-600 font-bold hover:underline">Customer Service</a></p>
+            <p class="text-sm text-gray-500">Butuh bantuan? Hubungi <a href="#" class="text-blue-600 font-bold hover:underline">Customer Service</a></p>
         </div>
 
     </div>
