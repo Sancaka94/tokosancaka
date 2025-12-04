@@ -4,8 +4,9 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use App\Models\PpobTransaction; 
+use App\Models\PpobTransaction;
 use Illuminate\Support\Facades\DB;
+use Barryvdh\DomPDF\Facade\Pdf; // Pastikan package dompdf sudah diinstall
 
 class AdminPpobController extends Controller
 {
@@ -14,47 +15,123 @@ class AdminPpobController extends Controller
      */
     public function index(Request $request)
     {
-        // 1. Eager Loading relasi 'user' untuk performa (mencegah N+1 query)
+        // Panggil fungsi query builder private di bawah
+        $query = $this->getFilteredQuery($request);
+
+        // Gunakan paginate untuk tampilan web
+        $transactions = $query->paginate(20);
+
+        return view('admin.ppob.data.index', compact('transactions'));
+    }
+
+    /**
+     * Export data ke Excel (Format CSV)
+     * Menggunakan Stream Download agar hemat memori server.
+     */
+    public function exportExcel(Request $request)
+    {
+        $fileName = 'transaksi_ppob_' . date('Y-m-d_H-i') . '.csv';
+        
+        // Ambil semua data (bukan paginate)
+        $transactions = $this->getFilteredQuery($request)->get();
+
+        $headers = [
+            "Content-type"        => "text/csv",
+            "Content-Disposition" => "attachment; filename=$fileName",
+            "Pragma"              => "no-cache",
+            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
+            "Expires"             => "0"
+        ];
+
+        $columns = ['ID', 'Waktu', 'Order ID', 'User', 'Produk', 'Tujuan', 'Harga Beli', 'Harga Jual', 'Profit', 'Status', 'SN / Pesan'];
+
+        $callback = function() use ($transactions, $columns) {
+            $file = fopen('php://output', 'w');
+            fputcsv($file, $columns);
+
+            foreach ($transactions as $trx) {
+                // Gunakan helper get_ppob_message jika ada RC
+                $statusMessage = $trx->sn ? "SN: " . $trx->sn : (function_exists('get_ppob_message') && $trx->rc ? get_ppob_message($trx->rc) : $trx->message);
+
+                $row = [
+                    $trx->id,
+                    $trx->created_at->format('Y-m-d H:i:s'),
+                    $trx->order_id,
+                    $trx->user->name ?? 'User Terhapus',
+                    $trx->product_name . ' (' . $trx->buyer_sku_code . ')',
+                    $trx->customer_no,
+                    $trx->price, // Harga Beli (Modal)
+                    $trx->selling_price, // Harga Jual
+                    $trx->profit,
+                    $trx->status,
+                    $statusMessage
+                ];
+
+                fputcsv($file, $row);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Export data ke PDF
+     * Membutuhkan view khusus untuk cetak.
+     */
+    public function exportPdf(Request $request)
+    {
+        // Ambil semua data
+        $transactions = $this->getFilteredQuery($request)->get();
+
+        // Hitung total untuk ringkasan di PDF
+        $totalOmset = $transactions->sum('selling_price');
+        $totalProfit = $transactions->sum('profit');
+
+        // Load View PDF (Kita akan buat view ini di langkah ke-2)
+        $pdf = Pdf::loadView('admin.ppob.data.pdf', compact('transactions', 'totalOmset', 'totalProfit'));
+        
+        // Setup Kertas Landscape agar muat banyak kolom
+        $pdf->setPaper('a4', 'landscape');
+
+        return $pdf->download('laporan-transaksi-ppob-' . date('d-m-Y') . '.pdf');
+    }
+
+    /**
+     * PRIVATE FUNCTION: Logika Filter Utama
+     * Dipisahkan agar tidak menulis ulang kode yang sama di index, excel, dan pdf.
+     */
+    private function getFilteredQuery(Request $request)
+    {
         $query = PpobTransaction::with('user')->latest(); 
 
-        // 2. SEARCH (Cari berdasarkan Order ID, No HP, SN, atau Nama User)
+        // 1. SEARCH
         if ($request->has('search') && $request->filled('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
                 $q->where('order_id', 'like', "%{$search}%")
                   ->orWhere('customer_no', 'like', "%{$search}%")
                   ->orWhere('sn', 'like', "%{$search}%")
-                  // Cari ke tabel users (relasi)
                   ->orWhereHas('user', function($userQ) use ($search) {
-                      $userQ->where('name', 'like', "%{$search}%") // Ganti 'name' dg 'nama_lengkap' jika perlu
+                      $userQ->where('name', 'like', "%{$search}%")
                             ->orWhere('email', 'like', "%{$search}%");
                   });
             });
         }
 
-        // 3. FILTER STATUS
+        // 2. FILTER STATUS
         if ($request->has('status') && $request->filled('status')) {
             $query->where('status', $request->status);
         }
 
-        // 4. FILTER TANGGAL
-        if ($request->start_date && $request->end_date) {
-            $query->whereBetween('created_at', [
-                $request->start_date . ' 00:00:00', 
-                $request->end_date . ' 23:59:59'
-            ]);
+        // 3. FILTER TANGGAL
+        if ($request->filled('start_date') && $request->filled('end_date')) {
+            $startDate = $request->start_date . ' 00:00:00';
+            $endDate   = $request->end_date . ' 23:59:59';
+            $query->whereBetween('created_at', [$startDate, $endDate]);
         }
 
-        $transactions = $query->paginate(20);
-
-        return view('admin.ppob.data.index', compact('transactions'));
-    }
-
-    public function exportExcel() {
-        return back()->with('info', 'Fitur Export Excel akan segera hadir.');
-    }
-
-    public function exportPdf() {
-        return back()->with('info', 'Fitur Export PDF akan segera hadir.');
+        return $query;
     }
 }
