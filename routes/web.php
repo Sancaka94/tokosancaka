@@ -720,18 +720,7 @@ Route::put('products/{slug}/specifications', [\App\Http\Controllers\Admin\Produc
 });
 
 
-
-Route::middleware(['auth', RoleMiddleware::class . ':Admin'])
-
-    ->prefix('admin')->name('admin.')
-
-    ->group(function () {
-
-        // All general admin routes should go in this file
-
-        require __DIR__.'/web/admin.php';
-
-    // Group khusus PPOB
+// Group khusus PPOB
     Route::prefix('ppob')->name('ppob.')->group(function () {
         
         // Halaman Utama Data Transaksi
@@ -743,6 +732,19 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])
         Route::get('/export/excel', [AdminPpobController::class, 'exportExcel'])->name('export.excel');
         Route::get('/export/pdf', [AdminPpobController::class, 'exportPdf'])->name('export.pdf');
     });
+
+
+
+Route::middleware(['auth', RoleMiddleware::class . ':Admin'])
+
+    ->prefix('admin')->name('admin.')
+
+    ->group(function () {
+
+        // All general admin routes should go in this file
+
+        require __DIR__.'/web/admin.php';
+
 
 
         
