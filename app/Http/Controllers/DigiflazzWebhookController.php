@@ -127,7 +127,7 @@ class DigiflazzWebhookController extends Controller
                 }
             }
             // Jika status 'Pending', kita biarkan saja atau update jadi Processing
-
+            $transaction->rc = $rc; // Pastikan variabel $rc sudah diambil dari JSON webhook
             $transaction->save();
             
             // Commit perubahan ke database
