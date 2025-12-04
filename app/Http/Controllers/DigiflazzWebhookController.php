@@ -20,21 +20,22 @@ class DigiflazzWebhookController extends Controller
         // ==========================================
         $secret = env('DIGIFLAZZ_SECRET_KEY', 'SancakaSecretKey2025'); 
         $incomingSignature = $request->header('X-Hub-Signature');
-        $payload = $request->getContent(); // Ambil raw body string
+        $payload = $request->getContent(); 
         
-        // Buat signature lokal untuk pembanding
+        // Baris perhitungan signature lokal
         $localSignature = 'sha1=' . hash_hmac('sha1', $payload, $secret);
 
-        // PERBAIKAN: Gunakan (string) agar tidak error jika header kosong (saat test Postman)
+        // [TARUH DI SINI] 
+        // Pengecekan dilakukan setelah $localSignature selesai dibuat
         if (!hash_equals($localSignature, (string)$incomingSignature)) {
-            // Kita log sebagai warning saja agar testing tetap jalan. 
-            // Untuk Production nanti bisa di-uncomment baris return-nya.
             Log::warning("Signature Mismatch. Incoming: " . $incomingSignature . " | Local: " . $localSignature);
-            // return response()->json(['status' => 'failed', 'message' => 'Invalid Signature'], 401);
+            
+            // Opsional: Uncomment baris di bawah ini jika ingin menolak request yang tidak valid
+            return response()->json(['status' => 'failed', 'message' => 'Invalid Signature'], 401);
         }
 
         // ==========================================
-        // 3. PARSING DATA
+        // 3. PARSING DATA (Baru proses data setelah lolos verifikasi di atas)
         // ==========================================
         $data = json_decode($payload, true);
 
