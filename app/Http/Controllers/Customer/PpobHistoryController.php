@@ -6,16 +6,19 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\PpobTransaction;
 use Illuminate\Support\Facades\Auth;
-use Barryvdh\DomPDF\Facade\Pdf; // Pastikan package dompdf terinstall
+use Barryvdh\DomPDF\Facade\Pdf; // Pastikan ini di-import
+use Maatwebsite\Excel\Facades\Excel; // Pastikan ini di-import
+use App\Exports\PpobTransactionsExport; // Jika pakai class export terpisah (opsional)
 use Carbon\Carbon;
 
 class PpobHistoryController extends Controller
 {
+    // Function index() sama seperti sebelumnya (tidak ada perubahan)
     public function index(Request $request)
     {
         $query = PpobTransaction::where('user_id', Auth::id());
 
-        // 1. Filter Search (Order ID / No Pelanggan / SKU)
+        // 1. Filter Search
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
@@ -44,10 +47,11 @@ class PpobHistoryController extends Controller
         return view('customer.ppob.history', compact('transactions'));
     }
 
-    // Export Excel (CSV Format agar ringan tanpa library berat)
+    // Export Excel (CSV Format - Ringan)
     public function exportExcel(Request $request)
     {
-        $fileName = 'transaksi-ppob-' . date('Y-m-d') . '.csv';
+        $fileName = 'transaksi-ppob-' . date('Y-m-d-His') . '.csv';
+        // Ambil semua data (tanpa pagination)
         $transactions = PpobTransaction::where('user_id', Auth::id())->latest()->get();
 
         $headers = [
@@ -58,20 +62,21 @@ class PpobHistoryController extends Controller
             "Expires"             => "0"
         ];
 
-        $columns = ['Order ID', 'Produk', 'No Pelanggan', 'Harga', 'Status', 'SN/Token', 'Tanggal'];
+        $columns = ['Order ID', 'Produk', 'No Pelanggan', 'Harga Jual', 'Status', 'SN/Token/Pesan', 'Tanggal Transaksi'];
 
         $callback = function() use($transactions, $columns) {
             $file = fopen('php://output', 'w');
             fputcsv($file, $columns);
+
             foreach ($transactions as $trx) {
                 fputcsv($file, [
                     $trx->order_id,
-                    $trx->buyer_sku_code,
-                    $trx->customer_no,
+                    strtoupper($trx->buyer_sku_code),
+                    "'" . $trx->customer_no, // Tambah tanda kutip agar tidak dianggap angka oleh Excel
                     $trx->selling_price,
                     $trx->status,
-                    $trx->sn,
-                    $trx->created_at
+                    $trx->sn ?? $trx->message,
+                    $trx->created_at->format('Y-m-d H:i:s')
                 ]);
             }
             fclose($file);
@@ -80,18 +85,19 @@ class PpobHistoryController extends Controller
         return response()->stream($callback, 200, $headers);
     }
     
-    // Export PDF (Menggunakan DomPDF atau View Print sederhana)
+    // Export PDF (Menggunakan DomPDF)
     public function exportPdf(Request $request)
     {
-        $transactions = PpobTransaction::where('user_id', Auth::id())->latest()->limit(100)->get();
+        // Batasi 200 transaksi terakhir agar tidak terlalu berat saat generate PDF
+        $transactions = PpobTransaction::where('user_id', Auth::id())->latest()->limit(200)->get();
         
-        // Jika menggunakan barryvdh/laravel-dompdf
         if (class_exists(Pdf::class)) {
+            // Pastikan view 'customer.ppob.pdf_export' dibuat
             $pdf = Pdf::loadView('customer.ppob.pdf_export', compact('transactions'));
-            return $pdf->download('transaksi-ppob.pdf');
+            $pdf->setPaper('a4', 'landscape'); // Atur kertas landscape agar muat banyak kolom
+            return $pdf->download('laporan-transaksi-ppob-' . date('Y-m-d') . '.pdf');
         } 
         
-        // Fallback jika belum install library PDF
-        return back()->with('error', 'Library PDF belum terinstall.');
+        return back()->with('error', 'Library PDF (dompdf) belum terinstall. Hubungi admin.');
     }
 }
