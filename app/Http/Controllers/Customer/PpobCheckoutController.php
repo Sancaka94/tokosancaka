@@ -16,8 +16,9 @@ use Illuminate\Validation\ValidationException;
 use App\Models\OrderMarketplace; 
 use App\Models\OrderItemMerketplace; 
 use App\Models\User;
+use App\Models\PpobTransaction; 
 
-// Services
+// --- IMPORT SERVICES ---
 use App\Services\DokuJokulService;
 
 class PpobCheckoutController extends Controller
