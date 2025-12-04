@@ -791,7 +791,7 @@
         });
     }
 
-    // --- FUNGSI BAYAR: TAMBAH KE CART & REDIRECT ---
+    // --- FUNGSI BAYAR (VERSI BARU: DIRECT CHECKOUT) ---
     function bayarTagihan() {
         if(!currentBillData) {
             alert("Data tagihan tidak valid/kadaluarsa. Silakan cek ulang.");
@@ -803,12 +803,11 @@
         btnBayar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
         btnBayar.disabled = true;
 
-        // Kirim Data Tagihan ke Session Cart di Backend
-        fetch('{{ route("cart.addPpob") }}', {
+        // POST KE ROUTE PREPARE
+        fetch('{{ route("ppob.prepare") }}', {
             method: 'POST',
             headers: { 
-                'Content-Type': 'application/json',
-                'Accept': 'application/json', // <--- WAJIB AGAR ERROR JADI JSON, BUKAN HTML
+                'Content-Type': 'application/json', 
                 'X-CSRF-TOKEN': '{{ csrf_token() }}' 
             },
             body: JSON.stringify(currentBillData)
@@ -816,21 +815,20 @@
         .then(res => res.json())
         .then(data => {
             if(data.success) {
-                // Redirect ke Halaman Cart Sancaka
-                window.location.href = "{{ route('cart.index') }}";
+                // REDIRECT KE HALAMAN CHECKOUT KHUSUS PPOB
+                window.location.href = "{{ route('ppob.checkout.index') }}";
             } else {
-                alert("Gagal menambahkan ke keranjang.");
+                alert("Gagal memproses pesanan.");
                 btnBayar.innerHTML = oriText;
                 btnBayar.disabled = false;
             }
         })
         .catch(err => {
             console.error(err);
-            alert("Terjadi kesalahan sistem saat memproses keranjang.");
+            alert("Terjadi kesalahan sistem.");
             btnBayar.innerHTML = oriText;
             btnBayar.disabled = false;
         });
     }
-    @endif
 </script>
 @endpush
