@@ -181,7 +181,7 @@
                                 </div>
                                 <h3 class="text-lg font-medium text-gray-900">Belum ada transaksi</h3>
                                 <p class="text-gray-500 text-sm mt-1">Transaksi PPOB Anda akan muncul di sini.</p>
-                                <a href="{{ route('etalase.ppob.digital') }}" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 transition">
+                                <a href="https://tokosancaka.com/daftar-harga" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 transition">
                                     Mulai Transaksi
                                 </a>
                             </div>
