@@ -82,46 +82,65 @@ class CheckoutController
     public function index(KiriminAjaService $kiriminAja)
     {
         if (!Auth::check()) {
-            return redirect()->route('customer.login')
-                ->with('info', 'Anda harus login untuk melanjutkan.');
+            return redirect()->route('customer.login')->with('info', 'Login dulu ya.');
         }
 
         $cart = session()->get('cart', []);
-        
-        // Log Debug untuk melihat isi cart saat ini
-        Log::info('Checkout Index: Data Keranjang', ['cart' => $cart]);
-
         if (empty($cart)) {
-            return redirect()->route('customer.cart.index')->with('info', 'Keranjang Anda kosong.');
+            return redirect()->route('customer.cart.index')->with('info', 'Keranjang kosong.');
         }
 
         $user = Auth::user();
         
-        // Cek Role (Opsional)
-        if (isset($user->role) && strtolower($user->role) === 'pelanggan') {
-            // Logika redirect khusus pelanggan jika diperlukan
-        }
-
-        // ==========================================================
-        // 1. VALIDASI KERANJANG (FISIK & PPOB)
-        // ==========================================================
-        
+        // --- 1. VALIDASI KERANJANG ---
         $validCart = [];
         $invalidItems = [];
-        $firstValidStore = null;
-        $hasPhysicalProduct = false; // Flag penanda apakah ada barang fisik (butuh ongkir)
+        $firstValidStore = null; 
+        $hasPhysicalProduct = false;
 
         foreach ($cart as $cartKey => $item) {
             
-            // --------------------------------------------------------
-            // ⚡ FIX UTAMA: CEK PPOB DULU SEBELUM CEK DATABASE ⚡
-            // --------------------------------------------------------
-            // Jika item ini ditandai sebagai PPOB (is_ppob = true)
-            // Maka anggap VALID dan JANGAN cek ke tabel 'marketplaces' / 'products'
+            // ==================================================================
+            // ⚡ PENGECEKAN UTAMA: PPOB (JANGAN DIHAPUS) ⚡
+            // ==================================================================
+            // Jika item ini PPOB, langsung anggap VALID. 
+            // Jangan biarkan kode berjalan ke bawah (Marketplace::find)
             if (isset($item['is_ppob']) && $item['is_ppob'] == true) {
-                $validCart[$cartKey] = $item;
-                continue; // <--- PENTING: Langsung lanjut ke item berikutnya
+                $validCart[$cartKey] = $item; // Simpan item ini
+                continue; // <--- LANJUT KE ITEM BERIKUTNYA (SKIP VALIDASI DB)
             }
+            // ==================================================================
+
+            // --- Validasi Produk Fisik (Marketplace) ---
+            $productId = $item['product_id'] ?? null;
+            if (!$productId) { $invalidItems[] = $item['name'] ?? 'Unknown'; continue; }
+
+            $product = Marketplace::find($productId);
+
+            if ($product && $product->store && $product->store->user) {
+                $validCart[$cartKey] = $item;
+                $hasPhysicalProduct = true; // Ada barang fisik, berarti butuh ongkir
+                if ($firstValidStore === null) {
+                    $firstValidStore = $product->store;
+                }
+            } else {
+                $invalidItems[] = $item['name'];
+                Log::warning('Item fisik dihapus (tidak valid)', ['id' => $productId]);
+            }
+        }
+
+        // Simpan keranjang yang sudah bersih
+        session()->put('cart', $validCart);
+        
+        if (empty($validCart)) {
+            session()->forget('cart');
+            return redirect()->route('customer.cart.index')->with('error', 'Keranjang telah dikosongkan (Produk tidak valid).');
+        }
+
+        $cart = $validCart;
+        $expressOptions = [];
+        $instantOptions = [];
+        $tripayChannels = [];
 
             // --------------------------------------------------------
             // LOGIKA PRODUK FISIK (JALAN HANYA JIKA BUKAN PPOB)
