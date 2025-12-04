@@ -101,11 +101,11 @@
                                     $logo = 'https://cdn-icons-png.flaticon.com/512/1067/1067566.png'; // Default
                                     if(str_contains($sku, 'pln')) $logo = 'https://tokosancaka.com/public/storage/logo-ppob/pln.png';
                                     elseif(str_contains($sku, 'bpjs')) $logo = 'https://tokosancaka.com/public/storage/logo-ppob/bpjs.png';
-                                    elseif(str_contains($sku, 'telkomsel') || str_contains($sku, 'simpati')) $logo = 'https://upload.wikimedia.org/wikipedia/commons/b/bc/Telkomsel_2021_icon.svg';
-                                    elseif(str_contains($sku, 'indosat')) $logo = 'https://upload.wikimedia.org/wikipedia/commons/a/ac/Indosat_Ooredoo_Logo.png';
-                                    elseif(str_contains($sku, 'xl')) $logo = 'https://upload.wikimedia.org/wikipedia/commons/5/55/XL_Axiata_2016_icon.svg';
-                                    elseif(str_contains($sku, 'dana')) $logo = 'https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg';
-                                    elseif(str_contains($sku, 'gopay')) $logo = 'https://upload.wikimedia.org/wikipedia/commons/8/86/Gopay_logo.svg';
+                                    elseif(str_contains($sku, 'telkomsel') || str_contains($sku, 'simpati')) $logo = 'https://tokosancaka.com/public/storage/logo-ppob/telkomsel.png';
+                                    elseif(str_contains($sku, 'indosat')) $logo = 'https://tokosancaka.com/public/storage/logo-ppob/indosat.png';
+                                    elseif(str_contains($sku, 'xl')) $logo = 'https://tokosancaka.com/public/storage/logo-ppob/xl.png';
+                                    elseif(str_contains($sku, 'dana')) $logo = 'https://tokosancaka.com/public/storage/logo-ppob/dana.png';
+                                    elseif(str_contains($sku, 'gopay')) $logo = 'https://tokosancaka.com/public/storage/logo-ppob/go pay.png';
                                 @endphp
                                 <div class="h-10 w-10 flex-shrink-0 mr-3 bg-white border border-gray-200 rounded-full p-1 flex items-center justify-center overflow-hidden">
                                     <img class="h-full w-full object-contain" src="{{ $logo }}" alt="{{ $trx->buyer_sku_code }}">
