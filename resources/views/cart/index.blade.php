@@ -69,7 +69,7 @@
          .btn-shopee-solid:hover:not(:disabled) { /* Add :not(:disabled) */
              background-color: #d73210; /* Slightly darker orange */
          }
-          button:disabled, a.disabled { /* Style for disabled buttons/links */
+         button:disabled, a.disabled { /* Style for disabled buttons/links */
              opacity: 0.6;
              cursor: not-allowed;
          }
@@ -156,7 +156,6 @@
             @if(!empty($cart))
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-                    <!-- Daftar Item Keranjang (Kolom Kiri) -->
                     <div class="lg:col-span-2 bg-white rounded-xl shadow-sm">
                          <div class="p-4 sm:p-6 border-b border-gray-200 flex justify-between items-center">
                              <h2 class="text-lg font-semibold text-gray-900">Item di Keranjang</h2>
@@ -186,7 +185,29 @@
                                 {{-- @php $totalWeight += ($details['weight'] ?? 0) * $quantity; @endphp --}}
                                 <li class="flex flex-col sm:flex-row py-4 sm:py-6 px-4 sm:px-6 cart-item relative" data-id="{{ $cartKey }}">
                                     <div class="h-24 w-24 sm:h-28 sm:w-28 flex-shrink-0 overflow-hidden rounded-md border border-gray-200 bg-gray-50">
-                                        <img src="{{ $details['image_url'] ? asset('public/storage/' . $details['image_url']) : 'https://placehold.co/112x112/EFEFEF/AAAAAA?text=N/A' }}"
+                                        @php
+                                            // ⚡ LOGIKA PEMILIHAN GAMBAR (HELPER ATAU STORAGE) ⚡
+                                            $imageSrc = 'https://placehold.co/112x112/EFEFEF/AAAAAA?text=N/A';
+
+                                            // 1. Cek jika Item PPOB (Digital)
+                                            if (isset($details['is_ppob']) && $details['is_ppob'] == true) {
+                                                // Gunakan Helper get_operator_logo
+                                                // Asumsi slug atau name menyimpan nama brand (misal: pln, telkomsel)
+                                                $imageSrc = get_operator_logo($details['slug'] ?? $details['name']);
+                                            } 
+                                            // 2. Cek jika Produk Fisik (Ada image_url)
+                                            elseif (!empty($details['image_url'])) {
+                                                // Cek apakah image_url sudah berupa URL lengkap (http/https)
+                                                if (filter_var($details['image_url'], FILTER_VALIDATE_URL)) {
+                                                    $imageSrc = $details['image_url'];
+                                                } else {
+                                                    // Jika path lokal, tambahkan asset public/storage
+                                                    $imageSrc = asset('public/storage/' . $details['image_url']);
+                                                }
+                                            }
+                                        @endphp
+
+                                        <img src="{{ $imageSrc }}"
                                              alt="{{ $details['name'] ?? 'Produk' }}"
                                              class="h-full w-full object-cover object-center"
                                              onerror="this.onerror=null;this.src='https://placehold.co/112x112/EFEFEF/AAAAAA?text=Error';">
@@ -198,7 +219,7 @@
                                                 <h3>
                                                     {{-- Link kembali ke halaman produk (gunakan slug jika ada) --}}
                                                     {{-- Pastikan route 'products.show' ada dan menerima slug --}}
-                                                    @if(isset($details['slug']) && Route::has('products.show'))
+                                                    @if(isset($details['slug']) && Route::has('products.show') && empty($details['is_ppob']))
                                                         <a href="{{ route('products.show', $details['slug']) }}" class="hover:text-orange-600 line-clamp-2">{{ $details['name'] ?? 'Nama Produk Tidak Tersedia' }}</a>
                                                     @else
                                                          <span class="line-clamp-2">{{ $details['name'] ?? 'Nama Produk Tidak Tersedia' }}</span>
@@ -244,7 +265,6 @@
                         </ul>
                     </div>
 
-                    <!-- Ringkasan Pesanan (Kolom Kanan) -->
                     <div class="lg:col-span-1">
                         <div class="bg-white rounded-xl shadow-sm p-6 sticky top-24"> {{-- Make summary sticky --}}
                             <h2 class="text-lg font-semibold text-gray-900">Ringkasan Pesanan</h2>
@@ -307,24 +327,6 @@
     </div>
 </div>
 --}}
-
-{{-- Partial view untuk notifikasi --}}
-{{-- resources/views/partials/alert-messages.blade.php (buat file ini jika belum ada) --}}
-{{--
-@if (session('success'))
-<div id="alert-success" class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">...</div>
-@endif
-@if (session('error'))
-<div id="alert-error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">...</div>
-@endif
-@if (session('info'))
-<div id="alert-info" class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded relative mb-4" role="alert">...</div>
-@endif
-@if (session('warning'))
-<div id="alert-warning" class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded relative mb-4" role="alert">...</div>
-@endif
---}}
-
 
 @endsection
 
@@ -615,7 +617,7 @@ $(document).ready(function () {
                          </a>
                      </div>
                  </div>
-             `);
+              `);
          }
     }
 
@@ -639,4 +641,3 @@ $(document).ready(function () {
 });
 </script>
 @endpush
-
