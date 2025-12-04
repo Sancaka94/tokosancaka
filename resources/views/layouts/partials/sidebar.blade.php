@@ -541,6 +541,14 @@
                             Produk PPOB
                         </a>
                     </li>
+
+                    {{-- 2. [BARU] Data Transaksi --}}
+                    <li>
+                        <a href="{{ route('admin.ppob.data.index') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-gray-700 {{ request()->routeIs('admin.ppob.data.index') ? 'text-white' : 'text-gray-400' }}">
+                            Data Transaksi
+                        </a>
+                    </li>
+                    
                 </ul>
             </div>
         </div>
