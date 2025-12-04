@@ -186,7 +186,7 @@ class PpobCheckoutController extends Controller
                 session()->forget('ppob_session');
                 
                 // Redirect ke Dashboard / Riwayat
-                return redirect()->route('customer.dashboard')->with('success', 'Pembayaran berhasil! Transaksi sedang diproses.');
+                return redirect()->route('ppob.invoice', ['invoice' => $orderId]);
 
             } 
             
@@ -291,5 +291,20 @@ class PpobCheckoutController extends Controller
             Log::error('PPOB Store Error: ' . $e->getMessage());
             return back()->with('error', 'Gagal memproses: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * 4. INVOICE: Tampilkan Detail Transaksi
+     */
+    public function invoice($invoice)
+    {
+        $user = Auth::user();
+
+        // Cari transaksi berdasarkan Order ID dan User yang login
+        $transaction = PpobTransaction::where('order_id', $invoice)
+                        ->where('user_id', $user->id_pengguna)
+                        ->firstOrFail();
+
+        return view('customer.ppob.invoice', compact('transaction'));
     }
 }

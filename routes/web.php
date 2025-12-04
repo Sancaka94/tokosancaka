@@ -969,6 +969,8 @@ Route::post('/setting-info-pesanan', [AdminController::class, 'updateInfoPesanan
 
 Route::middleware('auth')->group(function () {
 
+    Route::get('/ppob/invoice/{invoice}', [PpobCheckoutController::class, 'invoice'])->name('ppob.invoice');
+
     // 1. Simpan Data PPOB Sementara ke Session (Dipanggil via AJAX dari tombol Bayar)
     Route::post('/ppob/prepare', [PpobCheckoutController::class, 'prepare'])->name('ppob.prepare');
 
