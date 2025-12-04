@@ -30,6 +30,7 @@ if (!function_exists('get_operator_logo')) {
             'ovo'         => 'ovo',
             'gopay'       => 'gopay',
             'shopeepay'   => 'shopeepay',
+            'bpjs'        => 'bpjs',
             // Tambahkan game jika perlu: 'mobile legends' -> 'mlbb', dll
         ];
 
