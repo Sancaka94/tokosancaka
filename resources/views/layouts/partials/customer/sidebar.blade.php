@@ -84,7 +84,7 @@
 
         <div x-data="{ open: {{ request()->routeIs('customer.ppob.*') ? 'true' : 'false' }} }" class="space-y-1">
             <button @click="open = !open" 
-                class="flex items-center w-full px-4 py-2.5 text-white hover:bg-gray-700 bg-red-600 hover:text-white rounded-md transition-colors duration-200">
+                class="flex items-center w-full px-4 py-2.5 text-white hover:bg-red-700 bg-red-600 hover:text-white rounded-md transition-colors duration-200">
                 <i class="fas fa-mobile-alt fa-fw w-6"></i>
                 <span class="ml-3 flex-1 text-left">Payment PPOB</span>
                 <i :class="open ? 'fas fa-chevron-up' : 'fas fa-chevron-down'" class="ml-auto text-xs"></i>
