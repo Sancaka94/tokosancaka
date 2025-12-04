@@ -129,4 +129,51 @@ class CartController extends Controller
         // Perbaikan: Kirim JSON error
         return response()->json(['success' => false, 'message' => 'Gagal menghapus produk.'], 404);
     }
+
+      /**
+     * TAMBAHKAN FUNCTION INI SEBELUM KURUNG KURAWAL TERAKHIR '}'
+     */
+    public function addPpob(Request $request)
+    {
+        try {
+            // 1. Validasi Data yang dikirim JS
+            $data = $request->validate([
+                'sku' => 'required',
+                'name' => 'required',
+                'price' => 'required|numeric',
+                'ref_id' => 'required',
+                'customer_no' => 'required',
+            ]);
+    
+            $cart = session()->get('cart', []);
+            
+            // 2. Buat ID Unik untuk keranjang (pakai ref_id)
+            $cartKey = 'ppob_' . $data['ref_id'];
+    
+            // 3. Masukkan data ke Session Cart
+            // Format array ini HARUS SAMA dengan produk biasa agar tidak error di view
+            $cart[$cartKey] = [
+                "product_id" => 0, // ID 0 (Penanda bukan produk fisik)
+                "variant_id" => null,
+                "name"       => $data['name'],
+                "quantity"   => 1,
+                "price"      => (int) $data['price'],
+                "image_url"  => "https://placehold.co/100x100/2563eb/ffffff?text=PPOB", 
+                "slug"       => $data['sku'],
+                "weight"     => 0,
+                "is_ppob"    => true, 
+                "ref_id"     => $data['ref_id'],
+                "customer_no"=> $data['customer_no']
+            ];
+    
+            session()->put('cart', $cart);
+    
+            return response()->json(['success' => true]);
+
+        } catch (\Exception $e) {
+            // Log error biar tau salahnya dimana (Cek storage/logs/laravel.log)
+            Log::error("Error addPpob: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
 }
