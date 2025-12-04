@@ -99,7 +99,7 @@
                                 <span class="text-[10px] font-mono text-gray-400 mb-1">#{{ $trx->order_id }}</span>
                                 <div class="flex items-center gap-3">
                                     <div class="h-9 w-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-sm shadow-sm">
-                                        {{ substr($trx->user->name ?? 'G', 0, 1) }}
+                                        {{ substr($trx->user->nama_lengkap ?? 'G', 0, 1) }}
                                     </div>
                                     <div>
                                         <div class="text-sm font-bold text-gray-900">{{ $trx->user->nama_lengkap ?? 'User Terhapus' }}</div>
