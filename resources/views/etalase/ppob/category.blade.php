@@ -499,51 +499,58 @@
 <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
 <script>
     // =================================================================
-    // ⚙️ KONFIGURASI UTAMA
+    // ⚙️ KONFIGURASI & SETUP
     // =================================================================
-    // Ganti ke 'false' jika sudah siap naik ke Production (LIVE)
+    // Ubah ke 'false' jika sudah siap LIVE/PRODUCTION
     const IS_TESTING = true; 
 
-    // Setup Variabel PHP
+    // Ambil SKU yang sudah divalidasi oleh PHP (Paling Aman)
     const ACTIVE_SKU = "{{ $activeSku }}"; 
+    
     const inputNo = document.getElementById('customer_no');
     let inquiryRefId = null;
 
-    // Setup Swiper
+    // Setup Swiper Banner
     var swiper = new Swiper(".heroSwiper", { 
         loop: true, autoplay: { delay: 4000 }, 
         pagination: { el: ".swiper-pagination", clickable: true }, 
         navigation: { nextEl: ".swiper-button-next", prevEl: ".swiper-button-prev" } 
     });
 
-    // --- GENERATOR REF ID ---
+    // --- 1. GENERATOR REF ID (WAJIB ADA) ---
     function generateRefID() {
-        // Tambah prefix TEST jika sedang testing agar mudah dilacak di log
-        let prefix = IS_TESTING ? 'TEST-' : 'INQ-';
-        return prefix + Date.now() + '-' + Math.floor(Math.random() * 1000);
+        let prefix = IS_TESTING ? 'TEST-' : 'ORDER-';
+        return prefix + Date.now() + '-' + Math.floor(Math.random() * 10000);
     }
 
-    // --- FORMATTER TANGGAL ---
+    // --- 2. FORMATTER TANGGAL (PLN & BPJS) ---
     function formatPeriodeID(periodeStr) {
         if (!periodeStr) return '-';
         let str = periodeStr.toString().trim();
 
-        if (ACTIVE_SKU.includes('bpjs') && /^\d{1,2}$/.test(str)) return str + " Bulan";
-        
+        // Khusus BPJS: "01" -> "1 Bulan"
+        if (ACTIVE_SKU.includes('bpjs') && /^\d{1,2}$/.test(str)) {
+            return str + " Bulan";
+        }
+        // Format YYYYMM (Contoh: 202405 -> Mei 2024)
         if (/^\d{6}$/.test(str)) {
             let year = str.substring(0, 4);
             let month = parseInt(str.substring(4, 6));
             const months = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
             if (months[month]) return `${months[month]} ${year}`;
         }
+        // Format YYYY (PBB)
+        if (/^\d{4}$/.test(str)) return str;
+
         return str;
     }
 
-    // ==========================================
-    // 1. LOGIKA PRABAYAR (PULSA/TOKEN)
-    // ==========================================
+    // =================================================================
+    // LOGIKA PRABAYAR (PULSA, TOKEN, DATA)
+    // =================================================================
     @if(!$isPostpaid)
         const items = document.querySelectorAll('.product-item');
+        
         function filterProducts(brand) {
             items.forEach(item => {
                 if (brand === 'all' || item.dataset.brand === brand) item.classList.remove('hidden');
@@ -551,7 +558,7 @@
             });
         }
 
-        // Auto Detect Operator
+        // Auto Detect Operator (Hanya untuk Pulsa & Data)
         @if(in_array($currentSlug, ['pulsa', 'data']))
         inputNo.addEventListener('input', function(e) {
             const val = e.target.value;
@@ -574,10 +581,10 @@
 
         function selectProduct(el) {
             const no = inputNo.value.replace(/[^0-9]/g, '');
-            // Validasi panjang nomor diperlonggar saat testing
-            let minLength = IS_TESTING ? 3 : 4; 
+            // Validasi panjang diperlonggar saat testing
+            let minLen = IS_TESTING ? 3 : 4; 
             
-            if(no.length < minLength) { 
+            if(no.length < minLen) { 
                 inputNo.classList.add('border-red-500', 'animate-pulse');
                 setTimeout(() => inputNo.classList.remove('border-red-500', 'animate-pulse'), 1000);
                 alert("Mohon isi nomor tujuan terlebih dahulu."); inputNo.focus(); return; 
@@ -587,11 +594,13 @@
             document.getElementById('modal_price').innerText = 'Rp ' + parseInt(el.dataset.price).toLocaleString('id-ID');
             document.getElementById('form_sku').value = el.dataset.sku;
             document.getElementById('form_no').value = no;
+            
+            // Tampilkan Modal
             document.getElementById('confirmModal').classList.remove('hidden');
         }
         function closeModal() { document.getElementById('confirmModal').classList.add('hidden'); }
 
-        // Logic Cek Nama PLN Prabayar
+        // Cek Nama PLN Token (Prabayar)
         @if($currentSlug == 'pln-token')
         function cekPlnPrabayar() {
             const no = inputNo.value.replace(/[^0-9]/g, '');
@@ -607,20 +616,20 @@
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
                 body: JSON.stringify({ 
                     customer_no: no,
-                    testing: IS_TESTING // <--- KIRIM PARAMETER TESTING
+                    testing: IS_TESTING // Kirim flag testing
                 })
             })
             .then(res => res.json())
             .then(data => {
                 btn.innerHTML = oriText; btn.disabled = false;
-                // Handle wrapper data
-                const d = data.data || data;
-                
-                if(d.status === 'success' || d.rc === '00' || d.sn) { // Cek SN utk testing
-                    document.getElementById('pln_name').innerText = d.name || d.customer_name || 'TEST USER';
+                const d = data.data || data; // Handle wrapper
+                if(d.status === 'success' || d.rc === '00' || d.name) {
+                    document.getElementById('pln_name').innerText = d.name || d.customer_name || 'Pelanggan Test';
                     document.getElementById('pln_power').innerText = d.segment_power || '-';
                     infoBox.classList.remove('hidden');
-                } else { alert(d.message || "Nomor tidak ditemukan"); }
+                } else { 
+                    alert(d.message || "Nomor tidak ditemukan."); 
+                }
             })
             .catch(err => {
                 btn.innerHTML = oriText; btn.disabled = false; alert("Gagal koneksi server.");
@@ -628,16 +637,16 @@
         }
         @endif
 
-    // ==========================================
-    // 2. LOGIKA PASCABAYAR (TAGIHAN BULANAN)
-    // ==========================================
+    // =================================================================
+    // LOGIKA PASCABAYAR (PERBAIKAN UTAMA: SKU, REF_ID, TESTING)
+    // =================================================================
     @else
     function cekTagihan() {
-        const no = inputNo.value.trim();
-        // Samsat pakai koma, jangan dihapus non-digitnya
-        let cleanNo = ACTIVE_SKU === 'samsat' ? no : no.replace(/[^0-9]/g, ''); 
+        // 1. Validasi Input (Khusus SAMSAT boleh ada koma/huruf, lainnya angka saja)
+        const rawNo = inputNo.value.trim();
+        let cleanNo = ACTIVE_SKU === 'samsat' ? rawNo : rawNo.replace(/[^0-9]/g, '');
 
-        if(cleanNo.length < 5) { alert("Masukkan ID Pelanggan yang valid!"); inputNo.focus(); return; }
+        if(cleanNo.length < 5) { alert("Masukkan Nomor Pelanggan yang valid!"); inputNo.focus(); return; }
 
         const btn = document.getElementById('btn-cek-tagihan');
         const spinner = document.getElementById('loading-spinner');
@@ -647,12 +656,13 @@
         const detailContainer = document.getElementById('detail_container');
         const detailList = document.getElementById('detail_list');
 
-        // Reset UI
+        // Reset UI State
         btn.disabled = true; spinner.classList.remove('hidden'); text.innerText = "Mengecek...";
         resultDiv.classList.add('hidden'); emptyDiv.classList.add('hidden');
-        detailContainer.classList.add('hidden');
+        if(detailContainer) detailContainer.classList.add('hidden');
 
-        // --- REQUEST API ---
+        // 2. Request ke Backend
+        // PENTING: Backend controller Anda HARUS meneruskan parameter 'testing' ke Digiflazz
         fetch('{{ route("ppob.check.bill") }}', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
@@ -661,21 +671,25 @@
                 sku: ACTIVE_SKU,
                 buyer_sku_code: ACTIVE_SKU,
                 ref_id: generateRefID(),
-                testing: IS_TESTING  // <--- PARAMETER WAJIB UTK TESTING
+                testing: IS_TESTING  // <--- WAJIB UTK MODE TESTING
             })
         })
         .then(res => res.json())
         .then(data => {
             btn.disabled = false; spinner.classList.add('hidden'); text.innerText = "Cek Tagihan";
             
+            // Debug di Console Browser (Tekan F12)
+            console.log("Response API:", data);
+
+            // Parsing Response Wrapper
             const d = data.data || data;
 
-            // Validasi Sukses (RC 00)
+            // 3. Validasi Sukses (RC 00)
             if(d && (d.status === 'Sukses' || d.rc === '00')) {
                 
-                // MAPPING DATA
+                // --- MAPPING DATA UTAMA ---
                 document.getElementById('bill_ref').innerText = d.ref_id || '-';
-                document.getElementById('bill_name').innerText = d.customer_name || d.name || 'Pelanggan Test';
+                document.getElementById('bill_name').innerText = d.customer_name || d.name || 'Pelanggan';
                 document.getElementById('bill_id').innerText = d.customer_no;
                 
                 let price = d.selling_price || d.price || 0;
@@ -684,17 +698,17 @@
                 let admin = d.admin || 0;
                 document.getElementById('bill_admin').innerText = 'Rp ' + parseInt(admin).toLocaleString('id-ID');
 
-                // MAPPING RINCIAN (DESC)
+                // --- MAPPING RINCIAN (DESC) ---
                 if (d.desc) {
                     const desc = d.desc;
-                    // Handle jika detail array
-                    const detail = (desc.detail && Array.isArray(desc.detail) && desc.detail.length > 0) ? desc.detail[0] : (desc.detail || desc);
+                    // Ambil item pertama jika detail berupa array, untuk tampilan ringkas di atas
+                    const detailOne = (desc.detail && Array.isArray(desc.detail) && desc.detail.length > 0) ? desc.detail[0] : (desc.detail || desc);
 
-                    // 1. Set Periode & Alamat
-                    let mainPeriode = detail.periode || desc.periode || d.periode || '-';
+                    // A. Periode & Alamat
+                    let mainPeriode = detailOne.periode || desc.periode || d.periode || '-';
                     document.getElementById('bill_period').innerText = formatPeriodeID(mainPeriode);
                     
-                    // 2. Logic Label Dinamis
+                    // B. Logic Label Dinamis (Switch Case Sesuai Produk)
                     let lbl1="Info", val1="-", lbl2="Lembar", val2=(desc.lembar_tagihan || '1') + ' Lembar';
                     let lblAddr="Alamat", valAddr=desc.alamat || desc.kab_kota || '-';
 
@@ -709,7 +723,7 @@
                     }
                     else if (ACTIVE_SKU.includes('pdam')) {
                         lbl1 = "Meteran";
-                        val1 = (detail.meter_awal || '-') + ' - ' + (detail.meter_akhir || '-');
+                        val1 = (detailOne.meter_awal || '-') + ' - ' + (detailOne.meter_akhir || '-');
                         lbl2 = "Golongan"; val2 = desc.tarif || desc.golongan || '-';
                     }
                     else if (ACTIVE_SKU.includes('pbb') || ACTIVE_SKU.includes('cimahi')) {
@@ -726,6 +740,7 @@
                         lbl2 = "Tenor"; val2 = (desc.tenor || '-') + ' Bulan';
                     }
 
+                    // Render ke HTML Utama
                     document.getElementById('label_info_1').innerText = lbl1;
                     document.getElementById('val_info_1').innerText = val1;
                     document.getElementById('label_info_2').innerText = lbl2;
@@ -733,46 +748,62 @@
                     document.getElementById('label_address').innerText = lblAddr;
                     document.getElementById('val_address').innerText = valAddr;
 
-                    // ---------------------------------------------
-                    // ⚡ LOOPING ARRAY DETAIL (DIV BARU)
-                    // ---------------------------------------------
-                    detailList.innerHTML = '';
-                    if (desc.detail && Array.isArray(desc.detail) && desc.detail.length > 0) {
-                        detailContainer.classList.remove('hidden');
-                        desc.detail.forEach((item) => {
-                            let itemP = formatPeriodeID(item.periode);
-                            let itemN = item.nilai_tagihan ? parseInt(item.nilai_tagihan).toLocaleString('id-ID') : '0';
-                            let itemD = item.denda ? parseInt(item.denda).toLocaleString('id-ID') : '0';
+                    // --------------------------------------------------------
+                    // ⚡ FITUR BARU: LOOPING ARRAY DETAIL (DIV BARU) ⚡
+                    // --------------------------------------------------------
+                    if(detailList) {
+                        detailList.innerHTML = ''; // Bersihkan list lama
+                        
+                        if (desc.detail && Array.isArray(desc.detail) && desc.detail.length > 0) {
+                            detailContainer.classList.remove('hidden');
                             
-                            // Cek meteran di dalam detail
-                            let meterHtml = (item.meter_awal && item.meter_akhir) ? 
-                                `<div class="text-[10px] text-gray-400 mt-1">Meter: ${item.meter_awal} - ${item.meter_akhir}</div>` : '';
+                            desc.detail.forEach((item) => {
+                                let itemP = formatPeriodeID(item.periode);
+                                let itemN = item.nilai_tagihan ? parseInt(item.nilai_tagihan).toLocaleString('id-ID') : '0';
+                                let itemD = item.denda ? parseInt(item.denda).toLocaleString('id-ID') : '0';
+                                let itemAdm = item.admin ? parseInt(item.admin).toLocaleString('id-ID') : '0';
+                                
+                                // Meteran (Khusus PDAM/PLN)
+                                let meterHtml = (item.meter_awal && item.meter_akhir) ? 
+                                    `<div class="text-[10px] text-gray-400 mt-1">Meter: ${item.meter_awal} - ${item.meter_akhir}</div>` : '';
 
-                            let htmlItem = `
-                                <div class="bg-gray-50 border border-gray-200 rounded-lg p-3 flex justify-between items-start">
-                                    <div>
-                                        <p class="text-xs font-bold text-gray-700">Periode: ${itemP}</p>
-                                        ${meterHtml}
-                                        ${itemD != '0' ? `<span class="text-red-500 text-[10px]">(Denda: Rp ${itemD})</span>` : ''}
+                                // Template Item HTML
+                                let htmlItem = `
+                                    <div class="bg-gray-50 border border-gray-200 rounded-lg p-3 flex justify-between items-start text-sm">
+                                        <div>
+                                            <p class="font-bold text-gray-700">Periode: ${itemP}</p>
+                                            ${meterHtml}
+                                            ${itemD != '0' ? `<span class="text-red-500 text-[10px] block">(Denda: Rp ${itemD})</span>` : ''}
+                                        </div>
+                                        <div class="text-right">
+                                            <p class="font-bold text-gray-800">Rp ${itemN}</p>
+                                            ${itemAdm != '0' ? `<p class="text-[10px] text-gray-400">Adm: Rp ${itemAdm}</p>` : ''}
+                                        </div>
                                     </div>
-                                    <div class="text-right">
-                                        <p class="text-xs font-bold text-gray-800">Rp ${itemN}</p>
-                                    </div>
-                                </div>
-                            `;
-                            detailList.insertAdjacentHTML('beforeend', htmlItem);
-                        });
-                    } else {
-                        detailContainer.classList.add('hidden');
+                                `;
+                                detailList.insertAdjacentHTML('beforeend', htmlItem);
+                            });
+                        } else {
+                            // Jika detail bukan array (misal cuma object), sembunyikan list
+                            detailContainer.classList.add('hidden');
+                        }
                     }
                 }
 
+                // Tampilkan Hasil
                 inquiryRefId = d.ref_id;
                 resultDiv.classList.remove('hidden');
 
             } else {
+                // 4. Handle Error
                 let msg = d.message || "Tagihan tidak ditemukan / Gagal.";
-                if(IS_TESTING) msg += " (Mode Testing: Pastikan No Pelanggan sesuai dokumentasi)";
+                
+                // Pesan Khusus untuk Testing
+                if(IS_TESTING) {
+                    if(d.rc === '14') msg = "Nomor Salah (Gunakan No Dummy: 530000000001 untuk PLN)";
+                    else if(d.rc === '01') msg = "Gagal (Pastikan Saldo Cukup / IP Whitelisted)";
+                }
+                
                 alert(msg);
                 emptyDiv.classList.remove('hidden');
             }
@@ -786,7 +817,7 @@
 
     function bayarTagihan() {
         if(!inquiryRefId) return;
-        // Redirect ke login/bayar
+        // Redirect ke controller pembayaran
         window.location.href = "{{ route('login') }}?ref_id=" + inquiryRefId;
     }
     @endif
