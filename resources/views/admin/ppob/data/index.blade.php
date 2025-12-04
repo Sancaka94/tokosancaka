@@ -108,13 +108,13 @@
                         <td class="px-6 py-4 align-top">
                             <div class="flex items-center">
                                 @php
-                                    // Ambil brand untuk logo (Fallback ke kata pertama nama produk jika brand kosong)
-                                    $brandName = $trx->brand ?? explode(' ', $trx->product_name ?? 'unknown')[0];
-                                    $logoOperator = get_operator_logo($brandName); 
-                                @endphp
-                                <div class="h-9 w-9 flex-shrink-0 mr-3 bg-white border border-gray-200 rounded-full p-1 flex items-center justify-center shadow-sm">
-                                    <img class="h-full w-full object-contain" src="{{ $logoOperator }}" alt="{{ $brandName }}">
-                                </div>
+    // Panggil helper dengan mengirimkan kolom brand DAN product_name
+    $logoOperator = get_operator_logo($trx->brand, $trx->product_name); 
+@endphp
+{{-- Debugging: Tampilkan nama produk di tooltip --}}
+<div class="h-9 w-9 flex-shrink-0 mr-3 bg-white border border-gray-200 rounded-full p-1 flex items-center justify-center shadow-sm" title="{{ $trx->product_name }}">
+    <img class="h-full w-full object-contain" src="{{ $logoOperator }}" alt="Logo">
+</div>
                                 <div>
                                     <div class="text-sm font-medium text-gray-900 uppercase">{{ $trx->buyer_sku_code }}</div>
                                     <div class="text-[10px] text-gray-400 truncate max-w-[120px]" title="{{ $trx->product_name }}">{{ $trx->product_name }}</div>
