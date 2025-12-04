@@ -77,7 +77,7 @@ use App\Http\Controllers\PpobProductController;
 use App\Http\Controllers\PublicController;
 use App\Http\Controllers\Customer\PpobCheckoutController;
 use App\Http\Controllers\Customer\PpobHistoryController;
-
+use App\Http\Controllers\Admin\AdminPpobController;
 
 
 
@@ -730,6 +730,19 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])
         // All general admin routes should go in this file
 
         require __DIR__.'/web/admin.php';
+
+    // Group khusus PPOB
+    Route::prefix('ppob')->name('ppob.')->group(function () {
+        
+        // Halaman Utama Data Transaksi
+        // URL: /admin/ppob/data
+        // Route Name: admin.ppob.data.index
+        Route::get('/data', [AdminPpobController::class, 'index'])->name('data.index');
+
+        // Route Export (Placeholder agar tidak error 404 saat tombol diklik)
+        Route::get('/export/excel', [AdminPpobController::class, 'exportExcel'])->name('export.excel');
+        Route::get('/export/pdf', [AdminPpobController::class, 'exportPdf'])->name('export.pdf');
+    });
 
 
         
