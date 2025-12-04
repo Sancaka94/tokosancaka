@@ -111,29 +111,7 @@ Route::post('/ppob/check-bill', [PpobController::class, 'checkBill'])->name('ppo
 Route::post('/ppob/check-pln-prabayar', [PpobController::class, 'checkPlnPrabayar'])->name('ppob.check.pln.prabayar'); // AJAX Cek Nama PLN
 
 
-Route::prefix('admin/ppob')->name('admin.ppob.')->middleware(['auth'])->group(function () {
-    
-    // 1. Halaman Index (Tabel Produk)
-    Route::get('/', [PpobProductController::class, 'index'])->name('index');
 
-    // =============================================================
-    // PENTING: Route KHUSUS (Static) harus ditaruh DI ATAS route {id}
-    // =============================================================
-    
-    // Route Export & Bulk Update
-    Route::post('/bulk-update', [PpobProductController::class, 'bulkUpdate'])->name('bulk-update');
-    Route::get('/export-excel', [PpobProductController::class, 'exportExcel'])->name('export-excel');
-    Route::get('/export-pdf', [PpobProductController::class, 'exportPdf'])->name('export-pdf'); // <-- Sekarang ini aman dibaca duluan
-
-    // =============================================================
-    // Route DINAMIS ({id}) ditaruh PALING BAWAH
-    // =============================================================
-    
-    // Fitur Pendukung yang butuh ID (Edit, Update, Hapus, Detail)
-    Route::get('/{id}', [PpobProductController::class, 'show'])->name('show');
-    Route::put('/update-price/{id}', [PpobProductController::class, 'updatePrice'])->name('update-price');
-    Route::delete('/destroy/{id}', [PpobProductController::class, 'destroy'])->name('destroy');
-});
 
 
 // Route Webhook Digiflazz (Harus POST)
