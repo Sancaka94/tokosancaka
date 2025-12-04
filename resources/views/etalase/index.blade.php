@@ -318,7 +318,7 @@
                 
                 {{-- 1. TAB HEADER (Prabayar vs Pascabayar) --}}
                 <div class="flex border-b border-gray-200">
-                    <button onclick="switchTab('prepaid')" id="tab-prepaid" class="flex-1 py-4 text-center font-bold text-sm md:text-base border-b-2 border-blue-600 text-gray-600 transition hover:bg-red-600 flex items-center justify-center gap-2">
+                    <button onclick="switchTab('prepaid')" id="tab-prepaid" class="flex-1 py-4 text-center font-bold text-sm md:text-base border-b-2 border-blue-600 text-gray-600 hover:text-white transition hover:bg-red-600 flex items-center justify-center gap-2">
                         <i class="fas fa-mobile-alt"></i> Prabayar / Topup
                     </button>
                     <button onclick="switchTab('postpaid')" id="tab-postpaid" class="flex-1 py-4 text-center font-bold text-sm md:text-base border-b-2 border-transparent text-gray-500 hover:text-white transition hover:bg-red-600 flex items-center justify-center gap-2">
