@@ -102,20 +102,6 @@
 
 @section('content')
 
-<h3>
-    {{-- Cek apakah ini PPOB atau Produk Fisik --}}
-    @if(isset($details['is_ppob']) && $details['is_ppob'])
-        {{-- Jika PPOB, tidak perlu link, atau link dummy --}}
-        <span class="line-clamp-2">{{ $details['name'] }}</span>
-        <span class="text-xs text-gray-500 block">ID Pelanggan: {{ $details['customer_no'] ?? '-' }}</span>
-    @elseif(isset($details['slug']) && Route::has('products.show'))
-        {{-- Jika Produk Fisik, tampilkan link --}}
-        <a href="{{ route('products.show', $details['slug']) }}" class="hover:text-orange-600 line-clamp-2">{{ $details['name'] }}</a>
-    @else
-         <span class="line-clamp-2">{{ $details['name'] ?? 'Nama Produk Tidak Tersedia' }}</span>
-     @endif
-</h3>
-
 <div class="bg-gray-100 min-h-screen">
     <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <h1 class="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-8">Keranjang Belanja Anda</h1>
