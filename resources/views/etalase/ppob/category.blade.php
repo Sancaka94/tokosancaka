@@ -796,10 +796,11 @@
         });
     }
 
+    // ⚡ [FIX] REDIRECT KE CART TOKO SANCAKA ⚡
     function bayarTagihan() {
         if(!inquiryRefId) return;
-        // Redirect ke controller pembayaran
-        window.location.href = "{{ route('login') }}?ref_id=" + inquiryRefId;
+        // Arahkan ke URL Cart Sancaka dengan membawa parameter ref_id
+        window.location.href = "https://tokosancaka.com/cart?ref_id=" + inquiryRefId;
     }
     @endif
 </script>
