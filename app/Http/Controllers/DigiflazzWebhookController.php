@@ -56,6 +56,7 @@ class DigiflazzWebhookController extends Controller
         $message = $trxData['message'] ?? '';
         $price   = $trxData['price'] ?? 0;
         $desc    = $trxData['desc'] ?? null; // Rincian tagihan (biasanya untuk pascabayar)
+        $rc      = $trxData['rc'] ?? null; // ✅ PERBAIKAN: Definisi variable $rc
 
         if (!$refId) {
             return response()->json(['status' => 'failed', 'message' => 'No Ref ID'], 400);
@@ -89,6 +90,7 @@ class DigiflazzWebhookController extends Controller
             // --- UPDATE DATA TRANSAKSI ---
             $transaction->sn = $sn;
             $transaction->message = $message;
+            $transaction->rc = $rc; // ✅ PERBAIKAN: Simpan ke DB
 
             // Update Desc (Jika ada data dan tidak kosong)
             if (!empty($desc)) {
