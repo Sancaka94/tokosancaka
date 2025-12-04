@@ -116,7 +116,7 @@ class PpobCheckoutController extends Controller
     }
 
     /**
-     * 3. STORE: Proses Pembayaran & Pembuatan Order
+     * 3. STORE: Proses Pembayaran PPOB (LENGKAP: SALDO, DOKU, TRIPAY)
      */
     public function store(Request $request)
     {
@@ -130,112 +130,112 @@ class PpobCheckoutController extends Controller
         }
 
         $user = Auth::user();
-        $grandTotal = (int) $item['price']; // Tambah biaya admin aplikasi disini jika ada
+        
+        // Hitung Angka
+        $sellingPrice = (int) $item['price']; 
+        $modalPrice = 0; // Nanti diupdate saat sukses
+        $profit = $sellingPrice - $modalPrice;
 
         DB::beginTransaction();
         try {
-            // 1. Generate Invoice Unik
+            // 1. Generate Order ID Unik (TRX-...)
             do {
-                $invoiceNumber = 'PPOB-' . strtoupper(Str::random(10));
-            } while (OrderMarketplace::where('invoice_number', $invoiceNumber)->exists());
+                $orderId = 'TRX-' . now()->timestamp . rand(100, 999);
+            } while (\App\Models\PpobTransaction::where('order_id', $orderId)->exists());
 
-            // 2. Tentukan Status Awal
-            // Jika bayar pakai SALDO, status langsung 'processing' (artinya Paid)
-            // Jika bayar pakai Tripay/Doku, status 'pending' (menunggu callback)
-            $initialStatus = ($request->payment_method === 'saldo') ? 'processing' : 'pending';
-
-            // 3. Buat Data Order (Master)
-            $order = new OrderMarketplace([
-                'user_id'          => $user->id_pengguna,
-                'store_id'         => null, // PPOB tidak punya toko fisik
-                'invoice_number'   => $invoiceNumber,
-                'subtotal'         => $item['price'],
-                'shipping_cost'    => 0,
-                'insurance_cost'   => 0,
-                'total_amount'     => $grandTotal,
-                'shipping_method'  => 'Digital Delivery',
-                'payment_method'   => $request->payment_method,
-                'status'           => $initialStatus,
-                'shipping_address' => 'Digital Product (No. Pelanggan: '.$item['customer_no'].')',
-                'is_digital'       => 1 // Penanda Produk Digital
-            ]);
-            $order->save();
-
-            // 4. Buat Order Item
-            // Kita simpan ref_id inquiry di kolom 'notes' atau json field agar bisa diproses ke Digiflazz nanti
-            OrderItemMerketplace::create([
-                'order_id'   => $order->id,
-                'product_id' => 0, // ID 0 menandakan PPOB (Non-Fisik)
-                'quantity'   => 1,
-                'price'      => $item['price'],
-                'name'       => $item['name'],
-                'sku'        => $item['sku'],
-                'notes'      => json_encode([
-                    'ref_id_inquiry' => $item['ref_id'], 
-                    'customer_no'    => $item['customer_no']
-                ])
-            ]);
+            // 2. Simpan Data Awal ke Database (Status Pending)
+            $transaction = new \App\Models\PpobTransaction();
+            $transaction->user_id = $user->id_pengguna;
+            $transaction->order_id = $orderId;
+            $transaction->buyer_sku_code = $item['sku'];
+            $transaction->customer_no = $item['customer_no'];
+            $transaction->price = $modalPrice;          
+            $transaction->selling_price = $sellingPrice;
+            $transaction->profit = $profit;
+            $transaction->payment_method = $request->payment_method;
+            // Default status
+            $transaction->status = ($request->payment_method === 'saldo') ? 'Processing' : 'Pending';
+            $transaction->message = 'Menunggu Pembayaran';
+            $transaction->save();
 
             // ==========================================================
-            // LOGIKA PEMBAYARAN
+            // LOGIKA PEMBAYARAN (SWITCH CASE)
             // ==========================================================
 
-            // A. PEMBAYARAN SALDO
+            // --- KASUS A: PEMBAYARAN SALDO ---
             if ($request->payment_method === 'saldo') {
                 
-                // Cek kecukupan saldo
-                if ($user->saldo < $grandTotal) {
-                    throw new Exception('Saldo akun Anda tidak mencukupi (Rp ' . number_format($user->saldo) . ').');
+                if ($user->saldo < $sellingPrice) {
+                    throw new Exception('Saldo akun tidak mencukupi.');
                 }
 
-                // Potong Saldo
-                $user->decrement('saldo', $grandTotal);
+                // Potong Saldo User
+                $user->decrement('saldo', $sellingPrice);
                 
-                Log::info("PPOB Paid via Saldo: $invoiceNumber. User: {$user->id_pengguna}");
+                Log::info("PPOB Paid via Saldo: $orderId");
 
-                // TODO: TRIGGER API DIGIFLAZZ (BAYAR TAGIHAN)
-                // Disini Anda bisa memanggil Service/Job untuk mengeksekusi pembayaran ke Digiflazz
-                // Contoh: DigiflazzService::pay($invoiceNumber);
+                // Update Transaksi jadi Sukses (atau Processing jika menunggu provider)
+                $transaction->status = 'Processing'; 
+                $transaction->message = 'Sedang diproses provider';
+                $transaction->save();
+
+                // TODO: Trigger API Digiflazz disini (Background Job / Direct)
+                // $this->processDigiflazz($transaction); 
+                
+                DB::commit();
+                session()->forget('ppob_session');
+                
+                // Redirect ke Dashboard / Riwayat
+                return redirect()->route('customer.dashboard')->with('success', 'Pembayaran berhasil! Transaksi sedang diproses.');
 
             } 
             
-            // B. PEMBAYARAN DOKU
-            elseif (str_starts_with($request->payment_method, 'DOKU')) {
+            // --- KASUS B: PEMBAYARAN DOKU ---
+            elseif (str_contains(strtoupper($request->payment_method), 'DOKU')) {
                 
-                Log::info("PPOB Request via DOKU: $invoiceNumber");
+                Log::info("PPOB Request via DOKU: $orderId");
                 
-                $dokuService = new DokuJokulService();
+                // Panggil Service DOKU
+                $dokuService = new \App\Services\DokuJokulService();
                 
+                // Siapkan Data Customer
                 $customerData = [
                     'name'  => $user->nama_lengkap,
                     'email' => $user->email,
-                    'phone' => $user->no_wa
+                    'phone' => $user->no_wa ?? '08123456789'
                 ];
 
-                // Item untuk DOKU
-                $dokuItem = [[
+                // Siapkan Item (Format DOKU biasanya butuh array item)
+                $dokuItems = [[
                     'name'     => $item['name'],
                     'quantity' => 1,
-                    'price'    => $item['price'],
+                    'price'    => $sellingPrice,
                     'sku'      => $item['sku']
                 ]];
-                
-                $paymentUrl = $dokuService->createPayment(
-                    $invoiceNumber,
-                    $grandTotal,
-                    $customerData,
-                    $dokuItem
-                );
-                
-                if (!$paymentUrl) throw new Exception('Gagal membuat link pembayaran DOKU.');
-                $order->payment_url = $paymentUrl;
 
-            } 
-            
-            // C. PEMBAYARAN TRIPAY (QRIS, VA, E-Wallet)
-            else {
+                // Generate Link Pembayaran
+                $paymentUrl = $dokuService->createPayment(
+                    $orderId,
+                    $sellingPrice,
+                    $customerData,
+                    $dokuItems
+                );
+
+                if (!$paymentUrl) throw new Exception('Gagal generate link DOKU.');
+
+                // Simpan URL Pembayaran & Redirect
+                $transaction->payment_url = $paymentUrl; // Pastikan kolom ini ada di DB, atau simpan di 'message'
+                $transaction->save();
                 
-                Log::info("PPOB Request via TRIPAY: $invoiceNumber Method: {$request->payment_method}");
+                DB::commit();
+                session()->forget('ppob_session');
+                
+                return redirect($paymentUrl);
+            }
+
+            // --- KASUS C: PEMBAYARAN TRIPAY (Default/Else) ---
+            else {
+                Log::info("PPOB Request via TRIPAY: $orderId");
 
                 $apiKey       = config('tripay.api_key');
                 $privateKey   = config('tripay.private_key');
@@ -245,24 +245,24 @@ class PpobCheckoutController extends Controller
                                 ? 'https://tripay.co.id/api/transaction/create' 
                                 : 'https://tripay.co.id/api-sandbox/transaction/create';
 
-                $signature = hash_hmac('sha256', $merchantCode . $invoiceNumber . $grandTotal, $privateKey);
+                $signature = hash_hmac('sha256', $merchantCode . $orderId . $sellingPrice, $privateKey);
 
                 $payload = [
                     'method'         => $request->payment_method,
-                    'merchant_ref'   => $invoiceNumber,
-                    'amount'         => $grandTotal,
+                    'merchant_ref'   => $orderId,
+                    'amount'         => $sellingPrice,
                     'customer_name'  => $user->nama_lengkap,
                     'customer_email' => $user->email,
                     'customer_phone' => $user->no_wa,
                     'order_items'    => [[
                         'sku'      => $item['sku'],
                         'name'     => $item['name'],
-                        'price'    => (int) $item['price'],
+                        'price'    => $sellingPrice,
                         'quantity' => 1
                     ]],
-                    'expired_time'   => time() + (30 * 60), // Expired 30 menit
+                    'expired_time'   => time() + (60 * 60), // 1 Jam
                     'signature'      => $signature,
-                    'return_url'     => route('customer.checkout.invoice', ['invoice' => $invoiceNumber])
+                    'return_url'     => route('customer.dashboard') // Redirect balik setelah bayar
                 ];
 
                 $response = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])
@@ -272,34 +272,24 @@ class PpobCheckoutController extends Controller
                 
                 if ($response->successful() && $response->json()['success']) {
                     $d = $response->json()['data'];
-                    // Ambil URL pembayaran yang tersedia
                     $payUrl = $d['checkout_url'] ?? $d['pay_url'] ?? $d['qr_url'] ?? null;
-                    $order->payment_url = $payUrl;
+                    
+                    $transaction->payment_url = $payUrl;
+                    $transaction->save();
+
+                    DB::commit();
+                    session()->forget('ppob_session');
+                    
+                    return redirect($payUrl);
                 } else {
-                    $errMsg = $response->json()['message'] ?? 'Gagal menghubungi Tripay.';
-                    Log::error('Tripay Error:', ['body' => $response->body()]);
-                    throw new Exception('Tripay Error: ' . $errMsg);
+                    throw new Exception('Tripay Error: ' . ($response->json()['message'] ?? 'Gagal connect gateway'));
                 }
             }
 
-            // Simpan perubahan order (payment_url / status)
-            $order->save();
-            
-            DB::commit();
-            
-            // Hapus session PPOB agar tidak bisa back
-            session()->forget('ppob_session');
-
-            // Redirect ke halaman Invoice
-            return redirect()->route('customer.checkout.invoice', ['invoice' => $invoiceNumber]);
-
-        } catch (ValidationException $e) {
-            DB::rollBack();
-            return back()->withErrors($e->errors());
         } catch (Exception $e) {
             DB::rollBack();
-            Log::error('PPOB Checkout Error: ' . $e->getMessage());
-            return back()->with('error', 'Gagal memproses transaksi: ' . $e->getMessage());
+            Log::error('PPOB Store Error: ' . $e->getMessage());
+            return back()->with('error', 'Gagal memproses: ' . $e->getMessage());
         }
     }
 }

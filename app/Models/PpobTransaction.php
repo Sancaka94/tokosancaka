@@ -4,6 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+// Import Model Terkait
 use App\Models\User; 
 use App\Models\PpobProduct;
 
@@ -11,39 +14,74 @@ class PpobTransaction extends Model
 {
     use HasFactory;
 
-    // Nama tabel sesuai yang Anda buat di SQL
+    // Nama tabel di database
     protected $table = 'ppob_transactions';
 
-    // Kolom yang bisa diisi oleh Controller
+    /**
+     * Kolom yang boleh diisi secara massal (Mass Assignment).
+     * Saya tambahkan 'payment_method' & 'payment_url' agar controller tidak error.
+     */
     protected $fillable = [
         'user_id', 
         'order_id', 
         'buyer_sku_code', 
         'customer_no',
-        'price', 
-        'selling_price', 
-        'profit', 
-        'status', 
-        'sn', 
-        'message'
+        'price',          // Harga Beli (Modal)
+        'selling_price',  // Harga Jual
+        'profit',         // Keuntungan
+        'status',         // Pending, Processing, Success, Failed
+        'sn',             // Serial Number / Token Listrik
+        'message',        // Pesan dari Provider
+        'payment_method', // Cth: saldo, DOKU_VA, TRIPAY_QRIS
+        'payment_url'     // Link pembayaran (jika ada)
     ];
 
     /**
-     * Relasi ke User (Pembeli)
-     * PENTING: Karena tabel user Anda 'Pengguna' dengan PK 'id_pengguna'
+     * Casting tipe data otomatis.
+     * Memastikan harga diperlakukan sebagai angka, bukan string.
      */
-    public function user()
+    protected $casts = [
+        'price' => 'integer',
+        'selling_price' => 'integer',
+        'profit' => 'integer',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+    ];
+
+    /**
+     * Relasi ke User (Pembeli).
+     * Foreign Key: user_id
+     * Owner Key (di tabel users): id_pengguna
+     */
+    public function user(): BelongsTo
     {
-        // belongsTo(Model, Foreign Key di tabel ini, Owner Key di tabel user)
         return $this->belongsTo(User::class, 'user_id', 'id_pengguna');
     }
 
     /**
-     * Relasi ke Produk PPOB
-     * Menggunakan buyer_sku_code sebagai penghubung
+     * Relasi ke Produk PPOB (Master Data).
+     * Berguna untuk mengambil nama produk, kategori, atau brand.
+     * Dihubungkan via: buyer_sku_code
      */
-    public function product()
+    public function product(): BelongsTo
     {
         return $this->belongsTo(PpobProduct::class, 'buyer_sku_code', 'buyer_sku_code');
+    }
+    
+    /**
+     * Accessor untuk Badge Status (Opsional, untuk View di Dashboard).
+     * Cara pakai di blade: {!! $transaction->status_badge !!}
+     */
+    public function getStatusBadgeAttribute()
+    {
+        $status = strtolower($this->status);
+        $color = 'secondary';
+        
+        if ($status == 'success') $color = 'success';
+        elseif ($status == 'pending') $color = 'warning';
+        elseif ($status == 'failed') $color = 'danger';
+        elseif ($status == 'processing') $color = 'info';
+
+        return "<span class='badge bg-{$color}'>{$this->status}</span>";
     }
 }
