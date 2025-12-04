@@ -118,7 +118,7 @@
                                     @endforeach
                                 @endif
                                 
-                                {{-- 3. DOKU --}}
+                                {{-- DOKU --}}
                                 @if(isset($paymentChannels['doku']))
                                     <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mt-4 mb-2">Kartu Kredit & Lainnya</p>
                                     @foreach($paymentChannels['doku'] as $channel)
