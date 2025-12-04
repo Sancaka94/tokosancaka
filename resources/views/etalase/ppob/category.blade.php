@@ -354,24 +354,25 @@
             </div>
 
             {{-- Data Tambahan (Tarif, Daya, Periode) --}}
-            <div class="md:col-span-2 grid grid-cols-2 gap-y-3 border-t border-blue-200 mt-2 pt-3">
-                <div>
-                    <p class="text-gray-500 text-xs uppercase">Tarif / Daya</p>
-                    <p class="font-bold text-gray-700" id="bill_power">-</p>
-                </div>
-                <div>
-                    <p class="text-gray-500 text-xs uppercase">Periode Tagihan</p>
-                    <p class="font-bold text-gray-700" id="bill_period">-</p>
-                </div>
-                 <div>
-                    <p class="text-gray-500 text-xs uppercase">Biaya Admin</p>
-                    <p class="font-bold text-gray-700" id="bill_admin">-</p>
-                </div>
-                 <div>
-                    <p class="text-gray-500 text-xs uppercase">Jumlah Lembar</p>
-                    <p class="font-bold text-gray-700" id="bill_sheet">-</p>
-                </div>
-            </div>
+<div class="md:col-span-2 grid grid-cols-2 gap-y-3 border-t border-blue-200 mt-2 pt-3">
+    <div>
+        {{-- TAMBAHKAN ID DISINI (label_power) --}}
+        <p class="text-gray-500 text-xs uppercase" id="label_power">Tarif / Daya</p>
+        <p class="font-bold text-gray-700" id="bill_power">-</p>
+    </div>
+    <div>
+        <p class="text-gray-500 text-xs uppercase">Periode Tagihan</p>
+        <p class="font-bold text-gray-700" id="bill_period">-</p>
+    </div>
+     <div>
+        <p class="text-gray-500 text-xs uppercase">Biaya Admin</p>
+        <p class="font-bold text-gray-700" id="bill_admin">-</p>
+    </div>
+     <div>
+        <p class="text-gray-500 text-xs uppercase">Jumlah Lembar</p>
+        <p class="font-bold text-gray-700" id="bill_sheet">-</p>
+    </div>
+</div>
 
             {{-- Total Tagihan --}}
             <div class="md:col-span-2 border-t border-blue-200 mt-2 pt-2 bg-blue-100/50 p-2 rounded -mx-2">
@@ -530,43 +531,74 @@
     let totalBayar = data.selling_price ? data.selling_price : data.amount;
     document.getElementById('bill_amount').innerText = 'Rp ' + parseInt(totalBayar).toLocaleString('id-ID');
     
-    // --- 2. Data Rinci (Menyesuaikan PLN vs PDAM) ---
-    if (data.desc) {
-        // A. LOGIKA TARIF / DAYA
-        // Cek apakah ada data 'daya'. PLN punya, PDAM tidak punya.
-        let tarif = data.desc.tarif || '-';
-        let daya = data.desc.daya; // Jangan pakai default '-' dulu agar bisa dicek if-nya
+    // --- 2. Data Rinci (LOGIKA DINAMIS Sesuai Produk) ---
+if (data.desc) {
+    let labelEl = document.getElementById('label_power');
+    let valueEl = document.getElementById('bill_power');
 
-        if (daya) {
-            // Jika ada daya (PLN), tampilkan format "R1 / 1300 VA"
-            document.getElementById('bill_power').innerText = tarif + ' / ' + daya + ' VA';
-        } else {
-            // Jika tidak ada daya (PDAM), tampilkan Tarif saja "3A"
-            document.getElementById('bill_power').innerText = tarif;
-        }
+    // A. LOGIKA DETEKSI PRODUK BERDASARKAN SKU / RESPONSE
+    // Kita gunakan variabel 'skuPasca' yang sudah Anda definisikan sebelumnya atau deteksi dari data
+    
+    // CASE 1: PLN (Ada Daya & Tarif)
+    if (skuPasca.includes('pln') && data.desc.daya) {
+        labelEl.innerText = "TARIF / DAYA";
+        valueEl.innerText = (data.desc.tarif || '-') + ' / ' + data.desc.daya + ' VA';
+    } 
+    // CASE 2: BPJS Kesehatan (Biasanya ada Jumlah Peserta / Cabang)
+    else if (skuPasca.includes('bpjs')) {
+        labelEl.innerText = "JUMLAH PESERTA";
+        // Cek field yang biasa dikembalikan API BPJS (sesuaikan dengan API provider Anda)
+        let peserta = data.desc.jumlah_peserta || data.desc.peserta || '1';
+        let cabang = data.desc.kantor_cabang || data.desc.cabang || '';
         
-        // B. LOGIKA BIAYA ADMIN (Anti NaN)
-        // Cari admin di root, kalau tidak ada cari di desc, kalau tidak ada cari di detail, terakhir 0
-        let rawAdmin = (data.admin !== undefined ? data.admin : null) || 
-                       (data.desc.admin !== undefined ? data.desc.admin : null) || 
-                       (data.desc.detail && data.desc.detail[0] ? data.desc.detail[0].admin : 0);
-                       
-        let admin = parseInt(rawAdmin);
-        // Pastikan hasilnya angka valid, jika NaN paksa jadi 0
-        if (isNaN(admin)) admin = 0;
-        
-        document.getElementById('bill_admin').innerText = 'Rp ' + admin.toLocaleString('id-ID');
-        
-        // C. LOGIKA LEMBAR TAGIHAN
-        document.getElementById('bill_sheet').innerText = (data.desc.lembar_tagihan || '1') + ' Lembar';
-
-        // D. LOGIKA PERIODE
-        if (data.desc.detail && data.desc.detail.length > 0) {
-            document.getElementById('bill_period').innerText = data.desc.detail[0].periode;
-        } else {
-            document.getElementById('bill_period').innerText = '-';
-        }
+        valueEl.innerText = peserta + " Orang" + (cabang ? " (" + cabang + ")" : "");
     }
+    // CASE 3: PDAM (Biasanya Tarif/Golongan atau Alamat)
+    else if (skuPasca.includes('pdam')) {
+        labelEl.innerText = "GOLONGAN / TARIF"; // Atau bisa diganti "ALAMAT" jika lebih relevan
+        valueEl.innerText = data.desc.tarif || data.desc.golongan || '-';
+    }
+    // CASE 4: Multifinance (Biasanya Tenor / Item Name)
+    else if (skuPasca.includes('multifinance') || skuPasca.includes('finance')) {
+        labelEl.innerText = "ITEM / TENOR";
+        let item = data.desc.item_name || '-';
+        let tenor = data.desc.tenor || '';
+        valueEl.innerText = item + (tenor ? " (" + tenor + " Bln)" : "");
+    }
+    // CASE 5: PBB (Biasanya Luas Tanah/Bumi)
+    else if (skuPasca.includes('pbb')) {
+        labelEl.innerText = "LUAS BUMI / BANGUNAN";
+        let lt = data.desc.luas_tanah || data.desc.lt || '0';
+        let lb = data.desc.luas_bangunan || data.desc.lb || '0';
+        valueEl.innerText = lt + "m² / " + lb + "m²";
+    }
+    // DEFAULT (Jika tidak dikenali)
+    else {
+        labelEl.innerText = "KETERANGAN";
+        // Ambil data apa saja yang ada
+        valueEl.innerText = data.desc.tarif || data.desc.alamat || '-';
+    }
+
+    // B. LOGIKA BIAYA ADMIN (Sama seperti kode lama Anda, sudah oke)
+    let rawAdmin = (data.admin !== undefined ? data.admin : null) || 
+                   (data.desc.admin !== undefined ? data.desc.admin : null) || 
+                   (data.desc.detail && data.desc.detail[0] ? data.desc.detail[0].admin : 0);
+                   
+    let admin = parseInt(rawAdmin);
+    if (isNaN(admin)) admin = 0;
+    
+    document.getElementById('bill_admin').innerText = 'Rp ' + admin.toLocaleString('id-ID');
+    
+    // C. LOGIKA LEMBAR TAGIHAN
+    document.getElementById('bill_sheet').innerText = (data.desc.lembar_tagihan || '1') + ' Lembar';
+
+    // D. LOGIKA PERIODE
+    if (data.desc.detail && data.desc.detail.length > 0) {
+        document.getElementById('bill_period').innerText = data.desc.detail[0].periode;
+    } else {
+        document.getElementById('bill_period').innerText = '-';
+    }
+}
 
     inquiryRefId = data.ref_id;
     resultDiv.classList.remove('hidden');
