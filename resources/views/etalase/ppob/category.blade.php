@@ -1,22 +1,52 @@
 @extends('layouts.marketplace')
 
 @php
-    // --- 1. LOGIC DETEKSI PASCABAYAR ---
+    // ==========================================================
+    // 1. LOGIC PHP: PEMETAAN SKU (AGAR AKURAT 100%)
+    // ==========================================================
     $urlSlug = request()->segment(4); 
     $pageInfo = $pageInfo ?? [];
     $currentSlug = $pageInfo['slug'] ?? $urlSlug ?? 'pulsa'; 
-    
-    // Daftar Kategori Pascabayar (Agar sistem tahu halaman ini pascabayar)
-    $postpaidSlugs = [
-        'pln-pascabayar', 'pdam', 'bpjs-kesehatan', 'bpjs-ketenagakerjaan', 
-        'hp-pascabayar', 'internet-pascabayar', 'tv-pascabayar', 
-        'multifinance', 'pbb', 'samsat', 'gas-negara', 'pln-nontaglis'
+
+    // MAPPING: Ubah Slug URL menjadi Kode SKU API yang Benar
+    // Ini memastikan saat buka 'bpjs-kesehatan', sistem tahu itu 'bpjs', bukan 'pln'
+    $skuMap = [
+        // Kategori Pascabayar
+        'pln-pascabayar'     => 'pln',
+        'pdam'               => 'pdam',
+        'bpjs-kesehatan'     => 'bpjs',
+        'bpjs-ketenagakerjaan' => 'bpjstk',
+        'hp-pascabayar'      => 'hp',
+        'internet-pascabayar'=> 'internet',
+        'tv-pascabayar'      => 'tv',
+        'multifinance'       => 'multifinance',
+        'cicilan'            => 'multifinance',
+        'pbb'                => 'pbb',       
+        'samsat'             => 'samsat',
+        'gas-negara'         => 'pgas',
+        'pln-nontaglis'      => 'plnnontaglist',
+        
+        // Kategori Prabayar (Default)
+        'pulsa' => 'pulsa',
+        'pln-token' => 'pln', 
+        'data' => 'data',
     ];
+
+    // Ambil SKU Aktif. Jika tidak ketemu di map, default gunakan 'pln' (jika pascabayar)
+    $activeSku = $skuMap[$currentSlug] ?? 'pln';
+
+    // Logika penentuan apakah halaman ini Pascabayar atau Prabayar
+    $postpaidKeys = ['pln', 'pdam', 'bpjs', 'bpjstk', 'hp', 'internet', 'tv', 'multifinance', 'pbb', 'samsat', 'pgas', 'plnnontaglist'];
     
-    $isPostpaid = ($pageInfo['is_postpaid'] ?? false) || in_array($currentSlug, $postpaidSlugs);
+    // Cek flag dari controller atau cek apakah slug ada di daftar pascabayar
+    $isPostpaid = ($pageInfo['is_postpaid'] ?? false) || in_array($activeSku, $postpaidKeys);
+    
+    // Judul Halaman
     $pageTitle = $pageInfo['title'] ?? ucfirst(str_replace('-', ' ', $currentSlug));
 
-    // --- 2. SETUP MENU KATEGORI (PRABAYAR) ---
+    // ==========================================================
+    // 2. DATA MENU (TAMPILAN)
+    // ==========================================================
     $prepaidMenus = [
         ['slug' => 'pulsa', 'name' => 'Pulsa', 'icon' => 'fa-mobile-alt', 'style' => 'text-red-500 bg-red-50 border-red-200'],
         ['slug' => 'data', 'name' => 'Paket Data', 'icon' => 'fa-wifi', 'style' => 'text-blue-500 bg-blue-50 border-blue-200'],
@@ -47,7 +77,6 @@
         ['slug' => 'by-u', 'name' => 'by.U', 'icon' => 'fa-ghost', 'style' => 'text-orange-500 bg-orange-50 border-orange-200'],
     ];
 
-    // --- 3. SETUP MENU KATEGORI (PASCABAYAR) ---
     $postpaidMenus = [
         ['slug' => 'pln-pascabayar', 'name' => 'PLN Pasca', 'icon' => 'fa-file-invoice-dollar', 'style' => 'text-yellow-600 bg-yellow-50 border-yellow-200'],
         ['slug' => 'pdam', 'name' => 'PDAM', 'icon' => 'fa-faucet', 'style' => 'text-cyan-600 bg-cyan-50 border-cyan-200'],
@@ -63,7 +92,6 @@
         ['slug' => 'pln-nontaglis', 'name' => 'PLN NonTag', 'icon' => 'fa-plug', 'style' => 'text-yellow-600 bg-yellow-50 border-yellow-200'],
     ];
 
-    // Gabungkan variabel untuk jaga-jaga
     $menus = array_merge($prepaidMenus, $postpaidMenus);
 @endphp
 
@@ -90,6 +118,7 @@
 
 @section('content')
 
+{{-- SECTION BANNER (Dikembalikan seperti semula) --}}
 <section class="grid grid-cols-1 lg:grid-cols-3 gap-2 mb-4">
     <div class="lg:col-span-2 rounded shadow-sm overflow-hidden h-full sm:h-full md:h-full w-full">
         <div class="swiper heroSwiper w-full h-full">
@@ -117,18 +146,14 @@
     </div>
 </section>
 
-{{-- ============================================================ --}}
-{{-- ⚡ TAMPILAN MENU KATEGORI LENGKAP ⚡ --}}
-{{-- ============================================================ --}}
-
+{{-- SECTION MENU KATEGORI LENGKAP --}}
 <section class="mb-10 space-y-8" data-aos="fade-up">
     
-    {{-- BAGIAN 1: PRABAYAR (Pulsa, Token, dll) --}}
+    {{-- BAGIAN 1: PRABAYAR --}}
     <div class="bg-white p-6 rounded-2xl shadow-md border-t-4 border-red-500">
         <h2 class="text-xl font-bold mb-6 text-gray-800 flex items-center border-b pb-2">
             <i class="fas fa-wallet text-red-500 mr-2"></i> Layanan Top Up & Prabayar
         </h2>
-        
         <div class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-3 sm:gap-4">
             @foreach($prepaidMenus as $menu)
                 <a href="{{ url('/etalase/ppob/digital/' . $menu['slug']) }}" 
@@ -140,12 +165,11 @@
         </div>
     </div>
 
-    {{-- BAGIAN 2: PASCABAYAR (Tagihan Bulanan) --}}
+    {{-- BAGIAN 2: PASCABAYAR --}}
     <div class="bg-white p-6 rounded-2xl shadow-md border-t-4 border-blue-500">
         <h2 class="text-xl font-bold mb-6 text-gray-800 flex items-center border-b pb-2">
             <i class="fas fa-file-invoice text-blue-500 mr-2"></i> Layanan Tagihan & Pascabayar
         </h2>
-        
         <div class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-3 sm:gap-4">
             @foreach($postpaidMenus as $menu)
                 <a href="{{ url('/etalase/ppob/digital/' . $menu['slug']) }}" 
@@ -156,9 +180,9 @@
             @endforeach
         </div>
     </div>
-
 </section>
 
+{{-- MAIN CONTENT AREA --}}
 <div class="bg-gray-50 min-h-screen py-10">
     <div class="container mx-auto px-4">
         
@@ -171,7 +195,7 @@
             <span class="font-bold text-gray-700">{{ $pageTitle }}</span>
         </div>
 
-        {{-- Alert Notification --}}
+        {{-- Notifications --}}
         @if(session('success')) 
             <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded shadow-sm mb-6 flex items-center">
                 <i class="fas fa-check-circle mr-2"></i> {{ session('success') }}
@@ -185,10 +209,10 @@
 
         <div class="flex flex-col lg:flex-row gap-8">
             
-            {{-- KOLOM KIRI: Input Nomor & Filter --}}
+            {{-- KOLOM KIRI: INPUT NOMOR --}}
             <div class="lg:w-1/3 space-y-6">
                 
-                {{-- Card Input Nomor --}}
+                {{-- Card Input --}}
                 <div class="bg-white rounded-2xl shadow-md p-6 border-t-4 border-red-500 relative overflow-hidden">
                     <div class="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
                         <i class="fas {{ $pageInfo['icon'] ?? 'fa-edit' }} text-9xl text-red-500"></i>
@@ -216,12 +240,11 @@
                         </p>
                     </div>
 
-                    {{-- KHUSUS PLN TOKEN: Cek ID --}}
+                    {{-- TOMBOL CEK PLN TOKEN (PRABAYAR) --}}
                     @if($currentSlug == 'pln-token')
                         <button onclick="cekPlnPrabayar()" id="btn-cek-pln" class="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-4 rounded-xl transition mb-4 shadow-lg shadow-yellow-200/50 flex items-center justify-center gap-2">
                             <i class="fas fa-search"></i> Cek Nama Pelanggan
                         </button>
-
                         <div id="pln_info" class="hidden bg-yellow-50 p-4 rounded-xl border border-yellow-200 text-sm mb-4 animate-fade-in">
                             <div class="flex justify-between mb-2 border-b border-yellow-200 pb-2">
                                 <span class="text-gray-500">Nama:</span>
@@ -234,7 +257,7 @@
                         </div>
                     @endif
 
-                    {{-- KHUSUS PASCABAYAR: Cek Tagihan --}}
+                    {{-- TOMBOL CEK TAGIHAN (PASCABAYAR) --}}
                     @if($isPostpaid)
                         <button onclick="cekTagihan()" id="btn-cek-tagihan" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition flex justify-center items-center gap-2 shadow-lg shadow-blue-200/50">
                             <span id="btn-text">Cek Tagihan</span>
@@ -271,7 +294,7 @@
                 @endif
             </div>
 
-            {{-- KOLOM KANAN: Daftar Produk / Tagihan --}}
+            {{-- KOLOM KANAN: HASIL --}}
             <div class="lg:w-2/3">
                 <div class="bg-white rounded-2xl shadow-md p-6 min-h-[600px]">
                     
@@ -302,7 +325,6 @@
                                             {{ $product->brand }}
                                         </span>
                                     </div>
-
                                     @if(($product->stock ?? 0) < 5 && !($product->unlimited_stock ?? false))
                                         <span class="bg-red-50 text-red-600 text-[10px] font-bold px-2 py-1 rounded border border-red-100 animate-pulse">Sisa {{ $product->stock }}</span>
                                     @elseif($product->multi ?? false)
@@ -339,53 +361,69 @@
                         <h2 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2">Rincian Tagihan</h2>
                         
                         <div id="bill_result" class="hidden">
-    <div class="bg-blue-50 p-6 rounded-2xl mb-6 border border-blue-100 relative overflow-hidden">
-        <div class="absolute -right-6 -top-6 bg-blue-100 w-24 h-24 rounded-full opacity-50"></div>
-        
-        <div class="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            {{-- Data Utama --}}
-            <div>
-                <p class="text-gray-500 text-xs uppercase">Nama Pelanggan</p>
-                <p class="font-bold text-gray-800 text-lg" id="bill_name">-</p>
-            </div>
-            <div>
-                <p class="text-gray-500 text-xs uppercase">ID Pelanggan</p>
-                <p class="font-bold text-gray-800 text-lg" id="bill_id">-</p>
-            </div>
+                            <div class="bg-blue-50 p-6 rounded-2xl mb-6 border border-blue-100 relative overflow-hidden">
+                                <div class="absolute -right-6 -top-6 bg-blue-100 w-24 h-24 rounded-full opacity-50"></div>
+                                
+                                <div class="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                    {{-- Data Utama --}}
+                                    <div>
+                                        <p class="text-gray-500 text-xs uppercase">Nama Pelanggan</p>
+                                        <p class="font-bold text-gray-800 text-lg" id="bill_name">-</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-gray-500 text-xs uppercase">ID Pelanggan</p>
+                                        <p class="font-bold text-gray-800 text-lg" id="bill_id">-</p>
+                                    </div>
 
-            {{-- Data Tambahan (Tarif, Daya, Periode) --}}
-<div class="md:col-span-2 grid grid-cols-2 gap-y-3 border-t border-blue-200 mt-2 pt-3">
-    <div>
-        {{-- TAMBAHKAN ID DISINI (label_power) --}}
-        <p class="text-gray-500 text-xs uppercase" id="label_power">Tarif / Daya</p>
-        <p class="font-bold text-gray-700" id="bill_power">-</p>
-    </div>
-    <div>
-        <p class="text-gray-500 text-xs uppercase">Periode Tagihan</p>
-        <p class="font-bold text-gray-700" id="bill_period">-</p>
-    </div>
-     <div>
-        <p class="text-gray-500 text-xs uppercase">Biaya Admin</p>
-        <p class="font-bold text-gray-700" id="bill_admin">-</p>
-    </div>
-     <div>
-        <p class="text-gray-500 text-xs uppercase">Jumlah Lembar</p>
-        <p class="font-bold text-gray-700" id="bill_sheet">-</p>
-    </div>
-</div>
+                                    {{-- Data Rinci Tagihan --}}
+                                    <div class="md:col-span-2 grid grid-cols-2 gap-y-4 border-t border-blue-200 mt-4 pt-4">
+                                        {{-- Ref ID & Periode --}}
+                                        <div>
+                                            <p class="text-gray-500 text-[10px] uppercase tracking-wider">No. Referensi</p>
+                                            <p class="font-bold text-gray-700 text-sm" id="bill_ref">-</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-gray-500 text-[10px] uppercase tracking-wider">Periode</p>
+                                            <p class="font-bold text-gray-700 text-sm" id="bill_period">-</p>
+                                        </div>
 
-            {{-- Total Tagihan --}}
-            <div class="md:col-span-2 border-t border-blue-200 mt-2 pt-2 bg-blue-100/50 p-2 rounded -mx-2">
-                <p class="text-gray-500 text-xs uppercase text-right">Total Bayar</p>
-                <p class="font-extrabold text-right text-3xl text-blue-600" id="bill_amount">-</p>
-            </div>
-        </div>
-    </div>
-    
-    <button onclick="bayarTagihan()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg shadow-green-200 transition transform hover:-translate-y-1">
-        <i class="fas fa-check-circle mr-2"></i> Bayar Sekarang
-    </button>
-</div>
+                                        {{-- Data Dinamis --}}
+                                        <div>
+                                            <p class="text-gray-500 text-[10px] uppercase tracking-wider" id="label_power">Keterangan</p>
+                                            <p class="font-bold text-gray-700 text-sm" id="bill_power">-</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-gray-500 text-[10px] uppercase tracking-wider">Jml. Lembar</p>
+                                            <p class="font-bold text-gray-700 text-sm" id="bill_sheet">-</p>
+                                        </div>
+
+                                        {{-- Alamat --}}
+                                        <div class="col-span-2">
+                                            <p class="text-gray-500 text-[10px] uppercase tracking-wider">Alamat</p>
+                                            <p class="font-bold text-gray-700 text-sm break-words" id="bill_address">-</p>
+                                        </div>
+
+                                        {{-- Admin --}}
+                                        <div class="col-span-2 border-t border-dashed border-gray-200 pt-2">
+                                            <div class="flex justify-between items-center">
+                                                <p class="text-gray-500 text-xs">Biaya Admin</p>
+                                                <p class="font-bold text-gray-700" id="bill_admin">-</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {{-- Total Tagihan --}}
+                                    <div class="md:col-span-2 border-t border-blue-200 mt-2 pt-2 bg-blue-100/50 p-2 rounded -mx-2">
+                                        <p class="text-gray-500 text-xs uppercase text-right">Total Bayar</p>
+                                        <p class="font-extrabold text-right text-3xl text-blue-600" id="bill_amount">-</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <button onclick="bayarTagihan()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg shadow-green-200 transition transform hover:-translate-y-1">
+                                <i class="fas fa-check-circle mr-2"></i> Bayar Sekarang
+                            </button>
+                        </div>
 
                         <div id="bill_empty" class="flex flex-col items-center justify-center py-20 text-gray-400">
                             <div class="bg-gray-100 p-6 rounded-full mb-4"><i class="fas fa-file-invoice-dollar text-4xl text-gray-300"></i></div>
@@ -438,8 +476,49 @@
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
 <script>
-    var swiper = new Swiper(".heroSwiper", { loop: true, autoplay: { delay: 4000 }, pagination: { el: ".swiper-pagination", clickable: true }, navigation: { nextEl: ".swiper-button-next", prevEl: ".swiper-button-prev" } });
+    // ------------------------------------------------------------------
+    // 1. SETUP VARIABEL DARI PHP (CRITICAL)
+    // ------------------------------------------------------------------
+    // Ini adalah kunci agar JavaScript tahu persis jenis produk apa yang sedang dibuka
+    const ACTIVE_SKU = "{{ $activeSku }}"; 
+
+    // Setup Swiper
+    var swiper = new Swiper(".heroSwiper", { 
+        loop: true, autoplay: { delay: 4000 }, 
+        pagination: { el: ".swiper-pagination", clickable: true }, 
+        navigation: { nextEl: ".swiper-button-next", prevEl: ".swiper-button-prev" } 
+    });
+
     const inputNo = document.getElementById('customer_no');
+
+    // ------------------------------------------------------------------
+    // 2. FORMATTER TANGGAL (CARBON-LIKE + SUPPORT BPJS)
+    // ------------------------------------------------------------------
+    function formatPeriodeID(periodeStr) {
+        if (!periodeStr) return '-';
+        let str = periodeStr.toString().trim();
+
+        // BPJS sering kirim "01", artinya 1 Bulan
+        if (ACTIVE_SKU.includes('bpjs') && /^\d{1,2}$/.test(str)) {
+            return str + " Bulan";
+        }
+
+        // Format YYYYMM (Contoh: 202405)
+        if (/^\d{6}$/.test(str)) {
+            let year = str.substring(0, 4);
+            let month = parseInt(str.substring(4, 6));
+            const months = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+            if (months[month]) return `${months[month]} ${year}`;
+        }
+        
+        // Format YYYY-MM-DD
+        if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+             let date = new Date(str);
+             return date.toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' });
+        }
+
+        return str;
+    }
 
     // ==========================================
     // LOGIKA UNTUK PRABAYAR (TOKEN, PULSA, GAME)
@@ -453,8 +532,8 @@
             });
         }
 
-        // Auto Detect Operator (Hanya untuk Pulsa & Data)
-        @if($currentSlug == 'pulsa' || $currentSlug == 'data')
+        // Auto Detect Operator (Khusus Pulsa & Data)
+        @if(in_array($currentSlug, ['pulsa', 'data']))
         inputNo.addEventListener('input', function(e) {
             const val = e.target.value;
             if(val.length >= 4) {
@@ -476,7 +555,7 @@
 
         function selectProduct(el) {
             const no = inputNo.value;
-            if(no.length < 5) { 
+            if(no.length < 4) { 
                 inputNo.classList.add('border-red-500', 'animate-pulse');
                 setTimeout(() => inputNo.classList.remove('border-red-500', 'animate-pulse'), 1000);
                 inputNo.focus();
@@ -491,11 +570,42 @@
         }
         function closeModal() { document.getElementById('confirmModal').classList.add('hidden'); }
 
+        // Logic Cek Nama PLN Prabayar
+        @if($currentSlug == 'pln-token')
+        function cekPlnPrabayar() {
+            const no = inputNo.value;
+            if(no.length < 10) { alert("Masukkan Nomor Meter dengan benar!"); return; }
+            const btn = document.getElementById('btn-cek-pln');
+            const infoBox = document.getElementById('pln_info');
+            const oriText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengecek...'; btn.disabled = true; infoBox.classList.add('hidden');
+            
+            fetch('{{ route("ppob.check.pln.prabayar") }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                body: JSON.stringify({ customer_no: no })
+            })
+            .then(res => res.json())
+            .then(data => {
+                btn.innerHTML = oriText; btn.disabled = false;
+                if(data.status === 'success') {
+                    document.getElementById('pln_name').innerText = data.name;
+                    document.getElementById('pln_power').innerText = data.segment_power;
+                    infoBox.classList.remove('hidden');
+                } else { alert(data.message); }
+            })
+            .catch(err => {
+                btn.innerHTML = oriText; btn.disabled = false; alert("Gagal koneksi server.");
+            });
+        }
+        @endif
+
     // ==========================================
-    // LOGIKA UNTUK PASCABAYAR
+    // LOGIKA UNTUK PASCABAYAR (FIXED LOGIC)
     // ==========================================
     @else
         let inquiryRefId = null;
+
         function cekTagihan() {
             const no = inputNo.value;
             if(no.length < 5) { alert("Masukkan ID Pelanggan!"); return; }
@@ -506,113 +616,100 @@
             const resultDiv = document.getElementById('bill_result');
             const emptyDiv = document.getElementById('bill_empty');
 
+            // Reset UI
             btn.disabled = true; spinner.classList.remove('hidden'); text.innerText = "Mengecek...";
             resultDiv.classList.add('hidden'); emptyDiv.classList.add('hidden');
 
-            let skuPasca = 'pln'; 
-            // Auto Deteksi SKU Pasca
-            @if(str_contains($currentSlug, 'pdam')) skuPasca = 'pdam'; @endif
-            @if(str_contains($currentSlug, 'bpjs')) skuPasca = 'bpjs'; @endif
-
+            // Kirim Request dengan ACTIVE_SKU dari PHP
             fetch('{{ route("ppob.check.bill") }}', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-                body: JSON.stringify({ customer_no: no, sku: skuPasca })
+                body: JSON.stringify({ 
+                    customer_no: no, 
+                    sku: ACTIVE_SKU,
+                    buyer_sku_code: ACTIVE_SKU
+                })
             })
             .then(res => res.json())
             .then(data => {
                 btn.disabled = false; spinner.classList.add('hidden'); text.innerText = "Cek Tagihan";
-                if(data.status === 'success') {
-    // --- 1. Data Dasar ---
-    document.getElementById('bill_name').innerText = data.customer_name;
-    document.getElementById('bill_id').innerText = data.customer_no;
-    
-    // Total Bayar
-    let totalBayar = data.selling_price ? data.selling_price : data.amount;
-    document.getElementById('bill_amount').innerText = 'Rp ' + parseInt(totalBayar).toLocaleString('id-ID');
-    
-    // --- 2. Data Rinci (Menyesuaikan PLN vs PDAM) ---
-    if (data.desc) {
-        // A. LOGIKA TARIF / DAYA
-        // Cek apakah ada data 'daya'. PLN punya, PDAM tidak punya.
-        let tarif = data.desc.tarif || '-';
-        let daya = data.desc.daya; // Jangan pakai default '-' dulu agar bisa dicek if-nya
+                
+                // Cek Response (Bisa dibungkus data atau tidak)
+                const d = data.data || data;
 
-        if (daya) {
-            // Jika ada daya (PLN), tampilkan format "R1 / 1300 VA"
-            document.getElementById('bill_power').innerText = tarif + ' / ' + daya + ' VA';
-        } else {
-            // Jika tidak ada daya (PDAM), tampilkan Tarif saja "3A"
-            document.getElementById('bill_power').innerText = tarif;
-        }
-        
-        // B. LOGIKA BIAYA ADMIN (Anti NaN)
-        // Cari admin di root, kalau tidak ada cari di desc, kalau tidak ada cari di detail, terakhir 0
-        let rawAdmin = (data.admin !== undefined ? data.admin : null) || 
-                       (data.desc.admin !== undefined ? data.desc.admin : null) || 
-                       (data.desc.detail && data.desc.detail[0] ? data.desc.detail[0].admin : 0);
-                       
-        let admin = parseInt(rawAdmin);
-        // Pastikan hasilnya angka valid, jika NaN paksa jadi 0
-        if (isNaN(admin)) admin = 0;
-        
-        document.getElementById('bill_admin').innerText = 'Rp ' + admin.toLocaleString('id-ID');
-        
-        // C. LOGIKA LEMBAR TAGIHAN
-        document.getElementById('bill_sheet').innerText = (data.desc.lembar_tagihan || '1') + ' Lembar';
+                if(d && (d.status === 'Sukses' || d.rc === '00')) {
+                    // MAPPING DATA
+                    document.getElementById('bill_ref').innerText = d.ref_id || '-';
+                    document.getElementById('bill_name').innerText = d.customer_name || d.name || 'Pelanggan';
+                    document.getElementById('bill_id').innerText = d.customer_no;
+                    
+                    let price = d.selling_price || d.price || 0;
+                    document.getElementById('bill_amount').innerText = 'Rp ' + parseInt(price).toLocaleString('id-ID');
+                    
+                    let admin = d.admin || 0;
+                    document.getElementById('bill_admin').innerText = 'Rp ' + parseInt(admin).toLocaleString('id-ID');
 
-        // D. LOGIKA PERIODE
-        if (data.desc.detail && data.desc.detail.length > 0) {
-            document.getElementById('bill_period').innerText = data.desc.detail[0].periode;
-        } else {
-            document.getElementById('bill_period').innerText = '-';
-        }
-    }
+                    // MAPPING RINCIAN (DESC)
+                    if (d.desc) {
+                        const desc = d.desc;
+                        const detail = (desc.detail && Array.isArray(desc.detail) && desc.detail.length > 0) ? desc.detail[0] : (desc.detail || desc);
 
-    inquiryRefId = data.ref_id;
-    resultDiv.classList.remove('hidden');
-}
+                        // A. ALAMAT
+                        document.getElementById('bill_address').innerText = desc.alamat || desc.kab_kota || '-';
+
+                        // B. PERIODE
+                        let rawPeriode = detail.periode || desc.periode || '-';
+                        document.getElementById('bill_period').innerText = formatPeriodeID(rawPeriode);
+
+                        // C. LEMBAR TAGIHAN
+                        document.getElementById('bill_sheet').innerText = (desc.lembar_tagihan || '1') + ' Lembar';
+
+                        // D. LOGIKA LABEL DINAMIS (BPJS / PLN / PDAM)
+                        let labelEl = document.getElementById('label_power');
+                        let valueEl = document.getElementById('bill_power');
+                        
+                        // Deteksi Tipe Produk
+                        if (ACTIVE_SKU.includes('bpjs')) {
+                            labelEl.innerText = "JUMLAH PESERTA";
+                            let peserta = desc.jumlah_peserta || desc.peserta || '1';
+                            valueEl.innerText = peserta + " Orang";
+                        } 
+                        else if (ACTIVE_SKU.includes('pln') && !ACTIVE_SKU.includes('nontaglis')) {
+                            labelEl.innerText = "TARIF / DAYA";
+                            valueEl.innerText = (desc.tarif || '-') + ' / ' + (desc.daya || '-') + ' VA';
+                        } 
+                        else if (ACTIVE_SKU.includes('pdam')) {
+                            labelEl.innerText = "GOLONGAN";
+                            valueEl.innerText = desc.tarif || desc.golongan || '-';
+                        } 
+                        else if (ACTIVE_SKU.includes('multifinance')) {
+                            labelEl.innerText = "ITEM / TENOR";
+                            valueEl.innerText = (desc.item_name || '-') + ' / ' + (desc.tenor || '-') + ' Bln';
+                        } 
+                        else {
+                            labelEl.innerText = "KETERANGAN";
+                            valueEl.innerText = desc.item_name || "-";
+                        }
+                    }
+
+                    inquiryRefId = d.ref_id;
+                    resultDiv.classList.remove('hidden');
+                } else {
+                    alert(d.message || "Tagihan tidak ditemukan (Data Kosong).");
+                    emptyDiv.classList.remove('hidden');
+                }
             })
             .catch(err => {
+                console.error(err);
                 btn.disabled = false; spinner.classList.add('hidden'); text.innerText = "Cek Tagihan";
                 alert("Terjadi kesalahan koneksi.");
             });
         }
+
         function bayarTagihan() {
             if(!inquiryRefId) return;
-            alert("Silakan login untuk melanjutkan pembayaran.");
             window.location.href = "{{ route('login') }}";
         }
-    @endif
-
-    // Logic Cek Nama PLN Prabayar
-    @if($currentSlug == 'pln-token')
-    function cekPlnPrabayar() {
-        const no = inputNo.value;
-        if(no.length < 10) { alert("Masukkan Nomor Meter dengan benar!"); return; }
-        const btn = document.getElementById('btn-cek-pln');
-        const infoBox = document.getElementById('pln_info');
-        const oriText = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengecek...'; btn.disabled = true; infoBox.classList.add('hidden');
-        
-        fetch('{{ route("ppob.check.pln.prabayar") }}', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-            body: JSON.stringify({ customer_no: no })
-        })
-        .then(res => res.json())
-        .then(data => {
-            btn.innerHTML = oriText; btn.disabled = false;
-            if(data.status === 'success') {
-                document.getElementById('pln_name').innerText = data.name;
-                document.getElementById('pln_power').innerText = data.segment_power;
-                infoBox.classList.remove('hidden');
-            } else { alert(data.message); }
-        })
-        .catch(err => {
-            btn.innerHTML = oriText; btn.disabled = false; alert("Gagal koneksi server.");
-        });
-    }
     @endif
 </script>
 @endpush
