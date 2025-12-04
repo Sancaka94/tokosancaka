@@ -74,25 +74,49 @@ class CheckoutController
     }
 
 
-  /**
-     * ==========================================================
-     * FUNGSI INDEX (VIEW CHECKOUT)
-     * ==========================================================
-     */
-    public function index(KiriminAjaService $kiriminAja)
+ public function index(\App\Services\KiriminAjaService $kiriminAja)
     {
-        if (!Auth::check()) {
-            return redirect()->route('customer.login')->with('info', 'Login dulu ya.');
+        // 1. AMBIL SESSION CART
+        $cart = session()->get('cart', []);
+
+        // =================================================================
+        // 🛑 DEBUGGING BRUTAL: CEK ISI CART SEBELUM DIAPA-APAKAN
+        // =================================================================
+        
+        // OPSI A: LIHAT DI LOG FILE (storage/logs/laravel.log)
+        \Illuminate\Support\Facades\Log::emergency('========== DEBUG CHECKOUT START ==========');
+        \Illuminate\Support\Facades\Log::info('Total Item di Cart: ' . count($cart));
+        
+        foreach($cart as $key => $val) {
+            \Illuminate\Support\Facades\Log::info("Item Key: $key");
+            \Illuminate\Support\Facades\Log::info("Data Item:", $val);
+            
+            $isPpob = isset($val['is_ppob']) ? 'ADA ('. $val['is_ppob'] .')' : 'TIDAK ADA';
+            \Illuminate\Support\Facades\Log::info("Cek Flag is_ppob: $isPpob");
+            
+            $prodId = $val['product_id'] ?? 'NULL';
+            \Illuminate\Support\Facades\Log::info("Product ID: $prodId");
+        }
+        \Illuminate\Support\Facades\Log::emergency('========== DEBUG CHECKOUT END ==========');
+
+        // OPSI B: TAMPILKAN LANGSUNG DI LAYAR (Browser akan berhenti disini)
+        // Hapus tanda komentar (//) di bawah ini jika ingin melihat langsung di layar:
+        
+        // dd('DEBUG MODE AKTIF', $cart); 
+
+        // =================================================================
+
+        if (!\Illuminate\Support\Facades\Auth::check()) {
+            return redirect()->route('customer.login')->with('info', 'Login dulu.');
         }
 
-        $cart = session()->get('cart', []);
         if (empty($cart)) {
             return redirect()->route('customer.cart.index')->with('info', 'Keranjang kosong.');
         }
 
-        $user = Auth::user();
+        $user = \Illuminate\Support\Facades\Auth::user();
         
-        // --- 1. VALIDASI KERANJANG ---
+        // --- VALIDASI KERANJANG DENGAN LOGGING ---
         $validCart = [];
         $invalidItems = [];
         $firstValidStore = null; 
@@ -100,209 +124,53 @@ class CheckoutController
 
         foreach ($cart as $cartKey => $item) {
             
-            // ==================================================================
-            // ⚡ PENGECEKAN UTAMA: PPOB (JANGAN DIHAPUS) ⚡
-            // ==================================================================
-            // Jika item ini PPOB, langsung anggap VALID. 
-            // Jangan biarkan kode berjalan ke bawah (Marketplace::find)
+            // LOGIC DETEKSI
             if (isset($item['is_ppob']) && $item['is_ppob'] == true) {
-                $validCart[$cartKey] = $item; // Simpan item ini
-                continue; // <--- LANJUT KE ITEM BERIKUTNYA (SKIP VALIDASI DB)
-            }
-            // ==================================================================
-
-            // --- Validasi Produk Fisik (Marketplace) ---
-            $productId = $item['product_id'] ?? null;
-            if (!$productId) { $invalidItems[] = $item['name'] ?? 'Unknown'; continue; }
-
-            $product = Marketplace::find($productId);
-
-            if ($product && $product->store && $product->store->user) {
-                $validCart[$cartKey] = $item;
-                $hasPhysicalProduct = true; // Ada barang fisik, berarti butuh ongkir
-                if ($firstValidStore === null) {
-                    $firstValidStore = $product->store;
-                }
-            } else {
-                $invalidItems[] = $item['name'];
-                Log::warning('Item fisik dihapus (tidak valid)', ['id' => $productId]);
-            }
-        }
-
-        // Simpan keranjang yang sudah bersih
-        session()->put('cart', $validCart);
-        
-        if (empty($validCart)) {
-            session()->forget('cart');
-            return redirect()->route('customer.cart.index')->with('error', 'Keranjang telah dikosongkan (Produk tidak valid).');
-        }
-
-        $cart = $validCart;
-        $expressOptions = [];
-        $instantOptions = [];
-        $tripayChannels = [];
-
-            // --------------------------------------------------------
-            // LOGIKA PRODUK FISIK (JALAN HANYA JIKA BUKAN PPOB)
-            // --------------------------------------------------------
-            $productId = $item['product_id'] ?? null;
-            
-            if (!$productId) { 
-                $invalidItems[] = $item['name'] ?? 'Unknown'; 
+                \Illuminate\Support\Facades\Log::info("✅ Item $cartKey lolos validasi karena PPOB.");
+                $validCart[$cartKey] = $item; 
                 continue; 
             }
 
-            // Cek Database Fisik
-            $product = Marketplace::find($productId);
+            // LOGIC FISIK
+            $productId = $item['product_id'] ?? null;
+            \Illuminate\Support\Facades\Log::info("🔍 Cek Database untuk Product ID: $productId");
+            
+            $product = \App\Models\Marketplace::find($productId);
 
-            if ($product && $product->store && $product->store->user) {
-                // Item Fisik Valid
+            if ($product) {
+                \Illuminate\Support\Facades\Log::info("✅ Produk fisik ditemukan: " . $product->name);
                 $validCart[$cartKey] = $item;
-                $hasPhysicalProduct = true; // Tandai butuh ongkir
-
-                // Ambil toko pertama untuk titik asal ongkir
-                if ($firstValidStore === null) {
-                    $firstValidStore = $product->store;
-                }
+                $hasPhysicalProduct = true;
+                if ($firstValidStore === null) $firstValidStore = $product->store;
             } else {
-                // Item Fisik Tidak Valid (Dihapus/Nonaktif)
-                $invalidItems[] = $item['name'] ?? 'Produk ID ' . $productId;
-                Log::warning('Checkout Index: Produk di keranjang tidak ditemukan.', ['product_id' => $productId]);
+                \Illuminate\Support\Facades\Log::error("❌ Produk ID $productId TIDAK DITEMUKAN di database. Dihapus dari cart.");
+                $invalidItems[] = $item['name'] ?? 'Unknown';
             }
         }
 
-        // Simpan keranjang yang sudah divalidasi
+        // Simpan hasil validasi
         session()->put('cart', $validCart);
         
-        // Notifikasi jika ada item yang dihapus
-        if (!empty($invalidItems)) {
-            session()->flash('warning', "Beberapa item (" . implode(', ', $invalidItems) . ") dihapus karena tidak tersedia.");
-        }
-
-        // Jika keranjang jadi kosong semua
         if (empty($validCart)) {
+            \Illuminate\Support\Facades\Log::error("🔥 Keranjang jadi kosong setelah validasi!");
+            // dd("STOP: Keranjang kosong karena semua item dianggap tidak valid. Cek Log.");
             session()->forget('cart');
-            return redirect()->route('customer.cart.index')->with('error', 'Keranjang kosong atau produk tidak valid.');
+            return redirect()->route('customer.cart.index')->with('error', 'Keranjang dikosongkan system.');
         }
 
-        $cart = $validCart; 
+        $cart = $validCart;
+        
+        // ... (Sisa kode ke bawah biarkan saja atau comment dulu agar fokus debug) ...
+        // Agar tidak error view, kita return text dulu
+        // return "DEBUG SELESAI. Cek Log atau hapus dd() di controller.";
+        
+        // KEMBALIKAN KE VIEW ASLI JIKA DEBUG SUDAH OKE
         $expressOptions = [];
         $instantOptions = [];
         $tripayChannels = [];
-
-        // ==========================================================
-        // 2. LOGIKA ONGKIR (HANYA JIKA ADA PRODUK FISIK)
-        // ==========================================================
-        if ($hasPhysicalProduct && $firstValidStore) {
-            $store = $firstValidStore;
-
-            // Validasi Alamat
-            if (empty($store->village)) {
-                return redirect()->route('customer.cart.index')->with('error', 'Alamat toko penjual tidak lengkap.');
-            }
-            if (empty($user->village)) {
-                return redirect()->route('customer.profile.edit')->with('warning', 'Mohon lengkapi alamat pengiriman Anda.');
-            }
-
-            // Cek Ongkir via KiriminAja
-            try {
-                $storeSearch = $store->village . ', ' . $store->district . ', ' . $store->regency . ', ' . $store->province;
-                $userSearch  = $user->village . ', ' . $user->district . ', ' . $user->regency . ', ' . $user->province;
-                
-                $storeAddrRes = $kiriminAja->searchAddress($storeSearch);
-                $userAddrRes  = $kiriminAja->searchAddress($userSearch);
-                
-                $storeAddr = $storeAddrRes['data'][0] ?? null;
-                $userAddr  = $userAddrRes['data'][0] ?? null;
-
-                if ($storeAddr && $userAddr) {
-                    // Hitung berat HANYA produk fisik
-                    $totalWeight = max(1000, (int) collect($cart)->filter(fn($i) => empty($i['is_ppob']))->sum(function($item) {
-                        $p = Marketplace::find($item['product_id']);
-                        return ($p->weight ?? 1000) * $item['quantity'];
-                    }));
-                    
-                    // Hitung nilai barang fisik
-                    $itemValue = (int) collect($cart)->filter(fn($i) => empty($i['is_ppob']))->sum(fn($item) => $item['price'] * $item['quantity']);
-                    $category = $totalWeight >= 30000 ? 'trucking' : 'regular';
-
-                    // Express Pricing
-                    $expressRes = $kiriminAja->getExpressPricing(
-                        $storeAddr['district_id'], $storeAddr['subdistrict_id'],
-                        $userAddr['district_id'], $userAddr['subdistrict_id'],
-                        $totalWeight, 5, 5, 5, $itemValue, null, $category, 1
-                    );
-                    
-                    if (isset($expressRes['status']) && $expressRes['status']) {
-                        $expressOptions['results'] = array_values(array_filter($expressRes['results'], fn($opt) => ($opt['cost'] ?? 0) > 0));
-                    }
-
-                    // Instant Pricing (Geocoding)
-                    $storeLat = $store->latitude; $storeLng = $store->longitude;
-                    $userLat = $user->latitude; $userLng = $user->longitude;
-                    
-                    if ((!$storeLat || !$storeLng) || (!$userLat || !$userLng)) {
-                        $geoS = $this->geocode($storeSearch); if ($geoS) { $storeLat = $geoS['lat']; $storeLng = $geoS['lng']; }
-                        $geoU = $this->geocode($userSearch); if ($geoU) { $userLat = $geoU['lat']; $userLng = $geoU['lng']; }
-                    }
-
-                    if ($storeLat && $storeLng && $userLat && $userLng) {
-                        $instantRes = $kiriminAja->getInstantPricing(
-                            $storeLat, $storeLng, $store->address_detail ?? $storeSearch,
-                            $userLat, $userLng, $user->address_detail ?? $userSearch,
-                            $totalWeight, $itemValue, 'motor'
-                        );
-                        
-                        if (isset($instantRes['status']) && $instantRes['status']) {
-                            foreach ($instantRes['result'] as $prov) {
-                                if (isset($prov['costs'])) {
-                                    foreach ($prov['costs'] as $cost) {
-                                        $p = $cost['price']['total_price'] ?? 0;
-                                        if ($p > 0) $instantOptions['results'][] = ['service' => $prov['name'], 'cost' => $p, 'final_price' => $p, 'etd' => '1-3 Jam', 'group' => 'instant'];
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            } catch (Exception $e) {
-                Log::error('Cek Ongkir Error', ['error' => $e->getMessage()]);
-            }
-        }
-
-        // ==========================================================
-        // 3. CHANNEL PEMBAYARAN (TRIPAY, DOKU, SALDO)
-        // ==========================================================
-        $paymentChannels = [];
-
-        // A. SALDO AKUN
-        $userBalance = $user->saldo ?? 0;
-        $paymentChannels['saldo'] = [
-            'code' => 'SALDO', 'name' => 'Saldo Akun', 'description' => 'Sisa saldo: Rp ' . number_format($userBalance), 'balance' => $userBalance, 'active' => true
-        ];
-
-        // B. TRIPAY
-        try {
-            $apiKey = config('tripay.api_key');
-            $mode   = config('tripay.mode');
-            $baseUrl = ($mode === 'production') ? 'https://tripay.co.id/api/merchant/payment-channel' : 'https://tripay.co.id/api-sandbox/merchant/payment-channel';
-            
-            $resTripay = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])->timeout(5)->withoutVerifying()->get($baseUrl);
-            if ($resTripay->successful() && $resTripay->json()['success']) {
-                $rawTp = $resTripay->json()['data'];
-                foreach($rawTp as $ch) {
-                    if($ch['active']) $paymentChannels['tripay'][] = $ch;
-                }
-            }
-        } catch (Exception $e) { Log::error('Tripay Error', ['e' => $e->getMessage()]); }
-
-        // C. DOKU (Statis)
-        $paymentChannels['doku'] = [
-            ['code' => 'DOKU_CC', 'name' => 'Kartu Kredit', 'group' => 'DOKU'],
-            ['code' => 'DOKU_VA', 'name' => 'Virtual Account', 'group' => 'DOKU']
-        ];
-
-        return view('customer.checkout.index', compact('cart', 'expressOptions', 'instantOptions', 'user', 'paymentChannels', 'hasPhysicalProduct'));
+        $paymentChannels = []; // definisikan array kosong dulu
+        
+        return view('customer.checkout.index', compact('cart', 'expressOptions', 'instantOptions', 'user', 'tripayChannels', 'paymentChannels', 'hasPhysicalProduct'));
     }
 
     /**
