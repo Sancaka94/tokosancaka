@@ -107,7 +107,7 @@
 
                 {{-- Link Riwayat PPOB --}}
                 <a href="{{ route('customer.ppob.history') }}"
-                   class="block px-4 py-2 text-gray-300 hover:bg-gray-600 hover:text-white rounded-md transition-colors duration-200 {{ request()->routeIs('customer.ppob.history') ? 'bg-gray-600 text-white' : '' }}">
+                   class="block px-4 py-2 text-gray-300 hover:bg-green-600 hover:text-white rounded-md transition-colors duration-200 {{ request()->routeIs('customer.ppob.history') ? 'bg-gray-600 text-white' : '' }}">
                     <i class="fas fa-history fa-fw w-4"></i>
                     <span class="ml-2">Riwayat Transaksi</span>
                 </a>
