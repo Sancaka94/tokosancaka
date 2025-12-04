@@ -476,52 +476,43 @@
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
 <script>
-    // ------------------------------------------------------------------
-    // 1. SETUP VARIABEL DARI PHP (CRITICAL)
-    // ------------------------------------------------------------------
-    // Ini adalah kunci agar JavaScript tahu persis jenis produk apa yang sedang dibuka
+    // --- 1. SETUP VARIABEL DARI PHP ---
     const ACTIVE_SKU = "{{ $activeSku }}"; 
+    const inputNo = document.getElementById('customer_no');
 
-    // Setup Swiper
+    // Setup Swiper Banner
     var swiper = new Swiper(".heroSwiper", { 
         loop: true, autoplay: { delay: 4000 }, 
         pagination: { el: ".swiper-pagination", clickable: true }, 
         navigation: { nextEl: ".swiper-button-next", prevEl: ".swiper-button-prev" } 
     });
 
-    const inputNo = document.getElementById('customer_no');
+    // --- 2. GENERATOR REF ID (PENTING AGAR TIDAK ERROR "DATA KOSONG") ---
+    function generateRefID() {
+        return 'INQ-' + Math.floor(Math.random() * 1000000000) + '-' + Date.now();
+    }
 
-    // ------------------------------------------------------------------
-    // 2. FORMATTER TANGGAL (CARBON-LIKE + SUPPORT BPJS)
-    // ------------------------------------------------------------------
+    // --- 3. FORMATTER TANGGAL (SUPPORT BPJS "01" & PLN "202405") ---
     function formatPeriodeID(periodeStr) {
         if (!periodeStr) return '-';
         let str = periodeStr.toString().trim();
 
-        // BPJS sering kirim "01", artinya 1 Bulan
+        // BPJS kirim "01" (Artinya 1 Bulan), bukan Januari
         if (ACTIVE_SKU.includes('bpjs') && /^\d{1,2}$/.test(str)) {
             return str + " Bulan";
         }
-
-        // Format YYYYMM (Contoh: 202405)
+        // Format YYYYMM (Contoh: 202405 -> Mei 2024)
         if (/^\d{6}$/.test(str)) {
             let year = str.substring(0, 4);
             let month = parseInt(str.substring(4, 6));
             const months = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
             if (months[month]) return `${months[month]} ${year}`;
         }
-        
-        // Format YYYY-MM-DD
-        if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
-             let date = new Date(str);
-             return date.toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' });
-        }
-
         return str;
     }
 
     // ==========================================
-    // LOGIKA UNTUK PRABAYAR (TOKEN, PULSA, GAME)
+    // LOGIKA UNTUK PRABAYAR (PULSA, DLL)
     // ==========================================
     @if(!$isPostpaid)
         const items = document.querySelectorAll('.product-item');
@@ -532,7 +523,7 @@
             });
         }
 
-        // Auto Detect Operator (Khusus Pulsa & Data)
+        // Auto Detect Operator
         @if(in_array($currentSlug, ['pulsa', 'data']))
         inputNo.addEventListener('input', function(e) {
             const val = e.target.value;
@@ -554,12 +545,12 @@
         @endif
 
         function selectProduct(el) {
-            const no = inputNo.value;
+            // Bersihkan nomor dari spasi/strip
+            const no = inputNo.value.replace(/[^0-9]/g, '');
             if(no.length < 4) { 
                 inputNo.classList.add('border-red-500', 'animate-pulse');
                 setTimeout(() => inputNo.classList.remove('border-red-500', 'animate-pulse'), 1000);
-                inputNo.focus();
-                alert("Mohon isi nomor tujuan / ID Pelanggan terlebih dahulu."); return; 
+                alert("Mohon isi nomor tujuan yang valid."); inputNo.focus(); return; 
             }
             document.getElementById('modal_no').innerText = no;
             document.getElementById('modal_product').innerText = el.dataset.name;
@@ -570,14 +561,15 @@
         }
         function closeModal() { document.getElementById('confirmModal').classList.add('hidden'); }
 
-        // Logic Cek Nama PLN Prabayar
+        // Logic Cek Nama PLN Prabayar (Token)
         @if($currentSlug == 'pln-token')
         function cekPlnPrabayar() {
-            const no = inputNo.value;
-            if(no.length < 10) { alert("Masukkan Nomor Meter dengan benar!"); return; }
+            const no = inputNo.value.replace(/[^0-9]/g, '');
+            if(no.length < 10) { alert("Nomor Meter tidak valid!"); return; }
             const btn = document.getElementById('btn-cek-pln');
             const infoBox = document.getElementById('pln_info');
             const oriText = btn.innerHTML;
+            
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengecek...'; btn.disabled = true; infoBox.classList.add('hidden');
             
             fetch('{{ route("ppob.check.pln.prabayar") }}', {
@@ -601,14 +593,15 @@
         @endif
 
     // ==========================================
-    // LOGIKA UNTUK PASCABAYAR (FIXED LOGIC)
+    // LOGIKA UNTUK PASCABAYAR (PERBAIKAN UTAMA)
     // ==========================================
     @else
         let inquiryRefId = null;
 
         function cekTagihan() {
-            const no = inputNo.value;
-            if(no.length < 5) { alert("Masukkan ID Pelanggan!"); return; }
+            // 1. Bersihkan Input (Hapus spasi/strip)
+            const no = inputNo.value.replace(/[^0-9]/g, '');
+            if(no.length < 5) { alert("Masukkan ID Pelanggan yang valid!"); inputNo.focus(); return; }
 
             const btn = document.getElementById('btn-cek-tagihan');
             const spinner = document.getElementById('loading-spinner');
@@ -616,29 +609,32 @@
             const resultDiv = document.getElementById('bill_result');
             const emptyDiv = document.getElementById('bill_empty');
 
-            // Reset UI
+            // Reset UI State
             btn.disabled = true; spinner.classList.remove('hidden'); text.innerText = "Mengecek...";
             resultDiv.classList.add('hidden'); emptyDiv.classList.add('hidden');
 
-            // Kirim Request dengan ACTIVE_SKU dari PHP
+            // 2. Kirim Request (WAJIB ADA REF_ID)
             fetch('{{ route("ppob.check.bill") }}', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
                 body: JSON.stringify({ 
                     customer_no: no, 
                     sku: ACTIVE_SKU,
-                    buyer_sku_code: ACTIVE_SKU
+                    buyer_sku_code: ACTIVE_SKU,
+                    ref_id: generateRefID() // <--- INI PENTING!
                 })
             })
             .then(res => res.json())
             .then(data => {
                 btn.disabled = false; spinner.classList.add('hidden'); text.innerText = "Cek Tagihan";
                 
-                // Cek Response (Bisa dibungkus data atau tidak)
+                // Cek wrapper 'data' (Laravel resource biasanya membungkus respon di dalam 'data')
                 const d = data.data || data;
 
+                // Cek Status Sukses (RC 00)
                 if(d && (d.status === 'Sukses' || d.rc === '00')) {
-                    // MAPPING DATA
+                    
+                    // --- MAPPING DATA UTAMA ---
                     document.getElementById('bill_ref').innerText = d.ref_id || '-';
                     document.getElementById('bill_name').innerText = d.customer_name || d.name || 'Pelanggan';
                     document.getElementById('bill_id').innerText = d.customer_no;
@@ -649,26 +645,25 @@
                     let admin = d.admin || 0;
                     document.getElementById('bill_admin').innerText = 'Rp ' + parseInt(admin).toLocaleString('id-ID');
 
-                    // MAPPING RINCIAN (DESC)
+                    // --- MAPPING RINCIAN (DESC) ---
                     if (d.desc) {
                         const desc = d.desc;
+                        // Ambil item pertama jika detail berupa array
                         const detail = (desc.detail && Array.isArray(desc.detail) && desc.detail.length > 0) ? desc.detail[0] : (desc.detail || desc);
 
-                        // A. ALAMAT
-                        document.getElementById('bill_address').innerText = desc.alamat || desc.kab_kota || '-';
-
-                        // B. PERIODE
-                        let rawPeriode = detail.periode || desc.periode || '-';
-                        document.getElementById('bill_period').innerText = formatPeriodeID(rawPeriode);
-
-                        // C. LEMBAR TAGIHAN
+                        // Alamat
+                        document.getElementById('bill_address').innerText = desc.alamat || desc.kab_kota || desc.item_name || '-';
+                        
+                        // Periode
+                        document.getElementById('bill_period').innerText = formatPeriodeID(detail.periode || desc.periode);
+                        
+                        // Lembar
                         document.getElementById('bill_sheet').innerText = (desc.lembar_tagihan || '1') + ' Lembar';
 
-                        // D. LOGIKA LABEL DINAMIS (BPJS / PLN / PDAM)
+                        // --- LABEL DINAMIS SESUAI PRODUK ---
                         let labelEl = document.getElementById('label_power');
                         let valueEl = document.getElementById('bill_power');
                         
-                        // Deteksi Tipe Produk
                         if (ACTIVE_SKU.includes('bpjs')) {
                             labelEl.innerText = "JUMLAH PESERTA";
                             let peserta = desc.jumlah_peserta || desc.peserta || '1';
@@ -680,29 +675,40 @@
                         } 
                         else if (ACTIVE_SKU.includes('pdam')) {
                             labelEl.innerText = "GOLONGAN";
-                            valueEl.innerText = desc.tarif || desc.golongan || '-';
+                            valueEl.innerText = desc.golongan || desc.tarif || '-';
                         } 
                         else if (ACTIVE_SKU.includes('multifinance')) {
-                            labelEl.innerText = "ITEM / TENOR";
-                            valueEl.innerText = (desc.item_name || '-') + ' / ' + (desc.tenor || '-') + ' Bln';
+                            labelEl.innerText = "INFO / TENOR";
+                            let tenor = desc.tenor || detail.tenor || '';
+                            valueEl.innerText = (desc.item_name || '-') + (tenor ? ' / ' + tenor + ' Bln' : '');
                         } 
                         else {
-                            labelEl.innerText = "KETERANGAN";
-                            valueEl.innerText = desc.item_name || "-";
+                            labelEl.innerText = "INFO";
+                            valueEl.innerText = desc.item_name || desc.jatuhtempo || "-";
                         }
                     }
 
                     inquiryRefId = d.ref_id;
                     resultDiv.classList.remove('hidden');
+
                 } else {
-                    alert(d.message || "Tagihan tidak ditemukan (Data Kosong).");
+                    // ERROR HANDLING
+                    // Tampilkan pesan error spesifik jika ada
+                    let errMsg = d.message || "Tagihan tidak ditemukan.";
+                    
+                    // Jika data benar-benar kosong tapi status gagal
+                    if (!d.message && !d.status) {
+                        errMsg = "Data tidak ditemukan (Response Kosong). Cek nomor pelanggan.";
+                    }
+                    
+                    alert(errMsg);
                     emptyDiv.classList.remove('hidden');
                 }
             })
             .catch(err => {
                 console.error(err);
                 btn.disabled = false; spinner.classList.add('hidden'); text.innerText = "Cek Tagihan";
-                alert("Terjadi kesalahan koneksi.");
+                alert("Gagal terhubung ke server. Silakan coba lagi.");
             });
         }
 
