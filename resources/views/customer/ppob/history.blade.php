@@ -12,17 +12,16 @@
             <p class="text-sm text-gray-500 mt-1">Daftar pembelian pulsa, data, dan pembayaran tagihan Anda.</p>
         </div>
         
-        {{-- Tombol Export --}}
+        {{-- Tombol Export (EXCEL & PDF) --}}
         <div class="flex gap-2">
+            {{-- Tombol Excel --}}
             <a href="{{ route('customer.ppob.export.excel') }}" class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-xs font-bold uppercase tracking-widest rounded-lg transition shadow-sm">
-                <i class="fas fa-file-excel mr-2"></i> Excel
+                <i class="fas fa-file-excel mr-2 text-sm"></i> ExportExcel
             </a>
-            {{-- Tombol PDF (Aktifkan route jika sudah setup PDF) --}}
-            {{-- 
+            {{-- Tombol PDF --}}
             <a href="{{ route('customer.ppob.export.pdf') }}" class="inline-flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase tracking-widest rounded-lg transition shadow-sm">
-                <i class="fas fa-file-pdf mr-2"></i> PDF
+                <i class="fas fa-file-pdf mr-2 text-sm"></i> ExportPDF
             </a>
-            --}}
         </div>
     </div>
 
