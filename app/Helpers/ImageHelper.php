@@ -17,21 +17,143 @@ if (!function_exists('get_operator_logo')) {
         // 2. Mapping khusus (Jika nama file beda dengan nama brand)
         // Sesuaikan bagian kanan dengan nama file gambar yang Anda upload
         $mapping = [
-            'tri'         => 'tri',       // Misal file: tri.png
-            'three'       => 'tri',       // Jaga-jaga jika brandnya "Three"
-            'pln'         => 'pln',       // Misal file: pln.png
-            'pln token'   => 'pln',
-            'smartfren'   => 'smartfren',
-            'telkomsel'   => 'telkomsel',
-            'indosat'     => 'indosat',
-            'xl'          => 'xl',
-            'axis'        => 'axis',
-            'dana'        => 'dana',
-            'ovo'         => 'ovo',
-            'gopay'       => 'gopay',
-            'shopeepay'   => 'shopeepay',
-            // Tambahkan game jika perlu: 'mobile legends' -> 'mlbb', dll
-        ];
+
+    // ==============================
+    // 🔥 PULSA & DATA
+    // ==============================
+    'tri'               => 'tri',
+    'three'             => 'tri',
+    '3'                 => 'tri',
+
+    'telkomsel'         => 'telkomsel',
+    'tsel'              => 'telkomsel',
+    'simpati'           => 'telkomsel',
+    'as'                => 'telkomsel',
+    'loop'              => 'telkomsel',
+
+    'indosat'           => 'indosat',
+    'isat'              => 'indosat',
+    'im3'               => 'indosat',
+    'mentari'           => 'indosat',
+    'oredoo'            => 'indosat',
+
+    'xl'                => 'xl',
+    'xis'               => 'xl',
+
+    'axis'              => 'axis',
+    
+    'smartfren'         => 'smartfren',
+    'sf'                => 'smartfren',
+
+    // ==============================
+    // 🔥 PLN
+    // ==============================
+    'pln'               => 'pln',
+    'pln token'         => 'pln',
+    'token listrik'     => 'pln',
+    'listrik'           => 'pln',
+    'pln prabayar'      => 'pln',
+    'pln pascabayar'    => 'pln',
+
+    // ==============================
+    // 🔥 E-WALLET
+    // ==============================
+    'dana'              => 'dana',
+    'ovo'               => 'ovo',
+    'gopay'             => 'gopay',
+    'go pay'            => 'gopay',
+    'gopay driver'      => 'gopay',
+    'shopeepay'         => 'shopeepay',
+    'spay'              => 'shopeepay',
+    'linkaja'           => 'linkaja',
+    'link aja'          => 'linkaja',
+    'isaku'             => 'isaku',
+    'sakuku'            => 'sakuku',
+
+    // ==============================
+    // 🔥 VOUCHER & STREAMING
+    // ==============================
+    'viu'               => 'viu',
+    'vidio'             => 'vidio',
+    'spotify'           => 'spotify',
+    'iqiyi'             => 'iqiyi',
+    'netflix'           => 'netflix',
+    'garena shell'      => 'garena',
+    'garena'            => 'garena',
+
+    // ==============================
+    // 🔥 GAME TOPUP
+    // ==============================
+    'mobile legends'    => 'mlbb',
+    'mlbb'              => 'mlbb',
+    'ml'                => 'mlbb',
+
+    'free fire'         => 'freefire',
+    'ff'                => 'freefire',
+
+    'genshin'           => 'genshin',
+    'genshin impact'    => 'genshin',
+
+    'pubg'              => 'pubg',
+    'pubg mobile'       => 'pubg',
+
+    'valorant'          => 'valorant',
+    'valo'              => 'valorant',
+
+    'call of duty'      => 'cod',
+    'codm'              => 'cod',
+
+    'arena of valor'    => 'aov',
+    'aov'               => 'aov',
+
+    'higgs domino'      => 'higgs',
+    'domino'            => 'higgs',
+    'chip domino'       => 'higgs',
+
+    'point blank'       => 'pb',
+    'pb'                => 'pb',
+
+    'ragnarok'          => 'ragnarok',
+
+    // ==============================
+    // 🔥 TV KABEL & INTERNET
+    // ==============================
+    'indihome'          => 'indihome',
+    'first media'       => 'firstmedia',
+    'mnc vision'        => 'mncvision',
+    'transvision'       => 'transvision',
+    'biznet'            => 'biznet',
+
+    // ==============================
+    // 🔥 PDAM & AIR
+    // ==============================
+    'pdam'              => 'pdam',
+    'air'               => 'pdam',
+
+    // ==============================
+    // 🔥 BPJS
+    // ==============================
+    'bpjs'              => 'bpjs kesehatan',
+    'bpjs kesehatan'    => 'bpjs',
+
+    // ==============================
+    // 🔥 TELKOM
+    // ==============================
+    'telkom'            => 'telkom',
+    'speedy'            => 'telkom',
+    'indihome telkom'   => 'telkom',
+
+    // ==============================
+    // 🔥 LAINNYA (PPOB UMUM)
+    // ==============================
+    'pgn'               => 'pgn',
+    'gas negara'        => 'pgn',
+    'multifinance'      => 'multifinance',
+    'leasing'           => 'multifinance',
+
+    'kereta api'        => 'kai',
+    'kai'               => 'kai',
+];
 
         // Ambil nama file dari mapping, jika tidak ada pakai nama asli
         $filename = isset($mapping[$cleanBrand]) ? $mapping[$cleanBrand] : $cleanBrand;
