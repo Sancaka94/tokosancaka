@@ -321,7 +321,7 @@
                     <button onclick="switchTab('prepaid')" id="tab-prepaid" class="flex-1 py-4 text-center font-bold text-sm md:text-base border-b-2 border-blue-600 text-white hover:text-white transition bg-red-600 hover:bg-red-700 flex items-center justify-center gap-2">
                         <i class="fas fa-mobile-alt"></i> Prabayar / Topup
                     </button>
-                    <button onclick="switchTab('postpaid')" id="tab-postpaid" class="flex-1 py-4 text-center font-bold text-sm md:text-base border-b-2 border-transparent text-white hover:text-white transition hover:bg-red-700 bg-red-600 flex items-center justify-center gap-2">
+                    <button onclick="switchTab('postpaid')" id="tab-postpaid" class="flex-1 py-4 text-center font-bold text-sm md:text-base border-b-2 border-transparent text-grey-600 hover:text-white transition hover:bg-red-600 flex items-center justify-center gap-2">
                         <i class="fas fa-file-invoice"></i> Pascabayar / Tagihan
                     </button>
                 </div>
