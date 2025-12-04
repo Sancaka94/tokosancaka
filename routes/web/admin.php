@@ -95,8 +95,9 @@ Route::prefix('ppob')->name('ppob.')->group(function () {
     // -------------------------------------------------------------
     // URL: /admin/ppob/data
     Route::get('/data', [AdminPpobController::class, 'index'])->name('data.index');
-    Route::get('/export/excel', [AdminPpobController::class, 'exportExcel'])->name('export.excel');
-    Route::get('/export/pdf', [AdminPpobController::class, 'exportPdf'])->name('export.pdf');
+// ===> PERBAIKAN DI SINI (Menambahkan 'data.' pada nama route) <===
+    Route::get('/data/export/excel', [App\Http\Controllers\Admin\AdminPpobController::class, 'exportExcel'])->name('data.export.excel');
+    Route::get('/data/export/pdf', [App\Http\Controllers\Admin\AdminPpobController::class, 'exportPdf'])->name('data.export.pdf');
 
     // -------------------------------------------------------------
     // 2. MANAJEMEN PRODUK PPOB (HARUS DI TENGAH)
