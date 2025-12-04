@@ -1,9 +1,9 @@
 @extends('layouts.marketplace')
 
 @php
-    // ==========================================================
-    // 1. LOGIC PHP: PEMETAAN SKU (AGAR AKURAT 100%)
-    // ==========================================================
+    // ================================================================
+    // 1. LOGIC PHP: PEMETAAN SKU (AGAR TIDAK SALAH DETEKSI PRODUK)
+    // ================================================================
     $urlSlug = request()->segment(4); 
     $pageInfo = $pageInfo ?? [];
     $currentSlug = $pageInfo['slug'] ?? $urlSlug ?? 'pulsa'; 
@@ -25,6 +25,7 @@
         'samsat'             => 'samsat',
         'gas-negara'         => 'pgas',
         'pln-nontaglis'      => 'plnnontaglist',
+        'e-money'            => 'emoney',
         
         // Kategori Prabayar (Default)
         'pulsa' => 'pulsa',
@@ -36,7 +37,7 @@
     $activeSku = $skuMap[$currentSlug] ?? 'pln';
 
     // Logika penentuan apakah halaman ini Pascabayar atau Prabayar
-    $postpaidKeys = ['pln', 'pdam', 'bpjs', 'bpjstk', 'hp', 'internet', 'tv', 'multifinance', 'pbb', 'samsat', 'pgas', 'plnnontaglist'];
+    $postpaidKeys = ['pln', 'pdam', 'bpjs', 'bpjstk', 'hp', 'internet', 'tv', 'multifinance', 'pbb', 'samsat', 'pgas', 'plnnontaglist', 'emoney'];
     
     // Cek flag dari controller atau cek apakah slug ada di daftar pascabayar
     $isPostpaid = ($pageInfo['is_postpaid'] ?? false) || in_array($activeSku, $postpaidKeys);
@@ -44,9 +45,21 @@
     // Judul Halaman
     $pageTitle = $pageInfo['title'] ?? ucfirst(str_replace('-', ' ', $currentSlug));
 
-    // ==========================================================
-    // 2. DATA MENU (TAMPILAN)
-    // ==========================================================
+    // Label & Placeholder Input Dinamis
+    $inputLabel = "Nomor Pelanggan";
+    $inputPlace = "Contoh: 08123456789";
+    
+    if($activeSku == 'samsat') {
+        $inputLabel = "Kode Bayar, No. KTP / Identitas";
+        $inputPlace = "Contoh: 8821...,3201...";
+    } elseif ($activeSku == 'pbb') {
+        $inputLabel = "Nomor Objek Pajak (NOP)";
+        $inputPlace = "Masukkan NOP";
+    }
+
+    // ================================================================
+    // 2. DATA MENU (TAMPILAN LENGKAP)
+    // ================================================================
     $prepaidMenus = [
         ['slug' => 'pulsa', 'name' => 'Pulsa', 'icon' => 'fa-mobile-alt', 'style' => 'text-red-500 bg-red-50 border-red-200'],
         ['slug' => 'data', 'name' => 'Paket Data', 'icon' => 'fa-wifi', 'style' => 'text-blue-500 bg-blue-50 border-blue-200'],
@@ -118,7 +131,7 @@
 
 @section('content')
 
-{{-- SECTION BANNER (Dikembalikan seperti semula) --}}
+{{-- SECTION BANNER (DIKEMBALIKAN SESUAI PERMINTAAN) --}}
 <section class="grid grid-cols-1 lg:grid-cols-3 gap-2 mb-4">
     <div class="lg:col-span-2 rounded shadow-sm overflow-hidden h-full sm:h-full md:h-full w-full">
         <div class="swiper heroSwiper w-full h-full">
@@ -146,7 +159,7 @@
     </div>
 </section>
 
-{{-- SECTION MENU KATEGORI LENGKAP --}}
+{{-- SECTION MENU KATEGORI (FULL VERSION) --}}
 <section class="mb-10 space-y-8" data-aos="fade-up">
     
     {{-- BAGIAN 1: PRABAYAR --}}
@@ -182,7 +195,7 @@
     </div>
 </section>
 
-{{-- MAIN CONTENT AREA --}}
+{{-- MAIN CONTENT --}}
 <div class="bg-gray-50 min-h-screen py-10">
     <div class="container mx-auto px-4">
         
@@ -209,7 +222,7 @@
 
         <div class="flex flex-col lg:flex-row gap-8">
             
-            {{-- KOLOM KIRI: INPUT NOMOR --}}
+            {{-- KOLOM KIRI: INPUT NOMOR & FILTER --}}
             <div class="lg:w-1/3 space-y-6">
                 
                 {{-- Card Input --}}
@@ -226,13 +239,13 @@
                     </h1>
 
                     <div class="mb-6 relative z-10">
-                        <label class="block text-xs font-bold text-gray-500 uppercase mb-2 ml-1">{{ $pageInfo['input_label'] ?? 'Nomor Tujuan' }}</label>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-2 ml-1">{{ $inputLabel }}</label>
                         <div class="relative group">
                             <input type="text" id="customer_no" 
                                    class="w-full border border-gray-300 rounded-xl px-4 py-4 pl-12 font-bold text-lg text-gray-700 focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none shadow-sm transition"
-                                   placeholder="{{ $pageInfo['input_place'] ?? 'Contoh: 0812...' }}">
+                                   placeholder="{{ $inputPlace }}">
                             <div class="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 group-focus-within:text-red-500 transition">
-                                <i class="fas fa-phone"></i>
+                                <i class="fas fa-id-card"></i>
                             </div>
                         </div>
                         <p class="text-xs text-gray-400 mt-2 ml-1 flex items-center gap-1">
@@ -294,7 +307,7 @@
                 @endif
             </div>
 
-            {{-- KOLOM KANAN: HASIL --}}
+            {{-- KOLOM KANAN: DAFTAR PRODUK / HASIL --}}
             <div class="lg:w-2/3">
                 <div class="bg-white rounded-2xl shadow-md p-6 min-h-[600px]">
                     
@@ -360,6 +373,13 @@
                     @else
                         <h2 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2">Rincian Tagihan</h2>
                         
+                        {{-- STATE: BELUM CEK / KOSONG --}}
+                        <div id="bill_empty" class="flex flex-col items-center justify-center py-20 text-gray-400">
+                            <div class="bg-gray-100 p-6 rounded-full mb-4"><i class="fas fa-file-invoice-dollar text-4xl text-gray-300"></i></div>
+                            <p class="font-medium">Masukkan nomor pelanggan di kolom kiri lalu klik "Cek Tagihan"</p>
+                        </div>
+
+                        {{-- STATE: HASIL PENCARIAN (HIDDEN BY DEFAULT) --}}
                         <div id="bill_result" class="hidden">
                             <div class="bg-blue-50 p-6 rounded-2xl mb-6 border border-blue-100 relative overflow-hidden">
                                 <div class="absolute -right-6 -top-6 bg-blue-100 w-24 h-24 rounded-full opacity-50"></div>
@@ -387,20 +407,21 @@
                                             <p class="font-bold text-gray-700 text-sm" id="bill_period">-</p>
                                         </div>
 
-                                        {{-- Data Dinamis --}}
+                                        {{-- Data Dinamis 1 --}}
                                         <div>
-                                            <p class="text-gray-500 text-[10px] uppercase tracking-wider" id="label_power">Keterangan</p>
-                                            <p class="font-bold text-gray-700 text-sm" id="bill_power">-</p>
+                                            <p class="text-gray-500 text-[10px] uppercase tracking-wider" id="label_info_1">Keterangan</p>
+                                            <p class="font-bold text-gray-700 text-sm" id="val_info_1">-</p>
                                         </div>
+                                        {{-- Data Dinamis 2 --}}
                                         <div>
-                                            <p class="text-gray-500 text-[10px] uppercase tracking-wider">Jml. Lembar</p>
-                                            <p class="font-bold text-gray-700 text-sm" id="bill_sheet">-</p>
+                                            <p class="text-gray-500 text-[10px] uppercase tracking-wider" id="label_info_2">Lembar</p>
+                                            <p class="font-bold text-gray-700 text-sm" id="val_info_2">-</p>
                                         </div>
 
                                         {{-- Alamat --}}
                                         <div class="col-span-2">
-                                            <p class="text-gray-500 text-[10px] uppercase tracking-wider">Alamat</p>
-                                            <p class="font-bold text-gray-700 text-sm break-words" id="bill_address">-</p>
+                                            <p class="text-gray-500 text-[10px] uppercase tracking-wider" id="label_address">Alamat</p>
+                                            <p class="font-bold text-gray-700 text-sm break-words" id="val_address">-</p>
                                         </div>
 
                                         {{-- Admin --}}
@@ -423,11 +444,6 @@
                             <button onclick="bayarTagihan()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg shadow-green-200 transition transform hover:-translate-y-1">
                                 <i class="fas fa-check-circle mr-2"></i> Bayar Sekarang
                             </button>
-                        </div>
-
-                        <div id="bill_empty" class="flex flex-col items-center justify-center py-20 text-gray-400">
-                            <div class="bg-gray-100 p-6 rounded-full mb-4"><i class="fas fa-file-invoice-dollar text-4xl text-gray-300"></i></div>
-                            <p class="font-medium">Masukkan nomor pelanggan di kolom kiri lalu klik "Cek Tagihan"</p>
                         </div>
                     @endif
 
@@ -479,29 +495,31 @@
     // --- 1. SETUP VARIABEL DARI PHP ---
     const ACTIVE_SKU = "{{ $activeSku }}"; 
     const inputNo = document.getElementById('customer_no');
+    let inquiryRefId = null;
 
-    // Setup Swiper Banner
+    // Setup Swiper
     var swiper = new Swiper(".heroSwiper", { 
         loop: true, autoplay: { delay: 4000 }, 
         pagination: { el: ".swiper-pagination", clickable: true }, 
         navigation: { nextEl: ".swiper-button-next", prevEl: ".swiper-button-prev" } 
     });
 
-    // --- 2. GENERATOR REF ID (PENTING AGAR TIDAK ERROR "DATA KOSONG") ---
+    // --- 2. GENERATOR REF ID (CRITICAL FIX) ---
+    // Tanpa ini, API akan mengembalikan error data kosong
     function generateRefID() {
-        return 'INQ-' + Math.floor(Math.random() * 1000000000) + '-' + Date.now();
+        return 'INQ-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
     }
 
-    // --- 3. FORMATTER TANGGAL (SUPPORT BPJS "01" & PLN "202405") ---
+    // --- 3. FORMATTER TANGGAL ---
     function formatPeriodeID(periodeStr) {
         if (!periodeStr) return '-';
         let str = periodeStr.toString().trim();
 
-        // BPJS kirim "01" (Artinya 1 Bulan), bukan Januari
+        // BPJS mengirim "01" (Artinya 1 Bulan)
         if (ACTIVE_SKU.includes('bpjs') && /^\d{1,2}$/.test(str)) {
             return str + " Bulan";
         }
-        // Format YYYYMM (Contoh: 202405 -> Mei 2024)
+        // PLN mengirim "202405" (Artinya Mei 2024)
         if (/^\d{6}$/.test(str)) {
             let year = str.substring(0, 4);
             let month = parseInt(str.substring(4, 6));
@@ -523,7 +541,7 @@
             });
         }
 
-        // Auto Detect Operator
+        // Auto Detect Operator (Khusus Pulsa & Data)
         @if(in_array($currentSlug, ['pulsa', 'data']))
         inputNo.addEventListener('input', function(e) {
             const val = e.target.value;
@@ -545,8 +563,7 @@
         @endif
 
         function selectProduct(el) {
-            // Bersihkan nomor dari spasi/strip
-            const no = inputNo.value.replace(/[^0-9]/g, '');
+            const no = inputNo.value.replace(/[^0-9]/g, ''); // Clean number
             if(no.length < 4) { 
                 inputNo.classList.add('border-red-500', 'animate-pulse');
                 setTimeout(() => inputNo.classList.remove('border-red-500', 'animate-pulse'), 1000);
@@ -593,129 +610,131 @@
         @endif
 
     // ==========================================
-    // LOGIKA UNTUK PASCABAYAR (PERBAIKAN UTAMA)
+    // LOGIKA UNTUK PASCABAYAR (FIXED)
     // ==========================================
     @else
-        let inquiryRefId = null;
+    function cekTagihan() {
+        const no = inputNo.value.replace(/[^0-9]/g, '');
+        if(no.length < 5) { alert("Masukkan ID Pelanggan yang valid!"); inputNo.focus(); return; }
 
-        function cekTagihan() {
-            // 1. Bersihkan Input (Hapus spasi/strip)
-            const no = inputNo.value.replace(/[^0-9]/g, '');
-            if(no.length < 5) { alert("Masukkan ID Pelanggan yang valid!"); inputNo.focus(); return; }
+        const btn = document.getElementById('btn-cek-tagihan');
+        const spinner = document.getElementById('loading-spinner');
+        const text = document.getElementById('btn-text');
+        const resultDiv = document.getElementById('bill_result');
+        const emptyDiv = document.getElementById('bill_empty');
 
-            const btn = document.getElementById('btn-cek-tagihan');
-            const spinner = document.getElementById('loading-spinner');
-            const text = document.getElementById('btn-text');
-            const resultDiv = document.getElementById('bill_result');
-            const emptyDiv = document.getElementById('bill_empty');
+        // Reset UI
+        btn.disabled = true; spinner.classList.remove('hidden'); text.innerText = "Mengecek...";
+        resultDiv.classList.add('hidden'); emptyDiv.classList.add('hidden');
 
-            // Reset UI State
-            btn.disabled = true; spinner.classList.remove('hidden'); text.innerText = "Mengecek...";
-            resultDiv.classList.add('hidden'); emptyDiv.classList.add('hidden');
-
-            // 2. Kirim Request (WAJIB ADA REF_ID)
-            fetch('{{ route("ppob.check.bill") }}', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-                body: JSON.stringify({ 
-                    customer_no: no, 
-                    sku: ACTIVE_SKU,
-                    buyer_sku_code: ACTIVE_SKU,
-                    ref_id: generateRefID() // <--- INI PENTING!
-                })
+        // REQUEST API (Forward ke Backend Laravel)
+        fetch('{{ route("ppob.check.bill") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+            body: JSON.stringify({ 
+                customer_no: no, 
+                sku: ACTIVE_SKU,
+                buyer_sku_code: ACTIVE_SKU,
+                ref_id: generateRefID() // <--- CRITICAL
             })
-            .then(res => res.json())
-            .then(data => {
-                btn.disabled = false; spinner.classList.add('hidden'); text.innerText = "Cek Tagihan";
+        })
+        .then(res => res.json())
+        .then(data => {
+            btn.disabled = false; spinner.classList.add('hidden'); text.innerText = "Cek Tagihan";
+            
+            // Handle Wrapper (data.data)
+            const d = data.data || data;
+
+            // Validasi Sukses
+            if(d && (d.status === 'Sukses' || d.rc === '00')) {
                 
-                // Cek wrapper 'data' (Laravel resource biasanya membungkus respon di dalam 'data')
-                const d = data.data || data;
+                // --- MAPPING DATA UMUM ---
+                document.getElementById('bill_ref').innerText = d.ref_id || '-';
+                document.getElementById('bill_name').innerText = d.customer_name || d.name || 'Pelanggan';
+                document.getElementById('bill_id').innerText = d.customer_no;
+                
+                let price = d.selling_price || d.price || 0;
+                document.getElementById('bill_amount').innerText = 'Rp ' + parseInt(price).toLocaleString('id-ID');
+                
+                let admin = d.admin || 0;
+                document.getElementById('bill_admin').innerText = 'Rp ' + parseInt(admin).toLocaleString('id-ID');
 
-                // Cek Status Sukses (RC 00)
-                if(d && (d.status === 'Sukses' || d.rc === '00')) {
+                // --- MAPPING RINCIAN (DESC) ---
+                if (d.desc) {
+                    const desc = d.desc;
+                    // Ambil item pertama jika detail berupa array
+                    const detail = (desc.detail && Array.isArray(desc.detail) && desc.detail.length > 0) ? desc.detail[0] : (desc.detail || desc);
+
+                    // 1. Periode
+                    document.getElementById('bill_period').innerText = formatPeriodeID(detail.periode || desc.periode || '-');
                     
-                    // --- MAPPING DATA UTAMA ---
-                    document.getElementById('bill_ref').innerText = d.ref_id || '-';
-                    document.getElementById('bill_name').innerText = d.customer_name || d.name || 'Pelanggan';
-                    document.getElementById('bill_id').innerText = d.customer_no;
-                    
-                    let price = d.selling_price || d.price || 0;
-                    document.getElementById('bill_amount').innerText = 'Rp ' + parseInt(price).toLocaleString('id-ID');
-                    
-                    let admin = d.admin || 0;
-                    document.getElementById('bill_admin').innerText = 'Rp ' + parseInt(admin).toLocaleString('id-ID');
+                    // 2. Logic Dinamis (Label & Value)
+                    let lbl1 = "Info", val1 = "-", lbl2 = "Lembar", val2 = (desc.lembar_tagihan || '1') + ' Lembar';
+                    let lblAddr = "Alamat", valAddr = desc.alamat || desc.kab_kota || '-';
 
-                    // --- MAPPING RINCIAN (DESC) ---
-                    if (d.desc) {
-                        const desc = d.desc;
-                        // Ambil item pertama jika detail berupa array
-                        const detail = (desc.detail && Array.isArray(desc.detail) && desc.detail.length > 0) ? desc.detail[0] : (desc.detail || desc);
-
-                        // Alamat
-                        document.getElementById('bill_address').innerText = desc.alamat || desc.kab_kota || desc.item_name || '-';
-                        
-                        // Periode
-                        document.getElementById('bill_period').innerText = formatPeriodeID(detail.periode || desc.periode);
-                        
-                        // Lembar
-                        document.getElementById('bill_sheet').innerText = (desc.lembar_tagihan || '1') + ' Lembar';
-
-                        // --- LABEL DINAMIS SESUAI PRODUK ---
-                        let labelEl = document.getElementById('label_power');
-                        let valueEl = document.getElementById('bill_power');
-                        
-                        if (ACTIVE_SKU.includes('bpjs')) {
-                            labelEl.innerText = "JUMLAH PESERTA";
-                            let peserta = desc.jumlah_peserta || desc.peserta || '1';
-                            valueEl.innerText = peserta + " Orang";
-                        } 
-                        else if (ACTIVE_SKU.includes('pln') && !ACTIVE_SKU.includes('nontaglis')) {
-                            labelEl.innerText = "TARIF / DAYA";
-                            valueEl.innerText = (desc.tarif || '-') + ' / ' + (desc.daya || '-') + ' VA';
-                        } 
-                        else if (ACTIVE_SKU.includes('pdam')) {
-                            labelEl.innerText = "GOLONGAN";
-                            valueEl.innerText = desc.golongan || desc.tarif || '-';
-                        } 
-                        else if (ACTIVE_SKU.includes('multifinance')) {
-                            labelEl.innerText = "INFO / TENOR";
-                            let tenor = desc.tenor || detail.tenor || '';
-                            valueEl.innerText = (desc.item_name || '-') + (tenor ? ' / ' + tenor + ' Bln' : '');
-                        } 
-                        else {
-                            labelEl.innerText = "INFO";
-                            valueEl.innerText = desc.item_name || desc.jatuhtempo || "-";
-                        }
+                    if (ACTIVE_SKU.includes('pln')) {
+                        lbl1 = "Tarif / Daya";
+                        val1 = (desc.tarif || '-') + ' / ' + (desc.daya || '-') + ' VA';
+                    } 
+                    else if (ACTIVE_SKU.includes('bpjs')) {
+                        lbl1 = "Jml. Peserta";
+                        val1 = (desc.jumlah_peserta || desc.peserta || '1') + " Orang";
+                        lbl2 = "Cabang"; 
+                        val2 = desc.kantor_cabang || '-';
+                    }
+                    else if (ACTIVE_SKU.includes('pdam')) {
+                        lbl1 = "Meteran";
+                        val1 = (detail.meter_awal || '-') + ' - ' + (detail.meter_akhir || '-');
+                    }
+                    else if (ACTIVE_SKU.includes('pbb') || ACTIVE_SKU.includes('cimahi')) {
+                        lbl1 = "LT / LB";
+                        val1 = (desc.luas_tanah || 0) + 'm² / ' + (desc.luas_gedung || 0) + 'm²';
+                        lbl2 = "Tahun Pajak";
+                        val2 = desc.tahun_pajak || '-';
+                    }
+                    else if (ACTIVE_SKU.includes('samsat')) {
+                        lbl1 = "No. Polisi";
+                        val1 = desc.nomor_polisi || desc.no_pol || '-';
+                        lbl2 = "Kendaraan";
+                        val2 = (desc.merek_kb || '') + ' ' + (desc.model_kb || '');
+                    }
+                    else if (ACTIVE_SKU.includes('multifinance')) {
+                        lbl1 = "Item";
+                        val1 = desc.item_name || '-';
+                        lbl2 = "Tenor";
+                        val2 = (desc.tenor || '-') + ' Bulan';
                     }
 
-                    inquiryRefId = d.ref_id;
-                    resultDiv.classList.remove('hidden');
-
-                } else {
-                    // ERROR HANDLING
-                    // Tampilkan pesan error spesifik jika ada
-                    let errMsg = d.message || "Tagihan tidak ditemukan.";
-                    
-                    // Jika data benar-benar kosong tapi status gagal
-                    if (!d.message && !d.status) {
-                        errMsg = "Data tidak ditemukan (Response Kosong). Cek nomor pelanggan.";
-                    }
-                    
-                    alert(errMsg);
-                    emptyDiv.classList.remove('hidden');
+                    // Render to HTML
+                    document.getElementById('label_info_1').innerText = lbl1;
+                    document.getElementById('val_info_1').innerText = val1;
+                    document.getElementById('label_info_2').innerText = lbl2;
+                    document.getElementById('val_info_2').innerText = val2;
+                    document.getElementById('label_address').innerText = lblAddr;
+                    document.getElementById('val_address').innerText = valAddr;
                 }
-            })
-            .catch(err => {
-                console.error(err);
-                btn.disabled = false; spinner.classList.add('hidden'); text.innerText = "Cek Tagihan";
-                alert("Gagal terhubung ke server. Silakan coba lagi.");
-            });
-        }
 
-        function bayarTagihan() {
-            if(!inquiryRefId) return;
-            window.location.href = "{{ route('login') }}";
-        }
+                inquiryRefId = d.ref_id;
+                resultDiv.classList.remove('hidden');
+
+            } else {
+                // Tampilkan Error
+                let msg = d.message || "Tagihan tidak ditemukan / Sudah lunas.";
+                alert(msg);
+                emptyDiv.classList.remove('hidden');
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            btn.disabled = false; spinner.classList.add('hidden'); text.innerText = "Cek Tagihan";
+            alert("Gagal koneksi server.");
+        });
+    }
+
+    function bayarTagihan() {
+        if(!inquiryRefId) return;
+        window.location.href = "{{ route('login') }}?ref_id=" + inquiryRefId;
+    }
     @endif
 </script>
 @endpush
