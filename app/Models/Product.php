@@ -16,7 +16,7 @@ use App\Models\ProductVariant;
 use App\Models\ProductImage;
 use App\Models\ProductReview;
 use App\Models\PpobProduct;
- 
+
 
 class Product extends Model
 {
@@ -166,4 +166,10 @@ class Product extends Model
     {
         return 'slug';
     }
+
+    public function category()
+{
+    return $this->belongsTo(Category::class);
+}
+
 }
