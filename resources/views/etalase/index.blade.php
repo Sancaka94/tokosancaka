@@ -349,7 +349,7 @@
                         {{-- Tombol Lihat Semua (Accordion) --}}
                         @if(count($prepaidMenus) > 16)
                             <div class="mt-8 text-center">
-                                <button onclick="toggleExpand('prepaid')" id="btn-expand-prepaid" class="inline-flex items-center gap-2 px-6 py-2 bg-red-200 text-red-600 text-xs font-bold rounded-full hover:bg-red-500 transition">
+                                <button onclick="toggleExpand('prepaid')" id="btn-expand-prepaid" class="inline-flex items-center gap-2 px-6 py-2 bg-red-600 text-white text-xs font-bold rounded-full hover:bg-red-700 transition">
                                     <span>Lihat Semua Layanan</span> 
                                     <i class="fas fa-chevron-down text-[10px]"></i>
                                 </button>
