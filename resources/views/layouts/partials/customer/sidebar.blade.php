@@ -86,7 +86,7 @@
             <button @click="open = !open" 
                 class="flex items-center w-full px-4 py-2.5 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors duration-200">
                 <i class="fas fa-mobile-alt fa-fw w-6"></i>
-                <span class="ml-3 flex-1 text-left">Isi Ulang & Tagihan</span>
+                <span class="ml-3 flex-1 text-left">Payment PPOB</span>
                 <i :class="open ? 'fas fa-chevron-up' : 'fas fa-chevron-down'" class="ml-auto text-xs"></i>
             </button>
 
