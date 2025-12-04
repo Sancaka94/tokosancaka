@@ -102,7 +102,7 @@ class CheckoutController
         // OPSI B: TAMPILKAN LANGSUNG DI LAYAR (Browser akan berhenti disini)
         // Hapus tanda komentar (//) di bawah ini jika ingin melihat langsung di layar:
         
-        // dd('DEBUG MODE AKTIF', $cart); 
+        dd('DEBUG MODE AKTIF', $cart); 
 
         // =================================================================
 
