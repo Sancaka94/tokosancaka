@@ -4,140 +4,78 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 if (!function_exists('get_operator_logo')) {
-    /**
-     * Helper untuk mendeteksi logo operator PPOB secara cerdas.
-     * Mencakup Produk Prabayar, Pascabayar, Omni, dan Internasional.
-     */
     function get_operator_logo($brandName, $productName = null)
     {
-        // 1. Normalisasi Input (Lowercase & Bersihkan)
-        $inputBrand   = $brandName ? strtolower(trim($brandName)) : '';
-        $inputProduct = $productName ? strtolower(trim($productName)) : '';
+        // 1. Bersihkan Input
+        $brand   = $brandName ? strtolower(trim($brandName)) : '';
+        $product = $productName ? strtolower(trim($productName)) : '';
+        $text    = $brand . ' ' . $product;
 
-        // 2. DAFTAR KATA KUNCI (KEYWORD MAPPING)
-        // Kiri: Kata kunci yang dicari di nama produk/brand
-        // Kanan: Nama file gambar (tanpa .png) yang harus ada di folder storage
-        $keywordMapping = [
-            // --- OPERATOR SELULER & OMNI ---
-            'telkomsel' => 'telkomsel',
-            'simpati'   => 'telkomsel',
-            'as'        => 'telkomsel',
-            'loop'      => 'telkomsel',
-            'by.u'      => 'byu',
-            'omni'      => 'telkomsel', // Telkomsel Omni
-            'indosat'   => 'indosat',
-            'im3'       => 'indosat',
-            'mentari'   => 'indosat',
-            'only4u'    => 'indosat',   // Indosat Only4u
-            'tri'       => 'tri',
-            'three'     => 'tri',
-            'cuanmax'   => 'tri',       // Tri CuanMax
-            'xl'        => 'xl',
-            'axis'      => 'axis',
-            'cuanku'    => 'xl',        // XL/Axis Cuanku (bisa disesuaikan jika ingin icon axis)
+        // 2. Mapping Nama File (Tanpa Ekstensi)
+        // Kiri: Kata Kunci di DB | Kanan: Nama File yang Anda Punya
+        $mapping = [
+            'pln' => 'pln', 
+            'token' => 'pln', 
+            'listrik' => 'pln',
+            'telkomsel' => 'telkomsel', 
+            'simpati' => 'telkomsel', 
+            'as' => 'telkomsel', 
+            'loop' => 'telkomsel', 
+            'omni' => 'telkomsel',
+            'indosat' => 'indosat', 
+            'im3' => 'indosat', 
+            'mentari' => 'indosat',
+            'tri' => 'tri', 
+            'three' => 'tri',
+            'xl' => 'xl', 
+            'axis' => 'axis',
             'smartfren' => 'smartfren',
-            'esim'      => 'esim',      // eSIM
-
-            // --- LISTRIK & GAS ---
-            'pln'       => 'pln',
-            'listrik'   => 'pln',
-            'token'     => 'pln',
-            'nontaglis' => 'pln',       // PLN Nontaglis
-            'gas'       => 'pgn',       // Gas Negara
-            'pgn'       => 'pgn',
-
-            // --- AIR & PAJAK & NEGARA ---
-            'pdam'      => 'pdam',
-            'pbb'       => 'pbb',       // Pajak PBB
-            'samsat'    => 'samsat',    // SAMSAT
-
-            // --- BPJS ---
-            'bpjs'      => 'bpjs',
-            'kesehatan' => 'bpjs',
-            'ketenagakerjaan' => 'bpjs-tk', // Opsional, atau pakai 'bpjs' saja
-
-            // --- E-WALLET & E-MONEY ---
-            'dana'      => 'dana',
-            'ovo'       => 'ovo',
-            'gopay'     => 'gopay',
-            'shopeepay' => 'shopeepay',
-            'linkaja'   => 'linkaja',
-            'e-money'   => 'emoney',
-            'emoney'    => 'emoney',
-            'tapcash'   => 'tapcash',
-            'brizzi'    => 'brizzi',
-
-            // --- HIBURAN & MEDIA ---
-            'games'     => 'game',      // Icon Joystick
-            'voucher'   => 'voucher',
-            'streaming' => 'streaming', // Icon Play Button
-            'tv'        => 'tv',        // TV / TV Pascabayar
-            'vision'    => 'tv',
-            'indihome'  => 'telkom',
-            'media sosial' => 'medsos', // Media Sosial
-
-            // --- KEUANGAN ---
-            'multifinance' => 'multifinance', // Cicilan/Leasing
-
-            // --- INTERNASIONAL (Negara) ---
-            'china'       => 'flag-china',
-            'malaysia'    => 'flag-malaysia',
-            'philippines' => 'flag-philippines',
-            'singapore'   => 'flag-singapore',
-            'thailand'    => 'flag-thailand',
-            'vietnam'     => 'flag-vietnam',
-            
-            // --- UMUM / LAINNYA ---
-            'paket sms'   => 'sms-telpon', // Paket SMS & Telpon
-            'telpon'      => 'sms-telpon',
-            'masa aktif'  => 'masa-aktif', // Masa Aktif
-            'bundling'    => 'bundling',   // Bundling
-            'perdana'     => 'perdana',    // Aktivasi Perdana
-            'aktivasi'    => 'voucher',    // Aktivasi Voucher
-            'data'        => 'data',       // Icon Kuota/Data
-            'pulsa'       => 'pulsa',      // Icon Pulsa
+            'dana' => 'dana', 'ovo' => 'ovo', 'gopay' => 'gopay', 'shopeepay' => 'shopeepay',
+            'bpjs' => 'bpjs', 'pdam' => 'pdam',
+            'game' => 'game', 'voucher' => 'voucher',
         ];
 
-        $detectedImage = null;
+        // 3. Cari Nama File Target
+        $filename = null;
 
-        // LOGIKA 1: Cek Kolom Brand (Prioritas Utama)
-        // Mencocokkan input brand persis dengan key di array mapping
-        if (!empty($inputBrand)) {
-            foreach ($keywordMapping as $key => $filename) {
-                if (str_contains($inputBrand, $key)) {
-                    $detectedImage = $filename;
-                    break; 
-                }
-            }
-            // Jika brand ada tapi tidak ketemu di mapping, gunakan nama brand itu sendiri sebagai nama file
-            if (!$detectedImage) {
-                $detectedImage = Str::slug($inputBrand); 
+        // Cek Mapping Dulu
+        foreach ($mapping as $key => $file) {
+            if (str_contains($text, $key)) {
+                $filename = $file;
+                break;
             }
         }
 
-        // LOGIKA 2: Jika Brand kosong/tidak ketemu, Cek Nama Produk
-        if (empty($detectedImage) && !empty($inputProduct)) {
-            foreach ($keywordMapping as $key => $filename) {
-                if (str_contains($inputProduct, $key)) {
-                    $detectedImage = $filename;
-                    break;
-                }
+        // Jika tidak ketemu di mapping, gunakan nama brand asli (dibersihkan)
+        if (!$filename && $brand) {
+            $filename = Str::slug($brand); // Contoh: "Indosat Ooredoo" -> "indosat-ooredoo"
+        }
+
+        // Jika masih kosong, coba dari kata pertama nama produk
+        if (!$filename && $product) {
+            $filename = explode(' ', $product)[0];
+        }
+
+        // 4. CEK KEBERADAAN FILE (PENTING!)
+        // Kita cek ekstensi .png, .jpg, dan .jpeg
+        $extensions = ['png', 'jpg', 'jpeg', 'PNG', 'JPG'];
+        
+        foreach ($extensions as $ext) {
+            $tryFile = $filename . '.' . $ext;
+
+            // CEK LOKASI 1: public/storage/logo-ppob/ (Symlink)
+            if (file_exists(public_path('public/storage/logo-ppob/' . $tryFile))) {
+                return asset('public/storage/logo-ppob/' . $tryFile);
+            }
+
+            // CEK LOKASI 2: public/logo-ppob/ (Folder Biasa)
+            if (file_exists(public_path('logo-ppob/' . $tryFile))) {
+                return asset('logo-ppob/' . $tryFile);
             }
         }
 
-        // 3. Fallback Terakhir (Default)
-        $finalFilename = $detectedImage ?? 'default';
-
-        // 4. Cek File di Storage
-        // Lokasi: storage/app/public/logo-ppob/
-        $path = 'logo-ppob/' . $finalFilename . '.png';
-
-        if (Storage::disk('public')->exists($path)) {
-            return asset('public/storage/' . $path);
-        }
-
-        // Jika file spesifik tidak ada (misal: flag-china.png belum diupload),
-        // kembali ke default.png
-        return asset('public/storage/logo-ppob/default.png');
+        // 5. Fallback Terakhir (Default)
+        // Pastikan Anda punya file 'default.png' di salah satu folder di atas
+        return asset('public/storage/logo-ppob/default.png'); 
     }
 }
