@@ -21,6 +21,17 @@ class PpobController extends Controller
         $this->digiflazz = $digiflazz;
     }
 
+
+    private function getWebLogo()
+    {
+        try {
+            $setting = Setting::where('key', 'logo')->first();
+            return $setting ? $setting->value : null;
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
     /**
      * FUNGSI UTAMA: MENANGANI SEMUA HALAMAN KATEGORI
      */
@@ -31,8 +42,7 @@ class PpobController extends Controller
         // ============================================================
         
         // Ambil Logo (SOLUSI ERROR UNDEFINED VARIABLE $weblogo)
-        $logoData = Setting::where('key', 'logo')->first();
-        $weblogo  = $logoData ? $logoData->value : 'logo.png'; 
+        $weblogo = $this->getWebLogo();
 
         // Ambil Banner Slider
         $banners = BannerEtalase::latest()->get(); 
