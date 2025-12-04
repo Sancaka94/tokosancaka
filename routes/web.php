@@ -78,7 +78,7 @@ use App\Http\Controllers\PublicController;
 
 
 
-
+Route::post('/cart/add-ppob', [CartController::class, 'addPpob'])->name('cart.addPpob');
 // Grouping URL PPOB
 Route::prefix('etalase/ppob')->name('ppob.')->group(function () {
 

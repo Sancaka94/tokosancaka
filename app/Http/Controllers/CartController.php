@@ -277,4 +277,43 @@ class CartController extends Controller
         return redirect()->route('cart.index')->with('success', 'Keranjang berhasil dikosongkan.');
     }
 
+    /**
+     * Menambahkan Tagihan PPOB ke Keranjang via AJAX
+     */
+    public function addPpob(Request $request)
+    {
+        $data = $request->validate([
+            'sku' => 'required',
+            'name' => 'required',
+            'price' => 'required|numeric',
+            'ref_id' => 'required',
+            'customer_no' => 'required',
+        ]);
+
+        $cart = session()->get('cart', []);
+        
+        // Buat ID Unik untuk keranjang (pakai ref_id)
+        $cartKey = 'ppob_' . $data['ref_id'];
+
+        // Masukkan data dengan format yang SAMA persis dengan produk biasa
+        // agar tidak error di view cart.index
+        $cart[$cartKey] = [
+            "product_id" => 0, // ID 0 menandakan ini bukan produk fisik
+            "variant_id" => null,
+            "name"       => $data['name'],
+            "quantity"   => 1,
+            "price"      => $data['price'],
+            "image_url"  => "https://placehold.co/100x100/2563eb/ffffff?text=PPOB", // Icon default biru
+            "slug"       => $data['sku'], // Simpan SKU di slug
+            "weight"     => 0,
+            "is_ppob"    => true, // Penanda khusus (opsional)
+            "ref_id"     => $data['ref_id'],
+            "customer_no"=> $data['customer_no']
+        ];
+
+        session()->put('cart', $cart);
+
+        return response()->json(['success' => true]);
+    }
+
 }
