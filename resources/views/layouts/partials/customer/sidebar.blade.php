@@ -53,7 +53,7 @@
                    class="flex items-center px-4 py-2.5 mb-1 bg-gradient-to-r from-blue-700 to-blue-800 text-white rounded-md shadow-md border border-blue-600 hover:from-blue-600 hover:to-blue-700 transition">
                     <i class="fas fa-store fa-fw w-6 text-yellow-400"></i>
                     <div>
-                        <span class="block font-bold text-sm">Kelola Toko Agen</span>
+                        <span class="block font-bold text-sm">Kelola Agen Sancaka</span>
                         <span class="block text-[10px] text-blue-200 font-normal">Atur Harga Jual</span>
                     </div>
                 </a>
