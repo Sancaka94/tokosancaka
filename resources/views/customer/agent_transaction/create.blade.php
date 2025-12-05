@@ -127,26 +127,23 @@
 <tbody class="divide-y divide-gray-100" id="product_table_body">
     @foreach($products as $product)
         @php
+            // Hitung harga jual & profit
             $modal = $product->modal_agen;
-            // Logika harga jual default jika null
-            $jual = $product->harga_jual_agen ?? ($modal + 2000);
+            $jual = $product->harga_jual_agen ?? ($modal + 2000); 
         @endphp
 
-        {{-- PERUBAHAN PENTING DI SINI: --}}
-        {{-- 1. Tambahkan data-price untuk sorting --}}
-        {{-- 2. Tambahkan data-type untuk pencarian luas --}}
+        {{-- PENTING: Class 'product-row' dan atribut 'data-...' ini wajib ada agar JS bekerja --}}
         <tr class="hover:bg-blue-50 transition group product-row" 
             data-brand="{{ strtolower($product->brand) }}" 
             data-name="{{ strtolower($product->product_name) }}"
             data-category="{{ strtolower($product->category) }}"
-            data-price="{{ $jual }}"> 
+            data-price="{{ $jual }}"> {{-- Data Price untuk sorting harga --}}
             
             <td class="px-4 py-3">
                 <div class="font-bold text-gray-800 text-sm">{{ $product->product_name }}</div>
                 <div class="text-[10px] text-gray-400 font-mono">{{ $product->buyer_sku_code }}</div>
             </td>
             <td class="px-4 py-3 text-center">
-                {{-- Badge warna-warni sesuai kategori (Opsional) --}}
                 <span class="px-2 py-1 rounded text-[10px] font-bold bg-gray-100 text-gray-600 uppercase">
                     {{ $product->brand }}
                 </span>
@@ -220,146 +217,94 @@
 
 @endsection
 
-@push('scripts')
 <script>
-    // --- KONFIGURASI PATH LOGO (PENTING) ---
-    // Pastikan Anda sudah menjalankan: php artisan storage:link
-    // Path ini mengarah ke folder public/storage/logo-ppob/
+    // Konfigurasi Path Logo (Sesuaikan jika perlu)
     const logoBasePath = "{{ asset('public/storage/logo-ppob') }}/";
 
-    // --- LOGIKA DETEKSI OPERATOR (Disesuaikan dengan Nama File Anda) ---
+    // --- 1. LOGIKA DETEKSI OPERATOR ---
     function detectOperator() {
         let number = document.getElementById('input_customer_no').value;
-        // Ambil 4 digit pertama
-        let prefix = number.substring(0, 4); 
+        let prefix = number.substring(0, 4);
         let brand = null;
         let brandName = '-';
-        let logoFile = ''; // Nama file sesuai folder Anda
+        let logoFile = '';
 
-        // Reset UI jika input pendek
+        // Reset jika input dihapus
         if (number.length < 4) {
             hideOperatorBadge();
             showInstruction();
             return;
         }
 
-        // 1. DETEKSI SELULER (Mapping Prefix ke Nama File)
-        if (/^08(11|12|13|21|22|23|51|52|53)/.test(prefix)) { 
-            brand = 'telkomsel'; brandName = 'Telkomsel'; logoFile = 'telkomsel.png'; 
-        }
-        else if (/^08(14|15|16|55|56|57|58)/.test(prefix)) { 
-            brand = 'indosat'; brandName = 'Indosat Ooredoo'; logoFile = 'indosat.png'; 
-        }
-        else if (/^08(17|18|19|59|77|78)/.test(prefix)) { 
-            brand = 'xl'; brandName = 'XL Axiata'; logoFile = 'xl.png'; 
-        }
-        else if (/^08(31|32|33|38)/.test(prefix)) { 
-            brand = 'axis'; brandName = 'AXIS'; logoFile = 'axis.png'; 
-        }
-        else if (/^08(95|96|97|98|99)/.test(prefix)) { 
-            brand = 'tri'; brandName = 'Tri (3)'; logoFile = 'tri.png'; 
-        }
-        else if (/^08(81|82|83|84|85|86|87|88|89)/.test(prefix)) { 
-            brand = 'smartfren'; brandName = 'Smartfren'; logoFile = 'smartfren.png'; 
-        }
-        
-        // 2. DETEKSI PLN (Token Listrik)
-        // Token PLN biasanya 11 digit (No Meter) atau 12 digit (ID Pel)
-        // Kita asumsikan jika tidak diawali 08 dan panjang >= 6 maka PLN
-        else if (!number.startsWith('08') && number.length >= 6) { 
-            brand = 'pln'; brandName = 'PLN / Token'; logoFile = 'pln.png';
-        }
+        // Regex Prefix Operator Indonesia
+        if (/^08(11|12|13|21|22|23|51|52|53)/.test(prefix)) { brand = 'telkomsel'; brandName = 'Telkomsel'; logoFile = 'telkomsel.png'; }
+        else if (/^08(14|15|16|55|56|57|58)/.test(prefix)) { brand = 'indosat'; brandName = 'Indosat Ooredoo'; logoFile = 'indosat.png'; }
+        else if (/^08(17|18|19|59|77|78)/.test(prefix)) { brand = 'xl'; brandName = 'XL Axiata'; logoFile = 'xl.png'; }
+        else if (/^08(31|32|33|38)/.test(prefix)) { brand = 'axis'; brandName = 'AXIS'; logoFile = 'axis.png'; }
+        else if (/^08(95|96|97|98|99)/.test(prefix)) { brand = 'tri'; brandName = 'Tri (3)'; logoFile = 'tri.png'; }
+        else if (/^08(81|82|83|84|85|86|87|88|89)/.test(prefix)) { brand = 'smartfren'; brandName = 'Smartfren'; logoFile = 'smartfren.png'; }
+        else if (!number.startsWith('08') && number.length >= 6) { brand = 'pln'; brandName = 'PLN / Token'; logoFile = 'pln.png'; }
 
-        // 3. Update UI jika terdeteksi
         if (brand) {
-            // Gabungkan Base Path dengan Nama File
-            let fullLogoUrl = logoBasePath + logoFile;
-            showOperatorBadge(brandName, fullLogoUrl);
-            filterTableByBrand(brand);
+            showOperatorBadge(brandName, logoBasePath + logoFile);
+            filterTableByBrand(brand); // Panggil fungsi filter
         } else {
-            // Jika tidak match pattern apapun, sembunyikan badge tapi user bisa cari manual
-            hideOperatorBadge();
+            hideOperatorBadge(); // Sembunyikan jika tidak dikenal, tapi user tetap bisa cari manual
         }
     }
 
-    function showOperatorBadge(name, logoUrl) {
-        let badge = document.getElementById('operator_badge');
-        document.getElementById('operator_name').innerText = name;
-        document.getElementById('operator_logo').src = logoUrl;
-        
-        badge.classList.remove('hidden');
-        // Efek animasi halus
-        setTimeout(() => {
-            badge.classList.remove('scale-95', 'opacity-0');
-            badge.classList.add('scale-100', 'opacity-100');
-        }, 50);
-    }
-
-    function hideOperatorBadge() {
-        let badge = document.getElementById('operator_badge');
-        badge.classList.add('scale-95', 'opacity-0');
-        badge.classList.remove('scale-100', 'opacity-100');
-        setTimeout(() => {
-            badge.classList.add('hidden');
-        }, 300);
-    }
-
-    function showInstruction() {
-        document.getElementById('instruction_alert').classList.remove('hidden');
-        document.getElementById('product_container').classList.add('hidden');
-        document.getElementById('pagination_links').classList.add('hidden');
-    }
-
-    // --- PERBAIKAN LOGIKA FILTER & SORTING ---
+    // --- 2. LOGIKA FILTER & SORTING (SOLUSI MASALAH ANDA) ---
     function filterTableByBrand(brand) {
-        let rows = Array.from(document.querySelectorAll('.product-row')); // Ubah ke Array agar bisa di-sort
+        // Ambil semua baris tabel
+        let rows = Array.from(document.querySelectorAll('.product-row'));
         let tbody = document.getElementById('product_table_body');
         let hasResult = false;
 
+        // UI Updates
         document.getElementById('instruction_alert').classList.add('hidden');
         document.getElementById('product_container').classList.remove('hidden');
-        document.getElementById('pagination_links').classList.add('hidden'); 
+        
+        // Hapus pagination jika ada (karena kita pakai Client Side filtering)
+        let pagination = document.getElementById('pagination_links');
+        if(pagination) pagination.classList.add('hidden');
 
-        // 1. FILTER DULU
-        // Kita simpan row yang cocok ke dalam array sementara
+        // Array penampung baris yang cocok
         let matchedRows = [];
 
         rows.forEach(row => {
+            // Ambil data dari atribut HTML yg kita buat di langkah 1
             let rowBrand = row.getAttribute('data-brand'); 
             let rowName = row.getAttribute('data-name');
             let rowCategory = row.getAttribute('data-category');
             
             let match = false;
-            
-            // Logika Pencarian yang Diperluas
-            // Agar Aktivasi, Data, & Pulsa masuk semua
+
+            // Logika Pencocokan
             if (brand === 'pln') {
                 if (rowBrand.includes('pln') || rowCategory.includes('token') || rowCategory.includes('listrik')) match = true;
             } else {
-                // Cek jika Brand mengandung kata kunci (misal: indosat)
-                // ATAU nama produk mengandung kata kunci (untuk jaga-jaga jika brand tidak lengkap)
+                // Cocokkan Brand ATAU Nama Produk (agar paket data/telpon juga masuk)
                 if (rowBrand.includes(brand) || rowName.includes(brand)) match = true;
             }
 
             if (match) {
-                row.classList.remove('hidden');
-                matchedRows.push(row); // Masukkan ke daftar yang cocok
+                row.classList.remove('hidden'); // Tampilkan
+                matchedRows.push(row); // Masukkan ke daftar cocok untuk disortir
                 hasResult = true;
             } else {
-                row.classList.add('hidden');
+                row.classList.add('hidden'); // Sembunyikan yang tidak cocok (DANA, OVO, dll)
             }
         });
 
-        // 2. SORTING (Termurah ke Termahal)
+        // --- SORTING (TERMURAH KE TERMAHAL) ---
         if (hasResult) {
             matchedRows.sort((a, b) => {
                 let priceA = parseInt(a.getAttribute('data-price'));
                 let priceB = parseInt(b.getAttribute('data-price'));
-                return priceA - priceB; // Ascending (Kecil ke Besar)
+                return priceA - priceB; // Kecil ke Besar
             });
 
-            // 3. RE-APPEND (Susun ulang HTML berdasarkan urutan baru)
-            // Teknik ini memindahkan elemen HTML ke urutan yang benar
+            // Susun ulang urutan di tabel HTML
             matchedRows.forEach(row => {
                 tbody.appendChild(row);
             });
@@ -369,78 +314,64 @@
         const noResultEl = document.getElementById('no_result');
         if (!hasResult) {
             noResultEl.classList.remove('hidden');
-            noResultEl.innerText = "Produk untuk " + brand + " tidak ditemukan.";
+            noResultEl.innerText = "Produk " + brand + " sedang gangguan / tidak tersedia.";
         } else {
             noResultEl.classList.add('hidden');
         }
     }
 
-    // Update juga fungsi Manual Filter agar sorting tetap jalan
+    // --- FUNGSI PENDUKUNG LAINNYA ---
+    function showOperatorBadge(name, logoUrl) {
+        let badge = document.getElementById('operator_badge');
+        document.getElementById('operator_name').innerText = name;
+        document.getElementById('operator_logo').src = logoUrl;
+        badge.classList.remove('hidden');
+        badge.classList.remove('scale-95', 'opacity-0');
+        badge.classList.add('scale-100', 'opacity-100');
+    }
+
+    function hideOperatorBadge() {
+        let badge = document.getElementById('operator_badge');
+        badge.classList.add('scale-95', 'opacity-0');
+        setTimeout(() => { badge.classList.add('hidden'); }, 200);
+    }
+
+    function showInstruction() {
+        document.getElementById('instruction_alert').classList.remove('hidden');
+        document.getElementById('product_container').classList.add('hidden');
+    }
+
     function filterTableManual() {
         let keyword = document.getElementById('search_product').value.toLowerCase();
-        let rows = Array.from(document.querySelectorAll('.product-row'));
-        let tbody = document.getElementById('product_table_body');
-        
+        let rows = document.querySelectorAll('.product-row');
         document.getElementById('instruction_alert').classList.add('hidden');
         document.getElementById('product_container').classList.remove('hidden');
-        document.getElementById('pagination_links').classList.add('hidden');
-
-        let matchedRows = [];
 
         rows.forEach(row => {
             let name = row.getAttribute('data-name');
-            if (name.includes(keyword)) {
-                row.classList.remove('hidden');
-                matchedRows.push(row);
-            } else {
-                row.classList.add('hidden');
-            }
+            if (name.includes(keyword)) row.classList.remove('hidden');
+            else row.classList.add('hidden');
         });
-
-        // Sorting manual search juga
-        matchedRows.sort((a, b) => {
-            return parseInt(a.getAttribute('data-price')) - parseInt(b.getAttribute('data-price'));
-        });
-
-        matchedRows.forEach(row => tbody.appendChild(row));
     }
 
-    // --- MODAL TRANSAKSI ---
+    // Modal logic (confirmTransaction & closeModal) silakan pakai yang lama
     function confirmTransaction(sku, name, modal, jual) {
-        let no = document.getElementById('input_customer_no').value;
-        if(no.length < 4) { 
-            alert('Mohon masukkan Nomor Tujuan dengan benar!');
-            document.getElementById('input_customer_no').focus();
-            return;
-        }
-
-        document.getElementById('modal_no').innerText = no;
+        document.getElementById('modal_no').innerText = document.getElementById('input_customer_no').value;
         document.getElementById('modal_product').innerText = name;
         document.getElementById('modal_jual').innerText = 'Rp ' + parseInt(jual).toLocaleString('id-ID');
-        
         document.getElementById('form_sku').value = sku;
-        document.getElementById('form_no').value = no;
-
-        let modalEl = document.getElementById('confirmModal');
-        let contentEl = document.getElementById('modal_content');
+        document.getElementById('form_no').value = document.getElementById('input_customer_no').value;
         
-        modalEl.classList.remove('hidden');
+        document.getElementById('confirmModal').classList.remove('hidden');
         setTimeout(() => {
-            contentEl.classList.remove('scale-95', 'opacity-0');
-            contentEl.classList.add('scale-100', 'opacity-100');
+            document.getElementById('modal_content').classList.remove('scale-95', 'opacity-0');
+            document.getElementById('modal_content').classList.add('scale-100', 'opacity-100');
         }, 50);
     }
 
     function closeModal() {
-        let modalEl = document.getElementById('confirmModal');
-        let contentEl = document.getElementById('modal_content');
-
-        contentEl.classList.remove('scale-100', 'opacity-100');
-        contentEl.classList.add('scale-95', 'opacity-0');
-        
-        setTimeout(() => {
-            modalEl.classList.add('hidden');
-        }, 200);
+        document.getElementById('modal_content').classList.remove('scale-100', 'opacity-100');
+        document.getElementById('modal_content').classList.add('scale-95', 'opacity-0');
+        setTimeout(() => { document.getElementById('confirmModal').classList.add('hidden'); }, 200);
     }
 </script>
-@endpush
