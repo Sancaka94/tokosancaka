@@ -213,6 +213,25 @@
                                 </label>
                             @endif
 
+                            {{-- C. DOKU CHANNELS --}}
+                            @if(isset($paymentChannels['doku']) && count($paymentChannels['doku']) > 0)
+                                <div class="mt-4">
+                                    <p class="text-xs font-bold text-black uppercase tracking-wider mb-2 pl-1">Rekomendasi Sancaka</p>
+                                    <div class="space-y-3">
+                                        @foreach($paymentChannels['doku'] as $channel)
+                                            <label class="relative block cursor-pointer group">
+                                                <input type="radio" name="payment_method" value="{{ $channel['code'] }}" class="peer sr-only">
+                                                <div class="p-3 rounded-xl border border-gray-200 peer-checked:border-blue-500 peer-checked:bg-blue-50 transition-all hover:border-blue-300 flex items-center gap-3 bg-white">
+                                                    <img src="{{ $channel['icon_url'] }}" class="h-6 w-auto object-contain">
+                                                    <span class="text-sm font-medium text-gray-700 flex-1">{{ $channel['name'] }}</span>
+                                                    <div class="w-4 h-4 rounded-full border border-gray-300 peer-checked:bg-blue-600 peer-checked:border-blue-600"></div>
+                                                </div>
+                                            </label>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endif
+
                             {{-- B. TRIPAY CHANNELS --}}
                             @if(isset($paymentChannels['tripay']) && count($paymentChannels['tripay']) > 0)
                                 <div class="mt-4">
@@ -232,24 +251,7 @@
                                 </div>
                             @endif
 
-                            {{-- C. DOKU CHANNELS --}}
-                            @if(isset($paymentChannels['doku']) && count($paymentChannels['doku']) > 0)
-                                <div class="mt-4">
-                                    <p class="text-xs font-bold text-black uppercase tracking-wider mb-2 pl-1">Lainnya</p>
-                                    <div class="space-y-3">
-                                        @foreach($paymentChannels['doku'] as $channel)
-                                            <label class="relative block cursor-pointer group">
-                                                <input type="radio" name="payment_method" value="{{ $channel['code'] }}" class="peer sr-only">
-                                                <div class="p-3 rounded-xl border border-gray-200 peer-checked:border-blue-500 peer-checked:bg-blue-50 transition-all hover:border-blue-300 flex items-center gap-3 bg-white">
-                                                    <img src="{{ $channel['icon_url'] }}" class="h-6 w-auto object-contain">
-                                                    <span class="text-sm font-medium text-gray-700 flex-1">{{ $channel['name'] }}</span>
-                                                    <div class="w-4 h-4 rounded-full border border-gray-300 peer-checked:bg-blue-600 peer-checked:border-blue-600"></div>
-                                                </div>
-                                            </label>
-                                        @endforeach
-                                    </div>
-                                </div>
-                            @endif
+                            
 
                         </div>
 
