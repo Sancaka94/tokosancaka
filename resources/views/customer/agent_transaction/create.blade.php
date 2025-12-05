@@ -171,10 +171,10 @@
                     </div>
                 </div>
 
-                {{-- Pagination --}}
-                <div id="pagination_links" class="mt-4">
-                    {{ $products->appends(request()->query())->links() }}
-                </div>
+                {{-- Pagination dihapus karena kita load semua data (get) agar filter JS lancar --}}
+{{-- <div id="pagination_links" class="mt-4">
+    {{ $products->appends(request()->query())->links() }}
+</div> --}}
             </div>
         </div>
 
