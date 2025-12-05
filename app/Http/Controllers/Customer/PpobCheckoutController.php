@@ -125,7 +125,7 @@ class PpobCheckoutController extends Controller
         // --- C. DOKU (MANUAL) ---
         $paymentChannels['doku'] = [
             ['code' => 'DOKU_CC', 'name' => 'Kartu Kredit', 'icon_url' => 'https://cdn-icons-png.flaticon.com/512/6963/6963703.png'],
-            ['code' => 'DOKU_VA', 'name' => 'DOKU VA', 'icon_url' => 'https://cdn-icons-png.flaticon.com/512/2331/2331922.png'],
+            ['code' => 'DOKU_VA', 'name' => 'DOMPET SANCAKA', 'icon_url' => 'https://cdn-icons-png.flaticon.com/512/2331/2331922.png'],
         ];
 
         return view('customer.ppob.checkout', compact('cart', 'totalPrice', 'user', 'paymentChannels'));
