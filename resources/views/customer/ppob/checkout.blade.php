@@ -167,10 +167,19 @@
                                     <input type="radio" name="payment_method" value="saldo" class="peer sr-only" {{ !$isCukup ? 'disabled' : '' }}>
                                     <div class="p-4 rounded-xl border-2 border-gray-200 peer-checked:border-blue-500 peer-checked:bg-blue-50/50 transition-all hover:border-blue-300 {{ !$isCukup ? 'opacity-60 bg-gray-50 cursor-not-allowed' : 'bg-white' }}">
                                         <div class="flex justify-between items-center mb-2">
-                                            <div class="flex items-center gap-3">
-                                                <img src="{{ $saldo['icon_url'] }}" class="w-8 h-8 object-contain">
-                                                <span class="font-bold text-gray-800 text-sm">Saldo Akun</span>
-                                            </div>
+                                            <div class="bg-white rounded-xl shadow-md border border-gray-100 p-4 flex items-center gap-4">
+    <div class="flex-shrink-0">
+        <img src="{{ $saldo['icon_url'] }}" class="w-10 h-10 object-contain" alt="Icon">
+    </div>
+
+    <div class="flex flex-col">
+        <span class="text-xs text-gray-500 uppercase tracking-wide">Saldo Akun</span>
+        <span class="text-lg font-bold text-gray-800">
+            {{ number_format($saldo['balance'], 0, ',', '.') }}
+        </span>
+    </div>
+</div>
+
                                             <div class="w-5 h-5 rounded-full border-2 border-gray-300 peer-checked:border-blue-600 peer-checked:bg-blue-600 flex items-center justify-center">
                                                 <div class="w-2 h-2 bg-white rounded-full hidden peer-checked:block"></div>
                                             </div>
