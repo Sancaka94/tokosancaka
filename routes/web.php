@@ -77,8 +77,24 @@ use App\Http\Controllers\PpobProductController;
 use App\Http\Controllers\PublicController;
 use App\Http\Controllers\Customer\PpobCheckoutController;
 use App\Http\Controllers\Customer\PpobHistoryController;
+use App\Http\Controllers\Customer\AgentProductController;
 
 
+Route::middleware(['auth'])->group(function () {
+    
+    // Group Route Agen
+    Route::prefix('agent/products')->name('agent.products.')->group(function () {
+        // Halaman Index (List Produk)
+        Route::get('/', [AgentProductController::class, 'index'])->name('index');
+        
+        // Update Harga Satuan (Method PUT via form)
+        Route::put('/update', [AgentProductController::class, 'update'])->name('update');
+        
+        // Update Harga Massal (Method POST via form)
+        Route::post('/bulk-update', [AgentProductController::class, 'bulkUpdate'])->name('bulk_update');
+    });
+
+});
 
 
 Route::prefix('customer/ppob')->name('customer.ppob.')->middleware('auth')->group(function () {
