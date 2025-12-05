@@ -22,6 +22,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'payment/*', // Jika ada webhook payment lain
         ]);
 
+        // --- TAMBAHKAN BAGIAN INI ---
+        $middleware->alias([
+            'is_agent' => \App\Http\Middleware\IsAgent::class,
+        ]);
         
     })
     ->withExceptions(function (Exceptions $exceptions) {
