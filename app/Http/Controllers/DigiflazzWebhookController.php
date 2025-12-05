@@ -16,51 +16,44 @@ class DigiflazzWebhookController extends Controller
         Log::info('Webhook Masuk:', $request->all());
 
         // ==========================================
-        // 2. BYPASS VERIFIKASI SIGNATURE (SEMENTARA)
+        // 2. VERIFIKASI SIGNATURE
         // ==========================================
-        // Agar Anda bisa tes lewat Postman tanpa ribet header Signature.
-        // Nanti kalau sudah production, barulah kita aktifkan validasi ketat.
-        
         $secret = 'SancakaSecretKey2025'; 
         $incomingSignature = $request->header('X-Hub-Signature');
         $payload = $request->getContent();
         $localSignature = 'sha1=' . hash_hmac('sha1', $payload, $secret);
 
         if ($incomingSignature && !hash_equals($localSignature, (string)$incomingSignature)) {
-            Log::warning("Signature Tidak Cocok (Diabaikan untuk Testing). Incoming: $incomingSignature | Local: $localSignature");
+            Log::warning("Signature Tidak Cocok (Mode Testing). Incoming: $incomingSignature | Local: $localSignature");
         } else {
-            Log::info("Signature Check: OK atau Skipped (Mode Testing)");
+            Log::info("Signature Check: OK (atau Mode Testing)");
         }
 
         // ==========================================
-        // 3. PARSING DATA (SUPPORT POSTMAN & DIGIFLAZZ)
+        // 3. PARSING DATA
         // ==========================================
         $data = json_decode($payload, true);
 
         // Handle Ping
         if (isset($data['ping'])) return response()->json(['status' => 'pong']);
 
-        // Normalisasi Data: Ambil dari 'data' (Digiflazz) atau langsung (Postman)
-        // INI SOLUSI ERROR "Invalid Payload Structure" DI POSTMAN ANDA
         $trxData = $data['data'] ?? $data;
-
-        // Validasi Ref ID (Support 'ref_id' atau 'order_id')
-        $refId = $trxData['ref_id'] ?? $trxData['order_id'] ?? null;
+        $refId   = $trxData['ref_id'] ?? $trxData['order_id'] ?? null;
 
         if (!$refId) {
-            Log::error("Webhook Gagal: Tidak ada Ref ID/Order ID dalam payload.");
+            Log::error("Webhook Gagal: No Ref ID.");
             return response()->json(['status' => 'failed', 'message' => 'No Ref ID found'], 400);
         }
 
-        // Ambil parameter lainnya
+        // Ambil Data
         $status  = $trxData['status'] ?? 'Pending';
         $sn      = $trxData['sn'] ?? '';
         $message = $trxData['message'] ?? '';
         $price   = $trxData['price'] ?? 0;
         $desc    = $trxData['desc'] ?? null;
-        $rc      = $trxData['rc'] ?? null;
+        $rc      = $trxData['rc'] ?? null; // Response Code (Penting!)
 
-        Log::info("Memproses Transaksi ID: $refId | Status Baru: $status");
+        Log::info("Proses Transaksi ID: $refId | Status: $status | RC: $rc");
 
         // ==========================================
         // 4. DATABASE TRANSACTION
@@ -71,46 +64,56 @@ class DigiflazzWebhookController extends Controller
 
             if (!$transaction) {
                 DB::rollBack();
-                Log::error("Webhook Gagal: Transaksi ID $refId TIDAK DITEMUKAN di database.");
+                Log::error("Webhook: Transaksi $refId tidak ditemukan.");
                 return response()->json(['status' => 'not found'], 404);
             }
 
-            Log::info("Transaksi Ditemukan: User ID {$transaction->user_id} | Status Lama: {$transaction->status}");
-
-            // Cek Final Status
+            // Cek jika sudah Final (Success/Failed)
             if (in_array($transaction->status, ['Success', 'Failed'])) {
                 DB::rollBack();
                 return response()->json(['status' => 'already processed']);
             }
 
-            // UPDATE DATA
+            // Update Info Dasar
             $transaction->sn = $sn;
             $transaction->message = $message;
             $transaction->rc = $rc;
             if (!empty($desc)) $transaction->desc = is_array($desc) ? json_encode($desc) : $desc;
             
-            // Update Profit & Harga Beli (Jika ada perubahan)
+            // Update Profit (Jika harga berubah)
             if ($price > 0) {
                 $transaction->price = $price; 
                 $transaction->profit = $transaction->selling_price - $price;
             }
 
-            // UPDATE STATUS
-            if ($status === 'Sukses' || $status === 'Success') { // Handle variasi status
+            // ==========================================
+            // LOGIKA STATUS BERDASARKAN RC (LEBIH AKURAT)
+            // ==========================================
+            $rcStr = (string) $rc; // Pastikan string untuk perbandingan
+
+            // 1. SUKSES (RC 00)
+            if ($rcStr === '00' || $status === 'Sukses' || $status === 'Success') {
                 $transaction->status = 'Success';
-            } 
-            elseif (in_array($status, ['Gagal', 'Failed'])) {
+            }
+            
+            // 2. PENDING (RC 03, 99)
+            elseif (in_array($rcStr, ['03', '99']) || $status === 'Pending') {
+                $transaction->status = 'Pending';
+            }
+
+            // 3. GAGAL (Semua RC selain 00, 03, 99)
+            // Ini menangani RC 40-59 (Saldo kurang, nomor salah, gangguan, dll)
+            else {
                 $transaction->status = 'Failed';
                 
-                // REFUND SALDO
+                // AUTO REFUND SALDO
                 if (in_array(strtoupper($transaction->payment_method), ['SALDO', 'SALDO_AGEN'])) {
                     $user = User::where('id_pengguna', $transaction->user_id)->first();
                     if ($user) {
-                        // Refund sebesar modal yang terpotong
                         $refundAmount = $transaction->price; 
                         $user->increment('saldo', $refundAmount);
                         
-                        Log::info("REFUND BERHASIL: Rp " . number_format($refundAmount) . " ke User ID {$user->id_pengguna}");
+                        Log::info("REFUND: User {$user->id_pengguna} +Rp " . number_format($refundAmount));
                         $transaction->message .= " [Saldo Dikembalikan]";
                     }
                 }
@@ -119,13 +122,12 @@ class DigiflazzWebhookController extends Controller
             $transaction->save();
             DB::commit();
 
-            Log::info("Webhook Berhasil: Status transaksi $refId berubah menjadi $status");
             return response()->json(['status' => 'ok']);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error("Webhook DB Error: " . $e->getMessage());
-            return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+            Log::error("Webhook Error: " . $e->getMessage());
+            return response()->json(['status' => 'error'], 500);
         }
     }
 }
