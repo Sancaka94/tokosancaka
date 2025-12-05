@@ -963,7 +963,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/ppob/prepare', [PpobCheckoutController::class, 'prepare'])->name('ppob.prepare');
 
     // 2. Halaman Checkout Khusus PPOB
-    Route::get('/checkout-ppob', [PpobCheckoutController::class, 'index'])->name('ppob.checkout.index');
+    Route::get('/checkout-ppob', [PpobCheckoutController::class, 'index'])->name('ppob.checkout');
 
     // 3. Proses Bayar PPOB
     Route::post('/checkout-ppob/process', [PpobCheckoutController::class, 'store'])->name('ppob.checkout.store');

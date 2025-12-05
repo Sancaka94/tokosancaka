@@ -690,7 +690,7 @@ function proceedToCheckout(data) {
     .then(res => {
         if(res.success) {
             // Kalau sukses simpan session, baru redirect ke index controller tadi
-            window.location.href = "{{ route('ppob.checkout') }}"; 
+            window.location.href = "{{ route('ppob.checkout.index') }}";
         } else {
             alert('Gagal: ' + res.message);
         }
