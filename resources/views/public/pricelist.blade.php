@@ -596,7 +596,7 @@
         // 2. LOGIKA BARU: Update Link Checkout
         // Kita kirim sku dan no hp sebagai query parameter (GET) agar halaman checkout bisa menangkap datanya
         const baseUrl = "https://tokosancaka.com/checkout-ppob";
-        const finalUrl = `${baseUrl}?buyer_sku_code=${sku}&customer_no=${no}`;
+        onst finalUrl = `${baseUrl}?buyer_sku_code=${sku}&customer_no=${no}`;
         
         // Pasang URL ke tombol
         document.getElementById('btn-checkout-link').href = finalUrl;
