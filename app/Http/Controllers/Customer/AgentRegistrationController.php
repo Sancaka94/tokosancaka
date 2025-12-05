@@ -10,23 +10,26 @@ use App\Models\PpobTransaction; // Gunakan model transaksi untuk mencatat potong
 
 class AgentRegistrationController extends Controller
 {
-    // Tampilkan Halaman Penawaran / Pendaftaran
     public function index()
-    {
-        $user = Auth::user();
+{
+    // Get ID of currently logged in user
+    $userId = Auth::id(); 
+    
+    // Fetch fresh data from DB to ensure balance is 100% accurate real-time
+    $user = \App\Models\User::find($userId); 
 
-        // Jika sudah jadi agen, langsung lempar ke halaman kelola toko
-        if ($user->role === 'agent') {
-            return redirect()->route('agent.products.index');
-        }
-
-        return view('customer.agent_registration.index', compact('user'));
+    if ($user->role === 'agent') {
+        return redirect()->route('agent.products.index');
     }
 
-    // Proses Upgrade ke Agen
-    public function register(Request $request)
-    {
-        $user = Auth::user();
+    return view('customer.agent_registration.index', compact('user'));
+}
+
+public function register(Request $request)
+{
+    $userId = Auth::id();
+    // Lock header for transaction safety if high concurrency (optional but good)
+    $user = \App\Models\User::where('id_pengguna', $userId)->first();
         $syaratSaldo = 2000000; // 2 Juta
         $biayaServer = 100000;  // 100 Ribu
 
