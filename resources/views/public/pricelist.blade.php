@@ -1,6 +1,6 @@
 @extends('layouts.marketplace')
 
-@php
+
     // --- 1. SETUP DATA KATEGORI (Sesuai List Kamu) ---
     $urlSlug = request()->segment(4); 
     $pageInfo = $pageInfo ?? [];
@@ -596,7 +596,7 @@
         // 2. LOGIKA BARU: Update Link Checkout
         // Kita kirim sku dan no hp sebagai query parameter (GET) agar halaman checkout bisa menangkap datanya
         const baseUrl = "https://tokosancaka.com/checkout-ppob";
-        onst finalUrl = `${baseUrl}?buyer_sku_code=${sku}&customer_no=${no}`;
+        const finalUrl = `${baseUrl}?buyer_sku_code=${sku}&customer_no=${no}`;
         
         // Pasang URL ke tombol
         document.getElementById('btn-checkout-link').href = finalUrl;
