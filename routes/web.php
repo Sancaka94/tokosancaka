@@ -82,6 +82,9 @@ use App\Http\Controllers\Customer\AgentRegistrationController;
 
 
 Route::middleware(['auth'])->group(function () {
+
+    Route::get('/agent/register', [AgentRegistrationController::class, 'index'])->name('agent.register.index');
+    Route::post('/agent/register/process', [AgentRegistrationController::class, 'register'])->name('agent.register.process');
     
     // Group Route Agen
     Route::prefix('agent/products')->name('agent.products.')->group(function () {
@@ -104,7 +107,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/bulk-update', [AgentProductController::class, 'bulkUpdate'])->name('bulk_update');
     
     });
-    
+
     });
 
 });
