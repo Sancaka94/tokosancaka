@@ -956,17 +956,20 @@ Route::post('/setting-info-pesanan', [AdminController::class, 'updateInfoPesanan
 
 
 Route::middleware(['auth'])->group(function () {
-    // 1. Route untuk AJAX Prepare (PENTING: Method POST)
+    // 1. AJAX Prepare (Untuk tombol "Beli" di Pricelist)
     Route::post('/checkout-ppob/prepare', [PpobCheckoutController::class, 'prepare'])->name('ppob.prepare');
 
-    // 2. Route Halaman Checkout (Sesuai kode Anda: ppob.checkout.index)
+    // 2. Halaman Checkout (Untuk melihat keranjang)
     Route::get('/checkout-ppob', [PpobCheckoutController::class, 'index'])->name('ppob.checkout.index');
-    
-    // 3. Route Proses Bayar
-    Route::post('/checkout-ppob/process', [PpobCheckoutController::class, 'store'])->name('ppob.store');
 
+    // 3. Proses Bayar (Form Submit)
+    Route::post('/checkout-ppob/process', [PpobCheckoutController::class, 'store'])->name('ppob.checkout.store'); // Sesuaikan nama route di form action
 
-    Route::post('/checkout-ppob/process', [PpobCheckoutController::class, 'store'])->name('ppob.checkout.store');
+    // 4. Hapus Item Spesifik (Tombol Sampah)
+    Route::get('/checkout-ppob/remove/{id}', [PpobCheckoutController::class, 'removeItem'])->name('ppob.cart.remove');
+
+    // 5. Batalkan Semua (Tombol Batal Transaksi)
+    Route::post('/checkout-ppob/clear', [PpobCheckoutController::class, 'clearCart'])->name('ppob.cart.clear');
     
     // 4. Route Invoice
     Route::get('/invoice/{invoice}', [PpobCheckoutController::class, 'invoice'])->name('ppob.invoice');
