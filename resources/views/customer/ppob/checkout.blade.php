@@ -178,7 +178,7 @@
         
         {{-- Label --}}
         <span class="text-sm font-medium uppercase tracking-wider opacity-90 block mt-1">
-            Saldo Akun
+            Saldo Akun Anda
         </span>
     </div>
 
