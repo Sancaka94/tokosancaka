@@ -5,36 +5,27 @@
 @section('content')
 <div class="space-y-6">
     
-    {{-- HEADER SECTION --}}
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-            <h2 class="text-2xl font-bold text-gray-800">Atur Harga Jual Toko</h2>
-            <p class="text-sm text-gray-500 mt-1">
-                Kelola keuntungan Anda sendiri. Harga Modal adalah harga beli Anda dari Kami.
-            </p>
-        </div>
-        
-        <div class="flex flex-wrap gap-2">
-            {{-- Tombol Cetak --}}
-            <a href="#" onclick="alert('Fitur cetak brosur akan segera hadir!')" class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 shadow-sm transition">
-                <i class="fas fa-print mr-2"></i> Cetak Daftar Harga
-            </a>
+    <div class="flex flex-wrap items-center gap-3">
+    
+    {{-- 1. Tombol Cetak --}}
+    <a href="#" onclick="alert('Fitur cetak brosur akan segera hadir!')" 
+       class="inline-flex items-center justify-center px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 shadow-sm transition h-10">
+        <i class="fas fa-print mr-2"></i> Cetak Daftar Harga
+    </a>
 
-{{-- Tombol Buka Kasir (Sudah disesuaikan agar sejajar) --}}
-<a href="{{ route('agent.transaction.create') }}" 
-   class="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-lg text-sm font-medium text-white hover:bg-green-700 shadow-sm transition">
-    <i class="fas fa-cash-register mr-2"></i> 
-    Buka Kasir / Jualan
-</a>
+    {{-- 2. Tombol Buka Kasir (SUDAH DIPERBAIKI) --}}
+    <a href="{{ route('agent.transaction.create') }}" 
+       class="inline-flex items-center justify-center px-4 py-2 bg-green-600 border border-transparent rounded-lg text-sm font-medium text-white hover:bg-green-700 shadow-sm transition h-10">
+        <i class="fas fa-cash-register mr-2"></i> Buka Kasir / Jualan
+    </a>
 
-            {{-- Tombol Bulk Markup --}}
-            <button onclick="openBulkModal()" class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-lg text-sm font-medium text-white hover:bg-blue-700 shadow-lg shadow-blue-200 transition">
-                <i class="fas fa-magic mr-2"></i> Naikkan Harga Massal
-            </button>
+    {{-- 3. Tombol Naikkan Harga --}}
+    <button onclick="openBulkModal()" 
+            class="inline-flex items-center justify-center px-4 py-2 bg-blue-600 border border-transparent rounded-lg text-sm font-medium text-white hover:bg-blue-700 shadow-sm transition h-10">
+        <i class="fas fa-magic mr-2"></i> Naikkan Harga Massal
+    </button>
 
-
-        </div>
-    </div>
+</div>
 
     {{-- STATISTIK SINGKAT & PENCARIAN --}}
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
