@@ -245,7 +245,7 @@ class PpobCheckoutController extends Controller
                 DB::commit();
                 session()->forget('ppob_cart');
                 
-                return redirect()->route('customer.dashboard')->with('success', 'Transaksi sedang diproses!');
+                return redirect()->route('customer.ppob.history')->with('success', 'Transaksi sedang diproses!');
             }
 
             // ==========================================
