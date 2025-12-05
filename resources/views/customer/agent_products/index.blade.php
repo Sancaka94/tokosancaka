@@ -13,8 +13,9 @@
                 Kelola keuntungan Anda sendiri. Harga Modal adalah harga beli Anda dari Kami.
             </p>
         </div>
-        
-         <div class="flex flex-wrap items-center gap-3">
+    </div>
+
+      <div class="flex flex-wrap items-center gap-3">
     
     {{-- 1. Tombol Cetak --}}
     <a href="#" onclick="alert('Fitur cetak brosur akan segera hadir!')" 
@@ -35,8 +36,6 @@
     </button>
 
 </div>
-
-    </div>
 
     {{-- STATISTIK SINGKAT & PENCARIAN --}}
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
