@@ -12,11 +12,14 @@
 
     {{-- Header Sidebar (Logo & Nama Toko) --}}
     <div class="flex items-center justify-center py-6">
-        <a href="{{ route('customer.profile.show') }}" class="flex items-center text-lg font-bold text-white">
-            <img class="object-cover w-10 h-10 rounded-full mr-4 border-2 border-gray-600" 
+        <a href="{{ route('customer.profile.show') }}" class="flex flex-col items-center text-lg font-bold text-white text-center">
+            {{-- Logo --}}
+            <img class="object-cover w-16 h-16 rounded-full mb-3 border-4 border-gray-700 shadow-md" 
                  src="{{ Auth::user()->store_logo_path ? asset('public/storage/' . Auth::user()->store_logo_path) : 'https://ui-avatars.com/api/?name=' . urlencode(Auth::user()->store_name ?? 'T') . '&background=4f46e5&color=fff' }}" 
                  alt="Logo Toko" />
-            <span class="truncate w-32">{{ Auth::user()->store_name ?? 'Toko Pelanggan' }}</span>
+            
+            {{-- Nama Toko --}}
+            <span class="truncate w-40 block">{{ Auth::user()->store_name ?? 'Toko Pelanggan' }}</span>
         </a>
     </div>
 
