@@ -50,7 +50,7 @@ class AgentTransactionController extends Controller
     /**
      * Proses Transaksi Offline (Potong Saldo Agen)
      */
-    public function store(Request $request)
+     public function store(Request $request)
     {
         $request->validate([
             'sku' => 'required|exists:ppob_products,buyer_sku_code',
@@ -59,96 +59,87 @@ class AgentTransactionController extends Controller
 
         $user = Auth::user();
         
-        // Ambil Data Produk & Harga Custom Agen
+        // 1. Ambil Data Produk
         $productData = PpobProduct::leftJoin('agent_product_prices', function($join) use ($user) {
             $join->on('ppob_products.id', '=', 'agent_product_prices.product_id')
                  ->where('agent_product_prices.user_id', '=', $user->id);
         })
         ->where('buyer_sku_code', $request->sku)
-        ->select(
-            'ppob_products.*',
-            'agent_product_prices.selling_price as custom_price'
-        )
+        ->select('ppob_products.*', 'agent_product_prices.selling_price as custom_price')
         ->first();
 
-        if (!$productData) {
-            return back()->with('error', 'Produk tidak ditemukan.');
-        }
+        if (!$productData) return back()->with('error', 'Produk tidak ditemukan.');
 
-        // Tentukan Harga
-        $modalAgen = $productData->sell_price; 
-        $hargaJualKeUser = $productData->custom_price ?? ($modalAgen + 2000); 
-        $profitTunai = $hargaJualKeUser - $modalAgen; 
+        // 2. Hitung Harga & Cek Saldo
+        $modalAgen = $productData->sell_price;
+        $hargaJual = $productData->custom_price ?? ($modalAgen + 2000);
+        $profit    = $hargaJual - $modalAgen;
 
-        // Cek Saldo
         if ($user->saldo < $modalAgen) {
-            return back()->with('error', 'Saldo Anda tidak mencukupi. Modal yang dibutuhkan: Rp ' . number_format($modalAgen));
+            return back()->with('error', 'Saldo tidak mencukupi.');
         }
 
-        // --- MULAI DEBUGGING API ---
-        // Ini adalah ID order yang biasanya akan dikirim ke API
-        $orderId = 'TRX-OFFLINE-' . time() . rand(100, 999);
+        // ============================================================
+        // MULAI PERBAIKAN DD PAYLOAD (HARDCODED CREDENTIALS)
+        // ============================================================
+        
+        // Kredensial Langsung (Tanpa ENV)
+        $username = 'mihetiDVGdeW'; 
+        $apiKey   = 'dev-d54808c0-87ed-11f0-bdb6-8d5622821215'; 
+        $testingMode = true; // Set false jika sudah production
 
-        // Siapkan Payload (Data JSON) yang akan dikirim ke API Digiflazz
-        $apiPayload = [
-            'username' => 'username_digiflazz_anda', // Ganti dengan username config
+        $orderId  = 'TRX-OFFLINE-' . time() . rand(100, 999);
+        
+        // Generate Signature Asli: md5(username + key + ref_id)
+        $validSign = md5($username . $apiKey . $orderId);
+
+        // Payload Bersih (Siap Copy ke Postman)
+        $cleanPayload = [
+            'username'       => $username,
             'buyer_sku_code' => $request->sku,
-            'customer_no' => $request->customer_no,
-            'ref_id' => $orderId,
-            'sign' => md5('username' . 'apikey' . $orderId), // Simulasi signature
-            // Tambahan data internal untuk dicek di layar
-            '__internal_info' => [
-                'modal_dipotong' => $modalAgen,
-                'harga_jual_ke_customer' => $hargaJualKeUser,
-                'profit_agen' => $profitTunai,
-                'user_saldo_sekarang' => $user->saldo
-            ]
+            'customer_no'    => $request->customer_no,
+            'ref_id'         => $orderId,
+            'sign'           => $validSign,
+            'testing'        => $testingMode,
         ];
 
-        // >>>>>> UNTUK MELIHAT DATA JSON, HAPUS KOMENTAR DI BAWAH INI <<<<<<
-        
-        dd($apiPayload); 
+        // Tampilkan JSON Rapi
+        dd($cleanPayload); 
 
-        // Atau jika ingin format JSON murni:
-        dd(json_encode($apiPayload, JSON_PRETTY_PRINT));
-        
-        // ==================================================================
+        // ============================================================
+        // KODE KE BAWAH TIDAK AKAN DIEKSEKUSI SELAMA ADA DD DI ATAS
+        // ============================================================
 
         DB::beginTransaction();
         try {
-            // 1. Potong Saldo Agen (Hanya Sebesar Modal)
             $user->decrement('saldo', $modalAgen);
 
-            // 2. Simpan Riwayat Transaksi
             $trx = new PpobTransaction();
-            $trx->user_id = $user->id_pengguna;
-            $trx->order_id = $orderId;
+            $trx->user_id        = $user->id_pengguna;
+            $trx->order_id       = $orderId;
             $trx->buyer_sku_code = $request->sku;
-            $trx->customer_no = $request->customer_no;
-            
-            $trx->price = $modalAgen; 
-            $trx->selling_price = $hargaJualKeUser; 
-            $trx->profit = $profitTunai;
-            
+            $trx->customer_no    = $request->customer_no;
+            $trx->price          = $modalAgen;
+            $trx->selling_price  = $hargaJual;
+            $trx->profit         = $profit;
             $trx->payment_method = 'SALDO_AGEN';
-            $trx->status = 'Processing'; 
-            $trx->message = 'Transaksi Outlet Offline';
-            $trx->desc = json_encode([
-                'type' => 'offline_sale',
-                'customer_pay_cash' => true
-            ]);
+            $trx->status         = 'Processing';
+            $trx->message        = 'Transaksi Outlet Offline';
+            $trx->desc           = json_encode(['type' => 'offline_sale']);
             $trx->save();
 
-            // Kode eksekusi API yang sebenarnya (Http::post) akan ada di sini
-            
+            // Panggil Service Digiflazz (Jika dd sudah dihapus)
+            // Note: Pastikan Service Digiflazz Anda juga sudah tidak pakai ENV
+            // $service = new DigiflazzService();
+            // $resp = $service->transaction($request->sku, $request->customer_no, $orderId);
+
             DB::commit();
 
-            return redirect()->route('agent.transaction.create')
-                ->with('success', "Transaksi Sukses! Saldo terpotong Rp " . number_format($modalAgen) . ". Silakan minta uang tunai Rp " . number_format($hargaJualKeUser) . " ke pembeli.");
+            return redirect()->route('agent.transaction.create')->with('success', 'Transaksi Berhasil Disimpan');
 
         } catch (Exception $e) {
             DB::rollBack();
-            return back()->with('error', 'Gagal memproses transaksi: ' . $e->getMessage());
+            return back()->with('error', 'Error: ' . $e->getMessage());
         }
     }
 }
