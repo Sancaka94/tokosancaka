@@ -216,7 +216,7 @@
                             {{-- B. TRIPAY CHANNELS --}}
                             @if(isset($paymentChannels['tripay']) && count($paymentChannels['tripay']) > 0)
                                 <div class="mt-4">
-                                    <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 pl-1">Virtual Account & E-Wallet</p>
+                                    <p class="text-xs font-bold text-black uppercase tracking-wider mb-2 pl-1">Virtual Account & E-Wallet</p>
                                     <div class="space-y-3">
                                         @foreach($paymentChannels['tripay'] as $channel)
                                             <label class="relative block cursor-pointer group">
@@ -235,7 +235,7 @@
                             {{-- C. DOKU CHANNELS --}}
                             @if(isset($paymentChannels['doku']) && count($paymentChannels['doku']) > 0)
                                 <div class="mt-4">
-                                    <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 pl-1">Lainnya</p>
+                                    <p class="text-xs font-bold text-black uppercase tracking-wider mb-2 pl-1">Lainnya</p>
                                     <div class="space-y-3">
                                         @foreach($paymentChannels['doku'] as $channel)
                                             <label class="relative block cursor-pointer group">
