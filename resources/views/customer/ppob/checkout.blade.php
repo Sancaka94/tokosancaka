@@ -199,7 +199,7 @@
                                             </div>
                                         </div>
                                         <div class="flex justify-between items-end border-t border-gray-100 pt-2 mt-1">
-                                            <span class="text-xs text-gray-500">Sisa Saldo</span>
+                                            <span class="text-xs text-gray-500">Sisa Saldo Anda</span>
                                             <span class="text-sm font-bold {{ $isCukup ? 'text-green-600' : 'text-red-500' }}">
                                                 Rp {{ number_format($saldo['balance']) }}
                                             </span>
