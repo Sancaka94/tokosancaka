@@ -15,13 +15,14 @@ use App\Models\User;
 use App\Models\PpobTransaction; 
 
 // --- SERVICES ---
+// Pastikan kedua service ini ada
 use App\Services\DokuJokulService;
+use App\Services\DigiflazzService;
 
 class PpobCheckoutController extends Controller
 {
     /**
      * 1. PREPARE: Tambah Item ke Keranjang (Session)
-     * Dipanggil via AJAX dari halaman Pricelist/Tagihan
      */
     public function prepare(Request $request)
     {
@@ -31,11 +32,10 @@ class PpobCheckoutController extends Controller
                 'name'        => 'required',
                 'price'       => 'required|numeric',
                 'customer_no' => 'required',
-                'ref_id'      => 'nullable',
+                'ref_id'      => 'nullable', // Ref ID Inquiry (untuk Pasca)
                 'desc'        => 'nullable'
             ]);
 
-            // Buat ID unik sementara (agar bisa dihapus spesifik itemnya nanti)
             $tempId = uniqid('item_');
 
             $newItem = [
@@ -44,19 +44,15 @@ class PpobCheckoutController extends Controller
                 'name'        => $data['name'],
                 'price'       => (int) $data['price'],
                 'customer_no' => $data['customer_no'],
+                // Jika Pasca, ref_id dari Inquiry (INQ-...) wajib dibawa
                 'ref_id'      => $data['ref_id'] ?? 'PRE-' . time() . rand(100,999), 
                 'desc'        => $data['desc'] ?? [], 
                 'quantity'    => 1,
                 'is_ppob'     => true
             ];
 
-            // Ambil data keranjang lama (jika ada)
             $cart = session()->get('ppob_cart', []);
-            
-            // Tambahkan item baru ke array (Push)
             $cart[] = $newItem;
-
-            // Simpan kembali ke session
             session()->put('ppob_cart', $cart);
 
             return response()->json(['success' => true]);
@@ -71,17 +67,13 @@ class PpobCheckoutController extends Controller
      */
     public function index()
     {
-        // Ambil Keranjang
         $cart = session()->get('ppob_cart', []);
 
-        // Jika Kosong, tendang ke dashboard/pricelist
         if (empty($cart)) {
             return redirect()->route('customer.dashboard')->with('error', 'Tidak ada transaksi yang diproses.');
         }
 
-        // Hitung Total Harga Semua Item
         $totalPrice = array_sum(array_column($cart, 'price'));
-
         $user = Auth::user();
         $paymentChannels = [];
 
@@ -103,12 +95,10 @@ class PpobCheckoutController extends Controller
                 ? 'https://tripay.co.id/api/merchant/payment-channel' 
                 : 'https://tripay.co.id/api-sandbox/merchant/payment-channel';
 
-            // Cek cache dulu biar gak nembak API terus (Opsional, tapi bagus buat performa)
-            // Disini kita tembak langsung sesuai request Anda
             $res = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])
-                       ->timeout(3)
-                       ->withoutVerifying()
-                       ->get($baseUrl);
+                        ->timeout(3)
+                        ->withoutVerifying()
+                        ->get($baseUrl);
 
             if ($res->successful() && isset($res->json()['success']) && $res->json()['success'] === true) {
                 foreach($res->json()['data'] as $ch) {
@@ -118,7 +108,6 @@ class PpobCheckoutController extends Controller
                 }
             }
         } catch (Exception $e) {
-            // Silent fail biar halaman gak crash kalau tripay down
             Log::error('Tripay Error: ' . $e->getMessage());
         }
 
@@ -132,35 +121,29 @@ class PpobCheckoutController extends Controller
     }
 
     /**
-     * 3. REMOVE ITEM: Hapus satu item dari keranjang
+     * 3. REMOVE ITEM
      */
     public function removeItem($id)
     {
         $cart = session()->get('ppob_cart', []);
-
-        // Filter: Ambil semua item KECUALI yang ID-nya sama dengan parameter $id
         $newCart = array_filter($cart, function($item) use ($id) {
             return $item['id'] !== $id;
         });
-
-        // Re-index array (biar urutannya bener 0,1,2...)
         session()->put('ppob_cart', array_values($newCart));
-
         return redirect()->route('ppob.checkout.index')->with('success', 'Item berhasil dihapus.');
     }
 
     /**
-     * 4. CLEAR CART: Batalkan Semua Transaksi
+     * 4. CLEAR CART
      */
     public function clearCart()
     {
         session()->forget('ppob_cart');
-        // Redirect ke dashboard atau pricelist
         return redirect()->route('customer.dashboard')->with('success', 'Transaksi dibatalkan.');
     }
 
     /**
-     * 5. STORE: Proses Pembayaran (Looping Transaction)
+     * 5. STORE: Proses Pembayaran (INTEGRASI DIGIFLAZZ DI SINI)
      */
     public function store(Request $request)
     {
@@ -170,61 +153,103 @@ class PpobCheckoutController extends Controller
         if (empty($cart)) return redirect()->route('customer.dashboard');
 
         $user = Auth::user();
-        
-        // Hitung ulang total di backend (aman dari manipulasi html)
         $totalPrice = array_sum(array_column($cart, 'price'));
 
         DB::beginTransaction();
         try {
-            // --- Validasi Saldo Global ---
+            // Validasi Saldo
             if ($request->payment_method === 'saldo' && $user->saldo < $totalPrice) {
                 throw new Exception('Saldo tidak mencukupi untuk total transaksi Rp ' . number_format($totalPrice));
             }
 
-            // Group Transaction ID (Jika bayar gateway, butuh 1 ID Referensi Utama)
             $groupRefId = 'INV-' . time() . rand(100,999);
-            
-            // Tampung Order ID yang dibuat
-            $createdOrderIds = [];
+            $createdTransactions = []; // Array untuk menampung data transaksi yang dibuat
 
             // --- LOOPING INSERT DATABASE ---
             foreach ($cart as $item) {
-                $orderId = 'TRX-' . time() . rand(1000, 9999) . rand(10,99);
-                $createdOrderIds[] = $orderId;
+                // LOGIKA PENTING: Penentuan Order ID / Ref ID
+                // Jika Pascabayar (ref_id diawali INQ), kita HARUS pakai ID itu lagi sebagai Order ID
+                // agar Digiflazz bisa memproses 'pay-pasca' dengan ID yang sama.
+                $isPasca = isset($item['ref_id']) && str_starts_with($item['ref_id'], 'INQ');
+                
+                if ($isPasca) {
+                    $orderId = $item['ref_id']; // Pakai ID Inquiry yang lama
+                } else {
+                    $orderId = 'TRX-' . time() . rand(1000, 9999) . rand(10,99); // Buat baru untuk Prabayar
+                }
 
                 $trx = new PpobTransaction();
-                $trx->user_id        = $user->id_pengguna; // Sesuaikan kolom user ID Anda
+                $trx->user_id        = $user->id_pengguna;
                 $trx->order_id       = $orderId;
-                $trx->group_order_id = $groupRefId; // Kolom baru (opsional) buat grouping invoice
+                $trx->group_order_id = $groupRefId;
                 $trx->buyer_sku_code = $item['sku'];
                 $trx->customer_no    = $item['customer_no'];
                 $trx->selling_price  = $item['price'];
-                $trx->price          = 0; // Modal (update nanti via callback provider)
+                $trx->price          = 0; // Modal (akan diupdate callback/response)
                 $trx->profit         = 0;
                 $trx->payment_method = $request->payment_method;
                 $trx->desc           = json_encode($item['desc'] ?? []);
                 
-                // Jika Saldo -> Processing, Jika Gateway -> Pending
+                // Status Awal
                 $trx->status         = ($request->payment_method === 'saldo') ? 'Processing' : 'Pending';
                 $trx->message        = 'Menunggu Pembayaran';
                 $trx->save();
+
+                // Simpan info untuk diproses setelah ini
+                $createdTransactions[] = [
+                    'order_id' => $orderId,
+                    'sku'      => $item['sku'],
+                    'cust_no'  => $item['customer_no'],
+                    'is_pasca' => $isPasca,
+                    'price'    => $item['price']
+                ];
             }
 
             // ==========================================
-            // LOGIC A: BAYAR PAKAI SALDO (INSTANT)
+            // LOGIC A: BAYAR PAKAI SALDO (EKSEKUSI LANGSUNG)
             // ==========================================
             if ($request->payment_method === 'saldo') {
-                // Potong Saldo Sekaligus
+                // 1. Potong Saldo User
                 $user->decrement('saldo', $totalPrice);
+                
+                // 2. Eksekusi Ke Digiflazz (Looping per item)
+                $digiflazz = new DigiflazzService();
+                
+                foreach ($createdTransactions as $trxItem) {
+                    $response = [];
+                    
+                    // Cek apakah ini Pascabayar atau Prabayar
+                    if ($trxItem['is_pasca']) {
+                        // PANGGIL PAY PASCA
+                        $response = $digiflazz->payPasca($trxItem['sku'], $trxItem['cust_no'], $trxItem['order_id']);
+                    } else {
+                        // PANGGIL TRANSAKSI BIASA (PULSA/DATA)
+                        $response = $digiflazz->transaction($trxItem['sku'], $trxItem['cust_no'], $trxItem['order_id']);
+                    }
+
+                    // Cek jika Gagal Langsung (Saldo habis / Gangguan)
+                    if (isset($response['data']['status']) && in_array($response['data']['status'], ['Gagal', 'Failed'])) {
+                        // Update Status DB
+                        PpobTransaction::where('order_id', $trxItem['order_id'])->update([
+                            'status' => 'Failed',
+                            'message' => $response['data']['message'] ?? 'Gagal dari Provider'
+                        ]);
+
+                        // REFUND SALDO USER (Partial Refund)
+                        // Kembalikan saldo senilai harga jual item ini
+                        $user->increment('saldo', $trxItem['price']);
+                    }
+                    // Jika Pending/Sukses, biarkan status 'Processing', nanti Webhook yang update jadi Success
+                }
                 
                 DB::commit();
                 session()->forget('ppob_cart');
                 
-                return redirect()->route('customer.dashboard')->with('success', 'Semua transaksi berhasil diproses!');
+                return redirect()->route('customer.dashboard')->with('success', 'Transaksi sedang diproses!');
             }
 
             // ==========================================
-            // LOGIC B: BAYAR PAKAI TRIPAY (SINGLE LINK FOR ALL)
+            // LOGIC B: BAYAR PAKAI TRIPAY
             // ==========================================
             elseif (isset($request->payment_method) && !str_contains(strtoupper($request->payment_method), 'DOKU')) {
                 
@@ -236,15 +261,13 @@ class PpobCheckoutController extends Controller
                                 ? 'https://tripay.co.id/api/transaction/create' 
                                 : 'https://tripay.co.id/api-sandbox/transaction/create';
 
-                // Gunakan Group ID sebagai Referensi ke Tripay
                 $signature = hash_hmac('sha256', $merchantCode . $groupRefId . $totalPrice, $privateKey);
 
-                // Buat item list untuk payload Tripay
                 $orderItems = [];
                 foreach($cart as $c) {
                     $orderItems[] = [
                         'sku' => $c['sku'],
-                        'name' => substr($c['name'], 0, 250), // Batasi panjang nama
+                        'name' => substr($c['name'], 0, 250),
                         'price' => $c['price'],
                         'quantity' => 1
                     ];
@@ -252,15 +275,14 @@ class PpobCheckoutController extends Controller
 
                 $payload = [
                     'method'         => $request->payment_method,
-                    'merchant_ref'   => $groupRefId, // Kirim Group Ref ID
+                    'merchant_ref'   => $groupRefId,
                     'amount'         => $totalPrice,
                     'customer_name'  => $user->nama_lengkap,
                     'customer_email' => $user->email,
                     'customer_phone' => $user->no_wa ?? '0812345678',
                     'order_items'    => $orderItems,
-                    'expired_time'   => time() + (60 * 60), // 1 Jam
+                    'expired_time'   => time() + (60 * 60),
                     'signature'      => $signature,
-                    // Redirect ke dashboard atau history transaksi setelah bayar
                     'return_url'     => route('customer.dashboard') 
                 ];
 
@@ -273,8 +295,8 @@ class PpobCheckoutController extends Controller
                     $d = $response->json()['data'];
                     $payUrl = $d['checkout_url'] ?? $d['pay_url'] ?? $d['qr_url'];
                     
-                    // Update Payment URL ke SEMUA transaksi di batch ini
-                    PpobTransaction::whereIn('order_id', $createdOrderIds)->update(['payment_url' => $payUrl]);
+                    // Update Payment URL
+                    PpobTransaction::where('group_order_id', $groupRefId)->update(['payment_url' => $payUrl]);
 
                     DB::commit();
                     session()->forget('ppob_cart');
@@ -296,7 +318,6 @@ class PpobCheckoutController extends Controller
                     'phone' => $user->no_wa
                 ];
                 
-                // Doku butuh line items
                 $dokuItems = [];
                 foreach($cart as $c) {
                     $dokuItems[] = [
@@ -307,13 +328,11 @@ class PpobCheckoutController extends Controller
                     ];
                 }
 
-                // Gunakan GroupRefId
                 $paymentUrl = $dokuService->createPayment($groupRefId, $totalPrice, $customerData, $dokuItems);
                 
                 if (!$paymentUrl) throw new Exception('Gagal generate link pembayaran DOKU.');
 
-                // Update URL ke database
-                PpobTransaction::whereIn('order_id', $createdOrderIds)->update(['payment_url' => $paymentUrl]);
+                PpobTransaction::where('group_order_id', $groupRefId)->update(['payment_url' => $paymentUrl]);
                 
                 DB::commit();
                 session()->forget('ppob_cart');
@@ -328,9 +347,6 @@ class PpobCheckoutController extends Controller
         }
     }
 
-    /**
-     * 6. INVOICE (Opsional, untuk satuan)
-     */
     public function invoice($invoice)
     {
         $user = Auth::user();
