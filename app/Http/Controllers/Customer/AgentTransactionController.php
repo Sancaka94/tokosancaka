@@ -107,7 +107,7 @@ class AgentTransactionController extends Controller
 
         // >>>>>> UNTUK MELIHAT DATA JSON, HAPUS KOMENTAR DI BAWAH INI <<<<<<
         
-        // dd($apiPayload); 
+        dd($apiPayload); 
 
         // Atau jika ingin format JSON murni:
         dd(json_encode($apiPayload, JSON_PRETTY_PRINT));
