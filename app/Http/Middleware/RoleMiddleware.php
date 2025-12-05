@@ -1,47 +1,76 @@
-<?php
-
-namespace App\Http\Middleware;
-
-use Closure;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Symfony\Component\HttpFoundation\Response;
-
-class RoleMiddleware
-{
-    /**
-     * Handle an incoming request.
-     *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
-     * @param  string  ...$roles
-     */
-    public function handle(Request $request, Closure $next, ...$roles): Response
-    {
-        if (!Auth::check()) {
-            return redirect('login');
-        }
-
-        $user = Auth::user();
-
-        // Gabungkan semua parameter role (misal 'Pelanggan|Seller', 'Admin') 
-        // dan pecah stringnya berdasarkan karakter '|' menjadi satu array.
-        $allowedRoles = [];
-        foreach ($roles as $role) {
-            $allowedRoles = array_merge($allowedRoles, explode('|', $role));
-        }
-
-        // PERBAIKAN PENTING: Lakukan pengecekan secara case-insensitive.
-        // Ini akan memastikan 'Seller' di file rute cocok dengan 'seller' di database.
-        $userRole = strtolower($user->role ?? ''); // Ambil role pengguna, ubah ke huruf kecil
-        $allowedRolesLower = array_map('strtolower', $allowedRoles); // Ubah semua role yang diizinkan ke huruf kecil
-
-        // Cek apakah role pengguna ada di dalam daftar role yang diizinkan.
-        if (in_array($userRole, $allowedRolesLower)) {
-            return $next($request);
-        }
-
-        // Jika tidak punya akses, tolak dengan halaman 403.
-        abort(403, 'Akses Ditolak. Anda tidak memiliki otorisasi yang sesuai.');
-    }
-}
-
+<?php
+
+namespace App\Http\Middleware;
+
+use Closure;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Symfony\Component\HttpFoundation\Response;
+
+class RoleMiddleware
+{
+    /**
+     * Handle an incoming request.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \Closure  $next
+     * @param  string  ...$roles
+     */
+    public function handle(Request $request, Closure $next, ...$roles): Response
+    {
+        // 1. Cek Login
+        if (!Auth::check()) {
+            return redirect()->route('login');
+        }
+
+        $user = Auth::user();
+        
+        // 2. Normalisasi Role User (Ubah ke huruf kecil biar aman)
+        // Contoh: 'Agent' jadi 'agent'
+        $userRole = strtolower($user->role ?? '');
+
+        // 3. Normalisasi Role yang Diizinkan di Route
+        // Mengubah parameter (misal: 'Seller|Pelanggan') menjadi array ['seller', 'pelanggan']
+        $allowedRoles = [];
+        foreach ($roles as $role) {
+            $parts = explode('|', $role);
+            foreach ($parts as $part) {
+                $allowedRoles[] = strtolower($part);
+            }
+        }
+
+        // =============================================================
+        // LOGIKA HIERARKI (AGENT > SELLER > PELANGGAN)
+        // =============================================================
+
+        // A. Cek Kecocokan Langsung (Exact Match)
+        // Misal: User 'seller' masuk route 'seller'.
+        if (in_array($userRole, $allowedRoles)) {
+            return $next($request);
+        }
+
+        // B. Logika 'Dewa' (Admin & Agent)
+        // Jika User adalah Admin atau Agent, mereka boleh masuk ke area 'Seller' atau 'Pelanggan'
+        if (in_array($userRole, ['admin', 'agent'])) {
+            // Cek apakah route yang dituju adalah route bawahan?
+            if (array_intersect(['seller', 'pelanggan'], $allowedRoles)) {
+                return $next($request);
+            }
+        }
+
+        // C. Logika Seller
+        // Jika User adalah Seller, mereka boleh masuk ke area 'Pelanggan'
+        if ($userRole === 'seller') {
+            if (in_array('pelanggan', $allowedRoles)) {
+                return $next($request);
+            }
+        }
+
+        // =============================================================
+        
+        // Jika tidak lolos semua pengecekan di atas, tendang ke dashboard default
+        // Sesuaikan route redirect dengan nama route dashboard pelanggan Anda
+        return redirect()->route('customer.dashboard')
+            ->with('error', 'Akses ditolak. Anda tidak memiliki izin untuk halaman tersebut.');
+    }
+}
