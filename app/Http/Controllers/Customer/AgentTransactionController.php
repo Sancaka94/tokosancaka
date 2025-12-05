@@ -76,40 +76,62 @@ class AgentTransactionController extends Controller
         }
 
         // Tentukan Harga
-        $modalAgen = $productData->sell_price; // Saldo yang akan dipotong
-        $hargaJualKeUser = $productData->custom_price ?? ($modalAgen + 2000); // Harga di Struk/History
-        $profitTunai = $hargaJualKeUser - $modalAgen; // Keuntungan cash agen
+        $modalAgen = $productData->sell_price; 
+        $hargaJualKeUser = $productData->custom_price ?? ($modalAgen + 2000); 
+        $profitTunai = $hargaJualKeUser - $modalAgen; 
 
         // Cek Saldo
         if ($user->saldo < $modalAgen) {
             return back()->with('error', 'Saldo Anda tidak mencukupi. Modal yang dibutuhkan: Rp ' . number_format($modalAgen));
         }
 
+        // --- MULAI DEBUGGING API ---
+        // Ini adalah ID order yang biasanya akan dikirim ke API
+        $orderId = 'TRX-OFFLINE-' . time() . rand(100, 999);
+
+        // Siapkan Payload (Data JSON) yang akan dikirim ke API Digiflazz
+        $apiPayload = [
+            'username' => 'username_digiflazz_anda', // Ganti dengan username config
+            'buyer_sku_code' => $request->sku,
+            'customer_no' => $request->customer_no,
+            'ref_id' => $orderId,
+            'sign' => md5('username' . 'apikey' . $orderId), // Simulasi signature
+            // Tambahan data internal untuk dicek di layar
+            '__internal_info' => [
+                'modal_dipotong' => $modalAgen,
+                'harga_jual_ke_customer' => $hargaJualKeUser,
+                'profit_agen' => $profitTunai,
+                'user_saldo_sekarang' => $user->saldo
+            ]
+        ];
+
+        // >>>>>> UNTUK MELIHAT DATA JSON, HAPUS KOMENTAR DI BAWAH INI <<<<<<
+        
+        // dd($apiPayload); 
+
+        // Atau jika ingin format JSON murni:
+        dd(json_encode($apiPayload, JSON_PRETTY_PRINT));
+        
+        // ==================================================================
+
         DB::beginTransaction();
         try {
             // 1. Potong Saldo Agen (Hanya Sebesar Modal)
             $user->decrement('saldo', $modalAgen);
 
-            // 2. Buat ID Transaksi
-            $orderId = 'TRX-OFFLINE-' . time() . rand(100, 999);
-
-            // 3. Simpan Riwayat Transaksi
+            // 2. Simpan Riwayat Transaksi
             $trx = new PpobTransaction();
             $trx->user_id = $user->id_pengguna;
             $trx->order_id = $orderId;
             $trx->buyer_sku_code = $request->sku;
             $trx->customer_no = $request->customer_no;
             
-            // PENTING: Struktur Data untuk Laporan
-            // price = Modal Agen (Uang keluar dari sistem)
-            // selling_price = Harga Jual Agen (Untuk data struk)
-            // profit = Profit Tunai (Hanya catatan, karena uangnya dipegang cash oleh agen)
             $trx->price = $modalAgen; 
             $trx->selling_price = $hargaJualKeUser; 
             $trx->profit = $profitTunai;
             
             $trx->payment_method = 'SALDO_AGEN';
-            $trx->status = 'Processing'; // Nanti diproses cronjob/job queue ke Digiflazz
+            $trx->status = 'Processing'; 
             $trx->message = 'Transaksi Outlet Offline';
             $trx->desc = json_encode([
                 'type' => 'offline_sale',
@@ -117,9 +139,8 @@ class AgentTransactionController extends Controller
             ]);
             $trx->save();
 
-            // TODO: Panggil API Digiflazz di sini atau biarkan Worker yang memprosesnya
-            // ... (Kode integrasi Digiflazz sama seperti sebelumnya) ...
-
+            // Kode eksekusi API yang sebenarnya (Http::post) akan ada di sini
+            
             DB::commit();
 
             return redirect()->route('agent.transaction.create')
