@@ -123,36 +123,46 @@
                                 <th class="px-4 py-3 text-center">Action</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-gray-100" id="product_table_body">
-                            @foreach($products as $product)
-                                <tr class="hover:bg-blue-50 transition group product-row" 
-                                    data-brand="{{ strtolower($product->brand) }}" 
-                                    data-name="{{ strtolower($product->product_name) }}"
-                                    data-category="{{ strtolower($product->category) }}">
-                                    
-                                    <td class="px-4 py-3">
-                                        <div class="font-bold text-gray-800 text-sm">{{ $product->product_name }}</div>
-                                        <div class="text-[10px] text-gray-400 font-mono">{{ $product->buyer_sku_code }}</div>
-                                    </td>
-                                    <td class="px-4 py-3 text-center">
-                                        <span class="px-2 py-1 rounded text-[10px] font-bold bg-gray-100 text-gray-600 uppercase">{{ $product->brand }}</span>
-                                    </td>
-                                    <td class="px-4 py-3 text-right">
-                                        @php
-                                            $modal = $product->modal_agen;
-                                            $jual = $product->harga_jual_agen ?? ($modal + 2000);
-                                        @endphp
-                                        <div class="font-extrabold text-green-700">Rp {{ number_format($jual, 0, ',', '.') }}</div>
-                                    </td>
-                                    <td class="px-4 py-3 text-center">
-                                        <button onclick="confirmTransaction('{{ $product->buyer_sku_code }}', '{{ addslashes($product->product_name) }}', '{{ $modal }}', '{{ $jual }}')" 
-                                                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-lg font-bold text-xs shadow-md transition transform hover:scale-105 flex items-center justify-center w-full">
-                                            PILIH
-                                        </button>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
+                        {{-- UPDATE BAGIAN TBODY TABLE INI --}}
+<tbody class="divide-y divide-gray-100" id="product_table_body">
+    @foreach($products as $product)
+        @php
+            $modal = $product->modal_agen;
+            // Logika harga jual default jika null
+            $jual = $product->harga_jual_agen ?? ($modal + 2000);
+        @endphp
+
+        {{-- PERUBAHAN PENTING DI SINI: --}}
+        {{-- 1. Tambahkan data-price untuk sorting --}}
+        {{-- 2. Tambahkan data-type untuk pencarian luas --}}
+        <tr class="hover:bg-blue-50 transition group product-row" 
+            data-brand="{{ strtolower($product->brand) }}" 
+            data-name="{{ strtolower($product->product_name) }}"
+            data-category="{{ strtolower($product->category) }}"
+            data-price="{{ $jual }}"> 
+            
+            <td class="px-4 py-3">
+                <div class="font-bold text-gray-800 text-sm">{{ $product->product_name }}</div>
+                <div class="text-[10px] text-gray-400 font-mono">{{ $product->buyer_sku_code }}</div>
+            </td>
+            <td class="px-4 py-3 text-center">
+                {{-- Badge warna-warni sesuai kategori (Opsional) --}}
+                <span class="px-2 py-1 rounded text-[10px] font-bold bg-gray-100 text-gray-600 uppercase">
+                    {{ $product->brand }}
+                </span>
+            </td>
+            <td class="px-4 py-3 text-right">
+                <div class="font-extrabold text-green-700">Rp {{ number_format($jual, 0, ',', '.') }}</div>
+            </td>
+            <td class="px-4 py-3 text-center">
+                <button onclick="confirmTransaction('{{ $product->buyer_sku_code }}', '{{ addslashes($product->product_name) }}', '{{ $modal }}', '{{ $jual }}')" 
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-lg font-bold text-xs shadow-md transition transform hover:scale-105 flex items-center justify-center w-full">
+                    PILIH
+                </button>
+            </td>
+        </tr>
+    @endforeach
+</tbody>
                     </table>
                     
                     {{-- Pesan Tidak Ada Hasil --}}
@@ -300,63 +310,99 @@
         document.getElementById('pagination_links').classList.add('hidden');
     }
 
-    // --- FILTER TABEL CLIENT SIDE ---
+    // --- PERBAIKAN LOGIKA FILTER & SORTING ---
     function filterTableByBrand(brand) {
-        let rows = document.querySelectorAll('.product-row');
+        let rows = Array.from(document.querySelectorAll('.product-row')); // Ubah ke Array agar bisa di-sort
+        let tbody = document.getElementById('product_table_body');
         let hasResult = false;
 
         document.getElementById('instruction_alert').classList.add('hidden');
         document.getElementById('product_container').classList.remove('hidden');
-        // Sembunyikan pagination saat mode filter otomatis agar user tidak bingung
         document.getElementById('pagination_links').classList.add('hidden'); 
 
+        // 1. FILTER DULU
+        // Kita simpan row yang cocok ke dalam array sementara
+        let matchedRows = [];
+
         rows.forEach(row => {
-            let rowBrand = row.getAttribute('data-brand'); // misal: 'telkomsel'
+            let rowBrand = row.getAttribute('data-brand'); 
+            let rowName = row.getAttribute('data-name');
             let rowCategory = row.getAttribute('data-category');
             
             let match = false;
             
-            // Logika pencocokan string
+            // Logika Pencarian yang Diperluas
+            // Agar Aktivasi, Data, & Pulsa masuk semua
             if (brand === 'pln') {
                 if (rowBrand.includes('pln') || rowCategory.includes('token') || rowCategory.includes('listrik')) match = true;
             } else {
-                if (rowBrand.includes(brand)) match = true;
+                // Cek jika Brand mengandung kata kunci (misal: indosat)
+                // ATAU nama produk mengandung kata kunci (untuk jaga-jaga jika brand tidak lengkap)
+                if (rowBrand.includes(brand) || rowName.includes(brand)) match = true;
             }
 
             if (match) {
                 row.classList.remove('hidden');
+                matchedRows.push(row); // Masukkan ke daftar yang cocok
                 hasResult = true;
             } else {
                 row.classList.add('hidden');
             }
         });
 
+        // 2. SORTING (Termurah ke Termahal)
+        if (hasResult) {
+            matchedRows.sort((a, b) => {
+                let priceA = parseInt(a.getAttribute('data-price'));
+                let priceB = parseInt(b.getAttribute('data-price'));
+                return priceA - priceB; // Ascending (Kecil ke Besar)
+            });
+
+            // 3. RE-APPEND (Susun ulang HTML berdasarkan urutan baru)
+            // Teknik ini memindahkan elemen HTML ke urutan yang benar
+            matchedRows.forEach(row => {
+                tbody.appendChild(row);
+            });
+        }
+
+        // Tampilkan pesan jika kosong
         const noResultEl = document.getElementById('no_result');
         if (!hasResult) {
             noResultEl.classList.remove('hidden');
-            noResultEl.innerText = "Tidak ada produk " + brand + " tersedia saat ini.";
+            noResultEl.innerText = "Produk untuk " + brand + " tidak ditemukan.";
         } else {
             noResultEl.classList.add('hidden');
         }
     }
 
-    // Filter Manual via Text Box
+    // Update juga fungsi Manual Filter agar sorting tetap jalan
     function filterTableManual() {
         let keyword = document.getElementById('search_product').value.toLowerCase();
-        let rows = document.querySelectorAll('.product-row');
+        let rows = Array.from(document.querySelectorAll('.product-row'));
+        let tbody = document.getElementById('product_table_body');
         
         document.getElementById('instruction_alert').classList.add('hidden');
         document.getElementById('product_container').classList.remove('hidden');
         document.getElementById('pagination_links').classList.add('hidden');
 
+        let matchedRows = [];
+
         rows.forEach(row => {
             let name = row.getAttribute('data-name');
             if (name.includes(keyword)) {
                 row.classList.remove('hidden');
+                matchedRows.push(row);
             } else {
                 row.classList.add('hidden');
             }
         });
+
+        // Sorting manual search juga
+        matchedRows.sort((a, b) => {
+            return parseInt(a.getAttribute('data-price')) - parseInt(b.getAttribute('data-price'));
+        });
+
+        matchedRows.forEach(row => tbody.appendChild(row));
     }
 
     // --- MODAL TRANSAKSI ---

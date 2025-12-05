@@ -16,21 +16,14 @@ class AgentTransactionController extends Controller
     /**
      * Halaman Kasir / Transaksi Offline
      */
-    public function create(Request $request)
-    {
-        $userId = Auth::id();
-        $search = $request->q;
+   public function create(Request $request)
+{
+    $userId = Auth::id();
 
-        // Ambil produk aktif
-        $query = PpobProduct::where('seller_product_status', 1);
-
-        if ($search) {
-            $query->where('product_name', 'like', "%{$search}%")
-                  ->orWhere('brand', 'like', "%{$search}%");
-        }
-
-        // JOIN tabel produk dengan harga khusus agen
-        $products = $query->leftJoin('agent_product_prices', function($join) use ($userId) {
+    // 1. Mulai Query dari PpobProduct yang aktif
+    $products = PpobProduct::where('seller_product_status', 1)
+        // 2. Join ke tabel harga agen untuk dapat harga khusus (jika ada)
+        ->leftJoin('agent_product_prices', function($join) use ($userId) {
             $join->on('ppob_products.id', '=', 'agent_product_prices.product_id')
                  ->where('agent_product_prices.user_id', '=', $userId);
         })
@@ -40,15 +33,20 @@ class AgentTransactionController extends Controller
             'ppob_products.buyer_sku_code',
             'ppob_products.brand',
             'ppob_products.category',
-            'ppob_products.sell_price as modal_agen', // Harga dari Admin (Modal Agen)
-            'agent_product_prices.selling_price as harga_jual_agen' // Harga settingan Agen
+            'ppob_products.sell_price as modal_agen', // Harga dasar
+            'agent_product_prices.selling_price as harga_jual_agen' // Harga settingan agen (bisa null)
         )
-        ->orderBy('ppob_products.brand', 'asc')
-        ->paginate(20);
+        // 3. Sorting: Urutkan dari Harga Modal Termurah ke Termahal
+        // (Kita pakai sell_price sebagai acuan sorting server-side)
+        ->orderBy('ppob_products.sell_price', 'asc')
+        
+        // 4. PENTING: Gunakan get() bukan paginate()
+        // Agar JavaScript di frontend bisa memfilter SEMUA data (Indosat, Telkomsel, dll)
+        // tanpa terpotong pagination.
+        ->get();
 
-        return view('customer.agent_transaction.create', compact('products'));
-    }
-
+    return view('customer.agent_transaction.create', compact('products'));
+}
     /**
      * Proses Transaksi Offline (Potong Saldo Agen)
      */
