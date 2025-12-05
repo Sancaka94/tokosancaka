@@ -85,7 +85,13 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/agent/register', [AgentRegistrationController::class, 'index'])->name('agent.register.index');
     Route::post('/agent/register/process', [AgentRegistrationController::class, 'register'])->name('agent.register.process');
-        
+    
+    // Add this route
+    Route::get('/topup', [TopUpController::class, 'index'])->name('topup.index');
+    
+    // You likely also have a route to process the topup
+    Route::post('/topup', [TopUpController::class, 'store'])->name('topup.store');
+    
         // --- AREA KHUSUS AGEN (Terproteksi Middleware) ---
     // Tambahkan middleware 'is_agent' di sini
     Route::middleware(['is_agent'])->prefix('agent/products')->name('agent.products.')->group(function () {
