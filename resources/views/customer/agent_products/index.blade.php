@@ -20,9 +20,11 @@
                 <i class="fas fa-print mr-2"></i> Cetak Daftar Harga
             </a>
 
-                        {{-- Tombol Buka Kasir --}}
-<a href="{{ route('agent.transaction.create') }}" class="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-lg text-sm font-medium text-white hover:bg-green-700 shadow-lg shadow-green-200 transition animate-bounce-slow">
-    <i class="fas fa-cash-register mr-2"></i> Buka Kasir / Jualan
+{{-- Tombol Buka Kasir (Sudah disesuaikan agar sejajar) --}}
+<a href="{{ route('agent.transaction.create') }}" 
+   class="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-lg text-sm font-medium text-white hover:bg-green-700 shadow-sm transition">
+    <i class="fas fa-cash-register mr-2"></i> 
+    Buka Kasir / Jualan
 </a>
 
             {{-- Tombol Bulk Markup --}}
