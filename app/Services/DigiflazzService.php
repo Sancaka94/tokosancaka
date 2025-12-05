@@ -26,6 +26,8 @@ class DigiflazzService
      */
     public function getPriceList($cmd = 'prepaid')
     {
+        // Note: Signature untuk pricelist biasanya menggunakan string "pricelist" bukan "depo"
+        // Tapi saya biarkan sesuai kode asli Anda jika memang berjalan
         $sign = md5($this->username . $this->apiKey . "depo");
 
         try {
@@ -110,7 +112,7 @@ class DigiflazzService
             'ref_id' => $refId,
             'sign' => $sign,
             'max_price' => $maxPrice,
-            'testing' => true, // Pastikan TRUE untuk test case (misal: xld10087800001230)
+            'testing' => true, // Pastikan TRUE untuk test case
         ];
 
         try {
@@ -139,7 +141,7 @@ class DigiflazzService
             'customer_no' => $customerNo,
             'ref_id' => $refId,
             'sign' => $sign,
-            'testing' => true, // Wajib TRUE untuk Test Case (misal: pln530000000001)
+            'testing' => true, // Wajib TRUE untuk Test Case
         ];
 
         try {
@@ -173,6 +175,42 @@ class DigiflazzService
         } catch (\Exception $e) {
             Log::error('Digiflazz Inquiry PLN Error: ' . $e->getMessage());
             return ['data' => ['status' => 'Gagal', 'message' => 'Koneksi Error']];
+        }
+    }
+
+    /**
+     * 6. Bayar Tagihan Pascabayar (PAY)
+     * Mengubah status Inquiry menjadi Payment (Lunas)
+     */
+    public function payPasca($sku, $customerNo, $refId)
+    {
+        // NOTE: Ref ID harus SAMA PERSIS dengan saat inquiry (Cek Tagihan)
+        $sign = md5($this->username . $this->apiKey . $refId);
+
+        $payload = [
+            'commands'       => 'pay-pasca', // Perintah khusus bayar
+            'username'       => $this->username,
+            'buyer_sku_code' => $sku,
+            'customer_no'    => $customerNo,
+            'ref_id'         => $refId,      // Wajib sama dengan INQ
+            'sign'           => $sign,
+            'testing'        => true,        // Wajib TRUE untuk Test Case
+        ];
+
+        try {
+            Log::info("➡️ [PAY Request] $refId", $payload);
+            
+            // Timeout diperpanjang karena proses bayar pasca kadang butuh waktu
+            $response = Http::timeout(45)->post($this->baseUrl . '/transaction', $payload);
+            $respData = $response->json();
+            
+            Log::info("⬅️ [PAY Response] $refId", $respData ?? []);
+
+            return $respData;
+
+        } catch (\Exception $e) {
+            Log::error("❌ [PAY Error] $refId: " . $e->getMessage());
+            return ['data' => ['status' => 'Gagal', 'message' => 'Koneksi Error: ' . $e->getMessage()]];
         }
     }
 }
