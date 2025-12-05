@@ -167,19 +167,21 @@
                                     <input type="radio" name="payment_method" value="saldo" class="peer sr-only" {{ !$isCukup ? 'disabled' : '' }}>
                                     <div class="p-4 rounded-xl border-2 border-gray-200 peer-checked:border-blue-500 peer-checked:bg-blue-50/50 transition-all hover:border-blue-300 {{ !$isCukup ? 'opacity-60 bg-gray-50 cursor-not-allowed' : 'bg-white' }}">
                                         <div class="flex justify-between items-center mb-2">
-                                            <div class="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300 flex overflow-hidden border border-gray-100">
-    <div class="bg-blue-600 flex items-center justify-center w-20 flex-shrink-0">
-        {{-- Gunakan filter brightness jika icon hitam agar jadi putih, atau biarkan normal --}}
-        <img src="{{ $saldo['icon_url'] }}" class="w-10 h-10 object-contain brightness-0 invert" alt="Icon">
-    </div>
-
-    <div class="p-4 flex-grow">
-        <span class="block text-sm font-medium text-gray-500 uppercase tracking-wider">
+                                            <div class="bg-white rounded-xl shadow-sm border-l-4 border-blue-500 p-4 flex items-center justify-between">
+    <div class="flex flex-col">
+        <span class="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">
             Saldo Akun
         </span>
-        <span class="block text-2xl font-bold text-gray-800 mt-1">
-            <span class="text-xs align-top mr-1">Rp</span>{{ number_format($saldo['balance'], 0, ',', '.') }}
-        </span>
+        <div class="flex items-baseline text-gray-800">
+            <span class="text-sm font-medium text-gray-500 mr-1">Rp</span>
+            <span class="text-2xl font-bold">
+                {{ number_format($saldo['balance'], 0, ',', '.') }}
+            </span>
+        </div>
+    </div>
+
+    <div class="p-3 bg-blue-50 rounded-full flex-shrink-0">
+        <img src="{{ $saldo['icon_url'] }}" class="w-8 h-8 object-contain" alt="Icon">
     </div>
 </div>
                                             <div class="w-5 h-5 rounded-full border-2 border-gray-300 peer-checked:border-blue-600 peer-checked:bg-blue-600 flex items-center justify-center">
