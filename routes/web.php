@@ -955,18 +955,18 @@ Route::post('/setting-info-pesanan', [AdminController::class, 'updateInfoPesanan
 
 
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth'])->group(function () {
+    // 1. Route untuk AJAX Prepare (PENTING: Method POST)
+    Route::post('/checkout-ppob/prepare', [PpobCheckoutController::class, 'prepare'])->name('ppob.prepare');
 
-    Route::get('/ppob/invoice/{invoice}', [PpobCheckoutController::class, 'invoice'])->name('ppob.invoice');
-
-    // 1. Simpan Data PPOB Sementara ke Session (Dipanggil via AJAX dari tombol Bayar)
-    Route::post('/ppob/prepare', [PpobCheckoutController::class, 'prepare'])->name('ppob.prepare');
-
-    // 2. Halaman Checkout Khusus PPOB
+    // 2. Route Halaman Checkout (Sesuai kode Anda: ppob.checkout.index)
     Route::get('/checkout-ppob', [PpobCheckoutController::class, 'index'])->name('ppob.checkout.index');
-
-    // 3. Proses Bayar PPOB
-    Route::post('/checkout-ppob/process', [PpobCheckoutController::class, 'store'])->name('ppob.checkout.store');
+    
+    // 3. Route Proses Bayar
+    Route::post('/checkout-ppob/process', [PpobCheckoutController::class, 'store'])->name('ppob.store');
+    
+    // 4. Route Invoice
+    Route::get('/invoice/{invoice}', [PpobCheckoutController::class, 'invoice'])->name('ppob.invoice');
     
         // Rute untuk mengambil data notifikasi (via JavaScript/AJAX)
     // Ini yang akan kita pakai di layout Anda
