@@ -964,6 +964,9 @@ Route::middleware(['auth'])->group(function () {
     
     // 3. Route Proses Bayar
     Route::post('/checkout-ppob/process', [PpobCheckoutController::class, 'store'])->name('ppob.store');
+
+
+    Route::post('/checkout-ppob/process', [PpobCheckoutController::class, 'store'])->name('ppob.checkout.store');
     
     // 4. Route Invoice
     Route::get('/invoice/{invoice}', [PpobCheckoutController::class, 'invoice'])->name('ppob.invoice');
