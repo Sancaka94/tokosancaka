@@ -85,17 +85,6 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/agent/register', [AgentRegistrationController::class, 'index'])->name('agent.register.index');
     Route::post('/agent/register/process', [AgentRegistrationController::class, 'register'])->name('agent.register.process');
-    
-    // Group Route Agen
-    Route::prefix('agent/products')->name('agent.products.')->group(function () {
-        // Halaman Index (List Produk)
-        Route::get('/', [AgentProductController::class, 'index'])->name('index');
-        
-        // Update Harga Satuan (Method PUT via form)
-        Route::put('/update', [AgentProductController::class, 'update'])->name('update');
-        
-        // Update Harga Massal (Method POST via form)
-        Route::post('/bulk-update', [AgentProductController::class, 'bulkUpdate'])->name('bulk_update');
         
         // --- AREA KHUSUS AGEN (Terproteksi Middleware) ---
     // Tambahkan middleware 'is_agent' di sini
@@ -105,8 +94,6 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', [AgentProductController::class, 'index'])->name('index');
         Route::put('/update', [AgentProductController::class, 'update'])->name('update');
         Route::post('/bulk-update', [AgentProductController::class, 'bulkUpdate'])->name('bulk_update');
-    
-    });
 
     });
 
