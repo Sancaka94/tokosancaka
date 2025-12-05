@@ -167,7 +167,7 @@
                                     <input type="radio" name="payment_method" value="saldo" class="peer sr-only" {{ !$isCukup ? 'disabled' : '' }}>
                                     <div class="p-4 rounded-xl border-2 border-gray-200 peer-checked:border-blue-500 peer-checked:bg-blue-50/50 transition-all hover:border-blue-300 {{ !$isCukup ? 'opacity-60 bg-gray-50 cursor-not-allowed' : 'bg-white' }}">
                                         <div class="flex justify-between items-center mb-2">
-                                            <div class="bg-green-500 rounded-xl shadow-lg relative overflow-hidden p-6 text-white group transition-all hover:-translate-y-1">
+                                            <div class="bg-red-600 rounded-xl shadow-lg relative overflow-hidden p-6 text-white group transition-all hover:-translate-y-1">
     
     {{-- Konten Teks --}}
     <div class="relative z-10">
