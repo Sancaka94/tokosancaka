@@ -6,140 +6,125 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use App\Models\PpobTransaction; 
 use Illuminate\Support\Facades\DB;
+use App\Models\User;
 
 class DigiflazzWebhookController extends Controller
 {
     public function handle(Request $request)
     {
-        // 1. LOG RAW DATA (PENTING UNTUK DEBUGGING)
-        // Menyimpan log request yang masuk untuk mengecek isi payload jika ada error
-        Log::info('Webhook Digiflazz Masuk:', $request->all());
+        // 1. LOG RAW DATA
+        Log::info('Webhook Masuk:', $request->all());
 
         // ==========================================
-        // 2. VERIFIKASI KEAMANAN (SECRET KEY)
+        // 2. BYPASS VERIFIKASI SIGNATURE (SEMENTARA)
         // ==========================================
-        $secret = env('DIGIFLAZZ_SECRET_KEY', 'SancakaSecretKey2025'); 
-        $incomingSignature = $request->header('X-Hub-Signature');
-        $payload = $request->getContent(); 
+        // Agar Anda bisa tes lewat Postman tanpa ribet header Signature.
+        // Nanti kalau sudah production, barulah kita aktifkan validasi ketat.
         
-        // Baris perhitungan signature lokal
+        $secret = 'SancakaSecretKey2025'; 
+        $incomingSignature = $request->header('X-Hub-Signature');
+        $payload = $request->getContent();
         $localSignature = 'sha1=' . hash_hmac('sha1', $payload, $secret);
 
-        // [TARUH DI SINI] 
-        // Pengecekan dilakukan setelah $localSignature selesai dibuat
-        if (!hash_equals($localSignature, (string)$incomingSignature)) {
-            Log::warning("Signature Mismatch. Incoming: " . $incomingSignature . " | Local: " . $localSignature);
-            
-            // Opsional: Uncomment baris di bawah ini jika ingin menolak request yang tidak valid
-            // return response()->json(['status' => 'failed', 'message' => 'Invalid Signature'], 401);
+        if ($incomingSignature && !hash_equals($localSignature, (string)$incomingSignature)) {
+            Log::warning("Signature Tidak Cocok (Diabaikan untuk Testing). Incoming: $incomingSignature | Local: $localSignature");
+        } else {
+            Log::info("Signature Check: OK atau Skipped (Mode Testing)");
         }
 
         // ==========================================
-        // 3. PARSING DATA (Baru proses data setelah lolos verifikasi di atas)
+        // 3. PARSING DATA (SUPPORT POSTMAN & DIGIFLAZZ)
         // ==========================================
         $data = json_decode($payload, true);
 
-        // Handle Test Koneksi (Ping)
-        if (isset($data['ping'])) {
-            return response()->json(['status' => 'pong']);
+        // Handle Ping
+        if (isset($data['ping'])) return response()->json(['status' => 'pong']);
+
+        // Normalisasi Data: Ambil dari 'data' (Digiflazz) atau langsung (Postman)
+        // INI SOLUSI ERROR "Invalid Payload Structure" DI POSTMAN ANDA
+        $trxData = $data['data'] ?? $data;
+
+        // Validasi Ref ID (Support 'ref_id' atau 'order_id')
+        $refId = $trxData['ref_id'] ?? $trxData['order_id'] ?? null;
+
+        if (!$refId) {
+            Log::error("Webhook Gagal: Tidak ada Ref ID/Order ID dalam payload.");
+            return response()->json(['status' => 'failed', 'message' => 'No Ref ID found'], 400);
         }
 
-        // Cek struktur data
-        if (!isset($data['data'])) {
-            return response()->json(['status' => 'failed', 'message' => 'Invalid Payload Structure'], 400);
-        }
-
-        $trxData = $data['data'];
-        $refId   = $trxData['ref_id'] ?? null;
+        // Ambil parameter lainnya
         $status  = $trxData['status'] ?? 'Pending';
         $sn      = $trxData['sn'] ?? '';
         $message = $trxData['message'] ?? '';
         $price   = $trxData['price'] ?? 0;
-        $desc    = $trxData['desc'] ?? null; // Rincian tagihan (biasanya untuk pascabayar)
-        $rc      = $trxData['rc'] ?? null; // ✅ PERBAIKAN: Definisi variable $rc
+        $desc    = $trxData['desc'] ?? null;
+        $rc      = $trxData['rc'] ?? null;
 
-        if (!$refId) {
-            return response()->json(['status' => 'failed', 'message' => 'No Ref ID'], 400);
-        }
+        Log::info("Memproses Transaksi ID: $refId | Status Baru: $status");
 
         // ==========================================
-        // 4. DATABASE TRANSACTION (ATOMIC)
+        // 4. DATABASE TRANSACTION
         // ==========================================
-        // Kita mulai transaksi database di sini agar semua proses aman
         DB::beginTransaction();
-
         try {
-            // Cari Transaksi & LOCK ROW (lockForUpdate)
-            // Ini mencegah transaksi diproses 2x secara bersamaan
             $transaction = PpobTransaction::where('order_id', $refId)->lockForUpdate()->first();
 
             if (!$transaction) {
                 DB::rollBack();
-                Log::error("Webhook: Transaksi ID $refId tidak ditemukan di database.");
+                Log::error("Webhook Gagal: Transaksi ID $refId TIDAK DITEMUKAN di database.");
                 return response()->json(['status' => 'not found'], 404);
             }
 
-            // Cek apakah status sudah final? (Idempotency Check)
-            // Jika status di DB sudah Success/Failed, abaikan webhook ini.
+            Log::info("Transaksi Ditemukan: User ID {$transaction->user_id} | Status Lama: {$transaction->status}");
+
+            // Cek Final Status
             if (in_array($transaction->status, ['Success', 'Failed'])) {
                 DB::rollBack();
-                Log::info("Webhook Ignored: Transaksi $refId sudah final ({$transaction->status}).");
                 return response()->json(['status' => 'already processed']);
             }
 
-            // --- UPDATE DATA TRANSAKSI ---
+            // UPDATE DATA
             $transaction->sn = $sn;
             $transaction->message = $message;
-            $transaction->rc = $rc; // ✅ PERBAIKAN: Simpan ke DB
-
-            // Update Desc (Jika ada data dan tidak kosong)
-            if (!empty($desc)) {
-                $transaction->desc = $desc; 
-            }
-
-            // Update Harga Beli & Profit (Jika ada perubahan harga dari provider)
+            $transaction->rc = $rc;
+            if (!empty($desc)) $transaction->desc = is_array($desc) ? json_encode($desc) : $desc;
+            
+            // Update Profit & Harga Beli (Jika ada perubahan)
             if ($price > 0) {
-                $transaction->price = $price;
+                $transaction->price = $price; 
                 $transaction->profit = $transaction->selling_price - $price;
             }
 
-            // --- LOGIKA STATUS ---
-            if ($status === 'Sukses') {
+            // UPDATE STATUS
+            if ($status === 'Sukses' || $status === 'Success') { // Handle variasi status
                 $transaction->status = 'Success';
-                // Opsional: Kirim Notifikasi WA Sukses di sini
             } 
-            elseif ($status === 'Gagal') {
+            elseif (in_array($status, ['Gagal', 'Failed'])) {
                 $transaction->status = 'Failed';
                 
-                // --- LOGIKA REFUND SALDO ---
-                // Pastikan metode bayar adalah 'saldo' sebelum refund
-                if (strtolower($transaction->payment_method) === 'saldo') {
-                    $user = $transaction->user; // Pastikan relasi 'user' ada di model PpobTransaction
-                    
+                // REFUND SALDO
+                if (in_array(strtoupper($transaction->payment_method), ['SALDO', 'SALDO_AGEN'])) {
+                    $user = User::where('id_pengguna', $transaction->user_id)->first();
                     if ($user) {
-                        $refundAmount = $transaction->selling_price;
-                        
-                        // Kembalikan Saldo User
+                        // Refund sebesar modal yang terpotong
+                        $refundAmount = $transaction->price; 
                         $user->increment('saldo', $refundAmount);
                         
-                        // Catat log refund
-                        Log::info("AUTO REFUND: User {$user->name} (ID: {$user->id}) senilai Rp " . number_format($refundAmount));
+                        Log::info("REFUND BERHASIL: Rp " . number_format($refundAmount) . " ke User ID {$user->id_pengguna}");
                         $transaction->message .= " [Saldo Dikembalikan]";
                     }
                 }
             }
-            // Jika status 'Pending', kita biarkan saja atau update jadi Processing
-            $transaction->rc = $rc; // Pastikan variabel $rc sudah diambil dari JSON webhook
+
             $transaction->save();
-            
-            // Commit perubahan ke database
             DB::commit();
 
+            Log::info("Webhook Berhasil: Status transaksi $refId berubah menjadi $status");
             return response()->json(['status' => 'ok']);
 
         } catch (\Exception $e) {
-            DB::rollBack(); // Batalkan semua perubahan jika ada error
-            Log::error("Webhook Database Error: " . $e->getMessage());
+            DB::rollBack();
+            Log::error("Webhook DB Error: " . $e->getMessage());
             return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
         }
     }
