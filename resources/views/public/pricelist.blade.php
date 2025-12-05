@@ -397,9 +397,10 @@
             </div>
             <div class="bg-gray-50 px-6 py-4 flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
                 <button type="button" onclick="closeModal()" class="w-full inline-flex justify-center rounded-xl border border-gray-300 shadow-sm px-4 py-3 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 sm:w-auto sm:text-sm">Batal</button>
-                    <a href="#" id="btn-checkout-link" class="w-full sm:w-auto inline-flex justify-center rounded-xl border border-transparent shadow-lg shadow-blue-200 px-6 py-3 bg-blue-600 text-base font-bold text-white hover:bg-blue-700 sm:text-sm items-center gap-2">
-                    Bayar Sekarang <i class="fas fa-arrow-right"></i>
-                    </a>
+                    {{-- Ganti jadi BUTTON dan panggil fungsi JS --}}
+<button type="button" onclick="processPrepaidCheckout()" class="w-full sm:w-auto inline-flex justify-center rounded-xl border border-transparent shadow-lg shadow-blue-200 px-6 py-3 bg-blue-600 text-base font-bold text-white hover:bg-blue-700 sm:text-sm items-center gap-2">
+    Bayar Sekarang <i class="fas fa-arrow-right"></i>
+</button>
             </div>
         </div>
     </div>
@@ -578,6 +579,11 @@
         if(emptyState) emptyState.classList.toggle('hidden', visibleCount > 0);
     }
 
+    // --- VARIABEL GLOBAL UNTUK NAMPUNG DATA SEMENTARA ---
+    let selectedSku = null;
+    let selectedName = null;
+    let selectedPrice = 0;
+
     function selectProduct(name, price, sku) {
         const no = inputNo.value;
         
@@ -588,23 +594,37 @@
             return; 
         }
 
-        // 1. Update Tampilan Teks di Modal
+        // 1. Simpan ke Global Variable (Biar bisa diakses tombol Bayar)
+        selectedSku = sku;
+        selectedName = name;
+        selectedPrice = price;
+
+        // 2. Update Tampilan Teks di Modal
         document.getElementById('modal_no').innerText = no;
         document.getElementById('modal_product').innerText = name;
         document.getElementById('modal_price').innerText = 'Rp ' + parseInt(price).toLocaleString('id-ID');
 
-        // 2. LOGIKA BARU: Update Link Checkout
-        // Kita kirim sku dan no hp sebagai query parameter (GET) agar halaman checkout bisa menangkap datanya
-        const baseUrl = "https://tokosancaka.com/checkout-ppob";
-        const finalUrl = `${baseUrl}?buyer_sku_code=${sku}&customer_no=${no}`;
-        
-        // Pasang URL ke tombol
-        document.getElementById('btn-checkout-link').href = finalUrl;
-
-        // 3. Tampilkan Modal
+        // 3. Tampilkan Modal (Hapus logika href link yang lama)
         document.getElementById('confirmModal').classList.remove('hidden');
     }
+
+    // --- FUNGSI EKSEKUSI SAAT TOMBOL MODAL DIKLIK ---
+    function processPrepaidCheckout() {
+        const no = inputNo.value;
+        
+        // Panggil fungsi sakti proceedToCheckout
+        proceedToCheckout({
+            sku: selectedSku,
+            name: selectedName,
+            price: selectedPrice,
+            customer_no: no,
+            ref_id: null, // Prabayar tidak butuh ref_id inquiry
+            desc: []      // Kosongkan array
+        });
+    }
+
     function closeModal() { document.getElementById('confirmModal').classList.add('hidden'); }
+ 
 
     // 2. Logic Tabs (Prabayar vs Pascabayar) - SESUAI DESAIN BARU
     function switchTab(type) {
@@ -653,5 +673,29 @@
 
     // Default: Set active tab berdasarkan halaman (Jika halaman pascabayar, buka tab pascabayar)
     @if($isPostpaid) switchTab('postpaid'); @endif
+
+    // Function Sakti Penghubung
+function proceedToCheckout(data) {
+    // data format: { sku, name, price, customer_no, ref_id, desc }
+    
+    fetch("{{ route('ppob.prepare') }}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+        },
+        body: JSON.stringify(data)
+    })
+    .then(res => res.json())
+    .then(res => {
+        if(res.success) {
+            // Kalau sukses simpan session, baru redirect ke index controller tadi
+            window.location.href = "{{ route('ppob.checkout') }}"; 
+        } else {
+            alert('Gagal: ' + res.message);
+        }
+    })
+    .catch(err => console.error(err));
+}
 </script>
 @endpush
