@@ -62,7 +62,7 @@
                         
                         <div class="p-6 space-y-6">
 
-                            {{-- A. SALDO AKUN --}}
+                            {{-- A. SALD AKUN --}}
                             @if(isset($paymentChannels['saldo']))
                                 <div>
                                     <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Dompet Digital</p>
