@@ -397,12 +397,9 @@
             </div>
             <div class="bg-gray-50 px-6 py-4 flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
                 <button type="button" onclick="closeModal()" class="w-full inline-flex justify-center rounded-xl border border-gray-300 shadow-sm px-4 py-3 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 sm:w-auto sm:text-sm">Batal</button>
-                <form action="{{ route('ppob.store') }}" method="POST" id="checkoutForm" class="w-full sm:w-auto">
-                    @csrf
-                    <input type="hidden" name="buyer_sku_code" id="form_sku">
-                    <input type="hidden" name="customer_no" id="form_no">
-                    <button type="submit" class="w-full inline-flex justify-center rounded-xl border border-transparent shadow-lg shadow-blue-200 px-6 py-3 bg-blue-600 text-base font-bold text-white hover:bg-blue-700 sm:text-sm">Bayar Sekarang</button>
-                </form>
+                    <a href="#" id="btn-checkout-link" class="w-full sm:w-auto inline-flex justify-center rounded-xl border border-transparent shadow-lg shadow-blue-200 px-6 py-3 bg-blue-600 text-base font-bold text-white hover:bg-blue-700 sm:text-sm items-center gap-2">
+                    Bayar Sekarang <i class="fas fa-arrow-right"></i>
+                    </a>
             </div>
         </div>
     </div>
@@ -583,12 +580,28 @@
 
     function selectProduct(name, price, sku) {
         const no = inputNo.value;
-        if(no.length < 5) { alert("Mohon masukkan nomor tujuan terlebih dahulu."); inputNo.focus(); return; }
+        
+        // Validasi Nomor
+        if(no.length < 5) { 
+            alert("Mohon masukkan nomor tujuan terlebih dahulu."); 
+            inputNo.focus(); 
+            return; 
+        }
+
+        // 1. Update Tampilan Teks di Modal
         document.getElementById('modal_no').innerText = no;
         document.getElementById('modal_product').innerText = name;
         document.getElementById('modal_price').innerText = 'Rp ' + parseInt(price).toLocaleString('id-ID');
-        document.getElementById('form_sku').value = sku;
-        document.getElementById('form_no').value = no;
+
+        // 2. LOGIKA BARU: Update Link Checkout
+        // Kita kirim sku dan no hp sebagai query parameter (GET) agar halaman checkout bisa menangkap datanya
+        const baseUrl = "https://tokosancaka.com/checkout-ppob";
+        const finalUrl = `${baseUrl}?buyer_sku_code=${sku}&customer_no=${no}`;
+        
+        // Pasang URL ke tombol
+        document.getElementById('btn-checkout-link').href = finalUrl;
+
+        // 3. Tampilkan Modal
         document.getElementById('confirmModal').classList.remove('hidden');
     }
     function closeModal() { document.getElementById('confirmModal').classList.add('hidden'); }
