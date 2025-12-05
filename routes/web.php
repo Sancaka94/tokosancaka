@@ -106,18 +106,14 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', [AgentProductController::class, 'index'])->name('index');
         Route::put('/update', [AgentProductController::class, 'update'])->name('update');
         Route::post('/bulk-update', [AgentProductController::class, 'bulkUpdate'])->name('bulk_update');
-
-      // --- AREA KHUSUS AGEN (Terproteksi Middleware) ---
-Route::middleware(['is_agent'])->prefix('agent')->name('agent.')->group(function () {
     
-    // ... route produk yang sudah ada (index, update, bulk-update) ...
 
     // === [BARU] RUTE KASIR / TRANSAKSI OFFLINE ===
     // Ini yang menyelesaikan error Anda
-    Route::get('/transaksi/create', [AgentTransactionController::class, 'create'])->name('transaction.create');
-    Route::post('/transaksi/store', [AgentTransactionController::class, 'store'])->name('transaction.store');
+    Route::get('/transaksi/create', [AgentTransactionController::class, 'create'])->name('agent.transaction.create');
+    Route::post('/transaksi/store', [AgentTransactionController::class, 'store'])->name('agent.transaction.store');
 
-});
+
     });
 
 });
