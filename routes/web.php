@@ -79,6 +79,7 @@ use App\Http\Controllers\Customer\PpobCheckoutController;
 use App\Http\Controllers\Customer\PpobHistoryController;
 use App\Http\Controllers\Customer\AgentProductController;
 use App\Http\Controllers\Customer\AgentRegistrationController;
+use App\Http\Controllers\Customer\TopUpController;
 
 
 Route::middleware(['auth'])->group(function () {
@@ -86,12 +87,16 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/agent/register', [AgentRegistrationController::class, 'index'])->name('agent.register.index');
     Route::post('/agent/register/process', [AgentRegistrationController::class, 'register'])->name('agent.register.process');
     
-    // Add this route
+    // Pastikan penulisannya seperti ini (Array Syntax):
     Route::get('/topup', [TopUpController::class, 'index'])->name('topup.index');
-    
-    // You likely also have a route to process the topup
     Route::post('/topup', [TopUpController::class, 'store'])->name('topup.store');
     
+    // Route untuk detail/show (PENTING: Tambahkan ini juga sesuai kode controller Anda)
+    Route::get('/topup/{topup}', [TopUpController::class, 'show'])->name('customer.topup.show');
+    
+    // Route untuk upload bukti bayar (sesuai controller Anda)
+    Route::post('/topup/{reference_id}/upload', [TopUpController::class, 'uploadProof'])->name('topup.upload_proof');
+
         // --- AREA KHUSUS AGEN (Terproteksi Middleware) ---
     // Tambahkan middleware 'is_agent' di sini
     Route::middleware(['is_agent'])->prefix('agent/products')->name('agent.products.')->group(function () {
