@@ -72,22 +72,50 @@
 
         @endphp
 
-        {{-- Hanya tampilkan jika user BELUM jadi agen --}}
-@if(Auth::user()->role !== 'agent')
-    <a href="{{ route('agent.register.index') }}" 
-       class="flex items-center px-4 py-2 mt-4 text-white bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl shadow-lg hover:shadow-xl transition transform hover:-translate-y-1">
+        {{-- ================================================= --}}
+{{-- MENU KHUSUS AGEN (Hanya muncul jika Role = Agent) --}}
+{{-- ================================================= --}}
+@if(auth()->user()->role === 'agent' || auth()->user()->role === 'admin')
+    
+    {{-- Separator Menu Agen --}}
+    <div class="mt-4 mb-2 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+        Menu Agen
+    </div>
+
+    {{-- Link Jualan / Kelola Harga --}}
+    <a href="{{ route('agent.products.index') }}" 
+       class="flex items-center px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors {{ request()->routeIs('agent.products.*') ? 'bg-blue-50 text-blue-600 font-bold border-r-4 border-blue-600' : '' }}">
         
-        <div class="p-1 bg-white/20 rounded-full mr-3">
-            <i class="fas fa-rocket"></i>
+        <div class="mr-3 text-lg">
+            <i class="fas fa-store"></i> {{-- Icon Toko --}}
         </div>
-        
-        <div>
-            <span class="block text-xs font-medium opacity-90">Upgrade Akun</span>
-            <span class="block font-bold">Jadi Agen Resmi</span>
-        </div>
+        <span>Kelola Harga Jual</span>
     </a>
+
+    {{-- Link Transaksi Agen (Opsional) --}}
+    <a href="{{ route('ppob.pricelist') }}" 
+       class="flex items-center px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors">
+        
+        <div class="mr-3 text-lg">
+            <i class="fas fa-mobile-alt"></i> {{-- Icon HP --}}
+        </div>
+        <span>Jualan Pulsa (Kasir)</span>
+    </a>
+
 @endif
 
+{{-- ================================================= --}}
+{{-- MENU UPGRADE (Hanya muncul jika BELUM jadi Agent) --}}
+{{-- ================================================= --}}
+@if(auth()->user()->role !== 'agent' && auth()->user()->role !== 'admin')
+    <div class="mt-4 px-4">
+        <a href="{{ route('agent.register.index') }}" class="block bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl p-4 shadow-lg hover:shadow-xl transition transform hover:-translate-y-1 text-center">
+            <i class="fas fa-rocket text-2xl mb-2"></i>
+            <div class="font-bold">Upgrade jadi Agen</div>
+            <div class="text-xs opacity-90 mt-1">Dapatkan harga lebih murah!</div>
+        </a>
+    </div>
+@endif
         
 
          @if(!$hideMenus)
