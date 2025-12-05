@@ -87,13 +87,13 @@
                     @forelse($transactions as $trx)
                     <tr class="hover:bg-gray-50 transition duration-150">
                         
-                        {{-- 1. USER INFO (Foto Profil + Nama) --}}
+                        {{-- 1. USER INFO --}}
                         <td class="px-6 py-4 align-top">
                             <div class="flex items-center gap-3">
                                 @php
                                     $userImage = !empty($trx->user->store_logo_path) 
-                                        ? asset('public/storage/' . $trx->user->store_logo_path) 
-                                        : 'https://ui-avatars.com/api/?name='.urlencode($trx->user->name ?? 'User').'&background=random&color=fff';
+                                            ? asset('public/storage/' . $trx->user->store_logo_path) 
+                                            : 'https://ui-avatars.com/api/?name='.urlencode($trx->user->name ?? 'User').'&background=random&color=fff';
                                 @endphp
                                 <img src="{{ $userImage }}" alt="User" class="h-10 w-10 rounded-full object-cover border border-gray-200 shadow-sm">
                                 <div>
@@ -104,17 +104,19 @@
                             </div>
                         </td>
 
-                        {{-- 2. PRODUK INFO (Logo Operator Pakai Helper) --}}
+                        {{-- 2. PRODUK INFO --}}
                         <td class="px-6 py-4 align-top">
                             <div class="flex items-center">
                                 @php
-    // Panggil helper dengan mengirimkan kolom brand DAN product_name
-    $logoOperator = get_operator_logo($trx->brand, $trx->product_name); 
-@endphp
-{{-- Debugging: Tampilkan nama produk di tooltip --}}
-<div class="h-9 w-9 flex-shrink-0 mr-3 bg-white border border-gray-200 rounded-full p-1 flex items-center justify-center shadow-sm" title="{{ $trx->product_name }}">
-    <img class="h-full w-full object-contain" src="{{ $logoOperator }}" alt="Logo">
-</div>
+                                    // LOGIKA LOGO MANUAL (Pengganti Helper get_operator_logo)
+                                    $brandName = strtolower($trx->brand ?? 'other');
+                                    // Pastikan file gambar ada di public/storage/logo-ppob/
+                                    // Nama file biasanya: telkomsel.png, indosat.png, pln.png, dll
+                                    $logoOperator = asset('storage/logo-ppob/' . $brandName . '.png');
+                                @endphp
+                                <div class="h-9 w-9 flex-shrink-0 mr-3 bg-white border border-gray-200 rounded-full p-1 flex items-center justify-center shadow-sm" title="{{ $trx->product_name }}">
+                                    <img class="h-full w-full object-contain" src="{{ $logoOperator }}" onerror="this.src='https://via.placeholder.com/40?text={{ substr($brandName, 0, 1) }}'" alt="{{ $brandName }}">
+                                </div>
                                 <div>
                                     <div class="text-sm font-medium text-gray-900 uppercase">{{ $trx->buyer_sku_code }}</div>
                                     <div class="text-[10px] text-gray-400 truncate max-w-[120px]" title="{{ $trx->product_name }}">{{ $trx->product_name }}</div>
@@ -139,7 +141,7 @@
                             <div class="text-[10px] uppercase text-gray-400 mt-0.5">{{ $trx->payment_method ?? 'SALDO' }}</div>
                         </td>
 
-                        {{-- 5. STATUS & SN (Penerapan Helper get_ppob_message) --}}
+                        {{-- 5. STATUS & SN --}}
                         <td class="px-6 py-4 align-top">
                             @php
                                 $badgeClass = match($trx->status) {
@@ -155,6 +157,27 @@
                                     'Processing' => 'fa-spinner fa-spin',
                                     default => 'fa-clock'
                                 };
+
+                                // LOGIKA PESAN DIGIFLAZZ (Pengganti Helper get_ppob_message)
+                                $rcMessages = [
+                                    '00' => 'Transaksi Sukses',
+                                    '03' => 'Transaksi Pending',
+                                    '40' => 'Payload Error',
+                                    '41' => 'Signature Invalid',
+                                    '42' => 'Akun Provider Salah',
+                                    '43' => 'Produk Non-Aktif/Gangguan',
+                                    '44' => 'Saldo Server Kurang',
+                                    '50' => 'Transaksi Tidak Ditemukan',
+                                    '51' => 'Nomor Diblokir',
+                                    '52' => 'Prefix Salah Operator',
+                                    '53' => 'Produk Ditutup',
+                                    '54' => 'Nomor Tujuan Salah',
+                                    '55' => 'Produk Gangguan',
+                                    '99' => 'Router Issue (Pending)',
+                                ];
+                                $statusMessage = isset($trx->rc) && isset($rcMessages[$trx->rc]) 
+                                                ? $rcMessages[$trx->rc] 
+                                                : ($trx->message ?? 'Transaksi Gagal');
                             @endphp
                             
                             {{-- Badge Status --}}
@@ -171,12 +194,7 @@
                                 </div>
                             @elseif($trx->status == 'Failed')
                                 <div class="mt-1 text-[11px] text-red-500 italic leading-tight max-w-[160px]">
-                                    {{-- Gunakan Helper jika kolom RC ada, jika tidak fallback ke pesan DB --}}
-                                    @if(isset($trx->rc))
-                                        {{ get_ppob_message($trx->rc) }}
-                                    @else
-                                        {{ $trx->message ?? 'Transaksi Gagal' }}
-                                    @endif
+                                    {{ $statusMessage }}
                                 </div>
                             @elseif($trx->status == 'Processing')
                                 <div class="mt-1 text-[10px] text-blue-500 animate-pulse">
