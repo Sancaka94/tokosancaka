@@ -167,31 +167,32 @@
                                     <input type="radio" name="payment_method" value="saldo" class="peer sr-only" {{ !$isCukup ? 'disabled' : '' }}>
                                     <div class="p-4 rounded-xl border-2 border-gray-200 peer-checked:border-blue-500 peer-checked:bg-blue-50/50 transition-all hover:border-blue-300 {{ !$isCukup ? 'opacity-60 bg-gray-50 cursor-not-allowed' : 'bg-white' }}">
                                         <div class="flex justify-between items-center mb-2">
-                                            <div class="bg-green-500 rounded-xl shadow-lg relative overflow-hidden p-6 text-white transition-transform hover:-translate-y-1">
+                                            <div class="bg-green-500 rounded-xl shadow-lg relative overflow-hidden p-6 text-white group transition-all hover:-translate-y-1">
     
-    {{-- Konten Utama (Teks) --}}
+    {{-- Konten Teks --}}
     <div class="relative z-10">
-        <h3 class="text-4xl font-extrabold">
-            {{ number_format($saldo['balance'], 0, ',', '.') }}
+        {{-- Menampilkan Nominal Saldo (Saya tambahkan variabel ini agar informatif) --}}
+        <h3 class="text-3xl font-extrabold tracking-tight">
+            Rp {{ number_format($saldo['balance'] ?? 0, 0, ',', '.') }}
         </h3>
-        <p class="text-sm uppercase font-medium tracking-wider opacity-90 mt-2">
+        
+        {{-- Label --}}
+        <span class="text-sm font-medium uppercase tracking-wider opacity-90 block mt-1">
             Saldo Akun
-        </p>
+        </span>
     </div>
 
-    {{-- Ikon Besar di Pojok Kanan Bawah --}}
-    {{-- Penjelasan class:
-         - absolute, -right/bottom: Memposisikan di pojok, sedikit keluar area agar terpotong.
-         - opacity-25: Membuat transparan.
-    --}}
-    <div class="absolute -right-6 -bottom-6 opacity-25 pointer-events-none">
-        {{-- Penjelasan class gambar:
-             - w-32 h-32: Ukuran besar.
-             - brightness-0 invert: Filter untuk mengubah gambar menjadi putih solid (monokrom). Hapus jika ingin warna asli.
+    {{-- Dekorasi Ikon Besar di Pojok --}}
+    <div class="absolute -right-6 -bottom-6 opacity-20 pointer-events-none">
+        {{-- 
+            brightness-0 invert: Membuat ikon jadi putih polos (siluet). 
+            Hapus class ini jika ingin ikon tetap berwarna asli (kuning/emas). 
         --}}
-        <img src="{{ $saldo['icon_url'] }}" class="w-32 h-32 object-contain brightness-0 invert transform rotate-12" alt="Icon">
+        <img src="{{ $saldo['icon_url'] }}" 
+             class="w-32 h-32 object-contain brightness-0 invert transform rotate-12 group-hover:scale-110 transition-transform duration-500" 
+             alt="Icon">
     </div>
-    
+
 </div>
                                             <div class="w-5 h-5 rounded-full border-2 border-gray-300 peer-checked:border-blue-600 peer-checked:bg-blue-600 flex items-center justify-center">
                                                 <div class="w-2 h-2 bg-white rounded-full hidden peer-checked:block"></div>
