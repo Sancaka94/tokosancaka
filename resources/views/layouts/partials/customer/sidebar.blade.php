@@ -72,6 +72,22 @@
 
         @endphp
 
+        {{-- Hanya tampilkan jika user BELUM jadi agen --}}
+@if(Auth::user()->role !== 'agent')
+    <a href="{{ route('agent.register.index') }}" 
+       class="flex items-center px-4 py-2 mt-4 text-white bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl shadow-lg hover:shadow-xl transition transform hover:-translate-y-1">
+        
+        <div class="p-1 bg-white/20 rounded-full mr-3">
+            <i class="fas fa-rocket"></i>
+        </div>
+        
+        <div>
+            <span class="block text-xs font-medium opacity-90">Upgrade Akun</span>
+            <span class="block font-bold">Jadi Agen Resmi</span>
+        </div>
+    </a>
+@endif
+
         
 
          @if(!$hideMenus)

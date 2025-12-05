@@ -78,6 +78,7 @@ use App\Http\Controllers\PublicController;
 use App\Http\Controllers\Customer\PpobCheckoutController;
 use App\Http\Controllers\Customer\PpobHistoryController;
 use App\Http\Controllers\Customer\AgentProductController;
+use App\Http\Controllers\Customer\AgentRegistrationController;
 
 
 Route::middleware(['auth'])->group(function () {
@@ -92,6 +93,18 @@ Route::middleware(['auth'])->group(function () {
         
         // Update Harga Massal (Method POST via form)
         Route::post('/bulk-update', [AgentProductController::class, 'bulkUpdate'])->name('bulk_update');
+        
+        // --- AREA KHUSUS AGEN (Terproteksi Middleware) ---
+    // Tambahkan middleware 'is_agent' di sini
+    Route::middleware(['is_agent'])->prefix('agent/products')->name('agent.products.')->group(function () {
+        
+        // Route yang sudah kita buat sebelumnya
+        Route::get('/', [AgentProductController::class, 'index'])->name('index');
+        Route::put('/update', [AgentProductController::class, 'update'])->name('update');
+        Route::post('/bulk-update', [AgentProductController::class, 'bulkUpdate'])->name('bulk_update');
+    
+    });
+    
     });
 
 });
