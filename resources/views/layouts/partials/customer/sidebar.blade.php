@@ -93,7 +93,7 @@
     </a>
 
     {{-- Link Transaksi Agen (Opsional) --}}
-    <a href="{{ route('ppob.pricelist') }}" 
+    <a href="{{ route('public.pricelist') }}" 
        class="flex items-center px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors">
         
         <div class="mr-3 text-lg">
