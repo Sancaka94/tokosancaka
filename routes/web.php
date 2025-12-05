@@ -696,7 +696,7 @@ Route::put('products/{slug}/specifications', [\App\Http\Controllers\Admin\Produc
 
 });
 
-Route::get('/pengguna/export', [PenggunaController::class, 'export'])->name('pengguna.export');
+Route::get('/pengguna/export', [PenggunaController::class, 'export'])->name('admin.customers.pengguna.export');
 
 Route::middleware(['auth', RoleMiddleware::class . ':Admin'])
 
