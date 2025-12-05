@@ -198,12 +198,7 @@
                                                 <div class="w-2 h-2 bg-white rounded-full hidden peer-checked:block"></div>
                                             </div>
                                         </div>
-                                        <div class="flex justify-between items-end border-t border-gray-100 pt-2 mt-1">
-                                            <span class="text-xs text-gray-500">Sisa Saldo Anda</span>
-                                            <span class="text-sm font-bold {{ $isCukup ? 'text-green-600' : 'text-red-500' }}">
-                                                Rp {{ number_format($saldo['balance']) }}
-                                            </span>
-                                        </div>
+                                       
                                         @if(!$isCukup)
                                             <div class="mt-2 text-[10px] text-red-500 font-bold bg-red-50 px-2 py-1 rounded text-center">
                                                 Saldo Tidak Mencukupi
