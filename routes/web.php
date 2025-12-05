@@ -80,6 +80,7 @@ use App\Http\Controllers\Customer\PpobHistoryController;
 use App\Http\Controllers\Customer\AgentProductController;
 use App\Http\Controllers\Customer\AgentRegistrationController;
 use App\Http\Controllers\Customer\TopUpController;
+use App\Http\Controllers\Customer\AgentTransactionController;
 
 
 Route::middleware(['auth'])->group(function () {
@@ -105,6 +106,10 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', [AgentProductController::class, 'index'])->name('index');
         Route::put('/update', [AgentProductController::class, 'update'])->name('update');
         Route::post('/bulk-update', [AgentProductController::class, 'bulkUpdate'])->name('bulk_update');
+
+        // === RUTE KASIR / TRANSAKSI OFFLINE (BARU) ===
+    Route::get('/transaksi/create', [AgentTransactionController::class, 'create'])->name('transaction.create');
+    Route::post('/transaksi/store', [AgentTransactionController::class, 'store'])->name('transaction.store');
 
     });
 
