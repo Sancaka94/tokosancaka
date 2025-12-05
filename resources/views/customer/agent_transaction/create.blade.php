@@ -19,6 +19,7 @@
         </div>
     </div>
 
+    {{-- Notifikasi Sukses/Gagal --}}
     @if(session('success'))
         <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded shadow-sm flex items-center gap-2 animate-fade-in-down">
             <i class="fas fa-check-circle text-xl"></i>
@@ -63,13 +64,16 @@
                         </div>
                     </div>
 
-                    {{-- Operator Badge --}}
+                    {{-- Operator Badge (Hasil Deteksi) --}}
                     <div id="operator_badge" class="mt-3 hidden transition-all duration-300 transform scale-95 opacity-0">
-                        <div class="flex items-center gap-2 bg-gray-50 border border-gray-200 p-2 rounded-lg">
-                            <img id="operator_logo" src="" class="w-8 h-8 object-contain rounded bg-white p-0.5 border border-gray-100">
+                        <div class="flex items-center gap-2 bg-gray-50 border border-gray-200 p-2 rounded-lg shadow-sm">
+                            {{-- Image Tag diperbaiki untuk handle error --}}
+                            <img id="operator_logo" src="" 
+                                 onerror="this.src='https://via.placeholder.com/50?text=IMG'"
+                                 class="w-10 h-10 object-contain rounded bg-white p-1 border border-gray-100">
                             <div>
                                 <p class="text-[10px] text-gray-400 font-bold uppercase">Terdeteksi:</p>
-                                <p class="text-sm font-bold text-gray-800" id="operator_name">-</p>
+                                <p class="text-sm font-bold text-gray-800 leading-tight" id="operator_name">-</p>
                             </div>
                             <span class="ml-auto text-green-500"><i class="fas fa-check-circle"></i></span>
                         </div>
@@ -78,7 +82,7 @@
 
                 <div class="bg-yellow-50 p-4 rounded-xl border border-yellow-100 text-xs text-yellow-800 leading-relaxed">
                     <i class="fas fa-lightbulb mr-1 text-yellow-600"></i> 
-                    <strong>Tips Cerdas:</strong> Masukkan nomor HP, token listrik, atau ID e-wallet. Sistem akan otomatis menampilkan produk yang sesuai di sebelah kanan.
+                    <strong>Tips Cerdas:</strong> Masukkan nomor HP, token listrik, atau ID e-wallet. Logo operator akan muncul otomatis sesuai data Anda.
                 </div>
             </div>
         </div>
@@ -92,7 +96,7 @@
                         Pilih Produk
                     </h3>
                     
-                    {{-- Search Manual (Hidden by default, shown if detection fails) --}}
+                    {{-- Search Manual --}}
                     <div class="w-full sm:w-1/2 relative">
                         <input type="text" id="search_product" onkeyup="filterTableManual()"
                                class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 bg-gray-50 focus:bg-white transition" 
@@ -115,13 +119,11 @@
                             <tr>
                                 <th class="px-4 py-3">Produk</th>
                                 <th class="px-4 py-3 text-center">Brand</th>
-                                <th class="px-4 py-3 text-right">Modal</th>
-                                <th class="px-4 py-3 text-right text-green-700 bg-green-50/50">Jual</th>
+                                <th class="px-4 py-3 text-right">Harga</th>
                                 <th class="px-4 py-3 text-center">Action</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100" id="product_table_body">
-                            {{-- DATA PRODUK AKAN DI-RENDER OLEH JAVASCRIPT --}}
                             @foreach($products as $product)
                                 <tr class="hover:bg-blue-50 transition group product-row" 
                                     data-brand="{{ strtolower($product->brand) }}" 
@@ -135,17 +137,12 @@
                                     <td class="px-4 py-3 text-center">
                                         <span class="px-2 py-1 rounded text-[10px] font-bold bg-gray-100 text-gray-600 uppercase">{{ $product->brand }}</span>
                                     </td>
-                                    <td class="px-4 py-3 text-right font-medium text-gray-500 text-xs">
-                                        Rp {{ number_format($product->modal_agen, 0, ',', '.') }}
-                                    </td>
-                                    <td class="px-4 py-3 text-right bg-green-50/30">
+                                    <td class="px-4 py-3 text-right">
                                         @php
                                             $modal = $product->modal_agen;
                                             $jual = $product->harga_jual_agen ?? ($modal + 2000);
-                                            $profit = $jual - $modal;
                                         @endphp
                                         <div class="font-extrabold text-green-700">Rp {{ number_format($jual, 0, ',', '.') }}</div>
-                                        <div class="text-[9px] text-green-500">Untung: Rp {{ number_format($profit) }}</div>
                                     </td>
                                     <td class="px-4 py-3 text-center">
                                         <button onclick="confirmTransaction('{{ $product->buyer_sku_code }}', '{{ addslashes($product->product_name) }}', '{{ $modal }}', '{{ $jual }}')" 
@@ -164,7 +161,7 @@
                     </div>
                 </div>
 
-                {{-- Pagination (Disembunyikan saat filter aktif) --}}
+                {{-- Pagination --}}
                 <div id="pagination_links" class="mt-4">
                     {{ $products->appends(request()->query())->links() }}
                 </div>
@@ -174,49 +171,36 @@
     </div>
 </div>
 
-{{-- MODAL KONFIRMASI --}}
+{{-- MODAL KONFIRMASI (Sama seperti sebelumnya) --}}
 <div id="confirmModal" class="fixed inset-0 z-50 hidden backdrop-blur-sm" role="dialog">
     <div class="fixed inset-0 bg-gray-900 bg-opacity-60 transition-opacity" onclick="closeModal()"></div>
     <div class="flex items-center justify-center min-h-screen p-4">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm transform transition-all p-0 overflow-hidden scale-95 opacity-0" id="modal_content">
-            
             <div class="bg-blue-600 p-4 text-white text-center">
                 <h3 class="text-lg font-bold">Konfirmasi Transaksi</h3>
-                <p class="text-xs text-blue-100">Pastikan data sudah benar.</p>
             </div>
-            
             <div class="p-6 space-y-4">
                 <div class="flex justify-between items-end border-b border-gray-100 pb-3">
                     <span class="text-xs text-gray-500 uppercase font-bold">Nomor Tujuan</span>
                     <span class="font-mono font-bold text-gray-800 text-lg tracking-wide" id="modal_no">-</span>
                 </div>
-                
                 <div>
                     <span class="text-xs text-gray-500 uppercase font-bold mb-1 block">Produk</span>
                     <span class="font-bold text-gray-800 text-sm leading-tight block" id="modal_product">-</span>
                 </div>
-
-                <div class="grid grid-cols-2 gap-3 pt-2">
-                    <div class="bg-red-50 p-3 rounded-xl border border-red-100">
-                        <span class="text-[10px] text-red-500 font-bold uppercase block">Modal Anda</span>
-                        <span class="font-bold text-red-700 text-base" id="modal_modal">Rp 0</span>
-                    </div>
-                    <div class="bg-green-50 p-3 rounded-xl border border-green-100">
-                        <span class="text-[10px] text-green-500 font-bold uppercase block">Tagih User</span>
-                        <span class="font-bold text-green-700 text-base" id="modal_jual">Rp 0</span>
-                    </div>
+                <div class="bg-green-50 p-3 rounded-xl border border-green-100">
+                    <span class="text-[10px] text-green-500 font-bold uppercase block">Total Bayar</span>
+                    <span class="font-bold text-green-700 text-xl" id="modal_jual">Rp 0</span>
                 </div>
             </div>
-
             <form action="{{ route('agent.transaction.store') }}" method="POST" class="p-4 bg-gray-50 border-t border-gray-100">
                 @csrf
                 <input type="hidden" name="sku" id="form_sku">
                 <input type="hidden" name="customer_no" id="form_no">
-                
                 <div class="flex gap-3">
                     <button type="button" onclick="closeModal()" class="flex-1 py-3 bg-white text-gray-700 font-bold rounded-xl border border-gray-300 hover:bg-gray-100 transition text-sm">Batal</button>
-                    <button type="submit" class="flex-1 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition shadow-lg shadow-blue-200 text-sm flex justify-center items-center gap-2">
-                        <i class="fas fa-paper-plane"></i> PROSES SEKARANG
+                    <button type="submit" class="flex-1 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition shadow-lg shadow-blue-200 text-sm">
+                        PROSES
                     </button>
                 </div>
             </form>
@@ -228,55 +212,73 @@
 
 @push('scripts')
 <script>
-    // --- LOGIKA DETEKSI OPERATOR CERDAS ---
+    // --- KONFIGURASI PATH LOGO (PENTING) ---
+    // Pastikan Anda sudah menjalankan: php artisan storage:link
+    // Path ini mengarah ke folder public/storage/logo-ppob/
+    const logoBasePath = "{{ asset('public/storage/logo-ppob') }}/";
+
+    // --- LOGIKA DETEKSI OPERATOR (Disesuaikan dengan Nama File Anda) ---
     function detectOperator() {
         let number = document.getElementById('input_customer_no').value;
-        let prefix = number.substring(0, 4);
+        // Ambil 4 digit pertama
+        let prefix = number.substring(0, 4); 
         let brand = null;
         let brandName = '-';
-        let logoUrl = 'https://via.placeholder.com/50?text=?';
+        let logoFile = ''; // Nama file sesuai folder Anda
 
-        // Reset UI jika kosong
+        // Reset UI jika input pendek
         if (number.length < 4) {
             hideOperatorBadge();
             showInstruction();
             return;
         }
 
-        // 1. Cek Prefix Seluler
-        if (/^08(11|12|13|21|22|23|51|52|53)/.test(prefix)) { brand = 'telkomsel'; brandName = 'Telkomsel'; logoUrl = 'https://upload.wikimedia.org/wikipedia/commons/b/bc/Telkomsel_2021_icon.svg'; }
-        else if (/^08(14|15|16|55|56|57|58)/.test(prefix)) { brand = 'indosat'; brandName = 'Indosat Ooredoo'; logoUrl = 'https://upload.wikimedia.org/wikipedia/commons/a/ac/Indosat_Ooredoo_Hutchison.svg'; }
-        else if (/^08(17|18|19|59|77|78)/.test(prefix)) { brand = 'xl'; brandName = 'XL Axiata'; logoUrl = 'https://upload.wikimedia.org/wikipedia/commons/5/55/XL_logo_2016.svg'; }
-        else if (/^08(31|32|33|38)/.test(prefix)) { brand = 'axis'; brandName = 'AXIS'; logoUrl = 'https://upload.wikimedia.org/wikipedia/commons/8/83/Axis_logo_2015.svg'; }
-        else if (/^08(95|96|97|98|99)/.test(prefix)) { brand = 'tri'; brandName = 'Tri (3)'; logoUrl = 'https://upload.wikimedia.org/wikipedia/commons/4/40/Three_logo.svg'; }
-        else if (/^08(81|82|83|84|85|86|87|88|89)/.test(prefix)) { brand = 'smartfren'; brandName = 'Smartfren'; logoUrl = 'https://upload.wikimedia.org/wikipedia/commons/0/03/Smartfren_logo_2019.svg'; }
+        // 1. DETEKSI SELULER (Mapping Prefix ke Nama File)
+        if (/^08(11|12|13|21|22|23|51|52|53)/.test(prefix)) { 
+            brand = 'telkomsel'; brandName = 'Telkomsel'; logoFile = 'telkomsel.png'; 
+        }
+        else if (/^08(14|15|16|55|56|57|58)/.test(prefix)) { 
+            brand = 'indosat'; brandName = 'Indosat Ooredoo'; logoFile = 'indosat.png'; 
+        }
+        else if (/^08(17|18|19|59|77|78)/.test(prefix)) { 
+            brand = 'xl'; brandName = 'XL Axiata'; logoFile = 'xl.png'; 
+        }
+        else if (/^08(31|32|33|38)/.test(prefix)) { 
+            brand = 'axis'; brandName = 'AXIS'; logoFile = 'axis.png'; 
+        }
+        else if (/^08(95|96|97|98|99)/.test(prefix)) { 
+            brand = 'tri'; brandName = 'Tri (3)'; logoFile = 'tri.png'; 
+        }
+        else if (/^08(81|82|83|84|85|86|87|88|89)/.test(prefix)) { 
+            brand = 'smartfren'; brandName = 'Smartfren'; logoFile = 'smartfren.png'; 
+        }
         
-        // 2. Cek PLN (Biasanya 11-12 digit, tidak diawali 08)
+        // 2. DETEKSI PLN (Token Listrik)
+        // Token PLN biasanya 11 digit (No Meter) atau 12 digit (ID Pel)
+        // Kita asumsikan jika tidak diawali 08 dan panjang >= 6 maka PLN
         else if (!number.startsWith('08') && number.length >= 6) { 
-            brand = 'pln'; brandName = 'PLN / Token Listrik'; 
-            logoUrl = 'https://upload.wikimedia.org/wikipedia/commons/9/97/Logo_PLN.png';
+            brand = 'pln'; brandName = 'PLN / Token'; logoFile = 'pln.png';
         }
 
-        // 3. Deteksi E-Wallet (Berdasarkan prefix khusus atau asumsi user)
-        // (Biasanya e-wallet pakai nomor HP, jadi ini agak tricky. 
-        //  Kita bisa tambahkan opsi manual tab jika perlu, tapi untuk auto-filter kita pakai operator seluler dulu).
-
+        // 3. Update UI jika terdeteksi
         if (brand) {
-            showOperatorBadge(brandName, logoUrl);
+            // Gabungkan Base Path dengan Nama File
+            let fullLogoUrl = logoBasePath + logoFile;
+            showOperatorBadge(brandName, fullLogoUrl);
             filterTableByBrand(brand);
         } else {
-            // Jika tidak terdeteksi, tampilkan semua atau biarkan search manual
+            // Jika tidak match pattern apapun, sembunyikan badge tapi user bisa cari manual
             hideOperatorBadge();
-            // Optional: showAllProducts(); 
         }
     }
 
-    function showOperatorBadge(name, logo) {
+    function showOperatorBadge(name, logoUrl) {
         let badge = document.getElementById('operator_badge');
         document.getElementById('operator_name').innerText = name;
-        document.getElementById('operator_logo').src = logo;
+        document.getElementById('operator_logo').src = logoUrl;
         
         badge.classList.remove('hidden');
+        // Efek animasi halus
         setTimeout(() => {
             badge.classList.remove('scale-95', 'opacity-0');
             badge.classList.add('scale-100', 'opacity-100');
@@ -298,26 +300,25 @@
         document.getElementById('pagination_links').classList.add('hidden');
     }
 
-    // --- FILTER TABEL ---
+    // --- FILTER TABEL CLIENT SIDE ---
     function filterTableByBrand(brand) {
         let rows = document.querySelectorAll('.product-row');
         let hasResult = false;
 
         document.getElementById('instruction_alert').classList.add('hidden');
         document.getElementById('product_container').classList.remove('hidden');
-        document.getElementById('pagination_links').classList.add('hidden'); // Sembunyikan pagination saat filter aktif
+        // Sembunyikan pagination saat mode filter otomatis agar user tidak bingung
+        document.getElementById('pagination_links').classList.add('hidden'); 
 
         rows.forEach(row => {
-            let rowBrand = row.getAttribute('data-brand');
+            let rowBrand = row.getAttribute('data-brand'); // misal: 'telkomsel'
             let rowCategory = row.getAttribute('data-category');
             
-            // Logika Cocoklogi
-            // Jika deteksi 'pln', cari yang kategori atau brand mengandung 'pln'
-            // Jika deteksi 'telkomsel', cari brand 'telkomsel'
-            
             let match = false;
+            
+            // Logika pencocokan string
             if (brand === 'pln') {
-                if (rowBrand.includes('pln') || rowCategory.includes('pln') || rowCategory.includes('token')) match = true;
+                if (rowBrand.includes('pln') || rowCategory.includes('token') || rowCategory.includes('listrik')) match = true;
             } else {
                 if (rowBrand.includes(brand)) match = true;
             }
@@ -330,10 +331,12 @@
             }
         });
 
+        const noResultEl = document.getElementById('no_result');
         if (!hasResult) {
-            document.getElementById('no_result').classList.remove('hidden');
+            noResultEl.classList.remove('hidden');
+            noResultEl.innerText = "Tidak ada produk " + brand + " tersedia saat ini.";
         } else {
-            document.getElementById('no_result').classList.add('hidden');
+            noResultEl.classList.add('hidden');
         }
     }
 
@@ -344,6 +347,7 @@
         
         document.getElementById('instruction_alert').classList.add('hidden');
         document.getElementById('product_container').classList.remove('hidden');
+        document.getElementById('pagination_links').classList.add('hidden');
 
         rows.forEach(row => {
             let name = row.getAttribute('data-name');
@@ -358,15 +362,14 @@
     // --- MODAL TRANSAKSI ---
     function confirmTransaction(sku, name, modal, jual) {
         let no = document.getElementById('input_customer_no').value;
-        if(no.length < 10 && !sku.toLowerCase().includes('pln')) { // Validasi sederhana
-            alert('Mohon masukkan Nomor HP pembeli dengan benar!');
+        if(no.length < 4) { 
+            alert('Mohon masukkan Nomor Tujuan dengan benar!');
             document.getElementById('input_customer_no').focus();
             return;
         }
 
         document.getElementById('modal_no').innerText = no;
         document.getElementById('modal_product').innerText = name;
-        document.getElementById('modal_modal').innerText = 'Rp ' + parseInt(modal).toLocaleString('id-ID');
         document.getElementById('modal_jual').innerText = 'Rp ' + parseInt(jual).toLocaleString('id-ID');
         
         document.getElementById('form_sku').value = sku;
