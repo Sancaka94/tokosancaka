@@ -20,7 +20,7 @@
         'tv-pascabayar'      => 'tv',
         'multifinance'       => 'multifinance',
         'cicilan'            => 'multifinance',
-        'pbb'                => 'cimahi',       // Sesuai Dokumen PBB (biasanya cimahi/dki)
+        'pbb'                => 'cimahi',
         'samsat'             => 'samsat',
         'gas-negara'         => 'pgas',
         'pln-nontaglis'      => 'plnnontaglist',
@@ -459,7 +459,7 @@
     </div>
 </div>
 
-{{-- MODAL KONFIRMASI (PRABAYAR) --}}
+{{-- MODAL KONFIRMASI (PRABAYAR) - SUDAH DIPERBAIKI --}}
 <div id="confirmModal" class="fixed inset-0 z-[999] hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
     <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
         <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity backdrop-blur-sm" onclick="closeModal()"></div>
@@ -480,14 +480,12 @@
                     </div>
                 </div>
             </div>
+            {{-- DIV BUTTONS (Form dihapus, diganti Logic Checkout via JS) --}}
             <div class="bg-gray-50 px-6 py-4 flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
                 <button type="button" onclick="closeModal()" class="w-full inline-flex justify-center rounded-xl border border-gray-300 shadow-sm px-4 py-3 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:w-auto sm:text-sm transition">Batal</button>
-                <form action="{{ route('ppob.store') }}" method="POST" id="checkoutForm" class="w-full sm:w-auto">
-                    @csrf
-                    <input type="hidden" name="buyer_sku_code" id="form_sku">
-                    <input type="hidden" name="customer_no" id="form_no">
-                    <button type="submit" class="w-full inline-flex justify-center rounded-xl border border-transparent shadow-lg shadow-red-200 px-6 py-3 bg-red-600 text-base font-bold text-white hover:bg-red-700 focus:outline-none sm:text-sm transition transform hover:scale-[1.02]">Bayar Sekarang</button>
-                </form>
+                
+                {{-- Button Baru yang memanggil processPrepaidCheckout() --}}
+                <button type="button" id="btn-confirm-pay" onclick="processPrepaidCheckout()" class="w-full inline-flex justify-center rounded-xl border border-transparent shadow-lg shadow-red-200 px-6 py-3 bg-red-600 text-base font-bold text-white hover:bg-red-700 focus:outline-none sm:text-sm transition transform hover:scale-[1.02]">Bayar Sekarang</button>
             </div>
         </div>
     </div>
@@ -506,7 +504,8 @@
     
     // Variabel Global
     const inputNo = document.getElementById('customer_no');
-    let currentBillData = null; // Menyimpan data tagihan siap bayar
+    let currentBillData = null; // Menyimpan data tagihan siap bayar (Pasca)
+    let currentPrepaidData = null; // Menyimpan data produk siap bayar (Prabayar)
 
     // Setup Swiper
     var swiper = new Swiper(".heroSwiper", { 
@@ -572,20 +571,74 @@
         });
         @endif
 
+        // --- FUNGSI PILIH PRODUK (POPUP MODAL) ---
         function selectProduct(el) {
             const no = inputNo.value.replace(/[^0-9]/g, '');
             let minLen = IS_TESTING ? 3 : 4; 
             if(no.length < minLen) { 
                 alert("Mohon isi nomor tujuan terlebih dahulu."); inputNo.focus(); return; 
             }
+
+            // SIMPAN DATA KE VARIABEL GLOBAL
+            currentPrepaidData = {
+                sku: el.dataset.sku,
+                name: el.dataset.name,
+                price: el.dataset.price,
+                customer_no: no,
+                desc: "Pembelian " + el.dataset.name
+            };
+
+            // Update Tampilan Modal
             document.getElementById('modal_no').innerText = no;
             document.getElementById('modal_product').innerText = el.dataset.name;
             document.getElementById('modal_price').innerText = 'Rp ' + parseInt(el.dataset.price).toLocaleString('id-ID');
-            document.getElementById('form_sku').value = el.dataset.sku;
-            document.getElementById('form_no').value = no;
+            
+            // Tampilkan Modal
             document.getElementById('confirmModal').classList.remove('hidden');
         }
-        function closeModal() { document.getElementById('confirmModal').classList.add('hidden'); }
+
+        function closeModal() { 
+            document.getElementById('confirmModal').classList.add('hidden'); 
+        }
+
+        // --- FUNGSI CHECKOUT PRABAYAR (AJAX) ---
+        function processPrepaidCheckout() {
+            if(!currentPrepaidData) return;
+            
+            const btn = document.getElementById('btn-confirm-pay');
+            const originalText = btn.innerHTML;
+            
+            // Set Loading
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
+
+            // Kirim ke Controller ppob.prepare (Masuk Keranjang)
+            fetch('{{ route("ppob.prepare") }}', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json', 
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}' 
+                },
+                body: JSON.stringify(currentPrepaidData)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.success) {
+                    // Redirect ke Halaman Checkout
+                    window.location.href = "{{ route('ppob.checkout.index') }}";
+                } else {
+                    alert("Gagal menambahkan ke keranjang: " + data.message);
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert("Terjadi kesalahan sistem.");
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            });
+        }
 
         @if($currentSlug == 'pln-token')
         function cekPlnPrabayar() {
