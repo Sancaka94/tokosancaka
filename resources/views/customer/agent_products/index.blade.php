@@ -5,7 +5,16 @@
 @section('content')
 <div class="space-y-6">
     
-    <div class="flex flex-wrap items-center gap-3">
+    {{-- HEADER SECTION --}}
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <h2 class="text-2xl font-bold text-gray-800">Atur Harga Jual Toko</h2>
+            <p class="text-sm text-gray-500 mt-1">
+                Kelola keuntungan Anda sendiri. Harga Modal adalah harga beli Anda dari Kami.
+            </p>
+        </div>
+        
+         <div class="flex flex-wrap items-center gap-3">
     
     {{-- 1. Tombol Cetak --}}
     <a href="#" onclick="alert('Fitur cetak brosur akan segera hadir!')" 
@@ -26,6 +35,8 @@
     </button>
 
 </div>
+
+    </div>
 
     {{-- STATISTIK SINGKAT & PENCARIAN --}}
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
