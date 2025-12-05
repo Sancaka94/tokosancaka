@@ -1,6 +1,6 @@
 @extends('layouts.marketplace')
 
-
+@php
     // --- 1. SETUP DATA KATEGORI (Sesuai List Kamu) ---
     $urlSlug = request()->segment(4); 
     $pageInfo = $pageInfo ?? [];
