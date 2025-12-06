@@ -92,7 +92,7 @@ class DigiflazzService
             $productsPrepaid = $this->getPriceList('prepaid');
             
             // JEDA WAKTU (DELAY): Pertahankan JEDA 2 detik antar panggilan API Pricelist.
-            sleep(2); 
+            sleep(4); 
 
             // 2. Ambil Produk Pascabayar
             $productsPostpaid = $this->getPriceList('postpaid');
