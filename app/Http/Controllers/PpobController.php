@@ -284,76 +284,76 @@ class PpobController extends Controller
     // FUNGSI SINKRONISASI PRODUK DARI DIGIFLAZZ
     // =================================================================
     
-    public function sync()
-    {
-        // Pastikan hanya admin yang bisa mengakses fungsi ini jika diperlukan
-        //if (!Auth::check() || !Auth::user()->hasRole('Admin')) {
-            // ⭐ PERBAIKAN 1: Return JSON error untuk akses ditolak
-        //    return response()->json(['status' => 'error', 'message' => 'Akses ditolak.'], 403);
-        //}
+    // FILE: App\Http\Controllers\PpobController.php
 
-        try {
-            // Panggil service Digiflazz untuk mendapatkan daftar produk
-            // Asumsi: method getProducts() di DigiflazzService memanggil getPriceList dan mengembalikan [ 'data' => [...] ]
-            $products = $this->digiflazz->getPriceList('prepaid');
+public function sync()
+{
+    // ... (Pemeriksaan Auth dan Role)
 
-            if (isset($products['data']) && is_array($products['data'])) {
-                $insertedCount = 0;
-                $updatedCount = 0;
+    try {
+        // 1. Panggil getPriceList() yang mengembalikan array produk (BUKAN ['data'])
+        $productArray = $this->digiflazz->getPriceList('prepaid'); 
 
-                foreach ($products['data'] as $product) {
-                    // Cari produk berdasarkan buyer_sku_code (kode unik produk)
-                    $localProduct = PpobProduct::firstOrNew(['buyer_sku_code' => $product['buyer_sku_code']]);
+        // ⭐ PERBAIKAN: Cek apakah yang dikembalikan adalah array dan tidak kosong
+        if (is_array($productArray) && !empty($productArray)) {
+            $insertedCount = 0;
+            $updatedCount = 0;
 
-                    // Update atau isi data produk
-                    $localProduct->fill([
-                        'product_name'          => $product['product_name'],
-                        'category'              => $product['category'],
-                        'brand'                 => $product['brand'],
-                        'type'                  => $product['type'],
-                        'price'                 => $product['price'],
-                        'sell_price'            => $localProduct->sell_price ?? $product['price'] + 1000,
-                        'admin'                 => $product['admin'],
-                        'status'                => $product['status'],
-                        'buyer_sku_code'        => $product['buyer_sku_code'],
-                        'desc'                  => $product['desc'] ?? null,
-                        'buyer_product_status'  => $product['buyer_product_status'],
-                        'seller_product_status' => $localProduct->seller_product_status ?? true, // Tetapkan default true jika baru
-                    ]);
-                    
-                    if ($localProduct->exists) {
-                        $localProduct->save();
-                        $updatedCount++;
-                    } else {
-                        $localProduct->save();
-                        $insertedCount++;
-                    }
-                }
+            // ⭐ PERBAIKAN: Langsung looping pada $productArray, HAPUS ['data']
+            foreach ($productArray as $product) {
                 
-                // ⭐ PERBAIKAN 2: Ganti return back() dengan return response()->json()
-                return response()->json([
-                    'status' => 'success', 
-                    'message' => "Sinkronisasi Berhasil. Ditambahkan: $insertedCount, Diperbarui: $updatedCount."
+                // PENTING: Jika ada produk yang statusnya false, 
+                // ini akan menangkapnya dan memperbarui DB.
+
+                $localProduct = PpobProduct::firstOrNew(['buyer_sku_code' => $product['buyer_sku_code']]);
+
+                // Update atau isi data produk
+                $localProduct->fill([
+                    'product_name'          => $product['product_name'],
+                    'category'              => $product['category'],
+                    'brand'                 => $product['brand'],
+                    'type'                  => $product['type'],
+                    'price'                 => $product['price'],
+                    // Pertahankan harga jual yang sudah ada, atau atur margin default jika baru
+                    'sell_price'            => $localProduct->sell_price ?? $product['price'] + 1000, 
+                    'admin'                 => $product['admin'] ?? 0, // Tambahkan null check untuk aman
+                    'status'                => $product['status'] ?? null,
+                    'buyer_sku_code'        => $product['buyer_sku_code'],
+                    'desc'                  => $product['desc'] ?? null,
+                    'buyer_product_status'  => $product['buyer_product_status'],
+                    'seller_product_status' => $localProduct->seller_product_status ?? true, 
                 ]);
-            } else {
-                // Tangani kasus jika API Digiflazz gagal
-                Log::error('Digiflazz Sync Failed: ' . json_encode($products));
                 
-                // ⭐ PERBAIKAN 3: Ganti return back() dengan return response()->json()
-                return response()->json([
-                    'status' => 'error', 
-                    'message' => $products['message'] ?? 'Gagal mengambil data dari Digiflazz. Cek log.'
-                ], 500);
+                if ($localProduct->exists) {
+                    $localProduct->save();
+                    $updatedCount++;
+                } else {
+                    $localProduct->save();
+                    $insertedCount++;
+                }
             }
-
-        } catch (\Exception $e) {
-            Log::error('PPOB Sync Exception: ' . $e->getMessage());
             
-            // ⭐ PERBAIKAN 4: Ganti return back() dengan return response()->json()
+            return response()->json([
+                'status' => 'success', 
+                'message' => "Sinkronisasi Berhasil. Ditambahkan: $insertedCount, Diperbarui: $updatedCount."
+            ]);
+        } else {
+            // Tangani kasus jika API Digiflazz gagal atau array kosong
+            Log::error('Digiflazz Sync Failed: Response Empty or Invalid');
+            
             return response()->json([
                 'status' => 'error', 
-                'message' => 'Error Sistem saat sinkronisasi: ' . $e->getMessage()
+                'message' => 'Gagal mengambil data dari Digiflazz. Respons kosong atau tidak valid.'
             ], 500);
         }
+
+    } catch (\Exception $e) {
+        Log::error('PPOB Sync Exception: ' . $e->getMessage());
+        return response()->json([
+            'status' => 'error', 
+            'message' => 'Error Sistem saat sinkronisasi: ' . $e->getMessage()
+        ], 500);
     }
+}
+
 }
