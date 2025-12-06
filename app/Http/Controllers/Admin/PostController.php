@@ -74,17 +74,23 @@ class PostController extends Controller
         return view('admin.posts.create', compact('categories', 'tags'));
     }
     
-    /**
-     * Menampilkan form untuk mengedit post.
-     */
-    public function edit(Post $post)
-    {
-        $categories = Category::select('id', 'name')->get();
-        $tags = Tag::select('id', 'name')->get();
-        $post->load('tags'); 
-        
-        return view('admin.posts.edit', compact('post', 'categories', 'tags'));
-    }
+ /**
+ * Menampilkan form untuk mengedit post.
+ */
+public function edit(Post $post)
+{
+    // Mengambil semua kategori (hanya kolom ID dan NAME)
+    $categories = Category::select('id', 'name')->get();
+    
+    // Mengambil semua tags (hanya kolom ID dan NAME)
+    $tags = Tag::select('id', 'name')->get();
+    
+    // Memuat relasi tags untuk post yang dipilih (jika belum dimuat oleh Route Model Binding)
+    $post->load('tags'); 
+    
+    // Mengirim objek $post, $categories, dan $tags ke view
+    return view('admin.posts.edit', compact('post', 'categories', 'tags'));
+}
 
     /**
      * Menghasilkan konten artikel menggunakan AI (OpenAI atau Gemini).
