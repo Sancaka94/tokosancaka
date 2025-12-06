@@ -630,8 +630,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::get('/digital', [AdminPpobController::class, 'index'])
         ->name('admin.ppob.index'); 
 
-    Route::get('/sync-produk', [PpobController::class, 'sync'])->name('ppob.sync'); // <-- AMANKAN DENGAN 'role:Admin'
-
+   
     // 2. Halaman Kategori (Pulsa, Data, dll)
     // URL: /admin/digital/{slug}
     Route::get('/digital/{slug}', [AdminPpobController::class, 'category'])
@@ -760,6 +759,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])
 
         require __DIR__.'/web/admin.php';
 
+         Route::get('/sync-produk', [PpobController::class, 'sync'])->name('ppob.sync'); // <-- AMANKAN DENGAN 'role:Admin'
 
 
         
