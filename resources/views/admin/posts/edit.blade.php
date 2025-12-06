@@ -58,7 +58,7 @@
 
         <div class="bg-white rounded-lg shadow-md overflow-hidden">
 
-            <form action="{{ route('admin.posts.update', $post->id) }}" method="POST" enctype="multipart/form-data">
+            <form action="{{ route('admin.posts.update', $post) }}" method="POST" enctype="multipart/form-data">
 
                 @csrf
 
