@@ -100,7 +100,7 @@
                     <h3 class="font-bold text-gray-800 flex items-center gap-2">
                         <span class="bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs">2</span> 
                         Pilih Produk
-                    </h3>
+                    </span>
                     
                     {{-- Search Manual --}}
                     <div class="w-full sm:w-1/2 relative">
@@ -348,7 +348,7 @@
                 <input type="hidden" name="sku" id="form_sku">
                 <input type="hidden" name="customer_no" id="form_no">
                 <div class="flex gap-3">
-                    <button type="button" onclick="closeModal()" class="flex-1 py-3 bg-white text-gray-700 font-bold rounded-xl border border-gray-300 hover:bg-gray-100 transition text-sm">Batal</button>
+                    <button type="button" onclick="closeModal()" class="flex-1 py-3 bg-white text-gray-700 font-bold rounded-xl border border-gray-300 hover:bg-gray-50 transition text-sm">Batal</button>
                     <button type="submit" class="flex-1 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition shadow-lg shadow-blue-200 text-sm">
                         PROSES
                     </button>
@@ -481,12 +481,17 @@
                     else if(sku === 'pbb' || d.desc.luas_tanah) {
                         let lt = d.desc.luas_tanah || '0';
                         let lb = d.desc.luas_gedung || '0';
-                        infoTeknis = `LT: ${lt}m² / LB: ${lb}m²`;
-                        labelTeknis = 'Luas Tanah / Bangunan';
+                        let tahun = d.desc.tahun_pajak || '-';
+                        infoTeknis = `Tahun: ${tahun} / LT: ${lt}m² / LB: ${lb}m²`;
+                        labelTeknis = 'Tahun / Luas Tanah & Gedung';
                     }
                     else if(sku === 'bpjs') {
                         infoTeknis = (d.desc.jumlah_peserta || '1') + ' Peserta';
                         labelTeknis = 'Jumlah Peserta';
+                    }
+                    else if(sku === 'telkom') {
+                        infoTeknis = d.desc.lembar_tagihan + ' Lembar Tagihan';
+                        labelTeknis = 'Lembar Tagihan';
                     }
                 }
                 
