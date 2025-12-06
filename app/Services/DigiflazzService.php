@@ -147,7 +147,7 @@ class DigiflazzService
         $sign = md5($this->username . $this->apiKey . $refId);
 
         $payload = [
-            'commands' => 'inq-pasca',
+            'cmd' => 'inq-pasca',
             'username' => $this->username,
             'buyer_sku_code' => $sku,
             'customer_no' => $customerNo,
