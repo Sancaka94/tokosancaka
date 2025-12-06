@@ -167,7 +167,7 @@ class AgentTransactionController extends Controller
     }
 
      
-    /**
+     /**
      * AJAX: Mengambil Daftar Kota PBB dari API Digiflazz
      * Endpoint: /agent/ppob/cities
      */
@@ -182,16 +182,20 @@ class AgentTransactionController extends Controller
             // Filter hanya produk PBB dan hapus duplikasi
             foreach ($products as $product) {
                 $sku = strtolower($product['sku'] ?? '');
-                $name = $product['name'] ?? $product['brand'] ?? 'PBB';
+                $name = $product['name'] ?? $product['brand'] ?? '';
 
-                // Kita mencari produk yang nama atau SKU nya mengandung PBB/Pajak (misal: cimahi, pdl)
-                // Filter hanya produk PBB yang memiliki SKU spesifik kota/daerah
-                if (str_contains(strtolower($name), 'pbb') && !isset($uniqueCities[$sku])) {
-                    $uniqueCities[$sku] = [
-                        'sku' => $sku,
-                        // Hanya ambil nama produk/kota/daerah PBB
-                        'name' => str_replace(['PBB Kabupaten ', 'PBB Kota ', 'PBB '], '', $name)
-                    ];
+                // Kriteria filter: nama mengandung 'PBB' atau SKU adalah CIMAHI/PDL, dan SKU belum ada di list
+                if ((str_contains(strtolower($name), 'pbb') || str_contains(strtolower($name), 'pajak') || $sku === 'cimahi' || $sku === 'pdl') && !isset($uniqueCities[$sku])) {
+                    
+                    // Membersihkan nama produk menjadi nama kota yang rapi
+                    $cityName = str_replace(['PBB Kabupaten ', 'PBB Kota ', 'PBB '], '', $name);
+                    
+                    if (trim($cityName) !== '') {
+                        $uniqueCities[$sku] = [
+                            'sku' => $sku,
+                            'name' => trim($cityName)
+                        ];
+                    }
                 }
             }
 
@@ -201,17 +205,13 @@ class AgentTransactionController extends Controller
                 return strcmp($a['name'], $b['name']);
             });
 
-            // Tambahkan test case CIMAHI jika belum ada (hanya untuk testing)
-            // Ini akan memastikan list tidak kosong saat testing di sandbox
-            if (!isset($uniqueCities['cimahi'])) {
-                 array_unshift($finalCities, ['sku' => 'cimahi', 'name' => 'CIMAHI (TEST CASE)']);
-            }
+            // NOTE: Kami MENGHAPUS BARIS YANG MENAMBAH TEST CASE CIMAHI SECARA MANUAL
+            // Data yang dikembalikan sekarang murni dari API.
 
             return response()->json(['success' => true, 'cities' => $finalCities]);
 
         } catch (\Exception $e) {
             Log::error('Get PBB Cities Error: ' . $e->getMessage());
-            // PENTING: Return JSON 500 agar frontend tahu terjadi error PHP
             return response()->json(['success' => false, 'message' => 'Gagal mengambil data kota: ' . $e->getMessage()], 500);
         }
     }
