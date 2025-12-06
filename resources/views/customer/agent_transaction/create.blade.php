@@ -100,7 +100,7 @@
                     <h3 class="font-bold text-gray-800 flex items-center gap-2">
                         <span class="bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs">2</span> 
                         Pilih Produk
-                    </span>
+                    </h3>
                     
                     {{-- Search Manual --}}
                     <div class="w-full sm:w-1/2 relative">
@@ -203,7 +203,9 @@
                         <input type="text" id="pasca_no" 
                                class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-purple-500 font-bold text-gray-800 placeholder-gray-300"
                                placeholder="Contoh: 5300xxxx">
-                        <p class="text-[10px] text-gray-400 mt-1">*Untuk Samsat/PBB pastikan format nomor sesuai.</p>
+                        <p id="test_case_info" class="text-[10px] text-red-500 mt-1 italic">
+                            *Gunakan Test Case PBB: 329801092375999991, Telkom: 7391601001, PLN: 630000000001
+                        </p>
                     </div>
 
                     {{-- Button Cek --}}
