@@ -182,31 +182,53 @@ class PpobController extends Controller
     // FUNGSI API PENDUKUNG (CHECK BILL & TRANSAKSI)
     // =================================================================
 
-    public function checkBill(Request $request)
-    {
-        $request->validate(['customer_no' => 'required', 'sku' => 'required']);
-        $refId = 'INQ-' . time() . rand(100,999);
+    // =================================================================
+// FUNGSI API PENDUKUNG (CHECK BILL & TRANSAKSI)
+// =================================================================
 
-        try {
-            $response = $this->digiflazz->inquiryPasca($request->sku, $request->customer_no, $refId);
-            
-            if (isset($response['data']) && ($response['data']['rc'] === '00' || $response['data']['status'] === 'Sukses' || $response['data']['status'] === 'Pending')) {
-                $data = $response['data'];
-                return response()->json([
-                    'status' => 'success',
-                    'customer_name' => $data['customer_name'],
-                    'customer_no'   => $data['customer_no'],
-                    'admin_fee'     => $data['admin'],
-                    'amount'        => $data['selling_price'], 
-                    'ref_id'        => $refId,
-                    'desc'          => $data['desc'] ?? []
-                ]);
-            }
-            return response()->json(['status' => 'error', 'message' => $response['data']['message'] ?? 'Tagihan tidak ditemukan.']);
-        } catch (\Exception $e) {
-            return response()->json(['status' => 'error', 'message' => 'Error: ' . $e->getMessage()], 500);
+public function checkBill(Request $request)
+{
+    // Ambil data dari request (asumsi ini dari form data atau URL-encoded)
+    $customerNo = $request->input('customer_no');
+    $sku = $request->input('sku');
+    
+    $request->validate(['customer_no' => 'required', 'sku' => 'required']);
+    $refId = 'INQ-' . time() . rand(100,999);
+
+    // =========================================================
+    // ATUR KREDENSIAL DIGIFLAZZ (Production)
+    // =========================================================
+    $username = 'mihetiDVGdeW'; 
+    $apiKeyProd = '1f48c69f-8676-5d56-a868-10a46a69f9b7'; // Kunci Production
+    $testingMode = false; // Mode Production
+
+    // Set kredensial di service sebelum memanggil inquiryPasca
+    $this->digiflazz->setCredentials($username, $apiKeyProd, $testingMode);
+    // =========================================================
+    
+    try {
+        // Panggil Service. Service akan menggunakan API Key yang baru di-set
+        $response = $this->digiflazz->inquiryPasca($sku, $customerNo, $refId);
+        
+        if (isset($response['data']) && ($response['data']['rc'] === '00' || $response['data']['status'] === 'Sukses' || $response['data']['status'] === 'Pending')) {
+            $data = $response['data'];
+            return response()->json([
+                'status' => 'success',
+                'customer_name' => $data['customer_name'],
+                'customer_no' => $data['customer_no'],
+                'admin_fee'  => $data['admin'],
+                'amount' => $data['selling_price'], 
+                'ref_id' => $refId,
+                'desc' => $data['desc'] ?? []
+            ]);
         }
+        // Tambahkan pengecekan jika $response['data'] tidak ada sama sekali
+        $message = $response['data']['message'] ?? ($response['message'] ?? 'Tagihan tidak ditemukan atau Signature salah.'); 
+        return response()->json(['status' => 'error', 'message' => $message]);
+    } catch (\Exception $e) {
+        return response()->json(['status' => 'error', 'message' => 'Error: ' . $e->getMessage()], 500);
     }
+}
 
     public function checkPlnPrabayar(Request $request)
     {
