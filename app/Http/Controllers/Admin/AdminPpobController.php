@@ -16,32 +16,44 @@ class AdminPpobController extends Controller
      */
    // Admin/PpobController.php
 public function index(Request $request)
-{
-    $type = $request->input('type', 'prepaid'); // Ambil type, default ke prepaid
-    $query = $request->input('q');
+    {
+        $type = $request->input('type', 'prepaid'); // Ambil type, default ke 'prepaid'
+        $query = $request->input('q');
 
-    $products = PpobProduct::query();
+        $products = PpobProduct::query();
 
-    // Lakukan filtering berdasarkan tipe
-    if ($type === 'prepaid') {
-        $products->where('category', '!=', 'Pascabayar');
-    } else { // 'postpaid'
-        $products->where('category', 'Pascabayar');
+        // 1. Logika Filtering Berdasarkan Tipe Produk
+        // Kita gunakan logika yang lebih kuat:
+        if ($type === 'prepaid') {
+            // Filter: Tampilkan produk yang bukan 'Pascabayar' ATAU yang kolom 'type' nya terisi.
+            // Produk Prabayar (Pulsa, Data, Games) biasanya TIDAK berkategori 'Pascabayar' DAN memiliki field 'type'.
+            $products->where(function ($q) {
+                $q->where('category', '!=', 'Pascabayar')
+                  ->orWhereNotNull('type');
+            });
+        } else { // 'postpaid'
+            // Filter: Tampilkan produk yang kategori-nya 'Pascabayar' ATAU yang kolom 'type' nya KOSONG (null).
+            // Produk Pascabayar (PLN Postpaid, PDAM) biasanya berkategori 'Pascabayar' DAN TIDAK memiliki field 'type'.
+            $products->where(function ($q) {
+                $q->where('category', 'Pascabayar')
+                  ->orWhereNull('type');
+            });
+        }
+        
+        // 2. Logika Filtering Pencarian
+        if ($query) {
+            $products->where(function ($q) use ($query) {
+                $q->where('product_name', 'like', '%' . $query . '%')
+                  ->orWhere('buyer_sku_code', 'like', '%' . $query . '%')
+                  ->orWhere('brand', 'like', '%' . $query . '%');
+            });
+        }
+        
+        // 3. Sorting dan Paginasi
+        $products = $products->orderBy('category')->orderBy('product_name')->paginate(20);
+
+        return view('admin.ppob.index', compact('products'));
     }
-    
-    // Lakukan filtering pencarian
-    if ($query) {
-        $products->where(function ($q) use ($query) {
-            $q->where('product_name', 'like', '%' . $query . '%')
-              ->orWhere('buyer_sku_code', 'like', '%' . $query . '%')
-              ->orWhere('brand', 'like', '%' . $query . '%');
-        });
-    }
-
-    $products = $products->paginate(20);
-
-    return view('admin.ppob.index', compact('products'));
-}
 
     /**
      * Export data ke Excel (Format CSV)
