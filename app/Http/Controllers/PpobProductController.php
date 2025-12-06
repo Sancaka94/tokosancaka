@@ -5,10 +5,21 @@ namespace App\Http\Controllers;
 use App\Models\PpobProduct;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Services\DigiflazzService; // PENTING: Import Service
 use Exception;
 
 class PpobProductController extends Controller
 {
+
+    // 1. Deklarasi Properti (harus ada)
+    protected DigiflazzService $ppobService;
+
+    // 2. Konstruktor untuk Dependency Injection (harus ada)
+    public function __construct(DigiflazzService $ppobService)
+    {
+        // 3. Inisialisasi Properti
+        $this->ppobService = $ppobService;
+    }
     /**
      * Helper function untuk mendapatkan query yang sudah difilter berdasarkan tipe dan pencarian.
      */
@@ -183,5 +194,37 @@ class PpobProductController extends Controller
                         ->get();
                     
         return view('admin.ppob.print_pricelist', compact('products'));
+    }
+
+   // --- FITUR SINKRONISASI TERPISAH (FINAL) ---
+
+    /**
+     * Menangani permintaan sinkronisasi HANYA untuk produk PRABAYAR.
+     */
+    public function syncPrepaid(Request $request)
+    {
+        $success = $this->ppobService->syncPrepaidProducts();
+
+        if ($success) {
+            return redirect()->back()->with('success', 'Sinkronisasi produk **Prabayar** berhasil dilakukan! Perubahan harga mungkin membutuhkan beberapa saat.');
+        }
+
+        // Ketika sync gagal, cek pesan dari cache/log atau berikan pesan standar.
+        return redirect()->back()->with('error', 'Gagal melakukan sinkronisasi Prabayar. Cek log atau coba lagi setelah 6 menit.');
+    }
+
+    /**
+     * Menangani permintaan sinkronisasi HANYA untuk produk PASCABAYAR.
+     */
+    public function syncPostpaid(Request $request)
+    {
+        $success = $this->ppobService->syncPostpaidProducts();
+
+        if ($success) {
+            return redirect()->back()->with('success', 'Sinkronisasi produk **Pascabayar** berhasil dilakukan! Perubahan harga mungkin membutuhkan beberapa saat.');
+        }
+        
+        // Ketika sync gagal
+        return redirect()->back()->with('error', 'Gagal melakukan sinkronisasi Pascabayar. Cek log atau coba lagi setelah 6 menit.');
     }
 }

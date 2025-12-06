@@ -64,18 +64,11 @@ class DigiflazzService
             
             $responseData = $response->json();
 
-            Log::info("✅ [DIGIFLAZZ] Price List ($cmd) Response", [
-                'status_code' => $response->status(),
-                'body' => $responseData
-            ]);
+            Log::info("✅ [DIGIFLAZZ] Price List ($cmd) Response Status", ['status_code' => $response->status()]);
 
-            if ($response->successful()) {
-                if (isset($responseData['data']) && is_array($responseData['data'])) {
-                    return $responseData['data']; 
-                }
-
-                Log::warning("Digiflazz Price List ($cmd) Succeeded but data structure is invalid or empty.");
-                return [];
+            // KEMBALIKAN SELURUH RESPONS JSON AGAR CALLER BISA CEK ERROR RC: 83
+            if (is_array($responseData)) {
+                return $responseData; 
             }
             
             Log::error("Digiflazz Price List ($cmd) Failed: HTTP Status " . $response->status() . ". Body: " . ($response->body() ?? 'No response body.'));
@@ -318,13 +311,11 @@ class DigiflazzService
     }
 
 
-    // --- Helper Methods ---
-
-    /**
-     * Metode Pembantu untuk Logika Update Database
-     */
+   // --- Helper Methods ---
+    
     protected function updateDatabase(array $products, string $type): bool
     {
+        // ... (Logika updateDatabase tetap sama, tidak perlu diubah) ...
         if (empty($products)) {
             Log::warning("Sync Product Failed ($type): Product list is empty.");
             return false;
@@ -361,7 +352,6 @@ class DigiflazzService
                     'desc' => $item['desc'] ?? null,
                 ]);
                 
-                // Atur Harga Jual
                 if (!$product->exists || $product->sell_price <= 0) {
                     $product->sell_price = $hargaJualAwal;
                 }
@@ -383,19 +373,32 @@ class DigiflazzService
     }
 
 
-    // --- Metode Sinkronisasi Terpisah (Opsional: Digunakan jika tidak menggunakan syncProducts) ---
+   // --- Metode Sinkronisasi Terpisah (FINAL) ---
 
     public function syncPrepaidProducts(): bool
     {
-        $cacheDuration = 360; // 6 menit (lebih aman dari 5 menit)
+        $cacheDuration = 360; // 6 menit
         $cacheKey = 'digiflazz_prepaid_pricelist_sync'; 
 
         $syncResult = Cache::remember($cacheKey, $cacheDuration, function () {
             Log::info('🔄 [SYNC START] Melakukan Sinkronisasi Pricelist PRABAYAR ke Digiflazz.');
             
-            $productsPrepaid = $this->getPriceList('prepaid');
+            $response = $this->getPriceList('prepaid');
             
-            return $this->updateDatabase($productsPrepaid, 'prepaid');
+            if (isset($response['data']) && is_array($response['data'])) {
+                // Penanganan Error Digiflazz (rc: 83 - Limit)
+                if (isset($response['data']['rc']) && $response['data']['rc'] == '83') {
+                     Log::warning('Sinkronisasi Prabayar Gagal karena limitasi Digiflazz (rc: 83). Produk Prabayar dilewati.');
+                     // Kembalikan false untuk menunjukkan sync gagal, tapi Cache tetap diperbarui
+                     return false; 
+                }
+                
+                // Lanjutkan update database dengan data produk yang sebenarnya
+                return $this->updateDatabase($response['data'], 'prepaid');
+            }
+            
+            Log::error('Sinkronisasi Prabayar Gagal: Respon Digiflazz tidak memiliki struktur data yang benar.');
+            return false;
         });
         
         return $syncResult;
@@ -409,9 +412,15 @@ class DigiflazzService
         $syncResult = Cache::remember($cacheKey, $cacheDuration, function () {
             Log::info('🔄 [SYNC START] Melakukan Sinkronisasi Pricelist PASCABAYAR ke Digiflazz.');
 
-            $productsPostpaid = $this->getPriceList('postpaid');
+            $response = $this->getPriceList('postpaid');
             
-            return $this->updateDatabase($productsPostpaid, 'postpaid');
+            if (isset($response['data']) && is_array($response['data'])) {
+                // Lanjutkan update database dengan data produk yang sebenarnya
+                return $this->updateDatabase($response['data'], 'postpaid');
+            }
+
+            Log::error('Sinkronisasi Pascabayar Gagal: Respon Digiflazz tidak memiliki struktur data yang benar.');
+            return false;
         });
         
         return $syncResult;
