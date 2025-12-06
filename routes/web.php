@@ -83,6 +83,11 @@ use App\Http\Controllers\Customer\TopUpController;
 use App\Http\Controllers\Customer\AgentTransactionController; // <--- TAMBAHKAN INI
 
 
+    // Route untuk mengambil data kota PBB
+Route::get('/agent/ppob/cities', [AgentTransactionController::class, 'getPbbCities'])->name('admin.ppob.get-pbb-cities'); 
+// Menggunakan nama route 'admin.ppob.get-pbb-cities' agar sesuai dengan panggilan di Blade
+
+
 Route::middleware(['auth'])->group(function () {
 
     Route::get('/agent/register', [AgentRegistrationController::class, 'index'])->name('agent.register.index');
@@ -119,6 +124,7 @@ Route::middleware(['is_agent'])->prefix('agent')->name('agent.')->group(function
     // Ini yang menyelesaikan error Anda
     Route::get('/transaksi/create', [AgentTransactionController::class, 'create'])->name('transaction.create');
     Route::post('/transaksi/store', [AgentTransactionController::class, 'store'])->name('transaction.store');
+
 
 });
 
