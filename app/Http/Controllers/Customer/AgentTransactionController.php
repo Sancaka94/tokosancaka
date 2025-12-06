@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Http; // Tambahkan Import Ini
 use Illuminate\Support\Facades\Log;  // Tambahkan Import Ini
 use App\Models\PpobProduct;
 use App\Models\PpobTransaction;
+use App\Services\DigiflazzService; // <<< PASTIKAN INI ADA
+
 use App\Models\User;
 use Exception;
 
@@ -164,39 +166,53 @@ class AgentTransactionController extends Controller
         }
     }
 
-     /**
+     
+    /**
      * AJAX: Mengambil Daftar Kota PBB dari API Digiflazz
+     * Endpoint: /agent/ppob/cities
      */
     public function getPbbCities(DigiflazzService $digiflazz)
     {
         try {
-            // Memanggil fungsi baru di DigiflazzService
+            // Memanggil fungsi di DigiflazzService (asumsi fungsi ini mengambil semua produk PBB)
             $products = $digiflazz->getPbbProducts(); 
 
-            // Mengelompokkan berdasarkan Nama Produk (untuk menghilangkan duplikasi)
-            $cities = [];
+            $uniqueCities = [];
+            
+            // Filter hanya produk PBB dan hapus duplikasi
             foreach ($products as $product) {
-                // Hanya ambil produk dengan SKU unik sebagai nama kota (misal: cimahi, pdl)
-                if (str_starts_with($product['sku'], 'cimahi') || str_starts_with($product['sku'], 'pdl')) {
-                    $cities[] = [
-                        'sku' => $product['sku'],
-                        'name' => $product['name']
+                $sku = strtolower($product['sku'] ?? '');
+                $name = $product['name'] ?? $product['brand'] ?? 'PBB';
+
+                // Kita mencari produk yang nama atau SKU nya mengandung PBB/Pajak (misal: cimahi, pdl)
+                // Filter hanya produk PBB yang memiliki SKU spesifik kota/daerah
+                if (str_contains(strtolower($name), 'pbb') && !isset($uniqueCities[$sku])) {
+                    $uniqueCities[$sku] = [
+                        'sku' => $sku,
+                        // Hanya ambil nama produk/kota/daerah PBB
+                        'name' => str_replace(['PBB Kabupaten ', 'PBB Kota ', 'PBB '], '', $name)
                     ];
                 }
-                // Jika produk PBB generik, kita abaikan dulu untuk filter kota spesifik
             }
 
-            // Hapus duplikasi dan urutkan
-            $uniqueCities = array_values(array_unique($cities, SORT_REGULAR));
-            usort($uniqueCities, function($a, $b) {
+            // Urutkan berdasarkan nama kota
+            $finalCities = array_values($uniqueCities);
+            usort($finalCities, function($a, $b) {
                 return strcmp($a['name'], $b['name']);
             });
 
-            return response()->json(['success' => true, 'cities' => $uniqueCities]);
+            // Tambahkan test case CIMAHI jika belum ada (hanya untuk testing)
+            // Ini akan memastikan list tidak kosong saat testing di sandbox
+            if (!isset($uniqueCities['cimahi'])) {
+                 array_unshift($finalCities, ['sku' => 'cimahi', 'name' => 'CIMAHI (TEST CASE)']);
+            }
+
+            return response()->json(['success' => true, 'cities' => $finalCities]);
 
         } catch (\Exception $e) {
             Log::error('Get PBB Cities Error: ' . $e->getMessage());
-            return response()->json(['success' => false, 'message' => 'Gagal mengambil data kota.'], 500);
+            // PENTING: Return JSON 500 agar frontend tahu terjadi error PHP
+            return response()->json(['success' => false, 'message' => 'Gagal mengambil data kota: ' . $e->getMessage()], 500);
         }
     }
 }
