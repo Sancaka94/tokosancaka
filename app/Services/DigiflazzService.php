@@ -74,65 +74,68 @@ class DigiflazzService
         }
     }
 
-    /**
-     * 2. Sinkronisasi Produk
-     * Menggunakan Cache::remember untuk membatasi eksekusi sync menjadi 1x setiap 5 menit.
-     */
-    /**
- * 2. Sinkronisasi Produk (Manual/Sekali Jalan dengan Jeda Cache 6 Menit)
- */
-public function syncProducts()
+    public function syncProducts()
 {
-    $prepaidCacheKey = 'digiflazz_sync_prepaid_last_run';
+    // Kunci Cache untuk Postpaid (pertama) dan Prepaid (kedua)
     $postpaidCacheKey = 'digiflazz_sync_postpaid_last_run';
+    $prepaidCacheKey = 'digiflazz_sync_prepaid_last_run';
     $jedaMenit = 6; // Jeda yang dibutuhkan (6 menit)
+    $postpaidSuccess = false; // Status awal untuk Postpaid
 
-    Log::info('🔄 [SYNC START MANUAL] Melakukan Sinkronisasi Pricelist Digiflazz (Semua Jenis).');
+    Log::info('🔄 [SYNC START MANUAL] Melakukan Sinkronisasi Pricelist Digiflazz (Semua Jenis). (Urutan: Postpaid, Prepaid)');
 
-    // 1. --- Ambil Produk Prabayar ---
-    $productsPrepaid = $this->getPriceList('prepaid');
-    $prepaidSuccess = $this->updateDatabase($productsPrepaid, 'prepaid');
+    // 1. --- Ambil Produk Pascabayar ---
+    $productsPostpaid = $this->getPriceList('postpaid');
+    $postpaidSuccess = $this->updateDatabase($productsPostpaid, 'postpaid');
 
-    // Set cache jika Prepaid berhasil, mencatat waktu terakhir sinkronisasi.
-    if ($prepaidSuccess) {
-        Cache::put($prepaidCacheKey, now(), now()->addMinutes($jedaMenit));
+    // Set cache jika Postpaid berhasil, mencatat waktu terakhir sinkronisasi.
+    if ($postpaidSuccess) {
+        Cache::put($postpaidCacheKey, now(), now()->addMinutes($jedaMenit));
     }
     
-    // 2. --- Ambil Produk Pascabayar (Bersyarat) ---
-    $productsPostpaid = [];
-    $waktuPrepaidTerakhir = Cache::get($prepaidCacheKey);
+    // 2. --- Ambil Produk Prabayar (Bersyarat) ---
+    $prepaidSuccess = false;
+    $waktuPostpaidTerakhir = Cache::get($postpaidCacheKey);
 
-    if (now()->greaterThan($waktuPrepaidTerakhir)) {
-        // Jika waktu saat ini lebih dari waktu di cache (artinya sudah lewat 6 menit),
-        // atau jika cache tidak ada, kita bisa melanjutkan (kecuali jika API menolak).
-        
-        Log::info("➡️ [DIGIFLAZZ] Jeda $jedaMenit menit terpenuhi. Requesting Price List (postpaid)");
+    // Cek apakah sudah melewati jeda yang ditentukan sejak Postpaid terakhir
+    // Logika jeda: Jika waktu sekarang lebih besar dari waktu cache Postpaid + Jeda 6 menit
+    // Catatan: Jika $waktuPostpaidTerakhir NULL (belum pernah sync), now()->greaterThan(NULL) akan selalu TRUE, 
+    // tapi kita tambahkan pengecekan eksplisit untuk clarity.
+    $canRunPrepaid = (
+        !$waktuPostpaidTerakhir || // Belum pernah sync (atau cache hilang)
+        now()->greaterThan($waktuPostpaidTerakhir->addMinutes($jedaMenit)) // Sudah melewati jeda
+    );
+
+    if ($canRunPrepaid) {
+        Log::info("➡️ [DIGIFLAZZ] Jeda $jedaMenit menit terpenuhi atau Sync pertama. Requesting Price List (prepaid)");
         
         // Kita tetap menggunakan sleep singkat sebagai pencegahan tambahan
         sleep(4); 
         
-        $postpaidResponse = $this->getPriceList('postpaid');
+        $prepaidResponse = $this->getPriceList('prepaid');
 
         // Cek jika respons adalah error limit (rc: 83)
-        if (isset($postpaidResponse['rc']) && $postpaidResponse['rc'] == '83') {
-            Log::warning('Sinkronisasi Pascabayar Gagal karena limitasi Digiflazz (rc: 83). Produk Pascabayar dilewati.');
+        if (isset($prepaidResponse['rc']) && $prepaidResponse['rc'] == '83') {
+            Log::warning('Sinkronisasi Prabayar Gagal karena limitasi Digiflazz (rc: 83). Produk Prabayar dilewati.');
         } else {
             // Jika berhasil/bukan error limit, coba update database
-            $productsPostpaid = $postpaidResponse;
-            $this->updateDatabase($productsPostpaid, 'postpaid');
-            Cache::put($postpaidCacheKey, now(), now()->addMinutes($jedaMenit));
+            $productsPrepaid = $prepaidResponse;
+            $prepaidSuccess = $this->updateDatabase($productsPrepaid, 'prepaid');
+            // Set cache jika Prepaid berhasil
+            if ($prepaidSuccess) {
+                 Cache::put($prepaidCacheKey, now(), now()->addMinutes($jedaMenit));
+            }
         }
         
     } else {
-        // Belum mencapai jeda 6 menit, lewati pascabayar.
-        Log::info("⌛ [SYNC SKIP] Sinkronisasi Pascabayar dilewati. Belum mencapai jeda $jedaMenit menit sejak Prepaid.");
+        // Belum mencapai jeda 6 menit, lewati prabayar.
+        Log::info("⌛ [SYNC SKIP] Sinkronisasi Prabayar dilewati. Belum mencapai jeda $jedaMenit menit sejak Postpaid.");
     }
     
-    // Logika penggabungan dan DB update kini ada di updateDatabase() dan logika di atas.
-    
-    // Mengembalikan status sukses jika prepaid sukses (dan postpaid jika dieksekusi)
-    return $prepaidSuccess; 
+    // Mengembalikan status sukses jika salah satu atau keduanya sukses
+    return $postpaidSuccess || $prepaidSuccess; 
 }
+
     /**
      * 3. Transaksi Prabayar (Pulsa/Data/Token)
      */
