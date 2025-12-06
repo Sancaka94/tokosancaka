@@ -17,7 +17,8 @@ class DigiflazzService
     {
         // Kredensial (Sesuaikan dengan .env jika production)
         $this->username = 'mihetiDVGdeW'; 
-        $this->apiKey   = 'dev-d54808c0-87ed-11f0-bdb6-8d5622821215'; 
+        //$this->apiKey   = 'dev-d54808c0-87ed-11f0-bdb6-8d5622821215';
+        $this->apiKey   = '1f48c69f-8676-5d56-a868-10a46a69f9b7';
         $this->baseUrl  = 'https://api.digiflazz.com/v1'; 
     }
 
@@ -141,7 +142,7 @@ class DigiflazzService
             'customer_no' => $customerNo,
             'ref_id' => $refId,
             'sign' => $sign,
-            'testing' => true, // Wajib TRUE untuk Test Case
+            'testing' => false, // Wajib TRUE untuk Test Case
         ];
 
         try {
