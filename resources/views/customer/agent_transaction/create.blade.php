@@ -380,7 +380,7 @@
 
 @push('scripts')
 <script>
-    const logoBasePath = "{{ asset('storage/logo-ppob') }}/";
+    const logoBasePath = "{{ asset('public/storage/logo-ppob') }}/";
     let pbbCitiesCache = []; // Global cache for PBB cities
 
     // Inisialisasi saat window load
