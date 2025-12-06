@@ -295,7 +295,7 @@ class PpobController extends Controller
         try {
             // Panggil service Digiflazz untuk mendapatkan daftar produk
             // Asumsi: method getProducts() di DigiflazzService memanggil getPriceList dan mengembalikan [ 'data' => [...] ]
-            $products = $this->digiflazz->getProducts(); 
+            $products = $this->digiflazz->getPriceList('prepaid');
 
             if (isset($products['data']) && is_array($products['data'])) {
                 $insertedCount = 0;
