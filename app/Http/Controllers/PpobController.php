@@ -307,15 +307,15 @@ public function checkBill(Request $request)
 
 public function sync()
 {
-    // ⭐ BARU: Cek apakah data Pricelist sudah disinkronkan dalam 6 jam terakhir
+    // ⭐ BARU: Cek apakah data Pricelist sudah disinkronkan dalam 10 menit terakhir
     $cacheKey = 'digiflazz_pricelist_synced';
-    $ttlInMinutes = 60 * 6; // 6 jam
+    $ttlInMinutes = 10; // 10 menit
 
     if (Cache::has($cacheKey)) {
-        // Jika masih dalam periode 6 jam, hentikan proses sync dan beri notifikasi
+        // Jika masih dalam periode 10 menit, hentikan proses sync
         return redirect()->route('admin.ppob.index')->with(
              'error', 
-             'Sinkronisasi harga sudah dilakukan baru-baru ini. Coba lagi setelah 6 jam.'
+             'Sinkronisasi harga sudah dilakukan baru-baru ini. Silakan coba lagi setelah 10 menit.'
          );
     }
     
@@ -385,7 +385,7 @@ public function sync()
             
             DB::commit(); 
             
-            // ⭐ BARU: Set Cache jika sinkronisasi berhasil
+            // ⭐ BARU: Set Cache jika sinkronisasi berhasil (hanya 10 menit)
             Cache::put($cacheKey, now(), $ttlInMinutes); 
             
             // FIX Redirect Sukses
