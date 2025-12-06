@@ -78,7 +78,7 @@
                         <div class="flex items-center gap-2 bg-gray-50 border border-gray-200 p-2 rounded-lg">
                             <img id="operator_logo" src="" class="w-8 h-8 object-contain rounded bg-white p-0.5 border border-gray-100">
                             <div>
-                                <p class="text-xs text-gray-400 font-bold uppercase">Terdeteksi:</p>
+                                <p class="xs text-gray-400 font-bold uppercase">Terdeteksi:</p>
                                 <p class="sm font-bold text-gray-800" id="operator_name">-</p>
                             </div>
                             <span class="ml-auto text-green-500"><i class="fas fa-check-circle"></i></span>
@@ -211,7 +211,7 @@
                         <input type="text" id="pasca_no" 
                                class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-purple-500 font-bold text-gray-800 placeholder-gray-300"
                                placeholder="Contoh: 5300xxxx">
-                        <p id="test_case_info" class="text-[10px] text-red-500 mt-1 italic">
+                        <p id="test_case_info" class="text-xs text-red-500 mt-1 italic">
                             *Gunakan Test Case PBB: 329801092375999991, Internet: 7391601001, PLN: 630000000001
                         </p>
                     </div>
@@ -303,7 +303,7 @@
 
                         {{-- Rincian Item (Desc Detail) --}}
                         <div id="res_detail_container" class="mt-4 pt-4 border-t border-dashed border-purple-300 hidden">
-                            <p class="text-xs font-bold text-purple-700 uppercase mb-2">Rincian Item</p>
+                            <p class="xs font-bold text-purple-700 uppercase mb-2">Rincian Item</p>
                             <div id="res_detail_list" class="space-y-2 text-xs bg-white p-3 rounded-lg border border-purple-100">
                                 {{-- Item details injected via JS --}}
                             </div>
@@ -349,7 +349,7 @@
                     <span class="font-bold text-gray-800 text-sm leading-tight block" id="modal_product">-</span>
                 </div>
                 <div class="bg-green-50 p-3 rounded-xl border border-green-100">
-                    <span class="text-[10px] text-green-500 font-bold uppercase block">Modal Agen</span>
+                    <span class="text-xs text-green-500 font-bold uppercase block">Modal Agen</span>
                     <span class="font-bold text-green-700 text-base" id="modal_jual">Rp 0</span>
                 </div>
             </div>
@@ -374,6 +374,16 @@
 <script>
     const logoBasePath = "{{ asset('storage/logo-ppob') }}/";
     let pbbCitiesCache = []; // FIX 1: Deklarasi global pbbCitiesCache
+
+    // Inisialisasi saat window load
+    window.onload = function() {
+        // Cek jika tab Pascabayar aktif, langsung muat kota PBB
+        if (document.getElementById('content-pascabayar').classList.contains('hidden') === false) {
+            handlePascaSkuChange();
+        }
+        // Atur event listener untuk perubahan dropdown utama
+        document.getElementById('pasca_sku').addEventListener('change', handlePascaSkuChange);
+    };
 
     // --- HELPER: Formatter Periode (Carbon-like YYYYMM -> F Y) ---
     function formatPeriodeID(periodeStr) {
@@ -437,7 +447,7 @@
             citySelectionDiv.classList.remove('hidden');
             loadPbbCities();
             pascaNoInput.placeholder = "Masukkan NOP PBB (Nomor Objek Pajak)";
-            testCaseInfo.innerHTML = '*Gunakan Test Case PBB (CIMAHI): 329801092375999991';
+            testCaseInfo.innerHTML = '*Gunakan Test Case PBB: 329801092375999991';
         } 
         // Logika Internet
         else if (selectedSku === 'internet') {
@@ -468,6 +478,7 @@
             return;
         }
 
+        // PENTING: Route admin.ppob.get-pbb-cities harus terdaftar di routes/web.php
         fetch('{{ route("admin.ppob.get-pbb-cities") }}', { 
             method: 'GET',
             headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
