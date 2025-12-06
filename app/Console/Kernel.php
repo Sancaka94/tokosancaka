@@ -57,7 +57,17 @@ class Kernel extends ConsoleKernel
         // Contoh:
 
         // $schedule->command('inspire')->hourly();
+        // Mengosongkan isi file log setiap hari pada tengah malam (00:00)
+    $schedule->exec('truncate -s 0 ' . storage_path('logs/laravel.log'))
+             ->daily();
+             
+    // Alternatif (Lebih sederhana, jika truncate tidak tersedia):
+    // $schedule->exec('> ' . storage_path('logs/laravel.log'))
+    //          ->daily();
 
+    // Atau, jika ingin memastikan log dirotasi (opsi yang lebih disarankan untuk produksi):
+    // $schedule->exec('php artisan log:clear')
+    //          ->daily();
 
 
         // ✅ TAMBAHKAN INI:
