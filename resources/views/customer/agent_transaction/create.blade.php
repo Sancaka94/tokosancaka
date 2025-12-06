@@ -255,7 +255,7 @@
                                 <p class="font-bold text-gray-800" id="res_periode">-</p>
                             </div>
                             <div>
-                                <p class="text-xs text-gray-500 uppercase">Total Tagihan (Pelanggan)</p>
+                                <p class="text-xs text-gray-500 uppercase">Total Tagihan</p>
                                 <p class="font-extrabold text-purple-700 text-xl" id="res_total">-</p>
                             </div>
                         </div>
@@ -491,8 +491,8 @@
                         infoTeknis = (d.desc.jumlah_peserta || '1') + ' Peserta';
                         labelTeknis = 'Jumlah Peserta';
                     }
-                    else if(sku === 'telkom') {
-                        infoTeknis = d.desc.lembar_tagihan + ' Lembar Tagihan';
+                    else if(sku === 'telkom' || sku === 'internet') {
+                        infoTeknis = (d.desc.lembar_tagihan || '1') + ' Lembar Tagihan';
                         labelTeknis = 'Lembar Tagihan';
                     }
                 }
