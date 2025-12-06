@@ -316,7 +316,7 @@ Route::get('/blog/posts/{post}', [App\Http\Controllers\BlogController::class, 's
     Route::get('/admin/posts/{id}/edit', [App\Http\Controllers\Admin\PostController::class, 'edit'])
          ->name('admin.posts.edit');
 
-Route::resource('admin/posts', PostController::class)->names('admin.posts');
+Route::put('admin/posts/{post}', [PostController::class, 'update'])->name('admin.posts.update');
 // =========================================================================
 // == RUTE PPOB / PRODUK DIGITAL (DIGIFLAZZ)
 // =========================================================================
