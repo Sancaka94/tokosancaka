@@ -302,8 +302,12 @@ public function sync()
             // ⭐ PERBAIKAN: Langsung looping pada $productArray, HAPUS ['data']
             foreach ($productArray as $product) {
                 
-                // PENTING: Jika ada produk yang statusnya false, 
-                // ini akan menangkapnya dan memperbarui DB.
+                // ⭐ PERBAIKAN: Pastikan $product adalah array sebelum mencoba mengakses offset (key)
+                if (!is_array($product)) {
+                    // Skip atau log jika elemen bukan array/object yang valid
+                    Log::warning('Skipping invalid product data during sync: ' . (string)$product);
+                    continue; 
+                }
 
                 $localProduct = PpobProduct::firstOrNew(['buyer_sku_code' => $product['buyer_sku_code']]);
 
