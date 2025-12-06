@@ -115,13 +115,7 @@ class Post extends Model
         return $query->with('category', 'author');
     }
 
-    /**
-     * Mendefinisikan kolom untuk Route Model Binding (untuk URL slug).
-     */
-    public function getRouteKeyName(): string
-    {
-        return 'slug';
-    }
+
 
 }
 
