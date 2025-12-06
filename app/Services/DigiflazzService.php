@@ -26,27 +26,54 @@ class DigiflazzService
     }
 
     /**
-     * 1. Mengambil Daftar Harga (Price List)
+     * Mengambil daftar harga dari Digiflazz (Prepaid atau Postpaid)
      */
-    public function getPriceList($cmd = 'prepaid')
+    public function getPriceList($type = 'prepaid')
     {
-        // Note: Signature untuk pricelist biasanya menggunakan string "pricelist" bukan "depo"
-        // Tapi saya biarkan sesuai kode asli Anda jika memang berjalan
-        $sign = md5($this->username . $this->apiKey . "depo");
+        // 1. Buat Payload dan Signature
+        $cmd = ($type === 'postpaid') ? 'pasca' : 'prepaid';
+        $refId = 'PRICELIST-' . time();
+        $sign = md5($this->username . $this->apiKey . $cmd);
 
+        $payload = [
+            'cmd' => $cmd,
+            'username' => $this->username,
+            'sign' => $sign
+        ];
+        
         try {
-            $response = Http::post($this->baseUrl . '/price-list', [
-                'cmd' => $cmd,
-                'username' => $this->username,
-                'sign' => $sign
-            ]);
+            // Log sebelum mengirim permintaan
+            Log::info("➡️ [DIGIFLAZZ] Requesting Price List ($type)", ['payload' => $payload]);
+
+            $url = $this->baseUrl . '/price-list';
+            $response = Http::timeout(30)->post($url, $payload);
+            
+            $responseData = $response->json();
+
+            // =========================================================
+            // ⭐ BARIS KRUSIAL UNTUK LOGGING RESPON
+            // =========================================================
+            Log::info("✅ [DIGIFLAZZ] Price List ($type) Response", [
+                'status_code' => $response->status(),
+                'body' => $responseData
+            ]); 
+            // =========================================================
 
             if ($response->successful()) {
-                return $response->json()['data'];
+                if (isset($responseData['data']['rc']) && $responseData['data']['rc'] === '00' && isset($responseData['data']['pembelian'])) {
+                    return $responseData['data']['pembelian'];
+                }
             }
-            return [];
+
+            // Jika gagal tapi HTTP 200, log pesan error dari Digiflazz
+            if (isset($responseData['data']['message'])) {
+                 Log::error("[DIGIFLAZZ ERROR] Price List ($type) Message: " . $responseData['data']['message']);
+            }
+            
+            return []; // Mengembalikan array kosong jika gagal
+
         } catch (\Exception $e) {
-            Log::error('Digiflazz Price List Error: ' . $e->getMessage());
+            Log::error("[DIGIFLAZZ FATAL] Price List ($type) Exception: " . $e->getMessage());
             return [];
         }
     }
