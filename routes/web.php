@@ -310,6 +310,8 @@ Route::get('/kontak/search', [KontakController::class, 'search'])->name('kontak.
 
 Route::get('/marketplace', [CustomerMarketplaceController::class, 'index'])->name('katalog.index');
 
+Route::get('/blog/posts/{post}', [App\Http\Controllers\BlogController::class, 'show']);
+
 // =========================================================================
 // == RUTE PPOB / PRODUK DIGITAL (DIGIFLAZZ)
 // =========================================================================
