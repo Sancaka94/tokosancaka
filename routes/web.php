@@ -630,7 +630,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::get('/digital', [AdminPpobController::class, 'index'])
         ->name('admin.ppob.index'); 
 
-    Route::get('/sync-produk', [PpobController::class, 'sync'])->name('sync'); // <-- AMANKAN DENGAN 'role:Admin'
+    Route::get('/sync-produk', [PpobController::class, 'sync'])->name('ppob.sync'); // <-- AMANKAN DENGAN 'role:Admin'
 
     // 2. Halaman Kategori (Pulsa, Data, dll)
     // URL: /admin/digital/{slug}
