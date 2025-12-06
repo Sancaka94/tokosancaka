@@ -6,27 +6,17 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http; // Tambahkan Import Ini
+use Illuminate\Support\Facades\Log;  // Tambahkan Import Ini
 use App\Models\PpobProduct;
 use App\Models\PpobTransaction;
+use App\Services\DigiflazzService; // <<< PASTIKAN INI ADA
+
 use App\Models\User;
-use App\Services\DigiflazzService;
 use Exception;
 
 class AgentTransactionController extends Controller
 {
-    // --- KREDENSIAL DIGIFLAZZ HARDCODED ---
-    private $digiflazzUsername = 'mihetiDVGdeW'; 
-    private $apiKeyDev  = 'dev-d54808c0-87ed-11f0-bdb6-8d5622821215'; 
-    private $apiKeyProd = '1f48c69f-8676-5d56-a868-10a46a69f9b7'; // KUNCI PRODUCTION BARU
-    private $testingMode = false; // UBAH KE FALSE JIKA SUDAH SIAP PRODUCTION
-
-    private function getCurrentApiKey()
-    {
-        return $this->testingMode ? $this->apiKeyDev : $this->apiKeyProd;
-    }
-
     /**
      * Halaman Kasir / Transaksi Offline
      */
@@ -36,6 +26,7 @@ class AgentTransactionController extends Controller
 
         // 1. Mulai Query dari PpobProduct yang aktif
         $products = PpobProduct::where('seller_product_status', 1)
+            // 2. Join ke tabel harga agen untuk dapat harga khusus (jika ada)
             ->leftJoin('agent_product_prices', function($join) use ($userId) {
                 $join->on('ppob_products.id', '=', 'agent_product_prices.product_id')
                      ->where('agent_product_prices.user_id', '=', $userId);
@@ -46,9 +37,10 @@ class AgentTransactionController extends Controller
                 'ppob_products.buyer_sku_code',
                 'ppob_products.brand',
                 'ppob_products.category',
-                'ppob_products.sell_price as modal_agen', 
-                'agent_product_prices.selling_price as harga_jual_agen' 
+                'ppob_products.sell_price as modal_agen', // Harga dasar
+                'agent_product_prices.selling_price as harga_jual_agen' // Harga settingan agen (bisa null)
             )
+            // 3. Sorting: Urutkan dari Harga Modal Termurah ke Termahal
             ->orderBy('ppob_products.sell_price', 'asc')
             ->get();
 
@@ -56,51 +48,18 @@ class AgentTransactionController extends Controller
     }
 
     /**
-     * AJAX: Cek Tagihan Pascabayar (PLN, BPJS, PDAM, dll)
-     */
-    public function checkBill(Request $request)
-    {
-        $request->validate([
-            'customer_no' => 'required',
-            'sku' => 'required', 
-            'ref_id' => 'required'
-        ]);
-
-        $digiflazz = new DigiflazzService();
-        
-        // Panggil inquiryPasca dengan kunci yang sesuai
-        $apiKey = $this->getCurrentApiKey();
-        $digiflazz->setCredentials($this->digiflazzUsername, $apiKey, $this->testingMode);
-        
-        $response = $digiflazz->inquiryPasca($request->sku, $request->customer_no, $request->ref_id);
-        
-        return response()->json($response);
-    }
-
-    /**
-     * PROSES TRANSAKSI (PRABAYAR & PASCABAYAR)
+     * Proses Transaksi Offline & Kirim ke Digiflazz
      */
     public function store(Request $request)
     {
-        if ($request->payment_type === 'pasca') {
-            return $this->storePascabayar($request);
-        } else {
-            return $this->storePrabayar($request);
-        }
-    }
-
-    /**
-     * LOGIKA 1: Transaksi Prabayar (Pulsa, Data, Token)
-     */
-    private function storePrabayar(Request $request)
-    {
         $request->validate([
             'sku' => 'required|exists:ppob_products,buyer_sku_code',
-            'customer_no' => 'required|numeric|digits_between:9,20',
+            'customer_no' => 'required|numeric|digits_between:9,15',
         ]);
 
         $user = Auth::user();
         
+        // 1. Ambil Data Produk
         $productData = PpobProduct::leftJoin('agent_product_prices', function($join) use ($user) {
             $join->on('ppob_products.id', '=', 'agent_product_prices.product_id')
                  ->where('agent_product_prices.user_id', '=', $user->id);
@@ -111,6 +70,7 @@ class AgentTransactionController extends Controller
 
         if (!$productData) return back()->with('error', 'Produk tidak ditemukan.');
 
+        // 2. Hitung Harga & Cek Saldo
         $modalAgen = $productData->sell_price;
         $hargaJual = $productData->custom_price ?? ($modalAgen + 2000);
         $profit    = $hargaJual - $modalAgen;
@@ -119,14 +79,47 @@ class AgentTransactionController extends Controller
             return back()->with('error', 'Saldo tidak mencukupi.');
         }
 
-        $orderId = 'TRX-' . time() . rand(100, 999);
+        // ============================================================
+        // PERSIAPAN PAYLOAD (HARDCODED CREDENTIALS)
+        // ============================================================
+        
+        // Kredensial Langsung
+        $username = 'mihetiDVGdeW'; 
+        //$apiKey   = 'dev-d54808c0-87ed-11f0-bdb6-8d5622821215'; 
+        //$testingMode = true; // Set false jika sudah production
+
+        $apiKey   = '1f48c69f-8676-5d56-a868-10a46a69f9b7'; 
+        $testingMode = false; // Set false jika sudah production
+
+        
+
+        $orderId  = 'TRX-OFFLINE-' . time() . rand(100, 999);
+        
+        // Generate Signature: md5(username + key + ref_id)
+        $validSign = md5($username . $apiKey . $orderId);
+
+        // Payload Bersih
+        $cleanPayload = [
+            'username'       => $username,
+            'buyer_sku_code' => $request->sku,
+            'customer_no'    => $request->customer_no,
+            'ref_id'         => $orderId,
+            'sign'           => $validSign,
+            'testing'        => $testingMode,
+        ];
+
+        // ============================================================
+        // EKSEKUSI TRANSAKSI
+        // ============================================================
 
         DB::beginTransaction();
         try {
+            // 1. Potong Saldo Agen
             $user->decrement('saldo', $modalAgen);
 
+            // 2. Simpan Transaksi Lokal
             $trx = new PpobTransaction();
-            $trx->user_id        = $user->id_pengguna; 
+            $trx->user_id        = $user->id_pengguna;
             $trx->order_id       = $orderId;
             $trx->buyer_sku_code = $request->sku;
             $trx->customer_no    = $request->customer_no;
@@ -134,127 +127,43 @@ class AgentTransactionController extends Controller
             $trx->selling_price  = $hargaJual;
             $trx->profit         = $profit;
             $trx->payment_method = 'SALDO_AGEN';
-            $trx->status         = 'Processing';
-            $trx->message        = 'Sedang diproses...';
-            $trx->desc           = json_encode(['type' => 'offline_sale_prepaid']);
+            $trx->status         = 'Processing'; // Status awal processing
+            $trx->message        = 'Sedang diproses ke Provider...';
+            $trx->desc           = json_encode(['type' => 'offline_sale']);
             $trx->save();
 
-            // KIRIM KE DIGIFLAZZ
-            $digiflazz = new DigiflazzService();
-            // PENTING: Mengatur kredensial sebelum memanggil method service
-            $digiflazz->setCredentials($this->digiflazzUsername, $this->getCurrentApiKey(), $this->testingMode);
+            // 3. KIRIM KE DIGIFLAZZ (Langsung dari Controller)
+            // Timeout 30 detik untuk menghindari loading lama
+            $response = Http::timeout(30)->post('https://api.digiflazz.com/v1/transaction', $cleanPayload);
             
-            $resp = $digiflazz->transaction($request->sku, $request->customer_no, $orderId);
-            $d = $resp['data'] ?? [];
+            $respData = $response->json();
+            
+            // Log respon untuk debugging (cek di storage/logs/laravel.log)
+            Log::info('Digiflazz Response:', $respData ?? []);
 
-            // Update Info Instan (RC, SN, Desc)
-            if(isset($d['rc'])) $trx->rc = $d['rc'];
-            if(isset($d['sn'])) $trx->sn = $d['sn'];
-            if(isset($d['message'])) $trx->message = $d['message'];
-            if(isset($d['desc'])) $trx->desc = json_encode($d['desc']); 
-
-            // Handle Error Instan
-            if (isset($d['status']) && in_array($d['status'], ['Gagal', 'Failed'])) {
+            // Cek apakah provider langsung merespon Gagal (misal: nomor salah/produk gangguan)
+            if (isset($respData['data']['status']) && in_array($respData['data']['status'], ['Gagal', 'Failed'])) {
                  $trx->status = 'Failed';
+                 $trx->message = $respData['data']['message'] ?? 'Transaksi Gagal dari Pusat';
+                 $trx->sn = $respData['data']['sn'] ?? '';
                  $trx->save();
-                 $user->increment('saldo', $modalAgen); // Refund Otomatis
+                 
+                 // Refund saldo agen karena gagal
+                 $user->increment('saldo', $modalAgen);
+                 
                  DB::commit();
-                 return back()->with('error', 'Transaksi Gagal: ' . $trx->message . ' (RC: ' . ($trx->rc ?? '-') . ')');
+                 return back()->with('error', 'Transaksi Gagal: ' . $trx->message);
             }
-
-            $trx->save();
+            
+            // Update pesan jika ada info dari provider (misal: "Transaksi Pending")
+            if (isset($respData['data']['message'])) {
+                $trx->message = $respData['data']['message'];
+                $trx->save();
+            }
 
             DB::commit();
-            return redirect()->route('agent.transaction.create')->with('success', 'Transaksi Prabayar Diproses!');
 
-        } catch (Exception $e) {
-            DB::rollBack();
-            return back()->with('error', 'Error: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * LOGIKA 2: Transaksi Pascabayar (Bayar Tagihan)
-     */
-    private function storePascabayar(Request $request)
-    {
-        $request->validate([
-            'sku' => 'required',
-            'customer_no' => 'required',
-            'ref_id' => 'required', 
-            'selling_price' => 'required|numeric' 
-        ]);
-
-        $user = Auth::user();
-        
-        if ($user->saldo < $request->selling_price) {
-            return back()->with('error', 'Saldo tidak mencukupi.');
-        }
-
-        DB::beginTransaction();
-        try {
-            // 1. Buat Transaksi Processing Dulu (Supaya tercatat)
-            $trx = new PpobTransaction();
-            $trx->user_id        = $user->id_pengguna;
-            $trx->order_id       = $request->ref_id; 
-            $trx->buyer_sku_code = $request->sku;
-            $trx->customer_no    = $request->customer_no;
-            $trx->price          = 0; // Modal belum fix
-            $trx->selling_price  = $request->selling_price;
-            $trx->profit         = 0;
-            $trx->payment_method = 'SALDO_AGEN';
-            $trx->status         = 'Processing';
-            $trx->message        = 'Melakukan Pembayaran...';
-            $trx->desc           = json_encode(['type' => 'offline_sale_postpaid']);
-            $trx->save();
-
-            // 2. Eksekusi Pembayaran ke Digiflazz
-            $digiflazz = new DigiflazzService();
-            // PENTING: Mengatur kredensial sebelum memanggil method service
-            $digiflazz->setCredentials($this->digiflazzUsername, $this->getCurrentApiKey(), $this->testingMode);
-            
-            $apiResponse = $digiflazz->payPasca($request->sku, $request->customer_no, $request->ref_id);
-            $d = $apiResponse['data'] ?? [];
-
-            // 3. Cek Status Pembayaran
-            if (isset($d['status']) && ($d['status'] == 'Sukses' || $d['status'] == 'Pending' || $d['rc'] == '00')) {
-                
-                // Update Data Real dari API
-                $modalReal = $d['price'] ?? 0;
-                $trx->price = $modalReal;
-                $trx->profit = $trx->selling_price - $modalReal;
-                
-                // Status & Detail
-                $trx->status = ($d['status'] == 'Sukses' || $d['rc'] == '00') ? 'Success' : 'Pending';
-                $trx->message = $d['message'] ?? 'Pembayaran Berhasil';
-                $trx->sn = $d['sn'] ?? '';
-                $trx->rc = $d['rc'] ?? null; 
-                
-                // PENTING: Simpan Deskripsi Lengkap (Nama, Lembar, Detail Item)
-                if(isset($d['desc'])) {
-                    $trx->desc = json_encode($d['desc']);
-                }
-                
-                $trx->save();
-
-                // Potong Saldo sesuai Modal Real
-                if ($modalReal > 0) {
-                    $user->decrement('saldo', $modalReal);
-                }
-
-                DB::commit();
-                return redirect()->route('agent.transaction.create')->with('success', 'Pembayaran Tagihan Berhasil!');
-            
-            } else {
-                // Gagal Bayar
-                $trx->status = 'Failed';
-                $trx->message = $d['message'] ?? 'Pembayaran Gagal';
-                $trx->rc = $d['rc'] ?? null; // Simpan RC Error
-                $trx->save();
-                
-                DB::commit(); // Commit status Failed, Saldo tidak terpotong
-                return back()->with('error', 'Pembayaran Gagal: ' . $trx->message);
-            }
+            return redirect()->route('agent.transaction.create')->with('success', 'Transaksi Berhasil Diproses! Silakan tunggu status berubah.');
 
         } catch (Exception $e) {
             DB::rollBack();
@@ -262,8 +171,10 @@ class AgentTransactionController extends Controller
         }
     }
 
-    /**
-     * AJAX: Mengambil Daftar Kota PBB dari Database Lokal
+     
+     /**
+     * AJAX: Mengambil Daftar Kota PBB dari Database Lokal (Dilengkapi Pencarian)
+     * Endpoint: /agent/ppob/cities
      */
     public function getPbbCities(Request $request)
     {
@@ -281,12 +192,27 @@ class AgentTransactionController extends Controller
             $cities = $query->orderBy('city_name', 'asc')
                 ->get();
             
+            // Konversi ke array sederhana untuk JSON response
             $finalCities = $cities->map(function ($city) {
                 return [
                     'sku' => $city->sku,
                     'name' => $city->name
                 ];
             })->toArray();
+
+            // PENTING: Untuk memastikan CIMAHI test case tersedia jika Anda menggunakannya
+            // Ini bisa dihapus jika semua produk PBB Anda sudah real.
+            $cimahiExists = false;
+            foreach ($finalCities as $city) {
+                if ($city['sku'] === 'cimahi') {
+                    $cimahiExists = true;
+                    break;
+                }
+            }
+            if (!$cimahiExists) {
+                 // Tambahkan CIMAHI (TEST CASE) di awal
+                 array_unshift($finalCities, ['sku' => 'cimahi', 'name' => 'CIMAHI (TEST CASE)']);
+            }
             
             return response()->json(['success' => true, 'cities' => $finalCities]);
 
