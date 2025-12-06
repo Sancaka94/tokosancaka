@@ -49,7 +49,7 @@ class PostController extends Controller
 
         // Hanya ambil kolom yang diperlukan dan filter User yang punya Post
         $categories = Category::select('id', 'name')->get();
-        $authors = User::whereHas('posts')->select('id', 'name')->get();
+        $authors = User::whereHas('posts')->select('id_pengguna', 'name')->get();
 
         // Kirim semua data yang diperlukan ke view
         return view('admin.posts.index', compact('posts', 'categories', 'authors'));
