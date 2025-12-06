@@ -197,12 +197,20 @@
                         </select>
                     </div>
 
-                    {{-- Dynamic PBB City Selection / Normal Input --}}
-                    <div id="dynamic_city_selection" class="hidden">
+                    {{-- Dynamic PBB City Selection / Search Input --}}
+                    <div id="dynamic_city_selection" class="hidden relative">
                         <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Pilih Kota PBB</label>
-                        <select id="pbb_city_sku" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white">
-                            <option value="">-- Memuat Kota... --</option>
-                        </select>
+                        <input type="text" id="pbb_city_search" 
+                            class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 font-bold text-gray-800 placeholder-gray-300"
+                            placeholder="Ketik nama kota, misal: Cimahi"
+                            onkeyup="filterPbbCities(this.value)">
+                        
+                        <input type="hidden" id="pbb_city_sku_selected"> {{-- Tempat menyimpan SKU yang terpilih --}}
+
+                        {{-- Dropdown Hasil Pencarian --}}
+                        <div id="pbb_search_results" class="absolute z-10 w-full bg-white border border-gray-300 rounded-xl shadow-lg mt-1 max-h-48 overflow-y-auto hidden">
+                            {{-- Results will be injected here --}}
+                        </div>
                     </div>
 
                     {{-- Input Nomor --}}
@@ -374,6 +382,7 @@
 <script>
     const logoBasePath = "{{ asset('storage/logo-ppob') }}/";
     let pbbCitiesCache = []; // FIX 1: Deklarasi global pbbCitiesCache
+    let currentPbbSku = ''; // Menyimpan SKU kota PBB yang dipilih
 
     // Inisialisasi saat window load
     window.onload = function() {
@@ -383,6 +392,19 @@
         }
         // Atur event listener untuk perubahan dropdown utama
         document.getElementById('pasca_sku').addEventListener('change', handlePascaSkuChange);
+
+        // Tambahkan event listener untuk input pencarian PBB (dengan delay)
+        const pbbSearchInput = document.getElementById('pbb_city_search');
+        if (pbbSearchInput) {
+            let searchTimeout;
+            pbbSearchInput.addEventListener('keyup', function() {
+                clearTimeout(searchTimeout);
+                const query = this.value;
+                searchTimeout = setTimeout(() => {
+                    filterPbbCities(query);
+                }, 300); // Tunggu 300ms setelah user berhenti mengetik
+            });
+        }
     };
 
     // --- HELPER: Formatter Periode (Carbon-like YYYYMM -> F Y) ---
@@ -437,15 +459,16 @@
         const pascaNoInput = document.getElementById('pasca_no');
         const testCaseInfo = document.getElementById('test_case_info');
 
-        // Reset display
+        // Reset state PBB
         citySelectionDiv.classList.add('hidden');
         pascaNoInput.placeholder = "Contoh: 5300xxxx";
         testCaseInfo.style.display = 'block';
+        currentPbbSku = ''; // Reset SKU PBB yang dipilih
 
         // Logika PBB
         if (selectedSku === 'pbb-city') {
             citySelectionDiv.classList.remove('hidden');
-            loadPbbCities();
+            loadPbbCities(''); // Load semua kota saat pertama kali
             pascaNoInput.placeholder = "Masukkan NOP PBB (Nomor Objek Pajak)";
             testCaseInfo.innerHTML = '*Gunakan Test Case PBB: 329801092375999991';
         } 
@@ -467,54 +490,74 @@
         document.getElementById('pasca_empty').classList.remove('hidden');
     }
 
-    function loadPbbCities() {
-        const selectElement = document.getElementById('pbb_city_sku');
-        selectElement.innerHTML = '<option value="">-- Memuat Kota... --</option>';
-        selectElement.disabled = true;
-
-        // FIX 2: Akses cache yang sudah dideklarasikan global
-        if (pbbCitiesCache.length > 0) {
-            renderPbbCities(pbbCitiesCache);
-            return;
+    function loadPbbCities(query) {
+        const resultsDiv = document.getElementById('pbb_search_results');
+        const searchInput = document.getElementById('pbb_city_search');
+        resultsDiv.innerHTML = '<div class="p-2 text-gray-500">Memuat...</div>';
+        resultsDiv.classList.remove('hidden');
+        
+        let url = '{{ route("admin.ppob.get-pbb-cities") }}';
+        if (query) {
+             url += `?q=${query}`;
         }
 
-        // PENTING: Route admin.ppob.get-pbb-cities harus terdaftar di routes/web.php
-        fetch('{{ route("admin.ppob.get-pbb-cities") }}', { 
+        fetch(url, { 
             method: 'GET',
             headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
         })
         .then(res => res.json())
         .then(data => {
-            if (data.success && data.cities) {
+            resultsDiv.innerHTML = ''; // Clear loading
+            
+            if (data.success && data.cities && data.cities.length > 0) {
                 pbbCitiesCache = data.cities;
-                renderPbbCities(data.cities);
+                renderPbbResults(data.cities);
             } else {
-                // Hapus placeholder jika gagal
-                selectElement.innerHTML = '<option value="">Gagal Memuat Kota</option>';
+                resultsDiv.innerHTML = '<div class="p-2 text-sm text-red-500">Kota tidak ditemukan.</div>';
             }
         })
         .catch(err => {
             console.error("Fetch City Error:", err);
-            selectElement.innerHTML = '<option value="">Error Server</option>';
+            resultsDiv.innerHTML = '<div class="p-2 text-sm text-red-500">Error saat memuat data.</div>';
         });
     }
 
-    function renderPbbCities(cities) {
-        const selectElement = document.getElementById('pbb_city_sku');
-        selectElement.innerHTML = '';
-        selectElement.disabled = false;
+    function filterPbbCities(query) {
+        const resultsDiv = document.getElementById('pbb_search_results');
+        if (query.length > 1) {
+             loadPbbCities(query); // Kirim query ke backend untuk pencarian DB
+        } else {
+             resultsDiv.classList.add('hidden');
+        }
+        document.getElementById('pbb_city_sku_selected').value = ''; // Reset SKU saat mulai mengetik
+        currentPbbSku = '';
+    }
 
-        let defaultOption = document.createElement('option');
-        defaultOption.value = '';
-        defaultOption.innerText = '-- Pilih Kota / Kabupaten --';
-        selectElement.appendChild(defaultOption);
+    function renderPbbResults(cities) {
+        const resultsDiv = document.getElementById('pbb_search_results');
+        resultsDiv.innerHTML = '';
+        resultsDiv.classList.remove('hidden');
 
         cities.forEach(city => {
-            let option = document.createElement('option');
-            option.value = city.sku;
-            option.innerText = city.name;
-            selectElement.appendChild(option);
+            let item = document.createElement('div');
+            item.className = 'p-2 text-sm cursor-pointer hover:bg-purple-100/70';
+            item.innerText = city.name;
+            item.setAttribute('data-sku', city.sku);
+            item.setAttribute('data-name', city.name);
+            
+            // Logika Auto Select saat diklik
+            item.onclick = function() {
+                selectPbbCity(this.getAttribute('data-sku'), this.getAttribute('data-name'));
+            };
+            resultsDiv.appendChild(item);
         });
+    }
+
+    function selectPbbCity(sku, name) {
+        document.getElementById('pbb_city_search').value = name;
+        document.getElementById('pbb_city_sku_selected').value = sku;
+        currentPbbSku = sku; // Simpan SKU final
+        document.getElementById('pbb_search_results').classList.add('hidden');
     }
     
     // --- UTAMA: LOGIKA PASCABAYAR CEK TAGIHAN ---
@@ -524,7 +567,7 @@
         const no = document.getElementById('pasca_no').value;
 
         if (sku === 'pbb-city') {
-            sku = document.getElementById('pbb_city_sku').value;
+            sku = currentPbbSku; // Ambil SKU dari hasil pencarian yang dipilih
         }
 
         if(sku === 'pbb-city' || sku === '') {

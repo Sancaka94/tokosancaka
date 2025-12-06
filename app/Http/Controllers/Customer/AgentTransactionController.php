@@ -167,18 +167,24 @@ class AgentTransactionController extends Controller
     }
 
      
-      /**
-     * AJAX: Mengambil Daftar Kota PBB dari Database Lokal
+     /**
+     * AJAX: Mengambil Daftar Kota PBB dari Database Lokal (Dilengkapi Pencarian)
      * Endpoint: /agent/ppob/cities
      */
     public function getPbbCities(Request $request)
     {
         try {
-            // Mengambil data dari tabel PBB statis yang baru dibuat
-            $cities = DB::table('ppob_pbb_products')
+            $query = DB::table('ppob_pbb_products')
                 ->select('sku_code as sku', 'city_name as name')
-                ->where('is_active', 1)
-                ->orderBy('city_name', 'asc')
+                ->where('is_active', 1);
+
+            // LOGIKA PENCARIAN
+            if ($request->has('q') && !empty($request->q)) {
+                $searchTerm = '%' . strtolower($request->q) . '%';
+                $query->where(DB::raw('LOWER(city_name)'), 'like', $searchTerm);
+            }
+
+            $cities = $query->orderBy('city_name', 'asc')
                 ->get();
             
             // Konversi ke array sederhana untuk JSON response
