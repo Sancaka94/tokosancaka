@@ -78,87 +78,61 @@ class DigiflazzService
      * 2. Sinkronisasi Produk
      * Menggunakan Cache::remember untuk membatasi eksekusi sync menjadi 1x setiap 5 menit.
      */
-    public function syncProducts()
-    {
-        // Konstanta waktu cache: 5 menit (300 detik)
-        $cacheDuration = 300; 
-        $cacheKey = 'digiflazz_full_pricelist_sync'; 
+    /**
+ * 2. Sinkronisasi Produk (Manual/Sekali Jalan dengan Jeda Cache 6 Menit)
+ */
+public function syncProducts()
+{
+    $prepaidCacheKey = 'digiflazz_sync_prepaid_last_run';
+    $postpaidCacheKey = 'digiflazz_sync_postpaid_last_run';
+    $jedaMenit = 6; // Jeda yang dibutuhkan (6 menit)
 
-        $syncResult = Cache::remember($cacheKey, $cacheDuration, function () {
+    Log::info('🔄 [SYNC START MANUAL] Melakukan Sinkronisasi Pricelist Digiflazz (Semua Jenis).');
 
-            Log::info('🔄 [SYNC START] Melakukan Sinkronisasi Pricelist ke Digiflazz (Cache Kedaluwarsa)');
+    // 1. --- Ambil Produk Prabayar ---
+    $productsPrepaid = $this->getPriceList('prepaid');
+    $prepaidSuccess = $this->updateDatabase($productsPrepaid, 'prepaid');
 
-            // 1. Ambil Produk Prabayar
-            $productsPrepaid = $this->getPriceList('prepaid');
-            
-            // JEDA WAKTU (DELAY): Pertahankan JEDA 2 detik antar panggilan API Pricelist.
-            sleep(4); 
-
-            // 2. Ambil Produk Pascabayar
-            $productsPostpaid = $this->getPriceList('postpaid');
-
-            // --- Logika Sinkronisasi ke Database Dimulai ---
-            $productsPrepaid = is_array($productsPrepaid) ? $productsPrepaid : [];
-            $productsPostpaid = is_array($productsPostpaid) ? $productsPostpaid : [];
-            
-            $products = array_merge($productsPrepaid, $productsPostpaid);
-
-            if (empty($products)) {
-                Log::error('Sync Product Failed: Both prepaid and postpaid lists are empty. Returning false.');
-                return false;
-            }
-
-            DB::beginTransaction();
-            try {
-                $processedCount = 0;
-                foreach ($products as $item) {
-                    if (!is_array($item)) continue;
-                    if (!isset($item['buyer_sku_code']) || !isset($item['price'])) continue;
-
-                    $margin = 2000;
-                    $modal = (float)$item['price'];
-                    $hargaJual = $modal + $margin;
-
-                    $product = PpobProduct::firstOrNew(['buyer_sku_code' => $item['buyer_sku_code']]);
-                    
-                    // Update data produk
-                    $product->fill([
-                        'product_name' => $item['product_name'] ?? null,
-                        'category' => $item['category'] ?? null,
-                        'brand' => $item['brand'] ?? null,
-                        'type' => $item['type'] ?? null,
-                        'seller_name' => $item['seller_name'] ?? null,
-                        'price' => $modal,
-                        'buyer_product_status' => $item['buyer_product_status'] ?? false,
-                        'seller_product_status' => $item['seller_product_status'] ?? false,
-                        'unlimited_stock' => $item['unlimited_stock'] ?? false,
-                        'stock' => $item['stock'] ?? 0,
-                        'multi' => $item['multi'] ?? false,
-                        'start_cut_off' => $item['start_cut_off'] ?? null,
-                        'end_cut_off' => $item['end_cut_off'] ?? null,
-                        'desc' => $item['desc'] ?? null,
-                    ]);
-
-                    if (!$product->exists || $product->sell_price <= 0) {
-                        $product->sell_price = $hargaJual;
-                    }
-                    
-                    $product->save();
-                    $processedCount++;
-                }
-                DB::commit();
-                
-                Log::info("✅ [SYNC END] Sinkronisasi Produk Berhasil. Total $processedCount items.");
-                return true; 
-
-            } catch (\Exception $e) {
-                DB::rollBack();
-                Log::error('Sync Product Failed: ' . $e->getMessage());
-                return false; 
-            }
-        });
-        return $syncResult;
+    // Set cache jika Prepaid berhasil, mencatat waktu terakhir sinkronisasi.
+    if ($prepaidSuccess) {
+        Cache::put($prepaidCacheKey, now(), now()->addMinutes($jedaMenit));
     }
+    
+    // 2. --- Ambil Produk Pascabayar (Bersyarat) ---
+    $productsPostpaid = [];
+    $waktuPrepaidTerakhir = Cache::get($prepaidCacheKey);
+
+    if (now()->greaterThan($waktuPrepaidTerakhir)) {
+        // Jika waktu saat ini lebih dari waktu di cache (artinya sudah lewat 6 menit),
+        // atau jika cache tidak ada, kita bisa melanjutkan (kecuali jika API menolak).
+        
+        Log::info("➡️ [DIGIFLAZZ] Jeda $jedaMenit menit terpenuhi. Requesting Price List (postpaid)");
+        
+        // Kita tetap menggunakan sleep singkat sebagai pencegahan tambahan
+        sleep(4); 
+        
+        $postpaidResponse = $this->getPriceList('postpaid');
+
+        // Cek jika respons adalah error limit (rc: 83)
+        if (isset($postpaidResponse['rc']) && $postpaidResponse['rc'] == '83') {
+            Log::warning('Sinkronisasi Pascabayar Gagal karena limitasi Digiflazz (rc: 83). Produk Pascabayar dilewati.');
+        } else {
+            // Jika berhasil/bukan error limit, coba update database
+            $productsPostpaid = $postpaidResponse;
+            $this->updateDatabase($productsPostpaid, 'postpaid');
+            Cache::put($postpaidCacheKey, now(), now()->addMinutes($jedaMenit));
+        }
+        
+    } else {
+        // Belum mencapai jeda 6 menit, lewati pascabayar.
+        Log::info("⌛ [SYNC SKIP] Sinkronisasi Pascabayar dilewati. Belum mencapai jeda $jedaMenit menit sejak Prepaid.");
+    }
+    
+    // Logika penggabungan dan DB update kini ada di updateDatabase() dan logika di atas.
+    
+    // Mengembalikan status sukses jika prepaid sukses (dan postpaid jika dieksekusi)
+    return $prepaidSuccess; 
+}
     /**
      * 3. Transaksi Prabayar (Pulsa/Data/Token)
      */
@@ -329,69 +303,85 @@ class DigiflazzService
         $this->baseUrl = $testingMode ? self::URL_DEV : self::URL_PROD;
     }
 
-    /**
-     * Metode Pembantu untuk Logika Update Database
-     */
-    protected function updateDatabase(array $products, string $type)
-    {
-        if (empty($products)) {
-            Log::warning("Sync Product Failed ($type): Product list is empty.");
-            return false;
-        }
+    // DigiflazzService.php
 
-        DB::beginTransaction();
-        try {
-            $processedCount = 0;
-            foreach ($products as $item) {
-                if (!is_array($item)) continue;
-                if (!isset($item['buyer_sku_code']) || !isset($item['price'])) continue;
+// Pastikan model PpobProduct sudah diimpor: use App\Models\PpobProduct;
 
-                $margin = 2000;
-                $modal = (float)$item['price'];
-                $hargaJual = $modal + $margin;
-
-                $product = PpobProduct::firstOrNew(['buyer_sku_code' => $item['buyer_sku_code']]);
-                
-                // Update data produk
-                $product->fill([
-                    'product_name' => $item['product_name'] ?? null,
-                    'category' => $item['category'] ?? null,
-                    'brand' => $item['brand'] ?? null,
-                    'type' => $item['type'] ?? null,
-                    'seller_name' => $item['seller_name'] ?? null,
-                    'price' => $modal,
-                    'buyer_product_status' => $item['buyer_product_status'] ?? false,
-                    'seller_product_status' => $item['seller_product_status'] ?? false,
-                    'unlimited_stock' => $item['unlimited_stock'] ?? false,
-                    'stock' => $item['stock'] ?? 0,
-                    'multi' => $item['multi'] ?? false,
-                    'start_cut_off' => $item['start_cut_off'] ?? null,
-                    'end_cut_off' => $item['end_cut_off'] ?? null,
-                    'desc' => $item['desc'] ?? null,
-                    // Tambahkan kolom 'is_postpaid' jika model Anda punya, untuk identifikasi
-                    // 'is_postpaid' => ($type === 'postpaid'), 
-                ]);
-
-                if (!$product->exists || $product->sell_price <= 0) {
-                    // Hanya set harga jual jika produk baru atau harga jual belum pernah diset
-                    $product->sell_price = $hargaJual;
-                }
-                
-                $product->save();
-                $processedCount++;
-            }
-            DB::commit();
-            
-            Log::info("✅ [SYNC END] Sinkronisasi Produk ($type) Berhasil. Total $processedCount items.");
-            return true; 
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error("Sync Product Failed ($type): " . $e->getMessage());
-            return false; 
-        }
+/**
+ * Metode Pembantu untuk Logika Update Database
+ * Melakukan bulk update/insert data produk ke database.
+ * * @param array $products Daftar produk dari API (prepaid atau postpaid)
+ * @param string $type Jenis produk ('prepaid' atau 'postpaid')
+ * @return bool Status keberhasilan update database
+ */
+protected function updateDatabase(array $products, string $type)
+{
+    if (empty($products)) {
+        Log::warning("Sync Product Failed ($type): Product list is empty.");
+        return false;
     }
 
+    DB::beginTransaction();
+    try {
+        $processedCount = 0;
+        
+        // Margin keuntungan yang diterapkan (diasumsikan Rp 2000)
+        $margin = 2000;
+
+        foreach ($products as $item) {
+            // Pastikan item adalah array dan memiliki key dasar yang diperlukan
+            if (!is_array($item)) continue;
+            if (!isset($item['buyer_sku_code']) || !isset($item['price'])) continue;
+
+            $modal = (float)$item['price'];
+            $hargaJualAwal = $modal + $margin;
+
+            // 1. Cari atau buat record berdasarkan buyer_sku_code (Upsert logic)
+            $product = PpobProduct::firstOrNew(['buyer_sku_code' => $item['buyer_sku_code']]);
+            
+            // 2. Isi/Update data produk dari API
+            $product->fill([
+                'product_name' => $item['product_name'] ?? null,
+                'category' => $item['category'] ?? null,
+                'brand' => $item['brand'] ?? null,
+                'type' => $item['type'] ?? null,
+                'seller_name' => $item['seller_name'] ?? null,
+                'price' => $modal, // Harga Modal dari Digiflazz
+                'buyer_product_status' => $item['buyer_product_status'] ?? false,
+                'seller_product_status' => $item['seller_product_status'] ?? false,
+                'unlimited_stock' => $item['unlimited_stock'] ?? false,
+                'stock' => $item['stock'] ?? 0,
+                'multi' => $item['multi'] ?? false,
+                'start_cut_off' => $item['start_cut_off'] ?? null,
+                'end_cut_off' => $item['end_cut_off'] ?? null,
+                'desc' => $item['desc'] ?? null,
+            ]);
+
+            // 3. Atur Harga Jual (Hanya di-set jika produk baru atau harga jual belum pernah diatur)
+            // Ini mencegah menimpa manual sell_price yang mungkin sudah diatur admin.
+            if (!$product->exists || $product->sell_price <= 0) {
+                $product->sell_price = $hargaJualAwal;
+            }
+            
+            // Tambahkan kolom penanda jenis produk (jika ada di model)
+            // $product->is_postpaid = ($type === 'postpaid');
+            
+            // 4. Simpan ke database
+            $product->save();
+            $processedCount++;
+        }
+        
+        DB::commit(); // Komit semua perubahan
+        
+        Log::info("✅ [SYNC END] Sinkronisasi Produk ($type) Berhasil. Total $processedCount items.");
+        return true; 
+
+    } catch (\Exception $e) {
+        DB::rollBack(); // Rollback jika terjadi error
+        Log::error("Sync Product Failed ($type): Gagal saat memproses data. " . $e->getMessage());
+        return false; 
+    }
+}
 
     /**
      * 2.1. Sinkronisasi Produk PRABAYAR
