@@ -83,7 +83,9 @@ use App\Http\Controllers\Customer\TopUpController;
 use App\Http\Controllers\Customer\AgentTransactionController; // <--- TAMBAHKAN INI
 
 Route::middleware(['auth'])->prefix('ppob')->name('ppob.')->group(function () {
-    Route::get('sync-produk', [PpobController::class, 'sync'])->name('sync');
+    // FINAL ROUTE SINKRONISASI TERPISAH
+        Route::get('/sync/prepaid', [PpobProductController::class, 'syncPrepaid'])->name('sync.prepaid');
+        Route::get('/sync/postpaid', [PpobProductController::class, 'syncPostpaid'])->name('sync.postpaid');
 });
 
 
