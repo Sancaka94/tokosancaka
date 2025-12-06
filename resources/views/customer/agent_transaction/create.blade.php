@@ -362,7 +362,7 @@
 
 @push('scripts')
 <script>
-    const logoBasePath = "{{ asset('storage/logo-ppob') }}/";
+    const logoBasePath = "{{ asset('public/storage/logo-ppob') }}/";
 
     // --- HELPER: Formatter Periode (Carbon-like YYYYMM -> F Y) ---
     function formatPeriodeID(periodeStr) {
