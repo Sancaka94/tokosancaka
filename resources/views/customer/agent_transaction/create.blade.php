@@ -381,7 +381,7 @@
 @push('scripts')
 <script>
     const logoBasePath = "{{ asset('storage/logo-ppob') }}/";
-    let pbbCitiesCache = []; // FIX 1: Deklarasi global pbbCitiesCache
+    let pbbCitiesCache = []; // Global cache for PBB cities
 
     // Inisialisasi saat window load
     window.onload = function() {
@@ -656,8 +656,15 @@
                         let lt = d.desc.luas_tanah || '0';
                         let lb = d.desc.luas_gedung || '0';
                         let tahun = d.desc.tahun_pajak || '-';
+                        // FIX PBB: Akses data PBB secara langsung di desc
+                        let kab_kota = d.desc.kab_kota || '-'; 
+                        let kec = d.desc.kecamatan || '-';
+                        
                         infoTeknis = `Tahun: ${tahun} / LT: ${lt}m² / LB: ${lb}m²`;
-                        labelTeknis = 'Tahun / Luas Tanah & Gedung';
+                        labelTeknis = `Tahun / Luas (di ${kab_kota})`;
+                        
+                        // Override Alamat untuk PBB
+                        alamat = d.desc.alamat || `${d.desc.kelurahan}, ${kec}`;
                     }
                     else if(sku === 'bpjs') {
                         infoTeknis = (d.desc.jumlah_peserta || '1') + ' Peserta';
