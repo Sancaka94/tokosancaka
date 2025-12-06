@@ -82,6 +82,7 @@ use App\Http\Controllers\Customer\AgentRegistrationController;
 use App\Http\Controllers\Customer\TopUpController;
 use App\Http\Controllers\Customer\AgentTransactionController; // <--- TAMBAHKAN INI
 
+Route::get('/sync-produk', [PpobController::class, 'sync'])->name('sync'); // <-- AMANKAN DENGAN 'role:Admin'
 
     // Route untuk mengambil data kota PBB
 Route::get('/agent/ppob/cities', [AgentTransactionController::class, 'getPbbCities'])->name('admin.ppob.get-pbb-cities'); 
@@ -759,7 +760,6 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])
 
         require __DIR__.'/web/admin.php';
 
-         Route::get('/sync-produk', [PpobController::class, 'sync'])->name('sync'); // <-- AMANKAN DENGAN 'role:Admin'
 
 
         
