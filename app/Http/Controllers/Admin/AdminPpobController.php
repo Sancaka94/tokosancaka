@@ -13,16 +13,34 @@ class AdminPpobController extends Controller
     /**
      * Menampilkan data transaksi dengan filter & search.
      */
-    public function index(Request $request)
-    {
-        // Panggil fungsi query builder private di bawah
-        $query = $this->getFilteredQuery($request);
+   // Admin/PpobController.php
+public function index(Request $request)
+{
+    $type = $request->input('type', 'prepaid'); // Ambil type, default ke prepaid
+    $query = $request->input('q');
 
-        // Gunakan paginate untuk tampilan web
-        $transactions = $query->paginate(20);
+    $products = PpobProduct::query();
 
-        return view('admin.ppob.data.index', compact('transactions'));
+    // Lakukan filtering berdasarkan tipe
+    if ($type === 'prepaid') {
+        $products->where('category', '!=', 'Pascabayar');
+    } else { // 'postpaid'
+        $products->where('category', 'Pascabayar');
     }
+    
+    // Lakukan filtering pencarian
+    if ($query) {
+        $products->where(function ($q) use ($query) {
+            $q->where('product_name', 'like', '%' . $query . '%')
+              ->orWhere('buyer_sku_code', 'like', '%' . $query . '%')
+              ->orWhere('brand', 'like', '%' . $query . '%');
+        });
+    }
+
+    $products = $products->paginate(20);
+
+    return view('admin.ppob.index', compact('products'));
+}
 
     /**
      * Export data ke Excel (Format CSV)
