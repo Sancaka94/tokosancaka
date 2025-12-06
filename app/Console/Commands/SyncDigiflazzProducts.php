@@ -3,28 +3,25 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use App\Services\DigiflazzService; // Pastikan namespace ini benar
 
 class SyncDigiflazzProducts extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
-    protected $signature = 'app:sync-digiflazz-products';
+    protected $signature = 'digiflazz:sync';
+    protected $description = 'Sinkronisasi daftar produk PPOB dari Digiflazz ke database.';
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
-    protected $description = 'Command description';
-
-    /**
-     * Execute the console command.
-     */
-    public function handle()
+    public function handle(DigiflazzService $digiflazzService)
     {
-        //
+        $this->info('Memulai sinkronisasi produk Digiflazz...');
+        
+        $result = $digiflazzService->syncProducts();
+
+        if ($result) {
+            $this->info('✅ Sinkronisasi produk Digiflazz berhasil.');
+        } else {
+            $this->error('❌ Sinkronisasi produk Digiflazz gagal. Cek log untuk detail.');
+        }
+        
+        return $result ? 0 : 1;
     }
 }
