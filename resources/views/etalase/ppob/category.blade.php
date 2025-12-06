@@ -499,7 +499,7 @@
     // =================================================================
     // ⚙️ KONFIGURASI GLOBAL
     // =================================================================
-    const IS_TESTING = true; // Set 'false' saat Production/Live
+    const IS_TESTING = false; // Set 'false' saat Production/Live
     const ACTIVE_SKU = "{{ $activeSku }}"; 
     
     // Variabel Global
