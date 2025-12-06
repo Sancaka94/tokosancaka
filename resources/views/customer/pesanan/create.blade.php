@@ -418,16 +418,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const contactData = {
             _token: document.querySelector('input[name="_token"]').value,
+
+            prefix: prefix,
             // Ambil semua data input yang relevan
-            name: document.getElementById(`${prefix}_name`).value,
-            phone: document.getElementById(`${prefix}_phone`).value,
-            address: document.getElementById(`${prefix}_address`).value,
-            province: document.getElementById(`${prefix}_province`).value,
-            regency: document.getElementById(`${prefix}_regency`).value,
-            district: document.getElementById(`${prefix}_district`).value,
-            village: document.getElementById(`${prefix}_village`).value,
-            postal_code: document.getElementById(`${prefix}_postal_code`).value,
-            // TIDAK PERLU LAT/LNG
+            // Ambil semua data input yang relevan
+        // Gunakan penamaan field yang SAMA dengan yang di-validate oleh Controller
+        [`${prefix}_name`]: document.getElementById(`${prefix}_name`).value,
+        [`${prefix}_phone`]: document.getElementById(`${prefix}_phone`).value,
+        [`${prefix}_address`]: document.getElementById(`${prefix}_address`).value,
+        [`${prefix}_province`]: document.getElementById(`${prefix}_province`).value,
+        [`${prefix}_regency`]: document.getElementById(`${prefix}_regency`).value,
+        [`${prefix}_district`]: document.getElementById(`${prefix}_district`).value,
+        [`${prefix}_village`]: document.getElementById(`${prefix}_village`).value,
+        [`${prefix}_postal_code`]: document.getElementById(`${prefix}_postal_code`).value,
             
             tipe: (prefix === 'sender' ? 'Pengirim' : 'Penerima'),
             id: document.getElementById(`${prefix}_id`).value
