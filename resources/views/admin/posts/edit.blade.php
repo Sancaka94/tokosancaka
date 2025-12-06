@@ -33,7 +33,7 @@
             {{-- PERBAIKAN UTAMA DI SINI --}}
             {{-- Gunakan objek $post secara langsung (Route Model Binding) jika Anda menggunakannya di controller. --}}
             {{-- Laravel akan secara otomatis mengekstrak ID atau slug yang diperlukan. --}}
-            <form action="{{ route('admin.posts.update', $post) }}" method="POST" enctype="multipart/form-data">
+            <form action="{{ route('admin.posts.update', $id) }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 @method('PUT')
 
