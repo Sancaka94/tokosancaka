@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\PpobTransaction;
 use Illuminate\Support\Facades\DB;
+use App\Models\PpobProduct; // ⭐ Wajib di-import
 use Barryvdh\DomPDF\Facade\Pdf; // Pastikan package dompdf sudah diinstall
 
 class AdminPpobController extends Controller
