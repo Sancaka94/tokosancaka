@@ -31,14 +31,14 @@
     {{-- 1. TOMBOL SINKRONISASI PRABAYAR --}}
     <a href="{{ route('admin.ppob.sync.prepaid') }}" 
         onclick="return confirm('Apakah Anda yakin ingin melakukan sinkronisasi produk PRABAYAR? Proses ini mungkin membutuhkan waktu.')"
-        class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition flex items-center gap-2 text-sm">
+        class="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition flex items-center gap-2 text-sm">
         <i class="fas fa-mobile-alt"></i> Sync Prabayar
     </a>
 
     {{-- 2. TOMBOL SINKRONISASI PASCABAYAR --}}
     <a href="{{ route('admin.ppob.sync.postpaid') }}" 
         onclick="return confirm('Apakah Anda yakin ingin melakukan sinkronisasi produk PASCABAYAR? Proses ini mungkin membutuhkan waktu.')"
-        class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition flex items-center gap-2 text-sm">
+        class="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition flex items-center gap-2 text-sm">
         <i class="fas fa-receipt"></i> Sync Pascabayar
     </a>
 </div>
