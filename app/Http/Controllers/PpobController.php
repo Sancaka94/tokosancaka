@@ -280,94 +280,111 @@ class PpobController extends Controller
         }
     }
 
-    // =================================================================
-    // FUNGSI SINKRONISASI PRODUK DARI DIGIFLAZZ
-    // =================================================================
-    
     // FILE: App\Http\Controllers\PpobController.php
 
- public function sync()
-    {
-        // Perbaikan: Ganti pemeriksaan Auth/Role yang berlebihan (asumsi route sudah dilindungi middleware)
-        if (!Auth::check()) {
-             // Jika ingin redirect ke login/home jika tidak login
-             return redirect()->route('login'); 
-        }
+public function sync()
+{
+    // Perbaikan: Ganti pemeriksaan Auth/Role yang berlebihan (asumsi route sudah dilindungi middleware)
+    if (!Auth::check()) {
+         // Jika ingin redirect ke login/home jika tidak login
+         return redirect()->route('login'); 
+    }
 
-        // Asumsi: Route di web.php sudah memastikan user adalah Admin.
+    // Asumsi: Route di web.php sudah memastikan user adalah Admin.
+    
+    $productsPrepaid = [];
+    $productsPostpaid = [];
+
+    try {
+        // 1. Ambil Produk Prabayar
+        $productsPrepaid = $this->digiflazz->getPriceList('prepaid'); 
         
-        $productArray = [];
-        try {
-            // 1. Panggil getPriceList()
-            $productArray = $this->digiflazz->getPriceList('prepaid'); 
+        // 2. Ambil Produk Pascabayar
+        $productsPostpaid = $this->digiflazz->getPriceList('postpaid'); // <-- PANGGIL LAGI UNTUK PASCABAYAR
 
-            // 2. Cek apakah yang dikembalikan adalah array dan tidak kosong
-            if (is_array($productArray) && !empty($productArray)) {
-                $insertedCount = 0;
-                $updatedCount = 0;
+        // 3. Gabungkan hasilnya
+        // Pastikan hasil dari getPriceList adalah array sebelum digabungkan
+        $productsPrepaid = is_array($productsPrepaid) ? $productsPrepaid : [];
+        $productsPostpaid = is_array($productsPostpaid) ? $productsPostpaid : [];
+        
+        $productArray = array_merge($productsPrepaid, $productsPostpaid);
 
-                // 3. Loop pada $productArray
-                foreach ($productArray as $product) {
-                    
-                    // ⭐ FIX TypeError: Cannot access offset of type string on string
-                    if (!is_array($product)) {
-                        Log::warning('Skipping invalid product data during sync: ' . (string)$product);
-                        continue; 
-                    }
+        // 4. Lanjutkan proses jika array hasil gabungan valid dan tidak kosong
+        if (!empty($productArray)) {
+            
+            // Lakukan transaksi database
+            DB::beginTransaction();
 
-                    $localProduct = PpobProduct::firstOrNew(['buyer_sku_code' => $product['buyer_sku_code']]);
+            $insertedCount = 0;
+            $updatedCount = 0;
 
-                    // Update atau isi data produk
-                    $localProduct->fill([
-                        'product_name'          => $product['product_name'],
-                        'category'              => $product['category'],
-                        'brand'                 => $product['brand'],
-                        'type'                  => $product['type'],
-                        'price'                 => $product['price'],
-                        'sell_price'            => $localProduct->sell_price ?? $product['price'] + 1000, 
-                        'admin'                 => $product['admin'] ?? 0, 
-                        'status'                => $product['status'] ?? null,
-                        'buyer_sku_code'        => $product['buyer_sku_code'],
-                        'desc'                  => $product['desc'] ?? null,
-                        'buyer_product_status'  => $product['buyer_product_status'],
-                        // Gunakan status seller yang sudah ada jika produk sudah ada
-                        'seller_product_status' => $localProduct->exists ? $localProduct->seller_product_status : true, 
-                    ]);
-                    
-                    if ($localProduct->exists) {
-                        $localProduct->save();
-                        $updatedCount++;
-                    } else {
-                        $localProduct->save();
-                        $insertedCount++;
-                    }
+            // 5. Loop pada $productArray
+            foreach ($productArray as $product) {
+                
+                // ⭐ FIX TypeError: Pastikan $product adalah array sebelum mencoba mengakses offset (key)
+                if (!is_array($product)) {
+                    Log::warning('Skipping invalid product data during sync: ' . (string)$product);
+                    continue; 
                 }
-                
-                // ⭐ FIX Redirect: Ganti Response JSON ke Redirect Admin dengan Session Flash
-                return redirect()->route('admin.ppob.index')->with(
-                    'success', 
-                    "Sinkronisasi Berhasil. Ditambahkan: $insertedCount, Diperbarui: $updatedCount."
-                );
 
-            } else {
-                // Jika Sinkronisasi Gagal:
-                Log::error('Digiflazz Sync Failed: Response Empty or Invalid');
+                $localProduct = PpobProduct::firstOrNew(['buyer_sku_code' => $product['buyer_sku_code']]);
+
+                // Update atau isi data produk
+                $localProduct->fill([
+                    'product_name'          => $product['product_name'],
+                    'category'              => $product['category'],
+                    'brand'                 => $product['brand'],
+                    'type'                  => $product['type'],
+                    'price'                 => $product['price'],
+                    // Pertahankan harga jual yang sudah ada, atau atur margin default jika baru
+                    'sell_price'            => $localProduct->sell_price ?? $product['price'] + 1000, 
+                    'admin'                 => $product['admin'] ?? 0, 
+                    'status'                => $product['status'] ?? null,
+                    'buyer_sku_code'        => $product['buyer_sku_code'],
+                    'desc'                  => $product['desc'] ?? null,
+                    'buyer_product_status'  => $product['buyer_product_status'],
+                    // Gunakan status seller yang sudah ada jika produk sudah ada
+                    'seller_product_status' => $localProduct->exists ? $localProduct->seller_product_status : true, 
+                ]);
                 
-                // ⭐ FIX Redirect: Ganti Response JSON ke Redirect Admin dengan Session Flash
-                return redirect()->route('admin.ppob.index')->with(
-                    'error', 
-                    'Gagal mengambil data dari Digiflazz. Respons kosong atau tidak valid.'
-                );
+                if ($localProduct->exists) {
+                    $localProduct->save();
+                    $updatedCount++;
+                } else {
+                    $localProduct->save();
+                    $insertedCount++;
+                }
             }
-
-        } catch (\Exception $e) {
-            Log::error('PPOB Sync Exception: ' . $e->getMessage());
+            
+            DB::commit(); // Commit setelah semua produk sukses diproses
+            
             // ⭐ FIX Redirect: Ganti Response JSON ke Redirect Admin dengan Session Flash
             return redirect()->route('admin.ppob.index')->with(
-                 'error', 
-                 'Error Sistem saat sinkronisasi: ' . $e->getMessage()
-             );
+                'success', 
+                "Sinkronisasi Berhasil. Ditambahkan: $insertedCount, Diperbarui: $updatedCount."
+            );
+
+        } else {
+            // Jika Sinkronisasi Gagal (Array Kosong):
+            Log::error('Digiflazz Sync Failed: Response Empty or Invalid');
+            
+            // ⭐ FIX Redirect: Ganti Response JSON ke Redirect Admin dengan Session Flash
+            return redirect()->route('admin.ppob.index')->with(
+                'error', 
+                'Gagal mengambil data dari Digiflazz. Respons kosong.'
+            );
         }
+
+    } catch (\Exception $e) {
+        DB::rollBack(); // Pastikan rollback jika terjadi exception di tengah proses loop
+        Log::error('PPOB Sync Exception: ' . $e->getMessage());
+        
+        // ⭐ FIX Redirect: Ganti Response JSON ke Redirect Admin dengan Session Flash
+        return redirect()->route('admin.ppob.index')->with(
+             'error', 
+             'Error Sistem saat sinkronisasi: ' . $e->getMessage()
+         );
     }
+}
 
 }
