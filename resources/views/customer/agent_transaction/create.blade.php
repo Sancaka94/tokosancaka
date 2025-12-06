@@ -382,7 +382,6 @@
 <script>
     const logoBasePath = "{{ asset('storage/logo-ppob') }}/";
     let pbbCitiesCache = []; // FIX 1: Deklarasi global pbbCitiesCache
-    let currentPbbSku = ''; // Menyimpan SKU kota PBB yang dipilih
 
     // Inisialisasi saat window load
     window.onload = function() {
@@ -404,6 +403,18 @@
                     filterPbbCities(query);
                 }, 300); // Tunggu 300ms setelah user berhenti mengetik
             });
+            // FIX: Tambahkan listener untuk menyembunyikan hasil saat input kehilangan fokus
+            pbbSearchInput.addEventListener('blur', function() {
+                 setTimeout(() => {
+                     document.getElementById('pbb_search_results').classList.add('hidden');
+                 }, 200);
+             });
+            // FIX: Tambahkan listener untuk menampilkan hasil saat input mendapatkan fokus (jika cache penuh)
+            pbbSearchInput.addEventListener('focus', function() {
+                 if (document.getElementById('pbb_city_search').value.length > 0 && document.getElementById('pbb_search_results').innerHTML !== '') {
+                      document.getElementById('pbb_search_results').classList.remove('hidden');
+                 }
+             });
         }
     };
 
