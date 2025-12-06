@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use App\Models\PpobProduct;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache; // <--- INI PENTING
 
 class DigiflazzService
 {
