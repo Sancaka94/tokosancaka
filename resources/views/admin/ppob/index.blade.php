@@ -27,8 +27,17 @@
             <button onclick="openBulkModal()" class="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-4 py-2 rounded-lg shadow transition flex items-center gap-2 text-sm">
                 <i class="fas fa-tags"></i> Update Harga Massal
             </button>
-            <a href="{{ route('ppob.sync') }}" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition flex items-center gap-2 text-sm">
-                <i class="fas fa-sync-alt animate-spin-hover"></i> Sinkronisasi
+            
+            {{-- TOMBOL SINKRONISASI BARU --}}
+            <a href="{{ route('ppob.sync', ['type' => 'prepaid']) }}" 
+                onclick="return confirm('Apakah Anda yakin ingin melakukan sinkronisasi produk PRABAYAR? Proses ini mungkin membutuhkan waktu.')"
+                class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition flex items-center gap-2 text-sm">
+                <i class="fas fa-mobile-alt"></i> Sync Prabayar
+            </a>
+            <a href="{{ route('ppob.sync', ['type' => 'postpaid']) }}" 
+                onclick="return confirm('Apakah Anda yakin ingin melakukan sinkronisasi produk PASCABAYAR? Proses ini mungkin membutuhkan waktu.')"
+                class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition flex items-center gap-2 text-sm">
+                <i class="fas fa-receipt"></i> Sync Pascabayar
             </a>
         </div>
     </div>
@@ -50,14 +59,14 @@
         
         <a href="{{ route('admin.ppob.index', ['type' => 'prepaid', 'q' => request('q')]) }}" 
            class="@if($currentType === 'prepaid') border-blue-500 text-blue-600 font-semibold @else border-transparent text-gray-500 hover:text-gray-700 @endif 
-                  px-4 py-2 border-b-2 transition duration-150 ease-in-out flex items-center gap-2">
+                 px-4 py-2 border-b-2 transition duration-150 ease-in-out flex items-center gap-2">
             <i class="fas fa-mobile-alt"></i> Prabayar
         </a>
         
         {{-- Link Pascabayar --}}
         <a href="{{ route('admin.ppob.index', ['type' => 'postpaid', 'q' => request('q')]) }}" 
            class="@if($currentType === 'postpaid') border-blue-500 text-blue-600 font-semibold @else border-transparent text-gray-500 hover:text-gray-700 @endif 
-                  px-4 py-2 border-b-2 transition duration-150 ease-in-out flex items-center gap-2">
+                 px-4 py-2 border-b-2 transition duration-150 ease-in-out flex items-center gap-2">
             <i class="fas fa-receipt"></i> Pascabayar
         </a>
     </div>
@@ -148,7 +157,7 @@
                         <td class="px-6 py-4 text-center">
                             <div class="flex items-center justify-center space-x-3">
                                 <button onclick="editPrice('{{ $product->id }}', '{{ $product->product_name }}', '{{ $product->price }}', '{{ $product->sell_price }}', '{{ $product->seller_product_status }}')" 
-                                        class="text-yellow-500 hover:text-yellow-600 transition transform hover:scale-110 tooltip" title="Edit Harga">
+                                         class="text-yellow-500 hover:text-yellow-600 transition transform hover:scale-110 tooltip" title="Edit Harga">
                                     <i class="fas fa-edit text-lg"></i>
                                 </button>
                                 
@@ -185,69 +194,69 @@
 </div>
 
 {{-- ========================================== --}}
-{{-- MODAL EDIT HARGA SATUAN (INDIVIDUAL)       --}}
+{{-- MODAL EDIT HARGA SATUAN (INDIVIDUAL)       --}}
 {{-- ========================================== --}}
 {{-- ========================================== --}}
-{{-- MODAL BULK UPDATE (MASSAL)                 --}}
+{{-- MODAL BULK UPDATE (MASSAL)                 --}}
 {{-- ========================================== --}}
 <div id="bulkPriceModal" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-    <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity backdrop-blur-sm" onclick="closeBulkModal()"></div>
-    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-        <div class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full border-t-4 border-orange-500">
-            <form action="{{ route('admin.ppob.bulk-update') }}" method="POST" class="p-6">
-                @csrf
-                <div class="flex justify-between items-center mb-5 border-b pb-4">
-                    <div>
-                        <h3 class="text-xl font-bold text-gray-900"><i class="fas fa-tags text-orange-500 mr-2"></i>Update Harga Massal</h3>
-                        <p class="text-xs text-gray-500 mt-1">Aksi ini akan mengubah harga jual SEMUA produk.</p>
-                    </div>
-                    <button type="button" onclick="closeBulkModal()" class="text-gray-400 hover:text-gray-500"><i class="fas fa-times text-xl"></i></button>
-                </div>
-                
+    <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity backdrop-blur-sm" onclick="closeBulkModal()"></div>
+    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        <div class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full border-t-4 border-orange-500">
+            <form action="{{ route('admin.ppob.bulk-update') }}" method="POST" class="p-6">
+                @csrf
+                <div class="flex justify-between items-center mb-5 border-b pb-4">
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-900"><i class="fas fa-tags text-orange-500 mr-2"></i>Update Harga Massal</h3>
+                        <p class="text-xs text-gray-500 mt-1">Aksi ini akan mengubah harga jual SEMUA produk.</p>
+                    </div>
+                    <button type="button" onclick="closeBulkModal()" class="text-gray-400 hover:text-gray-500"><i class="fas fa-times text-xl"></i></button>
+                </div>
+                
                 {{-- BARU: Input tersembunyi untuk filter jenis produk yang akan diupdate massal --}}
                 <input type="hidden" name="product_type" value="{{ $currentType }}"> 
 
-                <div class="bg-orange-50 p-4 rounded-xl border border-orange-200 mb-6">
-                    <p class="text-sm text-orange-800 font-semibold mb-3">Pilih Metode Keuntungan untuk **{{ $currentType === 'prepaid' ? 'Prabayar' : 'Pascabayar' }}**:</p>
-                    
-                    <div class="grid grid-cols-2 gap-4 mb-4">
-                        <label class="flex items-center p-3 border border-orange-200 rounded-lg bg-white cursor-pointer hover:bg-orange-50 transition">
-                            <input type="radio" name="profit_type" value="rupiah" checked class="w-5 h-5 text-orange-600 border-gray-300 focus:ring-orange-500">
-                            <div class="ml-3">
-                                <span class="block text-sm font-bold text-gray-900">Nominal (Rp)</span>
-                                <span class="block text-xs text-gray-500">Contoh: + Rp 2.000</span>
-                            </div>
-                        </label>
-                        <label class="flex items-center p-3 border border-orange-200 rounded-lg bg-white cursor-pointer hover:bg-orange-50 transition">
-                            <input type="radio" name="profit_type" value="percent" class="w-5 h-5 text-orange-600 border-gray-300 focus:ring-orange-500">
-                            <div class="ml-3">
-                                <span class="block text-sm font-bold text-gray-900">Persentase (%)</span>
-                                <span class="block text-xs text-gray-500">Contoh: + 5%</span>
-                            </div>
-                        </label>
-                    </div>
+                <div class="bg-orange-50 p-4 rounded-xl border border-orange-200 mb-6">
+                    <p class="text-sm text-orange-800 font-semibold mb-3">Pilih Metode Keuntungan untuk **{{ $currentType === 'prepaid' ? 'Prabayar' : 'Pascabayar' }}**:</p>
+                    
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <label class="flex items-center p-3 border border-orange-200 rounded-lg bg-white cursor-pointer hover:bg-orange-50 transition">
+                            <input type="radio" name="profit_type" value="rupiah" checked class="w-5 h-5 text-orange-600 border-gray-300 focus:ring-orange-500">
+                            <div class="ml-3">
+                                <span class="block text-sm font-bold text-gray-900">Nominal (Rp)</span>
+                                <span class="block text-xs text-gray-500">Contoh: + Rp 2.000</span>
+                            </div>
+                        </label>
+                        <label class="flex items-center p-3 border border-orange-200 rounded-lg bg-white cursor-pointer hover:bg-orange-50 transition">
+                            <input type="radio" name="profit_type" value="percent" class="w-5 h-5 text-orange-600 border-gray-300 focus:ring-orange-500">
+                            <div class="ml-3">
+                                <span class="block text-sm font-bold text-gray-900">Persentase (%)</span>
+                                <span class="block text-xs text-gray-500">Contoh: + 5%</span>
+                            </div>
+                        </label>
+                    </div>
 
-                    <div class="relative">
-                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Nilai Keuntungan</label>
-                        <input type="number" name="profit_value" placeholder="Masukkan angka (misal: 2000 atau 5)" required 
-                               class="w-full border-gray-300 rounded-lg px-4 py-3 text-gray-900 font-bold focus:ring-orange-500 focus:border-orange-500">
-                    </div>
-                </div>
+                    <div class="relative">
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Nilai Keuntungan</label>
+                        <input type="number" name="profit_value" placeholder="Masukkan angka (misal: 2000 atau 5)" required 
+                               class="w-full border-gray-300 rounded-lg px-4 py-3 text-gray-900 font-bold focus:ring-orange-500 focus:border-orange-500">
+                    </div>
+                </div>
 
-                <div class="bg-gray-50 p-3 rounded-lg mb-6 text-xs text-gray-600">
-                    <i class="fas fa-info-circle mr-1"></i> Rumus: <strong>Harga Beli + Profit</strong> = Harga Jual Baru.
-                </div>
+                <div class="bg-gray-50 p-3 rounded-lg mb-6 text-xs text-gray-600">
+                    <i class="fas fa-info-circle mr-1"></i> Rumus: <strong>Harga Beli + Profit</strong> = Harga Jual Baru.
+                </div>
 
-                <div class="flex justify-end gap-3">
-                    <button type="button" onclick="closeBulkModal()" class="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50">Batal</button>
-                    <button type="submit" onclick="return confirm('Yakin ingin mengubah harga SEMUA produk {{ $currentType === 'prepaid' ? 'Prabayar' : 'Pascabayar' }}?')" class="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-bold shadow-lg shadow-orange-200">
-                        Terapkan ke {{ $currentType === 'prepaid' ? 'Prabayar' : 'Pascabayar' }}
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
+                <div class="flex justify-end gap-3">
+                    <button type="button" onclick="closeBulkModal()" class="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50">Batal</button>
+                    <button type="submit" onclick="return confirm('Yakin ingin mengubah harga SEMUA produk {{ $currentType === 'prepaid' ? 'Prabayar' : 'Pascabayar' }}?')" class="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-bold shadow-lg shadow-orange-200">
+                        Terapkan ke {{ $currentType === 'prepaid' ? 'Prabayar' : 'Pascabayar' }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 @endsection
 
