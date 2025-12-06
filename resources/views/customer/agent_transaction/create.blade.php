@@ -8,7 +8,7 @@
     {{-- Header --}}
     <div class="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
         <div>
-            <h1 class="text-2xl font-bold text-gray-800 flex items-center gap-2">
+            <h1 class="2xl font-bold text-gray-800 flex items-center gap-2">
                 <i class="fas fa-cash-register text-blue-600"></i> Kasir / Transaksi Offline
             </h1>
             <p class="text-sm text-gray-500">Layanan penjualan langsung untuk pelanggan yang datang ke lokasi Anda.</p>
@@ -189,7 +189,7 @@
                             <option value="pln">PLN Pascabayar</option>
                             <option value="bpjs">BPJS Kesehatan</option>
                             <option value="pdam">PDAM</option>
-                            <option value="telkom">Telkom / Indihome</option>
+                            <option value="internet">Telkom / Indihome</option> {{-- FIX: Mengganti value "telkom" menjadi "internet" --}}
                             <option value="pgas">Gas Negara</option>
                             <option value="multifinance">Multifinance / Cicilan</option>
                             <option value="pbb">Pajak PBB</option>
@@ -204,7 +204,7 @@
                                class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-purple-500 font-bold text-gray-800 placeholder-gray-300"
                                placeholder="Contoh: 5300xxxx">
                         <p id="test_case_info" class="text-[10px] text-red-500 mt-1 italic">
-                            *Gunakan Test Case PBB: 329801092375999991, Telkom: 7391601001, PLN: 630000000001
+                            *Gunakan Test Case PBB: 329801092375999991, Internet: 7391601001, PLN: 630000000001
                         </p>
                     </div>
 
@@ -650,7 +650,7 @@
     }
 
     function filterTableByBrand(brand) {
-        let rows = Array.from(document.querySelectorAll('.product-row'));
+        let rows = document.querySelectorAll('.product-row');
         let tbody = document.getElementById('product_table_body');
         let hasResult = false;
 
