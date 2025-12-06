@@ -287,10 +287,10 @@ class PpobController extends Controller
     public function sync()
     {
         // Pastikan hanya admin yang bisa mengakses fungsi ini jika diperlukan
-        if (!Auth::check() || !Auth::user()->hasRole('Admin')) {
+        //if (!Auth::check() || !Auth::user()->hasRole('Admin')) {
             // ⭐ PERBAIKAN 1: Return JSON error untuk akses ditolak
-            return response()->json(['status' => 'error', 'message' => 'Akses ditolak.'], 403);
-        }
+        //    return response()->json(['status' => 'error', 'message' => 'Akses ditolak.'], 403);
+        //}
 
         try {
             // Panggil service Digiflazz untuk mendapatkan daftar produk
