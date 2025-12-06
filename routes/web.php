@@ -325,7 +325,7 @@ Route::middleware(['auth', 'verified'])->prefix('digital')->name('ppob.')->group
 
     // 4. Update Harga/Produk Ke Database (Sync Manual Admin)
     // URL: /digital/sync-produk
-    Route::get('/sync-produk', [PpobController::class, 'sync'])->name('sync');
+    //Route::get('/sync-produk', [PpobController::class, 'sync'])->name('sync');
 
     // 5. Cek Saldo Digiflazz (Khusus Admin)
     // URL: /digital/cek-saldo
@@ -629,6 +629,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
     // URL: /admin/digital
     Route::get('/digital', [AdminPpobController::class, 'index'])
         ->name('admin.ppob.index'); 
+
+    Route::get('/sync-produk', [PpobController::class, 'sync'])->name('sync'); // <-- AMANKAN DENGAN 'role:Admin'
 
     // 2. Halaman Kategori (Pulsa, Data, dll)
     // URL: /admin/digital/{slug}
