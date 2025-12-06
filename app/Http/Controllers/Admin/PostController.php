@@ -8,7 +8,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\File; // Import ini sudah dikembalikan
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage; 
 
 use App\Models\Post;
@@ -47,7 +47,6 @@ class PostController extends Controller
         // Eksekusi query dengan paginasi
         $posts = $query->paginate(10);
 
-        // -- PENINGKATAN EFISIENSI QUERY --
         // Hanya ambil kolom yang diperlukan dan filter User yang punya Post
         $categories = Category::select('id', 'name')->get();
         $authors = User::whereHas('posts')->select('id', 'name')->get();
@@ -61,7 +60,6 @@ class PostController extends Controller
      */
     public function show(Post $post)
     {
-        // Anda perlu membuat file view ini di resources/views/admin/posts/show.blade.php
         $post->load('tags', 'author', 'category'); 
         return view('admin.posts.show', compact('post'));
     }
@@ -105,7 +103,7 @@ class PostController extends Controller
 
         $title = e($request->input('title'));
         
-        // --- PROMPT DIPERBARUI DENGAN KAIDAH SEO & PENULISAN LENGKAP ---
+        // --- PROMPT AI ---
         $prompt = "Anda adalah penulis konten SEO ahli dan copywriter profesional berbahasa Indonesia. Tugas Anda adalah membuat artikel blog yang siap publish, sangat SEO-friendly, dan nyaman dibaca.
 
 **Judul Artikel:** '{$title}'
@@ -116,16 +114,16 @@ Hasilkan konten HANYA dalam format HTML mentah (raw HTML), tanpa ``` html atau p
 
 **Kaidah SEO & Konten:**
 
-1.  **Riset & Kedalaman:** Bahas topik secara mendalam dan berikan informasi yang benar-benar bernilai bagi pembaca.
-2.  **Kata Kunci:** Gunakan kata kunci utama <strong>{$title}</strong> secara alami 3-5 kali. Sertakan juga variasi kata kunci (LSI) yang relevan dengan topik.
-3.  **Tautan Internal:** Sisipkan 2-3 tautan internal ke domain tokosancaka.com atau tokosancaka.biz.id. Gunakan anchor text yang relevan. Contoh: <a href=\"[https://tokosancaka.com/cek-ongkir](https://tokosancaka.com/cek-ongkir)\">cek ongkos kirim</a>.
-4.  **Panjang Artikel:** Total panjang artikel **tidak boleh lebih dari 1000 kata**.
+1. **Riset & Kedalaman:** Bahas topik secara mendalam dan berikan informasi yang benar-benar bernilai bagi pembaca.
+2. **Kata Kunci:** Gunakan kata kunci utama <strong>{$title}</strong> secara alami 3-5 kali. Sertakan juga variasi kata kunci (LSI) yang relevan dengan topik.
+3. **Tautan Internal:** Sisipkan 2-3 tautan internal ke domain tokosancaka.com atau tokosancaka.biz.id. Gunakan anchor text yang relevan. Contoh: <a href=\"[https://tokosancaka.com/cek-ongkir](https://tokosancaka.com/cek-ongkir)\">cek ongkos kirim</a>.
+4. **Panjang Artikel:** Total panjang artikel **tidak boleh lebih dari 1000 kata**.
 
 **Kaidah Bahasa & Keterbacaan (Sesuai EYD & KBBI):**
 
-1.  **Gaya Bahasa:** Gunakan bahasa Indonesia yang baik dan benar sesuai kaidah EYD & KBBI. Hindari kalimat yang terlalu rumit.
-2.  **Paragraf Pendek:** Gunakan paragraf singkat 2-4 kalimat agar nyaman dibaca di perangkat mobile.
-3.  **Struktur Jelas:** Gunakan subjudul untuk memecah konten menjadi bagian logis dan mudah diikuti.
+1. **Gaya Bahasa:** Gunakan bahasa Indonesia yang baik dan benar sesuai kaidah EYD & KBBI. Hindari kalimat yang terlalu rumit.
+2. **Paragraf Pendek:** Gunakan paragraf singkat 2-4 kalimat agar nyaman dibaca di perangkat mobile.
+3. **Struktur Jelas:** Gunakan subjudul untuk memecah konten menjadi bagian logis dan mudah diikuti.
 
 **Persyaratan Format HTML:**
 
@@ -149,7 +147,7 @@ Website: tokosancaka.biz.id , tokosancaka.com , sancaka.biz.id </p>
 
 <p><em>Pilihan tepat untuk pengiriman barang cepat, aman, dan bergaransi ke seluruh Indonesia!</em></p>
 ";
-        // --- AKHIR PROMPT DIPERBARUI ---
+        // --- AKHIR PROMPT AI ---
 
 
         if ($model === 'openai') {
@@ -201,7 +199,6 @@ Website: tokosancaka.biz.id , tokosancaka.com , sancaka.biz.id </p>
             return response()->json(['error' => 'Konfigurasi API Key Gemini tidak ditemukan.'], 500);
         }
 
-        // Menggunakan model yang direkomendasikan dan lebih baru
         $model = 'gemini-2.5-flash-preview-05-20';
         $response = Http::retry(3, 2000)->post("[https://generativelanguage.googleapis.com/v1beta/models/](https://generativelanguage.googleapis.com/v1beta/models/){$model}:generateContent?key={$apiKey}", [
             'contents' => [[
@@ -252,7 +249,6 @@ Website: tokosancaka.biz.id , tokosancaka.com , sancaka.biz.id </p>
 
         $imagePath = null;
         if ($request->hasFile('featured_image')) {
-            // Menyimpan file ke storage/app/public/uploads/posts
             $imagePath = $request->file('featured_image')->store('uploads/posts', 'public');
         }
 
@@ -260,7 +256,7 @@ Website: tokosancaka.biz.id , tokosancaka.com , sancaka.biz.id </p>
             'user_id' => Auth::id(),
             'category_id' => $request->category_id,
             'title' => $request->title,
-            // PERBAIKAN: Slug tanpa uniqid() untuk SEO yang lebih baik
+            // Slug yang bersih
             'slug' => Str::slug($request->title, '-'), 
             'content' => $request->content,
             'featured_image' => $imagePath,
@@ -298,19 +294,16 @@ Website: tokosancaka.biz.id , tokosancaka.com , sancaka.biz.id </p>
             $imagePath = $request->file('featured_image')->store('uploads/posts', 'public');
         }
 
-        // Tentukan slug baru. JANGAN gunakan uniqid() di sini!
         $newSlug = Str::slug($request->title, '-');
 
         $post->update([
             'category_id' => $request->category_id,
             'title' => $request->title,
-            // PERBAIKAN: Update slug ke versi bersih
             'slug' => $newSlug, 
             'content' => $request->content,
             'featured_image' => $imagePath,
         ]);
 
-        // Gunakan sync() yang lebih bersih untuk Many-to-Many
         $post->tags()->sync($request->tags ?? []);
 
         return redirect()->route('admin.posts.index')->with('success', 'Postingan berhasil diperbarui.');
@@ -321,7 +314,6 @@ Website: tokosancaka.biz.id , tokosancaka.com , sancaka.biz.id </p>
      */
     public function destroy(Post $post)
     {
-        // Hapus file dari storage jika ada
         if ($post->featured_image) {
             Storage::disk('public')->delete($post->featured_image);
         }
