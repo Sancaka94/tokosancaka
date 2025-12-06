@@ -13,6 +13,9 @@ class DigiflazzService
     protected $apiKey;
     protected $baseUrl;
 
+    const URL_PROD = 'https://api.digiflazz.com/v1'; 
+    const URL_DEV  = 'https://sandbox.digiflazz.com/v1';
+
     public function __construct()
     {
         // Kredensial (Sesuaikan dengan .env jika production)
@@ -277,5 +280,17 @@ class DigiflazzService
             Log::error('Digiflazz PBB Price List Error: ' . $e->getMessage());
             return [];
         }
+    }
+
+    /**
+     * PENTING: Method untuk mengatur kredensial dari Controller
+     */
+    public function setCredentials($username, $apiKey, $testingMode)
+    {
+        $this->username = $username;
+        $this->apiKey = $apiKey;
+        $this->testingMode = $testingMode;
+        // Atur Base URL sesuai mode testing
+        $this->baseUrl = $testingMode ? self::URL_DEV : self::URL_PROD;
     }
 }
