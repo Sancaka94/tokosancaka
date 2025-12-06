@@ -6,17 +6,31 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http; // Tambahkan Import Ini
-use Illuminate\Support\Facades\Log;  // Tambahkan Import Ini
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use App\Models\PpobProduct;
 use App\Models\PpobTransaction;
-use App\Services\DigiflazzService; // <<< PASTIKAN INI ADA
+use App\Services\DigiflazzService; // PENTING: Service sudah di-import
 
 use App\Models\User;
 use Exception;
 
 class AgentTransactionController extends Controller
 {
+    // ⭐ PROPERTI KREDENSIAL YANG DIGUNAKAN DI CONTROLLER INI
+    protected $digiflazzUsername = 'mihetiDVGdeW';
+    protected $apiKeyProd = '1f48c69f-8676-5d56-a868-10a46a69f9b7'; 
+    protected $testingMode = false; // Set false untuk Production (Live API)
+
+    protected $digiflazz;
+    
+    // Dependency Injection Service
+    public function __construct(DigiflazzService $digiflazz)
+    {
+        $this->digiflazz = $digiflazz;
+    }
+
+
     /**
      * Halaman Kasir / Transaksi Offline
      */
@@ -80,33 +94,16 @@ class AgentTransactionController extends Controller
         }
 
         // ============================================================
-        // PERSIAPAN PAYLOAD (HARDCODED CREDENTIALS)
+        // PENGATURAN KREDENSIAL DAN ID
         // ============================================================
         
-        // Kredensial Langsung
-        $username = 'mihetiDVGdeW'; 
-        //$apiKey   = 'dev-d54808c0-87ed-11f0-bdb6-8d5622821215'; 
-        //$testingMode = true; // Set false jika sudah production
-
-        $apiKey   = '1f48c69f-8676-5d56-a868-10a46a69f9b7'; 
-        $testingMode = false; // Set false jika sudah production
-
+        $username = $this->digiflazzUsername; 
+        $apiKey = $this->apiKeyProd;
+        $testingMode = $this->testingMode;
+        $orderId = 'TRX-OFFLINE-' . time() . rand(100, 999);
         
-
-        $orderId  = 'TRX-OFFLINE-' . time() . rand(100, 999);
-        
-        // Generate Signature: md5(username + key + ref_id)
-        $validSign = md5($username . $apiKey . $orderId);
-
-        // Payload Bersih
-        $cleanPayload = [
-            'username'       => $username,
-            'buyer_sku_code' => $request->sku,
-            'customer_no'    => $request->customer_no,
-            'ref_id'         => $orderId,
-            'sign'           => $validSign,
-            'testing'        => $testingMode,
-        ];
+        // ⭐ PENTING: Set kredensial di Service sebelum transaksi
+        $this->digiflazz->setCredentials($username, $apiKey, $testingMode); 
 
         // ============================================================
         // EKSEKUSI TRANSAKSI
@@ -127,21 +124,20 @@ class AgentTransactionController extends Controller
             $trx->selling_price  = $hargaJual;
             $trx->profit         = $profit;
             $trx->payment_method = 'SALDO_AGEN';
-            $trx->status         = 'Processing'; // Status awal processing
+            $trx->status         = 'Processing';
             $trx->message        = 'Sedang diproses ke Provider...';
             $trx->desc           = json_encode(['type' => 'offline_sale']);
             $trx->save();
 
-            // 3. KIRIM KE DIGIFLAZZ (Langsung dari Controller)
-            // Timeout 30 detik untuk menghindari loading lama
-            $response = Http::timeout(30)->post('https://api.digiflazz.com/v1/transaction', $cleanPayload);
+            // 3. KIRIM KE DIGIFLAZZ (via Service)
+            $respData = $this->digiflazz->transaction(
+                $request->sku, 
+                $request->customer_no, 
+                $orderId, 
+                0
+            );
             
-            $respData = $response->json();
-            
-            // Log respon untuk debugging (cek di storage/logs/laravel.log)
-            Log::info('Digiflazz Response:', $respData ?? []);
-
-            // Cek apakah provider langsung merespon Gagal (misal: nomor salah/produk gangguan)
+            // Cek apakah provider langsung merespon Gagal
             if (isset($respData['data']['status']) && in_array($respData['data']['status'], ['Gagal', 'Failed'])) {
                  $trx->status = 'Failed';
                  $trx->message = $respData['data']['message'] ?? 'Transaksi Gagal dari Pusat';
@@ -155,9 +151,13 @@ class AgentTransactionController extends Controller
                  return back()->with('error', 'Transaksi Gagal: ' . $trx->message);
             }
             
-            // Update pesan jika ada info dari provider (misal: "Transaksi Pending")
+            // Update pesan jika ada info dari provider
             if (isset($respData['data']['message'])) {
                 $trx->message = $respData['data']['message'];
+                // Update SN jika sudah sukses atau pending
+                if (isset($respData['data']['sn'])) {
+                    $trx->sn = $respData['data']['sn'];
+                }
                 $trx->save();
             }
 
@@ -171,8 +171,7 @@ class AgentTransactionController extends Controller
         }
     }
 
-     
-     /**
+    /**
      * AJAX: Mengambil Daftar Kota PBB dari Database Lokal (Dilengkapi Pencarian)
      * Endpoint: /agent/ppob/cities
      */
@@ -201,7 +200,6 @@ class AgentTransactionController extends Controller
             })->toArray();
 
             // PENTING: Untuk memastikan CIMAHI test case tersedia jika Anda menggunakannya
-            // Ini bisa dihapus jika semua produk PBB Anda sudah real.
             $cimahiExists = false;
             foreach ($finalCities as $city) {
                 if ($city['sku'] === 'cimahi') {
