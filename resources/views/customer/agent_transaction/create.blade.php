@@ -325,7 +325,7 @@
 
 @push('scripts')
 <script>
-    const logoBasePath = "{{ asset('storage/logo-ppob') }}/";
+    const logoBasePath = "{{ asset('public/storage/logo-ppob') }}/";
 
     // --- SWITCH TAB ---
     function switchTab(tab) {
