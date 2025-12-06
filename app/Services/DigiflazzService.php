@@ -75,85 +75,88 @@ class DigiflazzService
 
     /**
      * 2. Sinkronisasi Produk
-     */
-        /**
-     * 2. Sinkronisasi Produk
-     * Menambahkan delay 2 detik antara permintaan prepaid dan postpaid 
-     * untuk menghindari limitasi API (rc:83).
+     * Menggunakan Cache::remember untuk membatasi eksekusi sync menjadi 1x setiap 5 menit.
      */
     public function syncProducts()
     {
-        // 1. Ambil Produk Prabayar
-        $productsPrepaid = $this->getPriceList('prepaid');
-        
-        // ⭐ PERBAIKAN: Tambahkan JEDA WAKTU (DELAY)
-        // Menunggu 2 detik untuk memastikan panggilan Pricelist dianggap terpisah oleh server Digiflazz.
-        sleep(2); 
+        // Konstanta waktu cache: 5 menit (300 detik)
+        $cacheDuration = 300; 
+        $cacheKey = 'digiflazz_full_pricelist_sync'; 
 
-        // 2. Ambil Produk Pascabayar
-        $productsPostpaid = $this->getPriceList('postpaid');
+        $syncResult = Cache::remember($cacheKey, $cacheDuration, function () {
 
-        // Pastikan hasil dari getPriceList adalah array sebelum digabungkan
-        $productsPrepaid = is_array($productsPrepaid) ? $productsPrepaid : [];
-        $productsPostpaid = is_array($productsPostpaid) ? $productsPostpaid : [];
-        
-        // 3. Gabungkan hasilnya
-        $products = array_merge($productsPrepaid, $productsPostpaid);
+            Log::info('🔄 [SYNC START] Melakukan Sinkronisasi Pricelist ke Digiflazz (Cache Kedaluwarsa)');
 
-        // Cek apakah hasil gabungan kosong
-        if (empty($products)) {
-            Log::error('Sync Product Failed: Both prepaid and postpaid lists are empty.');
-            return false;
-        }
-
-        DB::beginTransaction();
-        try {
-            foreach ($products as $item) {
-                
-                // FIX: Tambahkan pemeriksaan untuk memastikan $item adalah array yang valid 
-                if (!is_array($item)) continue;
-                if (!isset($item['buyer_sku_code']) || !isset($item['price'])) continue;
-
-                $margin = 2000; // Margin Default
-                $modal = (float)$item['price'];
-                $hargaJual = $modal + $margin;
-
-                $product = PpobProduct::firstOrNew(['buyer_sku_code' => $item['buyer_sku_code']]);
-                
-                // Perbarui data produk
-                $product->product_name = $item['product_name'];
-                $product->category  = $item['category'];
-                $product->brand = $item['brand'];
-                $product->type = $item['type'];
-                $product->seller_name = $item['seller_name'];
-                $product->price = $modal;
-
-                // Hanya update sell_price jika produk baru atau sell_price 0/kosong
-                if (!$product->exists || $product->sell_price <= 0) {
-                    $product->sell_price = $hargaJual;
-                }
-                
-                // Update status & detail dari API
-                $product->buyer_product_status = $item['buyer_product_status'] ?? false;
-                $product->seller_product_status = $item['seller_product_status'] ?? false;
-                $product->unlimited_stock = $item['unlimited_stock'] ?? false;
-                $product->stock  = $item['stock'] ?? 0;
-                $product->multi = $item['multi'] ?? false;
-                $product->start_cut_off  = $item['start_cut_off'] ?? null;
-                $product->end_cut_off = $item['end_cut_off'] ?? null;
-                $product->desc = $item['desc'] ?? null;
-
-                $product->save();
-            }
-            DB::commit();
+            // 1. Ambil Produk Prabayar
+            $productsPrepaid = $this->getPriceList('prepaid');
             
-            Log::info('Sync Product Success: Total ' . count($products) . ' items processed.');
-            return true;
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Sync Product Failed: ' . $e->getMessage());
-            return false;
-        }
+            // JEDA WAKTU (DELAY): Pertahankan JEDA 2 detik antar panggilan API Pricelist.
+            sleep(2); 
+
+            // 2. Ambil Produk Pascabayar
+            $productsPostpaid = $this->getPriceList('postpaid');
+
+            // --- Logika Sinkronisasi ke Database Dimulai ---
+            $productsPrepaid = is_array($productsPrepaid) ? $productsPrepaid : [];
+            $productsPostpaid = is_array($productsPostpaid) ? $productsPostpaid : [];
+            
+            $products = array_merge($productsPrepaid, $productsPostpaid);
+
+            if (empty($products)) {
+                Log::error('Sync Product Failed: Both prepaid and postpaid lists are empty. Returning false.');
+                return false;
+            }
+
+            DB::beginTransaction();
+            try {
+                $processedCount = 0;
+                foreach ($products as $item) {
+                    if (!is_array($item)) continue;
+                    if (!isset($item['buyer_sku_code']) || !isset($item['price'])) continue;
+
+                    $margin = 2000;
+                    $modal = (float)$item['price'];
+                    $hargaJual = $modal + $margin;
+
+                    $product = PpobProduct::firstOrNew(['buyer_sku_code' => $item['buyer_sku_code']]);
+                    
+                    // Update data produk
+                    $product->fill([
+                        'product_name' => $item['product_name'] ?? null,
+                        'category' => $item['category'] ?? null,
+                        'brand' => $item['brand'] ?? null,
+                        'type' => $item['type'] ?? null,
+                        'seller_name' => $item['seller_name'] ?? null,
+                        'price' => $modal,
+                        'buyer_product_status' => $item['buyer_product_status'] ?? false,
+                        'seller_product_status' => $item['seller_product_status'] ?? false,
+                        'unlimited_stock' => $item['unlimited_stock'] ?? false,
+                        'stock' => $item['stock'] ?? 0,
+                        'multi' => $item['multi'] ?? false,
+                        'start_cut_off' => $item['start_cut_off'] ?? null,
+                        'end_cut_off' => $item['end_cut_off'] ?? null,
+                        'desc' => $item['desc'] ?? null,
+                    ]);
+
+                    if (!$product->exists || $product->sell_price <= 0) {
+                        $product->sell_price = $hargaJual;
+                    }
+                    
+                    $product->save();
+                    $processedCount++;
+                }
+                DB::commit();
+                
+                Log::info("✅ [SYNC END] Sinkronisasi Produk Berhasil. Total $processedCount items.");
+                return true; 
+
+            } catch (\Exception $e) {
+                DB::rollBack();
+                Log::error('Sync Product Failed: ' . $e->getMessage());
+                return false; 
+            }
+        });
+        return $syncResult;
     }
     /**
      * 3. Transaksi Prabayar (Pulsa/Data/Token)
