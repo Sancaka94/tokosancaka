@@ -279,4 +279,68 @@ class PpobController extends Controller
             return back()->with('error', 'Error Sistem: ' . $e->getMessage());
         }
     }
+
+    // =================================================================
+    // FUNGSI SINKRONISASI PRODUK DARI DIGIFLAZZ
+    // =================================================================
+    
+    public function sync()
+    {
+        // Pastikan hanya admin yang bisa mengakses fungsi ini jika diperlukan
+        if (!Auth::check() || !Auth::user()->hasRole('Admin')) {
+            return redirect('/')->with('error', 'Akses ditolak.');
+        }
+
+        try {
+            // Panggil service Digiflazz untuk mendapatkan daftar produk
+            $products = $this->digiflazz->getProducts(); // Asumsi method ini ada di DigiflazzService
+
+            if (isset($products['data']) && is_array($products['data'])) {
+                $insertedCount = 0;
+                $updatedCount = 0;
+
+                foreach ($products['data'] as $product) {
+                    // Cari produk berdasarkan buyer_sku_code (kode unik produk)
+                    $localProduct = PpobProduct::firstOrNew(['buyer_sku_code' => $product['buyer_sku_code']]);
+
+                    // Update atau isi data produk
+                    $localProduct->fill([
+                        'product_name'          => $product['product_name'],
+                        'category'              => $product['category'],
+                        'brand'                 => $product['brand'],
+                        'type'                  => $product['type'],
+                        'price'                 => $product['price'],
+                        'sell_price'            => $localProduct->sell_price ?? $product['price'] + 1000, // Tambahkan margin default
+                        'admin'                 => $product['admin'],
+                        'status'                => $product['status'], // Digiflazz status
+                        'buyer_sku_code'        => $product['buyer_sku_code'],
+                        'desc'                  => $product['desc'] ?? null,
+                        'buyer_product_status'  => $product['buyer_product_status'],
+                        'seller_product_status' => $product['seller_product_status'],
+                        // 'seller_product_status' => $localProduct->exists ? $localProduct->seller_product_status : true, // Pertahankan status seller jika sudah ada
+                    ]);
+                    
+                    if ($localProduct->exists) {
+                        $localProduct->save();
+                        $updatedCount++;
+                    } else {
+                        // Inisialisasi status produk agar bisa langsung dijual jika belum ada
+                        $localProduct->seller_product_status = true; 
+                        $localProduct->save();
+                        $insertedCount++;
+                    }
+                }
+                
+                return back()->with('success', "Sinkronisasi Berhasil. Ditambahkan: $insertedCount, Diperbarui: $updatedCount.");
+            } else {
+                // Tangani kasus jika API Digiflazz gagal
+                Log::error('Digiflazz Sync Failed: ' . json_encode($products));
+                return back()->with('error', 'Gagal mengambil data dari Digiflazz. Cek log.');
+            }
+
+        } catch (\Exception $e) {
+            Log::error('PPOB Sync Exception: ' . $e->getMessage());
+            return back()->with('error', 'Error Sistem saat sinkronisasi: ' . $e->getMessage());
+        }
+    }
 }
