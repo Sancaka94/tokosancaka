@@ -190,7 +190,7 @@
                             <option value="bpjs">BPJS Kesehatan</option>
                             <option value="pdam">PDAM</option>
                             <option value="telkom">Telkom / Indihome</option>
-                            <option value="pgas">Gas Negara</option> {{-- Sesuai Docs Digiflazz: pgas --}}
+                            <option value="pgas">Gas Negara</option>
                             <option value="multifinance">Multifinance / Cicilan</option>
                             <option value="pbb">Pajak PBB</option>
                             <option value="samsat">E-Samsat</option>
@@ -251,12 +251,12 @@
                                 <p class="font-bold text-gray-800" id="res_periode">-</p>
                             </div>
                             <div>
-                                <p class="text-xs text-gray-500 uppercase">Total Tagihan (Pelanggan)</p>
+                                <p class="text-xs text-gray-500 uppercase">Total Tagihan</p>
                                 <p class="font-extrabold text-purple-700 text-xl" id="res_total">-</p>
                             </div>
                         </div>
                         
-                        {{-- Detail Tambahan (Admin, Denda, Lembar) --}}
+                        {{-- Detail Tambahan --}}
                         <div class="mt-4 pt-4 border-t border-purple-200 grid grid-cols-2 md:grid-cols-4 gap-4">
                             <div>
                                 <p class="text-xs text-gray-500 uppercase">Admin Fee</p>
@@ -267,12 +267,12 @@
                                 <p class="font-bold text-gray-700" id="res_denda">-</p>
                             </div>
                             <div>
-                                <p class="text-xs text-gray-500 uppercase">Lembar Tagihan</p>
+                                <p class="text-xs text-gray-500 uppercase">Lembar</p>
                                 <p class="font-bold text-gray-700" id="res_lembar">-</p>
                             </div>
-                            {{-- Info Modal Agen (Hanya untuk Agen) --}}
+                            {{-- Info Modal Agen --}}
                             <div>
-                                <p class="text-xs text-gray-500 uppercase text-red-500 font-bold"><i class="fas fa-lock"></i> Modal Agen</p>
+                                <p class="text-xs text-gray-500 uppercase text-red-500 font-bold"><i class="fas fa-lock"></i> Modal</p>
                                 <p class="font-bold text-red-600" id="res_modal">-</p>
                             </div>
                         </div>
@@ -289,11 +289,11 @@
                     <div class="flex justify-end pt-4">
                         <form action="{{ route('agent.transaction.store') }}" method="POST" id="form-pay-pasca">
                             @csrf
-                            {{-- Field Hidden untuk Data Pascabayar --}}
+                            {{-- Field Hidden --}}
                             <input type="hidden" name="payment_type" value="pasca">
                             <input type="hidden" name="sku" id="pay_sku">
                             <input type="hidden" name="customer_no" id="pay_no">
-                            <input type="hidden" name="ref_id" id="pay_ref_id"> {{-- PENTING: Ref ID dari Inquiry --}}
+                            <input type="hidden" name="ref_id" id="pay_ref_id"> 
                             <input type="hidden" name="selling_price" id="pay_price">
                             
                             <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-green-200 transition flex items-center gap-2 transform hover:scale-105">
@@ -349,9 +349,8 @@
 
 @push('scripts')
 <script>
-    const logoBasePath = "{{ asset('public/storage/logo-ppob') }}/";
+    const logoBasePath = "{{ asset('storage/logo-ppob') }}/";
 
-    // --- SWITCH TAB ---
     function switchTab(tab) {
         const btnPra = document.getElementById('tab-prabayar');
         const btnPasca = document.getElementById('tab-pascabayar');
@@ -371,7 +370,6 @@
         }
     }
 
-    // --- RESET PASCA (TOMBOL COBA LAGI) ---
     function resetPasca() {
         document.getElementById('pasca_empty').innerHTML = `
             <i class="fas fa-file-invoice-dollar text-6xl mb-4 text-gray-200"></i>
@@ -380,20 +378,18 @@
         document.getElementById('pasca_no').focus();
     }
 
-    // --- LOGIKA PASCABAYAR ---
+    // --- LOGIKA PASCABAYAR (PERBAIKAN UTAMA) ---
     function cekTagihan() {
         const sku = document.getElementById('pasca_sku').value;
         const no = document.getElementById('pasca_no').value;
 
         if(no.length < 5) { alert('Nomor pelanggan tidak valid'); return; }
 
-        // UI Loading
         document.getElementById('pasca_empty').classList.add('hidden');
         document.getElementById('pasca_result').classList.add('hidden');
         document.getElementById('pasca_loading').classList.remove('hidden');
         document.getElementById('btn-cek-tagihan').disabled = true;
 
-        // AJAX Request (Pastikan route 'ppob.check.bill' mengarah ke AgentTransactionController@checkBill)
         fetch('{{ route("ppob.check.bill") }}', { 
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
@@ -405,45 +401,60 @@
         })
         .then(res => res.json())
         .then(data => {
+            console.log("DEBUG API:", data); // Debugging
+            
             document.getElementById('pasca_loading').classList.add('hidden');
             document.getElementById('btn-cek-tagihan').disabled = false;
 
-            const d = data.data || data;
+            // Robust parsing: ambil data.data jika ada, atau data langsung
+            let d = data;
+            if(data.data) { d = data.data; }
 
-            // Validasi sukses (RC 00 atau Status Sukses)
-            if(d.status === 'Sukses' || d.rc === '00') {
+            // Normalize Status & RC
+            let status = d.status ? d.status.toLowerCase() : '';
+            let rc = d.rc ? String(d.rc) : '';
+
+            // CEK SUKSES: RC='00' ATAU Status='Sukses'/'success'
+            if(status === 'sukses' || status === 'success' || rc === '00') {
                 document.getElementById('pasca_result').classList.remove('hidden');
                 
-                // 1. Mapping Basic Info
-                document.getElementById('res_nama').innerText = d.customer_name || d.name || 'Pelanggan';
-                document.getElementById('res_id').innerText = d.customer_no;
+                // 1. Mapping Basic
+                document.getElementById('res_nama').innerText = d.customer_name || d.name || '-';
+                document.getElementById('res_id').innerText = d.customer_no || no;
                 
-                // 2. Mapping Periode & Lembar
+                // 2. Mapping Desc
                 let periode = d.periode || '-';
-                if(d.desc && d.desc.detail && d.desc.detail[0]) {
-                    periode = d.desc.detail[0].periode || periode;
+                let lembar = '1 Lembar';
+                let denda = 0;
+                
+                if(d.desc) {
+                    if(d.desc.lembar_tagihan) lembar = d.desc.lembar_tagihan + ' Lembar';
+                    if(d.desc.detail && d.desc.detail[0]) {
+                        periode = d.desc.detail[0].periode || periode;
+                        denda = d.desc.detail[0].denda || 0;
+                    }
                 }
                 document.getElementById('res_periode').innerText = periode;
-                document.getElementById('res_lembar').innerText = (d.desc && d.desc.lembar_tagihan) ? d.desc.lembar_tagihan + ' Lembar' : '1 Lembar';
+                document.getElementById('res_lembar').innerText = lembar;
 
                 // 3. Mapping Harga
-                let modalAgen = parseInt(d.price || 0); 
-                let adminBank = parseInt(d.admin || 0);
-                let marginAgen = 2500; // Contoh Margin Agen
+                let modalAgen = parseInt(d.price || d.selling_price || 0); 
+                let adminBank = parseInt(d.admin || 2500);
+                let marginAgen = 2500;
                 let hargaJual = modalAgen + marginAgen;
 
                 document.getElementById('res_modal').innerText = 'Rp ' + modalAgen.toLocaleString('id-ID'); 
                 document.getElementById('res_total').innerText = 'Rp ' + hargaJual.toLocaleString('id-ID'); 
                 document.getElementById('res_admin').innerText = 'Rp ' + adminBank.toLocaleString('id-ID');
-                document.getElementById('res_denda').innerText = 'Rp ' + parseInt(d.desc?.detail?.[0]?.denda || 0).toLocaleString('id-ID');
+                document.getElementById('res_denda').innerText = 'Rp ' + parseInt(denda).toLocaleString('id-ID');
                 
-                // 4. Form Submission Data
+                // 4. Form Data
                 document.getElementById('pay_sku').value = sku;
                 document.getElementById('pay_no').value = d.customer_no;
                 document.getElementById('pay_ref_id').value = d.ref_id; 
                 document.getElementById('pay_price').value = hargaJual; 
 
-                // 5. Mapping Detail Item
+                // 5. Detail Items
                 const detailContainer = document.getElementById('res_detail_container');
                 const detailList = document.getElementById('res_detail_list');
                 
@@ -457,9 +468,6 @@
                                 <span class="font-bold">Rp ${parseInt(item.nilai_tagihan || 0).toLocaleString('id-ID')}</span>
                             </div>
                         `;
-                        if(item.meter_awal && item.meter_akhir) {
-                            rowHtml += `<div class="text-[10px] text-gray-500">Meter: ${item.meter_awal} - ${item.meter_akhir}</div>`;
-                        }
                         detailList.insertAdjacentHTML('beforeend', rowHtml);
                     });
                 } else {
@@ -467,8 +475,8 @@
                 }
 
             } else {
-                // IMPROVED ERROR UI
-                const errorMsg = d.message || 'Tagihan tidak ditemukan atau sudah terbayar.';
+                // ERROR UI
+                const errorMsg = d.message || 'Tagihan tidak ditemukan / Gagal.';
                 const emptyState = document.getElementById('pasca_empty');
                 emptyState.innerHTML = `
                     <div class="text-center text-red-500 animate-pulse">
@@ -482,8 +490,8 @@
             }
         })
         .catch(err => {
-            console.error(err);
-            alert('Gagal menghubungi server');
+            console.error("AJAX Error:", err);
+            alert('Gagal menghubungi server: ' + err.message);
             document.getElementById('pasca_loading').classList.add('hidden');
             document.getElementById('btn-cek-tagihan').disabled = false;
             document.getElementById('pasca_empty').classList.remove('hidden');
