@@ -85,11 +85,15 @@ class AgentTransactionController extends Controller
         
         // Kredensial Langsung
         $username = 'mihetiDVGdeW'; 
-        // Ganti baris di bawah sesuai kebutuhan: DEV atau PROD
-        $apiKey    = '1f48c69f-8676-5d56-a868-10a46a69f9b7'; 
-        $testingMode = false; 
+        //$apiKey   = 'dev-d54808c0-87ed-11f0-bdb6-8d5622821215'; 
+        //$testingMode = true; // Set false jika sudah production
+
+        $apiKey   = '1f48c69f-8676-5d56-a868-10a46a69f9b7'; 
+        $testingMode = false; // Set false jika sudah production
+
         
-        $orderId = 'TRX-OFFLINE-' . time() . rand(100, 999);
+
+        $orderId  = 'TRX-OFFLINE-' . time() . rand(100, 999);
         
         // Generate Signature: md5(username + key + ref_id)
         $validSign = md5($username . $apiKey . $orderId);
