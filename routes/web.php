@@ -759,7 +759,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])
 
         require __DIR__.'/web/admin.php';
 
-         Route::get('/sync-produk', [PpobController::class, 'sync'])->name('ppob.sync'); // <-- AMANKAN DENGAN 'role:Admin'
+         Route::get('/sync-produk', [PpobController::class, 'sync'])->name('sync'); // <-- AMANKAN DENGAN 'role:Admin'
 
 
         
