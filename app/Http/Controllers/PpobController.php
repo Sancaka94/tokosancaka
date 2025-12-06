@@ -288,12 +288,14 @@ class PpobController extends Controller
     {
         // Pastikan hanya admin yang bisa mengakses fungsi ini jika diperlukan
         if (!Auth::check() || !Auth::user()->hasRole('Admin')) {
-            return redirect('/')->with('error', 'Akses ditolak.');
+            // ⭐ PERBAIKAN 1: Return JSON error untuk akses ditolak
+            return response()->json(['status' => 'error', 'message' => 'Akses ditolak.'], 403);
         }
 
         try {
             // Panggil service Digiflazz untuk mendapatkan daftar produk
-            $products = $this->digiflazz->getProducts(); // Asumsi method ini ada di DigiflazzService
+            // Asumsi: method getProducts() di DigiflazzService memanggil getPriceList dan mengembalikan [ 'data' => [...] ]
+            $products = $this->digiflazz->getProducts(); 
 
             if (isset($products['data']) && is_array($products['data'])) {
                 $insertedCount = 0;
@@ -310,37 +312,48 @@ class PpobController extends Controller
                         'brand'                 => $product['brand'],
                         'type'                  => $product['type'],
                         'price'                 => $product['price'],
-                        'sell_price'            => $localProduct->sell_price ?? $product['price'] + 1000, // Tambahkan margin default
+                        'sell_price'            => $localProduct->sell_price ?? $product['price'] + 1000,
                         'admin'                 => $product['admin'],
-                        'status'                => $product['status'], // Digiflazz status
+                        'status'                => $product['status'],
                         'buyer_sku_code'        => $product['buyer_sku_code'],
                         'desc'                  => $product['desc'] ?? null,
                         'buyer_product_status'  => $product['buyer_product_status'],
-                        'seller_product_status' => $product['seller_product_status'],
-                        // 'seller_product_status' => $localProduct->exists ? $localProduct->seller_product_status : true, // Pertahankan status seller jika sudah ada
+                        'seller_product_status' => $localProduct->seller_product_status ?? true, // Tetapkan default true jika baru
                     ]);
                     
                     if ($localProduct->exists) {
                         $localProduct->save();
                         $updatedCount++;
                     } else {
-                        // Inisialisasi status produk agar bisa langsung dijual jika belum ada
-                        $localProduct->seller_product_status = true; 
                         $localProduct->save();
                         $insertedCount++;
                     }
                 }
                 
-                return back()->with('success', "Sinkronisasi Berhasil. Ditambahkan: $insertedCount, Diperbarui: $updatedCount.");
+                // ⭐ PERBAIKAN 2: Ganti return back() dengan return response()->json()
+                return response()->json([
+                    'status' => 'success', 
+                    'message' => "Sinkronisasi Berhasil. Ditambahkan: $insertedCount, Diperbarui: $updatedCount."
+                ]);
             } else {
                 // Tangani kasus jika API Digiflazz gagal
                 Log::error('Digiflazz Sync Failed: ' . json_encode($products));
-                return back()->with('error', 'Gagal mengambil data dari Digiflazz. Cek log.');
+                
+                // ⭐ PERBAIKAN 3: Ganti return back() dengan return response()->json()
+                return response()->json([
+                    'status' => 'error', 
+                    'message' => $products['message'] ?? 'Gagal mengambil data dari Digiflazz. Cek log.'
+                ], 500);
             }
 
         } catch (\Exception $e) {
             Log::error('PPOB Sync Exception: ' . $e->getMessage());
-            return back()->with('error', 'Error Sistem saat sinkronisasi: ' . $e->getMessage());
+            
+            // ⭐ PERBAIKAN 4: Ganti return back() dengan return response()->json()
+            return response()->json([
+                'status' => 'error', 
+                'message' => 'Error Sistem saat sinkronisasi: ' . $e->getMessage()
+            ], 500);
         }
     }
 }
