@@ -12,26 +12,14 @@ class DigiflazzService
     protected $username;
     protected $apiKey;
     protected $baseUrl;
-    protected $testingMode; // Tambahkan properti untuk mode testing
 
     public function __construct()
     {
-        // Nilai Default saat Service di-instantiate, akan di-override oleh Controller
+        // Kredensial (Sesuaikan dengan .env jika production)
         $this->username = 'mihetiDVGdeW'; 
-        $this->apiKey   = '1f48c69f-8676-5d56-a868-10a46a69f9b7'; // Default ke Production
         //$this->apiKey   = 'dev-d54808c0-87ed-11f0-bdb6-8d5622821215';
+        $this->apiKey   = '1f48c69f-8676-5d56-a868-10a46a69f9b7';
         $this->baseUrl  = 'https://api.digiflazz.com/v1'; 
-        $this->testingMode = false; // Default ke Production
-    }
-
-    /**
-     * PENTING: Method untuk mengatur kredensial dari Controller
-     */
-    public function setCredentials($username, $apiKey, $testingMode)
-    {
-        $this->username = $username;
-        $this->apiKey = $apiKey;
-        $this->testingMode = $testingMode;
     }
 
     /**
@@ -39,8 +27,9 @@ class DigiflazzService
      */
     public function getPriceList($cmd = 'prepaid')
     {
-        // Note: Signature untuk pricelist sebaiknya menggunakan string "pricelist"
-        $sign = md5($this->username . $this->apiKey . "pricelist");
+        // Note: Signature untuk pricelist biasanya menggunakan string "pricelist" bukan "depo"
+        // Tapi saya biarkan sesuai kode asli Anda jika memang berjalan
+        $sign = md5($this->username . $this->apiKey . "depo");
 
         try {
             $response = Http::post($this->baseUrl . '/price-list', [
@@ -124,7 +113,7 @@ class DigiflazzService
             'ref_id' => $refId,
             'sign' => $sign,
             'max_price' => $maxPrice,
-            'testing' => $this->testingMode, // Menggunakan properti testing dari Controller
+            'testing' => true, // Pastikan TRUE untuk test case
         ];
 
         try {
@@ -147,13 +136,13 @@ class DigiflazzService
         $sign = md5($this->username . $this->apiKey . $refId);
 
         $payload = [
-            'cmd' => 'inq-pasca',
+            'commands' => 'inq-pasca',
             'username' => $this->username,
             'buyer_sku_code' => $sku,
             'customer_no' => $customerNo,
             'ref_id' => $refId,
             'sign' => $sign,
-            'testing' => $this->testingMode, // Menggunakan properti testing dari Controller
+            'testing' => false, // Wajib TRUE untuk Test Case
         ];
 
         try {
@@ -196,21 +185,23 @@ class DigiflazzService
      */
     public function payPasca($sku, $customerNo, $refId)
     {
+        // NOTE: Ref ID harus SAMA PERSIS dengan saat inquiry (Cek Tagihan)
         $sign = md5($this->username . $this->apiKey . $refId);
 
         $payload = [
-            'commands'       => 'pay-pasca', 
+            'commands'       => 'pay-pasca', // Perintah khusus bayar
             'username'       => $this->username,
             'buyer_sku_code' => $sku,
             'customer_no'    => $customerNo,
-            'ref_id'         => $refId,      
+            'ref_id'         => $refId,      // Wajib sama dengan INQ
             'sign'           => $sign,
-            'testing'        => $this->testingMode, // Menggunakan properti testing dari Controller
+            'testing'        => true,        // Wajib TRUE untuk Test Case
         ];
 
         try {
             Log::info("➡️ [PAY Request] $refId", $payload);
             
+            // Timeout diperpanjang karena proses bayar pasca kadang butuh waktu
             $response = Http::timeout(45)->post($this->baseUrl . '/transaction', $payload);
             $respData = $response->json();
             
@@ -224,13 +215,13 @@ class DigiflazzService
         }
     }
 
-    /**
+      /**
      * Mengambil daftar semua produk PBB (untuk list kota).
      * Filter manual karena Digiflazz tidak menyediakan API khusus kota.
      */
     public function getPbbProducts()
     {
-        // Note: Signature untuk pricelist sebaiknya menggunakan string "pricelist"
+        // Signature untuk pricelist adalah "pricelist"
         $sign = md5($this->username . $this->apiKey . "pricelist");
 
         try {
