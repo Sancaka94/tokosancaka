@@ -185,15 +185,23 @@
                     {{-- Select Jenis --}}
                     <div>
                         <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Jenis Tagihan</label>
-                        <select id="pasca_sku" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white">
+                        <select id="pasca_sku" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white" onchange="handlePascaSkuChange()">
                             <option value="pln">PLN Pascabayar</option>
                             <option value="bpjs">BPJS Kesehatan</option>
                             <option value="pdam">PDAM</option>
                             <option value="internet">Telkom / Indihome</option>
                             <option value="pgas">Gas Negara</option>
                             <option value="multifinance">Multifinance / Cicilan</option>
-                            <option value="cimahi">Pajak PBB (CIMAHI)</option> {{-- FIX: Menggunakan CIMAHI --}}
+                            <option value="pbb-city">Pajak PBB (Pilih Kota)</option>
                             <option value="samsat">E-Samsat</option>
+                        </select>
+                    </div>
+
+                    {{-- Dynamic PBB City Selection / Normal Input --}}
+                    <div id="dynamic_city_selection" class="hidden">
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Pilih Kota PBB</label>
+                        <select id="pbb_city_sku" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white">
+                            <option value="">-- Loading Kota... --</option>
                         </select>
                     </div>
 
@@ -204,7 +212,7 @@
                                class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-purple-500 font-bold text-gray-800 placeholder-gray-300"
                                placeholder="Contoh: 5300xxxx">
                         <p id="test_case_info" class="text-[10px] text-red-500 mt-1 italic">
-                            *Gunakan Test Case PBB (CIMAHI): 329801092375999991, Internet: 7391601001, PLN: 630000000001
+                            *Gunakan Test Case PBB: 329801092375999991, Internet: 7391601001, PLN: 630000000001
                         </p>
                     </div>
 
@@ -247,15 +255,15 @@
                                 <p class="font-bold text-gray-800 text-lg break-words" id="res_nama">-</p>
                             </div>
                             <div>
-                                <p class="text-xs text-gray-500 uppercase">ID Pelanggan</p>
+                                <p class="xs text-gray-500 uppercase">ID Pelanggan</p>
                                 <p class="font-bold text-gray-800 break-words" id="res_id">-</p>
                             </div>
                             <div>
-                                <p class="text-xs text-gray-500 uppercase">Periode</p>
+                                <p class="xs text-gray-500 uppercase">Periode</p>
                                 <p class="font-bold text-gray-800" id="res_periode">-</p>
                             </div>
                             <div>
-                                <p class="text-xs text-gray-500 uppercase">Total Tagihan</p>
+                                <p class="xs text-gray-500 uppercase">Total Tagihan</p>
                                 <p class="font-extrabold text-purple-700 text-xl" id="res_total">-</p>
                             </div>
                         </div>
@@ -329,7 +337,7 @@
     <div class="flex items-center justify-center min-h-screen p-4">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm transform transition-all p-0 overflow-hidden scale-95 opacity-0" id="modal_content">
             <div class="bg-blue-600 p-4 text-white text-center">
-                <h3 class="text-lg font-bold">Konfirmasi Transaksi</h3>
+                <h3 class="lg font-bold">Konfirmasi Transaksi</h3>
             </div>
             <div class="p-6 space-y-4">
                 <div class="flex justify-between items-end border-b border-gray-100 pb-3">
@@ -397,6 +405,9 @@
             btnPra.className = 'flex-1 py-3 rounded-lg font-bold text-sm text-gray-500 hover:bg-gray-50 transition';
             contentPra.classList.add('hidden');
             contentPasca.classList.remove('hidden');
+            
+            // PENTING: Panggil load PBB saat tab Pasca diaktifkan
+            handlePascaSkuChange(); 
         }
     }
 
@@ -408,11 +419,104 @@
         document.getElementById('pasca_no').focus();
     }
 
-    // --- LOGIKA PASCABAYAR ---
+    // --- LOGIKA UTAMA PBB & SELECT ---
+    function handlePascaSkuChange() {
+        const selectedSku = document.getElementById('pasca_sku').value;
+        const citySelectionDiv = document.getElementById('dynamic_city_selection');
+        const pascaNoInput = document.getElementById('pasca_no');
+        const testCaseInfo = document.getElementById('test_case_info');
+
+        // Reset display
+        citySelectionDiv.classList.add('hidden');
+        pascaNoInput.placeholder = "Contoh: 5300xxxx";
+        testCaseInfo.style.display = 'block';
+
+        // Logika PBB
+        if (selectedSku === 'pbb-city') {
+            citySelectionDiv.classList.remove('hidden');
+            loadPbbCities();
+            pascaNoInput.placeholder = "Masukkan NOP PBB (Nomor Objek Pajak)";
+            testCaseInfo.innerHTML = '*Gunakan Test Case PBB (CIMAHI): 329801092375999991';
+        } 
+        // Logika Internet
+        else if (selectedSku === 'internet') {
+            testCaseInfo.innerHTML = '*Gunakan Test Case Internet: 7391601001';
+        }
+        // Logika PLN
+        else if (selectedSku === 'pln') {
+            testCaseInfo.innerHTML = '*Gunakan Test Case PLN: 630000000001';
+        }
+        // Logika Default
+        else {
+            testCaseInfo.innerHTML = '*Untuk Samsat/PBB/Cicilan, pastikan format nomor sesuai.';
+        }
+
+        // Opsional: Reset hasil tagihan jika jenis produk berubah
+        document.getElementById('pasca_result').classList.add('hidden');
+        document.getElementById('pasca_empty').classList.remove('hidden');
+    }
+
+    function loadPbbCities() {
+        const selectElement = document.getElementById('pbb_city_sku');
+        selectElement.innerHTML = '<option value="">-- Memuat Kota... --</option>';
+        selectElement.disabled = true;
+
+        if (pbbCitiesCache.length > 0) {
+            renderPbbCities(pbbCitiesCache);
+            return;
+        }
+
+        fetch('{{ route("admin.ppob.get-pbb-cities") }}', { 
+            method: 'GET',
+            headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success && data.cities) {
+                pbbCitiesCache = data.cities;
+                renderPbbCities(data.cities);
+            } else {
+                selectElement.innerHTML = '<option value="">Gagal Memuat Kota</option>';
+            }
+        })
+        .catch(err => {
+            console.error("Fetch City Error:", err);
+            selectElement.innerHTML = '<option value="">Error Server</option>';
+        });
+    }
+
+    function renderPbbCities(cities) {
+        const selectElement = document.getElementById('pbb_city_sku');
+        selectElement.innerHTML = '';
+        selectElement.disabled = false;
+
+        let defaultOption = document.createElement('option');
+        defaultOption.value = '';
+        defaultOption.innerText = '-- Pilih Kota / Kabupaten --';
+        selectElement.appendChild(defaultOption);
+
+        cities.forEach(city => {
+            let option = document.createElement('option');
+            option.value = city.sku;
+            option.innerText = city.name;
+            selectElement.appendChild(option);
+        });
+    }
+
+    // --- UTAMA: LOGIKA PASCABAYAR CEK TAGIHAN ---
     function cekTagihan() {
-        const sku = document.getElementById('pasca_sku').value;
+        // Ambil SKU yang benar (Jika PBB, ambil dari dropdown kota)
+        let sku = document.getElementById('pasca_sku').value;
         const no = document.getElementById('pasca_no').value;
 
+        if (sku === 'pbb-city') {
+            sku = document.getElementById('pbb_city_sku').value;
+        }
+
+        if(sku === 'pbb-city' || sku === '') {
+            alert('Mohon pilih jenis tagihan atau kota terlebih dahulu.');
+            return;
+        }
         if(no.length < 5) { alert('Nomor pelanggan tidak valid'); return; }
 
         document.getElementById('pasca_empty').classList.add('hidden');
@@ -424,7 +528,7 @@
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
             body: JSON.stringify({ 
-                sku: sku, 
+                sku: sku, // SKU yang sudah final (cimahi, pln, bpjs, dll)
                 customer_no: no,
                 ref_id: 'INQ-' + Date.now() + Math.floor(Math.random() * 1000)
             })
@@ -491,7 +595,7 @@
                         infoTeknis = (d.desc.jumlah_peserta || '1') + ' Peserta';
                         labelTeknis = 'Jumlah Peserta';
                     }
-                    else if(sku === 'internet') { // FIX: Target SKU 'internet'
+                    else if(sku === 'internet' || sku === 'telkom') {
                         infoTeknis = (d.desc.lembar_tagihan || '1') + ' Lembar Tagihan';
                         labelTeknis = 'Lembar Tagihan';
                     }

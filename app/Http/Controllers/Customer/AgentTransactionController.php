@@ -163,4 +163,40 @@ class AgentTransactionController extends Controller
             return back()->with('error', 'Error System: ' . $e->getMessage());
         }
     }
+
+     /**
+     * AJAX: Mengambil Daftar Kota PBB dari API Digiflazz
+     */
+    public function getPbbCities(DigiflazzService $digiflazz)
+    {
+        try {
+            // Memanggil fungsi baru di DigiflazzService
+            $products = $digiflazz->getPbbProducts(); 
+
+            // Mengelompokkan berdasarkan Nama Produk (untuk menghilangkan duplikasi)
+            $cities = [];
+            foreach ($products as $product) {
+                // Hanya ambil produk dengan SKU unik sebagai nama kota (misal: cimahi, pdl)
+                if (str_starts_with($product['sku'], 'cimahi') || str_starts_with($product['sku'], 'pdl')) {
+                    $cities[] = [
+                        'sku' => $product['sku'],
+                        'name' => $product['name']
+                    ];
+                }
+                // Jika produk PBB generik, kita abaikan dulu untuk filter kota spesifik
+            }
+
+            // Hapus duplikasi dan urutkan
+            $uniqueCities = array_values(array_unique($cities, SORT_REGULAR));
+            usort($uniqueCities, function($a, $b) {
+                return strcmp($a['name'], $b['name']);
+            });
+
+            return response()->json(['success' => true, 'cities' => $uniqueCities]);
+
+        } catch (\Exception $e) {
+            Log::error('Get PBB Cities Error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Gagal mengambil data kota.'], 500);
+        }
+    }
 }
