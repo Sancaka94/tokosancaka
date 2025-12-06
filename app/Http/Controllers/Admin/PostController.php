@@ -348,6 +348,9 @@ Website: tokosancaka.biz.id , tokosancaka.com , sancaka.biz.id </p>
 
         $apiKey = env('GEMINI_API_KEY');
 
+        // ✅ Tambahkan trim() untuk menghilangkan spasi/newline yang tidak disengaja
+        $apiKey = trim($apiKey);
+
         if (!$apiKey) {
 
             Log::error('Gemini API Error: GEMINI_API_KEY is not set in the .env file.');
