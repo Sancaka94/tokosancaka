@@ -190,7 +190,7 @@
                             <option value="bpjs">BPJS Kesehatan</option>
                             <option value="pdam">PDAM</option>
                             <option value="telkom">Telkom / Indihome</option>
-                            <option value="pgas">Gas Negara</option> 
+                            <option value="pgas">Gas Negara</option>
                             <option value="multifinance">Multifinance / Cicilan</option>
                             <option value="pbb">Pajak PBB</option>
                             <option value="samsat">E-Samsat</option>
@@ -258,14 +258,14 @@
                             </div>
                         </div>
                         
-                        {{-- Detail Tambahan (Alamat, Tarif, Daya) --}}
+                        {{-- Detail Tambahan (Alamat, Tarif, Daya, Kendaraan, Luas) --}}
                         <div id="row_detail_teknis" class="hidden border-t border-purple-200 pt-4 mb-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                              <div>
                                 <p class="text-xs text-gray-500 uppercase">Alamat / Lokasi</p>
                                 <p class="font-bold text-gray-700 break-words" id="res_alamat">-</p>
                             </div>
                              <div>
-                                <p class="text-xs text-gray-500 uppercase" id="label_tarif">Tarif / Daya</p>
+                                <p class="text-xs text-gray-500 uppercase" id="label_tarif">Detail Teknis</p>
                                 <p class="font-bold text-gray-700" id="res_tarif">-</p>
                             </div>
                         </div>
@@ -443,43 +443,71 @@
                 document.getElementById('res_nama').innerText = d.customer_name || d.name || '-';
                 document.getElementById('res_id').innerText = d.customer_no || no;
                 
-                // 2. Mapping Desc
+                // 2. Mapping Desc & Details
                 let periode = d.periode || '-';
+                let lembar = '1 Lembar';
+                let denda = 0;
+                let alamat = '-';
+                let infoTeknis = '-'; 
+                let labelTeknis = 'Detail Teknis';
+
                 if(d.desc) {
                     if(d.desc.lembar_tagihan) lembar = d.desc.lembar_tagihan + ' Lembar';
-                    if(d.desc.detail && d.desc.detail[0]) {
+                    
+                    if(d.desc.detail && Array.isArray(d.desc.detail) && d.desc.detail.length > 0) {
                         periode = d.desc.detail[0].periode || periode;
                         denda = d.desc.detail[0].denda || 0;
+                    } else if (d.desc.periode) {
+                        periode = d.desc.periode; 
                     }
-                    
-                    // Ambil Alamat & Tarif jika ada
-                    alamat = d.desc.alamat || d.desc.kab_kota || '-';
-                    tarif = d.desc.tarif || d.desc.golongan || '-';
-                    daya = d.desc.daya ? d.desc.daya + ' VA' : '';
-                    
-                    // Khusus PLN: Gabung Tarif/Daya
-                    if(sku === 'pln' || d.desc.daya) {
-                        tarif = tarif + ' / ' + daya;
+
+                    // Ambil Alamat
+                    alamat = d.desc.alamat || d.desc.kab_kota || d.desc.kelurahan || '-'; // Ambil alamat terbaik
+
+                    // --- LOGIC DETIL TEKNIS PER PRODUK ---
+                    if(sku === 'pln' || d.desc.tarif) {
+                        let tarif = d.desc.tarif || '-';
+                        let daya = d.desc.daya ? d.desc.daya + ' VA' : '';
+                        infoTeknis = tarif + ' / ' + daya;
+                        labelTeknis = 'Tarif / Daya';
+                    } 
+                    else if(sku === 'samsat' || d.desc.nomor_polisi) {
+                        let nopol = d.desc.nomor_polisi || d.desc.no_pol || '-';
+                        let merek = d.desc.merek_kb || '';
+                        let model = d.desc.model_kb || '';
+                        infoTeknis = `${nopol} (${merek} ${model})`;
+                        labelTeknis = 'Kendaraan';
+                    }
+                    else if(sku === 'pbb' || d.desc.luas_tanah) {
+                        let lt = d.desc.luas_tanah || '0';
+                        let lb = d.desc.luas_gedung || '0';
+                        infoTeknis = `LT: ${lt}m² / LB: ${lb}m²`;
+                        labelTeknis = 'Luas Tanah / Bangunan';
+                    }
+                    else if(sku === 'bpjs') {
+                        infoTeknis = (d.desc.jumlah_peserta || '1') + ' Peserta';
+                        labelTeknis = 'Jumlah Peserta';
                     }
                 }
                 
-                // FIX: Gunakan formatPeriodeID agar tampil rapi
+                // Render Periode & Lembar
                 document.getElementById('res_periode').innerText = formatPeriodeID(periode);
                 document.getElementById('res_lembar').innerText = lembar;
 
-                // Tampilkan Alamat & Tarif jika ada
+                // Render Detail Teknis (Alamat & Info)
                 const rowDetail = document.getElementById('row_detail_teknis');
-                if(alamat !== '-' || tarif !== '-' && tarif !== '- / ') {
+                if(alamat !== '-' || infoTeknis !== '-') {
                     rowDetail.classList.remove('hidden');
                     document.getElementById('res_alamat').innerText = alamat;
-                    document.getElementById('res_tarif').innerText = tarif;
+                    document.getElementById('label_tarif').innerText = labelTeknis;
+                    document.getElementById('res_tarif').innerText = infoTeknis;
                 } else {
                     rowDetail.classList.add('hidden');
                 }
 
                 // 3. Mapping Harga
                 let modalAgen = parseInt(d.price || d.selling_price || 0); 
-                let adminBank = parseInt(d.admin || 2500);
+                let adminBank = parseInt(d.admin || 0);
                 let marginAgen = 2500;
                 let hargaJual = modalAgen + marginAgen;
 
@@ -494,25 +522,69 @@
                 document.getElementById('pay_ref_id').value = d.ref_id; 
                 document.getElementById('pay_price').value = hargaJual; 
 
-                // 5. Detail Items (Meteran dll)
+                // 5. Mapping Detail Item
                 const detailContainer = document.getElementById('res_detail_container');
                 const detailList = document.getElementById('res_detail_list');
                 
+                detailList.innerHTML = '';
+                let hasDetails = false;
+
+                // Logic Populate List
                 if (d.desc && d.desc.detail && Array.isArray(d.desc.detail)) {
-                    detailContainer.classList.remove('hidden');
-                    detailList.innerHTML = '';
+                    hasDetails = true;
                     d.desc.detail.forEach(item => {
+                        let totalItemTagihan = parseInt(item.nilai_tagihan || 0) + parseInt(item.admin || 0) + parseInt(item.denda || 0) + parseInt(item.biaya_lain || 0);
+
+                        let meteran = (item.meter_awal && item.meter_akhir) ? 
+                                `<span class="text-[10px] text-gray-500">Stand: ${item.meter_awal} - ${item.meter_akhir}</span>` : '';
+                        
+                        let biayaTambahan = [];
+                        if(parseInt(item.denda || 0) > 0) biayaTambahan.push(`Denda: Rp ${parseInt(item.denda).toLocaleString('id-ID')}`);
+                        if(parseInt(item.admin || 0) > 0) biayaTambahan.push(`Admin: Rp ${parseInt(item.admin).toLocaleString('id-ID')}`);
+                        if(parseInt(item.biaya_lain || 0) > 0) biayaTambahan.push(`Lain: Rp ${parseInt(item.biaya_lain).toLocaleString('id-ID')}`);
+                        
+                        let additionalHtml = biayaTambahan.length > 0 ? `<div class="text-[10px] text-orange-500">${biayaTambahan.join(' | ')}</div>` : '';
+
+
                         let rowHtml = `
                             <div class="flex justify-between border-b border-gray-100 pb-1 mb-1 last:border-0 last:pb-0 last:mb-0">
                                 <div>
-                                    <span class="font-bold block">Per: ${item.periode || '-'}</span>
-                                    ${(item.meter_awal && item.meter_akhir) ? `<span class="text-[10px] text-gray-500">Stand: ${item.meter_awal} - ${item.meter_akhir}</span>` : ''}
+                                    <span class="font-bold block">${item.periode || '-'} (${item.nilai_tagihan ? 'Rp ' + parseInt(item.nilai_tagihan).toLocaleString('id-ID') : 'Detail'})</span>
+                                    ${meteran}
+                                    ${additionalHtml}
                                 </div>
-                                <span class="font-bold">Rp ${parseInt(item.nilai_tagihan || 0).toLocaleString('id-ID')}</span>
+                                <span class="font-bold text-base">Rp ${totalItemTagihan.toLocaleString('id-ID')}</span>
                             </div>
                         `;
                         detailList.insertAdjacentHTML('beforeend', rowHtml);
                     });
+                } 
+                // Jika SAMSAT (Flat Detail) - Buat fake list agar info muncul
+                else if (d.desc && (d.desc.biaya_pokok_pkb || d.desc.biaya_admin_stnk)) {
+                    hasDetails = true;
+                    const fields = {
+                        'Pokok PKB': d.desc.biaya_pokok_pkb,
+                        'Pokok SWDKLLJ': d.desc.biaya_pokok_swd,
+                        'Admin STNK': d.desc.biaya_admin_stnk,
+                        'Denda PKB': d.desc.biaya_denda_pkb,
+                        'Pajak Progresif': d.desc.biaya_pajak_progresif
+                    };
+                    
+                    for (const [key, val] of Object.entries(fields)) {
+                        if(parseInt(val || 0) > 0) {
+                            let rowHtml = `
+                                <div class="flex justify-between border-b border-gray-100 pb-1 mb-1">
+                                    <span class="text-gray-600">${key}</span>
+                                    <span class="font-bold">Rp ${parseInt(val).toLocaleString('id-ID')}</span>
+                                </div>
+                            `;
+                            detailList.insertAdjacentHTML('beforeend', rowHtml);
+                        }
+                    }
+                }
+
+                if(hasDetails) {
+                    detailContainer.classList.remove('hidden');
                 } else {
                     detailContainer.classList.add('hidden');
                 }
