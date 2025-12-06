@@ -489,6 +489,7 @@
                 pbbCitiesCache = data.cities;
                 renderPbbCities(data.cities);
             } else {
+                // Hapus placeholder jika gagal
                 selectElement.innerHTML = '<option value="">Gagal Memuat Kota</option>';
             }
         })
@@ -610,7 +611,7 @@
                     }
                     else if(sku === 'internet' || sku === 'telkom') {
                         infoTeknis = (d.desc.lembar_tagihan || '1') + ' Lembar Tagihan';
-                        labelTeknis = 'Lembar Tagihan';
+                        labelTeksis = 'Lembar Tagihan';
                     }
                 }
                 
