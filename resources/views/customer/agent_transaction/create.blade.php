@@ -658,10 +658,10 @@
                         let tahun = d.desc.tahun_pajak || '-';
                         // FIX PBB: Akses data PBB secara langsung di desc
                         let kab_kota = d.desc.kab_kota || '-'; 
-                        let kec = d.desc.kecamatan || '-';
+                        let kec = d.desc.kecamatan || '-'; // Mengambil Kecamatan
                         
                         infoTeknis = `Tahun: ${tahun} / LT: ${lt}m² / LB: ${lb}m²`;
-                        labelTeknis = `Tahun / Luas (di ${kab_kota})`;
+                        labelTeknis = `Tahun / Luas Tanah & Gedung (Kec: ${kec})`;
                         
                         // Override Alamat untuk PBB
                         alamat = d.desc.alamat || `${d.desc.kelurahan}, ${kec}`;
