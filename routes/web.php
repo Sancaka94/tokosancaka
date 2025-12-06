@@ -82,9 +82,10 @@ use App\Http\Controllers\Customer\AgentRegistrationController;
 use App\Http\Controllers\Customer\TopUpController;
 use App\Http\Controllers\Customer\AgentTransactionController; // <--- TAMBAHKAN INI
 
-Route::middleware(['auth', 'role:Admin'])->prefix('ppob')->name('ppob.')->group(function () {
+Route::middleware(['auth'])->prefix('ppob')->name('ppob.')->group(function () {
     Route::get('sync-produk', [PpobController::class, 'sync'])->name('sync');
 });
+
 
     // Route untuk mengambil data kota PBB
 Route::get('/agent/ppob/cities', [AgentTransactionController::class, 'getPbbCities'])->name('admin.ppob.get-pbb-cities'); 
