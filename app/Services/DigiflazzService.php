@@ -213,4 +213,46 @@ class DigiflazzService
             return ['data' => ['status' => 'Gagal', 'message' => 'Koneksi Error: ' . $e->getMessage()]];
         }
     }
+
+      /**
+     * Mengambil daftar semua produk PBB (untuk list kota).
+     * Filter manual karena Digiflazz tidak menyediakan API khusus kota.
+     */
+    public function getPbbProducts()
+    {
+        // Signature untuk pricelist adalah "pricelist"
+        $sign = md5($this->username . $this->apiKey . "pricelist");
+
+        try {
+            $response = Http::post($this->baseUrl . '/price-list', [
+                'cmd' => 'prepaid', // Mengambil semua produk prepaid/postpaid
+                'username' => $this->username,
+                'sign' => $sign
+            ]);
+
+            if ($response->successful()) {
+                $allProducts = $response->json()['data'] ?? [];
+                $pbbProducts = [];
+                
+                // Filter produk PBB berdasarkan nama atau SKU
+                foreach ($allProducts as $product) {
+                    $sku = strtolower($product['buyer_sku_code'] ?? '');
+                    if (str_contains(strtolower($product['product_name'] ?? ''), 'pbb') || $sku === 'cimahi' || $sku === 'pdl') {
+                        $pbbProducts[] = [
+                            'sku' => $sku,
+                            'name' => $product['product_name'] ?? $sku,
+                            'brand' => $product['brand'] ?? 'PBB',
+                        ];
+                    }
+                }
+                
+                return $pbbProducts;
+            }
+            return [];
+
+        } catch (\Exception $e) {
+            Log::error('Digiflazz PBB Price List Error: ' . $e->getMessage());
+            return [];
+        }
+    }
 }
