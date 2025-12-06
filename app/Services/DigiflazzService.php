@@ -328,4 +328,106 @@ class DigiflazzService
         // Atur Base URL sesuai mode testing
         $this->baseUrl = $testingMode ? self::URL_DEV : self::URL_PROD;
     }
+
+    /**
+     * Metode Pembantu untuk Logika Update Database
+     */
+    protected function updateDatabase(array $products, string $type)
+    {
+        if (empty($products)) {
+            Log::warning("Sync Product Failed ($type): Product list is empty.");
+            return false;
+        }
+
+        DB::beginTransaction();
+        try {
+            $processedCount = 0;
+            foreach ($products as $item) {
+                if (!is_array($item)) continue;
+                if (!isset($item['buyer_sku_code']) || !isset($item['price'])) continue;
+
+                $margin = 2000;
+                $modal = (float)$item['price'];
+                $hargaJual = $modal + $margin;
+
+                $product = PpobProduct::firstOrNew(['buyer_sku_code' => $item['buyer_sku_code']]);
+                
+                // Update data produk
+                $product->fill([
+                    'product_name' => $item['product_name'] ?? null,
+                    'category' => $item['category'] ?? null,
+                    'brand' => $item['brand'] ?? null,
+                    'type' => $item['type'] ?? null,
+                    'seller_name' => $item['seller_name'] ?? null,
+                    'price' => $modal,
+                    'buyer_product_status' => $item['buyer_product_status'] ?? false,
+                    'seller_product_status' => $item['seller_product_status'] ?? false,
+                    'unlimited_stock' => $item['unlimited_stock'] ?? false,
+                    'stock' => $item['stock'] ?? 0,
+                    'multi' => $item['multi'] ?? false,
+                    'start_cut_off' => $item['start_cut_off'] ?? null,
+                    'end_cut_off' => $item['end_cut_off'] ?? null,
+                    'desc' => $item['desc'] ?? null,
+                    // Tambahkan kolom 'is_postpaid' jika model Anda punya, untuk identifikasi
+                    // 'is_postpaid' => ($type === 'postpaid'), 
+                ]);
+
+                if (!$product->exists || $product->sell_price <= 0) {
+                    // Hanya set harga jual jika produk baru atau harga jual belum pernah diset
+                    $product->sell_price = $hargaJual;
+                }
+                
+                $product->save();
+                $processedCount++;
+            }
+            DB::commit();
+            
+            Log::info("✅ [SYNC END] Sinkronisasi Produk ($type) Berhasil. Total $processedCount items.");
+            return true; 
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("Sync Product Failed ($type): " . $e->getMessage());
+            return false; 
+        }
+    }
+
+
+    /**
+     * 2.1. Sinkronisasi Produk PRABAYAR
+     */
+    public function syncPrepaidProducts()
+    {
+        $cacheDuration = 300; // 5 menit
+        $cacheKey = 'digiflazz_prepaid_pricelist_sync'; 
+
+        $syncResult = Cache::remember($cacheKey, $cacheDuration, function () {
+            Log::info('🔄 [SYNC START] Melakukan Sinkronisasi Pricelist PRABAYAR ke Digiflazz.');
+            
+            $productsPrepaid = $this->getPriceList('prepaid');
+            
+            return $this->updateDatabase($productsPrepaid, 'prepaid');
+        });
+        
+        return $syncResult;
+    }
+
+    /**
+     * 2.2. Sinkronisasi Produk PASCABAYAR
+     */
+    public function syncPostpaidProducts()
+    {
+        $cacheDuration = 300; // 5 menit
+        $cacheKey = 'digiflazz_postpaid_pricelist_sync'; 
+
+        $syncResult = Cache::remember($cacheKey, $cacheDuration, function () {
+            Log::info('🔄 [SYNC START] Melakukan Sinkronisasi Pricelist PASCABAYAR ke Digiflazz.');
+
+            $productsPostpaid = $this->getPriceList('postpaid');
+            
+            return $this->updateDatabase($productsPostpaid, 'postpaid');
+        });
+        
+        return $syncResult;
+    }
 }

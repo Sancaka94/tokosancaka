@@ -68,7 +68,17 @@ class Kernel extends ConsoleKernel
 
         $schedule->command('summary:send-notifications')->dailyAt('08:00');
 
-        $schedule->command('digiflazz:sync')->cron('*/15 * * * *');
+       // 1. Sinkronisasi Prabayar (Mulai jam 08:00, setiap jam)
+    // Akan dicek oleh Cache 5 menit di dalam fungsi
+    $schedule->command('digiflazz:sync-prepaid')
+             ->hourlyAt(0) // Setiap jam di menit ke-0
+             ->runInBackground();
+
+    // 2. Sinkronisasi Pascabayar (Mulai jam 08:05, 5 menit setelah prabayar)
+    // Waktu ini dijamin 5 menit setelah panggilan prepaid yang sukses
+    $schedule->command('digiflazz:sync-postpaid')
+             ->hourlyAt(5) // Setiap jam di menit ke-5
+             ->runInBackground();
 
     }
 
