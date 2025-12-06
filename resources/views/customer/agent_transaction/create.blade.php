@@ -173,7 +173,7 @@
         <div class="lg:col-span-1">
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
                 <h3 class="font-bold text-gray-800 mb-6 border-b pb-2 flex items-center gap-2">
-                    <span class="bg-red-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs">1</span> 
+                    <span class="bg-purple-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs">1</span> 
                     Cek Tagihan
                 </h3>
 
@@ -181,26 +181,29 @@
                     {{-- Select Jenis --}}
                     <div>
                         <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Jenis Tagihan</label>
-                        <select id="pasca_sku" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-red-500 focus:border-red-500 bg-white">
+                        <select id="pasca_sku" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white">
                             <option value="pln">PLN Pascabayar</option>
                             <option value="bpjs">BPJS Kesehatan</option>
                             <option value="pdam">PDAM</option>
                             <option value="telkom">Telkom / Indihome</option>
                             <option value="pgn">Gas Negara</option>
                             <option value="multifinance">Multifinance / Cicilan</option>
+                            <option value="pbb">Pajak PBB</option>
+                            <option value="samsat">E-Samsat</option>
                         </select>
                     </div>
 
                     {{-- Input Nomor --}}
                     <div>
                         <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Nomor Pelanggan / ID</label>
-                        <input type="number" id="pasca_no" 
-                               class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-red-500 font-bold text-gray-800 placeholder-gray-300"
+                        <input type="text" id="pasca_no" 
+                               class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-purple-500 font-bold text-gray-800 placeholder-gray-300"
                                placeholder="Contoh: 5300xxxx">
+                        <p class="text-[10px] text-gray-400 mt-1">*Untuk Samsat/PBB pastikan format nomor sesuai.</p>
                     </div>
 
                     {{-- Button Cek --}}
-                    <button onclick="cekTagihan()" id="btn-cek-tagihan" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-red-200 transition flex justify-center items-center gap-2">
+                    <button onclick="cekTagihan()" id="btn-cek-tagihan" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-purple-200 transition flex justify-center items-center gap-2">
                         <i class="fas fa-search"></i> Cek Tagihan
                     </button>
                 </div>
@@ -211,7 +214,7 @@
         <div class="lg:col-span-2">
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 min-h-[300px]">
                 <h3 class="font-bold text-gray-800 mb-6 border-b pb-2 flex items-center gap-2">
-                    <span class="bg-red-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs">2</span> 
+                    <span class="bg-purple-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs">2</span> 
                     Rincian Tagihan
                 </h3>
 
@@ -222,35 +225,35 @@
                 </div>
 
                 {{-- State: Loading --}}
-                <div id="pasca_loading" class="hidden flex flex-col items-center justify-center py-10 text-red-600">
+                <div id="pasca_loading" class="hidden flex flex-col items-center justify-center py-10 text-purple-600">
                     <i class="fas fa-circle-notch fa-spin text-4xl mb-4"></i>
                     <p class="font-bold animate-pulse">Sedang mengecek tagihan...</p>
                 </div>
 
                 {{-- State: Hasil --}}
                 <div id="pasca_result" class="hidden space-y-4">
-                    <div class="bg-red-50 rounded-xl p-5 border border-red-100">
+                    <div class="bg-purple-50 rounded-xl p-5 border border-purple-100">
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                             <div>
                                 <p class="text-xs text-gray-500 uppercase">Nama Pelanggan</p>
-                                <p class="font-bold text-gray-800 text-lg" id="res_nama">-</p>
+                                <p class="font-bold text-gray-800 text-lg break-words" id="res_nama">-</p>
                             </div>
                             <div>
                                 <p class="text-xs text-gray-500 uppercase">ID Pelanggan</p>
-                                <p class="font-bold text-gray-800" id="res_id">-</p>
+                                <p class="font-bold text-gray-800 break-words" id="res_id">-</p>
                             </div>
                             <div>
                                 <p class="text-xs text-gray-500 uppercase">Periode</p>
                                 <p class="font-bold text-gray-800" id="res_periode">-</p>
                             </div>
                             <div>
-                                <p class="text-xs text-gray-500 uppercase">Total Tagihan</p>
-                                <p class="font-extrabold text-red-700 text-xl" id="res_total">-</p>
+                                <p class="text-xs text-gray-500 uppercase">Total Tagihan (Pelanggan)</p>
+                                <p class="font-extrabold text-purple-700 text-xl" id="res_total">-</p>
                             </div>
                         </div>
                         
-                        {{-- Detail Tambahan --}}
-                        <div class="mt-4 pt-4 border-t border-red-200 grid grid-cols-2 gap-4">
+                        {{-- Detail Tambahan (Admin, Denda, Lembar) --}}
+                        <div class="mt-4 pt-4 border-t border-purple-200 grid grid-cols-2 md:grid-cols-4 gap-4">
                             <div>
                                 <p class="text-xs text-gray-500 uppercase">Admin Fee</p>
                                 <p class="font-bold text-gray-700" id="res_admin">-</p>
@@ -258,6 +261,23 @@
                             <div>
                                 <p class="text-xs text-gray-500 uppercase">Denda</p>
                                 <p class="font-bold text-gray-700" id="res_denda">-</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500 uppercase">Lembar Tagihan</p>
+                                <p class="font-bold text-gray-700" id="res_lembar">-</p>
+                            </div>
+                            {{-- Info Modal Agen (Hanya untuk Agen) --}}
+                            <div>
+                                <p class="text-xs text-gray-500 uppercase text-red-500 font-bold"><i class="fas fa-lock"></i> Modal Agen</p>
+                                <p class="font-bold text-red-600" id="res_modal">-</p>
+                            </div>
+                        </div>
+
+                        {{-- Rincian Item (Desc Detail) --}}
+                        <div id="res_detail_container" class="mt-4 pt-4 border-t border-dashed border-purple-300 hidden">
+                            <p class="text-xs font-bold text-purple-700 uppercase mb-2">Rincian Item</p>
+                            <div id="res_detail_list" class="space-y-2 text-xs bg-white p-3 rounded-lg border border-purple-100">
+                                {{-- Item details injected via JS --}}
                             </div>
                         </div>
                     </div>
@@ -272,7 +292,7 @@
                             <input type="hidden" name="ref_id" id="pay_ref_id"> {{-- PENTING: Ref ID dari Inquiry --}}
                             <input type="hidden" name="selling_price" id="pay_price">
                             
-                            <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-green-200 transition flex items-center gap-2">
+                            <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-green-200 transition flex items-center gap-2 transform hover:scale-105">
                                 <i class="fas fa-check-circle"></i> Bayar Sekarang
                             </button>
                         </form>
@@ -340,14 +360,14 @@
             contentPra.classList.remove('hidden');
             contentPasca.classList.add('hidden');
         } else {
-            btnPasca.className = 'flex-1 py-3 rounded-lg font-bold text-sm transition bg-red-600 text-white shadow-md';
+            btnPasca.className = 'flex-1 py-3 rounded-lg font-bold text-sm transition bg-purple-600 text-white shadow-md';
             btnPra.className = 'flex-1 py-3 rounded-lg font-bold text-sm text-gray-500 hover:bg-gray-50 transition';
             contentPra.classList.add('hidden');
             contentPasca.classList.remove('hidden');
         }
     }
 
-    // --- LOGIKA PASCABAYAR (BARU) ---
+    // --- LOGIKA PASCABAYAR ---
     function cekTagihan() {
         const sku = document.getElementById('pasca_sku').value;
         const no = document.getElementById('pasca_no').value;
@@ -360,17 +380,15 @@
         document.getElementById('pasca_loading').classList.remove('hidden');
         document.getElementById('btn-cek-tagihan').disabled = true;
 
-        // AJAX Request (Pastikan route ini ada di web.php)
-        // Gunakan route yang sama dengan index.blade.php jika memungkinkan, atau buat route khusus agent
+        // AJAX Request
         fetch('{{ route("ppob.check.bill") }}', { 
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
             body: JSON.stringify({ 
                 sku: sku, 
                 customer_no: no,
-                // Generate Ref ID Unik untuk Inquiry
                 ref_id: 'INQ-' + Date.now() + Math.floor(Math.random() * 1000),
-                testing: true // Sesuaikan dengan environment
+                testing: true // Ubah false jika production
             })
         })
         .then(res => res.json())
@@ -381,29 +399,67 @@
             const d = data.data || data;
 
             if(d.status === 'Sukses' || d.rc === '00') {
-                // Tampilkan Hasil
                 document.getElementById('pasca_result').classList.remove('hidden');
                 
-                // Mapping Data
-                document.getElementById('res_nama').innerText = d.customer_name || '-';
+                // 1. Mapping Basic Info
+                document.getElementById('res_nama').innerText = d.customer_name || d.name || 'Pelanggan';
                 document.getElementById('res_id').innerText = d.customer_no;
                 
-                // Format Harga
-                let price = parseInt(d.selling_price || d.price || 0);
-                let admin = parseInt(d.admin || 2500); 
-                let total = price + admin; // Sesuaikan logic harga jual agen Anda
+                // 2. Mapping Periode & Lembar
+                let periode = d.periode || '-';
+                if(d.desc && d.desc.detail && d.desc.detail[0]) {
+                    periode = d.desc.detail[0].periode || periode;
+                }
+                document.getElementById('res_periode').innerText = periode;
+                document.getElementById('res_lembar').innerText = (d.desc && d.desc.lembar_tagihan) ? d.desc.lembar_tagihan + ' Lembar' : '1 Lembar';
 
-                document.getElementById('res_total').innerText = 'Rp ' + total.toLocaleString('id-ID');
-                document.getElementById('res_admin').innerText = 'Rp ' + admin.toLocaleString('id-ID');
+                // 3. Mapping Harga (Modal vs Jual)
+                // Digiflazz price = Modal Agen (Tagihan + Admin Bank)
+                // Agen Profit = Biaya Layanan Tambahan (Misal +2000 per struk)
+                let modalAgen = parseInt(d.price || 0); 
+                let adminBank = parseInt(d.admin || 0);
                 
-                // Isi Form Hidden untuk Pembayaran
+                // Harga Jual ke User = Modal + Margin Agen
+                let marginAgen = 2000; // Bisa diset dinamis
+                let hargaJual = modalAgen + marginAgen;
+
+                document.getElementById('res_modal').innerText = 'Rp ' + modalAgen.toLocaleString('id-ID'); // Rahasia Dapur Agen
+                document.getElementById('res_total').innerText = 'Rp ' + hargaJual.toLocaleString('id-ID'); // Yang ditagih ke User
+                document.getElementById('res_admin').innerText = 'Rp ' + adminBank.toLocaleString('id-ID');
+                document.getElementById('res_denda').innerText = 'Rp ' + parseInt(d.desc?.detail?.[0]?.denda || 0).toLocaleString('id-ID');
+                
+                // 4. Form Submission Data
                 document.getElementById('pay_sku').value = sku;
                 document.getElementById('pay_no').value = d.customer_no;
-                document.getElementById('pay_ref_id').value = d.ref_id; // PENTING: ID Inquiry harus sama
-                document.getElementById('pay_price').value = total;
+                document.getElementById('pay_ref_id').value = d.ref_id; 
+                document.getElementById('pay_price').value = hargaJual; 
+
+                // 5. Mapping Detail Item (Untuk BPJS, PDAM, dll)
+                const detailContainer = document.getElementById('res_detail_container');
+                const detailList = document.getElementById('res_detail_list');
+                
+                if (d.desc && d.desc.detail && Array.isArray(d.desc.detail)) {
+                    detailContainer.classList.remove('hidden');
+                    detailList.innerHTML = '';
+                    
+                    d.desc.detail.forEach(item => {
+                        let rowHtml = `
+                            <div class="flex justify-between border-b border-gray-100 pb-1 mb-1 last:border-0 last:pb-0 last:mb-0">
+                                <span>Per: ${item.periode || '-'}</span>
+                                <span class="font-bold">Rp ${parseInt(item.nilai_tagihan || 0).toLocaleString('id-ID')}</span>
+                            </div>
+                        `;
+                        if(item.meter_awal && item.meter_akhir) {
+                            rowHtml += `<div class="text-[10px] text-gray-500">Meter: ${item.meter_awal} - ${item.meter_akhir}</div>`;
+                        }
+                        detailList.insertAdjacentHTML('beforeend', rowHtml);
+                    });
+                } else {
+                    detailContainer.classList.add('hidden');
+                }
 
             } else {
-                alert(d.message || 'Tagihan tidak ditemukan');
+                alert(d.message || 'Tagihan tidak ditemukan atau sudah lunas.');
                 document.getElementById('pasca_empty').classList.remove('hidden');
             }
         })
