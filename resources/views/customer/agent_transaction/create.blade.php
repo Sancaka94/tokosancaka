@@ -653,18 +653,20 @@
                         labelTeknis = 'Kendaraan';
                     }
                     else if(sku === 'pbb' || sku === 'cimahi' || d.desc.luas_tanah) {
+                        // Perbaikan Logic PBB
                         let lt = d.desc.luas_tanah || '0';
                         let lb = d.desc.luas_gedung || '0';
                         let tahun = d.desc.tahun_pajak || '-';
-                        // FIX PBB: Akses data PBB secara langsung di desc
-                        let kab_kota = d.desc.kab_kota || '-'; 
-                        let kec = d.desc.kecamatan || '-'; // Mengambil Kecamatan
+                        let kab_kota = d.desc.kab_kota || ''; 
+                        let kec = d.desc.kecamatan || ''; 
+                        let kel = d.desc.kelurahan || ''; 
                         
                         infoTeknis = `Tahun: ${tahun} / LT: ${lt}m² / LB: ${lb}m²`;
-                        labelTeknis = `Tahun / Luas Tanah & Gedung (Kec: ${kec})`;
+                        labelTeknis = `Tahun / Luas Tanah & Gedung (${kab_kota})`;
                         
-                        // Override Alamat untuk PBB
-                        alamat = d.desc.alamat || `${d.desc.kelurahan}, ${kec}`;
+                        // FIX: Gabungkan Alamat Lengkap
+                        let addressParts = [d.desc.alamat, kel, kec].filter(p => p && p !== '-');
+                        alamat = addressParts.length > 0 ? addressParts.join('<br>') : (kab_kota || '-');
                     }
                     else if(sku === 'bpjs') {
                         infoTeknis = (d.desc.jumlah_peserta || '1') + ' Peserta';
@@ -684,7 +686,8 @@
                 const rowDetail = document.getElementById('row_detail_teknis');
                 if(alamat !== '-' || infoTeknis !== '-') {
                     rowDetail.classList.remove('hidden');
-                    document.getElementById('res_alamat').innerText = alamat;
+                    // FIX: Gunakan innerHTML untuk menampilkan <br>
+                    document.getElementById('res_alamat').innerHTML = alamat;
                     document.getElementById('label_tarif').innerText = labelTeknis;
                     document.getElementById('res_tarif').innerText = infoTeknis;
                 } else {
@@ -821,19 +824,13 @@
         });
     }
 
-    // --- LOGIKA PRABAYAR (EXISTING) ---
+    // --- LOGIKA PRABAYAR (EXISTING) --
     function detectOperator() {
         let number = document.getElementById('input_customer_no').value;
         let prefix = number.substring(0, 4);
         let brand = null;
         let brandName = '-';
         let logoFile = '';
-
-        if (number.length < 4) {
-            hideOperatorBadge();
-            showInstruction();
-            return;
-        }
 
         if (/^08(11|12|13|21|22|23|51|52|53)/.test(prefix)) { brand = 'telkomsel'; brandName = 'Telkomsel'; logoFile = 'telkomsel.png'; }
         else if (/^08(14|15|16|55|56|57|58)/.test(prefix)) { brand = 'indosat'; brandName = 'Indosat Ooredoo'; logoFile = 'indosat.png'; }
