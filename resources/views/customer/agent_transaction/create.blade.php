@@ -15,7 +15,7 @@
         </div>
         <div class="bg-blue-50 px-5 py-3 rounded-xl text-right border border-blue-100">
             <p class="text-[10px] text-blue-600 font-bold uppercase tracking-wider">Saldo Aktif Anda</p>
-            <p class="text-2xl font-extrabold text-blue-800">Rp {{ number_format(Auth::user()->saldo, 0, ',', '.') }}</p>
+            <p class="2xl font-extrabold text-blue-800">Rp {{ number_format(Auth::user()->saldo, 0, ',', '.') }}</p>
         </div>
     </div>
 
@@ -79,7 +79,7 @@
                             <img id="operator_logo" src="" class="w-8 h-8 object-contain rounded bg-white p-0.5 border border-gray-100">
                             <div>
                                 <p class="text-[10px] text-gray-400 font-bold uppercase">Terdeteksi:</p>
-                                <p class="text-sm font-bold text-gray-800" id="operator_name">-</p>
+                                <p class="sm font-bold text-gray-800" id="operator_name">-</p>
                             </div>
                             <span class="ml-auto text-green-500"><i class="fas fa-check-circle"></i></span>
                         </div>
@@ -189,10 +189,10 @@
                             <option value="pln">PLN Pascabayar</option>
                             <option value="bpjs">BPJS Kesehatan</option>
                             <option value="pdam">PDAM</option>
-                            <option value="internet">Telkom / Indihome</option> {{-- FIX: Mengganti value "telkom" menjadi "internet" --}}
+                            <option value="internet">Telkom / Indihome</option>
                             <option value="pgas">Gas Negara</option>
                             <option value="multifinance">Multifinance / Cicilan</option>
-                            <option value="pbb">Pajak PBB</option>
+                            <option value="cimahi">Pajak PBB (CIMAHI)</option> {{-- FIX: Menggunakan CIMAHI --}}
                             <option value="samsat">E-Samsat</option>
                         </select>
                     </div>
@@ -204,7 +204,7 @@
                                class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-purple-500 font-bold text-gray-800 placeholder-gray-300"
                                placeholder="Contoh: 5300xxxx">
                         <p id="test_case_info" class="text-[10px] text-red-500 mt-1 italic">
-                            *Gunakan Test Case PBB: 329801092375999991, Internet: 7391601001, PLN: 630000000001
+                            *Gunakan Test Case PBB (CIMAHI): 329801092375999991, Internet: 7391601001, PLN: 630000000001
                         </p>
                     </div>
 
@@ -267,7 +267,7 @@
                                 <p class="font-bold text-gray-700 break-words" id="res_alamat">-</p>
                             </div>
                              <div>
-                                <p class="text-xs text-gray-500 uppercase" id="label_tarif">Detail Teknis</p>
+                                <p class="xs text-gray-500 uppercase" id="label_tarif">Detail Teknis</p>
                                 <p class="font-bold text-gray-700" id="res_tarif">-</p>
                             </div>
                         </div>
@@ -275,15 +275,15 @@
                         {{-- Data Keuangan (Admin, Denda, Lembar) --}}
                         <div class="pt-4 border-t border-purple-200 grid grid-cols-2 md:grid-cols-4 gap-4">
                             <div>
-                                <p class="text-xs text-gray-500 uppercase">Admin Fee</p>
+                                <p class="xs text-gray-500 uppercase">Admin Fee</p>
                                 <p class="font-bold text-gray-700" id="res_admin">-</p>
                             </div>
                             <div>
-                                <p class="text-xs text-gray-500 uppercase">Denda</p>
+                                <p class="xs text-gray-500 uppercase">Denda</p>
                                 <p class="font-bold text-gray-700" id="res_denda">-</p>
                             </div>
                             <div>
-                                <p class="text-xs text-gray-500 uppercase">Lembar</p>
+                                <p class="xs text-gray-500 uppercase">Lembar</p>
                                 <p class="font-bold text-gray-700" id="res_lembar">-</p>
                             </div>
                             {{-- Info Modal Agen --}}
@@ -480,7 +480,7 @@
                         infoTeknis = `${nopol} (${merek} ${model})`;
                         labelTeknis = 'Kendaraan';
                     }
-                    else if(sku === 'pbb' || d.desc.luas_tanah) {
+                    else if(sku === 'pbb' || sku === 'cimahi' || d.desc.luas_tanah) {
                         let lt = d.desc.luas_tanah || '0';
                         let lb = d.desc.luas_gedung || '0';
                         let tahun = d.desc.tahun_pajak || '-';
@@ -491,7 +491,7 @@
                         infoTeknis = (d.desc.jumlah_peserta || '1') + ' Peserta';
                         labelTeknis = 'Jumlah Peserta';
                     }
-                    else if(sku === 'telkom' || sku === 'internet') {
+                    else if(sku === 'internet') { // FIX: Target SKU 'internet'
                         infoTeknis = (d.desc.lembar_tagihan || '1') + ' Lembar Tagihan';
                         labelTeknis = 'Lembar Tagihan';
                     }
@@ -566,27 +566,50 @@
                         detailList.insertAdjacentHTML('beforeend', rowHtml);
                     });
                 } 
-                // Jika SAMSAT (Flat Detail) - Buat fake list agar info muncul
-                else if (d.desc && (d.desc.biaya_pokok_pkb || d.desc.biaya_admin_stnk)) {
+                // Jika SAMSAT/PBB/Flat Detail
+                else if (d.desc && (d.desc.biaya_pokok_pkb || d.desc.biaya_admin_stnk || d.desc.tahun_pajak || d.desc.luas_tanah)) {
                     hasDetails = true;
-                    const fields = {
-                        'Pokok PKB': d.desc.biaya_pokok_pkb,
-                        'Pokok SWDKLLJ': d.desc.biaya_pokok_swd,
-                        'Admin STNK': d.desc.biaya_admin_stnk,
-                        'Denda PKB': d.desc.biaya_denda_pkb,
-                        'Pajak Progresif': d.desc.biaya_pajak_progresif
-                    };
-                    
-                    for (const [key, val] of Object.entries(fields)) {
-                        if(parseInt(val || 0) > 0) {
-                            let rowHtml = `
-                                <div class="flex justify-between border-b border-gray-100 pb-1 mb-1">
-                                    <span class="text-gray-600">${key}</span>
-                                    <span class="font-bold">Rp ${parseInt(val).toLocaleString('id-ID')}</span>
-                                </div>
-                            `;
-                            detailList.insertAdjacentHTML('beforeend', rowHtml);
+                    const isPbb = sku === 'pbb' || sku === 'cimahi';
+
+                    if(isPbb) {
+                        const taxTotal = parseInt(d.price || 0) - parseInt(d.admin || 0);
+                        let rowHtml = `
+                            <div class="flex justify-between border-b border-gray-100 pb-1 mb-1">
+                                <span class="text-gray-600">Pokok Pajak PBB (${d.desc.tahun_pajak})</span>
+                                <span class="font-bold">Rp ${taxTotal.toLocaleString('id-ID')}</span>
+                            </div>
+                        `;
+                        detailList.insertAdjacentHTML('beforeend', rowHtml);
+                    } else if (sku === 'samsat') {
+                         const fields = {
+                            'Pokok PKB': d.desc.biaya_pokok_pkb,
+                            'Pokok SWDKLLJ': d.desc.biaya_pokok_swd,
+                            'Admin STNK': d.desc.biaya_admin_stnk,
+                            'Denda PKB': d.desc.biaya_denda_pkb,
+                            'Pajak Progresif': d.desc.biaya_pajak_progresif
+                        };
+                        
+                        for (const [key, val] of Object.entries(fields)) {
+                            if(parseInt(val || 0) > 0) {
+                                let rowHtml = `
+                                    <div class="flex justify-between border-b border-gray-100 pb-1 mb-1">
+                                        <span class="text-gray-600">${key}</span>
+                                        <span class="font-bold">Rp ${parseInt(val).toLocaleString('id-ID')}</span>
+                                    </div>
+                                `;
+                                detailList.insertAdjacentHTML('beforeend', rowHtml);
+                            }
                         }
+                    } else {
+                        // Untuk Multifinance / Lain-lain (jika ada item name di desc)
+                        let itemName = d.desc.item_name || 'Item Tagihan';
+                        let rowHtml = `
+                            <div class="flex justify-between border-b border-gray-100 pb-1 mb-1">
+                                <span class="text-gray-600">${itemName}</span>
+                                <span class="font-bold">Rp ${parseInt(d.price || 0).toLocaleString('id-ID')}</span>
+                            </div>
+                        `;
+                        detailList.insertAdjacentHTML('beforeend', rowHtml);
                     }
                 }
 
@@ -603,7 +626,7 @@
                     <div class="text-center text-red-500 animate-pulse">
                         <i class="fas fa-times-circle text-5xl mb-3"></i>
                         <p class="font-bold text-lg">Gagal!</p>
-                        <p class="text-sm">${errorMsg}</p>
+                        <p class="sm">${errorMsg}</p>
                         <button onclick="resetPasca()" class="mt-4 text-sm text-gray-500 underline hover:text-gray-700">Coba Lagi</button>
                     </div>
                 `;
