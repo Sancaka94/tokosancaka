@@ -61,7 +61,7 @@ class PostController extends Controller
     public function show(Post $post)
     {
         $post->load('tags', 'author', 'category'); 
-        return view('posts.post-detail', compact('post'));
+        return view('admin.posts.post-detail', compact('post'));
     }
 
     /**
