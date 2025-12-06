@@ -78,7 +78,7 @@
                         <div class="flex items-center gap-2 bg-gray-50 border border-gray-200 p-2 rounded-lg">
                             <img id="operator_logo" src="" class="w-8 h-8 object-contain rounded bg-white p-0.5 border border-gray-100">
                             <div>
-                                <p class="text-[10px] text-gray-400 font-bold uppercase">Terdeteksi:</p>
+                                <p class="text-xs text-gray-400 font-bold uppercase">Terdeteksi:</p>
                                 <p class="sm font-bold text-gray-800" id="operator_name">-</p>
                             </div>
                             <span class="ml-auto text-green-500"><i class="fas fa-check-circle"></i></span>
@@ -201,7 +201,7 @@
                     <div id="dynamic_city_selection" class="hidden">
                         <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Pilih Kota PBB</label>
                         <select id="pbb_city_sku" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white">
-                            <option value="">-- Loading Kota... --</option>
+                            <option value="">-- Memuat Kota... --</option>
                         </select>
                     </div>
 
@@ -373,6 +373,7 @@
 @push('scripts')
 <script>
     const logoBasePath = "{{ asset('storage/logo-ppob') }}/";
+    let pbbCitiesCache = []; // FIX 1: Deklarasi global pbbCitiesCache
 
     // --- HELPER: Formatter Periode (Carbon-like YYYYMM -> F Y) ---
     function formatPeriodeID(periodeStr) {
@@ -419,7 +420,7 @@
         document.getElementById('pasca_no').focus();
     }
 
-    // --- LOGIKA UTAMA PBB & SELECT ---
+    // --- LOGIKA PBB CITIES & DROPDOWN ---
     function handlePascaSkuChange() {
         const selectedSku = document.getElementById('pasca_sku').value;
         const citySelectionDiv = document.getElementById('dynamic_city_selection');
@@ -461,6 +462,7 @@
         selectElement.innerHTML = '<option value="">-- Memuat Kota... --</option>';
         selectElement.disabled = true;
 
+        // FIX 2: Akses cache yang sudah dideklarasikan global
         if (pbbCitiesCache.length > 0) {
             renderPbbCities(pbbCitiesCache);
             return;
@@ -502,7 +504,7 @@
             selectElement.appendChild(option);
         });
     }
-
+    
     // --- UTAMA: LOGIKA PASCABAYAR CEK TAGIHAN ---
     function cekTagihan() {
         // Ambil SKU yang benar (Jika PBB, ambil dari dropdown kota)
