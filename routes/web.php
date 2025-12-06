@@ -313,7 +313,7 @@ Route::get('/marketplace', [CustomerMarketplaceController::class, 'index'])->nam
 Route::get('/blog/posts/{post}', [App\Http\Controllers\BlogController::class, 'show']);
 
 // Rute Edit (Membutuhkan ID Postingan)
-    Route::get('/posts/{id}/edit', [App\Http\Controllers\Admin\PostController::class, 'edit'])
+    Route::get('/admin/posts/{id}/edit', [App\Http\Controllers\Admin\PostController::class, 'edit'])
          ->name('admin.posts.edit');
 
 // =========================================================================
