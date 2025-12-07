@@ -536,58 +536,131 @@
         return str;
     }
 
-    // --- HELPER: RC Message Mapper (LENGKAP) ---
-    function getRcMessage(rcCode) {
-        const rc = String(rcCode);
-        const rcMap = {
-            '00': { status: 'Sukses', message: 'Tagihan berhasil ditemukan!', alertType: 'success' },
-            '03': { status: 'Pending', message: 'Transaksi sedang diproses. Mohon tunggu.', alertType: 'warning' },
-            '55': { status: 'Pending', message: 'Produk Sedang Gangguan. Coba sebentar lagi.', alertType: 'warning' },
-            '60': { status: 'Pending', message: 'Tagihan belum tersedia (Belum Terbit/Sudah Lunas).', alertType: 'warning' },
-            '99': { status: 'Pending', message: 'DF Router Issue / Saldo API bermasalah. Silakan isi deposit.', alertType: 'warning' },
-            '01': { status: 'Gagal', message: 'Timeout. Waktu tunggu habis. Coba lagi.', alertType: 'error' },
-            '44': { status: 'Gagal', message: 'Saldo tidak cukup. Mohon isi deposit API Anda.', alertType: 'error' },
-            '61': { status: 'Gagal', message: 'Akun API Anda belum pernah melakukan deposit (Saldo Nol).', alertType: 'error' },
-            '54': { status: 'Gagal', message: 'Nomor Tujuan Salah. Mohon periksa kembali nomor pelanggan.', alertType: 'error' },
-            '43': { status: 'Gagal', message: 'SKU tidak ditemukan atau Non-Aktif. Periksa konfigurasi produk.', alertType: 'error' },
-            // ... (Mapping RC lainnya lengkap) ...
-            '02': { status: 'Gagal', message: 'Transaksi Gagal. Terjadi kesalahan.', alertType: 'error' },
-            '40': { status: 'Gagal', message: 'Payload Error. Format data atau parameter tidak sesuai.', alertType: 'error' },
-            '41': { status: 'Gagal', message: 'Signature tidak valid. Cek formula sign dan apiKey Anda.', alertType: 'error' },
-            '42': { status: 'Gagal', message: 'Username belum sesuai.', alertType: 'error' },
-            '45': { status: 'Gagal', message: 'IP Anda tidak kami kenali.', alertType: 'error' },
-            '47': { status: 'Gagal', message: 'Transaksi sudah terjadi di buyer lain.', alertType: 'error' },
-            '49': { status: 'Gagal', message: 'Ref ID tidak unik.', alertType: 'error' },
-            '50': { status: 'Gagal', message: 'Transaksi Tidak Ditemukan.', alertType: 'error' },
-            '51': { status: 'Gagal', message: 'Nomor Tujuan Diblokir.', alertType: 'error' },
-            '52': { status: 'Gagal', message: 'Prefix Tidak Sesuai Dengan Operator.', alertType: 'error' },
-            '53': { status: 'Gagal', message: 'Produk Seller Sedang Tidak Tersedia.', alertType: 'error' },
-            '56': { status: 'Gagal', message: 'Limit saldo seller (Deprecated).', alertType: 'error' },
-            '57': { status: 'Gagal', message: 'Jumlah Digit Kurang Atau Lebih dari standar.', alertType: 'error' },
-            '59': { status: 'Gagal', message: 'Tujuan di Luar Wilayah/Cluster layanan.', alertType: 'error' },
-            '62': { status: 'Gagal', message: 'Seller sedang mengalami gangguan teknis.', alertType: 'error' },
-            '63': { status: 'Gagal', message: 'Tidak support transaksi multi.', alertType: 'error' },
-            '64': { status: 'Gagal', message: 'Tarik tiket gagal.', alertType: 'error' },
-            '65': { status: 'Gagal', message: 'Limit transaksi multi (Deprecated).', alertType: 'error' },
-            '66': { status: 'Gagal', message: 'Cut Off (Perbaikan Sistem Seller).', alertType: 'error' },
-            '67': { status: 'Gagal', message: 'Seller belum ter-verfikasi.', alertType: 'error' },
-            '68': { status: 'Gagal', message: 'Stok habis.', alertType: 'error' },
-            '69': { status: 'Gagal', message: 'Harga seller lebih besar dari ketentuan harga Buyer.', alertType: 'error' },
-            '70': { status: 'Gagal', message: 'Timeout Dari Biller. Coba lagi.', alertType: 'error' },
-            '72': { status: 'Gagal', message: 'Lakukan Unreg Paket Dahulu.', alertType: 'error' },
-            '73': { status: 'Gagal', message: 'Kwh Melebihi Batas.', alertType: 'error' },
-            '74': { status: 'Gagal', message: 'Transaksi Refund.', alertType: 'error' },
-            '80': { status: 'Gagal', message: 'Akun Anda telah diblokir oleh Seller.', alertType: 'error' },
-            '81': { status: 'Gagal', message: 'Seller ini telah diblokir oleh Anda.', alertType: 'error' },
-            '82': { status: 'Gagal', message: 'Akun Anda belum ter-verfikasi.', alertType: 'error' },
-            '83': { status: 'Gagal', message: 'Limitasi pengecekan pricelist terlampaui.', alertType: 'error' },
-            '84': { status: 'Gagal', message: 'Nominal tidak valid.', alertType: 'error' },
-            '85': { status: 'Gagal', message: 'Limitasi transaksi terlampaui.', alertType: 'error' },
-            '86': { status: 'Gagal', message: 'Limitasi pengecekan nomor PLN terlampaui.', alertType: 'error' },
-            '87': { status: 'Gagal', message: 'Transaksi E-money wajib kelipatan Rp 1.000.', alertType: 'error' },
-        };
-        return rcMap[rc] || { status: 'Gagal', message: `Gagal (RC: ${rc}). Kesalahan tidak terdefinisi.`, alertType: 'error' };
-    }
+   // --- HELPER: RC Message Mapper (LENGKAP DAN KOREKSI - 46 KODE RC) ---
+/**
+ * Mengubah Response Code (RC) menjadi objek pesan yang berisi status, pesan, dan tipe alert.
+ * * @param {string | number} rcCode - Kode Respon (RC) dari transaksi.
+ * @returns {{status: string, message: string, alertType: 'success' | 'warning' | 'error'}} 
+ * Objek pesan yang sesuai, atau pesan default jika RC tidak ditemukan.
+ */
+function getRcMessage(rcCode) {
+    // Pastikan rcCode diubah menjadi string
+    const rc = String(rcCode);
+
+    // Peta (Map) Response Code ke Objek Pesan
+    const rcMap = {
+        // ------------------------------------
+        // --- SUKSES (1 Kode) ---
+        // ------------------------------------
+        // 1. RC 00
+        '00': { status: 'Sukses', message: 'Transaksi Sukses.', alertType: 'success' },
+
+        // ------------------------------------
+        // --- PENDING (3 Kode) ---
+        // ------------------------------------
+        // 2. RC 03
+        '03': { status: 'Pending', message: 'Transaksi Pending. Mohon tunggu status update.', alertType: 'warning' },
+        // 3. RC 55
+        '55': { status: 'Pending', message: 'Produk Sedang Gangguan. Silakan coba sebentar lagi.', alertType: 'warning' },
+        // 4. RC 99
+        '99': { status: 'Pending', message: 'DF Router Issue / Saldo API bermasalah. Silakan isi deposit.', alertType: 'warning' },
+        
+        // ------------------------------------
+        // --- GAGAL (42 Kode) ---
+        // ------------------------------------
+        // 5. RC 01
+        '01': { status: 'Gagal', message: 'Timeout. Transaksi Gagal.', alertType: 'error' },
+        // 6. RC 02
+        '02': { status: 'Gagal', message: 'Transaksi Gagal. Terjadi kesalahan sistem.', alertType: 'error' },
+        // 7. RC 40
+        '40': { status: 'Gagal', message: 'Payload Error. Tipe data atau parameter tidak sesuai.', alertType: 'error' },
+        // 8. RC 41
+        '41': { status: 'Gagal', message: 'Signature tidak valid. Perhatikan kembali formula signature dan apiKey Anda.', alertType: 'error' },
+        // 9. RC 42
+        '42': { status: 'Gagal', message: 'Gagal memproses API Buyer. Username belum sesuai.', alertType: 'error' },
+        // 10. RC 43
+        '43': { status: 'Gagal', message: 'SKU tidak ditemukan atau Non-Aktif. Periksa konfigurasi produk.', alertType: 'error' },
+        // 11. RC 44
+        '44': { status: 'Gagal', message: 'Saldo tidak cukup. Mohon isi deposit API Anda.', alertType: 'error' },
+        // 12. RC 45
+        '45': { status: 'Gagal', message: 'IP Anda tidak kami kenali. Silahkan whitelist IP Anda.', alertType: 'error' },
+        // 13. RC 47
+        '47': { status: 'Gagal', message: 'Transaksi sudah terjadi di buyer lain.', alertType: 'error' },
+        // 14. RC 49
+        '49': { status: 'Gagal', message: 'Ref ID tidak unik.', alertType: 'error' },
+        // 15. RC 50
+        '50': { status: 'Gagal', message: 'Transaksi Tidak Ditemukan.', alertType: 'error' },
+        // 16. RC 51
+        '51': { status: 'Gagal', message: 'Nomor Tujuan Diblokir.', alertType: 'error' },
+        // 17. RC 52
+        '52': { status: 'Gagal', message: 'Prefix Tidak Sesuai Dengan Operator.', alertType: 'error' },
+        // 18. RC 53
+        '53': { status: 'Gagal', message: 'Produk Seller Sedang Tidak Tersedia.', alertType: 'error' },
+        // 19. RC 54
+        '54': { status: 'Gagal', message: 'Nomor Tujuan Salah. Mohon periksa kembali nomor pelanggan.', alertType: 'error' },
+        // 20. RC 56
+        '56': { status: 'Gagal', message: 'Limit saldo seller (Deprecated).', alertType: 'error' },
+        // 21. RC 57
+        '57': { status: 'Gagal', message: 'Jumlah Digit Kurang Atau Lebih dari standar.', alertType: 'error' },
+        // 22. RC 58
+        '58': { status: 'Gagal', message: 'Sedang Cut Off. Transaksi dibatalkan.', alertType: 'error' },
+        // 23. RC 59
+        '59': { status: 'Gagal', message: 'Tujuan di Luar Wilayah/Cluster layanan.', alertType: 'error' },
+        // 24. RC 60
+        '60': { status: 'Gagal', message: 'Tagihan belum tersedia (Belum Terbit/Sudah Lunas).', alertType: 'error' },
+        // 25. RC 61
+        '61': { status: 'Gagal', message: 'Akun API belum pernah melakukan deposit (Saldo Nol).', alertType: 'error' },
+        // 26. RC 62
+        '62': { status: 'Gagal', message: 'Seller sedang mengalami gangguan teknis.', alertType: 'error' },
+        // 27. RC 63
+        '63': { status: 'Gagal', message: 'Tidak support transaksi multi.', alertType: 'error' },
+        // 28. RC 64
+        '64': { status: 'Gagal', message: 'Tarik tiket gagal, coba nominal lain atau hubungi admin.', alertType: 'error' },
+        // 29. RC 65
+        '65': { status: 'Gagal', message: 'Limit transaksi multi (Deprecated).', alertType: 'error' },
+        // 30. RC 66
+        '66': { status: 'Gagal', message: 'Cut Off (Perbaikan Sistem Seller).', alertType: 'error' },
+        // 31. RC 67
+        '67': { status: 'Gagal', message: 'Seller belum ter-verfikasi.', alertType: 'error' },
+        // 32. RC 68
+        '68': { status: 'Gagal', message: 'Stok habis.', alertType: 'error' },
+        // 33. RC 69
+        '69': { status: 'Gagal', message: 'Harga seller lebih besar dari ketentuan harga Buyer.', alertType: 'error' },
+        // 34. RC 70
+        '70': { status: 'Gagal', message: 'Timeout Dari Biller. Coba lagi.', alertType: 'error' },
+        // 35. RC 71
+        '71': { status: 'Gagal', message: 'Produk Sedang Tidak Stabil. Coba sebentar lagi.', alertType: 'error' },
+        // 36. RC 72
+        '72': { status: 'Gagal', message: 'Lakukan Unreg Paket Dahulu.', alertType: 'error' },
+        // 37. RC 73
+        '73': { status: 'Gagal', message: 'Kwh Melebihi Batas.', alertType: 'error' },
+        // 38. RC 74
+        '74': { status: 'Gagal', message: 'Transaksi Refund.', alertType: 'error' },
+        // 39. RC 80
+        '80': { status: 'Gagal', message: 'Akun Anda telah diblokir oleh Seller.', alertType: 'error' },
+        // 40. RC 81
+        '81': { status: 'Gagal', message: 'Seller ini telah diblokir oleh Anda.', alertType: 'error' },
+        // 41. RC 82
+        '82': { status: 'Gagal', message: 'Akun Anda belum ter-verfikasi.', alertType: 'error' },
+        // 42. RC 83
+        '83': { status: 'Gagal', message: 'Limitasi pengecekan pricelist terlampaui. Silahkan coba beberapa saat lagi.', alertType: 'error' },
+        // 43. RC 84
+        '84': { status: 'Gagal', message: 'Nominal tidak valid.', alertType: 'error' },
+        // 44. RC 85
+        '85': { status: 'Gagal', message: 'Limitasi transaksi terlampaui. Silahkan coba 1 menit lagi.', alertType: 'error' },
+        // 45. RC 86
+        '86': { status: 'Gagal', message: 'Limitasi pengecekan nomor PLN terlampaui. Silahkan coba beberapa saat lagi.', alertType: 'error' },
+        // 46. RC 87
+        '87': { status: 'Gagal', message: 'Transaksi E-money wajib kelipatan Rp 1.000.', alertType: 'error' },
+    };
+
+    // Kembalikan pesan yang sesuai atau pesan default jika RC tidak terdefinisi
+    return rcMap[rc] || { 
+        status: 'Gagal', 
+        message: `Gagal (RC: ${rc}). Kesalahan tidak terdefinisi.`, 
+        alertType: 'error' 
+    };
+}
 
     // --- NEW HELPER: Trigger Custom Notification ---
     function triggerCustomNotification(msg, type) {
