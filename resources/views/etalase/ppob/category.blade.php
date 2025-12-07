@@ -869,18 +869,7 @@ function getRcMessage(rcCode) {
                 let finalPrice = price + admin; // Ini adalah total tagihan + admin biller
 
                 // Tambahkan Pengecekan: Jika harga total nol (kecuali untuk BPJS yang bisa 0 saat belum jatuh tempo)
-if (finalPrice <= 0 && d.customer_name && d.customer_name !== '-') {
-    // Jika data pelanggan valid, tapi harga 0, kemungkinan sudah lunas (RC 60)
-    // atau terjadi error. Tampilkan error yang jelas, JANGAN TAMPILKAN Rp 0.
-    const errorMsg = d.message || 'Tagihan sudah lunas atau belum tersedia (RC 60).';
-    alert(errorMsg);
-    
-    // Alih-alih menampilkan hasil (resultDiv), tampilkan pesan kosong/error
-    document.getElementById('pasca_result').classList.add('hidden'); 
-    document.getElementById('pasca_empty').classList.remove('hidden');
-    document.getElementById('pasca_empty').innerHTML = `<div class="text-center text-red-500 animate-pulse"><i class="fas fa-times-circle text-5xl mb-3"></i><p class="font-bold text-lg">Gagal Tagihan!</p><p class="sm">${errorMsg}</p></div>`;
-    return;
-}
+
                 
                 // 1. MAPPING DATA UTAMA
                 document.getElementById('bill_ref').innerText = d.ref_id || '-';
