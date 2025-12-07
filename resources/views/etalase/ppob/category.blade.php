@@ -677,6 +677,8 @@
     @else
     function cekTagihan() {
         const no = inputNo.value.trim();
+        const inquirySkuElement = document.getElementById('inquiry_sku_code');
+        const ACTIVE_SKU_VALUE = inquirySkuElement ? inquirySkuElement.value : null;
         let cleanNo = ACTIVE_SKU === 'samsat' ? no : no.replace(/[^0-9]/g, ''); 
 
         if(cleanNo.length < 5) { alert("Masukkan Nomor Pelanggan yang valid!"); inputNo.focus(); return; }
@@ -701,9 +703,10 @@
         fetch('{{ route("ppob.check.bill") }}', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+            
             body: JSON.stringify({ 
                 customer_no: cleanNo, 
-                sku: ACTIVE_SKU,
+                sku: ACTIVE_SKU_VALUE, // PASTIKAN SKU YANG BENAR DIKIRIM
                 buyer_sku_code: ACTIVE_SKU,
                 ref_id: generateRefID(),
                 testing: IS_TESTING 
