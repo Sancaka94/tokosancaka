@@ -249,4 +249,75 @@ class AdminPpobController extends Controller
             return response()->json(['status' => 'error', 'message' => 'Koneksi Server Gagal'], 500);
         }
     }
+
+    /**
+     * REQUEST TIKET DEPOSIT KE DIGIFLAZZ (DENGAN LOG)
+     */
+    public function requestDeposit(Request $request)
+    {
+        // 1. Validasi Input
+        $request->validate([
+            'amount'     => 'required|numeric|min:200000',
+            'bank'       => 'required|string',
+            'owner_name' => 'required|string',
+        ]);
+
+        // 2. Kredensial Langsung (HARDCODE)
+        $username = 'mihetiDVGdeW'; 
+        $apiKey   = '1f48c69f-8676-5d56-a868-10a46a69f9b7'; 
+        $endpoint = 'https://api.digiflazz.com/v1/deposit';
+
+        // 3. Generate Signature
+        $sign = md5($username . $apiKey . "deposit");
+
+        // 4. Siapkan Payload
+        $payload = [
+            'username'   => $username,
+            'amount'     => (int) $request->amount,
+            'Bank'       => $request->bank, 
+            'owner_name' => $request->owner_name,
+            'sign'       => $sign
+        ];
+
+        try {
+            // [LOG 1] Mencatat apa yang kita kirim
+            \Illuminate\Support\Facades\Log::info('➡️ [DEPOSIT REQ] Mengirim request ke Digiflazz:', $payload);
+
+            // 5. Kirim Request
+            $response = Http::withHeaders(['Content-Type' => 'application/json'])
+                            ->post($endpoint, $payload);
+            
+            $result = $response->json();
+
+            // [LOG 2] Mencatat balasan mentah dari Digiflazz
+            \Illuminate\Support\Facades\Log::info('⬅️ [DEPOSIT RESP] Balasan Server:', $result ?? []);
+
+            // 6. Cek Response RC "00" (Sukses)
+            if (isset($result['data']['rc']) && $result['data']['rc'] === '00') {
+                
+                // [LOG 3] Sukses
+                \Illuminate\Support\Facades\Log::info('✅ [DEPOSIT SUKSES] Tiket berhasil dibuat. Nominal: ' . ($result['data']['amount'] ?? 0));
+
+                return response()->json([
+                    'status' => 'success',
+                    'data'   => $result['data']
+                ]);
+            } else {
+                // [LOG 4] Gagal dari API (Misal: Saldo kurang, Bank gangguan, dll)
+                $msg = $result['data']['message'] ?? 'Gagal request deposit.';
+                \Illuminate\Support\Facades\Log::warning('⚠️ [DEPOSIT GAGAL] API Menolak: ' . $msg);
+
+                return response()->json(['status' => 'error', 'message' => $msg], 400);
+            }
+
+        } catch (\Exception $e) {
+            // [LOG 5] Error Sistem / Koneksi
+            \Illuminate\Support\Facades\Log::error('❌ [DEPOSIT ERROR] Exception: ' . $e->getMessage());
+
+            return response()->json([
+                'status' => 'error', 
+                'message' => 'Koneksi Error: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

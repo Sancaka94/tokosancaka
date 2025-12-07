@@ -25,21 +25,28 @@
 
         {{-- Widget Saldo (AJAX) --}}
         <div class="bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl p-5 text-white shadow-lg relative overflow-hidden">
+            {{-- Dekorasi Background --}}
             <div class="absolute right-0 top-0 opacity-10 transform translate-x-4 -translate-y-4">
                 <i class="fas fa-wallet text-8xl"></i>
             </div>
+            
             <div class="relative z-10">
                 <p class="text-blue-100 text-xs font-medium uppercase tracking-wider mb-1">Sisa Deposit Digiflazz</p>
-                <div class="flex items-center justify-between">
-                    <h3 id="saldo-display" class="text-2xl font-bold">Rp ...</h3>
-                    <button onclick="fetchSaldo()" id="btn-refresh-saldo" class="text-blue-200 hover:text-white transition p-1 rounded-full hover:bg-white/10" title="Refresh Saldo">
+                
+                {{-- Angka Saldo --}}
+                <div class="flex items-center justify-between mb-4">
+                    <h3 id="saldo-display" class="text-3xl font-bold tracking-tight">Rp ...</h3>
+                    <button onclick="fetchSaldo()" id="btn-refresh-saldo" class="text-blue-200 hover:text-white transition p-1.5 rounded-full hover:bg-white/10" title="Refresh Saldo">
                         <i class="fas fa-sync-alt" id="icon-refresh"></i>
                     </button>
                 </div>
-                <p id="saldo-loading" class="text-[10px] text-blue-200 mt-1 hidden">Sedang memuat data...</p>
+
+                {{-- TOMBOL DEPOSIT BARU --}}
+                <button onclick="openDepositModal()" class="w-full bg-white text-blue-600 font-bold py-2.5 px-4 rounded-lg text-sm transition hover:bg-blue-50 hover:shadow-lg flex items-center justify-center gap-2">
+                    <i class="fas fa-plus-circle"></i> Isi Saldo Otomatis
+                </button>
             </div>
         </div>
-    </div>
 
     {{-- Filter Section --}}
     <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
@@ -288,7 +295,230 @@
     document.addEventListener("DOMContentLoaded", function() {
         fetchSaldo();
     });
+
+    // --- LOGIC DEPOSIT ---
+    const depositModal = document.getElementById('depositModal');
+    const formDeposit = document.getElementById('formDeposit');
+    const resultDeposit = document.getElementById('depositResult');
+
+    function openDepositModal() {
+        formDeposit.classList.remove('hidden');
+        formDeposit.reset(); // Reset form setiap kali dibuka
+        resultDeposit.classList.add('hidden');
+        depositModal.classList.remove('hidden');
+    }
+
+    function closeDepositModal() {
+        depositModal.classList.add('hidden');
+    }
+
+    function submitDeposit(e) {
+        e.preventDefault();
+        
+        const btn = document.getElementById('btn-submit-depo');
+        const originalText = btn.innerHTML;
+        
+        // Ubah tombol jadi loading
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Menghubungi Digiflazz...';
+
+        const formData = new FormData(formDeposit);
+
+        // Kirim ke Route Laravel yang baru dibuat
+        fetch("{{ route('admin.ppob.deposit') }}", {
+            method: "POST",
+            body: formData,
+            headers: {
+                "X-CSRF-TOKEN": "{{ csrf_token() }}",
+                "Accept": "application/json"
+            }
+        })
+        .then(res => res.json())
+        .then(resp => {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+
+            if(resp.status === 'success') {
+                // Sembunyikan Form, Tampilkan Tiket
+                formDeposit.classList.add('hidden');
+                resultDeposit.classList.remove('hidden');
+
+                // Isi Data Tiket
+                const data = resp.data;
+                // Format Rupiah
+                const formattedAmount = 'Rp ' + parseInt(data.amount).toLocaleString('id-ID');
+                
+                document.getElementById('res_amount').innerText = formattedAmount;
+                document.getElementById('res_bank').innerText = data.bank;
+                document.getElementById('res_rek').innerText = data.account_no;
+                document.getElementById('res_notes').innerText = data.notes;
+                
+            } else {
+                // Gagal
+                alert('Gagal Request: ' + resp.message);
+            }
+        })
+        .catch(err => {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            console.error(err);
+            alert('Terjadi kesalahan koneksi ke server.');
+        });
+    }
+
+    // Fungsi Helper Copy Text
+    function copyToClipboard(elementId) {
+        const text = document.getElementById(elementId).innerText.replace(/[^0-9a-zA-Z ]/g, "").replace('Rp', '').trim();
+        navigator.clipboard.writeText(text).then(() => {
+            // Toast sederhana (bisa diganti sweetalert)
+            alert('Teks berhasil disalin: ' + text);
+        });
+    }
 </script>
 @endpush
+
+{{-- ======================================================================= --}}
+{{-- MODAL DEPOSIT --}}
+{{-- ======================================================================= --}}
+<div id="depositModal" class="fixed inset-0 z-[999] hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    {{-- Backdrop Gelap --}}
+    <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity backdrop-blur-sm" onclick="closeDepositModal()"></div>
+
+    <div class="flex items-center justify-center min-h-screen p-4 text-center sm:p-0">
+        <div class="relative bg-white rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:max-w-md w-full">
+            
+            {{-- Header Modal --}}
+            <div class="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 flex justify-between items-center">
+                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                    <i class="fas fa-wallet"></i> Request Deposit
+                </h3>
+                <button onclick="closeDepositModal()" class="text-blue-100 hover:text-white transition">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <div class="p-6">
+                
+                {{-- FORM INPUT (Tampil Awal) --}}
+                <form id="formDeposit" onsubmit="submitDeposit(event)">
+                    @csrf
+                    
+                    {{-- Alert Info --}}
+                    <div class="bg-blue-50 border-l-4 border-blue-500 p-3 mb-4 rounded-r text-xs text-blue-700">
+                        <p>Tiket deposit berlaku hingga pukul 21:00 WIB. Transfer harus <b>PERSIS</b> sesuai nominal tiket.</p>
+                    </div>
+
+                    {{-- Input Bank --}}
+                    <div class="mb-4">
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Metode Pembayaran</label>
+                        <div class="relative">
+                            <select name="bank" id="depo_bank" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500 py-2.5 pl-3 pr-10 appearance-none bg-white">
+                                <optgroup label="Transfer Bank (Cek Otomatis)">
+                                    <option value="BCA">BCA</option>
+                                    <option value="MANDIRI">MANDIRI</option>
+                                    <option value="BRI">BRI</option>
+                                    <option value="BNI">BNI</option>
+                                </optgroup>
+                                <optgroup label="E-Wallet & Lainnya">
+                                    <option value="FLIP">FLIP (Bebas Admin)</option>
+                                    <option value="SHOPEEPAY">SHOPEEPAY</option>
+                                    <option value="GOPAY">GOPAY</option>
+                                    <option value="DANA">DANA</option>
+                                    <option value="OVO">OVO</option>
+                                </optgroup>
+                            </select>
+                            {{-- Icon Panah Dropdown --}}
+                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                                <i class="fas fa-chevron-down text-xs"></i>
+                            </div>
+                        </div>
+                        <p class="text-[10px] text-gray-500 mt-1 italic">
+                            *Pilih <b>Flip/ShopeePay</b> jika akun Digiflazz Anda tipe Perorangan.
+                        </p>
+                    </div>
+
+                    {{-- Input Nama Pemilik --}}
+                    <div class="mb-4">
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Nama Pemilik Rekening</label>
+                        <input type="text" name="owner_name" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500 py-2.5" placeholder="Contoh: Sancaka Jaya" required>
+                        <p class="text-[10px] text-gray-400 mt-1">Nama di rekening pengirim dana.</p>
+                    </div>
+
+                    {{-- Input Nominal --}}
+                    <div class="mb-6">
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Nominal Deposit</label>
+                        <div class="relative rounded-md shadow-sm">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <span class="text-gray-500 sm:text-sm font-bold">Rp</span>
+                            </div>
+                            <input type="number" name="amount" class="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 sm:text-lg font-bold border-gray-300 rounded-lg py-3" placeholder="0" min="200000" required>
+                        </div>
+                        <p class="text-xs text-red-500 mt-1 font-medium">*Minimal Rp 200.000</p>
+                    </div>
+
+                    {{-- Tombol Submit --}}
+                    <button type="submit" id="btn-submit-depo" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow transition transform hover:scale-[1.02]">
+                        Buat Tiket Deposit
+                    </button>
+                </form>
+
+                {{-- TAMPILAN HASIL TIKET (Hidden by Default) --}}
+                <div id="depositResult" class="hidden">
+                    <div class="text-center mb-6">
+                        <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-4">
+                            <i class="fas fa-check text-3xl text-green-600"></i>
+                        </div>
+                        <h3 class="text-lg leading-6 font-bold text-gray-900">Tiket Berhasil Dibuat!</h3>
+                        <p class="text-sm text-gray-500 mt-1">Silakan transfer ke rekening berikut:</p>
+                    </div>
+
+                    <div class="bg-gray-50 rounded-xl border border-gray-200 p-4 space-y-4">
+                        
+                        {{-- Nominal --}}
+                        <div>
+                            <p class="text-xs text-gray-500 uppercase font-semibold mb-1">Total Transfer (Harus Persis)</p>
+                            <div class="flex justify-between items-center bg-white p-3 rounded border border-blue-200">
+                                <span class="text-2xl font-bold text-blue-600" id="res_amount">-</span>
+                                <button onclick="copyToClipboard('res_amount')" class="text-gray-400 hover:text-blue-600 transition" title="Salin">
+                                    <i class="far fa-copy text-lg"></i>
+                                </button>
+                            </div>
+                            <p class="text-[10px] text-red-500 mt-1 animate-pulse font-bold">Jangan dibulatkan! Transfer hingga 3 digit terakhir.</p>
+                        </div>
+
+                        {{-- Bank --}}
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-xs text-gray-500 uppercase font-semibold mb-1">Bank</p>
+                                <p class="font-bold text-gray-800 text-lg" id="res_bank">-</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500 uppercase font-semibold mb-1">No. Rekening</p>
+                                <div class="flex items-center gap-2">
+                                    <p class="font-bold text-gray-800 text-lg" id="res_rek">-</p>
+                                    <button onclick="copyToClipboard('res_rek')" class="text-gray-400 hover:text-blue-600"><i class="far fa-copy"></i></button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Notes --}}
+                        <div class="bg-yellow-50 p-3 rounded border border-yellow-200">
+                            <p class="text-[10px] text-yellow-700 uppercase font-bold mb-1">Berita Transfer (PENTING)</p>
+                            <div class="flex justify-between items-center">
+                                <p class="font-mono font-bold text-gray-800" id="res_notes">-</p>
+                                <button onclick="copyToClipboard('res_notes')" class="text-gray-400 hover:text-blue-600"><i class="far fa-copy"></i></button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button onclick="closeDepositModal()" class="mt-6 w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 rounded-xl transition">
+                        Tutup & Cek Saldo Nanti
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
 
 @endsection
