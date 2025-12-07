@@ -134,4 +134,61 @@ class AdminPpobController extends Controller
 
         return $query;
     }
+
+    /**
+     * Menampilkan detail transaksi spesifik.
+     */
+    public function show($id)
+    {
+        $transaction = PpobTransaction::with('user')->findOrFail($id);
+        
+        // Decode JSON response jika ada, agar rapi saat ditampilkan
+        $response_data = json_decode($transaction->desc, true) ?? $transaction->desc;
+
+        return view('admin.ppob.data.show', compact('transaction', 'response_data'));
+    }
+
+    /**
+     * Update status transaksi secara manual (Emergency use).
+     * Berguna jika webhook/callback provider gagal.
+     */
+    public function update(Request $request, $id)
+    {
+        $request->validate([
+            'status' => 'required|in:Pending,Success,Failed',
+            'sn'     => 'nullable|string'
+        ]);
+
+        $transaction = PpobTransaction::findOrFail($id);
+        
+        $oldStatus = $transaction->status;
+        $transaction->status = $request->status;
+        
+        // Update SN jika diisi admin
+        if ($request->filled('sn')) {
+            $transaction->sn = $request->sn;
+        }
+
+        $transaction->save();
+
+        // TODO: Tambahkan logika pengembalian saldo jika status diubah dari Pending ke Failed
+        // if ($oldStatus == 'Pending' && $request->status == 'Failed') {
+        //      $user = $transaction->user;
+        //      $user->balance += $transaction->price;
+        //      $user->save();
+        // }
+
+        return redirect()->back()->with('success', 'Status transaksi berhasil diperbarui manual.');
+    }
+
+    /**
+     * Hapus transaksi (Hati-hati, biasanya soft delete lebih disarankan).
+     */
+    public function destroy($id)
+    {
+        $transaction = PpobTransaction::findOrFail($id);
+        $transaction->delete();
+
+        return redirect()->route('admin.ppob.index')->with('success', 'Data transaksi berhasil dihapus.');
+    }
 }

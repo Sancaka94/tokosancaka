@@ -99,6 +99,10 @@ Route::prefix('ppob')->name('ppob.')->group(function () {
     Route::get('/data/export/excel', [App\Http\Controllers\Admin\AdminPpobController::class, 'exportExcel'])->name('data.export.excel');
     Route::get('/data/export/pdf', [App\Http\Controllers\Admin\AdminPpobController::class, 'exportPdf'])->name('data.export.pdf');
 
+    // Detail & Update
+    Route::get('/{id}', [AdminPpobController::class, 'show'])->name('show');
+    Route::put('/{id}', [AdminPpobController::class, 'update'])->name('update');
+    Route::delete('/{id}', [AdminPpobController::class, 'destroy'])->name('destroy');
     // -------------------------------------------------------------
     // 2. MANAJEMEN PRODUK PPOB (HARUS DI TENGAH)
     // -------------------------------------------------------------

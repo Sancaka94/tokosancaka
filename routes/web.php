@@ -651,6 +651,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::get('/digital/{slug}', [AdminPpobController::class, 'category'])
         ->name('admin.ppob.category');
 
+        
+
     // Rute AJAX untuk Manajemen Kategori
     Route::post('/categories/ajax-store', [App\Http\Controllers\Admin\CategoryController::class, 'storeAjax'])
     ->name('categories.storeAjax'); // HAPUS 'admin.' di sini
