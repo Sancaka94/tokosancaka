@@ -14,10 +14,10 @@
             
             {{-- Tombol Export --}}
             <div class="flex gap-2 mt-4">
-                <a href="{{ route('ppob.export.excel', request()->all()) }}" class="inline-flex items-center px-4 py-2 bg-green-600 text-white text-xs font-bold rounded-lg hover:bg-green-700 transition shadow-sm hover:shadow-md">
+                <a href="{{ route('admin.ppob.export.excel', request()->all()) }}" class="inline-flex items-center px-4 py-2 bg-green-600 text-white text-xs font-bold rounded-lg hover:bg-green-700 transition shadow-sm hover:shadow-md">
                     <i class="fas fa-file-excel mr-2"></i> EXCEL
                 </a>
-                <a href="{{ route('ppob.export.pdf', request()->all()) }}" class="inline-flex items-center px-4 py-2 bg-red-600 text-white text-xs font-bold rounded-lg hover:bg-red-700 transition shadow-sm hover:shadow-md">
+                <a href="{{ route('admin.ppob.export.pdf', request()->all()) }}" class="inline-flex items-center px-4 py-2 bg-red-600 text-white text-xs font-bold rounded-lg hover:bg-red-700 transition shadow-sm hover:shadow-md">
                     <i class="fas fa-file-pdf mr-2"></i> PDF
                 </a>
             </div>
@@ -130,7 +130,7 @@
                                     $brandName = strtolower($trx->brand ?? 'other');
                                     // Fallback icon fontawesome jika gambar tidak ada
                                     $defaultIcon = '<div class="h-8 w-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-400"><i class="fas fa-box"></i></div>';
-                                    $logoUrl = asset('storage/logo-ppob/' . $brandName . '.png');
+                                    $logoUrl = asset('public/storage/logo-ppob/' . $brandName . '.png');
                                 @endphp
                                 <div class="mr-3 shrink-0">
                                     <img class="h-8 w-8 object-contain" src="{{ $logoUrl }}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" alt="{{ $brandName }}">
