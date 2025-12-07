@@ -210,17 +210,35 @@ public function checkBill(Request $request)
     $sku = $request->input('sku');
     $refId = 'INQ-' . time() . rand(100,999);
 
-    // 2. CEK SKU DI DATABASE (Mengatasi error "SKU tidak ditemukan")
-    $product = PpobProduct::where('buyer_sku_code', $sku)
-                        ->where('seller_product_status', true)
-                        ->first();
+    $sku = $request->input('sku');
     
-    if (!$product) {
-        Log::warning("Inquiry Failed: SKU not found or inactive in database. SKU: $sku");
-        return response()->json([
-            'status' => 'error', 
-            'message' => 'SKU produk Pascabayar tidak ditemukan atau sedang non-aktif.'
-        ]);
+    // ⭐ PERBAIKAN: Gunakan WHERE IN untuk mencari SKU yang aktif. 
+    // Kita mencari SKU yang dikirim, tetapi jika SKU itu non-aktif,
+    // kita coba cari SKU lain yang aktif dengan Brand yang sama (jika ada).
+    
+    $product = PpobProduct::where('buyer_sku_code', $sku)->first();
+
+    if (!$product || $product->seller_product_status != true) {
+        // 1. Jika SKU yang dikirim tidak ditemukan ATAU tidak aktif, cari alternatif
+        
+        $alternativeSku = PpobProduct::where('brand', 'PLN PASCABAYAR')
+            ->where('seller_product_status', true)
+            ->inRandomOrder() // Ambil acak atau yang termurah
+            ->first();
+
+        // Coba gunakan alternatif jika ada
+        if ($alternativeSku) {
+            $product = $alternativeSku;
+            $sku = $alternativeSku->buyer_sku_code; // Ganti SKU yang akan di-inquiry
+            Log::warning("SKU $sku tidak aktif. Menggunakan alternatif: $sku.");
+        } else {
+            // Jika tidak ada alternatif aktif sama sekali
+            Log::warning("Inquiry Failed: SKU $sku tidak aktif, dan tidak ada alternatif.");
+            return response()->json([
+                'status' => 'error', 
+                'message' => 'SKU produk Pascabayar tidak ditemukan atau sedang non-aktif.'
+            ]);
+        }
     }
 
     $username = 'mihetiDVGdeW'; 
