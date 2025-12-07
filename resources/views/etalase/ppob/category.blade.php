@@ -886,7 +886,7 @@ function getRcMessage(rcCode) {
                     customer_no: d.customer_no
                 };
 
-                 // 3. MAPPING RINCIAN (DESC) & LABEL DINAMIS
+                // 3. MAPPING RINCIAN (DESC) & LABEL DINAMIS
                 if (d.desc) {
                     const desc = d.desc;
                     const detailOne = (desc.detail && Array.isArray(desc.detail) && desc.detail.length > 0) ? desc.detail[0] : (desc.detail || desc);
@@ -894,11 +894,10 @@ function getRcMessage(rcCode) {
                     let mainPeriode = detailOne.periode || desc.periode || d.periode || '-';
                     document.getElementById('bill_period').innerText = formatPeriodeID(mainPeriode);
                     
-                    // B. Logic Label Dinamis (Switch Case)
                     let lbl1="Info", val1="-", lbl2="Lembar", val2=(desc.lembar_tagihan || '1') + ' Lembar';
                     let lblAddr="Alamat", valAddr=desc.alamat || desc.kab_kota || '-';
 
-                    if (ACTIVE_SKU.includes('pln')) {
+                   if (ACTIVE_SKU.includes('pln')) {
                         lbl1 = "Tarif / Daya";
                         val1 = (desc.tarif || '-') + ' / ' + (desc.daya || '-') + ' VA';
                     } 
