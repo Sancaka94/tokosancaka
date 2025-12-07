@@ -3,6 +3,9 @@
 @section('title', 'Manajemen Produk PPOB')
 
 @section('content')
+
+@include('layouts.partials.notifications')
+
 <div class="container mx-auto px-4 py-8">
     
     {{-- Header Section (Tombol Aksi & Sync) --}}
