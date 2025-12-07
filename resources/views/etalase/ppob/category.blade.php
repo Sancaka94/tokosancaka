@@ -536,13 +536,6 @@
         return str;
     }
 
-   // --- HELPER: RC Message Mapper (LENGKAP DAN KOREKSI - 46 KODE RC) ---
-/**
- * Mengubah Response Code (RC) menjadi objek pesan yang berisi status, pesan, dan tipe alert.
- * * @param {string | number} rcCode - Kode Respon (RC) dari transaksi.
- * @returns {{status: string, message: string, alertType: 'success' | 'warning' | 'error'}} 
- * Objek pesan yang sesuai, atau pesan default jika RC tidak ditemukan.
- */
 function getRcMessage(rcCode) {
     // Pastikan rcCode diubah menjadi string
     const rc = String(rcCode);
