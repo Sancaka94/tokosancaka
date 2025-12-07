@@ -209,8 +209,6 @@ public function checkBill(Request $request)
     $customerNo = $request->input('customer_no');
     $sku = $request->input('sku');
     $refId = 'INQ-' . time() . rand(100,999);
-
-    $sku = $request->input('sku');
     
     // ⭐ PERBAIKAN: Gunakan WHERE IN untuk mencari SKU yang aktif. 
     // Kita mencari SKU yang dikirim, tetapi jika SKU itu non-aktif,
