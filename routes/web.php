@@ -82,12 +82,15 @@ use App\Http\Controllers\Customer\AgentRegistrationController;
 use App\Http\Controllers\Customer\TopUpController;
 use App\Http\Controllers\Customer\AgentTransactionController; // <--- TAMBAHKAN INI
 
+// routes/web.php (Kode yang Diperbaiki)
+
 Route::middleware(['auth'])->prefix('ppob')->name('ppob.')->group(function () {
     // FINAL ROUTE SINKRONISASI TERPISAH
-        Route::get('/sync/prepaid', [PpobProductController::class, 'syncPrepaid'])->name('admin.sync.prepaid');
-        Route::get('/sync/postpaid', [PpobProductController::class, 'syncPostpaid'])->name('admin.sync.postpaid');
+    // Route name yang dihasilkan akan menjadi: ppob.sync.prepaid
+    Route::get('/sync/prepaid', [PpobProductController::class, 'syncPrepaid'])->name('sync.prepaid'); 
+    // Route name yang dihasilkan akan menjadi: ppob.sync.postpaid
+    Route::get('/sync/postpaid', [PpobProductController::class, 'syncPostpaid'])->name('sync.postpaid'); 
 });
-
 
     // Route untuk mengambil data kota PBB
 Route::get('/agent/ppob/cities', [AgentTransactionController::class, 'getPbbCities'])->name('admin.ppob.get-pbb-cities'); 
