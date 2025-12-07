@@ -14,10 +14,10 @@
             
             {{-- Tombol Export --}}
             <div class="flex gap-2 mt-4">
-                <a href="{{ route('admin.ppob.export.excel', request()->all()) }}" class="inline-flex items-center px-4 py-2 bg-green-600 text-white text-xs font-bold rounded-lg hover:bg-green-700 transition shadow-sm hover:shadow-md">
+                <a href="{{ route('ppob.export.excel', request()->all()) }}" class="inline-flex items-center px-4 py-2 bg-green-600 text-white text-xs font-bold rounded-lg hover:bg-green-700 transition shadow-sm hover:shadow-md">
                     <i class="fas fa-file-excel mr-2"></i> EXCEL
                 </a>
-                <a href="{{ route('admin.ppob.export.pdf', request()->all()) }}" class="inline-flex items-center px-4 py-2 bg-red-600 text-white text-xs font-bold rounded-lg hover:bg-red-700 transition shadow-sm hover:shadow-md">
+                <a href="{{ route('ppob.export.pdf', request()->all()) }}" class="inline-flex items-center px-4 py-2 bg-red-600 text-white text-xs font-bold rounded-lg hover:bg-red-700 transition shadow-sm hover:shadow-md">
                     <i class="fas fa-file-pdf mr-2"></i> PDF
                 </a>
             </div>
