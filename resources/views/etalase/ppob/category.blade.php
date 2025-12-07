@@ -851,43 +851,71 @@ function getRcMessage(rcCode) {
         })
         .then(res => res.json())
         .then(data => {
-            btn.disabled = false; spinner.classList.add('hidden'); text.innerText = "Cek Tagihan";
-            console.log("Response PPOB:", data);
+    btn.disabled = false; spinner.classList.add('hidden'); text.innerText = "Cek Tagihan";
+    
+    // Deteksi wrapper data (karena di log tertulis {"data": {...}})
+    const d = data.data || data; 
+    const rc = d.rc; 
+    const rcInfo = getRcMessage(rc);
 
-            const d = data.data || data;
-            const rc = d.rc; 
-            const rcInfo = getRcMessage(rc); 
-            
-            // Ambil pesan dari API jika ada, jika tidak, gunakan pesan RC Mapper
-            let messageToUser = d.message || rcInfo.message; 
-            
-            // Validasi Status Sukses (RC 00)
-            if(d && (d.status === 'success' || d.status === 'Sukses' || rc === '00')) {
-                
-                let price = parseInt(d.selling_price || d.amount || 0); // Ambil 265984 atau 266234
-                let admin = parseInt(d.admin || d.admin_fee || 0);     // Ambil 2750 atau 3000
-                let finalPrice = price + admin; // Ini adalah total tagihan + admin biller
+    // Validasi Status Sukses (RC 00)
+    if(d && (d.status === 'success' || d.status === 'Sukses' || rc === '00')) {
+        
+        // ============================================================
+        // 1. LOGIC HARGA (Disempurnakan berdasarkan Log)
+        // ============================================================
+        // Prioritas 1: Ambil selling_price dari JSON (264234)
+        // Prioritas 2: Ambil price (263884)
+        let rawPrice = parseInt(d.selling_price || d.price || 0);
+        let admin = parseInt(d.admin || d.admin_fee || 0);
+        
+        // Cek Tagihan Murni (Tanpa Admin) untuk keperluan rincian
+        // Di log: desc.detail[0].nilai_tagihan = "263234"
+        let tagihanMurni = 0;
+        if (d.desc && d.desc.detail && d.desc.detail.length > 0) {
+            tagihanMurni = parseInt(d.desc.detail[0].nilai_tagihan || 0);
+        }
 
-                // Tambahkan Pengecekan: Jika harga total nol (kecuali untuk BPJS yang bisa 0 saat belum jatuh tempo)
+        // KOREKSI FINAL PRICE:
+        // Jika selling_price sudah ada (dari API), gunakan itu sebagai Total Bayar.
+        // Jangan ditambah admin lagi jika selling_price > tagihanMurni
+        let finalPrice = rawPrice;
 
-                
-                // 1. MAPPING DATA UTAMA
-                document.getElementById('bill_ref').innerText = d.ref_id || '-';
-                document.getElementById('bill_name').innerText = d.customer_name || d.name || 'Pelanggan';
-                document.getElementById('bill_id').innerText = d.customer_no;
-                
-                // Tampilkan Harga
-                document.getElementById('bill_amount').innerText = 'Rp ' + finalPrice.toLocaleString('id-ID');
-                document.getElementById('bill_admin').innerText = 'Rp ' + admin.toLocaleString('id-ID');
+        // Fallback: Jika selling_price 0, baru kita hitung manual
+        if (finalPrice === 0) {
+            finalPrice = tagihanMurni + admin;
+        }
 
-                // 2. SIMPAN DATA KE VARIABLE GLOBAL
-                currentBillData = {
-                    sku: ACTIVE_SKU,
-                    name: "Tagihan " + ACTIVE_SKU.toUpperCase() + " - " + (d.customer_name || d.name),
-                    price: finalPrice, 
-                    ref_id: d.ref_id,
-                    customer_no: d.customer_no
-                };
+        // ============================================================
+        // 2. LOGIC ALAMAT (SAFE MODE)
+        // ============================================================
+        // Karena di log TIDAK ADA alamat, kita buat fallback ke '-'
+        let rawDesc = d.desc || {};
+        let firstDetail = (rawDesc.detail && rawDesc.detail[0]) ? rawDesc.detail[0] : {};
+
+        let valAddr = rawDesc.alamat || rawDesc.address || 
+                      rawDesc.kab_kota || d.address || 
+                      firstDetail.alamat || '-'; 
+        
+        // ============================================================
+        // 3. MAPPING KE TAMPILAN
+        // ============================================================
+        document.getElementById('bill_ref').innerText = d.ref_id || '-';
+        document.getElementById('bill_name').innerText = d.customer_name || d.name || 'Pelanggan';
+        document.getElementById('bill_id').innerText = d.customer_no;
+        
+        // Tampilkan Harga
+        document.getElementById('bill_amount').innerText = 'Rp ' + finalPrice.toLocaleString('id-ID');
+        document.getElementById('bill_admin').innerText = 'Rp ' + admin.toLocaleString('id-ID');
+
+        // Update Variable Global untuk Pembayaran (PENTING UNTUK CHECKOUT)
+        currentBillData = {
+            sku: ACTIVE_SKU,
+            name: "Tagihan " + ACTIVE_SKU.toUpperCase() + " - " + (d.customer_name || d.name),
+            price: finalPrice, // Pastikan ini tidak 0
+            ref_id: d.ref_id,
+            customer_no: d.customer_no
+        };
 
                 // 3. MAPPING RINCIAN (DESC) & LABEL DINAMIS
                 if (d.desc) {
@@ -934,7 +962,13 @@ function getRcMessage(rcCode) {
                     document.getElementById('label_info_2').innerText = lbl2;
                     document.getElementById('val_info_2').innerText = val2;
                     document.getElementById('label_address').innerText = lblAddr;
-                    document.getElementById('val_address').innerText = valAddr;
+                    // Update Alamat
+        document.getElementById('val_address').innerText = valAddr;
+        
+        // Tampilkan container hasil
+        triggerCustomNotification("Tagihan ditemukan.", 'success');
+        document.getElementById('bill_result').classList.remove('hidden'); 
+        document.getElementById('bill_empty').classList.add('hidden');
 
                     if(detailList) {
                         detailList.innerHTML = '';
