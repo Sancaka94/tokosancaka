@@ -10,18 +10,34 @@
     class="fixed inset-y-0 left-0 z-30 w-64 overflow-y-auto bg-blue-900 text-white transition duration-300 transform lg:translate-x-0 lg:static lg:inset-0"
     x-cloak>
 
-    {{-- Header Sidebar (Logo & Nama Toko) --}}
-    <div class="flex items-center justify-center py-6">
-        <a href="{{ route('customer.profile.show') }}" class="flex flex-col items-center text-lg font-bold text-white text-center">
-            {{-- Logo --}}
-            <img class="object-cover w-16 h-16 rounded-full mb-3 border-4 border-gray-700 shadow-md" 
-                 src="{{ Auth::user()->store_logo_path ? asset('public/storage/' . Auth::user()->store_logo_path) : 'https://ui-avatars.com/api/?name=' . urlencode(Auth::user()->store_name ?? 'T') . '&background=4f46e5&color=fff' }}" 
-                 alt="Logo Toko" />
-            
-            {{-- Nama Toko --}}
-            <span class="truncate w-40 block">{{ Auth::user()->store_name ?? 'Toko Pelanggan' }}</span>
-        </a>
-    </div>
+   {{-- Header Sidebar (Logo & Nama Toko) --}}
+<div class="flex items-center justify-center py-6">
+    <a href="{{ route('customer.profile.show') }}" class="flex flex-col items-center text-lg font-bold text-white text-center">
+        @php
+            // Ambil objek pengguna yang sedang login, jika ada.
+            $user = Auth::user();
+
+            // Tentukan path logo
+            $logoPath = $user?->store_logo_path;
+
+            // Tentukan nama toko untuk avatar default
+            $storeName = $user?->store_name ?? 'Pelanggan';
+
+            // Logika SRC: Jika logoPath ada, gunakan asset; jika tidak, gunakan UI Avatar
+            $logoSrc = $logoPath
+                ? asset('public/storage/' . $logoPath) 
+                : 'https://ui-avatars.com/api/?name=' . urlencode($storeName) . '&background=4f46e5&color=fff';
+        @endphp
+
+        {{-- Logo --}}
+        <img class="object-cover w-16 h-16 rounded-full mb-3 border-4 border-gray-700 shadow-md" 
+             src="{{ $logoSrc }}" 
+             alt="Logo Toko" />
+        
+        {{-- Nama Toko --}}
+        <span class="truncate w-40 block">{{ $storeName }}</span>
+    </a>
+</div>
 
     <nav class="mt-4 px-4 space-y-2 pb-20">
 
