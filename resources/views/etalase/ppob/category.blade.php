@@ -540,6 +540,63 @@
         return str;
     }
 
+    // --- NEW HELPER: RC Message Mapper (Digiflazz) ---
+    function getRcMessage(rcCode) {
+        // Pastikan rcCode adalah string
+        const rc = String(rcCode);
+
+        const rcMap = {
+            // --- SUKSES ---
+            '00': { status: 'Sukses', message: 'Tagihan berhasil ditemukan!', alertType: 'success' },
+
+            // --- PENDING/PERINGATAN (Status Sementara/Informasi) ---
+            '03': { status: 'Pending', message: 'Transaksi sedang diproses. Mohon tunggu beberapa saat.', alertType: 'warning' },
+            '55': { status: 'Pending', message: 'Produk Sedang Gangguan. Coba sebentar lagi.', alertType: 'warning' },
+            '58': { status: 'Pending', message: 'Sedang Cut Off. Transaksi akan diproses setelah Cut Off berakhir.', alertType: 'warning' },
+            '60': { status: 'Pending', message: 'Tagihan belum tersedia (Belum Terbit/Sudah Lunas).', alertType: 'warning' },
+            '71': { status: 'Pending', message: 'Produk Sedang Tidak Stabil. Coba sebentar lagi.', alertType: 'warning' },
+            '99': { status: 'Pending', message: 'DF Router Issue / Saldo API bermasalah. Mohon coba beberapa saat lagi.', alertType: 'warning' },
+            
+            // --- GAGAL/ERROR (Perlu Cek Ulang Input/Akun) ---
+            '01': { status: 'Gagal', message: 'Timeout. Waktu tunggu habis. Coba lagi.', alertType: 'error' },
+            '02': { status: 'Gagal', message: 'Transaksi Gagal. Terjadi kesalahan pada saat pemrosesan.', alertType: 'error' },
+            '40': { status: 'Gagal', message: 'Payload Error. Format data atau parameter tidak sesuai.', alertType: 'error' },
+            '41': { status: 'Gagal', message: 'Signature tidak valid. Cek formula sign dan apiKey Anda.', alertType: 'error' },
+            '42': { status: 'Gagal', message: 'Gagal memproses API Buyer. Username belum sesuai.', alertType: 'error' },
+            '43': { status: 'Gagal', message: 'SKU tidak ditemukan atau Non-Aktif. Periksa konfigurasi produk.', alertType: 'error' },
+            '44': { status: 'Gagal', message: 'Saldo tidak cukup. Mohon isi deposit API Anda.', alertType: 'error' },
+            '45': { status: 'Gagal', message: 'IP Anda tidak kami kenali. Silakan whitelist IP pada pengaturan koneksi.', alertType: 'error' },
+            '47': { status: 'Gagal', message: 'Transaksi sudah terjadi di buyer lain.', alertType: 'error' },
+            '49': { status: 'Gagal', message: 'Ref ID tidak unik. Gunakan ID yang unik untuk setiap permintaan.', alertType: 'error' },
+            '50': { status: 'Gagal', message: 'Transaksi Tidak Ditemukan.', alertType: 'error' },
+            '51': { status: 'Gagal', message: 'Nomor Tujuan Diblokir.', alertType: 'error' },
+            '52': { status: 'Gagal', message: 'Prefix Tidak Sesuai Dengan Operator.', alertType: 'error' },
+            '54': { status: 'Gagal', message: 'Nomor Tujuan Salah. Mohon periksa kembali nomor pelanggan.', alertType: 'error' },
+            '57': { status: 'Gagal', message: 'Jumlah Digit Kurang Atau Lebih dari standar.', alertanType: 'error' },
+            '59': { status: 'Gagal', message: 'Tujuan di Luar Wilayah/Cluster layanan.', alertType: 'error' },
+            '61': { status: 'Gagal', message: 'Akun API Anda belum pernah melakukan deposit (Saldo Nol).', alertType: 'error' },
+            '66': { status: 'Gagal', message: 'Cut Off (Perbaikan Sistem Seller).', alertType: 'error' },
+            '70': { status: 'Gagal', message: 'Timeout Dari Biller. Coba lagi.', alertType: 'error' },
+            // Tambahkan RC lain yang relevan di sini...
+        };
+
+        return rcMap[rc] || { status: 'Gagal', message: `Gagal (RC: ${rc}). Kesalahan tidak terdefinisi.`, alertType: 'error' };
+    }
+
+    // --- NEW HELPER: Show Notification (ganti fungsi alert bawaan) ---
+    function showNotification(msg, type) {
+        // Anda bisa mengganti ini dengan library notifikasi (Toastr/SweetAlert),
+        // Untuk saat ini kita gunakan alert bawaan.
+        if (type === 'success') {
+            alert("✅ SUKSES: " + msg);
+        } else if (type === 'error') {
+            alert("❌ GAGAL: " + msg);
+        } else if (type === 'warning') {
+            alert("⚠️ PERHATIAN: " + msg);
+        }
+    }
+
+
     // =================================================================
     // 🟢 LOGIKA PRABAYAR (PULSA, TOKEN, DATA)
     // =================================================================
@@ -717,29 +774,37 @@
             console.log("Response PPOB:", data);
 
             const d = data.data || data;
-
-            // Validasi Status Sukses (Support lowercase 'success' & RC '00')
-            if(d && (d.status === 'success' || d.status === 'Sukses' || d.rc === '00')) {
-                
-                // 1. MAPPING DATA UTAMA
-                document.getElementById('bill_ref').innerText = d.ref_id || '-';
-                document.getElementById('bill_name').innerText = d.customer_name || d.name || 'Pelanggan';
-                document.getElementById('bill_id').innerText = d.customer_no;
+            const rc = d.rc; // Ambil Response Code
+            const rcInfo = getRcMessage(rc); // Mapping RC ke pesan
+            
+            // Tentukan pesan yang akan ditampilkan. Utamakan pesan dari API (d.message)
+            let messageToUser = d.message || rcInfo.message; 
+            
+            // Validasi Status Sukses (RC 00)
+            if(d && (d.status === 'success' || d.status === 'Sukses' || rc === '00')) {
                 
                 // Harga & Admin (Parsing 'amount' atau 'selling_price')
                 let price = parseInt(d.selling_price || d.amount || 0);
                 let admin = parseInt(d.admin || d.admin_fee || 0);
                 let finalPrice = price + admin; 
 
-                // --- TAMBAHKAN LOGIKA INI ---
-    if (finalPrice <= admin) { 
-        // finalPrice hanya berisi biaya admin, artinya nilai tagihan nol.
-        alert("Tagihan tidak ditemukan atau sudah dibayar. Total tagihan Rp 0.");
-        emptyDiv.classList.remove('hidden'); // Kembali ke tampilan kosong
-        return; // Hentikan proses mapping data nol
-    }
-    // --- AKHIR LOGIKA TAMBAHAN ---
+                // --- NEW LOGIC: DETEKSI LUNAS/BELUM TERBIT (RC 00, tapi Harga 0) ---
+                if (finalPrice <= admin) { 
+                    messageToUser = d.message || 'Tagihan sudah lunas atau belum tersedia.';
+                    showNotification(messageToUser, 'warning'); 
+                    emptyDiv.classList.remove('hidden'); // Kembali ke tampilan kosong
+                    return; // Hentikan proses mapping data
+                }
+                // --- END NEW LOGIC ---
 
+                // Tampilkan notifikasi Sukses/Tagihan Ditemukan
+                showNotification(messageToUser, 'success');
+                
+                // 1. MAPPING DATA UTAMA
+                document.getElementById('bill_ref').innerText = d.ref_id || '-';
+                document.getElementById('bill_name').innerText = d.customer_name || d.name || 'Pelanggan';
+                document.getElementById('bill_id').innerText = d.customer_no;
+                
                 // Tampilkan Harga
                 document.getElementById('bill_amount').innerText = 'Rp ' + finalPrice.toLocaleString('id-ID');
                 document.getElementById('bill_admin').innerText = 'Rp ' + admin.toLocaleString('id-ID');
@@ -842,10 +907,10 @@
                 resultDiv.classList.remove('hidden'); // Tampilkan hasil
 
             } else {
-                // Handle Error
-                let msg = d.message || "Tagihan tidak ditemukan / Gagal.";
-                alert(msg);
+                // --- NEW LOGIC: HANDLE GAGAL/PENDING BERDASARKAN RC ---
+                showNotification(messageToUser, rcInfo.alertType); 
                 emptyDiv.classList.remove('hidden');
+                // --- END NEW LOGIC ---
             }
         })
         .catch(err => {
