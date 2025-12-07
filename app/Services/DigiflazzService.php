@@ -327,56 +327,85 @@ class DigiflazzService
    // --- Helper Methods ---
     
     protected function updateDatabase(array $products, string $type): bool
-    {
-        // ... (Logika updateDatabase tetap sama, tidak perlu diubah) ...
-        if (empty($products)) {
-            Log::warning("Sync Product Failed ($type): Product list is empty.");
-            return false;
-        }
+{
+    if (empty($products)) {
+        Log::warning("Sync Product Failed ($type): Product list is empty.");
+        return false;
+    }
 
-        DB::beginTransaction();
-        try {
-            $processedCount = 0;
-            $margin = 2000;
+    DB::beginTransaction();
+    try {
+        $processedCount = 0;
+        $margin = 2000; // Margin default untuk harga jual
 
-            foreach ($products as $item) {
-                if (!is_array($item)) continue;
+        foreach ($products as $item) {
+            if (!is_array($item)) continue;
+            
+            // 🛑 PERUBAHAN 1: VALIDASI DATA
+            // Validasi Pascabayar memerlukan 'admin' dan 'buyer_sku_code'
+            if ($type === 'postpaid') {
+                if (!isset($item['buyer_sku_code']) || !isset($item['admin'])) continue;
+            } else {
+                // Validasi Prabayar memerlukan 'price'
                 if (!isset($item['buyer_sku_code']) || !isset($item['price'])) continue;
-
-                $modal = (float)$item['price'];
-                $hargaJualAwal = $modal + $margin;
-
-                $product = PpobProduct::firstOrNew(['buyer_sku_code' => $item['buyer_sku_code']]);
-                
-                $product->fill([
-                    'product_name' => $item['product_name'] ?? null,
-                    'category' => $item['category'] ?? null,
-                    'brand' => $item['brand'] ?? null,
-                    'type' => $item['type'] ?? null,
-                    'seller_name' => $item['seller_name'] ?? null,
-                    'price' => $modal, 
-                    'buyer_product_status' => $item['buyer_product_status'] ?? false,
-                    'seller_product_status' => $item['seller_product_status'] ?? false,
-                    'unlimited_stock' => $item['unlimited_stock'] ?? false,
-                    'stock' => $item['stock'] ?? 0,
-                    'multi' => $item['multi'] ?? false,
-                    'start_cut_off' => $item['start_cut_off'] ?? null,
-                    'end_cut_off' => $item['end_cut_off'] ?? null,
-                    'desc' => $item['desc'] ?? null,
-                ]);
-                
-                if (!$product->exists || $product->sell_price <= 0) {
-                    $product->sell_price = $hargaJualAwal;
-                }
-                
-                $product->save();
-                $processedCount++;
             }
             
-            DB::commit(); 
+            // 🛑 PERUBAHAN 2: TENTUKAN MODAL ($modal) BERDASARKAN TIPE
+            if ($type === 'postpaid') {
+                // Untuk Pascabayar, Harga Beli (modal) adalah Biaya Admin
+                $modal = (float)$item['admin']; 
+                // Catatan: Jika Anda ingin modal termasuk komisi (admin - commission), hitung di sini.
+            } else {
+                // Untuk Prabayar, Harga Beli (modal) adalah Price
+                $modal = (float)$item['price'];
+            }
             
-            Log::info("✅ [SYNC END] Sinkronisasi Produk ($type) Berhasil. Total $processedCount items.");
-            return true; 
+            $hargaJualAwal = $modal + $margin;
+
+            $product = PpobProduct::firstOrNew(['buyer_sku_code' => $item['buyer_sku_code']]);
+            
+            $product->fill([
+                'product_name' => $item['product_name'] ?? null,
+                'category' => $item['category'] ?? null,
+                'brand' => $item['brand'] ?? null,
+                
+                // 🟢 FIELD PASCABAYAR BARU
+    // Map 'admin' API ke 'admin_fee' di database
+    'admin_fee' => $item['admin'] ?? 0, 
+    // Map 'commission' API ke 'commission' di database
+    'commission' => $item['commission'] ?? 0,
+                
+                // Field Prabayar (akan kosong jika Pascabayar, itu tidak masalah)
+                'type' => $item['type'] ?? null, 
+                'seller_name' => $item['seller_name'] ?? null,
+                'buyer_product_status' => $item['buyer_product_status'] ?? false,
+                'seller_product_status' => $item['seller_product_status'] ?? false,
+                
+                // 🟢 FIELD LAINNYA YANG DILENGKAPI
+                'unlimited_stock' => $item['unlimited_stock'] ?? false,
+                'stock' => $item['stock'] ?? 0,
+                'multi' => $item['multi'] ?? false, // Sering digunakan untuk produk promo
+                'start_cut_off' => $item['start_cut_off'] ?? null,
+                'end_cut_off' => $item['end_cut_off'] ?? null,
+                'desc' => $item['desc'] ?? null,
+                
+                // Selalu simpan modal ke kolom 'price' database
+                'price' => $modal, 
+            ]);
+            
+            // Atur Harga Jual
+            if (!$product->exists || $product->sell_price <= 0) {
+                $product->sell_price = $hargaJualAwal;
+            }
+            
+            $product->save();
+            $processedCount++;
+        }
+        
+        DB::commit(); 
+        
+        Log::info("✅ [SYNC END] Sinkronisasi Produk ($type) Berhasil. Total $processedCount items.");
+        return true;
 
         } catch (\Exception $e) {
             DB::rollBack(); 

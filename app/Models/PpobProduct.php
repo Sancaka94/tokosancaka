@@ -34,6 +34,8 @@ class PpobProduct extends Model
         'start_cut_off',
         'end_cut_off',
         'desc',
+        'admin_fee',
+        'commission',
     ];
 
     /**
