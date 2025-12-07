@@ -522,19 +522,39 @@
         return prefix + Date.now() + '-' + Math.floor(Math.random() * 10000);
     }
 
-    // --- HELPER: Formatter Tanggal/Periode (Unmodified) ---
-    function formatPeriodeID(periodeStr) {
-        if (!periodeStr) return '-';
-        let str = periodeStr.toString().trim();
-        if (ACTIVE_SKU.includes('bpjs') && /^\d{1,2}$/.test(str)) return str + " Bulan";
-        if (/^\d{6}$/.test(str)) {
-            let year = str.substring(0, 4);
-            let month = parseInt(str.substring(4, 6));
-            const months = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-            if (months[month]) return `${months[month]} ${year}`;
-        }
-        return str;
+    // --- HELPER: Formatter Tanggal/Periode (Update Versi Lengkap) ---
+function formatPeriodeID(periodeStr) {
+    if (!periodeStr) return '-';
+    let str = periodeStr.toString().trim().toUpperCase();
+
+    // 1. Cek Format Angka "MMYYYY" (Contoh: 122025 -> Desember 2025)
+    if (/^\d{5,6}$/.test(str)) {
+        // Asumsi format 6 digit: MMYYYY (122025) atau 5 digit: MYYYY (12025 - jarang tapi mungkin)
+        let len = str.length;
+        let year = str.substring(len - 4, len);
+        let month = parseInt(str.substring(0, len - 4)); // Ambil sisa digit depan sebagai bulan
+        
+        const months = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+        if (months[month]) return `${months[month]} ${year}`;
     }
+
+    // 2. Cek Format Teks "MMMYY" (Contoh: DES25 -> Desember 2025)
+    if (/^[A-Z]{3}\d{2}$/.test(str)) {
+        let code = str.substring(0, 3);
+        let year = "20" + str.substring(3, 5);
+        
+        const monthMap = {
+            'JAN': 'Januari', 'FEB': 'Februari', 'MAR': 'Maret', 'APR': 'April',
+            'MEI': 'Mei', 'JUN': 'Juni', 'JUL': 'Juli', 'AGU': 'Agustus',
+            'SEP': 'September', 'OKT': 'Oktober', 'NOV': 'November', 'DES': 'Desember'
+        };
+        
+        if (monthMap[code]) return `${monthMap[code]} ${year}`;
+    }
+
+    // Fallback: Jika format tidak dikenali, kembalikan apa adanya
+    return str;
+}
 
 
 function getRcMessage(rcCode) {
@@ -935,12 +955,31 @@ function getRcMessage(rcCode) {
 
                     if (ACTIVE_SKU.includes('pln')) {
                         lbl1 = "Tarif / Daya";
-                        val1 = (desc.tarif || '-') + ' / ' + (desc.daya || '-') + ' VA';
+                        
+                        // Ambil Tarif (Prioritas: desc.tarif -> d.segment_power -> -)
+                        let tarifData = desc.tarif || d.segment_power || '-';
+                        
+                        // Ambil Daya (Prioritas: desc.daya -> parsed dari segment_power -> -)
+                        let dayaData = desc.daya;
+                        
+                        // Jika daya kosong tapi ada segment_power (misal: R1M/900), coba ambil angkanya
+                        if (!dayaData && d.segment_power && d.segment_power.includes('/')) {
+                             let parts = d.segment_power.split('/');
+                             if(parts[1]) dayaData = parts[1].replace(/[^0-9]/g, '');
+                        }
+                        
+                        // Format Akhir: "R1M / 900 VA"
+                        // Pastikan dayaData ada isinya sebelum ditambah " VA"
+                        let displayDaya = (dayaData && dayaData != '-') ? `${dayaData} VA` : '-';
+                        val1 = `${tarifData} / ${displayDaya}`;
+
                     } else if (ACTIVE_SKU.includes('bpjs')) {
+                        // ... (Logika BPJS tetap sama)
                         lbl1 = "Jml. Peserta";
                         val1 = (desc.jumlah_peserta || desc.peserta || '1') + " Orang";
                         lbl2 = "Cabang";
                         val2 = desc.kantor_cabang || '-';
+                        
                     } else if (ACTIVE_SKU.includes('pdam')) {
                         lbl1 = "Meteran";
                         val1 = (firstDetail.meter_awal || '-') + ' - ' + (firstDetail.meter_akhir || '-');
