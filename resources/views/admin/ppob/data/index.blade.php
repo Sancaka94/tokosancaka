@@ -257,126 +257,6 @@
     </div>
 </div>
 
-{{-- SCRIPT AJAX SALDO --}}
-@push('scripts')
-<script>
-    function fetchSaldo() {
-        const display = document.getElementById('saldo-display');
-        const loading = document.getElementById('saldo-loading');
-        const icon = document.getElementById('icon-refresh');
-        
-        // UI Loading
-        display.classList.add('opacity-50');
-        loading.classList.remove('hidden');
-        icon.classList.add('fa-spin');
-
-        fetch("{{ route('admin.ppob.cek-saldo') }}")
-            .then(response => response.json())
-            .then(data => {
-                if(data.status === 'success') {
-                    display.innerText = data.formatted;
-                } else {
-                    display.innerText = "Error";
-                    alert(data.message);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                display.innerText = "Gagal";
-            })
-            .finally(() => {
-                display.classList.remove('opacity-50');
-                loading.classList.add('hidden');
-                icon.classList.remove('fa-spin');
-            });
-    }
-
-    // Auto load saldo saat halaman terbuka
-    document.addEventListener("DOMContentLoaded", function() {
-        fetchSaldo();
-    });
-
-    // --- LOGIC DEPOSIT ---
-    const depositModal = document.getElementById('depositModal');
-    const formDeposit = document.getElementById('formDeposit');
-    const resultDeposit = document.getElementById('depositResult');
-
-    function openDepositModal() {
-        formDeposit.classList.remove('hidden');
-        formDeposit.reset(); // Reset form setiap kali dibuka
-        resultDeposit.classList.add('hidden');
-        depositModal.classList.remove('hidden');
-    }
-
-    function closeDepositModal() {
-        depositModal.classList.add('hidden');
-    }
-
-    function submitDeposit(e) {
-        e.preventDefault();
-        
-        const btn = document.getElementById('btn-submit-depo');
-        const originalText = btn.innerHTML;
-        
-        // Ubah tombol jadi loading
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Menghubungi Digiflazz...';
-
-        const formData = new FormData(formDeposit);
-
-        // Kirim ke Route Laravel yang baru dibuat
-        fetch("{{ route('admin.ppob.deposit') }}", {
-            method: "POST",
-            body: formData,
-            headers: {
-                "X-CSRF-TOKEN": "{{ csrf_token() }}",
-                "Accept": "application/json"
-            }
-        })
-        .then(res => res.json())
-        .then(resp => {
-            btn.disabled = false;
-            btn.innerHTML = originalText;
-
-            if(resp.status === 'success') {
-                // Sembunyikan Form, Tampilkan Tiket
-                formDeposit.classList.add('hidden');
-                resultDeposit.classList.remove('hidden');
-
-                // Isi Data Tiket
-                const data = resp.data;
-                // Format Rupiah
-                const formattedAmount = 'Rp ' + parseInt(data.amount).toLocaleString('id-ID');
-                
-                document.getElementById('res_amount').innerText = formattedAmount;
-                document.getElementById('res_bank').innerText = data.bank;
-                document.getElementById('res_rek').innerText = data.account_no;
-                document.getElementById('res_notes').innerText = data.notes;
-                
-            } else {
-                // Gagal
-                alert('Gagal Request: ' + resp.message);
-            }
-        })
-        .catch(err => {
-            btn.disabled = false;
-            btn.innerHTML = originalText;
-            console.error(err);
-            alert('Terjadi kesalahan koneksi ke server.');
-        });
-    }
-
-    // Fungsi Helper Copy Text
-    function copyToClipboard(elementId) {
-        const text = document.getElementById(elementId).innerText.replace(/[^0-9a-zA-Z ]/g, "").replace('Rp', '').trim();
-        navigator.clipboard.writeText(text).then(() => {
-            // Toast sederhana (bisa diganti sweetalert)
-            alert('Teks berhasil disalin: ' + text);
-        });
-    }
-</script>
-@endpush
-
 {{-- ======================================================================= --}}
 {{-- MODAL DEPOSIT --}}
 {{-- ======================================================================= --}}
@@ -520,5 +400,125 @@
         </div>
     </div>
 </div>
+
+{{-- SCRIPT AJAX SALDO --}}
+@push('scripts')
+<script>
+    function fetchSaldo() {
+        const display = document.getElementById('saldo-display');
+        const loading = document.getElementById('saldo-loading');
+        const icon = document.getElementById('icon-refresh');
+        
+        // UI Loading
+        display.classList.add('opacity-50');
+        loading.classList.remove('hidden');
+        icon.classList.add('fa-spin');
+
+        fetch("{{ route('admin.ppob.cek-saldo') }}")
+            .then(response => response.json())
+            .then(data => {
+                if(data.status === 'success') {
+                    display.innerText = data.formatted;
+                } else {
+                    display.innerText = "Error";
+                    alert(data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                display.innerText = "Gagal";
+            })
+            .finally(() => {
+                display.classList.remove('opacity-50');
+                loading.classList.add('hidden');
+                icon.classList.remove('fa-spin');
+            });
+    }
+
+    // Auto load saldo saat halaman terbuka
+    document.addEventListener("DOMContentLoaded", function() {
+        fetchSaldo();
+    });
+
+    // --- LOGIC DEPOSIT ---
+    const depositModal = document.getElementById('depositModal');
+    const formDeposit = document.getElementById('formDeposit');
+    const resultDeposit = document.getElementById('depositResult');
+
+    function openDepositModal() {
+        formDeposit.classList.remove('hidden');
+        formDeposit.reset(); // Reset form setiap kali dibuka
+        resultDeposit.classList.add('hidden');
+        depositModal.classList.remove('hidden');
+    }
+
+    function closeDepositModal() {
+        depositModal.classList.add('hidden');
+    }
+
+    function submitDeposit(e) {
+        e.preventDefault();
+        
+        const btn = document.getElementById('btn-submit-depo');
+        const originalText = btn.innerHTML;
+        
+        // Ubah tombol jadi loading
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Menghubungi Digiflazz...';
+
+        const formData = new FormData(formDeposit);
+
+        // Kirim ke Route Laravel yang baru dibuat
+        fetch("{{ route('admin.ppob.deposit') }}", {
+            method: "POST",
+            body: formData,
+            headers: {
+                "X-CSRF-TOKEN": "{{ csrf_token() }}",
+                "Accept": "application/json"
+            }
+        })
+        .then(res => res.json())
+        .then(resp => {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+
+            if(resp.status === 'success') {
+                // Sembunyikan Form, Tampilkan Tiket
+                formDeposit.classList.add('hidden');
+                resultDeposit.classList.remove('hidden');
+
+                // Isi Data Tiket
+                const data = resp.data;
+                // Format Rupiah
+                const formattedAmount = 'Rp ' + parseInt(data.amount).toLocaleString('id-ID');
+                
+                document.getElementById('res_amount').innerText = formattedAmount;
+                document.getElementById('res_bank').innerText = data.bank;
+                document.getElementById('res_rek').innerText = data.account_no;
+                document.getElementById('res_notes').innerText = data.notes;
+                
+            } else {
+                // Gagal
+                alert('Gagal Request: ' + resp.message);
+            }
+        })
+        .catch(err => {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            console.error(err);
+            alert('Terjadi kesalahan koneksi ke server.');
+        });
+    }
+
+    // Fungsi Helper Copy Text
+    function copyToClipboard(elementId) {
+        const text = document.getElementById(elementId).innerText.replace(/[^0-9a-zA-Z ]/g, "").replace('Rp', '').trim();
+        navigator.clipboard.writeText(text).then(() => {
+            // Toast sederhana (bisa diganti sweetalert)
+            alert('Teks berhasil disalin: ' + text);
+        });
+    }
+</script>
+@endpush
 
 @endsection
