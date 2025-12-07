@@ -425,7 +425,8 @@ class DigiflazzService
         $syncResult = Cache::remember($cacheKey, $cacheDuration, function () {
             Log::info('🔄 [SYNC START] Melakukan Sinkronisasi Pricelist PASCABAYAR ke Digiflazz.');
 
-            $response = $this->getPriceList('postpaid');
+            // 🟢 PERBAIKAN KRITIS: Ganti 'postpaid' menjadi 'pasca'
+            $response = $this->getPriceList('pasca'); 
             
             if (isset($response['data']) && is_array($response['data'])) {
                 // Lanjutkan update database dengan data produk yang sebenarnya
