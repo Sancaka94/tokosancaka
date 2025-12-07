@@ -30,7 +30,7 @@
             
             {{-- 1. TOMBOL SINKRONISASI PRABAYAR --}}
             {{-- Catatan: Sesuaikan nama route jika berbeda di routes/web.php --}}
-            <a href="{{ route('admin.ppob.sync.prepaid') }}" 
+            <a href="{{ route('ppob.sync.prepaid') }}" 
                 onclick="return confirm('Apakah Anda yakin ingin melakukan sinkronisasi produk PRABAYAR? Proses ini mungkin membutuhkan waktu.')"
                 class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition flex items-center gap-2 text-sm">
                 <i class="fas fa-mobile-alt"></i> Sync Prabayar
@@ -38,7 +38,7 @@
 
             {{-- 2. TOMBOL SINKRONISASI PASCABAYAR --}}
             {{-- Catatan: Sesuaikan nama route jika berbeda di routes/web.php --}}
-            <a href="{{ route('admin.ppob.sync.postpaid') }}" 
+            <a href="{{ route('ppob.sync.postpaid') }}" 
                 onclick="return confirm('Apakah Anda yakin ingin melakukan sinkronisasi produk PASCABAYAR? Proses ini mungkin membutuhkan waktu.')"
                 class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition flex items-center gap-2 text-sm">
                 <i class="fas fa-receipt"></i> Sync Pascabayar
