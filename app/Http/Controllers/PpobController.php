@@ -251,16 +251,24 @@ public function checkBill(Request $request)
         
         // 5. PENANGANAN RESPON API
         if (isset($response['data']) && ($response['data']['rc'] === '00' || $response['data']['status'] === 'Sukses' || $response['data']['status'] === 'Pending')) {
-            $data = $response['data'];
-            
-            // Harga jual kita di database
-            $markupKita = $product->sell_price - $product->price;
-            
-            // Tagihan Akhir yang dibayar user: (Price API + Admin Fee API) + Markup Kita
-            $tagihanPokokAPI = $data['price'];
-            $adminFeeModal = $data['admin'];
-            
-            $totalTagihanAkhir = $tagihanPokokAPI + $adminFeeModal + $markupKita;
+    $data = $response['data'];
+    
+    // ⭐ PERBAIKAN 1: TANGKAP HARGA DENGAN PENGAMANAN KEY
+    // Gunakan array key yang benar dari API Pascabayar, atau set ke 0 jika tidak ada.
+    // Berdasarkan dokumentasi, harga pokok tagihan Pascabayar bisa jadi ada di 'price', 'selling_price', atau 'amount' (tergantung versi API).
+    $tagihanPokokAPI = $data['price'] ?? $data['selling_price'] ?? $data['amount'] ?? 0;
+    
+    // Admin Fee modal (diasumsikan ada di 'admin')
+    $adminFeeModal = $data['admin'] ?? 0;
+
+    // Hitung Markup dan Total Tagihan
+    $markupKita = $product->sell_price - ($product->price ?? 0); 
+    
+    // Pastikan semua variabel adalah angka (int/float)
+    $tagihanPokokAPI = (float)$tagihanPokokAPI;
+    $adminFeeModal = (float)$adminFeeModal;
+    
+    $totalTagihanAkhir = $tagihanPokokAPI + $adminFeeModal + $markupKita;
 
             return response()->json([
                 'status' => 'success',
