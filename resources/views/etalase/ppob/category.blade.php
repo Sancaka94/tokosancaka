@@ -801,103 +801,105 @@ function getRcMessage(rcCode) {
     // 🔵 LOGIKA PASCABAYAR (LENGKAP DAN DIPERBAIKI)
     // =================================================================
     @else
-    function cekTagihan() {
-        const no = inputNo.value.trim();
-        let cleanNo = ACTIVE_SKU === 'samsat' ? no : no.replace(/[^0-9]/g, ''); 
+    // Ganti fungsi cekTagihan() di kode JS Anda dengan yang ini:
+function cekTagihan() {
+    const no = inputNo.value.trim();
+    let cleanNo = ACTIVE_SKU === 'samsat' ? no : no.replace(/[^0-9]/g, ''); 
 
-        // 1. Validasi Input
-        if(cleanNo.length < 5) { triggerCustomNotification("Masukkan Nomor Pelanggan yang valid!", 'error'); inputNo.focus(); return; }
+    // 1. Validasi Input
+    if(cleanNo.length < 5) { triggerCustomNotification("Masukkan Nomor Pelanggan yang valid!", 'error'); inputNo.focus(); return; }
 
-        const btn = document.getElementById('btn-cek-tagihan');
-        const spinner = document.getElementById('loading-spinner');
-        const text = document.getElementById('btn-text');
-        
-        // Elemen HTML Hasil
-        const resultDiv = document.getElementById('bill_result');
-        const emptyDiv = document.getElementById('bill_empty');
-        const detailContainer = document.getElementById('detail_container');
-        const detailList = document.getElementById('detail_list');
+    const btn = document.getElementById('btn-cek-tagihan');
+    const spinner = document.getElementById('loading-spinner');
+    const text = document.getElementById('btn-text');
+    
+    // Elemen HTML Hasil
+    const resultDiv = document.getElementById('bill_result');
+    const emptyDiv = document.getElementById('bill_empty');
+    const detailContainer = document.getElementById('detail_container');
+    const detailList = document.getElementById('detail_list');
 
-        // Reset UI State (Tombol Disabled)
-        btn.disabled = true; spinner.classList.remove('hidden'); text.innerText = "Mengecek...";
-        resultDiv.classList.add('hidden'); emptyDiv.classList.add('hidden');
-        if(detailContainer) detailContainer.classList.add('hidden');
-        currentBillData = null; 
+    // Reset UI State (Tombol Disabled)
+    btn.disabled = true; spinner.classList.remove('hidden'); text.innerText = "Mengecek...";
+    resultDiv.classList.add('hidden'); emptyDiv.classList.add('hidden');
+    if(detailContainer) detailContainer.classList.add('hidden');
+    currentBillData = null; 
 
-        // --- REQUEST API ---
-        fetch('{{ route("ppob.check.bill") }}', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-            body: JSON.stringify({ 
-                customer_no: cleanNo, 
-                sku: ACTIVE_SKU,
-                buyer_sku_code: ACTIVE_SKU,
-                ref_id: generateRefID(),
-                testing: IS_TESTING 
-            })
+    // --- REQUEST API ---
+    fetch('{{ route("ppob.check.bill") }}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+        body: JSON.stringify({ 
+            customer_no: cleanNo, 
+            sku: ACTIVE_SKU,
+            buyer_sku_code: ACTIVE_SKU,
+            ref_id: generateRefID(),
+            testing: IS_TESTING 
         })
-        .then(res => res.json())
-        .then(data => {
-            // --- [FIX: ENABLE BUTTON DI AWAL BLOK] ---
-            btn.disabled = false; 
-            spinner.classList.add('hidden'); 
-            text.innerText = "Cek Tagihan";
-            // ----------------------------------------
+    })
+    .then(res => res.json())
+    .then(data => {
+        // --- [FIX: ENABLE BUTTON DI AWAL BLOK] ---
+        btn.disabled = false; 
+        spinner.classList.add('hidden'); 
+        text.innerText = "Cek Tagihan";
+        // ----------------------------------------
+        
+        console.log("Response PPOB:", data);
+
+        const d = data.data || data;
+        const rc = d.rc ? String(d.rc) : ''; 
+        const rcInfo = getRcMessage(rc); 
+        
+        let messageToUser = d.message || rcInfo.message; 
+        
+        // Periksa Status Sukses (RC 00)
+        if(d && (d.status === 'success' || d.status === 'Sukses' || rc === '00')) {
             
-            console.log("Response PPOB:", data);
+            // Harga & Admin
+            let price = parseInt(d.selling_price || d.amount || 0); // HARGA UTAMA
+            let admin = parseInt(d.admin || d.admin_fee || 0);     // BIAYA ADMIN
+            let finalPrice = price; 
 
-            const d = data.data || data;
-            const rc = d.rc ? String(d.rc) : ''; 
-            const rcInfo = getRcMessage(rc); 
+            // --- LOGIC VALIDASI HARGA (Mencegah tampilan Rp 0) ---
+            if (finalPrice <= 0 && ACTIVE_SKU !== 'bpjs') {
+                messageToUser = getRcMessage('60').message;
+                triggerCustomNotification(messageToUser, 'error'); 
+                resultDiv.classList.add('hidden');
+                emptyDiv.classList.remove('hidden');
+                return; 
+            }
             
-            let messageToUser = d.message || rcInfo.message; 
+            // 1. MAPPING DATA UTAMA
+            document.getElementById('bill_ref').innerText = d.ref_id || '-';
+            document.getElementById('bill_name').innerText = d.customer_name || d.name || 'Pelanggan';
+            document.getElementById('bill_id').innerText = d.customer_no;
             
-            if(d && (d.status === 'success' || d.status === 'Sukses' || rc === '00')) {
-                
-                // Harga & Admin
-                let price = parseInt(d.selling_price || d.amount || 0);
-                let admin = parseInt(d.admin || d.admin_fee || 0);
-                let finalPrice = price; // Harga Jual Akhir ke Pelanggan (Rp 264.234)
+            // Tampilkan Harga (PERBAIKAN TOTAL BAYAR & BIAYA ADMIN)
+            document.getElementById('bill_amount').innerText = 'Rp ' + finalPrice.toLocaleString('id-ID');
+            document.getElementById('bill_admin').innerText = 'Rp ' + admin.toLocaleString('id-ID'); 
+            
+            // 2. SIMPAN DATA KE VARIABLE GLOBAL
+            currentBillData = {
+                sku: ACTIVE_SKU,
+                name: "Tagihan " + ACTIVE_SKU.toUpperCase() + " - " + (d.customer_name || d.name),
+                price: finalPrice, 
+                ref_id: d.ref_id,
+                customer_no: d.customer_no
+            };
 
-                // --- LOGIC VALIDASI HARGA (Mencegah tampilan Rp 0) ---
-                if (finalPrice <= 0 && ACTIVE_SKU !== 'bpjs') {
-                    messageToUser = getRcMessage('60').message;
-                    triggerCustomNotification(messageToUser, 'error');
-                    resultDiv.classList.add('hidden');
-                    emptyDiv.classList.remove('hidden');
-                    return; 
-                }
-                
-                // 1. MAPPING DATA UTAMA
-                document.getElementById('bill_ref').innerText = d.ref_id || '-';
-                document.getElementById('bill_name').innerText = d.customer_name || d.name || 'Pelanggan';
-                document.getElementById('bill_id').innerText = d.customer_no;
-                
-                // Tampilkan Harga (PERBAIKAN TOTAL BAYAR & BIAYA ADMIN)
-                document.getElementById('bill_amount').innerText = 'Rp ' + finalPrice.toLocaleString('id-ID');
-                document.getElementById('bill_admin').innerText = 'Rp ' + admin.toLocaleString('id-ID'); 
-                
-                // 2. SIMPAN DATA KE VARIABLE GLOBAL
-                currentBillData = {
-                    sku: ACTIVE_SKU,
-                    name: "Tagihan " + ACTIVE_SKU.toUpperCase() + " - " + (d.customer_name || d.name),
-                    price: finalPrice, 
-                    ref_id: d.ref_id,
-                    customer_no: d.customer_no
-                };
+            // 3. MAPPING RINCIAN (DESC) & LABEL DINAMIS (Logic utuh)
+            if (d.desc) {
+                const desc = d.desc;
+                const detailOne = (desc.detail && Array.isArray(desc.detail) && desc.detail.length > 0) ? desc.detail[0] : (desc.detail || desc);
 
-                // 3. MAPPING RINCIAN (DESC) & LABEL DINAMIS
-                if (d.desc) {
-                    const desc = d.desc;
-                    const detailOne = (desc.detail && Array.isArray(desc.detail) && desc.detail.length > 0) ? desc.detail[0] : (desc.detail || desc);
+                let mainPeriode = detailOne.periode || desc.periode || d.periode || '-';
+                document.getElementById('bill_period').innerText = formatPeriodeID(mainPeriode);
+                
+                let lbl1="Info", val1="-", lbl2="Lembar", val2=(desc.lembar_tagihan || '1') + ' Lembar';
+                let lblAddr="Alamat", valAddr=desc.alamat || desc.kab_kota || '-';
 
-                    let mainPeriode = detailOne.periode || desc.periode || d.periode || '-';
-                    document.getElementById('bill_period').innerText = formatPeriodeID(mainPeriode);
-                    
-                    let lbl1="Info", val1="-", lbl2="Lembar", val2=(desc.lembar_tagihan || '1') + ' Lembar';
-                    let lblAddr="Alamat", valAddr=desc.alamat || desc.kab_kota || '-';
-
-                   if (ACTIVE_SKU.includes('pln')) {
+                if (ACTIVE_SKU.includes('pln')) {
                         lbl1 = "Tarif / Daya";
                         val1 = (desc.tarif || '-') + ' / ' + (desc.daya || '-') + ' VA';
                     } 
@@ -924,73 +926,72 @@ function getRcMessage(rcCode) {
                         lbl1 = "Item"; val1 = desc.item_name || '-';
                         lbl2 = "Tenor"; val2 = (desc.tenor || '-') + ' Bulan';
                     }
+                    
+                document.getElementById('label_info_1').innerText = lbl1;
+                document.getElementById('val_info_1').innerText = val1;
+                document.getElementById('label_info_2').innerText = lbl2;
+                document.getElementById('val_info_2').innerText = val2;
+                document.getElementById('label_address').innerText = lblAddr;
+                document.getElementById('val_address').innerText = valAddr;
 
-                    document.getElementById('label_info_1').innerText = lbl1;
-                    document.getElementById('val_info_1').innerText = val1;
-                    document.getElementById('label_info_2').innerText = lbl2;
-                    document.getElementById('val_info_2').innerText = val2;
-                    document.getElementById('label_address').innerText = lblAddr;
-                    document.getElementById('val_address').innerText = valAddr;
+                // 4. MAPPING DETAIL ARRAY (Rincian Item Tagihan)
+                if(detailList) {
+                    detailList.innerHTML = '';
+                    let hasDetails = false;
 
-                    // 4. MAPPING DETAIL ARRAY (Rincian Item Tagihan)
-                    if(detailList) {
-                        detailList.innerHTML = '';
-                        let hasDetails = false;
+                    if (desc.detail && Array.isArray(desc.detail) && desc.detail.length > 0) {
+                        hasDetails = true;
+                        detailContainer.classList.remove('hidden');
+                        desc.detail.forEach((item) => {
+                            let itemP = formatPeriodeID(item.periode);
+                            let itemN = item.nilai_tagihan ? parseInt(item.nilai_tagihan).toLocaleString('id-ID') : '0';
+                            
+                            let totalItem = parseInt(item.nilai_tagihan || 0) + parseInt(item.admin || 0) + parseInt(item.denda || 0);
 
-                        if (desc.detail && Array.isArray(desc.detail) && desc.detail.length > 0) {
-                            hasDetails = true;
-                            detailContainer.classList.remove('hidden');
-                            desc.detail.forEach((item) => {
-                                let itemP = formatPeriodeID(item.periode);
-                                let itemN = item.nilai_tagihan ? parseInt(item.nilai_tagihan).toLocaleString('id-ID') : '0';
-                                
-                                // TOTAL ITEM = Tagihan + Admin Biller + Denda
-                                let totalItem = parseInt(item.nilai_tagihan || 0) + parseInt(item.admin || 0) + parseInt(item.denda || 0);
+                            let meterHtml = (item.meter_awal && item.meter_akhir) ? 
+                                `<div class="text-[10px] text-gray-400 mt-1">Meter: ${item.meter_awal} - ${item.meter_akhir}</div>` : '';
 
-                                let meterHtml = (item.meter_awal && item.meter_akhir) ? 
-                                    `<div class="text-[10px] text-gray-400 mt-1">Meter: ${item.meter_awal} - ${item.meter_akhir}</div>` : '';
-
-                                let htmlItem = `
-                                    <div class="bg-gray-50 border border-gray-200 rounded-lg p-3 flex justify-between items-start text-sm mb-2">
-                                        <div>
-                                            <p class="font-bold text-gray-700">Periode: ${itemP}</p>
-                                            ${meterHtml}
-                                            <span class="text-[10px] text-gray-500">Nilai Tagihan: Rp ${itemN}</span>
-                                        </div>
-                                        <div class="text-right">
-                                            <p class="font-extrabold text-gray-800 text-base">Rp ${totalItem.toLocaleString('id-ID')}</p>
-                                        </div>
+                            let htmlItem = `
+                                <div class="bg-gray-50 border border-gray-200 rounded-lg p-3 flex justify-between items-start text-sm mb-2">
+                                    <div>
+                                        <p class="font-bold text-gray-700">Periode: ${itemP}</p>
+                                        ${meterHtml}
+                                        <span class="text-[10px] text-gray-500">Nilai Tagihan: Rp ${itemN}</span>
                                     </div>
-                                `;
-                                detailList.insertAdjacentHTML('beforeend', htmlItem);
-                            });
-                        } 
-                        if (!hasDetails) {
-                            detailContainer.classList.add('hidden');
-                        }
+                                    <div class="text-right">
+                                        <p class="font-extrabold text-gray-800 text-base">Rp ${totalItem.toLocaleString('id-ID')}</p>
+                                    </div>
+                                </div>
+                            `;
+                            detailList.insertAdjacentHTML('beforeend', htmlItem);
+                        });
+                    } 
+                    if (!hasDetails) {
+                        detailContainer.classList.add('hidden');
                     }
                 }
-                
-                // Tampilkan hasil
-                resultDiv.classList.remove('hidden'); 
-
-            } else {
-                // --- LOGIKA GAGAL/PENDING: Tampilkan Pesan Jelas dari RC ---
-                triggerCustomNotification(messageToUser, rcInfo.alertType); 
-                resultDiv.classList.add('hidden');
-                emptyDiv.classList.remove('hidden');
             }
-        })
-        .catch(err => {
-            console.error(err);
-            // --- [FIX: ENABLE BUTTON DI BLOK CATCH] ---
-            btn.disabled = false; 
-            spinner.classList.add('hidden'); 
-            text.innerText = "Cek Tagihan";
-            // ------------------------------------------
-            triggerCustomNotification("Gagal koneksi server. Periksa jaringan Anda.", 'error');
-        });
-    }
+            
+            // Tampilkan hasil (Tidak ada notifikasi pop-up di sini)
+            resultDiv.classList.remove('hidden'); 
+
+        } else {
+            // --- LOGIKA GAGAL/PENDING: Tampilkan Pesan Jelas dari RC ---
+            triggerCustomNotification(messageToUser, rcInfo.alertType); 
+            resultDiv.classList.add('hidden');
+            emptyDiv.classList.remove('hidden');
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        // --- [FIX: ENABLE BUTTON DI BLOK CATCH] ---
+        btn.disabled = false; 
+        spinner.classList.add('hidden'); 
+        text.innerText = "Cek Tagihan";
+        // ------------------------------------------
+        triggerCustomNotification("Gagal koneksi server. Periksa jaringan Anda.", 'error');
+    });
+}
 
     // --- FUNGSI BAYAR (VERSI BARU: DIRECT CHECKOUT) ---
     function bayarTagihan() {
