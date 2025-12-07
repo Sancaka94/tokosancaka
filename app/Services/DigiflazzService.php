@@ -365,33 +365,40 @@ class DigiflazzService
             $product = PpobProduct::firstOrNew(['buyer_sku_code' => $item['buyer_sku_code']]);
             
             $product->fill([
-                'product_name' => $item['product_name'] ?? null,
-                'category' => $item['category'] ?? null,
-                'brand' => $item['brand'] ?? null,
-                
-                // 🟢 FIELD PASCABAYAR BARU
-    // Map 'admin' API ke 'admin_fee' di database
-    'admin_fee' => $item['admin'] ?? 0, 
-    // Map 'commission' API ke 'commission' di database
-    'commission' => $item['commission'] ?? 0,
-                
-                // Field Prabayar (akan kosong jika Pascabayar, itu tidak masalah)
-                'type' => $item['type'] ?? null, 
-                'seller_name' => $item['seller_name'] ?? null,
-                'buyer_product_status' => $item['buyer_product_status'] ?? false,
-                'seller_product_status' => $item['seller_product_status'] ?? false,
-                
-                // 🟢 FIELD LAINNYA YANG DILENGKAPI
-                'unlimited_stock' => $item['unlimited_stock'] ?? false,
-                'stock' => $item['stock'] ?? 0,
-                'multi' => $item['multi'] ?? false, // Sering digunakan untuk produk promo
-                'start_cut_off' => $item['start_cut_off'] ?? null,
-                'end_cut_off' => $item['end_cut_off'] ?? null,
-                'desc' => $item['desc'] ?? null,
-                
-                // Selalu simpan modal ke kolom 'price' database
-                'price' => $modal, 
-            ]);
+    // 1. FIELD UMUM / DASAR (Hampir selalu ada di keduanya)
+    'product_name' => $item['product_name'] ?? null,
+    'category' => $item['category'] ?? null,
+    'brand' => $item['brand'] ?? null,
+    'desc' => $item['desc'] ?? null,
+
+    // 2. STATUS PRODUK (Diisi 'false' jika tidak ada)
+    'buyer_product_status' => $item['buyer_product_status'] ?? false,
+    'seller_product_status' => $item['seller_product_status'] ?? false,
+
+    // 3. HARGA MODAL (Kolom 'price' menampung modal yang sudah dihitung ($modal))
+    // $modal dihitung sebagai $item['price'] untuk Prabayar, atau $item['admin'] untuk Pascabayar.
+    'price' => $modal,
+
+    // 4. FIELD PASCABAYAR (Diisi '0' jika Prabayar)
+    // Gunakan nilai dari API jika ada, jika tidak ada, gunakan 0.00
+    'admin_fee' => $item['admin'] ?? 0.00, 
+    'commission' => $item['commission'] ?? 0.00,
+    
+    // 5. FIELD PRABAYAR & STOK (Diisi 'null' atau default jika Pascabayar)
+    
+    // Field Tipe & Penjual
+    'type' => $item['type'] ?? null, 
+    'seller_name' => $item['seller_name'] ?? null,
+
+    // Field Stok
+    'unlimited_stock' => $item['unlimited_stock'] ?? false,
+    'stock' => $item['stock'] ?? 0,
+    'multi' => $item['multi'] ?? false,
+
+    // Field Cut-Off (Waktu Batas)
+    'start_cut_off' => $item['start_cut_off'] ?? null,
+    'end_cut_off' => $item['end_cut_off'] ?? null,
+]);
             
             // Atur Harga Jual
             if (!$product->exists || $product->sell_price <= 0) {
