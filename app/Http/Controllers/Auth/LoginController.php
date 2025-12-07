@@ -14,7 +14,6 @@ use Illuminate\Support\Facades\Auth;
 
 use Illuminate\Validation\Rule;
 
-use Illuminate\Http\Request; // <-- PASTIKAN ANDA TAMBAHKAN INI
 
 
 
