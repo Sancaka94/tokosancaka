@@ -103,6 +103,8 @@ Route::prefix('ppob')->name('ppob.')->group(function () {
     Route::get('/{id}', [AdminPpobController::class, 'show'])->name('show');
     Route::put('/{id}', [AdminPpobController::class, 'update'])->name('update');
     Route::delete('/{id}', [AdminPpobController::class, 'destroy'])->name('destroy');
+
+    Route::get('/cek-saldo', [AdminPpobController::class, 'cekSaldo'])->name('admin.ppob.cek-saldo');
     // -------------------------------------------------------------
     // 2. MANAJEMEN PRODUK PPOB (HARUS DI TENGAH)
     // -------------------------------------------------------------

@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\PpobTransaction;
 use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf; // Pastikan package dompdf sudah diinstall
+use Illuminate\Support\Facades\Http; // WAJIB: Tambahkan ini untuk akses API
 
 class AdminPpobController extends Controller
 {
@@ -190,5 +191,61 @@ class AdminPpobController extends Controller
         $transaction->delete();
 
         return redirect()->route('admin.ppob.index')->with('success', 'Data transaksi berhasil dihapus.');
+    }
+
+    /**
+     * FITUR BARU: CEK SALDO DIGIFLAZZ
+     * Sesuai dokumentasi: md5(username + apiKey + "depo")
+     */
+    public function cekSaldo()
+    {
+        // 1. Ambil Kredensial dari .env
+        $username = env('DIGIFLAZZ_USERNAME');
+        $apiKey   = env('DIGIFLAZZ_API_KEY');
+        $endpoint = 'https://api.digiflazz.com/v1/cek-saldo';
+
+        // 2. Generate Signature (Wajib sesuai docs)
+        // Formula: md5(username + apiKey + "depo")
+        $sign = md5($username . $apiKey . "depo");
+
+        // 3. Siapkan Payload JSON
+        $payload = [
+            'cmd'      => 'deposit',
+            'username' => $username,
+            'sign'     => $sign
+        ];
+
+        try {
+            // 4. Kirim Request POST
+            $response = Http::withHeaders([
+                'Content-Type' => 'application/json',
+            ])->post($endpoint, $payload);
+
+            $result = $response->json();
+
+            // 5. Cek Response dari Digiflazz
+            if (isset($result['data']['deposit'])) {
+                $saldo = $result['data']['deposit'];
+                
+                return response()->json([
+                    'status'    => 'success',
+                    'saldo'     => $saldo,
+                    'formatted' => 'Rp ' . number_format($saldo, 0, ',', '.')
+                ]);
+            } else {
+                // Handle jika response API gagal/error message dari sana
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => $result['data']['message'] ?? 'Gagal mengambil data deposit.'
+                ], 400);
+            }
+
+        } catch (\Exception $e) {
+            // Handle error koneksi/server
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Koneksi ke server Digiflazz gagal: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

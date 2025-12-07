@@ -5,27 +5,45 @@
 @section('content')
 <div class="space-y-6">
     
-    {{-- Header Section --}}
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
+    {{-- Header & Widget Saldo --}}
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+        {{-- Judul Halaman --}}
+        <div class="md:col-span-2">
             <h2 class="text-2xl font-bold text-gray-800">Riwayat Transaksi PPOB</h2>
-            <p class="text-sm text-gray-500 mt-1">Monitoring transaksi digital, pulsa, dan pembayaran tagihan.</p>
+            <p class="text-sm text-gray-500 mt-1">Monitoring transaksi digital, pulsa, dan pembayaran tagihan secara realtime.</p>
+            
+            {{-- Tombol Export --}}
+            <div class="flex gap-2 mt-4">
+                <a href="{{ route('admin.ppob.export.excel', request()->all()) }}" class="inline-flex items-center px-4 py-2 bg-green-600 text-white text-xs font-bold rounded-lg hover:bg-green-700 transition shadow-sm hover:shadow-md">
+                    <i class="fas fa-file-excel mr-2"></i> EXCEL
+                </a>
+                <a href="{{ route('admin.ppob.export.pdf', request()->all()) }}" class="inline-flex items-center px-4 py-2 bg-red-600 text-white text-xs font-bold rounded-lg hover:bg-red-700 transition shadow-sm hover:shadow-md">
+                    <i class="fas fa-file-pdf mr-2"></i> PDF
+                </a>
+            </div>
         </div>
-        
-        {{-- Tombol Export --}}
-        <div class="flex gap-2">
-            <a href="{{ route('admin.ppob.data.export.excel') }}" class="px-4 py-2 bg-green-600 text-white text-xs font-bold rounded hover:bg-green-700 transition shadow-sm">
-                <i class="fas fa-file-excel mr-1"></i> EXCEL
-            </a>
-            <a href="{{ route('admin.ppob.data.export.pdf') }}" class="px-4 py-2 bg-red-600 text-white text-xs font-bold rounded hover:bg-red-700 transition shadow-sm">
-                <i class="fas fa-file-pdf mr-1"></i> PDF
-            </a>
+
+        {{-- Widget Saldo (AJAX) --}}
+        <div class="bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl p-5 text-white shadow-lg relative overflow-hidden">
+            <div class="absolute right-0 top-0 opacity-10 transform translate-x-4 -translate-y-4">
+                <i class="fas fa-wallet text-8xl"></i>
+            </div>
+            <div class="relative z-10">
+                <p class="text-blue-100 text-xs font-medium uppercase tracking-wider mb-1">Sisa Deposit Digiflazz</p>
+                <div class="flex items-center justify-between">
+                    <h3 id="saldo-display" class="text-2xl font-bold">Rp ...</h3>
+                    <button onclick="fetchSaldo()" id="btn-refresh-saldo" class="text-blue-200 hover:text-white transition p-1 rounded-full hover:bg-white/10" title="Refresh Saldo">
+                        <i class="fas fa-sync-alt" id="icon-refresh"></i>
+                    </button>
+                </div>
+                <p id="saldo-loading" class="text-[10px] text-blue-200 mt-1 hidden">Sedang memuat data...</p>
+            </div>
         </div>
     </div>
 
     {{-- Filter Section --}}
     <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
-        <form action="{{ route('admin.ppob.data.index') }}" method="GET">
+        <form action="{{ route('admin.ppob.index') }}" method="GET">
             <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
                 
                 {{-- Search --}}
@@ -51,17 +69,18 @@
 
                 {{-- Date Filter --}}
                 <div class="md:col-span-3">
-                    <label class="text-xs font-medium text-gray-700 block mb-1">Tanggal</label>
-                    <div class="flex gap-1">
-                        <input type="date" name="start_date" value="{{ request('start_date') }}" class="w-1/2 px-2 py-2 border border-gray-300 rounded-lg text-xs focus:ring-blue-500 focus:border-blue-500">
-                        <input type="date" name="end_date" value="{{ request('end_date') }}" class="w-1/2 px-2 py-2 border border-gray-300 rounded-lg text-xs focus:ring-blue-500 focus:border-blue-500">
+                    <label class="text-xs font-medium text-gray-700 block mb-1">Tanggal Transaksi</label>
+                    <div class="flex items-center gap-2">
+                        <input type="date" name="start_date" value="{{ request('start_date') }}" class="w-full px-2 py-2 border border-gray-300 rounded-lg text-xs focus:ring-blue-500 focus:border-blue-500">
+                        <span class="text-gray-400">-</span>
+                        <input type="date" name="end_date" value="{{ request('end_date') }}" class="w-full px-2 py-2 border border-gray-300 rounded-lg text-xs focus:ring-blue-500 focus:border-blue-500">
                     </div>
                 </div>
 
                 {{-- Button --}}
                 <div class="md:col-span-2">
-                    <button type="submit" class="w-full bg-blue-600 text-white font-bold py-2 rounded-lg text-sm hover:bg-blue-700 transition shadow-sm">
-                        <i class="fas fa-filter mr-1"></i> Filter
+                    <button type="submit" class="w-full bg-blue-600 text-white font-bold py-2 rounded-lg text-sm hover:bg-blue-700 transition shadow-sm flex items-center justify-center gap-2">
+                        <i class="fas fa-filter"></i> Terapkan
                     </button>
                 </div>
             </div>
@@ -73,32 +92,32 @@
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse">
                 <thead>
-                    <tr class="bg-gray-50 border-b border-gray-200 text-xs uppercase text-gray-500 font-semibold">
+                    <tr class="bg-gray-50 border-b border-gray-200 text-xs uppercase text-gray-500 font-semibold tracking-wider">
                         <th class="px-6 py-4">User / Pelanggan</th>
                         <th class="px-6 py-4">Produk</th>
                         <th class="px-6 py-4">Tujuan</th>
-                        <th class="px-6 py-4">Harga & Profit</th>
-                        <th class="px-6 py-4">Status / SN</th>
+                        <th class="px-6 py-4">Nominal</th>
+                        <th class="px-6 py-4">Status / Respon</th>
                         <th class="px-6 py-4 text-right">Waktu</th>
                         <th class="px-6 py-4 text-center">Aksi</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     @forelse($transactions as $trx)
-                    <tr class="hover:bg-gray-50 transition duration-150">
+                    <tr class="hover:bg-gray-50 transition duration-150 group">
                         
                         {{-- 1. USER INFO --}}
                         <td class="px-6 py-4 align-top">
-                            <div class="flex items-center gap-3">
+                            <div class="flex items-start gap-3">
                                 @php
                                     $userImage = !empty($trx->user->store_logo_path) 
-                                            ? asset('public/storage/' . $trx->user->store_logo_path) 
-                                            : 'https://ui-avatars.com/api/?name='.urlencode($trx->user->name ?? 'User').'&background=random&color=fff';
+                                                ? asset('public/storage/' . $trx->user->store_logo_path) 
+                                                : 'https://ui-avatars.com/api/?name='.urlencode($trx->user->name ?? 'User').'&background=random&color=fff&size=64';
                                 @endphp
-                                <img src="{{ $userImage }}" alt="User" class="h-10 w-10 rounded-full object-cover border border-gray-200 shadow-sm">
+                                <img src="{{ $userImage }}" alt="User" class="h-9 w-9 rounded-full object-cover border border-gray-200 shadow-sm mt-1">
                                 <div>
-                                    <div class="text-[10px] font-mono text-gray-400 mb-0.5">#{{ $trx->order_id }}</div>
-                                    <div class="text-sm font-bold text-gray-900">{{ $trx->user->nama_lengkap ?? ($trx->user->name ?? 'User Terhapus') }}</div>
+                                    <div class="text-[10px] font-mono text-gray-400 mb-0.5">Order: #{{ $trx->order_id }}</div>
+                                    <div class="text-sm font-bold text-gray-900 leading-tight">{{ $trx->user->nama_lengkap ?? ($trx->user->name ?? 'User Terhapus') }}</div>
                                     <div class="text-xs text-gray-500">{{ $trx->user->email ?? '-' }}</div>
                                 </div>
                             </div>
@@ -106,39 +125,41 @@
 
                         {{-- 2. PRODUK INFO --}}
                         <td class="px-6 py-4 align-top">
-                            <div class="flex items-center">
+                            <div class="flex items-start">
                                 @php
-                                    // LOGIKA LOGO MANUAL (Pengganti Helper get_operator_logo)
                                     $brandName = strtolower($trx->brand ?? 'other');
-                                    // Pastikan file gambar ada di public/storage/logo-ppob/
-                                    // Nama file biasanya: telkomsel.png, indosat.png, pln.png, dll
-                                    $logoOperator = asset('storage/logo-ppob/' . $brandName . '.png');
+                                    // Fallback icon fontawesome jika gambar tidak ada
+                                    $defaultIcon = '<div class="h-8 w-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-400"><i class="fas fa-box"></i></div>';
+                                    $logoUrl = asset('storage/logo-ppob/' . $brandName . '.png');
                                 @endphp
-                                <div class="h-9 w-9 flex-shrink-0 mr-3 bg-white border border-gray-200 rounded-full p-1 flex items-center justify-center shadow-sm" title="{{ $trx->product_name }}">
-                                    <img class="h-full w-full object-contain" src="{{ $logoOperator }}" onerror="this.src='https://via.placeholder.com/40?text={{ substr($brandName, 0, 1) }}'" alt="{{ $brandName }}">
+                                <div class="mr-3 shrink-0">
+                                    <img class="h-8 w-8 object-contain" src="{{ $logoUrl }}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" alt="{{ $brandName }}">
+                                    <div class="h-8 w-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-400 hidden"><i class="fas fa-sim-card"></i></div>
                                 </div>
                                 <div>
-                                    <div class="text-sm font-medium text-gray-900 uppercase">{{ $trx->buyer_sku_code }}</div>
-                                    <div class="text-[10px] text-gray-400 truncate max-w-[120px]" title="{{ $trx->product_name }}">{{ $trx->product_name }}</div>
+                                    <div class="text-xs font-bold text-gray-900 uppercase tracking-wide">{{ $trx->brand }}</div>
+                                    <div class="text-sm text-gray-600 line-clamp-1" title="{{ $trx->product_name }}">{{ $trx->product_name }}</div>
+                                    <div class="text-[10px] text-gray-400 font-mono mt-0.5">{{ $trx->buyer_sku_code }}</div>
                                 </div>
                             </div>
                         </td>
 
                         {{-- 3. NOMOR TUJUAN --}}
                         <td class="px-6 py-4 align-top">
-                            <div class="bg-blue-50 px-2 py-1 rounded border border-blue-100 inline-block font-mono font-bold text-gray-700 text-sm">
-                                {{ $trx->customer_no }}
+                            <div class="bg-blue-50 px-2.5 py-1.5 rounded-lg border border-blue-100 inline-block">
+                                <span class="font-mono font-bold text-gray-700 text-sm tracking-wide select-all">{{ $trx->customer_no }}</span>
                             </div>
-                            <div class="text-[10px] text-gray-400 mt-1">No. Pelanggan</div>
                         </td>
 
                         {{-- 4. HARGA & PROFIT --}}
                         <td class="px-6 py-4 align-top">
                             <div class="text-sm font-bold text-gray-900">Rp {{ number_format($trx->selling_price, 0, ',', '.') }}</div>
-                            <div class="text-xs font-medium mt-0.5 {{ $trx->profit > 0 ? 'text-green-600' : 'text-gray-400' }}">
-                                + Rp {{ number_format($trx->profit, 0, ',', '.') }}
+                            <div class="flex items-center gap-1 mt-1">
+                                <span class="text-[10px] text-gray-400">Profit:</span>
+                                <span class="text-xs font-bold {{ $trx->profit > 0 ? 'text-green-600' : 'text-gray-400' }}">
+                                    +Rp {{ number_format($trx->profit, 0, ',', '.') }}
+                                </span>
                             </div>
-                            <div class="text-[10px] uppercase text-gray-400 mt-0.5">{{ $trx->payment_method ?? 'SALDO' }}</div>
                         </td>
 
                         {{-- 5. STATUS & SN --}}
@@ -157,48 +178,21 @@
                                     'Processing' => 'fa-spinner fa-spin',
                                     default => 'fa-clock'
                                 };
-
-                                // LOGIKA PESAN DIGIFLAZZ (Pengganti Helper get_ppob_message)
-                                $rcMessages = [
-                                    '00' => 'Transaksi Sukses',
-                                    '03' => 'Transaksi Pending',
-                                    '40' => 'Payload Error',
-                                    '41' => 'Signature Invalid',
-                                    '42' => 'Akun Provider Salah',
-                                    '43' => 'Produk Non-Aktif/Gangguan',
-                                    '44' => 'Saldo Server Kurang',
-                                    '50' => 'Transaksi Tidak Ditemukan',
-                                    '51' => 'Nomor Diblokir',
-                                    '52' => 'Prefix Salah Operator',
-                                    '53' => 'Produk Ditutup',
-                                    '54' => 'Nomor Tujuan Salah',
-                                    '55' => 'Produk Gangguan',
-                                    '99' => 'Router Issue (Pending)',
-                                ];
-                                $statusMessage = isset($trx->rc) && isset($rcMessages[$trx->rc]) 
-                                                ? $rcMessages[$trx->rc] 
-                                                : ($trx->message ?? 'Transaksi Gagal');
                             @endphp
                             
-                            {{-- Badge Status --}}
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border {{ $badgeClass }} mb-1">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border {{ $badgeClass }} mb-2">
                                 <i class="fas {{ $icon }} mr-1.5"></i> {{ $trx->status }}
                             </span>
 
-                            {{-- Logic Tampilan SN atau Pesan Error --}}
                             @if($trx->status == 'Success' && $trx->sn)
-                                <div class="mt-1">
-                                    <code class="text-[10px] bg-gray-50 px-2 py-1 border rounded block w-full max-w-[150px] truncate select-all text-gray-600 font-mono" title="{{ $trx->sn }}">
+                                <div class="relative group/sn">
+                                    <code class="text-[10px] bg-gray-50 px-2 py-1.5 border rounded block w-full max-w-[160px] truncate cursor-pointer hover:bg-gray-100 hover:text-blue-600 transition" onclick="navigator.clipboard.writeText('{{ $trx->sn }}'); alert('SN disalin!');" title="Klik untuk salin">
                                         SN: {{ $trx->sn }}
                                     </code>
                                 </div>
                             @elseif($trx->status == 'Failed')
-                                <div class="mt-1 text-[11px] text-red-500 italic leading-tight max-w-[160px]">
-                                    {{ $statusMessage }}
-                                </div>
-                            @elseif($trx->status == 'Processing')
-                                <div class="mt-1 text-[10px] text-blue-500 animate-pulse">
-                                    Menunggu respon provider...
+                                <div class="text-[11px] text-red-500 italic leading-tight max-w-[160px]">
+                                    {{ $trx->note ?? ($trx->message ?? 'Transaksi Gagal') }}
                                 </div>
                             @endif
                         </td>
@@ -206,18 +200,28 @@
                         {{-- 6. WAKTU --}}
                         <td class="px-6 py-4 align-top text-right whitespace-nowrap">
                             <div class="text-sm font-medium text-gray-900">{{ $trx->created_at->format('d M Y') }}</div>
-                            <div class="text-xs text-gray-500">{{ $trx->created_at->format('H:i:s') }}</div>
+                            <div class="text-xs text-gray-500">{{ $trx->created_at->format('H:i') }} WIB</div>
                         </td>
 
                         {{-- 7. AKSI --}}
                         <td class="px-6 py-4 align-top text-center">
-                            <div class="flex justify-center">
-                                <a href="{{ route('ppob.invoice', ['invoice' => $trx->order_id]) }}" 
-                                   target="_blank" 
-                                   class="group p-2 bg-white border border-gray-200 text-gray-500 rounded-lg hover:bg-blue-600 hover:text-white hover:border-blue-600 transition shadow-sm"
-                                   title="Lihat Invoice">
+                            <div class="flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                
+                                {{-- Tombol Detail --}}
+                                <a href="{{ route('admin.ppob.show', $trx->id) }}" 
+                                   class="p-2 bg-white border border-gray-200 text-gray-500 rounded-lg hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition"
+                                   title="Lihat Detail">
                                     <i class="fas fa-eye"></i>
                                 </a>
+
+                                {{-- Tombol Hapus (Hanya untuk failed/test) --}}
+                                <form action="{{ route('admin.ppob.destroy', $trx->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus data ini?');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="p-2 bg-white border border-gray-200 text-gray-500 rounded-lg hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition" title="Hapus Transaksi">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </form>
                             </div>
                         </td>
                     </tr>
@@ -226,11 +230,11 @@
                         <td colspan="7" class="px-6 py-16 text-center bg-gray-50/50">
                             <div class="flex flex-col items-center justify-center">
                                 <div class="bg-white p-4 rounded-full shadow-sm mb-3">
-                                    <i class="fas fa-receipt text-3xl text-gray-300"></i>
+                                    <i class="fas fa-search-minus text-3xl text-gray-300"></i>
                                 </div>
                                 <h3 class="text-lg font-medium text-gray-900">Data Tidak Ditemukan</h3>
                                 <p class="text-gray-500 text-sm mt-1">Belum ada transaksi yang sesuai dengan filter Anda.</p>
-                                <a href="{{ route('admin.ppob.data.index') }}" class="mt-4 text-blue-600 hover:underline text-sm font-medium">Reset Filter</a>
+                                <a href="{{ route('admin.ppob.index') }}" class="mt-4 text-blue-600 hover:underline text-sm font-medium">Reset Filter</a>
                             </div>
                         </td>
                     </tr>
@@ -245,4 +249,46 @@
         </div>
     </div>
 </div>
+
+{{-- SCRIPT AJAX SALDO --}}
+@push('scripts')
+<script>
+    function fetchSaldo() {
+        const display = document.getElementById('saldo-display');
+        const loading = document.getElementById('saldo-loading');
+        const icon = document.getElementById('icon-refresh');
+        
+        // UI Loading
+        display.classList.add('opacity-50');
+        loading.classList.remove('hidden');
+        icon.classList.add('fa-spin');
+
+        fetch("{{ route('admin.ppob.cek-saldo') }}")
+            .then(response => response.json())
+            .then(data => {
+                if(data.status === 'success') {
+                    display.innerText = data.formatted;
+                } else {
+                    display.innerText = "Error";
+                    alert(data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                display.innerText = "Gagal";
+            })
+            .finally(() => {
+                display.classList.remove('opacity-50');
+                loading.classList.add('hidden');
+                icon.classList.remove('fa-spin');
+            });
+    }
+
+    // Auto load saldo saat halaman terbuka
+    document.addEventListener("DOMContentLoaded", function() {
+        fetchSaldo();
+    });
+</script>
+@endpush
+
 @endsection
