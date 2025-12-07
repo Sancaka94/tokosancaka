@@ -496,7 +496,7 @@
 @endsection
 
 @push('scripts')
-<script src="https://cdn.jsdelivr.npm/swiper@11/swiper-bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
 <script>
     // =================================================================
     // ⚙️ KONFIGURASI GLOBAL
@@ -527,16 +527,11 @@
         if (!periodeStr) return '-';
         let str = periodeStr.toString().trim();
         if (ACTIVE_SKU.includes('bpjs') && /^\d{1,2}$/.test(str)) return str + " Bulan";
-        
-        // Asumsi format periode PLN Pascabayar adalah YYYYMM atau Des25
-        if (/^\d{6}$/.test(str) || str.length === 5) { 
-            let year = str.length === 6 ? str.substring(0, 4) : '20' + str.substring(3, 5);
-            let monthIndex = str.length === 6 ? parseInt(str.substring(4, 6)) : 1;
-            
+        if (/^\d{6}$/.test(str)) {
+            let year = str.substring(0, 4);
+            let month = parseInt(str.substring(4, 6));
             const months = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-            
-            if (str.length === 5) return str; 
-            if (months[monthIndex]) return `${months[monthIndex]} ${year}`;
+            if (months[month]) return `${months[month]} ${year}`;
         }
         return str;
     }
@@ -660,19 +655,39 @@ function getRcMessage(rcCode) {
         alertType: 'error' 
     };
 }
+
     // --- NEW HELPER: Trigger Custom Notification ---
     function triggerCustomNotification(msg, type) {
+        // Karena kita tidak bisa mengakses DOM Blade penuh atau Session Laravel dari sini,
+        // kita akan menggunakan SweetAlert2 (library JS populer) jika tersedia, atau
+        // Console.log sebagai fallback untuk menghindari alert() yang mengganggu.
+        
+        // Cek jika SweetAlert2 tersedia (Asumsi: Anda mungkin menggunakannya)
         if (typeof Swal !== 'undefined' && typeof Swal.fire === 'function') {
              const icon = type === 'success' ? 'success' : type === 'error' ? 'error' : 'warning';
              Swal.fire({
-                 title: type.toUpperCase(),
-                 text: msg,
-                 icon: icon,
-                 confirmButtonText: 'Oke'
-             });
+                title: type.toUpperCase(),
+                text: msg,
+                icon: icon,
+                confirmButtonText: 'Oke'
+            });
         } else {
+            // Fallback: Console.log (untuk debugging tanpa mengganggu UI)
             const logType = type === 'error' ? console.error : type === 'warning' ? console.warn : console.log;
             logType(`[STATUS ${type.toUpperCase()}] ${msg}`);
+            
+            // Opsional: Untuk memastikan user melihat pesan, kita tambahkan DIV sementara
+            // Ini membutuhkan styling, tapi ini adalah simulasi perbaikan tampilan error.
+            
+            /*
+            const notificationDiv = document.createElement('div');
+            notificationDiv.innerHTML = `<div class="bg-${type === 'success' ? 'green' : 'red'}-100 border-l-4 border-${type === 'success' ? 'green' : 'red'}-500 text-${type === 'success' ? 'green' : 'red'}-700 p-4 rounded shadow-sm mb-6 flex items-center" role="alert"><i class="fas fa-exclamation-circle mr-2"></i> ${msg}</div>`;
+            const container = document.querySelector('.container.mx-auto.px-4'); // Container setelah Breadcrumb
+            if (container) {
+                 container.insertBefore(notificationDiv, container.firstChild);
+                 setTimeout(() => notificationDiv.remove(), 6000); // Hapus setelah 6 detik
+            }
+            */
         }
     }
 
@@ -683,7 +698,7 @@ function getRcMessage(rcCode) {
     @if(!$isPostpaid)
         const items = document.querySelectorAll('.product-item');
         
-        function filterProducts(brand) { 
+        function filterProducts(brand) {
             items.forEach(item => {
                 if (brand === 'all' || item.dataset.brand === brand) item.classList.remove('hidden');
                 else item.classList.add('hidden');
@@ -711,7 +726,7 @@ function getRcMessage(rcCode) {
         @endif
 
         // --- FUNGSI PILIH PRODUK (POPUP MODAL) ---
-        function selectProduct(el) { 
+        function selectProduct(el) {
             const no = inputNo.value.replace(/[^0-9]/g, '');
             let minLen = IS_TESTING ? 3 : 4; 
             if(no.length < minLen) { 
@@ -735,7 +750,7 @@ function getRcMessage(rcCode) {
         }
 
         // --- FUNGSI CHECKOUT PRABAYAR (AJAX) ---
-        function processPrepaidCheckout() { 
+        function processPrepaidCheckout() {
             if(!currentPrepaidData) return;
             const btn = document.getElementById('btn-confirm-pay');
             const originalText = btn.innerHTML;
@@ -787,7 +802,7 @@ function getRcMessage(rcCode) {
                     document.getElementById('pln_name').innerText = d.name || d.customer_name || 'Pelanggan Test';
                     document.getElementById('pln_power').innerText = d.segment_power || '-';
                     infoBox.classList.remove('hidden');
-                    // Tidak perlu notifikasi sukses pop-up
+                    triggerCustomNotification("Data pelanggan ditemukan!", 'success');
                 } else { triggerCustomNotification(d.message || "Nomor tidak ditemukan.", 'error'); }
             })
             .catch(err => {
@@ -797,7 +812,7 @@ function getRcMessage(rcCode) {
         @endif
 
     // =================================================================
-    // 🔵 LOGIKA PASCABAYAR (LENGKAP DAN DIPERBAIKI)
+    // 🔵 LOGIKA PASCABAYAR (LENGKAP)
     // =================================================================
     @else
     function cekTagihan() {
@@ -840,37 +855,31 @@ function getRcMessage(rcCode) {
             console.log("Response PPOB:", data);
 
             const d = data.data || data;
-            const rc = d.rc ? String(d.rc) : ''; 
+            const rc = d.rc; 
             const rcInfo = getRcMessage(rc); 
             
+            // Ambil pesan dari API jika ada, jika tidak, gunakan pesan RC Mapper
             let messageToUser = d.message || rcInfo.message; 
             
+            // Validasi Status Sukses (RC 00)
             if(d && (d.status === 'success' || d.status === 'Sukses' || rc === '00')) {
                 
-                // Harga & Admin
-                let price = parseInt(d.selling_price || d.amount || 0);
-                let admin = parseInt(d.admin || d.admin_fee || 0);
-                let finalPrice = price; 
+                let price = parseInt(d.selling_price || d.amount || 0); // Ambil 265984 atau 266234
+                let admin = parseInt(d.admin || d.admin_fee || 0);     // Ambil 2750 atau 3000
+                let finalPrice = price + admin; // Ini adalah total tagihan + admin biller
 
-                // --- LOGIC VALIDASI HARGA (Mencegah tampilan Rp 0) ---
-                if (finalPrice <= 0 && ACTIVE_SKU !== 'bpjs') {
-                    // Jika harga 0 dan bukan BPJS (yang bisa 0), anggap tagihan lunas/tidak tersedia.
-                    messageToUser = getRcMessage('60').message;
-                    triggerCustomNotification(messageToUser, 'error');
-                    resultDiv.classList.add('hidden');
-                    emptyDiv.classList.remove('hidden');
-                    return; 
-                }
+                // Tambahkan Pengecekan: Jika harga total nol (kecuali untuk BPJS yang bisa 0 saat belum jatuh tempo)
+
                 
                 // 1. MAPPING DATA UTAMA
                 document.getElementById('bill_ref').innerText = d.ref_id || '-';
                 document.getElementById('bill_name').innerText = d.customer_name || d.name || 'Pelanggan';
                 document.getElementById('bill_id').innerText = d.customer_no;
                 
-                // Tampilkan Harga (PERBAIKAN TOTAL BAYAR & BIAYA ADMIN)
+                // Tampilkan Harga
                 document.getElementById('bill_amount').innerText = 'Rp ' + finalPrice.toLocaleString('id-ID');
-                document.getElementById('bill_admin').innerText = 'Rp ' + admin.toLocaleString('id-ID'); 
-                
+                document.getElementById('bill_admin').innerText = 'Rp ' + admin.toLocaleString('id-ID');
+
                 // 2. SIMPAN DATA KE VARIABLE GLOBAL
                 currentBillData = {
                     sku: ACTIVE_SKU,
@@ -888,10 +897,7 @@ function getRcMessage(rcCode) {
                     let mainPeriode = detailOne.periode || desc.periode || d.periode || '-';
                     document.getElementById('bill_period').innerText = formatPeriodeID(mainPeriode);
                     
-                    let lbl1="Info", val1="-", lbl2="Lembar", val2=(desc.lembar_tagihan || '1') + ' Lembar';
-                    let lblAddr="Alamat", valAddr=desc.alamat || desc.kab_kota || '-';
-
-                     // B. Logic Label Dinamis (Switch Case)
+                    // B. Logic Label Dinamis (Switch Case)
                     let lbl1="Info", val1="-", lbl2="Lembar", val2=(desc.lembar_tagihan || '1') + ' Lembar';
                     let lblAddr="Alamat", valAddr=desc.alamat || desc.kab_kota || '-';
 
@@ -930,21 +936,16 @@ function getRcMessage(rcCode) {
                     document.getElementById('label_address').innerText = lblAddr;
                     document.getElementById('val_address').innerText = valAddr;
 
-                    // 4. MAPPING DETAIL ARRAY (Rincian Item Tagihan)
                     if(detailList) {
                         detailList.innerHTML = '';
-                        let hasDetails = false;
-
                         if (desc.detail && Array.isArray(desc.detail) && desc.detail.length > 0) {
-                            hasDetails = true;
                             detailContainer.classList.remove('hidden');
                             desc.detail.forEach((item) => {
                                 let itemP = formatPeriodeID(item.periode);
                                 let itemN = item.nilai_tagihan ? parseInt(item.nilai_tagihan).toLocaleString('id-ID') : '0';
+                                let itemD = item.denda ? parseInt(item.denda).toLocaleString('id-ID') : '0';
+                                let itemAdm = item.admin ? parseInt(item.admin).toLocaleString('id-ID') : '0';
                                 
-                                // TOTAL ITEM = Tagihan + Admin Biller + Denda
-                                let totalItem = parseInt(item.nilai_tagihan || 0) + parseInt(item.admin || 0) + parseInt(item.denda || 0);
-
                                 let meterHtml = (item.meter_awal && item.meter_akhir) ? 
                                     `<div class="text-[10px] text-gray-400 mt-1">Meter: ${item.meter_awal} - ${item.meter_akhir}</div>` : '';
 
@@ -953,30 +954,31 @@ function getRcMessage(rcCode) {
                                         <div>
                                             <p class="font-bold text-gray-700">Periode: ${itemP}</p>
                                             ${meterHtml}
-                                            <span class="text-[10px] text-gray-500">Nilai Tagihan: Rp ${itemN}</span>
+                                            ${itemD != '0' ? `<span class="text-red-500 text-[10px] block font-bold">(Denda: Rp ${itemD})</span>` : ''}
                                         </div>
                                         <div class="text-right">
-                                            <p class="font-extrabold text-gray-800 text-base">Rp ${totalItem.toLocaleString('id-ID')}</p>
+                                            <p class="font-bold text-gray-800">Rp ${itemN}</p>
+                                            ${itemAdm != '0' ? `<p class="text-[10px] text-gray-400">Adm: Rp ${itemAdm}</p>` : ''}
                                         </div>
                                     </div>
                                 `;
                                 detailList.insertAdjacentHTML('beforeend', htmlItem);
                             });
-                        } 
-                        if (!hasDetails) {
+                        } else {
                             detailContainer.classList.add('hidden');
                         }
                     }
                 }
                 
-                // Tampilkan hasil, notifikasi SUCCESS pop-up dihilangkan.
+                // --- Tampilkan hasil dan notifikasi ---
+                triggerCustomNotification(messageToUser, 'success');
                 resultDiv.classList.remove('hidden'); 
 
             } else {
                 // --- LOGIKA GAGAL/PENDING: Tampilkan Pesan Jelas dari RC ---
                 triggerCustomNotification(messageToUser, rcInfo.alertType); 
-                resultDiv.classList.add('hidden');
-                emptyDiv.classList.remove('hidden');
+                resultDiv.classList.add('hidden'); // Sembunyikan rincian tagihan
+                emptyDiv.classList.remove('hidden'); // Tampilkan tampilan kosong/petunjuk
             }
         })
         .catch(err => {
