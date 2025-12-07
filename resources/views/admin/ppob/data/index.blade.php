@@ -5,8 +5,11 @@
 @section('content')
 <div class="space-y-6">
     
-    {{-- Header & Widget Saldo --}}
+    {{-- =================================================================== --}}
+    {{-- HEADER & WIDGET SALDO --}}
+    {{-- =================================================================== --}}
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+        
         {{-- Judul Halaman --}}
         <div class="md:col-span-2">
             <h2 class="text-2xl font-bold text-gray-800">Riwayat Transaksi PPOB</h2>
@@ -23,32 +26,38 @@
             </div>
         </div>
 
-        {{-- Widget Saldo (AJAX) --}}
+        {{-- Widget Saldo (Fixed ID) --}}
         <div class="bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl p-5 text-white shadow-lg relative overflow-hidden">
-            {{-- Dekorasi Background --}}
             <div class="absolute right-0 top-0 opacity-10 transform translate-x-4 -translate-y-4">
                 <i class="fas fa-wallet text-8xl"></i>
             </div>
-            
             <div class="relative z-10">
                 <p class="text-blue-100 text-xs font-medium uppercase tracking-wider mb-1">Sisa Deposit Digiflazz</p>
                 
                 {{-- Angka Saldo --}}
                 <div class="flex items-center justify-between mb-4">
                     <h3 id="saldo-display" class="text-3xl font-bold tracking-tight">Rp ...</h3>
+                    
+                    {{-- Tombol Refresh Kecil --}}
                     <button onclick="fetchSaldo()" id="btn-refresh-saldo" class="text-blue-200 hover:text-white transition p-1.5 rounded-full hover:bg-white/10" title="Refresh Saldo">
                         <i class="fas fa-sync-alt" id="icon-refresh"></i>
                     </button>
                 </div>
+                
+                {{-- Indikator Loading --}}
+                <p id="saldo-loading" class="text-[10px] text-blue-200 mb-2 hidden">Sedang memuat data...</p>
 
-                {{-- TOMBOL DEPOSIT BARU --}}
+                {{-- Tombol Isi Saldo --}}
                 <button onclick="openDepositModal()" class="w-full bg-white text-blue-600 font-bold py-2.5 px-4 rounded-lg text-sm transition hover:bg-blue-50 hover:shadow-lg flex items-center justify-center gap-2">
                     <i class="fas fa-plus-circle"></i> Isi Saldo Otomatis
                 </button>
             </div>
         </div>
+    </div>
 
-    {{-- Filter Section --}}
+    {{-- =================================================================== --}}
+    {{-- FILTER SECTION --}}
+    {{-- =================================================================== --}}
     <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
         <form action="{{ route('admin.ppob.index') }}" method="GET">
             <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
@@ -94,7 +103,9 @@
         </form>
     </div>
 
-    {{-- Table Section --}}
+    {{-- =================================================================== --}}
+    {{-- TABLE SECTION --}}
+    {{-- =================================================================== --}}
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse">
@@ -135,9 +146,7 @@
                             <div class="flex items-start">
                                 @php
                                     $brandName = strtolower($trx->brand ?? 'other');
-                                    // Fallback icon fontawesome jika gambar tidak ada
-                                    $defaultIcon = '<div class="h-8 w-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-400"><i class="fas fa-box"></i></div>';
-                                    $logoUrl = asset('public/storage/logo-ppob/' . $brandName . '.png');
+                                    $logoUrl = asset('storage/logo-ppob/' . $brandName . '.png');
                                 @endphp
                                 <div class="mr-3 shrink-0">
                                     <img class="h-8 w-8 object-contain" src="{{ $logoUrl }}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" alt="{{ $brandName }}">
@@ -258,14 +267,13 @@
 </div>
 
 {{-- ======================================================================= --}}
-{{-- MODAL DEPOSIT --}}
+{{-- MODAL DEPOSIT (POP UP) --}}
 {{-- ======================================================================= --}}
 <div id="depositModal" class="fixed inset-0 z-[999] hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-    {{-- Backdrop Gelap --}}
     <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity backdrop-blur-sm" onclick="closeDepositModal()"></div>
 
     <div class="flex items-center justify-center min-h-screen p-4 text-center sm:p-0">
-        <div class="relative bg-white rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:max-w-md w-full">
+        <div class="relative bg-white rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:max-w-md w-full animate-fade-in-up">
             
             {{-- Header Modal --}}
             <div class="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 flex justify-between items-center">
@@ -283,7 +291,6 @@
                 <form id="formDeposit" onsubmit="submitDeposit(event)">
                     @csrf
                     
-                    {{-- Alert Info --}}
                     <div class="bg-blue-50 border-l-4 border-blue-500 p-3 mb-4 rounded-r text-xs text-blue-700">
                         <p>Tiket deposit berlaku hingga pukul 21:00 WIB. Transfer harus <b>PERSIS</b> sesuai nominal tiket.</p>
                     </div>
@@ -307,21 +314,16 @@
                                     <option value="OVO">OVO</option>
                                 </optgroup>
                             </select>
-                            {{-- Icon Panah Dropdown --}}
                             <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
                                 <i class="fas fa-chevron-down text-xs"></i>
                             </div>
                         </div>
-                        <p class="text-[10px] text-gray-500 mt-1 italic">
-                            *Pilih <b>Flip/ShopeePay</b> jika akun Digiflazz Anda tipe Perorangan.
-                        </p>
                     </div>
 
                     {{-- Input Nama Pemilik --}}
                     <div class="mb-4">
                         <label class="block text-sm font-semibold text-gray-700 mb-1">Nama Pemilik Rekening</label>
                         <input type="text" name="owner_name" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500 py-2.5" placeholder="Contoh: Sancaka Jaya" required>
-                        <p class="text-[10px] text-gray-400 mt-1">Nama di rekening pengirim dana.</p>
                     </div>
 
                     {{-- Input Nominal --}}
@@ -336,7 +338,6 @@
                         <p class="text-xs text-red-500 mt-1 font-medium">*Minimal Rp 200.000</p>
                     </div>
 
-                    {{-- Tombol Submit --}}
                     <button type="submit" id="btn-submit-depo" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow transition transform hover:scale-[1.02]">
                         Buat Tiket Deposit
                     </button>
@@ -401,15 +402,19 @@
     </div>
 </div>
 
-{{-- SCRIPT AJAX SALDO --}}
 @push('scripts')
 <script>
+    // --- 1. LOGIC SALDO (AJAX) ---
     function fetchSaldo() {
+        // Ambil elemen dengan ID yang BENAR
         const display = document.getElementById('saldo-display');
         const loading = document.getElementById('saldo-loading');
         const icon = document.getElementById('icon-refresh');
         
-        // UI Loading
+        // Cek jika elemen ada (mencegah error 'null')
+        if(!display) return;
+
+        // UI Loading State
         display.classList.add('opacity-50');
         loading.classList.remove('hidden');
         icon.classList.add('fa-spin');
@@ -421,7 +426,7 @@
                     display.innerText = data.formatted;
                 } else {
                     display.innerText = "Error";
-                    alert(data.message);
+                    console.error(data.message);
                 }
             })
             .catch(error => {
@@ -435,25 +440,21 @@
             });
     }
 
-    // Auto load saldo saat halaman terbuka
-    document.addEventListener("DOMContentLoaded", function() {
-        fetchSaldo();
-    });
-
-    // --- LOGIC DEPOSIT ---
+    // --- 2. LOGIC MODAL DEPOSIT ---
     const depositModal = document.getElementById('depositModal');
     const formDeposit = document.getElementById('formDeposit');
     const resultDeposit = document.getElementById('depositResult');
 
     function openDepositModal() {
         formDeposit.classList.remove('hidden');
-        formDeposit.reset(); // Reset form setiap kali dibuka
+        formDeposit.reset();
         resultDeposit.classList.add('hidden');
         depositModal.classList.remove('hidden');
     }
 
     function closeDepositModal() {
         depositModal.classList.add('hidden');
+        fetchSaldo(); // Refresh saldo saat tutup modal
     }
 
     function submitDeposit(e) {
@@ -462,13 +463,11 @@
         const btn = document.getElementById('btn-submit-depo');
         const originalText = btn.innerHTML;
         
-        // Ubah tombol jadi loading
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Menghubungi Digiflazz...';
 
         const formData = new FormData(formDeposit);
 
-        // Kirim ke Route Laravel yang baru dibuat
         fetch("{{ route('admin.ppob.deposit') }}", {
             method: "POST",
             body: formData,
@@ -483,13 +482,10 @@
             btn.innerHTML = originalText;
 
             if(resp.status === 'success') {
-                // Sembunyikan Form, Tampilkan Tiket
                 formDeposit.classList.add('hidden');
                 resultDeposit.classList.remove('hidden');
 
-                // Isi Data Tiket
                 const data = resp.data;
-                // Format Rupiah
                 const formattedAmount = 'Rp ' + parseInt(data.amount).toLocaleString('id-ID');
                 
                 document.getElementById('res_amount').innerText = formattedAmount;
@@ -498,7 +494,6 @@
                 document.getElementById('res_notes').innerText = data.notes;
                 
             } else {
-                // Gagal
                 alert('Gagal Request: ' + resp.message);
             }
         })
@@ -510,14 +505,18 @@
         });
     }
 
-    // Fungsi Helper Copy Text
+    // --- 3. HELPER COPY TEXT ---
     function copyToClipboard(elementId) {
         const text = document.getElementById(elementId).innerText.replace(/[^0-9a-zA-Z ]/g, "").replace('Rp', '').trim();
         navigator.clipboard.writeText(text).then(() => {
-            // Toast sederhana (bisa diganti sweetalert)
-            alert('Teks berhasil disalin: ' + text);
+            alert('Teks berhasil disalin!');
         });
     }
+
+    // --- 4. AUTO RUN ---
+    document.addEventListener("DOMContentLoaded", function() {
+        fetchSaldo();
+    });
 </script>
 @endpush
 
