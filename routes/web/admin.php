@@ -86,6 +86,8 @@ use App\Http\Controllers\Admin\AdminPpobController;
 
 Route::get('/cek-saldo', [AdminPpobController::class, 'cekSaldo'])->name('ppob.cek-saldo'); // route('admin.ppob.cek-saldo')
 
+Route::post('/deposit', [AdminPpobController::class, 'requestDeposit'])->name('ppob.deposit');
+
 
 // =================================================================
 // GROUP ROUTE PPOB (DIGIFLAZZ) - GABUNGAN TRANSAKSI & PRODUK
