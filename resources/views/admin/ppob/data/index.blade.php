@@ -146,7 +146,7 @@
                             <div class="flex items-start">
                                 @php
                                     $brandName = strtolower($trx->brand ?? 'other');
-                                    $logoUrl = asset('storage/logo-ppob/' . $brandName . '.png');
+                                    $logoUrl = asset('public/storage/logo-ppob/' . $brandName . '.png');
                                 @endphp
                                 <div class="mr-3 shrink-0">
                                     <img class="h-8 w-8 object-contain" src="{{ $logoUrl }}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" alt="{{ $brandName }}">
