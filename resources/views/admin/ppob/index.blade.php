@@ -5,7 +5,8 @@
 @section('content')
 <div class="container mx-auto px-4 py-8">
     
-    {{-- Header Section --}}
+    {{-- Header Section (Tombol Aksi & Sync) --}}
+    {{-- ... (Bagian ini sama dengan kode terakhir Anda) ... --}}
     <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-6 gap-4">
         <div>
             <h1 class="text-2xl font-bold text-gray-800">Daftar Produk PPOB</h1>
@@ -29,7 +30,6 @@
             </button>
             
             {{-- 1. TOMBOL SINKRONISASI PRABAYAR --}}
-            {{-- Catatan: Sesuaikan nama route jika berbeda di routes/web.php --}}
             <a href="{{ route('ppob.sync.prepaid') }}" 
                 onclick="return confirm('Apakah Anda yakin ingin melakukan sinkronisasi produk PRABAYAR? Proses ini mungkin membutuhkan waktu.')"
                 class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition flex items-center gap-2 text-sm">
@@ -37,7 +37,6 @@
             </a>
 
             {{-- 2. TOMBOL SINKRONISASI PASCABAYAR --}}
-            {{-- Catatan: Sesuaikan nama route jika berbeda di routes/web.php --}}
             <a href="{{ route('ppob.sync.postpaid') }}" 
                 onclick="return confirm('Apakah Anda yakin ingin melakukan sinkronisasi produk PASCABAYAR? Proses ini mungkin membutuhkan waktu.')"
                 class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition flex items-center gap-2 text-sm">
@@ -88,7 +87,7 @@
         </form>
     </div>
 
-    {{-- Table Section dengan SCROLLBAR HORIZONTAL dan STICKY ACTION --}}
+    {{-- Table Section --}}
     <div class="bg-white shadow-md rounded-b-xl overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-sm text-left table-auto">
@@ -219,6 +218,7 @@
         </div>
     </div>
 </div>
+
 {{-- ========================================== --}}
 {{-- MODAL EDIT HARGA SATUAN (INDIVIDUAL)       --}}
 {{-- ========================================== --}}
@@ -280,40 +280,94 @@
         </div>
     </div>
 </div>
-@include('admin.ppob.modals') 
+
+
+{{-- ========================================== --}}
+{{-- MODAL BULK UPDATE (MASSAL)                 --}}
+{{-- ========================================== --}}
+<div id="bulkPriceModal" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity backdrop-blur-sm" onclick="closeBulkModal()"></div>
+    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        <div class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full border-t-4 border-orange-500">
+            <form action="{{ route('admin.ppob.bulk-update') }}" method="POST" class="p-6">
+                @csrf
+                <div class="flex justify-between items-center mb-5 border-b pb-4">
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-900"><i class="fas fa-tags text-orange-500 mr-2"></i>Update Harga Massal</h3>
+                        <p class="text-xs text-gray-500 mt-1">Aksi ini akan mengubah harga jual SEMUA produk.</p>
+                    </div>
+                    <button type="button" onclick="closeBulkModal()" class="text-gray-400 hover:text-gray-500"><i class="fas fa-times text-xl"></i></button>
+                </div>
+                
+                <input type="hidden" name="product_type" value="{{ $currentType }}"> 
+
+                <div class="bg-orange-50 p-4 rounded-xl border border-orange-200 mb-6">
+                    <p class="text-sm text-orange-800 font-semibold mb-3">Pilih Metode Keuntungan untuk **{{ $currentType === 'prepaid' ? 'Prabayar' : 'Pascabayar' }}**:</p>
+                    
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <label class="flex items-center p-3 border border-orange-200 rounded-lg bg-white cursor-pointer hover:bg-orange-50 transition">
+                            <input type="radio" name="profit_type" value="rupiah" checked class="w-5 h-5 text-orange-600 border-gray-300 focus:ring-orange-500">
+                            <div class="ml-3">
+                                <span class="block text-sm font-bold text-gray-900">Nominal (Rp)</span>
+                                <span class="block text-xs text-gray-500">Contoh: + Rp 2.000</span>
+                            </div>
+                        </label>
+                        <label class="flex items-center p-3 border border-orange-200 rounded-lg bg-white cursor-pointer hover:bg-orange-50 transition">
+                            <input type="radio" name="profit_type" value="percent" class="w-5 h-5 text-orange-600 border-gray-300 focus:ring-orange-500">
+                            <div class="ml-3">
+                                <span class="block text-sm font-bold text-gray-900">Persentase (%)</span>
+                                <span class="block text-xs text-gray-500">Contoh: + 5%</span>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="relative">
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Nilai Keuntungan</label>
+                        <input type="number" name="profit_value" placeholder="Masukkan angka (misal: 2000 atau 5)" required 
+                               class="w-full border-gray-300 rounded-lg px-4 py-3 text-gray-900 font-bold focus:ring-orange-500 focus:border-orange-500">
+                    </div>
+                </div>
+
+                <div class="bg-gray-50 p-3 rounded-lg mb-6 text-xs text-gray-600">
+                    <i class="fas fa-info-circle mr-1"></i> Rumus: <strong>Harga Beli + Profit</strong> = Harga Jual Baru.
+                </div>
+
+                <div class="flex justify-end gap-3">
+                    <button type="button" onclick="closeBulkModal()" class="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50">Batal</button>
+                    <button type="submit" onclick="return confirm('Yakin ingin mengubah harga SEMUA produk {{ $currentType === 'prepaid' ? 'Prabayar' : 'Pascabayar' }}?')" class="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-bold shadow-lg shadow-orange-200">
+                        Terapkan ke {{ $currentType === 'prepaid' ? 'Prabayar' : 'Pascabayar' }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
 @endsection
 
 @push('scripts')
 <script>
-    // --- JS MODAL EDIT INDIVIDUAL (Fungsi Baru) ---
+    // --- JS MODAL EDIT INDIVIDUAL ---
     function editPrice(id, name, basePrice, sellPrice, status) {
-        // Mengisi data ke modal
         document.getElementById('modal_product_name').value = name;
-        // basePrice: Harga modal mentah (dari kolom 'price' database)
         document.getElementById('modal_base_price_raw').value = parseFloat(basePrice);
         document.getElementById('modal_base_price_display').value = 'Rp ' + parseFloat(basePrice).toLocaleString('id-ID');
         document.getElementById('modal_sell_price').value = parseFloat(sellPrice);
         
-        // Mengisi status checkbox
         const statusCheckbox = document.getElementById('modal_status');
         if(statusCheckbox) statusCheckbox.checked = (status == 1);
 
-        // Mengatur action URL form
         let url = "{{ route('admin.ppob.update-price', ':id') }}";
         url = url.replace(':id', id);
         document.getElementById('priceForm').action = url;
 
-        // Tampilkan modal
         document.getElementById('priceModal').classList.remove('hidden');
     }
 
     function calculateSinglePrice() {
-        // Ambil harga modal mentah
         let base = parseFloat(document.getElementById('modal_base_price_raw').value) || 0;
-        // Ambil nilai margin
         let val = parseFloat(document.getElementById('single_profit_value').value) || 0;
-        // Ambil tipe margin (rupiah/percent)
         let type = document.getElementById('single_profit_type').value;
         let final = base;
 
@@ -323,7 +377,6 @@
             final += base * (val / 100);
         }
 
-        // Tampilkan Harga Jual akhir (pembulatan ke atas)
         document.getElementById('modal_sell_price').value = Math.ceil(final);
     }
 
@@ -331,7 +384,7 @@
         document.getElementById('priceModal').classList.add('hidden');
     }
 
-    // --- JS MODAL BULK UPDATE (Fungsi Lama) ---
+    // --- JS MODAL BULK UPDATE ---
     function openBulkModal() {
         document.getElementById('bulkPriceModal').classList.remove('hidden');
     }
@@ -339,5 +392,18 @@
     function closeBulkModal() {
         document.getElementById('bulkPriceModal').classList.add('hidden');
     }
+
+    // Tambahkan CSS untuk Sticky Column Shadow
+    const style = document.createElement('style');
+    style.textContent = `
+    .shadow-left {
+        box-shadow: -4px 0 6px -4px rgba(0, 0, 0, 0.1);
+    }
+    .sticky.right-0 {
+        position: sticky;
+        right: 0;
+    }
+    `;
+    document.head.appendChild(style);
 </script>
 @endpush
