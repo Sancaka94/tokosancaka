@@ -64,21 +64,34 @@ class DigiflazzService
             
             $responseData = $response->json();
 
-            Log::info("✅ [DIGIFLAZZ] Price List ($cmd) Response Status", ['status_code' => $response->status()]);
+        // 🟢 PERUBAHAN DI SINI: Catat seluruh respons data
+        Log::info("✅ [DIGIFLAZZ] Price List ($cmd) Full Response", [
+            'status_code' => $response->status(),
+            'body_data' => $responseData // <-- BARIS INI AKAN MENCATAT SEMUA DATA PRODUK
+        ]);
 
-            // KEMBALIKAN SELURUH RESPONS JSON AGAR CALLER BISA CEK ERROR RC: 83
-            if (is_array($responseData)) {
-                return $responseData; 
-            }
-            
-            Log::error("Digiflazz Price List ($cmd) Failed: HTTP Status " . $response->status() . ". Body: " . ($response->body() ?? 'No response body.'));
-            return [];
-            
-        } catch (\Exception $e) {
-            Log::error("Digiflazz Price List ($cmd) EXCEPTION: " . $e->getMessage());
-            return [];
+        if (is_array($responseData)) {
+            return $responseData; 
         }
+            
+            // 🔴 PERUBAHAN DI SINI: Jika respons GAGAL HTTP, kembalikan respons JSON Digiflazz jika ada
+        Log::error("Digiflazz Price List ($cmd) Failed: HTTP Status " . $response->status() . ". Body: " . ($response->body() ?? 'No response body.'));
+        
+        // Kembalikan respons JSON error Digiflazz jika tersedia, jika tidak, kembalikan array kosong
+        return $responseData ?? [];
+        
+    } catch (\Exception $e) {
+        // 🔴 PERUBAHAN DI SINI: Untuk exception murni (koneksi terputus, timeout), kembalikan array dengan pesan error
+        Log::error("Digiflazz Price List ($cmd) EXCEPTION: " . $e->getMessage());
+        
+        return [
+            'data' => [
+                'status' => 'Gagal',
+                'message' => 'Koneksi atau Timeout Error: ' . $e->getMessage()
+            ]
+        ];
     }
+}
 
     /**
      * 3. Transaksi Prabayar (Pulsa/Data/Token)
