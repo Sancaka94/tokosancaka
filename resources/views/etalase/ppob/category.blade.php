@@ -864,10 +864,9 @@ function getRcMessage(rcCode) {
             // Validasi Status Sukses (RC 00)
             if(d && (d.status === 'success' || d.status === 'Sukses' || rc === '00')) {
                 
-                // Harga & Admin
-                let price = parseInt(d.selling_price || d.amount || 0);
-                let admin = parseInt(d.admin || d.admin_fee || 0);
-                let finalPrice = price + admin; 
+                let price = parseInt(d.selling_price || d.amount || 0); // Ambil 265984 atau 266234
+                let admin = parseInt(d.admin || d.admin_fee || 0);     // Ambil 2750 atau 3000
+                let finalPrice = price + admin; // Ini adalah total tagihan + admin biller
 
                 // Tambahkan Pengecekan: Jika harga total nol (kecuali untuk BPJS yang bisa 0 saat belum jatuh tempo)
 if (finalPrice <= 0 && d.customer_name && d.customer_name !== '-') {
