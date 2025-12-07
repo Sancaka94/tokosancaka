@@ -1,6 +1,11 @@
 @extends('layouts.marketplace')
 
 @php
+
+// DEBUGGING SEMENTARA
+    if ($defaultInquirySku === 'default_pasca_sku' || empty($defaultInquirySku)) {
+        \Log::error('DEBUG PASCABAYAR: defaultInquirySku GAGAL DITEMUKAN. Check query di Controller!');
+    }
     // ================================================================
     // 1. LOGIC PHP: PENENTUAN SLUG & SKU (DIAMBIL DARI CONTROLLER)
     // ================================================================

@@ -160,13 +160,13 @@ $brands = $products->pluck('brand')->unique()->values();
 // ⭐ BARU: Logika penentuan SKU Inquiry default untuk halaman Pascabayar
 $defaultInquirySku = null;
 
-if ($isPostpaid && $slug === 'pln-pascabayar') {
-    // Cari SKU PLN PASCABAYAR yang aktif di database
+if ($slug === 'pln-pascabayar') {
+    // Pastikan Brand yang dicari sesuai, yaitu 'PLN PASCABAYAR'
     $defaultInquirySku = $products
-        ->where('brand', 'PLN PASCABAYAR') // Harus sesuai dengan data database (Lihat Admin Panel)
+        ->where('brand', 'PLN PASCABAYAR') 
         ->where('seller_product_status', true)
         ->pluck('buyer_sku_code')
-        ->first();
+        ->first() ?? 'default_pasca_sku'; // Fallback ke string ini
 }
 
         // ============================================================
