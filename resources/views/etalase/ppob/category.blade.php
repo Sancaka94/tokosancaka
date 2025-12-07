@@ -729,6 +729,15 @@
                 let admin = parseInt(d.admin || d.admin_fee || 0);
                 let finalPrice = price + admin; 
 
+                // --- TAMBAHKAN LOGIKA INI ---
+    if (finalPrice <= admin) { 
+        // finalPrice hanya berisi biaya admin, artinya nilai tagihan nol.
+        alert("Tagihan tidak ditemukan atau sudah dibayar. Total tagihan Rp 0.");
+        emptyDiv.classList.remove('hidden'); // Kembali ke tampilan kosong
+        return; // Hentikan proses mapping data nol
+    }
+    // --- AKHIR LOGIKA TAMBAHAN ---
+
                 // Tampilkan Harga
                 document.getElementById('bill_amount').innerText = 'Rp ' + finalPrice.toLocaleString('id-ID');
                 document.getElementById('bill_admin').innerText = 'Rp ' + admin.toLocaleString('id-ID');
