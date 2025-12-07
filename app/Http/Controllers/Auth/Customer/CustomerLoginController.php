@@ -16,23 +16,28 @@ class CustomerLoginController extends Controller
     use AuthenticatesUsers;
 
     /**
-     * Tentukan kemana user akan dialihkan setelah login berhasil.
-     * Logika ini digunakan oleh trait AuthenticatesUsers.
-     *
-     * @return string
-     */
-    protected function redirectTo()
-    {
-        $user = Auth::user();
+ * Tentukan kemana user akan dialihkan setelah login berhasil.
+ *
+ * @return string
+ */
+protected function redirectTo()
+{
+    $user = Auth::user();
+    $role = strtolower(trim($user->role)); // Tambahkan trim() di sini juga
 
-        // Admin: Admin tidak seharusnya login melalui controller ini, tapi jika berhasil:
-        if (strtolower($user->role) === 'admin') {
-            return route('admin.dashboard'); // PERBAIKAN: Menggunakan route()
-        }
-        
-        // Pelanggan/Seller/Default akan diarahkan ke dashboard customer
-        return route('customer.dashboard'); // PERBAIKAN: Menggunakan route()
+    // 1. Admin
+    if ($role === 'admin') {
+        return route('admin.dashboard');
     }
+
+    // 2. **PERBAIKAN: Tambahkan role 'agent'**
+    if ($role === 'agent') {
+        return route('customer.dashboard'); // Ganti dengan nama route yang benar untuk Agent
+    }
+    
+    // 3. Pelanggan/Seller/Default (catch-all)
+    return route('customer.dashboard');
+}
 
     /**
      * Tampilkan form login.
