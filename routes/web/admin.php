@@ -84,7 +84,7 @@ use App\Http\Controllers\Admin\AdminPpobController;
 
 */
 
-Route::get('/cek-saldo', [AdminPpobController::class, 'cekSaldo'])->name('cek-saldo'); // route('admin.ppob.cek-saldo')
+Route::get('/cek-saldo', [AdminPpobController::class, 'cekSaldo'])->name('ppob.cek-saldo'); // route('admin.ppob.cek-saldo')
 
 
 // =================================================================
