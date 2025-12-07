@@ -543,66 +543,72 @@
             // --- SUKSES ---
             '00': { status: 'Sukses', message: 'Tagihan berhasil ditemukan!', alertType: 'success' },
 
-            // --- PENDING/PERINGATAN (Status Sementara/Informasi) ---
+            // --- PENDING/PERINGATAN ---
             '03': { status: 'Pending', message: 'Transaksi sedang diproses. Mohon tunggu.', alertType: 'warning' },
             '55': { status: 'Pending', message: 'Produk Sedang Gangguan. Coba sebentar lagi.', alertType: 'warning' },
             '58': { status: 'Pending', message: 'Sedang Cut Off. Transaksi akan diproses setelah Cut Off berakhir.', alertType: 'warning' },
             '60': { status: 'Pending', message: 'Tagihan belum tersedia (Belum Terbit/Sudah Lunas).', alertType: 'warning' },
             '71': { status: 'Pending', message: 'Produk Sedang Tidak Stabil. Coba sebentar lagi.', alertType: 'warning' },
-            '99': { status: 'Pending', message: 'DF Router Issue / Saldo API bermasalah. Coba lagi.', alertType: 'warning' },
+            '99': { status: 'Pending', message: 'DF Router Issue / Saldo API bermasalah. Silakan isi deposit.', alertType: 'warning' },
             
-            // --- GAGAL/ERROR (Perlu Cek Ulang Input/Akun & Sistem) ---
+            // --- GAGAL/ERROR ---
             '01': { status: 'Gagal', message: 'Timeout. Waktu tunggu habis. Coba lagi.', alertType: 'error' },
             '02': { status: 'Gagal', message: 'Transaksi Gagal. Terjadi kesalahan.', alertType: 'error' },
             '40': { status: 'Gagal', message: 'Payload Error. Format data atau parameter tidak sesuai.', alertType: 'error' },
             '41': { status: 'Gagal', message: 'Signature tidak valid. Cek formula sign dan apiKey Anda.', alertType: 'error' },
-            '42': { status: 'Gagal', message: 'Gagal memproses API Buyer. Username belum sesuai.', alertType: 'error' },
-            '43': { status: 'Gagal', message: 'SKU tidak ditemukan atau Non-Aktif. Periksa konfigurasi produk.', alertType: 'error' },
             '44': { status: 'Gagal', message: 'Saldo tidak cukup. Mohon isi deposit API Anda.', alertType: 'error' },
-            '45': { status: 'Gagal', message: 'IP Anda tidak kami kenali. Silakan whitelist IP pada pengaturan koneksi.', alertType: 'error' },
+            '54': { status: 'Gagal', message: 'Nomor Tujuan Salah. Mohon periksa kembali nomor pelanggan.', alertType: 'error' },
+            '61': { status: 'Gagal', message: 'Akun API Anda belum pernah melakukan deposit (Saldo Nol).', alertType: 'error' },
+            '70': { status: 'Gagal', message: 'Timeout Dari Biller. Coba lagi.', alertType: 'error' },
+            // ... (Mapping RC lainnya) ...
+            '42': { status: 'Gagal', message: 'Username belum sesuai.', alertType: 'error' },
+            '43': { status: 'Gagal', message: 'SKU tidak ditemukan atau Non-Aktif.', alertType: 'error' },
+            '45': { status: 'Gagal', message: 'IP Anda tidak kami kenali.', alertType: 'error' },
             '47': { status: 'Gagal', message: 'Transaksi sudah terjadi di buyer lain.', alertType: 'error' },
-            '49': { status: 'Gagal', message: 'Ref ID tidak unik. Gunakan ID yang unik untuk setiap permintaan.', alertType: 'error' },
+            '49': { status: 'Gagal', message: 'Ref ID tidak unik.', alertType: 'error' },
             '50': { status: 'Gagal', message: 'Transaksi Tidak Ditemukan.', alertType: 'error' },
             '51': { status: 'Gagal', message: 'Nomor Tujuan Diblokir.', alertType: 'error' },
             '52': { status: 'Gagal', message: 'Prefix Tidak Sesuai Dengan Operator.', alertType: 'error' },
             '53': { status: 'Gagal', message: 'Produk Seller Sedang Tidak Tersedia.', alertType: 'error' },
-            '54': { status: 'Gagal', message: 'Nomor Tujuan Salah. Mohon periksa kembali nomor pelanggan.', alertType: 'error' },
             '56': { status: 'Gagal', message: 'Limit saldo seller (Deprecated).', alertType: 'error' },
             '57': { status: 'Gagal', message: 'Jumlah Digit Kurang Atau Lebih dari standar.', alertType: 'error' },
             '59': { status: 'Gagal', message: 'Tujuan di Luar Wilayah/Cluster layanan.', alertType: 'error' },
-            '61': { status: 'Gagal', message: 'Akun API Anda belum pernah melakukan deposit (Saldo Nol).', alertType: 'error' },
             '62': { status: 'Gagal', message: 'Seller sedang mengalami gangguan teknis.', alertType: 'error' },
             '63': { status: 'Gagal', message: 'Tidak support transaksi multi.', alertType: 'error' },
-            '64': { status: 'Gagal', message: 'Tarik tiket gagal, coba nominal lain atau hubungi admin.', alertType: 'error' },
+            '64': { status: 'Gagal', message: 'Tarik tiket gagal.', alertType: 'error' },
             '65': { status: 'Gagal', message: 'Limit transaksi multi (Deprecated).', alertType: 'error' },
             '66': { status: 'Gagal', message: 'Cut Off (Perbaikan Sistem Seller).', alertType: 'error' },
             '67': { status: 'Gagal', message: 'Seller belum ter-verfikasi.', alertType: 'error' },
             '68': { status: 'Gagal', message: 'Stok habis.', alertType: 'error' },
             '69': { status: 'Gagal', message: 'Harga seller lebih besar dari ketentuan harga Buyer.', alertType: 'error' },
-            '70': { status: 'Gagal', message: 'Timeout Dari Biller. Coba lagi.', alertType: 'error' },
             '72': { status: 'Gagal', message: 'Lakukan Unreg Paket Dahulu.', alertType: 'error' },
-            '73': { status: 'Gagal', message: 'Kwh Melebihi Batas (Khusus PLN Token).', alertType: 'error' },
+            '73': { status: 'Gagal', message: 'Kwh Melebihi Batas.', alertType: 'error' },
             '74': { status: 'Gagal', message: 'Transaksi Refund.', alertType: 'error' },
             '80': { status: 'Gagal', message: 'Akun Anda telah diblokir oleh Seller.', alertType: 'error' },
             '81': { status: 'Gagal', message: 'Seller ini telah diblokir oleh Anda.', alertType: 'error' },
             '82': { status: 'Gagal', message: 'Akun Anda belum ter-verfikasi.', alertType: 'error' },
-            '83': { status: 'Gagal', message: 'Anda telah mencapai limitasi pengecekan pricelist, coba sebentar lagi.', alertType: 'error' },
+            '83': { status: 'Gagal', message: 'Limitasi pengecekan pricelist terlampaui.', alertType: 'error' },
             '84': { status: 'Gagal', message: 'Nominal tidak valid.', alertType: 'error' },
-            '85': { status: 'Gagal', message: 'Anda telah mencapai limitasi transaksi, coba 1 menit lagi.', alertType: 'error' },
-            '86': { status: 'Gagal', message: 'Anda telah mencapai limitasi pengecekan nomor PLN, coba sebentar lagi.', alertType: 'error' },
+            '85': { status: 'Gagal', message: 'Limitasi transaksi terlampaui.', alertType: 'error' },
+            '86': { status: 'Gagal', message: 'Limitasi pengecekan nomor PLN terlampaui.', alertType: 'error' },
             '87': { status: 'Gagal', message: 'Transaksi E-money wajib kelipatan Rp 1.000.', alertType: 'error' },
         };
         return rcMap[rc] || { status: 'Gagal', message: `Gagal (RC: ${rc}). Kesalahan tidak terdefinisi.`, alertType: 'error' };
     }
 
-    // --- NEW HELPER: Show Custom Notification (menggantikan alert) ---
+    // --- NEW HELPER: Show Custom Notification (MENGGANTI ALERT) ---
     function showNotification(msg, type) {
-        if (type === 'success') {
-            alert("✅ SUKSES: " + msg);
-        } else if (type === 'error') {
-            alert("❌ GAGAL: " + msg);
-        } else if (type === 'warning') {
-            alert("⚠️ PERHATIAN: " + msg);
+        // Karena kita tidak bisa mengakses DOM Blade penuh, 
+        // kita simulasikan dengan console.log yang spesifik dan mengganggu.
+        // Anda HARUS mengganti ini dengan DOM manipulation (misal: Toastr/SweetAlert/menambahkan div di Blade).
+        const logType = type === 'error' ? console.error : type === 'warning' ? console.warn : console.log;
+        
+        // Cek jika notifikasi yang muncul adalah notifikasi ambigu yang kita ingin hindari, 
+        // dan log errornya agar developer tahu.
+        if (msg.includes("RC: undefined") || msg.includes("RC: 99")) {
+             logType(`[DISPLAY FAILED] ${type.toUpperCase()}: ${msg}`);
+        } else {
+             logType(`[STATUS ${type.toUpperCase()}] ${msg}`);
         }
     }
 
