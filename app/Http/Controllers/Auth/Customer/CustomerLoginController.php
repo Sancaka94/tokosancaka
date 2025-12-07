@@ -142,7 +142,7 @@ class CustomerLoginController extends Controller
             
             // Pengecekan terakhir: Pastikan user yang berhasil login adalah salah satu role yang diizinkan
             // Pengecekan ini harusnya mencegah user selain yang diizinkan masuk
-            $allowedRoles = ['pelanggan', 'seller', 'admin']; 
+            $allowedRoles = ['pelanggan', 'seller', 'admin', 'agent']; 
             if (!in_array(strtolower($user->role), $allowedRoles)) {
                 $this->guard()->logout();
                 throw ValidationException::withMessages([
