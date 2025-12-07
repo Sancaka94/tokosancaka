@@ -193,14 +193,21 @@ class AdminPpobController extends Controller
         return redirect()->route('admin.ppob.index')->with('success', 'Data transaksi berhasil dihapus.');
     }
 
+    /**
+     * FITUR BARU: CEK SALDO DIGIFLAZZ
+     * Sesuai dokumentasi: md5(username + apiKey + "depo")
+     */
     public function cekSaldo()
     {
-        // 1. Ambil Kredensial
-        $username = env('DIGIFLAZZ_USERNAME');
-        $apiKey   = env('DIGIFLAZZ_API_KEY');
+        // =================================================================
+        // 1. KREDENSIAL LANGSUNG (HARDCODE)
+        // =================================================================
+        $username = 'mihetiDVGdeW'; 
+        $apiKey   = '1f48c69f-8676-5d56-a868-10a46a69f9b7'; 
         $endpoint = 'https://api.digiflazz.com/v1/cek-saldo';
 
         // 2. Generate Signature
+        // Rumus: md5(username + apiKey + "depo")
         $sign = md5($username . $apiKey . "depo");
 
         // 3. Payload
@@ -211,17 +218,19 @@ class AdminPpobController extends Controller
         ];
 
         try {
-            // Log Request (Cek di storage/logs/laravel.log)
-            \Illuminate\Support\Facades\Log::info('➡️ Cek Saldo Request:', $payload);
+            // Log Request (Untuk memastikan data yang dikirim benar)
+            \Illuminate\Support\Facades\Log::info('➡️ Cek Saldo Request (Hardcode):', $payload);
 
+            // 4. Kirim Request
             $response = Http::withHeaders(['Content-Type' => 'application/json'])
                             ->post($endpoint, $payload);
             
             $result = $response->json();
 
-            // Log Response (PENTING: Lihat apa balasan Digiflazz di sini)
-            \Illuminate\Support\Facades\Log::info('⬅️ Cek Saldo Response:', $result);
+            // Log Response
+            \Illuminate\Support\Facades\Log::info('⬅️ Cek Saldo Response:', $result ?? []);
 
+            // 5. Proses Hasil
             if (isset($result['data']['deposit'])) {
                 $saldo = $result['data']['deposit'];
                 return response()->json([
@@ -230,14 +239,14 @@ class AdminPpobController extends Controller
                     'formatted' => 'Rp ' . number_format($saldo, 0, ',', '.')
                 ]);
             } else {
-                // Jika error, ambil pesan errornya
-                $msg = $result['data']['message'] ?? 'Respon tidak valid';
+                // Ambil pesan error dari Digiflazz jika ada
+                $msg = $result['data']['message'] ?? 'Gagal mengambil data (Response tidak valid)';
                 return response()->json(['status' => 'error', 'message' => $msg], 400);
             }
 
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('❌ Cek Saldo Error: ' . $e->getMessage());
-            return response()->json(['status' => 'error', 'message' => 'Koneksi Gagal'], 500);
+            \Illuminate\Support\Facades\Log::error('❌ Cek Saldo Exception: ' . $e->getMessage());
+            return response()->json(['status' => 'error', 'message' => 'Koneksi Server Gagal'], 500);
         }
     }
 }
