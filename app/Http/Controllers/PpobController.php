@@ -155,7 +155,14 @@ class PpobController extends Controller
             ->get();
 
         // Ambil list Brand untuk filter operator
-        $brands = $products->pluck('brand')->unique()->values();
+$brands = $products->pluck('brand')->unique()->values();
+
+// ⭐ BARU: Ambil SKU yang akan digunakan sebagai default Inquiry
+// Cari SKU pertama yang memiliki Brand 'PLN PASCABAYAR'
+$defaultInquirySku = $products
+    ->where('brand', 'PLN PASCABAYAR')
+    ->pluck('buyer_sku_code')
+    ->first(); // post641596, dst.
 
         // ============================================================
         // 5. RETURN VIEW
