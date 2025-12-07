@@ -187,47 +187,82 @@ class PpobController extends Controller
 // FUNGSI API PENDUKUNG (CHECK BILL & TRANSAKSI)
 // =================================================================
 
+// =================================================================
+// FUNGSI API PENDUKUNG (CHECK BILL)
+// =================================================================
+
 public function checkBill(Request $request)
 {
-    // Ambil data dari request (asumsi ini dari form data atau URL-encoded)
+    // 1. VALIDASI INPUT (memerlukan customer_no dan sku)
+    $request->validate([
+        'customer_no' => 'required', 
+        'sku' => 'required' 
+    ]);
+
     $customerNo = $request->input('customer_no');
     $sku = $request->input('sku');
-    
-    $request->validate(['customer_no' => 'required', 'sku' => 'required']);
     $refId = 'INQ-' . time() . rand(100,999);
 
-    // =========================================================
-    // ATUR KREDENSIAL DIGIFLAZZ (Production)
-    // =========================================================
+    // 2. CEK SKU DI DATABASE (Mengatasi error "SKU tidak ditemukan")
+    $product = PpobProduct::where('buyer_sku_code', $sku)
+                        ->where('seller_product_status', true)
+                        ->first();
+    
+    if (!$product) {
+        Log::warning("Inquiry Failed: SKU not found or inactive in database. SKU: $sku");
+        return response()->json([
+            'status' => 'error', 
+            'message' => 'SKU produk Pascabayar tidak ditemukan atau sedang non-aktif.'
+        ]);
+    }
+
     $username = 'mihetiDVGdeW'; 
     $apiKeyProd = '1f48c69f-8676-5d56-a868-10a46a69f9b7'; // Kunci Production
     $testingMode = false; // Mode Production
-
     // Set kredensial di service sebelum memanggil inquiryPasca
     $this->digiflazz->setCredentials($username, $apiKeyProd, $testingMode);
-    // =========================================================
     
+    // 4. HIT API INQUIRY PASCABAYAR
     try {
-        // Panggil Service. Service akan menggunakan API Key yang baru di-set
         $response = $this->digiflazz->inquiryPasca($sku, $customerNo, $refId);
         
+        // 5. PENANGANAN RESPON API
         if (isset($response['data']) && ($response['data']['rc'] === '00' || $response['data']['status'] === 'Sukses' || $response['data']['status'] === 'Pending')) {
             $data = $response['data'];
+            
+            // Harga jual kita di database
+            $markupKita = $product->sell_price - $product->price;
+            
+            // Tagihan Akhir yang dibayar user: (Price API + Admin Fee API) + Markup Kita
+            $tagihanPokokAPI = $data['price'];
+            $adminFeeModal = $data['admin'];
+            
+            $totalTagihanAkhir = $tagihanPokokAPI + $adminFeeModal + $markupKita;
+
             return response()->json([
                 'status' => 'success',
+                'product_name' => $product->product_name,
                 'customer_name' => $data['customer_name'],
                 'customer_no' => $data['customer_no'],
-                'admin_fee'  => $data['admin'],
-                'amount' => $data['selling_price'], 
+                'period' => $data['period'] ?? null, 
+                'amount_pokok' => $tagihanPokokAPI, // Tagihan Pokok
+                'admin_fee_modal' => $adminFeeModal, // Biaya Admin
+                'markup' => $markupKita, // Markup keuntungan Anda
+                'total_tagihan' => $totalTagihanAkhir, // Total Tagihan Final
                 'ref_id' => $refId,
                 'desc' => $data['desc'] ?? []
             ]);
         }
-        // Tambahkan pengecekan jika $response['data'] tidak ada sama sekali
+        
+        // Penanganan Gagal/Error API
         $message = $response['data']['message'] ?? ($response['message'] ?? 'Tagihan tidak ditemukan atau Signature salah.'); 
+        Log::error("Inquiry Pasca API Error: $message", ['response' => $response, 'sku' => $sku, 'customer_no' => $customerNo]);
+        
         return response()->json(['status' => 'error', 'message' => $message]);
+        
     } catch (\Exception $e) {
-        return response()->json(['status' => 'error', 'message' => 'Error: ' . $e->getMessage()], 500);
+        Log::error("PPOB Inquiry Exception: " . $e->getMessage());
+        return response()->json(['status' => 'error', 'message' => 'Error: Gagal koneksi ke provider. ' . $e->getMessage()], 500);
     }
 }
 
