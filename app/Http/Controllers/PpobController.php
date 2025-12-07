@@ -157,12 +157,17 @@ class PpobController extends Controller
         // Ambil list Brand untuk filter operator
 $brands = $products->pluck('brand')->unique()->values();
 
-// ⭐ BARU: Ambil SKU yang akan digunakan sebagai default Inquiry
-// Cari SKU pertama yang memiliki Brand 'PLN PASCABAYAR'
-$defaultInquirySku = $products
-    ->where('brand', 'PLN PASCABAYAR')
-    ->pluck('buyer_sku_code')
-    ->first(); // post641596, dst.
+// ⭐ BARU: Logika penentuan SKU Inquiry default untuk halaman Pascabayar
+$defaultInquirySku = null;
+
+if ($isPostpaid && $slug === 'pln-pascabayar') {
+    // Cari SKU PLN PASCABAYAR yang aktif di database
+    $defaultInquirySku = $products
+        ->where('brand', 'PLN PASCABAYAR') // Harus sesuai dengan data database (Lihat Admin Panel)
+        ->where('seller_product_status', true)
+        ->pluck('buyer_sku_code')
+        ->first();
+}
 
         // ============================================================
         // 5. RETURN VIEW
