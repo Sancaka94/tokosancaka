@@ -105,6 +105,13 @@ Route::prefix('ppob')->name('ppob.')->group(function () {
     Route::delete('/{id}', [AdminPpobController::class, 'destroy'])->name('destroy');
 
     Route::get('/cek-saldo', [AdminPpobController::class, 'cekSaldo'])->name('admin.ppob.cek-saldo');
+
+    // ==========================================================
+    // TAMBAHKAN KODE INI UNTUK MEMPERBAIKI ERROR
+    // ==========================================================
+    Route::get('/export/excel', [AdminPpobController::class, 'exportExcel'])->name('export.excel');
+    Route::get('/export/pdf', [AdminPpobController::class, 'exportPdf'])->name('export.pdf');
+    // ==========================================================
     // -------------------------------------------------------------
     // 2. MANAJEMEN PRODUK PPOB (HARUS DI TENGAH)
     // -------------------------------------------------------------
