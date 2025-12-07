@@ -84,6 +84,8 @@ use App\Http\Controllers\Admin\AdminPpobController;
 
 */
 
+Route::get('/cek-saldo', [AdminPpobController::class, 'cekSaldo'])->name('cek-saldo'); // route('admin.ppob.cek-saldo')
+
 
 // =================================================================
 // GROUP ROUTE PPOB (DIGIFLAZZ) - GABUNGAN TRANSAKSI & PRODUK
@@ -104,7 +106,6 @@ Route::prefix('ppob')->name('ppob.')->group(function () {
     Route::put('/{id}', [AdminPpobController::class, 'update'])->name('update');
     Route::delete('/{id}', [AdminPpobController::class, 'destroy'])->name('destroy');
 
-    Route::get('/cek-saldo', [AdminPpobController::class, 'cekSaldo'])->name('cek-saldo'); // route('admin.ppob.cek-saldo')
 
     // ==========================================================
     // TAMBAHKAN KODE INI UNTUK MEMPERBAIKI ERROR
