@@ -30,21 +30,13 @@ class PpobProductController extends Controller
 
         $query = PpobProduct::query();
 
-        // 1. Logika Filtering Berdasarkan Tipe Produk
-        if ($type === 'prepaid') {
-            // Filter: Bukan kategori 'Pascabayar' ATAU punya kolom 'type' terisi.
-            $query->where(function ($q) {
-                $q->where('category', '!=', 'Pascabayar')
-                  ->orWhereNotNull('type');
-            });
-        } else { // 'postpaid'
-            // Filter: Kategori 'Pascabayar' ATAU yang kolom 'type' kosong.
-            $query->where(function ($q) {
-                // Perhatian: Ini adalah filter yang seharusnya memisahkan data.
-                $q->where('category', 'Pascabayar')
-                  ->orWhereNull('type');
-            });
-        }
+       if ($type === 'prepaid') {
+    // Tampilkan yang BUKAN Pascabayar (yaitu Pulsa, Data, Games, dll)
+    $query->where('category', '!=', 'Pascabayar'); 
+} else { // 'postpaid'
+    // Tampilkan HANYA yang berkategori Pascabayar (yaitu PLN Tagihan, PDAM, dll)
+    $query->where('category', 'Pascabayar'); 
+}
         
         // 2. Logika Pencarian
         if ($search) {
