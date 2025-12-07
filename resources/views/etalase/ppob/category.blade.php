@@ -501,36 +501,32 @@
     // =================================================================
     // ⚙️ KONFIGURASI GLOBAL
     // =================================================================
-    const IS_TESTING = false; // Set 'false' saat Production/Live
+    const IS_TESTING = false;
     const ACTIVE_SKU = "{{ $activeSku }}"; 
     
     // Variabel Global
     const inputNo = document.getElementById('customer_no');
-    let currentBillData = null; // Menyimpan data tagihan siap bayar (Pasca)
-    let currentPrepaidData = null; // Menyimpan data produk siap bayar (Prabayar)
+    let currentBillData = null; 
+    let currentPrepaidData = null; 
 
-    // Setup Swiper
+    // Setup Swiper (Unmodified)
     var swiper = new Swiper(".heroSwiper", { 
         loop: true, autoplay: { delay: 4000 }, 
         pagination: { el: ".swiper-pagination", clickable: true }, 
         navigation: { nextEl: ".swiper-button-next", prevEl: ".swiper-button-prev" } 
     });
 
-    // --- HELPER: Generator Ref ID ---
+    // --- HELPER: Generator Ref ID (Unmodified) ---
     function generateRefID() {
         let prefix = IS_TESTING ? 'TEST-' : 'INQ-';
         return prefix + Date.now() + '-' + Math.floor(Math.random() * 10000);
     }
 
-    // --- HELPER: Formatter Tanggal/Periode ---
+    // --- HELPER: Formatter Tanggal/Periode (Unmodified) ---
     function formatPeriodeID(periodeStr) {
         if (!periodeStr) return '-';
         let str = periodeStr.toString().trim();
-
-        // BPJS format "01" -> "1 Bulan"
         if (ACTIVE_SKU.includes('bpjs') && /^\d{1,2}$/.test(str)) return str + " Bulan";
-        
-        // PPOB format "202405" -> "Mei 2024"
         if (/^\d{6}$/.test(str)) {
             let year = str.substring(0, 4);
             let month = parseInt(str.substring(4, 6));
@@ -540,26 +536,24 @@
         return str;
     }
 
-    // --- NEW HELPER: RC Message Mapper (Digiflazz) ---
+    // --- NEW HELPER: RC Message Mapper (LENGKAP) ---
     function getRcMessage(rcCode) {
-        // Pastikan rcCode adalah string
         const rc = String(rcCode);
-
         const rcMap = {
             // --- SUKSES ---
             '00': { status: 'Sukses', message: 'Tagihan berhasil ditemukan!', alertType: 'success' },
 
             // --- PENDING/PERINGATAN (Status Sementara/Informasi) ---
-            '03': { status: 'Pending', message: 'Transaksi sedang diproses. Mohon tunggu beberapa saat.', alertType: 'warning' },
+            '03': { status: 'Pending', message: 'Transaksi sedang diproses. Mohon tunggu.', alertType: 'warning' },
             '55': { status: 'Pending', message: 'Produk Sedang Gangguan. Coba sebentar lagi.', alertType: 'warning' },
             '58': { status: 'Pending', message: 'Sedang Cut Off. Transaksi akan diproses setelah Cut Off berakhir.', alertType: 'warning' },
             '60': { status: 'Pending', message: 'Tagihan belum tersedia (Belum Terbit/Sudah Lunas).', alertType: 'warning' },
             '71': { status: 'Pending', message: 'Produk Sedang Tidak Stabil. Coba sebentar lagi.', alertType: 'warning' },
-            '99': { status: 'Pending', message: 'DF Router Issue / Saldo API bermasalah. Mohon coba beberapa saat lagi.', alertType: 'warning' },
+            '99': { status: 'Pending', message: 'DF Router Issue / Saldo API bermasalah. Coba lagi.', alertType: 'warning' },
             
-            // --- GAGAL/ERROR (Perlu Cek Ulang Input/Akun) ---
+            // --- GAGAL/ERROR (Perlu Cek Ulang Input/Akun & Sistem) ---
             '01': { status: 'Gagal', message: 'Timeout. Waktu tunggu habis. Coba lagi.', alertType: 'error' },
-            '02': { status: 'Gagal', message: 'Transaksi Gagal. Terjadi kesalahan pada saat pemrosesan.', alertType: 'error' },
+            '02': { status: 'Gagal', message: 'Transaksi Gagal. Terjadi kesalahan.', alertType: 'error' },
             '40': { status: 'Gagal', message: 'Payload Error. Format data atau parameter tidak sesuai.', alertType: 'error' },
             '41': { status: 'Gagal', message: 'Signature tidak valid. Cek formula sign dan apiKey Anda.', alertType: 'error' },
             '42': { status: 'Gagal', message: 'Gagal memproses API Buyer. Username belum sesuai.', alertType: 'error' },
@@ -571,22 +565,38 @@
             '50': { status: 'Gagal', message: 'Transaksi Tidak Ditemukan.', alertType: 'error' },
             '51': { status: 'Gagal', message: 'Nomor Tujuan Diblokir.', alertType: 'error' },
             '52': { status: 'Gagal', message: 'Prefix Tidak Sesuai Dengan Operator.', alertType: 'error' },
+            '53': { status: 'Gagal', message: 'Produk Seller Sedang Tidak Tersedia.', alertType: 'error' },
             '54': { status: 'Gagal', message: 'Nomor Tujuan Salah. Mohon periksa kembali nomor pelanggan.', alertType: 'error' },
-            '57': { status: 'Gagal', message: 'Jumlah Digit Kurang Atau Lebih dari standar.', alertanType: 'error' },
+            '56': { status: 'Gagal', message: 'Limit saldo seller (Deprecated).', alertType: 'error' },
+            '57': { status: 'Gagal', message: 'Jumlah Digit Kurang Atau Lebih dari standar.', alertType: 'error' },
             '59': { status: 'Gagal', message: 'Tujuan di Luar Wilayah/Cluster layanan.', alertType: 'error' },
             '61': { status: 'Gagal', message: 'Akun API Anda belum pernah melakukan deposit (Saldo Nol).', alertType: 'error' },
+            '62': { status: 'Gagal', message: 'Seller sedang mengalami gangguan teknis.', alertType: 'error' },
+            '63': { status: 'Gagal', message: 'Tidak support transaksi multi.', alertType: 'error' },
+            '64': { status: 'Gagal', message: 'Tarik tiket gagal, coba nominal lain atau hubungi admin.', alertType: 'error' },
+            '65': { status: 'Gagal', message: 'Limit transaksi multi (Deprecated).', alertType: 'error' },
             '66': { status: 'Gagal', message: 'Cut Off (Perbaikan Sistem Seller).', alertType: 'error' },
+            '67': { status: 'Gagal', message: 'Seller belum ter-verfikasi.', alertType: 'error' },
+            '68': { status: 'Gagal', message: 'Stok habis.', alertType: 'error' },
+            '69': { status: 'Gagal', message: 'Harga seller lebih besar dari ketentuan harga Buyer.', alertType: 'error' },
             '70': { status: 'Gagal', message: 'Timeout Dari Biller. Coba lagi.', alertType: 'error' },
-            // Tambahkan RC lain yang relevan di sini...
+            '72': { status: 'Gagal', message: 'Lakukan Unreg Paket Dahulu.', alertType: 'error' },
+            '73': { status: 'Gagal', message: 'Kwh Melebihi Batas (Khusus PLN Token).', alertType: 'error' },
+            '74': { status: 'Gagal', message: 'Transaksi Refund.', alertType: 'error' },
+            '80': { status: 'Gagal', message: 'Akun Anda telah diblokir oleh Seller.', alertType: 'error' },
+            '81': { status: 'Gagal', message: 'Seller ini telah diblokir oleh Anda.', alertType: 'error' },
+            '82': { status: 'Gagal', message: 'Akun Anda belum ter-verfikasi.', alertType: 'error' },
+            '83': { status: 'Gagal', message: 'Anda telah mencapai limitasi pengecekan pricelist, coba sebentar lagi.', alertType: 'error' },
+            '84': { status: 'Gagal', message: 'Nominal tidak valid.', alertType: 'error' },
+            '85': { status: 'Gagal', message: 'Anda telah mencapai limitasi transaksi, coba 1 menit lagi.', alertType: 'error' },
+            '86': { status: 'Gagal', message: 'Anda telah mencapai limitasi pengecekan nomor PLN, coba sebentar lagi.', alertType: 'error' },
+            '87': { status: 'Gagal', message: 'Transaksi E-money wajib kelipatan Rp 1.000.', alertType: 'error' },
         };
-
         return rcMap[rc] || { status: 'Gagal', message: `Gagal (RC: ${rc}). Kesalahan tidak terdefinisi.`, alertType: 'error' };
     }
 
-    // --- NEW HELPER: Show Notification (ganti fungsi alert bawaan) ---
+    // --- NEW HELPER: Show Custom Notification (menggantikan alert) ---
     function showNotification(msg, type) {
-        // Anda bisa mengganti ini dengan library notifikasi (Toastr/SweetAlert),
-        // Untuk saat ini kita gunakan alert bawaan.
         if (type === 'success') {
             alert("✅ SUKSES: " + msg);
         } else if (type === 'error') {
@@ -635,10 +645,8 @@
             const no = inputNo.value.replace(/[^0-9]/g, '');
             let minLen = IS_TESTING ? 3 : 4; 
             if(no.length < minLen) { 
-                alert("Mohon isi nomor tujuan terlebih dahulu."); inputNo.focus(); return; 
+                showNotification("Mohon isi nomor tujuan terlebih dahulu.", 'error'); inputNo.focus(); return; 
             }
-
-            // SIMPAN DATA KE VARIABEL GLOBAL
             currentPrepaidData = {
                 sku: el.dataset.sku,
                 name: el.dataset.name,
@@ -646,13 +654,9 @@
                 customer_no: no,
                 desc: "Pembelian " + el.dataset.name
             };
-
-            // Update Tampilan Modal
             document.getElementById('modal_no').innerText = no;
             document.getElementById('modal_product').innerText = el.dataset.name;
             document.getElementById('modal_price').innerText = 'Rp ' + parseInt(el.dataset.price).toLocaleString('id-ID');
-            
-            // Tampilkan Modal
             document.getElementById('confirmModal').classList.remove('hidden');
         }
 
@@ -663,46 +667,37 @@
         // --- FUNGSI CHECKOUT PRABAYAR (AJAX) ---
         function processPrepaidCheckout() {
             if(!currentPrepaidData) return;
-            
             const btn = document.getElementById('btn-confirm-pay');
             const originalText = btn.innerHTML;
-            
-            // Set Loading
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
-
-            // Kirim ke Controller ppob.prepare (Masuk Keranjang)
             fetch('{{ route("ppob.prepare") }}', {
                 method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json', 
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}' 
-                },
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
                 body: JSON.stringify(currentPrepaidData)
             })
             .then(res => res.json())
             .then(data => {
                 if(data.success) {
-                    // Redirect ke Halaman Checkout
                     window.location.href = "{{ route('ppob.checkout.index') }}";
                 } else {
-                    alert("Gagal menambahkan ke keranjang: " + data.message);
+                    showNotification("Gagal menambahkan ke keranjang: " + data.message, 'error');
                     btn.disabled = false;
                     btn.innerHTML = originalText;
                 }
             })
             .catch(err => {
                 console.error(err);
-                alert("Terjadi kesalahan sistem.");
+                showNotification("Terjadi kesalahan sistem.", 'error');
                 btn.disabled = false;
                 btn.innerHTML = originalText;
             });
         }
-
+        
         @if($currentSlug == 'pln-token')
         function cekPlnPrabayar() {
             const no = inputNo.value.replace(/[^0-9]/g, '');
-            if(no.length < 5) { alert("Nomor Meter tidak valid!"); return; }
+            if(no.length < 5) { showNotification("Nomor Meter tidak valid!", 'error'); return; }
             const btn = document.getElementById('btn-cek-pln');
             const infoBox = document.getElementById('pln_info');
             const oriText = btn.innerHTML;
@@ -722,10 +717,11 @@
                     document.getElementById('pln_name').innerText = d.name || d.customer_name || 'Pelanggan Test';
                     document.getElementById('pln_power').innerText = d.segment_power || '-';
                     infoBox.classList.remove('hidden');
-                } else { alert(d.message || "Nomor tidak ditemukan."); }
+                    showNotification("Data pelanggan ditemukan!", 'success');
+                } else { showNotification(d.message || "Nomor tidak ditemukan.", 'error'); }
             })
             .catch(err => {
-                btn.innerHTML = oriText; btn.disabled = false; alert("Gagal koneksi server.");
+                btn.innerHTML = oriText; btn.disabled = false; showNotification("Gagal koneksi server.", 'error');
             });
         }
         @endif
@@ -738,7 +734,7 @@
         const no = inputNo.value.trim();
         let cleanNo = ACTIVE_SKU === 'samsat' ? no : no.replace(/[^0-9]/g, ''); 
 
-        if(cleanNo.length < 5) { alert("Masukkan Nomor Pelanggan yang valid!"); inputNo.focus(); return; }
+        if(cleanNo.length < 5) { showNotification("Masukkan Nomor Pelanggan yang valid!", 'error'); inputNo.focus(); return; }
 
         const btn = document.getElementById('btn-cek-tagihan');
         const spinner = document.getElementById('loading-spinner');
@@ -754,7 +750,7 @@
         btn.disabled = true; spinner.classList.remove('hidden'); text.innerText = "Mengecek...";
         resultDiv.classList.add('hidden'); emptyDiv.classList.add('hidden');
         if(detailContainer) detailContainer.classList.add('hidden');
-        currentBillData = null; // Reset data keranjang
+        currentBillData = null; 
 
         // --- REQUEST API ---
         fetch('{{ route("ppob.check.bill") }}', {
@@ -774,31 +770,21 @@
             console.log("Response PPOB:", data);
 
             const d = data.data || data;
-            const rc = d.rc; // Ambil Response Code
-            const rcInfo = getRcMessage(rc); // Mapping RC ke pesan
+            const rc = d.rc; 
+            const rcInfo = getRcMessage(rc); 
             
-            // Tentukan pesan yang akan ditampilkan. Utamakan pesan dari API (d.message)
+            // Ambil pesan dari API jika ada, jika tidak, gunakan pesan RC Mapper
             let messageToUser = d.message || rcInfo.message; 
             
             // Validasi Status Sukses (RC 00)
             if(d && (d.status === 'success' || d.status === 'Sukses' || rc === '00')) {
                 
-                // Harga & Admin (Parsing 'amount' atau 'selling_price')
+                // Harga & Admin
                 let price = parseInt(d.selling_price || d.amount || 0);
                 let admin = parseInt(d.admin || d.admin_fee || 0);
                 let finalPrice = price + admin; 
 
-                // --- NEW LOGIC: DETEKSI LUNAS/BELUM TERBIT (RC 00, tapi Harga 0) ---
-                if (finalPrice <= admin) { 
-                    messageToUser = d.message || 'Tagihan sudah lunas atau belum tersedia.';
-                    showNotification(messageToUser, 'warning'); 
-                    emptyDiv.classList.remove('hidden'); // Kembali ke tampilan kosong
-                    return; // Hentikan proses mapping data
-                }
-                // --- END NEW LOGIC ---
-
-                // Tampilkan notifikasi Sukses/Tagihan Ditemukan
-                showNotification(messageToUser, 'success');
+                // --- LOGIKA TAMPILKAN APA ADANYA (Walaupun Rp 0 jika RC 00) ---
                 
                 // 1. MAPPING DATA UTAMA
                 document.getElementById('bill_ref').innerText = d.ref_id || '-';
@@ -809,7 +795,7 @@
                 document.getElementById('bill_amount').innerText = 'Rp ' + finalPrice.toLocaleString('id-ID');
                 document.getElementById('bill_admin').innerText = 'Rp ' + admin.toLocaleString('id-ID');
 
-                // 2. SIMPAN DATA KE VARIABLE GLOBAL (UNTUK CART)
+                // 2. SIMPAN DATA KE VARIABLE GLOBAL
                 currentBillData = {
                     sku: ACTIVE_SKU,
                     name: "Tagihan " + ACTIVE_SKU.toUpperCase() + " - " + (d.customer_name || d.name),
@@ -821,10 +807,8 @@
                 // 3. MAPPING RINCIAN (DESC) & LABEL DINAMIS
                 if (d.desc) {
                     const desc = d.desc;
-                    // Ambil detail pertama jika array (untuk ringkasan atas)
                     const detailOne = (desc.detail && Array.isArray(desc.detail) && desc.detail.length > 0) ? desc.detail[0] : (desc.detail || desc);
 
-                    // A. Periode & Alamat
                     let mainPeriode = detailOne.periode || desc.periode || d.periode || '-';
                     document.getElementById('bill_period').innerText = formatPeriodeID(mainPeriode);
                     
@@ -860,7 +844,6 @@
                         lbl2 = "Tenor"; val2 = (desc.tenor || '-') + ' Bulan';
                     }
 
-                    // Render ke HTML
                     document.getElementById('label_info_1').innerText = lbl1;
                     document.getElementById('val_info_1').innerText = val1;
                     document.getElementById('label_info_2').innerText = lbl2;
@@ -868,12 +851,10 @@
                     document.getElementById('label_address').innerText = lblAddr;
                     document.getElementById('val_address').innerText = valAddr;
 
-                    // C. Looping Array Detail (Div Bawah)
                     if(detailList) {
                         detailList.innerHTML = '';
                         if (desc.detail && Array.isArray(desc.detail) && desc.detail.length > 0) {
                             detailContainer.classList.remove('hidden');
-                            
                             desc.detail.forEach((item) => {
                                 let itemP = formatPeriodeID(item.periode);
                                 let itemN = item.nilai_tagihan ? parseInt(item.nilai_tagihan).toLocaleString('id-ID') : '0';
@@ -903,27 +884,29 @@
                         }
                     }
                 }
-
-                resultDiv.classList.remove('hidden'); // Tampilkan hasil
+                
+                // --- Tampilkan hasil dan tampilkan notifikasi ---
+                showNotification(messageToUser, 'success');
+                resultDiv.classList.remove('hidden'); 
 
             } else {
-                // --- NEW LOGIC: HANDLE GAGAL/PENDING BERDASARKAN RC ---
+                // --- LOGIKA GAGAL/PENDING: Tampilkan Pesan Jelas dari RC ---
                 showNotification(messageToUser, rcInfo.alertType); 
-                emptyDiv.classList.remove('hidden');
-                // --- END NEW LOGIC ---
+                resultDiv.classList.add('hidden'); // Sembunyikan rincian tagihan
+                emptyDiv.classList.remove('hidden'); // Tampilkan tampilan kosong/petunjuk
             }
         })
         .catch(err => {
             console.error(err);
             btn.disabled = false; spinner.classList.add('hidden'); text.innerText = "Cek Tagihan";
-            alert("Gagal koneksi server.");
+            showNotification("Gagal koneksi server. Periksa jaringan Anda.", 'error');
         });
     }
 
     // --- FUNGSI BAYAR (VERSI BARU: DIRECT CHECKOUT) ---
     function bayarTagihan() {
         if(!currentBillData) {
-            alert("Data tagihan tidak valid/kadaluarsa. Silakan cek ulang.");
+            showNotification("Data tagihan tidak valid/kadaluarsa. Silakan cek ulang.", 'error');
             return;
         }
 
@@ -932,7 +915,6 @@
         btnBayar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
         btnBayar.disabled = true;
 
-        // POST KE ROUTE PREPARE
         fetch('{{ route("ppob.prepare") }}', {
             method: 'POST',
             headers: { 
@@ -944,17 +926,16 @@
         .then(res => res.json())
         .then(data => {
             if(data.success) {
-                // REDIRECT KE HALAMAN CHECKOUT KHUSUS PPOB
                 window.location.href = "{{ route('ppob.checkout.index') }}";
             } else {
-                alert("Gagal memproses pesanan.");
+                showNotification("Gagal memproses pesanan.", 'error');
                 btnBayar.innerHTML = oriText;
                 btnBayar.disabled = false;
             }
         })
         .catch(err => {
             console.error(err);
-            alert("Terjadi kesalahan sistem.");
+            showNotification("Terjadi kesalahan sistem.", 'error');
             btnBayar.innerHTML = oriText;
             btnBayar.disabled = false;
         });
