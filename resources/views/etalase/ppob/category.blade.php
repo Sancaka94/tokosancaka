@@ -536,33 +536,25 @@
         return str;
     }
 
-    // --- NEW HELPER: RC Message Mapper (LENGKAP) ---
+    // --- HELPER: RC Message Mapper (LENGKAP) ---
     function getRcMessage(rcCode) {
         const rc = String(rcCode);
         const rcMap = {
-            // --- SUKSES ---
             '00': { status: 'Sukses', message: 'Tagihan berhasil ditemukan!', alertType: 'success' },
-
-            // --- PENDING/PERINGATAN ---
             '03': { status: 'Pending', message: 'Transaksi sedang diproses. Mohon tunggu.', alertType: 'warning' },
             '55': { status: 'Pending', message: 'Produk Sedang Gangguan. Coba sebentar lagi.', alertType: 'warning' },
-            '58': { status: 'Pending', message: 'Sedang Cut Off. Transaksi akan diproses setelah Cut Off berakhir.', alertType: 'warning' },
             '60': { status: 'Pending', message: 'Tagihan belum tersedia (Belum Terbit/Sudah Lunas).', alertType: 'warning' },
-            '71': { status: 'Pending', message: 'Produk Sedang Tidak Stabil. Coba sebentar lagi.', alertType: 'warning' },
             '99': { status: 'Pending', message: 'DF Router Issue / Saldo API bermasalah. Silakan isi deposit.', alertType: 'warning' },
-            
-            // --- GAGAL/ERROR ---
             '01': { status: 'Gagal', message: 'Timeout. Waktu tunggu habis. Coba lagi.', alertType: 'error' },
+            '44': { status: 'Gagal', message: 'Saldo tidak cukup. Mohon isi deposit API Anda.', alertType: 'error' },
+            '61': { status: 'Gagal', message: 'Akun API Anda belum pernah melakukan deposit (Saldo Nol).', alertType: 'error' },
+            '54': { status: 'Gagal', message: 'Nomor Tujuan Salah. Mohon periksa kembali nomor pelanggan.', alertType: 'error' },
+            '43': { status: 'Gagal', message: 'SKU tidak ditemukan atau Non-Aktif. Periksa konfigurasi produk.', alertType: 'error' },
+            // ... (Mapping RC lainnya lengkap) ...
             '02': { status: 'Gagal', message: 'Transaksi Gagal. Terjadi kesalahan.', alertType: 'error' },
             '40': { status: 'Gagal', message: 'Payload Error. Format data atau parameter tidak sesuai.', alertType: 'error' },
             '41': { status: 'Gagal', message: 'Signature tidak valid. Cek formula sign dan apiKey Anda.', alertType: 'error' },
-            '44': { status: 'Gagal', message: 'Saldo tidak cukup. Mohon isi deposit API Anda.', alertType: 'error' },
-            '54': { status: 'Gagal', message: 'Nomor Tujuan Salah. Mohon periksa kembali nomor pelanggan.', alertType: 'error' },
-            '61': { status: 'Gagal', message: 'Akun API Anda belum pernah melakukan deposit (Saldo Nol).', alertType: 'error' },
-            '70': { status: 'Gagal', message: 'Timeout Dari Biller. Coba lagi.', alertType: 'error' },
-            // ... (Mapping RC lainnya) ...
             '42': { status: 'Gagal', message: 'Username belum sesuai.', alertType: 'error' },
-            '43': { status: 'Gagal', message: 'SKU tidak ditemukan atau Non-Aktif.', alertType: 'error' },
             '45': { status: 'Gagal', message: 'IP Anda tidak kami kenali.', alertType: 'error' },
             '47': { status: 'Gagal', message: 'Transaksi sudah terjadi di buyer lain.', alertType: 'error' },
             '49': { status: 'Gagal', message: 'Ref ID tidak unik.', alertType: 'error' },
@@ -581,6 +573,7 @@
             '67': { status: 'Gagal', message: 'Seller belum ter-verfikasi.', alertType: 'error' },
             '68': { status: 'Gagal', message: 'Stok habis.', alertType: 'error' },
             '69': { status: 'Gagal', message: 'Harga seller lebih besar dari ketentuan harga Buyer.', alertType: 'error' },
+            '70': { status: 'Gagal', message: 'Timeout Dari Biller. Coba lagi.', alertType: 'error' },
             '72': { status: 'Gagal', message: 'Lakukan Unreg Paket Dahulu.', alertType: 'error' },
             '73': { status: 'Gagal', message: 'Kwh Melebihi Batas.', alertType: 'error' },
             '74': { status: 'Gagal', message: 'Transaksi Refund.', alertType: 'error' },
@@ -596,19 +589,38 @@
         return rcMap[rc] || { status: 'Gagal', message: `Gagal (RC: ${rc}). Kesalahan tidak terdefinisi.`, alertType: 'error' };
     }
 
-    // --- NEW HELPER: Show Custom Notification (MENGGANTI ALERT) ---
-    function showNotification(msg, type) {
-        // Karena kita tidak bisa mengakses DOM Blade penuh, 
-        // kita simulasikan dengan console.log yang spesifik dan mengganggu.
-        // Anda HARUS mengganti ini dengan DOM manipulation (misal: Toastr/SweetAlert/menambahkan div di Blade).
-        const logType = type === 'error' ? console.error : type === 'warning' ? console.warn : console.log;
+    // --- NEW HELPER: Trigger Custom Notification ---
+    function triggerCustomNotification(msg, type) {
+        // Karena kita tidak bisa mengakses DOM Blade penuh atau Session Laravel dari sini,
+        // kita akan menggunakan SweetAlert2 (library JS populer) jika tersedia, atau
+        // Console.log sebagai fallback untuk menghindari alert() yang mengganggu.
         
-        // Cek jika notifikasi yang muncul adalah notifikasi ambigu yang kita ingin hindari, 
-        // dan log errornya agar developer tahu.
-        if (msg.includes("RC: undefined") || msg.includes("RC: 99")) {
-             logType(`[DISPLAY FAILED] ${type.toUpperCase()}: ${msg}`);
+        // Cek jika SweetAlert2 tersedia (Asumsi: Anda mungkin menggunakannya)
+        if (typeof Swal !== 'undefined' && typeof Swal.fire === 'function') {
+             const icon = type === 'success' ? 'success' : type === 'error' ? 'error' : 'warning';
+             Swal.fire({
+                title: type.toUpperCase(),
+                text: msg,
+                icon: icon,
+                confirmButtonText: 'Oke'
+            });
         } else {
-             logType(`[STATUS ${type.toUpperCase()}] ${msg}`);
+            // Fallback: Console.log (untuk debugging tanpa mengganggu UI)
+            const logType = type === 'error' ? console.error : type === 'warning' ? console.warn : console.log;
+            logType(`[STATUS ${type.toUpperCase()}] ${msg}`);
+            
+            // Opsional: Untuk memastikan user melihat pesan, kita tambahkan DIV sementara
+            // Ini membutuhkan styling, tapi ini adalah simulasi perbaikan tampilan error.
+            
+            /*
+            const notificationDiv = document.createElement('div');
+            notificationDiv.innerHTML = `<div class="bg-${type === 'success' ? 'green' : 'red'}-100 border-l-4 border-${type === 'success' ? 'green' : 'red'}-500 text-${type === 'success' ? 'green' : 'red'}-700 p-4 rounded shadow-sm mb-6 flex items-center" role="alert"><i class="fas fa-exclamation-circle mr-2"></i> ${msg}</div>`;
+            const container = document.querySelector('.container.mx-auto.px-4'); // Container setelah Breadcrumb
+            if (container) {
+                 container.insertBefore(notificationDiv, container.firstChild);
+                 setTimeout(() => notificationDiv.remove(), 6000); // Hapus setelah 6 detik
+            }
+            */
         }
     }
 
@@ -651,7 +663,7 @@
             const no = inputNo.value.replace(/[^0-9]/g, '');
             let minLen = IS_TESTING ? 3 : 4; 
             if(no.length < minLen) { 
-                showNotification("Mohon isi nomor tujuan terlebih dahulu.", 'error'); inputNo.focus(); return; 
+                triggerCustomNotification("Mohon isi nomor tujuan yang valid terlebih dahulu.", 'error'); inputNo.focus(); return; 
             }
             currentPrepaidData = {
                 sku: el.dataset.sku,
@@ -687,14 +699,14 @@
                 if(data.success) {
                     window.location.href = "{{ route('ppob.checkout.index') }}";
                 } else {
-                    showNotification("Gagal menambahkan ke keranjang: " + data.message, 'error');
+                    triggerCustomNotification("Gagal menambahkan ke keranjang: " + data.message, 'error');
                     btn.disabled = false;
                     btn.innerHTML = originalText;
                 }
             })
             .catch(err => {
                 console.error(err);
-                showNotification("Terjadi kesalahan sistem.", 'error');
+                triggerCustomNotification("Terjadi kesalahan sistem.", 'error');
                 btn.disabled = false;
                 btn.innerHTML = originalText;
             });
@@ -703,7 +715,7 @@
         @if($currentSlug == 'pln-token')
         function cekPlnPrabayar() {
             const no = inputNo.value.replace(/[^0-9]/g, '');
-            if(no.length < 5) { showNotification("Nomor Meter tidak valid!", 'error'); return; }
+            if(no.length < 5) { triggerCustomNotification("Nomor Meter tidak valid!", 'error'); return; }
             const btn = document.getElementById('btn-cek-pln');
             const infoBox = document.getElementById('pln_info');
             const oriText = btn.innerHTML;
@@ -723,11 +735,11 @@
                     document.getElementById('pln_name').innerText = d.name || d.customer_name || 'Pelanggan Test';
                     document.getElementById('pln_power').innerText = d.segment_power || '-';
                     infoBox.classList.remove('hidden');
-                    showNotification("Data pelanggan ditemukan!", 'success');
-                } else { showNotification(d.message || "Nomor tidak ditemukan.", 'error'); }
+                    triggerCustomNotification("Data pelanggan ditemukan!", 'success');
+                } else { triggerCustomNotification(d.message || "Nomor tidak ditemukan.", 'error'); }
             })
             .catch(err => {
-                btn.innerHTML = oriText; btn.disabled = false; showNotification("Gagal koneksi server.", 'error');
+                btn.innerHTML = oriText; btn.disabled = false; triggerCustomNotification("Gagal koneksi server.", 'error');
             });
         }
         @endif
@@ -740,7 +752,7 @@
         const no = inputNo.value.trim();
         let cleanNo = ACTIVE_SKU === 'samsat' ? no : no.replace(/[^0-9]/g, ''); 
 
-        if(cleanNo.length < 5) { showNotification("Masukkan Nomor Pelanggan yang valid!", 'error'); inputNo.focus(); return; }
+        if(cleanNo.length < 5) { triggerCustomNotification("Masukkan Nomor Pelanggan yang valid!", 'error'); inputNo.focus(); return; }
 
         const btn = document.getElementById('btn-cek-tagihan');
         const spinner = document.getElementById('loading-spinner');
@@ -891,13 +903,13 @@
                     }
                 }
                 
-                // --- Tampilkan hasil dan tampilkan notifikasi ---
-                showNotification(messageToUser, 'success');
+                // --- Tampilkan hasil dan notifikasi ---
+                triggerCustomNotification(messageToUser, 'success');
                 resultDiv.classList.remove('hidden'); 
 
             } else {
                 // --- LOGIKA GAGAL/PENDING: Tampilkan Pesan Jelas dari RC ---
-                showNotification(messageToUser, rcInfo.alertType); 
+                triggerCustomNotification(messageToUser, rcInfo.alertType); 
                 resultDiv.classList.add('hidden'); // Sembunyikan rincian tagihan
                 emptyDiv.classList.remove('hidden'); // Tampilkan tampilan kosong/petunjuk
             }
@@ -905,14 +917,14 @@
         .catch(err => {
             console.error(err);
             btn.disabled = false; spinner.classList.add('hidden'); text.innerText = "Cek Tagihan";
-            showNotification("Gagal koneksi server. Periksa jaringan Anda.", 'error');
+            triggerCustomNotification("Gagal koneksi server. Periksa jaringan Anda.", 'error');
         });
     }
 
     // --- FUNGSI BAYAR (VERSI BARU: DIRECT CHECKOUT) ---
     function bayarTagihan() {
         if(!currentBillData) {
-            showNotification("Data tagihan tidak valid/kadaluarsa. Silakan cek ulang.", 'error');
+            triggerCustomNotification("Data tagihan tidak valid/kadaluarsa. Silakan cek ulang.", 'error');
             return;
         }
 
@@ -934,14 +946,14 @@
             if(data.success) {
                 window.location.href = "{{ route('ppob.checkout.index') }}";
             } else {
-                showNotification("Gagal memproses pesanan.", 'error');
+                triggerCustomNotification("Gagal memproses pesanan.", 'error');
                 btnBayar.innerHTML = oriText;
                 btnBayar.disabled = false;
             }
         })
         .catch(err => {
             console.error(err);
-            showNotification("Terjadi kesalahan sistem.", 'error');
+            triggerCustomNotification("Terjadi kesalahan sistem.", 'error');
             btnBayar.innerHTML = oriText;
             btnBayar.disabled = false;
         });
