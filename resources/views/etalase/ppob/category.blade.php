@@ -1,106 +1,106 @@
 @extends('layouts.marketplace')
 
 @php
-// ================================================================
-// 1. LOGIC PHP: PEMETAAN SKU (AGAR TIDAK SALAH DETEKSI PRODUK)
-// ================================================================
-$urlSlug = request()->segment(4); 
-$pageInfo = $pageInfo ?? [];
-$currentSlug = $pageInfo['slug'] ?? $urlSlug ?? 'pulsa'; 
+    // ================================================================
+    // 1. LOGIC PHP: PEMETAAN SKU (AGAR TIDAK SALAH DETEKSI PRODUK)
+    // ================================================================
+    $urlSlug = request()->segment(4); 
+    $pageInfo = $pageInfo ?? [];
+    $currentSlug = $pageInfo['slug'] ?? $urlSlug ?? 'pulsa'; 
 
-// MAPPING: Ubah Slug URL menjadi Kode SKU API yang Benar
-$skuMap = [
-    // Kategori Pascabayar
-    'pln-pascabayar'     => 'pln',
-    'pdam'               => 'pdam',
-    'bpjs-kesehatan'     => 'bpjs',
-    'bpjs-ketenagakerjaan' => 'bpjstk',
-    'hp-pascabayar'      => 'hp',
-    'internet-pascabayar'=> 'internet',
-    'tv-pascabayar'      => 'tv',
-    'multifinance'       => 'multifinance',
-    'cicilan'            => 'multifinance',
-    'pbb'                => 'cimahi',
-    'samsat'             => 'samsat',
-    'gas-negara'         => 'pgas',
-    'pln-nontaglis'      => 'plnnontaglist',
-    'e-money'            => 'emoney',
+    // MAPPING: Ubah Slug URL menjadi Kode SKU API yang Benar
+    $skuMap = [
+        // Kategori Pascabayar
+        'pln-pascabayar'     => 'pln',
+        'pdam'               => 'pdam',
+        'bpjs-kesehatan'     => 'bpjs',
+        'bpjs-ketenagakerjaan' => 'bpjstk',
+        'hp-pascabayar'      => 'hp',
+        'internet-pascabayar'=> 'internet',
+        'tv-pascabayar'      => 'tv',
+        'multifinance'       => 'multifinance',
+        'cicilan'            => 'multifinance',
+        'pbb'                => 'cimahi',
+        'samsat'             => 'samsat',
+        'gas-negara'         => 'pgas',
+        'pln-nontaglis'      => 'plnnontaglist',
+        'e-money'            => 'emoney',
+        
+        // Kategori Prabayar (Default)
+        'pulsa' => 'pulsa',
+        'pln-token' => 'pln', 
+        'data' => 'data',
+    ];
+
+    // Ambil SKU Aktif. Jika tidak ketemu di map, default gunakan 'pln'
+    $activeSku = $skuMap[$currentSlug] ?? 'pln';
+
+    // Logika penentuan apakah halaman ini Pascabayar atau Prabayar
+    $postpaidKeys = ['pln', 'pdam', 'bpjs', 'bpjstk', 'hp', 'internet', 'tv', 'multifinance', 'cimahi', 'pbb', 'samsat', 'pgas', 'plnnontaglist', 'emoney'];
+    $isPostpaid = ($pageInfo['is_postpaid'] ?? false) || in_array($activeSku, $postpaidKeys);
     
-    // Kategori Prabayar (Default)
-    'pulsa' => 'pulsa',
-    'pln-token' => 'pln', 
-    'data' => 'data',
-];
+    // Judul Halaman & Label Input
+    $pageTitle = $pageInfo['title'] ?? ucfirst(str_replace('-', ' ', $currentSlug));
+    $inputLabel = "Nomor Pelanggan";
+    $inputPlace = "Contoh: 08123456789";
+    
+    if($activeSku == 'samsat') {
+        $inputLabel = "Kode Bayar, No. KTP / Identitas";
+        $inputPlace = "Contoh: 8821...,3201...";
+    } elseif ($activeSku == 'pbb' || $activeSku == 'cimahi') {
+        $inputLabel = "Nomor Objek Pajak (NOP)";
+        $inputPlace = "Masukkan NOP";
+    }
 
-// Ambil SKU Aktif. Jika tidak ketemu di map, default gunakan 'pln'
-$activeSku = $skuMap[$currentSlug] ?? 'pln';
+    // ================================================================
+    // 2. DATA MENU (TAMPILAN LENGKAP)
+    // ================================================================
+    $prepaidMenus = [
+        ['slug' => 'pulsa', 'name' => 'Pulsa', 'icon' => 'fa-mobile-alt', 'style' => 'text-red-500 bg-red-50 border-red-200'],
+        ['slug' => 'data', 'name' => 'Paket Data', 'icon' => 'fa-wifi', 'style' => 'text-blue-500 bg-blue-50 border-blue-200'],
+        ['slug' => 'pln-token', 'name' => 'Token PLN', 'icon' => 'fa-bolt', 'style' => 'text-yellow-500 bg-yellow-50 border-yellow-200'],
+        ['slug' => 'e-money', 'name' => 'E-Money', 'icon' => 'fa-wallet', 'style' => 'text-purple-500 bg-purple-50 border-purple-200'],
+        ['slug' => 'voucher-game', 'name' => 'Games', 'icon' => 'fa-gamepad', 'style' => 'text-indigo-500 bg-indigo-50 border-indigo-200'],
+        ['slug' => 'voucher', 'name' => 'Voucher', 'icon' => 'fa-ticket-alt', 'style' => 'text-pink-500 bg-pink-50 border-pink-200'],
+        ['slug' => 'paket-sms-telpon', 'name' => 'SMS & Telpon', 'icon' => 'fa-phone-volume', 'style' => 'text-green-500 bg-green-50 border-green-200'],
+        ['slug' => 'masa-aktif', 'name' => 'Masa Aktif', 'icon' => 'fa-hourglass-half', 'style' => 'text-orange-500 bg-orange-50 border-orange-200'],
+        ['slug' => 'aktivasi-voucher', 'name' => 'Akt. Voucher', 'icon' => 'fa-barcode', 'style' => 'text-gray-600 bg-gray-50 border-gray-200'],
+        ['slug' => 'aktivasi-perdana', 'name' => 'Akt. Perdana', 'icon' => 'fa-sim-card', 'style' => 'text-slate-600 bg-slate-50 border-slate-200'],
+        ['slug' => 'streaming', 'name' => 'Streaming', 'icon' => 'fa-play-circle', 'style' => 'text-red-600 bg-red-50 border-red-200'],
+        ['slug' => 'tv', 'name' => 'TV Prabayar', 'icon' => 'fa-tv', 'style' => 'text-teal-500 bg-teal-50 border-teal-200'],
+        ['slug' => 'china-topup', 'name' => 'China Topup', 'icon' => 'fa-globe-asia', 'style' => 'text-red-500 bg-red-50 border-red-200'],
+        ['slug' => 'malaysia-topup', 'name' => 'Malaysia Topup', 'icon' => 'fa-globe-asia', 'style' => 'text-blue-600 bg-blue-50 border-blue-200'],
+        ['slug' => 'philippines-topup', 'name' => 'Phil. Topup', 'icon' => 'fa-globe-asia', 'style' => 'text-yellow-500 bg-yellow-50 border-yellow-200'],
+        ['slug' => 'singapore-topup', 'name' => 'S\'pore Topup', 'icon' => 'fa-globe-asia', 'style' => 'text-red-600 bg-red-50 border-red-200'],
+        ['slug' => 'thailand-topup', 'name' => 'Thai Topup', 'icon' => 'fa-globe-asia', 'style' => 'text-blue-500 bg-blue-50 border-blue-200'],
+        ['slug' => 'vietnam-topup', 'name' => 'Vietnam Topup', 'icon' => 'fa-globe-asia', 'style' => 'text-red-500 bg-red-50 border-red-200'],
+        ['slug' => 'bundling', 'name' => 'Bundling', 'icon' => 'fa-box-open', 'style' => 'text-cyan-500 bg-cyan-50 border-cyan-200'],
+        ['slug' => 'gas', 'name' => 'Gas Token', 'icon' => 'fa-burn', 'style' => 'text-orange-600 bg-orange-50 border-orange-200'],
+        ['slug' => 'esim', 'name' => 'eSIM', 'icon' => 'fa-qrcode', 'style' => 'text-indigo-600 bg-indigo-50 border-indigo-200'],
+        ['slug' => 'media-sosial', 'name' => 'Media Sosial', 'icon' => 'fa-thumbs-up', 'style' => 'text-blue-500 bg-blue-50 border-blue-200'],
+        ['slug' => 'telkomsel-omni', 'name' => 'Tsel Omni', 'icon' => 'fa-tower-cell', 'style' => 'text-red-600 bg-red-50 border-red-200'],
+        ['slug' => 'indosat-only4u', 'name' => 'Isat Only4u', 'icon' => 'fa-star', 'style' => 'text-yellow-500 bg-yellow-50 border-yellow-200'],
+        ['slug' => 'tri-cuanmax', 'name' => 'Tri CuanMax', 'icon' => 'fa-percent', 'style' => 'text-purple-600 bg-purple-50 border-purple-200'],
+        ['slug' => 'xl-axis-cuanku', 'name' => 'XL Cuanku', 'icon' => 'fa-gift', 'style' => 'text-blue-600 bg-blue-50 border-blue-200'],
+        ['slug' => 'by-u', 'name' => 'by.U', 'icon' => 'fa-ghost', 'style' => 'text-orange-500 bg-orange-50 border-orange-200'],
+    ];
 
-// Logika penentuan apakah halaman ini Pascabayar atau Prabayar
-$postpaidKeys = ['pln', 'pdam', 'bpjs', 'bpjstk', 'hp', 'internet', 'tv', 'multifinance', 'cimahi', 'pbb', 'samsat', 'pgas', 'plnnontaglist', 'emoney'];
-$isPostpaid = ($pageInfo['is_postpaid'] ?? false) || in_array($activeSku, $postpaidKeys);
+    $postpaidMenus = [
+        ['slug' => 'pln-pascabayar', 'name' => 'PLN Pasca', 'icon' => 'fa-file-invoice-dollar', 'style' => 'text-yellow-600 bg-yellow-50 border-yellow-200'],
+        ['slug' => 'pdam', 'name' => 'PDAM', 'icon' => 'fa-faucet', 'style' => 'text-cyan-600 bg-cyan-50 border-cyan-200'],
+        ['slug' => 'bpjs-kesehatan', 'name' => 'BPJS Kes.', 'icon' => 'fa-heartbeat', 'style' => 'text-green-600 bg-green-50 border-green-200'],
+        ['slug' => 'bpjs-ketenagakerjaan', 'name' => 'BPJS TK', 'icon' => 'fa-hard-hat', 'style' => 'text-green-700 bg-green-50 border-green-200'],
+        ['slug' => 'hp-pascabayar', 'name' => 'HP Pasca', 'icon' => 'fa-mobile-screen', 'style' => 'text-blue-600 bg-blue-50 border-blue-200'],
+        ['slug' => 'internet-pascabayar', 'name' => 'Internet', 'icon' => 'fa-network-wired', 'style' => 'text-indigo-600 bg-indigo-50 border-indigo-200'],
+        ['slug' => 'tv-pascabayar', 'name' => 'TV Kabel', 'icon' => 'fa-satellite-dish', 'style' => 'text-pink-600 bg-pink-50 border-pink-200'],
+        ['slug' => 'multifinance', 'name' => 'Cicilan', 'icon' => 'fa-money-bill-wave', 'style' => 'text-emerald-600 bg-emerald-50 border-emerald-200'],
+        ['slug' => 'pbb', 'name' => 'Pajak PBB', 'icon' => 'fa-building', 'style' => 'text-gray-600 bg-gray-50 border-gray-200'],
+        ['slug' => 'samsat', 'name' => 'SAMSAT', 'icon' => 'fa-car', 'style' => 'text-blue-700 bg-blue-50 border-blue-200'],
+        ['slug' => 'gas-negara', 'name' => 'Gas Negara', 'icon' => 'fa-fire', 'style' => 'text-orange-600 bg-orange-50 border-orange-200'],
+        ['slug' => 'pln-nontaglis', 'name' => 'PLN NonTag', 'icon' => 'fa-plug', 'style' => 'text-yellow-600 bg-yellow-50 border-yellow-200'],
+    ];
 
-// Judul Halaman & Label Input
-$pageTitle = $pageInfo['title'] ?? ucfirst(str_replace('-', ' ', $currentSlug));
-$inputLabel = "Nomor Pelanggan";
-$inputPlace = "Contoh: 08123456789";
-
-if($activeSku == 'samsat') {
-    $inputLabel = "Kode Bayar, No. KTP / Identitas";
-    $inputPlace = "Contoh: 8821...,3201...";
-} elseif ($activeSku == 'pbb' || $activeSku == 'cimahi') {
-    $inputLabel = "Nomor Objek Pajak (NOP)";
-    $inputPlace = "Masukkan NOP";
-}
-
-// ================================================================
-// 2. DATA MENU (TAMPILAN LENGKAP)
-// ================================================================
-$prepaidMenus = [
-    ['slug' => 'pulsa', 'name' => 'Pulsa', 'icon' => 'fa-mobile-alt', 'style' => 'text-red-500 bg-red-50 border-red-200'],
-    ['slug' => 'data', 'name' => 'Paket Data', 'icon' => 'fa-wifi', 'style' => 'text-blue-500 bg-blue-50 border-blue-200'],
-    ['slug' => 'pln-token', 'name' => 'Token PLN', 'icon' => 'fa-bolt', 'style' => 'text-yellow-500 bg-yellow-50 border-yellow-200'],
-    ['slug' => 'e-money', 'name' => 'E-Money', 'icon' => 'fa-wallet', 'style' => 'text-purple-500 bg-purple-50 border-purple-200'],
-    ['slug' => 'voucher-game', 'name' => 'Games', 'icon' => 'fa-gamepad', 'style' => 'text-indigo-500 bg-indigo-50 border-indigo-200'],
-    ['slug' => 'voucher', 'name' => 'Voucher', 'icon' => 'fa-ticket-alt', 'style' => 'text-pink-500 bg-pink-50 border-pink-200'],
-    ['slug' => 'paket-sms-telpon', 'name' => 'SMS & Telpon', 'icon' => 'fa-phone-volume', 'style' => 'text-green-500 bg-green-50 border-green-200'],
-    ['slug' => 'masa-aktif', 'name' => 'Masa Aktif', 'icon' => 'fa-hourglass-half', 'style' => 'text-orange-500 bg-orange-50 border-orange-200'],
-    ['slug' => 'aktivasi-voucher', 'name' => 'Akt. Voucher', 'icon' => 'fa-barcode', 'style' => 'text-gray-600 bg-gray-50 border-gray-200'],
-    ['slug' => 'aktivasi-perdana', 'name' => 'Akt. Perdana', 'icon' => 'fa-sim-card', 'style' => 'text-slate-600 bg-slate-50 border-slate-200'],
-    ['slug' => 'streaming', 'name' => 'Streaming', 'icon' => 'fa-play-circle', 'style' => 'text-red-600 bg-red-50 border-red-200'],
-    ['slug' => 'tv', 'name' => 'TV Prabayar', 'icon' => 'fa-tv', 'style' => 'text-teal-500 bg-teal-50 border-teal-200'],
-    ['slug' => 'china-topup', 'name' => 'China Topup', 'icon' => 'fa-globe-asia', 'style' => 'text-red-500 bg-red-50 border-red-200'],
-    ['slug' => 'malaysia-topup', 'name' => 'Malaysia Topup', 'icon' => 'fa-globe-asia', 'style' => 'text-blue-600 bg-blue-50 border-blue-200'],
-    ['slug' => 'philippines-topup', 'name' => 'Phil. Topup', 'icon' => 'fa-globe-asia', 'style' => 'text-yellow-500 bg-yellow-50 border-yellow-200'],
-    ['slug' => 'singapore-topup', 'name' => 'S\'pore Topup', 'icon' => 'fa-globe-asia', 'style' => 'text-red-600 bg-red-50 border-red-200'],
-    ['slug' => 'thailand-topup', 'name' => 'Thai Topup', 'icon' => 'fa-globe-asia', 'style' => 'text-blue-500 bg-blue-50 border-blue-200'],
-    ['slug' => 'vietnam-topup', 'name' => 'Vietnam Topup', 'icon' => 'fa-globe-asia', 'style' => 'text-red-500 bg-red-50 border-red-200'],
-    ['slug' => 'bundling', 'name' => 'Bundling', 'icon' => 'fa-box-open', 'style' => 'text-cyan-500 bg-cyan-50 border-cyan-200'],
-    ['slug' => 'gas', 'name' => 'Gas Token', 'icon' => 'fa-burn', 'style' => 'text-orange-600 bg-orange-50 border-orange-200'],
-    ['slug' => 'esim', 'name' => 'eSIM', 'icon' => 'fa-qrcode', 'style' => 'text-indigo-600 bg-indigo-50 border-indigo-200'],
-    ['slug' => 'media-sosial', 'name' => 'Media Sosial', 'icon' => 'fa-thumbs-up', 'style' => 'text-blue-500 bg-blue-50 border-blue-200'],
-    ['slug' => 'telkomsel-omni', 'name' => 'Tsel Omni', 'icon' => 'fa-tower-cell', 'style' => 'text-red-600 bg-red-50 border-red-200'],
-    ['slug' => 'indosat-only4u', 'name' => 'Isat Only4u', 'icon' => 'fa-star', 'style' => 'text-yellow-500 bg-yellow-50 border-yellow-200'],
-    ['slug' => 'tri-cuanmax', 'name' => 'Tri CuanMax', 'icon' => 'fa-percent', 'style' => 'text-purple-600 bg-purple-50 border-purple-200'],
-    ['slug' => 'xl-axis-cuanku', 'name' => 'XL Cuanku', 'icon' => 'fa-gift', 'style' => 'text-blue-600 bg-blue-50 border-blue-200'],
-    ['slug' => 'by-u', 'name' => 'by.U', 'icon' => 'fa-ghost', 'style' => 'text-orange-500 bg-orange-50 border-orange-200'],
-];
-
-$postpaidMenus = [
-    ['slug' => 'pln-pascabayar', 'name' => 'PLN Pasca', 'icon' => 'fa-file-invoice-dollar', 'style' => 'text-yellow-600 bg-yellow-50 border-yellow-200'],
-    ['slug' => 'pdam', 'name' => 'PDAM', 'icon' => 'fa-faucet', 'style' => 'text-cyan-600 bg-cyan-50 border-cyan-200'],
-    ['slug' => 'bpjs-kesehatan', 'name' => 'BPJS Kes.', 'icon' => 'fa-heartbeat', 'style' => 'text-green-600 bg-green-50 border-green-200'],
-    ['slug' => 'bpjs-ketenagakerjaan', 'name' => 'BPJS TK', 'icon' => 'fa-hard-hat', 'style' => 'text-green-700 bg-green-50 border-green-200'],
-    ['slug' => 'hp-pascabayar', 'name' => 'HP Pasca', 'icon' => 'fa-mobile-screen', 'style' => 'text-blue-600 bg-blue-50 border-blue-200'],
-    ['slug' => 'internet-pascabayar', 'name' => 'Internet', 'icon' => 'fa-network-wired', 'style' => 'text-indigo-600 bg-indigo-50 border-indigo-200'],
-    ['slug' => 'tv-pascabayar', 'name' => 'TV Kabel', 'icon' => 'fa-satellite-dish', 'style' => 'text-pink-600 bg-pink-50 border-pink-200'],
-    ['slug' => 'multifinance', 'name' => 'Cicilan', 'icon' => 'fa-money-bill-wave', 'style' => 'text-emerald-600 bg-emerald-50 border-emerald-200'],
-    ['slug' => 'pbb', 'name' => 'Pajak PBB', 'icon' => 'fa-building', 'style' => 'text-gray-600 bg-gray-50 border-gray-200'],
-    ['slug' => 'samsat', 'name' => 'SAMSAT', 'icon' => 'fa-car', 'style' => 'text-blue-700 bg-blue-50 border-blue-200'],
-    ['slug' => 'gas-negara', 'name' => 'Gas Negara', 'icon' => 'fa-fire', 'style' => 'text-orange-600 bg-orange-50 border-orange-200'],
-    ['slug' => 'pln-nontaglis', 'name' => 'PLN NonTag', 'icon' => 'fa-plug', 'style' => 'text-yellow-600 bg-yellow-50 border-yellow-200'],
-];
-
-$menus = array_merge($prepaidMenus, $postpaidMenus);
+    $menus = array_merge($prepaidMenus, $postpaidMenus);
 @endphp
 
 @section('title', $pageTitle)
@@ -239,8 +239,8 @@ $menus = array_merge($prepaidMenus, $postpaidMenus);
                         <label class="block text-xs font-bold text-gray-500 uppercase mb-2 ml-1">{{ $inputLabel }}</label>
                         <div class="relative group">
                             <input type="text" id="customer_no" 
-                                    class="w-full border border-gray-300 rounded-xl px-4 py-4 pl-12 font-bold text-lg text-gray-700 focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none shadow-sm transition"
-                                    placeholder="{{ $inputPlace }}">
+                                   class="w-full border border-gray-300 rounded-xl px-4 py-4 pl-12 font-bold text-lg text-gray-700 focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none shadow-sm transition"
+                                   placeholder="{{ $inputPlace }}">
                             <div class="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 group-focus-within:text-red-500 transition">
                                 <i class="fas fa-id-card"></i>
                             </div>
@@ -543,56 +543,108 @@ function getRcMessage(rcCode) {
 
     // Peta (Map) Response Code ke Objek Pesan
     const rcMap = {
-        // --- SUKSES ---
+        // ------------------------------------
+        // --- SUKSES (1 Kode) ---
+        // ------------------------------------
+        // 1. RC 00
         '00': { status: 'Sukses', message: 'Transaksi Sukses.', alertType: 'success' },
 
-        // --- PENDING ---
+        // ------------------------------------
+        // --- PENDING (3 Kode) ---
+        // ------------------------------------
+        // 2. RC 03
         '03': { status: 'Pending', message: 'Transaksi Pending. Mohon tunggu status update.', alertType: 'warning' },
+        // 3. RC 55
         '55': { status: 'Pending', message: 'Produk Sedang Gangguan. Silakan coba sebentar lagi.', alertType: 'warning' },
+        // 4. RC 99
         '99': { status: 'Pending', message: 'DF Router Issue / Saldo API bermasalah. Silakan isi deposit.', alertType: 'warning' },
         
-        // --- GAGAL ---
+        // ------------------------------------
+        // --- GAGAL (42 Kode) ---
+        // ------------------------------------
+        // 5. RC 01
         '01': { status: 'Gagal', message: 'Timeout. Transaksi Gagal.', alertType: 'error' },
+        // 6. RC 02
         '02': { status: 'Gagal', message: 'Transaksi Gagal. Terjadi kesalahan sistem.', alertType: 'error' },
+        // 7. RC 40
         '40': { status: 'Gagal', message: 'Payload Error. Tipe data atau parameter tidak sesuai.', alertType: 'error' },
+        // 8. RC 41
         '41': { status: 'Gagal', message: 'Signature tidak valid. Perhatikan kembali formula signature dan apiKey Anda.', alertType: 'error' },
+        // 9. RC 42
         '42': { status: 'Gagal', message: 'Gagal memproses API Buyer. Username belum sesuai.', alertType: 'error' },
+        // 10. RC 43
         '43': { status: 'Gagal', message: 'SKU tidak ditemukan atau Non-Aktif. Periksa konfigurasi produk.', alertType: 'error' },
+        // 11. RC 44
         '44': { status: 'Gagal', message: 'Saldo tidak cukup. Mohon isi deposit API Anda.', alertType: 'error' },
+        // 12. RC 45
         '45': { status: 'Gagal', message: 'IP Anda tidak kami kenali. Silahkan whitelist IP Anda.', alertType: 'error' },
+        // 13. RC 47
         '47': { status: 'Gagal', message: 'Transaksi sudah terjadi di buyer lain.', alertType: 'error' },
+        // 14. RC 49
         '49': { status: 'Gagal', message: 'Ref ID tidak unik.', alertType: 'error' },
+        // 15. RC 50
         '50': { status: 'Gagal', message: 'Transaksi Tidak Ditemukan.', alertType: 'error' },
+        // 16. RC 51
         '51': { status: 'Gagal', message: 'Nomor Tujuan Diblokir.', alertType: 'error' },
+        // 17. RC 52
         '52': { status: 'Gagal', message: 'Prefix Tidak Sesuai Dengan Operator.', alertType: 'error' },
+        // 18. RC 53
         '53': { status: 'Gagal', message: 'Produk Seller Sedang Tidak Tersedia.', alertType: 'error' },
+        // 19. RC 54
         '54': { status: 'Gagal', message: 'Nomor Tujuan Salah. Mohon periksa kembali nomor pelanggan.', alertType: 'error' },
+        // 20. RC 56
         '56': { status: 'Gagal', message: 'Limit saldo seller (Deprecated).', alertType: 'error' },
+        // 21. RC 57
         '57': { status: 'Gagal', message: 'Jumlah Digit Kurang Atau Lebih dari standar.', alertType: 'error' },
+        // 22. RC 58
         '58': { status: 'Gagal', message: 'Sedang Cut Off. Transaksi dibatalkan.', alertType: 'error' },
+        // 23. RC 59
         '59': { status: 'Gagal', message: 'Tujuan di Luar Wilayah/Cluster layanan.', alertType: 'error' },
+        // 24. RC 60
         '60': { status: 'Gagal', message: 'Tagihan belum tersedia (Belum Terbit/Sudah Lunas).', alertType: 'error' },
+        // 25. RC 61
         '61': { status: 'Gagal', message: 'Akun API belum pernah melakukan deposit (Saldo Nol).', alertType: 'error' },
+        // 26. RC 62
         '62': { status: 'Gagal', message: 'Seller sedang mengalami gangguan teknis.', alertType: 'error' },
+        // 27. RC 63
         '63': { status: 'Gagal', message: 'Tidak support transaksi multi.', alertType: 'error' },
+        // 28. RC 64
         '64': { status: 'Gagal', message: 'Tarik tiket gagal, coba nominal lain atau hubungi admin.', alertType: 'error' },
+        // 29. RC 65
         '65': { status: 'Gagal', message: 'Limit transaksi multi (Deprecated).', alertType: 'error' },
+        // 30. RC 66
         '66': { status: 'Gagal', message: 'Cut Off (Perbaikan Sistem Seller).', alertType: 'error' },
+        // 31. RC 67
         '67': { status: 'Gagal', message: 'Seller belum ter-verfikasi.', alertType: 'error' },
+        // 32. RC 68
         '68': { status: 'Gagal', message: 'Stok habis.', alertType: 'error' },
+        // 33. RC 69
         '69': { status: 'Gagal', message: 'Harga seller lebih besar dari ketentuan harga Buyer.', alertType: 'error' },
+        // 34. RC 70
         '70': { status: 'Gagal', message: 'Timeout Dari Biller. Coba lagi.', alertType: 'error' },
+        // 35. RC 71
         '71': { status: 'Gagal', message: 'Produk Sedang Tidak Stabil. Coba sebentar lagi.', alertType: 'error' },
+        // 36. RC 72
         '72': { status: 'Gagal', message: 'Lakukan Unreg Paket Dahulu.', alertType: 'error' },
+        // 37. RC 73
         '73': { status: 'Gagal', message: 'Kwh Melebihi Batas.', alertType: 'error' },
+        // 38. RC 74
         '74': { status: 'Gagal', message: 'Transaksi Refund.', alertType: 'error' },
+        // 39. RC 80
         '80': { status: 'Gagal', message: 'Akun Anda telah diblokir oleh Seller.', alertType: 'error' },
+        // 40. RC 81
         '81': { status: 'Gagal', message: 'Seller ini telah diblokir oleh Anda.', alertType: 'error' },
+        // 41. RC 82
         '82': { status: 'Gagal', message: 'Akun Anda belum ter-verfikasi.', alertType: 'error' },
+        // 42. RC 83
         '83': { status: 'Gagal', message: 'Limitasi pengecekan pricelist terlampaui. Silahkan coba beberapa saat lagi.', alertType: 'error' },
+        // 43. RC 84
         '84': { status: 'Gagal', message: 'Nominal tidak valid.', alertType: 'error' },
+        // 44. RC 85
         '85': { status: 'Gagal', message: 'Limitasi transaksi terlampaui. Silahkan coba 1 menit lagi.', alertType: 'error' },
+        // 45. RC 86
         '86': { status: 'Gagal', message: 'Limitasi pengecekan nomor PLN terlampaui. Silahkan coba beberapa saat lagi.', alertType: 'error' },
+        // 46. RC 87
         '87': { status: 'Gagal', message: 'Transaksi E-money wajib kelipatan Rp 1.000.', alertType: 'error' },
     };
 
@@ -606,66 +658,36 @@ function getRcMessage(rcCode) {
 
     // --- NEW HELPER: Trigger Custom Notification ---
     function triggerCustomNotification(msg, type) {
+        // Karena kita tidak bisa mengakses DOM Blade penuh atau Session Laravel dari sini,
+        // kita akan menggunakan SweetAlert2 (library JS populer) jika tersedia, atau
+        // Console.log sebagai fallback untuk menghindari alert() yang mengganggu.
+        
         // Cek jika SweetAlert2 tersedia (Asumsi: Anda mungkin menggunakannya)
         if (typeof Swal !== 'undefined' && typeof Swal.fire === 'function') {
              const icon = type === 'success' ? 'success' : type === 'error' ? 'error' : 'warning';
              Swal.fire({
-                 title: type.toUpperCase(),
-                 text: msg,
-                 icon: icon,
-                 confirmButtonText: 'Oke'
-             });
+                title: type.toUpperCase(),
+                text: msg,
+                icon: icon,
+                confirmButtonText: 'Oke'
+            });
         } else {
             // Fallback: Console.log (untuk debugging tanpa mengganggu UI)
             const logType = type === 'error' ? console.error : type === 'warning' ? console.warn : console.log;
             logType(`[STATUS ${type.toUpperCase()}] ${msg}`);
             
-            // --- INI ADALAH SOLUSI MANUAL UNTUK TAMPILAN NOTIFIKASI DI UI ---
-            // Kita membuat modal kustom seperti yang terlihat di gambar Anda
-            const existingModal = document.getElementById('custom-alert-modal');
-            if (existingModal) existingModal.remove(); // Hapus yang lama jika ada
-
-            const popUp = document.createElement('div');
-            popUp.id = 'custom-alert-modal';
-            popUp.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 1000;';
+            // Opsional: Untuk memastikan user melihat pesan, kita tambahkan DIV sementara
+            // Ini membutuhkan styling, tapi ini adalah simulasi perbaikan tampilan error.
             
-            let iconHtml = '';
-            let title = '';
-            let color = '';
-
-            // Jika API mengembalikan RC:undefined, tapi UI ingin SUCCESS (seperti di gambar)
-            if (msg.includes('(RC: undefined)') && type === 'error') {
-                 iconHtml = '<i class="fas fa-check-circle text-green-500 text-6xl mb-4"></i>';
-                 title = 'SUCCESS'; // Meniru judul sukses di gambar
-                 color = 'text-green-600';
+            /*
+            const notificationDiv = document.createElement('div');
+            notificationDiv.innerHTML = `<div class="bg-${type === 'success' ? 'green' : 'red'}-100 border-l-4 border-${type === 'success' ? 'green' : 'red'}-500 text-${type === 'success' ? 'green' : 'red'}-700 p-4 rounded shadow-sm mb-6 flex items-center" role="alert"><i class="fas fa-exclamation-circle mr-2"></i> ${msg}</div>`;
+            const container = document.querySelector('.container.mx-auto.px-4'); // Container setelah Breadcrumb
+            if (container) {
+                 container.insertBefore(notificationDiv, container.firstChild);
+                 setTimeout(() => notificationDiv.remove(), 6000); // Hapus setelah 6 detik
             }
-            // Logika Normal
-            else if (type === 'success') {
-                iconHtml = '<i class="fas fa-check-circle text-green-500 text-6xl mb-4"></i>';
-                title = 'SUCCESS';
-                color = 'text-green-600';
-            } else if (type === 'warning') {
-                iconHtml = '<i class="fas fa-exclamation-triangle text-yellow-500 text-6xl mb-4"></i>';
-                title = 'PERINGATAN';
-                color = 'text-yellow-600';
-            } else { // error
-                iconHtml = '<i class="fas fa-times-circle text-red-500 text-6xl mb-4"></i>';
-                title = 'GAGAL';
-                color = 'text-red-600';
-            }
-
-            popUp.innerHTML = `
-                <div class="bg-white p-8 rounded-2xl text-center shadow-2xl max-w-sm w-full animate-bounce-in">
-                    ${iconHtml}
-                    <h3 class="text-xl font-bold ${color} mb-2">${title}</h3>
-                    <p class="text-gray-700 mb-6">${msg}</p>
-                    <button onclick="document.getElementById('custom-alert-modal').remove()" 
-                            class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition">
-                        Oke
-                    </button>
-                </div>
-            `;
-            document.body.appendChild(popUp);
+            */
         }
     }
 
