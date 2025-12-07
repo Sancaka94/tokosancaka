@@ -272,16 +272,18 @@ public function checkBill(Request $request)
 
             return response()->json([
                 'status' => 'success',
-                'product_name' => $product->product_name,
-                'customer_name' => $data['customer_name'],
-                'customer_no' => $data['customer_no'],
-                'period' => $data['period'] ?? null, 
-                'amount_pokok' => $tagihanPokokAPI, // Tagihan Pokok
-                'admin_fee_modal' => $adminFeeModal, // Biaya Admin
-                'markup' => $markupKita, // Markup keuntungan Anda
-                'total_tagihan' => $totalTagihanAkhir, // Total Tagihan Final
-                'ref_id' => $refId,
-                'desc' => $data['desc'] ?? []
+                // ⭐ PERBAIKAN: Gunakan Null Coalescing Operator pada data yang tidak dijamin ada.
+            'customer_name' => $data['customer_name'] ?? $data['name'] ?? '', // Menggunakan fallback jika 'customer_name' tidak ada
+            'customer_no' => $data['customer_no'] ?? '', // Menggunakan fallback
+            'product_name' => $product->product_name, // Ini aman (dari database)
+
+            'period' => $data['period'] ?? null,
+            'amount_pokok' => (float)$tagihanPokokAPI,
+            'admin_fee_modal' => (float)$adminFeeModal,
+            'markup' => $markupKita,
+            'total_tagihan' => $totalTagihanAkhir,
+            'ref_id' => $refId,
+            'desc' => $data['desc'] ?? []
             ]);
         }
         
