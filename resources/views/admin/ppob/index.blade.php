@@ -48,6 +48,41 @@
         </div>
     </div>
 
+    {{-- 2. WIDGET SALDO (Kanan) - TEMPAT KODE ANDA --}}
+        <div class="bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl p-5 text-white shadow-lg relative overflow-hidden">
+            <div class="absolute right-0 top-0 opacity-10 transform translate-x-4 -translate-y-4">
+                <i class="fas fa-wallet text-8xl"></i>
+            </div>
+            <div class="relative z-10">
+                <p class="text-blue-100 text-xs font-medium uppercase tracking-wider mb-1">Sisa Deposit Digiflazz</p>
+                
+                <div class="flex items-center justify-between mb-2">
+                    <h3 id="saldo-display" class="text-2xl font-bold tracking-tight">Rp ...</h3>
+                    <button onclick="fetchSaldo()" id="btn-refresh-saldo" class="text-blue-200 hover:text-white transition p-1 rounded-full hover:bg-white/10" title="Refresh Saldo">
+                        <i class="fas fa-sync-alt" id="icon-refresh"></i>
+                    </button>
+                </div>
+                <p id="saldo-loading" class="text-[10px] text-blue-200 mb-2 hidden">Sedang memuat data...</p>
+
+                {{-- ========================================== --}}
+                {{-- KODE TOMBOL BARU YANG ANDA MINTA --}}
+                {{-- ========================================== --}}
+                <div class="grid grid-cols-2 gap-2 mt-3">
+                    {{-- Tombol Deposit --}}
+                    <button onclick="openDepositModal()" class="bg-white/20 hover:bg-white/30 text-white font-semibold py-2 px-4 rounded-lg text-sm transition border border-white/10 flex items-center justify-center gap-2">
+                        <i class="fas fa-plus-circle"></i> Deposit
+                    </button>
+                    
+                    {{-- TOMBOL BARU: TOPUP MANUAL --}}
+                    <button onclick="openTopupModal()" class="bg-white text-blue-600 font-bold py-2 px-4 rounded-lg text-sm transition hover:bg-gray-100 shadow-sm flex items-center justify-center gap-2">
+                        <i class="fas fa-bolt"></i> Transaksi
+                    </button>
+                </div>
+                {{-- ========================================== --}}
+
+            </div>
+        </div>
+
     {{-- Alert Notification (tetap sama) --}}
     @if(session('success'))
         <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6 rounded shadow-sm flex items-center justify-between animate-fade-in-down">
