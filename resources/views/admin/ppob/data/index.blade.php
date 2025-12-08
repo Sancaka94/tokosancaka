@@ -51,6 +51,11 @@
                 <button onclick="openDepositModal()" class="w-full bg-white text-blue-600 font-bold py-2.5 px-4 rounded-lg text-sm transition hover:bg-blue-50 hover:shadow-lg flex items-center justify-center gap-2">
                     <i class="fas fa-plus-circle"></i> Isi Saldo Otomatis
                 </button>
+
+                {{-- TOMBOL BARU: TOPUP MANUAL --}}
+                    <button onclick="openTopupModal()" class="bg-white text-blue-600 font-bold py-2 px-4 rounded-lg text-sm transition hover:bg-gray-100 shadow-sm">
+                        <i class="fas fa-bolt"></i> Transaksi
+                    </button>
             </div>
         </div>
     </div>
@@ -262,6 +267,43 @@
         {{-- Pagination --}}
         <div class="bg-white px-6 py-4 border-t border-gray-200">
             {{ $transactions->withQueryString()->links() }}
+        </div>
+    </div>
+</div>
+
+{{-- MODAL TOPUP MANUAL --}}
+<div id="topupModal" class="fixed inset-0 z-[999] hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity backdrop-blur-sm" onclick="closeTopupModal()"></div>
+    <div class="flex items-center justify-center min-h-screen p-4 text-center sm:p-0">
+        <div class="relative bg-white rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:max-w-md w-full">
+            
+            <div class="bg-gradient-to-r from-gray-800 to-gray-900 px-6 py-4 flex justify-between items-center">
+                <h3 class="text-lg font-bold text-white"><i class="fas fa-bolt text-yellow-400 mr-2"></i> Transaksi Manual</h3>
+                <button onclick="closeTopupModal()" class="text-gray-400 hover:text-white"><i class="fas fa-times"></i></button>
+            </div>
+
+            <div class="p-6">
+                <form id="formTopup" onsubmit="submitTopup(event)">
+                    @csrf
+                    
+                    {{-- Kode Produk --}}
+                    <div class="mb-4">
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Kode Produk (SKU)</label>
+                        <input type="text" name="buyer_sku_code" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-gray-500 focus:ring-gray-500 py-2.5 uppercase" placeholder="Contoh: xld10, pulsa5" required>
+                        <p class="text-[10px] text-gray-500 mt-1">Pastikan kode produk benar sesuai Pricelist.</p>
+                    </div>
+
+                    {{-- Nomor Tujuan --}}
+                    <div class="mb-6">
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Nomor Tujuan / ID Pelanggan</label>
+                        <input type="text" name="customer_no" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-gray-500 focus:ring-gray-500 py-2.5" placeholder="08xxxx" required>
+                    </div>
+
+                    <button type="submit" id="btn-submit-topup" class="w-full bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 rounded-xl shadow transition">
+                        Kirim Transaksi
+                    </button>
+                </form>
+            </div>
         </div>
     </div>
 </div>
@@ -517,6 +559,64 @@
     document.addEventListener("DOMContentLoaded", function() {
         fetchSaldo();
     });
+
+    // --- LOGIC TOPUP MANUAL ---
+    const topupModal = document.getElementById('topupModal');
+    const formTopup = document.getElementById('formTopup');
+
+    function openTopupModal() {
+        topupModal.classList.remove('hidden');
+        formTopup.reset();
+    }
+
+    function closeTopupModal() {
+        topupModal.classList.add('hidden');
+    }
+
+    function submitTopup(e) {
+        e.preventDefault();
+        
+        const btn = document.getElementById('btn-submit-topup');
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Memproses...';
+
+        const formData = new FormData(formTopup);
+
+        fetch("{{ route('admin.ppob.topup') }}", {
+            method: "POST",
+            body: formData,
+            headers: {
+                "X-CSRF-TOKEN": "{{ csrf_token() }}",
+                "Accept": "application/json"
+            }
+        })
+        .then(res => res.json())
+        .then(resp => {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+
+            if(resp.status === 'success') {
+                const d = resp.data;
+                // Tampilkan Alert Sukses/Pending
+                let msg = `Status: ${d.status}\nSN: ${d.sn}\nPesan: ${d.message}`;
+                alert(msg);
+                
+                // Refresh halaman untuk melihat data di tabel (jika sudah disimpan ke DB)
+                // location.reload(); 
+                closeTopupModal();
+                fetchSaldo(); // Update saldo otomatis
+            } else {
+                alert('Gagal: ' + resp.message);
+            }
+        })
+        .catch(err => {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            console.error(err);
+            alert('Terjadi kesalahan koneksi.');
+        });
+    }
 </script>
 @endpush
 

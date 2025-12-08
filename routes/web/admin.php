@@ -99,6 +99,8 @@ Route::post('/deposit', [AdminPpobController::class, 'requestDeposit'])->name('p
         // Tambahan khusus jika Anda menggunakan link <a href> untuk hapus (seperti di screenshot 404 Anda)
         // URL: /admin/ppob/transaction/destroy/50
         Route::get('/destroy/{id}', [AdminPpobController::class, 'destroy'])->name('ppob.transaction.destroy.get');
+
+        Route::post('/topup', [AdminPpobController::class, 'topup'])->name('ppob.topup');
     
 
 
