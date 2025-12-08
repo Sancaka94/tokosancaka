@@ -91,15 +91,15 @@ Route::post('/deposit', [AdminPpobController::class, 'requestDeposit'])->name('p
 
         // Aksi Transaksi (Detail, Update, Hapus)
     // PENTING: Gunakan 'transaction' di URL agar tidak bentrok dengan ID Produk
-    Route::prefix('transaction')->name('transaction.')->group(function() {
-        Route::get('/{id}', [AdminPpobController::class, 'show'])->name('ppob.show');
-        Route::put('/{id}', [AdminPpobController::class, 'update'])->name('ppob.update');
-        Route::delete('/{id}', [AdminPpobController::class, 'destroy'])->name('ppob.destroy');
+ 
+        Route::get('/{id}', [AdminPpobController::class, 'show'])->name('ppob.transaction.show');
+        Route::put('/{id}', [AdminPpobController::class, 'update'])->name('ppob.transaction.update');
+        Route::delete('/{id}', [AdminPpobController::class, 'destroy'])->name('ppob.transaction.destroy');
         
         // Tambahan khusus jika Anda menggunakan link <a href> untuk hapus (seperti di screenshot 404 Anda)
         // URL: /admin/ppob/transaction/destroy/50
-        Route::get('/destroy/{id}', [AdminPpobController::class, 'destroy'])->name('ppob.destroy.get');
-    });
+        Route::get('/destroy/{id}', [AdminPpobController::class, 'destroy'])->name('ppob.transaction.destroy.get');
+    
 
 
 
