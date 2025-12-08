@@ -65,6 +65,7 @@ use App\Models\BannerEtalase; // [BARU] Import model Banner
 use App\Http\Controllers\Admin\DokuBalanceController; // ✅ DITAMBAHKAN
 
 use App\Http\Controllers\Admin\AdminPpobController;
+use App\Http\Controllers\Admin\PpobProductController;
 
 /*
 
