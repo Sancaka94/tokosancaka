@@ -110,13 +110,15 @@ Route::post('/deposit', [AdminPpobController::class, 'requestDeposit'])->name('p
 // =================================================================
 Route::prefix('ppob')->name('ppob.')->group(function () {
 
-
+    Route::get('/', [App\Http\Controllers\PpobProductController::class, 'index'])->name('index');
     
     // -------------------------------------------------------------
     // 1. DATA TRANSAKSI (HARUS PALING ATAS)
     // -------------------------------------------------------------
     // URL: /admin/ppob/data
     Route::get('/data', [AdminPpobController::class, 'index'])->name('data.index');
+
+    
 // ===> PERBAIKAN DI SINI (Menambahkan 'data.' pada nama route) <===
     Route::get('/data/export/excel', [App\Http\Controllers\Admin\AdminPpobController::class, 'exportExcel'])->name('data.export.excel');
     Route::get('/data/export/pdf', [App\Http\Controllers\Admin\AdminPpobController::class, 'exportPdf'])->name('data.export.pdf');
@@ -131,7 +133,7 @@ Route::prefix('ppob')->name('ppob.')->group(function () {
     // -------------------------------------------------------------
     // URL: /admin/ppob/ (List Produk)
     // Pastikan Controller PpobProductController sudah di-use di paling atas file ini
-    Route::get('/', [App\Http\Controllers\PpobProductController::class, 'index'])->name('index'); 
+    
     Route::post('/bulk-update', [App\Http\Controllers\PpobProductController::class, 'bulkUpdate'])->name('bulk-update');
     Route::get('/product-export/excel', [App\Http\Controllers\PpobProductController::class, 'exportExcel'])->name('product.export.excel');
     
