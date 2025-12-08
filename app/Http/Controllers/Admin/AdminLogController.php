@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Log;
 class AdminLogController extends Controller
 {
     // Batas baris log yang akan ditampilkan
-    const MAX_LINES = 1000; 
+    const MAX_LINES = 10000; 
     
     public function showLogs()
     {
