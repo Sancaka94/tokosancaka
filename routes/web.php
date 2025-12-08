@@ -84,6 +84,11 @@ use App\Http\Controllers\Customer\AgentTransactionController; // <--- TAMBAHKAN 
 
 // routes/web.php (Kode yang Diperbaiki)
 
+
+
+Route::post('/', [AdminPesananController::class, 'store'])->name('admin.store');
+
+
 Route::middleware(['auth'])->prefix('ppob')->name('ppob.')->group(function () {
     // FINAL ROUTE SINKRONISASI TERPISAH
     // Route name yang dihasilkan akan menjadi: ppob.sync.prepaid
@@ -772,7 +777,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
 
         require __DIR__.'/web/admin.php';
 
-Route::post('/', [PesananController::class, 'store'])->name('store');
+
 
         
     Route::resource('customers/data/pengguna', DataPenggunaController::class)
