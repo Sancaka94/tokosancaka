@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Admin;
+namespace App\Http\Controllers\Admin; // <<< PASTIKAN INI SAMA DENGAN LOKASI FILE
 
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\File;
