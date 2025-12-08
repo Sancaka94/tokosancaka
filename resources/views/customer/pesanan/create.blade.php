@@ -310,6 +310,7 @@
         {{-- Hidden fields untuk data API --}}
         <input type="hidden" name="sender_id" id="sender_id">
         <input type="hidden" name="receiver_id" id="receiver_id">
+        <input type="hidden" name="idempotency_key" value="{{ $idempotencyKey }}">
         <input type="hidden" name="sender_lat" id="sender_lat"><input type="hidden" name="sender_lng" id="sender_lng">
         <input type="hidden" name="sender_province" id="sender_province"><input type="hidden" name="sender_regency" id="sender_regency">
         <input type="hidden" name="sender_district" id="sender_district"><input type="hidden" name="sender_village" id="sender_village">
@@ -880,12 +881,28 @@ document.addEventListener('DOMContentLoaded', function () {
             confirmButtonText: 'Ya, Buat Pesanan',
             cancelButtonText: 'Batal'
         }).then((result) => {
-            if (result.isConfirmed) {
-                const confirmBtn = document.getElementById('confirmBtn');
-                confirmBtn.disabled = true;
-                confirmBtn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>Memproses...`;
-                form.submit();
-            }
+            // Menjadi:
+if (result.isConfirmed) {
+    const confirmBtn = document.getElementById('confirmBtn');
+    
+    // Nonaktifkan tombol secara visual & fungsional
+    confirmBtn.disabled = true;
+    confirmBtn.classList.add('opacity-50', 'cursor-not-allowed'); // Tambahkan visual disabled
+    confirmBtn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>Memproses...`;
+
+    // Pastikan form hanya bisa disubmit sekali di frontend
+    form.addEventListener('submit', function(e) {
+        if (form.hasSubmitted) {
+            e.preventDefault();
+        } else {
+            form.hasSubmitted = true;
+        }
+    });
+    
+    // Tandai form sudah disubmit sebelum kirim
+    form.hasSubmitted = true;
+    form.submit(); 
+}
         });
     });
 

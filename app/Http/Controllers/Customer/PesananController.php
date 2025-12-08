@@ -88,6 +88,11 @@ class PesananController extends Controller
     public function create()
     {
         $products = Product::all();
+
+        // <<< TAMBAHKAN BLOK INI (1/2) >>>
+        // Buat Idempotency Key unik sekali saat memuat halaman
+        $idempotencyKey = (string) Str::uuid();
+
         return view('customer.pesanan.create', compact('products'));
     }
 
@@ -293,6 +298,21 @@ class PesananController extends Controller
     {
         
         //dd($request->all());
+
+        // <<< TAMBAHKAN BLOK INI (2/2) - Di awal store() >>>
+        $idempotencyKey = $request->input('idempotency_key');
+
+        // 0. CEK IDEMPOTENCY KEY
+        if ($idempotencyKey) {
+            $existingOrder = Pesanan::where('idempotency_key', $idempotencyKey)->first();
+
+            if ($existingOrder) {
+                // Request duplikat terdeteksi. Redirect ke halaman order yang sudah ada.
+                Log::warning('Idempotency check failed: Duplicate request detected.', ['key' => $idempotencyKey]);
+                return redirect()->route('customer.pesanan.index')->with('warning', 'Order ini sudah berhasil diproses sebelumnya.');
+            }
+        }
+        // <<< AKHIR BLOK TAMBAHAN 2/2 >>>
         
         DB::beginTransaction();
         try {
