@@ -88,6 +88,11 @@ Route::get('/cek-saldo', [AdminPpobController::class, 'cekSaldo'])->name('ppob.c
 
 Route::post('/deposit', [AdminPpobController::class, 'requestDeposit'])->name('ppob.deposit');
 
+    // Detail & Update
+    Route::get('/{id}', [AdminPpobController::class, 'show'])->name('ppob.show');
+    Route::put('/{id}', [AdminPpobController::class, 'update'])->name('ppob.update');
+    Route::delete('/{id}', [AdminPpobController::class, 'destroy'])->name('ppob.destroy');
+
 
 // =================================================================
 // GROUP ROUTE PPOB (DIGIFLAZZ) - GABUNGAN TRANSAKSI & PRODUK
@@ -102,13 +107,6 @@ Route::prefix('ppob')->name('ppob.')->group(function () {
 // ===> PERBAIKAN DI SINI (Menambahkan 'data.' pada nama route) <===
     Route::get('/data/export/excel', [App\Http\Controllers\Admin\AdminPpobController::class, 'exportExcel'])->name('data.export.excel');
     Route::get('/data/export/pdf', [App\Http\Controllers\Admin\AdminPpobController::class, 'exportPdf'])->name('data.export.pdf');
-
-    // Detail & Update
-    Route::get('/{id}', [AdminPpobController::class, 'show'])->name('show');
-    Route::put('/{id}', [AdminPpobController::class, 'update'])->name('update');
-    Route::delete('/{id}', [AdminPpobController::class, 'destroy'])->name('destroy');
-
-
     // ==========================================================
     // TAMBAHKAN KODE INI UNTUK MEMPERBAIKI ERROR
     // ==========================================================
