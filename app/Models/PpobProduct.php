@@ -37,6 +37,7 @@ class PpobProduct extends Model
         'admin_fee',
         'commission',
         'max_price',
+        'max_buy_price',
     ];
 
     /**
