@@ -95,7 +95,7 @@ Route::post('/deposit', [AdminPpobController::class, 'requestDeposit'])->name('p
 
 
 // =================================================================
-// GROUP ROUTE PPOB (DIGIFLAZZ) - GABUNGAN TRANSAKSI & PRODUK
+// GROUP ROUTE PPOB (DIGIFLAZZ) - GABUNGAN TRANSAKSI & PRODU
 // =================================================================
 Route::prefix('ppob')->name('ppob.')->group(function () {
     
