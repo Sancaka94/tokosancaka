@@ -84,6 +84,8 @@ use App\Http\Controllers\Admin\AdminPpobController;
 
 */
 
+Route::get('/', [App\Http\Controllers\PpobProductController::class, 'index'])->name('ppob.index');
+
 Route::get('/cek-saldo', [AdminPpobController::class, 'cekSaldo'])->name('ppob.cek-saldo'); // route('admin.ppob.cek-saldo')
 
 Route::post('/deposit', [AdminPpobController::class, 'requestDeposit'])->name('ppob.deposit');
@@ -110,7 +112,7 @@ Route::post('/deposit', [AdminPpobController::class, 'requestDeposit'])->name('p
 // =================================================================
 Route::prefix('ppob')->name('ppob.')->group(function () {
 
-    Route::get('/', [App\Http\Controllers\PpobProductController::class, 'index'])->name('index');
+    
     
     // -------------------------------------------------------------
     // 1. DATA TRANSAKSI (HARUS PALING ATAS)
