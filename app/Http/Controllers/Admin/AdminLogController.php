@@ -8,33 +8,27 @@ use Illuminate\Support\Facades\Log;
 
 class AdminLogController extends Controller
 {
-    // Batas baris yang akan dibaca (misalnya 500 baris terakhir)
-    const MAX_LINES = 500; 
+    // Batas baris log yang akan ditampilkan
+    const MAX_LINES = 1000; 
     
     public function showLogs()
     {
+        // Path ke file log default Laravel
         $logPath = storage_path('logs/laravel.log');
         
-        // Cek apakah file log ada
         if (!File::exists($logPath)) {
-            return view('admin.logs.viewer', ['logs' => 'File log tidak ditemukan.']);
+            return view('admin.logs.viewer', ['logs' => 'File log (laravel.log) tidak ditemukan.']);
         }
 
         try {
-            // Baca isi file log
             $content = File::get($logPath);
             
-            // Pisahkan konten menjadi baris-baris
+            // Ambil hanya baris terakhir (agar tidak terlalu membebani browser)
             $lines = explode("\n", $content);
-            
-            // Ambil hanya baris terakhir (misalnya 500 baris terakhir)
             $lastLines = array_slice($lines, -self::MAX_LINES, self::MAX_LINES, true);
             
-            // Gabungkan kembali baris-baris tersebut
+            // Gabungkan kembali baris-baris tersebut tanpa modifikasi
             $logs = implode("\n", $lastLines);
-            
-            // Format output agar lebih mudah dibaca (opsional)
-            $logs = str_replace('] local.', "] \n<span class='text-red-500'>|</span> local.", $logs);
             
             return view('admin.logs.viewer', compact('logs'));
 

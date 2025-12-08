@@ -1,12 +1,18 @@
-@extends('layouts.admin')
+{{-- resources/views/admin/logs/viewer.blade.php --}}
+@extends('layouts.admin') {{-- Ganti dengan layout admin Anda --}}
+
+@section('title', 'Raw Log Viewer')
 
 @section('content')
-<h1 class="text-xl font-bold mb-4">Log Viewer (500 Baris Terakhir)</h1>
+<h1 class="text-2xl font-bold mb-4">📂 Isi Log ({{ AdminLogController::MAX_LINES }} Baris Terakhir)</h1>
 
-<pre class="bg-gray-800 text-green-300 p-4 rounded-lg overflow-x-scroll whitespace-pre-wrap" style="max-height: 80vh;">
-    {!! nl2br(e($logs)) !!}
-</pre>
+<div class="bg-gray-100 border border-gray-300 p-4 rounded-lg">
+    {{-- 
+        Menggunakan tag <pre> untuk mempertahankan format baris/spasi/tab asli. 
+        Menggunakan {!! e($logs) !!} untuk menampilkan string sebagai raw text
+        (e() memastikan output di-escape agar aman dari XSS, tapi nl2br dihilangkan sesuai permintaan).
+    --}}
+    <pre class="overflow-x-scroll" style="font-family: monospace; font-size: 13px;">{!! e($logs) !!}</pre>
+</div>
 
-{{-- Tambahkan tombol atau link untuk download log jika perlu --}}
-{{-- <a href="{{ route('admin.logs.download') }}" class="mt-4 inline-block px-4 py-2 bg-blue-600 text-white rounded">Download Full Log</a> --}}
 @endsection
