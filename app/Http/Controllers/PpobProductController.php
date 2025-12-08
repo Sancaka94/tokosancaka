@@ -5,40 +5,40 @@ namespace App\Http\Controllers;
 use App\Models\PpobProduct;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use App\Services\DigiflazzService; // PENTING: Import Service
+use App\Services\DigiflazzService;
 use Exception;
 
 class PpobProductController extends Controller
 {
-
-    // 1. Deklarasi Properti (harus ada)
+    // 1. Deklarasi Properti
     protected DigiflazzService $ppobService;
 
-    // 2. Konstruktor untuk Dependency Injection (harus ada)
+    // 2. Konstruktor Dependency Injection
     public function __construct(DigiflazzService $ppobService)
     {
-        // 3. Inisialisasi Properti
         $this->ppobService = $ppobService;
     }
+
     /**
-     * Helper function untuk mendapatkan query yang sudah difilter berdasarkan tipe dan pencarian.
+     * Helper function: Filter query berdasarkan tipe dan pencarian.
      */
     private function getFilteredProductQuery(Request $request)
     {
         $search = $request->input('q');
-        $type = $request->input('type', 'prepaid'); // Ambil type, default 'prepaid'
+        $type = $request->input('type', 'prepaid'); // Default 'prepaid'
 
         $query = PpobProduct::query();
 
-       if ($type === 'prepaid') {
-    // Tampilkan yang BUKAN Pascabayar (yaitu Pulsa, Data, Games, dll)
-    $query->where('category', '!=', 'Pascabayar'); 
-} else { // 'postpaid'
-    // Tampilkan HANYA yang berkategori Pascabayar (yaitu PLN Tagihan, PDAM, dll)
-    $query->where('category', 'Pascabayar'); 
-}
+        // Filter Type
+        if ($type === 'prepaid') {
+            // Tampilkan yang BUKAN Pascabayar (Pulsa, Data, dll)
+            $query->where('category', '!=', 'Pascabayar');
+        } else {
+            // Tampilkan HANYA Pascabayar (PLN Tagihan, PDAM, dll)
+            $query->where('category', 'Pascabayar');
+        }
         
-        // 2. Logika Pencarian
+        // Logika Pencarian
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('product_name', 'like', "%{$search}%")
@@ -50,47 +50,69 @@ class PpobProductController extends Controller
         return $query;
     }
 
+    /**
+     * Menampilkan halaman index produk
+     */
     public function index(Request $request)
     {
         $products = $this->getFilteredProductQuery($request)
+                        ->orderBy('brand', 'asc') // Urutkan Brand dulu biar rapi
                         ->orderBy('category', 'asc')
-                        ->orderBy('brand', 'asc')
-                        ->paginate(10); 
-                         
+                        ->orderBy('price', 'asc')
+                        ->paginate(20); // Tampilkan 20 per halaman
+                          
         $products->appends($request->only(['q', 'type']));
 
         return view('admin.ppob.index', compact('products'));
     }
 
+    /**
+     * Update Harga Satuan (Dari Modal Edit)
+     */
     public function updatePrice(Request $request, $id)
     {
+        // 1. Validasi Input
         $request->validate([
             'sell_price' => 'required|numeric|min:0',
+            'max_buy_price' => 'nullable|numeric|min:0', // Validasi Limit Harga Beli
         ]);
 
+        // 2. Simpan Data
         $product = PpobProduct::findOrFail($id);
         $product->sell_price = $request->sell_price;
+        
+        // Simpan max_buy_price (jika kosong diisi 0)
+        $product->max_buy_price = $request->input('max_buy_price', 0);
+        
+        // Status Produk (Checkbox mengirim 'on' atau null, gunakan boolean helper)
         $product->seller_product_status = $request->boolean('status'); 
+        
         $product->save();
 
-        return redirect()->back()->with('success', 'Harga jual berhasil diperbarui!');
+        return redirect()->back()->with('success', 'Data produk berhasil diperbarui!');
     }
 
+    /**
+     * Hapus Produk
+     */
     public function destroy($id)
     {
         $product = PpobProduct::findOrFail($id);
         $product->delete();
 
-        return redirect()->back()->with('success', 'Produk berhasil dihapus.');
+        return redirect()->back()->with('success', 'Produk berhasil dihapus dari database lokal.');
     }
     
+    /**
+     * API Show (Untuk keperluan fetch detail jika dibutuhkan)
+     */
     public function show($id) {
         $product = PpobProduct::findOrFail($id);
         return response()->json($product);
     }
 
     /**
-     * FITUR BARU: Update Harga Massal
+     * FITUR: Update Harga Massal
      */
     public function bulkUpdate(Request $request)
     {
@@ -100,6 +122,7 @@ class PpobProductController extends Controller
             'product_type' => 'required|in:prepaid,postpaid',
         ]);
 
+        // Ambil semua produk sesuai filter saat ini
         $products = $this->getFilteredProductQuery($request)->get();
         $count = 0;
 
@@ -122,14 +145,14 @@ class PpobProductController extends Controller
             DB::commit();
         } catch (Exception $e) {
             DB::rollBack();
-            return redirect()->back()->with('error', 'Gagal memperbarui harga massal: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Gagal update massal: ' . $e->getMessage());
         }
 
         return redirect()->back()->with('success', "Berhasil memperbarui harga jual untuk $count produk.");
     }
 
     /**
-     * FITUR BARU: Export ke Excel (CSV)
+     * FITUR: Export ke Excel (CSV Stream)
      */
     public function exportExcel(Request $request)
     {
@@ -142,30 +165,32 @@ class PpobProductController extends Controller
                         ->get();
 
         $headers = array(
-            "Content-type"          => "text/csv",
-            "Content-Disposition"   => "attachment; filename=$fileName",
-            "Pragma"                => "no-cache",
-            "Cache-Control"         => "must-revalidate, post-check=0, pre-check=0",
-            "Expires"               => "0"
+            "Content-type"        => "text/csv",
+            "Content-Disposition" => "attachment; filename=$fileName",
+            "Pragma"              => "no-cache",
+            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
+            "Expires"             => "0"
         );
 
-        $columns = array('Kategori', 'Brand', 'Kode SKU', 'Nama Produk', 'Harga Modal', 'Harga Jual', 'Status');
+        $columns = array('Kategori', 'Brand', 'Kode SKU', 'Nama Produk', 'Harga Modal', 'Harga Jual', 'Status', 'Max Price Limit');
 
         $callback = function() use($products, $columns) {
             $file = fopen('php://output', 'w');
             fputcsv($file, $columns);
 
             foreach ($products as $product) {
-                // ⭐ KODE DIBERSIHKAN: Baris ini (dan semua baris di dalamnya) sekarang bersih dari karakter aneh.
-                $row['Kategori']    = $product->category;
-                $row['Brand']       = $product->brand;
-                $row['Kode SKU']    = $product->buyer_sku_code;
-                $row['Nama']        = $product->product_name;
-                $row['Harga Modal'] = $product->price;
-                $row['Harga Jual']  = $product->sell_price;
-                $row['Status']      = $product->seller_product_status ? 'Aktif' : 'Nonaktif';
+                $row = [
+                    $product->category,
+                    $product->brand,
+                    $product->buyer_sku_code,
+                    $product->product_name,
+                    $product->price,
+                    $product->sell_price,
+                    $product->seller_product_status ? 'Aktif' : 'Nonaktif',
+                    $product->max_buy_price // Tambahkan kolom export
+                ];
 
-                fputcsv($file, array($row['Kategori'], $row['Brand'], $row['Kode SKU'], $row['Nama'], $row['Harga Modal'], $row['Harga Jual'], $row['Status']));
+                fputcsv($file, $row);
             }
 
             fclose($file);
@@ -175,7 +200,7 @@ class PpobProductController extends Controller
     }
 
     /**
-     * FITUR BARU: Export ke PDF (Print View Sederhana)
+     * FITUR: Export ke PDF (View Print)
      */
     public function exportPdf(Request $request)
     {
@@ -188,35 +213,31 @@ class PpobProductController extends Controller
         return view('admin.ppob.print_pricelist', compact('products'));
     }
 
-   // --- FITUR SINKRONISASI TERPISAH (FINAL) ---
+    // --- SYNC METHOD ---
 
-    /**
-     * Menangani permintaan sinkronisasi HANYA untuk produk PRABAYAR.
-     */
-    public function syncPrepaid(Request $request)
+    public function syncPrepaid()
     {
-        $success = $this->ppobService->syncPrepaidProducts();
-
-        if ($success) {
-            return redirect()->back()->with('success', 'Sinkronisasi produk **Prabayar** berhasil dilakukan! Perubahan harga mungkin membutuhkan beberapa saat.');
+        try {
+            $success = $this->ppobService->syncPrepaidProducts();
+            if ($success) {
+                return redirect()->back()->with('success', 'Sinkronisasi Prabayar Berhasil!');
+            }
+        } catch (Exception $e) {
+            return redirect()->back()->with('error', 'Error Sync: ' . $e->getMessage());
         }
-
-        // Ketika sync gagal, cek pesan dari cache/log atau berikan pesan standar.
-        return redirect()->back()->with('error', 'Gagal melakukan sinkronisasi Prabayar. Cek log atau coba lagi setelah 6 menit.');
+        return redirect()->back()->with('error', 'Gagal melakukan sinkronisasi Prabayar.');
     }
 
-    /**
-     * Menangani permintaan sinkronisasi HANYA untuk produk PASCABAYAR.
-     */
-    public function syncPostpaid(Request $request)
+    public function syncPostpaid()
     {
-        $success = $this->ppobService->syncPostpaidProducts();
-
-        if ($success) {
-            return redirect()->back()->with('success', 'Sinkronisasi produk **Pascabayar** berhasil dilakukan! Perubahan harga mungkin membutuhkan beberapa saat.');
+        try {
+            $success = $this->ppobService->syncPostpaidProducts();
+            if ($success) {
+                return redirect()->back()->with('success', 'Sinkronisasi Pascabayar Berhasil!');
+            }
+        } catch (Exception $e) {
+            return redirect()->back()->with('error', 'Error Sync: ' . $e->getMessage());
         }
-        
-        // Ketika sync gagal
-        return redirect()->back()->with('error', 'Gagal melakukan sinkronisasi Pascabayar. Cek log atau coba lagi setelah 6 menit.');
+        return redirect()->back()->with('error', 'Gagal melakukan sinkronisasi Pascabayar.');
     }
 }
