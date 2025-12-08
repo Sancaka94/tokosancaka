@@ -766,20 +766,16 @@ Route::put('products/{slug}/specifications', [\App\Http\Controllers\Admin\Produc
 
 Route::get('/pengguna/export', [PenggunaController::class, 'export'])->name('admin.customers.pengguna.export');
 
-Route::middleware(['auth', RoleMiddleware::class . ':Admin'])
-
-    ->prefix('admin')->name('admin.')
-
-    ->group(function () {
+Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->name('admin.')->group(function () {
 
         // All general admin routes should go in this file
 
         require __DIR__.'/web/admin.php';
 
-
+Route::post('/', [AdminPesananController::class, 'store'])->name('store');
 
         
-        Route::resource('customers/data/pengguna', DataPenggunaController::class)
+    Route::resource('customers/data/pengguna', DataPenggunaController::class)
     ->names('customers.data.pengguna');
 
     // Route Manajemen Ulasan
