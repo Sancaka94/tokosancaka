@@ -655,7 +655,7 @@
                     {{-- <<< SISIPAN BARU UNTUK LOG LARAVEL >>> --}}
                     <li>
                         <a href="{{ route('admin.logs.show') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-gray-700 {{ request()->routeIs('admin.logs.show') ? 'text-white' : 'text-gray-400' }}">
-                            <i class="fa-solid fa-bug fa-fw w-4 h-4 mr-2 text-red-500"></i> Log Laravel
+                            <i class="fa-solid fa-bug fa-fw w-4 h-4 mr-2 text-red-500"></i> Log Error
                         </a>
                     </li>
                     {{-- <<< AKHIR SISIPAN BARU >>> --}}
