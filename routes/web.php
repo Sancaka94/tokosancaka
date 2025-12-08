@@ -86,7 +86,7 @@ use App\Http\Controllers\Customer\AgentTransactionController; // <--- TAMBAHKAN 
 
 
 
-Route::post('/', [AdminPesananController::class, 'store'])->name('admin.store');
+
 
 
 Route::middleware(['auth'])->prefix('ppob')->name('ppob.')->group(function () {
