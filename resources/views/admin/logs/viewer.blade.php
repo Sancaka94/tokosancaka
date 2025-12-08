@@ -4,7 +4,7 @@
 @section('title', 'Raw Log Viewer')
 
 @section('content')
-<h1 class="text-2xl font-bold mb-4">📂 Isi Log ({{ AdminLogController::MAX_LINES }} Baris Terakhir)</h1>
+<h1 class="text-2xl font-bold mb-4">📂 Isi Log ({{ $maxLines }} Baris Terakhir)</h1>
 
 <div class="bg-gray-100 border border-gray-300 p-4 rounded-lg">
     {{-- 
