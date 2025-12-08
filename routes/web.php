@@ -773,6 +773,8 @@ Route::put('products/{slug}/specifications', [\App\Http\Controllers\Admin\Produc
 
 Route::get('/admin/logs', [AdminLogController::class, 'showLogs'])->name('admin.logs.show');
 
+Route::post('/admin/logs/clear', [AdminLogController::class, 'clearLogs'])->name('admin.logs.clear');
+
 Route::get('/cek-saldo', [AdminPpobController::class, 'cekSaldo'])->name('admin.ppob.cek-saldo'); // route('admin.ppob.cek-saldo')
 
 

@@ -44,4 +44,33 @@ class AdminLogController extends Controller
             return view('admin.logs.viewer', compact('maxLines'), ['logs' => 'Error: Gagal mengakses file log.']);
         }
     }
+
+    // ==========================================================
+    // FUNGSI BARU: HAPUS SEMUA ISI LOG
+    // ==========================================================
+    public function clearLogs(Request $request)
+    {
+        // Hanya izinkan admin yang terotentikasi dan memiliki role yang sesuai
+        if (!auth()->check() || auth()->user()->role !== 'admin') {
+             return response()->json(['status' => 'error', 'message' => 'Unauthorized action.'], 403);
+        }
+        
+        $logPath = storage_path('logs/laravel.log');
+
+        try {
+            if (File::exists($logPath)) {
+                // Hapus isi file (menulis string kosong ke file)
+                File::put($logPath, ''); 
+                Log::info('Log file cleared by Admin ID: ' . auth()->id()); // Log aksi penghapusan
+                
+                return response()->json(['status' => 'success', 'message' => 'Semua isi log berhasil dihapus.']);
+            }
+            return response()->json(['status' => 'warning', 'message' => 'File log tidak ditemukan.'], 404);
+            
+        } catch (\Exception $e) {
+            Log::error('Gagal menghapus file log: ' . $e->getMessage());
+            return response()->json(['status' => 'error', 'message' => 'Gagal menghapus log: ' . $e->getMessage()], 500);
+        }
+    }
+    
 }
