@@ -2,10 +2,27 @@
 
 @section('title', 'Manajemen Produk PPOB')
 
+{{-- Load SweetAlert2 CDN --}}
+@push('styles')
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+@endpush
+
 @section('content')
 
-{{-- Notifikasi Flash Message --}}
-@include('layouts.partials.notifications')
+{{-- Notifikasi Flash Message (Session Laravel) --}}
+@if(session('success'))
+<div class="mb-4 bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded shadow-sm relative" role="alert">
+    <strong class="font-bold">Berhasil!</strong>
+    <span class="block sm:inline">{{ session('success') }}</span>
+</div>
+@endif
+
+@if(session('error'))
+<div class="mb-4 bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded shadow-sm relative" role="alert">
+    <strong class="font-bold">Gagal!</strong>
+    <span class="block sm:inline">{{ session('error') }}</span>
+</div>
+@endif
 
 <div class="container mx-auto px-4 py-8">
     
@@ -20,12 +37,19 @@
             <p class="text-sm text-gray-500 mt-1">Kelola harga beli, margin keuntungan, dan status produk Digiflazz.</p>
             
             <div class="mt-4 flex flex-wrap gap-2">
+                {{-- TOMBOL EXPORT (BARU) --}}
+                <div class="flex gap-1 mr-2">
+                    <a href="{{ route('admin.ppob.export-excel', request()->all()) }}" target="_blank" class="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-xs font-bold shadow flex items-center gap-2 transition transform hover:scale-105">
+                        <i class="fas fa-file-excel"></i> Excel
+                    </a>
+                    <a href="{{ route('admin.ppob.export-pdf', request()->all()) }}" target="_blank" class="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-xs font-bold shadow flex items-center gap-2 transition transform hover:scale-105">
+                        <i class="fas fa-file-pdf"></i> PDF
+                    </a>
+                </div>
+
                 {{-- Tombol Sync Data --}}
-                <a href="{{ route('ppob.sync.prepaid') }}" onclick="return confirm('Sinkronisasi produk Prabayar? Proses ini memakan waktu.')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-xs font-bold shadow flex items-center gap-2">
+                <a href="{{ route('ppob.sync.prepaid') }}" id="btn-sync-prepaid" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-xs font-bold shadow flex items-center gap-2">
                     <i class="fas fa-sync"></i> Sync Prabayar
-                </a>
-                <a href="{{ route('ppob.sync.postpaid') }}" onclick="return confirm('Sinkronisasi produk Pascabayar? Proses ini memakan waktu.')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-xs font-bold shadow flex items-center gap-2">
-                    <i class="fas fa-sync"></i> Sync Pascabayar
                 </a>
                 
                 <div class="w-px h-8 bg-gray-300 mx-1 hidden md:block"></div>
@@ -56,10 +80,12 @@
 
                 {{-- Tombol Aksi Saldo --}}
                 <div class="flex gap-2">
-                    <button onclick="openDepositModal()" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg text-sm transition shadow flex items-center gap-2">
+                    <button onclick="openDepositModal()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg text-sm transition shadow flex items-center gap-2">
                         <i class="fas fa-plus-circle"></i> Isi Deposit
                     </button>
-                  
+                    <button onclick="openTopupModal()" class="bg-white/10 hover:bg-white/20 text-white font-semibold py-2 px-4 rounded-lg text-sm transition border border-white/10 flex items-center gap-2">
+                        <i class="fas fa-bolt"></i> Transaksi Manual
+                    </button>
                 </div>
             </div>
         </div>
@@ -191,13 +217,9 @@
                                 </button>
                                 
                                 {{-- Tombol Hapus --}}
-                                <form action="{{ route('admin.ppob.destroy', $product->id) }}" method="POST" onsubmit="return confirm('Hapus produk ini dari daftar lokal?');" class="inline">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition" title="Hapus">
-                                        <i class="fas fa-trash-alt"></i>
-                                    </button>
-                                </form>
+                                <button onclick="deleteProduct('{{ route('admin.ppob.destroy', $product->id) }}')" class="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition" title="Hapus">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
                             </div>
                         </td>
                     </tr>
@@ -225,10 +247,10 @@
 {{-- =================================================================== --}}
 {{-- MODAL 1: EDIT HARGA SATUAN --}}
 {{-- =================================================================== --}}
-<div id="priceModal" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-    <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity backdrop-blur-sm" onclick="closeModal()"></div>
+<div id="priceModal" class="fixed inset-0 z-50 hidden transition-opacity" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="fixed inset-0 bg-gray-900 bg-opacity-75 backdrop-blur-sm transition-opacity" onclick="closeModal()"></div>
     <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-        <div class="inline-block align-bottom bg-white rounded-xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md w-full">
+        <div class="inline-block align-bottom bg-white rounded-xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md w-full scale-100">
             <form id="priceForm" action="" method="POST" class="p-6">
                 @csrf
                 @method('PUT')
@@ -239,20 +261,17 @@
                 </div>
 
                 <div class="space-y-4">
-                    {{-- Nama Produk --}}
                     <div>
                         <label class="block text-xs font-bold text-gray-500 uppercase">Nama Produk</label>
                         <input type="text" id="modal_product_name" class="w-full mt-1 bg-gray-100 border-gray-300 rounded-lg text-sm text-gray-600" readonly>
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
-                        {{-- Harga Beli --}}
                         <div>
                             <label class="block text-xs font-bold text-gray-500 uppercase">Harga Modal</label>
                             <input type="text" id="modal_base_price_display" class="w-full mt-1 bg-gray-100 border-gray-300 rounded-lg text-sm font-mono font-bold" readonly>
                             <input type="hidden" id="modal_base_price_raw">
                         </div>
-                        {{-- Kalkulator Margin --}}
                         <div>
                             <label class="block text-xs font-bold text-gray-500 uppercase">Margin Profit</label>
                             <div class="flex mt-1">
@@ -265,7 +284,6 @@
                         </div>
                     </div>
 
-                    {{-- Harga Jual Akhir --}}
                     <div>
                         <label class="block text-xs font-bold text-gray-700 uppercase">Harga Jual Akhir</label>
                         <div class="relative mt-1 rounded-md shadow-sm">
@@ -276,7 +294,6 @@
                         </div>
                     </div>
                     
-                    {{-- Status Switch --}}
                     <div class="flex items-center pt-2">
                         <input id="modal_status" name="status" type="checkbox" class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
                         <label for="modal_status" class="ml-2 block text-sm text-gray-900 font-medium">Jual Produk Ini (Aktif)</label>
@@ -285,7 +302,7 @@
 
                 <div class="mt-6 flex justify-end gap-3">
                     <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200">Batal</button>
-                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 shadow">Simpan</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 shadow">Simpan Perubahan</button>
                 </div>
             </form>
         </div>
@@ -341,13 +358,14 @@
 </div>
 
 {{-- =================================================================== --}}
-{{-- MODAL 3: DEPOSIT (POP UP) --}}
+{{-- MODAL 3: DEPOSIT (POP UP - AJAX HANDLING) --}}
 {{-- =================================================================== --}}
 <div id="depositModal" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
     <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity backdrop-blur-sm" onclick="closeDepositModal()"></div>
     <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
         <div class="inline-block align-bottom bg-white rounded-xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md w-full">
-            <form action="{{ route('admin.ppob.deposit') }}" method="POST" class="p-6"> 
+            {{-- Form menggunakan AJAX Submission --}}
+            <form id="formDeposit" onsubmit="submitDeposit(event)" class="p-6"> 
                 @csrf
                 <div class="flex justify-between items-center mb-5 border-b pb-4">
                     <h3 class="text-lg font-bold text-gray-900">Tambah Deposit Saldo</h3>
@@ -370,18 +388,21 @@
                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                 <span class="text-gray-500 sm:text-sm">Rp</span>
                             </div>
-                            <input type="number" name="amount" class="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md" placeholder="0" min="50000">
+                            <input type="number" name="amount" class="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md" placeholder="0" min="50000" required>
                         </div>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Nama Pemilik Rekening</label>
-                        <input type="text" name="owner_name" class="w-full rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500" placeholder="Atas Nama">
+                        <input type="text" name="owner_name" class="w-full rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500" placeholder="Atas Nama" required>
                     </div>
                 </div>
 
                 <div class="flex justify-end gap-3">
                     <button type="button" onclick="closeDepositModal()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200">Batal</button>
-                    <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 shadow">Request Tiket</button>
+                    <button type="submit" id="btnSubmitDepo" class="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 shadow flex items-center">
+                        <span id="btnDepoText">Request Tiket</span>
+                        <i id="btnDepoIcon" class="fas fa-arrow-right ml-2"></i>
+                    </button>
                 </div>
             </form>
         </div>
@@ -403,8 +424,8 @@
                 </div>
                 
                 <div class="space-y-4 mb-6">
-                    <div class="bg-yellow-50 p-3 rounded text-xs text-yellow-800">
-                        Gunakan fitur ini hanya jika transaksi via website user gagal atau untuk kebutuhan tes. Saldo akan terpotong langsung.
+                    <div class="bg-yellow-50 p-3 rounded text-xs text-yellow-800 border border-yellow-200">
+                        <i class="fas fa-exclamation-triangle mr-1"></i> Gunakan fitur ini hanya jika transaksi via website user gagal atau untuk kebutuhan tes.
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Kode Produk (SKU)</label>
@@ -418,7 +439,7 @@
 
                 <div class="flex justify-end gap-3">
                     <button type="button" onclick="closeTopupModal()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200">Batal</button>
-                    <button type="submit" onclick="return confirm('Yakin ingin tembak transaksi ini?')" class="px-4 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 shadow">Kirim Transaksi</button>
+                    <button type="submit" onclick="return confirm('Yakin ingin tembak transaksi ini? Saldo admin akan terpotong.')" class="px-4 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 shadow">Kirim Transaksi</button>
                 </div>
             </form>
         </div>
@@ -428,8 +449,15 @@
 @endsection
 
 @push('scripts')
+{{-- Load SweetAlert2 Script --}}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 <script>
-    // --- JS UTAMA (Fetch Saldo) ---
+    // --- 1. SETUP AJAX CSRF ---
+    // Agar form deposit tidak error 419 Page Expired
+    const csrfToken = document.querySelector('meta[name="csrf-token"]') ? document.querySelector('meta[name="csrf-token"]').getAttribute('content') : '';
+
+    // --- 2. JS UTAMA (Fetch Saldo) ---
     function fetchSaldo() {
         const display = document.getElementById('saldo-display');
         const loading = document.getElementById('saldo-loading');
@@ -441,7 +469,6 @@
         loading.classList.remove('hidden');
         display.classList.add('opacity-50');
 
-        // Ganti URL ini dengan route API saldo Anda sebenarnya
         fetch("{{ route('admin.ppob.cek-saldo') }}")
             .then(res => res.json())
             .then(data => {
@@ -452,8 +479,7 @@
                 }
             })
             .catch(err => {
-                console.error(err);
-                // display.innerText = 'Rp 1.500.000 (Dummy)'; // Uncomment untuk tes tampilan
+                console.error('Gagal fetch saldo:', err);
             })
             .finally(() => {
                 icon.classList.remove('fa-spin');
@@ -465,25 +491,89 @@
     // Panggil saldo saat load
     document.addEventListener('DOMContentLoaded', function() {
         fetchSaldo();
+        
+        // Listener untuk tombol sync (biar ada loading)
+        document.getElementById('btn-sync-prepaid')?.addEventListener('click', function() {
+            Swal.fire({
+                title: 'Sedang Sinkronisasi...',
+                html: 'Mohon tunggu, jangan tutup halaman ini.<br>Proses bisa memakan waktu 1-2 menit.',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+        });
     });
 
-    // --- MODAL HELPERS ---
+    // --- 3. MODAL HELPERS ---
     function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
     function closeModalById(id) { document.getElementById(id).classList.add('hidden'); }
 
-    // --- DEPOSIT ---
     function openDepositModal() { openModal('depositModal'); }
     function closeDepositModal() { closeModalById('depositModal'); }
-
-    // --- TOPUP MANUAL ---
+    
     function openTopupModal() { openModal('topupModal'); }
     function closeTopupModal() { closeModalById('topupModal'); }
-
-    // --- BULK UPDATE ---
+    
     function openBulkModal() { openModal('bulkPriceModal'); }
     function closeBulkModal() { closeModalById('bulkPriceModal'); }
 
-    // --- EDIT PRICE (SINGLE) ---
+    // --- 4. HANDLE DEPOSIT (Mencegah Layar JSON Error) ---
+    function submitDeposit(e) {
+        e.preventDefault(); // Mencegah form submit biasa
+
+        const form = document.getElementById('formDeposit');
+        const formData = new FormData(form);
+        const btn = document.getElementById('btnSubmitDepo');
+        const btnText = document.getElementById('btnDepoText');
+        
+        // Loading State
+        btn.disabled = true;
+        btnText.innerText = 'Memproses...';
+
+        fetch("{{ route('admin.ppob.deposit') }}", {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': "{{ csrf_token() }}",
+                'Accept': 'application/json', // PENTING: Minta server return JSON, bukan redirect halaman
+            },
+            body: formData
+        })
+        .then(async response => {
+            const data = await response.json();
+            
+            // Cek status HTTP atau field status dari JSON
+            if (!response.ok || data.status === 'error') {
+                throw new Error(data.message || 'Terjadi kesalahan pada server.');
+            }
+            return data;
+        })
+        .then(data => {
+            // SUKSES
+            closeDepositModal();
+            Swal.fire({
+                icon: 'success',
+                title: 'Tiket Berhasil Dibuat!',
+                html: `Silakan transfer <b>Rp ${data.amount}</b> (Persis)<br>Ke Bank: ${data.bank}<br>No. Rek: ${data.account_no}`,
+                confirmButtonText: 'OK, Mengerti'
+            });
+            form.reset();
+        })
+        .catch(error => {
+            // ERROR (Menangkap pesan JSON seperti di gambar Anda)
+            console.error('Deposit Error:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal Request Deposit',
+                text: error.message, // Ini akan menampilkan pesan dari JSON
+                confirmButtonColor: '#d33',
+            });
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btnText.innerText = 'Request Tiket';
+        });
+    }
+
+    // --- 5. EDIT PRICE (SINGLE) ---
     function editPrice(id, name, basePrice, sellPrice, status) {
         document.getElementById('modal_product_name').value = name;
         document.getElementById('modal_base_price_raw').value = parseFloat(basePrice);
@@ -501,6 +591,42 @@
     }
 
     function closeModal() { closeModalById('priceModal'); }
+
+    // --- 6. HAPUS PRODUK (SweetAlert) ---
+    function deleteProduct(url) {
+        Swal.fire({
+            title: 'Hapus Produk?',
+            text: "Produk akan dihapus dari database lokal. Anda bisa melakukan sync ulang nanti.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Ya, Hapus!',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Buat form dinamis untuk submit DELETE request
+                const form = document.createElement('form');
+                form.action = url;
+                form.method = 'POST';
+                
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = '_token';
+                csrfInput.value = "{{ csrf_token() }}";
+                
+                const methodInput = document.createElement('input');
+                methodInput.type = 'hidden';
+                methodInput.name = '_method';
+                methodInput.value = 'DELETE';
+                
+                form.appendChild(csrfInput);
+                form.appendChild(methodInput);
+                document.body.appendChild(form);
+                form.submit();
+            }
+        });
+    }
 
     // Logic Hitung Margin di Modal Edit
     function calculateSinglePrice() {
