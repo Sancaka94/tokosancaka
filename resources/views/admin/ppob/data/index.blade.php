@@ -231,13 +231,13 @@
                                 </a>
 
                                 {{-- Tombol Hapus (Hanya untuk failed/test) --}}
-                                <form action="{{ route('admin.ppob.destroy', $trx->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus data ini?');">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="p-2 bg-white border border-gray-200 text-gray-500 rounded-lg hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition" title="Hapus Transaksi">
-                                        <i class="fas fa-trash-alt"></i>
-                                    </button>
-                                </form>
+<form action="{{ route('admin.ppob.transaction.destroy', $trx->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus data ini?');">
+    @csrf
+    @method('DELETE')
+    <button type="submit" class="p-2 bg-white border border-gray-200 text-gray-500 rounded-lg hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition" title="Hapus Transaksi">
+        <i class="fas fa-trash-alt"></i>
+    </button>
+</form>
                             </div>
                         </td>
                     </tr>
