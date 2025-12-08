@@ -29,7 +29,7 @@
             {{-- Baris Tombol Aksi (Export & Sync) --}}
             <div class="flex flex-wrap gap-2 mt-4">
                 {{-- Tombol Export --}}
-                <a href="{{ route('admin.ppob.export.excel', ['type' => request('type')]) }}" class="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-xs font-bold flex items-center gap-1">
+                <a href="{{ route('admin.ppob.products.export.excel', ['type' => request('type')]) }}" class="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-xs font-bold flex items-center gap-1">
                     <i class="fas fa-file-excel"></i> XLS
                 </a>
                 
@@ -41,10 +41,10 @@
                 </button>
                 
                 {{-- Tombol Sync --}}
-                <a href="{{ route('ppob.sync.prepaid') }}" onclick="return confirm('Sync Prabayar?')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-xs font-bold flex items-center gap-1">
+                <a href="{{ route('admin.ppob.products.sync.prepaid') }}" onclick="return confirm('Sync Prabayar?')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-xs font-bold flex items-center gap-1">
                     <i class="fas fa-sync"></i> Prabayar
                 </a>
-                <a href="{{ route('ppob.sync.postpaid') }}" onclick="return confirm('Sync Pascabayar?')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded text-xs font-bold flex items-center gap-1">
+                <a href="{{ route('admin.ppob.products.sync.postpaid') }}" onclick="return confirm('Sync Pascabayar?')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded text-xs font-bold flex items-center gap-1">
                     <i class="fas fa-sync"></i> Pascabayar
                 </a>
             </div>
