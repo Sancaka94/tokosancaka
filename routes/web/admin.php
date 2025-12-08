@@ -183,7 +183,7 @@ Route::post('admin/posts/generate-content', [PostController::class, 'generateCon
     ->name('posts.generateContent');
 
 
-Route::resource('admin/posts', PostController::class);
+
 
 Route::get('/email', [ImapController::class, 'index'])->name('imap.index');
 
@@ -240,7 +240,7 @@ Route::delete('/settings-markerplace/{banner}', [SettingController::class, 'dest
     | 3. RUTE MANAJEMEN PENGGUNA (UserController)
     |--------------------------------------------------------------------------
     */
-    Route::resource('users', UserController::class);
+    
 
 
     /*
@@ -270,7 +270,7 @@ Route::delete('/settings-markerplace/{banner}', [SettingController::class, 'dest
     // • Tombol HAPUS   -> DELETE /admin/users/{user}      -> UserController@destroy
     // (Juga membuat 'create', 'store', dan 'update' untuk manajemen user penuh)
     
-    Route::resource('users', UserController::class);
+   
 
 
 
@@ -657,3 +657,10 @@ Route::prefix('customer-to-seller')->name('customer-to-seller.')->group(function
 
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
+
+
+
+
+
+
+Route::resource('users', UserController::class);
