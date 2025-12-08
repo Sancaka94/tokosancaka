@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Admin; // <<< PASTIKAN INI SAMA DENGAN LOKASI FILE
+namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\File;
@@ -17,7 +17,9 @@ class AdminLogController extends Controller
         $logPath = storage_path('logs/laravel.log');
         
         if (!File::exists($logPath)) {
-            return view('admin.logs.viewer', ['logs' => 'File log (laravel.log) tidak ditemukan.']);
+            // Perbaikan: Pastikan $maxLines dikirim meskipun file tidak ada
+            $maxLines = self::MAX_LINES;
+            return view('admin.logs.viewer', compact('maxLines'), ['logs' => 'File log (laravel.log) tidak ditemukan.']);
         }
 
         try {
@@ -26,16 +28,20 @@ class AdminLogController extends Controller
             // Ambil hanya baris terakhir (agar tidak terlalu membebani browser)
             $lines = explode("\n", $content);
             $lastLines = array_slice($lines, -self::MAX_LINES, self::MAX_LINES, true);
-            $maxLines = self::MAX_LINES;
+            
+            // Ambil nilai konstanta ke dalam variabel lokal
+            $maxLines = self::MAX_LINES; 
             
             // Gabungkan kembali baris-baris tersebut tanpa modifikasi
             $logs = implode("\n", $lastLines);
             
-            return view('admin.logs.viewer', compact('logs'));
+            // Perbaikan: Kirim variabel $maxLines ke view
+            return view('admin.logs.viewer', compact('logs', 'maxLines')); 
 
         } catch (\Exception $e) {
             Log::error('Gagal membaca file log: ' . $e->getMessage());
-            return view('admin.logs.viewer', ['logs' => 'Error: Gagal mengakses file log.']);
+            $maxLines = self::MAX_LINES;
+            return view('admin.logs.viewer', compact('maxLines'), ['logs' => 'Error: Gagal mengakses file log.']);
         }
     }
 }
