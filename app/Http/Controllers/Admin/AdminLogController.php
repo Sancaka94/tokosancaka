@@ -26,6 +26,7 @@ class AdminLogController extends Controller
             // Ambil hanya baris terakhir (agar tidak terlalu membebani browser)
             $lines = explode("\n", $content);
             $lastLines = array_slice($lines, -self::MAX_LINES, self::MAX_LINES, true);
+            $maxLines = self::MAX_LINES;
             
             // Gabungkan kembali baris-baris tersebut tanpa modifikasi
             $logs = implode("\n", $lastLines);
