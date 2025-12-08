@@ -59,9 +59,7 @@
                     <button onclick="openDepositModal()" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg text-sm transition shadow flex items-center gap-2">
                         <i class="fas fa-plus-circle"></i> Isi Deposit
                     </button>
-                    <button onclick="openTopupModal()" class="bg-white/10 hover:bg-white/20 text-white font-semibold py-2 px-4 rounded-lg text-sm transition border border-white/10 flex items-center gap-2">
-                        <i class="fas fa-bolt"></i> Transaksi Manual
-                    </button>
+                  
                 </div>
             </div>
         </div>
