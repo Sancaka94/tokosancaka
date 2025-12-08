@@ -410,7 +410,7 @@
 </div>
 
 {{-- =================================================================== --}}
-{{-- MODAL 4: TOPUP MANUAL --}}
+{{-- MODAL 4: TOPUP MANUAL (DENGAN MAX PRICE) --}}
 {{-- =================================================================== --}}
 <div id="topupModal" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
     <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity backdrop-blur-sm" onclick="closeTopupModal()"></div>
@@ -427,19 +427,38 @@
                     <div class="bg-yellow-50 p-3 rounded text-xs text-yellow-800 border border-yellow-200">
                         <i class="fas fa-exclamation-triangle mr-1"></i> Gunakan fitur ini hanya jika transaksi via website user gagal atau untuk kebutuhan tes.
                     </div>
+                    
+                    {{-- Input SKU --}}
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Kode Produk (SKU)</label>
-                        <input type="text" name="buyer_sku_code" class="w-full rounded-lg border-gray-300 focus:ring-red-500 focus:border-red-500 uppercase" placeholder="Contoh: xld10" required>
+                        <input type="text" name="buyer_sku_code" class="w-full rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500 uppercase" placeholder="Contoh: xld10" required>
                     </div>
+                    
+                    {{-- Input Nomor Tujuan --}}
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Nomor Tujuan / ID Pelanggan</label>
-                        <input type="text" name="customer_no" class="w-full rounded-lg border-gray-300 focus:ring-red-500 focus:border-red-500" placeholder="08..." required>
+                        <input type="text" name="customer_no" class="w-full rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500" placeholder="08..." required>
+                    </div>
+
+                    {{-- UPDATE DISINI: Input Max Price --}}
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            Limit Harga Beli (Max Price) 
+                            <span class="text-xs text-gray-400 font-normal ml-1">(Opsional)</span>
+                        </label>
+                        <div class="relative rounded-md shadow-sm">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <span class="text-gray-500 sm:text-sm">Rp</span>
+                            </div>
+                            <input type="number" name="max_price" class="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md" placeholder="Kosongkan jika tanpa limit">
+                        </div>
+                        <p class="text-[10px] text-gray-500 mt-1">Transaksi akan <b>GAGAL</b> jika harga dari pusat lebih mahal dari nominal ini.</p>
                     </div>
                 </div>
 
                 <div class="flex justify-end gap-3">
                     <button type="button" onclick="closeTopupModal()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200">Batal</button>
-                    <button type="submit" onclick="return confirm('Yakin ingin tembak transaksi ini? Saldo admin akan terpotong.')" class="px-4 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 shadow">Kirim Transaksi</button>
+                    <button type="submit" onclick="return confirm('Yakin ingin tembak transaksi ini? Saldo admin akan terpotong.')" class="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 shadow">Kirim Transaksi</button>
                 </div>
             </form>
         </div>
@@ -449,37 +468,47 @@
 @endsection
 
 @push('scripts')
-{{-- Load SweetAlert2 Script --}}
+{{-- Load SweetAlert2 Library --}}
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
-    // --- 1. SETUP AJAX CSRF ---
-    // Agar form deposit tidak error 419 Page Expired
+    /**
+     * 1. CONFIG & UTILITIES
+     */
     const csrfToken = document.querySelector('meta[name="csrf-token"]') ? document.querySelector('meta[name="csrf-token"]').getAttribute('content') : '';
+    
+    // Format Rupiah Helper
+    const formatRupiah = (number) => {
+        return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(number);
+    };
 
-    // --- 2. JS UTAMA (Fetch Saldo) ---
+    /**
+     * 2. FETCH SALDO (Realtime)
+     */
     function fetchSaldo() {
         const display = document.getElementById('saldo-display');
         const loading = document.getElementById('saldo-loading');
         const icon = document.getElementById('icon-refresh');
 
-        if(!display) return;
+        if (!display) return;
 
+        // UI Loading State
         icon.classList.add('fa-spin');
         loading.classList.remove('hidden');
         display.classList.add('opacity-50');
 
         fetch("{{ route('admin.ppob.cek-saldo') }}")
-            .then(res => res.json())
+            .then(response => response.json())
             .then(data => {
-                if(data.status === 'success') {
-                    display.innerText = data.formatted;
+                if (data.status === 'success') {
+                    display.innerText = data.formatted; // Pastikan controller return format "Rp 1.xxx.xxx"
                 } else {
-                    display.innerText = 'Error';
+                    display.innerText = 'Gagal Memuat';
                 }
             })
-            .catch(err => {
-                console.error('Gagal fetch saldo:', err);
+            .catch(error => {
+                console.error('Error fetching saldo:', error);
+                display.innerText = 'Error';
             })
             .finally(() => {
                 icon.classList.remove('fa-spin');
@@ -488,25 +517,35 @@
             });
     }
 
-    // Panggil saldo saat load
+    // Jalankan fetchSaldo saat halaman selesai dimuat
     document.addEventListener('DOMContentLoaded', function() {
         fetchSaldo();
-        
-        // Listener untuk tombol sync (biar ada loading)
-        document.getElementById('btn-sync-prepaid')?.addEventListener('click', function() {
-            Swal.fire({
-                title: 'Sedang Sinkronisasi...',
-                html: 'Mohon tunggu, jangan tutup halaman ini.<br>Proses bisa memakan waktu 1-2 menit.',
-                allowOutsideClick: false,
-                didOpen: () => { Swal.showLoading(); }
-            });
-        });
     });
 
-    // --- 3. MODAL HELPERS ---
-    function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
-    function closeModalById(id) { document.getElementById(id).classList.add('hidden'); }
+    /**
+     * 3. MODAL CONTROLLERS (Open/Close)
+     */
+    function openModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if(modal) {
+            modal.classList.remove('hidden');
+            // Animasi kecil (Opsional)
+            const panel = modal.querySelector('div[class*="transform"]');
+            if(panel) {
+                panel.classList.remove('scale-95', 'opacity-0');
+                panel.classList.add('scale-100', 'opacity-100');
+            }
+        }
+    }
 
+    function closeModalById(modalId) {
+        const modal = document.getElementById(modalId);
+        if(modal) {
+            modal.classList.add('hidden');
+        }
+    }
+
+    // Mapping Fungsi Spesifik ke Generic
     function openDepositModal() { openModal('depositModal'); }
     function closeDepositModal() { closeModalById('depositModal'); }
     
@@ -516,55 +555,112 @@
     function openBulkModal() { openModal('bulkPriceModal'); }
     function closeBulkModal() { closeModalById('bulkPriceModal'); }
 
-    // --- 4. HANDLE DEPOSIT (Mencegah Layar JSON Error) ---
+    // Edit Price Modal (Populate Data)
+    function editPrice(id, name, basePrice, sellPrice, status) {
+        // Isi Form
+        document.getElementById('modal_product_name').value = name;
+        document.getElementById('modal_base_price_raw').value = parseFloat(basePrice);
+        document.getElementById('modal_base_price_display').value = formatRupiah(basePrice);
+        document.getElementById('modal_sell_price').value = parseFloat(sellPrice);
+        
+        // Reset Calculator Inputs
+        document.getElementById('single_profit_value').value = 0;
+        document.getElementById('single_profit_type').value = 'rupiah';
+
+        // Set Checkbox Status
+        const statusCheckbox = document.getElementById('modal_status');
+        if (statusCheckbox) statusCheckbox.checked = (status == 1);
+
+        // Set Action URL Form
+        let url = "{{ route('admin.ppob.update-price', ':id') }}";
+        url = url.replace(':id', id);
+        document.getElementById('priceForm').action = url;
+
+        openModal('priceModal');
+    }
+    
+    function closeModal() { closeModalById('priceModal'); }
+
+    /**
+     * 4. LOGIC CALCULATOR MARGIN (Edit Price Modal)
+     */
+    function calculateSinglePrice() {
+        const basePrice = parseFloat(document.getElementById('modal_base_price_raw').value) || 0;
+        const profitValue = parseFloat(document.getElementById('single_profit_value').value) || 0;
+        const profitType = document.getElementById('single_profit_type').value;
+        
+        let finalPrice = basePrice;
+
+        if (profitType === 'rupiah') {
+            finalPrice += profitValue;
+        } else {
+            // Persentase
+            finalPrice += basePrice * (profitValue / 100);
+        }
+
+        // Pembulatan ke atas (Ceiling) agar aman
+        document.getElementById('modal_sell_price').value = Math.ceil(finalPrice);
+    }
+
+    /**
+     * 5. LOGIC DEPOSIT (AJAX SUBMISSION)
+     * Menangani respon JSON dari Controller agar tampil cantik di SweetAlert
+     */
     function submitDeposit(e) {
-        e.preventDefault(); // Mencegah form submit biasa
+        e.preventDefault();
 
         const form = document.getElementById('formDeposit');
-        const formData = new FormData(form);
         const btn = document.getElementById('btnSubmitDepo');
         const btnText = document.getElementById('btnDepoText');
-        
+        const formData = new FormData(form);
+
         // Loading State
         btn.disabled = true;
         btnText.innerText = 'Memproses...';
 
         fetch("{{ route('admin.ppob.deposit') }}", {
-            method: 'POST',
+            method: "POST",
             headers: {
-                'X-CSRF-TOKEN': "{{ csrf_token() }}",
-                'Accept': 'application/json', // PENTING: Minta server return JSON, bukan redirect halaman
+                "X-CSRF-TOKEN": csrfToken,
+                "Accept": "application/json" // Memaksa respon JSON
             },
             body: formData
         })
         .then(async response => {
             const data = await response.json();
-            
-            // Cek status HTTP atau field status dari JSON
-            if (!response.ok || data.status === 'error') {
-                throw new Error(data.message || 'Terjadi kesalahan pada server.');
+            if (!response.ok) {
+                throw new Error(data.message || 'Terjadi kesalahan server.');
             }
             return data;
         })
         .then(data => {
-            // SUKSES
+            // Sukses
             closeDepositModal();
+            form.reset();
+            
             Swal.fire({
                 icon: 'success',
-                title: 'Tiket Berhasil Dibuat!',
-                html: `Silakan transfer <b>Rp ${data.amount}</b> (Persis)<br>Ke Bank: ${data.bank}<br>No. Rek: ${data.account_no}`,
-                confirmButtonText: 'OK, Mengerti'
+                title: 'Tiket Deposit Dibuat!',
+                html: `
+                    <div class="text-left text-sm bg-gray-50 p-4 rounded-lg border">
+                        <p class="mb-2">Silakan transfer nominal <b>PERSIS</b> (jangan dibulatkan):</p>
+                        <h3 class="text-2xl font-bold text-blue-600 mb-3">${data.formatted_amount || formatRupiah(data.amount)}</h3>
+                        <hr class="my-2">
+                        <p><b>Bank:</b> ${data.bank}</p>
+                        <p><b>No. Rekening:</b> ${data.account_no}</p>
+                        <p><b>A.N:</b> ${data.account_name}</p>
+                    </div>
+                    <p class="mt-3 text-xs text-gray-500">Saldo akan masuk otomatis 5-10 menit setelah transfer.</p>
+                `,
+                confirmButtonText: 'OK, Siap Transfer'
             });
-            form.reset();
         })
         .catch(error => {
-            // ERROR (Menangkap pesan JSON seperti di gambar Anda)
-            console.error('Deposit Error:', error);
+            // Error
             Swal.fire({
                 icon: 'error',
-                title: 'Gagal Request Deposit',
-                text: error.message, // Ini akan menampilkan pesan dari JSON
-                confirmButtonColor: '#d33',
+                title: 'Gagal Membuat Tiket',
+                text: error.message,
             });
         })
         .finally(() => {
@@ -573,30 +669,13 @@
         });
     }
 
-    // --- 5. EDIT PRICE (SINGLE) ---
-    function editPrice(id, name, basePrice, sellPrice, status) {
-        document.getElementById('modal_product_name').value = name;
-        document.getElementById('modal_base_price_raw').value = parseFloat(basePrice);
-        document.getElementById('modal_base_price_display').value = 'Rp ' + parseFloat(basePrice).toLocaleString('id-ID');
-        document.getElementById('modal_sell_price').value = parseFloat(sellPrice);
-        
-        const statusCheckbox = document.getElementById('modal_status');
-        if(statusCheckbox) statusCheckbox.checked = (status == 1);
-
-        let url = "{{ route('admin.ppob.update-price', ':id') }}";
-        url = url.replace(':id', id);
-        document.getElementById('priceForm').action = url;
-
-        openModal('priceModal');
-    }
-
-    function closeModal() { closeModalById('priceModal'); }
-
-    // --- 6. HAPUS PRODUK (SweetAlert) ---
+    /**
+     * 6. LOGIC DELETE PRODUK (Konfirmasi SweetAlert)
+     */
     function deleteProduct(url) {
         Swal.fire({
             title: 'Hapus Produk?',
-            text: "Produk akan dihapus dari database lokal. Anda bisa melakukan sync ulang nanti.",
+            text: "Produk akan dihapus dari database lokal. Anda bisa menyinkronkan ulang nanti.",
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#d33',
@@ -605,44 +684,38 @@
             cancelButtonText: 'Batal'
         }).then((result) => {
             if (result.isConfirmed) {
-                // Buat form dinamis untuk submit DELETE request
+                // Submit Form Delete secara Programmatic
                 const form = document.createElement('form');
                 form.action = url;
                 form.method = 'POST';
-                
-                const csrfInput = document.createElement('input');
-                csrfInput.type = 'hidden';
-                csrfInput.name = '_token';
-                csrfInput.value = "{{ csrf_token() }}";
-                
-                const methodInput = document.createElement('input');
-                methodInput.type = 'hidden';
-                methodInput.name = '_method';
-                methodInput.value = 'DELETE';
-                
-                form.appendChild(csrfInput);
-                form.appendChild(methodInput);
+                form.innerHTML = `
+                    <input type="hidden" name="_token" value="${csrfToken}">
+                    <input type="hidden" name="_method" value="DELETE">
+                `;
                 document.body.appendChild(form);
                 form.submit();
             }
         });
     }
 
-    // Logic Hitung Margin di Modal Edit
-    function calculateSinglePrice() {
-        let base = parseFloat(document.getElementById('modal_base_price_raw').value) || 0;
-        let val = parseFloat(document.getElementById('single_profit_value').value) || 0;
-        let type = document.getElementById('single_profit_type').value;
-        let final = base;
-
-        if (type === 'rupiah') {
-            final += val;
-        } else {
-            final += base * (val / 100);
+    /**
+     * 7. (Opsional) HANDLER TOPUP MANUAL
+     * Memberikan loading saat submit form topup manual
+     */
+    document.querySelector('#topupModal form')?.addEventListener('submit', function(e) {
+        const btn = this.querySelector('button[type="submit"]');
+        if(btn) {
+            const originalText = btn.innerText;
+            btn.innerText = 'Mengirim...';
+            btn.disabled = true;
+            
+            // Timeout safety jika submit memakan waktu lama (atau biarkan browser handle redirect)
+            setTimeout(() => {
+                btn.disabled = false;
+                btn.innerText = originalText;
+            }, 10000);
         }
+    });
 
-        // Pembulatan ke atas (ceiling) agar aman
-        document.getElementById('modal_sell_price').value = Math.ceil(final);
-    }
 </script>
 @endpush
