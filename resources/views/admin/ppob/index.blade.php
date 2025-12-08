@@ -1,54 +1,32 @@
 @extends('layouts.admin')
 
-@section('title', 'Manajemen Produk PPOB')
+@section('title', 'Data Transaksi PPOB')
 
 @section('content')
-
-@include('layouts.partials.notifications')
-
-<div class="container mx-auto px-4 py-8">
+<div class="space-y-6">
     
-    {{-- Header Section (Tombol Aksi & Sync) --}}
-    {{-- ... (Bagian ini sama dengan kode terakhir Anda) ... --}}
-    <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-6 gap-4">
-        <div>
-            <h1 class="text-2xl font-bold text-gray-800">Daftar Produk PPOB</h1>
-            <p class="text-sm text-gray-500 mt-1">Kelola harga dan margin keuntungan produk secara massal.</p>
-        </div>
+    {{-- =================================================================== --}}
+    {{-- HEADER & WIDGET SALDO --}}
+    {{-- =================================================================== --}}
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
         
-        <div class="flex flex-wrap gap-2">
-            {{-- Tombol Export --}}
-            <a href="{{ route('admin.ppob.export-pdf', ['type' => request('type')]) }}" target="_blank" class="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition flex items-center gap-2 text-sm">
-                <i class="fas fa-file-pdf"></i> PDF
-            </a>
-            <a href="{{ route('admin.ppob.export-excel', ['type' => request('type')]) }}" target="_blank" class="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition flex items-center gap-2 text-sm">
-                <i class="fas fa-file-excel"></i> Excel
-            </a>
-
-            <div class="w-px h-8 bg-gray-300 mx-1 hidden md:block"></div>
-
-            {{-- Tombol Aksi Utama --}}
-            <button onclick="openBulkModal()" class="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-4 py-2 rounded-lg shadow transition flex items-center gap-2 text-sm">
-                <i class="fas fa-tags"></i> Update Harga Massal
-            </button>
+        {{-- Judul Halaman --}}
+        <div class="md:col-span-2">
+            <h2 class="text-2xl font-bold text-gray-800">Riwayat Transaksi PPOB</h2>
+            <p class="text-sm text-gray-500 mt-1">Monitoring transaksi digital, pulsa, dan pembayaran tagihan secara realtime.</p>
             
-            {{-- 1. TOMBOL SINKRONISASI PRABAYAR --}}
-            <a href="{{ route('ppob.sync.prepaid') }}" 
-                onclick="return confirm('Apakah Anda yakin ingin melakukan sinkronisasi produk PRABAYAR? Proses ini mungkin membutuhkan waktu.')"
-                class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition flex items-center gap-2 text-sm">
-                <i class="fas fa-mobile-alt"></i> Sync Prabayar
-            </a>
-
-            {{-- 2. TOMBOL SINKRONISASI PASCABAYAR --}}
-            <a href="{{ route('ppob.sync.postpaid') }}" 
-                onclick="return confirm('Apakah Anda yakin ingin melakukan sinkronisasi produk PASCABAYAR? Proses ini mungkin membutuhkan waktu.')"
-                class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition flex items-center gap-2 text-sm">
-                <i class="fas fa-receipt"></i> Sync Pascabayar
-            </a>
+            {{-- Tombol Export --}}
+            <div class="flex gap-2 mt-4">
+                <a href="{{ route('admin.ppob.data.export.excel', request()->all()) }}" class="inline-flex items-center px-4 py-2 bg-green-600 text-white text-xs font-bold rounded-lg hover:bg-green-700 transition shadow-sm hover:shadow-md">
+                    <i class="fas fa-file-excel mr-2"></i> EXCEL
+                </a>
+                <a href="{{ route('admin.ppob.data.export.pdf', request()->all()) }}" class="inline-flex items-center px-4 py-2 bg-red-600 text-white text-xs font-bold rounded-lg hover:bg-red-700 transition shadow-sm hover:shadow-md">
+                    <i class="fas fa-file-pdf mr-2"></i> PDF
+                </a>
+            </div>
         </div>
-    </div>
 
-    {{-- 2. WIDGET SALDO (Kanan) - TEMPAT KODE ANDA --}}
+        {{-- Widget Saldo (Fixed ID) --}}
         <div class="bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl p-5 text-white shadow-lg relative overflow-hidden">
             <div class="absolute right-0 top-0 opacity-10 transform translate-x-4 -translate-y-4">
                 <i class="fas fa-wallet text-8xl"></i>
@@ -56,17 +34,19 @@
             <div class="relative z-10">
                 <p class="text-blue-100 text-xs font-medium uppercase tracking-wider mb-1">Sisa Deposit Digiflazz</p>
                 
-                <div class="flex items-center justify-between mb-2">
-                    <h3 id="saldo-display" class="text-2xl font-bold tracking-tight">Rp ...</h3>
-                    <button onclick="fetchSaldo()" id="btn-refresh-saldo" class="text-blue-200 hover:text-white transition p-1 rounded-full hover:bg-white/10" title="Refresh Saldo">
+                {{-- Angka Saldo --}}
+                <div class="flex items-center justify-between mb-4">
+                    <h3 id="saldo-display" class="text-3xl font-bold tracking-tight">Rp ...</h3>
+                    
+                    {{-- Tombol Refresh Kecil --}}
+                    <button onclick="fetchSaldo()" id="btn-refresh-saldo" class="text-blue-200 hover:text-white transition p-1.5 rounded-full hover:bg-white/10" title="Refresh Saldo">
                         <i class="fas fa-sync-alt" id="icon-refresh"></i>
                     </button>
                 </div>
+                
+                {{-- Indikator Loading --}}
                 <p id="saldo-loading" class="text-[10px] text-blue-200 mb-2 hidden">Sedang memuat data...</p>
 
-                {{-- ========================================== --}}
-                {{-- KODE TOMBOL BARU YANG ANDA MINTA --}}
-                {{-- ========================================== --}}
                 <div class="grid grid-cols-2 gap-2 mt-3">
                     {{-- Tombol Deposit --}}
                     <button onclick="openDepositModal()" class="bg-white/20 hover:bg-white/30 text-white font-semibold py-2 px-4 rounded-lg text-sm transition border border-white/10 flex items-center justify-center gap-2">
@@ -78,171 +58,192 @@
                         <i class="fas fa-bolt"></i> Transaksi
                     </button>
                 </div>
-                {{-- ========================================== --}}
-
             </div>
         </div>
-
-    {{-- Alert Notification (tetap sama) --}}
-    @if(session('success'))
-        <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6 rounded shadow-sm flex items-center justify-between animate-fade-in-down">
-            <div class="flex items-center">
-                <i class="fas fa-check-circle mr-2"></i> {{ session('success') }}
-            </div>
-            <button onclick="this.parentElement.remove()" class="text-green-700 hover:text-green-900"><i class="fas fa-times"></i></button>
-        </div>
-    @endif
-    
-    {{-- Tombol Navigasi Prabayar/Pascabayar (tetap sama) --}}
-    <div class="flex mb-6 space-x-2 border-b border-gray-200">
-        @php $currentType = request('type', 'prepaid'); @endphp
-        
-        <a href="{{ route('admin.ppob.index', ['type' => 'prepaid', 'q' => request('q')]) }}" 
-           class="@if($currentType === 'prepaid') border-blue-500 text-blue-600 font-semibold @else border-transparent text-gray-500 hover:text-gray-700 @endif 
-                 px-4 py-2 border-b-2 transition duration-150 ease-in-out flex items-center gap-2">
-            <i class="fas fa-mobile-alt"></i> Prabayar
-        </a>
-        
-        <a href="{{ route('admin.ppob.index', ['type' => 'postpaid', 'q' => request('q')]) }}" 
-           class="@if($currentType === 'postpaid') border-blue-500 text-blue-600 font-semibold @else border-transparent text-gray-500 hover:text-gray-700 @endif 
-                 px-4 py-2 border-b-2 transition duration-150 ease-in-out flex items-center gap-2">
-            <i class="fas fa-receipt"></i> Pascabayar
-        </a>
     </div>
 
-    {{-- Filter & Search Bar (tetap sama) --}}
-    <div class="bg-white p-4 rounded-t-xl border-b border-gray-200 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
-        <div class="text-gray-600 text-sm">
-            Menampilkan <span class="font-bold">{{ $products->firstItem() ?? 0 }}</span> sampai <span class="font-bold">{{ $products->lastItem() ?? 0 }}</span> dari <span class="font-bold">{{ $products->total() }}</span> produk
-        </div>
-        <form action="{{ route('admin.ppob.index') }}" method="GET" class="relative w-full md:w-1/3">
-            <input type="hidden" name="type" value="{{ $currentType }}"> 
-            <input type="text" name="q" value="{{ request('q') }}" placeholder="Cari SKU, Nama Produk, atau Brand..." 
-                   class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm">
-            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <i class="fas fa-search text-gray-400"></i>
+    {{-- =================================================================== --}}
+    {{-- FILTER SECTION --}}
+    {{-- =================================================================== --}}
+    <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+        <form action="{{ route('admin.ppob.data.index') }}" method="GET">
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+                
+                {{-- Search --}}
+                <div class="md:col-span-4">
+                    <label class="text-xs font-medium text-gray-700 block mb-1">Pencarian</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400"><i class="fas fa-search"></i></span>
+                        <input type="text" name="search" value="{{ request('search') }}" class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500" placeholder="Order ID, User, atau No HP...">
+                    </div>
+                </div>
+
+                {{-- Status Filter --}}
+                <div class="md:col-span-3">
+                    <label class="text-xs font-medium text-gray-700 block mb-1">Status</label>
+                    <select name="status" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">Semua Status</option>
+                        <option value="Success" {{ request('status') == 'Success' ? 'selected' : '' }}>Success (Berhasil)</option>
+                        <option value="Pending" {{ request('status') == 'Pending' ? 'selected' : '' }}>Pending (Menunggu)</option>
+                        <option value="Processing" {{ request('status') == 'Processing' ? 'selected' : '' }}>Processing (Diproses)</option>
+                        <option value="Failed" {{ request('status') == 'Failed' ? 'selected' : '' }}>Failed (Gagal)</option>
+                    </select>
+                </div>
+
+                {{-- Date Filter --}}
+                <div class="md:col-span-3">
+                    <label class="text-xs font-medium text-gray-700 block mb-1">Tanggal Transaksi</label>
+                    <div class="flex items-center gap-2">
+                        <input type="date" name="start_date" value="{{ request('start_date') }}" class="w-full px-2 py-2 border border-gray-300 rounded-lg text-xs focus:ring-blue-500 focus:border-blue-500">
+                        <span class="text-gray-400">-</span>
+                        <input type="date" name="end_date" value="{{ request('end_date') }}" class="w-full px-2 py-2 border border-gray-300 rounded-lg text-xs focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                </div>
+
+                {{-- Button --}}
+                <div class="md:col-span-2">
+                    <button type="submit" class="w-full bg-blue-600 text-white font-bold py-2 rounded-lg text-sm hover:bg-blue-700 transition shadow-sm flex items-center justify-center gap-2">
+                        <i class="fas fa-filter"></i> Terapkan
+                    </button>
+                </div>
             </div>
         </form>
     </div>
 
-    {{-- Table Section --}}
-    <div class="bg-white shadow-md rounded-b-xl overflow-hidden">
+    {{-- =================================================================== --}}
+    {{-- TABLE SECTION --}}
+    {{-- =================================================================== --}}
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div class="overflow-x-auto">
-            <table class="w-full text-sm text-left table-auto">
-                <thead class="bg-gray-50 text-gray-600 uppercase text-xs font-semibold tracking-wider sticky top-0 z-10">
-                    <tr>
-                        <th class="px-6 py-4 min-w-[100px]">SKU</th>
-                        <th class="px-6 py-4 min-w-[200px]">Nama Produk</th>
-                        <th class="px-6 py-4 min-w-[100px]">Kategori</th>
-                        <th class="px-6 py-4 min-w-[100px]">Brand</th>
-                        <th class="px-6 py-4 min-w-[100px]">Seller</th>
-                        
-                        {{-- HARGA BELI / ADMIN FEE --}}
-                        <th class="px-6 py-4 text-right min-w-[120px]">Harga Beli/Admin</th>
-
-                        {{-- HARGA MAX (BARU) --}}
-                        <th class="px-6 py-4 text-right min-w-[120px] text-red-500">Harga Max</th>
-                        
-                        {{-- KOMISI PASCABAYAR --}}
-                        <th class="px-6 py-4 text-right min-w-[100px]">Komisi</th>
-                        
-                        {{-- HARGA JUAL --}}
-                        <th class="px-6 py-4 text-right min-w-[110px]">Harga Jual</th>
-                        <th class="px-6 py-4 text-center min-w-[90px]">Status</th>
-                        
-                        {{-- Kolom Aksi dijadikan STICKY --}}
-                        <th class="px-6 py-4 text-center min-w-[90px] sticky right-0 bg-gray-50 z-20 shadow-inner">Aksi</th>
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-gray-50 border-b border-gray-200 text-xs uppercase text-gray-500 font-semibold tracking-wider">
+                        <th class="px-6 py-4">User / Pelanggan</th>
+                        <th class="px-6 py-4">Produk</th>
+                        <th class="px-6 py-4">Tujuan</th>
+                        <th class="px-6 py-4">Nominal</th>
+                        <th class="px-6 py-4">Status / Respon</th>
+                        <th class="px-6 py-4 text-right">Waktu</th>
+                        <th class="px-6 py-4 text-center">Aksi</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-200 bg-white">
-                    @forelse($products as $product)
-                    <tr class="hover:bg-blue-50 transition duration-150 ease-in-out group">
-                        <td class="px-6 py-4 font-mono text-xs font-bold text-gray-500 group-hover:text-blue-600">
-                            {{ $product->buyer_sku_code }}
-                        </td>
-                        <td class="px-6 py-4">
-                            <div class="font-medium text-gray-900">{{ Str::limit($product->product_name, 40) }}</div>
-                            @if($product->multi && $currentType === 'prepaid') 
-                                <span class="inline-block mt-1 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-purple-100 text-purple-700 border border-purple-200">
-                                    Promo
-                                </span>
-                            @endif
-                            @if($product->type)
-                                <span class="inline-block mt-1 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-blue-100 text-blue-700 border border-blue-200">
-                                    {{ $product->type }}
-                                </span>
-                            @endif
-                        </td>
-                        <td class="px-6 py-4 text-gray-600">
-                            {{ $product->category }}
-                        </td>
-                        <td class="px-6 py-4">
-                            <span class="px-2 py-1 text-xs font-semibold rounded bg-gray-100 text-gray-600 border border-gray-200">
-                                {{ $product->brand }}
-                            </span>
-                        </td>
-                        <td class="px-6 py-4 text-gray-500 text-xs">
-                             {{ $product->seller_name ?? '-' }}
-                        </td>
+                <tbody class="divide-y divide-gray-100">
+                    @forelse($transactions as $trx)
+                    <tr class="hover:bg-gray-50 transition duration-150 group">
                         
-                        {{-- HARGA BELI / ADMIN FEE --}}
-                        <td class="px-6 py-4 text-right text-gray-500 font-medium">
-                            @if($currentType === 'postpaid')
-                                <span title="Biaya Admin/Modal">Rp{{ number_format($product->admin_fee, 0, ',', '.') }}</span>
-                            @else
-                                Rp{{ number_format($product->price, 0, ',', '.') }}
+                        {{-- 1. USER INFO --}}
+                        <td class="px-6 py-4 align-top">
+                            <div class="flex items-start gap-3">
+                                @php
+                                    $userImage = !empty($trx->user->store_logo_path) 
+                                                ? asset('public/storage/' . $trx->user->store_logo_path) 
+                                                : 'https://ui-avatars.com/api/?name='.urlencode($trx->user->name ?? 'User').'&background=random&color=fff&size=64';
+                                @endphp
+                                <img src="{{ $userImage }}" alt="User" class="h-9 w-9 rounded-full object-cover border border-gray-200 shadow-sm mt-1">
+                                <div>
+                                    <div class="text-[10px] font-mono text-gray-400 mb-0.5">Order: #{{ $trx->order_id }}</div>
+                                    <div class="text-sm font-bold text-gray-900 leading-tight">{{ $trx->user->nama_lengkap ?? ($trx->user->name ?? 'User Terhapus') }}</div>
+                                    <div class="text-xs text-gray-500">{{ $trx->user->email ?? '-' }}</div>
+                                </div>
+                            </div>
+                        </td>
+
+                        {{-- 2. PRODUK INFO --}}
+                        <td class="px-6 py-4 align-top">
+                            <div class="flex items-start">
+                                @php
+                                    $brandName = strtolower($trx->brand ?? 'other');
+                                    // Pastikan path logo sesuai dengan struktur folder Anda
+                                    $logoUrl = asset('storage/logo-ppob/' . $brandName . '.png');
+                                @endphp
+                                <div class="mr-3 shrink-0">
+                                    <img class="h-8 w-8 object-contain" src="{{ $logoUrl }}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" alt="{{ $brandName }}">
+                                    <div class="h-8 w-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-400 hidden"><i class="fas fa-sim-card"></i></div>
+                                </div>
+                                <div>
+                                    <div class="text-xs font-bold text-gray-900 uppercase tracking-wide">{{ $trx->brand }}</div>
+                                    <div class="text-sm text-gray-600 line-clamp-1" title="{{ $trx->product_name }}">{{ $trx->product_name }}</div>
+                                    <div class="text-[10px] text-gray-400 font-mono mt-0.5">{{ $trx->buyer_sku_code }}</div>
+                                </div>
+                            </div>
+                        </td>
+
+                        {{-- 3. NOMOR TUJUAN --}}
+                        <td class="px-6 py-4 align-top">
+                            <div class="bg-blue-50 px-2.5 py-1.5 rounded-lg border border-blue-100 inline-block">
+                                <span class="font-mono font-bold text-gray-700 text-sm tracking-wide select-all">{{ $trx->customer_no }}</span>
+                            </div>
+                        </td>
+
+                        {{-- 4. HARGA & PROFIT --}}
+                        <td class="px-6 py-4 align-top">
+                            <div class="text-sm font-bold text-gray-900">Rp {{ number_format($trx->selling_price, 0, ',', '.') }}</div>
+                            <div class="flex items-center gap-1 mt-1">
+                                <span class="text-[10px] text-gray-400">Profit:</span>
+                                <span class="text-xs font-bold {{ $trx->profit > 0 ? 'text-green-600' : 'text-gray-400' }}">
+                                    +Rp {{ number_format($trx->profit, 0, ',', '.') }}
+                                </span>
+                            </div>
+                        </td>
+
+                        {{-- 5. STATUS & SN --}}
+                        <td class="px-6 py-4 align-top">
+                            @php
+                                $badgeClass = match($trx->status) {
+                                    'Success' => 'bg-green-100 text-green-700 border-green-200',
+                                    'Pending' => 'bg-yellow-100 text-yellow-700 border-yellow-200',
+                                    'Processing' => 'bg-blue-100 text-blue-700 border-blue-200',
+                                    'Failed' => 'bg-red-100 text-red-700 border-red-200',
+                                    default => 'bg-gray-100 text-gray-700 border-gray-200'
+                                };
+                                $icon = match($trx->status) {
+                                    'Success' => 'fa-check-circle',
+                                    'Failed' => 'fa-times-circle',
+                                    'Processing' => 'fa-spinner fa-spin',
+                                    default => 'fa-clock'
+                                };
+                            @endphp
+                            
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border {{ $badgeClass }} mb-2">
+                                <i class="fas {{ $icon }} mr-1.5"></i> {{ $trx->status }}
+                            </span>
+
+                            @if($trx->status == 'Success' && $trx->sn)
+                                <div class="relative group/sn">
+                                    <code class="text-[10px] bg-gray-50 px-2 py-1.5 border rounded block w-full max-w-[160px] truncate cursor-pointer hover:bg-gray-100 hover:text-blue-600 transition" onclick="navigator.clipboard.writeText('{{ $trx->sn }}'); alert('SN disalin!');" title="Klik untuk salin">
+                                        SN: {{ $trx->sn }}
+                                    </code>
+                                </div>
+                            @elseif($trx->status == 'Failed')
+                                <div class="text-[11px] text-red-500 italic leading-tight max-w-[160px]">
+                                    {{ $trx->note ?? ($trx->message ?? 'Transaksi Gagal') }}
+                                </div>
                             @endif
                         </td>
 
-                        {{-- HARGA MAX (BARU) --}}
-<td class="px-6 py-4 text-right text-red-500 font-medium">
-    {{-- Asumsi kolom di database bernama 'max_price'. Jika belum ada, pastikan sudah dimigrasi. --}}
-    @if(isset($product->max_price) && $product->max_price > 0)
-        Rp{{ number_format($product->max_price, 0, ',', '.') }}
-    @else
-        <span class="text-gray-300">-</span>
-    @endif
-</td>
-                        
-                        {{-- KOMISI --}}
-                        <td class="px-6 py-4 text-right text-purple-600 font-medium">
-                            @if($currentType === 'postpaid')
-                                Rp{{ number_format($product->commission, 0, ',', '.') }}
-                            @else
-                                -
-                            @endif
+                        {{-- 6. WAKTU --}}
+                        <td class="px-6 py-4 align-top text-right whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900">{{ $trx->created_at->format('d M Y') }}</div>
+                            <div class="text-xs text-gray-500">{{ $trx->created_at->format('H:i') }} WIB</div>
                         </td>
 
-                        {{-- HARGA JUAL --}}
-                        <td class="px-6 py-4 text-right">
-                            <span class="font-bold text-green-600 text-base">
-                                Rp{{ number_format($product->sell_price, 0, ',', '.') }}
-                            </span>
-                        </td>
-                        
-                        <td class="px-6 py-4 text-center">
-                            @if(!$product->buyer_product_status)
-                                <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 border border-red-200">Gangguan</span>
-                            @elseif($product->seller_product_status)
-                                <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 border border-green-200">Aktif</span>
-                            @else
-                                <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800 border border-gray-200">Nonaktif</span>
-                            @endif
-                        </td>
-                        
-                        {{-- KOLOM AKSI STICKY --}}
-                        <td class="px-6 py-4 text-center sticky right-0 bg-white group-hover:bg-blue-50 transition duration-150 z-20 shadow-left">
-                            <div class="flex items-center justify-center space-x-3">
-                                <button onclick="editPrice('{{ $product->id }}', '{{ $product->product_name }}', '{{ $product->price }}', '{{ $product->sell_price }}', '{{ $product->seller_product_status }}')" 
-                                         class="text-yellow-500 hover:text-yellow-600 transition transform hover:scale-110 tooltip" title="Edit Harga">
-                                    <i class="fas fa-edit text-lg"></i>
-                                </button>
+                        {{-- 7. AKSI --}}
+                        <td class="px-6 py-4 align-top text-center">
+                            <div class="flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                                 
-                                <form action="{{ route('admin.ppob.destroy', $product->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus produk ini?');" class="inline">
+                                {{-- Tombol Detail (Sesuai Route Transaksi) --}}
+                                <a href="{{ route('admin.ppob.data.show', $trx->id) }}" 
+                                   class="p-2 bg-white border border-gray-200 text-gray-500 rounded-lg hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition"
+                                   title="Lihat Detail">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+
+                                {{-- Tombol Hapus (Sesuai Route Transaksi) --}}
+                                <form action="{{ route('admin.ppob.data.destroy', $trx->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus data ini?');">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" class="text-red-500 hover:text-red-600 transition transform hover:scale-110 tooltip" title="Hapus">
-                                        <i class="fas fa-trash-alt text-lg"></i>
+                                    <button type="submit" class="p-2 bg-white border border-gray-200 text-gray-500 rounded-lg hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition" title="Hapus Transaksi">
+                                        <i class="fas fa-trash-alt"></i>
                                     </button>
                                 </form>
                             </div>
@@ -250,11 +251,14 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="10" class="px-6 py-10 text-center text-gray-500 bg-gray-50">
+                        <td colspan="7" class="px-6 py-16 text-center bg-gray-50/50">
                             <div class="flex flex-col items-center justify-center">
-                                <i class="fas fa-box-open text-4xl text-gray-300 mb-3"></i>
-                                <p class="text-base font-medium">Data produk tidak ditemukan.</p>
-                                <p class="text-sm mt-1">Coba kata kunci lain atau lakukan sinkronisasi.</p>
+                                <div class="bg-white p-4 rounded-full shadow-sm mb-3">
+                                    <i class="fas fa-search-minus text-3xl text-gray-300"></i>
+                                </div>
+                                <h3 class="text-lg font-medium text-gray-900">Data Tidak Ditemukan</h3>
+                                <p class="text-gray-500 text-sm mt-1">Belum ada transaksi yang sesuai dengan filter Anda.</p>
+                                <a href="{{ route('admin.ppob.data.index') }}" class="mt-4 text-blue-600 hover:underline text-sm font-medium">Reset Filter</a>
                             </div>
                         </td>
                     </tr>
@@ -262,199 +266,352 @@
                 </tbody>
             </table>
         </div>
-
-        {{-- Pagination Section --}}
-        <div class="bg-gray-50 px-6 py-4 border-t border-gray-200">
-            {{ $products->appends(['type' => request('type'), 'q' => request('q')])->links() }}
+        
+        {{-- Pagination --}}
+        <div class="bg-white px-6 py-4 border-t border-gray-200">
+            {{ $transactions->withQueryString()->links() }}
         </div>
     </div>
 </div>
 
-{{-- ========================================== --}}
-{{-- MODAL EDIT HARGA SATUAN (INDIVIDUAL)       --}}
-{{-- ========================================== --}}
-<div id="priceModal" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-    <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity backdrop-blur-sm" onclick="closeModal()"></div>
-    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-        <div class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md w-full border-t-4 border-yellow-500">
-            <form id="priceForm" action="" method="POST" class="p-6">
-                @csrf
-                @method('PUT')
-                <div class="flex justify-between items-center mb-5 border-b pb-4">
-                    <h3 class="text-xl font-bold text-gray-900"><i class="fas fa-edit text-yellow-500 mr-2"></i>Edit Harga Produk</h3>
-                    <button type="button" onclick="closeModal()" class="text-gray-400 hover:text-gray-500"><i class="fas fa-times text-xl"></i></button>
-                </div>
+{{-- ======================================================================= --}}
+{{-- MODAL DEPOSIT (POP UP) --}}
+{{-- ======================================================================= --}}
+<div id="depositModal" class="fixed inset-0 z-[999] hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity backdrop-blur-sm" onclick="closeDepositModal()"></div>
 
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Nama Produk</label>
-                        <input type="text" id="modal_product_name" class="mt-1 block w-full rounded-lg border-gray-300 bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-700" readonly>
+    <div class="flex items-center justify-center min-h-screen p-4 text-center sm:p-0">
+        <div class="relative bg-white rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:max-w-md w-full animate-fade-in-up">
+            
+            {{-- Header Modal --}}
+            <div class="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 flex justify-between items-center">
+                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                    <i class="fas fa-wallet"></i> Request Deposit
+                </h3>
+                <button onclick="closeDepositModal()" class="text-blue-100 hover:text-white transition">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <div class="p-6">
+                
+                {{-- FORM INPUT (Tampil Awal) --}}
+                <form id="formDeposit" onsubmit="submitDeposit(event)">
+                    @csrf
+                    
+                    <div class="bg-blue-50 border-l-4 border-blue-500 p-3 mb-4 rounded-r text-xs text-blue-700">
+                        <p>Tiket deposit berlaku hingga pukul 21:00 WIB. Transfer harus <b>PERSIS</b> sesuai nominal tiket.</p>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Harga Modal / Admin Fee</label>
-                            <input type="text" id="modal_base_price_display" class="mt-1 block w-full rounded-lg border-gray-300 bg-gray-100 px-3 py-2 text-sm font-bold text-gray-600" readonly>
-                            <input type="hidden" id="modal_base_price_raw" name="base_price_raw">
+                    {{-- Input Bank --}}
+                    <div class="mb-4">
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Metode Pembayaran</label>
+                        <div class="relative">
+                            <select name="bank" id="depo_bank" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500 py-2.5 pl-3 pr-10 appearance-none bg-white">
+                                <option value="" disabled selected>-- Pilih Bank --</option>
+                                <optgroup label="Bank Perusahaan (Disarankan)">
+                                    <option value="MANDIRI">MANDIRI (Tiket Otomatis)</option>
+                                    <option value="BRI">BRI (Tiket Otomatis)</option>
+                                    <option value="BNI">BNI (Tiket Otomatis)</option>
+                                    <option value="BCA">BCA</option>
+                                </optgroup>
+                                <optgroup label="E-Wallet / Perorangan">
+                                    <option value="FLIP">FLIP</option>
+                                    <option value="SHOPEEPAY">SHOPEEPAY</option>
+                                    <option value="GOPAY">GOPAY</option>
+                                </optgroup>
+                            </select>
+                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700"><i class="fas fa-chevron-down text-xs"></i></div>
                         </div>
+                    </div>
+
+                    {{-- Input Nama Pemilik --}}
+                    <div class="mb-4">
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Nama Pemilik Rekening</label>
+                        <input type="text" name="owner_name" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500 py-2.5" placeholder="Contoh: Sancaka Jaya" required>
+                    </div>
+
+                    {{-- Input Nominal --}}
+                    <div class="mb-6">
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Nominal Deposit</label>
+                        <div class="relative rounded-md shadow-sm">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <span class="text-gray-500 sm:text-sm font-bold">Rp</span>
+                            </div>
+                            <input type="number" name="amount" class="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 sm:text-lg font-bold border-gray-300 rounded-lg py-3" placeholder="0" min="200000" required>
+                        </div>
+                        <p class="text-xs text-red-500 mt-1 font-medium">*Minimal Rp 200.000. Jika gagal, coba ganti nominal sedikit (misal: 201000).</p>
+                    </div>
+
+                    <button type="submit" id="btn-submit-depo" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow transition transform hover:scale-[1.02]">
+                        Buat Tiket Deposit
+                    </button>
+                </form>
+
+                {{-- TAMPILAN HASIL TIKET (Hidden by Default) --}}
+                <div id="depositResult" class="hidden">
+                    <div class="text-center mb-6">
+                        <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-4">
+                            <i class="fas fa-check text-3xl text-green-600"></i>
+                        </div>
+                        <h3 class="text-lg leading-6 font-bold text-gray-900">Tiket Berhasil Dibuat!</h3>
+                        <p class="text-sm text-gray-500 mt-1">Silakan transfer ke rekening berikut:</p>
+                    </div>
+
+                    <div class="bg-gray-50 rounded-xl border border-gray-200 p-4 space-y-4">
+                        
+                        {{-- Nominal --}}
                         <div>
-                            <label class="block text-sm font-medium text-gray-700">Margin Profit</label>
-                            <div class="flex">
-                                <select id="single_profit_type" onchange="calculateSinglePrice()" class="mt-1 block rounded-l-lg border-gray-300 bg-white p-2 text-sm">
-                                    <option value="rupiah">Rp</option>
-                                    <option value="percent">%</option>
-                                </select>
-                                <input type="number" id="single_profit_value" oninput="calculateSinglePrice()" value="0" placeholder="Margin" class="mt-1 block w-full rounded-r-lg border-gray-300 px-3 py-2 text-sm focus:ring-yellow-500 focus:border-yellow-500">
+                            <p class="text-xs text-gray-500 uppercase font-semibold mb-1">Total Transfer (Harus Persis)</p>
+                            <div class="flex justify-between items-center bg-white p-3 rounded border border-blue-200">
+                                <span class="text-2xl font-bold text-blue-600" id="res_amount">-</span>
+                                <button onclick="copyToClipboard('res_amount')" class="text-gray-400 hover:text-blue-600 transition" title="Salin">
+                                    <i class="far fa-copy text-lg"></i>
+                                </button>
+                            </div>
+                            <p class="text-[10px] text-red-500 mt-1 animate-pulse font-bold">Jangan dibulatkan! Transfer hingga 3 digit terakhir.</p>
+                        </div>
+
+                        {{-- Bank --}}
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-xs text-gray-500 uppercase font-semibold mb-1">Bank</p>
+                                <p class="font-bold text-gray-800 text-lg" id="res_bank">-</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500 uppercase font-semibold mb-1">No. Rekening</p>
+                                <div class="flex items-center gap-2">
+                                    <p class="font-bold text-gray-800 text-lg" id="res_rek">-</p>
+                                    <button onclick="copyToClipboard('res_rek')" class="text-gray-400 hover:text-blue-600"><i class="far fa-copy"></i></button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Notes --}}
+                        <div class="bg-yellow-50 p-3 rounded border border-yellow-200">
+                            <p class="text-[10px] text-yellow-700 uppercase font-bold mb-1">Berita Transfer (PENTING)</p>
+                            <div class="flex justify-between items-center">
+                                <p class="font-mono font-bold text-gray-800" id="res_notes">-</p>
+                                <button onclick="copyToClipboard('res_notes')" class="text-gray-400 hover:text-blue-600"><i class="far fa-copy"></i></button>
                             </div>
                         </div>
                     </div>
 
-                    <div>
-                        <label for="modal_sell_price" class="block text-sm font-medium text-gray-700">Harga Jual Akhir</label>
-                        <input type="number" name="sell_price" id="modal_sell_price" required class="mt-1 block w-full rounded-lg border-gray-300 px-3 py-2 text-lg font-bold text-green-600 focus:ring-blue-500 focus:border-blue-500">
-                    </div>
-                    
-                    <div class="flex items-center">
-                        <input id="modal_status" name="status" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500">
-                        <label for="modal_status" class="ml-2 block text-sm font-medium text-gray-700">Aktifkan Produk (Ready)</label>
-                    </div>
-                </div>
-
-                <div class="mt-6 flex justify-end gap-3">
-                    <button type="button" onclick="closeModal()" class="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50">Batal</button>
-                    <button type="submit" class="px-6 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 font-bold shadow-lg shadow-yellow-200">
-                        Simpan Perubahan
+                    <button onclick="closeDepositModal()" class="mt-6 w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 rounded-xl transition">
+                        Tutup & Cek Saldo Nanti
                     </button>
                 </div>
-            </form>
+
+            </div>
         </div>
     </div>
 </div>
 
+{{-- MODAL 2: TRANSAKSI MANUAL (TOPUP) --}}
+{{-- ======================================================================= --}}
+<div id="topupModal" class="fixed inset-0 z-[999] hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity backdrop-blur-sm" onclick="closeTopupModal()"></div>
+    <div class="flex items-center justify-center min-h-screen p-4 text-center sm:p-0">
+        <div class="relative bg-white rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:max-w-md w-full">
+            
+            <div class="bg-gradient-to-r from-gray-800 to-gray-900 px-6 py-4 flex justify-between items-center">
+                <h3 class="text-lg font-bold text-white"><i class="fas fa-bolt text-yellow-400 mr-2"></i> Transaksi Manual</h3>
+                <button onclick="closeTopupModal()" class="text-gray-400 hover:text-white"><i class="fas fa-times"></i></button>
+            </div>
 
-{{-- ========================================== --}}
-{{-- MODAL BULK UPDATE (MASSAL)                 --}}
-{{-- ========================================== --}}
-<div id="bulkPriceModal" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-    <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity backdrop-blur-sm" onclick="closeBulkModal()"></div>
-    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-        <div class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full border-t-4 border-orange-500">
-            <form action="{{ route('admin.ppob.bulk-update') }}" method="POST" class="p-6">
-                @csrf
-                <div class="flex justify-between items-center mb-5 border-b pb-4">
-                    <div>
-                        <h3 class="text-xl font-bold text-gray-900"><i class="fas fa-tags text-orange-500 mr-2"></i>Update Harga Massal</h3>
-                        <p class="text-xs text-gray-500 mt-1">Aksi ini akan mengubah harga jual SEMUA produk.</p>
-                    </div>
-                    <button type="button" onclick="closeBulkModal()" class="text-gray-400 hover:text-gray-500"><i class="fas fa-times text-xl"></i></button>
-                </div>
-                
-                <input type="hidden" name="product_type" value="{{ $currentType }}"> 
+            <div class="p-6">
+                <form id="formTopup" onsubmit="submitTopup(event)">
+                    @csrf
+                    
+                    {{-- Kode Produk --}}
+                    <div class="mb-4">
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Kode Produk (SKU)</label>
+                        <input type="text" name="buyer_sku_code" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-gray-500 focus:ring-gray-500 py-2.5 uppercase font-mono" placeholder="Contoh: XLD10" required>
+                        <p class="text-[10px] text-gray-500 mt-1">Pastikan kode produk benar sesuai Pricelist.</p>
+                    </div>
 
-                <div class="bg-orange-50 p-4 rounded-xl border border-orange-200 mb-6">
-                    <p class="text-sm text-orange-800 font-semibold mb-3">Pilih Metode Keuntungan untuk **{{ $currentType === 'prepaid' ? 'Prabayar' : 'Pascabayar' }}**:</p>
-                    
-                    <div class="grid grid-cols-2 gap-4 mb-4">
-                        <label class="flex items-center p-3 border border-orange-200 rounded-lg bg-white cursor-pointer hover:bg-orange-50 transition">
-                            <input type="radio" name="profit_type" value="rupiah" checked class="w-5 h-5 text-orange-600 border-gray-300 focus:ring-orange-500">
-                            <div class="ml-3">
-                                <span class="block text-sm font-bold text-gray-900">Nominal (Rp)</span>
-                                <span class="block text-xs text-gray-500">Contoh: + Rp 2.000</span>
-                            </div>
-                        </label>
-                        <label class="flex items-center p-3 border border-orange-200 rounded-lg bg-white cursor-pointer hover:bg-orange-50 transition">
-                            <input type="radio" name="profit_type" value="percent" class="w-5 h-5 text-orange-600 border-gray-300 focus:ring-orange-500">
-                            <div class="ml-3">
-                                <span class="block text-sm font-bold text-gray-900">Persentase (%)</span>
-                                <span class="block text-xs text-gray-500">Contoh: + 5%</span>
-                            </div>
-                        </label>
-                    </div>
+                    {{-- Nomor Tujuan --}}
+                    <div class="mb-6">
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Nomor Tujuan / ID Pelanggan</label>
+                        <input type="text" name="customer_no" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-gray-500 focus:ring-gray-500 py-2.5 font-bold tracking-wider" placeholder="08xxxx" required>
+                    </div>
 
-                    <div class="relative">
-                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Nilai Keuntungan</label>
-                        <input type="number" name="profit_value" placeholder="Masukkan angka (misal: 2000 atau 5)" required 
-                               class="w-full border-gray-300 rounded-lg px-4 py-3 text-gray-900 font-bold focus:ring-orange-500 focus:border-orange-500">
-                    </div>
-                </div>
-
-                <div class="bg-gray-50 p-3 rounded-lg mb-6 text-xs text-gray-600">
-                    <i class="fas fa-info-circle mr-1"></i> Rumus: <strong>Harga Beli + Profit</strong> = Harga Jual Baru.
-                </div>
-
-                <div class="flex justify-end gap-3">
-                    <button type="button" onclick="closeBulkModal()" class="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50">Batal</button>
-                    <button type="submit" onclick="return confirm('Yakin ingin mengubah harga SEMUA produk {{ $currentType === 'prepaid' ? 'Prabayar' : 'Pascabayar' }}?')" class="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-bold shadow-lg shadow-orange-200">
-                        Terapkan ke {{ $currentType === 'prepaid' ? 'Prabayar' : 'Pascabayar' }}
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
+                    <button type="submit" id="btn-submit-topup" class="w-full bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 rounded-xl shadow transition">
+                        Kirim Transaksi
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>
-
-@endsection
 
 @push('scripts')
 <script>
-    // --- JS MODAL EDIT INDIVIDUAL ---
-    function editPrice(id, name, basePrice, sellPrice, status) {
-        document.getElementById('modal_product_name').value = name;
-        document.getElementById('modal_base_price_raw').value = parseFloat(basePrice);
-        document.getElementById('modal_base_price_display').value = 'Rp ' + parseFloat(basePrice).toLocaleString('id-ID');
-        document.getElementById('modal_sell_price').value = parseFloat(sellPrice);
+    // --- 1. LOGIC SALDO (AJAX) ---
+    function fetchSaldo() {
+        const display = document.getElementById('saldo-display');
+        const loading = document.getElementById('saldo-loading');
+        const icon = document.getElementById('icon-refresh');
         
-        const statusCheckbox = document.getElementById('modal_status');
-        if(statusCheckbox) statusCheckbox.checked = (status == 1);
+        if(!display) return;
 
-        let url = "{{ route('admin.ppob.update-price', ':id') }}";
-        url = url.replace(':id', id);
-        document.getElementById('priceForm').action = url;
+        display.classList.add('opacity-50');
+        loading.classList.remove('hidden');
+        icon.classList.add('fa-spin');
 
-        document.getElementById('priceModal').classList.remove('hidden');
+        fetch("{{ route('admin.ppob.cek-saldo') }}")
+            .then(response => response.json())
+            .then(data => {
+                if(data.status === 'success') {
+                    display.innerText = data.formatted;
+                } else {
+                    display.innerText = "Error";
+                    console.error(data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                display.innerText = "Gagal";
+            })
+            .finally(() => {
+                display.classList.remove('opacity-50');
+                loading.classList.add('hidden');
+                icon.classList.remove('fa-spin');
+            });
     }
 
-    function calculateSinglePrice() {
-        let base = parseFloat(document.getElementById('modal_base_price_raw').value) || 0;
-        let val = parseFloat(document.getElementById('single_profit_value').value) || 0;
-        let type = document.getElementById('single_profit_type').value;
-        let final = base;
+    // --- 2. LOGIC MODAL DEPOSIT ---
+    const depositModal = document.getElementById('depositModal');
+    const formDeposit = document.getElementById('formDeposit');
+    const resultDeposit = document.getElementById('depositResult');
 
-        if (type === 'rupiah') {
-            final += val;
-        } else {
-            final += base * (val / 100);
-        }
-
-        document.getElementById('modal_sell_price').value = Math.ceil(final);
+    function openDepositModal() {
+        formDeposit.classList.remove('hidden');
+        formDeposit.reset();
+        resultDeposit.classList.add('hidden');
+        depositModal.classList.remove('hidden');
     }
 
-    function closeModal() {
-        document.getElementById('priceModal').classList.add('hidden');
+    function closeDepositModal() {
+        depositModal.classList.add('hidden');
+        fetchSaldo(); // Refresh saldo saat tutup modal
     }
 
-    // --- JS MODAL BULK UPDATE ---
-    function openBulkModal() {
-        document.getElementById('bulkPriceModal').classList.remove('hidden');
+    function submitDeposit(e) {
+        e.preventDefault();
+        
+        const btn = document.getElementById('btn-submit-depo');
+        const originalText = btn.innerHTML;
+        
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Menghubungi Digiflazz...';
+
+        const formData = new FormData(formDeposit);
+
+        fetch("{{ route('admin.ppob.deposit') }}", {
+            method: "POST",
+            body: formData,
+            headers: {
+                "X-CSRF-TOKEN": "{{ csrf_token() }}",
+                "Accept": "application/json"
+            }
+        })
+        .then(res => res.json())
+        .then(resp => {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+
+            if(resp.status === 'success') {
+                formDeposit.classList.add('hidden');
+                resultDeposit.classList.remove('hidden');
+
+                const data = resp.data;
+                const formattedAmount = 'Rp ' + parseInt(data.amount).toLocaleString('id-ID');
+                
+                document.getElementById('res_amount').innerText = formattedAmount;
+                document.getElementById('res_bank').innerText = data.bank;
+                document.getElementById('res_rek').innerText = data.account_no;
+                document.getElementById('res_notes').innerText = data.notes;
+                
+            } else {
+                alert('Gagal Request: ' + resp.message);
+            }
+        })
+        .catch(err => {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            console.error(err);
+            alert('Terjadi kesalahan koneksi ke server.');
+        });
     }
 
-    function closeBulkModal() {
-        document.getElementById('bulkPriceModal').classList.add('hidden');
+    // --- 3. HELPER COPY TEXT ---
+    function copyToClipboard(elementId) {
+        const text = document.getElementById(elementId).innerText.replace(/[^0-9a-zA-Z ]/g, "").replace('Rp', '').trim();
+        navigator.clipboard.writeText(text).then(() => {
+            alert('Teks berhasil disalin!');
+        });
     }
 
-    // Tambahkan CSS untuk Sticky Column Shadow
-    const style = document.createElement('style');
-    style.textContent = `
-    .shadow-left {
-        box-shadow: -4px 0 6px -4px rgba(0, 0, 0, 0.1);
+    // --- 4. AUTO RUN ---
+    document.addEventListener("DOMContentLoaded", function() {
+        fetchSaldo();
+    });
+
+    // --- LOGIC TOPUP MANUAL ---
+    const topupModal = document.getElementById('topupModal');
+    const formTopup = document.getElementById('formTopup');
+
+    function openTopupModal() {
+        topupModal.classList.remove('hidden');
+        formTopup.reset();
     }
-    .sticky.right-0 {
-        position: sticky;
-        right: 0;
+
+    function closeTopupModal() {
+        topupModal.classList.add('hidden');
     }
-    `;
-    document.head.appendChild(style);
+
+    function submitTopup(e) {
+        e.preventDefault();
+        
+        const btn = document.getElementById('btn-submit-topup');
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Memproses...';
+
+        const formData = new FormData(formTopup);
+
+        fetch("{{ route('admin.ppob.topup') }}", {
+            method: "POST",
+            body: formData,
+            headers: {
+                "X-CSRF-TOKEN": "{{ csrf_token() }}",
+                "Accept": "application/json"
+            }
+        })
+        .then(res => res.json())
+        .then(resp => {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+
+            if(resp.status === 'success') {
+                const d = resp.data;
+                let msg = `Status: ${d.status}\nSN: ${d.sn || '-'}\nPesan: ${d.message}`;
+                alert(msg);
+                closeTopupModal();
+                fetchSaldo(); 
+            } else {
+                alert('Gagal: ' + resp.message);
+            }
+        })
+        .catch(err => {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            console.error(err);
+            alert('Terjadi kesalahan koneksi.');
+        });
+    }
 </script>
 @endpush
+
+@endsection
