@@ -205,57 +205,80 @@ public function destroy($id)
      * Sesuai dokumentasi: md5(username + apiKey + "depo")
      */
     public function cekSaldo()
-    {
-        // =================================================================
-        // 1. KREDENSIAL LANGSUNG (HARDCODE)
-        // =================================================================
-        $username = 'mihetiDVGdeW'; 
-        $apiKey   = '1f48c69f-8676-5d56-a868-10a46a69f9b7'; 
-        $endpoint = 'https://api.digiflazz.com/v1/cek-saldo';
+{
+    // Pastikan Anda sudah mengimpor Facade Http di bagian atas file Controller:
+    // use Illuminate\Support\Facades\Http; 
+    
+    // =================================================================
+    // 1. KREDENSIAL LANGSUNG (HARDCODE)
+    // =================================================================
+    $username = 'mihetiDVGdeW'; 
+    $apiKey   = '1f48c69f-8676-5d56-a868-10a46a69f9b7'; 
+    $endpoint = 'https://api.digiflazz.com/v1/cek-saldo';
 
-        // 2. Generate Signature
-        // Rumus: md5(username + apiKey + "depo")
-        $sign = md5($username . $apiKey . "depo");
+    // 2. Generate Signature
+    // Rumus: md5(username + apiKey + "depo")
+    $sign = md5($username . $apiKey . "depo");
 
-        // 3. Payload
-        $payload = [
-            'cmd'      => 'deposit',
-            'username' => $username,
-            'sign'     => $sign
-        ];
+    // 3. Payload
+    $payload = [
+        'cmd' => 'deposit',
+        'username' => $username,
+        'sign' => $sign
+    ];
 
-        try {
-            // Log Request (Untuk memastikan data yang dikirim benar)
-            \Illuminate\Support\Facades\Log::info('➡️ Cek Saldo Request (Hardcode):', $payload);
+    try {
+        // Log Request (Untuk memastikan data yang dikirim benar)
+        \Illuminate\Support\Facades\Log::info('➡️ Cek Saldo Request (Hardcode):', $payload);
 
-            // 4. Kirim Request
-            $response = Http::withHeaders(['Content-Type' => 'application/json'])
-                            ->post($endpoint, $payload);
+        // 4. Kirim Request
+        $response = Http::withHeaders(['Content-Type' => 'application/json'])
+                         ->timeout(30) // ✅ TAMBAH TIMEOUT 20 DETIK
+                         ->retry(2, 500) // ✅ COBA ULANG 2 KALI JIKA GAGAL/TIMEOUT (dengan delay 500ms)
+                         ->post($endpoint, $payload);
+        
+        // 5. Cek apakah request gagal pada level HTTP (timeout, koneksi)
+        if ($response->failed()) {
+            // Ini akan menangkap kegagalan yang tidak memicu Exception (seperti HTTP error codes 4xx/5xx dari Digiflazz)
+            // Namun, karena log Anda menunjukkan cURL error 28, Exception block di bawah lebih sering bekerja.
+            \Illuminate\Support\Facades\Log::error('❌ Cek Saldo HTTP Failure (Status: ' . $response->status() . '): ' . $response->body());
             
-            $result = $response->json();
-
-            // Log Response
-            \Illuminate\Support\Facades\Log::info('⬅️ Cek Saldo Response:', $result ?? []);
-
-            // 5. Proses Hasil
-            if (isset($result['data']['deposit'])) {
-                $saldo = $result['data']['deposit'];
-                return response()->json([
-                    'status'    => 'success',
-                    'saldo'     => $saldo,
-                    'formatted' => 'Rp ' . number_format($saldo, 0, ',', '.')
-                ]);
-            } else {
-                // Ambil pesan error dari Digiflazz jika ada
-                $msg = $result['data']['message'] ?? 'Gagal mengambil data (Response tidak valid)';
-                return response()->json(['status' => 'error', 'message' => $msg], 400);
-            }
-
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('❌ Cek Saldo Exception: ' . $e->getMessage());
-            return response()->json(['status' => 'error', 'message' => 'Koneksi Server Gagal'], 500);
+            // Jika status 400/500, kita kembalikan error.
+             return response()->json(['status' => 'error', 'message' => 'Gagal koneksi ke API (Status: ' . $response->status() . ')'], $response->status());
         }
+
+        $result = $response->json();
+
+        // Log Response
+        \Illuminate\Support\Facades\Log::info('⬅️ Cek Saldo Response:', $result ?? []);
+
+        // 6. Proses Hasil (Validasi Respons API)
+        if (isset($result['data']['deposit'])) {
+            $saldo = $result['data']['deposit'];
+            return response()->json([
+                'status' => 'success',
+                'saldo'  => $saldo,
+                'formatted' => 'Rp ' . number_format($saldo, 0, ',', '.')
+            ]);
+        } else {
+            // Ambil pesan error dari Digiflazz jika ada (misal: signature salah)
+            $msg = $result['data']['message'] ?? 'Gagal mengambil data (Response tidak valid atau Deposit tidak ditemukan).';
+            \Illuminate\Support\Facades\Log::error('❌ Cek Saldo API Error: ' . $msg);
+            
+            return response()->json(['status' => 'error', 'message' => $msg], 400);
+        }
+
+    } catch (\Illuminate\Http\Client\RequestException $e) {
+         // Ini menangkap cURL error 28 (timeout)
+        \Illuminate\Support\Facades\Log::error('❌ Cek Saldo Exception (Request Timeout/Failed): ' . $e->getMessage());
+        return response()->json(['status' => 'error', 'message' => 'Gagal: Waktu koneksi habis atau error jaringan. Cek IP Whitelist.'], 500);
+
+    } catch (\Exception $e) {
+        // Menangkap exception umum lainnya
+        \Illuminate\Support\Facades\Log::error('❌ Cek Saldo Exception (General): ' . $e->getMessage());
+        return response()->json(['status' => 'error', 'message' => 'Koneksi Server Gagal (Internal Server Error)'], 500);
     }
+}
 
     /**
      * REQUEST TIKET DEPOSIT KE DIGIFLAZZ (DENGAN LOG)
