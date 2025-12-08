@@ -771,6 +771,9 @@ Route::put('products/{slug}/specifications', [\App\Http\Controllers\Admin\Produc
 
 });
 
+Route::get('/cek-saldo', [AdminPpobController::class, 'cekSaldo'])->name('ppob.cek-saldo'); // route('admin.ppob.cek-saldo')
+
+
 Route::get('/pengguna/export', [PenggunaController::class, 'export'])->name('admin.customers.pengguna.export');
 
 Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->name('admin.')->group(function () {
@@ -783,7 +786,6 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
 
 Route::get('/', [App\Http\Controllers\PpobProductController::class, 'index'])->name('ppob.index');
 
-Route::get('/cek-saldo', [AdminPpobController::class, 'cekSaldo'])->name('ppob.cek-saldo'); // route('admin.ppob.cek-saldo')
 
 Route::post('/deposit', [AdminPpobController::class, 'requestDeposit'])->name('ppob.deposit');
 
