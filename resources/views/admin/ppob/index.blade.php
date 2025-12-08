@@ -1,15 +1,14 @@
 @extends('layouts.admin')
-
 @section('title', 'Manajemen Produk PPOB')
 
-{{-- Load SweetAlert2 CSS --}}
+{{-- Load SweetAlert2 --}}
 @push('styles')
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
 @endpush
 
 @section('content')
 
-{{-- Notifikasi Flash Message (Session Laravel) --}}
+{{-- Notifikasi --}}
 @if(session('success'))
 <div class="mb-4 bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded shadow-sm relative">
     <strong class="font-bold">Berhasil!</strong> <span class="block sm:inline">{{ session('success') }}</span>
@@ -24,14 +23,14 @@
 
 <div class="container mx-auto px-4 py-8">
     
-    {{-- HEADER: Judul & Tombol Export --}}
+    {{-- Header & Widget Saldo --}}
     <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-6 gap-6">
         <div>
             <h1 class="text-2xl font-bold text-gray-800">Daftar Produk PPOB</h1>
-            <p class="text-sm text-gray-500 mt-1">Kelola harga, margin, dan limit harga beli produk.</p>
+            <p class="text-sm text-gray-500 mt-1">Kelola harga, komisi pascabayar, dan limit transaksi.</p>
             
             <div class="mt-4 flex flex-wrap gap-2">
-                {{-- TOMBOL DOWNLOAD --}}
+                {{-- Tombol Export --}}
                 <div class="flex gap-1 mr-2">
                     <a href="{{ route('admin.ppob.export-excel', request()->all()) }}" target="_blank" class="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-xs font-bold shadow flex items-center gap-2">
                         <i class="fas fa-file-excel"></i> Excel
@@ -41,15 +40,16 @@
                     </a>
                 </div>
 
-                <a href="{{ route('ppob.sync.prepaid') }}" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-xs font-bold shadow flex items-center gap-2">
+                {{-- Tombol Sync --}}
+                <a href="{{ route('ppob.sync.prepaid') }}" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-xs font-bold shadow flex items-center gap-2" onclick="return confirm('Sync Prabayar?')">
                     <i class="fas fa-sync"></i> Sync Prabayar
                 </a>
-
-                {{-- TOMBOL SYNC PASCABAYAR (BARU) --}}
-                <a href="{{ route('ppob.sync.postpaid') }}" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-xs font-bold shadow flex items-center gap-2" onclick="return confirm('Sinkronisasi Pascabayar? Proses agak lama.')">
+                <a href="{{ route('ppob.sync.postpaid') }}" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-xs font-bold shadow flex items-center gap-2" onclick="return confirm('Sync Pascabayar?')">
                     <i class="fas fa-sync"></i> Sync Pascabayar
                 </a>
                 
+                <div class="w-px h-8 bg-gray-300 mx-1 hidden md:block"></div>
+
                 {{-- Tombol Massal --}}
                 <button onclick="openBulkModal()" class="bg-orange-500 hover:bg-orange-600 text-white px-3 py-2 rounded-lg text-xs font-bold shadow flex items-center gap-2">
                     <i class="fas fa-tags"></i> Update Massal
@@ -69,12 +69,8 @@
                     <p id="saldo-loading" class="text-[10px] text-gray-400 hidden">Memuat...</p>
                 </div>
                 <div class="flex gap-2">
-                    <button onclick="openDepositModal()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg text-sm transition shadow flex items-center gap-2">
-                        <i class="fas fa-plus-circle"></i> Deposit
-                    </button>
-                    <button onclick="openTopupModal()" class="bg-white/10 hover:bg-white/20 text-white font-semibold py-2 px-4 rounded-lg text-sm transition border border-white/10 flex items-center gap-2">
-                        <i class="fas fa-bolt"></i> Manual Trx
-                    </button>
+                    <button onclick="openDepositModal()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg text-sm shadow"><i class="fas fa-plus-circle"></i> Deposit</button>
+                    <button onclick="openTopupModal()" class="bg-white/10 hover:bg-white/20 text-white font-semibold py-2 px-4 rounded-lg text-sm border border-white/10"><i class="fas fa-bolt"></i> Manual Trx</button>
                 </div>
             </div>
         </div>
@@ -85,14 +81,8 @@
         <div class="flex flex-col md:flex-row justify-between items-center p-1 border-b border-gray-200 bg-gray-50 rounded-t-xl">
             <div class="flex">
                 @php $currentType = request('type', 'prepaid'); @endphp
-                <a href="{{ route('admin.ppob.index', ['type' => 'prepaid', 'q' => request('q')]) }}" 
-                   class="px-6 py-3 text-sm font-bold {{ $currentType === 'prepaid' ? 'text-blue-600 bg-white border-t-2 border-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}">
-                   Prabayar
-                </a>
-                <a href="{{ route('admin.ppob.index', ['type' => 'postpaid', 'q' => request('q')]) }}" 
-                   class="px-6 py-3 text-sm font-bold {{ $currentType === 'postpaid' ? 'text-blue-600 bg-white border-t-2 border-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}">
-                   Pascabayar
-                </a>
+                <a href="{{ route('admin.ppob.index', ['type' => 'prepaid', 'q' => request('q')]) }}" class="px-6 py-3 text-sm font-bold {{ $currentType === 'prepaid' ? 'text-blue-600 bg-white border-t-2 border-blue-600' : 'text-gray-500 hover:text-gray-700' }}">Prabayar</a>
+                <a href="{{ route('admin.ppob.index', ['type' => 'postpaid', 'q' => request('q')]) }}" class="px-6 py-3 text-sm font-bold {{ $currentType === 'postpaid' ? 'text-blue-600 bg-white border-t-2 border-blue-600' : 'text-gray-500 hover:text-gray-700' }}">Pascabayar</a>
             </div>
             <form action="{{ route('admin.ppob.index') }}" method="GET" class="p-2 w-full md:w-auto">
                 <input type="hidden" name="type" value="{{ $currentType }}">
@@ -101,7 +91,7 @@
         </div>
     </div>
 
-    {{-- TABEL DATA --}}
+    {{-- Tabel Produk --}}
     <div class="bg-white shadow-md rounded-b-xl overflow-hidden border-x border-b border-gray-200">
         <div class="overflow-x-auto">
             <table class="w-full text-sm text-left table-auto">
@@ -109,9 +99,11 @@
                     <tr>
                         <th class="px-6 py-4">SKU</th>
                         <th class="px-6 py-4">Produk</th>
-                        <th class="px-6 py-4 text-right">Harga Modal</th>
-                        <th class="px-6 py-4 text-right text-red-500">Max Limit</th> {{-- Kolom Baru --}}
-                        <th class="px-6 py-4 text-right">Harga Jual</th>
+                        <th class="px-6 py-4 text-right">Modal</th>
+                        {{-- KOLOM KOMISI (Ditambahkan) --}}
+                        <th class="px-6 py-4 text-right text-purple-600">Komisi</th>
+                        <th class="px-6 py-4 text-right text-red-500" title="Max Price">Max Limit</th>
+                        <th class="px-6 py-4 text-right">Jual</th>
                         <th class="px-6 py-4 text-center">Status</th>
                         <th class="px-6 py-4 text-center sticky right-0 bg-gray-100 z-10">Aksi</th>
                     </tr>
@@ -124,43 +116,52 @@
                             <div class="font-medium text-gray-900">{{ Str::limit($product->product_name, 40) }}</div>
                             <div class="text-xs text-gray-500">{{ $product->brand }} • {{ $product->category }}</div>
                         </td>
+                        
+                        {{-- Harga Modal --}}
                         <td class="px-6 py-4 text-right font-mono text-gray-600">
                             Rp {{ number_format($product->price, 0, ',', '.') }}
                         </td>
+
+                        {{-- KOLOM KOMISI (Isi) --}}
+                        <td class="px-6 py-4 text-right font-mono text-purple-600 font-medium">
+                            @if($product->commission > 0)
+                                +Rp {{ number_format($product->commission, 0, ',', '.') }}
+                            @else
+                                <span class="text-gray-300">-</span>
+                            @endif
+                        </td>
+                        
+                        {{-- Max Limit --}}
                         <td class="px-6 py-4 text-right font-mono text-red-500 font-bold">
-                            {{-- Menampilkan Max Limit dari Database --}}
                             @if($product->max_buy_price > 0)
                                 Rp {{ number_format($product->max_buy_price, 0, ',', '.') }}
                             @else
                                 <span class="text-gray-300">-</span>
                             @endif
                         </td>
-                        <td class="px-6 py-4 text-right font-bold text-green-600">
-                            Rp {{ number_format($product->sell_price, 0, ',', '.') }}
-                        </td>
+                        
+                        <td class="px-6 py-4 text-right font-bold text-green-600">Rp {{ number_format($product->sell_price, 0, ',', '.') }}</td>
                         <td class="px-6 py-4 text-center">
-                            @if($product->seller_product_status)
-                                <span class="px-2 py-1 text-xs font-bold rounded-full bg-green-100 text-green-800">Aktif</span>
-                            @else
-                                <span class="px-2 py-1 text-xs font-bold rounded-full bg-gray-100 text-gray-800">Nonaktif</span>
-                            @endif
+                            <span class="px-2 py-1 text-xs font-bold rounded-full {{ $product->seller_product_status ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }}">
+                                {{ $product->seller_product_status ? 'Aktif' : 'Nonaktif' }}
+                            </span>
                         </td>
                         <td class="px-6 py-4 text-center sticky right-0 bg-white group-hover:bg-blue-50 transition z-10">
-                            {{-- TOMBOL EDIT: Mengirim data max_buy_price ke Javascript --}}
+                            {{-- BUTTON EDIT (KUNING) --}}
                             <button onclick="editPrice(
                                 '{{ $product->id }}', 
                                 '{{ addslashes($product->product_name) }}', 
                                 '{{ $product->price }}', 
                                 '{{ $product->sell_price }}', 
                                 '{{ $product->seller_product_status }}',
-                                '{{ $product->max_buy_price ?? 0 }}'
+                                '{{ $product->max_buy_price ?? 0 }}' 
                             )" class="p-2 bg-yellow-100 text-yellow-600 rounded hover:bg-yellow-200 transition" title="Edit Harga & Limit">
                                 <i class="fas fa-edit"></i>
                             </button>
                         </td>
                     </tr>
                     @empty
-                    <tr><td colspan="7" class="text-center py-6 text-gray-500">Data tidak ditemukan.</td></tr>
+                    <tr><td colspan="8" class="text-center py-6 text-gray-500">Data tidak ditemukan.</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -171,9 +172,7 @@
     </div>
 </div>
 
-{{-- =================================================================== --}}
-{{-- MODAL 1: EDIT HARGA & LIMIT (TANPA NOMOR HP) --}}
-{{-- =================================================================== --}}
+{{-- MODAL 1: EDIT HARGA & LIMIT --}}
 <div id="priceModal" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
     <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity" onclick="closeModal()"></div>
     <div class="flex items-center justify-center min-h-screen px-4">
@@ -181,29 +180,24 @@
             <form id="priceForm" action="" method="POST" class="p-6">
                 @csrf
                 @method('PUT')
-                
                 <div class="flex justify-between items-center mb-5 border-b pb-4">
                     <h3 class="text-lg font-bold text-gray-900">Setting Produk</h3>
                     <button type="button" onclick="closeModal()" class="text-gray-400 hover:text-gray-500"><i class="fas fa-times"></i></button>
                 </div>
-
                 <div class="space-y-4">
-                    {{-- Nama Produk --}}
                     <div>
                         <label class="block text-xs font-bold text-gray-500 uppercase">Nama Produk</label>
                         <input type="text" id="modal_product_name" class="w-full mt-1 bg-gray-100 border-gray-300 rounded text-sm text-gray-600" readonly>
                     </div>
-
-                    {{-- Section Limit Harga (YANG ANDA MINTA) --}}
+                    
+                    {{-- Input Limit Harga (Tanpa Nomor Tujuan) --}}
                     <div class="bg-red-50 p-3 rounded border border-red-100">
                         <label class="block text-xs font-bold text-red-600 uppercase mb-1">Limit Harga Beli (Max Price)</label>
                         <div class="relative">
                             <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500 text-sm">Rp</span>
                             <input type="number" name="max_buy_price" id="modal_max_buy_price" class="w-full pl-8 border-red-200 rounded focus:ring-red-500 focus:border-red-500" placeholder="0 (Tanpa Limit)">
                         </div>
-                        <p class="text-[10px] text-red-500 mt-1">
-                            *Jika harga modal dari pusat lebih mahal dari ini, transaksi otomatis GAGAL.
-                        </p>
+                        <p class="text-[10px] text-red-500 mt-1">*Jika harga modal pusat > ini, transaksi gagal.</p>
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
@@ -234,10 +228,9 @@
                     
                     <div class="flex items-center pt-2">
                         <input id="modal_status" name="status" type="checkbox" class="w-4 h-4 text-blue-600 border-gray-300 rounded">
-                        <label for="modal_status" class="ml-2 block text-sm text-gray-900 font-medium">Produk Aktif (Bisa Dibeli)</label>
+                        <label for="modal_status" class="ml-2 block text-sm text-gray-900 font-medium">Produk Aktif</label>
                     </div>
                 </div>
-
                 <div class="mt-6 flex justify-end gap-3">
                     <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded font-medium">Batal</button>
                     <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded font-bold shadow">Simpan Setting</button>
@@ -247,9 +240,7 @@
     </div>
 </div>
 
-{{-- =================================================================== --}}
-{{-- MODAL 2: DEPOSIT (AJAX) --}}
-{{-- =================================================================== --}}
+{{-- MODAL 2: DEPOSIT --}}
 <div id="depositModal" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
     <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity" onclick="closeDepositModal()"></div>
     <div class="flex items-center justify-center min-h-screen px-4">
@@ -263,9 +254,7 @@
                 <div class="space-y-4 mb-6">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Bank</label>
-                        <select name="bank" class="w-full rounded border-gray-300">
-                            <option value="BCA">BCA</option><option value="MANDIRI">MANDIRI</option><option value="BRI">BRI</option>
-                        </select>
+                        <select name="bank" class="w-full rounded border-gray-300"><option value="BCA">BCA</option><option value="MANDIRI">MANDIRI</option><option value="BRI">BRI</option></select>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Nominal</label>
@@ -285,9 +274,7 @@
     </div>
 </div>
 
-{{-- =================================================================== --}}
-{{-- MODAL 3: TRANSAKSI MANUAL (DARURAT) --}}
-{{-- =================================================================== --}}
+{{-- MODAL 3: TRANSAKSI MANUAL --}}
 <div id="topupModal" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
     <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity" onclick="closeTopupModal()"></div>
     <div class="flex items-center justify-center min-h-screen px-4">
@@ -299,17 +286,9 @@
                     <button type="button" onclick="closeTopupModal()" class="text-gray-400 hover:text-gray-500"><i class="fas fa-times"></i></button>
                 </div>
                 <div class="space-y-4 mb-6">
-                    <div class="bg-yellow-50 p-3 rounded text-xs text-yellow-800 border border-yellow-200">
-                        Fitur ini untuk mengirim pulsa darurat. Saldo admin terpotong.
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">SKU</label>
-                        <input type="text" name="buyer_sku_code" class="w-full rounded border-gray-300 uppercase" placeholder="XLD10" required>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Nomor Tujuan</label>
-                        <input type="text" name="customer_no" class="w-full rounded border-gray-300" placeholder="08..." required>
-                    </div>
+                    <div class="bg-yellow-50 p-3 rounded text-xs text-yellow-800 border border-yellow-200">Fitur ini untuk mengirim pulsa darurat. Saldo admin terpotong.</div>
+                    <div><label class="block text-sm font-medium text-gray-700 mb-1">SKU</label><input type="text" name="buyer_sku_code" class="w-full rounded border-gray-300 uppercase" placeholder="XLD10" required></div>
+                    <div><label class="block text-sm font-medium text-gray-700 mb-1">Nomor Tujuan</label><input type="text" name="customer_no" class="w-full rounded border-gray-300" placeholder="08..." required></div>
                 </div>
                 <div class="flex justify-end gap-3">
                     <button type="button" onclick="closeTopupModal()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded">Batal</button>
@@ -320,9 +299,7 @@
     </div>
 </div>
 
-{{-- =================================================================== --}}
 {{-- MODAL 4: MASSAL UPDATE --}}
-{{-- =================================================================== --}}
 <div id="bulkPriceModal" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
     <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity" onclick="closeBulkModal()"></div>
     <div class="flex items-center justify-center min-h-screen px-4">
@@ -357,12 +334,10 @@
 <script>
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
 
-    // Fetch Saldo
     function fetchSaldo() {
         const display = document.getElementById('saldo-display');
         if(!display) return;
         document.getElementById('icon-refresh').classList.add('fa-spin');
-        
         fetch("{{ route('admin.ppob.cek-saldo') }}")
             .then(res => res.json())
             .then(data => { display.innerText = data.status === 'success' ? data.formatted : 'Error'; })
@@ -371,7 +346,6 @@
     }
     document.addEventListener('DOMContentLoaded', fetchSaldo);
 
-    // Modal Helpers
     function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
     function closeModalById(id) { document.getElementById(id).classList.add('hidden'); }
     function closeDepositModal() { closeModalById('depositModal'); }
@@ -389,7 +363,7 @@
         document.getElementById('modal_base_price_display').value = 'Rp ' + parseFloat(basePrice).toLocaleString('id-ID');
         document.getElementById('modal_sell_price').value = parseFloat(sellPrice);
         
-        // ISI INPUT MAX BUY PRICE (Inilah yang Anda cari)
+        // ISI INPUT MAX BUY PRICE
         const maxInput = document.getElementById('modal_max_buy_price');
         maxInput.value = (maxBuyPrice && maxBuyPrice > 0) ? parseFloat(maxBuyPrice) : '';
 
@@ -403,7 +377,6 @@
         openModal('priceModal');
     }
 
-    // Kalkulator Margin
     function calculateSinglePrice() {
         let base = parseFloat(document.getElementById('modal_base_price_raw').value) || 0;
         let val = parseFloat(document.getElementById('single_profit_value').value) || 0;
@@ -412,7 +385,6 @@
         document.getElementById('modal_sell_price').value = Math.ceil(final);
     }
 
-    // Submit Deposit dengan SweetAlert
     function submitDeposit(e) {
         e.preventDefault();
         const btn = document.getElementById('btnSubmitDepo');
@@ -439,3 +411,4 @@
     }
 </script>
 @endpush
+@endsection
