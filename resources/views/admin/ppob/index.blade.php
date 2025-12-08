@@ -104,6 +104,9 @@
                         
                         {{-- HARGA BELI / ADMIN FEE --}}
                         <th class="px-6 py-4 text-right min-w-[120px]">Harga Beli/Admin</th>
+
+                        {{-- HARGA MAX (BARU) --}}
+                        <th class="px-6 py-4 text-right min-w-[120px] text-red-500">Harga Max</th>
                         
                         {{-- KOMISI PASCABAYAR --}}
                         <th class="px-6 py-4 text-right min-w-[100px]">Komisi</th>
