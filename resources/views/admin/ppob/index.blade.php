@@ -5,9 +5,9 @@
 {{-- Load SweetAlert2 CDN --}}
 @push('styles')
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
-@endpus
+@endpush
 
-@section('content')
+@section('conent')
 
 {{-- Notifikasi Flash Message (Session Laravel) --}}
 @if(session('success'))
