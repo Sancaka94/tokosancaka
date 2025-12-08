@@ -772,7 +772,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
 
         require __DIR__.'/web/admin.php';
 
-Route::post('/', [AdminPesananController::class, 'store'])->name('store');
+Route::post('/', [PesananController::class, 'store'])->name('store');
 
         
     Route::resource('customers/data/pengguna', DataPenggunaController::class)
