@@ -52,9 +52,9 @@ class AdminLogController extends Controller
     public function clearLogs(Request $request)
     {
         // Hanya izinkan admin yang terotentikasi dan memiliki role yang sesuai
-        //if (!auth()->check() || auth()->user()->role !== 'admin') {
-        //     return response()->json(['status' => 'error', 'message' => 'Unauthorized action.'], 403);
-        //}
+        if (!auth()->check() || auth()->user()->role !== 'Admin') {
+             return response()->json(['status' => 'error', 'message' => 'Unauthorized action.'], 403);
+        }
         
         $logPath = storage_path('logs/laravel.log');
 
