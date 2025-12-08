@@ -411,4 +411,3 @@
     }
 </script>
 @endpush
-@endsection
