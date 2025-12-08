@@ -379,6 +379,8 @@ class DigiflazzService
     // $modal dihitung sebagai $item['price'] untuk Prabayar, atau $item['admin'] untuk Pascabayar.
     'price' => $modal,
 
+    'max_price' => $item['max_price'] ?? 0,
+
     // 4. FIELD PASCABAYAR (Diisi '0' jika Prabayar)
     // Gunakan nilai dari API jika ada, jika tidak ada, gunakan 0.00
     'admin_fee' => $item['admin'] ?? 0.00, 

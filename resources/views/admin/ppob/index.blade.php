@@ -158,6 +158,16 @@
                                 Rp{{ number_format($product->price, 0, ',', '.') }}
                             @endif
                         </td>
+
+                        {{-- HARGA MAX (BARU) --}}
+<td class="px-6 py-4 text-right text-red-500 font-medium">
+    {{-- Asumsi kolom di database bernama 'max_price'. Jika belum ada, pastikan sudah dimigrasi. --}}
+    @if(isset($product->max_price) && $product->max_price > 0)
+        Rp{{ number_format($product->max_price, 0, ',', '.') }}
+    @else
+        <span class="text-gray-300">-</span>
+    @endif
+</td>
                         
                         {{-- KOMISI --}}
                         <td class="px-6 py-4 text-right text-purple-600 font-medium">
