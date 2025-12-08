@@ -327,4 +327,80 @@ public function destroy($id)
             ], 500);
         }
     }
+
+    /**
+     * FITUR TOPUP / TRANSAKSI MANUAL
+     * Endpoint: https://api.digiflazz.com/v1/transaction
+     */
+    public function topup(Request $request)
+    {
+        // 1. Validasi Input
+        $request->validate([
+            'buyer_sku_code' => 'required|string', // Contoh: xld10, pulsa5
+            'customer_no'    => 'required|string', // Nomor HP / ID Pelanggan
+        ]);
+
+        // 2. Kredensial Langsung (HARDCODE)
+        $username = 'mihetiDVGdeW';
+        $apiKey   = '1f48c69f-8676-5d56-a868-10a46a69f9b7';
+        $endpoint = 'https://api.digiflazz.com/v1/transaction';
+
+        // 3. Generate Ref ID Unik
+        // Format: TRX-[TIMESTAMP]-[RANDOM] agar tidak duplikat
+        $refId = 'TRX-' . time() . rand(100, 999);
+
+        // 4. Generate Signature
+        // Formula: md5(username + apiKey + ref_id)
+        $sign = md5($username . $apiKey . $refId);
+
+        // 5. Siapkan Payload
+        $payload = [
+            'username'       => $username,
+            'buyer_sku_code' => $request->buyer_sku_code,
+            'customer_no'    => $request->customer_no,
+            'ref_id'         => $refId,
+            'sign'           => $sign,
+            'testing'        => false // Ubah ke true jika ingin mode testing
+        ];
+
+        try {
+            // [LOG REQUEST]
+            \Illuminate\Support\Facades\Log::info('➡️ [TOPUP REQ] ' . $refId, $payload);
+
+            // 6. Kirim Request
+            $response = Http::withHeaders(['Content-Type' => 'application/json'])
+                            ->post($endpoint, $payload);
+            
+            $result = $response->json();
+
+            // [LOG RESPONSE]
+            \Illuminate\Support\Facades\Log::info('⬅️ [TOPUP RESP] ' . $refId, $result ?? []);
+
+            // 7. Cek Hasil
+            if (isset($result['data'])) {
+                $data = $result['data'];
+                
+                // Disini Anda bisa menambahkan logic simpan ke database (PpobTransaction)
+                // PpobTransaction::create([...]);
+
+                return response()->json([
+                    'status'  => 'success',
+                    'message' => $data['message'], // "Transaksi Pending" / "Sukses"
+                    'data'    => $data
+                ]);
+            } else {
+                return response()->json([
+                    'status'  => 'error', 
+                    'message' => 'Respon tidak valid dari provider'
+                ], 400);
+            }
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('❌ [TOPUP ERROR] ' . $e->getMessage());
+            return response()->json([
+                'status'  => 'error', 
+                'message' => 'Koneksi Error: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }
