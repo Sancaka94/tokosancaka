@@ -652,14 +652,7 @@
 
                 <ul class="pl-8 pr-2 py-1 space-y-1">
 
-                    {{-- PERBAIKAN: MENGGUNAKAN STYLE SUBMENU YANG BENAR --}}
-                    <li>
-                        {{-- Kelas yang benar untuk item submenu (seperti yang dipakai 'Log Aktivitas' di menu Anda) --}}
-                        <a href="{{ route('admin.logs.show') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-gray-700 {{ request()->routeIs('admin.logs.show') ? 'text-white' : 'text-gray-400' }}">
-                            <i class="fa-solid fa-bug fa-fw w-4 h-4 mr-2 text-red-500"></i> Log Laravel
-                        </a>
-                    </li>
-                    {{-- AKHIR PERBAIKAN --}}
+                    <li><a href="{{ route('admin.logs.show') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-gray-700 {{ request()->routeIs('admin.logs.show') ? 'text-red-600' : 'text-gray-400' }}">Log Error</a></li>
 
                     <li><a href="{{ route('admin.activity-log.index') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-gray-700 {{ request()->routeIs('admin.activity-log.index') ? 'text-white' : 'text-gray-400' }}">Log Aktivitas</a></li>
 
