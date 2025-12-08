@@ -689,12 +689,14 @@ Route::put('products/{slug}/specifications', [\App\Http\Controllers\Admin\Produc
 
     Route::get('/wilayah/district/{district}/villages', [WilayahController::class, 'getDesa'])->name('wilayah.desa');
 
-    Route::resource('pelanggan', PelangganController::class);
+   
     
     // --- [BARU] RUTE UNTUK MANAJEMEN SLIDER ---
     Route::get('/sliders', [SliderController::class, 'index'])->name('sliders.index');
     Route::post('/sliders', [SliderController::class, 'store'])->name('sliders.store');
     Route::delete('/sliders/{slide}', [SliderController::class, 'destroy'])->name('sliders.destroy');
+
+    Route::resource('pelanggan', PelangganController::class);
     // ------------------------------------------
 
      // Rute spesifik untuk fungsionalitas Import & Export
@@ -992,7 +994,7 @@ Route::post('/setting-info-pesanan', [AdminController::class, 'updateInfoPesanan
 
         // RUTE UNTUK MANAJEMEN KODE AKUN (COA)
 
-        Route::resource('coa', CoaController::class)->except(['show']);
+        
 
         Route::get('coa/export/excel', [CoaController::class, 'exportExcel'])->name('coa.export.excel');
 
@@ -1004,7 +1006,7 @@ Route::post('/setting-info-pesanan', [AdminController::class, 'updateInfoPesanan
 
         Route::get('coa/import/template', [CoaController::class, 'downloadTemplate'])->name('coa.import.template');
 
-        
+        Route::resource('coa', CoaController::class)->except(['show']);
 
    
 
