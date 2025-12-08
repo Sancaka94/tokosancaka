@@ -41,10 +41,10 @@
                 </button>
                 
                 {{-- Tombol Sync --}}
-                <a href="{{ route('admin.ppob.sync.prepaid') }}" onclick="return confirm('Sync Prabayar?')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-xs font-bold flex items-center gap-1">
+                <a href="{{ route('ppob.sync.prepaid') }}" onclick="return confirm('Sync Prabayar?')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-xs font-bold flex items-center gap-1">
                     <i class="fas fa-sync"></i> Prabayar
                 </a>
-                <a href="{{ route('admin.ppob.sync.postpaid') }}" onclick="return confirm('Sync Pascabayar?')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded text-xs font-bold flex items-center gap-1">
+                <a href="{{ route('ppob.sync.postpaid') }}" onclick="return confirm('Sync Pascabayar?')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded text-xs font-bold flex items-center gap-1">
                     <i class="fas fa-sync"></i> Pascabayar
                 </a>
             </div>
