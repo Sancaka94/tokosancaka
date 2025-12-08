@@ -16,39 +16,41 @@
             <p class="text-sm text-gray-500 mt-1">Kelola harga dan margin keuntungan produk secara massal.</p>
         </div>
         
-        <div class="flex flex-wrap gap-2">
-            {{-- Tombol Export --}}
-            <a href="{{ route('admin.ppob.export-pdf', ['type' => request('type')]) }}" target="_blank" class="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition flex items-center gap-2 text-sm">
-                <i class="fas fa-file-pdf"></i> PDF
-            </a>
-            <a href="{{ route('admin.ppob.export-excel', ['type' => request('type')]) }}" target="_blank" class="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition flex items-center gap-2 text-sm">
-                <i class="fas fa-file-excel"></i> Excel
-            </a>
-
-            <div class="w-px h-8 bg-gray-300 mx-1 hidden md:block"></div>
-
-            {{-- Tombol Aksi Utama --}}
-            <button onclick="openBulkModal()" class="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-4 py-2 rounded-lg shadow transition flex items-center gap-2 text-sm">
-                <i class="fas fa-tags"></i> Update Harga Massal
-            </button>
+        {{-- =================================================================== --}}
+    {{-- HEADER SECTION (JUDUL & WIDGET SALDO) --}}
+    {{-- =================================================================== --}}
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8 items-start">
+        
+        {{-- 1. Judul & Tombol Aksi Produk (Kiri) --}}
+        <div class="lg:col-span-2">
+            <h1 class="text-2xl font-bold text-gray-800">Daftar Produk PPOB</h1>
+            <p class="text-sm text-gray-500 mt-1">Kelola harga, margin, dan sinkronisasi produk Digiflazz.</p>
             
-            {{-- 1. TOMBOL SINKRONISASI PRABAYAR --}}
-            <a href="{{ route('ppob.sync.prepaid') }}" 
-                onclick="return confirm('Apakah Anda yakin ingin melakukan sinkronisasi produk PRABAYAR? Proses ini mungkin membutuhkan waktu.')"
-                class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition flex items-center gap-2 text-sm">
-                <i class="fas fa-mobile-alt"></i> Sync Prabayar
-            </a>
+            {{-- Baris Tombol Aksi (Export & Sync) --}}
+            <div class="flex flex-wrap gap-2 mt-4">
+                {{-- Tombol Export --}}
+                <a href="{{ route('admin.ppob.products.export.excel', ['type' => request('type')]) }}" class="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-xs font-bold flex items-center gap-1">
+                    <i class="fas fa-file-excel"></i> XLS
+                </a>
+                
+                <div class="w-px h-8 bg-gray-300 mx-1 hidden md:block"></div>
 
-            {{-- 2. TOMBOL SINKRONISASI PASCABAYAR --}}
-            <a href="{{ route('ppob.sync.postpaid') }}" 
-                onclick="return confirm('Apakah Anda yakin ingin melakukan sinkronisasi produk PASCABAYAR? Proses ini mungkin membutuhkan waktu.')"
-                class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition flex items-center gap-2 text-sm">
-                <i class="fas fa-receipt"></i> Sync Pascabayar
-            </a>
+                {{-- Tombol Bulk Update --}}
+                <button onclick="openBulkModal()" class="bg-orange-500 hover:bg-orange-600 text-white px-3 py-2 rounded text-xs font-bold flex items-center gap-1">
+                    <i class="fas fa-tags"></i> Update Harga
+                </button>
+                
+                {{-- Tombol Sync --}}
+                <a href="{{ route('admin.ppob.products.sync.prepaid') }}" onclick="return confirm('Sync Prabayar?')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-xs font-bold flex items-center gap-1">
+                    <i class="fas fa-sync"></i> Prabayar
+                </a>
+                <a href="{{ route('admin.ppob.products.sync.postpaid') }}" onclick="return confirm('Sync Pascabayar?')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded text-xs font-bold flex items-center gap-1">
+                    <i class="fas fa-sync"></i> Pascabayar
+                </a>
+            </div>
         </div>
-    </div>
 
-    {{-- 2. WIDGET SALDO (Kanan) - TEMPAT KODE ANDA --}}
+        {{-- 2. WIDGET SALDO (Kanan) - TEMPAT KODE ANDA --}}
         <div class="bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl p-5 text-white shadow-lg relative overflow-hidden">
             <div class="absolute right-0 top-0 opacity-10 transform translate-x-4 -translate-y-4">
                 <i class="fas fa-wallet text-8xl"></i>
@@ -82,6 +84,10 @@
 
             </div>
         </div>
+    </div>
+    </div>
+
+    
 
     {{-- Alert Notification (tetap sama) --}}
     @if(session('success'))
