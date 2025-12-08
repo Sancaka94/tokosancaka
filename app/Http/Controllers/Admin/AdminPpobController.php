@@ -185,13 +185,20 @@ class AdminPpobController extends Controller
     /**
      * Hapus transaksi (Hati-hati, biasanya soft delete lebih disarankan).
      */
-    public function destroy($id)
-    {
-        $transaction = PpobTransaction::findOrFail($id);
-        $transaction->delete();
+   // Pastikan Anda menggunakan 'PpobProduct' di Controller Anda.
 
-        return redirect()->route('admin.ppob.index')->with('success', 'Data transaksi berhasil dihapus.');
-    }
+// Fungsi Asli Anda (Menghapus Transaksi)
+
+public function destroy($id)
+{
+    // Ini menghapus data dari tabel 'ppob_transactions'
+    $transaction = PpobTransaction::findOrFail($id); 
+    $transaction->delete();
+
+    // Pastikan 'admin.ppob.data.index' adalah route untuk daftar transaksi PPOB
+    // (Berdasarkan route file Anda, daftar transaksi adalah 'ppob.data.index')
+    return redirect()->route('admin.ppob.data.index')->with('success', 'Data transaksi berhasil dihapus.');
+}
 
     /**
      * FITUR BARU: CEK SALDO DIGIFLAZZ
