@@ -14,7 +14,7 @@ use App\Models\User;
 use App\Services\DigiflazzService; 
 use Exception;
 
-class AgentTransactionController extends Controller
+class AgentRegistrationController extends Controller
 {
     /**
      * Halaman Kasir / Transaksi Offline
