@@ -88,7 +88,14 @@ Route::get('/cek-saldo', [AdminPpobController::class, 'cekSaldo'])->name('ppob.c
 
 Route::post('/deposit', [AdminPpobController::class, 'requestDeposit'])->name('ppob.deposit');
 
-    // Aksi Transaksi (Detail, Update, Hapus)
+
+
+// =================================================================
+// GROUP ROUTE PPOB (DIGIFLAZZ) - GABUNGAN TRANSAKSI & PRODUK
+// =================================================================
+Route::prefix('ppob')->name('ppob.')->group(function () {
+
+        // Aksi Transaksi (Detail, Update, Hapus)
     // PENTING: Gunakan 'transaction' di URL agar tidak bentrok dengan ID Produk
     Route::prefix('transaction')->name('transaction.')->group(function() {
         Route::get('/{id}', [AdminPpobController::class, 'show'])->name('show');
@@ -99,11 +106,6 @@ Route::post('/deposit', [AdminPpobController::class, 'requestDeposit'])->name('p
         // URL: /admin/ppob/transaction/destroy/50
         Route::get('/destroy/{id}', [AdminPpobController::class, 'destroy'])->name('destroy.get');
     });
-
-// =================================================================
-// GROUP ROUTE PPOB (DIGIFLAZZ) - GABUNGAN TRANSAKSI & PRODUK
-// =================================================================
-Route::prefix('ppob')->name('ppob.')->group(function () {
     
     // -------------------------------------------------------------
     // 1. DATA TRANSAKSI (HARUS PALING ATAS)
