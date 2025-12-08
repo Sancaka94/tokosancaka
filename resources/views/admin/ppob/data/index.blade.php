@@ -47,15 +47,17 @@
                 {{-- Indikator Loading --}}
                 <p id="saldo-loading" class="text-[10px] text-blue-200 mb-2 hidden">Sedang memuat data...</p>
 
-                {{-- Tombol Isi Saldo --}}
-                <button onclick="openDepositModal()" class="w-full bg-white text-blue-600 font-bold py-2.5 px-4 rounded-lg text-sm transition hover:bg-blue-50 hover:shadow-lg flex items-center justify-center gap-2">
-                    <i class="fas fa-plus-circle"></i> Isi Saldo Otomatis
-                </button>
-
-                {{-- TOMBOL BARU: TOPUP MANUAL --}}
+                <div class="grid grid-cols-2 gap-2 mt-3">
+                    {{-- Tombol Deposit --}}
+                    <button onclick="openDepositModal()" class="bg-white/20 hover:bg-white/30 text-white font-semibold py-2 px-4 rounded-lg text-sm transition border border-white/10">
+                        <i class="fas fa-plus-circle"></i> Deposit
+                    </button>
+                    
+                    {{-- TOMBOL BARU: TOPUP MANUAL --}}
                     <button onclick="openTopupModal()" class="bg-white text-blue-600 font-bold py-2 px-4 rounded-lg text-sm transition hover:bg-gray-100 shadow-sm">
                         <i class="fas fa-bolt"></i> Transaksi
                     </button>
+                </div>
             </div>
         </div>
     </div>
