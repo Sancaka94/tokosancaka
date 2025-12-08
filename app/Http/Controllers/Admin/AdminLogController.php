@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Http\Request; // Diperlukan untuk method clearLogs
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 
@@ -72,5 +73,5 @@ class AdminLogController extends Controller
             return response()->json(['status' => 'error', 'message' => 'Gagal menghapus log: ' . $e->getMessage()], 500);
         }
     }
-    
+
 }
