@@ -771,7 +771,7 @@ Route::put('products/{slug}/specifications', [\App\Http\Controllers\Admin\Produc
 
 });
 
-Route::get('/cek-saldo', [AdminPpobController::class, 'cekSaldo'])->name('ppob.cek-saldo'); // route('admin.ppob.cek-saldo')
+Route::get('/cek-saldo', [AdminPpobController::class, 'cekSaldo'])->name('admin.ppob.cek-saldo'); // route('admin.ppob.cek-saldo')
 
 
 Route::get('/pengguna/export', [PenggunaController::class, 'export'])->name('admin.customers.pengguna.export');
