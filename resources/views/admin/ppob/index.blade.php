@@ -44,6 +44,11 @@
                 <a href="{{ route('ppob.sync.prepaid') }}" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-xs font-bold shadow flex items-center gap-2">
                     <i class="fas fa-sync"></i> Sync Prabayar
                 </a>
+
+                {{-- TOMBOL SYNC PASCABAYAR (BARU) --}}
+                <a href="{{ route('ppob.sync.postpaid') }}" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-xs font-bold shadow flex items-center gap-2" onclick="return confirm('Sinkronisasi Pascabayar? Proses agak lama.')">
+                    <i class="fas fa-sync"></i> Sync Pascabayar
+                </a>
                 
                 {{-- Tombol Massal --}}
                 <button onclick="openBulkModal()" class="bg-orange-500 hover:bg-orange-600 text-white px-3 py-2 rounded-lg text-xs font-bold shadow flex items-center gap-2">
