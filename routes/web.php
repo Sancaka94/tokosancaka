@@ -771,6 +771,8 @@ Route::put('products/{slug}/specifications', [\App\Http\Controllers\Admin\Produc
 
 });
 
+Route::get('/admin/logs', [AdminLogController::class, 'showLogs'])->name('admin.logs.show');
+
 Route::get('/cek-saldo', [AdminPpobController::class, 'cekSaldo'])->name('admin.ppob.cek-saldo'); // route('admin.ppob.cek-saldo')
 
 
@@ -782,7 +784,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
 
         require __DIR__.'/web/admin.php';
 
-Route::get('/admin/logs', [AdminLogController::class, 'showLogs'])->name('admin.logs.show');
+
 
 Route::get('/', [App\Http\Controllers\PpobProductController::class, 'index'])->name('ppob.index');
 
