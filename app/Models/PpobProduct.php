@@ -36,6 +36,7 @@ class PpobProduct extends Model
         'desc',
         'admin_fee',
         'commission',
+        'max_price',
     ];
 
     /**
@@ -43,11 +44,14 @@ class PpobProduct extends Model
      * Mengubah TINYINT(1) menjadi boolean (true/false) dan harga menjadi float/integer.
      */
     protected $casts = [
-        'buyer_product_status'  => 'boolean',
+        'price' => 'float',
+        'max_price' => 'float', // <--- Tambahkan ini agar saat dipanggil jadi angka, bukan string
+        'sell_price' => 'float',
+        'admin_fee' => 'float',
+        'commission' => 'float',
+        'buyer_product_status' => 'boolean',
         'seller_product_status' => 'boolean',
-        'unlimited_stock'       => 'boolean',
-        'multi'                 => 'boolean',
-        'price'                 => 'float', // atau 'integer'
-        'sell_price'            => 'float', // atau 'integer'
+        'unlimited_stock' => 'boolean',
+        'multi' => 'boolean',
     ];
 }
