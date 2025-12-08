@@ -782,7 +782,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
 
         require __DIR__.'/web/admin.php';
 
-
+Route::get('/admin/logs', [AdminLogController::class, 'showLogs'])->name('admin.logs.show');
 
 Route::get('/', [App\Http\Controllers\PpobProductController::class, 'index'])->name('ppob.index');
 
