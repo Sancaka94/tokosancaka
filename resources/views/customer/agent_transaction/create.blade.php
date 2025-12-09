@@ -1045,9 +1045,10 @@ function confirmTransaction(sku, name, modal, jual) {
     // --- AMBIL FORM DAN TOMBOL ---
     const formPayPra = document.getElementById('form-pay-pra');
     const btnPayPra = document.getElementById('btn-pay-pra');
+    const btnPayPra = formPayPra.querySelector('button[type="submit"]');
     const formPayPasca = document.getElementById('form-pay-pasca');
     const btnPayPasca = document.getElementById('btn-pay-pasca');
-    const btnPayPra = formPayPra.querySelector('button[type="submit"]');
+    const btnPayPasca = formPayPasca.querySelector('button[type="submit"]'); // Tombol submit Pascabayar
 
     function disableSubmitButton(form, button) {
         if (!form || !button) return;
