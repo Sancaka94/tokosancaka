@@ -507,7 +507,8 @@
     // Variabel Global
     const inputNo = document.getElementById('customer_no');
     let currentBillData = null; 
-    let currentPrepaidData = null; 
+    let currentPrepaidData = null;
+    let isProcessing = false; // <<< FLAG BARU DITAMBAHKAN
 
     // Setup Swiper (Unmodified)
     var swiper = new Swiper(".heroSwiper", { 
@@ -771,6 +772,7 @@ function getRcMessage(rcCode) {
 
         // --- FUNGSI CHECKOUT PRABAYAR (AJAX) ---
         function processPrepaidCheckout() {
+            if(isProcessing) return; // JANGAN LANJUTKAN jika sedang memproses
             if(!currentPrepaidData) return;
             const btn = document.getElementById('btn-confirm-pay');
             const originalText = btn.innerHTML;
@@ -782,22 +784,27 @@ function getRcMessage(rcCode) {
                 body: JSON.stringify(currentPrepaidData)
             })
             .then(res => res.json())
-            .then(data => {
-                if(data.success) {
-                    window.location.href = "{{ route('ppob.checkout.index') }}";
-                } else {
-                    triggerCustomNotification("Gagal menambahkan ke keranjang: " + data.message, 'error');
-                    btn.disabled = false;
-                    btn.innerHTML = originalText;
-                }
-            })
-            .catch(err => {
-                console.error(err);
-                triggerCustomNotification("Terjadi kesalahan sistem.", 'error');
-                btn.disabled = false;
-                btn.innerHTML = originalText;
-            });
+    .then(data => {
+        if(data.success) {
+            // SUCCESS: Tetap disabled dan REDIRECT
+            window.location.href = "{{ route('ppob.checkout.index') }}";
+        } else {
+            // GAGAL: Kembalikan state
+            triggerCustomNotification("Gagal menambahkan ke keranjang: " + data.message, 'error');
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            isProcessing = false; // <<< PENTING: Reset flag hanya jika GAGAL
         }
+    })
+    .catch(err => {
+        // ERROR: Kembalikan state
+        console.error(err);
+        triggerCustomNotification("Terjadi kesalahan sistem.", 'error');
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        isProcessing = false; // <<< PENTING: Reset flag hanya jika GAGAL
+    });
+}
         
         @if($currentSlug == 'pln-token')
         function cekPlnPrabayar() {
