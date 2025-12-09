@@ -7,9 +7,79 @@ use Illuminate\Support\Facades\Log;
 use App\Models\PpobTransaction; 
 use Illuminate\Support\Facades\DB;
 use App\Models\User;
+use App\Services\FonnteService; // <<< TAMBAHKAN INI
+use Illuminate\Support\Str; // Diperlukan untuk _sanitizePhoneNumber
 
 class DigiflazzWebhookController extends Controller
 {
+    /**
+     * Helper untuk membersihkan dan memformat nomor HP menjadi 62xxxx.
+     */
+    private function _sanitizePhoneNumber(string $phone): ?string
+    {
+        $phone = preg_replace('/[^0-9]/', '', $phone);
+        if (empty($phone)) return null;
+    
+        if (Str::startsWith($phone, '08')) {
+            return '62' . substr($phone, 1);
+        }
+        if (Str::startsWith($phone, '62')) {
+            return $phone;
+        }
+        if (strlen($phone) > 8 && !Str::startsWith($phone, '0')) {
+            return '62' . $phone;
+        }
+        return $phone;
+    }
+
+
+    /**
+     * Mengirim notifikasi WA berisi SN transaksi PPOB.
+     */
+    private function _sendWhatsappNotificationSN(PpobTransaction $trx, string $sn)
+    {
+        try {
+            $agent = User::find($trx->user_id); 
+            
+            // Nomor WA Agent (yang login saat transaksi)
+            $agentWa = $this->_sanitizePhoneNumber($agent->no_wa ?? $agent->phone ?? null);
+            // Nomor WA Pembeli (diambil dari input di kasir)
+            $customerWa = $this->_sanitizePhoneNumber($trx->customer_wa ?? $trx->customer_no); 
+            
+            $fmt = function($val) { return number_format($val, 0, ',', '.'); };
+            
+            if (empty($customerWa)) {
+                Log::warning("Notifikasi WA SN PPOB gagal: customer_wa kosong di transaksi: " . $trx->order_id);
+                return false;
+            }
+
+            // --- 1. SUSUN PESAN ---
+            $message = "*✅ Transaksi PPOB Sukses! (Order: {$trx->order_id})*\n";
+            $message .= "------------------------------------\n";
+            $message .= "Produk: {$trx->buyer_sku_code}\n";
+            $message .= "Nomor Tujuan: {$trx->customer_no}\n";
+            $message .= "Harga Jual: Rp " . $fmt($trx->selling_price) . "\n";
+            $message .= "*Serial Number (SN):*\n*{$sn}*\n";
+            $message .= "------------------------------------\n";
+            $message .= "Terima kasih telah bertransaksi di Sancaka Express. 🙏";
+
+            // --- 2. KIRIM KE AGENT (AUTH USER) ---
+            if ($agentWa) {
+                FonnteService::sendMessage($agentWa, "[NOTIF AGENT - SN] Transaksi {$trx->order_id} Sukses. \n\n" . $message);
+            }
+
+            // --- 3. KIRIM KE PEMBELI (NOMOR WA YANG DI-INPUT) ---
+            FonnteService::sendMessage($customerWa, "[NOTIF PEMBELI - SN] " . $message);
+            
+            Log::info('PPOB SN sent via WA.', ['ref_id' => $trx->order_id, 'customer_wa' => $customerWa]);
+            return true;
+            
+        } catch (\Exception $e) {
+            Log::error('WA Notification SN PPOB Error: ' . $e->getMessage(), ['trx_id' => $trx->id]);
+            return false;
+        }
+    }
+
     public function handle(Request $request)
     {
         // 1. LOG RAW DATA
@@ -119,7 +189,15 @@ class DigiflazzWebhookController extends Controller
                 }
             }
 
-            $transaction->save();
+           $transaction->save();
+
+            // ==========================================
+            // 5. KIRIM NOTIFIKASI WA SETELAH SUKSES
+            // ==========================================
+            if ($transaction->status === 'Success' && !empty($sn)) {
+                $this->_sendWhatsappNotificationSN($transaction, $sn);
+            }
+
             DB::commit();
 
             return response()->json(['status' => 'ok']);
