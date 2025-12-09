@@ -1047,6 +1047,7 @@ function confirmTransaction(sku, name, modal, jual) {
     const btnPayPra = document.getElementById('btn-pay-pra');
     const formPayPasca = document.getElementById('form-pay-pasca');
     const btnPayPasca = document.getElementById('btn-pay-pasca');
+    const btnPayPra = formPayPra.querySelector('button[type="submit"]');
 
     function disableSubmitButton(form, button) {
         if (!form || !button) return;
