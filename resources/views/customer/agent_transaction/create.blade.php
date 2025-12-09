@@ -87,13 +87,38 @@
                 </div>
 
                 {{-- <<< INPUT BARU: NOMOR WA PEMBELI >>> --}}
-                    <div class="mb-4">
-                        <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Nomor WA Pembeli (Wajib)</label>
-                        <input type="number" id="input_customer_wa_pra" 
-                               class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 text-base font-bold transition placeholder-gray-300"
-                               placeholder="08xxxxxxxxxx (Untuk kirim SN)">
-                    </div>
-                    {{-- <<< AKHIR INPUT BARU >>> --}}
+<div class="mb-6">
+    <label class="block text-[11px] font-semibold text-gray-500 tracking-wide mb-1 uppercase">
+        Nomor WA Pembeli <span class="text-red-500">*</span>
+    </label>
+
+    <div class="relative">
+        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-green-500">
+            <!-- Ikon WhatsApp -->
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 opacity-80" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.159 5.403 5.67-.003 12.02 0c3.184.001 6.167 1.24 8.41 3.482 2.243 2.242 3.481 5.225 3.48 8.41-.002 6.351-5.408 11.86-11.89 11.86-1.99-.001-3.951-.501-5.688-1.448L.057 24z"/>
+            </svg>
+        </span>
+
+        <input 
+            type="number" 
+            id="input_customer_wa_pra"
+            placeholder="08xxxxxxxxxx (Untuk kirim SN)"
+            class="w-full pl-11 pr-4 py-3 
+                   rounded-xl 
+                   border border-gray-300 
+                   bg-white shadow-sm
+                   focus:ring-2 focus:ring-green-500 focus:border-green-500
+                   text-base font-medium
+                   transition-all
+                   placeholder-gray-400"
+        >
+    </div>
+
+    <p class="text-[11px] text-gray-400 mt-1">Nomor WhatsApp untuk pengiriman SN otomatis.</p>
+</div>
+{{-- <<< AKHIR INPUT BARU >>> --}}
+
 
                 <div class="bg-yellow-50 p-4 rounded-xl border border-yellow-100 text-xs text-yellow-800 leading-relaxed">
                     <i class="fas fa-lightbulb mr-1 text-yellow-600"></i> 
