@@ -1049,6 +1049,7 @@ function getRcMessage(rcCode) {
 
     // --- FUNGSI BAYAR (VERSI BARU: DIRECT CHECKOUT) ---
     function bayarTagihan() {
+        if(isProcessing) return; // JANGAN LANJUTKAN jika sedang memproses
         if(!currentBillData) {
             triggerCustomNotification("Data tagihan tidak valid/kadaluarsa. Silakan cek ulang.", 'error');
             return;
@@ -1068,22 +1069,27 @@ function getRcMessage(rcCode) {
             body: JSON.stringify(currentBillData)
         })
         .then(res => res.json())
-        .then(data => {
-            if(data.success) {
-                window.location.href = "{{ route('ppob.checkout.index') }}";
-            } else {
-                triggerCustomNotification("Gagal memproses pesanan.", 'error');
-                btnBayar.innerHTML = oriText;
-                btnBayar.disabled = false;
-            }
-        })
-        .catch(err => {
-            console.error(err);
-            triggerCustomNotification("Terjadi kesalahan sistem.", 'error');
+    .then(data => {
+        if(data.success) {
+            // SUCCESS: Tetap disabled dan REDIRECT
+            window.location.href = "{{ route('ppob.checkout.index') }}";
+        } else {
+            // GAGAL: Kembalikan state
+            triggerCustomNotification("Gagal memproses pesanan.", 'error');
             btnBayar.innerHTML = oriText;
             btnBayar.disabled = false;
-        });
-    }
+            isProcessing = false; // <<< PENTING: Reset flag hanya jika GAGAL
+        }
+    })
+    .catch(err => {
+        // ERROR: Kembalikan state
+        console.error(err);
+        triggerCustomNotification("Terjadi kesalahan sistem.", 'error');
+        btnBayar.innerHTML = oriText;
+        btnBayar.disabled = false;
+        isProcessing = false; // <<< PENTING: Reset flag hanya jika GAGAL
+    });
+}
     @endif
 </script>
 @endpush
