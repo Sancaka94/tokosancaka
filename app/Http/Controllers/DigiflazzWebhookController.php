@@ -160,10 +160,12 @@ class DigiflazzWebhookController extends Controller
             // LOGIKA STATUS BERDASARKAN RC (LEBIH AKURAT)
             // ==========================================
             $rcStr = (string) $rc; // Pastikan string untuk perbandingan
+            $isSuccess = false; // Flag untuk WA
 
             // 1. SUKSES (RC 00)
             if ($rcStr === '00' || $status === 'Sukses' || $status === 'Success') {
                 $transaction->status = 'Success';
+                $isSuccess = true;
             }
             
             // 2. PENDING (RC 03, 99)
