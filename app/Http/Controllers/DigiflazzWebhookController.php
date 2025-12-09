@@ -178,7 +178,7 @@ Manajemen {$storeName}. 🙏";
         // ==========================================
         DB::beginTransaction();
         try {
-            $transaction = PpobTransaction::where('order_id', $refId)->lockForUpdate()->first();
+            $transaction = \App\Models\PpobTransaction::where('order_id', $refId)->lockForUpdate()->first();
 
             if (!$transaction) {
                 DB::rollBack();
