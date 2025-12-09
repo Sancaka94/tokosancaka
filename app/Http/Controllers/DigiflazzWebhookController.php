@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
 use App\Models\User;
 use App\Services\FonnteService; // <<< TAMBAHKAN INI
 use Illuminate\Support\Str; // Diperlukan untuk _sanitizePhoneNumber
-use App\Models\PpobTransaction; // Model Transaksi PPOB
+
 
 class DigiflazzWebhookController extends Controller
 {
