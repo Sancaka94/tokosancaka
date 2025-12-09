@@ -35,7 +35,8 @@ class PpobTransaction extends Model
         'message',        // Pesan dari Provider
         'payment_method', // Cth: saldo, DOKU_VA, TRIPAY_QRIS
         'desc',
-        'payment_url'     // Link pembayaran (jika ada)
+        'payment_url',    // Link pembayaran (jika ada)
+        'idempotency_key',
     ];
 
     /**
