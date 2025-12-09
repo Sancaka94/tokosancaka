@@ -397,8 +397,12 @@ public function checkBill(Request $request)
                 
                 // 5. SUCCESS: Hapus lock (tidak diperlukan, tapi bisa dipercepat jika mau)
                 // Cache::forget($idempotencyKey); 
+                // <<< PERBAIKAN: GANTI REDIRECT SUKSES DI SINI >>>
+            return redirect('customer/ppob/history')->with('success', 'Transaksi Berhasil Diproses!'); 
+            // ATAU jika Anda menggunakan route helper:
+            // return redirect()->route('customer.ppob.history')->with('success', 'Transaksi Berhasil Diproses!');
                 
-                return back()->with('success', 'Transaksi Berhasil Diproses!');
+            //return back()->with('success', 'Transaksi Berhasil Diproses!');
             } else {
                 // Gagal -> Refund
                 $user->increment('saldo', $product->sell_price);
