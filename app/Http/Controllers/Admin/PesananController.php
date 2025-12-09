@@ -124,6 +124,15 @@ class PesananController extends Controller
     {
         try {
 
+            // 🔥 0. CEK IDEMPOTENCY KEY (PENGAMAN ANTI-DOBEL)
+            // Ini mencegah admin menekan tombol submit 2x saat koneksi lambat
+            $key = $request->input('idempotency_key');
+            if ($key && Pesanan::where('idempotency_key', $key)->exists()) {
+                // Jika kunci sudah ada, tolak request ini dan kembalikan ke index
+                return redirect()->route('admin.pesanan.index')
+                    ->with('warning', 'Pesanan ini sudah berhasil dibuat sebelumnya (Mencegah Dobel Input).');
+            }
+
             DB::beginTransaction();
             // 1. Validasi
             $validatedData = $this->_validateOrderRequest($request);
@@ -152,6 +161,10 @@ class PesananController extends Controller
             $pesananData['shipping_cost'] = $shipping_cost;
             $pesananData['insurance_cost'] = ($validatedData['ansuransi'] == 'iya') ? $insurance_cost : 0;
             $pesananData['cod_fee'] = ($cod_value > 0) ? $cod_fee : 0;
+
+            // 🔥 Masukkan Idempotency Key ke database agar tidak bisa dipakai lagi
+            $pesananData['idempotency_key'] = $key;
+            
             $pesanan = Pesanan::create($pesananData);
 
             $paymentUrl = null; // Inisialisasi URL Pembayaran

@@ -32,6 +32,14 @@
 </style>
 @endpush
 
+{{-- 🔥 TAMBAHAN KODE PENGAMAN (IDEMPOTENCY) 🔥 --}}
+@php
+    // Membuat kunci unik (UUID) untuk mencegah dobel input saat admin submit form
+    if (!isset($idempotencyKey)) {
+        $idempotencyKey = (string) \Illuminate\Support\Str::uuid();
+    }
+@endphp
+
 @section('content')
 
 @include('layouts.partials.notifications')
@@ -285,6 +293,8 @@
         <input type="hidden" name="receiver_subdistrict_id" id="receiver_subdistrict_id" required>
         <input type="hidden" name="expedition" id="expedition" required>
         <input type="hidden" name="payment_method" id="payment_method" required>
+        {{-- 👇 KODE PENGAMAN DITAMBAHKAN DI SINI 👇 --}}
+        <input type="hidden" name="idempotency_key" value="{{ $idempotencyKey }}">
     </form>
 </div>
 
