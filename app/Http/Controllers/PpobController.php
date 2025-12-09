@@ -11,10 +11,10 @@ use App\Models\BannerEtalase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cache; // <-- PASTIKAN INI ADA
-use App\Services\FonnteService; // <<< TAMBAHKAN INI
-use App\Models\User; // Untuk mencari Agent (Auth)
-use Illuminate\Support\Str; // <<< INI ADALAH PERBAIKANNYA
+use Illuminate\Support\Facades\Cache;
+use App\Services\FonnteService;
+use App\Models\User; // Alias Model User ke Users (tabel Pengguna)
+use Illuminate\Support\Str;
 
 class PpobController extends Controller
 {
@@ -25,6 +25,29 @@ class PpobController extends Controller
         $this->digiflazz = $digiflazz;
     }
 
+    // =================================================================
+    // HELPER FUNCTIONS (WA, Logo)
+    // =================================================================
+
+    /**
+     * Helper untuk membersihkan dan memformat nomor HP menjadi 62xxxx.
+     */
+    private function _sanitizePhoneNumber(string $phone): ?string
+    {
+        $phone = preg_replace('/[^0-9]/', '', $phone);
+        if (empty($phone)) return null;
+
+        if (Str::startsWith($phone, '08')) {
+            return '62' . substr($phone, 1);
+        }
+        if (Str::startsWith($phone, '62')) {
+            return $phone;
+        }
+        if (strlen($phone) > 8 && !Str::startsWith($phone, '0')) {
+            return '62' . $phone;
+        }
+        return $phone;
+    }
 
     private function getWebLogo()
     {
@@ -35,74 +58,60 @@ class PpobController extends Controller
             return null;
         }
     }
+    
+    // =================================================================
+    // FUNGSI UTAMA & API (index, checkBill, checkPlnPrabayar)
+    // =================================================================
 
     /**
      * FUNGSI UTAMA: MENANGANI SEMUA HALAMAN KATEGORI
      */
     public function index($slug = 'pulsa')
     {
-        // ============================================================
         // 1. AMBIL DATA PENDUKUNG (LOGO, BANNER, SETTING)
-        // ============================================================
-        
-        // Ambil Logo (SOLUSI ERROR UNDEFINED VARIABLE $weblogo)
         $weblogo = $this->getWebLogo();
-
-        // Ambil Banner Slider
         $banners = BannerEtalase::latest()->get(); 
-        
-        // Ambil Setting Banner Promo
         $settings = Setting::whereIn('key', ['banner_2','banner_3'])->pluck('value','key');
 
-        // ============================================================
         // 2. MAPPING JUDUL & KATEGORI DATABASE
-        // ============================================================
         $categoryMap = [
-            // [Slug URL]       => ['Judul Halaman', 'Kata Kunci di Database']
-            'pulsa'             => ['title' => 'Pulsa Reguler',      'db_cat' => 'Pulsa'],
-            'data'              => ['title' => 'Paket Data',         'db_cat' => 'Data'],
-            'pln-token'         => ['title' => 'Token PLN',          'db_cat' => 'PLN'], // Biasanya 'PLN' atau 'Token'
-            'games'             => ['title' => 'Voucher Games',      'db_cat' => 'Games'],
-            'voucher'           => ['title' => 'Voucher Digital',    'db_cat' => 'Voucher'],
-            'e-money'           => ['title' => 'E-Money',            'db_cat' => 'E-Money'],
-            'paket-sms-telpon'  => ['title' => 'Paket SMS & Telpon', 'db_cat' => 'SMS'],
-            'masa-aktif'        => ['title' => 'Masa Aktif',         'db_cat' => 'Masa Aktif'],
-            'streaming'         => ['title' => 'Streaming Premium',  'db_cat' => 'Streaming'],
-            'tv'                => ['title' => 'TV Prabayar',        'db_cat' => 'TV'],
-            'gas'               => ['title' => 'Token Gas',          'db_cat' => 'Gas'],
-            'esim'              => ['title' => 'eSIM',               'db_cat' => 'eSIM'],
-            
-            // INTERNATIONAL
-            'china-topup'       => ['title' => 'China TOPUP',        'db_cat' => 'China'],
-            'malaysia-topup'    => ['title' => 'Malaysia TOPUP',     'db_cat' => 'Malaysia'],
-            'philippines-topup' => ['title' => 'Philippines TOPUP',  'db_cat' => 'Philippines'],
-            'singapore-topup'   => ['title' => 'Singapore TOPUP',    'db_cat' => 'Singapore'],
-            'thailand-topup'    => ['title' => 'Thailand TOPUP',     'db_cat' => 'Thailand'],
-            'vietnam-topup'     => ['title' => 'Vietnam TOPUP',      'db_cat' => 'Vietnam'],
-
-            // PASCABAYAR
-            'pln-pascabayar'       => ['title' => 'PLN Pascabayar',       'db_cat' => 'PLN Postpaid'],
-            'pdam'                 => ['title' => 'PDAM',                 'db_cat' => 'PDAM'],
-            'hp-pascabayar'        => ['title' => 'HP Pascabayar',        'db_cat' => 'HP Postpaid'],
-            'internet-pascabayar'  => ['title' => 'Internet Pascabayar',  'db_cat' => 'Internet'],
-            'bpjs-kesehatan'       => ['title' => 'BPJS Kesehatan',       'db_cat' => 'BPJS'],
-            'multifinance'         => ['title' => 'Multifinance',         'db_cat' => 'Multifinance'],
-            'pbb'                  => ['title' => 'Pajak PBB',            'db_cat' => 'PBB'],
-            'gas-negara'           => ['title' => 'Gas Negara (PGN)',     'db_cat' => 'Gas Postpaid'],
-            'tv-pascabayar'        => ['title' => 'TV Pascabayar',        'db_cat' => 'TV Postpaid'],
-            'samsat'               => ['title' => 'E-Samsat',             'db_cat' => 'Samsat'],
-            'pln-nontaglis'        => ['title' => 'PLN Non-Taglis',       'db_cat' => 'Non Taglis'],
+            'pulsa' => ['title' => 'Pulsa Reguler', 'db_cat' => 'Pulsa'],
+            'data' => ['title' => 'Paket Data', 'db_cat' => 'Data'],
+            'pln-token' => ['title' => 'Token PLN', 'db_cat' => 'PLN'],
+            'games' => ['title' => 'Voucher Games', 'db_cat' => 'Games'],
+            'voucher' => ['title' => 'Voucher Digital', 'db_cat' => 'Voucher'],
+            'e-money' => ['title' => 'E-Money', 'db_cat' => 'E-Money'],
+            'paket-sms-telpon' => ['title' => 'Paket SMS & Telpon', 'db_cat' => 'SMS'],
+            'masa-aktif' => ['title' => 'Masa Aktif', 'db_cat' => 'Masa Aktif'],
+            'streaming' => ['title' => 'Streaming Premium', 'db_cat' => 'Streaming'],
+            'tv' => ['title' => 'TV Prabayar', 'db_cat' => 'TV'],
+            'gas' => ['title' => 'Token Gas', 'db_cat' => 'Gas'],
+            'esim' => ['title' => 'eSIM', 'db_cat' => 'eSIM'],
+            'china-topup' => ['title' => 'China TOPUP', 'db_cat' => 'China'],
+            'malaysia-topup' => ['title' => 'Malaysia TOPUP', 'db_cat' => 'Malaysia'],
+            'philippines-topup' => ['title' => 'Philippines TOPUP', 'db_cat' => 'Philippines'],
+            'singapore-topup' => ['title' => 'Singapore TOPUP', 'db_cat' => 'Singapore'],
+            'thailand-topup' => ['title' => 'Thailand TOPUP', 'db_cat' => 'Thailand'],
+            'vietnam-topup' => ['title' => 'Vietnam TOPUP', 'db_cat' => 'Vietnam'],
+            'pln-pascabayar' => ['title' => 'PLN Pascabayar', 'db_cat' => 'PLN Postpaid'],
+            'pdam' => ['title' => 'PDAM', 'db_cat' => 'PDAM'],
+            'hp-pascabayar' => ['title' => 'HP Pascabayar', 'db_cat' => 'HP Postpaid'],
+            'internet-pascabayar' => ['title' => 'Internet Pascabayar', 'db_cat' => 'Internet'],
+            'bpjs-kesehatan' => ['title' => 'BPJS Kesehatan', 'db_cat' => 'BPJS'],
+            'multifinance' => ['title' => 'Multifinance', 'db_cat' => 'Multifinance'],
+            'pbb' => ['title' => 'Pajak PBB', 'db_cat' => 'PBB'],
+            'gas-negara' => ['title' => 'Gas Negara (PGN)', 'db_cat' => 'Gas Postpaid'],
+            'tv-pascabayar' => ['title' => 'TV Pascabayar', 'db_cat' => 'TV Postpaid'],
+            'samsat' => ['title' => 'E-Samsat', 'db_cat' => 'Samsat'],
+            'pln-nontaglis' => ['title' => 'PLN Non-Taglis', 'db_cat' => 'Non Taglis'],
         ];
 
-        // Fallback jika slug tidak dikenal
         $mapData = $categoryMap[$slug] ?? ['title' => ucwords(str_replace('-', ' ', $slug)), 'db_cat' => $slug];
         
         $pageTitle = $mapData['title'];
         $dbCategoryKeyword = $mapData['db_cat'];
 
-        // ============================================================
-        // 3. KONFIGURASI TAMPILAN (INPUT LABEL & PASCABAYAR)
-        // ============================================================
+        // 3. KONFIGURASI TAMPILAN
         $postpaidSlugs = [
             'pln-pascabayar', 'pdam', 'hp-pascabayar', 'internet-pascabayar', 
             'bpjs-kesehatan', 'multifinance', 'pbb', 'gas-negara', 
@@ -110,202 +119,152 @@ class PpobController extends Controller
         ];
         
         $isPostpaid = in_array($slug, $postpaidSlugs);
-
-        // Default Config
-        $inputLabel       = 'Nomor Telepon / Tujuan';
+        $inputLabel = 'Nomor Telepon / Tujuan';
         $inputPlaceholder = 'Contoh: 0812xxxx';
-        $icon             = 'fa-mobile-alt';
+        $icon = 'fa-mobile-alt';
 
-        // Custom Config per Kategori
         if (str_contains($slug, 'pln')) {
-            $inputLabel       = 'ID Pelanggan / No. Meter';
+            $inputLabel = 'ID Pelanggan / No. Meter';
             $inputPlaceholder = 'Contoh: 5300xxxx';
-            $icon             = 'fa-bolt';
+            $icon = 'fa-bolt';
         } elseif (str_contains($slug, 'bpjs')) {
-            $inputLabel       = 'Nomor VA BPJS';
+            $inputLabel = 'Nomor VA BPJS';
             $inputPlaceholder = 'Contoh: 88888xxxx';
-            $icon             = 'fa-heartbeat';
+            $icon = 'fa-heartbeat';
         } elseif (str_contains($slug, 'pdam')) {
-            $inputLabel       = 'ID Pelanggan PDAM';
+            $inputLabel = 'ID Pelanggan PDAM';
             $inputPlaceholder = 'Nomor Pelanggan...';
-            $icon             = 'fa-faucet';
+            $icon = 'fa-faucet';
         } elseif (str_contains($slug, 'game')) {
-            $inputLabel       = 'User ID Game';
+            $inputLabel = 'User ID Game';
             $inputPlaceholder = 'Masukkan ID Game...';
-            $icon             = 'fa-gamepad';
+            $icon = 'fa-gamepad';
         } elseif ($slug == 'e-money') {
-            $icon             = 'fa-wallet';
+            $icon = 'fa-wallet';
         }
 
         $pageInfo = [
-            'slug'        => $slug,
-            'title'       => $pageTitle,
+            'slug' => $slug,
+            'title' => $pageTitle,
             'is_postpaid' => $isPostpaid,
             'input_label' => $inputLabel,
             'input_place' => $inputPlaceholder,
-            'icon'        => $icon,
+            'icon' => $icon,
         ];
 
-        // ============================================================
-        // 4. QUERY PRODUK (AGAR TIDAK KOSONG)
-        // ============================================================
-        // Menggunakan LIKE agar lebih fleksibel. 
-        // Contoh: Keyword 'Pulsa' akan cocok dengan kategori 'Pulsa Reguler', 'Pulsa Transfer'
+        // 4. QUERY PRODUK
         $products = PpobProduct::where('category', 'LIKE', "%{$dbCategoryKeyword}%")
             ->where('buyer_product_status', true)
             ->where('seller_product_status', true)
             ->orderBy('sell_price', 'asc')
             ->get();
 
-        // Ambil list Brand untuk filter operator
-$brands = $products->pluck('brand')->unique()->values();
+        $brands = $products->pluck('brand')->unique()->values();
 
-// ⭐ BARU: Logika penentuan SKU Inquiry default untuk halaman Pascabayar
-$defaultInquirySku = null;
+        $defaultInquirySku = null;
 
-if ($isPostpaid && $slug === 'pln-pascabayar') {
-    // Cari SKU PLN PASCABAYAR yang aktif di database
-    $defaultInquirySku = $products
-        ->where('brand', 'PLN PASCABAYAR') // Harus sesuai dengan data database (Lihat Admin Panel)
-        ->where('seller_product_status', true)
-        ->pluck('buyer_sku_code')
-        ->first();
-}
-
-        // ============================================================
-        // 5. RETURN VIEW
-        // ============================================================
-        
-        // Cek apakah Admin/Seller/Member
-        $prefix = request()->segment(1);
-        if ($prefix == 'admin' || (auth()->check() && auth()->user()->hasRole('Admin'))) {
-             // Pastikan view admin menerima variabel yang sama
-             return view('admin.ppob.index', compact('pageInfo', 'products', 'banners', 'settings', 'weblogo', 'brands')); 
+        if ($isPostpaid && $slug === 'pln-pascabayar') {
+            $defaultInquirySku = $products
+                ->where('brand', 'PLN PASCABAYAR')
+                ->where('seller_product_status', true)
+                ->pluck('buyer_sku_code')
+                ->first();
         }
 
-        // Return ke Layout Marketplace (Public)
+        // 5. RETURN VIEW
+        $prefix = request()->segment(1);
+        if ($prefix == 'admin' || (auth()->check() && auth()->user()->hasRole('Admin'))) {
+            return view('admin.ppob.index', compact('pageInfo', 'products', 'banners', 'settings', 'weblogo', 'brands')); 
+        }
+
         return view('etalase.ppob.category', compact(
             'pageInfo', 
             'products', 
             'banners', 
             'settings', 
-            'weblogo',   // <--- INI PENTING
-            'brands'     // <--- INI PENTING
+            'weblogo', 
+            'brands' 
         ));
     }
 
-    // =================================================================
-    // FUNGSI API PENDUKUNG (CHECK BILL & TRANSAKSI)
-    // =================================================================
+    public function checkBill(Request $request)
+    {
+        $request->validate([
+            'customer_no' => 'required', 
+            'sku' => 'required' 
+        ]);
 
-    // =================================================================
-// FUNGSI API PENDUKUNG (CHECK BILL & TRANSAKSI)
-// =================================================================
-
-// =================================================================
-// FUNGSI API PENDUKUNG (CHECK BILL)
-// =================================================================
-
-public function checkBill(Request $request)
-{
-    // 1. VALIDASI INPUT (memerlukan customer_no dan sku)
-    $request->validate([
-        'customer_no' => 'required', 
-        'sku' => 'required' 
-    ]);
-
-    $customerNo = $request->input('customer_no');
-    $sku = $request->input('sku');
-    $refId = 'INQ-' . time() . rand(100,999);
-    
-    // ⭐ PERBAIKAN: Gunakan WHERE IN untuk mencari SKU yang aktif. 
-    // Kita mencari SKU yang dikirim, tetapi jika SKU itu non-aktif,
-    // kita coba cari SKU lain yang aktif dengan Brand yang sama (jika ada).
-    
-    $product = PpobProduct::where('buyer_sku_code', $sku)->first();
-
-    if (!$product || $product->seller_product_status != true) {
-        // 1. Jika SKU yang dikirim tidak ditemukan ATAU tidak aktif, cari alternatif
+        $customerNo = $request->input('customer_no');
+        $sku = $request->input('sku');
+        $refId = 'INQ-' . time() . rand(100,999);
         
-        $alternativeSku = PpobProduct::where('brand', 'PLN PASCABAYAR')
-            ->where('seller_product_status', true)
-            ->inRandomOrder() // Ambil acak atau yang termurah
-            ->first();
+        $product = PpobProduct::where('buyer_sku_code', $sku)->first();
 
-        // Coba gunakan alternatif jika ada
-        if ($alternativeSku) {
-            $product = $alternativeSku;
-            $sku = $alternativeSku->buyer_sku_code; // Ganti SKU yang akan di-inquiry
-            Log::warning("SKU $sku tidak aktif. Menggunakan alternatif: $sku.");
-        } else {
-            // Jika tidak ada alternatif aktif sama sekali
-            Log::warning("Inquiry Failed: SKU $sku tidak aktif, dan tidak ada alternatif.");
-            return response()->json([
-                'status' => 'error', 
-                'message' => 'SKU produk Pascabayar tidak ditemukan atau sedang non-aktif.'
-            ]);
+        if (!$product || $product->seller_product_status != true) {
+            $alternativeSku = PpobProduct::where('brand', 'PLN PASCABAYAR')
+                ->where('seller_product_status', true)
+                ->inRandomOrder()
+                ->first();
+
+            if ($alternativeSku) {
+                $product = $alternativeSku;
+                $sku = $alternativeSku->buyer_sku_code;
+                Log::warning("SKU $sku tidak aktif. Menggunakan alternatif: $sku.");
+            } else {
+                Log::warning("Inquiry Failed: SKU $sku tidak aktif, dan tidak ada alternatif.");
+                return response()->json([
+                    'status' => 'error', 
+                    'message' => 'SKU produk Pascabayar tidak ditemukan atau sedang non-aktif.'
+                ]);
+            }
+        }
+
+        $username = 'mihetiDVGdeW'; 
+        $apiKeyProd = '1f48c69f-8676-5d56-a868-10a46a69f9b7';
+        $testingMode = false; 
+        $this->digiflazz->setCredentials($username, $apiKeyProd, $testingMode);
+        
+        try {
+            $response = $this->digiflazz->inquiryPasca($sku, $customerNo, $refId);
+            
+            if (isset($response['data']) && ($response['data']['rc'] === '00' || $response['data']['status'] === 'Sukses' || $response['data']['status'] === 'Pending')) {
+                $data = $response['data'];
+                
+                $tagihanPokokAPI = $data['price'] ?? $data['selling_price'] ?? $data['amount'] ?? 0;
+                $adminFeeModal = $data['admin'] ?? 0;
+
+                $markupKita = $product->sell_price - ($product->price ?? 0); 
+                
+                $tagihanPokokAPI = (float)$tagihanPokokAPI;
+                $adminFeeModal = (float)$adminFeeModal;
+                
+                $totalTagihanAkhir = $tagihanPokokAPI + $adminFeeModal + $markupKita;
+
+                return response()->json([
+                    'status' => 'success',
+                    'customer_name' => $data['customer_name'] ?? $data['name'] ?? '',
+                    'customer_no' => $data['customer_no'] ?? '',
+                    'product_name' => $product->product_name,
+                    'period' => $data['period'] ?? null,
+                    'amount_pokok' => (float)$tagihanPokokAPI,
+                    'admin_fee_modal' => (float)$adminFeeModal,
+                    'markup' => $markupKita,
+                    'total_tagihan' => $totalTagihanAkhir,
+                    'ref_id' => $refId,
+                    'desc' => $data['desc'] ?? []
+                ]);
+            }
+            
+            $message = $response['data']['message'] ?? ($response['message'] ?? 'Tagihan tidak ditemukan atau Signature salah.'); 
+            Log::error("Inquiry Pasca API Error: $message", ['response' => $response, 'sku' => $sku, 'customer_no' => $customerNo]);
+            
+            return response()->json(['status' => 'error', 'message' => $message]);
+            
+        } catch (\Exception $e) {
+            Log::error("PPOB Inquiry Exception: " . $e->getMessage());
+            return response()->json(['status' => 'error', 'message' => 'Error: Gagal koneksi ke provider. ' . $e->getMessage()], 500);
         }
     }
-
-    $username = 'mihetiDVGdeW'; 
-    $apiKeyProd = '1f48c69f-8676-5d56-a868-10a46a69f9b7'; // Kunci Production
-    $testingMode = false; // Mode Production
-    // Set kredensial di service sebelum memanggil inquiryPasca
-    $this->digiflazz->setCredentials($username, $apiKeyProd, $testingMode);
-    
-    // 4. HIT API INQUIRY PASCABAYAR
-    try {
-        $response = $this->digiflazz->inquiryPasca($sku, $customerNo, $refId);
-        
-        // 5. PENANGANAN RESPON API
-        if (isset($response['data']) && ($response['data']['rc'] === '00' || $response['data']['status'] === 'Sukses' || $response['data']['status'] === 'Pending')) {
-    $data = $response['data'];
-    
-    // ⭐ PERBAIKAN 1: TANGKAP HARGA DENGAN PENGAMANAN KEY
-    // Gunakan array key yang benar dari API Pascabayar, atau set ke 0 jika tidak ada.
-    // Berdasarkan dokumentasi, harga pokok tagihan Pascabayar bisa jadi ada di 'price', 'selling_price', atau 'amount' (tergantung versi API).
-    $tagihanPokokAPI = $data['price'] ?? $data['selling_price'] ?? $data['amount'] ?? 0;
-    
-    // Admin Fee modal (diasumsikan ada di 'admin')
-    $adminFeeModal = $data['admin'] ?? 0;
-
-    // Hitung Markup dan Total Tagihan
-    $markupKita = $product->sell_price - ($product->price ?? 0); 
-    
-    // Pastikan semua variabel adalah angka (int/float)
-    $tagihanPokokAPI = (float)$tagihanPokokAPI;
-    $adminFeeModal = (float)$adminFeeModal;
-    
-    $totalTagihanAkhir = $tagihanPokokAPI + $adminFeeModal + $markupKita;
-
-            return response()->json([
-                'status' => 'success',
-                // ⭐ PERBAIKAN: Gunakan Null Coalescing Operator pada data yang tidak dijamin ada.
-            'customer_name' => $data['customer_name'] ?? $data['name'] ?? '', // Menggunakan fallback jika 'customer_name' tidak ada
-            'customer_no' => $data['customer_no'] ?? '', // Menggunakan fallback
-            'product_name' => $product->product_name, // Ini aman (dari database)
-
-            'period' => $data['period'] ?? null,
-            'amount_pokok' => (float)$tagihanPokokAPI,
-            'admin_fee_modal' => (float)$adminFeeModal,
-            'markup' => $markupKita,
-            'total_tagihan' => $totalTagihanAkhir,
-            'ref_id' => $refId,
-            'desc' => $data['desc'] ?? []
-            ]);
-        }
-        
-        // Penanganan Gagal/Error API
-        $message = $response['data']['message'] ?? ($response['message'] ?? 'Tagihan tidak ditemukan atau Signature salah.'); 
-        Log::error("Inquiry Pasca API Error: $message", ['response' => $response, 'sku' => $sku, 'customer_no' => $customerNo]);
-        
-        return response()->json(['status' => 'error', 'message' => $message]);
-        
-    } catch (\Exception $e) {
-        Log::error("PPOB Inquiry Exception: " . $e->getMessage());
-        return response()->json(['status' => 'error', 'message' => 'Error: Gagal koneksi ke provider. ' . $e->getMessage()], 500);
-    }
-}
 
     public function checkPlnPrabayar(Request $request)
     {
@@ -325,18 +284,19 @@ public function checkBill(Request $request)
         }
     }
 
-    // =================================================================
-    // FUNGSI STORE (TRANSAKSI AKHIR) - DIPERBAIKI DENGAN IDEMPOTENCY
-    // =================================================================
+    /**
+     * FUNGSI STORE (TRANSAKSI AKHIR) - DIPERBAIKI DENGAN IDEMPOTENCY
+     */
     public function store(Request $request)
     {
         $request->validate([
             'buyer_sku_code' => 'required', 
             'customer_no' => 'required',
-            'customer_wa' => 'required|string|min:8|max:20', // <<< WAJIB ADA
-            'idempotency_key' => 'required|string|max:36', // Idempotency
+            'customer_wa' => 'required|string|min:8|max:20',
+            'idempotency_key' => 'required|string|max:36',
         ]);
-        $user = Auth::user();
+        
+        $user = Auth::user(); 
         if (!$user) return redirect()->route('login');
 
         $product = PpobProduct::where('buyer_sku_code', $request->buyer_sku_code)->first();
@@ -347,16 +307,11 @@ public function checkBill(Request $request)
             return back()->with('error', 'Saldo tidak cukup. Silakan Top Up.');
         }
 
-        // 1. BUAT REF ID UNIK
-        // Kita menggunakan refId sebagai Idempotency Key
+        // 1. BUAT REF ID UNIK & IDEMPOTENCY LOCK
         $refId = 'TRX-' . time() . rand(100,999);
-        
-        // 2. TENTUKAN CACHE KEY DAN WAKTU KADALUARSA (TTL)
-        // Kunci cache ini akan mengunci customer_no + sku selama 5 menit
         $idempotencyKey = 'ppob_lock:' . $request->customer_no . ':' . $product->buyer_sku_code;
-        $lockDuration = 300; // 5 menit dalam detik
+        $lockDuration = 300; 
 
-        // 3. CEK IDEMPOTENCY LOCK DI CACHE
         if (Cache::has($idempotencyKey)) {
             Log::warning('PPOB Idempotency Check: Duplicate request blocked.', [
                 'key' => $idempotencyKey, 
@@ -365,8 +320,6 @@ public function checkBill(Request $request)
             return back()->with('error', 'Transaksi sedang diproses. Mohon tunggu 5 menit sebelum mencoba lagi (Cek riwayat transaksi).');
         }
 
-        // 4. SET IDEMPOTENCY LOCK SEBELUM MEMULAI TRANSAKSI
-        // Lock akan kadaluarsa dalam 5 menit
         Cache::put($idempotencyKey, $refId, $lockDuration);
         
         DB::beginTransaction();
@@ -377,15 +330,15 @@ public function checkBill(Request $request)
             // Simpan Transaksi
             $trx = PpobTransaction::create([
                 'user_id' => $user->id_pengguna ?? $user->id,
-                'order_id' => $refId, // Menggunakan refId yang dibuat sebagai order_id
+                'order_id' => $refId, 
                 'buyer_sku_code' => $product->buyer_sku_code,
                 'customer_no' => $request->customer_no,
+                'customer_wa' => $this->_sanitizePhoneNumber($request->customer_wa),
                 'price' => $product->price,
                 'selling_price' => $product->sell_price,
                 'profit' => $product->sell_price - $product->price,
                 'status' => 'Pending',
                 'message' => 'Sedang diproses...',
-                'customer_wa' => $request->customer_wa, // <<< SIMPAN NOMOR WA PEMBELI
             ]);
 
             // Hit API
@@ -395,209 +348,208 @@ public function checkBill(Request $request)
                 $trx->update(['status' => $response['data']['status'], 'sn' => $response['data']['sn'] ?? '']);
                 DB::commit();
                 
-                // 5. SUCCESS: Hapus lock (tidak diperlukan, tapi bisa dipercepat jika mau)
-                // Cache::forget($idempotencyKey); 
-                // <<< PERBAIKAN: GANTI REDIRECT SUKSES DI SINI >>>
-            return redirect('customer/ppob/history')->with('success', 'Transaksi Berhasil Diproses!'); 
-            // ATAU jika Anda menggunakan route helper:
-            // return redirect()->route('customer.ppob.history')->with('success', 'Transaksi Berhasil Diproses!');
-                
-            //return back()->with('success', 'Transaksi Berhasil Diproses!');
+                // Redireksi Sukses
+                return redirect('customer/ppob/history')->with('success', 'Transaksi Berhasil Diproses!'); 
             } else {
                 // Gagal -> Refund
                 $user->increment('saldo', $product->sell_price);
                 $trx->update(['status' => 'Gagal', 'message' => $response['data']['message'] ?? 'Gagal dari provider']);
                 DB::commit();
                 
-                // 6. GAGAL: Lock tetap aktif sampai TTL berakhir. Ini mencegah user langsung coba lagi setelah gagal.
+                // GAGAL: Lock tetap aktif sampai TTL berakhir.
                 return back()->with('error', 'Transaksi Gagal: ' . ($response['data']['message'] ?? 'Unknown Error'));
             }
         } catch (\Exception $e) {
             DB::rollBack();
-            // 7. EXCEPTION: Lock tetap aktif sampai TTL berakhir.
+            // EXCEPTION: Lock tetap aktif sampai TTL berakhir.
             Log::error('PPOB Store Exception (Double Order Protection Active): ' . $e->getMessage());
             return back()->with('error', 'Error Sistem: ' . $e->getMessage());
         }
     }
 
-    // FILE: App\Http\Controllers\PpobController.php
+    public function sync()
+    {
+        $cacheKey = 'digiflazz_pricelist_synced';
+        $ttlInMinutes = 10;
 
-public function sync()
-{
-    // ⭐ BARU: Cek apakah data Pricelist sudah disinkronkan dalam 10 menit terakhir
-    $cacheKey = 'digiflazz_pricelist_synced';
-    $ttlInMinutes = 10; // 10 menit
-
-    if (Cache::has($cacheKey)) {
-        // Jika masih dalam periode 10 menit, hentikan proses sync
-        return redirect()->route('admin.ppob.index')->with(
-             'error', 
-             'Sinkronisasi harga sudah dilakukan baru-baru ini. Silakan coba lagi setelah 10 menit.'
-         );
-    }
-    
-    // Asumsi: Route di web.php sudah memastikan user adalah Admin dan sudah login.
-    if (!Auth::check()) {
-         return redirect()->route('login'); 
-    }
-
-    $productsPrepaid = [];
-    $productsPostpaid = [];
-
-    try {
-        // 1. Ambil Produk Prabayar
-        $productsPrepaid = $this->digiflazz->getPriceList('prepaid'); 
-        
-        // 2. Ambil Produk Pascabayar
-        $productsPostpaid = $this->digiflazz->getPriceList('postpaid');
-
-        // 3. Gabungkan hasilnya
-        $productsPrepaid = is_array($productsPrepaid) ? $productsPrepaid : [];
-        $productsPostpaid = is_array($productsPostpaid) ? $productsPostpaid : [];
-        
-        $productArray = array_merge($productsPrepaid, $productsPostpaid);
-
-        // 4. Lanjutkan proses jika array hasil gabungan valid dan tidak kosong
-        if (!empty($productArray)) {
-            
-            DB::beginTransaction();
-
-            $insertedCount = 0;
-            $updatedCount = 0;
-
-            foreach ($productArray as $product) {
-                
-                // FIX TypeError: Pastikan $product adalah array
-                if (!is_array($product)) {
-                    Log::warning('Skipping invalid product data during sync: ' . (string)$product);
-                    continue; 
-                }
-
-                $localProduct = PpobProduct::firstOrNew(['buyer_sku_code' => $product['buyer_sku_code']]);
-
-                // Update atau isi data produk
-                $localProduct->fill([
-                    'product_name'          => $product['product_name'],
-                    'category'              => $product['category'],
-                    'brand'                 => $product['brand'],
-                    'type'                  => $product['type'] ?? null,
-                    'price'                 => $product['price'] ?? 0,
-                    'sell_price'            => $localProduct->sell_price ?? ($product['price'] ?? 0) + 1000, 
-                    'admin'                 => $product['admin'] ?? 0, 
-                    'status'                => $product['status'] ?? null,
-                    'buyer_sku_code'        => $product['buyer_sku_code'],
-                    'desc'                  => $product['desc'] ?? null,
-                    'buyer_product_status'  => $product['buyer_product_status'],
-                    'seller_product_status' => $localProduct->exists ? $localProduct->seller_product_status : true, 
-                ]);
-                
-                if ($localProduct->exists) {
-                    $localProduct->save();
-                    $updatedCount++;
-                } else {
-                    $localProduct->save();
-                    $insertedCount++;
-                }
-            }
-            
-            DB::commit(); 
-            
-            // ⭐ BARU: Set Cache jika sinkronisasi berhasil (hanya 10 menit)
-            Cache::put($cacheKey, now(), $ttlInMinutes); 
-            
-            // FIX Redirect Sukses
-            return redirect()->route('admin.ppob.index')->with(
-                'success', 
-                "Sinkronisasi Berhasil. Ditambahkan: $insertedCount, Diperbarui: $updatedCount."
-            );
-
-        } else {
-            // Jika Sinkronisasi Gagal (Array Kosong):
-            Log::error('Digiflazz Sync Failed: Response Empty or Invalid');
-            
-            // FIX Redirect Gagal (Respons Kosong)
+        if (Cache::has($cacheKey)) {
             return redirect()->route('admin.ppob.index')->with(
                 'error', 
-                'Gagal mengambil data dari Digiflazz. Respons kosong.'
+                'Sinkronisasi harga sudah dilakukan baru-baru ini. Silakan coba lagi setelah 10 menit.'
             );
         }
-
-    } catch (\Exception $e) {
-        DB::rollBack(); 
-        Log::error('PPOB Sync Exception: ' . $e->getMessage());
         
-        // FIX Redirect Fatal Error
-        return redirect()->route('admin.ppob.index')->with(
-             'error', 
-             'Error Sistem saat sinkronisasi: ' . $e->getMessage()
-         );
+        if (!Auth::check()) {
+            return redirect()->route('login'); 
+        }
+
+        $productsPrepaid = [];
+        $productsPostpaid = [];
+
+        try {
+            $productsPrepaid = $this->digiflazz->getPriceList('prepaid'); 
+            $productsPostpaid = $this->digiflazz->getPriceList('postpaid');
+
+            $productsPrepaid = is_array($productsPrepaid) ? $productsPrepaid : [];
+            $productsPostpaid = is_array($productsPostpaid) ? $productsPostpaid : [];
+            
+            $productArray = array_merge($productsPrepaid, $productsPostpaid);
+
+            if (!empty($productArray)) {
+                DB::beginTransaction();
+
+                $insertedCount = 0;
+                $updatedCount = 0;
+
+                foreach ($productArray as $product) {
+                    if (!is_array($product)) {
+                        Log::warning('Skipping invalid product data during sync: ' . (string)$product);
+                        continue; 
+                    }
+
+                    $localProduct = PpobProduct::firstOrNew(['buyer_sku_code' => $product['buyer_sku_code']]);
+
+                    $localProduct->fill([
+                        'product_name' => $product['product_name'],
+                        'category' => $product['category'],
+                        'brand' => $product['brand'],
+                        'type' => $product['type'] ?? null,
+                        'price' => $product['price'] ?? 0,
+                        'sell_price' => $localProduct->sell_price ?? ($product['price'] ?? 0) + 1000, 
+                        'admin' => $product['admin'] ?? 0, 
+                        'status' => $product['status'] ?? null,
+                        'buyer_sku_code' => $product['buyer_sku_code'],
+                        'desc' => $product['desc'] ?? null,
+                        'buyer_product_status' => $product['buyer_product_status'],
+                        'seller_product_status' => $localProduct->exists ? $localProduct->seller_product_status : true, 
+                    ]);
+                    
+                    if ($localProduct->exists) {
+                        $localProduct->save();
+                        $updatedCount++;
+                    } else {
+                        $localProduct->save();
+                        $insertedCount++;
+                    }
+                }
+                
+                DB::commit(); 
+                
+                Cache::put($cacheKey, now(), $ttlInMinutes); 
+                
+                return redirect()->route('admin.ppob.index')->with(
+                    'success', 
+                    "Sinkronisasi Berhasil. Ditambahkan: $insertedCount, Diperbarui: $updatedCount."
+                );
+
+            } else {
+                Log::error('Digiflazz Sync Failed: Response Empty or Invalid');
+                
+                return redirect()->route('admin.ppob.index')->with(
+                    'error', 
+                    'Gagal mengambil data dari Digiflazz. Respons kosong.'
+                );
+            }
+
+        } catch (\Exception $e) {
+            DB::rollBack(); 
+            Log::error('PPOB Sync Exception: ' . $e->getMessage());
+            
+            return redirect()->route('admin.ppob.index')->with(
+                'error', 
+                'Error Sistem saat sinkronisasi: ' . $e->getMessage()
+            );
+        }
     }
-}
 
-/**
- * Mengirim notifikasi WA berisi SN transaksi PPOB.
- * Dipanggil dari Webhook Controller setelah status SUKSES dan SN diterima.
- */
-public function _sendWhatsappNotificationSN(PpobTransaction $trx, string $sn)
-{
-    try {
-        $agent = User::find($trx->user_id); 
-        $agentWa = $this->_sanitizePhoneNumber($agent->no_wa ?? $agent->phone ?? null);
-        $customerWa = $this->_sanitizePhoneNumber($trx->customer_wa); // Mengambil dari data transaksi
-        $fmt = function($val) { return number_format($val, 0, ',', '.'); };
+    /**
+     * Mengirim notifikasi WA berisi SN transaksi PPOB.
+     * Dipanggil dari Webhook Controller setelah status SUKSES dan SN diterima.
+     */
+    public function _sendWhatsappNotificationSN(PpobTransaction $trx, string $sn)
+    {
+        try {
+            // 1. Ambil Data Agent (Penjual) - Menggunakan Model Users
+            $user = Users::find($trx->user_id); 
+            
+            // 2. Tentukan Nomor WA (Agent & Customer)
+            $agentWa = $this->_sanitizePhoneNumber($user->no_wa ?? null);
+            $customerWa = $this->_sanitizePhoneNumber($trx->customer_wa ?? null); 
+            
+            $fmt = function($val) { return number_format($val, 0, ',', '.'); };
+            
+            if (!$user) {
+                 Log::error("WA Notification SN PPOB: Data Agent tidak ditemukan untuk user_id: " . $trx->user_id);
+            }
+
+            // --- DATA TOKO AGENT DARI DATABASE PENGGUNA (USERS) ---
+            $storeName = $user->store_name ?? 'Sancaka Express';
+            $storeAddress = $user->address_detail ?? 'Kantor Pusat Sancaka Express';
+            $storePhone = $this->_sanitizePhoneNumber($user->no_wa ?? null) ?? '628819435180'; 
+
+            // ... (Data Transaksi Utama) ...
+            $produk = $trx->buyer_sku_code;
+            $tujuan = $trx->customer_no;
+            $hargaJual = $fmt($trx->selling_price);
+
+            // ===============================================
+            // 1. SUSUN PESAN UNTUK AGENT (FORMAT SINGKAT)
+            // ===============================================
+            $messageAgent = "[NOTIF AGENT - SN] Transaksi {$trx->order_id} Sukses.
         
-        if (empty($customerWa)) {
-            Log::warning("Notifikasi WA SN PPOB gagal: customer_wa kosong di transaksi: " . $trx->order_id);
+*✅ Transaksi PPOB Sukses!*
+------------------------------------
+Produk: {$produk}
+Tujuan: {$tujuan}
+Harga Jual: Rp {$hargaJual}
+*Serial Number (SN):*\n*{$sn}*\n
+------------------------------------
+Saldo Baru: Rp " . $fmt($user->saldo ?? 0); 
+
+            // ===============================================
+            // 2. SUSUN PESAN UNTUK CUSTOMER (DENGAN BRANDING TOKO)
+            // ===============================================
+            $messageCustomer = "*Halo Pelanggan {$storeName} 👋*
+        
+Transaksi PPOB Anda telah Berhasil diproses!
+        
+*✅ DETAIL TRANSAKSI*
+------------------------------------
+Produk: {$produk}
+Nomor Tujuan: {$tujuan}
+Harga Jual: Rp {$hargaJual}
+*Serial Number (SN):*\n*{$sn}*\n
+------------------------------------
+        
+Terima kasih telah bertransaksi.
+Jika ada kendala, hubungi:
+        
+*Toko: {$storeName}*
+*WA/Telp: {$storePhone}*
+*Alamat: {$storeAddress}*
+        
+Manajemen {$storeName}. 🙏";
+
+
+            // --- 3. KIRIM KE AGENT ---
+            if ($user && $agentWa) {
+                FonnteService::sendMessage($agentWa, $messageAgent);
+                Log::info('PPOB SN sent via WA to Agent.', ['ref_id' => $trx->order_id, 'agent_wa' => $agentWa]);
+            }
+
+            // --- 4. KIRIM KE PEMBELI (Hanya jika WA Pembeli tersedia) ---
+            if ($customerWa) {
+                FonnteService::sendMessage($customerWa, $messageCustomer);
+                Log::info('PPOB SN sent via WA to Customer.', ['ref_id' => $trx->order_id, 'customer_wa' => $customerWa]);
+            } else {
+                Log::warning("Notifikasi Pembeli GAGAL dikirim: customer_wa tidak tersedia di database.");
+            }
+            
+            return true;
+            
+        } catch (\Exception $e) {
+            Log::error('WA Notification SN PPOB Error: ' . $e->getMessage(), ['trx_id' => $trx->id]);
             return false;
         }
-
-        // --- 1. SUSUN PESAN ---
-        $message = "*✅ Transaksi Sukses! (Order: {$trx->order_id})*\n";
-        $message .= "------------------------------------\n";
-        $message .= "Produk: {$trx->buyer_sku_code}\n";
-        $message .= "Nomor Tujuan: {$trx->customer_no}\n";
-        $message .= "Harga Jual: Rp " . $fmt($trx->selling_price) . "\n";
-        $message .= "*Serial Number (SN):*\n*{$sn}*\n";
-        $message .= "------------------------------------\n";
-        $message .= "Terima kasih telah bertransaksi di Sancaka Express. 🙏";
-
-        // --- 2. KIRIM KE AGENT (AUTH USER) ---
-        if ($agentWa) {
-            FonnteService::sendMessage($agentWa, "[NOTIF AGENT - SN] Transaksi {$trx->order_id} Sukses. \n\n" . $message);
-        }
-
-        // --- 3. KIRIM KE PEMBELI (NOMOR WA YANG DI-INPUT) ---
-        FonnteService::sendMessage($customerWa, "[NOTIF PEMBELI - SN] " . $message);
-        
-        Log::info('PPOB SN sent via WA.', ['ref_id' => $trx->order_id, 'customer_wa' => $customerWa]);
-        return true;
-        
-    } catch (\Exception $e) {
-        Log::error('WA Notification SN PPOB Error: ' . $e->getMessage(), ['trx_id' => $trx->id]);
-        return false;
     }
-}
-
-/**
- * Helper untuk membersihkan dan memformat nomor HP menjadi 62xxxx.
- * Anda harus menyalin fungsi _sanitizePhoneNumber dari Controller lain.
- */
-private function _sanitizePhoneNumber(string $phone): ?string
-{
-    $phone = preg_replace('/[^0-9]/', '', $phone);
-    if (empty($phone)) return null;
-
-    if (Str::startsWith($phone, '08')) {
-        return '62' . substr($phone, 1);
-    }
-    if (Str::startsWith($phone, '62')) {
-        return $phone;
-    }
-    // Jika tidak diawali 08 atau 62, asumsikan 62 jika panjangnya masuk akal
-    if (strlen($phone) > 8 && !Str::startsWith($phone, '0')) {
-        return '62' . $phone;
-    }
-    return $phone;
-}
-
 }

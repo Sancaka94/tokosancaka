@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use App\Models\User;
 use App\Services\FonnteService; // <<< TAMBAHKAN INI
 use Illuminate\Support\Str; // Diperlukan untuk _sanitizePhoneNumber
+use App\Models\PpobTransaction; // Model Transaksi PPOB
 
 class DigiflazzWebhookController extends Controller
 {
@@ -33,52 +34,99 @@ class DigiflazzWebhookController extends Controller
     }
 
 
-    /**
-     * Mengirim notifikasi WA berisi SN transaksi PPOB.
-     */
-    private function _sendWhatsappNotificationSN(PpobTransaction $trx, string $sn)
-    {
-        try {
-            $agent = User::find($trx->user_id); 
-            
-            // Nomor WA Agent (yang login saat transaksi)
-            $agentWa = $this->_sanitizePhoneNumber($agent->no_wa ?? $agent->phone ?? null);
-            // Nomor WA Pembeli (diambil dari input di kasir)
-            $customerWa = $this->_sanitizePhoneNumber($trx->customer_wa ?? $trx->customer_no); 
-            
-            $fmt = function($val) { return number_format($val, 0, ',', '.'); };
-            
-            if (empty($customerWa)) {
-                Log::warning("Notifikasi WA SN PPOB gagal: customer_wa kosong di transaksi: " . $trx->order_id);
-                return false;
-            }
+   // Di dalam DigiflazzWebhookController.php -> _sendWhatsappNotificationSN
 
-            // --- 1. SUSUN PESAN ---
-            $message = "*✅ Transaksi PPOB Sukses! (Order: {$trx->order_id})*\n";
-            $message .= "------------------------------------\n";
-            $message .= "Produk: {$trx->buyer_sku_code}\n";
-            $message .= "Nomor Tujuan: {$trx->customer_no}\n";
-            $message .= "Harga Jual: Rp " . $fmt($trx->selling_price) . "\n";
-            $message .= "*Serial Number (SN):*\n*{$sn}*\n";
-            $message .= "------------------------------------\n";
-            $message .= "Terima kasih telah bertransaksi di Sancaka Express. 🙏";
-
-            // --- 2. KIRIM KE AGENT (AUTH USER) ---
-            if ($agentWa) {
-                FonnteService::sendMessage($agentWa, "[NOTIF AGENT - SN] Transaksi {$trx->order_id} Sukses. \n\n" . $message);
-            }
-
-            // --- 3. KIRIM KE PEMBELI (NOMOR WA YANG DI-INPUT) ---
-            FonnteService::sendMessage($customerWa, "[NOTIF PEMBELI - SN] " . $message);
-            
-            Log::info('PPOB SN sent via WA.', ['ref_id' => $trx->order_id, 'customer_wa' => $customerWa]);
-            return true;
-            
-        } catch (\Exception $e) {
-            Log::error('WA Notification SN PPOB Error: ' . $e->getMessage(), ['trx_id' => $trx->id]);
-            return false;
+private function _sendWhatsappNotificationSN(PpobTransaction $trx, string $sn)
+{
+    try {
+        // 1. Ambil Data Agent (Penjual) MENGGUNAKAN VARIABEL $user
+        // Asumsi: $trx->user_id adalah PK di tabel Pengguna, dan Modelnya bernama Users.
+        $user = Users::find($trx->user_id); 
+        
+        // Cek apakah data user/agent ditemukan
+        if (!$user) {
+             Log::error("Data Agent (Users) tidak ditemukan untuk user_id: " . $trx->user_id);
+             // Kita tetap mencoba mengirim ke customer_wa jika tersedia, tapi notif agent gagal
         }
+
+        // Ambil WA Agent (dari data $user yang baru diambil)
+        $agentWa = $this->_sanitizePhoneNumber($user->no_wa ?? null);
+        $customerWa = $this->_sanitizePhoneNumber($trx->customer_wa ?? null); 
+        
+        $fmt = function($val) { return number_format($val, 0, ',', '.'); };
+        
+        if (empty($customerWa)) {
+            Log::warning("Notifikasi WA Pembeli GAGAL dikirim: customer_wa TIDAK TERSIMPAN di transaksi: " . $trx->order_id);
+        }
+        
+        // --- DATA TOKO AGENT DARI DATABASE PENGGUNA (USERS) ---
+        // Menggunakan $user->kolom
+        $storeName = $user->store_name ?? 'Sancaka Express';
+        $storeAddress = $user->address_detail ?? 'Kantor Pusat Sancaka Express';
+        $storePhone = $this->_sanitizePhoneNumber($user->no_wa ?? null) ?? '628819435180'; 
+
+        // ===============================================
+        // 1. SUSUN PESAN UNTUK AGENT (MENGGUNAKAN $user)
+        // ===============================================
+        $messageAgent = "[NOTIF AGENT - SN] Transaksi {$trx->order_id} Sukses.
+        
+*✅ Transaksi PPOB Sukses!*
+------------------------------------
+Produk: {$trx->buyer_sku_code}
+Tujuan: {$trx->customer_no}
+Harga Jual: Rp {$fmt($trx->selling_price)}
+*Serial Number (SN):*
+*{$sn}*
+------------------------------------
+Saldo Baru: Rp " . $fmt($user->saldo ?? 0); // Menggunakan $user->saldo
+
+        // ===============================================
+        // 2. SUSUN PESAN UNTUK CUSTOMER (DENGAN BRANDING TOKO)
+        // ===============================================
+        $messageCustomer = "*Halo Pelanggan {$storeName} 👋*
+        
+Transaksi PPOB Anda telah Berhasil diproses!
+        
+*✅ DETAIL TRANSAKSI*
+------------------------------------
+Produk: {$trx->buyer_sku_code}
+Nomor Tujuan: {$trx->customer_no}
+Harga Jual: Rp {$fmt($trx->selling_price)}
+*Serial Number (SN):*
+*{$sn}*
+------------------------------------
+        
+Terima kasih telah bertransaksi.
+Jika ada kendala, hubungi:
+        
+*Toko: {$storeName}*
+*WA/Telp: {$storePhone}*
+*Alamat: {$storeAddress}*
+        
+Manajemen {$storeName}. 🙏";
+
+
+        // --- 3. KIRIM KE AGENT ---
+        if ($agentWa) {
+            FonnteService::sendMessage($agentWa, $messageAgent);
+            Log::info('PPOB SN sent via WA to Agent.', ['ref_id' => $trx->order_id, 'agent_wa' => $agentWa]);
+        }
+
+        // --- 4. KIRIM KE PEMBELI (Hanya jika WA Pembeli tersedia) ---
+        if ($customerWa) {
+            FonnteService::sendMessage($customerWa, $messageCustomer);
+            Log::info('PPOB SN sent via WA to Customer.', ['ref_id' => $trx->order_id, 'customer_wa' => $customerWa]);
+        } else {
+            Log::warning("Notifikasi Pembeli GAGAL dikirim: customer_wa tidak tersedia di database.");
+        }
+        
+        return true;
+        
+    } catch (\Exception $e) {
+        Log::error('WA Notification SN PPOB Error: ' . $e->getMessage(), ['trx_id' => $trx->id]);
+        return false;
     }
+}
 
     public function handle(Request $request)
     {
