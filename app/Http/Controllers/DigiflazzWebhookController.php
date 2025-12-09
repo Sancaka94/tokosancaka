@@ -183,10 +183,19 @@ class DigiflazzWebhookController extends Controller
                     $user = User::where('id_pengguna', $transaction->user_id)->first();
                     if ($user) {
                         $refundAmount = $transaction->price; 
+                        
+                        // Penting: Harga yang direfund harus harga yang dipotong (selling_price), 
+                        // bukan harga modal (price), kecuali jika logikanya mengharuskan refund modal.
+                        // Asumsi: Saat transaksi, agent dipotong 'selling_price'.
+                        // Sejak kode store sebelumnya memotong $product->sell_price, kita refund $transaction->selling_price
+                        
+                        $refundAmount = $transaction->selling_price;
                         $user->increment('saldo', $refundAmount);
                         
                         Log::info("REFUND: User {$user->id_pengguna} +Rp " . number_format($refundAmount));
                         $transaction->message .= " [Saldo Dikembalikan]";
+                    } else {
+                        Log::error("REFUND GAGAL: User ID {$transaction->user_id} tidak ditemukan untuk dikembalikan saldonya.");
                     }
                 }
             }

@@ -1004,29 +1004,37 @@
         });
     }
 
-    function confirmTransaction(sku, name, modal, jual) {
-        document.getElementById('modal_no').innerText = document.getElementById('input_customer_no').value;
-        document.getElementById('modal_product').innerText = name;
-        document.getElementById('modal_jual').innerText = 'Rp ' + parseInt(jual).toLocaleString('id-ID');
-        document.getElementById('form_sku').value = sku;
-        document.getElementById('form_no').value = document.getElementById('input_customer_no').value;
-        document.getElementById('form_customer_wa').value = customerWa; // <<< BARU
-        const customerWa = document.getElementById('input_customer_wa_pra').value; // Ambil WA
-    
-    // Periksa WA (Validasi sisi client)
-    if (customerWa.length < 9) { 
-        alert('Mohon isi Nomor WA Pembeli yang valid (minimal 9 digit).');
+    // Perbaiki function confirmTransaction:
+function confirmTransaction(sku, name, modal, jual) {
+    // 1. Ambil Nilai (customerWa HARUS DIAMBIL di awal)
+    const customerWa = document.getElementById('input_customer_wa_pra').value; 
+    const inputNoValue = document.getElementById('input_customer_no').value;
+
+    // 2. Periksa WA (Validasi sisi client)
+    if (customerWa.length < 9 || inputNoValue.length < 6) { 
+        alert('Mohon lengkapi Nomor Tujuan dan Nomor WA Pembeli yang valid (minimal 9 digit).');
         document.getElementById('input_customer_wa_pra').focus();
         return;
     }
-        
-        document.getElementById('confirmModal').classList.remove('hidden');
-        setTimeout(() => {
-            document.getElementById('modal_content').classList.remove('scale-95', 'opacity-0');
-            document.getElementById('modal_content').classList.add('scale-100', 'opacity-100');
-        }, 50);
-    }
+    
+    // 3. Mapping Data ke Modal Display
+    document.getElementById('modal_no').innerText = inputNoValue;
+    document.getElementById('modal_product').innerText = name;
+    document.getElementById('modal_jual').innerText = 'Rp ' + parseInt(jual).toLocaleString('id-ID');
+    
+    // 4. Mapping Data ke Hidden Form fields (untuk disubmit)
+    document.getElementById('form_sku').value = sku;
+    document.getElementById('form_no').value = inputNoValue;
+    // PENTING: Anda perlu menambahkan ID ke hidden field WA di Modal Prabayar.
+    document.getElementById('form_customer_wa').value = customerWa; // <<< PERBAIKAN: Mapping WA ke hidden field
 
+    // 5. Tampilkan Modal
+    document.getElementById('confirmModal').classList.remove('hidden');
+    setTimeout(() => {
+        document.getElementById('modal_content').classList.remove('scale-95', 'opacity-0');
+        document.getElementById('modal_content').classList.add('scale-100', 'opacity-100');
+    }, 50);
+}
     function closeModal() {
         document.getElementById('modal_content').classList.remove('scale-100', 'opacity-100');
         document.getElementById('modal_content').classList.add('scale-95', 'opacity-0');
