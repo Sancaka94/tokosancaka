@@ -132,6 +132,13 @@ class KoliController extends Controller
 
     public function store(Request $request, KiriminAjaService $kirimaja)
     {
+        // 🔥 0. CEK IDEMPOTENCY KEY
+        $key = $request->input('idempotency_key');
+        if ($key && Pesanan::where('idempotency_key', $key)->exists()) {
+            return redirect()->route('customer.pesanan.index')
+                ->with('warning', 'Pesanan Massal ini sudah diproses sebelumnya (Mencegah Dobel Input).');
+        }
+        
         DB::beginTransaction(); 
         try {
             $rawItemPrice = str_replace(['Rp', '.', ' ', ','], '', $request->input('item_price'));
@@ -267,6 +274,12 @@ class KoliController extends Controller
                 $pesanan->status = 'Menunggu Pembayaran';
                 $pesanan->status_pesanan = 'Menunggu Pembayaran';
                 $pesanan->tanggal_pesanan = now();
+
+                // 🔥 Simpan Kunci Pengaman hanya di paket pertama (Master Order)
+                if ($index === 0) {
+                    $pesanan->idempotency_key = $key;
+                }
+
                 $pesanan->save();
                 
                 $createdOrders[] = $pesanan;
@@ -553,6 +566,15 @@ class KoliController extends Controller
 
     public function storeSingle(Request $request, KiriminAjaService $kirimaja)
     {
+        // 🔥 0. CEK IDEMPOTENCY KEY (AJAX)
+        $key = $request->input('idempotency_key');
+        if ($key && Pesanan::where('idempotency_key', $key)->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Pesanan ini sudah dibuat. Harap refresh halaman.'
+            ], 422);
+        }
+
         DB::beginTransaction();
         try {
             // 1. CLEANING & VALIDASI
@@ -680,6 +702,9 @@ class KoliController extends Controller
             $pesanan->status = 'Menunggu Pembayaran'; 
             $pesanan->status_pesanan = 'Menunggu Pembayaran';
             $pesanan->tanggal_pesanan = now();
+
+            // 🔥 Simpan Kunci Pengaman
+            $pesanan->idempotency_key = $key;
 
             $pesanan->save(); 
 
