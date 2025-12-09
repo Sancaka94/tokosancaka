@@ -415,6 +415,7 @@
                 @csrf
                 <input type="hidden" name="sku" id="form_sku">
                 <input type="hidden" name="customer_no" id="form_no">
+                <input type="hidden" name="customer_wa" id="form_customer_wa">
 
                 {{-- <<< IDEMPOTENCY KEY PRABAYAR >>> --}}
                 <input type="hidden" name="idempotency_key" value="{{ $idempotencyKey ?? \Illuminate\Support\Str::uuid() }}" id="form_idempotency_pra">
@@ -1007,8 +1008,9 @@
     // Perbaiki function confirmTransaction:
 function confirmTransaction(sku, name, modal, jual) {
     // 1. Ambil Nilai (customerWa HARUS DIAMBIL di awal)
-    const customerWa = document.getElementById('input_customer_wa_pra').value; 
     const inputNoValue = document.getElementById('input_customer_no').value;
+    // FIX 1: Pindahkan deklarasi di sini
+    const customerWa = document.getElementById('input_customer_wa_pra').value; 
 
     // 2. Periksa WA (Validasi sisi client)
     if (customerWa.length < 9 || inputNoValue.length < 6) { 
@@ -1025,8 +1027,8 @@ function confirmTransaction(sku, name, modal, jual) {
     // 4. Mapping Data ke Hidden Form fields (untuk disubmit)
     document.getElementById('form_sku').value = sku;
     document.getElementById('form_no').value = inputNoValue;
-    // PENTING: Anda perlu menambahkan ID ke hidden field WA di Modal Prabayar.
-    document.getElementById('form_customer_wa').value = customerWa; // <<< PERBAIKAN: Mapping WA ke hidden field
+    // FIX 2: Mapping WA ke hidden field
+    document.getElementById('form_customer_wa').value = customerWa; 
 
     // 5. Tampilkan Modal
     document.getElementById('confirmModal').classList.remove('hidden');
@@ -1035,20 +1037,23 @@ function confirmTransaction(sku, name, modal, jual) {
         document.getElementById('modal_content').classList.add('scale-100', 'opacity-100');
     }, 50);
 }
-    function closeModal() {
-        document.getElementById('modal_content').classList.remove('scale-100', 'opacity-100');
-        document.getElementById('modal_content').classList.add('scale-95', 'opacity-0');
-        setTimeout(() => { document.getElementById('confirmModal').classList.add('hidden'); }, 200);
-    }
 
-    document.addEventListener('DOMContentLoaded', function() {
+function closeModal() {
+    document.getElementById('modal_content').classList.remove('scale-100', 'opacity-100');
+    document.getElementById('modal_content').classList.add('scale-95', 'opacity-0');
+    setTimeout(() => { document.getElementById('confirmModal').classList.add('hidden'); }, 200);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
     // --- AMBIL FORM DAN TOMBOL ---
     const formPayPra = document.getElementById('form-pay-pra');
-    const btnPayPra = document.getElementById('btn-pay-pra');
+    
+    // FIX 3: Hapus deklarasi ganda, gunakan querySelector untuk tombol submit
     const btnPayPra = formPayPra.querySelector('button[type="submit"]');
+    
     const formPayPasca = document.getElementById('form-pay-pasca');
-    const btnPayPasca = document.getElementById('btn-pay-pasca');
-    const btnPayPasca = formPayPasca.querySelector('button[type="submit"]'); // Tombol submit Pascabayar
+    // FIX 3: Hapus deklarasi ganda, gunakan querySelector untuk tombol submit
+    const btnPayPasca = formPayPasca.querySelector('button[type="submit"]'); 
 
     function disableSubmitButton(form, button) {
         if (!form || !button) return;
@@ -1071,8 +1076,13 @@ function confirmTransaction(sku, name, modal, jual) {
     }
 
     // Terapkan fungsi pencegahan ke kedua form
-    disableSubmitButton(formPayPra, btnPayPra);
-    disableSubmitButton(formPayPasca, btnPayPasca);
+    // PENTING: Periksa apakah elemen ditemukan sebelum memanggil disableSubmitButton
+    if (formPayPra && btnPayPra) {
+        disableSubmitButton(formPayPra, btnPayPra);
+    }
+    if (formPayPasca && btnPayPasca) {
+        disableSubmitButton(formPayPasca, btnPayPasca);
+    }
     
     // Khusus untuk Prabayar, kita harus menerapkan logika disable saat tombol PILIH di modal diklik
     // Tombol 'PROSES' di modal adalah tombol submit itu sendiri, jadi logika di atas sudah cukup.
