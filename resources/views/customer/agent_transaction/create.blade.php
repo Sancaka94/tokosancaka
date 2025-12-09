@@ -93,18 +93,17 @@
     </label>
 
     <div class="relative">
-        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-green-500">
-            <!-- Ikon WhatsApp -->
-            <svg xmlns="https://tokosancaka.com/public/storage/logo/wa.png" class="h-5 w-5 opacity-80" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.159 5.403 5.67-.003 12.02 0c3.184.001 6.167 1.24 8.41 3.482 2.243 2.242 3.481 5.225 3.48 8.41-.002 6.351-5.408 11.86-11.89 11.86-1.99-.001-3.951-.501-5.688-1.448L.057 24z"/>
-            </svg>
-        </span>
+        <img 
+            src="https://tokosancaka.com/public/storage/logo/wa.png" 
+            class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 opacity-90"
+            alt="WA Logo"
+        >
 
         <input 
             type="number" 
             id="input_customer_wa_pra"
             placeholder="08xxxxxxxxxx (Untuk kirim SN)"
-            class="w-full pl-11 pr-4 py-3 
+            class="w-full pl-12 pr-4 py-3 
                    rounded-xl 
                    border border-gray-300 
                    bg-white shadow-sm
