@@ -57,9 +57,15 @@
                 
                 {{-- MULAI KODE DINAMIS --}}
     @php
-        // Mengambil data langsung dari Database menggunakan Model Setting
-        // Key harus sama persis dengan yang di Controller ('info_pesanan')
+        // 1. Mengambil data Info Admin
         $infoAdmin = \App\Models\Setting::where('key', 'info_pesanan')->value('value');
+
+        // 2. PERBAIKAN ERROR SCREENSHOT:
+        // Cek apakah $idempotencyKey sudah dikirim controller? Jika belum, buat sendiri disini.
+        // Ini mencegah error "Undefined variable $idempotencyKey"
+        if (!isset($idempotencyKey)) {
+            $idempotencyKey = (string) \Illuminate\Support\Str::uuid();
+        }
     @endphp
 
     @if(!empty($infoAdmin)) 
