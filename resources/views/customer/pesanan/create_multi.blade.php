@@ -7,6 +7,14 @@
 
 @section('title', 'Buat Pesanan Kirim Paket Massal')
 
+{{-- 🔥 TAMBAHAN KODE PENGAMAN (IDEMPOTENCY) 🔥 --}}
+@php
+    // Membuat kunci unik (UUID) untuk mencegah dobel input saat customer submit form
+    if (!isset($idempotencyKey)) {
+        $idempotencyKey = (string) \Illuminate\Support\Str::uuid();
+    }
+@endphp
+
 @push('styles')
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <style>
@@ -410,6 +418,8 @@
         
         <input type="hidden" name="grand_total" id="grand_total_input" value="0">
         <input type="hidden" name="item_type" value="1">
+        {{-- 🔥 SISIPKAN INI DI SINI 🔥 --}}
+        <input type="hidden" name="idempotency_key" value="{{ $idempotencyKey }}">
     </form>
 </div>
 @endsection
