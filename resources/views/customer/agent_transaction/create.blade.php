@@ -86,6 +86,15 @@
                     </div>
                 </div>
 
+                {{-- <<< INPUT BARU: NOMOR WA PEMBELI >>> --}}
+                    <div class="mb-4">
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Nomor WA Pembeli (Wajib)</label>
+                        <input type="number" id="input_customer_wa_pra" 
+                               class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 text-base font-bold transition placeholder-gray-300"
+                               placeholder="08xxxxxxxxxx (Untuk kirim SN)">
+                    </div>
+                    {{-- <<< AKHIR INPUT BARU >>> --}}
+
                 <div class="bg-yellow-50 p-4 rounded-xl border border-yellow-100 text-xs text-yellow-800 leading-relaxed">
                     <i class="fas fa-lightbulb mr-1 text-yellow-600"></i> 
                     <strong>Tips:</strong> Masukkan nomor HP untuk Pulsa/Data, atau ID Pelanggan untuk Token PLN/E-Wallet.
@@ -224,6 +233,15 @@
                         </p>
                     </div>
 
+                    {{-- <<< INPUT BARU: NOMOR WA PEMBELI >>> --}}
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Nomor WA Pembeli (Wajib)</label>
+                        <input type="number" id="input_customer_wa_pasca" 
+                               class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 text-base font-bold transition placeholder-gray-300"
+                               placeholder="08xxxxxxxxxx (Untuk kirim SN)">
+                    </div>
+                    {{-- <<< AKHIR INPUT BARU >>> --}}
+
                     {{-- Button Cek --}}
                     <button onclick="cekTagihan()" id="btn-cek-tagihan" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-red-200 transition flex justify-center items-center gap-2">
                         <i class="fas fa-search"></i> Cek Tagihan
@@ -330,6 +348,10 @@
                                 {{-- <<< IDEMPOTENCY KEY PASCABAYAR >>> --}}
                                 <input type="hidden" name="idempotency_key" value="{{ $idempotencyKey ?? \Illuminate\Support\Str::uuid() }}" id="form_idempotency_pasca">
                                 {{-- <<< AKHIR IDEMPOTENCY KEY PASCABAYAR >>> --}}
+
+                                {{-- <<< HIDDEN FIELD WA PASCABAYAR >>> --}}
+                                <input type="hidden" name="customer_wa" id="pay_customer_wa">
+                                {{-- <<< AKHIR HIDDEN FIELD WA PASCABAYAR >>> --}}
                             
                             <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-green-200 transition flex items-center gap-2 transform hover:scale-105">
                                 <i class="fas fa-check-circle"></i> Bayar Sekarang
@@ -626,6 +648,7 @@
                 document.getElementById('res_nama').innerText = d.customer_name || d.name || '-';
                 document.getElementById('res_id').innerText = d.customer_no || no;
                 
+                
                 // 2. Mapping Desc & Details
                 let periode = d.periode || '-';
                 let lembar = '1 Lembar';
@@ -686,7 +709,22 @@
                         labelTeksis = 'Lembar Tagihan';
                     }
                 }
-                
+
+                // Cek WA (Validasi sisi client untuk Pascabayar)
+    const customerWaPasca = document.getElementById('input_customer_wa_pasca').value;
+    if (customerWaPasca.length < 9) {
+        // Jika WA kosong, tampilkan error dan JANGAN isi hidden field
+        alert('Mohon isi Nomor WA Pembeli yang valid (minimal 9 digit).');
+        document.getElementById('btn-cek-tagihan').disabled = false;
+        document.getElementById('pasca_empty').classList.remove('hidden');
+        document.getElementById('pasca_result').classList.add('hidden');
+        document.getElementById('input_customer_wa_pasca').focus();
+        return;
+    }
+
+  
+                // Set field WA di form submit
+                document.getElementById('pay_customer_wa').value = customerWaPasca; // <<< BARU
                 // Render Periode & Lembar
                 document.getElementById('res_periode').innerText = formatPeriodeID(periode);
                 document.getElementById('res_lembar').innerText = lembar;
@@ -948,6 +986,15 @@
         document.getElementById('modal_jual').innerText = 'Rp ' + parseInt(jual).toLocaleString('id-ID');
         document.getElementById('form_sku').value = sku;
         document.getElementById('form_no').value = document.getElementById('input_customer_no').value;
+        document.getElementById('form_customer_wa').value = customerWa; // <<< BARU
+        const customerWa = document.getElementById('input_customer_wa_pra').value; // Ambil WA
+    
+    // Periksa WA (Validasi sisi client)
+    if (customerWa.length < 9) { 
+        alert('Mohon isi Nomor WA Pembeli yang valid (minimal 9 digit).');
+        document.getElementById('input_customer_wa_pra').focus();
+        return;
+    }
         
         document.getElementById('confirmModal').classList.remove('hidden');
         setTimeout(() => {
