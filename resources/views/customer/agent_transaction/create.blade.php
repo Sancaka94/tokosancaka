@@ -326,6 +326,10 @@
                             <input type="hidden" name="customer_no" id="pay_no">
                             <input type="hidden" name="ref_id" id="pay_ref_id"> 
                             <input type="hidden" name="selling_price" id="pay_price">
+
+                                {{-- <<< IDEMPOTENCY KEY PASCABAYAR >>> --}}
+                                <input type="hidden" name="idempotency_key" value="{{ $idempotencyKey ?? \Illuminate\Support\Str::uuid() }}" id="form_idempotency_pasca">
+                                {{-- <<< AKHIR IDEMPOTENCY KEY PASCABAYAR >>> --}}
                             
                             <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-green-200 transition flex items-center gap-2 transform hover:scale-105">
                                 <i class="fas fa-check-circle"></i> Bayar Sekarang
@@ -365,6 +369,11 @@
                 @csrf
                 <input type="hidden" name="sku" id="form_sku">
                 <input type="hidden" name="customer_no" id="form_no">
+
+                {{-- <<< IDEMPOTENCY KEY PRABAYAR >>> --}}
+                <input type="hidden" name="idempotency_key" value="{{ $idempotencyKey ?? \Illuminate\Support\Str::uuid() }}" id="form_idempotency_pra">
+                {{-- <<< AKHIR IDEMPOTENCY KEY PRABAYAR >>> --}}
+
                 <div class="flex gap-3">
                     <button type="button" onclick="closeModal()" class="flex-1 py-3 bg-white text-gray-700 font-bold rounded-xl border border-gray-300 hover:bg-gray-50 transition text-sm">Batal</button>
                     <button type="submit" class="flex-1 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition shadow-lg shadow-blue-200 text-sm">
@@ -952,5 +961,41 @@
         document.getElementById('modal_content').classList.add('scale-95', 'opacity-0');
         setTimeout(() => { document.getElementById('confirmModal').classList.add('hidden'); }, 200);
     }
+
+    document.addEventListener('DOMContentLoaded', function() {
+    // --- AMBIL FORM DAN TOMBOL ---
+    const formPayPra = document.getElementById('form-pay-pra');
+    const btnPayPra = document.getElementById('btn-pay-pra');
+    const formPayPasca = document.getElementById('form-pay-pasca');
+    const btnPayPasca = document.getElementById('btn-pay-pasca');
+
+    function disableSubmitButton(form, button) {
+        if (!form || !button) return;
+
+        form.addEventListener('submit', function(e) {
+            // Cek apakah form sudah pernah disubmit sebelumnya (flag custom)
+            if (form.hasSubmitted) {
+                e.preventDefault();
+                return;
+            }
+
+            // Mencegah double submit
+            form.hasSubmitted = true;
+            
+            // Nonaktifkan tombol
+            button.disabled = true;
+            button.classList.add('opacity-70', 'cursor-not-allowed');
+            button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Memproses...';
+        });
+    }
+
+    // Terapkan fungsi pencegahan ke kedua form
+    disableSubmitButton(formPayPra, btnPayPra);
+    disableSubmitButton(formPayPasca, btnPayPasca);
+    
+    // Khusus untuk Prabayar, kita harus menerapkan logika disable saat tombol PILIH di modal diklik
+    // Tombol 'PROSES' di modal adalah tombol submit itu sendiri, jadi logika di atas sudah cukup.
+});
+
 </script>
 @endpush
