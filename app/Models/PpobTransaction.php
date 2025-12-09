@@ -23,7 +23,8 @@ class PpobTransaction extends Model
      */
     protected $fillable = [
         'user_id', 
-        'order_id', 
+        'order_id',
+        'customer_wa',
         'buyer_sku_code', 
         'customer_no',
         'price',          // Harga Beli (Modal)
