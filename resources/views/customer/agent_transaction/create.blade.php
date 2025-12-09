@@ -105,12 +105,12 @@
             placeholder="08xxxxxxxxxx (Untuk kirim SN)"
             class="w-full pl-12 pr-4 py-3 
                    rounded-xl 
-                   border border-gray-300 
+                   border border-green-300 
                    bg-white shadow-sm
                    focus:ring-2 focus:ring-green-500 focus:border-green-500
                    text-base font-medium
                    transition-all
-                   placeholder-green-400"
+                   placeholder-red-600"
         >
     </div>
 
