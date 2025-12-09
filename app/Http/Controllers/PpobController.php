@@ -322,6 +322,9 @@ public function checkBill(Request $request)
         }
     }
 
+    // =================================================================
+    // FUNGSI STORE (TRANSAKSI AKHIR) - DIPERBAIKI DENGAN IDEMPOTENCY
+    // =================================================================
     public function store(Request $request)
     {
         $request->validate(['buyer_sku_code' => 'required', 'customer_no' => 'required']);
@@ -336,7 +339,27 @@ public function checkBill(Request $request)
             return back()->with('error', 'Saldo tidak cukup. Silakan Top Up.');
         }
 
+        // 1. BUAT REF ID UNIK
+        // Kita menggunakan refId sebagai Idempotency Key
         $refId = 'TRX-' . time() . rand(100,999);
+        
+        // 2. TENTUKAN CACHE KEY DAN WAKTU KADALUARSA (TTL)
+        // Kunci cache ini akan mengunci customer_no + sku selama 5 menit
+        $idempotencyKey = 'ppob_lock:' . $request->customer_no . ':' . $product->buyer_sku_code;
+        $lockDuration = 300; // 5 menit dalam detik
+
+        // 3. CEK IDEMPOTENCY LOCK DI CACHE
+        if (Cache::has($idempotencyKey)) {
+            Log::warning('PPOB Idempotency Check: Duplicate request blocked.', [
+                'key' => $idempotencyKey, 
+                'user_id' => $user->id_pengguna ?? $user->id
+            ]);
+            return back()->with('error', 'Transaksi sedang diproses. Mohon tunggu 5 menit sebelum mencoba lagi (Cek riwayat transaksi).');
+        }
+
+        // 4. SET IDEMPOTENCY LOCK SEBELUM MEMULAI TRANSAKSI
+        // Lock akan kadaluarsa dalam 5 menit
+        Cache::put($idempotencyKey, $refId, $lockDuration);
         
         DB::beginTransaction();
         try {
@@ -346,7 +369,7 @@ public function checkBill(Request $request)
             // Simpan Transaksi
             $trx = PpobTransaction::create([
                 'user_id' => $user->id_pengguna ?? $user->id,
-                'order_id' => $refId,
+                'order_id' => $refId, // Menggunakan refId yang dibuat sebagai order_id
                 'buyer_sku_code' => $product->buyer_sku_code,
                 'customer_no' => $request->customer_no,
                 'price' => $product->price,
@@ -362,16 +385,24 @@ public function checkBill(Request $request)
             if (isset($response['data']) && $response['data']['status'] !== 'Gagal') {
                 $trx->update(['status' => $response['data']['status'], 'sn' => $response['data']['sn'] ?? '']);
                 DB::commit();
+                
+                // 5. SUCCESS: Hapus lock (tidak diperlukan, tapi bisa dipercepat jika mau)
+                // Cache::forget($idempotencyKey); 
+                
                 return back()->with('success', 'Transaksi Berhasil Diproses!');
             } else {
                 // Gagal -> Refund
                 $user->increment('saldo', $product->sell_price);
                 $trx->update(['status' => 'Gagal', 'message' => $response['data']['message'] ?? 'Gagal dari provider']);
                 DB::commit();
+                
+                // 6. GAGAL: Lock tetap aktif sampai TTL berakhir. Ini mencegah user langsung coba lagi setelah gagal.
                 return back()->with('error', 'Transaksi Gagal: ' . ($response['data']['message'] ?? 'Unknown Error'));
             }
         } catch (\Exception $e) {
             DB::rollBack();
+            // 7. EXCEPTION: Lock tetap aktif sampai TTL berakhir.
+            Log::error('PPOB Store Exception (Double Order Protection Active): ' . $e->getMessage());
             return back()->with('error', 'Error Sistem: ' . $e->getMessage());
         }
     }
