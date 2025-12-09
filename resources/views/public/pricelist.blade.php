@@ -398,7 +398,8 @@
             <div class="bg-gray-50 px-6 py-4 flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
                 <button type="button" onclick="closeModal()" class="w-full inline-flex justify-center rounded-xl border border-gray-300 shadow-sm px-4 py-3 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 sm:w-auto sm:text-sm">Batal</button>
                     {{-- Ganti jadi BUTTON dan panggil fungsi JS --}}
-<button type="button" onclick="processPrepaidCheckout()" class="w-full sm:w-auto inline-flex justify-center rounded-xl border border-transparent shadow-lg shadow-blue-200 px-6 py-3 bg-blue-600 text-base font-bold text-white hover:bg-blue-700 sm:text-sm items-center gap-2">
+{{-- 🔥 UPDATE: Tambahkan 'this' di dalam kurung --}}
+<button type="button" onclick="processPrepaidCheckout(this)" class="w-full sm:w-auto inline-flex justify-center rounded-xl border border-transparent shadow-lg shadow-blue-200 px-6 py-3 bg-blue-600 text-base font-bold text-white hover:bg-blue-700 sm:text-sm items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
     Bayar Sekarang <i class="fas fa-arrow-right"></i>
 </button>
             </div>
@@ -608,19 +609,31 @@
         document.getElementById('confirmModal').classList.remove('hidden');
     }
 
-    // --- FUNGSI EKSEKUSI SAAT TOMBOL MODAL DIKLIK ---
-    function processPrepaidCheckout() {
+   // --- FUNGSI EKSEKUSI SAAT TOMBOL MODAL DIKLIK (DENGAN PENGAMAN) ---
+    function processPrepaidCheckout(btnElement) {
         const no = inputNo.value;
         
-        // Panggil fungsi sakti proceedToCheckout
+        // 1. PENGAMAN: Jika tombol sedang disable, hentikan proses (Mencegah Double Click)
+        if (btnElement && btnElement.disabled) return;
+
+        // 2. KUNCI TOMBOL & UBAH TAMPILAN
+        if (btnElement) {
+            const originalText = btnElement.innerHTML;
+            btnElement.dataset.originalText = originalText; // Simpan teks asli
+            btnElement.disabled = true; // Matikan tombol
+            btnElement.innerHTML = '<i class="fas fa-spinner fa-spin animate-spin"></i> Memproses...';
+            btnElement.classList.remove('hover:bg-blue-700'); // Hapus efek hover
+        }
+
+        // Panggil fungsi request ke server
         proceedToCheckout({
             sku: selectedSku,
             name: selectedName,
             price: selectedPrice,
             customer_no: no,
-            ref_id: null, // Prabayar tidak butuh ref_id inquiry
-            desc: []      // Kosongkan array
-        });
+            ref_id: null, 
+            desc: []      
+        }, btnElement); // Kirim elemen tombol untuk di-reset jika gagal
     }
 
     function closeModal() { document.getElementById('confirmModal').classList.add('hidden'); }
@@ -674,28 +687,42 @@
     // Default: Set active tab berdasarkan halaman (Jika halaman pascabayar, buka tab pascabayar)
     @if($isPostpaid) switchTab('postpaid'); @endif
 
-    // Function Sakti Penghubung
-function proceedToCheckout(data) {
-    // data format: { sku, name, price, customer_no, ref_id, desc }
-    
-    fetch("{{ route('ppob.prepare') }}", {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-        },
-        body: JSON.stringify(data)
-    })
-    .then(res => res.json())
-    .then(res => {
-        if(res.success) {
-            // Kalau sukses simpan session, baru redirect ke index controller tadi
-            window.location.href = "{{ route('ppob.checkout.index') }}";
-        } else {
-            alert('Gagal: ' + res.message);
+   // Function Sakti Penghubung (Updated)
+    function proceedToCheckout(data, btnElement) {
+        fetch("{{ route('ppob.prepare') }}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            },
+            body: JSON.stringify(data)
+        })
+        .then(res => res.json())
+        .then(res => {
+            if(res.success) {
+                // SUKSES: Redirect ke halaman pembayaran
+                window.location.href = "{{ route('ppob.checkout.index') }}";
+            } else {
+                // GAGAL: Munculkan pesan & Reset tombol
+                alert('Gagal: ' + res.message);
+                resetButton(btnElement);
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('Terjadi kesalahan koneksi. Silakan coba lagi.');
+            resetButton(btnElement);
+        });
+    }
+
+    // Helper untuk mengaktifkan tombol kembali jika error
+    function resetButton(btnElement) {
+        if (btnElement) {
+            btnElement.disabled = false;
+            btnElement.innerHTML = btnElement.dataset.originalText || 'Bayar Sekarang <i class="fas fa-arrow-right"></i>';
+            btnElement.classList.add('hover:bg-blue-700');
         }
-    })
-    .catch(err => console.error(err));
-}
+    }
+    
 </script>
 @endpush
