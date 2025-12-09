@@ -1,6 +1,6 @@
 @extends('layouts.marketplace')
 
-
+@php
     // ================================================================
     // 1. LOGIC PHP: PEMETAAN SKU (AGAR TIDAK SALAH DETEKSI PRODUK)
     // ================================================================
