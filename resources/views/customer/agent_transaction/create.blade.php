@@ -95,7 +95,7 @@
     <div class="relative">
         <span class="absolute left-3 top-1/2 -translate-y-1/2 text-green-500">
             <!-- Ikon WhatsApp -->
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 opacity-80" fill="currentColor" viewBox="0 0 24 24">
+            <svg xmlns="https://tokosancaka.com/public/storage/logo/wa.png" class="h-5 w-5 opacity-80" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.159 5.403 5.67-.003 12.02 0c3.184.001 6.167 1.24 8.41 3.482 2.243 2.242 3.481 5.225 3.48 8.41-.002 6.351-5.408 11.86-11.89 11.86-1.99-.001-3.951-.501-5.688-1.448L.057 24z"/>
             </svg>
         </span>
