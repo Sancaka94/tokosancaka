@@ -1,4 +1,4 @@
-('layouts.marketplace')
+@extends('layouts.marketplace')
 
 @php
     // --- 1. SETUP DATA KATEGORI (Sesuai List Kamu) ---
