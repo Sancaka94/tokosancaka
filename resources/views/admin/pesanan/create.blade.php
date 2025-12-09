@@ -64,7 +64,8 @@
                         <div class="relative">
                             <label for="sender_name" class="block mb-2 text-sm font-medium text-gray-700">Nama Pengirim</label>
                             <input type="text" id="sender_name" name="sender_name"
-                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"required autocomplete="off">
+                            class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5
+                            focus:outline-none focus:ring-0 focus:border-red-500"required autocomplete="off">
                             <div id="sender_contact_results" class="search-results-container hidden"></div>
                         </div>
                         <div class="relative">
