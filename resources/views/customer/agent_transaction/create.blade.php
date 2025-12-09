@@ -110,7 +110,7 @@
                    focus:ring-2 focus:ring-green-500 focus:border-green-500
                    text-base font-medium
                    transition-all
-                   placeholder-gray-400"
+                   placeholder-green-400"
         >
     </div>
 
