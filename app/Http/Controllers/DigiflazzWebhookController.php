@@ -180,7 +180,7 @@ class DigiflazzWebhookController extends Controller
                 
                 // AUTO REFUND SALDO
                 if (in_array(strtoupper($transaction->payment_method), ['SALDO', 'SALDO_AGEN'])) {
-                    $user = User::where('id_pengguna', $transaction->user_id)->first();
+                    $user = User::find($transaction->user_id);
                     if ($user) {
                         $refundAmount = $transaction->price; 
                         $user->increment('saldo', $refundAmount);
