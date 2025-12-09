@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str; // 🔥 Pastikan Str di-import
 use Exception;
 
 // --- MODEL ---
@@ -117,7 +118,11 @@ class PpobCheckoutController extends Controller
             ['code' => 'DOKU_VA', 'name' => 'DOMPET SANCAKA', 'icon_url' => 'https://cdn-icons-png.flaticon.com/512/2331/2331922.png'],
         ];
 
-        return view('customer.ppob.checkout', compact('cart', 'totalPrice', 'user', 'paymentChannels'));
+        // 🔥 GENERATE IDEMPOTENCY KEY UNIK
+        $idempotencyKey = (string) Str::uuid();
+
+        // 🔥 PASSING KE VIEW
+        return view('customer.ppob.checkout', compact('cart', 'totalPrice', 'user', 'paymentChannels', 'idempotencyKey'));
     }
 
     /**
@@ -147,6 +152,15 @@ class PpobCheckoutController extends Controller
      */
     public function store(Request $request)
     {
+
+        // 🔥 0. CEK IDEMPOTENCY KEY
+        // Mencegah user melakukan refresh halaman setelah submit, atau klik ganda
+        $key = $request->input('idempotency_key');
+        if ($key && PpobTransaction::where('idempotency_key', $key)->exists()) {
+            return redirect()->route('customer.ppob.history')
+                ->with('warning', 'Transaksi PPOB ini sudah diproses sebelumnya (Mencegah Double Pembayaran).');
+        }
+
         $request->validate(['payment_method' => 'required']);
         
         $cart = session()->get('ppob_cart', []);
@@ -193,6 +207,11 @@ class PpobCheckoutController extends Controller
                 // Status Awal
                 $trx->status         = ($request->payment_method === 'saldo') ? 'Processing' : 'Pending';
                 $trx->message        = 'Menunggu Pembayaran';
+
+                // 🔥 SIMPAN IDEMPOTENCY KEY KE SETIAP ITEM TRANSAKSI
+                // Semua item dalam satu kali checkout memiliki key yang sama
+                $trx->idempotency_key = $key;
+
                 $trx->save();
 
                 // Simpan info untuk diproses setelah ini

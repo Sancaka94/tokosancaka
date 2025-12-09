@@ -52,6 +52,15 @@
         {{-- FORM UTAMA CHECKOUT --}}
         <form action="{{ route('ppob.checkout.store') }}" method="POST" id="checkout-form">
             @csrf
+
+            {{-- 🔥 TAMBAHAN KODE PENGAMAN (IDEMPOTENCY) 🔥 --}}
+            {{-- Jika variabel $idempotencyKey belum ada (fallback), buat baru --}}
+            @php
+                if (!isset($idempotencyKey)) {
+                    $idempotencyKey = (string) \Illuminate\Support\Str::uuid();
+                }
+            @endphp
+            <input type="hidden" name="idempotency_key" value="{{ $idempotencyKey }}">
             
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 
