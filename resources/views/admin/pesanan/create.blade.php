@@ -62,7 +62,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
                         <div class="relative">
-                            <label for="sender_name" class="block mb-2 text-sm font-medium text-gray-700">Nama Pengirim</label>
+                            <label for="sender_name" class="block mb-2 text-sm font-medium text-gray-700">Nama Pengirim </label>
                             <input type="text" id="sender_name" name="sender_name"
                             class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5focus:outline-none focus:border-red-500focus:ring-4 focus:ring-red-300focus:shadow-md"required autocomplete="off">
                             <div id="sender_contact_results" class="search-results-container hidden"></div>
@@ -121,7 +121,8 @@
                         </div>
                         <div class="md:col-span-2">
                             <label for="receiver_address" class="block mb-2 text-sm font-medium text-gray-700">Alamat Penerima Lengkap</label>
-                            <textarea id="receiver_address" name="receiver_address" rows="3" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" placeholder="Contoh: Jl. Pahlawan No. 12, RT 01/RW 05, (Patokan: Sebelah Kantor Pos)" required></textarea>
+                            <textarea id="receiver_address" name="receiver_address" rows="3" 
+                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" placeholder="Contoh: Jl. Pahlawan No. 12, RT 01/RW 05, (Patokan: Sebelah Kantor Pos)" required></textarea>
                         </div>
                           <div class="md:col-span-2">
                                 <label class="flex items-center text-sm text-gray-600"><input type="checkbox" name="save_receiver" value="1" class="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500 mr-2"> Simpan data penerima ini</label>
