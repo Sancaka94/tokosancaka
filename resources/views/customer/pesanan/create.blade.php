@@ -108,7 +108,11 @@
                         <div class="relative">
                             <label for="sender_name" class="block mb-2 text-sm font-medium text-gray-700 required-label">Nama Pengirim</label>
                             <input type="search" id="sender_name" name="sender_name" 
-                            class="w-full pl-10 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md @error('sender_name') is-invalid @enderror" value="{{ old('sender_name', auth()->user()->nama_lengkap) }}" required autocomplete="off">
+                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5
+       focus:outline-none
+       focus:border-red-500
+       focus:ring-4 focus:ring-red-300
+       focus:shadow-md" @error('sender_name') is-invalid @enderror" value="{{ old('sender_name', auth()->user()->nama_lengkap) }}" required autocomplete="off">
                             @error('sender_name')
                                 <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div>
                             @enderror
