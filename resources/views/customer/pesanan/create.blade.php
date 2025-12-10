@@ -153,7 +153,7 @@
                     </div>
                 </div>
 
-                <div class="bg-white p-6 rounded-lg shadow-md">
+                <div class="bg-white p-6 rounded-lg shadow-md border border-blue-700 transition-all duration-200 hover:ring-4 hover:ring-blue-400 hover:shadow-lg">
                     <div class="flex justify-between items-center border-b pb-4 mb-6">
                         <h3 class="text-xl font-semibold text-gray-800">
                             <i class="fas fa-map-marker-alt text-green-500 mr-2"></i>Informasi Penerima
