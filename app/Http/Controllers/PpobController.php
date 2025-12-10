@@ -187,7 +187,7 @@ class PpobController extends Controller
         ));
     }
 
-    public function checkBill(Request $request)
+   public function checkBill(Request $request)
     {
         $request->validate([
             'customer_no' => 'required', 
@@ -196,10 +196,13 @@ class PpobController extends Controller
 
         $customerNo = $request->input('customer_no');
         $sku = $request->input('sku');
+        // Use a unique ref_id for inquiry
         $refId = 'INQ-' . time() . rand(100,999);
         
+        // 1. Validate Product Locally
         $product = PpobProduct::where('buyer_sku_code', $sku)->first();
 
+        // 2. Handle inactive/missing SKU with alternative
         if (!$product || $product->seller_product_status != true) {
             $alternativeSku = PpobProduct::where('brand', 'PLN PASCABAYAR')
                 ->where('seller_product_status', true)
@@ -219,14 +222,17 @@ class PpobController extends Controller
             }
         }
 
+        // 3. Set Credentials
         $username = 'mihetiDVGdeW'; 
         $apiKeyProd = '1f48c69f-8676-5d56-a868-10a46a69f9b7';
         $testingMode = false; 
         $this->digiflazz->setCredentials($username, $apiKeyProd, $testingMode);
         
         try {
+            // 4. Call Inquiry API
             $response = $this->digiflazz->inquiryPasca($sku, $customerNo, $refId);
             
+            // 5. Process Successful Response
             if (isset($response['data']) && ($response['data']['rc'] === '00' || $response['data']['status'] === 'Sukses' || $response['data']['status'] === 'Pending')) {
                 $data = $response['data'];
                 
@@ -250,11 +256,22 @@ class PpobController extends Controller
                     'admin_fee_modal' => (float)$adminFeeModal,
                     'markup' => $markupKita,
                     'total_tagihan' => $totalTagihanAkhir,
-                    'ref_id' => $refId,
+                    
+                    // --- CRITICAL FIX START ---
+                    // Explicitly pass the buyer_sku_code from the API response
+                    // If API doesn't return it, fallback to the $sku used for request
+                    'buyer_sku_code' => $data['buyer_sku_code'] ?? $sku,
+                    
+                    // Pass the ref_id from API response (if available) or the generated one
+                    // This is VITAL for the payment step
+                    'ref_id' => $data['ref_id'] ?? $refId,
+                    // --- CRITICAL FIX END ---
+
                     'desc' => $data['desc'] ?? []
                 ]);
             }
             
+            // 6. Handle API Error Response
             $message = $response['data']['message'] ?? ($response['message'] ?? 'Tagihan tidak ditemukan atau Signature salah.'); 
             Log::error("Inquiry Pasca API Error: $message", ['response' => $response, 'sku' => $sku, 'customer_no' => $customerNo]);
             
