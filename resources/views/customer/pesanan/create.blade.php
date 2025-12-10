@@ -1037,7 +1037,7 @@ function type() {
         setTimeout(() => {
             index = 0;
             type(); // ulangi dari awal
-        }, 2000); // jeda ketika sudah selesai
+        }, 3000); // jeda ketika sudah selesai
     }
 }
 
