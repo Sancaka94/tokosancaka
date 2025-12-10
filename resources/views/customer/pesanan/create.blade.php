@@ -208,6 +208,7 @@
 
              <div class="bg-white p-6 rounded-lg shadow-md border border-blue-700 transition-all duration-200 hover:ring-4 hover:ring-blue-400 hover:shadow-lg">
     <div class="flex justify-between items-center bg-blue-700 px-4 py-3 mb-6 rounded-lg shadow border border-transparent transition-all duration-200 hover:shadow-2xl hover:border-blue-300 hover:ring-2 hover:ring-blue-300">
+
         <h3 class="text-xl font-semibold text-white">
             <i class="fas fa-map-marker-alt text-white mr-2"></i>Informasi Penerima
         </h3>
@@ -220,42 +221,41 @@
             <div id="receiver_contact_results" class="search-results-container hidden"></div>
         </div>
     </div>
-
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div class="relative">
-            <label for="receiver_name" class="block mb-2 text-sm font-medium text-blue-900 required-label">Nama Penerima</label>
+            <label for="receiver_name" class="block mb-2 text-sm font-medium text-blue-800 required-label">Nama Penerima</label>
             <input type="search" id="receiver_name" name="receiver_name" 
-            class="bg-blue-50 border border-blue-200 text-gray-900 text-sm rounded-lg block w-full p-2.5 transition-all duration-200 hover:border-blue-400 hover:ring-2 hover:ring-blue-200 hover:shadow-md focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-300 focus:shadow-md @error('receiver_name') is-invalid @enderror" required autocomplete="off">
             
+            class="bg-blue-50 border border-blue-200 text-gray-900 text-sm rounded-lg block w-full p-2.5
+            transition-all duration-200
+            hover:border-blue-400 hover:ring-2 hover:ring-blue-200 hover:shadow-md
+            focus:outline-none
+            focus:border-blue-500
+            focus:ring-4 focus:ring-blue-300
+            focus:shadow-md
+            @error('receiver_name') is-invalid @enderror" required autocomplete="off">
             @error('receiver_name')
                 <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div>
             @enderror
         </div>
-
         <div class="relative">
-            <label for="receiver_phone" class="block mb-2 text-sm font-medium text-blue-900 required-label">Nomor HP</label>
-            <input type="tel" id="receiver_phone" name="receiver_phone" 
-            class="bg-blue-50 border border-blue-200 text-gray-900 text-sm rounded-lg block w-full p-2.5 transition-all duration-200 hover:border-blue-400 hover:ring-2 hover:ring-blue-200 hover:shadow-md focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-300 focus:shadow-md @error('receiver_phone') is-invalid @enderror" required autocomplete="off">
-            
+            <label for="receiver_phone" class="block mb-2 text-sm font-medium text-blue-800 required-label">Nomor HP</label>
+            <input type="tel" id="receiver_phone" name="receiver_phone" class="bg-blue-50 border border-blue-200 text-gray-900 text-sm rounded-lg block w-full p-2.5 transition-all duration-200 hover:border-blue-400 hover:ring-2 hover:ring-blue-200 hover:shadow-md focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-300 focus:shadow-md @error('receiver_phone') is-invalid @enderror" required autocomplete="off">
             @error('receiver_phone')
                 <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div>
             @enderror
         </div>
-
         <div class="md:col-span-2 relative">
-            <label for="receiver_address_search" class="block mb-2 text-sm font-medium text-blue-900 required-label">Cari Alamat Ongkir (Kec/Kel/Kodepos)</label>
+            <label for="receiver_address_search" class="block mb-2 text-sm font-medium text-blue-800 required-label">Cari Alamat Ongkir (Kec/Kel/Kodepos)</label>
             <div class="relative">
-                <input type="text" id="receiver_address_search" 
-                class="bg-blue-50 border border-blue-200 text-gray-900 text-sm rounded-lg block w-full p-2.5 pr-8 transition-all duration-200 hover:border-blue-400 hover:ring-2 hover:ring-blue-200 hover:shadow-md focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-300 focus:shadow-md" placeholder="Ketik untuk mencari alamat..." autocomplete="off">
-                <i id="receiver_address_check" class="fas fa-check-circle text-blue-500 absolute top-1/2 right-3 transform -translate-y-1/2 hidden"></i>
+                <input type="text" id="receiver_address_search" class="bg-blue-50 border border-blue-200 text-gray-900 text-sm rounded-lg block w-full p-2.5 pr-8 transition-all duration-200 hover:border-blue-400 hover:ring-2 hover:ring-blue-200 hover:shadow-md focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-300 focus:shadow-md" placeholder="Ketik untuk mencari alamat..." autocomplete="off">
+                <i id="receiver_address_check" class="fas fa-check-circle text-green-500 absolute top-1/2 right-3 transform -translate-y-1/2 hidden"></i>
             </div>
             <div id="receiver_address_results" class="search-results-container hidden"></div>
         </div>
-
         <div class="md:col-span-2">
-            <label for="receiver_address" class="block mb-2 text-sm font-medium text-blue-900 required-label">Alamat Penerima Lengkap (Min. 10 Karakter)</label>
-            <textarea id="receiver_address" name="receiver_address" rows="3" 
-            class="bg-blue-50 border border-blue-200 text-gray-900 text-sm rounded-lg block w-full p-2.5 transition-all duration-200 hover:border-blue-400 hover:ring-2 hover:ring-blue-200 hover:shadow-md focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-300 focus:shadow-md @error('receiver_address') is-invalid @enderror" placeholder="Contoh: Jl. Merdeka No. 45, RT 02/RW 03" required>{{ old('receiver_address') }}</textarea>
+            <label for="receiver_address" class="block mb-2 text-sm font-medium text-blue-800 required-label">Alamat Penerima Lengkap (Min. 10 Karakter)</label>
+            <textarea id="receiver_address" name="receiver_address" rows="3" class="bg-blue-50 border border-blue-200 text-gray-900 text-sm rounded-lg block w-full p-2.5 transition-all duration-200 hover:border-blue-400 hover:ring-2 hover:ring-blue-200 hover:shadow-md focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-300 focus:shadow-md @error('receiver_address') is-invalid @enderror" placeholder="Contoh: Jl. Merdeka No. 45, RT 02/RW 03" required>{{ old('receiver_address') }}</textarea>
             
             {{-- BLOK ERROR SERVER LARAVEL --}}
             @error('receiver_address')
@@ -267,14 +267,11 @@
                 Alamat minimal 10 karakter.
             </div>
         </div>
-
-        <div class="md:col-span-2">
-            <label class="flex items-center text-sm text-blue-900">
-                <input type="checkbox" id="save_receiver_checkbox" name="save_receiver" value="on" 
-                class="h-4 w-4 rounded border-blue-300 text-blue-600 focus:ring-blue-500 mr-2 transition-all duration-200"> Simpan data penerima ini
-            </label>
-        </div>
+         <div class="md:col-span-2">
+                <label class="flex items-center text-sm text-blue-800"><input type="checkbox" id="save_receiver_checkbox" name="save_receiver" value="on" class="h-4 w-4 rounded border-blue-300 text-blue-600 focus:ring-blue-500 mr-2 transition-all duration-200"> Simpan data penerima ini</label>
+         </div>
     </div>
+</div>
 </div>
 
             <div class="lg:col-span-1 space-y-8">
