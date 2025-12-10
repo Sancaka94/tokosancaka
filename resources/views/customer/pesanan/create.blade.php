@@ -108,11 +108,7 @@
                         <div class="relative">
                             <label for="sender_name" class="block mb-2 text-sm font-medium text-gray-700 required-label">Nama Pengirim</label>
                             <input type="search" id="sender_name" name="sender_name" 
-                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5
-       focus:outline-none
-       focus:border-red-500
-       focus:ring-4 focus:ring-red-300
-       focus:shadow-md" @error('sender_name') is-invalid @enderror" value="{{ old('sender_name', auth()->user()->nama_lengkap) }}" required autocomplete="off">
+                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md @error('sender_name') is-invalid @enderror" value="{{ old('sender_name', auth()->user()->nama_lengkap) }}" required autocomplete="off">
                             @error('sender_name')
                                 <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div>
                             @enderror
@@ -120,7 +116,7 @@
                         <div class="relative">
                             <label for="sender_phone" class="block mb-2 text-sm font-medium text-gray-700 required-label">Nomor HP</label>
                             <input type="tel" id="sender_phone" name="sender_phone" 
-                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 @error('sender_phone') is-invalid @enderror" value="{{ old('sender_phone', auth()->user()->no_wa) }}" required autocomplete="off">
+                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md @error('sender_phone') is-invalid @enderror" value="{{ old('sender_phone', auth()->user()->no_wa) }}" required autocomplete="off">
                             @error('sender_phone')
                                 <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div>
                             @enderror
@@ -128,14 +124,20 @@
                         <div class="md:col-span-2 relative">
                             <label for="sender_address_search" class="block mb-2 text-sm font-medium text-gray-700 required-label">Cari Alamat Ongkir (Kec/Kel/Kodepos)</label>
                             <div class="relative">
-                                <input type="text" id="sender_address_search" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pr-8" placeholder="Ketik untuk mencari alamat..." autocomplete="off">
+                                <input type="text" id="sender_address_search" 
+                                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pr-8
+       focus:outline-none
+       focus:border-red-500
+       focus:ring-4 focus:ring-red-300
+       focus:shadow-md"
+ placeholder="Ketik untuk mencari alamat..." autocomplete="off">
                                 <i id="sender_address_check" class="fas fa-check-circle text-green-500 absolute top-1/2 right-3 transform -translate-y-1/2 hidden"></i>
                             </div>
                             <div id="sender_address_results" class="search-results-container hidden"></div>
                         </div>
                         <div class="md:col-span-2">
                             <label for="sender_address" class="block mb-2 text-sm font-medium text-gray-700 required-label">Detail Alamat Lengkap Pengirim (Min. 10 Karakter)</label>
-                            <textarea id="sender_address" name="sender_address" rows="3" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 @error('sender_address') is-invalid @enderror" placeholder="Contoh: Jl. Pahlawan No. 12, RT 01/RW 05" required>{{ old('sender_address', auth()->user()->address_detail) }}</textarea>
+                            <textarea id="sender_address" name="sender_address" rows="3" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md @error('sender_address') is-invalid @enderror" placeholder="Contoh: Jl. Pahlawan No. 12, RT 01/RW 05" required>{{ old('sender_address', auth()->user()->address_detail) }}</textarea>
                             
                             {{-- BLOK ERROR SERVER LARAVEL --}}
                             @error('sender_address')
