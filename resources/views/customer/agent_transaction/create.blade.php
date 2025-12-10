@@ -615,12 +615,12 @@
         });
     }
 
-    // --- 6. LOGIKA CEK TAGIHAN (UTAMA) ---
+   // --- 6. LOGIKA CEK TAGIHAN (SMART FINDER EDITION) ---
     function cekTagihan() {
         let sku = document.getElementById('pasca_sku').value;
         const no = document.getElementById('pasca_no').value;
         
-        // Validasi WA
+        // 1. Validasi Input
         const customerWaPasca = document.getElementById('input_customer_wa_pasca').value;
         if (customerWaPasca.length < 9) {
             alert('Mohon isi Nomor WA Pembeli (min 9 digit).');
@@ -635,15 +635,16 @@
         }
         if (no.length < 5) { alert('Nomor pelanggan tidak valid'); return; }
 
-        // UI Loading
+        // 2. UI Loading
         document.getElementById('pasca_empty').classList.add('hidden');
         document.getElementById('pasca_result').classList.add('hidden');
         document.getElementById('pasca_loading').classList.remove('hidden');
         document.getElementById('btn-cek-tagihan').disabled = true;
 
-        // Set WA di Hidden Input (Persiapan Bayar)
+        // Set WA di Hidden Input
         document.getElementById('pay_customer_wa').value = customerWaPasca;
 
+        // 3. Request ke Server
         fetch('{{ route("ppob.check.bill") }}', { 
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
@@ -658,30 +659,61 @@
             document.getElementById('pasca_loading').classList.add('hidden');
             document.getElementById('btn-cek-tagihan').disabled = false;
 
-            let d = data.data || data; 
-            let status = d.status ? d.status.toLowerCase() : '';
-            let rc = d.rc ? String(d.rc) : '';
+            // --- DEBUGGER: TAMPILKAN STRUKTUR JSON DI CONSOLE ---
+            console.group("DEBUG INQUIRY RESPONSE");
+            console.log("Raw JSON:", data);
+            console.groupEnd();
+
+            // --- SMART FINDER FUNCTION ---
+            // Fungsi ini akan mencari key 'buyer_sku_code' sedalam apapun posisinya
+            function findValueByKey(obj, keyToFind) {
+                if (obj === null || typeof obj !== 'object') return null;
+                if (obj.hasOwnProperty(keyToFind)) return obj[keyToFind];
+                for (let key in obj) {
+                    if (obj.hasOwnProperty(key) && typeof obj[key] === 'object') {
+                        let result = findValueByKey(obj[key], keyToFind);
+                        if (result) return result;
+                    }
+                }
+                return null;
+            }
+
+            // Cari data penting menggunakan Smart Finder
+            let foundSku = findValueByKey(data, 'buyer_sku_code');
+            let foundRefId = findValueByKey(data, 'ref_id');
+            let foundPrice = findValueByKey(data, 'price') || findValueByKey(data, 'selling_price');
+            let foundName = findValueByKey(data, 'customer_name') || findValueByKey(data, 'name');
+            let foundSn = findValueByKey(data, 'sn'); // Kadang status ada di sini
+            let foundStatus = findValueByKey(data, 'status');
+            let foundRc = findValueByKey(data, 'rc');
+
+            // Normalisasi Status
+            let status = foundStatus ? foundStatus.toLowerCase() : '';
+            let rc = foundRc ? String(foundRc) : '';
 
             // --- JIKA SUKSES ---
             if(status === 'sukses' || status === 'success' || rc === '00') {
                 document.getElementById('pasca_result').classList.remove('hidden');
 
-                // 1. Tampilan
-                document.getElementById('res_nama').innerText = d.customer_name || d.name || '-';
-                document.getElementById('res_id').innerText = d.customer_no || no;
-                
-                // Format Periode
-                let rawPeriode = d.periode;
-                if (!rawPeriode && d.desc && d.desc.periode) rawPeriode = d.desc.periode;
-                if (!rawPeriode && d.desc && d.desc.detail && d.desc.detail[0]) rawPeriode = d.desc.detail[0].periode;
-                document.getElementById('res_periode').innerText = formatPeriodeID(rawPeriode);
-                
-                let lembar = (d.desc && d.desc.lembar_tagihan) ? d.desc.lembar_tagihan + ' Lembar' : '1 Lembar';
-                document.getElementById('res_lembar').innerText = lembar;
+                // A. Mapping Tampilan
+                document.getElementById('res_nama').innerText = foundName || '-';
+                document.getElementById('res_id').innerText = no;
 
-                // 2. Harga
-                let tagihanAsli = parseInt(d.price || d.selling_price || 0);
-                let adminBank = parseInt(d.admin || 0);
+                // Cari Periode & Lembar (Smart Search juga di 'desc')
+                let foundDesc = findValueByKey(data, 'desc');
+                let periodeStr = findValueByKey(data, 'periode'); 
+                
+                // Fallback periode ke dalam detail jika root kosong
+                if((!periodeStr || periodeStr==='-') && foundDesc && foundDesc.detail && foundDesc.detail[0]) {
+                    periodeStr = foundDesc.detail[0].periode;
+                }
+                
+                document.getElementById('res_periode').innerText = formatPeriodeID(periodeStr);
+                document.getElementById('res_lembar').innerText = (foundDesc && foundDesc.lembar_tagihan) ? foundDesc.lembar_tagihan + ' Lembar' : '1 Lembar';
+
+                // B. Hitung Harga
+                let tagihanAsli = parseInt(foundPrice || 0);
+                let adminBank = parseInt(findValueByKey(data, 'admin') || 0);
                 let marginAgen = 2500;
                 let totalBayar = tagihanAsli + marginAgen;
 
@@ -689,53 +721,43 @@
                 document.getElementById('res_admin').innerText = 'Rp ' + adminBank.toLocaleString('id-ID');
                 document.getElementById('res_total').innerText = 'Rp ' + totalBayar.toLocaleString('id-ID');
 
-                // 3. PENGISIAN FORM (LOGIKA PERBAIKAN)
+                // --- C. FORM HIDDEN (BAGIAN KRITIS) ---
                 
-                // Ambil SKU dari API (Prioritas Utama)
-                let skuDariApi = d.buyer_sku_code;
+                // 1. SKU FINAL: Gunakan hasil pencarian Smart Finder
+                let finalSku = (foundSku && foundSku !== 'pln') ? foundSku : sku;
                 
-                // Logika Pemaksaan: Jangan pernah pakai 'pln' jika API kasih kode lain
-                if (!skuDariApi || skuDariApi === 'pln') {
-                    // Cek di log browser, apa sebenarnya isi d.buyer_sku_code
-                    console.warn("API mengembalikan SKU: " + skuDariApi);
-                }
+                // Debugging Log untuk memastikan
+                console.log(`%c[SKU FOUND] API: ${foundSku} | FINAL: ${finalSku}`, "color: green; font-weight: bold");
 
-                // Masukkan ke input ID BARU
-                let inputSkuFinal = document.getElementById('pay_sku_pasca_final');
-                
-                if (inputSkuFinal) {
-                    // Jika API kosong, terpaksa pakai sku dropdown, TAPI jika API ada isinya (post64...), PAKAI ITU!
-                    inputSkuFinal.value = skuDariApi && skuDariApi !== 'pln' ? skuDariApi : sku;
-                    
-                    // DEBUGGING: Tampilkan alert jika masih 'pln' padahal harusnya 'post...'
-                    console.log("SKU FINAL UNTUK BAYAR: " + inputSkuFinal.value);
-                } else {
-                    alert("Error: ID input 'pay_sku_pasca_final' tidak ditemukan di HTML!");
-                }
+                let inputSku = document.getElementById('pay_sku_pasca_final');
+                if(inputSku) inputSku.value = finalSku;
+                else console.error("FATAL: Input ID 'pay_sku_pasca_final' tidak ditemukan!");
 
-                document.getElementById('pay_ref_id').value = d.ref_id; 
+                document.getElementById('pay_ref_id').value = foundRefId; 
                 document.getElementById('pay_price').value = totalBayar; 
-                document.getElementById('pay_no').value = d.customer_no;
+                document.getElementById('pay_no').value = no;
 
-                // 4. Render Detail (Sama seperti sebelumnya)
-                renderDetailTeknis(sku, d, rawPeriode);
+                // D. Render Detail
+                // Gunakan object 'd' (fallback root) untuk render fungsi lama
+                let d = data.data || data; 
+                renderDetailTeknis(sku, d, periodeStr);
                 renderItemList(sku, d);
 
             } else {
                 // --- JIKA GAGAL ---
-                const errorMsg = d.message || 'Tagihan tidak ditemukan.';
+                let foundMsg = findValueByKey(data, 'message') || 'Tagihan tidak ditemukan.';
                 const emptyState = document.getElementById('pasca_empty');
-                emptyState.innerHTML = `<div class="text-center text-red-500 animate-pulse"><p class="font-bold">Gagal!</p><p>${errorMsg}</p><button onclick="resetPasca()" class="underline mt-2">Coba Lagi</button></div>`;
+                emptyState.innerHTML = `<div class="text-center text-red-500 animate-pulse"><p class="font-bold">Gagal!</p><p>${foundMsg}</p><button onclick="resetPasca()" class="underline mt-2">Coba Lagi</button></div>`;
                 emptyState.classList.remove('hidden');
+                
+                console.error("INQUIRY FAILED:", foundMsg);
             }
         })
-
         .catch(err => {
-            console.error(err);
-            alert('Gagal menghubungi server');
+            console.error("FETCH ERROR:", err);
+            alert('Gagal menghubungi server: ' + err.message);
             document.getElementById('pasca_loading').classList.add('hidden');
             document.getElementById('btn-cek-tagihan').disabled = false;
-            document.getElementById('pasca_empty').classList.remove('hidden');
         });
     }
 
