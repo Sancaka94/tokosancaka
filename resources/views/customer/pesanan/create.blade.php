@@ -90,7 +90,7 @@
    
     {{-- SELESAI KODE DINAMIS --}}
 
-<div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+<div class="w-full grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
     <div class="lg:col-span-9 space-y-8">
 
