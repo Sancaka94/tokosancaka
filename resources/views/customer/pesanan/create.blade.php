@@ -117,7 +117,9 @@
                 <i class="fas fa-search"></i>
             </div>
 
-            <div id="sender_contact_results" class="search-results-container hidden"></div>
+            <div id="sender_contact_results"
+                    class="absolute z-50 w-full bg-white border border-red-300 rounded-lg shadow-lg mt-1 hidden">
+            </div>
         </div>
     </div>
 
