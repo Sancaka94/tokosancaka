@@ -94,13 +94,12 @@ class DigiflazzService
 }
 
     /**
-     * 3. Transaksi Prabayar (Pulsa/Data/Token)
+     * 3. Transaksi (Support Prabayar & Pascabayar)
+     * * @param string $commands (Opsional) Diisi 'pay-pasca' jika bayar tagihan. Kosongkan jika prabayar.
      */
-    public function transaction(string $sku, string $customerNo, string $refId, float $maxPrice = 0): array
+    public function transaction(string $sku, string $customerNo, string $refId, float $maxPrice = 0, ?string $commands = null): array
     {
-        // 🚨 PERBAIKAN KRITIS: Signature harus menggunakan API Key/Secret Key yang benar
-        // Pastikan Anda menggunakan API Key atau Secret Key, sesuai dokumentasi Digiflazz.
-        // Asumsi: menggunakan API Key (sama dengan yang di __construct)
+        // Generate Signature: md5(username + apiKey + ref_id)
         $sign = md5($this->username . $this->apiKey . $refId);
 
         $payload = [
@@ -110,24 +109,30 @@ class DigiflazzService
             'ref_id' => $refId,
             'sign' => $sign,
             'max_price' => $maxPrice,
-            // Gunakan properti testingMode, bukan hardcode
             'testing' => $this->testingMode, 
         ];
 
+        // --- UPDATE PENTING DI SINI ---
+        // Jika ada command (misal: pay-pasca), masukkan ke payload
+        if ($commands) {
+            $payload['commands'] = $commands;
+        }
+        // ------------------------------
+
         try {
-            Log::info("➡️ [TRX Request] $refId - $sku - $customerNo", $payload);
+            Log::info("➡️ [TRX Request] $refId - $sku", $payload);
+            
             $response = Http::post($this->baseUrl . '/transaction', $payload);
             
-            // Mengatasi kasus body kosong
             $respData = $response->json() ?? ['data' => ['status' => 'Gagal', 'message' => 'No response body']];
             
             Log::info("⬅️ [TRX Response] $refId", $respData);
             
-            // 🚨 PERBAIKAN: Selalu kembalikan array, bukan objek Response
             return $respData; 
+
         } catch (\Exception $e) {
             Log::error("❌ [TRX Error] $refId: " . $e->getMessage());
-            return ['data' => ['status' => 'Gagal', 'message' => 'Koneksi Error']];
+            return ['data' => ['status' => 'Gagal', 'message' => 'Koneksi Error: ' . $e->getMessage()]];
         }
     }
 

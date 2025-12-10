@@ -64,97 +64,82 @@ class AgentTransactionController extends Controller
     /**
      * Proses Transaksi Offline & Kirim ke Digiflazz
      */
-    /**
-     * Proses Transaksi Offline & Kirim ke Digiflazz
-     */
     public function store(Request $request)
     {
-        // A. Tentukan Jenis Validasi
+        // 1. Validasi
         $rules = [
             'customer_no' => 'required|numeric',
-            'payment_type' => 'required|in:pra,pasca', // Tambahkan validasi tipe
+            'payment_type' => 'required|in:pra,pasca',
         ];
 
-        // Jika Prabayar, SKU wajib ada di DB. Jika Pasca, SKU bebas (diterima dari API).
         if ($request->payment_type == 'pra') {
             $rules['sku'] = 'required|exists:ppob_products,buyer_sku_code';
         } else {
-            $rules['sku'] = 'required|string'; // Pasca tidak wajib exists di DB
-            $rules['selling_price'] = 'required|numeric|min:1'; // Wajib kirim harga jual hasil inquiry
+            // PENTING: Pascabayar wajib punya ref_id dari inquiry sebelumnya
+            $rules['sku'] = 'required|string'; 
+            $rules['selling_price'] = 'required|numeric|min:1';
+            $rules['ref_id'] = 'required|string'; 
         }
 
         $request->validate($rules);
-
         $user = Auth::user();
         
-        // ============================================================
-        // 1. PERSIAPAN DATA (HARGA & SKU)
-        // ============================================================
-        
+        // 2. Persiapan Data
         $modalAgen = 0;
         $hargaJual = 0;
         $profit    = 0;
-        $productName = '';
+        
+        // Tentukan Order ID / Ref ID yang akan dikirim ke API
+        $apiRefId = ''; 
 
         if ($request->payment_type == 'pra') {
-            // --- LOGIKA PRABAYAR (Ambil dari Database) ---
+            // --- PRABAYAR ---
             $productData = PpobProduct::leftJoin('agent_product_prices', function($join) use ($user) {
                 $join->on('ppob_products.id', '=', 'agent_product_prices.product_id')
-                     ->where('agent_product_prices.user_id', '=', $user->id);
-            })
-            ->where('buyer_sku_code', $request->sku)
-            ->select('ppob_products.*', 'agent_product_prices.selling_price as custom_price')
-            ->first();
+                     ->where('agent_product_prices.user_id', '=', $user->id_pengguna);
+            })->where('buyer_sku_code', $request->sku)->select('ppob_products.*', 'agent_product_prices.selling_price as custom_price')->first();
 
-            if (!$productData) return back()->with('error', 'Produk Prabayar tidak ditemukan.');
+            if (!$productData) return back()->with('error', 'Produk tidak ditemukan.');
 
-            $modalAgen = $productData->sell_price; // Harga Modal dari DB
-            $hargaJual = $productData->custom_price ?? ($modalAgen + 2000);
-            $productName = $productData->product_name;
+            $modalAgen = $productData->sell_price;
+            $hargaJual = $productData->custom_price ?? ($modalAgen + 2000); // Margin default
+            
+            // Prabayar: Generate ID Baru
+            $apiRefId = 'TRX-PRA-' . time() . rand(100, 999);
 
         } else {
-            // --- LOGIKA PASCABAYAR (Ambil dari Input Inquiry) ---
-            // Harga jual dikirim dari frontend (hasil inquiry + margin)
+            // --- PASCABAYAR ---
+            // Harga Jual dari Input (Hasil Inquiry + Margin di Frontend)
             $hargaJual = $request->selling_price; 
             
-            // Estimasi modal (Harga Jual - Margin Admin). 
-            // Margin admin biasanya statis misal 2500 atau 3000, sesuaikan dengan frontend.
-            // Di sini kita asumsikan profit 2500 agar tercatat di laporan.
-            $estimasiProfit = 2500; 
-            $modalAgen = $hargaJual - $estimasiProfit; 
-            
-            $productName = 'Tagihan Pascabayar (' . strtoupper($request->sku) . ')';
+            // Estimasi Modal = Harga Jual - Margin (Misal 2500)
+            // Di real case, nanti modal akan diupdate sesuai respon sukses API ('price')
+            $marginEstimasi = 2500; 
+            $modalAgen = $hargaJual - $marginEstimasi;
+
+            // PENTING: Pascabayar HARUS pakai Ref ID Inquiry
+            $apiRefId = $request->ref_id; 
         }
 
         $profit = $hargaJual - $modalAgen;
 
-        // 2. Cek Saldo
+        // 3. Cek Saldo
         if ($user->saldo < $modalAgen) {
-            return back()->with('error', 'Saldo Agen tidak mencukupi. Dibutuhkan: Rp ' . number_format($modalAgen));
+            return back()->with('error', 'Saldo tidak mencukupi.');
         }
 
-        // ============================================================
-        // 3. PROSES TRANSAKSI
-        // ============================================================
-        
-        $username = $this->digiflazzUsername; 
-        $apiKey = $this->apiKeyProd;
-        $testingMode = $this->testingMode;
-        
-        // Generate Order ID Unik
-        $orderId = 'TRX-' . strtoupper($request->payment_type) . '-' . time() . rand(100, 999);
-        
-        $this->digiflazz->setCredentials($username, $apiKey, $testingMode); 
+        // 4. Set Service
+        $this->digiflazz->setCredentials($this->digiflazzUsername, $this->apiKeyProd, $this->testingMode); 
 
         DB::beginTransaction();
         try {
-            // A. Potong Saldo Agen (Sesuai Modal)
+            // Potong Saldo
             $user->decrement('saldo', $modalAgen);
 
-            // B. Simpan Transaksi Lokal
+            // Simpan Transaksi Lokal
             $trx = new PpobTransaction();
-            $trx->user_id        = $user->id_pengguna; // Pastikan kolom di DB user_id atau id_pengguna
-            $trx->order_id       = $orderId;
+            $trx->user_id        = $user->id_pengguna; // FIX: Sesuai kolom DB Anda
+            $trx->order_id       = $apiRefId;          // Simpan Ref ID yang sama
             $trx->buyer_sku_code = $request->sku;
             $trx->customer_no    = $request->customer_no;
             $trx->price          = $modalAgen;
@@ -162,65 +147,80 @@ class AgentTransactionController extends Controller
             $trx->profit         = $profit;
             $trx->payment_method = 'SALDO_AGEN';
             $trx->status         = 'Processing';
-            $trx->message        = 'Sedang diproses ke Provider...';
-            // Simpan info tambahan seperti WA jika ada
+            $trx->message        = 'Sedang diproses...';
             $trx->desc           = json_encode([
-                'type' => $request->payment_type == 'pra' ? 'prepaid' : 'postpaid',
+                'type' => $request->payment_type,
                 'wa'   => $request->customer_wa ?? '-'
             ]);
             $trx->save();
 
-            // C. KIRIM KE DIGIFLAZZ
-            // Jika Pasca: Kirim commands 'pay-pasca', Jika Pra: default (topup)
-            $commands = $request->payment_type == 'pasca' ? 'pay-pasca' : null;
-
-            // Pastikan ref_id inquiry dikirim untuk Pascabayar (PENTING UNTUK BAYAR TAGIHAN)
-            // Di frontend, pastikan input hidden name="ref_id" terisi saat inquiry sukses
-            $refId = $request->ref_id ?? $orderId; 
+            // 5. EKSEKUSI API DIGIFLAZZ
+            // Parameter Pasca: command='pay-pasca'
+            $command = ($request->payment_type == 'pasca') ? 'pay-pasca' : null;
 
             $respData = $this->digiflazz->transaction(
                 $request->sku, 
                 $request->customer_no, 
-                $refId, // Gunakan Ref ID Inquiry untuk Pasca
-                0, // Harga max (biasanya 0 utk prod)
-                $commands 
+                $apiRefId, // Menggunakan Ref ID yang benar
+                0,
+                $command 
             );
             
-            // D. Handling Respon
-            if (isset($respData['data']['status']) && in_array($respData['data']['status'], ['Gagal', 'Failed'])) {
+            // 6. Handle Response
+            $status = $respData['data']['status'] ?? 'Pending';
+            $message = $respData['data']['message'] ?? '-';
+            
+            // Jika Gagal
+            if (in_array($status, ['Gagal', 'Failed'])) {
                  $trx->status = 'Failed';
-                 $trx->message = $respData['data']['message'] ?? 'Transaksi Gagal dari Pusat';
+                 $trx->message = $message;
                  $trx->sn = $respData['data']['sn'] ?? '';
                  $trx->save();
                  
-                 // Refund saldo agen
+                 // Refund Saldo
                  $user->increment('saldo', $modalAgen);
-                 
                  DB::commit();
-                 return back()->with('error', 'Transaksi Gagal: ' . $trx->message);
+                 return back()->with('error', 'Transaksi Gagal: ' . $message);
             }
             
-            // Update Sukses / Pending
-            if (isset($respData['data']['message'])) {
-                $trx->message = $respData['data']['message'];
-                if (isset($respData['data']['sn'])) {
-                    $trx->sn = $respData['data']['sn'];
+            // Jika Sukses / Pending
+            $trx->message = $message;
+            $trx->sn = $respData['data']['sn'] ?? '';
+            
+            // Update Data Real dari API (Price & Selling Price)
+            if (isset($respData['data']['price'])) {
+                // Update Modal Asli dari API
+                $realModal = $respData['data']['price'];
+                $trx->price = $realModal;
+                
+                // Hitung ulang profit (Selling price tetap sesuai input user, modal berubah)
+                $trx->profit = $trx->selling_price - $realModal;
+                
+                // Koreksi pemotongan saldo jika ada selisih estimasi vs real
+                if ($realModal != $modalAgen) {
+                    $selisih = $modalAgen - $realModal; 
+                    // Jika modal asli lebih murah, kembalikan selisih ke user
+                    // Jika modal asli lebih mahal, potong lagi (biasanya jarang terjadi di pasca krn admin fee fix)
+                    if ($selisih > 0) {
+                        $user->increment('saldo', $selisih);
+                    } elseif ($selisih < 0) {
+                        $user->decrement('saldo', abs($selisih));
+                    }
                 }
-                // Jika status langsung sukses dari API
-                if(isset($respData['data']['status']) && $respData['data']['status'] == 'Sukses') {
-                    $trx->status = 'Success';
-                }
-                $trx->save();
             }
 
+            if ($status == 'Sukses') {
+                $trx->status = 'Success';
+            }
+            
+            $trx->save();
             DB::commit();
 
-            return redirect()->route('agent.transaction.create')->with('success', 'Transaksi Berhasil Diproses! Silakan cek riwayat.');
+            return redirect()->route('agent.transaction.create')->with('success', 'Transaksi Berhasil! SN: ' . $trx->sn);
 
         } catch (Exception $e) {
             DB::rollBack();
-            Log::error("Transaction Error: " . $e->getMessage());
-            return back()->with('error', 'Error System: ' . $e->getMessage());
+            return back()->with('error', 'System Error: ' . $e->getMessage());
         }
     }
 
