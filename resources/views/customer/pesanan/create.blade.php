@@ -94,7 +94,6 @@
 
     <div class="lg:col-span-2 space-y-8">
 
-
         <div class="bg-white p-6 rounded-lg shadow-md border border-red-700 transition-all duration-200 hover:ring-4 hover:ring-red-400 hover:shadow-lg relative z-30">
             
             <div class="relative z-20 bg-red-600 backdrop-blur px-4 py-3 rounded-lg shadow flex items-center justify-between mb-6 border border-red-700 transition-all duration-200 hover:shadow-2xl hover:border-red-400 hover:ring-2 hover:ring-red-300">
@@ -112,20 +111,21 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
-                <div class="relative">
+            <div class="grid grid-cols-1 gap-6 relative z-10">
+                
+                <div class="relative w-full">
                     <label for="sender_name" class="block mb-2 text-sm font-medium text-gray-700 required-label">Nama Pengirim</label>
                     <input type="search" id="sender_name" name="sender_name" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 transition-all duration-200 hover:border-red-400 hover:ring-2 hover:ring-red-200 hover:shadow-md focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md @error('sender_name') is-invalid @enderror" value="{{ old('sender_name', auth()->user()->nama_lengkap) }}" required autocomplete="off">
                     @error('sender_name') <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div> @enderror
                 </div>
 
-                <div class="relative">
+                <div class="relative w-full">
                     <label for="sender_phone" class="block mb-2 text-sm font-medium text-gray-700 required-label">Nomor HP</label>
                     <input type="tel" id="sender_phone" name="sender_phone" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 transition-all duration-200 hover:border-red-400 hover:ring-2 hover:ring-red-200 hover:shadow-md focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md @error('sender_phone') is-invalid @enderror" value="{{ old('sender_phone', auth()->user()->no_wa) }}" required autocomplete="off">
                     @error('sender_phone') <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div> @enderror
                 </div>
 
-                <div class="md:col-span-2 relative">
+                <div class="relative w-full">
                     <label for="sender_address_search" class="block mb-2 text-sm font-medium text-gray-700 required-label">Cari Alamat Ongkir (Kec/Kel/Kodepos)</label>
                     <div class="relative">
                         <input type="text" id="sender_address_search" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pr-8 transition-all duration-200 hover:border-red-400 hover:ring-2 hover:ring-red-200 hover:shadow-md focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md" placeholder="Ketik untuk mencari alamat..." autocomplete="off">
@@ -134,14 +134,14 @@
                     <div id="sender_address_results" class="search-results-container hidden"></div>
                 </div>
 
-                <div class="md:col-span-2">
+                <div class="relative w-full">
                     <label for="sender_address" class="block mb-2 text-sm font-medium text-gray-700 required-label">Detail Alamat Lengkap Pengirim (Min. 10 Karakter)</label>
                     <textarea id="sender_address" name="sender_address" rows="3" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 transition-all duration-200 hover:border-red-400 hover:ring-2 hover:ring-red-200 hover:shadow-md focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md @error('sender_address') is-invalid @enderror" placeholder="Contoh: Jl. Pahlawan No. 12, RT 01/RW 05" required>{{ old('sender_address', auth()->user()->address_detail) }}</textarea>
                     @error('sender_address') <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div> @enderror
                     <div id="sender_address_feedback" class="invalid-feedback text-sm text-red-600 mt-1" style="display:none;">Alamat minimal 10 karakter.</div>
                 </div>
 
-                <div class="md:col-span-2">
+                <div class="relative w-full">
                     <label class="flex items-center text-sm text-gray-600">
                         <input type="checkbox" id="save_sender_checkbox" name="save_sender" value="on" class="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500 mr-2"> Simpan/Perbarui data pengirim ini
                     </label>
@@ -166,20 +166,21 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
-                <div class="relative">
+            <div class="grid grid-cols-1 gap-6 relative z-10">
+                
+                <div class="relative w-full">
                     <label for="receiver_name" class="block mb-2 text-sm font-medium text-gray-700 required-label">Nama Penerima</label>
                     <input type="search" id="receiver_name" name="receiver_name" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 transition-all duration-200 hover:border-blue-400 hover:ring-2 hover:ring-blue-200 hover:shadow-md focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-300 focus:shadow-md @error('receiver_name') is-invalid @enderror" required autocomplete="off">
                     @error('receiver_name') <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div> @enderror
                 </div>
 
-                <div class="relative">
+                <div class="relative w-full">
                     <label for="receiver_phone" class="block mb-2 text-sm font-medium text-gray-700 required-label">Nomor HP</label>
                     <input type="tel" id="receiver_phone" name="receiver_phone" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 transition-all duration-200 hover:border-blue-400 hover:ring-2 hover:ring-blue-200 hover:shadow-md focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-300 focus:shadow-md @error('receiver_phone') is-invalid @enderror" required autocomplete="off">
                     @error('receiver_phone') <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div> @enderror
                 </div>
 
-                <div class="md:col-span-2 relative">
+                <div class="relative w-full">
                     <label for="receiver_address_search" class="block mb-2 text-sm font-medium text-gray-700 required-label">Cari Alamat Ongkir (Kec/Kel/Kodepos)</label>
                     <div class="relative">
                         <input type="text" id="receiver_address_search" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pr-8 transition-all duration-200 hover:border-blue-400 hover:ring-2 hover:ring-blue-200 hover:shadow-md focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-300 focus:shadow-md" placeholder="Ketik untuk mencari alamat..." autocomplete="off">
@@ -188,21 +189,20 @@
                     <div id="receiver_address_results" class="search-results-container hidden"></div>
                 </div>
 
-                <div class="md:col-span-2">
+                <div class="relative w-full">
                     <label for="receiver_address" class="block mb-2 text-sm font-medium text-gray-700 required-label">Alamat Penerima Lengkap (Min. 10 Karakter)</label>
                     <textarea id="receiver_address" name="receiver_address" rows="3" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 transition-all duration-200 hover:border-blue-400 hover:ring-2 hover:ring-blue-200 hover:shadow-md focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-300 focus:shadow-md @error('receiver_address') is-invalid @enderror" placeholder="Contoh: Jl. Merdeka No. 45, RT 02/RW 03" required>{{ old('receiver_address') }}</textarea>
                     @error('receiver_address') <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div> @enderror
                     <div id="receiver_address_feedback" class="invalid-feedback text-sm text-red-600 mt-1" style="display:none;">Alamat minimal 10 karakter.</div>
                 </div>
 
-                <div class="md:col-span-2">
+                <div class="relative w-full">
                     <label class="flex items-center text-sm text-gray-600">
                         <input type="checkbox" id="save_receiver_checkbox" name="save_receiver" value="on" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2"> Simpan data penerima ini
                     </label>
                 </div>
             </div>
         </div>
-
     </div>
 
     <div class="lg:col-span-1">
@@ -350,20 +350,7 @@
             <ul id="paymentOptionsList" class="divide-y">
                 <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="Potong Saldo" data-label="Potong Saldo"><img src="https://cdn-icons-png.flaticon.com/512/1086/1086060.png" class="w-8 h-8 mr-4">Potong Saldo (Tersedia: Rp {{ number_format(Auth::user()->saldo ?? 0) }})</li>
                 <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="DOKU_JOKUL" data-label="REKOMEN SANCAKA"><img src="https://tokosancaka.com/public/assets/doku.png" class="w-8 h-8 mr-4">Rekomendasi Sancaka Express Via VA, QRIS Dan E-Wallet</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50 cod-payment-option" data-value="COD" data-label="COD Ongkir"><img src="{{ asset('public/assets/cod.png') }}" class="w-8 h-8 mr-4">COD Ongkir</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50 cod-payment-option" data-value="CODBARANG" data-label="COD Barang + Ongkir"><img src="{{ asset('public/assets/cod.png') }}" class="w-8 h-8 mr-4">COD Barang + Ongkir</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="PERMATAVA" data-label="Permata VA"><img src="{{ asset('public/assets/permata.webp') }}" class="w-8 h-8 mr-4">Permata VA</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="BNIVA" data-label="BNI VA"><img src="{{ asset('public/assets/bni.webp') }}" class="w-8 h-8 mr-4">BNI VA</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="BRIVA" data-label="BRI VA"><img src="{{ asset('public/assets/bri.webp') }}" class="w-8 h-8 mr-4">BRI VA</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="MANDIRIVA" data-label="Mandiri VA"><img src="{{ asset('public/assets/mandiri.webp') }}" class="w-8 h-8 mr-4">Mandiri VA</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="BCAVA" data-label="BCA VA"><img src="{{ asset('public/assets/bca.webp') }}" class="w-8 h-8 mr-4">BCA VA</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="ALFAMART" data-label="Alfamart"><img src="{{ asset('public/assets/alfamart.webp') }}" class="w-8 h-8 mr-4">Alfamart</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="INDOMARET" data-label="Indomaret"><img src="{{ asset('public/assets/indomaret.webp') }}" class="w-8 h-8 mr-4">Indomaret</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="OVO" data-label="OVO"><img src="{{ asset('public/assets/ovo.webp') }}" class="w-8 h-8 mr-4">OVO</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="DANA" data-label="DANA"><img src="{{ asset('public/assets/dana.webp') }}" class="w-8 h-8 mr-4">DANA</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="SHOPEEPAY" data-label="ShopeePay"><img src="{{ asset('public/assets/shopeepay.webp') }}" class="w-8 h-8 mr-4">ShopeePay</li>
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="QRIS" data-label="QRIS"><img src="{{ asset('public/assets/qris2.png') }}" class="w-8 h-8 mr-4">QRIS</li>
-            </ul>
+                 </ul>
         </div>
         <div class="p-4 border-t text-right">
             <button type="button" class="close-modal-btn px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Tutup</button>
