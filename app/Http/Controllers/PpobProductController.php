@@ -74,17 +74,21 @@ class PpobProductController extends Controller
         // 1. Validasi Input
         $request->validate([
             'sell_price' => 'required|numeric|min:0',
-            'max_buy_price' => 'nullable|numeric|min:0', // Validasi Limit Harga Beli
+            'max_buy_price' => 'nullable|numeric|min:0',
         ]);
 
         // 2. Simpan Data
         $product = PpobProduct::findOrFail($id);
         $product->sell_price = $request->sell_price;
         
-        // Simpan max_buy_price (jika kosong diisi 0)
-        $product->max_buy_price = $request->input('max_buy_price', 0);
+        // --- FIX IS HERE ---
+        // Change this line:
+        // $product->max_buy_price = $request->input('max_buy_price', 0);
         
-        // Status Produk (Checkbox mengirim 'on' atau null, gunakan boolean helper)
+        // To this (using null coalescing operator):
+        $product->max_buy_price = $request->input('max_buy_price') ?? 0;
+        
+        // Status Produk
         $product->seller_product_status = $request->boolean('status'); 
         
         $product->save();
