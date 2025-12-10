@@ -793,7 +793,7 @@
                 document.getElementById('res_denda').innerText = 'Rp ' + parseInt(denda).toLocaleString('id-ID');
                 
                 // 4. Form Data
-                document.getElementById('pay_sku').value = sku;
+                document.getElementById('pay_sku').value = d.buyer_sku_code || sku;
                 document.getElementById('pay_no').value = d.customer_no;
                 document.getElementById('pay_ref_id').value = d.ref_id; 
                 document.getElementById('pay_price').value = hargaJual; 
