@@ -1023,7 +1023,7 @@ if (result.isConfirmed) {
 });
 
 
-const text = "Cari Nama Atau No Hp Dari Database penerima anda";
+const text = "Cari Nama Atau No Hp Dari Database anda...";
 let index = 0;
 const input = document.getElementById("sender_contact_search");
 
