@@ -91,8 +91,14 @@
 
                 <div class="bg-white p-6 rounded-lg shadow-md border border-red-700 transition-all duration-200 hover:ring-4 hover:ring-red-400 hover:shadow-lg">
 
+                <div class="bg-red-600 backdrop-blur border-b border-red-700 px-4 py-3 rounded-lg shadow 
+            flex items-center justify-between mb-6
+            border border-transparent
+            transition-all duration-200
+            hover:shadow-2xl
+            hover:border-red-300
+            hover:ring-2 hover:ring-red-300">
 
-                    <div class="bg-red-600 backdrop-blur border-b border-red-700 px-4 py-3 rounded-lg shadow flex items-center justify-between mb-6">
 
                         <h3 class="text-xl font-semibold text-white">
                             <i class="fas fa-arrow-up-from-bracket text-white mr-2"></i>Informasi Pengirim
