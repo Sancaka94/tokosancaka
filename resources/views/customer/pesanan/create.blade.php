@@ -95,7 +95,15 @@
                             <i class="fas fa-arrow-up-from-bracket text-red-500 mr-2"></i>Informasi Pengirim
                         </h3>
                         <div class="relative w-1/2">
-                            <input type="search" id="sender_contact_search" class="w-full pl-10 pr-4 py-2 border rounded-lg text-sm focus:ring-red-500 focus:border-red-500" placeholder="Cari dari kontak pengirim..." autocomplete="off">
+                            <input type="search" id="sender_contact_search"
+    class="w-full pl-10 pr-4 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-900
+           focus:outline-none
+           focus:border-red-500
+           focus:ring-4 focus:ring-red-300
+           focus:shadow-md"
+    placeholder="Cari dari kontak pengirim..."
+    autocomplete="off">
+
                            <div class="absolute top-0 left-0 inline-flex items-center p-2 h-full text-gray-400">
                                 <i class="fas fa-search"></i>
                             </div>
