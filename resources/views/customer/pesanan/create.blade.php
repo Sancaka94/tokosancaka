@@ -89,7 +89,7 @@
     @endif
     {{-- SELESAI KODE DINAMIS --}}
 
-    <div class="bg-white p-6 rounded-lg shadow-md border border-red-700 transition-all duration-200 hover:ring-4 hover:ring-red-400 hover:shadow-lg">
+    <div class="bg-white mb-6 rounded-lg shadow-md border border-red-700 transition-all duration-200 hover:ring-4 hover:ring-red-400 hover:shadow-lg">
 
     <div class="relative z-20 bg-red-600 backdrop-blur px-4 py-3 rounded-lg shadow flex items-center justify-between mb-6 border border-red-700 transition-all duration-200 hover:shadow-2xl hover:border-red-400 hover:ring-2 hover:ring-red-300">
         
