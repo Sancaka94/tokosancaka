@@ -283,10 +283,19 @@
             hover:shadow-xl
             hover:ring-4 hover:ring-green-300">
     
-    <h3 class="text-xl font-semibold text-gray-800 border-b pb-4 mb-6
-               border-green-300">
-        <i class="fas fa-box-open text-green-600 mr-2"></i>Detail Paket
-    </h3>
+    <h3 class="text-xl font-semibold text-white px-4 py-3 mb-6
+           bg-green-600 border border-green-700 rounded-lg
+           flex items-center gap-2
+           transition-all duration-200
+           hover:bg-green-700
+           hover:border-green-800
+           hover:shadow-lg
+           hover:ring-2 hover:ring-green-300">
+    
+    <i class="fas fa-box-open text-white"></i>
+    Detail Paket
+</h3>
+
 
 
                     <div class="space-y-4">
