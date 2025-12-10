@@ -1032,7 +1032,7 @@ function type() {
     index++;
 
     if (index <= text.length) {
-        setTimeout(type, 90); // kecepatan mengetik
+        setTimeout(type, 60); // kecepatan mengetik
     } else {
         setTimeout(() => {
             index = 0;
