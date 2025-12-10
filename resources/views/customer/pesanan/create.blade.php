@@ -154,10 +154,10 @@
                 </div>
 
                 <div class="bg-white p-6 rounded-lg shadow-md border border-blue-700 transition-all duration-200 hover:ring-4 hover:ring-blue-400 hover:shadow-lg">
-                    <div class="flex justify-between items-center bg-blue-600 px-4 py-3 mb-6 rounded-lg shadow">
+                    <div class="flex justify-between items-center bg-blue-700 px-4 py-3 mb-6 rounded-lg shadow">
 
                         <h3 class="text-xl font-semibold text-white">
-                            <i class="fas fa-map-marker-alt text-gray-800 mr-2"></i>Informasi Penerima
+                            <i class="fas fa-map-marker-alt text-white mr-2"></i>Informasi Penerima
                         </h3>
                        <div class="relative w-1/2">
                             <input type="search" id="receiver_contact_search" class="w-full pl-10 pr-4 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-300 focus:shadow-md" placeholder="Cari dari kontak penerima..." autocomplete="off">
