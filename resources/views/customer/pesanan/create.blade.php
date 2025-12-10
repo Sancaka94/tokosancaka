@@ -96,13 +96,7 @@
                         </h3>
                         <div class="relative w-1/2">
                             <input type="search" id="sender_contact_search"
-    class="w-full pl-10 pr-4 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-900
-           focus:outline-none
-           focus:border-red-500
-           focus:ring-4 focus:ring-red-300
-           focus:shadow-md"
-    placeholder="Cari dari kontak pengirim..."
-    autocomplete="off">
+                            class="w-full pl-10 pr-4 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md" placeholder="Cari dari kontak pengirim..." autocomplete="off">
 
                            <div class="absolute top-0 left-0 inline-flex items-center p-2 h-full text-gray-400">
                                 <i class="fas fa-search"></i>
@@ -113,14 +107,16 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div class="relative">
                             <label for="sender_name" class="block mb-2 text-sm font-medium text-gray-700 required-label">Nama Pengirim</label>
-                            <input type="search" id="sender_name" name="sender_name" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 @error('sender_name') is-invalid @enderror" value="{{ old('sender_name', auth()->user()->nama_lengkap) }}" required autocomplete="off">
+                            <input type="search" id="sender_name" name="sender_name" 
+                            class="w-full pl-10 pr-4 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md @error('sender_name') is-invalid @enderror" value="{{ old('sender_name', auth()->user()->nama_lengkap) }}" required autocomplete="off">
                             @error('sender_name')
                                 <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div>
                             @enderror
                         </div>
                         <div class="relative">
                             <label for="sender_phone" class="block mb-2 text-sm font-medium text-gray-700 required-label">Nomor HP</label>
-                            <input type="tel" id="sender_phone" name="sender_phone" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 @error('sender_phone') is-invalid @enderror" value="{{ old('sender_phone', auth()->user()->no_wa) }}" required autocomplete="off">
+                            <input type="tel" id="sender_phone" name="sender_phone" 
+                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 @error('sender_phone') is-invalid @enderror" value="{{ old('sender_phone', auth()->user()->no_wa) }}" required autocomplete="off">
                             @error('sender_phone')
                                 <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div>
                             @enderror
