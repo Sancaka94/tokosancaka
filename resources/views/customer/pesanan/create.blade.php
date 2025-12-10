@@ -91,7 +91,7 @@
 
     <div class="bg-white p-6 rounded-lg shadow-md border border-red-700 transition-all duration-200 hover:ring-4 hover:ring-red-400 hover:shadow-lg">
 
-    <div class="relative z-20 bg-red-600 backdrop-blur px-4 py-3 rounded-lg shadow flex items-center justify-between mb-6 border border-red-700 transition-all duration-200 hover:shadow-2xl hover:border-red-400 hover:ring-2 hover:ring-red-300">
+    <div class="relative z-20 bg-red-700 backdrop-blur px-4 py-3 rounded-lg shadow flex items-center justify-between mb-6 border border-transparent transition-all duration-200 hover:shadow-2xl hover:border-red-300 hover:ring-2 hover:ring-red-300">
         
         <h3 class="text-xl font-semibold text-white">
             <i class="fas fa-arrow-up-from-bracket text-white mr-2"></i>
@@ -101,11 +101,11 @@
         <div class="relative w-1/2">
             <input type="search" 
                 id="sender_contact_search"
-                class="w-full pl-10 pr-4 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-900 transition-all duration-200 hover:border-red-500 hover:shadow-lg hover:ring-2 hover:ring-red-300 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-lg"
+                class="w-full pl-10 pr-4 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-gray-900 transition-all duration-200 hover:border-red-400 hover:shadow-lg hover:ring-2 hover:ring-red-200 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-lg"
                 placeholder="Cari dari kontak pengirim..." 
                 autocomplete="off">
 
-            <div class="absolute top-0 left-0 inline-flex items-center p-2 h-full text-gray-400">
+            <div class="absolute top-0 left-0 inline-flex items-center p-2 h-full text-red-400">
                 <i class="fas fa-search"></i>
             </div>
 
@@ -117,14 +117,14 @@
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
 
         <div class="relative">
-            <label for="sender_name" class="block mb-2 text-sm font-medium text-gray-700 required-label">
+            <label for="sender_name" class="block mb-2 text-sm font-medium text-red-900 required-label">
                 Nama Pengirim
             </label>
 
             <input type="search" 
                 id="sender_name" 
                 name="sender_name"
-                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 transition-all duration-200 hover:border-red-400 hover:ring-2 hover:ring-red-200 hover:shadow-md focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md @error('sender_name') is-invalid @enderror"
+                class="bg-red-50 border border-red-200 text-gray-900 text-sm rounded-lg block w-full p-2.5 transition-all duration-200 hover:border-red-400 hover:ring-2 hover:ring-red-200 hover:shadow-md focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md @error('sender_name') is-invalid @enderror"
                 value="{{ old('sender_name', auth()->user()->nama_lengkap) }}" 
                 required 
                 autocomplete="off">
@@ -135,14 +135,14 @@
         </div>
 
         <div class="relative">
-            <label for="sender_phone" class="block mb-2 text-sm font-medium text-gray-700 required-label">
+            <label for="sender_phone" class="block mb-2 text-sm font-medium text-red-900 required-label">
                 Nomor HP
             </label>
 
             <input type="tel" 
                 id="sender_phone" 
                 name="sender_phone"
-                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 transition-all duration-200 hover:border-red-400 hover:ring-2 hover:ring-red-200 hover:shadow-md focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md @error('sender_phone') is-invalid @enderror"
+                class="bg-red-50 border border-red-200 text-gray-900 text-sm rounded-lg block w-full p-2.5 transition-all duration-200 hover:border-red-400 hover:ring-2 hover:ring-red-200 hover:shadow-md focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md @error('sender_phone') is-invalid @enderror"
                 value="{{ old('sender_phone', auth()->user()->no_wa) }}" 
                 required 
                 autocomplete="off">
@@ -153,14 +153,14 @@
         </div>
 
         <div class="md:col-span-2 relative">
-            <label for="sender_address_search" class="block mb-2 text-sm font-medium text-gray-700 required-label">
+            <label for="sender_address_search" class="block mb-2 text-sm font-medium text-red-900 required-label">
                 Cari Alamat Ongkir (Kec/Kel/Kodepos)
             </label>
 
             <div class="relative">
                 <input type="text" 
                     id="sender_address_search"
-                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pr-8 transition-all duration-200 hover:border-red-400 hover:ring-2 hover:ring-red-200 hover:shadow-md focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md"
+                    class="bg-red-50 border border-red-200 text-gray-900 text-sm rounded-lg block w-full p-2.5 pr-8 transition-all duration-200 hover:border-red-400 hover:ring-2 hover:ring-red-200 hover:shadow-md focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md"
                     placeholder="Ketik untuk mencari alamat..." 
                     autocomplete="off">
 
@@ -171,14 +171,14 @@
         </div>
 
         <div class="md:col-span-2">
-            <label for="sender_address" class="block mb-2 text-sm font-medium text-gray-700 required-label">
+            <label for="sender_address" class="block mb-2 text-sm font-medium text-red-900 required-label">
                 Detail Alamat Lengkap Pengirim (Min. 10 Karakter)
             </label>
 
             <textarea id="sender_address" 
                 name="sender_address" 
                 rows="3"
-                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 transition-all duration-200 hover:border-red-400 hover:ring-2 hover:ring-red-200 hover:shadow-md focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md @error('sender_address') is-invalid @enderror"
+                class="bg-red-50 border border-red-200 text-gray-900 text-sm rounded-lg block w-full p-2.5 transition-all duration-200 hover:border-red-400 hover:ring-2 hover:ring-red-200 hover:shadow-md focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md @error('sender_address') is-invalid @enderror"
                 placeholder="Contoh: Jl. Pahlawan No. 12, RT 01/RW 05" 
                 required>{{ old('sender_address', auth()->user()->address_detail) }}</textarea>
 
@@ -192,12 +192,12 @@
         </div>
 
         <div class="md:col-span-2">
-            <label class="flex items-center text-sm text-gray-600">
+            <label class="flex items-center text-sm text-red-900">
                 <input type="checkbox" 
                     id="save_sender_checkbox" 
                     name="save_sender" 
                     value="on"
-                    class="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500 mr-2">
+                    class="h-4 w-4 rounded border-red-300 text-red-600 focus:ring-red-500 mr-2 transition-all duration-200">
                 Simpan/Perbarui data pengirim ini
             </label>
         </div>
