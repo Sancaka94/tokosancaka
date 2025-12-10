@@ -206,80 +206,119 @@
 </div>
 
 
-                <div class="bg-white p-6 rounded-lg shadow-md border border-blue-700 transition-all duration-200 hover:ring-4 hover:ring-blue-400 hover:shadow-lg">
-                    <div class="flex justify-between items-center bg-blue-700 px-4 py-3 mb-6 rounded-lg shadow 
-            border border-transparent
-            transition-all duration-200
-            hover:shadow-2xl
-            hover:border-blue-300
-            hover:ring-2 hover:ring-blue-300">
+               <div class="bg-white p-6 rounded-lg shadow-md border border-blue-700 transition-all duration-200 hover:ring-4 hover:ring-blue-400 hover:shadow-lg">
 
-                        <h3 class="text-xl font-semibold text-white">
-                            <i class="fas fa-map-marker-alt text-white mr-2"></i>Informasi Penerima
-                        </h3>
-                       <div class="relative w-1/2">
-                            <input type="search" id="receiver_contact_search" 
-                            class="w-full pl-10 pr-4 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-900 transition-all duration-200 hover:border-blue-400 hover:ring-2 hover:ring-blue-200 hover:shadow-md focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-300 focus:shadow-md" placeholder="Cari dari kontak penerima..." autocomplete="off">
-                           <div class="absolute top-0 left-0 inline-flex items-center p-2 h-full text-gray-400">
-                                <i class="fas fa-search"></i>
-                            </div>
-                            <div id="receiver_contact_results" class="search-results-container hidden"></div>
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div class="relative">
-                            <label for="receiver_name" class="block mb-2 text-sm font-medium text-gray-700 required-label">Nama Penerima</label>
-                            <input type="search" id="receiver_name" name="receiver_name" 
-                            
-                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5
-       transition-all duration-200
-       hover:border-blue-400 hover:ring-2 hover:ring-blue-200 hover:shadow-md
-       focus:outline-none
-       focus:border-blue-500
-       focus:ring-4 focus:ring-blue-300
-       focus:shadow-md"
+    <div class="relative z-20 bg-blue-600 backdrop-blur px-4 py-3 rounded-lg shadow flex items-center justify-between mb-6 border border-blue-700 transition-all duration-200 hover:shadow-2xl hover:border-blue-400 hover:ring-2 hover:ring-blue-300">
+        
+        <h3 class="text-xl font-semibold text-white">
+            <i class="fas fa-map-marker-alt text-white mr-2"></i>
+            Informasi Penerima
+        </h3>
 
-                            
-                            @error('receiver_name') is-invalid @enderror" required autocomplete="off">
-                            @error('receiver_name')
-                                <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div>
-                            @enderror
-                        </div>
-                        <div class="relative">
-                            <label for="receiver_phone" class="block mb-2 text-sm font-medium text-gray-700 required-label">Nomor HP</label>
-                            <input type="tel" id="receiver_phone" name="receiver_phone" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 @error('receiver_phone') is-invalid @enderror" required autocomplete="off">
-                            @error('receiver_phone')
-                                <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div>
-                            @enderror
-                        </div>
-                        <div class="md:col-span-2 relative">
-                            <label for="receiver_address_search" class="block mb-2 text-sm font-medium text-gray-700 required-label">Cari Alamat Ongkir (Kec/Kel/Kodepos)</label>
-                            <div class="relative">
-                                <input type="text" id="receiver_address_search" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pr-8" placeholder="Ketik untuk mencari alamat..." autocomplete="off">
-                                <i id="receiver_address_check" class="fas fa-check-circle text-green-500 absolute top-1/2 right-3 transform -translate-y-1/2 hidden"></i>
-                            </div>
-                            <div id="receiver_address_results" class="search-results-container hidden"></div>
-                        </div>
-                        <div class="md:col-span-2">
-                            <label for="receiver_address" class="block mb-2 text-sm font-medium text-gray-700 required-label">Alamat Penerima Lengkap (Min. 10 Karakter)</label>
-                            <textarea id="receiver_address" name="receiver_address" rows="3" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 @error('receiver_address') is-invalid @enderror" placeholder="Contoh: Jl. Merdeka No. 45, RT 02/RW 03" required>{{ old('receiver_address') }}</textarea>
-                            
-                            {{-- BLOK ERROR SERVER LARAVEL --}}
-                            @error('receiver_address')
-                                <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div>
-                            @enderror
+        <div class="relative w-1/2">
+            <input type="search" 
+                id="receiver_contact_search"
+                class="w-full pl-10 pr-4 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-900 transition-all duration-200 hover:border-blue-500 hover:shadow-lg hover:ring-2 hover:ring-blue-300 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-300 focus:shadow-lg"
+                placeholder="Cari dari kontak penerima..." 
+                autocomplete="off">
 
-                            {{-- BLOK ERROR KUSTOM JAVASCRIPT (Default hidden) --}}
-                            <div id="receiver_address_feedback" class="invalid-feedback text-sm text-red-600 mt-1" style="display:none;">
-                                Alamat minimal 10 karakter.
-                            </div>
-                        </div>
-                         <div class="md:col-span-2">
-                                <label class="flex items-center text-sm text-gray-600"><input type="checkbox" id="save_receiver_checkbox" name="save_receiver" value="on" class="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500 mr-2"> Simpan data penerima ini</label>
-                         </div>
-                    </div>
-                </div>
+            <div class="absolute top-0 left-0 inline-flex items-center p-2 h-full text-gray-400">
+                <i class="fas fa-search"></i>
             </div>
+
+            <div id="receiver_contact_results" class="absolute z-50 w-full bg-white border border-blue-300 rounded-lg shadow-lg mt-1 hidden">
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
+
+        <div class="relative">
+            <label for="receiver_name" class="block mb-2 text-sm font-medium text-gray-700 required-label">
+                Nama Penerima
+            </label>
+
+            <input type="search" 
+                id="receiver_name" 
+                name="receiver_name"
+                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 transition-all duration-200 hover:border-blue-400 hover:ring-2 hover:ring-blue-200 hover:shadow-md focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-300 focus:shadow-md @error('receiver_name') is-invalid @enderror"
+                required 
+                autocomplete="off">
+
+            @error('receiver_name')
+                <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div>
+            @enderror
+        </div>
+
+        <div class="relative">
+            <label for="receiver_phone" class="block mb-2 text-sm font-medium text-gray-700 required-label">
+                Nomor HP
+            </label>
+
+            <input type="tel" 
+                id="receiver_phone" 
+                name="receiver_phone"
+                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 transition-all duration-200 hover:border-blue-400 hover:ring-2 hover:ring-blue-200 hover:shadow-md focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-300 focus:shadow-md @error('receiver_phone') is-invalid @enderror"
+                required 
+                autocomplete="off">
+
+            @error('receiver_phone')
+                <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div>
+            @enderror
+        </div>
+
+        <div class="md:col-span-2 relative">
+            <label for="receiver_address_search" class="block mb-2 text-sm font-medium text-gray-700 required-label">
+                Cari Alamat Ongkir (Kec/Kel/Kodepos)
+            </label>
+
+            <div class="relative">
+                <input type="text" 
+                    id="receiver_address_search"
+                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pr-8 transition-all duration-200 hover:border-blue-400 hover:ring-2 hover:ring-blue-200 hover:shadow-md focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-300 focus:shadow-md"
+                    placeholder="Ketik untuk mencari alamat..." 
+                    autocomplete="off">
+
+                <i id="receiver_address_check" class="fas fa-check-circle text-green-500 absolute top-1/2 right-3 transform -translate-y-1/2 hidden"></i>
+            </div>
+
+            <div id="receiver_address_results" class="search-results-container hidden"></div>
+        </div>
+
+        <div class="md:col-span-2">
+            <label for="receiver_address" class="block mb-2 text-sm font-medium text-gray-700 required-label">
+                Alamat Penerima Lengkap (Min. 10 Karakter)
+            </label>
+
+            <textarea id="receiver_address" 
+                name="receiver_address" 
+                rows="3"
+                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 transition-all duration-200 hover:border-blue-400 hover:ring-2 hover:ring-blue-200 hover:shadow-md focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-300 focus:shadow-md @error('receiver_address') is-invalid @enderror"
+                placeholder="Contoh: Jl. Merdeka No. 45, RT 02/RW 03" 
+                required>{{ old('receiver_address') }}</textarea>
+
+            @error('receiver_address')
+                <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div>
+            @enderror
+
+            <div id="receiver_address_feedback" class="invalid-feedback text-sm text-red-600 mt-1" style="display:none;">
+                Alamat minimal 10 karakter.
+            </div>
+        </div>
+
+        <div class="md:col-span-2">
+            <label class="flex items-center text-sm text-gray-600">
+                <input type="checkbox" 
+                    id="save_receiver_checkbox" 
+                    name="save_receiver" 
+                    value="on"
+                    class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2">
+                Simpan data penerima ini
+            </label>
+        </div>
+
+    </div>
+</div>
 
             <div class="lg:col-span-1 space-y-8">
                 <div class="bg-white p-6 rounded-lg shadow-md sticky top-8">
