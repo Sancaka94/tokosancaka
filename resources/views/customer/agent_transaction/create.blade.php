@@ -486,16 +486,20 @@
         }
     };
 
-    // --- 2. FORMATTER HELPER ---
+    // --- FORMATTER PERIODE ---
     function formatPeriodeID(periodeStr) {
-        if (!periodeStr || periodeStr === '-') return '-';
+        if (!periodeStr || periodeStr === '-' || periodeStr === 'null') return '-';
         let str = periodeStr.toString().trim();
+        
+        // Cek jika formatnya angka 6 digit (YYYYMM), misal: 202512
         if (/^\d{6}$/.test(str)) {
             let year = str.substring(0, 4);
             let month = parseInt(str.substring(4, 6));
             const months = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
             if (months[month]) return `${months[month]} ${year}`;
         }
+        
+        // Jika formatnya sudah teks seperti "DES 25" atau "DEC 2025", kembalikan apa adanya
         return str;
     }
 
@@ -652,7 +656,8 @@
             document.getElementById('pasca_loading').classList.add('hidden');
             document.getElementById('btn-cek-tagihan').disabled = false;
 
-            let d = data.data || data;
+            // Normalisasi data (mengatasi perbedaan struktur response)
+            let d = data.data || data; 
             let status = d.status ? d.status.toLowerCase() : '';
             let rc = d.rc ? String(d.rc) : '';
 
@@ -660,59 +665,78 @@
             if(status === 'sukses' || status === 'success' || rc === '00') {
                 document.getElementById('pasca_result').classList.remove('hidden');
 
-                // Mapping Tampilan
+                // 1. Mapping Info Pelanggan
                 document.getElementById('res_nama').innerText = d.customer_name || d.name || '-';
                 document.getElementById('res_id').innerText = d.customer_no || no;
-                
-                // --- PERBAIKAN LOGIKA PERIODE ---
-                let periodeStr = d.periode;
-                
-                // 1. Cek level desc
-                if (!periodeStr && d.desc && d.desc.periode) {
-                    periodeStr = d.desc.periode;
-                }
-                
-                // 2. [FIX] Cek level detail item (Wajib untuk PLN)
-                if ((!periodeStr || periodeStr === '-') && d.desc && d.desc.detail && Array.isArray(d.desc.detail) && d.desc.detail.length > 0) {
-                    periodeStr = d.desc.detail[0].periode;
-                }
-                
-                // Default jika tetap kosong
-                periodeStr = periodeStr || '-';
-                
-                // Render ke HTML
-            
-                document.getElementById('res_periode').innerText = formatPeriodeID(periodeStr);
-                document.getElementById('res_lembar').innerText = (d.desc && d.desc.lembar_tagihan) ? d.desc.lembar_tagihan + ' Lembar' : '1 Lembar';
 
-                // Hitung Harga
+                // [FIX PERIODE] Ambil periode dari berbagai kemungkinan lokasi
+                let rawPeriode = d.periode; 
+                // Jika kosong, cari di desc.periode
+                if (!rawPeriode && d.desc && d.desc.periode) rawPeriode = d.desc.periode;
+                // Jika masih kosong, cari di detail item pertama (PLN sering disini)
+                if (!rawPeriode && d.desc && d.desc.detail && d.desc.detail[0]) rawPeriode = d.desc.detail[0].periode;
+                
+                // Tampilkan Periode
+                document.getElementById('res_periode').innerText = formatPeriodeID(rawPeriode);
+                
+                let lembar = (d.desc && d.desc.lembar_tagihan) ? d.desc.lembar_tagihan + ' Lembar' : '1 Lembar';
+                document.getElementById('res_lembar').innerText = lembar;
+
+                // 2. Hitung Harga
+                // Pastikan parsing ke integer agar tidak dianggap string 0
                 let tagihanAsli = parseInt(d.price || d.selling_price || 0);
                 let adminBank = parseInt(d.admin || 0);
-                let marginAgen = 2500;
+                let marginAgen = 2500; // Margin keuntungan Anda
                 let totalBayar = tagihanAsli + marginAgen;
 
                 document.getElementById('res_modal').innerText = 'Rp ' + tagihanAsli.toLocaleString('id-ID');
                 document.getElementById('res_admin').innerText = 'Rp ' + adminBank.toLocaleString('id-ID');
                 document.getElementById('res_total').innerText = 'Rp ' + totalBayar.toLocaleString('id-ID');
 
-                // --- FORM HIDDEN (CRITICAL FIX) ---
-                document.getElementById('pay_sku').value = d.buyer_sku_code ? d.buyer_sku_code : sku; 
+                // 3. [FIX SKU] ISI FORM HIDDEN (CRITICAL FIX)
+                // Ambil buyer_sku_code dari API (post641598). 
+                let skuApi = d.buyer_sku_code;
+                
+                // VALIDASI EXTRA: Jika API tidak kasih SKU, atau malah kasih "pln" lagi, paksa ambil dari response inquiry
+                if (!skuApi || skuApi === 'pln' || skuApi === sku) { 
+                     // Cek apakah response inquiry punya buyer_sku_code yang valid
+                     if(d.buyer_sku_code && d.buyer_sku_code !== sku) {
+                         skuApi = d.buyer_sku_code;
+                     } else {
+                         // Fallback terakhir: jika API benar-benar tidak kasih kode unik, terpaksa pakai sku kategori
+                         // TAPI untuk PLN Pasca biasanya API PASTI kasih 'post...'
+                         console.warn('API Response Warning: SKU Unik tidak ditemukan di root object');
+                         // Coba cari di desc jika ada (jarang terjadi)
+                     }
+                }
+                
+                // Pastikan input hidden terisi
+                document.getElementById('pay_sku').value = skuApi || sku; 
                 document.getElementById('pay_ref_id').value = d.ref_id; 
                 document.getElementById('pay_price').value = totalBayar; 
                 document.getElementById('pay_no').value = d.customer_no;
 
-                // Render Detail Teknis & Item List (Sederhana)
-                renderDetailTeknis(sku, d, periodeStr);
+                // Debugging di Console Browser (Cek F12 jika masih gagal)
+                console.log("DATA BAYAR FINAL:", {
+                    sku_dikirim: document.getElementById('pay_sku').value,
+                    ref_id: d.ref_id,
+                    total_bayar: totalBayar,
+                    periode_mentah: rawPeriode
+                });
+
+                // 4. Render Detail
+                renderDetailTeknis(sku, d, rawPeriode);
                 renderItemList(sku, d);
 
             } else {
                 // --- JIKA GAGAL ---
                 const errorMsg = d.message || 'Tagihan tidak ditemukan.';
                 const emptyState = document.getElementById('pasca_empty');
-                emptyState.innerHTML = `<div class="text-center text-red-500 animate-pulse"><p class="font-bold">Gagal!</p><p>${errorMsg}</p><button onclick="resetPasca()" class="underline">Coba Lagi</button></div>`;
+                emptyState.innerHTML = `<div class="text-center text-red-500 animate-pulse"><p class="font-bold">Gagal!</p><p>${errorMsg}</p><button onclick="resetPasca()" class="underline mt-2">Coba Lagi</button></div>`;
                 emptyState.classList.remove('hidden');
             }
         })
+
         .catch(err => {
             console.error(err);
             alert('Gagal menghubungi server');
