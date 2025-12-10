@@ -90,7 +90,7 @@
     {{-- SELESAI KODE DINAMIS --}}
 
                 <div class="bg-white p-6 rounded-lg shadow-md">
-                    <div class="bg-red-500/90 backdrop-blur border-b border-red-600/50 px-4 py-3 rounded-lg shadow flex items-center justify-between mb-6">
+                    <div class="bg-red-600 backdrop-blur border-b border-red-700 px-4 py-3 rounded-lg shadow flex items-center justify-between mb-6">
 
                         <h3 class="text-xl font-semibold text-gray-800">
                             <i class="fas fa-arrow-up-from-bracket text-red-500 mr-2"></i>Informasi Pengirim
