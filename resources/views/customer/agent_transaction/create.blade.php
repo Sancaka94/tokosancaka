@@ -383,6 +383,7 @@
                             <input type="hidden" name="customer_no" id="pay_no">
                             <input type="hidden" name="ref_id" id="pay_ref_id"> 
                             <input type="hidden" name="selling_price" id="pay_price">
+                        
 
                                 {{-- <<< IDEMPOTENCY KEY PASCABAYAR >>> --}}
                                 <input type="hidden" name="idempotency_key" value="{{ $idempotencyKey ?? \Illuminate\Support\Str::uuid() }}" id="form_idempotency_pasca">
@@ -429,8 +430,10 @@
             <form id="form-pay-pra" action="{{ route('agent.transaction.store') }}" method="POST" class="p-4 bg-gray-50 border-t border-gray-100">
                 @csrf
                 <input type="hidden" name="sku" id="form_sku">
+                <input type="hidden" name="payment_type" value="pra">
                 <input type="hidden" name="customer_no" id="form_no">
                 <input type="hidden" name="customer_wa" id="form_customer_wa">
+        
 
                 {{-- <<< IDEMPOTENCY KEY PRABAYAR >>> --}}
                 <input type="hidden" name="idempotency_key" value="{{ $idempotencyKey ?? \Illuminate\Support\Str::uuid() }}" id="form_idempotency_pra">
