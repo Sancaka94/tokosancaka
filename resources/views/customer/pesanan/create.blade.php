@@ -214,7 +214,7 @@
         </h3>
         <div class="relative w-1/2">
             <input type="search" id="receiver_contact_search" 
-            class="w-full pl-10 pr-4 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-gray-900 transition-all duration-200 hover:border-blue-400 hover:ring-2 hover:ring-blue-200 hover:shadow-md focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-300 focus:shadow-md" placeholder="Cari Nama Atau No Hp Dari Data penerima..." autocomplete="off">
+            class="w-full pl-10 pr-4 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-gray-900 transition-all duration-200 hover:border-blue-400 hover:ring-2 hover:ring-blue-200 hover:shadow-md focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-300 focus:shadow-md" placeholder="Cari Nama Atau No Hp Dari Data penerima" autocomplete="off">
             <div class="absolute top-0 left-0 inline-flex items-center p-2 h-full text-blue-400">
                 <i class="fas fa-search"></i>
             </div>
@@ -1021,5 +1021,26 @@ if (result.isConfirmed) {
         }
     });
 });
+
+
+const text = "Cari Nama Atau No Hp Dari Data penerima";
+let index = 0;
+const input = document.getElementById("searchInput");
+
+function type() {
+    input.placeholder = text.slice(0, index);
+    index++;
+
+    if (index <= text.length) {
+        setTimeout(type, 120); // kecepatan mengetik
+    } else {
+        setTimeout(() => {
+            index = 0;
+            type(); // ulangi dari awal
+        }, 2000); // jeda ketika sudah selesai
+    }
+}
+
+type();
 </script>
 @endpush
