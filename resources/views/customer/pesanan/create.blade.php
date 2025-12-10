@@ -89,8 +89,8 @@
     @endif
     {{-- SELESAI KODE DINAMIS --}}
 
-                <div class="bg-red-600 p-6 rounded-lg shadow-md">
-                    <div class="flex justify-between items-center border-b pb-4 mb-6">
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div class="bg-red-600 flex justify-between items-center border-b pb-4 mb-6">
                         <h3 class="text-xl font-semibold text-gray-800">
                             <i class="fas fa-arrow-up-from-bracket text-red-500 mr-2"></i>Informasi Pengirim
                         </h3>
