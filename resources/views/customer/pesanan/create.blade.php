@@ -87,246 +87,333 @@
             </div>
         </div>
     @endif
-   
-{{-- SELESAI KODE DINAMIS --}}
+    {{-- SELESAI KODE DINAMIS --}}
 
-<div class="w-full grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+    <div class="bg-white p-6 rounded-lg shadow-md border border-red-700 transition-all duration-200 hover:ring-4 hover:ring-red-400 hover:shadow-lg">
 
-    <div class="lg:col-span-2 space-y-8">
+    <div class="relative z-20 bg-red-600 backdrop-blur px-4 py-3 rounded-lg shadow flex items-center justify-between mb-6 border border-red-700 transition-all duration-200 hover:shadow-2xl hover:border-red-400 hover:ring-2 hover:ring-red-300">
+        
+        <h3 class="text-xl font-semibold text-white">
+            <i class="fas fa-arrow-up-from-bracket text-white mr-2"></i>
+            Informasi Pengirim
+        </h3>
 
-        <div class="bg-white p-6 rounded-lg shadow-md border border-red-700 transition-all duration-200 hover:ring-4 hover:ring-red-400 hover:shadow-lg relative z-30">
-            
-            <div class="relative z-20 bg-red-600 backdrop-blur px-4 py-3 rounded-lg shadow flex items-center justify-between mb-6 border border-red-700 transition-all duration-200 hover:shadow-2xl hover:border-red-400 hover:ring-2 hover:ring-red-300">
-                <h3 class="text-xl font-semibold text-white">
-                    <i class="fas fa-arrow-up-from-bracket text-white mr-2"></i>
-                    Informasi Pengirim
-                </h3>
-                
-                <div class="relative w-1/2">
-                    <input type="search" id="sender_contact_search" class="w-full pl-10 pr-4 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-900 transition-all duration-200 hover:border-red-500 hover:shadow-lg hover:ring-2 hover:ring-red-300 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-lg" placeholder="Cari dari kontak pengirim..." autocomplete="off">
-                    <div class="absolute top-0 left-0 inline-flex items-center p-2 h-full text-gray-400">
-                        <i class="fas fa-search"></i>
-                    </div>
-                    <div id="sender_contact_results" class="absolute z-50 w-full bg-white border border-red-300 rounded-lg shadow-lg mt-1 hidden"></div>
-                </div>
+        <div class="relative w-1/2">
+            <input type="search" 
+                id="sender_contact_search"
+                class="w-full pl-10 pr-4 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-900 transition-all duration-200 hover:border-red-500 hover:shadow-lg hover:ring-2 hover:ring-red-300 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-lg"
+                placeholder="Cari dari kontak pengirim..." 
+                autocomplete="off">
+
+            <div class="absolute top-0 left-0 inline-flex items-center p-2 h-full text-gray-400">
+                <i class="fas fa-search"></i>
             </div>
 
-            <div class="grid grid-cols-1 gap-6 relative z-10">
-                
-                <div class="relative w-full">
-                    <label for="sender_name" class="block mb-2 text-sm font-medium text-gray-700 required-label">Nama Pengirim</label>
-                    <input type="search" id="sender_name" name="sender_name" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 transition-all duration-200 hover:border-red-400 hover:ring-2 hover:ring-red-200 hover:shadow-md focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md @error('sender_name') is-invalid @enderror" value="{{ old('sender_name', auth()->user()->nama_lengkap) }}" required autocomplete="off">
-                    @error('sender_name') <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div> @enderror
-                </div>
-
-                <div class="relative w-full">
-                    <label for="sender_phone" class="block mb-2 text-sm font-medium text-gray-700 required-label">Nomor HP</label>
-                    <input type="tel" id="sender_phone" name="sender_phone" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 transition-all duration-200 hover:border-red-400 hover:ring-2 hover:ring-red-200 hover:shadow-md focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md @error('sender_phone') is-invalid @enderror" value="{{ old('sender_phone', auth()->user()->no_wa) }}" required autocomplete="off">
-                    @error('sender_phone') <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div> @enderror
-                </div>
-
-                <div class="relative w-full">
-                    <label for="sender_address_search" class="block mb-2 text-sm font-medium text-gray-700 required-label">Cari Alamat Ongkir (Kec/Kel/Kodepos)</label>
-                    <div class="relative">
-                        <input type="text" id="sender_address_search" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pr-8 transition-all duration-200 hover:border-red-400 hover:ring-2 hover:ring-red-200 hover:shadow-md focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md" placeholder="Ketik untuk mencari alamat..." autocomplete="off">
-                        <i id="sender_address_check" class="fas fa-check-circle text-green-500 absolute top-1/2 right-3 transform -translate-y-1/2 hidden"></i>
-                    </div>
-                    <div id="sender_address_results" class="search-results-container hidden"></div>
-                </div>
-
-                <div class="relative w-full">
-                    <label for="sender_address" class="block mb-2 text-sm font-medium text-gray-700 required-label">Detail Alamat Lengkap Pengirim (Min. 10 Karakter)</label>
-                    <textarea id="sender_address" name="sender_address" rows="3" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 transition-all duration-200 hover:border-red-400 hover:ring-2 hover:ring-red-200 hover:shadow-md focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md @error('sender_address') is-invalid @enderror" placeholder="Contoh: Jl. Pahlawan No. 12, RT 01/RW 05" required>{{ old('sender_address', auth()->user()->address_detail) }}</textarea>
-                    @error('sender_address') <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div> @enderror
-                    <div id="sender_address_feedback" class="invalid-feedback text-sm text-red-600 mt-1" style="display:none;">Alamat minimal 10 karakter.</div>
-                </div>
-
-                <div class="relative w-full">
-                    <label class="flex items-center text-sm text-gray-600">
-                        <input type="checkbox" id="save_sender_checkbox" name="save_sender" value="on" class="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500 mr-2"> Simpan/Perbarui data pengirim ini
-                    </label>
-                </div>
-            </div>
-        </div>
-
-        <div class="bg-white p-6 rounded-lg shadow-md border border-blue-700 transition-all duration-200 hover:ring-4 hover:ring-blue-400 hover:shadow-lg relative z-20">
-            
-            <div class="relative z-20 bg-blue-600 backdrop-blur px-4 py-3 rounded-lg shadow flex items-center justify-between mb-6 border border-blue-700 transition-all duration-200 hover:shadow-2xl hover:border-blue-400 hover:ring-2 hover:ring-blue-300">
-                <h3 class="text-xl font-semibold text-white">
-                    <i class="fas fa-map-marker-alt text-white mr-2"></i>
-                    Informasi Penerima
-                </h3>
-                
-                <div class="relative w-1/2">
-                    <input type="search" id="receiver_contact_search" class="w-full pl-10 pr-4 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-900 transition-all duration-200 hover:border-blue-500 hover:shadow-lg hover:ring-2 hover:ring-blue-300 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-300 focus:shadow-lg" placeholder="Cari dari kontak penerima..." autocomplete="off">
-                    <div class="absolute top-0 left-0 inline-flex items-center p-2 h-full text-gray-400">
-                        <i class="fas fa-search"></i>
-                    </div>
-                    <div id="receiver_contact_results" class="absolute z-50 w-full bg-white border border-blue-300 rounded-lg shadow-lg mt-1 hidden"></div>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 gap-6 relative z-10">
-                
-                <div class="relative w-full">
-                    <label for="receiver_name" class="block mb-2 text-sm font-medium text-gray-700 required-label">Nama Penerima</label>
-                    <input type="search" id="receiver_name" name="receiver_name" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 transition-all duration-200 hover:border-blue-400 hover:ring-2 hover:ring-blue-200 hover:shadow-md focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-300 focus:shadow-md @error('receiver_name') is-invalid @enderror" required autocomplete="off">
-                    @error('receiver_name') <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div> @enderror
-                </div>
-
-                <div class="relative w-full">
-                    <label for="receiver_phone" class="block mb-2 text-sm font-medium text-gray-700 required-label">Nomor HP</label>
-                    <input type="tel" id="receiver_phone" name="receiver_phone" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 transition-all duration-200 hover:border-blue-400 hover:ring-2 hover:ring-blue-200 hover:shadow-md focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-300 focus:shadow-md @error('receiver_phone') is-invalid @enderror" required autocomplete="off">
-                    @error('receiver_phone') <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div> @enderror
-                </div>
-
-                <div class="relative w-full">
-                    <label for="receiver_address_search" class="block mb-2 text-sm font-medium text-gray-700 required-label">Cari Alamat Ongkir (Kec/Kel/Kodepos)</label>
-                    <div class="relative">
-                        <input type="text" id="receiver_address_search" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pr-8 transition-all duration-200 hover:border-blue-400 hover:ring-2 hover:ring-blue-200 hover:shadow-md focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-300 focus:shadow-md" placeholder="Ketik untuk mencari alamat..." autocomplete="off">
-                        <i id="receiver_address_check" class="fas fa-check-circle text-green-500 absolute top-1/2 right-3 transform -translate-y-1/2 hidden"></i>
-                    </div>
-                    <div id="receiver_address_results" class="search-results-container hidden"></div>
-                </div>
-
-                <div class="relative w-full">
-                    <label for="receiver_address" class="block mb-2 text-sm font-medium text-gray-700 required-label">Alamat Penerima Lengkap (Min. 10 Karakter)</label>
-                    <textarea id="receiver_address" name="receiver_address" rows="3" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 transition-all duration-200 hover:border-blue-400 hover:ring-2 hover:ring-blue-200 hover:shadow-md focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-300 focus:shadow-md @error('receiver_address') is-invalid @enderror" placeholder="Contoh: Jl. Merdeka No. 45, RT 02/RW 03" required>{{ old('receiver_address') }}</textarea>
-                    @error('receiver_address') <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div> @enderror
-                    <div id="receiver_address_feedback" class="invalid-feedback text-sm text-red-600 mt-1" style="display:none;">Alamat minimal 10 karakter.</div>
-                </div>
-
-                <div class="relative w-full">
-                    <label class="flex items-center text-sm text-gray-600">
-                        <input type="checkbox" id="save_receiver_checkbox" name="save_receiver" value="on" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2"> Simpan data penerima ini
-                    </label>
-                </div>
+            <div id="sender_contact_results" class="absolute z-50 w-full bg-white border border-red-300 rounded-lg shadow-lg mt-1 hidden">
             </div>
         </div>
     </div>
 
-    <div class="lg:col-span-1">
-        <div class="sticky top-8 bg-white p-6 rounded-lg shadow-md border border-green-700 transition-all duration-200 hover:ring-4 hover:ring-green-400 hover:shadow-lg relative z-10">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
 
-            <div class="relative z-20 bg-green-600 backdrop-blur px-4 py-3 rounded-lg shadow flex items-center justify-between mb-6 border border-green-700 transition-all duration-200 hover:shadow-2xl hover:border-green-400 hover:ring-2 hover:ring-green-300">
-                <h3 class="text-xl font-semibold text-white">
-                    <i class="fas fa-box-open text-white mr-2"></i>
-                    Detail Paket
-                </h3>
+        <div class="relative">
+            <label for="sender_name" class="block mb-2 text-sm font-medium text-gray-700 required-label">
+                Nama Pengirim
+            </label>
+
+            <input type="search" 
+                id="sender_name" 
+                name="sender_name"
+                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 transition-all duration-200 hover:border-red-400 hover:ring-2 hover:ring-red-200 hover:shadow-md focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md @error('sender_name') is-invalid @enderror"
+                value="{{ old('sender_name', auth()->user()->nama_lengkap) }}" 
+                required 
+                autocomplete="off">
+
+            @error('sender_name')
+                <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div>
+            @enderror
+        </div>
+
+        <div class="relative">
+            <label for="sender_phone" class="block mb-2 text-sm font-medium text-gray-700 required-label">
+                Nomor HP
+            </label>
+
+            <input type="tel" 
+                id="sender_phone" 
+                name="sender_phone"
+                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 transition-all duration-200 hover:border-red-400 hover:ring-2 hover:ring-red-200 hover:shadow-md focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md @error('sender_phone') is-invalid @enderror"
+                value="{{ old('sender_phone', auth()->user()->no_wa) }}" 
+                required 
+                autocomplete="off">
+
+            @error('sender_phone')
+                <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div>
+            @enderror
+        </div>
+
+        <div class="md:col-span-2 relative">
+            <label for="sender_address_search" class="block mb-2 text-sm font-medium text-gray-700 required-label">
+                Cari Alamat Ongkir (Kec/Kel/Kodepos)
+            </label>
+
+            <div class="relative">
+                <input type="text" 
+                    id="sender_address_search"
+                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pr-8 transition-all duration-200 hover:border-red-400 hover:ring-2 hover:ring-red-200 hover:shadow-md focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md"
+                    placeholder="Ketik untuk mencari alamat..." 
+                    autocomplete="off">
+
+                <i id="sender_address_check" class="fas fa-check-circle text-green-500 absolute top-1/2 right-3 transform -translate-y-1/2 hidden"></i>
             </div>
 
-            <div class="space-y-4">
-                <div>
-                    <label for="item_description" class="block mb-2 text-sm font-medium text-gray-700 required-label">Deskripsi Barang</label>
-                    <input type="text" id="item_description" name="item_description" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 transition-all duration-200 hover:border-green-400 hover:ring-2 hover:ring-green-200 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-300 @error('item_description') is-invalid @enderror" required>
-                    @error('item_description') <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div> @enderror
-                </div>
-                
-                <div>
-                    <label for="item_price" class="block mb-2 text-sm font-medium text-gray-700 required-label">Harga Barang (Rp)</label>
-                    <input type="number" name="item_price" id="item_price" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 transition-all duration-200 hover:border-green-400 hover:ring-2 hover:ring-green-200 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-300 @error('item_price') is-invalid @enderror" required min="1">
-                    @error('item_price') <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div> @enderror
-                </div>
+            <div id="sender_address_results" class="search-results-container hidden"></div>
+        </div>
 
-                <div>
-                    <label for="weight" class="block mb-2 text-sm font-medium text-gray-700 required-label">Berat (gram)</label>
-                    <input type="number" id="weight" name="weight" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 transition-all duration-200 hover:border-green-400 hover:ring-2 hover:ring-green-200 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-300 @error('weight') is-invalid @enderror" required min="1">
-                    @error('weight') <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div> @enderror
-                </div>
+        <div class="md:col-span-2">
+            <label for="sender_address" class="block mb-2 text-sm font-medium text-gray-700 required-label">
+                Detail Alamat Lengkap Pengirim (Min. 10 Karakter)
+            </label>
 
-                <div class="grid grid-cols-3 gap-4">
-                    <div>
-                        <label for="length" class="block mb-2 text-sm font-medium text-gray-700">P (cm)</label>
-                        <input type="number" id="length" name="length" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 transition-all duration-200 hover:border-green-400 hover:ring-2 hover:ring-green-200 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-300">
-                    </div>
-                    <div>
-                        <label for="width" class="block mb-2 text-sm font-medium text-gray-700">L (cm)</label>
-                        <input type="number" id="width" name="width" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 transition-all duration-200 hover:border-green-400 hover:ring-2 hover:ring-green-200 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-300">
-                    </div>
-                    <div>
-                        <label for="height" class="block mb-2 text-sm font-medium text-gray-700">T (cm)</label>
-                        <input type="number" id="height" name="height" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 transition-all duration-200 hover:border-green-400 hover:ring-2 hover:ring-green-200 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-300">
-                    </div>
-                </div>
+            <textarea id="sender_address" 
+                name="sender_address" 
+                rows="3"
+                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 transition-all duration-200 hover:border-red-400 hover:ring-2 hover:ring-red-200 hover:shadow-md focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md @error('sender_address') is-invalid @enderror"
+                placeholder="Contoh: Jl. Pahlawan No. 12, RT 01/RW 05" 
+                required>{{ old('sender_address', auth()->user()->address_detail) }}</textarea>
 
-                <div>
-                    <label for="item_type" class="block mb-2 text-sm font-medium text-gray-700 required-label">Jenis Barang</label>
-                    <select name="item_type" id="item_type" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 transition-all duration-200 hover:border-green-400 hover:ring-2 hover:ring-green-200 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-300 @error('item_type') is-invalid @enderror" required>
-                        <option value="" disabled selected>Pilih...</option>
-                        <option value="1">Elektronik</option>
-                        <option value="2">Pakaian</option>
-                        <option value="3">Pecah Belah</option>
-                        <option value="4">Dokumen</option>
-                        <option value="7">Lainnya</option>
-                        </select>
-                    @error('item_type') <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div> @enderror
-                </div>
+            @error('sender_address')
+                <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div>
+            @enderror
 
-                <div>
-                    <label for="service_type" class="block mb-2 text-sm font-medium text-gray-700 required-label">Jenis Layanan</label>
-                    <select name="service_type" id="service_type" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 transition-all duration-200 hover:border-green-400 hover:ring-2 hover:ring-green-200 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-300 @error('service_type') is-invalid @enderror" required>
-                        <option value="" disabled {{ old('service_type') == '' ? 'selected' : '' }}>Pilih...</option>
-                        <option value="regular" {{ old('service_type') == 'regular' ? 'selected' : '' }}>Regular / Cargo</option>
-                        <option value="sameday" {{ old('service_type') == 'sameday' ? 'selected' : '' }}>Grab / Gosend</option>
-                    </select>
-                    @error('service_type') <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div> @enderror
-                </div>
+            <div id="sender_address_feedback" class="invalid-feedback text-sm text-red-600 mt-1" style="display:none;">
+                Alamat minimal 10 karakter.
+            </div>
+        </div>
 
-                <div>
-                    <label for="ansuransi" class="block mb-2 text-sm font-medium text-gray-700 required-label">Asuransi</label>
-                    <select name="ansuransi" id="ansuransi" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 transition-all duration-200 hover:border-green-400 hover:ring-2 hover:ring-green-200 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-300 @error('ansuransi') is-invalid @enderror" required>
-                        <option value="tidak" selected>Tidak</option>
-                        <option value="iya">Iya</option>
-                    </select>
-                    @error('ansuransi') <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div> @enderror
-                </div>
+        <div class="md:col-span-2">
+            <label class="flex items-center text-sm text-gray-600">
+                <input type="checkbox" 
+                    id="save_sender_checkbox" 
+                    name="save_sender" 
+                    value="on"
+                    class="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500 mr-2">
+                Simpan/Perbarui data pengirim ini
+            </label>
+        </div>
 
-                <hr class="border-green-200 my-4"/>
+    </div>
+</div>
 
-                <div>
-                    <label for="selected_expedition_display" class="block mb-2 text-sm font-medium text-gray-700 required-label">Pilih Ekspedisi</label>
-                    <input type="text" id="selected_expedition_display" class="cursor-pointer bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 text-center font-semibold transition-all duration-200 hover:border-green-400 hover:ring-2 hover:ring-green-200 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-300" placeholder="Lengkapi data & klik di sini" readonly required>
-                </div>
 
-                <div>
-                    <label for="paymentMethodButton" class="block mb-2 text-sm font-medium text-gray-700 required-label">Metode Pembayaran</label>
-                    <div id="paymentMethodButton" class="cursor-pointer bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg w-full p-2.5 flex justify-between items-center transition-all duration-200 hover:border-green-400 hover:ring-2 hover:ring-green-200 hover:bg-white">
-                        <div class="flex items-center">
-                            <img id="selectedPaymentLogo" src="https://cdn-icons-png.flaticon.com/512/2331/2331941.png" alt="Logo" class="w-6 h-6 mr-2">
-                            <span id="selectedPaymentName">Pilih...</span>
+                <div class="bg-white p-6 rounded-lg shadow-md border border-blue-700 transition-all duration-200 hover:ring-4 hover:ring-blue-400 hover:shadow-lg">
+                    <div class="flex justify-between items-center bg-blue-700 px-4 py-3 mb-6 rounded-lg shadow 
+            border border-transparent
+            transition-all duration-200
+            hover:shadow-2xl
+            hover:border-blue-300
+            hover:ring-2 hover:ring-blue-300">
+
+                        <h3 class="text-xl font-semibold text-white">
+                            <i class="fas fa-map-marker-alt text-white mr-2"></i>Informasi Penerima
+                        </h3>
+                       <div class="relative w-1/2">
+                            <input type="search" id="receiver_contact_search" 
+                            class="w-full pl-10 pr-4 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-900 transition-all duration-200 hover:border-blue-400 hover:ring-2 hover:ring-blue-200 hover:shadow-md focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-300 focus:shadow-md" placeholder="Cari dari kontak penerima..." autocomplete="off">
+                           <div class="absolute top-0 left-0 inline-flex items-center p-2 h-full text-gray-400">
+                                <i class="fas fa-search"></i>
+                            </div>
+                            <div id="receiver_contact_results" class="search-results-container hidden"></div>
                         </div>
-                        <i class="fas fa-chevron-down text-gray-400"></i>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="relative">
+                            <label for="receiver_name" class="block mb-2 text-sm font-medium text-gray-700 required-label">Nama Penerima</label>
+                            <input type="search" id="receiver_name" name="receiver_name" 
+                            
+                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5
+       transition-all duration-200
+       hover:border-blue-400 hover:ring-2 hover:ring-blue-200 hover:shadow-md
+       focus:outline-none
+       focus:border-blue-500
+       focus:ring-4 focus:ring-blue-300
+       focus:shadow-md"
+
+                            
+                            @error('receiver_name') is-invalid @enderror" required autocomplete="off">
+                            @error('receiver_name')
+                                <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        <div class="relative">
+                            <label for="receiver_phone" class="block mb-2 text-sm font-medium text-gray-700 required-label">Nomor HP</label>
+                            <input type="tel" id="receiver_phone" name="receiver_phone" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 @error('receiver_phone') is-invalid @enderror" required autocomplete="off">
+                            @error('receiver_phone')
+                                <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        <div class="md:col-span-2 relative">
+                            <label for="receiver_address_search" class="block mb-2 text-sm font-medium text-gray-700 required-label">Cari Alamat Ongkir (Kec/Kel/Kodepos)</label>
+                            <div class="relative">
+                                <input type="text" id="receiver_address_search" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pr-8" placeholder="Ketik untuk mencari alamat..." autocomplete="off">
+                                <i id="receiver_address_check" class="fas fa-check-circle text-green-500 absolute top-1/2 right-3 transform -translate-y-1/2 hidden"></i>
+                            </div>
+                            <div id="receiver_address_results" class="search-results-container hidden"></div>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label for="receiver_address" class="block mb-2 text-sm font-medium text-gray-700 required-label">Alamat Penerima Lengkap (Min. 10 Karakter)</label>
+                            <textarea id="receiver_address" name="receiver_address" rows="3" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 @error('receiver_address') is-invalid @enderror" placeholder="Contoh: Jl. Merdeka No. 45, RT 02/RW 03" required>{{ old('receiver_address') }}</textarea>
+                            
+                            {{-- BLOK ERROR SERVER LARAVEL --}}
+                            @error('receiver_address')
+                                <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div>
+                            @enderror
+
+                            {{-- BLOK ERROR KUSTOM JAVASCRIPT (Default hidden) --}}
+                            <div id="receiver_address_feedback" class="invalid-feedback text-sm text-red-600 mt-1" style="display:none;">
+                                Alamat minimal 10 karakter.
+                            </div>
+                        </div>
+                         <div class="md:col-span-2">
+                                <label class="flex items-center text-sm text-gray-600"><input type="checkbox" id="save_receiver_checkbox" name="save_receiver" value="on" class="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500 mr-2"> Simpan data penerima ini</label>
+                         </div>
                     </div>
                 </div>
+            </div>
 
-                <div class="pt-4">
-                    <button type="button" id="confirmBtn" class="w-full text-white bg-red-600 hover:bg-red-700 font-medium rounded-lg text-sm px-5 py-3 text-center shadow hover:shadow-lg transition-all duration-200 transform hover:-translate-y-0.5">
-                        Buat Pesanan
-                    </button>
+            <div class="lg:col-span-1 space-y-8">
+                <div class="bg-white p-6 rounded-lg shadow-md sticky top-8">
+                    <h3 class="text-xl font-semibold text-gray-800 border-b pb-4 mb-6">
+                        <i class="fas fa-box-open text-yellow-500 mr-2"></i>Detail Paket
+                    </h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label for="item_description" class="block mb-2 text-sm font-medium text-gray-700 required-label">Deskripsi Barang</label>
+                            <input type="text" id="item_description" name="item_description" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 @error('item_description') is-invalid @enderror" required>
+                            @error('item_description')
+                                <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        <div>
+                            <label for="item_price" class="block mb-2 text-sm font-medium text-gray-700 required-label">Harga Barang (Rp)</label>
+                            <input type="number" name="item_price" id="item_price" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 @error('item_price') is-invalid @enderror" required min="1">
+                            @error('item_price')
+                                <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        <div>
+                            <label for="weight" class="block mb-2 text-sm font-medium text-gray-700 required-label">Berat (gram)</label>
+                            <input type="number" id="weight" name="weight" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 @error('weight') is-invalid @enderror" required min="1">
+                            @error('weight')
+                                <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        <div class="grid grid-cols-3 gap-4">
+                            <div><label for="length" class="block mb-2 text-sm font-medium text-gray-700">P (cm)</label><input type="number" id="length" name="length" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5"></div>
+                            <div><label for="width" class="block mb-2 text-sm font-medium text-gray-700">L (cm)</label><input type="number" id="width" name="width" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5"></div>
+                            <div><label for="height" class="block mb-2 text-sm font-medium text-gray-700">T (cm)</label><input type="number" id="height" name="height" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5"></div>
+                        </div>
+                        <div>
+                            <label for="item_type" class="block mb-2 text-sm font-medium text-gray-700 required-label">Jenis Barang</label>
+                            <select name="item_type" id="item_type" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 @error('item_type') is-invalid @enderror" required>
+                                <option value="" disabled selected>Pilih...</option>
+                                <option value="1">Elektronik</option>
+                                <option value="2">Pakaian</option>
+                                <option value="3">Pecah Belah</option>
+                                <option value="4">Dokumen</option>
+                                <option value="5">Rumah Tangga</option>
+                                <option value="6">Aksesoris</option>
+                                <option value="7">Lainnya</option>
+                                <option value="8">Makanan & Minuman</option>
+                                <option value="9">Peralatan Dapur</option>
+                                <option value="10">Peralatan Kantor</option>
+                                <option value="11">Buku & Alat Tulis</option>
+                                <option value="12">Mainan & Hobi</option>
+                                <option value="13">Peralatan Olahraga</option>
+                                <option value="14">Kosmetik & Kecantikan</option>
+                                <option value="15">Kesehatan & Obat</option>
+                                <option value="16">Alat Musik</option>
+                                <option value="17">Perhiasan</option>
+                                <option value="18">Otomotif</option>
+                                <option value="19">Peralatan Pertukangan</option>
+                                <option value="20">Dekorasi Rumah</option>
+                                <option value="21">Produk Bayi & Anak</option>
+                                <option value="22">Peralatan Kebersihan</option>
+                                <option value="23">Bahan Bangunan</option>
+                                <option value="24">Alat Elektrik</option>
+                                <option value="25">Tanaman & Pertanian</option>
+                            </select>
+                            @error('item_type')
+                                <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        <div>
+    <label for="service_type" class="block mb-2 text-sm font-medium text-gray-700 required-label">Jenis Layanan</label>
+    <select name="service_type" id="service_type" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 @error('service_type') is-invalid @enderror" required>
+        <option value="" disabled {{ old('service_type') == '' ? 'selected' : '' }}>Pilih...</option>
+        
+        {{-- Menambahkan logika 'selected' menggunakan old() --}}
+        <option value="regular" {{ old('service_type') == 'regular' ? 'selected' : '' }}>Regular / Cargo</option>
+        <option value="sameday" {{ old('service_type') == 'sameday' ? 'selected' : '' }}>Grab / Gosend</option>
+
+
+    </select>
+    @error('service_type')
+        <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div>
+    @enderror
+</div>
+                        <div>
+                            <label for="ansuransi" class="block mb-2 text-sm font-medium text-gray-700 required-label">Asuransi</label>
+                            <select name="ansuransi" id="ansuransi" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 @error('ansuransi') is-invalid @enderror" required>
+                                <option value="tidak" selected>Tidak</option><option value="iya">Iya</option>
+                            </select>
+                            @error('ansuransi')
+                                <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        <hr/>
+                        <div>
+                            <label for="selected_expedition_display" class="block mb-2 text-sm font-medium text-gray-700 required-label">Pilih Ekspedisi</label>
+                            <input type="text" id="selected_expedition_display" class="cursor-pointer bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 text-center font-semibold" placeholder="Lengkapi data & klik di sini" readonly required>
+                        </div>
+                        <div>
+                            <label for="paymentMethodButton" class="block mb-2 text-sm font-medium text-gray-700 required-label">Metode Pembayaran</label>
+                            <div id="paymentMethodButton" class="cursor-pointer bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg w-full p-2.5 flex justify-between items-center">
+                                <div class="flex items-center"><img id="selectedPaymentLogo" src="https://cdn-icons-png.flaticon.com/512/2331/2331941.png" alt="Logo" class="w-6 h-6 mr-2"><span id="selectedPaymentName">Pilih...</span></div><i class="fas fa-chevron-down text-gray-400"></i>
+                            </div>
+                        </div>
+                        <div class="pt-4">
+                            <button type="button" id="confirmBtn" class="w-full text-white bg-red-600 hover:bg-red-700 font-medium rounded-lg text-sm px-5 py-3 text-center">
+                                Buat Pesanan
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-</div> <input type="hidden" name="sender_id" id="sender_id">
-<input type="hidden" name="receiver_id" id="receiver_id">
-<input type="hidden" name="idempotency_key" value="{{ $idempotencyKey }}">
-<input type="hidden" name="sender_lat" id="sender_lat"><input type="hidden" name="sender_lng" id="sender_lng">
-<input type="hidden" name="sender_province" id="sender_province"><input type="hidden" name="sender_regency" id="sender_regency">
-<input type="hidden" name="sender_district" id="sender_district"><input type="hidden" name="sender_village" id="sender_village">
-<input type="hidden" name="sender_postal_code" id="sender_postal_code">
-<input type="hidden" name="sender_district_id" id="sender_district_id" required>
-<input type="hidden" name="sender_subdistrict_id" id="sender_subdistrict_id" required>
-<input type="hidden" name="receiver_lat" id="receiver_lat"><input type="hidden" name="receiver_lng" id="receiver_lng">
-<input type="hidden" name="receiver_province" id="receiver_province"><input type="hidden" name="receiver_regency" id="receiver_regency">
-<input type="hidden" name="receiver_district" id="receiver_district"><input type="hidden" name="receiver_village" id="receiver_village">
-<input type="hidden" name="receiver_postal_code" id="receiver_postal_code">
-<input type="hidden" name="receiver_district_id" id="receiver_district_id" required>
-<input type="hidden" name="receiver_subdistrict_id" id="receiver_subdistrict_id" required>
-<input type="hidden" name="expedition" id="expedition" required>
-<input type="hidden" name="payment_method" id="payment_method" required>
+        {{-- Hidden fields untuk data API --}}
+        <input type="hidden" name="sender_id" id="sender_id">
+        <input type="hidden" name="receiver_id" id="receiver_id">
+        <input type="hidden" name="idempotency_key" value="{{ $idempotencyKey }}">
+        <input type="hidden" name="sender_lat" id="sender_lat"><input type="hidden" name="sender_lng" id="sender_lng">
+        <input type="hidden" name="sender_province" id="sender_province"><input type="hidden" name="sender_regency" id="sender_regency">
+        <input type="hidden" name="sender_district" id="sender_district"><input type="hidden" name="sender_village" id="sender_village">
+        <input type="hidden" name="sender_postal_code" id="sender_postal_code">
+        <input type="hidden" name="sender_district_id" id="sender_district_id" required>
+        <input type="hidden" name="sender_subdistrict_id" id="sender_subdistrict_id" required>
+        <input type="hidden" name="receiver_lat" id="receiver_lat"><input type="hidden" name="receiver_lng" id="receiver_lng">
+        <input type="hidden" name="receiver_province" id="receiver_province"><input type="hidden" name="receiver_regency" id="receiver_regency">
+        <input type="hidden" name="receiver_district" id="receiver_district"><input type="hidden" name="receiver_village" id="receiver_village">
+        <input type="hidden" name="receiver_postal_code" id="receiver_postal_code">
+        <input type="hidden" name="receiver_district_id" id="receiver_district_id" required>
+        <input type="hidden" name="receiver_subdistrict_id" id="receiver_subdistrict_id" required>
+        <input type="hidden" name="expedition" id="expedition" required>
+        <input type="hidden" name="payment_method" id="payment_method" required>
+    </form>
+</div>
 
-</form> <div id="ongkirModal" class="fixed inset-0 bg-gray-800 bg-opacity-60 z-50 hidden flex items-center justify-center">
+<div id="ongkirModal" class="fixed inset-0 bg-gray-800 bg-opacity-60 z-50 hidden flex items-center justify-center">
     <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4">
         <div class="p-4 border-b flex justify-between items-center">
             <h5 class="text-lg font-semibold"><i class="fas fa-shipping-fast mr-2 text-red-600"></i>Pilihan Ekspedisi</h5>
@@ -350,14 +437,26 @@
             <ul id="paymentOptionsList" class="divide-y">
                 <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="Potong Saldo" data-label="Potong Saldo"><img src="https://cdn-icons-png.flaticon.com/512/1086/1086060.png" class="w-8 h-8 mr-4">Potong Saldo (Tersedia: Rp {{ number_format(Auth::user()->saldo ?? 0) }})</li>
                 <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="DOKU_JOKUL" data-label="REKOMEN SANCAKA"><img src="https://tokosancaka.com/public/assets/doku.png" class="w-8 h-8 mr-4">Rekomendasi Sancaka Express Via VA, QRIS Dan E-Wallet</li>
-                 </ul>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50 cod-payment-option" data-value="COD" data-label="COD Ongkir"><img src="{{ asset('public/assets/cod.png') }}" class="w-8 h-8 mr-4">COD Ongkir</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50 cod-payment-option" data-value="CODBARANG" data-label="COD Barang + Ongkir"><img src="{{ asset('public/assets/cod.png') }}" class="w-8 h-8 mr-4">COD Barang + Ongkir</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="PERMATAVA" data-label="Permata VA"><img src="{{ asset('public/assets/permata.webp') }}" class="w-8 h-8 mr-4">Permata VA</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="BNIVA" data-label="BNI VA"><img src="{{ asset('public/assets/bni.webp') }}" class="w-8 h-8 mr-4">BNI VA</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="BRIVA" data-label="BRI VA"><img src="{{ asset('public/assets/bri.webp') }}" class="w-8 h-8 mr-4">BRI VA</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="MANDIRIVA" data-label="Mandiri VA"><img src="{{ asset('public/assets/mandiri.webp') }}" class="w-8 h-8 mr-4">Mandiri VA</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="BCAVA" data-label="BCA VA"><img src="{{ asset('public/assets/bca.webp') }}" class="w-8 h-8 mr-4">BCA VA</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="ALFAMART" data-label="Alfamart"><img src="{{ asset('public/assets/alfamart.webp') }}" class="w-8 h-8 mr-4">Alfamart</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="INDOMARET" data-label="Indomaret"><img src="{{ asset('public/assets/indomaret.webp') }}" class="w-8 h-8 mr-4">Indomaret</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="OVO" data-label="OVO"><img src="{{ asset('public/assets/ovo.webp') }}" class="w-8 h-8 mr-4">OVO</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="DANA" data-label="DANA"><img src="{{ asset('public/assets/dana.webp') }}" class="w-8 h-8 mr-4">DANA</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="SHOPEEPAY" data-label="ShopeePay"><img src="{{ asset('public/assets/shopeepay.webp') }}" class="w-8 h-8 mr-4">ShopeePay</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="QRIS" data-label="QRIS"><img src="{{ asset('public/assets/qris2.png') }}" class="w-8 h-8 mr-4">QRIS</li>
+            </ul>
         </div>
-        <div class="p-4 border-t text-right">
-            <button type="button" class="close-modal-btn px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Tutup</button>
-        </div>
+           <div class="p-4 border-t text-right">
+                <button type="button" class="close-modal-btn px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Tutup</button>
+            </div>
     </div>
 </div>
-
 @endsection
 
 @push('scripts')
