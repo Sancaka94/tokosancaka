@@ -88,11 +88,11 @@
         </div>
     @endif
    
-    {{-- SELESAI KODE DINAMIS --}}
+{{-- SELESAI KODE DINAMIS --}}
 
-<div class="w-full grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+<div class="w-full grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
 
-    <div class="lg:col-span-9 space-y-8">
+    <div class="lg:col-span-2 space-y-8">
 
 
         <div class="bg-white p-6 rounded-lg shadow-md border border-red-700 transition-all duration-200 hover:ring-4 hover:ring-red-400 hover:shadow-lg relative z-30">
