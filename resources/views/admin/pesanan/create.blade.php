@@ -114,7 +114,7 @@
                             <label for="receiver_address_search" class="block mb-2 text-sm font-medium text-gray-700">Cari Alamat Ongkir (Kec/Kel/Kodepos)</label>
                             <div class="relative">
                                 <input type="text" id="receiver_address_search" 
-                                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pr-8" placeholder="Ketik untuk mencari alamat..." autocomplete="off">
+                            class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md" required autocomplete="off">
                                 <i id="receiver_address_check" class="fas fa-check-circle text-green-500 absolute top-1/2 right-3 transform -translate-y-1/2 hidden"></i>
                             </div>
                             <div id="receiver_address_results" class="search-results-container hidden"></div>
