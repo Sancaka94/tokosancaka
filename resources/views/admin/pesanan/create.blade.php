@@ -64,19 +64,19 @@
                         <div class="relative">
                             <label for="sender_name" class="block mb-2 text-sm font-medium text-gray-700">Nama Pengirim </label>
                             <input type="text" id="sender_name" name="sender_name"
-                            class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5focus:outline-none focus:border-red-500focus:ring-4 focus:ring-red-300focus:shadow-md"required autocomplete="off">
+                            class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md" required autocomplete="off">
                             <div id="sender_contact_results" class="search-results-container hidden"></div>
                         </div>
                         <div class="relative">
                             <label for="sender_phone" class="block mb-2 text-sm font-medium text-gray-700">Nomor HP</label>
                             <input type="tel" id="sender_phone" name="sender_phone"
-                            class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5focus:outline-none focus:border-red-500focus:ring-4 focus:ring-red-300focus:shadow-md"required autocomplete="off">
+                            class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md" required autocomplete="off">
                         </div>
                         <div class="md:col-span-2 relative">
                             <label for="sender_address_search" class="block mb-2 text-sm font-medium text-gray-700">Cari Alamat Ongkir (Kec/Kel/Kodepos)</label>
                             <div class="relative">
                                 <input type="text" id="sender_address_search" 
-                            class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5focus:outline-none focus:border-red-500focus:ring-4 focus:ring-red-300focus:shadow-md"required autocomplete="off">
+                            class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md" required autocomplete="off">
                                 <i id="sender_address_check" class="fas fa-check-circle text-green-500 absolute top-1/2 right-3 transform -translate-y-1/2 hidden"></i>
                             </div>
                             <div id="sender_address_results" class="search-results-container hidden"></div>
@@ -102,13 +102,13 @@
                         <div class="relative">
                             <label for="receiver_name" class="block mb-2 text-sm font-medium text-gray-700">Nama Penerima</label>
                             <input type="text" id="receiver_name" name="receiver_name" 
-                            class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5focus:outline-none focus:border-red-500focus:ring-4 focus:ring-red-300focus:shadow-md"required autocomplete="off">
+                            class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md" required autocomplete="off">
                             <div id="receiver_contact_results" class="search-results-container hidden"></div>
                         </div>
                         <div class="relative">
                             <label for="receiver_phone" class="block mb-2 text-sm font-medium text-gray-700">Nomor HP</label>
                             <input type="tel" id="receiver_phone" name="receiver_phone" 
-                            class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5focus:outline-none focus:border-red-500focus:ring-4 focus:ring-red-300focus:shadow-md"required autocomplete="off">
+                            class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md" required autocomplete="off">
                         </div>
                         <div class="md:col-span-2 relative">
                             <label for="receiver_address_search" class="block mb-2 text-sm font-medium text-gray-700">Cari Alamat Ongkir (Kec/Kel/Kodepos)</label>
