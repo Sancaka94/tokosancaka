@@ -379,7 +379,9 @@
                         <form action="{{ route('agent.transaction.store') }}" method="POST" id="form-pay-pasca">
                             @csrf
                             <input type="hidden" name="payment_type" value="pasca">
-                            <input type="hidden" name="sku" id="pay_sku">
+                            {{-- UBAH ID DISINI --}}
+                            <input type="hidden" name="sku" id="pay_sku_pasca_final"> 
+                            {{-- ---------------- --}}
                             <input type="hidden" name="customer_no" id="pay_no">
                             <input type="hidden" name="ref_id" id="pay_ref_id"> 
                             <input type="hidden" name="selling_price" id="pay_price">
