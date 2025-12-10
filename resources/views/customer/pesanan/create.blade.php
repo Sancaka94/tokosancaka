@@ -287,7 +287,7 @@
                border-green-300">
         <i class="fas fa-box-open text-green-600 mr-2"></i>Detail Paket
     </h3>
-</div>
+
 
                     <div class="space-y-4">
                         <div>
