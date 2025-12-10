@@ -91,7 +91,8 @@
 
     <div class="bg-white p-6 rounded-lg shadow-md border border-red-700 transition-all duration-200 hover:ring-4 hover:ring-red-400 hover:shadow-lg">
 
-    <div class="bg-red-600 backdrop-blur px-4 py-3 rounded-lg shadow flex items-center justify-between mb-6 border border-red-700 transition-all duration-200 hover:shadow-2xl hover:border-red-400 hover:ring-2 hover:ring-red-300">
+    <div class="relative z-20 bg-red-600 backdrop-blur px-4 py-3 rounded-lg shadow flex items-center justify-between mb-6 border border-red-700 transition-all duration-200 hover:shadow-2xl hover:border-red-400 hover:ring-2 hover:ring-red-300">
+        
         <h3 class="text-xl font-semibold text-white">
             <i class="fas fa-arrow-up-from-bracket text-white mr-2"></i>
             Informasi Pengirim
@@ -113,7 +114,7 @@
         </div>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
 
         <div class="relative">
             <label for="sender_name" class="block mb-2 text-sm font-medium text-gray-700 required-label">
