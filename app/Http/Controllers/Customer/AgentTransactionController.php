@@ -153,7 +153,7 @@ class AgentTransactionController extends Controller
 
             // B. Simpan Transaksi Lokal
             $trx = new PpobTransaction();
-            $trx->user_id        = $user->id; // Pastikan kolom di DB user_id atau id_pengguna
+            $trx->user_id        = $user->id_pengguna; // Pastikan kolom di DB user_id atau id_pengguna
             $trx->order_id       = $orderId;
             $trx->buyer_sku_code = $request->sku;
             $trx->customer_no    = $request->customer_no;
