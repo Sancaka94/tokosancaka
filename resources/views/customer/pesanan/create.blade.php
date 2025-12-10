@@ -275,10 +275,20 @@
 </div>
 
             <div class="lg:col-span-1 space-y-8">
-                <div class="bg-white p-6 rounded-lg shadow-md sticky top-8">
-                    <h3 class="text-xl font-semibold text-gray-800 border-b pb-4 mb-6">
-                        <i class="fas fa-box-open text-yellow-500 mr-2"></i>Detail Paket
-                    </h3>
+               <div class="bg-white p-6 rounded-lg shadow-md sticky top-8
+            border border-green-600
+            transition-all duration-200
+            focus:ring-4 focus:ring-green-400
+            hover:border-green-700
+            hover:shadow-xl
+            hover:ring-4 hover:ring-green-300">
+    
+    <h3 class="text-xl font-semibold text-gray-800 border-b pb-4 mb-6
+               border-green-300">
+        <i class="fas fa-box-open text-green-600 mr-2"></i>Detail Paket
+    </h3>
+</div>
+
                     <div class="space-y-4">
                         <div>
                             <label for="item_description" class="block mb-2 text-sm font-medium text-gray-700 required-label">Deskripsi Barang</label>
