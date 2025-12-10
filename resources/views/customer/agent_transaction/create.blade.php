@@ -664,7 +664,24 @@
                 document.getElementById('res_nama').innerText = d.customer_name || d.name || '-';
                 document.getElementById('res_id').innerText = d.customer_no || no;
                 
-                let periodeStr = d.periode || (d.desc ? d.desc.periode : '-') || '-';
+                // --- PERBAIKAN LOGIKA PERIODE ---
+                let periodeStr = d.periode;
+                
+                // 1. Cek level desc
+                if (!periodeStr && d.desc && d.desc.periode) {
+                    periodeStr = d.desc.periode;
+                }
+                
+                // 2. [FIX] Cek level detail item (Wajib untuk PLN)
+                if ((!periodeStr || periodeStr === '-') && d.desc && d.desc.detail && Array.isArray(d.desc.detail) && d.desc.detail.length > 0) {
+                    periodeStr = d.desc.detail[0].periode;
+                }
+                
+                // Default jika tetap kosong
+                periodeStr = periodeStr || '-';
+                
+                // Render ke HTML
+            
                 document.getElementById('res_periode').innerText = formatPeriodeID(periodeStr);
                 document.getElementById('res_lembar').innerText = (d.desc && d.desc.lembar_tagihan) ? d.desc.lembar_tagihan + ' Lembar' : '1 Lembar';
 
