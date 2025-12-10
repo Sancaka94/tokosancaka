@@ -154,7 +154,12 @@
                 </div>
 
                 <div class="bg-white p-6 rounded-lg shadow-md border border-blue-700 transition-all duration-200 hover:ring-4 hover:ring-blue-400 hover:shadow-lg">
-                    <div class="flex justify-between items-center bg-blue-700 px-4 py-3 mb-6 rounded-lg shadow">
+                    <div class="flex justify-between items-center bg-blue-700 px-4 py-3 mb-6 rounded-lg shadow 
+            border border-transparent
+            transition-all duration-200
+            hover:shadow-2xl
+            hover:border-blue-300
+            hover:ring-2 hover:ring-blue-300">
 
                         <h3 class="text-xl font-semibold text-white">
                             <i class="fas fa-map-marker-alt text-white mr-2"></i>Informasi Penerima
