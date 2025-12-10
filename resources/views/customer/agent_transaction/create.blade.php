@@ -455,49 +455,41 @@
 @push('scripts')
 <script>
     const logoBasePath = "{{ asset('public/storage/logo-ppob') }}/";
-    let pbbCitiesCache = []; // Global cache for PBB cities
+    let pbbCitiesCache = []; 
 
-    // Inisialisasi saat window load
+    // --- 1. INISIALISASI SAAT LOAD ---
     window.onload = function() {
-        // Cek jika tab Pascabayar aktif, langsung muat kota PBB
-        if (document.getElementById('content-pascabayar').classList.contains('hidden') === false) {
+        // Cek jika tab Pascabayar aktif (misal setelah refresh error)
+        if (document.getElementById('content-pascabayar') && !document.getElementById('content-pascabayar').classList.contains('hidden')) {
             handlePascaSkuChange();
         }
-        // Atur event listener untuk perubahan dropdown utama
-        document.getElementById('pasca_sku').addEventListener('change', handlePascaSkuChange);
+        
+        // Listener Dropdown Jenis Tagihan
+        const pascaSku = document.getElementById('pasca_sku');
+        if(pascaSku) pascaSku.addEventListener('change', handlePascaSkuChange);
 
-        // Tambahkan event listener untuk input pencarian PBB (dengan delay)
+        // Listener Search PBB
         const pbbSearchInput = document.getElementById('pbb_city_search');
         if (pbbSearchInput) {
             let searchTimeout;
             pbbSearchInput.addEventListener('keyup', function() {
                 clearTimeout(searchTimeout);
                 const query = this.value;
-                searchTimeout = setTimeout(() => {
-                    filterPbbCities(query);
-                }, 300); // Tunggu 300ms setelah user berhenti mengetik
+                searchTimeout = setTimeout(() => { filterPbbCities(query); }, 300);
             });
-            // FIX: Tambahkan listener untuk menyembunyikan hasil saat input kehilangan fokus
             pbbSearchInput.addEventListener('blur', function() {
-                 setTimeout(() => {
-                     document.getElementById('pbb_search_results').classList.add('hidden');
-                 }, 200);
-             });
-            // FIX: Tambahkan listener untuk menampilkan hasil saat input mendapatkan fokus (jika cache penuh)
+                 setTimeout(() => { document.getElementById('pbb_search_results').classList.add('hidden'); }, 200);
+            });
             pbbSearchInput.addEventListener('focus', function() {
-                 if (document.getElementById('pbb_city_search').value.length > 0 && document.getElementById('pbb_search_results').innerHTML !== '') {
-                      document.getElementById('pbb_search_results').classList.remove('hidden');
-                 }
-             });
+                 if (this.value.length > 0) document.getElementById('pbb_search_results').classList.remove('hidden');
+            });
         }
     };
 
-    // --- HELPER: Formatter Periode (Carbon-like YYYYMM -> F Y) ---
+    // --- 2. FORMATTER HELPER ---
     function formatPeriodeID(periodeStr) {
-        if (!periodeStr) return '-';
+        if (!periodeStr || periodeStr === '-') return '-';
         let str = periodeStr.toString().trim();
-        
-        // Format YYYYMM (Contoh: 202501 -> Januari 2025)
         if (/^\d{6}$/.test(str)) {
             let year = str.substring(0, 4);
             let month = parseInt(str.substring(4, 6));
@@ -507,6 +499,7 @@
         return str;
     }
 
+    // --- 3. NAVIGASI TAB ---
     function switchTab(tab) {
         const btnPra = document.getElementById('tab-prabayar');
         const btnPasca = document.getElementById('tab-pascabayar');
@@ -523,98 +516,77 @@
             btnPra.className = 'flex-1 py-3 rounded-lg font-bold text-sm text-gray-500 hover:bg-gray-50 transition';
             contentPra.classList.add('hidden');
             contentPasca.classList.remove('hidden');
-            
-            // PENTING: Panggil load PBB saat tab Pasca diaktifkan
             handlePascaSkuChange(); 
         }
     }
 
-    function resetPasca() {
-        document.getElementById('pasca_empty').innerHTML = `
-            <i class="fas fa-file-invoice-dollar text-6xl mb-4 text-gray-200"></i>
-            <p>Silakan lakukan cek tagihan terlebih dahulu.</p>
-        `;
-        document.getElementById('pasca_no').focus();
-    }
+    // --- 4. LOGIKA PASCABAYAR (PBB/PLN/DLL) ---
+    let currentPbbSku = '';
 
-    // --- LOGIKA PBB CITIES & DROPDOWN ---
     function handlePascaSkuChange() {
         const selectedSku = document.getElementById('pasca_sku').value;
         const citySelectionDiv = document.getElementById('dynamic_city_selection');
         const pascaNoInput = document.getElementById('pasca_no');
         const testCaseInfo = document.getElementById('test_case_info');
 
-        // Reset state PBB
         citySelectionDiv.classList.add('hidden');
         pascaNoInput.placeholder = "Contoh: 5300xxxx";
         testCaseInfo.style.display = 'block';
-        currentPbbSku = ''; // Reset SKU PBB yang dipilih
+        currentPbbSku = ''; 
 
-        // Logika PBB
         if (selectedSku === 'pbb-city') {
             citySelectionDiv.classList.remove('hidden');
-            loadPbbCities(''); // Load semua kota saat pertama kali
-            pascaNoInput.placeholder = "Masukkan NOP PBB (Nomor Objek Pajak)";
-            testCaseInfo.innerHTML = '*Gunakan Test Case PBB: 329801092375999991';
+            loadPbbCities('');
+            pascaNoInput.placeholder = "Masukkan NOP PBB";
+            testCaseInfo.innerHTML = '*Test Case PBB: 329801092375999991';
         } 
-        // Logika Internet
-        else if (selectedSku === 'internet') {
-            testCaseInfo.innerHTML = '*Gunakan Test Case Internet: 7391601001';
-        }
-        // Logika PLN
-        else if (selectedSku === 'pln') {
-            testCaseInfo.innerHTML = '*Gunakan Test Case PLN: 630000000001';
-        }
-        // Logika Default
-        else {
-            testCaseInfo.innerHTML = '*Untuk Samsat/PBB/Cicilan, pastikan format nomor sesuai.';
-        }
+        else if (selectedSku === 'internet') testCaseInfo.innerHTML = '*Test Case Internet: 7391601001';
+        else if (selectedSku === 'pln') testCaseInfo.innerHTML = '*Test Case PLN: 530000000001';
+        else testCaseInfo.innerHTML = '*Pastikan nomor pelanggan benar.';
 
-        // Opsional: Reset hasil tagihan jika jenis produk berubah
+        resetPascaUI();
+    }
+
+    function resetPascaUI() {
         document.getElementById('pasca_result').classList.add('hidden');
         document.getElementById('pasca_empty').classList.remove('hidden');
     }
 
+    function resetPasca() {
+        resetPascaUI();
+        document.getElementById('pasca_no').focus();
+    }
+
+    // --- 5. LOGIKA PENCARIAN KOTA PBB ---
     function loadPbbCities(query) {
         const resultsDiv = document.getElementById('pbb_search_results');
-        const searchInput = document.getElementById('pbb_city_search');
         resultsDiv.innerHTML = '<div class="p-2 text-gray-500">Memuat...</div>';
         resultsDiv.classList.remove('hidden');
         
         let url = '{{ route("admin.ppob.get-pbb-cities") }}';
-        if (query) {
-             url += `?q=${query}`;
-        }
+        if (query) url += `?q=${query}`;
 
-        fetch(url, { 
-            method: 'GET',
-            headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-        })
+        fetch(url)
         .then(res => res.json())
         .then(data => {
-            resultsDiv.innerHTML = ''; // Clear loading
-            
+            resultsDiv.innerHTML = '';
             if (data.success && data.cities && data.cities.length > 0) {
-                pbbCitiesCache = data.cities;
                 renderPbbResults(data.cities);
             } else {
                 resultsDiv.innerHTML = '<div class="p-2 text-sm text-red-500">Kota tidak ditemukan.</div>';
             }
         })
         .catch(err => {
-            console.error("Fetch City Error:", err);
-            resultsDiv.innerHTML = '<div class="p-2 text-sm text-red-500">Error saat memuat data.</div>';
+            console.error(err);
+            resultsDiv.innerHTML = '<div class="p-2 text-sm text-red-500">Error.</div>';
         });
     }
 
     function filterPbbCities(query) {
-        const resultsDiv = document.getElementById('pbb_search_results');
-        if (query.length > 1) {
-             loadPbbCities(query); // Kirim query ke backend untuk pencarian DB
-        } else {
-             resultsDiv.classList.add('hidden');
-        }
-        document.getElementById('pbb_city_sku_selected').value = ''; // Reset SKU saat mulai mengetik
+        if (query.length > 1) loadPbbCities(query);
+        else document.getElementById('pbb_search_results').classList.add('hidden');
+        
+        document.getElementById('pbb_city_sku_selected').value = '';
         currentPbbSku = '';
     }
 
@@ -627,293 +599,171 @@
             let item = document.createElement('div');
             item.className = 'p-2 text-sm cursor-pointer hover:bg-red-100/70';
             item.innerText = city.name;
-            item.setAttribute('data-sku', city.sku);
-            item.setAttribute('data-name', city.name);
-            
-            // Logika Auto Select saat diklik
             item.onclick = function() {
-                selectPbbCity(this.getAttribute('data-sku'), this.getAttribute('data-name'));
+                document.getElementById('pbb_city_search').value = city.name;
+                document.getElementById('pbb_city_sku_selected').value = city.sku;
+                currentPbbSku = city.sku;
+                resultsDiv.classList.add('hidden');
             };
             resultsDiv.appendChild(item);
         });
     }
 
-    function selectPbbCity(sku, name) {
-        document.getElementById('pbb_city_search').value = name;
-        document.getElementById('pbb_city_sku_selected').value = sku;
-        currentPbbSku = sku; // Simpan SKU final
-        document.getElementById('pbb_search_results').classList.add('hidden');
-    }
-    
-    // --- UTAMA: LOGIKA PASCABAYAR CEK TAGIHAN ---
+    // --- 6. LOGIKA CEK TAGIHAN (UTAMA) ---
     function cekTagihan() {
-        // Ambil SKU yang benar (Jika PBB, ambil dari dropdown kota)
         let sku = document.getElementById('pasca_sku').value;
         const no = document.getElementById('pasca_no').value;
-
-        if (sku === 'pbb-city') {
-            sku = currentPbbSku; // Ambil SKU dari hasil pencarian yang dipilih
-        }
-
-        if(sku === 'pbb-city' || sku === '') {
-            alert('Mohon pilih jenis tagihan atau kota terlebih dahulu.');
+        
+        // Validasi WA
+        const customerWaPasca = document.getElementById('input_customer_wa_pasca').value;
+        if (customerWaPasca.length < 9) {
+            alert('Mohon isi Nomor WA Pembeli (min 9 digit).');
+            document.getElementById('input_customer_wa_pasca').focus();
             return;
         }
-        if(no.length < 5) { alert('Nomor pelanggan tidak valid'); return; }
 
+        if (sku === 'pbb-city') sku = currentPbbSku;
+        if (sku === '' || (document.getElementById('pasca_sku').value === 'pbb-city' && sku === '')) {
+            alert('Pilih Kota PBB terlebih dahulu.');
+            return;
+        }
+        if (no.length < 5) { alert('Nomor pelanggan tidak valid'); return; }
+
+        // UI Loading
         document.getElementById('pasca_empty').classList.add('hidden');
         document.getElementById('pasca_result').classList.add('hidden');
         document.getElementById('pasca_loading').classList.remove('hidden');
         document.getElementById('btn-cek-tagihan').disabled = true;
 
+        // Set WA di Hidden Input (Persiapan Bayar)
+        document.getElementById('pay_customer_wa').value = customerWaPasca;
+
         fetch('{{ route("ppob.check.bill") }}', { 
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
             body: JSON.stringify({ 
-                sku: sku, // SKU yang sudah final (cimahi, pln, bpjs, dll)
+                sku: sku, 
                 customer_no: no,
                 ref_id: 'INQ-' + Date.now() + Math.floor(Math.random() * 1000)
             })
         })
         .then(res => res.json())
         .then(data => {
-            // Matikan loading, nyalakan tombol kembali
             document.getElementById('pasca_loading').classList.add('hidden');
             document.getElementById('btn-cek-tagihan').disabled = false;
 
-            // 1. Normalisasi Data Response (Antisipasi struktur data.data atau langsung root)
-            let d = data.data || data; 
-            
-            // Cek Status Transaksi dari API
+            let d = data.data || data;
             let status = d.status ? d.status.toLowerCase() : '';
             let rc = d.rc ? String(d.rc) : '';
 
-            // ==========================================
-            // JIKA INQUIRY (CEK TAGIHAN) SUKSES
-            // ==========================================
+            // --- JIKA SUKSES ---
             if(status === 'sukses' || status === 'success' || rc === '00') {
                 document.getElementById('pasca_result').classList.remove('hidden');
 
-                // --- A. MAPPING TAMPILAN UTAMA (VISUAL) ---
+                // Mapping Tampilan
                 document.getElementById('res_nama').innerText = d.customer_name || d.name || '-';
-                document.getElementById('res_id').innerText = d.customer_no || no; // 'no' diambil dari scope luar function
+                document.getElementById('res_id').innerText = d.customer_no || no;
                 
-                // Format Periode & Lembar Tagihan
                 let periodeStr = d.periode || (d.desc ? d.desc.periode : '-') || '-';
-                let lembarStr = (d.desc && d.desc.lembar_tagihan) ? d.desc.lembar_tagihan + ' Lembar' : '1 Lembar';
-                
                 document.getElementById('res_periode').innerText = formatPeriodeID(periodeStr);
-                document.getElementById('res_lembar').innerText = lembarStr;
+                document.getElementById('res_lembar').innerText = (d.desc && d.desc.lembar_tagihan) ? d.desc.lembar_tagihan + ' Lembar' : '1 Lembar';
 
-                // --- B. PERHITUNGAN HARGA (FINANSIAL) ---
-                // Ambil tagihan asli (price/selling_price dari API). Default 0 jika null.
-                let tagihanAsli = parseInt(d.price || d.selling_price || 0); 
+                // Hitung Harga
+                let tagihanAsli = parseInt(d.price || d.selling_price || 0);
                 let adminBank = parseInt(d.admin || 0);
-                let denda = 0; // Akan diupdate di logic detail
-                
-                // Margin Keuntungan Agen (Bisa dihardcode atau ambil dari config blade)
-                let marginAgen = 2500; 
+                let marginAgen = 2500;
                 let totalBayar = tagihanAsli + marginAgen;
 
-                // Tampilkan ke User
-                document.getElementById('res_modal').innerText = 'Rp ' + tagihanAsli.toLocaleString('id-ID'); 
-                document.getElementById('res_admin').innerText = 'Rp ' + adminBank.toLocaleString('id-ID'); 
-                document.getElementById('res_total').innerText = 'Rp ' + totalBayar.toLocaleString('id-ID'); 
+                document.getElementById('res_modal').innerText = 'Rp ' + tagihanAsli.toLocaleString('id-ID');
+                document.getElementById('res_admin').innerText = 'Rp ' + adminBank.toLocaleString('id-ID');
+                document.getElementById('res_total').innerText = 'Rp ' + totalBayar.toLocaleString('id-ID');
 
-                // --- C. MAPPING FORM HIDDEN (KRUSIAL UNTUK TOMBOL BAYAR) ---
-                
-                // [FIX 1] SKU: Ambil kode unik API (post641598), jika kosong baru fallback ke dropdown (sku)
-                let realSku = d.buyer_sku_code ? d.buyer_sku_code : sku;
-                document.getElementById('pay_sku').value = realSku; 
-
-                // [FIX 2] Ref ID: Wajib kirim ulang Ref ID Inquiry untuk pembayaran
+                // --- FORM HIDDEN (CRITICAL FIX) ---
+                document.getElementById('pay_sku').value = d.buyer_sku_code ? d.buyer_sku_code : sku; 
                 document.getElementById('pay_ref_id').value = d.ref_id; 
-
-                // [FIX 3] Harga Jual: Kirim total (Tagihan + Margin) ke controller
                 document.getElementById('pay_price').value = totalBayar; 
-
-                // [FIX 4] Data Pelanggan
                 document.getElementById('pay_no').value = d.customer_no;
-                
-                // Debugging Console
-                console.log("DATA SIAP BAYAR:", {
-                    sku_api: realSku,
-                    ref_id: d.ref_id,
-                    total_bayar: totalBayar
-                });
 
-                // --- D. LOGIKA DETAIL TEKNIS (PLN, BPJS, PDAM, DLL) ---
-                let alamat = '-';
-                let infoTeknis = '-'; 
-                let labelTeknis = 'Detail Teknis';
+                // Render Detail Teknis & Item List (Sederhana)
+                renderDetailTeknis(sku, d, periodeStr);
+                renderItemList(sku, d);
 
-                if(d.desc) {
-                    // Ambil Alamat (Prioritas: Alamat > Kab/Kota > Kelurahan)
-                    alamat = d.desc.alamat || d.desc.kab_kota || d.desc.kelurahan || '-';
-
-                    // Cek Detail per Lembar (untuk Denda & Periode Spesifik)
-                    if(d.desc.detail && Array.isArray(d.desc.detail) && d.desc.detail.length > 0) {
-                        denda = d.desc.detail[0].denda || 0;
-                        if (!periodeStr || periodeStr === '-') periodeStr = d.desc.detail[0].periode;
-                    }
-
-                    // Logika Tampilan per Produk
-                    if(sku === 'pln' || d.desc.tarif) {
-                        let tarif = d.desc.tarif || '-';
-                        let daya = d.desc.daya ? d.desc.daya + ' VA' : '';
-                        infoTeknis = tarif + ' / ' + daya;
-                        labelTeknis = 'Tarif / Daya';
-                    } 
-                    else if(sku === 'samsat' || d.desc.nomor_polisi || d.desc.no_pol) {
-                        let nopol = d.desc.nomor_polisi || d.desc.no_pol || '-';
-                        let merek = d.desc.merek_kb || '';
-                        let model = d.desc.model_kb || '';
-                        infoTeknis = `${nopol} (${merek} ${model})`;
-                        labelTeknis = 'Kendaraan';
-                    }
-                    else if(sku === 'pbb' || sku === 'pbb-city' || d.desc.luas_tanah) {
-                        let lt = d.desc.luas_tanah || '0';
-                        let lb = d.desc.luas_gedung || '0';
-                        let tahun = d.desc.tahun_pajak || '-';
-                        let kab = d.desc.kab_kota || '';
-                        let kec = d.desc.kecamatan || '';
-                        let kel = d.desc.kelurahan || '';
-                        
-                        infoTeknis = `Tahun: ${tahun} / LT: ${lt}m² / LB: ${lb}m²`;
-                        labelTeknis = 'Objek Pajak';
-                        
-                        // Gabungkan alamat lengkap untuk PBB
-                        let addressParts = [d.desc.alamat, kel, kec, kab].filter(p => p && p !== '-' && p !== '');
-                        alamat = addressParts.length > 0 ? addressParts.join(', ') : (kab || '-');
-                    }
-                    else if(sku === 'bpjs') {
-                        infoTeknis = (d.desc.jumlah_peserta || d.desc.peserta || '1') + ' Peserta';
-                        labelTeknis = 'Jumlah Peserta';
-                        // Kadang BPJS nama pesertanya ada di desc
-                        if(d.desc.nama && (!d.customer_name || d.customer_name === '-')) {
-                             document.getElementById('res_nama').innerText = d.desc.nama;
-                        }
-                    }
-                }
-                
-                // Update Denda di UI
-                document.getElementById('res_denda').innerText = 'Rp ' + parseInt(denda).toLocaleString('id-ID');
-
-                // Render Baris Detail Teknis
-                const rowDetail = document.getElementById('row_detail_teknis');
-                if(alamat !== '-' || infoTeknis !== '-') {
-                    rowDetail.classList.remove('hidden');
-                    document.getElementById('res_alamat').innerHTML = alamat; // Pakai innerHTML jaga2 ada <br>
-                    document.getElementById('label_tarif').innerText = labelTeknis;
-                    document.getElementById('res_tarif').innerText = infoTeknis;
-                } else {
-                    rowDetail.classList.add('hidden');
-                }
-
-                // --- E. RENDER RINCIAN ITEM (LOOPING DETAIL) ---
-                const detailContainer = document.getElementById('res_detail_container');
-                const detailList = document.getElementById('res_detail_list');
-                detailList.innerHTML = ''; // Reset list
-                let hasDetails = false;
-
-                // Case 1: Array Detail (PLN/PDAM biasanya punya ini)
-                if (d.desc && d.desc.detail && Array.isArray(d.desc.detail)) {
-                    hasDetails = true;
-                    d.desc.detail.forEach(item => {
-                        let nilaiTagihan = parseInt(item.nilai_tagihan || 0);
-                        let adminItem = parseInt(item.admin || 0);
-                        let dendaItem = parseInt(item.denda || 0);
-                        let lainItem = parseInt(item.biaya_lain || 0);
-                        let totalItem = nilaiTagihan + adminItem + dendaItem + lainItem;
-
-                        let meteran = (item.meter_awal && item.meter_akhir) ? 
-                            `<div class="text-[10px] text-gray-500">Stand: ${item.meter_awal} - ${item.meter_akhir}</div>` : '';
-                        
-                        let rincianBiaya = [];
-                        if(dendaItem > 0) rincianBiaya.push(`Denda: ${dendaItem}`);
-                        if(adminItem > 0) rincianBiaya.push(`Adm: ${adminItem}`);
-                        let infoBiaya = rincianBiaya.length > 0 ? `<div class="text-[10px] text-orange-500">${rincianBiaya.join(', ')}</div>` : '';
-
-                        let rowHtml = `
-                            <div class="flex justify-between border-b border-gray-100 pb-2 mb-2 last:border-0">
-                                <div>
-                                    <span class="font-bold block text-gray-700">${item.periode || 'Tagihan'}</span>
-                                    ${meteran}
-                                    ${infoBiaya}
-                                </div>
-                                <div class="text-right">
-                                    <span class="font-bold text-gray-800">Rp ${totalItem.toLocaleString('id-ID')}</span>
-                                </div>
-                            </div>
-                        `;
-                        detailList.insertAdjacentHTML('beforeend', rowHtml);
-                    });
-                }
-                // Case 2: Detail Samsat/PBB (Flat Object)
-                else if (d.desc && (d.desc.biaya_pokok_pkb || d.desc.biaya_admin_stnk || d.desc.tahun_pajak)) {
-                    hasDetails = true;
-                    // Logic khusus Samsat
-                    if (sku === 'samsat' || d.desc.biaya_pokok_pkb) {
-                        const fields = {
-                            'Pokok PKB': d.desc.biaya_pokok_pkb,
-                            'Pokok SWDKLLJ': d.desc.biaya_pokok_swd,
-                            'Admin STNK': d.desc.biaya_admin_stnk,
-                            'Admin TNKB': d.desc.biaya_admin_tnkb,
-                            'Denda PKB': d.desc.biaya_denda_pkb,
-                            'Denda SWDKLLJ': d.desc.biaya_denda_swd
-                        };
-                        for (const [key, val] of Object.entries(fields)) {
-                            if(parseInt(val || 0) > 0) {
-                                detailList.insertAdjacentHTML('beforeend', `
-                                    <div class="flex justify-between border-b border-gray-100 pb-1 mb-1 text-xs">
-                                        <span class="text-gray-600">${key}</span>
-                                        <span class="font-bold">Rp ${parseInt(val).toLocaleString('id-ID')}</span>
-                                    </div>
-                                `);
-                            }
-                        }
-                    } 
-                    // Logic PBB
-                    else if (sku === 'pbb' || sku === 'pbb-city') {
-                         let pokok = parseInt(d.price || 0) - parseInt(d.admin || 0);
-                         detailList.insertAdjacentHTML('beforeend', `
-                            <div class="flex justify-between border-b border-gray-100 pb-1 mb-1 text-xs">
-                                <span class="text-gray-600">Pokok Pajak (${d.desc.tahun_pajak || ''})</span>
-                                <span class="font-bold">Rp ${pokok.toLocaleString('id-ID')}</span>
-                            </div>
-                        `);
-                    }
-                }
-
-                // Tampilkan/Sembunyikan container detail
-                if(hasDetails) {
-                    detailContainer.classList.remove('hidden');
-                } else {
-                    detailContainer.classList.add('hidden');
-                }
-
-            // ==========================================
-            // JIKA INQUIRY GAGAL
-            // ==========================================
             } else {
-                const errorMsg = d.message || 'Tagihan tidak ditemukan atau terjadi kesalahan.';
+                // --- JIKA GAGAL ---
+                const errorMsg = d.message || 'Tagihan tidak ditemukan.';
                 const emptyState = document.getElementById('pasca_empty');
-                
-                emptyState.innerHTML = `
-                    <div class="text-center text-red-500 animate-pulse">
-                        <i class="fas fa-times-circle text-5xl mb-3"></i>
-                        <p class="font-bold text-lg">Gagal!</p>
-                        <p class="sm text-gray-600">${errorMsg}</p>
-                        <button onclick="resetPasca()" class="mt-4 px-4 py-2 bg-gray-100 rounded-lg text-sm text-gray-600 hover:bg-gray-200 transition">
-                            <i class="fas fa-redo mr-1"></i> Coba Lagi
-                        </button>
-                    </div>
-                `;
+                emptyState.innerHTML = `<div class="text-center text-red-500 animate-pulse"><p class="font-bold">Gagal!</p><p>${errorMsg}</p><button onclick="resetPasca()" class="underline">Coba Lagi</button></div>`;
                 emptyState.classList.remove('hidden');
             }
         })
+        .catch(err => {
+            console.error(err);
+            alert('Gagal menghubungi server');
+            document.getElementById('pasca_loading').classList.add('hidden');
+            document.getElementById('btn-cek-tagihan').disabled = false;
+            document.getElementById('pasca_empty').classList.remove('hidden');
+        });
+    }
 
-    // --- LOGIKA PRABAYAR (EXISTING) --
+    // Helper Render Detail
+    function renderDetailTeknis(sku, d, periodeStr) {
+        let alamat = '-';
+        let infoTeknis = '-';
+        
+        if(d.desc) {
+            alamat = d.desc.alamat || d.desc.kab_kota || '-';
+            if(sku === 'pln' || d.desc.tarif) infoTeknis = `${d.desc.tarif || '-'} / ${d.desc.daya || '-'} VA`;
+            else if(sku === 'bpjs') infoTeknis = (d.desc.jumlah_peserta || '1') + ' Peserta';
+            else if(sku === 'pbb' || sku === 'pbb-city') infoTeknis = `LT: ${d.desc.luas_tanah || 0} / LB: ${d.desc.luas_gedung || 0}`;
+        }
+
+        const rowDetail = document.getElementById('row_detail_teknis');
+        if(alamat !== '-' || infoTeknis !== '-') {
+            rowDetail.classList.remove('hidden');
+            document.getElementById('res_alamat').innerHTML = alamat;
+            document.getElementById('res_tarif').innerText = infoTeknis;
+        } else {
+            rowDetail.classList.add('hidden');
+        }
+    }
+
+    function renderItemList(sku, d) {
+        const detailList = document.getElementById('res_detail_list');
+        const detailContainer = document.getElementById('res_detail_container');
+        detailList.innerHTML = '';
+        let hasDetails = false;
+
+        // Jika ada array detail
+        if (d.desc && d.desc.detail && Array.isArray(d.desc.detail)) {
+            hasDetails = true;
+            d.desc.detail.forEach(item => {
+                let total = parseInt(item.nilai_tagihan||0) + parseInt(item.admin||0) + parseInt(item.denda||0);
+                detailList.insertAdjacentHTML('beforeend', `
+                    <div class="flex justify-between border-b border-gray-100 pb-1 mb-1 text-xs">
+                        <span>${item.periode || 'Tagihan'}</span>
+                        <span class="font-bold">Rp ${total.toLocaleString('id-ID')}</span>
+                    </div>
+                `);
+            });
+        } 
+        // Jika detail flat (Samsat/PBB)
+        else if (d.desc && (d.desc.biaya_pokok_pkb || d.desc.tahun_pajak)) {
+             hasDetails = true;
+             let label = (sku === 'pbb' || sku === 'pbb-city') ? 'Pokok Pajak' : 'Pokok PKB';
+             let val = (sku === 'pbb' || sku === 'pbb-city') ? (parseInt(d.price||0)-parseInt(d.admin||0)) : d.desc.biaya_pokok_pkb;
+             detailList.insertAdjacentHTML('beforeend', `
+                <div class="flex justify-between border-b border-gray-100 pb-1 mb-1 text-xs">
+                    <span>${label}</span>
+                    <span class="font-bold">Rp ${parseInt(val||0).toLocaleString('id-ID')}</span>
+                </div>
+            `);
+        }
+
+        if(hasDetails) detailContainer.classList.remove('hidden');
+        else detailContainer.classList.add('hidden');
+    }
+
+    // --- 7. LOGIKA PRABAYAR (PULSA/DATA) ---
     function detectOperator() {
         let number = document.getElementById('input_customer_no').value;
         let prefix = number.substring(0, 4);
@@ -939,54 +789,21 @@
 
     function filterTableByBrand(brand) {
         let rows = document.querySelectorAll('.product-row');
-        let tbody = document.getElementById('product_table_body');
         let hasResult = false;
-
         document.getElementById('instruction_alert').classList.add('hidden');
         document.getElementById('product_container').classList.remove('hidden');
-        
-        let pagination = document.getElementById('pagination_links');
-        if(pagination) pagination.classList.add('hidden');
-
-        let matchedRows = [];
 
         rows.forEach(row => {
-            let rowBrand = row.getAttribute('data-brand'); 
-            let rowName = row.getAttribute('data-name');
+            let rowBrand = row.getAttribute('data-brand');
             let rowCategory = row.getAttribute('data-category');
+            let match = (brand === 'pln') ? (rowBrand.includes('pln') || rowCategory.includes('token')) : rowBrand.includes(brand);
             
-            let match = false;
-            if (brand === 'pln') {
-                if (rowBrand.includes('pln') || rowCategory.includes('token') || rowCategory.includes('listrik')) match = true;
-            } else {
-                if (rowBrand.includes(brand) || rowName.includes(brand)) match = true;
-            }
-
-            if (match) {
-                row.classList.remove('hidden'); 
-                matchedRows.push(row); 
-                hasResult = true;
-            } else {
-                row.classList.add('hidden');
-            }
+            if (match) { row.classList.remove('hidden'); hasResult = true; }
+            else row.classList.add('hidden');
         });
 
-        if (hasResult) {
-            matchedRows.sort((a, b) => {
-                let priceA = parseInt(a.getAttribute('data-price'));
-                let priceB = parseInt(b.getAttribute('data-price'));
-                return priceA - priceB;
-            });
-            matchedRows.forEach(row => { tbody.appendChild(row); });
-        }
-
-        const noResultEl = document.getElementById('no_result');
-        if (!hasResult) {
-            noResultEl.classList.remove('hidden');
-            noResultEl.innerText = "Produk " + brand + " sedang gangguan / tidak tersedia.";
-        } else {
-            noResultEl.classList.add('hidden');
-        }
+        if (!hasResult) document.getElementById('no_result').classList.remove('hidden');
+        else document.getElementById('no_result').classList.add('hidden');
     }
 
     function showOperatorBadge(name, logoUrl) {
@@ -994,19 +811,13 @@
         document.getElementById('operator_name').innerText = name;
         document.getElementById('operator_logo').src = logoUrl;
         badge.classList.remove('hidden');
-        badge.classList.remove('scale-95', 'opacity-0');
-        badge.classList.add('scale-100', 'opacity-100');
+        setTimeout(() => { badge.classList.add('scale-100', 'opacity-100'); }, 10);
     }
 
     function hideOperatorBadge() {
         let badge = document.getElementById('operator_badge');
-        badge.classList.add('scale-95', 'opacity-0');
+        badge.classList.remove('scale-100', 'opacity-100');
         setTimeout(() => { badge.classList.add('hidden'); }, 200);
-    }
-
-    function showInstruction() {
-        document.getElementById('instruction_alert').classList.remove('hidden');
-        document.getElementById('product_container').classList.add('hidden');
     }
 
     function filterTableManual() {
@@ -1014,94 +825,67 @@
         let rows = document.querySelectorAll('.product-row');
         document.getElementById('instruction_alert').classList.add('hidden');
         document.getElementById('product_container').classList.remove('hidden');
-
         rows.forEach(row => {
-            let name = row.getAttribute('data-name');
-            if (name.includes(keyword)) row.classList.remove('hidden');
+            if (row.getAttribute('data-name').includes(keyword)) row.classList.remove('hidden');
             else row.classList.add('hidden');
         });
     }
 
-    // Perbaiki function confirmTransaction:
-function confirmTransaction(sku, name, modal, jual) {
-    // 1. Ambil Nilai (customerWa HARUS DIAMBIL di awal)
-    const inputNoValue = document.getElementById('input_customer_no').value;
-    // FIX 1: Pindahkan deklarasi di sini
-    const customerWa = document.getElementById('input_customer_wa_pra').value; 
+    // --- 8. KONFIRMASI PRABAYAR & MODAL ---
+    function confirmTransaction(sku, name, modal, jual) {
+        const no = document.getElementById('input_customer_no').value;
+        const wa = document.getElementById('input_customer_wa_pra').value;
 
-    // 2. Periksa WA (Validasi sisi client)
-    if (customerWa.length < 9 || inputNoValue.length < 6) { 
-        alert('Mohon lengkapi Nomor Tujuan dan Nomor WA Pembeli yang valid (minimal 9 digit).');
-        document.getElementById('input_customer_wa_pra').focus();
-        return;
-    }
-    
-    // 3. Mapping Data ke Modal Display
-    document.getElementById('modal_no').innerText = inputNoValue;
-    document.getElementById('modal_product').innerText = name;
-    document.getElementById('modal_jual').innerText = 'Rp ' + parseInt(jual).toLocaleString('id-ID');
-    
-    // 4. Mapping Data ke Hidden Form fields (untuk disubmit)
-    document.getElementById('form_sku').value = sku;
-    document.getElementById('form_no').value = inputNoValue;
-    // FIX 2: Mapping WA ke hidden field
-    document.getElementById('form_customer_wa').value = customerWa; 
-
-    // 5. Tampilkan Modal
-    document.getElementById('confirmModal').classList.remove('hidden');
-    setTimeout(() => {
-        document.getElementById('modal_content').classList.remove('scale-95', 'opacity-0');
-        document.getElementById('modal_content').classList.add('scale-100', 'opacity-100');
-    }, 50);
-}
-
-function closeModal() {
-    document.getElementById('modal_content').classList.remove('scale-100', 'opacity-100');
-    document.getElementById('modal_content').classList.add('scale-95', 'opacity-0');
-    setTimeout(() => { document.getElementById('confirmModal').classList.add('hidden'); }, 200);
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    // --- AMBIL FORM DAN TOMBOL ---
-    const formPayPra = document.getElementById('form-pay-pra');
-    const formPayPasca = document.getElementById('form-pay-pasca');
-
-    function disableSubmitButton(form) {
-        if (!form) return;
+        if (wa.length < 9 || no.length < 6) { 
+            alert('Mohon lengkapi Nomor Tujuan dan WA Pembeli.');
+            document.getElementById('input_customer_wa_pra').focus();
+            return;
+        }
         
-        const button = form.querySelector('button[type="submit"]');
-        if (!button) return;
+        document.getElementById('modal_no').innerText = no;
+        document.getElementById('modal_product').innerText = name;
+        document.getElementById('modal_jual').innerText = 'Rp ' + parseInt(jual).toLocaleString('id-ID');
+        
+        document.getElementById('form_sku').value = sku;
+        document.getElementById('form_no').value = no;
+        document.getElementById('form_customer_wa').value = wa;
 
-        form.addEventListener('submit', function(e) {
-            // Cek apakah form sudah pernah disubmit sebelumnya
-            if (form.hasSubmitted) {
-                e.preventDefault();
-                return;
-            }
-
-            // Mencegah double submit & Ubah tampilan tombol
-            form.hasSubmitted = true;
-            button.disabled = true;
-            button.classList.add('opacity-70', 'cursor-not-allowed');
-            
-            // Simpan teks asli
-            const originalText = button.innerHTML;
-            button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Memproses...';
-            
-            // Opsional: Timeout pengaman jika server timeout (kembalikan tombol setelah 30 detik)
-            setTimeout(() => {
-                form.hasSubmitted = false;
-                button.disabled = false;
-                button.classList.remove('opacity-70', 'cursor-not-allowed');
-                button.innerHTML = originalText;
-            }, 30000);
-        });
+        document.getElementById('confirmModal').classList.remove('hidden');
+        setTimeout(() => {
+            document.getElementById('modal_content').classList.remove('scale-95', 'opacity-0');
+            document.getElementById('modal_content').classList.add('scale-100', 'opacity-100');
+        }, 50);
     }
 
-    // Terapkan fungsi (Pengecekan dilakukan di dalam fungsi disableSubmitButton)
-    disableSubmitButton(formPayPra);
-    disableSubmitButton(formPayPasca);
-});
+    function closeModal() {
+        document.getElementById('modal_content').classList.remove('scale-100', 'opacity-100');
+        document.getElementById('modal_content').classList.add('scale-95', 'opacity-0');
+        setTimeout(() => { document.getElementById('confirmModal').classList.add('hidden'); }, 200);
+    }
+
+    // --- 9. EVENT LISTENER GLOBAL (DOM READY) ---
+    document.addEventListener('DOMContentLoaded', function() {
+        // Handle Submit Button Loading State
+        function disableSubmitButton(form) {
+            if (!form) return;
+            const button = form.querySelector('button[type="submit"]');
+            if (!button) return;
+
+            form.addEventListener('submit', function(e) {
+                if (form.hasSubmitted) { e.preventDefault(); return; }
+                form.hasSubmitted = true;
+                button.disabled = true;
+                button.classList.add('opacity-70', 'cursor-not-allowed');
+                button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Memproses...';
+            });
+        }
+
+        const formPayPra = document.getElementById('form-pay-pra');
+        const formPayPasca = document.getElementById('form-pay-pasca');
+        
+        disableSubmitButton(formPayPra);
+        disableSubmitButton(formPayPasca);
+    });
 
 </script>
 @endpush
