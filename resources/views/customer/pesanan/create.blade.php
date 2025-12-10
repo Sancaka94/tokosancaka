@@ -102,7 +102,7 @@
             <input type="search" 
                 id="sender_contact_search"
                 class="w-full pl-10 pr-4 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-gray-900 transition-all duration-200 hover:border-red-400 hover:shadow-lg hover:ring-2 hover:ring-red-200 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-lg"
-                placeholder="Cari Nama Atau No Hp Dari Data pengirim..." 
+                placeholder="" 
                 autocomplete="off">
 
             <div class="absolute top-0 left-0 inline-flex items-center p-2 h-full text-red-400">
@@ -1025,7 +1025,7 @@ if (result.isConfirmed) {
 
 const text = "Cari Nama Atau No Hp Dari Data penerima";
 let index = 0;
-const input = document.getElementById("searchInput");
+const input = document.getElementById("sender_contact_search");
 
 function type() {
     input.placeholder = text.slice(0, index);
