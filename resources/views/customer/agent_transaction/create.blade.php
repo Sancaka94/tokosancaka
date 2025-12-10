@@ -3,6 +3,21 @@
 @section('title', 'Kasir Penjualan PPOB')
 
 @section('content')
+
+{{-- Notifikasi Error Validasi Laravel (PENTING) --}}
+    @if ($errors->any())
+        <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded shadow-sm mb-4 animate-pulse">
+            <div class="flex items-center gap-2 mb-1">
+                <i class="fas fa-exclamation-triangle"></i>
+                <p class="font-bold">Gagal Memproses Transaksi:</p>
+            </div>
+            <ul class="list-disc list-inside text-sm">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
 <div class="max-w-7xl mx-auto space-y-6">
 
     {{-- Header --}}
@@ -411,7 +426,7 @@
                     <span class="font-bold text-green-700 text-base" id="modal_jual">Rp 0</span>
                 </div>
             </div>
-            <form action="{{ route('agent.transaction.store') }}" method="POST" class="p-4 bg-gray-50 border-t border-gray-100">
+            <form id="form-pay-pra" action="{{ route('agent.transaction.store') }}" method="POST" class="p-4 bg-gray-50 border-t border-gray-100">
                 @csrf
                 <input type="hidden" name="sku" id="form_sku">
                 <input type="hidden" name="customer_no" id="form_no">
@@ -1047,45 +1062,43 @@ function closeModal() {
 document.addEventListener('DOMContentLoaded', function() {
     // --- AMBIL FORM DAN TOMBOL ---
     const formPayPra = document.getElementById('form-pay-pra');
-    
-    // FIX 3: Hapus deklarasi ganda, gunakan querySelector untuk tombol submit
-    const btnPayPra = formPayPra.querySelector('button[type="submit"]');
-    
     const formPayPasca = document.getElementById('form-pay-pasca');
-    // FIX 3: Hapus deklarasi ganda, gunakan querySelector untuk tombol submit
-    const btnPayPasca = formPayPasca.querySelector('button[type="submit"]'); 
 
-    function disableSubmitButton(form, button) {
-        if (!form || !button) return;
+    function disableSubmitButton(form) {
+        if (!form) return;
+        
+        const button = form.querySelector('button[type="submit"]');
+        if (!button) return;
 
         form.addEventListener('submit', function(e) {
-            // Cek apakah form sudah pernah disubmit sebelumnya (flag custom)
+            // Cek apakah form sudah pernah disubmit sebelumnya
             if (form.hasSubmitted) {
                 e.preventDefault();
                 return;
             }
 
-            // Mencegah double submit
+            // Mencegah double submit & Ubah tampilan tombol
             form.hasSubmitted = true;
-            
-            // Nonaktifkan tombol
             button.disabled = true;
             button.classList.add('opacity-70', 'cursor-not-allowed');
+            
+            // Simpan teks asli
+            const originalText = button.innerHTML;
             button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Memproses...';
+            
+            // Opsional: Timeout pengaman jika server timeout (kembalikan tombol setelah 30 detik)
+            setTimeout(() => {
+                form.hasSubmitted = false;
+                button.disabled = false;
+                button.classList.remove('opacity-70', 'cursor-not-allowed');
+                button.innerHTML = originalText;
+            }, 30000);
         });
     }
 
-    // Terapkan fungsi pencegahan ke kedua form
-    // PENTING: Periksa apakah elemen ditemukan sebelum memanggil disableSubmitButton
-    if (formPayPra && btnPayPra) {
-        disableSubmitButton(formPayPra, btnPayPra);
-    }
-    if (formPayPasca && btnPayPasca) {
-        disableSubmitButton(formPayPasca, btnPayPasca);
-    }
-    
-    // Khusus untuk Prabayar, kita harus menerapkan logika disable saat tombol PILIH di modal diklik
-    // Tombol 'PROSES' di modal adalah tombol submit itu sendiri, jadi logika di atas sudah cukup.
+    // Terapkan fungsi (Pengecekan dilakukan di dalam fungsi disableSubmitButton)
+    disableSubmitButton(formPayPra);
+    disableSubmitButton(formPayPasca);
 });
 
 </script>
