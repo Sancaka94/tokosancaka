@@ -89,7 +89,7 @@
     @endif
     {{-- SELESAI KODE DINAMIS --}}
 
-                <div class="bg-white p-6 rounded-lg shadow-md">
+                <div class="bg-red-600 p-6 rounded-lg shadow-md">
                     <div class="flex justify-between items-center border-b pb-4 mb-6">
                         <h3 class="text-xl font-semibold text-gray-800">
                             <i class="fas fa-arrow-up-from-bracket text-red-500 mr-2"></i>Informasi Pengirim
@@ -125,12 +125,7 @@
                             <label for="sender_address_search" class="block mb-2 text-sm font-medium text-gray-700 required-label">Cari Alamat Ongkir (Kec/Kel/Kodepos)</label>
                             <div class="relative">
                                 <input type="text" id="sender_address_search" 
-                                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pr-8
-       focus:outline-none
-       focus:border-red-500
-       focus:ring-4 focus:ring-red-300
-       focus:shadow-md"
- placeholder="Ketik untuk mencari alamat..." autocomplete="off">
+                                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pr-8 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md" placeholder="Ketik untuk mencari alamat..." autocomplete="off">
                                 <i id="sender_address_check" class="fas fa-check-circle text-green-500 absolute top-1/2 right-3 transform -translate-y-1/2 hidden"></i>
                             </div>
                             <div id="sender_address_results" class="search-results-container hidden"></div>
