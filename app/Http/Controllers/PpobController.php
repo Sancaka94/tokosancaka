@@ -323,6 +323,18 @@ class PpobController extends Controller
                 'multifinance'        => ['category', 'Multifinance'],
             ];
 
+            // DEBUG SEMENTARA (Hapus jika sudah fix)
+if ($inputSku === 'internet' || $inputSku === 'internet-pascabayar') {
+    $cekProduk = PpobProduct::where('brand', 'LIKE', '%INDIHOME%')->get();
+    if ($cekProduk->isEmpty()) {
+        dd("DEBUG: Tidak ada produk dengan brand mengandung kata 'INDIHOME' di database.");
+    }
+    $cekAktif = PpobProduct::where('brand', 'LIKE', '%INDIHOME%')->where('seller_product_status', true)->get();
+    if ($cekAktif->isEmpty()) {
+        dd("DEBUG: Produk Indihome ditemukan TAPI status seller_product_status = 0 (Non-Aktif). Silakan aktifkan di Admin.");
+    }
+}
+
             // A. Cek Mapping Spesifik
             if (isset($mapConfig[$inputSku])) {
                 $config = $mapConfig[$inputSku];
