@@ -283,31 +283,37 @@ class PpobController extends Controller
         $refId = 'INQ-' . time() . rand(100,999);
 
         // =======================================================================
-        // 2. UNIVERSAL AUTO-MAPPER (FIXED: SESUAI DATABASE ANDA)
+        // 2. UNIVERSAL AUTO-MAPPER (UPDATE: MENYESUAIKAN KOLOM DB ANDA)
         // =======================================================================
         
         // Cek apakah input BUKAN SKU asli (tidak diawali 'post' atau 'pln')
         if (!Str::startsWith($inputSku, 'post') && !Str::startsWith($inputSku, 'pln')) {
 
             // Konfigurasi Mapping: 'slug_frontend' => ['kolom_db', 'kata_kunci']
+            // SAYA UBAH SEMUA KE 'brand' atau 'product_name' KARENA KOLOM 'category' ANDA ISINYA HANYA 'Pascabayar'
             $mapConfig = [
-                // [FIXED] INTERNET: Cari di kolom 'product_name' karena brand-nya 'INTERNET PASCABAYAR'
+                // INTERNET (Sesuai database: SPEEDY & INDIHOME ada di product_name)
                 'internet'            => ['product_name', 'SPEEDY & INDIHOME'], 
                 'internet-pascabayar' => ['product_name', 'SPEEDY & INDIHOME'],
                 'indihome'            => ['product_name', 'SPEEDY & INDIHOME'],
                 'wifi'                => ['product_name', 'SPEEDY & INDIHOME'],
                 
-                // PLN: Cari di kolom 'brand'
-                'pln-pascabayar'      => ['brand', 'PLN PASCABAYAR'],
+                // PLN
+                'pln-pascabayar'      => ['brand', 'PLN'], // Biasanya brand mengandung PLN
                 
                 // BPJS
-                'bpjs-kesehatan'      => ['brand', 'BPJS KESEHATAN'],
+                'bpjs-kesehatan'      => ['product_name', 'BPJS'], // Cari yang namanya mengandung BPJS
+                'bpjs-ketenagakerjaan'=> ['product_name', 'KETENAGAKERJAAN'],
+
+                // PDAM (FIX DISINI: Cari 'PDAM' di brand atau product_name)
+                'pdam'                => ['brand', 'PDAM'], 
                 
-                // PDAM & LAINNYA
-                'pdam'                => ['category', 'PDAM'], 
-                'pbb'                 => ['category', 'PBB'],
-                'gas-negara'          => ['brand', 'GAS NEGARA'],
-                'multifinance'        => ['category', 'Multifinance'],
+                // PAJAK & FINANCE (Ubah ke brand/product_name)
+                'pbb'                 => ['brand', 'PBB'],
+                'samsat'              => ['brand', 'SAMSAT'],
+                'gas-negara'          => ['brand', 'GAS'],
+                'multifinance'        => ['product_name', 'FINANCE'], // Atau 'angsuran'
+                'hp-pascabayar'       => ['product_name', 'PASCABAYAR'], // Hati-hati ini umum
             ];
 
             // A. Cek Mapping Spesifik
@@ -319,16 +325,17 @@ class PpobController extends Controller
                 // Cari produk aktif
                 $mappedProduct = PpobProduct::where($column, 'LIKE', "%{$keyword}%")
                     ->where('seller_product_status', true)
-                    ->orderBy('sell_price', 'asc')
+                    ->orderBy('id', 'desc') // Ambil yang terbaru
                     ->first();
 
                 if ($mappedProduct) {
                     $finalSku = $mappedProduct->buyer_sku_code;
                 }
             } 
-            // B. Fallback Kategori Umum (Jaga-jaga)
+            // B. Fallback: Cari di Brand/Product Name langsung jika tidak ada di map
             else {
-                $tryProduct = PpobProduct::where('category', 'LIKE', "%{$inputSku}%")
+                // Jangan cari di category, cari di product_name saja yang lebih spesifik
+                $tryProduct = PpobProduct::where('product_name', 'LIKE', "%{$inputSku}%")
                     ->where('seller_product_status', true)
                     ->first();
                 if ($tryProduct) {
@@ -356,14 +363,16 @@ class PpobController extends Controller
                  if ($alt) {
                      $finalSku = $alt->buyer_sku_code;
                      $product = $alt;
-                     // Log perubahan SKU untuk tracking
                      Log::info("Switch SKU $inputSku ke Alternatif: $finalSku");
                  } else {
                      return response()->json(['status' => 'error', 'message' => 'Produk sedang gangguan (Stok Kosong).']);
                  }
             } else {
-                 // Jika benar-benar kosong
-                 return response()->json(['status' => 'error', 'message' => 'Kategori produk belum tersedia.']);
+                 // Debugging Info: Beri tahu user apa yang dicari agar tidak bingung "Unexpected token"
+                 return response()->json([
+                     'status' => 'error', 
+                     'message' => "Kategori '$inputSku' belum tersedia/aktif di Database Admin."
+                 ]);
             }
         }
 
@@ -410,7 +419,6 @@ class PpobController extends Controller
             
         } catch (\Exception $e) {
             Log::error("Inquiry Error: " . $e->getMessage());
-            // Return JSON agar frontend tidak error "Unexpected token"
             return response()->json(['status' => 'error', 'message' => 'Gagal koneksi ke server provider.'], 500);
         }
     }
