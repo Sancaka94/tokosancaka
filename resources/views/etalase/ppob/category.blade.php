@@ -1,4 +1,4 @@
-('layouts.marketplace')
+@extends('layouts.marketplace')
 
 @php
     // ================================================================
@@ -103,7 +103,7 @@
     $menus = array_merge($prepaidMenus, $postpaidMenus);
 @endphp
 
-@section('title', $pageTitle)
+('title', $pageTitle)
 
 @push('styles')
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
