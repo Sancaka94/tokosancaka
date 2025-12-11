@@ -209,8 +209,37 @@ class AgentTransactionController extends Controller
                 }
             }
 
+          // Jika Sukses (Langsung dari API)
             if ($status == 'Sukses') {
                 $trx->status = 'Success';
+                
+                // 1. Pesan untuk PEMBELI
+                if ($request->customer_wa) {
+                    $msgPembeli = "TERIMA KASIH!\n\n";
+                    $msgPembeli .= "Transaksi PPOB Berhasil.\n";
+                    $msgPembeli .= "Produk: " . ($request->payment_type == 'pasca' ? 'Tagihan Pascabayar' : $trx->buyer_sku_code) . "\n";
+                    $msgPembeli .= "No. Pel: " . $request->customer_no . "\n";
+                    $msgPembeli .= "SN/Ref: " . ($trx->sn ?? '-') . "\n";
+                    $msgPembeli .= "Total: Rp " . number_format($trx->selling_price, 0, ',', '.') . "\n\n";
+                    $msgPembeli .= "Simpan bukti ini sebagai referensi.";
+                    
+                    $this->sendWhatsApp($request->customer_wa, $msgPembeli);
+                }
+
+                $nomorSeller = $user->no_hp; // <--- GANTI 'no_hp' SESUAI KOLOM DI DATABASE ANDA
+                
+                if ($nomorSeller) {
+                    $msgSeller = "[INFO TRANSAKSI]\n";
+                    $msgSeller .= "Status: SUKSES\n";
+                    $msgSeller .= "Produk: " . ($request->payment_type == 'pasca' ? 'Tagihan Pasca' : $trx->buyer_sku_code) . "\n";
+                    $msgSeller .= "Tujuan: " . $request->customer_no . "\n";
+                    $msgSeller .= "SN: " . ($trx->sn ?? '-') . "\n";
+                    $msgSeller .= "Profit: Rp " . number_format($trx->profit, 0, ',', '.') . "\n";
+                    $msgSeller .= "Sisa Saldo: Rp " . number_format($user->saldo, 0, ',', '.');
+
+                    $this->sendWhatsApp($nomorSeller, $msgSeller);
+                }
+                // ---------------------------
             }
             
             $trx->save();
@@ -270,6 +299,33 @@ class AgentTransactionController extends Controller
         } catch (\Exception $e) {
             Log::error('Get PBB Cities DB Error: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Gagal mengambil data kota dari database: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Helper: Kirim Notifikasi WA via Fonnte
+     */
+    private function sendWhatsApp($target, $message)
+    {
+        try {
+            // Pastikan nomor diawali 62 (Fonnte biasanya butuh 62 atau 08, tapi 62 lebih aman)
+            if (substr($target, 0, 1) == '0') {
+                $target = '62' . substr($target, 1);
+            }
+
+            $token = 'tw2v5GDT1u4pZ4iBHUbD'; // <--- GANTI DENGAN TOKEN FONNTE ASLI ANDA
+
+            $response = Http::withHeaders([
+                'Authorization' => $token,
+            ])->post('https://api.fonnte.com/send', [
+                'target' => $target,
+                'message' => $message,
+                'countryCode' => '62', // optional
+            ]);
+
+            Log::info("WA Sent to $target: " . $response->body());
+        } catch (\Exception $e) {
+            Log::error("WA Gagal: " . $e->getMessage());
         }
     }
 }
