@@ -280,29 +280,27 @@ class PpobController extends Controller
         ]);
 
         $customerNo = $request->input('customer_no');
-        $sku = $request->input('sku');
-        // Use a unique ref_id for inquiry
+        $requestedSku = $request->input('sku'); // Simpan SKU asli request
+        $sku = $requestedSku;
+        
         $refId = 'INQ-' . time() . rand(100,999);
         
-       // 1. Validate Product Locally
+        // 1. Cari Produk Lokal
         $product = PpobProduct::where('buyer_sku_code', $sku)->first();
 
-        // 2. LOGIKA BARU: Handle inactive/missing SKU
+        // 2. LOGIKA BARU: Handle jika SKU tidak aktif/hilang
         if (!$product || $product->seller_product_status != true) {
             
             $alternativeSku = null;
 
-            // KASUS A: Produk ada di DB tapi tidak aktif -> Cari alternatif dari BRAND YANG SAMA
+            // Jika produk ada di DB tapi non-aktif, cari temannya dengan BRAND yang sama
             if ($product) {
                 $alternativeSku = PpobProduct::where('brand', $product->brand) // Cari sesama Indihome/BPJS/dll
                     ->where('seller_product_status', true)
                     ->where('buyer_sku_code', '!=', $sku) // Hindari ambil diri sendiri
                     ->first();
             } 
-            
-            // KASUS B: Produk tidak ditemukan sama sekali di DB
-            // Jangan memaksakan ke PLN jika kita tidak tahu ini produk apa.
-            // Biarkan null agar return error.
+            // Jika produk sama sekali tidak ada di DB, kita tidak boleh asal tembak ke PLN.
             
             if ($alternativeSku) {
                 $oldSku = $sku;
@@ -311,15 +309,12 @@ class PpobController extends Controller
                 
                 Log::warning("SKU Asli $oldSku tidak aktif. Mengganti ke alternatif sesama brand: $sku.");
             } else {
-                // Jika tidak ada alternatif sesama brand, return Error.
-                // JANGAN dipaksa ke PLN PASCABAYAR karena akan menyebabkan 'Nomor Tujuan Salah'
-                // untuk produk non-PLN (seperti Indihome, BPJS, PDAM).
-                
-                Log::error("Inquiry Failed: SKU $requestedSku tidak aktif/tidak ditemukan dan tidak ada alternatif sesama brand.");
+                // Jika tidak ada alternatif yang valid, STOP proses. Jangan dipaksa ke PLN.
+                Log::error("Inquiry Gagal: SKU $requestedSku tidak ditemukan atau tidak aktif, dan tidak ada alternatif.");
                 
                 return response()->json([
                     'status' => 'error', 
-                    'message' => 'Produk sedang gangguan atau SKU tidak ditemukan. Silakan hubungi Admin.'
+                    'message' => 'Produk sedang gangguan atau SKU tidak ditemukan. Silakan hubungi Admin atau coba produk lain.'
                 ]);
             }
         }
