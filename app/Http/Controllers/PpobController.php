@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use App\Services\FonnteService;
-use App\Models\User; // Alias Model User ke Users (tabel Pengguna)
+use App\Models\User; // Pastikan menggunakan Model User yang benar
 use Illuminate\Support\Str;
 
 class PpobController extends Controller
@@ -29,9 +29,6 @@ class PpobController extends Controller
     // HELPER FUNCTIONS (WA, Logo)
     // =================================================================
 
-    /**
-     * Helper untuk membersihkan dan memformat nomor HP menjadi 62xxxx.
-     */
     private function _sanitizePhoneNumber(string $phone): ?string
     {
         $phone = preg_replace('/[^0-9]/', '', $phone);
@@ -60,20 +57,16 @@ class PpobController extends Controller
     }
     
     // =================================================================
-    // FUNGSI UTAMA & API (index, checkBill, checkPlnPrabayar)
+    // FUNGSI UTAMA (index, checkBill, checkPlnPrabayar)
     // =================================================================
 
-    /**
-     * FUNGSI UTAMA: MENANGANI SEMUA HALAMAN KATEGORI
-     */
     public function index($slug = 'pulsa')
     {
-        // 1. AMBIL DATA PENDUKUNG (LOGO, BANNER, SETTING)
         $weblogo = $this->getWebLogo();
         $banners = BannerEtalase::latest()->get(); 
         $settings = Setting::whereIn('key', ['banner_2','banner_3'])->pluck('value','key');
 
-        // 2. MAPPING JUDUL & KATEGORI DATABASE
+        // Mapping Judul & Kategori Database
         $categoryMap = [
             'pulsa' => ['title' => 'Pulsa Reguler', 'db_cat' => 'Pulsa'],
             'data' => ['title' => 'Paket Data', 'db_cat' => 'Data'],
@@ -111,7 +104,7 @@ class PpobController extends Controller
         $pageTitle = $mapData['title'];
         $dbCategoryKeyword = $mapData['db_cat'];
 
-        // 3. KONFIGURASI TAMPILAN
+        // Konfigurasi Tampilan
         $postpaidSlugs = [
             'pln-pascabayar', 'pdam', 'hp-pascabayar', 'internet-pascabayar', 
             'bpjs-kesehatan', 'multifinance', 'pbb', 'gas-negara', 
@@ -152,7 +145,7 @@ class PpobController extends Controller
             'icon' => $icon,
         ];
 
-        // 4. QUERY PRODUK
+        // Query Produk
         $products = PpobProduct::where('category', 'LIKE', "%{$dbCategoryKeyword}%")
             ->where('buyer_product_status', true)
             ->where('seller_product_status', true)
@@ -161,33 +154,21 @@ class PpobController extends Controller
 
         $brands = $products->pluck('brand')->unique()->values();
 
-        $defaultInquirySku = null;
-
-        if ($isPostpaid && $slug === 'pln-pascabayar') {
-            $defaultInquirySku = $products
-                ->where('brand', 'PLN PASCABAYAR')
-                ->where('seller_product_status', true)
-                ->pluck('buyer_sku_code')
-                ->first();
-        }
-
-        // 5. RETURN VIEW
         $prefix = request()->segment(1);
         if ($prefix == 'admin' || (auth()->check() && auth()->user()->hasRole('Admin'))) {
             return view('admin.ppob.index', compact('pageInfo', 'products', 'banners', 'settings', 'weblogo', 'brands')); 
         }
 
         return view('etalase.ppob.category', compact(
-            'pageInfo', 
-            'products', 
-            'banners', 
-            'settings', 
-            'weblogo', 
-            'brands' 
+            'pageInfo', 'products', 'banners', 'settings', 'weblogo', 'brands'
         ));
     }
 
-   public function checkBill(Request $request)
+    /**
+     * FUNGSI CEK TAGIHAN (INQUIRY)
+     * FIX: Mengirim buyer_sku_code asli API dan ref_id ke frontend
+     */
+    public function checkBill(Request $request)
     {
         $request->validate([
             'customer_no' => 'required', 
@@ -196,14 +177,14 @@ class PpobController extends Controller
 
         $customerNo = $request->input('customer_no');
         $sku = $request->input('sku');
-        // Use a unique ref_id for inquiry
         $refId = 'INQ-' . time() . rand(100,999);
         
-        // 1. Validate Product Locally
+        // 1. Validasi Produk Lokal
         $product = PpobProduct::where('buyer_sku_code', $sku)->first();
 
-        // 2. Handle inactive/missing SKU with alternative
+        // 2. Handle SKU Non-Aktif / Alternatif
         if (!$product || $product->seller_product_status != true) {
+            // Cari alternatif dalam brand yang sama (misal PLN PASCABAYAR)
             $alternativeSku = PpobProduct::where('brand', 'PLN PASCABAYAR')
                 ->where('seller_product_status', true)
                 ->inRandomOrder()
@@ -212,9 +193,7 @@ class PpobController extends Controller
             if ($alternativeSku) {
                 $product = $alternativeSku;
                 $sku = $alternativeSku->buyer_sku_code;
-                Log::warning("SKU $sku tidak aktif. Menggunakan alternatif: $sku.");
             } else {
-                Log::warning("Inquiry Failed: SKU $sku tidak aktif, dan tidak ada alternatif.");
                 return response()->json([
                     'status' => 'error', 
                     'message' => 'SKU produk Pascabayar tidak ditemukan atau sedang non-aktif.'
@@ -232,13 +211,14 @@ class PpobController extends Controller
             // 4. Call Inquiry API
             $response = $this->digiflazz->inquiryPasca($sku, $customerNo, $refId);
             
-            // 5. Process Successful Response
+            // 5. Proses Response Sukses
             if (isset($response['data']) && ($response['data']['rc'] === '00' || $response['data']['status'] === 'Sukses' || $response['data']['status'] === 'Pending')) {
                 $data = $response['data'];
                 
                 $tagihanPokokAPI = $data['price'] ?? $data['selling_price'] ?? $data['amount'] ?? 0;
                 $adminFeeModal = $data['admin'] ?? 0;
 
+                // Hitung Markup dari DB lokal
                 $markupKita = $product->sell_price - ($product->price ?? 0); 
                 
                 $tagihanPokokAPI = (float)$tagihanPokokAPI;
@@ -257,29 +237,24 @@ class PpobController extends Controller
                     'markup' => $markupKita,
                     'total_tagihan' => $totalTagihanAkhir,
                     
-                    // --- CRITICAL FIX START ---
-                    // Explicitly pass the buyer_sku_code from the API response
-                    // If API doesn't return it, fallback to the $sku used for request
+                    // --- CRITICAL FIX: Kirim SKU Asli & Ref ID ---
                     'buyer_sku_code' => $data['buyer_sku_code'] ?? $sku,
-                    
-                    // Pass the ref_id from API response (if available) or the generated one
-                    // This is VITAL for the payment step
                     'ref_id' => $data['ref_id'] ?? $refId,
-                    // --- CRITICAL FIX END ---
+                    // ---------------------------------------------
 
                     'desc' => $data['desc'] ?? []
                 ]);
             }
             
-            // 6. Handle API Error Response
-            $message = $response['data']['message'] ?? ($response['message'] ?? 'Tagihan tidak ditemukan atau Signature salah.'); 
-            Log::error("Inquiry Pasca API Error: $message", ['response' => $response, 'sku' => $sku, 'customer_no' => $customerNo]);
+            // 6. Handle Error API
+            $message = $response['data']['message'] ?? ($response['message'] ?? 'Tagihan tidak ditemukan.'); 
+            Log::error("Inquiry Pasca API Error: $message", ['sku' => $sku, 'no' => $customerNo]);
             
             return response()->json(['status' => 'error', 'message' => $message]);
             
         } catch (\Exception $e) {
             Log::error("PPOB Inquiry Exception: " . $e->getMessage());
-            return response()->json(['status' => 'error', 'message' => 'Error: Gagal koneksi ke provider. ' . $e->getMessage()], 500);
+            return response()->json(['status' => 'error', 'message' => 'Error: Gagal koneksi ke provider.'], 500);
         }
     }
 
@@ -302,7 +277,8 @@ class PpobController extends Controller
     }
 
     /**
-     * FUNGSI STORE (TRANSAKSI AKHIR) - DIPERBAIKI DENGAN IDEMPOTENCY
+     * FUNGSI STORE (TRANSAKSI AKHIR)
+     * FIX: Support Pascabayar (Ref ID dari Input) & Kirim WA
      */
     public function store(Request $request)
     {
@@ -311,75 +287,131 @@ class PpobController extends Controller
             'customer_no' => 'required',
             'customer_wa' => 'required|string|min:8|max:20',
             'idempotency_key' => 'required|string|max:36',
+            'selling_price' => 'nullable|numeric', // Untuk pascabayar (harga dinamis)
+            'ref_id' => 'nullable|string', // Untuk pascabayar (dari inquiry)
         ]);
         
         $user = Auth::user(); 
         if (!$user) return redirect()->route('login');
 
-        $product = PpobProduct::where('buyer_sku_code', $request->buyer_sku_code)->first();
-        if (!$product) return back()->with('error', 'Produk tidak ditemukan.');
+        // 1. DETEKSI JENIS TRANSAKSI (PRABAYAR / PASCABAYAR)
+        // Jika ada ref_id dari input, asumsikan ini Pascabayar
+        $isPasca = $request->has('ref_id') && !empty($request->input('ref_id'));
+        $sku = $request->buyer_sku_code;
+
+        // 2. CARI PRODUK DI DATABASE
+        $product = PpobProduct::where('buyer_sku_code', $sku)->first();
+
+        // [FIX PASCABAYAR] Jika SKU API (misal post641598) tidak ada di DB, cari map generic
+        if (!$product && $isPasca) {
+            // Mapping fallback ke produk generic Pascabayar agar dapat settingan profit
+            // Cari produk dengan brand 'PLN PASCABAYAR' atau sejenis
+            $product = PpobProduct::where('category', 'LIKE', '%Postpaid%')
+                        ->orWhere('brand', 'PLN PASCABAYAR')
+                        ->first();
+        }
+
+        if (!$product) return back()->with('error', 'Produk tidak ditemukan di sistem.');
+
+        // 3. TENTUKAN HARGA JUAL & MODAL
+        if ($isPasca) {
+            // Pascabayar: Harga jual dari input (Total Tagihan Inquiry), Modal = Harga Jual - Estimasi Profit
+            $sellingPrice = $request->input('selling_price');
+            if(!$sellingPrice) return back()->with('error', 'Harga Tagihan tidak valid.');
+            
+            // Estimasi profit (misal 2500), nanti diupdate real-nya setelah respon sukses
+            $estimasiProfit = 2500; 
+            $priceToDeduct = $sellingPrice; // Saldo user dipotong sebesar Total Tagihan
+            $modalPrice = $sellingPrice - $estimasiProfit; 
+        } else {
+            // Prabayar: Harga dari Database
+            $sellingPrice = $product->sell_price;
+            $priceToDeduct = $product->sell_price;
+            $modalPrice = $product->price;
+        }
         
-        // Cek Saldo
-        if ($user->saldo < $product->sell_price) {
+        // 4. CEK SALDO
+        if ($user->saldo < $priceToDeduct) {
             return back()->with('error', 'Saldo tidak cukup. Silakan Top Up.');
         }
 
-        // 1. BUAT REF ID UNIK & IDEMPOTENCY LOCK
-        $refId = 'TRX-' . time() . rand(100,999);
-        $idempotencyKey = 'ppob_lock:' . $request->customer_no . ':' . $product->buyer_sku_code;
-        $lockDuration = 300; 
-
+        // 5. IDEMPOTENCY CHECK
+        $idempotencyKey = 'ppob_lock:' . $request->customer_no . ':' . $sku . ':' . $request->idempotency_key;
         if (Cache::has($idempotencyKey)) {
-            Log::warning('PPOB Idempotency Check: Duplicate request blocked.', [
-                'key' => $idempotencyKey, 
-                'user_id' => $user->id_pengguna ?? $user->id
-            ]);
-            return back()->with('error', 'Transaksi sedang diproses. Mohon tunggu 5 menit sebelum mencoba lagi (Cek riwayat transaksi).');
+            return back()->with('error', 'Transaksi sedang diproses. Mohon tunggu.');
         }
-
-        Cache::put($idempotencyKey, $refId, $lockDuration);
+        Cache::put($idempotencyKey, true, 300); // Lock 5 menit
         
+        // 6. SET REF ID
+        // Jika Pasca, WAJIB pakai ref_id inquiry. Jika Pra, buat baru.
+        $trxRefId = $isPasca ? $request->input('ref_id') : 'TRX-' . time() . rand(100,999);
+
         DB::beginTransaction();
         try {
-            // Potong Saldo
-            $user->decrement('saldo', $product->sell_price);
+            // A. Potong Saldo
+            $user->decrement('saldo', $priceToDeduct);
             
-            // Simpan Transaksi
+            // B. Simpan Transaksi Lokal
             $trx = PpobTransaction::create([
-                'user_id' => $user->id_pengguna ?? $user->id,
-                'order_id' => $refId, 
-                'buyer_sku_code' => $product->buyer_sku_code,
+                'user_id' => $user->id, // Sesuaikan id/id_pengguna
+                'order_id' => $trxRefId, 
+                'buyer_sku_code' => $sku, // Simpan SKU asli (post...)
                 'customer_no' => $request->customer_no,
                 'customer_wa' => $this->_sanitizePhoneNumber($request->customer_wa),
-                'price' => $product->price,
-                'selling_price' => $product->sell_price,
-                'profit' => $product->sell_price - $product->price,
+                'price' => $modalPrice,
+                'selling_price' => $sellingPrice,
+                'profit' => $sellingPrice - $modalPrice,
                 'status' => 'Pending',
+                'payment_method' => 'SALDO',
                 'message' => 'Sedang diproses...',
+                'desc' => json_encode(['type' => $isPasca ? 'postpaid' : 'prepaid'])
             ]);
 
-            // Hit API
-            $response = $this->digiflazz->transaction($product->buyer_sku_code, $request->customer_no, $refId, $product->sell_price);
+            // C. HIT API DIGIFLAZZ
+            $command = $isPasca ? 'pay-pasca' : null; // Penting untuk service baru
             
-            if (isset($response['data']) && $response['data']['status'] !== 'Gagal') {
-                $trx->update(['status' => $response['data']['status'], 'sn' => $response['data']['sn'] ?? '']);
-                DB::commit();
+            // Panggil Service (Pastikan function transaction support parameter command)
+            $response = $this->digiflazz->transaction($sku, $request->customer_no, $trxRefId, 0, $command);
+            
+            $status = $response['data']['status'] ?? 'Gagal';
+            $sn = $response['data']['sn'] ?? '';
+            $msg = $response['data']['message'] ?? '-';
+
+            // D. HANDLE RESPONSE
+            if ($status !== 'Gagal') {
+                // Sukses / Pending
+                $updateData = ['status' => $status, 'sn' => $sn, 'message' => $msg];
                 
-                // Redireksi Sukses
+                // Update Modal Asli (Khusus Pasca)
+                if (isset($response['data']['price']) && $response['data']['price'] > 0) {
+                    $realModal = $response['data']['price'];
+                    $updateData['price'] = $realModal;
+                    $updateData['profit'] = $trx->selling_price - $realModal;
+                }
+
+                $trx->update($updateData);
+                
+                // Jika Langsung Sukses -> Kirim WA
+                if ($status === 'Sukses' || $status === 'Success') {
+                    // Trigger WA Notif
+                    $this->_sendWhatsappNotificationSN($trx, $sn);
+                }
+
+                DB::commit();
                 return redirect('customer/ppob/history')->with('success', 'Transaksi Berhasil Diproses!'); 
+
             } else {
                 // Gagal -> Refund
-                $user->increment('saldo', $product->sell_price);
-                $trx->update(['status' => 'Gagal', 'message' => $response['data']['message'] ?? 'Gagal dari provider']);
+                $user->increment('saldo', $priceToDeduct);
+                $trx->update(['status' => 'Gagal', 'message' => $msg]);
                 DB::commit();
                 
-                // GAGAL: Lock tetap aktif sampai TTL berakhir.
-                return back()->with('error', 'Transaksi Gagal: ' . ($response['data']['message'] ?? 'Unknown Error'));
+                return back()->with('error', 'Transaksi Gagal: ' . $msg);
             }
+
         } catch (\Exception $e) {
             DB::rollBack();
-            // EXCEPTION: Lock tetap aktif sampai TTL berakhir.
-            Log::error('PPOB Store Exception (Double Order Protection Active): ' . $e->getMessage());
+            Log::error('PPOB Store Exception: ' . $e->getMessage());
             return back()->with('error', 'Error Sistem: ' . $e->getMessage());
         }
     }
@@ -487,7 +519,7 @@ class PpobController extends Controller
     {
         try {
             // 1. Ambil Data Agent (Penjual) - Menggunakan Model Users
-            $user = Users::find($trx->user_id); 
+            $user = User::find($trx->user_id); 
             
             // 2. Tentukan Nomor WA (Agent & Customer)
             $agentWa = $this->_sanitizePhoneNumber($user->no_wa ?? null);

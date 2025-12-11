@@ -5,7 +5,7 @@
     // 1. LOGIC PHP: PEMETAAN SKU (AGAR TIDAK SALAH DETEKSI PRODUK)
     // ================================================================
     $urlSlug = request()->segment(4); 
-    $$pageInfo = $pageInfo ?? [];
+    $pageInfo = $pageInfo ?? [];
     $currentSlug = $pageInfo['slug'] ?? $urlSlug ?? 'pulsa'; 
 
     // MAPPING: Ubah Slug URL menjadi Kode SKU API yang Benar
