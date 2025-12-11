@@ -269,111 +269,185 @@ class PpobController extends Controller
     }
 
     /**
-     * FUNGSI CEK TAGIHAN (PASCABAYAR)
-     * [FIXED] Mengirim buyer_sku_code asli ke Frontend agar pembayaran tidak gagal
+     * FUNGSI CEK TAGIHAN (PASCABAYAR) - UNIVERSAL & SMART FALLBACK
      */
     public function checkBill(Request $request)
     {
+        // 1. VALIDASI INPUT
         $request->validate([
             'customer_no' => 'required', 
             'sku' => 'required' 
         ]);
 
         $customerNo = $request->input('customer_no');
-        $requestedSku = $request->input('sku'); // Simpan SKU asli request
-        $sku = $requestedSku;
+        $inputSku = $request->input('sku'); // Bisa berupa 'post64...' atau 'internet', 'pdam'
+        $finalSku = $inputSku; // Default
         
+        // Buat RefID unik untuk sesi ini
         $refId = 'INQ-' . time() . rand(100,999);
-        
-        // 1. Cari Produk Lokal
-        $product = PpobProduct::where('buyer_sku_code', $sku)->first();
 
-        // 2. LOGIKA BARU: Handle jika SKU tidak aktif/hilang
+        // =======================================================================
+        // 2. UNIVERSAL AUTO-MAPPER: Terjemahkan Kategori ke SKU Produk Aktif
+        // =======================================================================
+        // Logika: Jika input bukan kode SKU (post/pln), cari produk berdasarkan kategori/brand
+        
+        if (!Str::startsWith($inputSku, 'post') && !Str::startsWith($inputSku, 'pln')) {
+
+            // Konfigurasi Mapping: 'slug_dari_frontend' => ['kolom_database', 'kata_kunci_pencarian']
+            $mapConfig = [
+                // INTERNET
+                'internet'            => ['brand', 'SPEEDY & INDIHOME'],
+                'internet-pascabayar' => ['brand', 'SPEEDY & INDIHOME'],
+                'indihome'            => ['brand', 'SPEEDY & INDIHOME'],
+                
+                // PLN
+                'pln-pascabayar'      => ['brand', 'PLN PASCABAYAR'],
+                'pln-nontaglis'       => ['brand', 'PLN NON TAGLIS'],
+
+                // BPJS
+                'bpjs-kesehatan'      => ['brand', 'BPJS KESEHATAN'],
+                'bpjs-ketenagakerjaan'=> ['brand', 'BPJS KETENAGAKERJAAN'],
+
+                // AIR / PDAM (Warning: Sebaiknya frontend kirim SKU spesifik per kota)
+                'pdam'                => ['category', 'PDAM'], 
+                
+                // PAJAK
+                'pbb'                 => ['category', 'PBB'],
+                'samsat'              => ['category', 'Samsat'],
+
+                // LAINNYA
+                'gas-negara'          => ['brand', 'GAS NEGARA'],
+                'hp-pascabayar'       => ['category', 'HP Postpaid'],
+                'tv-pascabayar'       => ['category', 'TV Postpaid'],
+                'multifinance'        => ['category', 'Multifinance'],
+            ];
+
+            // A. Cek Mapping Spesifik
+            if (isset($mapConfig[$inputSku])) {
+                $config = $mapConfig[$inputSku];
+                // Cari 1 produk aktif yang cocok (ambil random/first)
+                $mappedProduct = PpobProduct::where($config[0], 'LIKE', "%{$config[1]}%")
+                    ->where('seller_product_status', true)
+                    ->first();
+
+                if ($mappedProduct) {
+                    $finalSku = $mappedProduct->buyer_sku_code;
+                }
+            } 
+            // B. Jika tidak ada di map, cari kasar berdasarkan Category
+            else {
+                $tryProduct = PpobProduct::where('category', 'LIKE', "%{$inputSku}%")
+                    ->where('seller_product_status', true)
+                    ->first();
+                if ($tryProduct) {
+                    $finalSku = $tryProduct->buyer_sku_code;
+                }
+            }
+        }
+
+        // =======================================================================
+        // 3. AMBIL DATA PRODUK DARI DB & VALIDASI FALLBACK (AGAR TIDAK KE PLN)
+        // =======================================================================
+        
+        $product = PpobProduct::where('buyer_sku_code', $finalSku)->first();
+
+        // Jika produk tidak ditemukan atau non-aktif
         if (!$product || $product->seller_product_status != true) {
             
-            $alternativeSku = null;
+            $alternativeFound = false;
 
-            // Jika produk ada di DB tapi non-aktif, cari temannya dengan BRAND yang sama
+            // Jika kita tahu produk aslinya apa (misal tadi ketemu tapi mati), cari saudaranya
             if ($product) {
-                $alternativeSku = PpobProduct::where('brand', $product->brand) // Cari sesama Indihome/BPJS/dll
+                $alternativeSku = PpobProduct::where('brand', $product->brand) // Cari Brand SAMA
                     ->where('seller_product_status', true)
-                    ->where('buyer_sku_code', '!=', $sku) // Hindari ambil diri sendiri
+                    ->where('buyer_sku_code', '!=', $finalSku)
                     ->first();
-            } 
-            // Jika produk sama sekali tidak ada di DB, kita tidak boleh asal tembak ke PLN.
-            
-            if ($alternativeSku) {
-                $oldSku = $sku;
-                $product = $alternativeSku;
-                $sku = $alternativeSku->buyer_sku_code;
-                
-                Log::warning("SKU Asli $oldSku tidak aktif. Mengganti ke alternatif sesama brand: $sku.");
-            } else {
-                // Jika tidak ada alternatif yang valid, STOP proses. Jangan dipaksa ke PLN.
-                Log::error("Inquiry Gagal: SKU $requestedSku tidak ditemukan atau tidak aktif, dan tidak ada alternatif.");
-                
+
+                if ($alternativeSku) {
+                    Log::warning("SKU $finalSku gangguan. Switch ke alternatif sesama brand: " . $alternativeSku->buyer_sku_code);
+                    $product = $alternativeSku;
+                    $finalSku = $alternativeSku->buyer_sku_code;
+                    $alternativeFound = true;
+                }
+            }
+
+            // Jika benar-benar buntu (Produk tidak ada & Alternatif tidak ada)
+            if (!$alternativeFound) {
+                // Khusus pesan error PDAM/Samsat agar user tidak bingung
+                if (str_contains($inputSku, 'pdam') || str_contains($inputSku, 'samsat')) {
+                    return response()->json([
+                        'status' => 'error', 
+                        'message' => 'Silakan pilih Wilayah/Area spesifik. Kode area umum tidak tersedia.'
+                    ]);
+                }
+
+                Log::error("Inquiry Gagal: SKU '$inputSku' (Mapped: '$finalSku') tidak aktif & tidak ada alternatif.");
                 return response()->json([
                     'status' => 'error', 
-                    'message' => 'Produk sedang gangguan atau SKU tidak ditemukan. Silakan hubungi Admin atau coba produk lain.'
+                    'message' => 'Produk sedang gangguan atau belum tersedia. Silakan hubungi CS.'
                 ]);
             }
         }
 
-        // 3. Set Credentials
+        // =======================================================================
+        // 4. EKSEKUSI API DIGIFLAZZ
+        // =======================================================================
+
+        // Set Credentials (sesuaikan dengan config Anda)
         $username = 'mihetiDVGdeW'; 
         $apiKeyProd = '1f48c69f-8676-5d56-a868-10a46a69f9b7';
-        $testingMode = false; 
-        $this->digiflazz->setCredentials($username, $apiKeyProd, $testingMode);
+        $this->digiflazz->setCredentials($username, $apiKeyProd, false); // false = Production
         
         try {
-            // 4. Call Inquiry API
-            $response = $this->digiflazz->inquiryPasca($sku, $customerNo, $refId);
+            // Hit API Inquiry
+            $response = $this->digiflazz->inquiryPasca($finalSku, $customerNo, $refId);
             
-            // 5. Process Successful Response
+            // Proses Response
             if (isset($response['data']) && ($response['data']['rc'] === '00' || $response['data']['status'] === 'Sukses' || $response['data']['status'] === 'Pending')) {
+                
                 $data = $response['data'];
                 
-                $tagihanPokokAPI = $data['price'] ?? $data['selling_price'] ?? $data['amount'] ?? 0;
-                $adminFeeModal = $data['admin'] ?? 0;
+                // Kalkulasi Harga
+                $tagihanPenyedia = (float) ($data['price'] ?? $data['selling_price'] ?? $data['amount'] ?? 0); // Tagihan Murni
+                $adminFeePenyedia = (float) ($data['admin'] ?? 0); // Admin dari Digiflazz
+                
+                // Rumus Profit: (Harga Jual di DB - Modal di DB). 
+                // Jika DB kosong, kita ambil default margin Rp 2.500
+                $marginAgen = ($product->sell_price > $product->price) 
+                              ? ($product->sell_price - $product->price) 
+                              : 2500;
 
-                $markupKita = $product->sell_price - ($product->price ?? 0); 
-                
-                $tagihanPokokAPI = (float)$tagihanPokokAPI;
-                $adminFeeModal = (float)$adminFeeModal;
-                
-                $totalTagihanAkhir = $tagihanPokokAPI + $adminFeeModal + $markupKita;
+                $totalTagihanUser = $tagihanPenyedia + $adminFeePenyedia + $marginAgen;
 
                 return response()->json([
                     'status' => 'success',
-                    'customer_name' => $data['customer_name'] ?? $data['name'] ?? '',
-                    'customer_no' => $data['customer_no'] ?? '',
-                    'product_name' => $product->product_name,
-                    'period' => $data['period'] ?? null,
-                    'amount_pokok' => (float)$tagihanPokokAPI,
-                    'admin_fee_modal' => (float)$adminFeeModal,
-                    'markup' => $markupKita,
-                    'total_tagihan' => $totalTagihanAkhir,
+                    'customer_name' => $data['customer_name'] ?? $data['name'] ?? 'Pelanggan',
+                    'customer_no'   => $data['customer_no'] ?? $customerNo,
+                    'product_name'  => $product->product_name, // Nama dari DB kita agar rapi
+                    'period'        => $data['period'] ?? '-',
                     
-                    // --- CRITICAL FIX START ---
-                    // Mengirim SKU Asli (Contoh: post641598) agar tidak 'pln' saat bayar
-                    'buyer_sku_code' => $data['buyer_sku_code'] ?? $sku,
-                    // Mengirim RefID Inquiry agar bisa dipakai saat Payment
-                    'ref_id' => $data['ref_id'] ?? $refId,
-                    // --- CRITICAL FIX END ---
-
-                    'desc' => $data['desc'] ?? []
+                    // Rincian (Opsional ditampilkan ke user)
+                    'amount_pokok'      => $tagihanPenyedia,
+                    'admin_fee_total'   => $adminFeePenyedia + $marginAgen, 
+                    
+                    // Total yang harus dibayar user
+                    'total_tagihan' => $totalTagihanUser,
+                    
+                    // PENTING: Kembalikan SKU Hasil Mapping & RefID untuk proses Bayar (Store)
+                    'buyer_sku_code' => $finalSku,
+                    'ref_id'         => $data['ref_id'] ?? $refId,
+                    'desc'           => $data['desc'] ?? []
                 ]);
             }
             
-            // 6. Handle API Error Response
-            $message = $response['data']['message'] ?? ($response['message'] ?? 'Tagihan tidak ditemukan atau Signature salah.'); 
-            Log::error("Inquiry Pasca API Error: $message", ['response' => $response, 'sku' => $sku, 'customer_no' => $customerNo]);
+            // Handle Error dari API (Misal: ID Salah)
+            $message = $response['data']['message'] ?? ($response['message'] ?? 'Tagihan tidak ditemukan / Sudah terbayar.'); 
             
             return response()->json(['status' => 'error', 'message' => $message]);
             
         } catch (\Exception $e) {
             Log::error("PPOB Inquiry Exception: " . $e->getMessage());
-            return response()->json(['status' => 'error', 'message' => 'Error: Gagal koneksi ke provider. ' . $e->getMessage()], 500);
+            return response()->json(['status' => 'error', 'message' => 'Gagal koneksi ke server provider.'], 500);
         }
     }
 
