@@ -3,64 +3,52 @@
 @section('title', 'Invoice #' . $transaction->order_id)
 
 @section('content')
-<div class="min-h-screen bg-gray-100 flex items-center justify-center py-10 px-4 print:bg-white print:p-0 print:items-start">
+<div class="min-h-screen bg-gray-100 flex items-center justify-center py-10 px-4 print:bg-white print:p-0 print:block">
     
-    <div id="invoice-card" class="bg-white w-full max-w-md p-6 rounded-xl shadow-lg relative print:shadow-none print:w-full print:max-w-full print:p-0">
+    <div id="invoice-card" class="bg-white w-full max-w-md p-6 rounded-xl shadow-lg relative print:shadow-none print:w-full print:max-w-full print:p-2 print:m-0 print:rounded-none">
         
-        <div class="text-center border-b-2 border-dashed border-gray-300 pb-5 mb-5">
-            <h2 class="text-2xl font-extrabold text-blue-900 uppercase tracking-wider">Sancaka Store</h2>
-            <p class="text-xs text-gray-500 mt-1">Pusat Belanja Online Terpercaya</p>
-            
-            <div class="mt-4">
-                @if(strtolower($transaction->status) == 'success')
-                    <span class="border-2 border-green-500 text-green-600 px-3 py-1 text-xs font-bold uppercase rounded-full tracking-wide">
-                        BERHASIL
-                    </span>
-                @elseif(strtolower($transaction->status) == 'pending')
-                    <span class="border-2 border-yellow-500 text-yellow-600 px-3 py-1 text-xs font-bold uppercase rounded-full tracking-wide">
-                        PENDING
-                    </span>
-                @else
-                    <span class="border-2 border-red-500 text-red-600 px-3 py-1 text-xs font-bold uppercase rounded-full tracking-wide">
-                        GAGAL
-                    </span>
-                @endif
+        <div class="text-center border-b-2 border-dashed border-gray-800 pb-3 mb-3">
+            <h2 class="text-xl font-extrabold text-blue-900 uppercase tracking-wider print:text-black">Sancaka Store</h2>
+            <p class="text-[10px] text-gray-500 mt-1 print:text-black">Bukti Pembayaran Sah</p>
+        </div>
+
+        <div class="space-y-1 text-xs mb-3 font-mono">
+            <div class="flex justify-between">
+                <span class="text-gray-500 print:text-black">No. Invoice</span>
+                <span class="font-bold text-gray-800 print:text-black">{{ $transaction->order_id }}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-gray-500 print:text-black">Tgl</span>
+                <span class="font-semibold text-gray-800 print:text-black">{{ $transaction->created_at->format('d/m/y H:i') }}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-gray-500 print:text-black">Metode</span>
+                <span class="font-semibold text-gray-800 uppercase print:text-black">{{ str_replace('_', ' ', $transaction->payment_method) }}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-gray-500 print:text-black">Status</span>
+                <span class="font-bold uppercase print:text-black">{{ $transaction->status }}</span>
             </div>
         </div>
 
-        <div class="space-y-3 text-sm mb-6">
-            <div class="flex justify-between">
-                <span class="text-gray-500">No. Invoice</span>
-                <span class="font-mono font-bold text-gray-800">{{ $transaction->order_id }}</span>
-            </div>
-            <div class="flex justify-between">
-                <span class="text-gray-500">Tanggal</span>
-                <span class="font-semibold text-gray-800">{{ $transaction->created_at->format('d/m/Y H:i') }}</span>
-            </div>
-            <div class="flex justify-between">
-                <span class="text-gray-500">Pembayaran</span>
-                <span class="font-semibold text-gray-800 uppercase">{{ str_replace('_', ' ', $transaction->payment_method) }}</span>
-            </div>
-        </div>
-
-        <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6 print:border-black print:bg-transparent">
-            <div class="flex justify-between items-start mb-2">
-                <div>
-                    <h3 class="font-bold text-gray-900">{{ strtoupper($transaction->buyer_sku_code) }}</h3>
-                    <p class="text-xs text-gray-500 mt-0.5">ID: {{ $transaction->customer_no }}</p>
+        <div class="bg-gray-50 p-3 rounded border border-gray-200 mb-3 print:bg-transparent print:border-black print:border-y-2 print:border-x-0 print:rounded-none print:py-2">
+            <div class="flex justify-between items-start">
+                <div class="w-2/3">
+                    <h3 class="font-bold text-sm text-gray-900 leading-tight print:text-black">{{ strtoupper($transaction->buyer_sku_code) }}</h3>
+                    <p class="text-[10px] text-gray-500 mt-0.5 print:text-black">ID: {{ $transaction->customer_no }}</p>
                 </div>
-                <div class="text-right">
-                    <span class="block font-bold text-lg text-blue-600 print:text-black">
+                <div class="w-1/3 text-right">
+                    <span class="block font-bold text-sm text-blue-600 print:text-black">
                         Rp {{ number_format($transaction->selling_price, 0, ',', '.') }}
                     </span>
                 </div>
             </div>
 
             @if($transaction->sn)
-            <div class="mt-4 pt-3 border-t border-dashed border-gray-300">
-                <p class="text-[10px] text-center text-gray-400 uppercase tracking-widest mb-1">Serial Number / Token</p>
-                <div class="bg-white border-2 border-gray-800 p-3 rounded text-center print:border-black">
-                    <span class="font-mono font-bold text-xl tracking-widest text-gray-900 select-all">
+            <div class="mt-2 pt-2 border-t border-dashed border-gray-400 print:border-black">
+                <p class="text-[9px] text-center text-gray-500 uppercase tracking-widest mb-1 print:text-black">Serial Number / Token</p>
+                <div class="border border-gray-800 p-2 rounded text-center print:border-2 print:border-black">
+                    <span class="font-mono font-bold text-lg tracking-widest text-gray-900 select-all print:text-black">
                         {{ $transaction->sn }}
                     </span>
                 </div>
@@ -68,62 +56,54 @@
             @endif
         </div>
 
-        <div class="text-center text-xs text-gray-400 mt-6 print:mt-10">
-            <p>Terima kasih telah bertransaksi di Sancaka Store.</p>
-            <p class="mt-1">Simpan struk ini sebagai bukti pembayaran yang sah.</p>
+        <div class="text-center text-[10px] text-gray-400 mt-4 print:text-black print:mt-2">
+            <p>Terima kasih - Sancaka Store</p>
         </div>
 
-        <div class="mt-8 flex gap-3 print:hidden">
-            <a href="{{ route('customer.dashboard') }}" class="flex-1 py-3 bg-gray-200 text-gray-700 font-bold rounded-lg text-center hover:bg-gray-300 transition">
+        <div class="mt-6 flex gap-3 print:hidden">
+            <a href="{{ route('customer.dashboard') }}" class="flex-1 py-3 bg-gray-200 text-gray-700 font-bold rounded-lg text-center hover:bg-gray-300 text-sm">
                 Kembali
             </a>
-            <button onclick="window.print()" class="flex-1 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition shadow-lg shadow-blue-200">
-                Cetak Struk
+            <button onclick="window.print()" class="flex-1 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 text-sm shadow">
+                Cetak (100x150)
             </button>
         </div>
-
-        <div class="absolute -bottom-2 left-0 w-full h-4 bg-transparent print:hidden" 
-             style="background-image: radial-gradient(circle, transparent 50%, #f3f4f6 50%); background-size: 20px 20px; background-position: 0 10px;">
-        </div>
     </div>
-
 </div>
 
 <style>
     @media print {
-        /* Sembunyikan SEMUA elemen body */
+        /* 1. SETUP UKURAN KERTAS */
+        @page {
+            size: 100mm 150mm; /* Lebar x Tinggi */
+            margin: 0mm;       /* Hilangkan margin default browser */
+        }
+
+        /* 2. HILANGKAN ELEMEN WEBSITE LAIN */
         body * {
             visibility: hidden;
-            height: 0;
-            overflow: hidden;
         }
 
-        /* Kecuali elemen ID invoice-card dan anak-anaknya */
+        /* 3. TAMPILKAN HANYA STRUK */
         #invoice-card, #invoice-card * {
             visibility: visible;
-            height: auto;
-            overflow: visible;
         }
 
-        /* Posisikan Invoice di pojok kiri atas kertas */
+        /* 4. POSISIKAN STRUK */
         #invoice-card {
-            position: absolute;
+            position: fixed;
             left: 0;
             top: 0;
-            width: 100%;
-            margin: 0;
-            padding: 0;
-            box-shadow: none !important;
+            width: 100mm;      /* Paksa lebar sesuai kertas */
+            min-height: 150mm; /* Paksa tinggi minimal */
+            padding: 5mm !important; /* Beri sedikit padding biar ga nempel tepi */
+            margin: 0 !important;
             border: none !important;
+            box-shadow: none !important;
+            font-family: 'Courier New', Courier, monospace; /* Font struk biar jelas */
         }
 
-        /* Hapus background browser */
-        @page {
-            margin: 0;
-            size: auto;
-        }
-        
-        /* Paksa sembunyikan navbar/footer jika class-nya diketahui (jaga-jaga) */
+        /* Hilangkan Navbar dll secara paksa */
         header, nav, footer, .navbar, .sidebar {
             display: none !important;
         }
