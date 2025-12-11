@@ -258,7 +258,7 @@
                 <div class="top-nav">
                     <div class="logo-area">
                         <h1>SANCAKA STORE</h1>
-                        <p>Pusat Belanja Online No. 1 di Indonesia. </p><br>
+                        <p>Pusat Belanja Online No. 1 di Indonesia. </p>
                         <p>Belanja lebih hemat, aman, dan cepat. Dijamin!</p>
                     </div>
                     <div class="contact-list">
