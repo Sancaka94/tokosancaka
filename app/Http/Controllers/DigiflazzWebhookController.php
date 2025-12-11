@@ -33,32 +33,40 @@ class DigiflazzWebhookController extends Controller
     }
 
     /**
+     * Helper: Cek apakah produk PASCABAYAR (PLN Bulanan, PDAM, BPJS, dll)
+     * Berdasarkan SKU Code umum. Sesuaikan dengan prefix SKU Digiflazz Anda.
+     */
+    private function _isPostpaid($sku) {
+        $sku = strtoupper($sku);
+        $postpaidPrefixes = ['PLNPOST', 'PDAM', 'BPJS', 'GAS', 'SPEEDY', 'TELKOM', 'HALO'];
+        
+        foreach ($postpaidPrefixes as $prefix) {
+            if (Str::startsWith($sku, $prefix)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Helper: Kirim Notifikasi WA via Fonnte (Private)
      */
     private function _sendWhatsappNotificationSN(PpobTransaction $trx, string $sn)
     {
         try {
-            // 1. Ambil Data Agent (Penjual) 
-            // Asumsi: $trx->user_id adalah PK di tabel Pengguna (id_pengguna/id)
             $user = User::find($trx->user_id); 
             
-            // Cek apakah data user/agent ditemukan
             if (!$user) {
                  Log::error("Data Agent (Users) tidak ditemukan untuk user_id: " . $trx->user_id);
                  return false;
             }
 
-            // Ambil WA Agent & Customer
             $agentWa = $this->_sanitizePhoneNumber($user->no_wa ?? $user->no_hp ?? null);
             $customerWa = $this->_sanitizePhoneNumber($trx->customer_wa ?? null); 
             
             $fmt = function($val) { return number_format($val, 0, ',', '.'); };
             
-            if (empty($customerWa)) {
-                Log::warning("Notifikasi WA Pembeli GAGAL dikirim: customer_wa TIDAK TERSIMPAN di transaksi: " . $trx->order_id);
-            }
-            
-            // --- DATA TOKO AGENT DARI DATABASE PENGGUNA (USERS) ---
+            // --- DATA TOKO AGENT ---
             $storeName = $user->store_name ?? 'Sancaka Express';
             $storeAddress = $user->address_detail ?? 'Kantor Pusat Sancaka Express';
             $storePhone = $this->_sanitizePhoneNumber($user->no_wa ?? null) ?? '628819435180'; 
@@ -97,17 +105,9 @@ class DigiflazzWebhookController extends Controller
             "*Alamat: {$storeAddress}*\n\n" .
             "Manajemen {$storeName}. 🙏";
 
-            // --- 3. KIRIM KE AGENT ---
-            if ($agentWa) {
-                FonnteService::sendMessage($agentWa, $messageAgent);
-                Log::info('PPOB SN sent via WA to Agent.', ['ref_id' => $trx->order_id, 'agent_wa' => $agentWa]);
-            }
-
-            // --- 4. KIRIM KE PEMBELI ---
-            if ($customerWa) {
-                FonnteService::sendMessage($customerWa, $messageCustomer);
-                Log::info('PPOB SN sent via WA to Customer.', ['ref_id' => $trx->order_id, 'customer_wa' => $customerWa]);
-            } 
+            // Kirim WA
+            if ($agentWa) FonnteService::sendMessage($agentWa, $messageAgent);
+            if ($customerWa) FonnteService::sendMessage($customerWa, $messageCustomer);
             
             return true;
             
@@ -119,66 +119,50 @@ class DigiflazzWebhookController extends Controller
 
     public function handle(Request $request)
     {
-        // 1. LOG RAW DATA (Untuk Debugging)
         Log::info('Webhook Masuk:', $request->all());
 
-        // ==========================================
         // 2. VERIFIKASI SIGNATURE
-        // ==========================================
-        $secret = 'SancakaSecretKey2025'; // Ganti dengan Secret Key Webhook Anda
+        $secret = 'SancakaSecretKey2025'; 
         $incomingSignature = $request->header('X-Hub-Signature');
         $payload = $request->getContent();
         $localSignature = 'sha1=' . hash_hmac('sha1', $payload, $secret);
 
-        // Jika signature ada dan tidak cocok, log warning (namun tetap proses jika testing)
         if ($incomingSignature && !hash_equals($localSignature, (string)$incomingSignature)) {
-            Log::warning("Signature Tidak Cocok (Mode Testing). Incoming: $incomingSignature | Local: $localSignature");
+            Log::warning("Signature Tidak Cocok (Mode Testing).");
         }
 
-        // ==========================================
         // 3. PARSING DATA
-        // ==========================================
         $data = json_decode($payload, true);
-
-        // Handle Ping Test dari Digiflazz
         if (isset($data['ping'])) return response()->json(['status' => 'pong']);
 
         $trxData = $data['data'] ?? $data;
         $refId   = $trxData['ref_id'] ?? $trxData['order_id'] ?? null;
 
         if (!$refId) {
-            Log::error("Webhook Gagal: No Ref ID.");
             return response()->json(['status' => 'failed', 'message' => 'No Ref ID found'], 400);
         }
 
-        // Ambil Data Penting
         $status  = $trxData['status'] ?? 'Pending';
         $sn      = $trxData['sn'] ?? '';
         $message = $trxData['message'] ?? '';
-        $price   = $trxData['price'] ?? 0;
+        $price   = $trxData['price'] ?? 0; // Harga Modal dari Webhook
         $desc    = $trxData['desc'] ?? null;
-        $rc      = $trxData['rc'] ?? null; // Response Code
+        $rc      = $trxData['rc'] ?? null;
 
-        Log::info("Proses Transaksi ID: $refId | Status: $status | RC: $rc");
+        Log::info("Proses Transaksi ID: $refId | Status: $status | RC: $rc | Price Webhook: $price");
 
-        // ==========================================
         // 4. DATABASE TRANSACTION
-        // ==========================================
         DB::beginTransaction();
         try {
-            // Cari Transaksi & Lock Row (Mencegah Race Condition)
             $transaction = PpobTransaction::where('order_id', $refId)->lockForUpdate()->first();
 
             if (!$transaction) {
                 DB::rollBack();
-                Log::error("Webhook: Transaksi $refId tidak ditemukan.");
                 return response()->json(['status' => 'not found'], 404);
             }
 
-            // Cek jika sudah Final (Success/Failed), abaikan webhook jika status sudah final
             if (in_array($transaction->status, ['Success', 'Failed'])) {
                 DB::rollBack();
-                Log::info("Webhook Ignored: Transaction $refId already finalized as {$transaction->status}");
                 return response()->json(['status' => 'already processed']);
             }
 
@@ -190,61 +174,62 @@ class DigiflazzWebhookController extends Controller
                 $transaction->desc = is_array($desc) ? json_encode($desc) : $desc;
             }
             
-            // Update Profit (Jika harga modal berubah dari estimasi awal)
+            // ====================================================================
+            // [FIXED] LOGIKA UPDATE HARGA (MODAL)
+            // ====================================================================
             if ($price > 0) {
-                $transaction->price = $price; 
-                $transaction->profit = $transaction->selling_price - $price;
-            }
+                $isPostpaid = $this->_isPostpaid($transaction->buyer_sku_code);
+                $currentSellingPrice = $transaction->selling_price;
+                
+                // Cek Anomali Pascabayar:
+                // Jika produk Pascabayar DAN harga webhook sangat kecil (misal 2500) 
+                // SEDANGKAN harga jual tinggi (misal 70.000), maka webhook hanya mengirim FEE ADMIN.
+                // Jangan update harga modal jika ini terjadi.
+                
+                $isPriceAnomaly = $isPostpaid && ($price < 5000) && ($currentSellingPrice > 10000);
 
-            // ==========================================
-            // LOGIKA STATUS BERDASARKAN RC
-            // ==========================================
+                if (!$isPriceAnomaly) {
+                    // Hanya update jika BUKAN anomali (Data valid / Prabayar Normal)
+                    $transaction->price = $price; 
+                    $transaction->profit = $transaction->selling_price - $price;
+                    Log::info("Harga Modal Updated: $price");
+                } else {
+                    Log::info("Skip Update Harga Modal (Deteksi Pascabayar Admin Fee Only): $price");
+                }
+            }
+            // ====================================================================
+
+            // LOGIKA STATUS
             $rcStr = (string) $rc; 
             
-            // 1. SUKSES (RC 00)
             if ($rcStr === '00' || $status === 'Sukses' || $status === 'Success') {
                 $transaction->status = 'Success';
             }
-            
-            // 2. PENDING (RC 03, 99)
             elseif (in_array($rcStr, ['03', '99']) || $status === 'Pending') {
                 $transaction->status = 'Pending';
             }
-
-            // 3. GAGAL (RC Lainnya: 40-59, dll)
             else {
                 $transaction->status = 'Failed';
                 
-                // --- AUTO REFUND SALDO ---
-                // Hanya jika metode pembayaran menggunakan SALDO
+                // AUTO REFUND
                 if (in_array(strtoupper($transaction->payment_method), ['SALDO', 'SALDO_AGEN'])) {
                     $user = User::find($transaction->user_id);
-                    
                     if ($user) {
-                        // Refund sejumlah yang dipotong (Selling Price)
                         $refundAmount = $transaction->selling_price;
                         $user->increment('saldo', $refundAmount);
-                        
-                        Log::info("REFUND SUCCESS: User {$user->id} +Rp " . number_format($refundAmount));
                         $transaction->message .= " [Saldo Dikembalikan]";
-                    } else {
-                        Log::error("REFUND GAGAL: User ID {$transaction->user_id} tidak ditemukan.");
                     }
                 }
             }
 
             $transaction->save();
 
-            // ==========================================
-            // 5. KIRIM NOTIFIKASI WA SETELAH SUKSES
-            // ==========================================
-            // Hanya kirim jika status sukses & SN ada
+            // KIRIM NOTIFIKASI WA
             if ($transaction->status === 'Success' && !empty($sn)) {
                 $this->_sendWhatsappNotificationSN($transaction, $sn);
             }
 
             DB::commit();
-
             return response()->json(['status' => 'ok']);
 
         } catch (\Exception $e) {
