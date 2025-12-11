@@ -258,10 +258,11 @@
                 <div class="top-nav">
                     <div class="logo-area">
                         <h1>SANCAKA STORE</h1>
-                        <p>YOUR SLOGAN HERE</p>
+                        <p>Pusat Belanja Online No. 1 di Indonesia. </p><br>
+                        <p>Belanja lebih hemat, aman, dan cepat. Dijamin!</p>
                     </div>
                     <div class="contact-list">
-                        <div><i class="fas fa-phone"></i> +62 881-9435-180</div>
+                        <div><i class="fas fa-phone"></i> +62 881-9435-180 +6285 745 808 809</div>
                         <div><i class="fas fa-globe"></i> www.tokosancaka.com</div>
                         <div><i class="fas fa-envelope"></i> admin@tokosancaka.com</div>
                     </div>
@@ -356,7 +357,7 @@
                     Rp {{ number_format($transaction->selling_price, 0, ',', '.') }}
                 </div>
                 <h4>THANK YOU FOR YOUR BUSINESS</h4>
-                <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+                <p>CV. SANCAKA KARYA HUTAMA -  SANCAKA EXPRESS</p>
                 <div style="margin-top: 10px; font-size: 11px;">
                     Payment Info: {{ $transaction->order_id }} | Acc Name: Sancaka Store
                 </div>
