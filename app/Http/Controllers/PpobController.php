@@ -268,7 +268,7 @@ class PpobController extends Controller
         ));
     }
 
-    public function checkBill(Request $request)
+public function checkBill(Request $request)
     {
         // 1. VALIDASI INPUT
         $request->validate([
@@ -277,107 +277,69 @@ class PpobController extends Controller
         ]);
 
         $customerNo = $request->input('customer_no');
-        $inputSku = $request->input('sku'); 
-        $finalSku = $inputSku; 
-        
-        $refId = 'INQ-' . time() . rand(100,999);
+        $inputSku   = $request->input('sku'); 
+        $finalSku   = $inputSku; 
+        $refId      = 'INQ-' . time() . rand(100,999);
 
         // =======================================================================
-        // 2. UNIVERSAL AUTO-MAPPER (UPDATE: MENYESUAIKAN KOLOM DB ANDA)
-        // =======================================================================
-        
-        // Cek apakah input BUKAN SKU asli (tidak diawali 'post' atau 'pln')
-        if (!Str::startsWith($inputSku, 'post') && !Str::startsWith($inputSku, 'pln')) {
-
-            // Konfigurasi Mapping: 'slug_frontend' => ['kolom_db', 'kata_kunci']
-            // SAYA UBAH SEMUA KE 'brand' atau 'product_name' KARENA KOLOM 'category' ANDA ISINYA HANYA 'Pascabayar'
-            $mapConfig = [
-                // INTERNET (Sesuai database: SPEEDY & INDIHOME ada di product_name)
-                'internet'            => ['product_name', 'SPEEDY & INDIHOME'], 
-                'internet-pascabayar' => ['product_name', 'SPEEDY & INDIHOME'],
-                'indihome'            => ['product_name', 'SPEEDY & INDIHOME'],
-                'wifi'                => ['product_name', 'SPEEDY & INDIHOME'],
-                
-                // PLN
-                'pln-pascabayar'      => ['brand', 'PLN'], // Biasanya brand mengandung PLN
-                
-                // BPJS
-                'bpjs-kesehatan'      => ['product_name', 'BPJS'], // Cari yang namanya mengandung BPJS
-                'bpjs-ketenagakerjaan'=> ['product_name', 'KETENAGAKERJAAN'],
-
-                // PDAM (FIX DISINI: Cari 'PDAM' di brand atau product_name)
-                'pdam'                => ['brand', 'PDAM'], 
-                
-                // PAJAK & FINANCE (Ubah ke brand/product_name)
-                'pbb'                 => ['brand', 'PBB'],
-                'samsat'              => ['brand', 'SAMSAT'],
-                'gas-negara'          => ['brand', 'GAS'],
-                'multifinance'        => ['product_name', 'FINANCE'], // Atau 'angsuran'
-                'hp-pascabayar'       => ['product_name', 'PASCABAYAR'], // Hati-hati ini umum
-            ];
-
-            // A. Cek Mapping Spesifik
-            if (isset($mapConfig[$inputSku])) {
-                $config = $mapConfig[$inputSku];
-                $column = $config[0];
-                $keyword = $config[1];
-
-                // Cari produk aktif
-                $mappedProduct = PpobProduct::where($column, 'LIKE', "%{$keyword}%")
-                    ->where('seller_product_status', true)
-                    ->orderBy('id', 'desc') // Ambil yang terbaru
-                    ->first();
-
-                if ($mappedProduct) {
-                    $finalSku = $mappedProduct->buyer_sku_code;
-                }
-            } 
-            // B. Fallback: Cari di Brand/Product Name langsung jika tidak ada di map
-            else {
-                // Jangan cari di category, cari di product_name saja yang lebih spesifik
-                $tryProduct = PpobProduct::where('product_name', 'LIKE', "%{$inputSku}%")
-                    ->where('seller_product_status', true)
-                    ->first();
-                if ($tryProduct) {
-                    $finalSku = $tryProduct->buyer_sku_code;
-                }
-            }
-        }
-
-        // =======================================================================
-        // 3. VALIDASI AKHIR & FAILSAFE
+        // 2. UNIVERSAL SEARCH (LOGIKA GABUNGAN 3 KOLOM)
         // =======================================================================
         
-        $product = PpobProduct::where('buyer_sku_code', $finalSku)->first();
+        // Cek jika ini bukan SKU kode unik (bukan diawali 'post', 'pln', dsb jika itu kode asli)
+        // Kita asumsikan inputSku adalah slug seperti: 'pdam-surabaya', 'bpjs-kesehatan', 'samsat-jatim'
+        if (!Str::startsWith($inputSku, 'post') && !preg_match('/^[A-Z0-9]+$/', $inputSku)) {
 
-        // Jika produk masih belum ketemu atau non-aktif
-        if (!$product || $product->seller_product_status != true) {
+            // A. Bersihkan Input (Ubah 'pdam-surabaya' jadi 'pdam surabaya')
+            $keyword = str_replace('-', ' ', $inputSku);
             
-            // Coba cari alternatif terakhir berdasarkan BRAND yang sama
+            // B. TEKNIK CONCAT: Gabungkan Brand + Nama + Kategori jadi satu kalimat panjang
+            // Lalu cari kata kuncinya di kalimat panjang tersebut.
+            // Contoh DB: Brand="PDAM", Name="Kota Surabaya". Digabung jadi "PDAM Kota Surabaya".
+            // Input "pdam surabaya" -> KETEMU!
+            
+            $product = PpobProduct::whereRaw(
+                "CONCAT(IFNULL(brand,''), ' ', IFNULL(product_name,''), ' ', IFNULL(category,'')) LIKE ?", 
+                ["%{$keyword}%"]
+            )
+            ->where('seller_product_status', true)
+            ->orderBy('id', 'desc') // Ambil yang paling baru
+            ->first();
+
+            // C. Fallback: Jika pencarian spesifik gagal, cari kata depannya saja
+            // Misal: 'pdam-kota-malang' gagal, coba cari apapun yang ada kata 'pdam'
+            if (!$product) {
+                $firstWord = explode(' ', $keyword)[0]; // Ambil 'pdam', 'samsat', atau 'bpjs'
+                
+                $product = PpobProduct::where(function($q) use ($firstWord) {
+                        $q->where('brand', 'LIKE', "%{$firstWord}%")
+                          ->orWhere('category', 'LIKE', "%{$firstWord}%");
+                    })
+                    ->where('seller_product_status', true)
+                    ->first();
+            }
+
+            // Jika ketemu produknya, ambil SKU aslinya
             if ($product) {
-                 $alt = PpobProduct::where('brand', $product->brand)
-                        ->where('seller_product_status', true)
-                        ->where('buyer_sku_code', '!=', $finalSku)
-                        ->first();
-                 
-                 if ($alt) {
-                     $finalSku = $alt->buyer_sku_code;
-                     $product = $alt;
-                     Log::info("Switch SKU $inputSku ke Alternatif: $finalSku");
-                 } else {
-                     return response()->json(['status' => 'error', 'message' => 'Produk sedang gangguan (Stok Kosong).']);
-                 }
-            } else {
-                 // Debugging Info: Beri tahu user apa yang dicari agar tidak bingung "Unexpected token"
-                 return response()->json([
-                     'status' => 'error', 
-                     'message' => "Kategori '$inputSku' belum tersedia/aktif di Database Admin."
-                 ]);
+                $finalSku = $product->buyer_sku_code;
             }
         }
 
         // =======================================================================
-        // 4. HIT API DIGIFLAZZ (CREDENTIALS)
+        // 3. VALIDASI AKHIR (Memastikan SKU Valid)
+        // =======================================================================
+        
+        // Cari ulang berdasarkan SKU final untuk memastikan data konsisten
+        $activeProduct = PpobProduct::where('buyer_sku_code', $finalSku)->first();
+
+        if (!$activeProduct || $activeProduct->seller_product_status != true) {
+            return response()->json([
+                'status' => 'error', 
+                'message' => "Produk layanan '$inputSku' (atau sejenisnya) sedang tidak aktif atau tidak ditemukan."
+            ]);
+        }
+
+        // =======================================================================
+        // 4. PROSES KE API DIGIFLAZZ (Tetap Sama)
         // =======================================================================
         
         $username = 'mihetiDVGdeW'; 
@@ -394,8 +356,8 @@ class PpobController extends Controller
                 $adminFeePenyedia = (float) ($data['admin'] ?? 0);
                 
                 // Hitung Profit
-                $marginAgen = ($product->sell_price > $product->price) 
-                              ? ($product->sell_price - $product->price) 
+                $marginAgen = ($activeProduct->sell_price > $activeProduct->price) 
+                              ? ($activeProduct->sell_price - $activeProduct->price) 
                               : 2500;
 
                 $totalTagihanUser = $tagihanPenyedia + $adminFeePenyedia + $marginAgen;
@@ -404,10 +366,9 @@ class PpobController extends Controller
                     'status' => 'success',
                     'customer_name' => $data['customer_name'] ?? $data['name'],
                     'customer_no'   => $data['customer_no'],
-                    'product_name'  => $product->product_name,
+                    'product_name'  => $activeProduct->product_name, // Gunakan nama dari DB kita agar rapi
                     'amount_pokok'  => $tagihanPenyedia,
                     'total_tagihan' => $totalTagihanUser,
-                    // PENTING: SKU & RefID untuk Store()
                     'buyer_sku_code' => $finalSku, 
                     'ref_id'         => $data['ref_id'] ?? $refId,
                     'desc'           => $data['desc'] ?? []
