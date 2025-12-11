@@ -7,9 +7,8 @@ use Illuminate\Support\Facades\Log;
 use App\Models\PpobTransaction; 
 use Illuminate\Support\Facades\DB;
 use App\Models\User;
-use App\Services\FonnteService; // <<< TAMBAHKAN INI
-use Illuminate\Support\Str; // Diperlukan untuk _sanitizePhoneNumber
-
+use App\Services\FonnteService; 
+use Illuminate\Support\Str; 
 
 class DigiflazzWebhookController extends Controller
 {
@@ -33,118 +32,107 @@ class DigiflazzWebhookController extends Controller
         return $phone;
     }
 
+    /**
+     * Helper: Kirim Notifikasi WA via Fonnte (Private)
+     */
+    private function _sendWhatsappNotificationSN(PpobTransaction $trx, string $sn)
+    {
+        try {
+            // 1. Ambil Data Agent (Penjual) 
+            // Asumsi: $trx->user_id adalah PK di tabel Pengguna (id_pengguna/id)
+            $user = User::find($trx->user_id); 
+            
+            // Cek apakah data user/agent ditemukan
+            if (!$user) {
+                 Log::error("Data Agent (Users) tidak ditemukan untuk user_id: " . $trx->user_id);
+                 return false;
+            }
 
-   // Di dalam DigiflazzWebhookController.php -> _sendWhatsappNotificationSN
+            // Ambil WA Agent & Customer
+            $agentWa = $this->_sanitizePhoneNumber($user->no_wa ?? $user->no_hp ?? null);
+            $customerWa = $this->_sanitizePhoneNumber($trx->customer_wa ?? null); 
+            
+            $fmt = function($val) { return number_format($val, 0, ',', '.'); };
+            
+            if (empty($customerWa)) {
+                Log::warning("Notifikasi WA Pembeli GAGAL dikirim: customer_wa TIDAK TERSIMPAN di transaksi: " . $trx->order_id);
+            }
+            
+            // --- DATA TOKO AGENT DARI DATABASE PENGGUNA (USERS) ---
+            $storeName = $user->store_name ?? 'Sancaka Express';
+            $storeAddress = $user->address_detail ?? 'Kantor Pusat Sancaka Express';
+            $storePhone = $this->_sanitizePhoneNumber($user->no_wa ?? null) ?? '628819435180'; 
 
-private function _sendWhatsappNotificationSN(PpobTransaction $trx, string $sn)
-{
-    try {
-        // 1. Ambil Data Agent (Penjual) MENGGUNAKAN VARIABEL $user
-        // Asumsi: $trx->user_id adalah PK di tabel Pengguna, dan Modelnya bernama Users.
-        $user = Users::find($trx->user_id); 
-        
-        // Cek apakah data user/agent ditemukan
-        if (!$user) {
-             Log::error("Data Agent (Users) tidak ditemukan untuk user_id: " . $trx->user_id);
-             // Kita tetap mencoba mengirim ke customer_wa jika tersedia, tapi notif agent gagal
+            // ===============================================
+            // 1. SUSUN PESAN UNTUK AGENT
+            // ===============================================
+            $messageAgent = "[NOTIF AGENT - SN] Transaksi {$trx->order_id} Sukses.\n\n" .
+            "*✅ Transaksi PPOB Sukses!*\n" .
+            "------------------------------------\n" .
+            "Produk: {$trx->buyer_sku_code}\n" .
+            "Tujuan: {$trx->customer_no}\n" .
+            "Harga Jual: Rp {$fmt($trx->selling_price)}\n" .
+            "*Serial Number (SN):*\n" .
+            "*{$sn}*\n" .
+            "------------------------------------\n" .
+            "Saldo Baru: Rp " . $fmt($user->saldo ?? 0); 
+
+            // ===============================================
+            // 2. SUSUN PESAN UNTUK CUSTOMER
+            // ===============================================
+            $messageCustomer = "*Halo Pelanggan {$storeName} 👋*\n\n" .
+            "Transaksi PPOB Anda telah Berhasil diproses!\n\n" .
+            "*✅ DETAIL TRANSAKSI*\n" .
+            "------------------------------------\n" .
+            "Produk: {$trx->buyer_sku_code}\n" .
+            "Nomor Tujuan: {$trx->customer_no}\n" .
+            "Harga Jual: Rp {$fmt($trx->selling_price)}\n" .
+            "*Serial Number (SN):*\n" .
+            "*{$sn}*\n" .
+            "------------------------------------\n\n" .
+            "Terima kasih telah bertransaksi.\n" .
+            "Jika ada kendala, hubungi:\n\n" .
+            "*Toko: {$storeName}*\n" .
+            "*WA/Telp: {$storePhone}*\n" .
+            "*Alamat: {$storeAddress}*\n\n" .
+            "Manajemen {$storeName}. 🙏";
+
+            // --- 3. KIRIM KE AGENT ---
+            if ($agentWa) {
+                FonnteService::sendMessage($agentWa, $messageAgent);
+                Log::info('PPOB SN sent via WA to Agent.', ['ref_id' => $trx->order_id, 'agent_wa' => $agentWa]);
+            }
+
+            // --- 4. KIRIM KE PEMBELI ---
+            if ($customerWa) {
+                FonnteService::sendMessage($customerWa, $messageCustomer);
+                Log::info('PPOB SN sent via WA to Customer.', ['ref_id' => $trx->order_id, 'customer_wa' => $customerWa]);
+            } 
+            
+            return true;
+            
+        } catch (\Exception $e) {
+            Log::error('WA Notification SN PPOB Error: ' . $e->getMessage(), ['trx_id' => $trx->id]);
+            return false;
         }
-
-        // Ambil WA Agent (dari data $user yang baru diambil)
-        $agentWa = $this->_sanitizePhoneNumber($user->no_wa ?? null);
-        $customerWa = $this->_sanitizePhoneNumber($trx->customer_wa ?? null); 
-        
-        $fmt = function($val) { return number_format($val, 0, ',', '.'); };
-        
-        if (empty($customerWa)) {
-            Log::warning("Notifikasi WA Pembeli GAGAL dikirim: customer_wa TIDAK TERSIMPAN di transaksi: " . $trx->order_id);
-        }
-        
-        // --- DATA TOKO AGENT DARI DATABASE PENGGUNA (USERS) ---
-        // Menggunakan $user->kolom
-        $storeName = $user->store_name ?? 'Sancaka Express';
-        $storeAddress = $user->address_detail ?? 'Kantor Pusat Sancaka Express';
-        $storePhone = $this->_sanitizePhoneNumber($user->no_wa ?? null) ?? '628819435180'; 
-
-        // ===============================================
-        // 1. SUSUN PESAN UNTUK AGENT (MENGGUNAKAN $user)
-        // ===============================================
-        $messageAgent = "[NOTIF AGENT - SN] Transaksi {$trx->order_id} Sukses.
-        
-*✅ Transaksi PPOB Sukses!*
-------------------------------------
-Produk: {$trx->buyer_sku_code}
-Tujuan: {$trx->customer_no}
-Harga Jual: Rp {$fmt($trx->selling_price)}
-*Serial Number (SN):*
-*{$sn}*
-------------------------------------
-Saldo Baru: Rp " . $fmt($user->saldo ?? 0); // Menggunakan $user->saldo
-
-        // ===============================================
-        // 2. SUSUN PESAN UNTUK CUSTOMER (DENGAN BRANDING TOKO)
-        // ===============================================
-        $messageCustomer = "*Halo Pelanggan {$storeName} 👋*
-        
-Transaksi PPOB Anda telah Berhasil diproses!
-        
-*✅ DETAIL TRANSAKSI*
-------------------------------------
-Produk: {$trx->buyer_sku_code}
-Nomor Tujuan: {$trx->customer_no}
-Harga Jual: Rp {$fmt($trx->selling_price)}
-*Serial Number (SN):*
-*{$sn}*
-------------------------------------
-        
-Terima kasih telah bertransaksi.
-Jika ada kendala, hubungi:
-        
-*Toko: {$storeName}*
-*WA/Telp: {$storePhone}*
-*Alamat: {$storeAddress}*
-        
-Manajemen {$storeName}. 🙏";
-
-
-        // --- 3. KIRIM KE AGENT ---
-        if ($agentWa) {
-            FonnteService::sendMessage($agentWa, $messageAgent);
-            Log::info('PPOB SN sent via WA to Agent.', ['ref_id' => $trx->order_id, 'agent_wa' => $agentWa]);
-        }
-
-        // --- 4. KIRIM KE PEMBELI (Hanya jika WA Pembeli tersedia) ---
-        if ($customerWa) {
-            FonnteService::sendMessage($customerWa, $messageCustomer);
-            Log::info('PPOB SN sent via WA to Customer.', ['ref_id' => $trx->order_id, 'customer_wa' => $customerWa]);
-        } else {
-            Log::warning("Notifikasi Pembeli GAGAL dikirim: customer_wa tidak tersedia di database.");
-        }
-        
-        return true;
-        
-    } catch (\Exception $e) {
-        Log::error('WA Notification SN PPOB Error: ' . $e->getMessage(), ['trx_id' => $trx->id]);
-        return false;
     }
-}
 
     public function handle(Request $request)
     {
-        // 1. LOG RAW DATA
+        // 1. LOG RAW DATA (Untuk Debugging)
         Log::info('Webhook Masuk:', $request->all());
 
         // ==========================================
         // 2. VERIFIKASI SIGNATURE
         // ==========================================
-        $secret = 'SancakaSecretKey2025'; 
+        $secret = 'SancakaSecretKey2025'; // Ganti dengan Secret Key Webhook Anda
         $incomingSignature = $request->header('X-Hub-Signature');
         $payload = $request->getContent();
         $localSignature = 'sha1=' . hash_hmac('sha1', $payload, $secret);
 
+        // Jika signature ada dan tidak cocok, log warning (namun tetap proses jika testing)
         if ($incomingSignature && !hash_equals($localSignature, (string)$incomingSignature)) {
             Log::warning("Signature Tidak Cocok (Mode Testing). Incoming: $incomingSignature | Local: $localSignature");
-        } else {
-            Log::info("Signature Check: OK (atau Mode Testing)");
         }
 
         // ==========================================
@@ -152,7 +140,7 @@ Manajemen {$storeName}. 🙏";
         // ==========================================
         $data = json_decode($payload, true);
 
-        // Handle Ping
+        // Handle Ping Test dari Digiflazz
         if (isset($data['ping'])) return response()->json(['status' => 'pong']);
 
         $trxData = $data['data'] ?? $data;
@@ -163,13 +151,13 @@ Manajemen {$storeName}. 🙏";
             return response()->json(['status' => 'failed', 'message' => 'No Ref ID found'], 400);
         }
 
-        // Ambil Data
+        // Ambil Data Penting
         $status  = $trxData['status'] ?? 'Pending';
         $sn      = $trxData['sn'] ?? '';
         $message = $trxData['message'] ?? '';
         $price   = $trxData['price'] ?? 0;
         $desc    = $trxData['desc'] ?? null;
-        $rc      = $trxData['rc'] ?? null; // Response Code (Penting!)
+        $rc      = $trxData['rc'] ?? null; // Response Code
 
         Log::info("Proses Transaksi ID: $refId | Status: $status | RC: $rc");
 
@@ -178,7 +166,8 @@ Manajemen {$storeName}. 🙏";
         // ==========================================
         DB::beginTransaction();
         try {
-            $transaction = \App\Models\PpobTransaction::where('order_id', $refId)->lockForUpdate()->first();
+            // Cari Transaksi & Lock Row (Mencegah Race Condition)
+            $transaction = PpobTransaction::where('order_id', $refId)->lockForUpdate()->first();
 
             if (!$transaction) {
                 DB::rollBack();
@@ -186,9 +175,10 @@ Manajemen {$storeName}. 🙏";
                 return response()->json(['status' => 'not found'], 404);
             }
 
-            // Cek jika sudah Final (Success/Failed)
+            // Cek jika sudah Final (Success/Failed), abaikan webhook jika status sudah final
             if (in_array($transaction->status, ['Success', 'Failed'])) {
                 DB::rollBack();
+                Log::info("Webhook Ignored: Transaction $refId already finalized as {$transaction->status}");
                 return response()->json(['status' => 'already processed']);
             }
 
@@ -196,24 +186,24 @@ Manajemen {$storeName}. 🙏";
             $transaction->sn = $sn;
             $transaction->message = $message;
             $transaction->rc = $rc;
-            if (!empty($desc)) $transaction->desc = is_array($desc) ? json_encode($desc) : $desc;
+            if (!empty($desc)) {
+                $transaction->desc = is_array($desc) ? json_encode($desc) : $desc;
+            }
             
-            // Update Profit (Jika harga berubah)
+            // Update Profit (Jika harga modal berubah dari estimasi awal)
             if ($price > 0) {
                 $transaction->price = $price; 
                 $transaction->profit = $transaction->selling_price - $price;
             }
 
             // ==========================================
-            // LOGIKA STATUS BERDASARKAN RC (LEBIH AKURAT)
+            // LOGIKA STATUS BERDASARKAN RC
             // ==========================================
-            $rcStr = (string) $rc; // Pastikan string untuk perbandingan
-            $isSuccess = false; // Flag untuk WA
-
+            $rcStr = (string) $rc; 
+            
             // 1. SUKSES (RC 00)
             if ($rcStr === '00' || $status === 'Sukses' || $status === 'Success') {
                 $transaction->status = 'Success';
-                $isSuccess = true;
             }
             
             // 2. PENDING (RC 03, 99)
@@ -221,38 +211,34 @@ Manajemen {$storeName}. 🙏";
                 $transaction->status = 'Pending';
             }
 
-            // 3. GAGAL (Semua RC selain 00, 03, 99)
-            // Ini menangani RC 40-59 (Saldo kurang, nomor salah, gangguan, dll)
+            // 3. GAGAL (RC Lainnya: 40-59, dll)
             else {
                 $transaction->status = 'Failed';
                 
-                // AUTO REFUND SALDO
+                // --- AUTO REFUND SALDO ---
+                // Hanya jika metode pembayaran menggunakan SALDO
                 if (in_array(strtoupper($transaction->payment_method), ['SALDO', 'SALDO_AGEN'])) {
-                    $user = User::where('id_pengguna', $transaction->user_id)->first();
+                    $user = User::find($transaction->user_id);
+                    
                     if ($user) {
-                        $refundAmount = $transaction->price; 
-                        
-                        // Penting: Harga yang direfund harus harga yang dipotong (selling_price), 
-                        // bukan harga modal (price), kecuali jika logikanya mengharuskan refund modal.
-                        // Asumsi: Saat transaksi, agent dipotong 'selling_price'.
-                        // Sejak kode store sebelumnya memotong $product->sell_price, kita refund $transaction->selling_price
-                        
+                        // Refund sejumlah yang dipotong (Selling Price)
                         $refundAmount = $transaction->selling_price;
                         $user->increment('saldo', $refundAmount);
                         
-                        Log::info("REFUND: User {$user->id_pengguna} +Rp " . number_format($refundAmount));
+                        Log::info("REFUND SUCCESS: User {$user->id} +Rp " . number_format($refundAmount));
                         $transaction->message .= " [Saldo Dikembalikan]";
                     } else {
-                        Log::error("REFUND GAGAL: User ID {$transaction->user_id} tidak ditemukan untuk dikembalikan saldonya.");
+                        Log::error("REFUND GAGAL: User ID {$transaction->user_id} tidak ditemukan.");
                     }
                 }
             }
 
-           $transaction->save();
+            $transaction->save();
 
             // ==========================================
             // 5. KIRIM NOTIFIKASI WA SETELAH SUKSES
             // ==========================================
+            // Hanya kirim jika status sukses & SN ada
             if ($transaction->status === 'Success' && !empty($sn)) {
                 $this->_sendWhatsappNotificationSN($transaction, $sn);
             }
