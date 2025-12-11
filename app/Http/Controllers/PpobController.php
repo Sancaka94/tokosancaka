@@ -293,22 +293,23 @@ class PpobController extends Controller
         
         if (!Str::startsWith($inputSku, 'post') && !Str::startsWith($inputSku, 'pln')) {
 
-            // Konfigurasi Mapping: 'slug_dari_frontend' => ['kolom_database', 'kata_kunci_pencarian']
+            // Konfigurasi Mapping: 'slug_frontend' => ['kolom_db', 'kata_kunci']
             $mapConfig = [
-                // INTERNET
-                'internet'            => ['brand', 'SPEEDY & INDIHOME'],
-                'internet-pascabayar' => ['brand', 'SPEEDY & INDIHOME'],
-                'indihome'            => ['brand', 'SPEEDY & INDIHOME'],
+                // INTERNET (Gunakan kata kunci lebih umum: 'INDIHOME')
+                'internet'            => ['brand', 'INDIHOME'], 
+                'internet-pascabayar' => ['brand', 'INDIHOME'],
+                'indihome'            => ['brand', 'INDIHOME'],
+                'wifi'                => ['brand', 'INDIHOME'],
                 
                 // PLN
                 'pln-pascabayar'      => ['brand', 'PLN PASCABAYAR'],
-                'pln-nontaglis'       => ['brand', 'PLN NON TAGLIS'],
+                'pln-nontaglis'       => ['brand', 'PLN NON TAGLIS'], // Atau coba 'NON TAGLIS' saja
 
-                // BPJS
-                'bpjs-kesehatan'      => ['brand', 'BPJS KESEHATAN'],
-                'bpjs-ketenagakerjaan'=> ['brand', 'BPJS KETENAGAKERJAAN'],
+                // BPJS (Cukup 'KESEHATAN' agar tidak typo)
+                'bpjs-kesehatan'      => ['brand', 'KESEHATAN'],
+                'bpjs-ketenagakerjaan'=> ['brand', 'KETENAGAKERJAAN'],
 
-                // AIR / PDAM (Warning: Sebaiknya frontend kirim SKU spesifik per kota)
+                // AIR / PDAM
                 'pdam'                => ['category', 'PDAM'], 
                 
                 // PAJAK
@@ -316,7 +317,7 @@ class PpobController extends Controller
                 'samsat'              => ['category', 'Samsat'],
 
                 // LAINNYA
-                'gas-negara'          => ['brand', 'GAS NEGARA'],
+                'gas-negara'          => ['brand', 'GAS'],
                 'hp-pascabayar'       => ['category', 'HP Postpaid'],
                 'tv-pascabayar'       => ['category', 'TV Postpaid'],
                 'multifinance'        => ['category', 'Multifinance'],
