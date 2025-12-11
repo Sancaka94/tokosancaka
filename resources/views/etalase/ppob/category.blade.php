@@ -1,4 +1,4 @@
-@extends('layouts.marketplace')
+('layouts.marketplace')
 
 @php
     // ================================================================
