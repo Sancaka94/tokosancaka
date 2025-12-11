@@ -294,7 +294,7 @@
                     </div>
                     <div class="total-row">
                         <span style="margin-right: 15px;">Status:</span>
-                        <strong style="color: #25D366;">{{ strtoupper($transaction->status) }}</strong>
+                        <strong style="color: #00b843;">{{ strtoupper($transaction->status) }}</strong>
                     </div>
                 </div>
             </div>
