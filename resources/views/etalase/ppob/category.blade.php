@@ -5,7 +5,7 @@
     // 1. LOGIC PHP: PEMETAAN SKU (AGAR TIDAK SALAH DETEKSI PRODUK)
     // ================================================================
     $urlSlug = request()->segment(4); 
-    $pageInfo = $pageInfo ?? [];
+    $pageInf = $pageInfo ?? [];
     $currentSlug = $pageInfo['slug'] ?? $urlSlug ?? 'pulsa'; 
 
     // MAPPING: Ubah Slug URL menjadi Kode SKU API yang Benar
@@ -103,7 +103,7 @@
     $menus = array_merge($prepaidMenus, $postpaidMenus);
 @endphp
 
-('title', $pageTitle)
+@section('title', $pageTitle)
 
 @push('styles')
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
