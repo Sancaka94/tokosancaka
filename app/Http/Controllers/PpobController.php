@@ -283,21 +283,21 @@ class PpobController extends Controller
         $refId = 'INQ-' . time() . rand(100,999);
 
         // =======================================================================
-        // 2. UNIVERSAL AUTO-MAPPER (SESUAI GAMBAR DATABASE ANDA)
+        // 2. UNIVERSAL AUTO-MAPPER (FIXED: SESUAI DATABASE ANDA)
         // =======================================================================
         
-        // Cek apakah input bukan SKU asli (tidak diawali 'post' atau 'pln')
+        // Cek apakah input BUKAN SKU asli (tidak diawali 'post' atau 'pln')
         if (!Str::startsWith($inputSku, 'post') && !Str::startsWith($inputSku, 'pln')) {
 
-            // Konfigurasi Mapping berdasarkan Gambar 1 Anda
+            // Konfigurasi Mapping: 'slug_frontend' => ['kolom_db', 'kata_kunci']
             $mapConfig = [
-                // INTERNET (Sesuai kolom Brand: SPEEDY & INDIHOME)
-                'internet'            => ['brand', 'SPEEDY & INDIHOME'], 
-                'internet-pascabayar' => ['brand', 'SPEEDY & INDIHOME'],
-                'indihome'            => ['brand', 'SPEEDY & INDIHOME'],
-                'wifi'                => ['brand', 'SPEEDY & INDIHOME'],
+                // [FIXED] INTERNET: Cari di kolom 'product_name' karena brand-nya 'INTERNET PASCABAYAR'
+                'internet'            => ['product_name', 'SPEEDY & INDIHOME'], 
+                'internet-pascabayar' => ['product_name', 'SPEEDY & INDIHOME'],
+                'indihome'            => ['product_name', 'SPEEDY & INDIHOME'],
+                'wifi'                => ['product_name', 'SPEEDY & INDIHOME'],
                 
-                // PLN
+                // PLN: Cari di kolom 'brand'
                 'pln-pascabayar'      => ['brand', 'PLN PASCABAYAR'],
                 
                 // BPJS
@@ -313,18 +313,20 @@ class PpobController extends Controller
             // A. Cek Mapping Spesifik
             if (isset($mapConfig[$inputSku])) {
                 $config = $mapConfig[$inputSku];
-                
-                // Cari produk aktif yang mengandung kata kunci tersebut
-                $mappedProduct = PpobProduct::where($config[0], 'LIKE', "%{$config[1]}%")
-                    ->where('seller_product_status', true) // Wajib Aktif
-                    ->orderBy('sell_price', 'asc') // Ambil harga termurah/pertama
+                $column = $config[0];
+                $keyword = $config[1];
+
+                // Cari produk aktif
+                $mappedProduct = PpobProduct::where($column, 'LIKE', "%{$keyword}%")
+                    ->where('seller_product_status', true)
+                    ->orderBy('sell_price', 'asc')
                     ->first();
 
                 if ($mappedProduct) {
                     $finalSku = $mappedProduct->buyer_sku_code;
                 }
             } 
-            // B. Fallback Kategori Umum
+            // B. Fallback Kategori Umum (Jaga-jaga)
             else {
                 $tryProduct = PpobProduct::where('category', 'LIKE', "%{$inputSku}%")
                     ->where('seller_product_status', true)
@@ -341,24 +343,27 @@ class PpobController extends Controller
         
         $product = PpobProduct::where('buyer_sku_code', $finalSku)->first();
 
-        // Jika produk hasil mapping tidak ditemukan atau mati
+        // Jika produk masih belum ketemu atau non-aktif
         if (!$product || $product->seller_product_status != true) {
             
-            // Coba cari alternatif terakhir berdasarkan Brand yang sama (jika produk ketemu tapi mati)
+            // Coba cari alternatif terakhir berdasarkan BRAND yang sama
             if ($product) {
                  $alt = PpobProduct::where('brand', $product->brand)
                         ->where('seller_product_status', true)
                         ->where('buyer_sku_code', '!=', $finalSku)
                         ->first();
+                 
                  if ($alt) {
                      $finalSku = $alt->buyer_sku_code;
                      $product = $alt;
+                     // Log perubahan SKU untuk tracking
+                     Log::info("Switch SKU $inputSku ke Alternatif: $finalSku");
                  } else {
-                     return response()->json(['status' => 'error', 'message' => 'Produk sedang gangguan (01).']);
+                     return response()->json(['status' => 'error', 'message' => 'Produk sedang gangguan (Stok Kosong).']);
                  }
             } else {
-                 // Jika benar-benar kosong (Mapping gagal)
-                 return response()->json(['status' => 'error', 'message' => 'Produk belum tersedia atau salah kategori (02).']);
+                 // Jika benar-benar kosong
+                 return response()->json(['status' => 'error', 'message' => 'Kategori produk belum tersedia.']);
             }
         }
 
@@ -400,12 +405,13 @@ class PpobController extends Controller
                 ]);
             }
             
-            $msg = $response['data']['message'] ?? 'Tagihan tidak ditemukan.';
+            $msg = $response['data']['message'] ?? 'Tagihan tidak ditemukan atau Nomor Salah.';
             return response()->json(['status' => 'error', 'message' => $msg]);
             
         } catch (\Exception $e) {
             Log::error("Inquiry Error: " . $e->getMessage());
-            return response()->json(['status' => 'error', 'message' => 'Koneksi Provider Gagal.'], 500);
+            // Return JSON agar frontend tidak error "Unexpected token"
+            return response()->json(['status' => 'error', 'message' => 'Gagal koneksi ke server provider.'], 500);
         }
     }
 
