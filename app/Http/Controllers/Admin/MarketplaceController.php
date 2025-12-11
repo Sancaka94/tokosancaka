@@ -46,6 +46,19 @@ class MarketplaceController extends Controller
     }
 
     /**
+     * Menampilkan form halaman pembuatan produk baru.
+     */
+    public function create()
+    {
+        // Ambil data yang dibutuhkan untuk dropdown di form
+        $categories = Category::all();
+        $stores = Store::all();
+        
+        // Pastikan Anda sudah membuat file view: resources/views/admin/marketplace/create.blade.php
+        return view('admin.marketplace.create', compact('categories', 'stores'));
+    }
+
+    /**
      * Menyimpan produk baru ke database.
      */
     public function store(Request $request)
