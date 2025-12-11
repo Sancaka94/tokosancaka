@@ -1,112 +1,271 @@
-@extends('layouts.marketplace')
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Faktur Transaksi</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 40px;
+            background-color: #f4f6f9;
+            color: #333;
+        }
+        .invoice-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            overflow: hidden;
+        }
+        .header {
+            background-color: #1a2a47; /* Biru tua */
+            color: #fff;
+            padding: 30px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 6px solid #f8b300; /* Kuning emas */
+        }
+        .header .company-info h1 {
+            margin: 0;
+            font-size: 28px;
+            text-transform: uppercase;
+        }
+        .header .company-info p {
+            margin: 5px 0 0;
+            font-size: 14px;
+            color: #ddd;
+        }
+        .header .contact-info {
+            text-align: right;
+            font-size: 14px;
+        }
+        .header .contact-info p {
+            margin: 4px 0;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+        }
+        .invoice-details {
+            padding: 40px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .invoice-to {
+            width: 45%;
+        }
+        .invoice-to h3 {
+            color: #1a2a47;
+            font-size: 20px;
+            margin-top: 0;
+        }
+        .invoice-to p {
+            margin: 5px 0;
+            font-size: 14px;
+            color: #555;
+        }
+        .invoice-info {
+            width: 35%;
+            background-color: #f8b300; /* Kuning emas */
+            color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: left;
+        }
+        .invoice-info h3 {
+            color: #1a2a47;
+            font-size: 24px;
+            margin-top: 0;
+            text-transform: uppercase;
+        }
+        .invoice-info table {
+            width: 100%;
+            font-size: 14px;
+        }
+        .invoice-info td {
+            padding: 4px 0;
+            color: #1a2a47;
+        }
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0 40px 40px 40px;
+            width: calc(100% - 80px);
+        }
+        .items-table thead {
+            background-color: #f8b300; /* Kuning emas */
+            color: #1a2a47;
+        }
+        .items-table th {
+            padding: 15px;
+            text-align: left;
+            font-size: 14px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .items-table tbody tr {
+            border-bottom: 1px solid #eee;
+        }
+        .items-table tbody tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .items-table td {
+            padding: 15px;
+            font-size: 14px;
+            color: #555;
+        }
+        .footer-summary {
+            padding: 0 40px 40px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        .payment-info {
+            width: 50%;
+        }
+        .payment-info h4 {
+            color: #1a2a47;
+            font-size: 16px;
+            margin-top: 0;
+        }
+        .payment-info p {
+            margin: 5px 0;
+            font-size: 14px;
+            color: #555;
+        }
+        .totals {
+            width: 40%;
+            text-align: right;
+        }
+        .totals table {
+            width: 100%;
+            font-size: 14px;
+        }
+        .totals td {
+            padding: 8px 0;
+        }
+        .grand-total {
+            background-color: #f8b300; /* Kuning emas */
+            color: #1a2a47;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 15px;
+        }
+        .thank-you {
+            background-color: #1a2a47; /* Biru tua */
+            color: #fff;
+            padding: 20px 40px;
+            text-align: center;
+            font-size: 16px;
+        }
+        .thank-you p {
+            margin: 5px 0;
+            font-size: 12px;
+            color: #ddd;
+        }
+    </style>
+</head>
+<body>
 
-@section('title', 'Invoice #' . $transaction->order_id)
-
-@section('content')
-<div class="min-h-screen bg-gray-100 flex items-center justify-center py-10 px-4 print:bg-white print:p-0 print:block">
-    
-    <div id="invoice-card" class="bg-white w-full max-w-md p-6 rounded-xl shadow-lg relative print:shadow-none print:w-full print:max-w-full print:p-2 print:m-0 print:rounded-none">
-        
-        <div class="text-center border-b-2 border-dashed border-gray-800 pb-3 mb-3">
-            <h2 class="text-xl font-extrabold text-blue-900 uppercase tracking-wider print:text-black">Sancaka Store</h2>
-            <p class="text-[10px] text-gray-500 mt-1 print:text-black">Bukti Pembayaran Sah</p>
+<div class="invoice-container">
+    <div class="header">
+        <div class="company-info">
+            <h1>SANCAKA STORE</h1>
+            <p>Pusat Belanja Online Terpercaya</p>
         </div>
-
-        <div class="space-y-1 text-xs mb-3 font-mono">
-            <div class="flex justify-between">
-                <span class="text-gray-500 print:text-black">No. Invoice</span>
-                <span class="font-bold text-gray-800 print:text-black">{{ $transaction->order_id }}</span>
-            </div>
-            <div class="flex justify-between">
-                <span class="text-gray-500 print:text-black">Tgl</span>
-                <span class="font-semibold text-gray-800 print:text-black">{{ $transaction->created_at->format('d/m/y H:i') }}</span>
-            </div>
-            <div class="flex justify-between">
-                <span class="text-gray-500 print:text-black">Metode</span>
-                <span class="font-semibold text-gray-800 uppercase print:text-black">{{ str_replace('_', ' ', $transaction->payment_method) }}</span>
-            </div>
-            <div class="flex justify-between">
-                <span class="text-gray-500 print:text-black">Status</span>
-                <span class="font-bold uppercase print:text-black">{{ $transaction->status }}</span>
-            </div>
+        <div class="contact-info">
+            <p><i class="fas fa-phone-alt"></i> +62 881 9435 180</p>
+            <p><i class="fas fa-globe"></i> www.tokosancaka.com</p>
+            <p><i class="fas fa-envelope"></i> support@tokosancaka.com</p>
         </div>
+    </div>
 
-        <div class="bg-gray-50 p-3 rounded border border-gray-200 mb-3 print:bg-transparent print:border-black print:border-y-2 print:border-x-0 print:rounded-none print:py-2">
-            <div class="flex justify-between items-start">
-                <div class="w-2/3">
-                    <h3 class="font-bold text-sm text-gray-900 leading-tight print:text-black">{{ strtoupper($transaction->buyer_sku_code) }}</h3>
-                    <p class="text-[10px] text-gray-500 mt-0.5 print:text-black">ID: {{ $transaction->customer_no }}</p>
-                </div>
-                <div class="w-1/3 text-right">
-                    <span class="block font-bold text-sm text-blue-600 print:text-black">
-                        Rp {{ number_format($transaction->selling_price, 0, ',', '.') }}
-                    </span>
-                </div>
-            </div>
-
-            @if($transaction->sn)
-            <div class="mt-2 pt-2 border-t border-dashed border-gray-400 print:border-black">
-                <p class="text-[9px] text-center text-gray-500 uppercase tracking-widest mb-1 print:text-black">Serial Number / Token</p>
-                <div class="border border-gray-800 p-2 rounded text-center print:border-2 print:border-black">
-                    <span class="font-mono font-bold text-lg tracking-widest text-gray-900 select-all print:text-black">
-                        {{ $transaction->sn }}
-                    </span>
-                </div>
-            </div>
+    <div class="invoice-details">
+        <div class="invoice-to">
+            <h3>INVOICE TO:</h3>
+            <p><strong>{{ $transaction->customer_no }}</strong></p>
+            @if(isset($transaction->desc['detail'][0]['nama_pelanggan']))
+                <p>{{ $transaction->desc['detail'][0]['nama_pelanggan'] }}</p>
             @endif
         </div>
-
-        <div class="text-center text-[10px] text-gray-400 mt-4 print:text-black print:mt-2">
-            <p>Terima kasih - Sancaka Store</p>
+        <div class="invoice-info">
+            <h3>INVOICE</h3>
+            <table>
+                <tr>
+                    <td>Invoice No:</td>
+                    <td><strong>{{ $transaction->order_id }}</strong></td>
+                </tr>
+                <tr>
+                    <td>Date:</td>
+                    <td>{{ $transaction->created_at->format('d/m/Y H:i') }}</td>
+                </tr>
+                <tr>
+                    <td>Status:</td>
+                    <td style="color: green; font-weight: bold;">SUCCESS</td>
+                </tr>
+            </table>
         </div>
+    </div>
 
-        <div class="mt-6 flex gap-3 print:hidden">
-            <a href="{{ route('customer.dashboard') }}" class="flex-1 py-3 bg-gray-200 text-gray-700 font-bold rounded-lg text-center hover:bg-gray-300 text-sm">
-                Kembali
-            </a>
-            <button onclick="window.print()" class="flex-1 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 text-sm shadow">
-                Cetak (100x150)
-            </button>
+    <table class="items-table">
+        <thead>
+            <tr>
+                <th style="width: 5%;">NO.</th>
+                <th style="width: 45%;">ITEM DESCRIPTION</th>
+                <th style="width: 15%;">PRICE</th>
+                <th style="width: 10%;">QTY</th>
+                <th style="width: 25%;">TOTAL</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>01.</td>
+                <td>
+                    <strong>{{ strtoupper($transaction->buyer_sku_code) }}</strong>
+                    <br>
+                    @if($transaction->sn)
+                        <span style="font-size: 12px; color: #777;">SN: {{ $transaction->sn }}</span>
+                    @endif
+                </td>
+                <td>Rp {{ number_format($transaction->selling_price, 0, ',', '.') }}</td>
+                <td>1</td>
+                <td>Rp {{ number_format($transaction->selling_price, 0, ',', '.') }}</td>
+            </tr>
+            </tbody>
+    </table>
+
+    <div class="footer-summary">
+        <div class="payment-info">
+            <h4>Payment Info:</h4>
+            <p>Metode: <strong>{{ str_replace('_', ' ', $transaction->payment_method) }}</strong></p>
         </div>
+        <div class="totals">
+            <table>
+                <tr>
+                    <td>SUB TOTAL:</td>
+                    <td>Rp {{ number_format($transaction->selling_price, 0, ',', '.') }}</td>
+                </tr>
+                <tr>
+                    <td>TAX (0%):</td>
+                    <td>Rp 0</td>
+                </tr>
+            </table>
+            <div class="grand-total">
+                TOTAL: Rp {{ number_format($transaction->selling_price, 0, ',', '.') }}
+            </div>
+        </div>
+    </div>
+
+    <div class="thank-you">
+        <h3>THANK YOU FOR YOUR BUSINESS</h3>
+        <p>Terima kasih telah bertransaksi di Sancaka Store.</p>
+        <p>Simpan struk ini sebagai bukti pembayaran yang sah.</p>
     </div>
 </div>
 
-<style>
-    @media print {
-        /* 1. SETUP UKURAN KERTAS */
-        @page {
-            size: 100mm 150mm; /* Lebar x Tinggi */
-            margin: 0mm;       /* Hilangkan margin default browser */
-        }
-
-        /* 2. HILANGKAN ELEMEN WEBSITE LAIN */
-        body * {
-            visibility: hidden;
-        }
-
-        /* 3. TAMPILKAN HANYA STRUK */
-        #invoice-card, #invoice-card * {
-            visibility: visible;
-        }
-
-        /* 4. POSISIKAN STRUK */
-        #invoice-card {
-            position: fixed;
-            left: 0;
-            top: 0;
-            width: 100mm;      /* Paksa lebar sesuai kertas */
-            min-height: 150mm; /* Paksa tinggi minimal */
-            padding: 5mm !important; /* Beri sedikit padding biar ga nempel tepi */
-            margin: 0 !important;
-            border: none !important;
-            box-shadow: none !important;
-            font-family: 'Courier New', Courier, monospace; /* Font struk biar jelas */
-        }
-
-        /* Hilangkan Navbar dll secara paksa */
-        header, nav, footer, .navbar, .sidebar {
-            display: none !important;
-        }
-    }
-</style>
-@endsection
+</body>
+</html>
