@@ -3,188 +3,175 @@
 @section('title', 'Invoice #' . $transaction->order_id)
 
 @section('content')
-<div class="bg-gray-50 min-h-screen py-10">
-    <div class="container mx-auto px-4 max-w-2xl">
+<div class="bg-gray-50 min-h-screen py-6 sm:py-10 print:bg-white print:py-0">
+    <div class="container mx-auto px-4 max-w-xl print:max-w-full print:px-0">
         
-        {{-- Tombol Kembali --}}
-        <a href="{{ route('customer.dashboard') }}" class="inline-flex items-center text-gray-500 hover:text-blue-600 mb-6 transition">
+        {{-- Tombol Kembali (Disembunyikan saat Print) --}}
+        <a href="{{ route('customer.dashboard') }}" class="inline-flex items-center text-gray-500 hover:text-blue-600 mb-6 transition print:hidden">
             <i class="fas fa-arrow-left mr-2"></i> Kembali ke Dashboard
         </a>
 
-        <div class="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-200 relative">
+        <div class="bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-100 relative print:shadow-none print:border-0 print:rounded-none">
             
             {{-- Hiasan Atas --}}
-            <div class="h-2 bg-blue-600 w-full"></div>
+            <div class="h-2 bg-gradient-to-r from-blue-500 to-blue-600 w-full print:hidden"></div>
 
-            <div class="p-8">
+            <div class="p-6 sm:p-8">
                 
-                {{-- Header Status --}}
+                {{-- 1. Header Status --}}
                 <div class="text-center mb-8">
                     @php
                         $status = strtolower($transaction->status);
+                        $isSuccess = in_array($status, ['success', 'sukses']);
+                        $isPending = in_array($status, ['pending', 'menunggu']);
                     @endphp
 
-                    @if(in_array($status, ['success', 'processing']))
-                        <div class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-sm">
-                            <i class="fas fa-check-circle"></i>
+                    @if($isSuccess)
+                        <div class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl ring-4 ring-green-50 print:hidden">
+                            <i class="fas fa-check"></i>
                         </div>
                         <h2 class="text-2xl font-extrabold text-gray-900">Pembayaran Berhasil</h2>
-                        <p class="text-gray-500 mt-1">Transaksi Anda sedang diproses oleh sistem.</p>
+                        <p class="text-gray-500 mt-1 text-sm">Transaksi telah berhasil diproses.</p>
                     
-                    @elseif($status == 'pending')
-                        <div class="w-16 h-16 bg-yellow-100 text-yellow-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-sm">
+                    @elseif($isPending)
+                        <div class="w-16 h-16 bg-yellow-100 text-yellow-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl ring-4 ring-yellow-50 print:hidden">
                             <i class="fas fa-clock"></i>
                         </div>
                         <h2 class="text-2xl font-extrabold text-gray-900">Menunggu Pembayaran</h2>
-                        <p class="text-gray-500 mt-1">Silakan selesaikan pembayaran Anda.</p>
+                        <p class="text-gray-500 mt-1 text-sm">Selesaikan pembayaran sebelum batas waktu.</p>
                     
                     @else
-                        <div class="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-sm">
-                            <i class="fas fa-times-circle"></i>
+                        <div class="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl ring-4 ring-red-50 print:hidden">
+                            <i class="fas fa-times"></i>
                         </div>
                         <h2 class="text-2xl font-extrabold text-gray-900">Transaksi Gagal</h2>
-                        <p class="text-gray-500 mt-1">{{ $transaction->message ?? 'Mohon hubungi admin.' }}</p>
+                        <p class="text-gray-500 mt-1 text-sm">{{ $transaction->message ?? 'Terjadi kesalahan sistem.' }}</p>
                     @endif
                 </div>
 
-                {{-- Tabel Informasi Utama --}}
-                <div class="border-t border-b border-dashed border-gray-200 py-6 mb-6 space-y-3">
-                    <div class="flex justify-between">
+                {{-- 2. Tabel Informasi Utama (Struk Style) --}}
+                <div class="border-t-2 border-dashed border-gray-200 py-6 mb-6 space-y-3">
+                    <div class="flex justify-between items-center">
                         <span class="text-gray-500 text-sm">No. Invoice</span>
-                        <span class="font-mono font-bold text-gray-800">{{ $transaction->order_id }}</span>
+                        <span class="font-mono font-bold text-gray-800 tracking-wide">{{ $transaction->order_id }}</span>
                     </div>
-                    <div class="flex justify-between">
+                    <div class="flex justify-between items-center">
                         <span class="text-gray-500 text-sm">Tanggal</span>
-                        <span class="font-medium text-gray-800">{{ $transaction->created_at->format('d M Y H:i') }}</span>
+                        <span class="font-medium text-gray-800 text-sm">{{ $transaction->created_at->format('d M Y, H:i') }}</span>
                     </div>
-                    <div class="flex justify-between">
+                    <div class="flex justify-between items-center">
                         <span class="text-gray-500 text-sm">Metode Bayar</span>
-                        <span class="font-medium text-gray-800 uppercase">{{ $transaction->payment_method }}</span>
+                        <span class="font-medium text-gray-800 uppercase text-sm">{{ str_replace('_', ' ', $transaction->payment_method) }}</span>
                     </div>
                     <div class="flex justify-between items-center">
                         <span class="text-gray-500 text-sm">Status</span>
                         @php
-                            $badgeColor = match($status) {
-                                'success' => 'bg-green-100 text-green-800 border-green-200',
-                                'processing' => 'bg-blue-100 text-blue-800 border-blue-200',
-                                'pending' => 'bg-yellow-100 text-yellow-800 border-yellow-200',
-                                default => 'bg-red-100 text-red-800 border-red-200'
+                            $badgeClass = match(true) {
+                                $isSuccess => 'bg-green-100 text-green-700 border-green-200',
+                                $isPending => 'bg-yellow-100 text-yellow-700 border-yellow-200',
+                                default => 'bg-red-100 text-red-700 border-red-200'
                             };
                         @endphp
-                        <span class="{{ $badgeColor }} border px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">
+                        <span class="{{ $badgeClass }} border px-2.5 py-0.5 rounded-md text-xs font-bold uppercase tracking-wide">
                             {{ $transaction->status }}
                         </span>
                     </div>
                 </div>
 
-                {{-- Rincian Produk & Detail Array --}}
-                <div class="bg-gray-50 rounded-xl p-5 mb-6 border border-gray-100">
-                    <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Rincian Produk</p>
+                {{-- 3. Rincian Produk --}}
+                <div class="bg-gray-50 rounded-xl p-5 mb-6 border border-gray-200 print:bg-white print:border-black print:border-2">
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-200 pb-2">Rincian Produk</p>
                     
                     {{-- Info Produk Utama --}}
-                    <div class="flex justify-between items-start mb-2">
+                    <div class="flex justify-between items-start mb-4">
                         <div>
-                            <h3 class="font-bold text-gray-900 text-lg">{{ $transaction->buyer_sku_code }}</h3>
+                            <h3 class="font-bold text-gray-900 text-lg leading-tight">{{ $transaction->buyer_sku_code }}</h3>
                             <p class="text-sm text-gray-500 mt-1">
-                                ID Pelanggan: <span class="font-mono font-semibold text-gray-700 bg-gray-200 px-2 rounded">{{ $transaction->customer_no }}</span>
+                                ID Pel: <span class="font-mono font-semibold text-gray-700">{{ $transaction->customer_no }}</span>
                             </p>
                         </div>
                         <div class="text-right">
-                            <p class="font-extrabold text-xl text-blue-600">Rp {{ number_format($transaction->selling_price, 0, ',', '.') }}</p>
+                            <p class="font-extrabold text-xl text-blue-600 print:text-black">Rp {{ number_format($transaction->selling_price, 0, ',', '.') }}</p>
                         </div>
                     </div>
 
-                    {{-- ⚡ LOGIKA MENAMPILKAN ARRAY DETAIL (PENTING) ⚡ --}}
+                    {{-- Logic Parse Detail (PLN Pascabayar/PDAM) --}}
                     @php
-                        // Ambil data desc dari kolom database (otomatis di-cast ke array oleh model)
-                        $desc = $transaction->desc ?? [];
-                        $details = $desc['detail'] ?? []; 
+                        $descData = $transaction->desc;
+                        if (is_string($descData)) {
+                            $descData = json_decode($descData, true);
+                        }
+                        $details = $descData['detail'] ?? []; 
                     @endphp
 
                     @if(!empty($details) && is_array($details))
-                        <div class="mt-4 pt-4 border-t border-dashed border-gray-300">
-                            <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
-                                <i class="fas fa-list-ul"></i> Detail Tagihan
-                            </h4>
-                            
-                            <div class="space-y-2">
+                        <div class="mt-4 pt-3 border-t border-dashed border-gray-300">
+                            <div class="space-y-3">
                                 @foreach($details as $item)
-                                    <div class="bg-white border border-gray-200 p-3 rounded-lg flex justify-between items-start text-sm shadow-sm">
-                                        <div>
-                                            {{-- Periode --}}
-                                            <p class="font-bold text-gray-700">
-                                                Periode: {{ $item['periode'] ?? '-' }}
-                                            </p>
-
-                                            {{-- Meteran (Khusus PLN/PDAM) --}}
-                                            @if(isset($item['meter_awal']) && isset($item['meter_akhir']))
-                                                <div class="text-[10px] text-gray-500 mt-1 bg-gray-100 px-1.5 py-0.5 rounded inline-block">
-                                                    Meter: {{ $item['meter_awal'] }} - {{ $item['meter_akhir'] }}
-                                                </div>
-                                            @endif
-
-                                            {{-- Denda --}}
-                                            @if(isset($item['denda']) && $item['denda'] > 0)
-                                                <div class="text-[10px] text-red-600 font-bold mt-1">
-                                                    (Denda: Rp {{ number_format($item['denda'], 0, ',', '.') }})
-                                                </div>
-                                            @endif
+                                    <div class="bg-white border border-gray-200 p-3 rounded-lg text-sm shadow-sm print:shadow-none print:border-gray-400">
+                                        <div class="flex justify-between mb-1">
+                                            <span class="text-gray-500 text-xs">Periode</span>
+                                            <span class="font-bold text-gray-800">{{ $item['periode'] ?? '-' }}</span>
                                         </div>
-
-                                        <div class="text-right">
-                                            {{-- Nilai Tagihan per Item --}}
-                                            <p class="font-bold text-gray-800">
-                                                Rp {{ number_format($item['nilai_tagihan'] ?? 0, 0, ',', '.') }}
-                                            </p>
-                                            
-                                            {{-- Admin per Item (jika ada) --}}
-                                            @if(isset($item['admin']) && $item['admin'] > 0)
-                                                <p class="text-[10px] text-gray-400">
-                                                    Adm: Rp {{ number_format($item['admin'], 0, ',', '.') }}
-                                                </p>
-                                            @endif
+                                        
+                                        @if(isset($item['meter_awal']) && isset($item['meter_akhir']))
+                                        <div class="flex justify-between mb-1">
+                                            <span class="text-gray-500 text-xs">Stand Meter</span>
+                                            <span class="text-gray-800 text-xs">{{ $item['meter_awal'] }} - {{ $item['meter_akhir'] }}</span>
                                         </div>
+                                        @endif
+
+                                        <div class="flex justify-between items-center mt-2 pt-2 border-t border-gray-100">
+                                            <span class="font-bold text-gray-700">Tagihan</span>
+                                            <span class="font-bold text-gray-900">Rp {{ number_format($item['nilai_tagihan'] ?? 0, 0, ',', '.') }}</span>
+                                        </div>
+                                        
+                                        @if(($item['denda'] ?? 0) > 0)
+                                            <div class="flex justify-between text-red-500 text-xs mt-1">
+                                                <span>Denda</span>
+                                                <span>+ Rp {{ number_format($item['denda'], 0, ',', '.') }}</span>
+                                            </div>
+                                        @endif
                                     </div>
                                 @endforeach
                             </div>
                         </div>
                     @endif
 
-                    {{-- Tampilkan SN / Token Listrik Jika Sukses --}}
-                    @if($transaction->sn && $status === 'success')
-                        <div class="mt-4 pt-4 border-t border-gray-200 border-dashed">
-                            <p class="text-xs font-bold text-gray-500 uppercase mb-2 text-center">Serial Number / Token</p>
-                            <div class="bg-yellow-50 border border-yellow-200 p-3 rounded-lg text-center relative group cursor-pointer hover:bg-yellow-100 transition">
-                                <p class="font-mono font-bold text-lg tracking-widest text-gray-800 select-all break-all">
+                    {{-- 4. Serial Number / Token (Highlight) --}}
+                    @if($transaction->sn && $isSuccess)
+                        <div class="mt-6">
+                            <div class="text-center mb-2">
+                                <span class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Serial Number / Token</span>
+                            </div>
+                            <div class="bg-yellow-50 border-2 border-yellow-300 p-4 rounded-xl text-center relative group print:bg-white print:border-black">
+                                <p class="font-mono font-bold text-xl sm:text-2xl tracking-widest text-gray-900 select-all break-all">
                                     {{ $transaction->sn }}
                                 </p>
-                                <span class="absolute right-2 top-2 text-gray-400 opacity-0 group-hover:opacity-100 text-xs">
-                                    <i class="fas fa-copy"></i>
-                                </span>
                             </div>
-                            <p class="text-[10px] text-center text-gray-400 mt-2">Salin kode di atas untuk digunakan.</p>
+                            <p class="text-[10px] text-center text-gray-400 mt-2 print:hidden">Salin kode di atas untuk digunakan.</p>
                         </div>
                     @endif
                 </div>
 
-                {{-- Tombol Aksi --}}
-                <div class="flex flex-col sm:flex-row gap-3">
-                    {{-- Tombol Bayar (Hanya jika Pending & Online Payment) --}}
-                    @if($transaction->payment_method !== 'saldo' && $status == 'pending' && $transaction->payment_url)
-                        <a href="{{ $transaction->payment_url }}" target="_blank" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl text-center transition shadow-lg transform hover:-translate-y-0.5 flex items-center justify-center gap-2">
+                {{-- 5. Tombol Aksi (Hidden saat Print) --}}
+                <div class="flex flex-col sm:flex-row gap-3 print:hidden">
+                    {{-- Tombol Bayar --}}
+                    @if($transaction->payment_method !== 'saldo' && $isPending && $transaction->payment_url)
+                        <a href="{{ $transaction->payment_url }}" target="_blank" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl text-center transition shadow-lg shadow-blue-200 transform hover:-translate-y-0.5 flex items-center justify-center gap-2">
                             <span>Bayar Sekarang</span>
                             <i class="fas fa-external-link-alt text-sm"></i>
                         </a>
                     @endif
                     
                     {{-- Tombol Cetak --}}
-                    <button onclick="window.print()" class="flex-1 border border-gray-300 hover:bg-gray-50 text-gray-700 font-bold py-3.5 rounded-xl text-center transition flex items-center justify-center gap-2">
+                    <button onclick="window.print()" class="flex-1 border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 font-bold py-3 px-4 rounded-xl text-center transition flex items-center justify-center gap-2">
                         <i class="fas fa-print"></i> Cetak Struk
                     </button>
 
                     {{-- Tombol Beli Lagi --}}
-                    @if(in_array($status, ['success', 'failed']))
-                         <a href="{{ route('etalase.index') }}" class="flex-1 bg-gray-800 hover:bg-gray-900 text-white font-bold py-3.5 rounded-xl text-center transition flex items-center justify-center gap-2">
+                    @if($isSuccess || $status == 'failed')
+                         <a href="{{ route('etalase.index') }}" class="flex-1 bg-gray-900 hover:bg-black text-white font-bold py-3 px-4 rounded-xl text-center transition flex items-center justify-center gap-2">
                             <i class="fas fa-shopping-cart"></i> Beli Lagi
                         </a>
                     @endif
@@ -194,21 +181,20 @@
         </div>
 
         {{-- Bantuan --}}
-        <div class="text-center mt-8 pb-8">
-            <p class="text-sm text-gray-500">Butuh bantuan? Hubungi <a href="#" class="text-blue-600 font-bold hover:underline">Customer Service</a></p>
+        <div class="text-center mt-8 pb-8 print:hidden">
+            <p class="text-sm text-gray-500">Butuh bantuan? <a href="#" class="text-blue-600 font-bold hover:underline">Hubungi CS</a></p>
         </div>
 
     </div>
 </div>
 
-{{-- CSS Print Khusus --}}
+{{-- Style Khusus Print yang Benar --}}
 <style>
     @media print {
-        body * { visibility: hidden; }
-        .container, .container * { visibility: visible; }
-        .container { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; }
-        a[href], button { display: none !important; } /* Sembunyikan tombol saat print */
-        .shadow-lg { box-shadow: none !important; border: 1px solid #000 !important; }
+        @page { margin: 0; size: auto; }
+        body { background-color: white; -webkit-print-color-adjust: exact; }
+        nav, footer, .header, .sidebar { display: none !important; } /* Sesuaikan dengan class layout utamamu */
+        .container { max-width: 100% !important; width: 100% !important; margin: 0 !important; padding: 20px !important; }
     }
 </style>
 @endsection
