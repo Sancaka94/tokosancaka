@@ -165,38 +165,52 @@ class KontakController extends Controller
     }
 
    /**
-     * Pencarian Kontak (Logic Revisi: Admin Bebas vs Customer Ketat)
+     * Pencarian Kontak (REVISI: SECURITY FIRST)
      */
     public function search(Request $request)
     {
         try {
             $keyword = $request->input('search') ?? $request->input('query');
-            $tipe = $request->input('tipe'); // 'Pengirim' atau 'Penerima'
+            $tipe = $request->input('tipe'); 
+            $scope = $request->input('scope'); // Flag dari JS Admin
             
             $user = Auth::user();
             $query = Kontak::query();
 
-            // --- LOGIKA UTAMA ---
+            // =========================================================
+            // 1. LOGIKA USER_ID (DEFAULT: KETAT BERDASARKAN AUTH)
+            // =========================================================
+            
+            // Cek apakah Admin meminta akses Global?
+            $isAdminGlobal = ($user->role === 'Admin' && $scope === 'global');
 
-            if ($user->role === 'Admin') {
-              
-                
+            if ($isAdminGlobal) {
+                // HANYA ADMIN dengan flag 'global' yang bisa liat semua data.
+                // (Tidak ada filter user_id)
             } else {
-                // ==========================================
-                // 2. KHUSUS CUSTOMER (KETAT & SESUAI AUTH)
-                // ==========================================
-                
-                // Wajib data sendiri
-                $query->where('user_id', $user->id_pengguna);
+                // SELAIN ITU (Customer / Admin mode biasa) -> WAJIB DATA SENDIRI
+                $query->where('user_id', $user->id);
+            }
 
-                // Wajib sesuai tipe yang diminta inputan
-                // Kalau form minta 'Penerima', database cuma kasih 'Penerima'
-                if ($tipe) {
-                    $query->where('tipe', $tipe);
+            // =========================================================
+            // 2. LOGIKA TIPE (PENGIRIM / PENERIMA)
+            // =========================================================
+            
+            if ($user->role === 'Admin') {
+                // ADMIN: Bebas Tipe.
+                // Supaya Admin bisa cari data 'Pengirim' saat input di kolom 'Penerima'
+                // (Tidak ada filter tipe)
+            } else {
+                // CUSTOMER: Ketat Tipe.
+                // Jika cari 'Penerima', yang keluar harus data bertipe 'Penerima'
+                if ($request->filled('tipe')) {
+                    $query->where('tipe', $request->input('tipe'));
                 }
             }
 
-            // --- LOGIKA PENCARIAN TEXT (BERLAKU UNTUK SEMUA) ---
+            // =========================================================
+            // 3. PENCARIAN TEXT
+            // =========================================================
             if ($keyword) {
                 $query->where(function($sub) use ($keyword) {
                     $sub->where('nama', 'LIKE', "%{$keyword}%")
@@ -205,7 +219,6 @@ class KontakController extends Controller
                 });
             }
 
-            // Ambil data (Array)
             $kontaks = $query->latest()->limit(15)->get();
 
             return response()->json($kontaks);
