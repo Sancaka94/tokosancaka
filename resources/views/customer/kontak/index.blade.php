@@ -531,5 +531,51 @@ $(document).ready(function() {
         openModal('kontakModal');
     @endif
 });
+
+function setupAddressSearch(inputId) {
+        $(`#${inputId}`).autocomplete({
+            source: debounce(async (request, response) => {
+                if (request.term.length < 3) return response([]);
+                try {
+                    // Panggil Route API
+                    // Perhatikan parameter '?search='
+                    const res = await fetch(`{{ route('api.address.search') }}?search=${encodeURIComponent(request.term)}`);
+                    const data = await res.json();
+                    
+                    // Mapping respons ke format label/value jQuery UI
+                    response(data.map(item => ({
+                        label: item.text,  // Yang muncul di dropdown
+                        value: item.text,  // Yang masuk ke input saat dipilih
+                        data: item         // Data lengkap untuk di-parsing
+                    })));
+                } catch (e) { 
+                    console.error("Gagal cari wilayah:", e);
+                    response([]); 
+                }
+            }, 300),
+            minLength: 3,
+            select: function(event, ui) {
+                const item = ui.item.data;
+                
+                // Isi Form (Gunakan nama property yang dikirim controller)
+                $('#village').val(item.village_name);
+                $('#district').val(item.district_name);
+                $('#regency').val(item.city_name);
+                $('#province').val(item.province_name);
+                $('#postal_code').val(item.zip_code);
+                
+                // Isi Hidden ID
+                $('#district_id').val(item.district_id);
+                $('#subdistrict_id').val(item.subdistrict_id);
+
+                event.preventDefault();
+                $(this).val(ui.item.label);
+                
+                // Efek visual sukses
+                $(this).addClass('border-green-500 ring-1 ring-green-500');
+            }
+        });
+    }
+    
 </script>
 @endpush
