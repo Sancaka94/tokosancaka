@@ -498,10 +498,10 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
     Route::get('/post/{post:slug}', [PostController::class, 'show'])->name('posts.post-detail');
 
      // Fitur Multi Koli Admin (YANG BARU ANDA BUAT)
-    Route::get('/pesanan/buat-multi', [AdminKoliController::class, 'create'])->name('pesanan.create_multi');
-    Route::post('/pesanan/store-multi', [AdminKoliController::class, 'store'])->name('koli.store');
-    Route::post('/pesanan/store-single', [AdminKoliController::class, 'storeSingle'])->name('koli.store_single');
-    Route::post('/cek-ongkir', [AdminKoliController::class, 'cek_Ongkir'])->name('koli.cek_ongkir');
+    Route::get('/pesanan/buat-multi', [KoliController::class, 'create'])->name('pesanan.create_multi');
+    Route::post('/pesanan/store-multi', [KoliController::class, 'store'])->name('koli.store');
+    Route::post('/pesanan/store-single', [KoliController::class, 'storeSingle'])->name('koli.store_single');
+    Route::post('/cek-ongkir', [KoliController::class, 'cek_Ongkir'])->name('koli.cek_ongkir');
     
     Route::resource('banners', BannerController::class);
     Route::get('/sliders', [SliderController::class, 'index'])->name('sliders.index');
