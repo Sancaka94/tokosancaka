@@ -492,65 +492,81 @@
 
         <div class="p-6 overflow-y-auto custom-scrollbar flex-grow">
             
-            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 shadow-sm">
-    <h4 class="text-xs font-bold text-gray-500 uppercase mb-3 border-b pb-1">Rincian Biaya</h4>
-    <div class="space-y-2 text-sm">
-        <div class="flex justify-between">
-            <span class="text-gray-600">Ongkir Dasar</span>
-            <span class="font-semibold" id="detail_cost_base">Rp 0</span>
-        </div>
-        
-        <div class="flex justify-between hidden" id="row_detail_insurance">
-            <span class="text-gray-600">Asuransi</span>
-            <span class="font-semibold" id="detail_cost_insurance">Rp 0</span>
-        </div>
-        
-        <div class="flex justify-between hidden" id="row_detail_item_price">
-            <span class="text-gray-600">Harga Barang (COD)</span>
-            <span class="font-semibold text-blue-600" id="detail_cost_item">Rp 0</span>
-        </div>
-
-        <div class="flex justify-between hidden" id="row_detail_cod">
-            <span class="text-gray-600">Biaya Layanan COD</span>
-            <span class="font-semibold" id="detail_cost_cod">Rp 0</span>
-        </div>
-
-        <div class="border-t border-gray-300 my-2 pt-2 flex justify-between items-center">
-            <span class="font-bold text-red-600">TOTAL TAGIHAN</span>
-            <span class="font-extrabold text-xl text-red-600" id="confirm_total_final">Rp 0</span>
-        </div>
-    </div>
-</div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                
+                <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 shadow-sm">
+                    <h4 class="text-xs font-bold text-gray-500 uppercase mb-3 border-b pb-1">Rincian Biaya</h4>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Ongkir Dasar</span>
+                            <span class="font-semibold" id="detail_cost_base">Rp 0</span>
+                        </div>
+                        <div class="flex justify-between hidden" id="row_detail_insurance">
+                            <span class="text-gray-600">Asuransi</span>
+                            <span class="font-semibold" id="detail_cost_insurance">Rp 0</span>
+                        </div>
+                        <div class="flex justify-between hidden" id="row_detail_item_price">
+                            <span class="text-gray-600">Harga Barang (COD)</span>
+                            <span class="font-semibold text-blue-600" id="detail_cost_item">Rp 0</span>
+                        </div>
+                        <div class="flex justify-between hidden" id="row_detail_cod">
+                            <span class="text-gray-600">Biaya Layanan COD</span>
+                            <span class="font-semibold" id="detail_cost_cod">Rp 0</span>
+                        </div>
+                        <div class="border-t border-gray-300 my-2 pt-2 flex justify-between items-center">
+                            <span class="font-bold text-red-600">TOTAL BAYAR</span>
+                            <span class="font-extrabold text-xl text-red-600" id="confirm_total_final">Rp 0</span>
+                        </div>
+                    </div>
+                </div>
 
                 <div class="space-y-3">
                     <div class="bg-blue-50 p-3 rounded-lg border border-blue-100">
                         <p class="text-xs text-blue-500 mb-1">Metode Pembayaran</p>
-                        <p class="font-bold text-blue-800 text-lg flex items-center gap-2"><i class="fas fa-wallet"></i> <span id="confirm_payment_method">-</span></p>
+                        <p class="font-bold text-blue-800 text-lg flex items-center gap-2">
+                            <i class="fas fa-wallet"></i> <span id="confirm_payment_method">-</span>
+                        </p>
                     </div>
+
                     <div id="balance_simulation_box" class="hidden bg-green-50 p-3 rounded-lg border border-green-100 text-sm">
-                        <div class="flex justify-between mb-1"><span class="text-gray-600">Saldo Awal:</span><span class="font-semibold" id="sim_initial_balance">Rp 0</span></div>
-                        <div class="flex justify-between mb-1 text-red-600"><span>Tagihan:</span><span>- <span id="sim_bill_amount">Rp 0</span></span></div>
-                        <div class="border-t border-green-200 mt-2 pt-2 flex justify-between font-bold text-green-800"><span>Sisa Saldo:</span><span id="sim_final_balance">Rp 0</span></div>
+                        <div class="flex justify-between mb-1">
+                            <span class="text-gray-600">Saldo Awal:</span>
+                            <span class="font-semibold" id="sim_initial_balance">Rp 0</span>
+                        </div>
+                        <div class="flex justify-between mb-1 text-red-600">
+                            <span>Tagihan:</span>
+                            <span>- <span id="sim_bill_amount">Rp 0</span></span>
+                        </div>
+                        <div class="border-t border-green-200 mt-2 pt-2 flex justify-between font-bold text-green-800">
+                            <span>Sisa Saldo:</span>
+                            <span id="sim_final_balance">Rp 0</span>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4 relative">
                 <div class="hidden md:block absolute left-1/2 top-0 bottom-0 w-px bg-gray-200 transform -translate-x-1/2"></div>
+                
                 <div>
-                    <h4 class="text-xs font-bold text-red-600 uppercase mb-2">Pengirim</h4>
+                    <h4 class="text-xs font-bold text-red-500 uppercase mb-2 flex items-center gap-2">
+                        <i class="fas fa-arrow-up bg-red-100 p-1 rounded"></i> Pengirim
+                    </h4>
                     <div class="pl-2 border-l-2 border-red-200 text-sm">
-                        <p class="font-bold" id="confirm_sender_name">-</p>
-                        <p class="text-xs text-red-500" id="confirm_sender_phone">-</p>
-                        <p class="text-red-600" id="confirm_sender_address">-</p>
+                        <p class="font-bold text-gray-800" id="confirm_sender_name">-</p>
+                        <p class="text-xs text-red-500 mb-1" id="confirm_sender_phone">-</p>
+                        <p class="text-gray-600 leading-snug" id="confirm_sender_address">-</p>
                     </div>
                 </div>
+
                 <div>
-                    <h4 class="text-xs font-bold text-blue-500 uppercase mb-2">Penerima</h4>
+                    <h4 class="text-xs font-bold text-blue-500 uppercase mb-2 flex items-center gap-2">
+                         <i class="fas fa-arrow-down bg-blue-100 p-1 rounded"></i> Penerima
+                    </h4>
                     <div class="pl-2 border-l-2 border-blue-200 text-sm">
-                        <p class="font-bold" id="confirm_receiver_name">-</p>
-                        <p class="text-xs text-blue-500" id="confirm_receiver_phone">-</p>
-                        <p class="text-blue-600" id="confirm_receiver_address">-</p>
+                        <p class="font-bold text-gray-800" id="confirm_receiver_name">-</p>
+                        <p class="text-xs text-blue-500 mb-1" id="confirm_receiver_phone">-</p>
+                        <p class="text-gray-600 leading-snug" id="confirm_receiver_address">-</p>
                     </div>
                 </div>
             </div>
@@ -558,14 +574,12 @@
             <div class="bg-gray-50 rounded p-3 text-sm grid grid-cols-3 gap-2 border border-gray-200 items-center">
                 <div class="text-left">
                     <span class="text-gray-500 text-xs block">Isi Paket:</span>
-                    <span class="font-semibold block truncate" id="confirm_item_desc">-</span>
+                    <span class="font-semibold block truncate uppercase" id="confirm_item_desc">-</span>
                 </div>
-                
                 <div class="text-center border-l border-r border-gray-200 px-2">
                     <span class="text-gray-500 text-xs block">Dimensi (PxLxT):</span>
                     <span class="font-semibold block" id="confirm_dimensions">-</span>
                 </div>
-
                 <div class="text-right">
                     <span class="text-gray-500 text-xs block">Berat:</span>
                     <span class="font-semibold block" id="confirm_weight">- Gram</span>
@@ -573,14 +587,16 @@
             </div>
             
              <div class="mt-4 bg-yellow-50 p-3 rounded text-xs text-yellow-800 border border-yellow-200 flex items-start gap-2">
-                <i class="fas fa-exclamation-triangle mt-0.5"></i>
+                <i class="fas fa-exclamation-triangle mt-0.5 flex-shrink-0"></i>
                 <span>Pastikan data alamat sudah benar. Kesalahan input bukan tanggung jawab sistem.</span>
             </div>
         </div>
 
         <div class="px-6 py-4 bg-gray-50 border-t flex flex-col-reverse sm:flex-row gap-3 sm:justify-end shrink-0">
-            <button type="button" onclick="closeConfirmationModal()" class="w-full sm:w-auto px-5 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-100">Perbaiki Data</button>
-            <button type="button" onclick="submitFinalForm()" class="w-full sm:w-auto px-6 py-2.5 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 flex items-center justify-center gap-2"><span>Lanjut Kirim</span> <i class="fas fa-paper-plane"></i></button>
+            <button type="button" onclick="closeConfirmationModal()" class="w-full sm:w-auto px-5 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-100 transition">Perbaiki Data</button>
+            <button type="button" onclick="submitFinalForm()" class="w-full sm:w-auto px-6 py-2.5 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition flex items-center justify-center gap-2 shadow-lg">
+                <span>Lanjut Kirim</span> <i class="fas fa-paper-plane"></i>
+            </button>
         </div>
     </div>
 </div>
@@ -1227,60 +1243,77 @@ type();
 
     // --- FUNGSI GLOBAL UNTUK MODAL KONFIRMASI (VERSI REVISI LOGIKA BIAYA) ---
 
-// --- FUNGSI openConfirmationModal (UPDATE LOGIKA COD BARANG) ---
+// --- HELPER UNTUK MENGHINDARI ERROR CSS CONFLICT ---
+function showRow(elementId) {
+    const el = document.getElementById(elementId);
+    if(el) {
+        el.classList.remove('hidden'); // Hapus hidden dulu
+        el.classList.add('flex');      // Baru tambah flex
+    }
+}
+
+function hideRow(elementId) {
+    const el = document.getElementById(elementId);
+    if(el) {
+        el.classList.remove('flex');   // Hapus flex dulu
+        el.classList.add('hidden');    // Baru tambah hidden
+    }
+}
+
+// --- FUNGSI BUKA MODAL FINAL ---
 function openConfirmationModal() {
-    // 1. AMBIL DATA FORM
+    // 1. DATA INPUT DASAR
     const senderAddress = document.getElementById('sender_address').value; 
     const receiverAddress = document.getElementById('receiver_address').value;
     const paymentMethodVal = document.getElementById('payment_method').value;
     const logoUrl = document.getElementById('selected_expedition_logo_url').value;
 
-    // 2. HITUNG DIMENSI & BERAT
+    // 2. HITUNG DIMENSI (PxLxT)
     const p = document.getElementById('length').value;
     const l = document.getElementById('width').value;
     const t = document.getElementById('height').value;
-    let dimText = (p && l && t) ? `${p} x ${l} x ${t} cm` : '-';
+    let dimText = '-';
+    // Hanya tampilkan jika ketiga kolom diisi
+    if (p && l && t) {
+        dimText = `${p} x ${l} x ${t} cm`;
+    }
 
-    // 3. LOGIKA BIAYA (INI YANG DIPERBAIKI)
+    // 3. LOGIKA BIAYA
     const parts = document.getElementById('expedition').value.split('-');
     const baseCost = parseInt(parts[3]) || 0;     // Ongkir
     const insurance = parseInt(parts[4]) || 0;    // Asuransi
     let codFee = parseInt(parts[5]) || 0;         // Biaya Admin COD
-    
-    // Ambil Harga Barang (Pastikan input type="number" atau parsing int)
-    const itemPrice = parseInt(document.getElementById('item_price').value) || 0;
+    const itemPrice = parseInt(document.getElementById('item_price').value) || 0; // Harga Barang
 
-    // Variabel penampung total
+    // Variabel Total
     let totalCost = baseCost + insurance; 
 
-    // Cek Jenis Pembayaran
+    // Cek Pembayaran
     const isCODBarang = (paymentMethodVal === 'CODBARANG');
     const isCODRegular = (paymentMethodVal === 'COD');
 
-    // A. Logika Biaya COD (Admin Fee)
+    // A. Atur Biaya Admin COD
     if (isCODBarang || isCODRegular) {
-        // Biaya admin COD tetap dihitung
-        totalCost += codFee;
+        totalCost += codFee; // Tambah admin fee
     } else {
-        // Jika bukan COD, nol-kan fee (karena bayar transfer/saldo)
-        codFee = 0; 
+        codFee = 0; // Reset jadi 0 jika bayar saldo
     }
 
-    // B. Logika Harga Barang (Hanya Tambah Jika "COD BARANG")
+    // B. Atur Harga Barang (Hanya jika COD Barang)
     if (isCODBarang) {
         totalCost += itemPrice;
     }
 
-    // 4. UPDATE TAMPILAN MODAL
+    // 4. INJECT DATA KE MODAL
     document.getElementById('confirm_expedition_name').innerText = document.getElementById('selected_expedition_display').value;
     document.getElementById('confirm_expedition_logo').src = logoUrl || 'https://placehold.co/100x40?text=Kurir';
 
-    // Gabung Alamat (Sama seperti sebelumnya)
+    // Gabung Alamat Lengkap (Desa, Kec, Kab, Prov)
     const sVals = ['village','district','regency','province','postal_code'].map(id => document.getElementById('sender_'+id).value || '');
-    const sFull = `${senderAddress}, ${sVals.join(', ')}`.replace(/, ,/g, ',').replace(/, $/, '');
+    const sFull = `${senderAddress}, ${sVals.filter(Boolean).join(', ')}`; // filter(Boolean) membuang string kosong
     
     const rVals = ['village','district','regency','province','postal_code'].map(id => document.getElementById('receiver_'+id).value || '');
-    const rFull = `${receiverAddress}, ${rVals.join(', ')}`.replace(/, ,/g, ',').replace(/, $/, '');
+    const rFull = `${receiverAddress}, ${rVals.filter(Boolean).join(', ')}`;
 
     document.getElementById('confirm_sender_name').innerText = document.getElementById('sender_name').value;
     document.getElementById('confirm_sender_phone').innerText = document.getElementById('sender_phone').value;
@@ -1292,66 +1325,70 @@ function openConfirmationModal() {
 
     document.getElementById('confirm_item_desc').innerText = document.getElementById('item_description').value;
     document.getElementById('confirm_weight').innerText = document.getElementById('weight').value + ' gram';
-    document.getElementById('confirm_dimensions').innerText = dimText;
+    document.getElementById('confirm_dimensions').innerText = dimText; // Tampilkan Dimensi
     document.getElementById('confirm_payment_method').innerText = document.getElementById('selectedPaymentName').innerText;
 
-    // --- UPDATE RINCIAN BIAYA ---
+    // 5. UPDATE RINCIAN BIAYA & VISIBILITY ROW
     document.getElementById('detail_cost_base').innerText = formatRupiah(baseCost);
     document.getElementById('confirm_total_final').innerText = formatRupiah(totalCost);
     
-    // 1. Asuransi
-    const elIns = document.getElementById('row_detail_insurance');
-    if(insurance > 0) { elIns.classList.remove('hidden'); elIns.classList.add('flex'); document.getElementById('detail_cost_insurance').innerText = formatRupiah(insurance); } 
-    else { elIns.classList.add('hidden'); elIns.classList.remove('flex'); }
+    // Baris Asuransi
+    document.getElementById('detail_cost_insurance').innerText = formatRupiah(insurance);
+    (insurance > 0) ? showRow('row_detail_insurance') : hideRow('row_detail_insurance');
 
-    // 2. Harga Barang (Baris Baru)
-    const elItem = document.getElementById('row_detail_item_price');
-    if(isCODBarang && itemPrice > 0) {
-        elItem.classList.remove('hidden'); elItem.classList.add('flex'); 
-        document.getElementById('detail_cost_item').innerText = formatRupiah(itemPrice);
-    } else {
-        elItem.classList.add('hidden'); elItem.classList.remove('flex');
-    }
+    // Baris Harga Barang
+    document.getElementById('detail_cost_item').innerText = formatRupiah(itemPrice);
+    (isCODBarang && itemPrice > 0) ? showRow('row_detail_item_price') : hideRow('row_detail_item_price');
 
-    // 3. Biaya COD
-    const elCod = document.getElementById('row_detail_cod');
-    if(codFee > 0) { elCod.classList.remove('hidden'); elCod.classList.add('flex'); document.getElementById('detail_cost_cod').innerText = formatRupiah(codFee); } 
-    else { elCod.classList.add('hidden'); elCod.classList.remove('flex'); }
+    // Baris Biaya COD
+    document.getElementById('detail_cost_cod').innerText = formatRupiah(codFee);
+    (codFee > 0) ? showRow('row_detail_cod') : hideRow('row_detail_cod');
 
-    // --- SIMULASI SALDO (Hanya Jika Potong Saldo) ---
+    // 6. SIMULASI SALDO
     const balBox = document.getElementById('balance_simulation_box');
     if (paymentMethodVal === 'Potong Saldo') {
         const curBal = parseInt(document.getElementById('user_current_balance').value) || 0;
         const remBal = curBal - totalCost;
+        
         document.getElementById('sim_initial_balance').innerText = formatRupiah(curBal);
         document.getElementById('sim_bill_amount').innerText = formatRupiah(totalCost);
+        
         const finalEl = document.getElementById('sim_final_balance');
         finalEl.innerText = formatRupiah(remBal);
-        if(remBal < 0) { finalEl.className = "font-bold text-red-600"; finalEl.innerText += " (Kurang)"; }
-        else { finalEl.className = "font-bold text-green-800"; }
+        
+        if(remBal < 0) { 
+            finalEl.className = "font-bold text-red-600"; 
+            finalEl.innerText += " (Kurang)"; 
+        } else { 
+            finalEl.className = "font-bold text-green-800"; 
+        }
         balBox.classList.remove('hidden');
-    } else { balBox.classList.add('hidden'); }
+    } else { 
+        balBox.classList.add('hidden'); 
+    }
 
-    // BUKA MODAL
+    // 7. BUKA MODAL
     const modal = document.getElementById('confirmationModal');
-    const modalBox = modal.querySelector('div');
-    modal.classList.remove('hidden');
-    modalBox.classList.remove('scale-95', 'opacity-0');
-    modalBox.classList.add('scale-100', 'opacity-100');
+    modal.classList.remove('hidden'); // Tampilkan background
+    const modalBox = modal.querySelector('div'); // Ambil kotak putih
+    
+    // Reset animasi agar muncul smooth
+    setTimeout(() => {
+        modalBox.classList.remove('scale-95', 'opacity-0');
+        modalBox.classList.add('scale-100', 'opacity-100');
+    }, 10);
 }
 
-// --- FUNGSI UNTUK TOMBOL X (TUTUP MODAL) ---
+// --- FUNGSI TUTUP MODAL ---
 function closeConfirmationModal() {
     const modal = document.getElementById('confirmationModal');
+    // Langsung sembunyikan untuk mencegah stuck
+    modal.classList.add('hidden');
     
-    // Paksa sembunyikan modal & background sekaligus
-    modal.classList.add('hidden'); 
-    
-    // Reset efek animasi (jika ada) biar pas dibuka lagi tetap muncul bagus
-    if(modal.firstElementChild) {
-        modal.firstElementChild.classList.remove('scale-95', 'opacity-0');
-        modal.firstElementChild.classList.add('scale-100', 'opacity-100');
-    }
+    // Reset state kotak putih untuk animasi berikutnya
+    const modalBox = modal.querySelector('div');
+    modalBox.classList.remove('scale-100', 'opacity-100');
+    modalBox.classList.add('scale-95', 'opacity-0');
 }
 
 function submitFinalForm() {
