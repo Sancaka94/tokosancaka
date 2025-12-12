@@ -152,6 +152,12 @@ Route::get('/marketplace', [CustomerMarketplaceController::class, 'index'])->nam
 Route::get('/marketplace/category/{category:slug}', [CategoryController::class, 'show'])->name('marketplace.categories.show');
 Route::get('/pelanggan', [PublicPelangganController::class, 'index'])->name('pelanggan.public.index');
 
+    // Fitur Multi Koli Admin (YANG BARU ANDA BUAT)
+    Route::get('/pesanan/buat-multi', [KoliController::class, 'create'])->name('pesanan.create_multi');
+    Route::post('/pesanan/store-multi', [KoliController::class, 'store'])->name('koli.store');
+    Route::post('/pesanan/store-single', [KoliController::class, 'storeSingle'])->name('koli.store_single');
+    Route::post('/cek-ongkir', [KoliController::class, 'cek_Ongkir'])->name('koli.cek_ongkir');
+
 // PPOB Public
 Route::get('/daftar-harga', [PublicController::class, 'pricelist'])->name('public.pricelist');
 Route::get('/layanan/{slug}', [PublicController::class, 'showCategory'])->name('public.category');
@@ -496,12 +502,6 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
     Route::get('/posts/{id}/edit', [PostController::class, 'edit'])->name('posts.edit');
     Route::put('/posts/{post}', [PostController::class, 'update'])->name('posts.update');
     Route::get('/post/{post:slug}', [PostController::class, 'show'])->name('posts.post-detail');
-
-     // Fitur Multi Koli Admin (YANG BARU ANDA BUAT)
-    Route::get('/pesanan/buat-multi', [KoliController::class, 'create'])->name('pesanan.create_multi');
-    Route::post('/pesanan/store-multi', [KoliController::class, 'store'])->name('koli.store');
-    Route::post('/pesanan/store-single', [KoliController::class, 'storeSingle'])->name('koli.store_single');
-    Route::post('/cek-ongkir', [KoliController::class, 'cek_Ongkir'])->name('koli.cek_ongkir');
     
     Route::resource('banners', BannerController::class);
     Route::get('/sliders', [SliderController::class, 'index'])->name('sliders.index');
