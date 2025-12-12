@@ -183,59 +183,37 @@ class KontakController extends Controller
         }
     }
 
-  public function searchAddressApi(Request $request, \App\Services\KiriminAjaService $kirimaja)
+public function searchAddressApi(Request $request, \App\Services\KiriminAjaService $kirimaja)
     {
-        // 1. Tangkap input (Support 'q' dari jQuery UI atau 'search')
         $keyword = $request->input('q') ?? $request->input('search');
 
-        if (!$keyword || strlen($keyword) < 3) {
-            return response()->json([]);
-        }
+        if (!$keyword || strlen($keyword) < 3) return response()->json([]);
 
         try {
-            // 2. Panggil Service Anda (KODE SERVICE TIDAK DISENTUH)
             $response = $kirimaja->searchAddress($keyword);
 
-            // 3. Validasi Response
-            if (empty($response) || empty($response['data'])) {
-                return response()->json([]);
-            }
+            if (empty($response) || empty($response['data'])) return response()->json([]);
 
-            // 4. Mapping Data (DIBUAT FLEKSIBEL)
-            // Kita coba ambil data dengan berbagai kemungkinan nama key
             $formatted = collect($response['data'])->map(function ($item) {
                 
-                // A. LOGIKA UNTUK LABEL (Teks yang muncul di dropdown)
-                // Cek 'text', kalau kosong cek 'address', kalau kosong cek 'name'
-                $labelText = $item['text'] ?? $item['address'] ?? $item['name'] ?? null;
-                
-                // Jika masih null, susun manual dari komponen wilayah
-                if (empty($labelText)) {
-                    $parts = array_filter([
-                        $item['kelurahan'] ?? $item['village_name'] ?? null,
-                        $item['kecamatan'] ?? $item['district_name'] ?? null,
-                        $item['kabupaten'] ?? $item['city_name'] ?? null,
-                        $item['provinsi'] ?? $item['province_name'] ?? null,
-                        $item['kodepos'] ?? $item['zip_code'] ?? null,
-                    ]);
-                    $labelText = !empty($parts) ? implode(', ', $parts) : "Alamat ditemukan (Tanpa Label)";
-                }
+                // --- KITA CARI LABEL APAPUN YANG ADA ---
+                // Cek text, address, name, atau description
+                $label = $item['text'] ?? $item['address'] ?? $item['name'] ?? $item['description'] ?? null;
 
                 return [
-                    // --- Field Wajib jQuery UI ---
-                    'label' => $labelText, 
-                    'value' => $labelText,
+                    'label' => $label ?? "Cek Console Browser (DEBUG)",
+                    'value' => $label ?? "Cek Console Browser (DEBUG)",
                     
-                    // --- Field Data Lengkap ---
-                    // Cek 'kelurahan' (Indo) ATAU 'village_name' (Inggris)
+                    // --- INI KUNCINYA: KITA KIRIM DATA MENTAH KE BROWSER ---
+                    'DEBUG_RAW' => $item, 
+                    
                     'data_lengkap' => [
+                        // Kita biarkan dulu mapping lama, nanti kita perbaiki setelah lihat DEBUG_RAW
                         'village'        => $item['kelurahan'] ?? $item['village_name'] ?? '',
                         'district'       => $item['kecamatan'] ?? $item['district_name'] ?? '',
-                        'regency'        => $item['kabupaten'] ?? $item['city_name'] ?? $item['regency_name'] ?? '', 
+                        'regency'        => $item['kabupaten'] ?? $item['city_name'] ?? '', 
                         'province'       => $item['provinsi'] ?? $item['province_name'] ?? '',
                         'postal_code'    => $item['kodepos'] ?? $item['zip_code'] ?? '',
-                        
-                        // ID Ongkir (Cek 'kecamatan_id' atau 'district_id')
                         'district_id'    => $item['kecamatan_id'] ?? $item['district_id'] ?? null,
                         'subdistrict_id' => $item['kelurahan_id'] ?? $item['subdistrict_id'] ?? null,
                     ]
@@ -245,7 +223,7 @@ class KontakController extends Controller
             return response()->json($formatted);
 
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Search Address Error: ' . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error('Search Error: ' . $e->getMessage());
             return response()->json([]);
         }
     }
