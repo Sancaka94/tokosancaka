@@ -766,7 +766,7 @@ document.addEventListener('DOMContentLoaded', function () {
 }
 
 
-    }
+    
 
     async function performAddressSearch(prefix, query, contactToMatch = null) {
         const resultsContainer = document.getElementById(`${prefix}_address_results`);
