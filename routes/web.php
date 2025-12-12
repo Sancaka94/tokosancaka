@@ -154,9 +154,9 @@ Route::get('/pelanggan', [PublicPelangganController::class, 'index'])->name('pel
 
     // Fitur Multi Koli Admin (YANG BARU ANDA BUAT)
     Route::get('/admin/pesanan/buat-multi', [KoliController::class, 'create'])->name('admin.pesanan.create_multi');
-    Route::post('/admin/pesanan/store-multi', [KoliController::class, 'store'])->name('koli.store');
-    Route::post('/pesanan/store-single', [KoliController::class, 'storeSingle'])->name('koli.store_single');
-    Route::post('/cek-ongkir', [KoliController::class, 'cek_Ongkir'])->name('koli.cek_ongkir');
+    Route::post('/admin/pesanan/store-multi', [KoliController::class, 'store'])->name('admin.koli.store');
+    Route::post('/pesanan/store-single', [KoliController::class, 'storeSingle'])->name('admin.koli.store_single');
+    Route::post('/cek-ongkir', [KoliController::class, 'cek_Ongkir'])->name('admin.koli.cek_ongkir');
 
 // PPOB Public
 Route::get('/daftar-harga', [PublicController::class, 'pricelist'])->name('public.pricelist');
