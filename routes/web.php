@@ -138,7 +138,7 @@ Route::get('/kiriminaja/search-address', function (Request $request, KiriminAjaS
 
 Route::get('/api/cari-alamat', [CustomerOrderController::class, 'searchAddressApi'])->name('api.address.search');
 // Route API Pencarian Alamat (Global Auth)
-Route::get('/api/cari-alamat', [App\Http\Controllers\Customer\KontakController::class, 'searchAddressApi'])
+Route::get('/api/cari-alamat', [App\Http\Controllers\KontakController::class, 'searchAddressApi'])
     ->name('api.address.search');
 
 // Marketplace Public
