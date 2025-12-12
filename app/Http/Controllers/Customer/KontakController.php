@@ -183,45 +183,46 @@ class KontakController extends Controller
         }
     }
 
-  /**
-     * Integrasi Pencarian Alamat menggunakan Service Anda yang sudah ada.
-     */
-    public function searchAddressApi(Request $request, KiriminAjaService $kirimaja)
+  public function searchAddressApi(Request $request, KiriminAjaService $kirimaja)
     {
-        // 1. Ambil input query
-        $keyword = $request->input('q') ?? $request->input('search');
+        // 1. TANGKAP INPUT (jQuery UI mengirim parameter '?q=')
+        // Kita cek 'q', 'search', atau 'term' untuk jaga-jaga
+        $keyword = $request->input('q') ?? $request->input('search') ?? $request->input('term');
+
+        // Debugging: Cek di file laravel.log (storage/logs/laravel.log)
+        Log::info('Search Address Request:', ['keyword' => $keyword]);
 
         if (!$keyword || strlen($keyword) < 3) {
             return response()->json([]);
         }
 
         try {
-            // 2. PANGGIL SERVICE ANDA APA ADANYA
-            // Asumsi: Service mengembalikan array ['status' => true, 'data' => [...]]
+            // 2. PANGGIL SERVICE
             $response = $kirimaja->searchAddress($keyword);
 
+            // Debugging: Cek respon mentah dari Service
+            Log::info('KiriminAja Raw Response:', ['data' => $response]);
+
+            // Validasi jika data kosong
             if (empty($response) || empty($response['data'])) {
                 return response()->json([]);
             }
 
-            // 3. Mapping Data (Penting!)
-            // Kita ubah key dari API (Bahasa Indo) ke nama yang dipakai di Database/Blade (Bahasa Inggris)
+            // 3. MAPPING DATA
             $formatted = collect($response['data'])->map(function ($item) {
+                // Pastikan teks alamat ada
+                $textLabel = $item['address'] ?? $item['text'] ?? 'Alamat tidak ditemukan';
+                
                 return [
-                    // Ini untuk tampilan label di dropdown
-                    'label' => $item['address'] ?? $item['text'], 
-                    'value' => $item['address'] ?? $item['text'],
-
-                    // Ini data lengkap untuk mengisi input form
+                    'label' => $textLabel, // Wajib untuk jQuery UI
+                    'value' => $textLabel, // Wajib untuk jQuery UI
+                    
                     'data_lengkap' => [
-                        // Mapping Key API -> Key Form Blade
                         'village'        => $item['kelurahan'] ?? '',
                         'district'       => $item['kecamatan'] ?? '',
                         'regency'        => $item['kabupaten'] ?? '', 
                         'province'       => $item['provinsi'] ?? '',
                         'postal_code'    => $item['kodepos'] ?? '',
-                        
-                        // ID untuk Ongkir (Sangat Penting)
                         'district_id'    => $item['kecamatan_id'] ?? null,
                         'subdistrict_id' => $item['kelurahan_id'] ?? null,
                     ]
@@ -231,7 +232,7 @@ class KontakController extends Controller
             return response()->json($formatted);
 
         } catch (\Exception $e) {
-            Log::error('Search Address Error: ' . $e->getMessage());
+            Log::error('Controller Address Search Error: ' . $e->getMessage());
             return response()->json([]);
         }
     }
