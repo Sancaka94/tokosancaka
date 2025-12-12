@@ -534,54 +534,43 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
     Route::get('/api/contacts/search', [AdminChatController::class, 'searchKontak'])->name('api.contacts.search');
 
     // =====================================================================
-    // PPOB ADMIN (FIX: PISAHKAN TRANSAKSI & PRODUK)
+    // PPOB ADMIN (FIX FINAL: Tambah Route Export Excel yang Hilang)
     // =====================================================================
     Route::prefix('ppob')->name('ppob.')->group(function () {
         
-        // 1. HALAMAN PRODUK (DAFTAR HARGA / ATUR MARGIN)
-        // URL: /admin/ppob/produk
-        // Controller: PpobProductController
+        // 1. HALAMAN UTAMA
         Route::get('/produk', [PpobProductController::class, 'index'])->name('product.index'); 
-        
-        // Jika menu di sidebar Anda link-nya '/admin/ppob/digital', pakai baris ini:
-        Route::get('/digital', [PpobProductController::class, 'index'])->name('index'); 
+        Route::get('/digital', [PpobProductController::class, 'index'])->name('index'); // Menu Digital
+        Route::get('/data', [AdminPpobController::class, 'index'])->name('data.index'); // Menu Transaksi
 
-
-        // 2. HALAMAN DATA TRANSAKSI (RIWAYAT PEMBELIAN)
-        // URL: /admin/ppob/data
-        // Controller: AdminPpobController
-        Route::get('/data', [AdminPpobController::class, 'index'])->name('data.index');
-
-        
-        // --- ROUTE PENDUKUNG LAINNYA (JANGAN DIHAPUS) ---
-
+        // 2. EXPORT (INI YANG TADI HILANG/ERROR)
         // Export Transaksi
         Route::get('/data/export/excel', [AdminPpobController::class, 'exportExcel'])->name('data.export.excel');
         Route::get('/data/export/pdf', [AdminPpobController::class, 'exportPdf'])->name('data.export.pdf');
         
-        // Export Produk
-        Route::get('/product-export/excel', [PpobProductController::class, 'exportExcel'])->name('product.export.excel');
+        // Export Produk (Alias Lama untuk mencegah Error)
+        Route::get('/export-excel', [PpobProductController::class, 'exportExcel'])->name('export-excel'); // <--- INI BARIS PENYELAMATNYA
+        Route::get('/export-pdf', [PpobProductController::class, 'exportPdf'])->name('export-pdf');
         
-        // Helper Produk
+        // Export Produk (Nama Baru)
+        Route::get('/product-export/excel', [PpobProductController::class, 'exportExcel'])->name('product.export.excel');
+
+        // 3. HELPER & ACTIONS
         Route::post('/bulk-update', [PpobProductController::class, 'bulkUpdate'])->name('bulk-update');
         Route::put('/update-price/{id}', [PpobProductController::class, 'updatePrice'])->name('update-price');
         
-        // Helper Transaksi (Saldo & Deposit)
         Route::post('/deposit', [AdminPpobController::class, 'requestDeposit'])->name('deposit');
         Route::get('/cek-saldo', [AdminPpobController::class, 'cekSaldo'])->name('cek-saldo');
         Route::post('/topup', [AdminPpobController::class, 'topup'])->name('topup');
 
-        // Aksi Transaksi
         Route::get('/transaction/{id}', [AdminPpobController::class, 'show'])->name('transaction.show');
         Route::put('/transaction/{id}', [AdminPpobController::class, 'update'])->name('transaction.update');
         Route::delete('/transaction/{id}', [AdminPpobController::class, 'destroy'])->name('transaction.destroy');
         Route::get('/transaction/destroy/{id}', [AdminPpobController::class, 'destroy'])->name('transaction.destroy.get');
 
-        // Hapus Produk
         Route::delete('/destroy/{id}', [PpobProductController::class, 'destroy'])->name('destroy');
         
-        // Detail Produk (Paling Bawah)
+        // Route ID (Paling Bawah)
         Route::get('/{id}', [PpobProductController::class, 'show'])->name('show');
-    
     });
 });
