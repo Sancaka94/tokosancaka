@@ -1186,7 +1186,7 @@ document.addEventListener('DOMContentLoaded', function () {
         form.submit();
     }
         });
-    });
+    
 
     document.querySelectorAll('.cod-payment-option').forEach(opt => opt.style.display = 'none');
 
