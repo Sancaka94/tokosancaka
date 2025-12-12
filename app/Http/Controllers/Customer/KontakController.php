@@ -164,47 +164,48 @@ class KontakController extends Controller
         return redirect()->route('customer.kontak.index')->with('success', 'Kontak berhasil dihapus.');
     }
 
-   public function search(Request $request)
+   /**
+     * Pencarian AJAX (DIPERBAIKI TOTAL)
+     */
+    public function search(Request $request)
     {
         try {
+            // 1. Tangkap Input
             $keyword = $request->input('search') ?? $request->input('query');
-            $tipe = $request->input('tipe'); 
-            $scope = $request->input('scope'); // Tangkap parameter scope
-
-            // 1. Inisialisasi Query (Tanpa filter user_id dulu)
+            $scope = $request->input('scope'); // Parameter dari JS Admin ('global')
+            
+            // 2. Query Dasar
             $query = Kontak::query();
 
-            // 2. CEK SCOPE: 
-            // Jika scope BUKAN 'global', maka batasi hanya milik user yang login.
-            // (Fitur 'global' ini khusus dipakai di halaman Admin Multi Order)
+            // --- [FIX 1: LOGIKA GLOBAL] ---
+            // Jika scope = 'global', JANGAN filter user_id (Admin bisa cari data siapa saja)
+            // Jika TIDAK 'global', batasi ke user yang login
             if ($scope !== 'global') {
                 $query->where('user_id', Auth::id());
             }
 
-            // 3. Filter Keyword (Nama / No HP / Alamat)
+            // --- [FIX 2: CARI BERDASARKAN NAMA / HP] ---
             if ($keyword) {
                 $query->where(function($sub) use ($keyword) {
                     $sub->where('nama', 'LIKE', "%{$keyword}%")
-                        ->orWhere('no_hp', 'LIKE', "%{$keyword}%")
-                        ->orWhere('alamat', 'LIKE', "%{$keyword}%"); // Tambahkan cari alamat juga biar enak
+                        ->orWhere('no_hp', 'LIKE', "%{$keyword}%");
                 });
             }
 
-            // 4. Filter Tipe (Pengirim/Penerima)
-            if ($tipe) {
-                $query->where('tipe', $tipe);
-            }
+            // --- [FIX 3: FILTER TIPE DIMATIKAN] ---
+            // Komentar kode di bawah ini agar Pengirim bisa muncul di pencarian Penerima (dan sebaliknya)
+            // if ($request->filled('tipe')) {
+            //    $query->where('tipe', $request->input('tipe'));
+            // }
 
-            // 5. Ambil Data (Limit 15 biar agak banyak)
-            $kontaks = $query->latest()->limit(15)->get();
+            // --- [FIX 4: FORMAT DATA ARRAY] ---
+            // Gunakan get() + limit(), JANGAN paginate() agar JS tidak error
+            $kontaks = $query->latest()->limit(20)->get();
 
             return response()->json($kontaks);
 
         } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Server Error',
-                'error' => $e->getMessage()
-            ], 500);
+            return response()->json(['message' => 'Error', 'error' => $e->getMessage()], 500);
         }
     }
 
