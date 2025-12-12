@@ -129,6 +129,13 @@ Route::get('/kirimaja/cek-ongkir', [CustomerOrderController::class, 'cek_Ongkir'
 Route::get('/koli/cek-ongkir', [KoliController::class, 'cekOngkirMulti'])->name('public.koli.cekOngkirMulti'); // Akses publik
 Route::post('/koli/cek-ongkir', [KoliController::class, 'cekOngkirMulti'])->name('koli.cekOngkirMulti');
 
+    Route::get('/pesanan/buat-multi', [KoliController::class, 'create'])
+        ->name('admin.pesanan.create_multi');
+
+    // Route untuk Proses Simpan-nya (POST)
+    Route::post('/pesanan/buat-multi', [KoliController::class, 'store'])
+        ->name('admin.pesanan.store_multi');
+
 // KiriminAja API
 Route::get('/kirimaja/set_callback', [KirimAjaController::class, 'setCallback']);
 Route::get('/kiriminaja/search-address', function (Request $request, KiriminAjaService $kiriminAja) {
@@ -467,16 +474,6 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
     Route::get('/surat-jalan/{kode_surat_jalan}/download', [SpxScanController::class, 'downloadSuratJalan'])->name('suratjalan.download');
     Route::get('/spx-scans/create', [SpxScanController::class, 'create'])->name('spx_scans.create');
     Route::get('/generate-barcode-zoom', [BarcodeController::class, 'generateBarcode'])->name('barcode.generate');
-
-    // --- ROUTE KIRIM MASSAL (Create Multi) ---
-    // URL: /admin/pesanan/buat-multi
-    // Name: admin.pesanan.create_multi
-    Route::get('/pesanan/buat-multi', [KoliController::class, 'create'])
-        ->name('admin.pesanan.create_multi');
-
-    // Route untuk Proses Simpan-nya (POST)
-    Route::post('/pesanan/buat-multi', [KoliController::class, 'store'])
-        ->name('admin.pesanan.store_multi');
 
     // Finance
     Route::get('/wallet', [WalletController::class, 'index'])->name('wallet.index');
