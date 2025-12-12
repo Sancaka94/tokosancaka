@@ -182,12 +182,22 @@ Route::middleware(['auth', RoleMiddleware::class . ':Pelanggan|Seller'])->prefix
     Route::post('/notifications/{id}/read', [NotifikasiCustomerController::class, 'markAsRead'])->name('notifications.markAsRead');
     Route::post('/notifications/read-all', [NotifikasiCustomerController::class, 'markAllAsRead'])->name('notifications.markAllAsRead');
 
+    // ===> TAMBAHKAN BARIS INI <===
+    // Ini untuk halaman "Pesanan Saya" di dashboard customer
+    Route::get('/pesanan', [PesananController::class, 'index'])->name('pesanan.index');
+    
+    // Opsional: Tambahkan detail pesanan juga agar tidak error saat diklik
+    Route::get('/pesanan/{pesanan}', [PesananController::class, 'show'])->name('pesanan.show');
+    
     // PPOB Customer
     Route::prefix('ppob')->name('ppob.')->group(function () {
         Route::get('/history', [PpobHistoryController::class, 'index'])->name('history');
         Route::get('/export/excel', [PpobHistoryController::class, 'exportExcel'])->name('export.excel');
         Route::get('/export/pdf', [PpobHistoryController::class, 'exportPdf'])->name('export.pdf');
+        Route::delete('/transaction/{id}', [AdminPpobController::class, 'destroy'])->name('transaction.destroy');
     });
+
+
 });
 
 
