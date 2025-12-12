@@ -1016,92 +1016,170 @@ document.addEventListener('DOMContentLoaded', function () {
     });
     // ----------------------------------------------------------------------------------
 
-    // --- FUNGSI CEK ONGKIR (TETAP) ---
-    async function runCekOngkir() {
-        // Panggil validasi real-time sebelum cek ongkir
-        validateAddressRealtime(senderAddressInput, senderAddressFeedback, 'Alamat Pengirim');
-        validateAddressRealtime(receiverAddressInput, receiverAddressFeedback, 'Alamat Penerima');
+    // --- FUNGSI CEK ONGKIR (DIPERBAIKI SESUAI LOG JSON) ---
+async function runCekOngkir() {
+    // 1. Validasi Input Sebelum Request
+    validateAddressRealtime(senderAddressInput, senderAddressFeedback, 'Alamat Pengirim');
+    validateAddressRealtime(receiverAddressInput, receiverAddressFeedback, 'Alamat Penerima');
 
-        // Cek apakah ada error validasi kustom (>= 10 karakter)
-        if (senderAddressInput.value.trim().length < minAddressLength) {
-             Swal.fire('Data Belum Lengkap', 'Alamat Pengirim wajib minimal 10 karakter.', 'warning');
-             return;
+    if (senderAddressInput.value.trim().length < minAddressLength) {
+        Swal.fire('Data Belum Lengkap', 'Alamat Pengirim wajib minimal 10 karakter.', 'warning');
+        return;
+    }
+    if (receiverAddressInput.value.trim().length < minAddressLength) {
+        Swal.fire('Data Belum Lengkap', 'Alamat Penerima wajib minimal 10 karakter.', 'warning');
+        return;
+    }
+
+    const requiredFields = { 
+        '#sender_subdistrict_id': 'Alamat Pengirim', 
+        '#receiver_subdistrict_id': 'Alamat Penerima', 
+        '#item_price': 'Harga Barang', 
+        '#weight': 'Berat', 
+        '#service_type': 'Jenis Layanan', 
+        '#ansuransi': 'Asuransi' 
+    };
+    
+    let missing = Object.keys(requiredFields).filter(s => !document.querySelector(s).value);
+    if (missing.length > 0) {
+        Swal.fire('Data Belum Lengkap', 'Harap lengkapi: ' + missing.map(s => requiredFields[s]).join(', '), 'warning');
+        return;
+    }
+
+    // 2. Tampilkan Loading
+    const ongkirModalBody = document.getElementById('ongkirModalBody');
+    ongkirModalBody.innerHTML = `<div class="text-center p-5"><i class="fas fa-spinner fa-spin text-3xl text-red-600"></i><p class="mt-2 text-gray-500">Memuat tarif dari API...</p></div>`;
+    ongkirModalEl.classList.remove('hidden');
+
+    try {
+        const formData = new FormData(document.getElementById('orderForm'));
+        const params = new URLSearchParams(formData).toString();
+        
+        // Request ke Backend
+        const response = await fetch(`{{ route('kirimaja.cekongkir') }}?${params}`);
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Gagal mengambil data ongkir');
         }
-        if (receiverAddressInput.value.trim().length < minAddressLength) {
-             Swal.fire('Data Belum Lengkap', 'Alamat Penerima wajib minimal 10 karakter.', 'warning');
-             return;
+        
+        const res = await response.json();
+        
+        // Debugging di Console Browser untuk memastikan data masuk
+        console.log("Respon API Ongkir Full:", res);
+
+        // --- [PERBAIKAN UTAMA: DETEKSI STRUKTUR DATA JSON] ---
+        let results = [];
+
+        // Cek apakah struktur { body: { results: [] } } (Sesuai Log Anda)
+        if (res.body && res.body.results && Array.isArray(res.body.results)) {
+            results = res.body.results;
+        } 
+        // Cek struktur alternatif { results: [] } (Jaga-jaga)
+        else if (res.results && Array.isArray(res.results)) {
+            results = res.results;
+        }
+        // Cek struktur array langsung (Jaga-jaga)
+        else if (Array.isArray(res)) {
+            results = res;
         }
 
-        const requiredFields = { '#sender_subdistrict_id': 'Alamat Pengirim', '#receiver_subdistrict_id': 'Alamat Penerima', '#item_price': 'Harga Barang', '#weight': 'Berat', '#service_type': 'Jenis Layanan', '#ansuransi': 'Asuransi' };
-        let missing = Object.keys(requiredFields).filter(s => !document.querySelector(s).value);
-        if (missing.length > 0) {
-            Swal.fire('Data Belum Lengkap', 'Harap lengkapi: ' + missing.map(s => requiredFields[s]).join(', '), 'warning');
+        ongkirModalBody.innerHTML = '';
+
+        if (results.length === 0) {
+            ongkirModalBody.innerHTML = '<div class="bg-yellow-100 text-yellow-800 p-4 rounded-md text-center">Tidak ada layanan pengiriman yang ditemukan untuk rute ini.</div>';
             return;
         }
 
-        const ongkirModalBody = document.getElementById('ongkirModalBody');
-        ongkirModalBody.innerHTML = `<div class="text-center p-5"><i class="fas fa-spinner fa-spin text-3xl text-red-600"></i><p class="mt-2 text-gray-500">Memuat tarif...</p></div>`;
-        ongkirModalEl.classList.remove('hidden');
+        // 3. Render Hasil
+        // Kita sort berdasarkan harga terendah
+        results.sort((a, b) => parseFloat(a.cost) - parseFloat(b.cost)).forEach(item => {
+            
+            // Parsing Data Item
+            const cost = parseFloat(item.cost) || 0;
+            
+            // Skip jika ongkir aneh (misal 10 juta seperti RPX di log, kecuali memang valid)
+            // Uncomment baris bawah jika ingin menyembunyikan ongkir > 5jt
+            // if (cost > 5000000) return; 
 
-        try {
-            const formData = new FormData(document.getElementById('orderForm'));
-            const params = new URLSearchParams(formData).toString();
-            const response = await fetch(`{{ route('kirimaja.cekongkir') }}?${params}`);
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Gagal mengambil data ongkir');
+            const serviceName = item.service_name; // Contoh: Sicepat SIUNTUNG
+            const serviceCode = item.service.toLowerCase(); // sicepat
+            const serviceType = item.service_type; // SIUNT
+            const etd = item.etd ? item.etd + ' Hari' : '-';
+            
+            // Data COD & Asuransi
+            const isCod = item.cod; // boolean true/false
+            const insuranceFee = parseFloat(item.insurance) || 0;
+            
+            // Ambil Fee COD (Cek berbagai kemungkinan key di JSON)
+            let codFee = 0;
+            if (item.setting) {
+                codFee = parseFloat(item.setting.cod_fee_amount || item.setting.cod_fee || 0);
             }
-            const res = await response.json();
 
-            ongkirModalBody.innerHTML = '';
-            let results = (res.results || []).concat((res.result || []).flatMap(v => v.costs.map(c => ({...c, service: v.name, service_name: `${v.name.toUpperCase()} - ${c.service_type}`, cost: c.price.total_price, etd: c.estimation || '-', setting: c.setting || {}, insurance: c.price.insurance_fee || 0, cod: c.cod }))));
-            if (results.length === 0) {
-                ongkirModalBody.innerHTML = '<div class="bg-yellow-100 text-yellow-800 p-4 rounded-md text-center">Layanan pengiriman tidak ditemukan. Cek kembali alamat dan jenis layanan.</div>';
-                return;
+            // URL Logo
+            const logoUrl = `{{ asset('public/storage/logo-ekspedisi/') }}/${serviceCode.replace(/\s+/g, '')}.png`;
+
+            // Format Value untuk tombol Pilih
+            // urutan: ServiceType-Ekspedisi-Layanan-Ongkir-Asuransi-FeeCOD
+            const serviceCategory = document.getElementById('service_type').value; 
+            const value = `${serviceCategory}-${serviceCode}-${serviceType}-${cost}-${insuranceFee}-${codFee}`;
+
+            // Susun Detail Teks
+            let details = `<small class="text-gray-500 block"><i class="far fa-clock mr-1"></i>Estimasi: ${etd}</small>`;
+            
+            if (document.getElementById('ansuransi').value == 'iya' && insuranceFee > 0) {
+                details += `<small class="text-blue-600 block"><i class="fas fa-shield-alt mr-1"></i>Asuransi: ${formatRupiah(insuranceFee)}</small>`;
+            }
+            
+            if (isCod) {
+                details += `<small class="text-green-600 font-bold block"><i class="fas fa-hand-holding-usd mr-1"></i>COD Tersedia</small>`;
+            } else {
+                details += `<small class="text-red-500 block"><i class="fas fa-times-circle mr-1"></i>Tidak Bisa COD</small>`;
             }
 
-            results.sort((a, b) => a.cost - b.cost).forEach(item => {
-                const isCod = item.cod;
-                const insuranceFee = item.insurance || 0;
-                const codFee = item.setting?.cod_fee_amount || 0;
-                const logoUrl = `{{ asset('public/storage/logo-ekspedisi/') }}/${item.service.toLowerCase().replace(/\s+/g, '')}.png`;
-                const value = `${document.getElementById('service_type').value}-${item.service}-${item.service_type}-${item.cost}-${insuranceFee}-${codFee}`;
-                let details = `<small class="text-gray-500 block">Estimasi: ${item.etd}</small>`;
-                if (document.getElementById('ansuransi').value == 'iya' && insuranceFee > 0) details += `<small class="text-gray-500 block">Asuransi: ${formatRupiah(insuranceFee)}</small>`;
-                if (isCod && codFee > 0) details += `<small class="text-gray-500 block">Biaya COD: ${formatRupiah(codFee)}</small>`;
-                if (isCod) details += `<small class="text-green-600 font-bold block">COD Tersedia</small>`;
-                
-                const card = document.createElement('div');
-                card.className = 'border rounded-lg mb-3 shadow-sm';
-                card.innerHTML = `
-                    <div class="p-4 flex justify-between items-center">
-                        <div class="flex items-center">
-                            <img src="{{ asset('public/storage/logo-ekspedisi/') }}/${item.service.toLowerCase().replace(/\s+/g, '')}.png" class="w-16 h-auto mr-4 object-contain" onerror="this.src='https://placehold.co/100x40?text=${item.service}'">
-                            <div>
-                                <h6 class="font-bold text-gray-800">${item.service_name}</h6>
-                                ${details}
-                            </div>
+            // HTML Card
+            const card = document.createElement('div');
+            card.className = 'border rounded-lg mb-3 shadow-sm hover:shadow-md transition-shadow bg-white';
+            card.innerHTML = `
+                <div class="p-4 flex justify-between items-center">
+                    <div class="flex items-center w-3/4">
+                        <div class="w-16 h-12 mr-4 flex-shrink-0 flex items-center justify-center border border-gray-100 rounded p-1">
+                            <img src="${logoUrl}" class="max-w-full max-h-full object-contain" 
+                                onerror="this.src='https://placehold.co/100x40?text=${serviceCode}'">
                         </div>
-                        <div class="text-right">
-                            <small class="text-gray-500">Ongkir</small>
-                            <strong class="block text-lg text-red-600">${formatRupiah(item.cost)}</strong>
-
-<button type="button" class="select-ongkir-btn mt-1 bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 text-sm" 
-    data-value="${value}" 
-    data-display="${item.service_name}" 
-    data-cod-supported="${isCod}"
-    data-logo="${logoUrl}"> Pilih
-</button>
+                        <div>
+                            <h6 class="font-bold text-gray-800 text-sm md:text-base">${serviceName}</h6>
+                            <div class="text-xs mt-1 space-y-0.5">${details}</div>
                         </div>
                     </div>
-                `;
-                ongkirModalBody.appendChild(card);
-            });
-        } catch (error) {
-            console.error('Cek Ongkir failed:', error);
-            ongkirModalBody.innerHTML = `<div class="bg-red-100 text-red-800 p-4 rounded-md text-center">${error.message}</div>`;
-        }
+                    <div class="text-right w-1/4">
+                        <small class="text-gray-500 text-xs">Ongkir</small>
+                        <strong class="block text-base md:text-lg text-red-600">${formatRupiah(cost)}</strong>
+                        <button type="button" 
+                            class="select-ongkir-btn mt-2 bg-red-600 text-white px-4 py-1.5 rounded-md hover:bg-red-700 text-xs md:text-sm w-full transition-colors font-medium" 
+                            data-value="${value}" 
+                            data-display="${serviceName}" 
+                            data-cod-supported="${isCod}"
+                            data-logo="${logoUrl}">
+                            Pilih
+                        </button>
+                    </div>
+                </div>`;
+            
+            ongkirModalBody.appendChild(card);
+        });
+
+    } catch (error) {
+        console.error('Cek Ongkir failed:', error);
+        ongkirModalBody.innerHTML = `
+            <div class="bg-red-50 border border-red-200 text-red-800 p-4 rounded-md text-center">
+                <i class="fas fa-exclamation-triangle mb-2 text-2xl"></i><br>
+                Gagal memuat ongkir.<br>
+                <small class="text-gray-600">${error.message}</small>
+            </div>`;
     }
+}
 
     // --- EVENT LISTENERS ---
     document.getElementById('selected_expedition_display').addEventListener('click', runCekOngkir);
