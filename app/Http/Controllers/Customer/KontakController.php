@@ -183,49 +183,55 @@ class KontakController extends Controller
         }
     }
 
-   public function searchAddressApi(Request $request, KiriminAjaService $kirimaja)
+  /**
+     * Integrasi Pencarian Alamat menggunakan Service Anda yang sudah ada.
+     */
+    public function searchAddressApi(Request $request, KiriminAjaService $kirimaja)
     {
-        // Izinkan 'q' atau 'search' sebagai parameter
-        $searchQuery = $request->input('search') ?? $request->input('q');
+        // 1. Ambil input query
+        $keyword = $request->input('q') ?? $request->input('search');
 
-        if (strlen($searchQuery) < 3) {
+        if (!$keyword || strlen($keyword) < 3) {
             return response()->json([]);
         }
 
         try {
-            // Panggil Service KiriminAja
-            $results = $kirimaja->searchAddress($searchQuery);
-            
-            // Log respon untuk debugging (cek di storage/logs/laravel.log)
-            // Log::info('KiriminAja Search Result:', ['query' => $searchQuery, 'data' => $results]);
+            // 2. PANGGIL SERVICE ANDA APA ADANYA
+            // Asumsi: Service mengembalikan array ['status' => true, 'data' => [...]]
+            $response = $kirimaja->searchAddress($keyword);
 
-            if (empty($results['status']) || empty($results['data'])) {
+            if (empty($response) || empty($response['data'])) {
                 return response()->json([]);
             }
-            
-            // Format data agar sesuai dengan Autocomplete jQuery UI di Frontend
-            $formatted = collect($results['data'])->map(function($item) {
+
+            // 3. Mapping Data (Penting!)
+            // Kita ubah key dari API (Bahasa Indo) ke nama yang dipakai di Database/Blade (Bahasa Inggris)
+            $formatted = collect($response['data'])->map(function ($item) {
                 return [
-                    'id' => $item['id'] ?? null,
-                    'text' => $item['address'] ?? $item['text'], // Teks yang muncul di dropdown
-                    
-                    // Data detail untuk mengisi kolom formulir
-                    'village_name' => $item['kelurahan'] ?? '',
-                    'district_name' => $item['kecamatan'] ?? '',
-                    'city_name' => $item['kabupaten'] ?? '', // Kadang 'text' di KiriminAja sudah lengkap, tapi ini detailnya
-                    'province_name' => $item['provinsi'] ?? '',
-                    'zip_code' => $item['kodepos'] ?? '',
-                    
-                    // ID Penting untuk Ongkir
-                    'district_id' => $item['kecamatan_id'] ?? 0,
-                    'subdistrict_id' => $item['kelurahan_id'] ?? 0,
+                    // Ini untuk tampilan label di dropdown
+                    'label' => $item['address'] ?? $item['text'], 
+                    'value' => $item['address'] ?? $item['text'],
+
+                    // Ini data lengkap untuk mengisi input form
+                    'data_lengkap' => [
+                        // Mapping Key API -> Key Form Blade
+                        'village'        => $item['kelurahan'] ?? '',
+                        'district'       => $item['kecamatan'] ?? '',
+                        'regency'        => $item['kabupaten'] ?? '', 
+                        'province'       => $item['provinsi'] ?? '',
+                        'postal_code'    => $item['kodepos'] ?? '',
+                        
+                        // ID untuk Ongkir (Sangat Penting)
+                        'district_id'    => $item['kecamatan_id'] ?? null,
+                        'subdistrict_id' => $item['kelurahan_id'] ?? null,
+                    ]
                 ];
             });
 
             return response()->json($formatted);
 
-        } catch (Exception $e) {
-            Log::error('Address Search Failed: ' . $e->getMessage());
+        } catch (\Exception $e) {
+            Log::error('Search Address Error: ' . $e->getMessage());
             return response()->json([]);
         }
     }
