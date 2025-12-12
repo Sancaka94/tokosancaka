@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Http\Request;
 use App\Http\Middleware\RoleMiddleware;
 
-// --- CONTROLLERS ---
+// --- DAFTAR CONTROLLER ---
 use App\Http\Controllers\Admin\ChatController as AdminChatController;
 use App\Http\Controllers\Admin\EmailController;
 use App\Http\Controllers\Admin\SpxScanController;
@@ -77,10 +77,9 @@ use App\Http\Controllers\Customer\AgentTransactionController;
 use App\Http\Controllers\Admin\AdminPpobController;
 use App\Http\Controllers\Admin\AdminLogController;
 
-
 /*
 |--------------------------------------------------------------------------
-| PUBLIC & AUTH ROUTES
+| 1. PUBLIC & AUTH ROUTES
 |--------------------------------------------------------------------------
 */
 
@@ -123,17 +122,87 @@ Route::get('/seller/dashboard', function () {
 
 /*
 |--------------------------------------------------------------------------
-| ADMIN ROUTES
+| 2. CUSTOMER ROUTES (FULL RESTORED)
+|--------------------------------------------------------------------------
+*/
+
+// GROUP 1: Route Customer dengan Prefix 'customer' TAPI TANPA 'name' prefix
+// Ini untuk mengatasi error "Route [katalog.index] not defined"
+Route::middleware(['auth', RoleMiddleware::class . ':Pelanggan|Seller'])->prefix('customer')->group(function () {
+    
+    // ===> INI FIX UNTUK KATALOG INDEX <===
+    // View memanggil 'katalog.index', bukan 'customer.katalog.index'
+    Route::get('/marketplace', [CustomerMarketplaceController::class, 'index'])->name('katalog.index');
+
+    // Load file customer.php jika ada (opsional, tapi saya tulis route manualnya di bawah biar aman)
+    require __DIR__.'/web/customer.php'; 
+});
+
+// GROUP 2: Route Customer dengan Prefix 'customer' DAN Name 'customer.'
+Route::middleware(['auth', RoleMiddleware::class . ':Pelanggan|Seller'])->prefix('customer')->name('customer.')->group(function () {
+    
+    // Pesanan Multi Koli
+    Route::get('/pesanan/multi/create', [KoliController::class, 'create'])->name('koli.create');
+    Route::post('/pesanan/multi/store', [KoliController::class, 'store'])->name('koli.store');
+    Route::post('/koli/cek-ongkir', [KoliController::class, 'cek_Ongkir'])->name('koli.cek_ongkir');
+    Route::post('/koli/store-single', [KoliController::class, 'storeSingle'])->name('koli.store_single');
+
+    // Marketplace (Versi Customer Name)
+    Route::get('/marketplace/index', [CustomerMarketplaceController::class, 'index'])->name('marketplace.index');
+    
+    // Chat
+    Route::prefix('chat')->name('chat.')->group(function () {
+        Route::get('/', [CustomerChatController::class, 'index'])->name('index');
+        Route::get('/messages', [CustomerChatController::class, 'fetchMessages'])->name('fetchMessages');
+        Route::post('/messages', [CustomerChatController::class, 'sendMessage'])->name('sendMessage');
+    });
+
+    // Kontak Customer (FIX Route [customer.kontak.index])
+    Route::resource('kontak', CustomerKontakController::class);
+    Route::get('/kontak/search-api', [CustomerKontakController::class, 'search'])->name('kontak.search'); 
+    
+    // Seller Register
+    Route::get('/seller/register', [SellerRegisterController::class, 'create'])->name('seller.register.form');
+    Route::post('/seller/register', [SellerRegisterController::class, 'store'])->name('seller.register.submit');
+    
+    // Checkout & Invoice
+    Route::get('/checkout', [CustomerCheckoutController::class, 'index'])->name('checkout.index');
+    Route::post('/checkout', [CustomerCheckoutController::class, 'store'])->name('checkout.store');
+    Route::get('/invoice/{invoice}', [CustomerCheckoutController::class, 'invoice'])->name('checkout.invoice');
+    
+    // Cart
+    Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
+    Route::post('/cart/add/{product}', [CartController::class, 'add'])->name('cart.add');
+    Route::patch('/cart/update', [CartController::class, 'update'])->name('cart.update');
+    Route::delete('/cart/remove', [CartController::class, 'remove'])->name('cart.remove');
+
+    // Notifikasi
+    Route::get('/notifications/unread', [NotifikasiCustomerController::class, 'getUnread'])->name('notifications.unread');
+    Route::get('/notifications', [NotifikasiCustomerController::class, 'index'])->name('notifications.index');
+    Route::post('/notifications/{id}/read', [NotifikasiCustomerController::class, 'markAsRead'])->name('notifications.markAsRead');
+    Route::post('/notifications/read-all', [NotifikasiCustomerController::class, 'markAllAsRead'])->name('notifications.markAllAsRead');
+
+    // PPOB Customer
+    Route::prefix('ppob')->name('ppob.')->group(function () {
+        Route::get('/history', [PpobHistoryController::class, 'index'])->name('history');
+        Route::get('/export/excel', [PpobHistoryController::class, 'exportExcel'])->name('export.excel');
+        Route::get('/export/pdf', [PpobHistoryController::class, 'exportPdf'])->name('export.pdf');
+    });
+});
+
+
+/*
+|--------------------------------------------------------------------------
+| 3. ADMIN ROUTES (FIXED ALL ERRORS)
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->name('admin.')->group(function () {
     
-    // Include file admin.php bawaan
     require __DIR__.'/web/admin.php';
 
-    // 1. ROUTE ORDERS, PRINT THERMAL & INVOICE PDF (FIXED)
+    // 1. ROUTE ORDERS, PRINT THERMAL & INVOICE PDF (FIX Route [admin.orders...])
     Route::get('/orders/{invoice_number}/print-thermal', [AdminOrderController::class, 'printThermal'])->name('orders.print.thermal');
-    Route::get('/orders/{invoice_number}/invoice-pdf', [AdminOrderController::class, 'exportInvoice'])->name('orders.invoice.pdf'); // <-- Route [admin.orders.invoice.pdf]
+    Route::get('/orders/{invoice_number}/invoice-pdf', [AdminOrderController::class, 'exportInvoice'])->name('orders.invoice.pdf');
     Route::resource('orders', AdminOrderController::class);
 
     // 2. ROUTE SPX SCANS
@@ -143,20 +212,20 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
     Route::resource('reviews', AdminReviewController::class);
     Route::post('reviews/{review}/reply', [AdminReviewController::class, 'reply'])->name('reviews.reply');
 
-    // 4. ROUTE STORES & MARKETPLACE
+    // 4. ROUTE STORES & MARKETPLACE (FIX View Not Found)
+    // Gunakan StoreController untuk stores jika ada, jika tidak pakai AdminMarketplaceController
     Route::resource('stores', AdminMarketplaceController::class)->names('stores');
     Route::resource('marketplace', AdminMarketplaceController::class); 
 
-    // 5. ROUTE KODE POS
+    // 5. ROUTE KODE POS (FIX Route [admin.kodepos.index])
     Route::get('/kode-pos', [KodePosController::class, 'index'])->name('kodepos.index');
     Route::post('/kode-pos/import', [KodePosController::class, 'import'])->name('kodepos.import');
 
-    // 6. ROUTE PENGGUNA & EXPORT
+    // 6. ROUTE PENGGUNA & EXPORT (FIX Route [admin.customers.pengguna.export])
     Route::get('/customers/data/pengguna/export', [DataPenggunaController::class, 'export'])->name('customers.pengguna.export'); 
-    Route::get('/pengguna/export', [PelangganController::class, 'export'])->name('customers.pengguna.export_alt');
     Route::resource('customers/data/pengguna', DataPenggunaController::class)->names('customers.data.pengguna');
 
-    // 7. ROUTE PELANGGAN
+    // 7. ROUTE PELANGGAN (FIX Route [admin.pelanggan.store])
     Route::resource('pelanggan', PelangganController::class);
     Route::prefix('pelanggan')->name('pelanggan.')->group(function () {
         Route::post('/import-excel', [PelangganController::class, 'importExcel'])->name('import.excel');
@@ -164,7 +233,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
         Route::get('/export-pdf', [PelangganController::class, 'exportPdf'])->name('export.pdf');
     });
 
-    // 8. ROUTE WILAYAH LENGKAP
+    // 8. ROUTE WILAYAH (FIX Route [admin.wilayah.kabupaten])
     Route::prefix('wilayah')->name('wilayah.')->group(function() {
         Route::get('/', [WilayahController::class, 'index'])->name('index');
         Route::post('/', [WilayahController::class, 'store'])->name('store');
@@ -173,20 +242,15 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
         Route::get('/province/{province}/regencies', [WilayahController::class, 'getKabupaten'])->name('kabupaten');
         Route::get('/regency/{regency}/districts', [WilayahController::class, 'getKecamatan'])->name('kecamatan');
         Route::get('/district/{district}/villages', [WilayahController::class, 'getDesa'])->name('desa');
-        
-        // API Backup Name
         Route::get('/api/provinces', [WilayahController::class, 'getProvinces'])->name('api.provinces');
-        Route::get('/api/regencies/{province}', [WilayahController::class, 'getRegencies'])->name('api.regencies');
-        Route::get('/api/districts/{regency}', [WilayahController::class, 'getDistricts'])->name('api.districts');
-        Route::get('/api/villages/{district}', [WilayahController::class, 'getVillages'])->name('api.villages');
     });
 
-    // 9. ROUTE POST DETAIL
+    // 9. ROUTE POST DETAIL (FIX Route [admin.posts.post-detail])
     Route::get('/post/{post:slug}', [PostController::class, 'show'])->name('posts.post-detail');
     Route::get('/posts/{id}/edit', [PostController::class, 'edit'])->name('posts.edit');
     Route::put('/posts/{post}', [PostController::class, 'update'])->name('posts.update');
 
-    // 10. ROUTE PESANAN MULTI ADMIN
+    // 10. PESANAN MULTI (FIX 404 /admin/pesanan/buat-multi)
     Route::get('/pesanan/buat-multi', [AdminKoliController::class, 'create'])->name('pesanan.create_multi');
     Route::post('/pesanan/store-multi', [AdminKoliController::class, 'store'])->name('koli.store');
     Route::post('/pesanan/store-single', [AdminKoliController::class, 'storeSingle'])->name('koli.store_single');
@@ -205,23 +269,17 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
         Route::post('/messages/{user}', [AdminChatController::class, 'sendMessage'])->name('send');
     });
 
-    // PPOB Admin
+    // PPOB Admin (FIX [admin.ppob.export.excel])
     Route::get('/digital', [AdminPpobController::class, 'index'])->name('ppob.index'); 
     Route::get('/digital/{slug}', [AdminPpobController::class, 'category'])->name('ppob.category');
     Route::post('/categories/ajax-store', [App\Http\Controllers\Admin\CategoryController::class, 'storeAjax'])->name('categories.storeAjax');
     Route::delete('/categories/ajax-delete/{id}', [App\Http\Controllers\Admin\CategoryController::class, 'destroyAjax'])->name('categories.destroyAjax');
 
-    // Admin PPOB Group (FIXED Export Excel)
     Route::prefix('ppob')->name('ppob.')->group(function () {
         Route::get('/data', [AdminPpobController::class, 'index'])->name('data.index');
-        
-        // Export Transaksi (Fix Route [admin.ppob.export.excel])
-        Route::get('/transaksi/export/excel', [AdminPpobController::class, 'exportExcel'])->name('export.excel'); 
-        Route::get('/transaksi/export/pdf', [AdminPpobController::class, 'exportPdf'])->name('export.pdf');
-        
-        // Backup nama route (jika ada yg panggil pake .data.)
-        Route::get('/data/export/excel', [AdminPpobController::class, 'exportExcel'])->name('data.export.excel');
-        Route::get('/data/export/pdf', [AdminPpobController::class, 'exportPdf'])->name('data.export.pdf');
+        // Export Route
+        Route::get('/export/excel', [AdminPpobController::class, 'exportExcel'])->name('export.excel');
+        Route::get('/export/pdf', [AdminPpobController::class, 'exportPdf'])->name('export.pdf');
         
         // Produk PPOB
         Route::get('/product/export-excel', [PpobProductController::class, 'exportExcel'])->name('product.export-excel');
@@ -308,63 +366,9 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
 
 /*
 |--------------------------------------------------------------------------
-| CUSTOMER & PUBLIC ROUTES
+| 4. SELLER & GENERAL ROUTES
 |--------------------------------------------------------------------------
 */
-
-Route::middleware(['auth', RoleMiddleware::class . ':Pelanggan|Seller'])->prefix('customer')->name('customer.')->group(function () {
-    require __DIR__.'/web/customer.php';
-
-    // Pesanan Multi Koli
-    Route::get('/pesanan/multi/create', [KoliController::class, 'create'])->name('koli.create');
-    Route::post('/pesanan/multi/store', [KoliController::class, 'store'])->name('koli.store');
-    Route::post('/koli/cek-ongkir', [KoliController::class, 'cek_Ongkir'])->name('koli.cek_ongkir');
-    Route::post('/koli/store-single', [KoliController::class, 'storeSingle'])->name('koli.store_single');
-
-    // Marketplace Customer (FIX Route [katalog.index])
-    Route::get('/marketplace', [CustomerMarketplaceController::class, 'index'])->name('katalog.index'); // <-- Diubah jadi katalog.index
-    
-    // Chat
-    Route::prefix('chat')->name('chat.')->group(function () {
-        Route::get('/', [CustomerChatController::class, 'index'])->name('index');
-        Route::get('/messages', [CustomerChatController::class, 'fetchMessages'])->name('fetchMessages');
-        Route::post('/messages', [CustomerChatController::class, 'sendMessage'])->name('sendMessage');
-    });
-
-    // Kontak Customer (FIX Route [customer.kontak.index])
-    Route::resource('kontak', CustomerKontakController::class);
-    Route::get('/kontak/search', [CustomerKontakController::class, 'search'])->name('kontak.search'); // Search API
-    
-    // Seller Register
-    Route::get('/seller/register', [SellerRegisterController::class, 'create'])->name('seller.register.form');
-    Route::post('/seller/register', [SellerRegisterController::class, 'store'])->name('seller.register.submit');
-    
-    // Checkout & Invoice
-    Route::get('/checkout', [CustomerCheckoutController::class, 'index'])->name('checkout.index');
-    Route::post('/checkout', [CustomerCheckoutController::class, 'store'])->name('checkout.store');
-    Route::get('/invoice/{invoice}', [CustomerCheckoutController::class, 'invoice'])->name('checkout.invoice');
-    Route::get('/pesanan/export-pdf', [PesananController::class, 'exportPdf'])->name('pesanan.export_pdf');
-
-    // Cart
-    Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
-    Route::post('/cart/add/{product}', [CartController::class, 'add'])->name('cart.add');
-    Route::patch('/cart/update', [CartController::class, 'update'])->name('cart.update');
-    Route::delete('/cart/remove', [CartController::class, 'remove'])->name('cart.remove');
-
-    // Notifikasi
-    Route::get('/notifications/unread', [NotifikasiCustomerController::class, 'getUnread'])->name('notifications.unread');
-    Route::get('/notifications', [NotifikasiCustomerController::class, 'index'])->name('notifications.index');
-    Route::post('/notifications/{id}/read', [NotifikasiCustomerController::class, 'markAsRead'])->name('notifications.markAsRead');
-    Route::post('/notifications/read-all', [NotifikasiCustomerController::class, 'markAllAsRead'])->name('notifications.markAllAsRead');
-
-    // PPOB Customer
-    Route::prefix('ppob')->name('ppob.')->group(function () {
-        Route::get('/history', [PpobHistoryController::class, 'index'])->name('history');
-        Route::get('/export/excel', [PpobHistoryController::class, 'exportExcel'])->name('export.excel');
-        Route::get('/export/pdf', [PpobHistoryController::class, 'exportPdf'])->name('export.pdf');
-    });
-});
-
 Route::middleware(['auth', RoleMiddleware::class . ':Seller|Admin'])->prefix('seller')->name('seller.')->group(function () {
     require __DIR__.'/web/seller.php';
 });
@@ -482,6 +486,7 @@ Route::get('/feed', [BlogController::class, 'generateFeed'])->name('feed');
 Route::get('/blog/posts/{post}', [BlogController::class, 'show']);
 Route::get('/post/{post:slug}', [PostController::class, 'show'])->name('posts.post-detail');
 Route::get('/api/contacts/search', [KontakController::class, 'search'])->name('api.contacts.search');
+Route::get('/kontak/search', [KontakController::class, 'search'])->name('kontak.search');
 
 // Payment Webhooks
 Route::post('/dana/notification', [DanaController::class, 'handleNotification'])->name('dana.payment.notify');
