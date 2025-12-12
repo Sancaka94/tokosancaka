@@ -492,19 +492,35 @@
 
         <div class="p-6 overflow-y-auto custom-scrollbar flex-grow">
             
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 shadow-sm">
-                    <h4 class="text-xs font-bold text-gray-500 uppercase mb-3 border-b pb-1">Rincian Biaya</h4>
-                    <div class="space-y-2 text-sm">
-                        <div class="flex justify-between"><span class="text-gray-600">Ongkir Dasar</span><span class="font-semibold" id="detail_cost_base">Rp 0</span></div>
-                        <div class="flex justify-between hidden" id="row_detail_insurance"><span class="text-gray-600">Asuransi</span><span class="font-semibold" id="detail_cost_insurance">Rp 0</span></div>
-                        <div class="flex justify-between hidden" id="row_detail_cod"><span class="text-gray-600">Biaya COD</span><span class="font-semibold" id="detail_cost_cod">Rp 0</span></div>
-                        <div class="border-t border-gray-300 my-2 pt-2 flex justify-between items-center">
-                            <span class="font-bold text-red-600">TOTAL BAYAR</span>
-                            <span class="font-extrabold text-xl text-red-600" id="confirm_total_final">Rp 0</span>
-                        </div>
-                    </div>
-                </div>
+            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 shadow-sm">
+    <h4 class="text-xs font-bold text-gray-500 uppercase mb-3 border-b pb-1">Rincian Biaya</h4>
+    <div class="space-y-2 text-sm">
+        <div class="flex justify-between">
+            <span class="text-gray-600">Ongkir Dasar</span>
+            <span class="font-semibold" id="detail_cost_base">Rp 0</span>
+        </div>
+        
+        <div class="flex justify-between hidden" id="row_detail_insurance">
+            <span class="text-gray-600">Asuransi</span>
+            <span class="font-semibold" id="detail_cost_insurance">Rp 0</span>
+        </div>
+        
+        <div class="flex justify-between hidden" id="row_detail_item_price">
+            <span class="text-gray-600">Harga Barang (COD)</span>
+            <span class="font-semibold text-blue-600" id="detail_cost_item">Rp 0</span>
+        </div>
+
+        <div class="flex justify-between hidden" id="row_detail_cod">
+            <span class="text-gray-600">Biaya Layanan COD</span>
+            <span class="font-semibold" id="detail_cost_cod">Rp 0</span>
+        </div>
+
+        <div class="border-t border-gray-300 my-2 pt-2 flex justify-between items-center">
+            <span class="font-bold text-red-600">TOTAL TAGIHAN</span>
+            <span class="font-extrabold text-xl text-red-600" id="confirm_total_final">Rp 0</span>
+        </div>
+    </div>
+</div>
 
                 <div class="space-y-3">
                     <div class="bg-blue-50 p-3 rounded-lg border border-blue-100">
@@ -1211,51 +1227,60 @@ type();
 
     // --- FUNGSI GLOBAL UNTUK MODAL KONFIRMASI (VERSI REVISI LOGIKA BIAYA) ---
 
-// --- GANTI FUNGSI openConfirmationModal INI ---
+// --- FUNGSI openConfirmationModal (UPDATE LOGIKA COD BARANG) ---
 function openConfirmationModal() {
-    // 1. AMBIL DATA FORM & ALAMAT
+    // 1. AMBIL DATA FORM
     const senderAddress = document.getElementById('sender_address').value; 
     const receiverAddress = document.getElementById('receiver_address').value;
     const paymentMethodVal = document.getElementById('payment_method').value;
     const logoUrl = document.getElementById('selected_expedition_logo_url').value;
 
-    // 2. HITUNG DIMENSI (DATA BARU)
+    // 2. HITUNG DIMENSI & BERAT
     const p = document.getElementById('length').value;
     const l = document.getElementById('width').value;
     const t = document.getElementById('height').value;
+    let dimText = (p && l && t) ? `${p} x ${l} x ${t} cm` : '-';
+
+    // 3. LOGIKA BIAYA (INI YANG DIPERBAIKI)
+    const parts = document.getElementById('expedition').value.split('-');
+    const baseCost = parseInt(parts[3]) || 0;     // Ongkir
+    const insurance = parseInt(parts[4]) || 0;    // Asuransi
+    let codFee = parseInt(parts[5]) || 0;         // Biaya Admin COD
     
-    // Format teks dimensi
-    let dimText = '-';
-    if (p && l && t) {
-        dimText = `${p} x ${l} x ${t} cm`;
+    // Ambil Harga Barang (Pastikan input type="number" atau parsing int)
+    const itemPrice = parseInt(document.getElementById('item_price').value) || 0;
+
+    // Variabel penampung total
+    let totalCost = baseCost + insurance; 
+
+    // Cek Jenis Pembayaran
+    const isCODBarang = (paymentMethodVal === 'CODBARANG');
+    const isCODRegular = (paymentMethodVal === 'COD');
+
+    // A. Logika Biaya COD (Admin Fee)
+    if (isCODBarang || isCODRegular) {
+        // Biaya admin COD tetap dihitung
+        totalCost += codFee;
+    } else {
+        // Jika bukan COD, nol-kan fee (karena bayar transfer/saldo)
+        codFee = 0; 
     }
 
-    // 3. HITUNG BIAYA
-    const parts = document.getElementById('expedition').value.split('-');
-    const baseCost = parseInt(parts[3]) || 0;
-    const insurance = parseInt(parts[4]) || 0;
-    let codFee = parseInt(parts[5]) || 0;
-    if (paymentMethodVal !== 'COD' && paymentMethodVal !== 'CODBARANG') { codFee = 0; }
-    const totalCost = baseCost + insurance + codFee;
+    // B. Logika Harga Barang (Hanya Tambah Jika "COD BARANG")
+    if (isCODBarang) {
+        totalCost += itemPrice;
+    }
 
-    // 4. MASUKKAN DATA KE MODAL
+    // 4. UPDATE TAMPILAN MODAL
     document.getElementById('confirm_expedition_name').innerText = document.getElementById('selected_expedition_display').value;
     document.getElementById('confirm_expedition_logo').src = logoUrl || 'https://placehold.co/100x40?text=Kurir';
 
-    // Gabung Alamat Lengkap
-    const sDesa = document.getElementById('sender_village').value || '';
-    const sKec  = document.getElementById('sender_district').value || '';
-    const sKab  = document.getElementById('sender_regency').value || '';
-    const sProv = document.getElementById('sender_province').value || '';
-    const sPos  = document.getElementById('sender_postal_code').value || '';
-    const sFull = `${senderAddress}, ${sDesa}, ${sKec}, ${sKab}, ${sProv} ${sPos}`.replace(/, ,/g, ',');
-
-    const rDesa = document.getElementById('receiver_village').value || '';
-    const rKec  = document.getElementById('receiver_district').value || '';
-    const rKab  = document.getElementById('receiver_regency').value || '';
-    const rProv = document.getElementById('receiver_province').value || '';
-    const rPos  = document.getElementById('receiver_postal_code').value || '';
-    const rFull = `${receiverAddress}, ${rDesa}, ${rKec}, ${rKab}, ${rProv} ${rPos}`.replace(/, ,/g, ',');
+    // Gabung Alamat (Sama seperti sebelumnya)
+    const sVals = ['village','district','regency','province','postal_code'].map(id => document.getElementById('sender_'+id).value || '');
+    const sFull = `${senderAddress}, ${sVals.join(', ')}`.replace(/, ,/g, ',').replace(/, $/, '');
+    
+    const rVals = ['village','district','regency','province','postal_code'].map(id => document.getElementById('receiver_'+id).value || '');
+    const rFull = `${receiverAddress}, ${rVals.join(', ')}`.replace(/, ,/g, ',').replace(/, $/, '');
 
     document.getElementById('confirm_sender_name').innerText = document.getElementById('sender_name').value;
     document.getElementById('confirm_sender_phone').innerText = document.getElementById('sender_phone').value;
@@ -1265,25 +1290,35 @@ function openConfirmationModal() {
     document.getElementById('confirm_receiver_phone').innerText = document.getElementById('receiver_phone').value;
     document.getElementById('confirm_receiver_address').innerText = rFull;
 
-    // DETAIL PAKET (+DIMENSI)
     document.getElementById('confirm_item_desc').innerText = document.getElementById('item_description').value;
     document.getElementById('confirm_weight').innerText = document.getElementById('weight').value + ' gram';
-    document.getElementById('confirm_dimensions').innerText = dimText; // <--- INI BAGIAN DIMENSI
-    
+    document.getElementById('confirm_dimensions').innerText = dimText;
     document.getElementById('confirm_payment_method').innerText = document.getElementById('selectedPaymentName').innerText;
+
+    // --- UPDATE RINCIAN BIAYA ---
     document.getElementById('detail_cost_base').innerText = formatRupiah(baseCost);
     document.getElementById('confirm_total_final').innerText = formatRupiah(totalCost);
     
-    // Toggle Baris Tambahan
+    // 1. Asuransi
     const elIns = document.getElementById('row_detail_insurance');
     if(insurance > 0) { elIns.classList.remove('hidden'); elIns.classList.add('flex'); document.getElementById('detail_cost_insurance').innerText = formatRupiah(insurance); } 
     else { elIns.classList.add('hidden'); elIns.classList.remove('flex'); }
 
+    // 2. Harga Barang (Baris Baru)
+    const elItem = document.getElementById('row_detail_item_price');
+    if(isCODBarang && itemPrice > 0) {
+        elItem.classList.remove('hidden'); elItem.classList.add('flex'); 
+        document.getElementById('detail_cost_item').innerText = formatRupiah(itemPrice);
+    } else {
+        elItem.classList.add('hidden'); elItem.classList.remove('flex');
+    }
+
+    // 3. Biaya COD
     const elCod = document.getElementById('row_detail_cod');
     if(codFee > 0) { elCod.classList.remove('hidden'); elCod.classList.add('flex'); document.getElementById('detail_cost_cod').innerText = formatRupiah(codFee); } 
     else { elCod.classList.add('hidden'); elCod.classList.remove('flex'); }
 
-    // Simulasi Saldo
+    // --- SIMULASI SALDO (Hanya Jika Potong Saldo) ---
     const balBox = document.getElementById('balance_simulation_box');
     if (paymentMethodVal === 'Potong Saldo') {
         const curBal = parseInt(document.getElementById('user_current_balance').value) || 0;
