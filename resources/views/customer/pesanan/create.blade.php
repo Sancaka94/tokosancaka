@@ -1136,36 +1136,53 @@ async function runCekOngkir() {
             }
             details += `</div>`;
 
+      
             // Render Card
-            const card = document.createElement('div');
-            card.className = 'border rounded-lg mb-3 bg-white shadow-blue transition-shadow';
-            card.innerHTML = `
-                <div class="p-4 flex justify-between items-center">
-                    <div class="flex items-center w-3/4">
-                        <div class="w-16 h-12 mr-3 flex-shrink-0 flex items-center justify-center border border-gray-100 rounded p-1 bg-gray-50">
-                            <img src="${logoUrl}" class="max-w-full max-h-full object-contain" 
-                                onerror="this.src='https://placehold.co/100x40?text=${serviceCode}'">
-                        </div>
-                        <div class="overflow-hidden">
-                            <h6 class="font-bold text-gray-800 text-sm md:text-base truncate" title="${serviceName}">${serviceName}</h6>
-                            ${details}
-                        </div>
-                    </div>
-                    <div class="text-right w-1/4 pl-2">
-                        <small class="text-gray-500 text-xs block">Ongkir</small>
-                        <strong class="block text-base md:text-lg text-red-600 leading-tight">${formatRupiah(cost)}</strong>
-                        <button type="button" 
-                            class="select-ongkir-btn mt-2 bg-red-600 text-white px-3 py-1.5 rounded-md hover:bg-red-700 text-xs md:text-sm w-full transition-colors font-medium shadow-sm" 
-                            data-value="${value}" 
-                            data-display="${serviceName}" 
-                            data-cod-supported="${isCod}"
-                            data-logo="${logoUrl}">
-                            Pilih
-                        </button>
-                    </div>
-                </div>`;
-            
-            ongkirModalBody.appendChild(card);
+const card = document.createElement('div');
+card.className = 'border rounded-lg mb-3 bg-white transition-shadow';
+
+// Shadow default
+card.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.05)';
+
+// Hover biru
+card.addEventListener('mouseenter', () => {
+    card.style.boxShadow = '0 6px 18px rgba(0, 118, 255, 0.55)';
+});
+
+// Hilang hover
+card.addEventListener('mouseleave', () => {
+    card.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.05)';
+});
+
+card.innerHTML = `
+    <div class="p-4 flex justify-between items-center">
+        <div class="flex items-center w-3/4">
+            <div class="w-16 h-12 mr-3 flex-shrink-0 flex items-center justify-center border border-gray-100 rounded p-1 bg-gray-50">
+                <img src="${logoUrl}" class="max-w-full max-h-full object-contain" 
+                    onerror="this.src='https://placehold.co/100x40?text=${serviceCode}'">
+            </div>
+            <div class="overflow-hidden">
+                <h6 class="font-bold text-gray-800 text-sm md:text-base truncate" title="${serviceName}">${serviceName}</h6>
+                ${details}
+            </div>
+        </div>
+        <div class="text-right w-1/4 pl-2">
+            <small class="text-gray-500 text-xs block">Ongkir</small>
+            <strong class="block text-base md:text-lg text-red-600 leading-tight">${formatRupiah(cost)}</strong>
+            <button type="button" 
+                class="select-ongkir-btn mt-2 bg-red-600 text-white px-3 py-1.5 rounded-md hover:bg-red-700 text-xs md:text-sm w-full transition-colors font-medium shadow-sm" 
+                data-value="${value}" 
+                data-display="${serviceName}" 
+                data-cod-supported="${isCod}"
+                data-logo="${logoUrl}">
+                Pilih
+            </button>
+        </div>
+    </div>
+`;
+
+ongkirModalBody.appendChild(card);
+
         });
 
     } catch (error) {
