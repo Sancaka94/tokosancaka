@@ -765,69 +765,75 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 }
 
-
+   async function performAddressSearch(prefix, query, contactToMatch = null) {
+    const resultsContainer = document.getElementById(`${prefix}_address_results`);
     
-
-    async function performAddressSearch(prefix, query, contactToMatch = null) {
-        const resultsContainer = document.getElementById(`${prefix}_address_results`);
-        
-        if (query.length < 3) { 
-            resultsContainer.classList.add('hidden'); 
-            return; 
-        }
-
-        try {
-            const response = await fetch(`{{ route('api.address.search') }}?search=${encodeURIComponent(query)}`);
-            if (!response.ok) throw new Error('Network response error');
-            const data = await response.json();
-            
-            resultsContainer.innerHTML = '';
-            resultsContainer.classList.remove('hidden');
-
-            if (data && data.length > 0) {
-                if (contactToMatch) {
-                    const exactMatch = data.find(item => {
-                        const normalizedApiAddress = item.full_address.toLowerCase();
-                        const village = (contactToMatch.village || '').toLowerCase();
-                        const district = (contactToMatch.district || '').toLowerCase();
-                        const regency = (contactToMatch.regency || '').toLowerCase().replace('kabupaten ', '').replace('kota ', '');
-                        const postalCode = (contactToMatch.postal_code || '');
-
-                        return village && district && regency && postalCode &&
-                               normalizedApiAddress.includes(village) &&
-                               normalizedApiAddress.includes(district) &&
-                               normalizedApiAddress.includes(regency) &&
-                               normalizedApiAddress.includes(postalCode);
-                    });
-
-                    if (exactMatch) {
-                        selectAddress(prefix, exactMatch); 
-                        return; 
-                    }
-                }
-
-                if (data.length === 1) {
-                    selectAddress(prefix, data[0]);
-                    return;
-                }
-
-                data.forEach(item => {
-                    const resultDiv = document.createElement('div');
-                    resultDiv.className = 'p-3 border-b hover:bg-gray-100 cursor-pointer text-sm';
-                    resultDiv.innerHTML = `<div class="font-semibold">${item.full_address}</div>`;
-                    resultDiv.addEventListener('click', () => {
-                        selectAddress(prefix, item);
-                    });
-                    resultsContainer.appendChild(resultDiv);
-                });
-            } else {
-                resultsContainer.innerHTML = '<div class="p-3 text-gray-500">Alamat tidak ditemukan.</div>';
-            }
-        } catch (error) {
-            console.error('Address search failed:', error);
-            resultsContainer.innerHTML = '<div class="p-3 text-red-500">Gagal memuat data alamat.</div>';
-        }
+    if (query.length < 3) { 
+        resultsContainer.classList.add('hidden'); 
+        return; 
     }
+
+    try {
+        const response = await fetch(`{{ route('api.address.search') }}?search=${encodeURIComponent(query)}`);
+        if (!response.ok) throw new Error('Network response error');
+        const data = await response.json();
+        
+        resultsContainer.innerHTML = '';
+        resultsContainer.classList.remove('hidden');
+
+        if (data && data.length > 0) {
+            if (contactToMatch) {
+                const exactMatch = data.find(item => {
+                    // --- PERBAIKAN 1: Mencegah Crash .toLowerCase() ---
+                    // Ambil teks dari label, value, atau full_address. Jika semua kosong, pakai string kosong.
+                    const rawAddress = item.label || item.value || item.full_address || ''; 
+                    const normalizedApiAddress = rawAddress.toLowerCase();
+
+                    const village = (contactToMatch.village || '').toLowerCase();
+                    const district = (contactToMatch.district || '').toLowerCase();
+                    const regency = (contactToMatch.regency || '').toLowerCase().replace('kabupaten ', '').replace('kota ', '');
+                    const postalCode = (contactToMatch.postal_code || '');
+
+                    return village && district && regency && postalCode &&
+                           normalizedApiAddress.includes(village) &&
+                           normalizedApiAddress.includes(district) &&
+                           normalizedApiAddress.includes(regency) &&
+                           normalizedApiAddress.includes(postalCode);
+                });
+
+                if (exactMatch) {
+                    selectAddress(prefix, exactMatch); 
+                    return; 
+                }
+            }
+
+            if (data.length === 1) {
+                selectAddress(prefix, data[0]);
+                return;
+            }
+
+            data.forEach(item => {
+                const resultDiv = document.createElement('div');
+                resultDiv.className = 'p-3 border-b hover:bg-gray-100 cursor-pointer text-sm';
+                
+                // --- PERBAIKAN 2: Mengatasi tampilan "undefined" ---
+                // Gunakan label (karena itu yang dikirim API), fallback ke value atau full_address
+                const displayText = item.label || item.value || item.full_address || 'Alamat tidak diketahui';
+                
+                resultDiv.innerHTML = `<div class="font-semibold">${displayText}</div>`;
+                resultDiv.addEventListener('click', () => {
+                    selectAddress(prefix, item);
+                });
+                resultsContainer.appendChild(resultDiv);
+            });
+        } else {
+            resultsContainer.innerHTML = '<div class="p-3 text-gray-500">Alamat tidak ditemukan.</div>';
+        }
+    } catch (error) {
+        console.error('Address search failed:', error);
+        resultsContainer.innerHTML = '<div class="p-3 text-red-500">Gagal memuat data alamat.</div>';
+    }
+}
     
     function setupAddressSearch(prefix) {
         const searchInput = document.getElementById(`${prefix}_address_search`);
