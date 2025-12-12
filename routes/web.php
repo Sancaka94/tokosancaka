@@ -129,11 +129,11 @@ Route::get('/kirimaja/cek-ongkir', [CustomerOrderController::class, 'cek_Ongkir'
 Route::get('/koli/cek-ongkir', [KoliController::class, 'cekOngkirMulti'])->name('public.koli.cekOngkirMulti'); // Akses publik
 Route::post('/koli/cek-ongkir', [KoliController::class, 'cekOngkirMulti'])->name('koli.cekOngkirMulti');
 
-    Route::get('/pesanan/buat-multi', [KoliController::class, 'create'])
+    Route::get('/admin/pesanan/buat-multi', [KoliController::class, 'create'])
         ->name('admin.pesanan.create_multi');
 
     // Route untuk Proses Simpan-nya (POST)
-    Route::post('/pesanan/buat-multi', [KoliController::class, 'store'])
+    Route::post('/admin/pesanan/buat-multi', [KoliController::class, 'store'])
         ->name('admin.pesanan.store_multi');
 
 // KiriminAja API
