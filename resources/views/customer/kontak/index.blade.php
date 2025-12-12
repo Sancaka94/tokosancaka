@@ -9,33 +9,48 @@
 {{-- FontAwesome & jQuery UI --}}
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
+
 <style>
-    /* Styling Autocomplete agar rapi */
+    /* Styling Autocomplete agar rapi dan muncul di atas Modal */
     .ui-autocomplete {
-        z-index: 9999 !important;
-        max-height: 250px;
+        z-index: 99999 !important; /* Pastikan lebih tinggi dari Modal */
+        max-height: 200px;
         overflow-y: auto;
         overflow-x: hidden;
-        background: #fff;
+        background: #ffffff;
         border: 1px solid #d1d5db;
         border-radius: 0.5rem;
         box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
         font-size: 0.875rem;
+        padding: 0;
     }
+
+    .ui-menu-item {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+
     .ui-menu-item-wrapper {
-        padding: 0.5rem 1rem;
+        padding: 0.75rem 1rem;
         cursor: pointer;
+        display: block;
+        border-bottom: 1px solid #f3f4f6;
     }
-    .ui-menu-item-wrapper:hover, .ui-state-active {
-        background-color: #eff6ff !important; /* blue-50 */
-        color: #1e40af !important; /* blue-800 */
+
+    /* Hover State */
+    .ui-menu-item-wrapper:hover, 
+    .ui-state-active {
+        background-color: #3b82f6 !important; /* Blue-500 */
+        color: #ffffff !important;
         border: none !important;
     }
+
     /* Input Readonly terlihat abu-abu */
     .form-control-readonly {
-        background-color: #f3f4f6;
+        background-color: #f9fafb; /* Gray-50 */
         cursor: not-allowed;
-        color: #6b7280;
+        color: #6b7280; /* Gray-500 */
     }
 </style>
 @endpush
@@ -95,10 +110,7 @@
                     <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Nama & HP</th>
                     <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Tipe</th>
                     <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Detail Alamat</th>
-                    <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Kelurahan</th>
-                    <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Kecamatan</th>
-                    <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Kota/Kab</th>
-                    <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Provinsi</th>
+                    <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Wilayah</th>
                     <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Kode Pos</th>
                     <th class="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Aksi</th>
                 </tr>
@@ -125,32 +137,27 @@
 
                     {{-- Alamat Lengkap --}}
                     <td class="px-4 py-3 text-sm text-gray-600 max-w-xs truncate" title="{{ $kontak->alamat }}">
-                        {{ Str::limit($kontak->alamat, 30) }}
+                        {{ Str::limit($kontak->alamat, 40) }}
                     </td>
 
-                    {{-- Detail Wilayah --}}
-                    <td class="px-4 py-3 text-sm text-gray-600">{{ $kontak->village ?? '-' }}</td>
-                    <td class="px-4 py-3 text-sm text-gray-600">{{ $kontak->district ?? '-' }}</td>
-                    <td class="px-4 py-3 text-sm text-gray-600">{{ $kontak->regency ?? '-' }}</td>
-                    <td class="px-4 py-3 text-sm text-gray-600">{{ $kontak->province ?? '-' }}</td>
+                    {{-- Detail Wilayah (Digabung agar ringkas) --}}
+                    <td class="px-4 py-3 text-sm text-gray-600">
+                        {{ $kontak->village }}, {{ $kontak->district }}<br>
+                        <span class="text-xs text-gray-400">{{ $kontak->regency }}, {{ $kontak->province }}</span>
+                    </td>
                     <td class="px-4 py-3 text-sm text-gray-600 font-mono">{{ $kontak->postal_code ?? '-' }}</td>
 
-                    {{-- Aksi (Lihat, Edit, Hapus) --}}
+                    {{-- Aksi --}}
                     <td class="px-4 py-3 whitespace-nowrap text-center text-sm font-medium">
                         <div class="flex justify-center space-x-2">
-                            {{-- Tombol Lihat --}}
                             <button type="button" class="text-gray-500 hover:text-gray-800 btnViewKontak" 
                                     data-id="{{ $kontak->id }}" title="Lihat Detail">
                                 <i class="fas fa-eye"></i>
                             </button>
-
-                            {{-- Tombol Edit --}}
                             <button type="button" class="text-blue-600 hover:text-blue-900 btnEditKontak" 
                                     data-id="{{ $kontak->id }}" title="Edit">
                                 <i class="fas fa-edit"></i>
                             </button>
-
-                            {{-- Tombol Hapus --}}
                             <form action="{{ route('customer.kontak.destroy', $kontak->id) }}" method="POST" onsubmit="return confirm('Yakin ingin menghapus kontak {{ $kontak->nama }}?');">
                                 @csrf @method('DELETE')
                                 <button type="submit" class="text-red-600 hover:text-red-900" title="Hapus">
@@ -162,7 +169,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="9" class="text-center py-10 text-gray-500">
+                    <td colspan="6" class="text-center py-10 text-gray-500">
                         <div class="flex flex-col items-center">
                             <i class="fas fa-folder-open text-4xl text-gray-300 mb-2"></i>
                             <span>Tidak ada data kontak ditemukan.</span>
@@ -179,7 +186,7 @@
         {{ $kontaks->appends(request()->query())->links() }}
     </div>
 
-    {{-- TABEL KHUSUS PENGIRIM (DI BAWAH) --}}
+    {{-- TABEL KHUSUS PENGIRIM --}}
     @if(isset($pengirims) && $pengirims->isNotEmpty())
     <div class="mt-12 pt-8 border-t-2 border-gray-100">
         <div class="flex items-center mb-4 gap-3">
@@ -191,18 +198,13 @@
                 <p class="text-sm text-gray-500">Daftar alamat yang disimpan sebagai pengirim.</p>
             </div>
         </div>
-
         <div class="overflow-x-auto rounded-lg border border-indigo-100 shadow-sm">
             <table class="min-w-full divide-y divide-indigo-100">
                 <thead class="bg-indigo-50">
                     <tr>
                         <th class="px-4 py-3 text-left text-xs font-bold text-indigo-800 uppercase">Nama & HP</th>
                         <th class="px-4 py-3 text-left text-xs font-bold text-indigo-800 uppercase">Detail Alamat</th>
-                        <th class="px-4 py-3 text-left text-xs font-bold text-indigo-800 uppercase">Kelurahan</th>
-                        <th class="px-4 py-3 text-left text-xs font-bold text-indigo-800 uppercase">Kecamatan</th>
-                        <th class="px-4 py-3 text-left text-xs font-bold text-indigo-800 uppercase">Kota/Kab</th>
-                        <th class="px-4 py-3 text-left text-xs font-bold text-indigo-800 uppercase">Provinsi</th>
-                        <th class="px-4 py-3 text-left text-xs font-bold text-indigo-800 uppercase">Kode Pos</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-indigo-800 uppercase">Wilayah</th>
                         <th class="px-4 py-3 text-center text-xs font-bold text-indigo-800 uppercase">Aksi</th>
                     </tr>
                 </thead>
@@ -213,20 +215,13 @@
                             <div class="text-sm font-semibold text-gray-900">{{ $p->nama }}</div>
                             <div class="text-xs text-gray-500">{{ $p->no_hp }}</div>
                         </td>
-                        <td class="px-4 py-3 text-sm text-gray-600 max-w-xs truncate">{{ Str::limit($p->alamat, 25) }}</td>
-                        <td class="px-4 py-3 text-sm text-gray-600">{{ $p->village ?? '-' }}</td>
-                        <td class="px-4 py-3 text-sm text-gray-600">{{ $p->district ?? '-' }}</td>
-                        <td class="px-4 py-3 text-sm text-gray-600">{{ $p->regency ?? '-' }}</td>
-                        <td class="px-4 py-3 text-sm text-gray-600">{{ $p->province ?? '-' }}</td>
-                        <td class="px-4 py-3 text-sm text-gray-600">{{ $p->postal_code ?? '-' }}</td>
+                        <td class="px-4 py-3 text-sm text-gray-600 max-w-xs truncate">{{ Str::limit($p->alamat, 40) }}</td>
+                        <td class="px-4 py-3 text-sm text-gray-600">
+                            {{ $p->village }}, {{ $p->district }}, {{ $p->regency }}
+                        </td>
                         <td class="px-4 py-3 text-center text-sm font-medium">
                             <div class="flex justify-center space-x-2">
-                                <button type="button" class="text-gray-500 hover:text-gray-800 btnViewKontak" data-id="{{ $p->id }}"><i class="fas fa-eye"></i></button>
                                 <button type="button" class="text-blue-600 hover:text-blue-900 btnEditKontak" data-id="{{ $p->id }}"><i class="fas fa-edit"></i></button>
-                                <form action="{{ route('customer.kontak.destroy', $p->id) }}" method="POST" onsubmit="return confirm('Hapus data pengirim ini?');" class="inline">
-                                    @csrf @method('DELETE')
-                                    <button type="submit" class="text-red-600 hover:text-red-900"><i class="fas fa-trash-alt"></i></button>
-                                </form>
                             </div>
                         </td>
                     </tr>
@@ -343,46 +338,70 @@
 <script>
 $(document).ready(function() {
     
-    // --- HELPERS ---
+    // --- HELPER FUNCTIONS ---
     function openModal(id) { $('#' + id).removeClass('hidden').addClass('flex'); $('body').addClass('overflow-hidden'); }
     function closeModal(id) { $('#' + id).addClass('hidden').removeClass('flex'); $('body').removeClass('overflow-hidden'); }
     function debounce(func, delay) { let timeout; return function(...args) { clearTimeout(timeout); timeout = setTimeout(() => func.apply(this, args), delay); }; }
 
-    // --- AUTOCOMPLETE SEARCH ---
+    // --- AUTOCOMPLETE ADDRESS SEARCH ---
+    // Fungsi ini dipanggil hanya sekali saat dokumen siap
     function setupAddressSearch(inputId) {
-        $(`#${inputId}`).autocomplete({
+        const element = $(`#${inputId}`);
+
+        element.autocomplete({
+            // PENTING: Agar dropdown menempel pada modal (mengatasi masalah Z-Index)
+            appendTo: "#kontakModal",
+            
+            // Konfigurasi Source Data
             source: debounce(async (request, response) => {
                 if (request.term.length < 3) return response([]);
+                
                 try {
-                    const res = await fetch(`{{ route('api.address.search') }}?q=${encodeURIComponent(request.term)}`);
+                    // Panggil Route Controller
+                    const url = `{{ route('api.address.search') }}?q=${encodeURIComponent(request.term)}`;
+                    const res = await fetch(url);
                     const data = await res.json();
-                    response(data.map(item => ({ label: item.text, value: item.text, data: item })));
-                } catch (e) { response([]); }
-            }, 300),
-            minLength: 3,
-            select: function(event, ui) {
-                const item = ui.item.data;
-                // Isi Form
-                $('#village').val(item.village_name || item.village || '');
-                $('#district').val(item.district_name || item.district || '');
-                $('#regency').val(item.city_name || item.regency || '');
-                $('#province').val(item.province_name || item.province || '');
-                $('#postal_code').val(item.zip_code || item.postal_code || '');
-                
-                // Isi Hidden Fields
-                $('#district_id').val(item.district_id || '');
-                $('#subdistrict_id').val(item.subdistrict_id || '');
-                $('#lat').val(item.lat || ''); // Jika ada dari API
-                $('#lng').val(item.lon || ''); // Jika ada dari API
 
-                event.preventDefault();
-                $(this).val(ui.item.label);
+                    // Controller sudah mengirimkan format: { label, value, data_lengkap }
+                    // Kita langsung passing saja ke response jQuery UI
+                    response(data);
+                } catch (e) {
+                    console.error("Error fetching address:", e);
+                    response([]);
+                }
+            }, 400), // Delay 400ms
+
+            minLength: 3,
+
+            // Aksi saat item dipilih
+            select: function(event, ui) {
+                // Ambil data lengkap dari object 'data_lengkap' (sesuai controller)
+                const d = ui.item.data_lengkap; 
+
+                // Debugging
+                // console.log("Alamat dipilih:", d); 
+
+                // Isi Form Tampilan (Readonly)
+                $('#village').val(d.village || '');
+                $('#district').val(d.district || '');
+                $('#regency').val(d.regency || '');
+                $('#province').val(d.province || '');
+                $('#postal_code').val(d.postal_code || '');
+
+                // Isi Form Hidden (Untuk Database & Ongkir)
+                $('#district_id').val(d.district_id || '');
+                $('#subdistrict_id').val(d.subdistrict_id || '');
                 
-                // Visual Feedback
-                $(this).addClass('border-green-500 ring-1 ring-green-500');
+                // Set nilai input pencarian menjadi teks alamat lengkap
+                $(this).val(ui.item.label);
+
+                // Return false agar jQuery UI tidak menimpa nilai input dengan object default
+                return false;
             }
         });
     }
+
+    // Inisialisasi Autocomplete
     setupAddressSearch('kontak_address_search');
 
     // --- BUTTON ACTIONS ---
@@ -395,7 +414,10 @@ $(document).ready(function() {
         $('#formMethod').val('POST');
         $('#modalTitle').html('<i class="fas fa-user-plus mr-2 text-blue-600"></i>Tambah Kontak Baru');
         $('#tipe').val('Penerima'); // Default
+        
+        // Reset tampilan search bar
         $('#kontak_address_search').removeClass('border-green-500 ring-1 ring-green-500');
+        
         openModal('kontakModal');
     });
 
@@ -412,35 +434,38 @@ $(document).ready(function() {
             const kontak = await response.json();
             Swal.close();
 
-            // Isi Data
+            // Isi Data Dasar
             $('#nama').val(kontak.nama);
             $('#no_hp').val(kontak.no_hp);
             $('#alamat').val(kontak.alamat);
             $('#tipe').val(kontak.tipe);
             
-            // Isi Wilayah
-            const fullAddr = [kontak.village, kontak.district, kontak.regency, kontak.province, kontak.postal_code].filter(Boolean).join(', ');
-            $('#kontak_address_search').val(fullAddr);
-            
-            $('#province').val(kontak.province);
-            $('#regency').val(kontak.regency);
-            $('#district').val(kontak.district);
+            // Isi Form Wilayah (Visual)
             $('#village').val(kontak.village);
+            $('#district').val(kontak.district);
+            $('#regency').val(kontak.regency);
+            $('#province').val(kontak.province);
             $('#postal_code').val(kontak.postal_code);
             
-            // Isi Hidden
-            $('#lat').val(kontak.lat);
-            $('#lng').val(kontak.lng);
+            // Isi Hidden Fields
             $('#district_id').val(kontak.district_id);
             $('#subdistrict_id').val(kontak.subdistrict_id);
+            $('#lat').val(kontak.lat);
+            $('#lng').val(kontak.lng);
 
-            // Setup Modal
+            // Isi Input Search agar user tahu alamat saat ini
+            const fullAddr = [kontak.village, kontak.district, kontak.regency, kontak.province, kontak.postal_code].filter(Boolean).join(', ');
+            $('#kontak_address_search').val(fullAddr);
+
+            // Setup Form Action
             form.attr('action', `/customer/kontak/${kontak.id}`);
             $('#formMethod').val('PUT');
             $('#modalTitle').html('<i class="fas fa-edit mr-2 text-blue-600"></i>Edit Kontak');
+            
             openModal('kontakModal');
 
         } catch (err) {
+            console.error(err);
             Swal.fire('Error', 'Gagal memuat data kontak.', 'error');
         }
     });
@@ -451,11 +476,10 @@ $(document).ready(function() {
         Swal.showLoading();
         
         try {
-            const response = await fetch(`/customer/kontak/${id}/edit`); // Reuse endpoint edit
+            const response = await fetch(`/customer/kontak/${id}/edit`);
             const d = await response.json();
             Swal.close();
 
-            // Tampilkan Detail di SweetAlert dengan Tabel Rapi
             Swal.fire({
                 title: `<span class="text-xl font-bold text-gray-800">Detail Kontak</span>`,
                 html: `
@@ -469,10 +493,6 @@ $(document).ready(function() {
                             <span class="col-span-2 font-mono text-blue-600">${d.no_hp}</span>
                         </div>
                         <div class="grid grid-cols-3 gap-2 border-b pb-2">
-                            <span class="font-bold text-gray-500">Tipe:</span>
-                            <span class="col-span-2"><span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs">${d.tipe}</span></span>
-                        </div>
-                        <div class="grid grid-cols-3 gap-2 border-b pb-2">
                             <span class="font-bold text-gray-500">Alamat:</span>
                             <span class="col-span-2 text-gray-700">${d.alamat}</span>
                         </div>
@@ -483,15 +503,9 @@ $(document).ready(function() {
                                 ${d.regency || '-'}, ${d.province || '-'}
                             </span>
                         </div>
-                        <div class="grid grid-cols-3 gap-2 border-b pb-2">
+                        <div class="grid grid-cols-3 gap-2">
                             <span class="font-bold text-gray-500">Kode Pos:</span>
                             <span class="col-span-2 font-mono">${d.postal_code || '-'}</span>
-                        </div>
-                        <div class="grid grid-cols-3 gap-2">
-                            <span class="font-bold text-gray-500">Koordinat:</span>
-                            <span class="col-span-2 text-xs font-mono text-gray-500">
-                                Lat: ${d.lat || '-'} <br> Lng: ${d.lng || '-'}
-                            </span>
                         </div>
                     </div>
                 `,
@@ -507,7 +521,7 @@ $(document).ready(function() {
 
     // 4. SIMPAN FORM
     $('#btnSimpanForm').on('click', function() {
-        // Validasi Sederhana
+        // Validasi Sederhana Client Side
         if(!$('#nama').val() || !$('#no_hp').val() || !$('#alamat').val()) {
             Swal.fire({
                 icon: 'warning',
@@ -522,67 +536,16 @@ $(document).ready(function() {
     // 5. TUTUP MODAL
     $('#btnBatalModal, #btnCloseHeader').on('click', function() { closeModal('kontakModal'); });
 
-    // --- NOTIFIKASI SESSION ---
+    // --- NOTIFIKASI SESSION (SERVER SIDE) ---
     @if (session('success'))
         Swal.fire({ title: 'Berhasil!', text: "{{ session('success') }}", icon: 'success', timer: 2000, showConfirmButton: false });
     @endif
+    
     @if ($errors->any())
         Swal.fire({ title: 'Gagal!', text: 'Mohon periksa inputan Anda.', icon: 'error' });
+        // Jika error validasi, buka modal kembali agar user bisa memperbaiki
         openModal('kontakModal');
     @endif
 });
-
-function setupAddressSearch(inputId) {
-    $(`#${inputId}`).autocomplete({
-        // 1. Sumber Data (Memanggil Controller)
-        source: debounce(async (request, response) => {
-            if (request.term.length < 3) return response([]);
-            
-            try {
-                // Panggil route controller
-                const url = `{{ route('api.address.search') }}?q=${encodeURIComponent(request.term)}`;
-                const res = await fetch(url);
-                const data = await res.json();
-                
-                // Data dari controller sudah diformat (label, value, data_lengkap)
-                // Jadi bisa langsung dipassing ke response
-                response(data);
-
-            } catch (e) {
-                console.error("Error API:", e);
-                response([]);
-            }
-        }, 400),
-
-        minLength: 3,
-
-        // 2. Aksi saat user memilih alamat dari list
-        select: function(event, ui) {
-            // Ambil data yang sudah kita mapping di Controller tadi
-            const d = ui.item.data_lengkap; 
-
-            // Debugging (cek console browser jika tidak muncul)
-            console.log("Data dipilih:", d);
-
-            // Isi Form Readonly (Sesuai ID input di HTML Anda)
-            $('#village').val(d.village);
-            $('#district').val(d.district);
-            $('#regency').val(d.regency);
-            $('#province').val(d.province);
-            $('#postal_code').val(d.postal_code);
-
-            // Isi Hidden ID (Penting untuk database)
-            $('#district_id').val(d.district_id);
-            $('#subdistrict_id').val(d.subdistrict_id);
-
-            // Set input pencarian dengan teks alamat lengkap
-            $(this).val(ui.item.label);
-
-            // Return false agar input tidak berubah jadi aneh
-            return false;
-        }
-    });
-}
-
 </script>
 @endpush
