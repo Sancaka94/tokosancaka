@@ -2,7 +2,7 @@
 
 // Pastikan namespace controller sudah benar
 use App\Http\Controllers\Admin\AdminOrderController;
-use App\Http\Controllers\Admin\ AdminMarketplaceController;
+use App\Http\Controllers\Admin\AdminMarketplaceController;
 use App\Http\Controllers\Admin\ChatController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request; // Diperlukan untuk route closure chat
