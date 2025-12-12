@@ -178,7 +178,7 @@ class KontakController extends Controller
 
             // --- LOGIKA UTAMA ---
 
-            if ($user->role === 'admin') {
+            if ($user->role === 'Admin') {
               
                 
             } else {
