@@ -272,6 +272,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/seller/reviews/{review}/reply', [SellerReviewController::class, 'reply'])->name('seller.reviews.reply');
     Route::put('/seller/reviews/{review}/reply', [SellerReviewController::class, 'updateReply'])->name('seller.reviews.reply.update');
     Route::delete('/seller/reviews/{review}/reply', [SellerReviewController::class, 'deleteReply'])->name('seller.reviews.reply.delete');
+
+    Route::get('/api/contacts/search', [App\Http\Controllers\Customer\KontakController::class, 'search'])
+        ->name('api.contacts.search');
 });
 
 
