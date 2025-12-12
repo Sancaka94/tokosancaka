@@ -183,48 +183,61 @@ class KontakController extends Controller
         }
     }
 
-  public function searchAddressApi(Request $request, KiriminAjaService $kirimaja)
+  public function searchAddressApi(Request $request, \App\Services\KiriminAjaService $kirimaja)
     {
-        // 1. TANGKAP INPUT (jQuery UI mengirim parameter '?q=')
-        // Kita cek 'q', 'search', atau 'term' untuk jaga-jaga
-        $keyword = $request->input('q') ?? $request->input('search') ?? $request->input('term');
-
-        // Debugging: Cek di file laravel.log (storage/logs/laravel.log)
-        Log::info('Search Address Request:', ['keyword' => $keyword]);
+        // 1. Tangkap input (Support 'q' dari jQuery UI atau 'search')
+        $keyword = $request->input('q') ?? $request->input('search');
 
         if (!$keyword || strlen($keyword) < 3) {
             return response()->json([]);
         }
 
         try {
-            // 2. PANGGIL SERVICE
+            // 2. Panggil Service Anda (KODE SERVICE TIDAK DISENTUH)
             $response = $kirimaja->searchAddress($keyword);
 
-            // Debugging: Cek respon mentah dari Service
-            Log::info('KiriminAja Raw Response:', ['data' => $response]);
-
-            // Validasi jika data kosong
+            // 3. Validasi Response
             if (empty($response) || empty($response['data'])) {
                 return response()->json([]);
             }
 
-            // 3. MAPPING DATA
+            // 4. Mapping Data (DIBUAT FLEKSIBEL)
+            // Kita coba ambil data dengan berbagai kemungkinan nama key
             $formatted = collect($response['data'])->map(function ($item) {
-                // Pastikan teks alamat ada
-                $textLabel = $item['address'] ?? $item['text'] ?? 'Alamat tidak ditemukan';
                 
+                // A. LOGIKA UNTUK LABEL (Teks yang muncul di dropdown)
+                // Cek 'text', kalau kosong cek 'address', kalau kosong cek 'name'
+                $labelText = $item['text'] ?? $item['address'] ?? $item['name'] ?? null;
+                
+                // Jika masih null, susun manual dari komponen wilayah
+                if (empty($labelText)) {
+                    $parts = array_filter([
+                        $item['kelurahan'] ?? $item['village_name'] ?? null,
+                        $item['kecamatan'] ?? $item['district_name'] ?? null,
+                        $item['kabupaten'] ?? $item['city_name'] ?? null,
+                        $item['provinsi'] ?? $item['province_name'] ?? null,
+                        $item['kodepos'] ?? $item['zip_code'] ?? null,
+                    ]);
+                    $labelText = !empty($parts) ? implode(', ', $parts) : "Alamat ditemukan (Tanpa Label)";
+                }
+
                 return [
-                    'label' => $textLabel, // Wajib untuk jQuery UI
-                    'value' => $textLabel, // Wajib untuk jQuery UI
+                    // --- Field Wajib jQuery UI ---
+                    'label' => $labelText, 
+                    'value' => $labelText,
                     
+                    // --- Field Data Lengkap ---
+                    // Cek 'kelurahan' (Indo) ATAU 'village_name' (Inggris)
                     'data_lengkap' => [
-                        'village'        => $item['kelurahan'] ?? '',
-                        'district'       => $item['kecamatan'] ?? '',
-                        'regency'        => $item['kabupaten'] ?? '', 
-                        'province'       => $item['provinsi'] ?? '',
-                        'postal_code'    => $item['kodepos'] ?? '',
-                        'district_id'    => $item['kecamatan_id'] ?? null,
-                        'subdistrict_id' => $item['kelurahan_id'] ?? null,
+                        'village'        => $item['kelurahan'] ?? $item['village_name'] ?? '',
+                        'district'       => $item['kecamatan'] ?? $item['district_name'] ?? '',
+                        'regency'        => $item['kabupaten'] ?? $item['city_name'] ?? $item['regency_name'] ?? '', 
+                        'province'       => $item['provinsi'] ?? $item['province_name'] ?? '',
+                        'postal_code'    => $item['kodepos'] ?? $item['zip_code'] ?? '',
+                        
+                        // ID Ongkir (Cek 'kecamatan_id' atau 'district_id')
+                        'district_id'    => $item['kecamatan_id'] ?? $item['district_id'] ?? null,
+                        'subdistrict_id' => $item['kelurahan_id'] ?? $item['subdistrict_id'] ?? null,
                     ]
                 ];
             });
@@ -232,7 +245,7 @@ class KontakController extends Controller
             return response()->json($formatted);
 
         } catch (\Exception $e) {
-            Log::error('Controller Address Search Error: ' . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error('Search Address Error: ' . $e->getMessage());
             return response()->json([]);
         }
     }
