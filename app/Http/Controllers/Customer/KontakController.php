@@ -164,46 +164,46 @@ class KontakController extends Controller
         return redirect()->route('customer.kontak.index')->with('success', 'Kontak berhasil dihapus.');
     }
 
-    /**
-     * Pencarian AJAX.
-     */
-    public function search(Request $request)
+   public function search(Request $request)
     {
         try {
-            $user = Auth::user();
             $keyword = $request->input('search') ?? $request->input('query');
             $tipe = $request->input('tipe'); 
+            $scope = $request->input('scope'); // Tangkap parameter scope
 
-            // 2. Query Dasar
+            // 1. Inisialisasi Query (Tanpa filter user_id dulu)
             $query = Kontak::query();
 
-            // LOGIKA KHUSUS ADMIN DI SINI JUGA
-            if ($user->role !== 'Admin') {
-                $query->where('user_id', $user->id);
+            // 2. CEK SCOPE: 
+            // Jika scope BUKAN 'global', maka batasi hanya milik user yang login.
+            // (Fitur 'global' ini khusus dipakai di halaman Admin Multi Order)
+            if ($scope !== 'global') {
+                $query->where('user_id', Auth::id());
             }
 
-            // 3. Filter Keyword
+            // 3. Filter Keyword (Nama / No HP / Alamat)
             if ($keyword) {
                 $query->where(function($sub) use ($keyword) {
                     $sub->where('nama', 'LIKE', "%{$keyword}%")
-                        ->orWhere('no_hp', 'LIKE', "%{$keyword}%");
+                        ->orWhere('no_hp', 'LIKE', "%{$keyword}%")
+                        ->orWhere('alamat', 'LIKE', "%{$keyword}%"); // Tambahkan cari alamat juga biar enak
                 });
             }
 
-            // 4. Filter Tipe (Jika ada di URL)
+            // 4. Filter Tipe (Pengirim/Penerima)
             if ($tipe) {
                 $query->where('tipe', $tipe);
             }
 
-            // 5. Ambil Data
-            $kontaks = $query->limit(10)->get();
+            // 5. Ambil Data (Limit 15 biar agak banyak)
+            $kontaks = $query->latest()->limit(15)->get();
 
             return response()->json($kontaks);
 
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Server Error',
-                'error_detail' => $e->getMessage()
+                'error' => $e->getMessage()
             ], 500);
         }
     }
