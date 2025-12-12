@@ -183,33 +183,40 @@ class KontakController extends Controller
         }
     }
 
-    public function searchAddressApi(Request $request, KiriminAjaService $kirimaja)
+   public function searchAddressApi(Request $request, KiriminAjaService $kirimaja)
     {
-        $request->validate(['search' => 'required|string|min:3']); // Ubah 'q' jadi 'search' jika perlu
-        $searchQuery = $request->input('search') ?? $request->input('q'); // Handle kedua nama parameter
+        // Izinkan 'q' atau 'search' sebagai parameter
+        $searchQuery = $request->input('search') ?? $request->input('q');
+
+        if (strlen($searchQuery) < 3) {
+            return response()->json([]);
+        }
 
         try {
-            // Panggil Service KiriminAja atau Database Lokal
+            // Panggil Service KiriminAja
             $results = $kirimaja->searchAddress($searchQuery);
             
+            // Log respon untuk debugging (cek di storage/logs/laravel.log)
+            // Log::info('KiriminAja Search Result:', ['query' => $searchQuery, 'data' => $results]);
+
             if (empty($results['status']) || empty($results['data'])) {
                 return response()->json([]);
             }
             
-            // Format data agar sesuai dengan Autocomplete jQuery UI
-            // Mapping: text -> label, dll
+            // Format data agar sesuai dengan Autocomplete jQuery UI di Frontend
             $formatted = collect($results['data'])->map(function($item) {
                 return [
-                    'id' => $item['id'] ?? null, // ID unik jika ada
-                    'text' => $item['address'] ?? $item['text'], // Teks lengkap alamat
-                    'full_address' => $item['address'] ?? $item['text'], // Cadangan
-                    // Data detail untuk diisi ke form
+                    'id' => $item['id'] ?? null,
+                    'text' => $item['address'] ?? $item['text'], // Teks yang muncul di dropdown
+                    
+                    // Data detail untuk mengisi kolom formulir
                     'village_name' => $item['kelurahan'] ?? '',
                     'district_name' => $item['kecamatan'] ?? '',
-                    'city_name' => $item['kabupaten'] ?? '',
+                    'city_name' => $item['kabupaten'] ?? '', // Kadang 'text' di KiriminAja sudah lengkap, tapi ini detailnya
                     'province_name' => $item['provinsi'] ?? '',
                     'zip_code' => $item['kodepos'] ?? '',
-                    // ID Penting
+                    
+                    // ID Penting untuk Ongkir
                     'district_id' => $item['kecamatan_id'] ?? 0,
                     'subdistrict_id' => $item['kelurahan_id'] ?? 0,
                 ];

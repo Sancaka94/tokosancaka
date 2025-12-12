@@ -535,47 +535,37 @@ $(document).ready(function() {
 function setupAddressSearch(inputId) {
         $(`#${inputId}`).autocomplete({
             source: debounce(async (request, response) => {
-                if (request.term.length < 3) return response([]);
-                try {
-                    // Panggil Route API
-                    // Perhatikan parameter '?search='
-                    const res = await fetch(`{{ route('api.address.search') }}?search=${encodeURIComponent(request.term)}`);
-                    const data = await res.json();
-                    
-                    // Mapping respons ke format label/value jQuery UI
-                    response(data.map(item => ({
-                        label: item.text,  // Yang muncul di dropdown
-                        value: item.text,  // Yang masuk ke input saat dipilih
-                        data: item         // Data lengkap untuk di-parsing
-                    })));
-                } catch (e) { 
-                    console.error("Gagal cari wilayah:", e);
-                    response([]); 
-                }
+                // ... (request ke API) ...
+                // Pastikan mapping di sini sesuai:
+                response(data.map(item => ({
+                    label: item.text,  // Label yang muncul di list
+                    value: item.text,  // Nilai saat dipilih (sebelum di-overwrite)
+                    data: item         // Object data lengkap
+                })));
             }, 300),
-            minLength: 3,
+            
             select: function(event, ui) {
-                const item = ui.item.data;
+                const item = ui.item.data; // Ambil object data lengkap
                 
-                // Isi Form (Gunakan nama property yang dikirim controller)
+                // DEBUG: Cek di console browser apakah data masuk?
+                console.log("Data Wilayah Terpilih:", item);
+
+                // ISI FORMULIR (Pastikan ID elemen HTML sesuai)
                 $('#village').val(item.village_name);
                 $('#district').val(item.district_name);
                 $('#regency').val(item.city_name);
                 $('#province').val(item.province_name);
                 $('#postal_code').val(item.zip_code);
                 
-                // Isi Hidden ID
+                // ISI HIDDEN ID
                 $('#district_id').val(item.district_id);
                 $('#subdistrict_id').val(item.subdistrict_id);
 
                 event.preventDefault();
-                $(this).val(ui.item.label);
-                
-                // Efek visual sukses
-                $(this).addClass('border-green-500 ring-1 ring-green-500');
+                $(this).val(ui.item.label); // Isi input pencarian dengan teks alamat lengkap
             }
         });
     }
-    
+
 </script>
 @endpush
