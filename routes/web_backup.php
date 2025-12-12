@@ -665,11 +665,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::delete('/categories/ajax-delete/{id}', [App\Http\Controllers\Admin\CategoryController::class, 'destroyAjax'])
     ->name('categories.destroyAjax'); // HAPUS 'admin.' di sini
 
-    // Fitur Multi Koli Admin (YANG BARU ANDA BUAT)
-    Route::get('/pesanan/buat-multi', [AdminKoliController::class, 'create'])->name('pesanan.create_multi');
-    Route::post('/pesanan/store-multi', [AdminKoliController::class, 'store'])->name('koli.store');
-    Route::post('/pesanan/store-single', [AdminKoliController::class, 'storeSingle'])->name('koli.store_single');
-    Route::post('/cek-ongkir', [AdminKoliController::class, 'cek_Ongkir'])->name('koli.cek_ongkir');
+   
     
 Route::get('products/{slug}/specifications', [\App\Http\Controllers\Admin\ProductController::class, 'editSpecifications'])
     ->name('admin.products.edit.specifications');
