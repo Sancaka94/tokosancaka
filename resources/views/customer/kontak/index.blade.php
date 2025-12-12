@@ -358,7 +358,7 @@ $(document).ready(function() {
                 
                 try {
                     // Panggil Route Controller
-                    const url = `{{ route('api.address.search') }}?q=${encodeURIComponent(request.term)}`;
+                    const url = `{{ route('api.alamat.search') }}?q=${encodeURIComponent(request.term)}`;
                     const res = await fetch(url);
                     const data = await res.json();
 

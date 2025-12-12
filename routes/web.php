@@ -138,8 +138,8 @@ Route::get('/kiriminaja/search-address', function (Request $request, KiriminAjaS
 
 Route::get('/api/cari-alamat', [CustomerOrderController::class, 'searchAddressApi'])->name('api.address.search');
 // Route API Pencarian Alamat (Global Auth)
-//Route::get('/api/cari-alamat', [App\Http\Controllers\KontakController::class, 'searchAddressApi'])
-    //->name('api.address.search');
+Route::get('/api/cari-alamat-kontak', [App\Http\Controllers\KontakController::class, 'searchAddressApi'])
+    ->name('api.alamat.search');
 
 // Marketplace Public
 Route::get('/etalase', [EtalaseController::class, 'index'])->name('etalase.index');
