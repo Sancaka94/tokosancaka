@@ -301,6 +301,11 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
         Route::get('/{id}', [PpobProductController::class, 'show'])->name('show');
         Route::put('/update-price/{id}', [PpobProductController::class, 'updatePrice'])->name('update-price');
         Route::delete('/destroy/{id}', [PpobProductController::class, 'destroy'])->name('destroy');
+        // Route untuk Hapus Transaksi PPOB
+        Route::delete('/transaction/{id}', [AdminPpobController::class, 'destroy'])->name('transaction.destroy');
+    
+        // Opsi Tambahan: Jika tombol hapus Anda berupa Link biasa (bukan form), gunakan ini juga:
+        Route::get('/transaction/destroy/{id}', [AdminPpobController::class, 'destroy'])->name('transaction.destroy.get');
     });
     
     Route::post('/deposit', [AdminPpobController::class, 'requestDeposit'])->name('ppob.deposit');
