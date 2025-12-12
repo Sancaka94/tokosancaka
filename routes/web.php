@@ -130,7 +130,11 @@ Route::post('/koli/cek-ongkir', [KoliController::class, 'cekOngkirMulti'])->name
 
 // KiriminAja API
 Route::get('/kirimaja/set_callback', [KirimAjaController::class, 'setCallback']);
-
+Route::get('/kiriminaja/search-address', function (Request $request, KiriminAjaService $kiriminAja) {
+    $query = $request->get('q');
+    if (!$query) return response()->json(['status' => false, 'text' => 'Query kosong', 'data' => []]);
+    return response()->json($kiriminAja->searchAddress($query));
+});
 
 Route::get('/api/cari-alamat', [CustomerOrderController::class, 'searchAddressApi'])->name('api.address.search');
 // Route API Pencarian Alamat (Global Auth)
