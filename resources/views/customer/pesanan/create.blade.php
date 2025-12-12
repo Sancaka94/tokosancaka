@@ -1365,15 +1365,18 @@ function openConfirmationModal() {
     document.getElementById('confirmationModal').classList.remove('hidden');
 }
 
+// --- FUNGSI UNTUK TOMBOL X (TUTUP MODAL) ---
 function closeConfirmationModal() {
     const modal = document.getElementById('confirmationModal');
-    // Animasi out (opsional)
-    modal.firstElementChild.classList.remove('scale-100', 'opacity-100');
-    modal.firstElementChild.classList.add('scale-95', 'opacity-0');
     
-    setTimeout(() => {
-        modal.classList.add('hidden');
-    }, 200); // Sesuaikan dengan durasi transition CSS
+    // Paksa sembunyikan modal & background sekaligus
+    modal.classList.add('hidden'); 
+    
+    // Reset efek animasi (jika ada) biar pas dibuka lagi tetap muncul bagus
+    if(modal.firstElementChild) {
+        modal.firstElementChild.classList.remove('scale-95', 'opacity-0');
+        modal.firstElementChild.classList.add('scale-100', 'opacity-100');
+    }
 }
 
 function submitFinalForm() {
