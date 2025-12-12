@@ -1097,7 +1097,6 @@ document.addEventListener('DOMContentLoaded', function () {
                             <small class="text-gray-500">Ongkir</small>
                             <strong class="block text-lg text-red-600">${formatRupiah(item.cost)}</strong>
 
-                     
 <button type="button" class="select-ongkir-btn mt-1 bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 text-sm" 
     data-value="${value}" 
     data-display="${item.service_name}" 
