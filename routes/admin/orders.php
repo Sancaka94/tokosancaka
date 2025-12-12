@@ -2,7 +2,6 @@
 
 // Pastikan namespace controller sudah benar
 use App\Http\Controllers\Admin\AdminOrderController;
-use App\Http\Controllers\Admin\AdminMarketplaceController;
 use App\Http\Controllers\Admin\ChatController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request; // Diperlukan untuk route closure chat
@@ -66,23 +65,6 @@ Route::get('/orders-report/pdf', [AdminOrderController::class, 'exportReport'])-
 // Nama: admin.chat.start
 // Anda perlu membuat ChatController dan method startChat ini
 Route::get('/chat/start', [ChatController::class, 'start'])->name('chat.start');
-
-// 1. ROUTE ORDERS
-    Route::get('/orders/{invoice_number}/print-thermal', [AdminOrderController::class, 'printThermal'])->name('orders.print.thermal');
-    Route::get('/orders/{invoice_number}/invoice-pdf', [AdminOrderController::class, 'exportInvoice'])->name('orders.invoice.pdf');
-    Route::resource('orders', AdminOrderController::class);
-
-    // 2. ROUTE SPX SCANS
-    Route::resource('spx-scans', SpxScanController::class)->names('spx_scans');
-
-    // 3. ROUTE REVIEWS
-    Route::resource('reviews', AdminReviewController::class);
-    Route::post('reviews/{review}/reply', [AdminReviewController::class, 'reply'])->name('reviews.reply');
-
-    // 4. ROUTE STORES & MARKETPLACE
-    Route::resource('stores', AdminMarketplaceController::class)->names('stores');
-    Route::resource('marketplace', AdminMarketplaceController::class);
-    
 
 
 ?>

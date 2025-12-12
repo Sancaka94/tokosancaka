@@ -785,6 +785,14 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
         // All general admin routes should go in this file
 
         require __DIR__.'/web/admin.php';
+            // ======================================================
+        // == ✅ INCLUDE ADMIN ORDER ROUTES HERE ==
+        // ======================================================
+        // This will define admin.orders.* routes like admin.orders.index, admin.orders.data, etc.
+        require __DIR__.'/admin/orders.php';
+        // ======================================================
+
+
 
 
 
@@ -965,14 +973,7 @@ Route::post('/setting-info-pesanan', [AdminController::class, 'updateInfoPesanan
 
 
 
-        // ======================================================
-        // == ✅ INCLUDE ADMIN ORDER ROUTES HERE ==
-        // ======================================================
-        // This will define admin.orders.* routes like admin.orders.index, admin.orders.data, etc.
-        require __DIR__.'/admin/orders.php';
-        // ======================================================
-
-
+    
         
 
         
