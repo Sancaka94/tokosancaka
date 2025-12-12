@@ -14,13 +14,9 @@ class KontakController extends Controller
      */
     public function index(Request $request)
     {
-        // 1. Ambil ID user yang sedang login
         $userId = Auth::id();
-
-        // 2. Query dasar: HANYA data milik user ini
         $query = Kontak::where('user_id', $userId);
 
-        // Logika Pencarian
         if ($request->filled('search')) {
             $search = $request->input('search');
             $query->where(function($q) use ($search) {
@@ -29,7 +25,6 @@ class KontakController extends Controller
             });
         }
 
-        // Logika Filter (Pengirim/Penerima)
         if ($request->filled('filter') && $request->input('filter') !== 'Semua') {
             $query->where('tipe', $request->input('filter'));
         }
@@ -40,20 +35,23 @@ class KontakController extends Controller
     }
 
     /**
-     * Menyimpan kontak baru (Otomatis set user_id).
+     * Menyimpan kontak baru.
      */
     public function store(Request $request)
     {
+        // 1. Hapus validasi 'tipe' => 'required' agar tidak error
         $validatedData = $request->validate([
             'nama' => 'required|string|max:255',
-            // Validasi unik: No HP harus unik TAPI hanya di antara kontak milik user ini saja
             'no_hp' => 'required|string|max:20', 
             'alamat' => 'required|string',
-            'tipe' => 'required|string',
+            // 'tipe' => 'required|string', <--- INI SAYA HAPUS/KOMENTARI
         ]);
 
-        // PENTING: Set user_id sesuai user yang login
+        // 2. Set user_id otomatis
         $validatedData['user_id'] = Auth::id();
+
+        // 3. Cek apakah ada input tipe dari form? Jika tidak ada, set default 'Penerima'
+        $validatedData['tipe'] = $request->input('tipe', 'Penerima'); 
 
         Kontak::create($validatedData);
 
@@ -61,20 +59,24 @@ class KontakController extends Controller
     }
 
     /**
-     * Update data (Hanya jika milik user sendiri).
+     * Update data.
      */
     public function update(Request $request, $id)
     {
-        // Cari kontak yang ID-nya sekian DAN user_id-nya milik yang login
-        // Jika bukan miliknya, otomatis 404 Not Found (Aman)
         $kontak = Kontak::where('user_id', Auth::id())->where('id', $id)->firstOrFail();
 
+        // Hapus validasi 'tipe' => 'required' di sini juga
         $validatedData = $request->validate([
             'nama' => 'required|string|max:255',
             'no_hp' => 'required|string|max:20',
             'alamat' => 'required|string',
-            'tipe' => 'required|string',
+             // 'tipe' => 'required|string', <--- INI SAYA HAPUS/KOMENTARI
         ]);
+
+        // Jika form mengirim tipe, pakai itu. Jika tidak, pakai tipe yang lama (jangan diubah)
+        if ($request->has('tipe')) {
+            $validatedData['tipe'] = $request->input('tipe');
+        }
 
         $kontak->update($validatedData);
 
@@ -82,21 +84,16 @@ class KontakController extends Controller
     }
 
     /**
-     * Hapus data (Hanya jika milik user sendiri).
+     * Hapus data.
      */
     public function destroy($id)
     {
-        // Cari kontak milik user ini saja
         $kontak = Kontak::where('user_id', Auth::id())->where('id', $id)->firstOrFail();
-        
         $kontak->delete();
 
         return redirect()->route('customer.kontak.index')->with('success', 'Kontak berhasil dihapus.');
     }
     
-    /**
-     * Pencarian AJAX (Hanya milik sendiri).
-     */
     public function search(Request $request)
     {
         $query = $request->input('query');
@@ -105,7 +102,6 @@ class KontakController extends Controller
             return response()->json([]);
         }
 
-        // Query dibatasi user_id
         $kontaks = Kontak::where('user_id', Auth::id())
                         ->where(function($sub) use ($query) {
                             $sub->where('nama', 'LIKE', "%{$query}%")
@@ -117,7 +113,6 @@ class KontakController extends Controller
         return response()->json($kontaks);
     }
     
-    // View Modal Edit (Show)
     public function show($id)
     {
          $kontak = Kontak::where('user_id', Auth::id())->where('id', $id)->firstOrFail();
