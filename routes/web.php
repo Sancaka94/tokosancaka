@@ -1079,6 +1079,21 @@ Route::prefix('ppob')->name('ppob.')->group(function () {
     Route::delete('/destroy/{id}', [App\Http\Controllers\PpobProductController::class, 'destroy'])->name('destroy');
 });
 
+// 1. ROUTE ORDERS
+    Route::get('/orders/{invoice_number}/print-thermal', [AdminOrderController::class, 'printThermal'])->name('orders.print.thermal');
+    Route::get('/orders/{invoice_number}/invoice-pdf', [AdminOrderController::class, 'exportInvoice'])->name('orders.invoice.pdf');
+    Route::resource('orders', AdminOrderController::class);
+
+    // 2. ROUTE SPX SCANS
+    Route::resource('spx-scans', SpxScanController::class)->names('spx_scans');
+
+    // 3. ROUTE REVIEWS
+    Route::resource('reviews', AdminReviewController::class);
+    Route::post('reviews/{review}/reply', [AdminReviewController::class, 'reply'])->name('reviews.reply');
+
+    // 4. ROUTE STORES & MARKETPLACE
+    Route::resource('stores', AdminMarketplaceController::class)->names('stores');
+    Route::resource('marketplace', AdminMarketplaceController::class);
     
 
 });
