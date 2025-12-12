@@ -136,6 +136,67 @@
         </table>
     </div>
 
+    {{-- BATAS TABEL UTAMA DI ATAS --}}
+
+    {{-- MULAI TABEL DATA PENGIRIM --}}
+    <div class="mt-12">
+        <div class="flex items-center mb-4 pb-2 border-b border-gray-200">
+            <h3 class="text-xl font-semibold text-gray-800">
+                <i class="fas fa-paper-plane mr-2 text-blue-600"></i> Data Pengirim (Profil Saya)
+            </h3>
+        </div>
+
+        <div class="overflow-x-auto bg-blue-50 rounded-lg border border-blue-100">
+            <table class="min-w-full divide-y divide-blue-200">
+                <thead class="bg-blue-100">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-blue-800 uppercase">Nama Pengirim</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-blue-800 uppercase">No. HP</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-blue-800 uppercase">Alamat Lengkap</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-blue-800 uppercase">Lokasi</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-blue-800 uppercase">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-blue-200">
+                    @forelse ($pengirims as $pengirim)
+                    <tr class="hover:bg-blue-100 transition duration-150">
+                        <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ $pengirim->nama }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600">{{ $pengirim->no_hp }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600 max-w-xs truncate" title="{{ $pengirim->alamat }}">
+                            {{ $pengirim->alamat ?? '-' }}
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-600">
+                            {{ $pengirim->district ?? '-' }}, {{ $pengirim->regency ?? '-' }}
+                        </td>
+                        <td class="px-6 py-4 text-sm font-medium">
+                            <div class="flex items-center space-x-2">
+                                <button type="button" class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded-md text-xs btnEditKontak" data-id="{{ $pengirim->id }}">
+                                    <i class="fas fa-pencil-alt"></i> Edit
+                                </button>
+                                
+                                <form action="{{ route('customer.kontak.destroy', $pengirim->id) }}" method="POST" onsubmit="return confirm('Hapus data pengirim ini?');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded-md text-xs">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="5" class="text-center py-6 text-gray-500 italic">
+                            Belum ada data pengirim tersimpan.
+                        </td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {{-- SELESAI TABEL PENGIRIM --}}
+
     <div class="mt-4">{{ $kontaks->appends(request()->query())->links() }}</div>
 </div>
 
