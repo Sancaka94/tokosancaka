@@ -509,36 +509,54 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
 
     // PPOB ADMIN
     Route::prefix('ppob')->name('ppob.')->group(function () {
+        
+        // ==========================================================
+        // 1. ROUTE STATIS (WAJIB DI ATAS AGAR TIDAK ERROR 404)
+        // ==========================================================
+        
+        // Menu Digital (Ini yang tadi 404)
+        Route::get('/digital', [AdminPpobController::class, 'index'])->name('index'); 
+        Route::get('/digital/{slug}', [AdminPpobController::class, 'category'])->name('category');
+
+        // Data Transaksi
         Route::get('/data', [AdminPpobController::class, 'index'])->name('data.index');
         Route::get('/data/export/excel', [AdminPpobController::class, 'exportExcel'])->name('data.export.excel');
         Route::get('/data/export/pdf', [AdminPpobController::class, 'exportPdf'])->name('data.export.pdf');
         
+        // Export Umum
         Route::get('/export/excel', [AdminPpobController::class, 'exportExcel'])->name('export.excel');
         Route::get('/export/pdf', [AdminPpobController::class, 'exportPdf'])->name('export.pdf');
         
-        // Produk
+        // Produk Helper
         Route::post('/bulk-update', [PpobProductController::class, 'bulkUpdate'])->name('bulk-update');
         Route::get('/product-export/excel', [PpobProductController::class, 'exportExcel'])->name('product.export.excel');
         Route::get('/export-excel', [PpobProductController::class, 'exportExcel'])->name('export-excel');
         Route::get('/export-pdf', [PpobProductController::class, 'exportPdf'])->name('export-pdf');
-        
-        Route::get('/{id}', [PpobProductController::class, 'show'])->name('show');
         Route::put('/update-price/{id}', [PpobProductController::class, 'updatePrice'])->name('update-price');
-        Route::delete('/destroy/{id}', [PpobProductController::class, 'destroy'])->name('destroy');
-
+        
+        // Saldo & Deposit
         Route::post('/deposit', [AdminPpobController::class, 'requestDeposit'])->name('deposit');
         Route::get('/cek-saldo', [AdminPpobController::class, 'cekSaldo'])->name('cek-saldo');
         Route::post('/topup', [AdminPpobController::class, 'topup'])->name('topup');
 
+        // ==========================================================
+        // 2. ROUTE DINAMIS / PARAMETER (WAJIB DI BAWAH)
+        // ==========================================================
+
+        // Aksi Transaksi Spesifik
         Route::get('/transaction/{id}', [AdminPpobController::class, 'show'])->name('transaction.show');
         Route::put('/transaction/{id}', [AdminPpobController::class, 'update'])->name('transaction.update');
         Route::delete('/transaction/{id}', [AdminPpobController::class, 'destroy'])->name('transaction.destroy');
         Route::get('/transaction/destroy/{id}', [AdminPpobController::class, 'destroy'])->name('transaction.destroy.get');
 
-        Route::get('/digital', [AdminPpobController::class, 'index'])->name('index'); 
-        Route::get('/digital/{slug}', [AdminPpobController::class, 'category'])->name('category');
-    });
+        // Hapus Produk
+        Route::delete('/destroy/{id}', [PpobProductController::class, 'destroy'])->name('destroy');
 
+        // Detail Produk (INI PENYEBABNYA - KITA TARUH PALING BAWAH)
+        // {id} bersifat serakah, jadi harus ditaruh paling akhir agar tidak memakan route "digital"
+        Route::get('/{id}', [PpobProductController::class, 'show'])->name('show');
+    });
+    
     // CONTENT
     Route::get('/import/wordpress', [ImportController::class, 'showForm'])->name('import.wordpress.form');
     Route::post('/import/wordpress', [ImportController::class, 'handleImport'])->name('import.wordpress.handle');
