@@ -562,14 +562,54 @@ document.addEventListener('DOMContentLoaded', function () {
         })
         .then(response => response.json())
         .then(data => {
+            Swal.close(); // Tutup loading jika ada
+
             if (data.status === 'success') {
-                // Update hidden ID jika ini data baru
+                // --- SKENARIO SUKSES ---
                 if (data.contact_id) {
                      document.getElementById(`${prefix}_id`).value = data.contact_id;
                 }
-                Swal.fire('Berhasil', `${contactData.tipe} berhasil disimpan ke Buku Alamat.`, 'success');
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil',
+                    text: `${contactData.tipe} berhasil disimpan ke Buku Alamat.`,
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+
             } else {
-                Swal.fire('Gagal', `Gagal menyimpan data. Pesan: ` + (data.message || 'Error server.'), 'error');
+                // --- SKENARIO GAGAL / DUPLIKAT ---
+                
+                // Cek apakah server mengirim data kontak lama (kasus duplikat)
+                if (data.existing_contact) {
+                    const oldContact = data.existing_contact;
+
+                    // 1. UPDATE HIDDEN ID (KUNCI UTAMA)
+                    // Ini membuat klik 'Simpan' berikutnya akan dianggap UPDATE, bukan CREATE baru
+                    document.getElementById(`${prefix}_id`).value = oldContact.id;
+
+                    // 2. OPSIONAL: Tampilkan info ke user
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'Nomor HP Terdaftar!',
+                        html: `Nomor <b>${oldContact.no_hp}</b> sudah tersimpan atas nama <b>${oldContact.nama}</b>.<br><br>
+                               Sistem otomatis menghubungkan formulir ini dengan data tersebut.<br>
+                               <small class="text-gray-500">Klik simpan lagi untuk memperbarui data lama dengan data baru ini.</small>`,
+                        confirmButtonText: 'Oke, Mengerti'
+                    });
+
+                } else {
+                    // Error Murni (Validasi lain atau Server Error)
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal',
+                        text: data.message || 'Terjadi kesalahan server.',
+                    });
+                    
+                    // Uncheck checkbox karena gagal
+                    const cb = document.getElementById(`save_${prefix}_checkbox`);
+                    if(cb) cb.checked = false;
+                }
             }
         })
         .catch(error => {

@@ -1095,7 +1095,6 @@ TEXT;
 
    /**
      * Endpoint API untuk menyimpan/update kontak secara manual dari formulir pemesanan.
-     * Dipanggil AJAX dari frontend saat tombol "Simpan/Perbarui Kontak" ditekan.
      */
     public function saveContactApi(Request $request)
     {
@@ -1103,7 +1102,7 @@ TEXT;
             // 1. Validasi Input
             $validated = $request->validate([
                 'prefix' => 'required|in:sender,receiver',
-                'id' => 'nullable|integer', // Tambahan validasi ID jika update
+                'id' => 'nullable|integer', 
                 
                 // Data Input
                 'sender_name' => 'nullable|string|max:100',
@@ -1139,18 +1138,10 @@ TEXT;
 
             // 3. Persiapkan Data
             $data = $request->all();
-            
-            // --- [PENTING] PAKSA USER_ID SESUAI AUTH ---
-            // Ini memastikan data tersimpan milik user yang login, 
-            // meskipun ada input user_id dari JS (security measure).
-            $data['user_id'] = Auth::id(); 
-            // -------------------------------------------
-
+            $data['user_id'] = Auth::id(); // Paksa User ID
             $data["save_{$prefix}"] = 'on'; 
 
-            // 4. Panggil Helper Penyimpanan
-            // Pastikan method _saveOrUpdateKontak Anda mengembalikan object Kontak yang dibuat/diupdate
-            // Agar kita bisa mengambil ID-nya kembali ke frontend
+            // 4. Simpan
             $savedContact = $this->_saveOrUpdateKontak($data, $prefix, $tipe);
 
             $contactId = null;
@@ -1161,15 +1152,45 @@ TEXT;
             return response()->json([
                 'status' => 'success', 
                 'message' => "Kontak {$tipe} berhasil disimpan ke Buku Alamat!",
-                'contact_id' => $contactId // Mengirim ID balik ke JS untuk update hidden field
+                'contact_id' => $contactId 
             ]);
 
         } catch (ValidationException $e) {
             Log::warning('saveContactApi Validation Failed:', $e->errors());
             $firstError = collect($e->errors())->first()[0] ?? 'Input tidak valid.';
             return response()->json(['status' => 'error', 'message' => $firstError], 422);
+
+        } catch (\Illuminate\Database\QueryException $e) {
+            // --- INI PERBAIKANNYA ---
+            // Menangkap error Database (Duplicate Entry)
+            $errorCode = $e->errorInfo[1];
+            
+           if ($errorCode == 1062) { // Error Duplicate
+                // CARI KONTAK YANG SUDAH ADA ITU
+                // Kita cari berdasarkan User ID dan No HP yang dikirim
+                $prefix = $request->input('prefix');
+                $phoneInput = $request->input($prefix . '_phone');
+                
+                // Bersihkan nomor HP dulu biar cocok pencariannya
+                $sanitizedPhone = $this->_sanitizePhoneNumber($phoneInput);
+
+                $existingContact = \App\Models\Kontak::where('user_id', \Illuminate\Support\Facades\Auth::id())
+                    ->where('no_hp', $sanitizedPhone)
+                    ->first();
+
+                return response()->json([
+                    'status' => 'error', 
+                    'code'   => 'duplicate', // Kode khusus untuk JS
+                    'message' => 'Nomor HP sudah terdaftar. Data formulir telah disinkronkan dengan kontak yang ada.',
+                    'existing_contact' => $existingContact // <--- INI DATA PENTINGNYA
+                ], 422);
+            }
+
+            Log::error('saveContactApi SQL Error: ' . $e->getMessage());
+            return response()->json(['status' => 'error', 'message' => 'Terjadi kesalahan database.'], 500);
+
         } catch (\Exception $e) {
-            Log::error('saveContactApi Error: ' . $e->getMessage());
+            Log::error('saveContactApi General Error: ' . $e->getMessage());
             return response()->json(['status' => 'error', 'message' => 'Terjadi kesalahan server.'], 500);
         }
     }
