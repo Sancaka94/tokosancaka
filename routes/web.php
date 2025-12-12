@@ -468,6 +468,16 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
     Route::get('/spx-scans/create', [SpxScanController::class, 'create'])->name('spx_scans.create');
     Route::get('/generate-barcode-zoom', [BarcodeController::class, 'generateBarcode'])->name('barcode.generate');
 
+    // --- ROUTE KIRIM MASSAL (Create Multi) ---
+    // URL: /admin/pesanan/buat-multi
+    // Name: admin.pesanan.create_multi
+    Route::get('/pesanan/buat-multi', [KoliController::class, 'create'])
+        ->name('pesanan.create_multi');
+
+    // Route untuk Proses Simpan-nya (POST)
+    Route::post('/pesanan/buat-multi', [KoliController::class, 'store'])
+        ->name('pesanan.store_multi');
+
     // Finance
     Route::get('/wallet', [WalletController::class, 'index'])->name('wallet.index');
     Route::post('/wallet/topup', [WalletController::class, 'topup'])->name('wallet.topup');
