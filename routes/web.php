@@ -534,39 +534,54 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
     Route::get('/api/contacts/search', [AdminChatController::class, 'searchKontak'])->name('api.contacts.search');
 
     // =====================================================================
-    // PPOB ADMIN (URUTAN SANGAT PENTING - JANGAN DIUBAH)
+    // PPOB ADMIN (FIX: PISAHKAN TRANSAKSI & PRODUK)
     // =====================================================================
     Route::prefix('ppob')->name('ppob.')->group(function () {
         
-        // 1. Static Routes (Harus Paling Atas)
-        Route::get('/digital', [AdminPpobController::class, 'index'])->name('index'); 
-        Route::get('/digital/{slug}', [AdminPpobController::class, 'category'])->name('category');
+        // 1. HALAMAN PRODUK (DAFTAR HARGA / ATUR MARGIN)
+        // URL: /admin/ppob/produk
+        // Controller: PpobProductController
+        Route::get('/produk', [PpobProductController::class, 'index'])->name('product.index'); 
+        
+        // Jika menu di sidebar Anda link-nya '/admin/ppob/digital', pakai baris ini:
+        Route::get('/digital', [PpobProductController::class, 'index'])->name('index'); 
 
+
+        // 2. HALAMAN DATA TRANSAKSI (RIWAYAT PEMBELIAN)
+        // URL: /admin/ppob/data
+        // Controller: AdminPpobController
         Route::get('/data', [AdminPpobController::class, 'index'])->name('data.index');
+
+        
+        // --- ROUTE PENDUKUNG LAINNYA (JANGAN DIHAPUS) ---
+
+        // Export Transaksi
         Route::get('/data/export/excel', [AdminPpobController::class, 'exportExcel'])->name('data.export.excel');
         Route::get('/data/export/pdf', [AdminPpobController::class, 'exportPdf'])->name('data.export.pdf');
         
-        Route::get('/export/excel', [AdminPpobController::class, 'exportExcel'])->name('export.excel');
-        Route::get('/export/pdf', [AdminPpobController::class, 'exportPdf'])->name('export.pdf');
-        
-        Route::post('/bulk-update', [PpobProductController::class, 'bulkUpdate'])->name('bulk-update');
+        // Export Produk
         Route::get('/product-export/excel', [PpobProductController::class, 'exportExcel'])->name('product.export.excel');
-        Route::get('/export-excel', [PpobProductController::class, 'exportExcel'])->name('export-excel');
-        Route::get('/export-pdf', [PpobProductController::class, 'exportPdf'])->name('export-pdf');
         
+        // Helper Produk
+        Route::post('/bulk-update', [PpobProductController::class, 'bulkUpdate'])->name('bulk-update');
+        Route::put('/update-price/{id}', [PpobProductController::class, 'updatePrice'])->name('update-price');
+        
+        // Helper Transaksi (Saldo & Deposit)
         Route::post('/deposit', [AdminPpobController::class, 'requestDeposit'])->name('deposit');
         Route::get('/cek-saldo', [AdminPpobController::class, 'cekSaldo'])->name('cek-saldo');
         Route::post('/topup', [AdminPpobController::class, 'topup'])->name('topup');
 
-        // 2. Dynamic/ID Routes (Harus Paling Bawah)
-        Route::put('/update-price/{id}', [PpobProductController::class, 'updatePrice'])->name('update-price');
+        // Aksi Transaksi
         Route::get('/transaction/{id}', [AdminPpobController::class, 'show'])->name('transaction.show');
         Route::put('/transaction/{id}', [AdminPpobController::class, 'update'])->name('transaction.update');
         Route::delete('/transaction/{id}', [AdminPpobController::class, 'destroy'])->name('transaction.destroy');
         Route::get('/transaction/destroy/{id}', [AdminPpobController::class, 'destroy'])->name('transaction.destroy.get');
 
+        // Hapus Produk
         Route::delete('/destroy/{id}', [PpobProductController::class, 'destroy'])->name('destroy');
-        // INI PENYEBAB 404 ANDA SEBELUMNYA. {id} akan menangkap "digital", "data", dll jika ditaruh di atas.
+        
+        // Detail Produk (Paling Bawah)
         Route::get('/{id}', [PpobProductController::class, 'show'])->name('show');
+    
     });
 });
