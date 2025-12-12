@@ -1260,65 +1260,49 @@ function hideRow(elementId) {
     }
 }
 
-// --- FUNGSI BUKA MODAL FINAL (SESUAI DOKUMENTASI API) ---
+// --- FUNGSI BUKA MODAL FINAL (FIXED: UPDATE VALUE INPUT) ---
 function openConfirmationModal() {
-    console.log("--- Debug Modal Konfirmasi (Rumus Dokumentasi) ---");
-
     // 1. DATA INPUT DASAR
-    const senderAddress = document.getElementById('sender_address').value; 
+    const senderAddress = document.getElementById('sender_address').value;
     const receiverAddress = document.getElementById('receiver_address').value;
     const paymentMethodVal = document.getElementById('payment_method').value;
     const logoUrl = document.getElementById('selected_expedition_logo_url').value;
 
-    // 2. AMBIL HARGA BARANG (item_value)
-    // Sanitize: Hapus titik/koma agar jadi angka murni
+    // 2. AMBIL HARGA BARANG (Sanitize: Hapus titik/koma)
     const rawPrice = document.getElementById('item_price').value;
     const itemValue = parseInt(rawPrice.replace(/[^0-9]/g, '')) || 0;
 
-    // 3. PARSING DATA ONGKIR
-    // Format value: ServiceType-Ekspedisi-Layanan-Ongkir-Asuransi-CodFee
+    // 3. PARSING DATA ONGKIR (String dari API)
+    // Format: ServiceType-Ekspedisi-Layanan-Ongkir-Asuransi-CodFee
     const rawExpedition = document.getElementById('expedition').value;
     const parts = rawExpedition.split('-');
     
-    const shippingCost = parseInt(parts[3]) || 0;  // shipping_cost
-    const insuranceAmount = parseInt(parts[4]) || 0; // insurance_amount
-    let codFee = parseInt(parts[5]) || 0;          // cod_fee (add_cost) dari API
+    const shippingCost = parseInt(parts[3]) || 0; 
+    const insuranceAmount = parseInt(parts[4]) || 0;
+    let codFee = parseInt(parts[5]) || 0; // Ini seringkali 0 dari API
 
     // Cek Jenis Pembayaran
     const isCODBarang = (paymentMethodVal === 'CODBARANG'); 
     const isCODRegular = (paymentMethodVal === 'COD');      
 
-    // --- 4. LOGIKA HITUNG MANUAL (JIKA API RETURN 0) ---
-    // Rumus sesuai dokumen: add_cost = (item_value + shipping_cost + insurance_amount) * percentage
+    // --- 4. LOGIKA HITUNG MANUAL (WAJIB KARENA API RETURN 0) ---
+    // Jika metode COD tapi fee dari API 0, kita hitung manual di sini
     if ((isCODBarang || isCODRegular) && codFee === 0) {
-        
-        // --- KONFIGURASI PERSENTASE COD DI SINI (SESUAI T&A) ---
-        const codRate = 0.03;   // 3% (Ubah ke 0.04 dsb sesuai kontrak)
-        const minCodFee = 2500; // Minimal Fee (Opsional, biasanya ada)
+        // KONFIGURASI RATE (3% Min 2500)
+        const codRate = 0.03;   
+        const minCodFee = 2500; 
 
-        // Hitung Basis (Total) = item + ongkir + asuransi
-        // Catatan: Untuk COD Regular (Cuma Ongkir), biasanya itemValue tidak dihitung fee-nya,
-        // tapi jika kontrak T&A mengharuskan hitung dari nilai barang, biarkan itemValue tetap ada.
+        // Hitung Basis: Ongkir + Asuransi + (Harga Barang jika COD Barang)
         let basisPerhitungan = shippingCost + insuranceAmount;
-        
-        // Jika COD Barang + Ongkir, tambahkan harga barang ke basis perhitungan fee
         if(isCODBarang) {
             basisPerhitungan += itemValue;
         }
 
-        // Hitung Fee: Basis * Persentase
-        let manualFee = basisPerhitungan * codRate;
+        // Rumus Fee
+        let manualFee = Math.ceil(basisPerhitungan * codRate);
+        if (manualFee < minCodFee) manualFee = minCodFee;
 
-        // Aturan: "rounded up to 1" (Bulatkan ke atas) -> Math.ceil
-        manualFee = Math.ceil(manualFee);
-
-        // Cek Minimum Fee (jika ada di kontrak)
-        if (manualFee < minCodFee) {
-            manualFee = minCodFee;
-        }
-
-        codFee = manualFee;
-        console.log("Fee COD Hitung Manual:", codFee);
+        codFee = manualFee; // Update variabel lokal dengan hasil hitungan
     }
     
     // Reset Fee jadi 0 jika BUKAN metode COD (Transfer/Saldo)
@@ -1326,16 +1310,35 @@ function openConfirmationModal() {
         codFee = 0;
     }
 
-    // --- 5. HITUNG TOTAL BAYAR AKHIR (cod = total + add_cost) ---
-    // Awal: Ongkir + Asuransi + Fee
-    let totalBayar = shippingCost + insuranceAmount + codFee;
+    // =========================================================================
+    // [BAGIAN PERBAIKAN UTAMA] 
+    // Update Value Input Hidden 'expedition' agar terkirim ke Controller
+    // =========================================================================
+    
+    // 1. Masukkan fee hasil hitungan ke array data (index ke-5)
+    parts[5] = codFee; 
+    
+    // 2. Gabungkan kembali jadi string (Contoh: "regular-sicepat-halu-10000-0-2500")
+    const newExpeditionString = parts.join('-');
+    
+    // 3. Timpa value di elemen HTML
+    document.getElementById('expedition').value = newExpeditionString;
+    
+    // (Opsional) Jika punya input khusus cod_fee, isi juga
+    const inputFeeKhusus = document.getElementById('final_cod_fee');
+    if(inputFeeKhusus) inputFeeKhusus.value = codFee;
 
-    // Jika COD Barang, tambahkan Harga Barang ke total yang harus dibayar
+    console.log("Data Terkirim ke Server:", newExpeditionString);
+    // =========================================================================
+
+
+    // --- 5. HITUNG TOTAL BAYAR VISUAL ---
+    let totalBayar = shippingCost + insuranceAmount + codFee;
     if (isCODBarang) {
         totalBayar += itemValue;
     }
 
-    // --- 6. UPDATE UI ---
+    // --- 6. UPDATE TAMPILAN MODAL (UI) ---
     document.getElementById('confirm_expedition_name').innerText = document.getElementById('selected_expedition_display').value;
     document.getElementById('confirm_expedition_logo').src = logoUrl || 'https://placehold.co/100x40?text=Kurir';
 
@@ -1353,6 +1356,7 @@ function openConfirmationModal() {
     document.getElementById('confirm_receiver_phone').innerText = document.getElementById('receiver_phone').value;
     document.getElementById('confirm_receiver_address').innerText = rFull;
 
+    // Detail Paket
     document.getElementById('confirm_item_desc').innerText = document.getElementById('item_description').value;
     document.getElementById('confirm_weight').innerText = document.getElementById('weight').value + ' gram';
     
@@ -1360,36 +1364,27 @@ function openConfirmationModal() {
     const l = document.getElementById('width').value;
     const t = document.getElementById('height').value;
     document.getElementById('confirm_dimensions').innerText = (p && l && t) ? `${p} x ${l} x ${t} cm` : '-';
-    
     document.getElementById('confirm_payment_method').innerText = document.getElementById('selectedPaymentName').innerText;
 
-    // --- UPDATE RINCIAN BIAYA ---
-    
-    // 1. Ongkir Dasar
+    // Rincian Biaya UI
     document.getElementById('detail_cost_base').innerText = formatRupiah(shippingCost);
-    
-    // 2. Asuransi
     document.getElementById('detail_cost_insurance').innerText = formatRupiah(insuranceAmount);
     (insuranceAmount > 0) ? showRow('row_detail_insurance') : hideRow('row_detail_insurance');
 
-    // 3. Harga Barang (Hanya muncul jika COD Barang)
     document.getElementById('detail_cost_item').innerText = formatRupiah(itemValue);
     (isCODBarang && itemValue > 0) ? showRow('row_detail_item_price') : hideRow('row_detail_item_price');
 
-    // 4. Biaya Layanan COD
+    // Tampilkan Fee COD di Modal
     document.getElementById('detail_cost_cod').innerText = formatRupiah(codFee);
-    // Tampilkan baris ini jika codFee > 0 DAN metodenya COD
     if (codFee > 0 && (isCODBarang || isCODRegular)) {
         showRow('row_detail_cod'); 
     } else {
         hideRow('row_detail_cod');
     }
 
-    // 5. Total Bayar
     document.getElementById('confirm_total_final').innerText = formatRupiah(totalBayar);
 
-
-    // --- SIMULASI SALDO ---
+    // Simulasi Saldo
     const balBox = document.getElementById('balance_simulation_box');
     if (paymentMethodVal === 'Potong Saldo') {
         const curBal = parseInt(document.getElementById('user_current_balance').value) || 0;
@@ -1411,7 +1406,7 @@ function openConfirmationModal() {
         balBox.classList.add('hidden');
     }
 
-    // Animasi Modal
+    // Animasi Buka Modal
     const modal = document.getElementById('confirmationModal');
     modal.classList.remove('hidden');
     const modalBox = modal.querySelector('div');
