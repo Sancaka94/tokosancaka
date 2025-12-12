@@ -691,48 +691,79 @@ document.addEventListener('DOMContentLoaded', function () {
         searchInput.addEventListener('input', debounce(() => performSearch(searchInput.value), 400));
     }
     
-    // --- FUNGSI PENCARIAN ALAMAT ONGKIR (TETAP) ---
     function selectAddress(prefix, item) {
-        const searchInput = document.getElementById(`${prefix}_address_search`);
-        const resultsContainer = document.getElementById(`${prefix}_address_results`);
-        const checkIcon = document.getElementById(`${prefix}_address_check`);
+    // 1. Debugging: Cek di Console browser apa isi data sebenarnya
+    console.log("Data Alamat Diterima:", item);
 
-        searchInput.value = item.full_address || item.label || item.value;
-        const parts = item.full_address.split(',').map(s => s.trim());
-        document.getElementById(`${prefix}_village`).value = parts[0] || '';
-        document.getElementById(`${prefix}_district`).value = parts[1] || '';
-        document.getElementById(`${prefix}_regency`).value = parts[2] || '';
-        document.getElementById(`${prefix}_province`).value = parts[3] || '';
-        document.getElementById(`${prefix}_postal_code`).value = parts[4] || '';
-        document.getElementById(`${prefix}_district_id`).value = item.district_id;
-        document.getElementById(`${prefix}_subdistrict_id`).value = item.subdistrict_id;
+    const searchInput = document.getElementById(`${prefix}_address_search`);
+    const resultsContainer = document.getElementById(`${prefix}_address_results`);
+    const checkIcon = document.getElementById(`${prefix}_address_check`);
 
-        resultsContainer.classList.add('hidden');
-        checkIcon.classList.remove('hidden');
-        
-       Swal.fire({
-    title: `Alamat ${prefix === 'sender' ? 'Pengirim' : 'Penerima'} Terpilih`,
-    html: `Pastikan Detail Alamat Lengkap (Jl. No. RT/RW) Desa/Kelurahan, Kecamatan sudah benar Ya Kak. 
-           <br><br>Data Alamat: <b>${item.full_address}</b>
-           <br><br>Jika Salah Silahkan Klik Pencarian Google`,
-    icon: 'info',
+    // 2. SAFETY CHECK: Cari string alamat di berbagai kemungkinan properti
+    // API KiriminAja kadang pakai 'label', kadang 'value', kadang 'full_address'
+    let addressString = item.full_address || item.label || item.value || '';
 
-    confirmButtonText: 'Klik Jika Sudah Benar',
-    confirmButtonColor: '#d33', // Merah
-
-    showCancelButton: true,
-    cancelButtonText: 'Kunjungi Pencarian Google',
-    cancelButtonColor: '#3085d6', // Biru tombol Google
-
-    timer: 300000,  // 5 menit
-    timerProgressBar: true
-}).then((result) => {
-    if (result.dismiss === Swal.DismissReason.cancel) {
-        // 🔎 BUKA GOOGLE SEARCH OTOMATIS
-        const query = encodeURIComponent(item.full_address);
-        window.open(`https://www.google.com/search?q=${query}`, '_blank');
+    // Jika addressString masih kosong, stop fungsi agar tidak crash
+    if (!addressString) {
+        console.error("Error: String alamat tidak ditemukan pada item:", item);
+        return; 
     }
-});
+
+    // Isi input pencarian
+    searchInput.value = addressString;
+
+    // 3. LOGIKA PEMETAAN DATA (Mapping)
+    // Kita coba ambil data detail langsung dari objek jika ada (lebih akurat daripada split)
+    if (item.data_lengkap) {
+        // Jika API mengembalikan properti 'data_lengkap' (seperti screenshot awal Anda)
+        document.getElementById(`${prefix}_village`).value = item.data_lengkap.village || '';
+        document.getElementById(`${prefix}_district`).value = item.data_lengkap.district || '';
+        document.getElementById(`${prefix}_regency`).value = item.data_lengkap.regency || '';
+        document.getElementById(`${prefix}_province`).value = item.data_lengkap.province || '';
+        document.getElementById(`${prefix}_postal_code`).value = item.data_lengkap.postal_code || '';
+        // ID Wilayah seringkali ada di root object atau data_lengkap
+        document.getElementById(`${prefix}_district_id`).value = item.district_id || item.data_lengkap.district_id || '';
+        document.getElementById(`${prefix}_subdistrict_id`).value = item.subdistrict_id || item.data_lengkap.subdistrict_id || '';
+    } 
+    else {
+        // FALLBACK: Jika tidak ada data_lengkap, baru kita coba split string (Cara Lama)
+        // Pastikan addressString ada isinya sebelum di-split
+        if (typeof addressString === 'string') {
+            const parts = addressString.split(',').map(s => s.trim());
+            // Sesuaikan urutan array ini dengan format teks alamat dari API Anda
+            document.getElementById(`${prefix}_village`).value = parts[0] || '';
+            document.getElementById(`${prefix}_district`).value = parts[1] || '';
+            document.getElementById(`${prefix}_regency`).value = parts[2] || '';
+            document.getElementById(`${prefix}_province`).value = parts[3] || '';
+            document.getElementById(`${prefix}_postal_code`).value = parts[4] || '';
+        }
+        
+        // Mapping ID (fallback)
+        document.getElementById(`${prefix}_district_id`).value = item.district_id || '';
+        document.getElementById(`${prefix}_subdistrict_id`).value = item.subdistrict_id || '';
+    }
+
+    // Sembunyikan hasil pencarian & tampilkan centang hijau
+    if(resultsContainer) resultsContainer.classList.add('hidden');
+    if(checkIcon) checkIcon.classList.remove('hidden');
+
+    // Tampilkan SweetAlert Konfirmasi (Kode Anda sebelumnya)
+    Swal.fire({
+        title: `Alamat ${prefix === 'sender' ? 'Pengirim' : 'Penerima'} Terpilih`,
+        html: `Pastikan Detail Alamat Lengkap (Jl. No. RT/RW) Desa/Kelurahan, Kecamatan sudah benar.<br><br>Data: <b>${addressString}</b>`,
+        icon: 'info',
+        confirmButtonText: 'Data Sudah Benar',
+        confirmButtonColor: '#10B981', // Hijau
+        showCancelButton: true,
+        cancelButtonText: 'Cari di Google Maps',
+        cancelButtonColor: '#3B82F6' // Biru
+    }).then((result) => {
+        if (result.dismiss === Swal.DismissReason.cancel) {
+            const query = encodeURIComponent(addressString);
+            window.open(`https://www.google.com/search?q=${query}`, '_blank');
+        }
+    });
+}
 
 
     }
