@@ -533,39 +533,56 @@ $(document).ready(function() {
 });
 
 function setupAddressSearch(inputId) {
-        $(`#${inputId}`).autocomplete({
-            source: debounce(async (request, response) => {
-                // ... (request ke API) ...
-                // Pastikan mapping di sini sesuai:
-                response(data.map(item => ({
-                    label: item.text,  // Label yang muncul di list
-                    value: item.text,  // Nilai saat dipilih (sebelum di-overwrite)
-                    data: item         // Object data lengkap
-                })));
-            }, 300),
+    $(`#${inputId}`).autocomplete({
+        // 1. Sumber Data (Memanggil Controller)
+        source: debounce(async (request, response) => {
+            if (request.term.length < 3) return response([]);
             
-            select: function(event, ui) {
-                const item = ui.item.data; // Ambil object data lengkap
+            try {
+                // Panggil route controller
+                const url = `{{ route('api.address.search') }}?q=${encodeURIComponent(request.term)}`;
+                const res = await fetch(url);
+                const data = await res.json();
                 
-                // DEBUG: Cek di console browser apakah data masuk?
-                console.log("Data Wilayah Terpilih:", item);
+                // Data dari controller sudah diformat (label, value, data_lengkap)
+                // Jadi bisa langsung dipassing ke response
+                response(data);
 
-                // ISI FORMULIR (Pastikan ID elemen HTML sesuai)
-                $('#village').val(item.village_name);
-                $('#district').val(item.district_name);
-                $('#regency').val(item.city_name);
-                $('#province').val(item.province_name);
-                $('#postal_code').val(item.zip_code);
-                
-                // ISI HIDDEN ID
-                $('#district_id').val(item.district_id);
-                $('#subdistrict_id').val(item.subdistrict_id);
-
-                event.preventDefault();
-                $(this).val(ui.item.label); // Isi input pencarian dengan teks alamat lengkap
+            } catch (e) {
+                console.error("Error API:", e);
+                response([]);
             }
-        });
-    }
+        }, 400),
+
+        minLength: 3,
+
+        // 2. Aksi saat user memilih alamat dari list
+        select: function(event, ui) {
+            // Ambil data yang sudah kita mapping di Controller tadi
+            const d = ui.item.data_lengkap; 
+
+            // Debugging (cek console browser jika tidak muncul)
+            console.log("Data dipilih:", d);
+
+            // Isi Form Readonly (Sesuai ID input di HTML Anda)
+            $('#village').val(d.village);
+            $('#district').val(d.district);
+            $('#regency').val(d.regency);
+            $('#province').val(d.province);
+            $('#postal_code').val(d.postal_code);
+
+            // Isi Hidden ID (Penting untuk database)
+            $('#district_id').val(d.district_id);
+            $('#subdistrict_id').val(d.subdistrict_id);
+
+            // Set input pencarian dengan teks alamat lengkap
+            $(this).val(ui.item.label);
+
+            // Return false agar input tidak berubah jadi aneh
+            return false;
+        }
+    });
+}
 
 </script>
 @endpush
