@@ -1138,7 +1138,7 @@ async function runCekOngkir() {
 
             // Render Card
             const card = document.createElement('div');
-            card.className = 'border rounded-lg mb-3 shadow-sm hover:shadow-md transition-shadow bg-white';
+            card.className = 'border rounded-lg mb-3 bg-white shadow-blue transition-shadow';
             card.innerHTML = `
                 <div class="p-4 flex justify-between items-center">
                     <div class="flex items-center w-3/4">
