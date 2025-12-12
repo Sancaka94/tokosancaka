@@ -165,7 +165,7 @@
             {{-- Data Penerima --}}
             <a href="{{ route('customer.kontak.index') }}" class="flex items-center px-4 py-2.5 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors duration-200 {{ request()->routeIs('customer.kontak.*') ? 'bg-gray-900 text-white' : '' }}">
                 <i class="fas fa-address-book fa-fw w-6"></i>
-                <span class="ml-3">Data Penerima</span>
+                <span class="ml-3">Data Kontak</span>
             </a>
 
             {{-- Lacak Paket --}}
