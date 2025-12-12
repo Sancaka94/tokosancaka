@@ -164,62 +164,49 @@ class KontakController extends Controller
         return redirect()->route('customer.kontak.index')->with('success', 'Kontak berhasil dihapus.');
     }
 
-    /**
-     * Pencarian Kontak (Smart Auth: Admin Global + User Strict + Flexible Type)
+   /**
+     * Pencarian Kontak (Logic Revisi: Admin Bebas vs Customer Ketat)
      */
     public function search(Request $request)
     {
         try {
-            // 1. Ambil Parameter
             $keyword = $request->input('search') ?? $request->input('query');
-            $scope = $request->input('scope');         // Param dari JS Admin ('global')
-            $targetUserId = $request->input('user_id'); // Param opsional jika Admin ingin filter user tertentu
+            $tipe = $request->input('tipe'); // 'Pengirim' atau 'Penerima'
             
-            $user = Auth::user(); // User yang sedang login
-
-            // 2. Mulai Query
+            $user = Auth::user();
             $query = Kontak::query();
 
-            // --- [LOGIKA AUTH & OTORISASI] ---
-            // Cek apakah request meminta data Global DAN yang request adalah Admin
-            if ($scope === 'global' && $user->role === 'admin') {
-                // MODE ADMIN:
-                // Admin bebas melihat semua data.
+            // --- LOGIKA UTAMA ---
+
+            if ($user->role === 'admin') {
+              
                 
-                // Fitur Tambahan: Jika Admin ingin spesifik mencari data milik User A
-                if ($targetUserId) {
-                    $query->where('user_id', $targetUserId);
-                }
-                // Jika $targetUserId kosong, maka Admin melihat data SEMUA USER (Global)
             } else {
-                // MODE USER BIASA (STRICT):
-                // Harga mati. User hanya boleh melihat datanya sendiri.
-                // Apapun parameter 'user_id' yang dikirim dari luar akan diabaikan.
+                // ==========================================
+                // 2. KHUSUS CUSTOMER (KETAT & SESUAI AUTH)
+                // ==========================================
+                
+                // Wajib data sendiri
                 $query->where('user_id', $user->id);
+
+                // Wajib sesuai tipe yang diminta inputan
+                // Kalau form minta 'Penerima', database cuma kasih 'Penerima'
+                if ($tipe) {
+                    $query->where('tipe', $tipe);
+                }
             }
 
-            // --- [LOGIKA PENCARIAN KEYWORD] ---
+            // --- LOGIKA PENCARIAN TEXT (BERLAKU UNTUK SEMUA) ---
             if ($keyword) {
                 $query->where(function($sub) use ($keyword) {
                     $sub->where('nama', 'LIKE', "%{$keyword}%")
                         ->orWhere('no_hp', 'LIKE', "%{$keyword}%")
-                        ->orWhere('alamat', 'LIKE', "%{$keyword}%"); // Cari alamat juga
+                        ->orWhere('alamat', 'LIKE', "%{$keyword}%");
                 });
             }
 
-            // --- [LOGIKA TIPE (PENGIRIM/PENERIMA)] ---
-            // SAYA NONAKTIFKAN FILTER TIPE
-            // Agar Admin/User bisa menemukan kontak "Pengirim" saat mengisi kolom "Penerima" (dan sebaliknya).
-            // Ini membuat data lebih fleksibel digunakan kembali.
-            
-            /* if ($request->filled('tipe')) {
-               $query->where('tipe', $request->input('tipe'));
-            }
-            */
-
-            // 3. Ambil Data
-            // Limit 20 agar performa pencarian cepat
-            $kontaks = $query->latest()->limit(20)->get();
+            // Ambil data (Array)
+            $kontaks = $query->latest()->limit(15)->get();
 
             return response()->json($kontaks);
 
