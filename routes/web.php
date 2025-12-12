@@ -472,11 +472,11 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
     // URL: /admin/pesanan/buat-multi
     // Name: admin.pesanan.create_multi
     Route::get('/pesanan/buat-multi', [KoliController::class, 'create'])
-        ->name('pesanan.create_multi');
+        ->name('admin.pesanan.create_multi');
 
     // Route untuk Proses Simpan-nya (POST)
     Route::post('/pesanan/buat-multi', [KoliController::class, 'store'])
-        ->name('pesanan.store_multi');
+        ->name('admin.pesanan.store_multi');
 
     // Finance
     Route::get('/wallet', [WalletController::class, 'index'])->name('wallet.index');
