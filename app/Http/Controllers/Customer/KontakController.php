@@ -122,4 +122,52 @@ class KontakController extends Controller
 
         return redirect()->route('customer.kontak.index')->with('success', 'Kontak berhasil dihapus.');
     }
+
+    /**
+     * Pencarian AJAX (Versi Debug & Fix).
+     */
+    public function search(Request $request)
+    {
+        try {
+            // 1. FIX: Ambil input 'search' (karena JS Anda mengirim ?search=...)
+            // Kita dukung 'search' ATAU 'query' biar aman
+            $keyword = $request->input('search') ?? $request->input('query');
+            
+            // Tangkap filter tipe (Pengirim/Penerima)
+            $tipe = $request->input('tipe'); 
+
+            // 2. Query Dasar
+            $query = Kontak::where('user_id', Auth::id());
+
+            // 3. Filter Keyword
+            if ($keyword) {
+                $query->where(function($sub) use ($keyword) {
+                    $sub->where('nama', 'LIKE', "%{$keyword}%")
+                        ->orWhere('no_hp', 'LIKE', "%{$keyword}%");
+                });
+            }
+
+            // 4. Filter Tipe (Jika ada di URL)
+            if ($tipe) {
+                $query->where('tipe', $tipe);
+            }
+
+            // 5. Ambil Data
+            // SAYA GANTI KE get() TANPA PILIH KOLOM DULU
+            // Ini untuk mencegah error jika kolom 'province' dll belum ada di database
+            $kontaks = $query->limit(10)->get();
+
+            return response()->json($kontaks);
+
+        } catch (\Exception $e) {
+            // JIKA ERROR, TAMPILKAN PESAN ASLINYA
+            // Ini akan membantu kita melihat kenapa server error 500
+            return response()->json([
+                'message' => 'Server Error',
+                'error_detail' => $e->getMessage(),
+                'line' => $e->getLine(),
+                'file' => $e->getFile()
+            ], 500);
+        }
+    }
 }
