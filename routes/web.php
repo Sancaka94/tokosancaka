@@ -1,11 +1,11 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Http; // Tambahan untuk cek IP
+use Illuminate\Support\Facades\Http;
 use Illuminate\Http\Request;
 use App\Http\Middleware\RoleMiddleware;
 
-// --- CONTROLLERS ---
+// --- DAFTAR SEMUA CONTROLLER (Pastikan file-file ini ada) ---
 use App\Http\Controllers\Admin\ChatController as AdminChatController;
 use App\Http\Controllers\Admin\EmailController;
 use App\Http\Controllers\Admin\SpxScanController;
@@ -28,7 +28,7 @@ use App\Http\Controllers\TrackingController;
 use App\Http\Controllers\Admin\PesananController as AdminPesananController;
 use App\Http\Controllers\Admin\ImportController;
 use App\Http\Controllers\BlogController;
-use App\Http\Controllers\KodePosController;
+use App\Http\Controllers\KodePosController; // <--- PENTING: Controller Kode Pos
 use App\Http\Controllers\Admin\PesananController;
 use App\Http\Controllers\Api\KontakController;
 use App\Http\Controllers\Admin\WalletController;
@@ -45,7 +45,7 @@ use App\Http\Controllers\Customer\CategoryController;
 use App\Http\Controllers\EtalaseController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\Admin\CategoryAttributeController;
-use App\Http\Controllers\Admin\AdminOrderController; // <--- PENTING
+use App\Http\Controllers\Admin\AdminOrderController;
 use App\Http\Controllers\Admin\ChatController;
 use App\Http\Controllers\Admin\MarketplaceController;
 use App\Http\Controllers\DokuPaymentController;
@@ -80,7 +80,7 @@ use App\Http\Controllers\Admin\AdminLogController;
 
 /*
 |--------------------------------------------------------------------------
-| PUBLIC & AUTH ROUTES
+| PUBLIC & AUTH ROUTES (Halaman Depan & Login)
 |--------------------------------------------------------------------------
 */
 
@@ -99,7 +99,7 @@ Route::get('/register/success/{no_wa}', function ($no_wa) {
 })->name('register.success');
 Route::get('customer/profile/setup/{token}', [CustomerProfileController::class, 'setup'])->name('customer.profile.setup');
 
-// Dashboard Redirects
+// Dashboard Redirects (Mengarahkan user sesuai Role)
 Route::get('/dashboard', function () {
     $user = auth()->user();
     if ($user->role === 'Admin') {
@@ -123,7 +123,7 @@ Route::get('/seller/dashboard', function () {
 
 /*
 |--------------------------------------------------------------------------
-| ADMIN ROUTES (Fix 404 Starts Here)
+| ADMIN ROUTES (Area Backend Admin)
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->name('admin.')->group(function () {
@@ -131,8 +131,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
     // Include file admin.php bawaan (dashboard, dll)
     require __DIR__.'/web/admin.php';
 
-    // 1. ROUTE ORDERS (DIPERBAIKI)
-    // Kita pakai manual biar gak error 404 karena file missing
+    // 1. ROUTE ORDERS (Agar menu Pesanan bisa dibuka)
     Route::resource('orders', AdminOrderController::class);
 
     // 2. ROUTE SPX SCANS
@@ -142,13 +141,15 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
     Route::resource('reviews', AdminReviewController::class);
     Route::post('reviews/{review}/reply', [AdminReviewController::class, 'reply'])->name('reviews.reply');
 
-    // 4. ROUTE STORES & MARKETPLACE (DIPISAH SUPAYA GAK BENTROK)
-    // Route untuk Data Toko (Seller)
-    // Route::resource('stores', StoreController::class); // Aktifkan jika sudah ada StoreController
-    
-    // Route untuk Produk Marketplace
+    // 4. ROUTE STORES (Untuk mengatasi 404 admin/stores)
+    Route::resource('stores', AdminMarketplaceController::class)->names('stores');
+
+    // 5. ROUTE MARKETPLACE (Produk)
     Route::resource('marketplace', AdminMarketplaceController::class); 
-    // Catatan: Jika 'stores' di panel admin mengarah ke Produk, ubah menu Anda ke 'marketplace'
+
+    // 6. ROUTE KODE POS (Untuk mengatasi error sidebar: admin.kodepos.index)
+    Route::get('/kode-pos', [KodePosController::class, 'index'])->name('kodepos.index');
+    Route::post('/kode-pos/import', [KodePosController::class, 'import'])->name('kodepos.import');
 
     // --- FITUR ADMIN LAINNYA ---
     Route::resource('customers/data/pengguna', DataPenggunaController::class)->names('customers.data.pengguna');
