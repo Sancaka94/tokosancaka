@@ -1095,18 +1095,19 @@ TEXT;
         }
     }
 
-    /**
+   /**
      * Endpoint API untuk menyimpan/update kontak secara manual dari formulir pemesanan.
      * Dipanggil AJAX dari frontend saat tombol "Simpan/Perbarui Kontak" ditekan.
      */
     public function saveContactApi(Request $request)
     {
         try {
-            // 1. Validasi Input yang dibutuhkan untuk update Kontak
+            // 1. Validasi Input
             $validated = $request->validate([
-                'prefix' => 'required|in:sender,receiver', // Menentukan apakah Pengirim atau Penerima
+                'prefix' => 'required|in:sender,receiver',
+                'id' => 'nullable|integer', // Tambahan validasi ID jika update
                 
-                // --- Data Pengirim/Penerima yang di-pass melalui AJAX ---
+                // Data Input
                 'sender_name' => 'nullable|string|max:100',
                 'sender_phone' => 'nullable|string|max:20',
                 'sender_address' => 'nullable|string|min:10|max:500',
@@ -1129,7 +1130,7 @@ TEXT;
             $prefix = $request->input('prefix');
             $tipe = ($prefix === 'sender') ? 'Pengirim' : 'Penerima';
             
-            // Perlu memastikan field inti yang akan disimpan (nama, hp, alamat) ada dan tidak kosong
+            // 2. Cek kelengkapan data dasar
             $nameKey = "{$prefix}_name";
             $phoneKey = "{$prefix}_phone";
             $addressKey = "{$prefix}_address";
@@ -1138,28 +1139,40 @@ TEXT;
                  return response()->json(['status' => 'error', 'message' => "Data {$tipe} (Nama, HP, atau Alamat) tidak boleh kosong."], 422);
             }
 
-            // --- Persiapan Data untuk _saveOrUpdateKontak ---
-            
-            // _saveOrUpdateKontak memerlukan key 'save_X' dalam array $data.
-            // Di sini kita secara manual menambahkan key tersebut agar logika save berjalan.
+            // 3. Persiapkan Data
             $data = $request->all();
+            
+            // --- [PENTING] PAKSA USER_ID SESUAI AUTH ---
+            // Ini memastikan data tersimpan milik user yang login, 
+            // meskipun ada input user_id dari JS (security measure).
+            $data['user_id'] = Auth::id(); 
+            // -------------------------------------------
+
             $data["save_{$prefix}"] = 'on'; 
 
-            // Panggil logika penyimpanan kontak yang sudah ada
-            $this->_saveOrUpdateKontak($data, $prefix, $tipe);
+            // 4. Panggil Helper Penyimpanan
+            // Pastikan method _saveOrUpdateKontak Anda mengembalikan object Kontak yang dibuat/diupdate
+            // Agar kita bisa mengambil ID-nya kembali ke frontend
+            $savedContact = $this->_saveOrUpdateKontak($data, $prefix, $tipe);
 
-            return response()->json(['status' => 'success', 'message' => "Kontak {$tipe} berhasil disimpan!"]);
+            $contactId = null;
+            if ($savedContact && isset($savedContact->id)) {
+                $contactId = $savedContact->id;
+            }
+
+            return response()->json([
+                'status' => 'success', 
+                'message' => "Kontak {$tipe} berhasil disimpan ke Buku Alamat!",
+                'contact_id' => $contactId // Mengirim ID balik ke JS untuk update hidden field
+            ]);
 
         } catch (ValidationException $e) {
-            // Tangani error validasi (misalnya panjang string terlalu panjang)
-            Log::warning('saveContactApi Validation Failed (Customer):', $e->errors());
+            Log::warning('saveContactApi Validation Failed:', $e->errors());
             $firstError = collect($e->errors())->first()[0] ?? 'Input tidak valid.';
-            return response()->json(['status' => 'error', 'message' => $firstError, 'errors' => $e->errors()], 422);
+            return response()->json(['status' => 'error', 'message' => $firstError], 422);
         } catch (\Exception $e) {
-            // Tangani error umum (misalnya masalah DB atau logic)
-            Log::error('saveContactApi General Error: ' . $e->getMessage(), ['request' => $request->all()]);
-            return response()->json(['status' => 'error', 'message' => 'Terjadi kesalahan server saat menyimpan kontak.'], 500);
+            Log::error('saveContactApi Error: ' . $e->getMessage());
+            return response()->json(['status' => 'error', 'message' => 'Terjadi kesalahan server.'], 500);
         }
     }
-
 }
