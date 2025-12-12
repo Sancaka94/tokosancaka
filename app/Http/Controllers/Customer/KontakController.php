@@ -187,7 +187,7 @@ class KontakController extends Controller
                 // ==========================================
                 
                 // Wajib data sendiri
-                $query->where('user_id', $user->id);
+                $query->where('user_id', $user->id_pengguna);
 
                 // Wajib sesuai tipe yang diminta inputan
                 // Kalau form minta 'Penerima', database cuma kasih 'Penerima'
