@@ -1128,8 +1128,8 @@ async function runCekOngkir() {
                                 <span>COD Tersedia</span>
                             </div>`;
                 // Tambahkan baris estimasi fee
-                details += `<div class="text-orange-600 font-medium ml-5">
-                                + Fee: ${formatRupiah(codFee)}
+                details += `<div class="text-red-600 font-medium ml-5">
+                            + Fee COD: ${formatRupiah(codFee)}
                             </div>`;
             } else {
                 details += `<div class="text-red-500"><i class="fas fa-times-circle w-4 text-center mr-1"></i>Tidak Bisa COD</div>`;
