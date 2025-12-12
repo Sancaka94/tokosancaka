@@ -10,23 +10,21 @@ use Illuminate\Support\Facades\Auth;
 class KontakController extends Controller
 {
     /**
-     * Menampilkan daftar kontak KHUSUS milik user yang login.
+     * Menampilkan daftar kontak.
      */
     public function index(Request $request)
     {
         $userId = Auth::id();
         $query = Kontak::where('user_id', $userId);
 
+        // Fitur Pencarian di Index
         if ($request->filled('search')) {
             $search = $request->input('search');
             $query->where(function($q) use ($search) {
                 $q->where('nama', 'like', "%{$search}%")
-                  ->orWhere('no_hp', 'like', "%{$search}%");
+                  ->orWhere('no_hp', 'like', "%{$search}%")
+                  ->orWhere('district', 'like', "%{$search}%"); // Tambah cari kecamatan
             });
-        }
-
-        if ($request->filled('filter') && $request->input('filter') !== 'Semua') {
-            $query->where('tipe', $request->input('filter'));
         }
 
         $kontaks = $query->latest()->paginate(10);
@@ -35,48 +33,79 @@ class KontakController extends Controller
     }
 
     /**
-     * Menyimpan kontak baru.
+     * Menyimpan kontak baru sesuai inputan Blade.
      */
     public function store(Request $request)
     {
-        // 1. Hapus validasi 'tipe' => 'required' agar tidak error
+        // 1. Validasi Sesuai Name di Form Blade
         $validatedData = $request->validate([
-            'nama' => 'required|string|max:255',
-            'no_hp' => 'required|string|max:20', 
-            'alamat' => 'required|string',
-            // 'tipe' => 'required|string', <--- INI SAYA HAPUS/KOMENTARI
+            'nama'      => 'required|string|max:255',
+            'no_hp'     => 'required|string|max:20',
+            'alamat'    => 'required|string', // Detail Alamat
+            'tipe'      => 'nullable|string', // Hidden field di blade
+
+            // Data Wilayah (Readonly di blade, tapi wajib ada isinya)
+            'province'    => 'required|string',
+            'regency'     => 'required|string',
+            'district'    => 'required|string',
+            'village'     => 'required|string',
+            'postal_code' => 'required|string',
+
+            // Data Hidden (Penting untuk Ongkir & Peta)
+            'district_id'    => 'nullable|string', // ID Kecamatan (KiriminAja/RajaOngkir)
+            'subdistrict_id' => 'nullable|string', // ID Kelurahan
+            'lat'            => 'nullable|string',
+            'lng'            => 'nullable|string',
         ]);
 
-        // 2. Set user_id otomatis
+        // 2. Set User ID & Default Tipe
         $validatedData['user_id'] = Auth::id();
+        
+        // Jika tipe kosong, default ke Penerima
+        if (empty($validatedData['tipe'])) {
+            $validatedData['tipe'] = 'Penerima';
+        }
 
-        // 3. Cek apakah ada input tipe dari form? Jika tidak ada, set default 'Penerima'
-        $validatedData['tipe'] = $request->input('tipe', 'Penerima'); 
-
+        // 3. Simpan ke Database
         Kontak::create($validatedData);
 
         return redirect()->route('customer.kontak.index')->with('success', 'Kontak baru berhasil disimpan.');
     }
 
     /**
-     * Update data.
+     * Mengambil data untuk Modal Edit (AJAX).
+     */
+    public function edit($id)
+    {
+        // Pastikan hanya bisa edit punya sendiri
+        $kontak = Kontak::where('user_id', Auth::id())->where('id', $id)->firstOrFail();
+        return response()->json($kontak);
+    }
+
+    /**
+     * Update data kontak.
      */
     public function update(Request $request, $id)
     {
         $kontak = Kontak::where('user_id', Auth::id())->where('id', $id)->firstOrFail();
 
-        // Hapus validasi 'tipe' => 'required' di sini juga
         $validatedData = $request->validate([
-            'nama' => 'required|string|max:255',
-            'no_hp' => 'required|string|max:20',
-            'alamat' => 'required|string',
-             // 'tipe' => 'required|string', <--- INI SAYA HAPUS/KOMENTARI
-        ]);
+            'nama'      => 'required|string|max:255',
+            'no_hp'     => 'required|string|max:20',
+            'alamat'    => 'required|string',
+            'tipe'      => 'nullable|string',
 
-        // Jika form mengirim tipe, pakai itu. Jika tidak, pakai tipe yang lama (jangan diubah)
-        if ($request->has('tipe')) {
-            $validatedData['tipe'] = $request->input('tipe');
-        }
+            'province'    => 'required|string',
+            'regency'     => 'required|string',
+            'district'    => 'required|string',
+            'village'     => 'required|string',
+            'postal_code' => 'required|string',
+
+            'district_id'    => 'nullable|string',
+            'subdistrict_id' => 'nullable|string',
+            'lat'            => 'nullable|string',
+            'lng'            => 'nullable|string',
+        ]);
 
         $kontak->update($validatedData);
 
@@ -84,7 +113,7 @@ class KontakController extends Controller
     }
 
     /**
-     * Hapus data.
+     * Hapus kontak.
      */
     public function destroy($id)
     {
@@ -92,30 +121,5 @@ class KontakController extends Controller
         $kontak->delete();
 
         return redirect()->route('customer.kontak.index')->with('success', 'Kontak berhasil dihapus.');
-    }
-    
-    public function search(Request $request)
-    {
-        $query = $request->input('query');
-        
-        if(empty($query)) {
-            return response()->json([]);
-        }
-
-        $kontaks = Kontak::where('user_id', Auth::id())
-                        ->where(function($sub) use ($query) {
-                            $sub->where('nama', 'LIKE', "%{$query}%")
-                                ->orWhere('no_hp', 'LIKE', "%{$query}%");
-                        })
-                        ->limit(10)
-                        ->get(['id', 'nama', 'no_hp', 'alamat', 'province', 'regency', 'district', 'village', 'postal_code']);
-
-        return response()->json($kontaks);
-    }
-    
-    public function show($id)
-    {
-         $kontak = Kontak::where('user_id', Auth::id())->where('id', $id)->firstOrFail();
-         return response()->json($kontak);
     }
 }
