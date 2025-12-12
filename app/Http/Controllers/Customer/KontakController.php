@@ -183,68 +183,69 @@ class KontakController extends Controller
         }
     }
 
-public function searchAddressApi(Request $request, \App\Services\KiriminAjaService $kirimaja)
+/**
+     * Endpoint API untuk pencarian alamat (Digunakan oleh Autocomplete)
+     */
+    public function searchAddressApi(Request $request, KiriminAjaService $kirimaja)
     {
+        // Ambil query dari parameter 'q' (jQuery UI) atau 'search' (standar)
         $keyword = $request->input('q') ?? $request->input('search');
 
+        // Validasi minimal karakter
         if (!$keyword || strlen($keyword) < 3) {
             return response()->json([]);
         }
 
         try {
+            // Panggil API KiriminAja
             $response = $kirimaja->searchAddress($keyword);
 
+            // Cek jika data kosong
             if (empty($response) || empty($response['data'])) {
                 return response()->json([]);
             }
 
+            // Format data agar aman dari error index
             $formatted = collect($response['data'])->map(function ($item) {
                 
-                // 1. AMBIL STRING ALAMAT LENGKAP
+                // 1. Ambil string alamat
                 $fullAddress = $item['full_address'] ?? $item['address'] ?? $item['text'] ?? '';
                 
-                // 2. PECAH STRING MENJADI BAGIAN-BAGIAN
-                // Format KiriminAja biasanya: "Kelurahan, Kecamatan, Kota, Provinsi, KodePos"
+                // 2. Pecah string menjadi array
+                // Format Standar: "Kelurahan, Kecamatan, Kota, Provinsi, KodePos"
                 $parts = array_map('trim', explode(',', $fullAddress));
                 
-                // Siapkan variabel default kosong
-                $village = ''; 
-                $district = ''; 
-                $regency = ''; 
-                $province = ''; 
-                $postalCode = '';
+                // 3. [TRIK AMAN] Pad array dengan string kosong sampai 5 elemen
+                // Ini mencegah error "Undefined array key" jika format alamat dari API tidak lengkap
+                $padded = array_pad($parts, 5, ''); 
 
-                // Masukkan data berdasarkan urutan array hasil explode
-                // Cek jumlah bagian untuk menghindari error offset
-                if (count($parts) >= 5) {
-                    $village     = $parts[0]; // Ketanggi
-                    $district    = $parts[1]; // Ngawi
-                    $regency     = $parts[2]; // Ngawi
-                    $province    = $parts[3]; // Jawa Timur
-                    $postalCode  = $parts[4]; // 63211
-                } elseif (count($parts) >= 4) {
-                    // Kasus jarang jika kodepos tidak ada
-                    $village     = $parts[0];
-                    $district    = $parts[1];
-                    $regency     = $parts[2];
-                    $province    = $parts[3];
-                } else {
-                    // Jika format aneh, masukkan full address ke kelurahan biar tidak kosong melompong
-                    $village = $fullAddress;
+                // 4. Mapping ke variabel (Asumsi urutan standar KiriminAja)
+                $village     = $padded[0]; // Kelurahan
+                $district    = $padded[1]; // Kecamatan
+                $regency     = $padded[2]; // Kota/Kab
+                $province    = $padded[3]; // Provinsi
+                $postalCode  = $padded[4]; // Kode Pos
+
+                // 5. Pembersihan Data Kodepos (Opsional)
+                // Jika kodepos kosong tapi ada angka 5 digit di string alamat, ambil angka tersebut
+                if ((empty($postalCode) || !is_numeric($postalCode)) && preg_match('/\d{5}/', $fullAddress, $matches)) {
+                    $postalCode = $matches[0];
                 }
 
+                // Return format JSON yang dibutuhkan Frontend
                 return [
-                    'label' => $fullAddress, // Teks untuk Dropdown
-                    'value' => $fullAddress, // Teks untuk Input
+                    'label' => $fullAddress, // Teks yang muncul di dropdown
+                    'value' => $fullAddress, // Teks yang masuk ke input saat dipilih
                     
+                    // Data detail untuk autofill input lain
                     'data_lengkap' => [
                         'village'        => $village,
                         'district'       => $district,
-                        'regency'        => $regency, 
+                        'regency'        => $regency,
                         'province'       => $province,
                         'postal_code'    => $postalCode,
                         
-                        // ID INI SUDAH BENAR DARI API
+                        // ID Wilayah (Penting untuk Cek Ongkir)
                         'district_id'    => $item['district_id'] ?? null,
                         'subdistrict_id' => $item['subdistrict_id'] ?? null,
                     ]
@@ -253,8 +254,9 @@ public function searchAddressApi(Request $request, \App\Services\KiriminAjaServi
 
             return response()->json($formatted);
 
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Search Error: ' . $e->getMessage());
+        } catch (Exception $e) {
+            Log::error('Search Address Error (KontakController): ' . $e->getMessage());
+            // Return array kosong agar frontend tidak error
             return response()->json([]);
         }
     }
