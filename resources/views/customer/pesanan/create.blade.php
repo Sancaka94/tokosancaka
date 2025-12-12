@@ -1016,25 +1016,24 @@ document.addEventListener('DOMContentLoaded', function () {
     });
     // ----------------------------------------------------------------------------------
 
-    // --- FUNGSI CEK ONGKIR (DIPERBAIKI SESUAI LOG JSON) ---
+    // --- FUNGSI CEK ONGKIR (DENGAN ESTIMASI COD FEE) ---
 async function runCekOngkir() {
-    // 1. Validasi Input Sebelum Request
+    // 1. Validasi Input
     validateAddressRealtime(senderAddressInput, senderAddressFeedback, 'Alamat Pengirim');
     validateAddressRealtime(receiverAddressInput, receiverAddressFeedback, 'Alamat Penerima');
 
-    if (senderAddressInput.value.trim().length < minAddressLength) {
-        Swal.fire('Data Belum Lengkap', 'Alamat Pengirim wajib minimal 10 karakter.', 'warning');
+    if (senderAddressInput.value.trim().length < minAddressLength || receiverAddressInput.value.trim().length < minAddressLength) {
+        Swal.fire('Data Belum Lengkap', 'Pastikan alamat pengirim dan penerima sudah diisi minimal 10 karakter.', 'warning');
         return;
     }
-    if (receiverAddressInput.value.trim().length < minAddressLength) {
-        Swal.fire('Data Belum Lengkap', 'Alamat Penerima wajib minimal 10 karakter.', 'warning');
-        return;
-    }
+
+    // Ambil Harga Barang untuk perhitungan COD
+    const rawPrice = document.getElementById('item_price').value;
+    const itemValue = parseInt(rawPrice.replace(/[^0-9]/g, '')) || 0;
 
     const requiredFields = { 
         '#sender_subdistrict_id': 'Alamat Pengirim', 
         '#receiver_subdistrict_id': 'Alamat Penerima', 
-        '#item_price': 'Harga Barang', 
         '#weight': 'Berat', 
         '#service_type': 'Jenis Layanan', 
         '#ansuransi': 'Asuransi' 
@@ -1046,118 +1045,117 @@ async function runCekOngkir() {
         return;
     }
 
-    // 2. Tampilkan Loading
+    // 2. Loading
     const ongkirModalBody = document.getElementById('ongkirModalBody');
-    ongkirModalBody.innerHTML = `<div class="text-center p-5"><i class="fas fa-spinner fa-spin text-3xl text-red-600"></i><p class="mt-2 text-gray-500">Memuat tarif dari API...</p></div>`;
+    ongkirModalBody.innerHTML = `<div class="text-center p-5"><i class="fas fa-spinner fa-spin text-3xl text-red-600"></i><p class="mt-2 text-gray-500">Menghitung biaya...</p></div>`;
     ongkirModalEl.classList.remove('hidden');
 
     try {
         const formData = new FormData(document.getElementById('orderForm'));
         const params = new URLSearchParams(formData).toString();
         
-        // Request ke Backend
         const response = await fetch(`{{ route('kirimaja.cekongkir') }}?${params}`);
-        
         if (!response.ok) {
             const errorData = await response.json();
             throw new Error(errorData.message || 'Gagal mengambil data ongkir');
         }
         
         const res = await response.json();
-        
-        // Debugging di Console Browser untuk memastikan data masuk
-        console.log("Respon API Ongkir Full:", res);
-
-        // --- [PERBAIKAN UTAMA: DETEKSI STRUKTUR DATA JSON] ---
         let results = [];
 
-        // Cek apakah struktur { body: { results: [] } } (Sesuai Log Anda)
-        if (res.body && res.body.results && Array.isArray(res.body.results)) {
-            results = res.body.results;
-        } 
-        // Cek struktur alternatif { results: [] } (Jaga-jaga)
-        else if (res.results && Array.isArray(res.results)) {
-            results = res.results;
-        }
-        // Cek struktur array langsung (Jaga-jaga)
-        else if (Array.isArray(res)) {
-            results = res;
-        }
+        // Deteksi Struktur JSON
+        if (res.body && res.body.results && Array.isArray(res.body.results)) { results = res.body.results; } 
+        else if (res.results && Array.isArray(res.results)) { results = res.results; }
+        else if (Array.isArray(res)) { results = res; }
 
         ongkirModalBody.innerHTML = '';
 
         if (results.length === 0) {
-            ongkirModalBody.innerHTML = '<div class="bg-yellow-100 text-yellow-800 p-4 rounded-md text-center">Tidak ada layanan pengiriman yang ditemukan untuk rute ini.</div>';
+            ongkirModalBody.innerHTML = '<div class="bg-yellow-100 text-yellow-800 p-4 rounded-md text-center">Tidak ada layanan pengiriman yang ditemukan.</div>';
             return;
         }
 
         // 3. Render Hasil
-        // Kita sort berdasarkan harga terendah
         results.sort((a, b) => parseFloat(a.cost) - parseFloat(b.cost)).forEach(item => {
             
-            // Parsing Data Item
             const cost = parseFloat(item.cost) || 0;
-            
-            // Skip jika ongkir aneh (misal 10 juta seperti RPX di log, kecuali memang valid)
-            // Uncomment baris bawah jika ingin menyembunyikan ongkir > 5jt
-            // if (cost > 5000000) return; 
-
-            const serviceName = item.service_name; // Contoh: Sicepat SIUNTUNG
-            const serviceCode = item.service.toLowerCase(); // sicepat
-            const serviceType = item.service_type; // SIUNT
-            const etd = item.etd ? item.etd + ' Hari' : '-';
-            
-            // Data COD & Asuransi
-            const isCod = item.cod; // boolean true/false
+            const serviceName = item.service_name;
+            const serviceCode = item.service.toLowerCase();
+            const serviceType = item.service_type;
+            const etd = item.etd ? item.etd.replace('Hari', '').trim() + ' Hari' : '-';
+            const isCod = item.cod; // Boolean
             const insuranceFee = parseFloat(item.insurance) || 0;
             
-            // Ambil Fee COD (Cek berbagai kemungkinan key di JSON)
+            // --- [LOGIKA HITUNG COD FEE UNTUK TAMPILAN] ---
+            // Ambil dari API dulu
             let codFee = 0;
             if (item.setting) {
                 codFee = parseFloat(item.setting.cod_fee_amount || item.setting.cod_fee || 0);
             }
 
-            // URL Logo
+            // Jika API return 0 dan layanan support COD, hitung manual (3% Min 2500)
+            if (isCod && codFee === 0) {
+                const codRate = 0.03;   // 3%
+                const minCodFee = 2500; // Rp 2.500
+                
+                // Asumsi Fee dihitung dari (Ongkir + Asuransi + Harga Barang)
+                let basis = cost + insuranceFee + itemValue;
+                let manualFee = Math.ceil(basis * codRate);
+                
+                if (manualFee < minCodFee) manualFee = minCodFee;
+                codFee = manualFee;
+            }
+            // ----------------------------------------------
+
             const logoUrl = `{{ asset('public/storage/logo-ekspedisi/') }}/${serviceCode.replace(/\s+/g, '')}.png`;
 
-            // Format Value untuk tombol Pilih
-            // urutan: ServiceType-Ekspedisi-Layanan-Ongkir-Asuransi-FeeCOD
+            // Update value tombol agar fee terkirim ke modal konfirmasi
             const serviceCategory = document.getElementById('service_type').value; 
             const value = `${serviceCategory}-${serviceCode}-${serviceType}-${cost}-${insuranceFee}-${codFee}`;
 
-            // Susun Detail Teks
-            let details = `<small class="text-gray-500 block"><i class="far fa-clock mr-1"></i>Estimasi: ${etd}</small>`;
+            // Susun HTML Detail
+            let details = `<div class="mt-1 text-xs text-gray-500 space-y-1">`;
+            details += `<div><i class="far fa-clock w-4 text-center mr-1"></i>Estimasi: ${etd}</div>`;
             
             if (document.getElementById('ansuransi').value == 'iya' && insuranceFee > 0) {
-                details += `<small class="text-blue-600 block"><i class="fas fa-shield-alt mr-1"></i>Asuransi: ${formatRupiah(insuranceFee)}</small>`;
+                details += `<div class="text-blue-600"><i class="fas fa-shield-alt w-4 text-center mr-1"></i>Asuransi: ${formatRupiah(insuranceFee)}</div>`;
             }
             
             if (isCod) {
-                details += `<small class="text-green-600 font-bold block"><i class="fas fa-hand-holding-usd mr-1"></i>COD Tersedia</small>`;
+                // Tampilkan Label COD + Nominal Fee
+                details += `<div class="text-green-600 font-bold flex items-center">
+                                <i class="fas fa-hand-holding-usd w-4 text-center mr-1"></i>
+                                <span>COD Tersedia</span>
+                            </div>`;
+                // Tambahkan baris estimasi fee
+                details += `<div class="text-orange-600 font-medium ml-5">
+                                + Fee: ${formatRupiah(codFee)}
+                            </div>`;
             } else {
-                details += `<small class="text-red-500 block"><i class="fas fa-times-circle mr-1"></i>Tidak Bisa COD</small>`;
+                details += `<div class="text-red-500"><i class="fas fa-times-circle w-4 text-center mr-1"></i>Tidak Bisa COD</div>`;
             }
+            details += `</div>`;
 
-            // HTML Card
+            // Render Card
             const card = document.createElement('div');
             card.className = 'border rounded-lg mb-3 shadow-sm hover:shadow-md transition-shadow bg-white';
             card.innerHTML = `
                 <div class="p-4 flex justify-between items-center">
                     <div class="flex items-center w-3/4">
-                        <div class="w-16 h-12 mr-4 flex-shrink-0 flex items-center justify-center border border-gray-100 rounded p-1">
+                        <div class="w-16 h-12 mr-3 flex-shrink-0 flex items-center justify-center border border-gray-100 rounded p-1 bg-gray-50">
                             <img src="${logoUrl}" class="max-w-full max-h-full object-contain" 
                                 onerror="this.src='https://placehold.co/100x40?text=${serviceCode}'">
                         </div>
-                        <div>
-                            <h6 class="font-bold text-gray-800 text-sm md:text-base">${serviceName}</h6>
-                            <div class="text-xs mt-1 space-y-0.5">${details}</div>
+                        <div class="overflow-hidden">
+                            <h6 class="font-bold text-gray-800 text-sm md:text-base truncate" title="${serviceName}">${serviceName}</h6>
+                            ${details}
                         </div>
                     </div>
-                    <div class="text-right w-1/4">
-                        <small class="text-gray-500 text-xs">Ongkir</small>
-                        <strong class="block text-base md:text-lg text-red-600">${formatRupiah(cost)}</strong>
+                    <div class="text-right w-1/4 pl-2">
+                        <small class="text-gray-500 text-xs block">Ongkir</small>
+                        <strong class="block text-base md:text-lg text-red-600 leading-tight">${formatRupiah(cost)}</strong>
                         <button type="button" 
-                            class="select-ongkir-btn mt-2 bg-red-600 text-white px-4 py-1.5 rounded-md hover:bg-red-700 text-xs md:text-sm w-full transition-colors font-medium" 
+                            class="select-ongkir-btn mt-2 bg-red-600 text-white px-3 py-1.5 rounded-md hover:bg-red-700 text-xs md:text-sm w-full transition-colors font-medium shadow-sm" 
                             data-value="${value}" 
                             data-display="${serviceName}" 
                             data-cod-supported="${isCod}"
@@ -1172,12 +1170,7 @@ async function runCekOngkir() {
 
     } catch (error) {
         console.error('Cek Ongkir failed:', error);
-        ongkirModalBody.innerHTML = `
-            <div class="bg-red-50 border border-red-200 text-red-800 p-4 rounded-md text-center">
-                <i class="fas fa-exclamation-triangle mb-2 text-2xl"></i><br>
-                Gagal memuat ongkir.<br>
-                <small class="text-gray-600">${error.message}</small>
-            </div>`;
+        ongkirModalBody.innerHTML = `<div class="bg-red-50 text-red-800 p-4 rounded-md text-center">Gagal memuat: ${error.message}</div>`;
     }
 }
 
