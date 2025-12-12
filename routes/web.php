@@ -30,7 +30,7 @@ use App\Http\Controllers\TrackingController;
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\PondokController;
 use App\Http\Controllers\Api\KontakController; // API
-use App\Http\Controllers\KontakController as CustomerKontakController;
+use App\Http\Controllers\Customer\KontakController as CustomerKontakController;
 
 // Products & Marketplace
 use App\Http\Controllers\EtalaseController;
