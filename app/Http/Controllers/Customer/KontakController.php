@@ -6,6 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Kontak;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Services\KiriminAjaService;
+use Exception;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class KontakController extends Controller
 {
@@ -176,6 +180,46 @@ class KontakController extends Controller
                 'line' => $e->getLine(),
                 'file' => $e->getFile()
             ], 500);
+        }
+    }
+
+    public function searchAddressApi(Request $request, KiriminAjaService $kirimaja)
+    {
+        $request->validate(['search' => 'required|string|min:3']); // Ubah 'q' jadi 'search' jika perlu
+        $searchQuery = $request->input('search') ?? $request->input('q'); // Handle kedua nama parameter
+
+        try {
+            // Panggil Service KiriminAja atau Database Lokal
+            $results = $kirimaja->searchAddress($searchQuery);
+            
+            if (empty($results['status']) || empty($results['data'])) {
+                return response()->json([]);
+            }
+            
+            // Format data agar sesuai dengan Autocomplete jQuery UI
+            // Mapping: text -> label, dll
+            $formatted = collect($results['data'])->map(function($item) {
+                return [
+                    'id' => $item['id'] ?? null, // ID unik jika ada
+                    'text' => $item['address'] ?? $item['text'], // Teks lengkap alamat
+                    'full_address' => $item['address'] ?? $item['text'], // Cadangan
+                    // Data detail untuk diisi ke form
+                    'village_name' => $item['kelurahan'] ?? '',
+                    'district_name' => $item['kecamatan'] ?? '',
+                    'city_name' => $item['kabupaten'] ?? '',
+                    'province_name' => $item['provinsi'] ?? '',
+                    'zip_code' => $item['kodepos'] ?? '',
+                    // ID Penting
+                    'district_id' => $item['kecamatan_id'] ?? 0,
+                    'subdistrict_id' => $item['kelurahan_id'] ?? 0,
+                ];
+            });
+
+            return response()->json($formatted);
+
+        } catch (Exception $e) {
+            Log::error('Address Search Failed: ' . $e->getMessage());
+            return response()->json([]);
         }
     }
 }
