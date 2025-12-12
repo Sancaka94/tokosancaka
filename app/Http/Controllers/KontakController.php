@@ -70,7 +70,7 @@ class KontakController extends Controller
 
 
 
-        return view('admin.kontak.index', compact('kontaks'));
+        return view('customer.kontak.index', compact('kontaks'));
 
     }
 
@@ -104,7 +104,7 @@ class KontakController extends Controller
 
 
 
-        return redirect()->route('admin.kontak.index')->with('success', 'Kontak baru berhasil disimpan.');
+        return redirect()->route('customer.kontak.index')->with('success', 'Kontak baru berhasil disimpan.');
 
     }
 
@@ -264,7 +264,7 @@ class KontakController extends Controller
 
 
 
-        return redirect()->route('admin.kontak.index')->with('success', 'Kontak berhasil diperbarui.');
+        return redirect()->route('customer.kontak.index')->with('success', 'Kontak berhasil diperbarui.');
 
     }
 
@@ -284,7 +284,7 @@ class KontakController extends Controller
 
 
 
-        return redirect()->route('admin.kontak.index')->with('success', 'Kontak berhasil dihapus.');
+        return redirect()->route('customer.kontak.index')->with('success', 'Kontak berhasil dihapus.');
 
     }
 
