@@ -556,9 +556,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const debounce = (func, delay) => {
         return (...args) => { clearTimeout(searchTimeout); searchTimeout = setTimeout(() => func.apply(this, args), delay); };
     };
-    function formatRupiah(angka) { 
-        return 'Rp ' + (parseInt(angka, 10) || 0).toLocaleString('id-ID'); 
-    }
+  
 
     // --- FUNGSI BARU: VALIDASI ALAMAT REAL-TIME (SISI KLIEN) ---
     function validateAddressRealtime(inputElement, feedbackElement, fieldName) {
@@ -1091,33 +1089,30 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    // --- PERBAIKAN LOGIKA TOMBOL KONFIRMASI ---
     document.getElementById('confirmBtn').addEventListener('click', (e) => {
         e.preventDefault();
         const form = document.getElementById('orderForm');
+        
+        // 1. Validasi Input Dasar
         const expedition = document.getElementById('expedition').value;
         const paymentMethod = document.getElementById('payment_method').value;
-
+        
         // Pengecekan Klien tambahan untuk alamat min 10 karakter
         let addressError = false;
-        // Panggil validasi real-time untuk memastikan feedback kustom muncul/hilang
         validateAddressRealtime(senderAddressInput, senderAddressFeedback, 'Alamat Pengirim');
         validateAddressRealtime(receiverAddressInput, receiverAddressFeedback, 'Alamat Penerima');
 
-        if (senderAddressInput.value.trim().length < minAddressLength) {
-             addressError = true;
-        }
-        if (receiverAddressInput.value.trim().length < minAddressLength) {
-             addressError = true;
-        }
+        if (senderAddressInput.value.trim().length < minAddressLength) addressError = true;
+        if (receiverAddressInput.value.trim().length < minAddressLength) addressError = true;
         
         if (!form.checkValidity() || !expedition || !paymentMethod || addressError) {
-            // Memaksa browser menampilkan error validasi HTML5
             form.reportValidity();
             
             let missingFields = [];
             if (!expedition) missingFields.push('Ekspedisi');
             if (!paymentMethod) missingFields.push('Metode Pembayaran');
-             if (addressError) missingFields.push('Alamat (Min. 10 Karakter)'); 
+            if (addressError) missingFields.push('Alamat (Min. 10 Karakter)'); 
 
             let message = 'Harap lengkapi semua field yang wajib diisi.';
             if (missingFields.length > 0) {
@@ -1128,39 +1123,8 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        Swal.fire({
-            title: 'Konfirmasi Pesanan',
-            text: "Apakah semua data sudah benar?",
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: '#4f46e5',
-            cancelButtonColor: '#6b7280',
-            confirmButtonText: 'Ya, Buat Pesanan',
-            cancelButtonText: 'Batal'
-        }).then((result) => {
-            // Menjadi:
-if (result.isConfirmed) {
-    const confirmBtn = document.getElementById('confirmBtn');
-    
-    // Nonaktifkan tombol secara visual & fungsional
-    confirmBtn.disabled = true;
-    confirmBtn.classList.add('opacity-50', 'cursor-not-allowed'); // Tambahkan visual disabled
-    confirmBtn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>Memproses...`;
-
-    // Pastikan form hanya bisa disubmit sekali di frontend
-    form.addEventListener('submit', function(e) {
-        if (form.hasSubmitted) {
-            e.preventDefault();
-        } else {
-            form.hasSubmitted = true;
-        }
-    });
-    
-    // Tandai form sudah disubmit sebelum kirim
-    form.hasSubmitted = true;
-    form.submit(); 
-}
-        });
+        // 2. JIKA VALID, PANGGIL FUNGSI BUKA MODAL (BUKAN SWAL)
+        openConfirmationModal();
     });
 
     document.querySelectorAll('.cod-payment-option').forEach(opt => opt.style.display = 'none');
@@ -1202,5 +1166,90 @@ function type() {
 }
 
 type();
+
+  function formatRupiah(angka) { 
+        return 'Rp ' + (parseInt(angka, 10) || 0).toLocaleString('id-ID'); 
+    }
+
+    function openConfirmationModal() {
+    // 1. Ambil Nilai dari Input Form
+    const senderName = document.getElementById('sender_name').value;
+    const senderPhone = document.getElementById('sender_phone').value;
+    const receiverName = document.getElementById('receiver_name').value;
+    const receiverPhone = document.getElementById('receiver_phone').value;
+    const itemDesc = document.getElementById('item_description').value;
+    const weight = document.getElementById('weight').value;
+    const paymentMethodLabel = document.getElementById('selectedPaymentName').innerText;
+    
+    // 2. Parse Data Ekspedisi (Format Value: serviceType-Service-Code-Cost-Insurance-CodFee)
+    // Contoh: regular-JNE-REG-15000-0-0
+    const expeditionVal = document.getElementById('expedition').value;
+    const parts = expeditionVal.split('-');
+    
+    // Pastikan array parts cukup panjang untuk mencegah error
+    const cost = parseInt(parts[3]) || 0;
+    const insurance = parseInt(parts[4]) || 0;
+    const codFee = parseInt(parts[5]) || 0;
+    const serviceName = document.getElementById('selected_expedition_display').value;
+
+    const totalCost = cost + insurance + codFee;
+
+    // 3. Masukkan Data ke dalam Elemen HTML Modal
+    document.getElementById('confirm_total_cost').innerText = formatRupiah(totalCost);
+    document.getElementById('confirm_expedition').innerText = serviceName;
+    
+    document.getElementById('confirm_sender_name').innerText = senderName;
+    document.getElementById('confirm_sender_phone').innerText = senderPhone;
+    
+    document.getElementById('confirm_receiver_name').innerText = receiverName;
+    document.getElementById('confirm_receiver_phone').innerText = receiverPhone;
+    
+    document.getElementById('confirm_item_desc').innerText = itemDesc;
+    document.getElementById('confirm_weight').innerText = weight + ' gram';
+    document.getElementById('confirm_payment').innerText = paymentMethodLabel;
+
+    // Tampilkan baris asuransi jika ada
+    const rowInsurance = document.getElementById('row_insurance');
+    if(rowInsurance) {
+        if (insurance > 0) {
+            rowInsurance.classList.remove('hidden');
+        } else {
+            rowInsurance.classList.add('hidden');
+        }
+    }
+
+    // 4. Tampilkan Modal (Hapus class hidden)
+    const modal = document.getElementById('confirmationModal');
+    modal.classList.remove('hidden');
+    // Tambahkan sedikit animasi fade-in jika diinginkan
+    setTimeout(() => {
+        modal.firstElementChild.classList.remove('scale-95', 'opacity-0');
+        modal.firstElementChild.classList.add('scale-100', 'opacity-100');
+    }, 10);
+}
+
+function closeConfirmationModal() {
+    const modal = document.getElementById('confirmationModal');
+    // Animasi out (opsional)
+    modal.firstElementChild.classList.remove('scale-100', 'opacity-100');
+    modal.firstElementChild.classList.add('scale-95', 'opacity-0');
+    
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 200); // Sesuaikan dengan durasi transition CSS
+}
+
+function submitFinalForm() {
+    const form = document.getElementById('orderForm');
+    const btn = document.querySelector('#confirmationModal button[onclick="submitFinalForm()"]');
+    
+    // Visual Loading pada tombol modal
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-circle-notch fa-spin mr-2"></i> Mengirim...';
+    
+    // Submit form yang sebenarnya
+    form.submit();
+}
+
 </script>
 @endpush
