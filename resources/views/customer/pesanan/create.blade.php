@@ -1254,54 +1254,76 @@ type();
 
     // --- FUNGSI GLOBAL UNTUK MODAL KONFIRMASI (VERSI REVISI LOGIKA BIAYA) ---
 
-// --- GANTI FUNGSI openConfirmationModal YANG LAMA DENGAN INI ---
+// --- GANTI FUNGSI openConfirmationModal INI AGAR ALAMAT MUNCUL LENGKAP ---
 function openConfirmationModal() {
-    // 1. AMBIL DATA
-    // (Perbaikan: Ambil alamat dari TEXTAREA, bukan input search)
-    const senderAddress = document.getElementById('sender_address').value; 
-    const receiverAddress = document.getElementById('receiver_address').value;
+    // 1. AMBIL DATA ALAMAT JALAN (TEXTAREA)
+    const sJalan = document.getElementById('sender_address').value; 
+    const rJalan = document.getElementById('receiver_address').value;
+
+    // 2. AMBIL DATA WILAYAH LENGKAP (DARI HIDDEN INPUT)
+    // Pengirim
+    const sDesa = document.getElementById('sender_village').value || '';
+    const sKec  = document.getElementById('sender_district').value || '';
+    const sKab  = document.getElementById('sender_regency').value || '';
+    const sProv = document.getElementById('sender_province').value || '';
+    const sPos  = document.getElementById('sender_postal_code').value || '';
+    
+    // Gabungkan Alamat Pengirim
+    // Format: Jalan, Desa, Kec, Kab, Prov, Kode Pos
+    const senderFullAddress = `${sJalan}, ${sDesa}, ${sKec}, ${sKab}, ${sProv} ${sPos}`.replace(/, ,/g, ',');
+
+    // Penerima
+    const rDesa = document.getElementById('receiver_village').value || '';
+    const rKec  = document.getElementById('receiver_district').value || '';
+    const rKab  = document.getElementById('receiver_regency').value || '';
+    const rProv = document.getElementById('receiver_province').value || '';
+    const rPos  = document.getElementById('receiver_postal_code').value || '';
+
+    // Gabungkan Alamat Penerima
+    const receiverFullAddress = `${rJalan}, ${rDesa}, ${rKec}, ${rKab}, ${rProv} ${rPos}`.replace(/, ,/g, ',');
+
+    // 3. LOGIKA PAYMENT & LOGO (Sama seperti sebelumnya)
     const paymentMethodVal = document.getElementById('payment_method').value;
     const logoUrl = document.getElementById('selected_expedition_logo_url').value;
     
-    // 2. PARSE DATA ONGKIR (Format: Service-Code-Cost-Ins-Fee)
     const parts = document.getElementById('expedition').value.split('-');
     const baseCost = parseInt(parts[3]) || 0;
     const insurance = parseInt(parts[4]) || 0;
     let codFee = parseInt(parts[5]) || 0;
 
-    // >> BUG FIX COD: Jika metode bayar BUKAN COD, nol-kan biaya codFee <<
     if (paymentMethodVal !== 'COD' && paymentMethodVal !== 'CODBARANG') { 
         codFee = 0; 
     }
 
     const totalCost = baseCost + insurance + codFee;
 
-    // 3. MASUKKAN KE MODAL BARU
+    // 4. MASUKKAN KE MODAL (INJECT HTML)
     document.getElementById('confirm_expedition_name').innerText = document.getElementById('selected_expedition_display').value;
-    // Fallback logo kalau kosong
     document.getElementById('confirm_expedition_logo').src = logoUrl || 'https://placehold.co/100x40?text=Kurir';
 
+    // Pengirim
     document.getElementById('confirm_sender_name').innerText = document.getElementById('sender_name').value;
     document.getElementById('confirm_sender_phone').innerText = document.getElementById('sender_phone').value;
-    document.getElementById('confirm_sender_address').innerText = senderAddress; // Full Alamat
+    document.getElementById('confirm_sender_address').innerText = senderFullAddress; // <--- SUDAH LENGKAP SEKARANG
 
+    // Penerima
     document.getElementById('confirm_receiver_name').innerText = document.getElementById('receiver_name').value;
     document.getElementById('confirm_receiver_phone').innerText = document.getElementById('receiver_phone').value;
-    document.getElementById('confirm_receiver_address').innerText = receiverAddress; // Full Alamat
+    document.getElementById('confirm_receiver_address').innerText = receiverFullAddress; // <--- SUDAH LENGKAP SEKARANG
 
+    // Detail Lainnya
     document.getElementById('confirm_item_desc').innerText = document.getElementById('item_description').value;
     document.getElementById('confirm_weight').innerText = document.getElementById('weight').value + ' gram';
     document.getElementById('confirm_payment_method').innerText = document.getElementById('selectedPaymentName').innerText;
 
-    // 4. RINCIAN BIAYA
+    // Rincian Biaya
     document.getElementById('detail_cost_base').innerText = formatRupiah(baseCost);
     document.getElementById('confirm_total_final').innerText = formatRupiah(totalCost);
     
     // Toggle Baris Asuransi
     const elIns = document.getElementById('row_detail_insurance');
     if(insurance > 0) { 
-        elIns.classList.remove('hidden'); 
-        elIns.classList.add('flex'); 
+        elIns.classList.remove('hidden'); elIns.classList.add('flex'); 
         document.getElementById('detail_cost_insurance').innerText = formatRupiah(insurance); 
     } else { 
         elIns.classList.add('hidden'); elIns.classList.remove('flex'); 
@@ -1310,16 +1332,14 @@ function openConfirmationModal() {
     // Toggle Baris COD
     const elCod = document.getElementById('row_detail_cod');
     if(codFee > 0) { 
-        elCod.classList.remove('hidden'); 
-        elCod.classList.add('flex'); 
+        elCod.classList.remove('hidden'); elCod.classList.add('flex'); 
         document.getElementById('detail_cost_cod').innerText = formatRupiah(codFee); 
     } else { 
         elCod.classList.add('hidden'); elCod.classList.remove('flex'); 
     }
 
-    // 5. FITUR SIMULASI SALDO
+    // 5. SIMULASI SALDO
     const balBox = document.getElementById('balance_simulation_box');
-    // Pastikan value option di HTML abang 'Potong Saldo'
     if (paymentMethodVal === 'Potong Saldo') {
         const curBal = parseInt(document.getElementById('user_current_balance').value) || 0;
         const remBal = curBal - totalCost;
@@ -1330,14 +1350,12 @@ function openConfirmationModal() {
         const finalEl = document.getElementById('sim_final_balance');
         finalEl.innerText = formatRupiah(remBal);
         
-        // Warna merah jika saldo minus
         if(remBal < 0) { 
             finalEl.className = "font-bold text-red-600"; 
             finalEl.innerText += " (Kurang)"; 
         } else { 
             finalEl.className = "font-bold text-green-800"; 
         }
-        
         balBox.classList.remove('hidden');
     } else {
         balBox.classList.add('hidden');
