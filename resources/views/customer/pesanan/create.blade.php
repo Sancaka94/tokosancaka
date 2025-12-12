@@ -470,74 +470,147 @@
     </div>
 </div>
 
-{{-- === [BARU] MODAL KONFIRMASI PEMBAYARAN === --}}
-<div id="confirmationModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 z-[60] hidden flex items-center justify-center transition-opacity duration-300">
-    <div class="bg-white w-full max-w-lg mx-4 rounded-xl shadow-2xl overflow-hidden transform transition-all scale-100">
+{{-- 1. TAMBAHKAN INI DI DALAM FORM (ATAU DI ATASNYA) AGAR JS BISA BACA SALDO USER --}}
+<input type="hidden" id="user_current_balance" value="{{ Auth::user()->saldo ?? 0 }}">
+<input type="hidden" id="selected_expedition_logo_url"> {{-- Penampung URL Logo --}}
+
+{{-- 2. GANTI TOTAL KODE MODAL KONFIRMASI DENGAN YANG INI --}}
+<div id="confirmationModal" class="fixed inset-0 bg-gray-900 bg-opacity-80 z-[60] hidden flex items-center justify-center transition-opacity duration-300 backdrop-blur-sm">
+    <div class="bg-white w-full max-w-2xl mx-4 rounded-xl shadow-2xl overflow-hidden transform transition-all scale-100 flex flex-col max-h-[90vh]">
         
-        <div class="bg-gradient-to-r from-red-600 to-red-700 px-6 py-4 flex justify-between items-center">
-            <h3 class="text-lg font-bold text-white flex items-center gap-2">
-                <i class="fas fa-clipboard-check"></i> Konfirmasi Data
-            </h3>
+        {{-- HEADER: JUDUL & LOGO EKSPEDISI --}}
+        <div class="bg-red-600 px-6 py-4 flex justify-between items-center shadow-md shrink-0">
+            <div class="flex items-center gap-3">
+                <div class="bg-white p-1 rounded-md h-10 w-16 flex items-center justify-center overflow-hidden">
+                     {{-- Logo akan di-inject lewat JS --}}
+                    <img id="confirm_expedition_logo" src="" alt="Logo" class="max-h-full max-w-full object-contain">
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold text-white leading-tight">Konfirmasi Pengiriman</h3>
+                    <p class="text-red-100 text-xs" id="confirm_expedition_name">Service Name</p>
+                </div>
+            </div>
             <button type="button" onclick="closeConfirmationModal()" class="text-white hover:text-red-200 text-2xl font-bold">&times;</button>
         </div>
 
-        <div class="p-6 overflow-y-auto max-h-[70vh] space-y-4">
+        {{-- BODY SCROLLABLE --}}
+        <div class="p-6 overflow-y-auto custom-scrollbar flex-grow">
             
-            <div class="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
-                <p class="text-xs font-bold text-red-600 uppercase tracking-wide">Total Ongkir + Biaya Lainnya</p>
-                <p class="text-3xl font-extrabold text-red-700 mt-1" id="confirm_total_cost">Rp 0</p>
-                <p class="text-sm text-gray-500 mt-1" id="confirm_expedition">-</p>
+            {{-- BAGIAN 1: RINCIAN BIAYA & SALDO --}}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                
+                {{-- KIRI: Breakdown Biaya --}}
+                <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <h4 class="text-xs font-bold text-gray-500 uppercase mb-3 tracking-wide">Rincian Biaya</h4>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Ongkir Dasar</span>
+                            <span class="font-semibold text-gray-900" id="detail_cost_base">Rp 0</span>
+                        </div>
+                        <div class="flex justify-between" id="row_detail_insurance">
+                            <span class="text-gray-600">Asuransi</span>
+                            <span class="font-semibold text-gray-900" id="detail_cost_insurance">Rp 0</span>
+                        </div>
+                        <div class="flex justify-between hidden" id="row_detail_cod">
+                            <span class="text-gray-600">Biaya COD</span>
+                            <span class="font-semibold text-gray-900" id="detail_cost_cod">Rp 0</span>
+                        </div>
+                        <div class="border-t border-gray-300 my-2 pt-2 flex justify-between items-center">
+                            <span class="font-bold text-red-600">TOTAL BAYAR</span>
+                            <span class="font-extrabold text-xl text-red-600" id="confirm_total_final">Rp 0</span>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- KANAN: Informasi Pembayaran & Simulasi Saldo --}}
+                <div class="space-y-3">
+                    {{-- Metode Bayar --}}
+                    <div class="bg-blue-50 p-3 rounded-lg border border-blue-100">
+                        <p class="text-xs text-blue-500 mb-1">Metode Pembayaran</p>
+                        <p class="font-bold text-blue-800 text-lg flex items-center gap-2">
+                            <i class="fas fa-wallet"></i> <span id="confirm_payment_method">-</span>
+                        </p>
+                    </div>
+
+                    {{-- Simulasi Saldo (Hanya Muncul Jika Potong Saldo) --}}
+                    <div id="balance_simulation_box" class="hidden bg-green-50 p-3 rounded-lg border border-green-100 text-sm">
+                        <div class="flex justify-between mb-1">
+                            <span class="text-gray-600">Saldo Awal:</span>
+                            <span class="font-semibold" id="sim_initial_balance">Rp 0</span>
+                        </div>
+                        <div class="flex justify-between mb-1 text-red-600">
+                            <span>Tagihan:</span>
+                            <span>- <span id="sim_bill_amount">Rp 0</span></span>
+                        </div>
+                        <div class="border-t border-green-200 mt-2 pt-2 flex justify-between font-bold text-green-800">
+                            <span>Sisa Saldo:</span>
+                            <span id="sim_final_balance">Rp 0</span>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-4 text-sm">
-                <div class="bg-gray-50 p-3 rounded border">
-                    <p class="text-gray-500 text-xs mb-1">Pengirim:</p>
-                    <p class="font-bold text-gray-800" id="confirm_sender_name">-</p>
-                    <p class="text-gray-600 truncate" id="confirm_sender_phone">-</p>
+            {{-- BAGIAN 2: DATA PENGIRIM & PENERIMA --}}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4 relative">
+                {{-- Garis Pemisah Vertical di MD --}}
+                <div class="hidden md:block absolute left-1/2 top-0 bottom-0 w-px bg-gray-200 transform -translate-x-1/2"></div>
+
+                {{-- Pengirim --}}
+                <div>
+                    <h4 class="text-xs font-bold text-gray-500 uppercase mb-2 flex items-center gap-2">
+                        <i class="fas fa-arrow-up text-red-500 bg-red-100 p-1 rounded-full"></i> Pengirim
+                    </h4>
+                    <div class="pl-2 border-l-2 border-red-200">
+                        <p class="font-bold text-gray-800 text-sm" id="confirm_sender_name">-</p>
+                        <p class="text-xs text-gray-500 mb-1" id="confirm_sender_phone">-</p>
+                        <p class="text-sm text-gray-600 leading-relaxed" id="confirm_sender_address">-</p>
+                    </div>
                 </div>
-                <div class="bg-gray-50 p-3 rounded border">
-                    <p class="text-gray-500 text-xs mb-1">Penerima:</p>
-                    <p class="font-bold text-gray-800" id="confirm_receiver_name">-</p>
-                    <p class="text-gray-600 truncate" id="confirm_receiver_phone">-</p>
+
+                {{-- Penerima --}}
+                <div>
+                    <h4 class="text-xs font-bold text-blue-500 uppercase mb-2 flex items-center gap-2">
+                         <i class="fas fa-arrow-down text-blue-500 bg-blue-100 p-1 rounded-full"></i> Penerima
+                    </h4>
+                    <div class="pl-2 border-l-2 border-blue-200">
+                        <p class="font-bold text-gray-800 text-sm" id="confirm_receiver_name">-</p>
+                        <p class="text-xs text-gray-500 mb-1" id="confirm_receiver_phone">-</p>
+                        <p class="text-sm text-gray-600 leading-relaxed" id="confirm_receiver_address">-</p>
+                    </div>
                 </div>
             </div>
 
-            <div class="border-t pt-3 space-y-2 text-sm">
-                 <div class="flex justify-between">
-                    <span class="text-gray-500">Isi Paket:</span>
-                    <span class="font-semibold text-gray-800 text-right w-1/2 truncate" id="confirm_item_desc">-</span>
+            {{-- BAGIAN 3: DETAIL PAKET --}}
+            <div class="bg-gray-50 rounded p-3 text-sm flex justify-between items-center border border-gray-200">
+                <div>
+                    <span class="text-gray-500 block text-xs">Isi Paket:</span>
+                    <span class="font-semibold text-gray-800" id="confirm_item_desc">-</span>
                 </div>
-                <div class="flex justify-between">
-                    <span class="text-gray-500">Berat:</span>
-                    <span class="font-semibold text-gray-800" id="confirm_weight">- Kg</span>
-                </div>
-                 <div class="flex justify-between">
-                    <span class="text-gray-500">Metode Bayar:</span>
-                    <span class="font-bold text-blue-600" id="confirm_payment">-</span>
-                </div>
-                <div class="flex justify-between hidden" id="row_insurance">
-                    <span class="text-gray-500">Asuransi:</span>
-                    <span class="font-semibold text-green-600">Ya</span>
+                 <div class="text-right">
+                    <span class="text-gray-500 block text-xs">Berat:</span>
+                    <span class="font-semibold text-gray-800" id="confirm_weight">- Gram</span>
                 </div>
             </div>
-            
-            <div class="bg-yellow-50 p-3 rounded text-xs text-yellow-800 border border-yellow-200">
-                <i class="fas fa-exclamation-triangle mr-1"></i> Pastikan data alamat sudah benar. Kesalahan input bukan tanggung jawab sistem setelah resi dicetak.
+
+            {{-- ALERT WARNING --}}
+            <div class="mt-4 bg-yellow-50 p-3 rounded text-xs text-yellow-800 border border-yellow-200 flex items-start gap-2">
+                <i class="fas fa-exclamation-triangle mt-0.5"></i>
+                <span>Pastikan data alamat sudah benar. Kesalahan input alamat bukan tanggung jawab sistem setelah resi dicetak.</span>
             </div>
         </div>
 
-        <div class="px-6 py-4 bg-gray-50 border-t flex flex-col-reverse sm:flex-row gap-3 sm:justify-end">
+        {{-- FOOTER BUTTONS --}}
+        <div class="px-6 py-4 bg-gray-50 border-t flex flex-col-reverse sm:flex-row gap-3 sm:justify-end shrink-0">
             <button type="button" onclick="closeConfirmationModal()" class="w-full sm:w-auto px-5 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-100 transition shadow-sm">
                 Perbaiki Data
             </button>
-            <button type="button" onclick="submitFinalForm()" class="w-full sm:w-auto px-5 py-2.5 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 shadow-lg transition flex items-center justify-center gap-2">
+            <button type="button" onclick="submitFinalForm()" class="w-full sm:w-auto px-6 py-2.5 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 shadow-lg transition flex items-center justify-center gap-2">
                 <span>Lanjut Kirim</span>
                 <i class="fas fa-paper-plane"></i>
             </button>
         </div>
     </div>
 </div>
-{{-- === [SELESAI] MODAL KONFIRMASI === --}}
 
 @endsection
 
@@ -1002,6 +1075,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const isCod = item.cod;
                 const insuranceFee = item.insurance || 0;
                 const codFee = item.setting?.cod_fee_amount || 0;
+                const logoUrl = `{{ asset('public/storage/logo-ekspedisi/') }}/${item.service.toLowerCase().replace(/\s+/g, '')}.png`;
                 const value = `${document.getElementById('service_type').value}-${item.service}-${item.service_type}-${item.cost}-${insuranceFee}-${codFee}`;
                 let details = `<small class="text-gray-500 block">Estimasi: ${item.etd}</small>`;
                 if (document.getElementById('ansuransi').value == 'iya' && insuranceFee > 0) details += `<small class="text-gray-500 block">Asuransi: ${formatRupiah(insuranceFee)}</small>`;
@@ -1022,7 +1096,14 @@ document.addEventListener('DOMContentLoaded', function () {
                         <div class="text-right">
                             <small class="text-gray-500">Ongkir</small>
                             <strong class="block text-lg text-red-600">${formatRupiah(item.cost)}</strong>
-                            <button type="button" class="select-ongkir-btn mt-1 bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 text-sm" data-value="${value}" data-display="${item.service_name}" data-cod-supported="${isCod}">Pilih</button>
+
+                            // 2. Update tombol button di dalam card.innerHTML jadi begini:
+<button type="button" class="select-ongkir-btn mt-1 bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 text-sm" 
+    data-value="${value}" 
+    data-display="${item.service_name}" 
+    data-cod-supported="${isCod}"
+    data-logo="${logoUrl}"> Pilih
+</button>
                         </div>
                     </div>
                 `;
@@ -1041,6 +1122,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (e.target.classList.contains('select-ongkir-btn')) {
             document.getElementById('expedition').value = e.target.dataset.value;
             document.getElementById('selected_expedition_display').value = e.target.dataset.display;
+            document.getElementById('selected_expedition_logo_url').value = e.target.dataset.logo;
             
             const codOptions = document.querySelectorAll('.cod-payment-option');
             if (e.target.dataset.codSupported === 'true') {
@@ -1173,72 +1255,97 @@ type();
 
     // --- FUNGSI GLOBAL UNTUK MODAL KONFIRMASI (VERSI REVISI LOGIKA BIAYA) ---
 
+// --- GANTI FUNGSI openConfirmationModal YANG LAMA DENGAN INI ---
 function openConfirmationModal() {
-    // 1. Ambil Nilai dari Input Form
-    const senderName = document.getElementById('sender_name').value;
-    const senderPhone = document.getElementById('sender_phone').value;
-    const receiverName = document.getElementById('receiver_name').value;
-    const receiverPhone = document.getElementById('receiver_phone').value;
-    const itemDesc = document.getElementById('item_description').value;
-    const weight = document.getElementById('weight').value;
+    // 1. AMBIL DATA
+    // (Perbaikan: Ambil alamat dari TEXTAREA, bukan input search)
+    const senderAddress = document.getElementById('sender_address').value; 
+    const receiverAddress = document.getElementById('receiver_address').value;
+    const paymentMethodVal = document.getElementById('payment_method').value;
+    const logoUrl = document.getElementById('selected_expedition_logo_url').value;
     
-    // Ambil Label & Value Metode Pembayaran
-    const paymentMethodLabel = document.getElementById('selectedPaymentName').innerText;
-    const paymentMethodValue = document.getElementById('payment_method').value; // Contoh: 'Potong Saldo', 'COD', 'CODBARANG'
+    // 2. PARSE DATA ONGKIR (Format: Service-Code-Cost-Ins-Fee)
+    const parts = document.getElementById('expedition').value.split('-');
+    const baseCost = parseInt(parts[3]) || 0;
+    const insurance = parseInt(parts[4]) || 0;
+    let codFee = parseInt(parts[5]) || 0;
 
-    // 2. Parse Data Ekspedisi 
-    // Format Value: serviceType-Service-Code-Cost-Insurance-CodFee
-    const expeditionVal = document.getElementById('expedition').value;
-    const parts = expeditionVal.split('-');
-    
-    // Mencegah error jika data belum lengkap
-    if (parts.length < 4) return; 
-
-    const cost = parseInt(parts[3]) || 0;       // Ongkir Murni
-    const insurance = parseInt(parts[4]) || 0;  // Asuransi
-    let codFee = parseInt(parts[5]) || 0;       // Biaya COD dari API
-
-    // --- LOGIKA PENTING: RESET BIAYA COD JIKA BUKAN METODE COD ---
-    // Cek apakah user memilih metode pembayaran COD atau CODBARANG
-    if (paymentMethodValue !== 'COD' && paymentMethodValue !== 'CODBARANG') {
-        codFee = 0; // Nol-kan biaya COD jika bayar pakai Saldo/Transfer
+    // >> BUG FIX COD: Jika metode bayar BUKAN COD, nol-kan biaya codFee <<
+    if (paymentMethodVal !== 'COD' && paymentMethodVal !== 'CODBARANG') { 
+        codFee = 0; 
     }
 
-    const serviceName = document.getElementById('selected_expedition_display').value;
-    const totalCost = cost + insurance + codFee;
+    const totalCost = baseCost + insurance + codFee;
 
-    // 3. Masukkan Data ke dalam Elemen HTML Modal
-    document.getElementById('confirm_total_cost').innerText = formatRupiah(totalCost);
-    document.getElementById('confirm_expedition').innerText = serviceName;
-    
-    document.getElementById('confirm_sender_name').innerText = senderName;
-    document.getElementById('confirm_sender_phone').innerText = senderPhone;
-    
-    document.getElementById('confirm_receiver_name').innerText = receiverName;
-    document.getElementById('confirm_receiver_phone').innerText = receiverPhone;
-    
-    document.getElementById('confirm_item_desc').innerText = itemDesc;
-    document.getElementById('confirm_weight').innerText = weight + ' gram';
-    document.getElementById('confirm_payment').innerText = paymentMethodLabel;
+    // 3. MASUKKAN KE MODAL BARU
+    document.getElementById('confirm_expedition_name').innerText = document.getElementById('selected_expedition_display').value;
+    // Fallback logo kalau kosong
+    document.getElementById('confirm_expedition_logo').src = logoUrl || 'https://placehold.co/100x40?text=Kurir';
 
-    // Tampilkan baris asuransi jika ada
-    const rowInsurance = document.getElementById('row_insurance');
-    if(rowInsurance) {
-        if (insurance > 0) {
-            rowInsurance.classList.remove('hidden');
-        } else {
-            rowInsurance.classList.add('hidden');
+    document.getElementById('confirm_sender_name').innerText = document.getElementById('sender_name').value;
+    document.getElementById('confirm_sender_phone').innerText = document.getElementById('sender_phone').value;
+    document.getElementById('confirm_sender_address').innerText = senderAddress; // Full Alamat
+
+    document.getElementById('confirm_receiver_name').innerText = document.getElementById('receiver_name').value;
+    document.getElementById('confirm_receiver_phone').innerText = document.getElementById('receiver_phone').value;
+    document.getElementById('confirm_receiver_address').innerText = receiverAddress; // Full Alamat
+
+    document.getElementById('confirm_item_desc').innerText = document.getElementById('item_description').value;
+    document.getElementById('confirm_weight').innerText = document.getElementById('weight').value + ' gram';
+    document.getElementById('confirm_payment_method').innerText = document.getElementById('selectedPaymentName').innerText;
+
+    // 4. RINCIAN BIAYA
+    document.getElementById('detail_cost_base').innerText = formatRupiah(baseCost);
+    document.getElementById('confirm_total_final').innerText = formatRupiah(totalCost);
+    
+    // Toggle Baris Asuransi
+    const elIns = document.getElementById('row_detail_insurance');
+    if(insurance > 0) { 
+        elIns.classList.remove('hidden'); 
+        elIns.classList.add('flex'); 
+        document.getElementById('detail_cost_insurance').innerText = formatRupiah(insurance); 
+    } else { 
+        elIns.classList.add('hidden'); elIns.classList.remove('flex'); 
+    }
+
+    // Toggle Baris COD
+    const elCod = document.getElementById('row_detail_cod');
+    if(codFee > 0) { 
+        elCod.classList.remove('hidden'); 
+        elCod.classList.add('flex'); 
+        document.getElementById('detail_cost_cod').innerText = formatRupiah(codFee); 
+    } else { 
+        elCod.classList.add('hidden'); elCod.classList.remove('flex'); 
+    }
+
+    // 5. FITUR SIMULASI SALDO
+    const balBox = document.getElementById('balance_simulation_box');
+    // Pastikan value option di HTML abang 'Potong Saldo'
+    if (paymentMethodVal === 'Potong Saldo') {
+        const curBal = parseInt(document.getElementById('user_current_balance').value) || 0;
+        const remBal = curBal - totalCost;
+        
+        document.getElementById('sim_initial_balance').innerText = formatRupiah(curBal);
+        document.getElementById('sim_bill_amount').innerText = formatRupiah(totalCost);
+        
+        const finalEl = document.getElementById('sim_final_balance');
+        finalEl.innerText = formatRupiah(remBal);
+        
+        // Warna merah jika saldo minus
+        if(remBal < 0) { 
+            finalEl.className = "font-bold text-red-600"; 
+            finalEl.innerText += " (Kurang)"; 
+        } else { 
+            finalEl.className = "font-bold text-green-800"; 
         }
+        
+        balBox.classList.remove('hidden');
+    } else {
+        balBox.classList.add('hidden');
     }
 
-    // 4. Tampilkan Modal
-    const modal = document.getElementById('confirmationModal');
-    modal.classList.remove('hidden');
-    
-    setTimeout(() => {
-        modal.firstElementChild.classList.remove('scale-95', 'opacity-0');
-        modal.firstElementChild.classList.add('scale-100', 'opacity-100');
-    }, 10);
+    // 6. BUKA MODAL
+    document.getElementById('confirmationModal').classList.remove('hidden');
 }
 
 function closeConfirmationModal() {
