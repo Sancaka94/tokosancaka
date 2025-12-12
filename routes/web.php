@@ -123,6 +123,7 @@ Route::get('/tracking', [TrackingController::class, 'showTrackingPage'])->name('
 Route::get('/tracking/search', [TrackingController::class, 'showTrackingPage'])->name('tracking.search');
 Route::get('/tracking/refresh', [TrackingController::class, 'refresh'])->name('tracking.refresh');
 Route::get('/tracking/cetak-thermal/{resi}', [TrackingController::class, 'cetakThermal'])->name('tracking.cetak_thermal');
+Route::get('/tracking/cetak-resi/{resi}', [TrackingController::class, 'cetakThermal'])->name('cetak_thermal');
 
 Route::get('/kirimaja/cek-ongkir', [CustomerOrderController::class, 'cek_Ongkir'])->name('kirimaja.cekongkir');
 Route::get('/koli/cek-ongkir', [KoliController::class, 'cekOngkirMulti'])->name('public.koli.cekOngkirMulti'); // Akses publik
