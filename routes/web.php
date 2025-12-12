@@ -808,53 +808,6 @@ Route::post('/deposit', [AdminPpobController::class, 'requestDeposit'])->name('p
         Route::post('/topup', [AdminPpobController::class, 'topup'])->name('ppob.topup');
     
 
-
-
-// =================================================================
-// GROUP ROUTE PPOB (DIGIFLAZZ) - GABUNGAN TRANSAKSI & PRODUK
-// =================================================================
-Route::prefix('ppob')->name('ppob.')->group(function () {
-
-    
-    
-    // -------------------------------------------------------------
-    // 1. DATA TRANSAKSI (HARUS PALING ATAS)
-    // -------------------------------------------------------------
-    // URL: /admin/ppob/data
-    Route::get('/data', [AdminPpobController::class, 'index'])->name('data.index');
-
-    
-// ===> PERBAIKAN DI SINI (Menambahkan 'data.' pada nama route) <===
-    Route::get('/data/export/excel', [App\Http\Controllers\Admin\AdminPpobController::class, 'exportExcel'])->name('data.export.excel');
-    Route::get('/data/export/pdf', [App\Http\Controllers\Admin\AdminPpobController::class, 'exportPdf'])->name('data.export.pdf');
-    // ==========================================================
-    // TAMBAHKAN KODE INI UNTUK MEMPERBAIKI ERROR
-    // ==========================================================
-    Route::get('/export/excel', [AdminPpobController::class, 'exportExcel'])->name('export.excel');
-    Route::get('/export/pdf', [AdminPpobController::class, 'exportPdf'])->name('export.pdf');
-    // ==========================================================
-    // -------------------------------------------------------------
-    // 2. MANAJEMEN PRODUK PPOB (HARUS DI TENGAH)
-    // -------------------------------------------------------------
-    // URL: /admin/ppob/ (List Produk)
-    // Pastikan Controller PpobProductController sudah di-use di paling atas file ini
-    
-    Route::post('/bulk-update', [App\Http\Controllers\PpobProductController::class, 'bulkUpdate'])->name('bulk-update');
-    Route::get('/product-export/excel', [App\Http\Controllers\PpobProductController::class, 'exportExcel'])->name('product.export.excel');
-    
-     // ===> TAMBAHKAN INI (FIX ERROR ANDA) <===
-    // Nama route harus persis 'export-excel' dan 'export-pdf' agar cocok dengan view Anda
-    Route::get('/export-excel', [App\Http\Controllers\PpobProductController::class, 'exportExcel'])->name('export-excel');
-    Route::get('/export-pdf', [App\Http\Controllers\PpobProductController::class, 'exportPdf'])->name('export-pdf');
-    
-    Route::get('/{id}', [App\Http\Controllers\PpobProductController::class, 'show'])->name('show');
-    Route::put('/update-price/{id}', [App\Http\Controllers\PpobProductController::class, 'updatePrice'])->name('update-price');
-    Route::delete('/destroy/{id}', [App\Http\Controllers\PpobProductController::class, 'destroy'])->name('destroy');
-});
-
-
-
-        
     Route::resource('customers/data/pengguna', DataPenggunaController::class)
     ->names('customers.data.pengguna');
 
