@@ -15,10 +15,17 @@ class KontakController extends Controller
 {
     public function index(Request $request)
     {
-        $userId = Auth::id();
+        $user = Auth::user(); // Ambil object user lengkap untuk cek role
 
         // --- QUERY 1: Tabel Utama (Bisa difilter/search) ---
-        $query = Kontak::where('user_id', $userId);
+        $query = Kontak::query();
+
+        // LOGIKA KHUSUS: Cek apakah user adalah Admin
+        // Jika BUKAN Admin, batasi query hanya milik user tersebut.
+        // Jika Admin, lewati blok ini (artinya ambil semua data).
+        if ($user->role !== 'Admin') { 
+            $query->where('user_id', $user->id);
+        }
 
         if ($request->filled('search')) {
             $search = $request->input('search');
@@ -36,14 +43,18 @@ class KontakController extends Controller
         $kontaks = $query->latest()->paginate(10);
 
         // --- QUERY 2: Tabel Khusus Pengirim (Selalu Tampil di Bawah) ---
-        // Data ini khusus tipe 'Pengirim' milik user ini, tanpa paginasi (ambil semua atau limit 5)
-        $pengirims = Kontak::where('user_id', $userId)
-                           ->where('tipe', 'Pengirim')
-                           ->latest()
-                           ->get();
+        $queryPengirim = Kontak::where('tipe', 'Pengirim');
+
+        // Terapkan logika yang sama untuk list Pengirim
+        if ($user->role !== 'Admin') {
+            $queryPengirim->where('user_id', $user->id);
+        }
+
+        $pengirims = $queryPengirim->latest()->get();
 
         return view('customer.kontak.index', compact('kontaks', 'pengirims'));
     }
+
     /**
      * Menyimpan kontak baru sesuai inputan Blade.
      */
@@ -53,27 +64,24 @@ class KontakController extends Controller
         $validatedData = $request->validate([
             'nama'      => 'required|string|max:255',
             'no_hp'     => 'required|string|max:20',
-            'alamat'    => 'required|string', // Detail Alamat
-            'tipe'      => 'nullable|string', // Hidden field di blade
-
-            // Data Wilayah (Readonly di blade, tapi wajib ada isinya)
+            'alamat'    => 'required|string',
+            'tipe'      => 'nullable|string',
             'province'    => 'required|string',
             'regency'     => 'required|string',
             'district'    => 'required|string',
             'village'     => 'required|string',
             'postal_code' => 'required|string',
-
-            // Data Hidden (Penting untuk Ongkir & Peta)
-            'district_id'    => 'nullable|string', // ID Kecamatan (KiriminAja/RajaOngkir)
-            'subdistrict_id' => 'nullable|string', // ID Kelurahan
+            'district_id'    => 'nullable|string',
+            'subdistrict_id' => 'nullable|string',
             'lat'            => 'nullable|string',
             'lng'            => 'nullable|string',
         ]);
 
         // 2. Set User ID & Default Tipe
+        // Jika Admin yang input, tetap tersimpan atas nama Admin (Auth::id())
+        // Kecuali Anda ingin Admin bisa memilih pemilik kontak (butuh input tambahan user_id)
         $validatedData['user_id'] = Auth::id();
         
-        // Jika tipe kosong, default ke Penerima
         if (empty($validatedData['tipe'])) {
             $validatedData['tipe'] = 'Penerima';
         }
@@ -89,8 +97,15 @@ class KontakController extends Controller
      */
     public function edit($id)
     {
-        // Pastikan hanya bisa edit punya sendiri
-        $kontak = Kontak::where('user_id', Auth::id())->where('id', $id)->firstOrFail();
+        $user = Auth::user();
+        $query = Kontak::where('id', $id);
+
+        // Validasi kepemilikan hanya jika BUKAN Admin
+        if ($user->role !== 'Admin') {
+            $query->where('user_id', $user->id);
+        }
+
+        $kontak = $query->firstOrFail();
         return response()->json($kontak);
     }
 
@@ -99,20 +114,26 @@ class KontakController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $kontak = Kontak::where('user_id', Auth::id())->where('id', $id)->firstOrFail();
+        $user = Auth::user();
+        $query = Kontak::where('id', $id);
+
+        // Validasi kepemilikan hanya jika BUKAN Admin
+        if ($user->role !== 'Admin') {
+            $query->where('user_id', $user->id);
+        }
+
+        $kontak = $query->firstOrFail();
 
         $validatedData = $request->validate([
             'nama'      => 'required|string|max:255',
             'no_hp'     => 'required|string|max:20',
             'alamat'    => 'required|string',
             'tipe'      => 'nullable|string',
-
             'province'    => 'required|string',
             'regency'     => 'required|string',
             'district'    => 'required|string',
             'village'     => 'required|string',
             'postal_code' => 'required|string',
-
             'district_id'    => 'nullable|string',
             'subdistrict_id' => 'nullable|string',
             'lat'            => 'nullable|string',
@@ -129,27 +150,37 @@ class KontakController extends Controller
      */
     public function destroy($id)
     {
-        $kontak = Kontak::where('user_id', Auth::id())->where('id', $id)->firstOrFail();
+        $user = Auth::user();
+        $query = Kontak::where('id', $id);
+
+        // Validasi kepemilikan hanya jika BUKAN Admin
+        if ($user->role !== 'Admin') {
+            $query->where('user_id', $user->id);
+        }
+
+        $kontak = $query->firstOrFail();
         $kontak->delete();
 
         return redirect()->route('customer.kontak.index')->with('success', 'Kontak berhasil dihapus.');
     }
 
     /**
-     * Pencarian AJAX (Versi Debug & Fix).
+     * Pencarian AJAX.
      */
     public function search(Request $request)
     {
         try {
-            // 1. FIX: Ambil input 'search' (karena JS Anda mengirim ?search=...)
-            // Kita dukung 'search' ATAU 'query' biar aman
+            $user = Auth::user();
             $keyword = $request->input('search') ?? $request->input('query');
-            
-            // Tangkap filter tipe (Pengirim/Penerima)
             $tipe = $request->input('tipe'); 
 
             // 2. Query Dasar
-            $query = Kontak::where('user_id', Auth::id());
+            $query = Kontak::query();
+
+            // LOGIKA KHUSUS ADMIN DI SINI JUGA
+            if ($user->role !== 'Admin') {
+                $query->where('user_id', $user->id);
+            }
 
             // 3. Filter Keyword
             if ($keyword) {
@@ -165,87 +196,58 @@ class KontakController extends Controller
             }
 
             // 5. Ambil Data
-            // SAYA GANTI KE get() TANPA PILIH KOLOM DULU
-            // Ini untuk mencegah error jika kolom 'province' dll belum ada di database
             $kontaks = $query->limit(10)->get();
 
             return response()->json($kontaks);
 
         } catch (\Exception $e) {
-            // JIKA ERROR, TAMPILKAN PESAN ASLINYA
-            // Ini akan membantu kita melihat kenapa server error 500
             return response()->json([
                 'message' => 'Server Error',
-                'error_detail' => $e->getMessage(),
-                'line' => $e->getLine(),
-                'file' => $e->getFile()
+                'error_detail' => $e->getMessage()
             ], 500);
         }
     }
 
-/**
-     * Endpoint API untuk pencarian alamat (Digunakan oleh Autocomplete)
-     */
+    // ... method searchAddressApi tetap sama (tidak perlu diubah) ...
     public function searchAddressApi(Request $request, KiriminAjaService $kirimaja)
     {
-        // Ambil query dari parameter 'q' (jQuery UI) atau 'search' (standar)
         $keyword = $request->input('q') ?? $request->input('search');
 
-        // Validasi minimal karakter
         if (!$keyword || strlen($keyword) < 3) {
             return response()->json([]);
         }
 
         try {
-            // Panggil API KiriminAja
             $response = $kirimaja->searchAddress($keyword);
 
-            // Cek jika data kosong
             if (empty($response) || empty($response['data'])) {
                 return response()->json([]);
             }
 
-            // Format data agar aman dari error index
             $formatted = collect($response['data'])->map(function ($item) {
-                
-                // 1. Ambil string alamat
                 $fullAddress = $item['full_address'] ?? $item['address'] ?? $item['text'] ?? '';
-                
-                // 2. Pecah string menjadi array
-                // Format Standar: "Kelurahan, Kecamatan, Kota, Provinsi, KodePos"
                 $parts = array_map('trim', explode(',', $fullAddress));
-                
-                // 3. [TRIK AMAN] Pad array dengan string kosong sampai 5 elemen
-                // Ini mencegah error "Undefined array key" jika format alamat dari API tidak lengkap
                 $padded = array_pad($parts, 5, ''); 
 
-                // 4. Mapping ke variabel (Asumsi urutan standar KiriminAja)
-                $village     = $padded[0]; // Kelurahan
-                $district    = $padded[1]; // Kecamatan
-                $regency     = $padded[2]; // Kota/Kab
-                $province    = $padded[3]; // Provinsi
-                $postalCode  = $padded[4]; // Kode Pos
+                $village     = $padded[0]; 
+                $district    = $padded[1]; 
+                $regency     = $padded[2]; 
+                $province    = $padded[3]; 
+                $postalCode  = $padded[4]; 
 
-                // 5. Pembersihan Data Kodepos (Opsional)
-                // Jika kodepos kosong tapi ada angka 5 digit di string alamat, ambil angka tersebut
                 if ((empty($postalCode) || !is_numeric($postalCode)) && preg_match('/\d{5}/', $fullAddress, $matches)) {
                     $postalCode = $matches[0];
                 }
 
-                // Return format JSON yang dibutuhkan Frontend
                 return [
-                    'label' => $fullAddress, // Teks yang muncul di dropdown
-                    'value' => $fullAddress, // Teks yang masuk ke input saat dipilih
-                    
-                    // Data detail untuk autofill input lain
+                    'label' => $fullAddress, 
+                    'value' => $fullAddress, 
                     'data_lengkap' => [
                         'village'        => $village,
                         'district'       => $district,
                         'regency'        => $regency,
                         'province'       => $province,
                         'postal_code'    => $postalCode,
-                        
-                        // ID Wilayah (Penting untuk Cek Ongkir)
                         'district_id'    => $item['district_id'] ?? null,
                         'subdistrict_id' => $item['subdistrict_id'] ?? null,
                     ]
@@ -255,8 +257,7 @@ class KontakController extends Controller
             return response()->json($formatted);
 
         } catch (Exception $e) {
-            Log::error('Search Address Error (KontakController): ' . $e->getMessage());
-            // Return array kosong agar frontend tidak error
+            Log::error('Search Address Error: ' . $e->getMessage());
             return response()->json([]);
         }
     }
