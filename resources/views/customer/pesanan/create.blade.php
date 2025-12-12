@@ -469,6 +469,76 @@
             </div>
     </div>
 </div>
+
+{{-- === [BARU] MODAL KONFIRMASI PEMBAYARAN === --}}
+<div id="confirmationModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 z-[60] hidden flex items-center justify-center transition-opacity duration-300">
+    <div class="bg-white w-full max-w-lg mx-4 rounded-xl shadow-2xl overflow-hidden transform transition-all scale-100">
+        
+        <div class="bg-gradient-to-r from-red-600 to-red-700 px-6 py-4 flex justify-between items-center">
+            <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                <i class="fas fa-clipboard-check"></i> Konfirmasi Data
+            </h3>
+            <button type="button" onclick="closeConfirmationModal()" class="text-white hover:text-red-200 text-2xl font-bold">&times;</button>
+        </div>
+
+        <div class="p-6 overflow-y-auto max-h-[70vh] space-y-4">
+            
+            <div class="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
+                <p class="text-xs font-bold text-red-600 uppercase tracking-wide">Total Ongkir + Biaya Lainnya</p>
+                <p class="text-3xl font-extrabold text-red-700 mt-1" id="confirm_total_cost">Rp 0</p>
+                <p class="text-sm text-gray-500 mt-1" id="confirm_expedition">-</p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 text-sm">
+                <div class="bg-gray-50 p-3 rounded border">
+                    <p class="text-gray-500 text-xs mb-1">Pengirim:</p>
+                    <p class="font-bold text-gray-800" id="confirm_sender_name">-</p>
+                    <p class="text-gray-600 truncate" id="confirm_sender_phone">-</p>
+                </div>
+                <div class="bg-gray-50 p-3 rounded border">
+                    <p class="text-gray-500 text-xs mb-1">Penerima:</p>
+                    <p class="font-bold text-gray-800" id="confirm_receiver_name">-</p>
+                    <p class="text-gray-600 truncate" id="confirm_receiver_phone">-</p>
+                </div>
+            </div>
+
+            <div class="border-t pt-3 space-y-2 text-sm">
+                 <div class="flex justify-between">
+                    <span class="text-gray-500">Isi Paket:</span>
+                    <span class="font-semibold text-gray-800 text-right w-1/2 truncate" id="confirm_item_desc">-</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-500">Berat:</span>
+                    <span class="font-semibold text-gray-800" id="confirm_weight">- Kg</span>
+                </div>
+                 <div class="flex justify-between">
+                    <span class="text-gray-500">Metode Bayar:</span>
+                    <span class="font-bold text-blue-600" id="confirm_payment">-</span>
+                </div>
+                <div class="flex justify-between hidden" id="row_insurance">
+                    <span class="text-gray-500">Asuransi:</span>
+                    <span class="font-semibold text-green-600">Ya</span>
+                </div>
+            </div>
+            
+            <div class="bg-yellow-50 p-3 rounded text-xs text-yellow-800 border border-yellow-200">
+                <i class="fas fa-exclamation-triangle mr-1"></i> Pastikan data alamat sudah benar. Kesalahan input bukan tanggung jawab sistem setelah resi dicetak.
+            </div>
+        </div>
+
+        <div class="px-6 py-4 bg-gray-50 border-t flex flex-col-reverse sm:flex-row gap-3 sm:justify-end">
+            <button type="button" onclick="closeConfirmationModal()" class="w-full sm:w-auto px-5 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-100 transition shadow-sm">
+                Perbaiki Data
+            </button>
+            <button type="button" onclick="submitFinalForm()" class="w-full sm:w-auto px-5 py-2.5 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 shadow-lg transition flex items-center justify-center gap-2">
+                <span>Lanjut Kirim</span>
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+    </div>
+</div>
+{{-- === [SELESAI] MODAL KONFIRMASI === --}}
+
 @endsection
 
 @push('scripts')
@@ -1021,75 +1091,100 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    // --- [BARU] FUNGSI MEMBUKA MODAL KONFIRMASI ---
     document.getElementById('confirmBtn').addEventListener('click', (e) => {
         e.preventDefault();
         const form = document.getElementById('orderForm');
-        const expedition = document.getElementById('expedition').value;
+        
+        // 1. Ambil Value Input Utama
+        const expeditionVal = document.getElementById('expedition').value;
         const paymentMethod = document.getElementById('payment_method').value;
+        const senderName = document.getElementById('sender_name').value;
+        const senderPhone = document.getElementById('sender_phone').value;
+        const receiverName = document.getElementById('receiver_name').value;
+        const receiverPhone = document.getElementById('receiver_phone').value;
+        const weight = document.getElementById('weight').value;
+        const itemDesc = document.getElementById('item_description').value;
+        const isInsurance = document.getElementById('ansuransi').value === 'iya';
 
-        // Pengecekan Klien tambahan untuk alamat min 10 karakter
-        let addressError = false;
-        // Panggil validasi real-time untuk memastikan feedback kustom muncul/hilang
+        // 2. Validasi Klien (Sama seperti sebelumnya)
         validateAddressRealtime(senderAddressInput, senderAddressFeedback, 'Alamat Pengirim');
         validateAddressRealtime(receiverAddressInput, receiverAddressFeedback, 'Alamat Penerima');
 
-        if (senderAddressInput.value.trim().length < minAddressLength) {
-             addressError = true;
-        }
-        if (receiverAddressInput.value.trim().length < minAddressLength) {
-             addressError = true;
-        }
+        let addressError = false;
+        if (senderAddressInput.value.trim().length < minAddressLength) addressError = true;
+        if (receiverAddressInput.value.trim().length < minAddressLength) addressError = true;
         
-        if (!form.checkValidity() || !expedition || !paymentMethod || addressError) {
-            // Memaksa browser menampilkan error validasi HTML5
+        if (!form.checkValidity() || !expeditionVal || !paymentMethod || addressError) {
             form.reportValidity();
-            
             let missingFields = [];
-            if (!expedition) missingFields.push('Ekspedisi');
+            if (!expeditionVal) missingFields.push('Ekspedisi');
             if (!paymentMethod) missingFields.push('Metode Pembayaran');
-             if (addressError) missingFields.push('Alamat (Min. 10 Karakter)'); 
-
+            if (addressError) missingFields.push('Alamat (Min. 10 Karakter)'); 
+            
             let message = 'Harap lengkapi semua field yang wajib diisi.';
-            if (missingFields.length > 0) {
-                message += ` Anda belum: ${missingFields.join(', ')}.`;
-            }
-
+            if (missingFields.length > 0) message += ` Anda belum: ${missingFields.join(', ')}.`;
             Swal.fire('Peringatan', message, 'warning');
             return;
         }
 
-        Swal.fire({
-            title: 'Konfirmasi Pesanan',
-            text: "Apakah semua data sudah benar?",
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: '#4f46e5',
-            cancelButtonColor: '#6b7280',
-            confirmButtonText: 'Ya, Buat Pesanan',
-            cancelButtonText: 'Batal'
-        }).then((result) => {
-            // Menjadi:
-if (result.isConfirmed) {
-    const confirmBtn = document.getElementById('confirmBtn');
-    
-    // Nonaktifkan tombol secara visual & fungsional
-    confirmBtn.disabled = true;
-    confirmBtn.classList.add('opacity-50', 'cursor-not-allowed'); // Tambahkan visual disabled
-    confirmBtn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>Memproses...`;
-
-    // Pastikan form hanya bisa disubmit sekali di frontend
-    form.addEventListener('submit', function(e) {
-        if (form.hasSubmitted) {
-            e.preventDefault();
-        } else {
-            form.hasSubmitted = true;
+        // 3. Parsing Data Ongkir dari Value Hidden Input
+        // Format value: service_type-courier-service-cost-insurance-cod
+        // Contoh: regular-jne-REG-15000-0-0
+        let totalCost = 0;
+        let expeditionName = document.getElementById('selected_expedition_display').value || '-';
+        
+        if (expeditionVal) {
+            const parts = expeditionVal.split('-');
+            // parts[3] adalah cost, parts[4] adalah asuransi, parts[5] adalah cod fee
+            const shippingCost = parseInt(parts[3]) || 0;
+            const insuranceCost = parseInt(parts[4]) || 0;
+            const codFee = parseInt(parts[5]) || 0;
+            totalCost = shippingCost + insuranceCost + codFee;
         }
+
+        // 4. Masukkan Data ke dalam Modal HTML
+        document.getElementById('confirm_total_cost').innerText = formatRupiah(totalCost);
+        document.getElementById('confirm_expedition').innerText = expeditionName;
+        
+        document.getElementById('confirm_sender_name').innerText = senderName;
+        document.getElementById('confirm_sender_phone').innerText = senderPhone;
+        
+        document.getElementById('confirm_receiver_name').innerText = receiverName;
+        document.getElementById('confirm_receiver_phone').innerText = receiverPhone;
+        
+        document.getElementById('confirm_item_desc').innerText = itemDesc;
+        document.getElementById('confirm_weight').innerText = weight + ' Gram';
+        
+        // Ambil nama metode pembayaran dari label yang aktif atau elemen display
+        const paymentLabel = document.getElementById('selectedPaymentName').innerText;
+        document.getElementById('confirm_payment').innerText = paymentLabel;
+
+        // Tampilkan baris asuransi jika dipilih
+        document.getElementById('row_insurance').classList.toggle('hidden', !isInsurance);
+
+        // 5. Tampilkan Modal (Hapus class hidden)
+        document.getElementById('confirmationModal').classList.remove('hidden');
     });
-    
-    // Tandai form sudah disubmit sebelum kirim
-    form.hasSubmitted = true;
-    form.submit(); 
-}
+
+    // --- [BARU] FUNGSI MENUTUP MODAL (TOMBOL PERBAIKI) ---
+    window.closeConfirmationModal = function() {
+        document.getElementById('confirmationModal').classList.add('hidden');
+    }
+
+    // --- [BARU] FUNGSI SUBMIT FINAL (TOMBOL LANJUT KIRIM) ---
+    window.submitFinalForm = function() {
+        const form = document.getElementById('orderForm');
+        const btn = document.querySelector('#confirmationModal button[onclick="submitFinalForm()"]');
+        
+        // Efek Loading pada tombol modal
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin animate-spin"></i> Memproses...';
+        btn.classList.add('opacity-75', 'cursor-not-allowed');
+
+        // Submit Form Asli
+        form.submit();
+    }
         });
     });
 
