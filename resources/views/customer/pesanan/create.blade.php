@@ -1260,7 +1260,7 @@ function hideRow(elementId) {
     }
 }
 
-// --- FUNGSI BUKA MODAL FINAL ---
+// --- FUNGSI BUKA MODAL FINAL (DIPERBARUI) ---
 function openConfirmationModal() {
     // 1. DATA INPUT DASAR
     const senderAddress = document.getElementById('sender_address').value; 
@@ -1268,49 +1268,44 @@ function openConfirmationModal() {
     const paymentMethodVal = document.getElementById('payment_method').value;
     const logoUrl = document.getElementById('selected_expedition_logo_url').value;
 
-    // 2. HITUNG DIMENSI (PxLxT)
-    const p = document.getElementById('length').value;
-    const l = document.getElementById('width').value;
-    const t = document.getElementById('height').value;
-    let dimText = '-';
-    // Hanya tampilkan jika ketiga kolom diisi
-    if (p && l && t) {
-        dimText = `${p} x ${l} x ${t} cm`;
-    }
+    // 2. AMBIL HARGA BARANG DARI INPUT (Sesuai Permintaan)
+    // .replace(/[^0-9]/g, '') berguna untuk menghapus "Rp" atau titik jika ada, agar kalkulasi aman
+    const rawPrice = document.getElementById('item_price').value;
+    const itemPrice = parseInt(rawPrice.replace(/[^0-9]/g, '')) || 0;
 
-    // 3. LOGIKA BIAYA
+    // 3. LOGIKA BIAYA DARI TOMBOL PILIHAN
+    // Format value: ServiceType-ServiceName-ServiceCode-Ongkir-Asuransi-CodFee
     const parts = document.getElementById('expedition').value.split('-');
-    const baseCost = parseInt(parts[3]) || 0;     // Ongkir
-    const insurance = parseInt(parts[4]) || 0;    // Asuransi
-    let codFee = parseInt(parts[5]) || 0;         // Biaya Admin COD
-    const itemPrice = parseInt(document.getElementById('item_price').value) || 0; // Harga Barang
+    const baseCost = parseInt(parts[3]) || 0;      // Ongkir Dasar
+    const insurance = parseInt(parts[4]) || 0;     // Biaya Asuransi
+    let codFee = parseInt(parts[5]) || 0;          // Biaya Layanan COD (Dari API)
 
-    // Variabel Total
+    // --- LOGIKA HITUNG TOTAL ---
     let totalCost = baseCost + insurance; 
 
-    // Cek Pembayaran
-    const isCODBarang = (paymentMethodVal === 'CODBARANG');
-    const isCODRegular = (paymentMethodVal === 'COD');
+    // Cek Jenis Pembayaran
+    const isCODBarang = (paymentMethodVal === 'CODBARANG'); // COD Barang + Ongkir
+    const isCODRegular = (paymentMethodVal === 'COD');      // COD Ongkir Saja
 
-    // A. Atur Biaya Admin COD
+    // A. Masukkan Biaya Layanan COD jika metode bayarnya COD
     if (isCODBarang || isCODRegular) {
-        totalCost += codFee; // Tambah admin fee
+        totalCost += codFee; 
     } else {
-        codFee = 0; // Reset jadi 0 jika bayar saldo
+        codFee = 0; // Jika bayar saldo/transfer, fee 0
     }
 
-    // B. Atur Harga Barang (Hanya jika COD Barang)
+    // B. Masukkan Harga Barang ke Total HANYA jika 'COD Barang + Ongkir'
     if (isCODBarang) {
         totalCost += itemPrice;
     }
 
-    // 4. INJECT DATA KE MODAL
+    // 4. INJECT DATA KE TAMPILAN MODAL (UI)
     document.getElementById('confirm_expedition_name').innerText = document.getElementById('selected_expedition_display').value;
     document.getElementById('confirm_expedition_logo').src = logoUrl || 'https://placehold.co/100x40?text=Kurir';
 
-    // Gabung Alamat Lengkap (Desa, Kec, Kab, Prov)
+    // Format Alamat
     const sVals = ['village','district','regency','province','postal_code'].map(id => document.getElementById('sender_'+id).value || '');
-    const sFull = `${senderAddress}, ${sVals.filter(Boolean).join(', ')}`; // filter(Boolean) membuang string kosong
+    const sFull = `${senderAddress}, ${sVals.filter(Boolean).join(', ')}`;
     
     const rVals = ['village','district','regency','province','postal_code'].map(id => document.getElementById('receiver_'+id).value || '');
     const rFull = `${receiverAddress}, ${rVals.filter(Boolean).join(', ')}`;
@@ -1323,28 +1318,38 @@ function openConfirmationModal() {
     document.getElementById('confirm_receiver_phone').innerText = document.getElementById('receiver_phone').value;
     document.getElementById('confirm_receiver_address').innerText = rFull;
 
+    // Info Paket
     document.getElementById('confirm_item_desc').innerText = document.getElementById('item_description').value;
     document.getElementById('confirm_weight').innerText = document.getElementById('weight').value + ' gram';
-    document.getElementById('confirm_dimensions').innerText = dimText; // Tampilkan Dimensi
+    
+    // Dimensi
+    const p = document.getElementById('length').value;
+    const l = document.getElementById('width').value;
+    const t = document.getElementById('height').value;
+    document.getElementById('confirm_dimensions').innerText = (p && l && t) ? `${p} x ${l} x ${t} cm` : '-';
+    
     document.getElementById('confirm_payment_method').innerText = document.getElementById('selectedPaymentName').innerText;
 
     // 5. UPDATE RINCIAN BIAYA & VISIBILITY ROW
+    // Ongkir Dasar
     document.getElementById('detail_cost_base').innerText = formatRupiah(baseCost);
-    document.getElementById('confirm_total_final').innerText = formatRupiah(totalCost);
     
-    // Baris Asuransi
+    // Asuransi (Muncul jika > 0)
     document.getElementById('detail_cost_insurance').innerText = formatRupiah(insurance);
     (insurance > 0) ? showRow('row_detail_insurance') : hideRow('row_detail_insurance');
 
-    // Baris Harga Barang
+    // Harga Barang (Muncul HANYA jika COD Barang)
     document.getElementById('detail_cost_item').innerText = formatRupiah(itemPrice);
     (isCODBarang && itemPrice > 0) ? showRow('row_detail_item_price') : hideRow('row_detail_item_price');
 
-    // Baris Biaya COD
+    // Biaya Layanan COD (Muncul jika ada Fee)
     document.getElementById('detail_cost_cod').innerText = formatRupiah(codFee);
     (codFee > 0) ? showRow('row_detail_cod') : hideRow('row_detail_cod');
 
-    // 6. SIMULASI SALDO
+    // TOTAL FINAL
+    document.getElementById('confirm_total_final').innerText = formatRupiah(totalCost);
+
+    // 6. SIMULASI SALDO (Hanya jika potong saldo)
     const balBox = document.getElementById('balance_simulation_box');
     if (paymentMethodVal === 'Potong Saldo') {
         const curBal = parseInt(document.getElementById('user_current_balance').value) || 0;
@@ -1358,7 +1363,7 @@ function openConfirmationModal() {
         
         if(remBal < 0) { 
             finalEl.className = "font-bold text-red-600"; 
-            finalEl.innerText += " (Kurang)"; 
+            finalEl.innerText += " (Saldo Kurang)"; 
         } else { 
             finalEl.className = "font-bold text-green-800"; 
         }
@@ -1367,12 +1372,11 @@ function openConfirmationModal() {
         balBox.classList.add('hidden'); 
     }
 
-    // 7. BUKA MODAL
+    // 7. TAMPILKAN MODAL (ANIMASI)
     const modal = document.getElementById('confirmationModal');
-    modal.classList.remove('hidden'); // Tampilkan background
-    const modalBox = modal.querySelector('div'); // Ambil kotak putih
+    modal.classList.remove('hidden');
+    const modalBox = modal.querySelector('div'); 
     
-    // Reset animasi agar muncul smooth
     setTimeout(() => {
         modalBox.classList.remove('scale-95', 'opacity-0');
         modalBox.classList.add('scale-100', 'opacity-100');
