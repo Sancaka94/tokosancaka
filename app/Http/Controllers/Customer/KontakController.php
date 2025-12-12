@@ -164,54 +164,62 @@ class KontakController extends Controller
         return redirect()->route('customer.kontak.index')->with('success', 'Kontak berhasil dihapus.');
     }
 
-   /**
-     * Pencarian Kontak (Smart Search: Admin Global + Flexible Type)
+    /**
+     * Pencarian Kontak (Smart Auth: Admin Global + User Strict + Flexible Type)
      */
     public function search(Request $request)
     {
         try {
             // 1. Ambil Parameter
             $keyword = $request->input('search') ?? $request->input('query');
-            $tipe = $request->input('tipe');
-            $scope = $request->input('scope'); // Param 'global' dari JS Admin
+            $scope = $request->input('scope');         // Param dari JS Admin ('global')
+            $targetUserId = $request->input('user_id'); // Param opsional jika Admin ingin filter user tertentu
             
-            $user = Auth::user();
+            $user = Auth::user(); // User yang sedang login
 
             // 2. Mulai Query
             $query = Kontak::query();
 
-            // --- [LOGIKA 1: SCOPE & KEAMANAN ROLE] ---
-            // Syarat Global: Request minta 'global' DAN User yang login adalah 'admin'
-            // Jika tidak memenuhi syarat, otomatis fallback ke filter user_id (Data Sendiri)
-            
+            // --- [LOGIKA AUTH & OTORISASI] ---
+            // Cek apakah request meminta data Global DAN yang request adalah Admin
             if ($scope === 'global' && $user->role === 'admin') {
-                // ADMIN MODE: Bebas cari data milik siapa saja (Tanpa filter user_id)
+                // MODE ADMIN:
+                // Admin bebas melihat semua data.
+                
+                // Fitur Tambahan: Jika Admin ingin spesifik mencari data milik User A
+                if ($targetUserId) {
+                    $query->where('user_id', $targetUserId);
+                }
+                // Jika $targetUserId kosong, maka Admin melihat data SEMUA USER (Global)
             } else {
-                // USER MODE: Wajib filter user_id
+                // MODE USER BIASA (STRICT):
+                // Harga mati. User hanya boleh melihat datanya sendiri.
+                // Apapun parameter 'user_id' yang dikirim dari luar akan diabaikan.
                 $query->where('user_id', $user->id);
             }
 
-            // --- [LOGIKA 2: PENCARIAN KEYWORD] ---
+            // --- [LOGIKA PENCARIAN KEYWORD] ---
             if ($keyword) {
                 $query->where(function($sub) use ($keyword) {
                     $sub->where('nama', 'LIKE', "%{$keyword}%")
                         ->orWhere('no_hp', 'LIKE', "%{$keyword}%")
-                        ->orWhere('alamat', 'LIKE', "%{$keyword}%"); // Bonus: Cari alamat juga
+                        ->orWhere('alamat', 'LIKE', "%{$keyword}%"); // Cari alamat juga
                 });
             }
 
-            // --- [LOGIKA 3: FILTER TIPE (OPSIONAL)] ---
-            // SAYA MATIKAN (COMMENT) agar Data Pengirim bisa muncul di Penerima, dan sebaliknya.
-            // Jika Anda ingin membatasi lagi, hapus tanda // di bawah ini.
+            // --- [LOGIKA TIPE (PENGIRIM/PENERIMA)] ---
+            // SAYA NONAKTIFKAN FILTER TIPE
+            // Agar Admin/User bisa menemukan kontak "Pengirim" saat mengisi kolom "Penerima" (dan sebaliknya).
+            // Ini membuat data lebih fleksibel digunakan kembali.
             
-            /* if ($tipe) {
-               $query->where('tipe', $tipe);
+            /* if ($request->filled('tipe')) {
+               $query->where('tipe', $request->input('tipe'));
             }
             */
 
-            // --- [LOGIKA 4: FORMAT HASIL] ---
-            // Ambil 15 data terbaru, format Array (bukan paginate)
-            $kontaks = $query->latest()->limit(15)->get();
+            // 3. Ambil Data
+            // Limit 20 agar performa pencarian cepat
+            $kontaks = $query->latest()->limit(20)->get();
 
             return response()->json($kontaks);
 
