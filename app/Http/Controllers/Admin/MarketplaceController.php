@@ -45,17 +45,14 @@ class MarketplaceController extends Controller
         return view('admin.marketplace.index', compact('products', 'categories', 'banner_estalase', 'stores'));
     }
 
-    /**
-     * Menampilkan form halaman pembuatan produk baru.
-     */
+// GANTI method create() yang saya berikan sebelumnya dengan ini:
     public function create()
     {
-        // Ambil data yang dibutuhkan untuk dropdown di form
-        $categories = Category::all();
-        $stores = Store::all();
+        // Karena kita pakai Modal di Index, jika user akses /create, lempar balik ke index
+        return redirect()->route('admin.marketplace.index');
         
-        // Pastikan Anda sudah membuat file view: resources/views/admin/marketplace/create.blade.php
-        return view('admin.marketplace.create', compact('categories', 'stores'));
+        // Catatan: Jika route resource Anda bernama 'stores', ganti jadi:
+        // return redirect()->route('admin.stores.index');
     }
 
     /**
