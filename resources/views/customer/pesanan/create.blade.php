@@ -1191,7 +1191,7 @@ ongkirModalBody.appendChild(card);
     }
 }
 
-    // --- EVENT LISTENERS ---
+    // --- EVENT LISTENERS -------------------------------------------------------------------------
     document.getElementById('selected_expedition_display').addEventListener('click', runCekOngkir);
 
     ongkirModalEl.addEventListener('click', function(e) {
