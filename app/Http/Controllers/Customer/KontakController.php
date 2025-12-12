@@ -9,29 +9,37 @@ use Illuminate\Support\Facades\Auth;
 
 class KontakController extends Controller
 {
-    /**
-     * Menampilkan daftar kontak.
-     */
     public function index(Request $request)
     {
         $userId = Auth::id();
+
+        // --- QUERY 1: Tabel Utama (Bisa difilter/search) ---
         $query = Kontak::where('user_id', $userId);
 
-        // Fitur Pencarian di Index
         if ($request->filled('search')) {
             $search = $request->input('search');
             $query->where(function($q) use ($search) {
                 $q->where('nama', 'like', "%{$search}%")
                   ->orWhere('no_hp', 'like', "%{$search}%")
-                  ->orWhere('district', 'like', "%{$search}%"); // Tambah cari kecamatan
+                  ->orWhere('district', 'like', "%{$search}%");
             });
+        }
+
+        if ($request->filled('filter') && $request->input('filter') !== 'Semua') {
+            $query->where('tipe', $request->input('filter'));
         }
 
         $kontaks = $query->latest()->paginate(10);
 
-        return view('customer.kontak.index', compact('kontaks'));
-    }
+        // --- QUERY 2: Tabel Khusus Pengirim (Selalu Tampil di Bawah) ---
+        // Data ini khusus tipe 'Pengirim' milik user ini, tanpa paginasi (ambil semua atau limit 5)
+        $pengirims = Kontak::where('user_id', $userId)
+                           ->where('tipe', 'Pengirim')
+                           ->latest()
+                           ->get();
 
+        return view('customer.kontak.index', compact('kontaks', 'pengirims'));
+    }
     /**
      * Menyimpan kontak baru sesuai inputan Blade.
      */
