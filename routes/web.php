@@ -107,6 +107,11 @@ Route::get('/dashboard', function () {
     return redirect()->route('customer.dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
+// Route Dashboard Customer
+Route::get('/customer/dashboard', function () {
+    return view('dashboard');
+})->middleware(['auth', 'verified', RoleMiddleware::class . ':Pelanggan'])->name('customer.dashboard');
+
 Route::get('/customer/dashboard', function () {
     return view('dashboard');
 })->middleware(['auth', 'verified', RoleMiddleware::class . ':Pelanggan'])->name('customer.dashboard');
