@@ -157,6 +157,9 @@ Route::middleware(['auth', RoleMiddleware::class . ':Pelanggan|Seller'])->prefix
         Route::post('/messages', [CustomerChatController::class, 'sendMessage'])->name('sendMessage');
     });
 
+    Route::get('/profile', [CustomerProfileController::class, 'edit'])->name('profile.show');
+    Route::patch('/profile', [CustomerProfileController::class, 'update'])->name('profile.update');
+
     // Kontak Customer (FIX Route [customer.kontak.index])
     Route::resource('kontak', CustomerKontakController::class);
     Route::get('/kontak/search-api', [CustomerKontakController::class, 'search'])->name('kontak.search'); 
@@ -188,7 +191,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Pelanggan|Seller'])->prefix
     
     // Opsional: Tambahkan detail pesanan juga agar tidak error saat diklik
     Route::get('/pesanan/{pesanan}', [PesananController::class, 'show'])->name('pesanan.show');
-    
+
     // PPOB Customer
     Route::prefix('ppob')->name('ppob.')->group(function () {
         Route::get('/history', [PpobHistoryController::class, 'index'])->name('history');
