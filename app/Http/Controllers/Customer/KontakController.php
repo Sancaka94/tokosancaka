@@ -10,6 +10,7 @@ use App\Services\KiriminAjaService;
 use Exception;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use App\Models\User;
 
 class KontakController extends Controller
 {
@@ -182,7 +183,7 @@ class KontakController extends Controller
             // =========================================================
             
             // Cek apakah Admin meminta akses Global?
-            $isAdminGlobal = ($user->role === 'Admin' && $scope === 'global');
+            $isAdminGlobal = ($user->role === 'admin' && $scope === 'global');
 
             if ($isAdminGlobal) {
                 // HANYA ADMIN dengan flag 'global' yang bisa liat semua data.
@@ -196,7 +197,7 @@ class KontakController extends Controller
             // 2. LOGIKA TIPE (PENGIRIM / PENERIMA)
             // =========================================================
             
-            if ($user->role === 'Admin') {
+            if ($user->role === 'admin') {
                 // ADMIN: Bebas Tipe.
                 // Supaya Admin bisa cari data 'Pengirim' saat input di kolom 'Penerima'
                 // (Tidak ada filter tipe)
