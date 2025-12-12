@@ -136,45 +136,51 @@
         </table>
     </div>
 
-    {{-- BATAS TABEL UTAMA DI ATAS --}}
-
     {{-- MULAI TABEL DATA PENGIRIM --}}
-    <div class="mt-12">
-        <div class="flex items-center mb-4 pb-2 border-b border-gray-200">
-            <h3 class="text-xl font-semibold text-gray-800">
-                <i class="fas fa-paper-plane mr-2 text-blue-600"></i> Data Pengirim (Profil Saya)
-            </h3>
+    <div class="mt-10 pt-6 border-t border-gray-200">
+        <div class="flex items-center mb-4 gap-2">
+            <div class="p-2 bg-blue-100 rounded-lg">
+                <i class="fas fa-user-tie text-blue-600"></i>
+            </div>
+            <h3 class="text-lg font-bold text-gray-800">Data Pengirim (Profil Saya)</h3>
         </div>
 
-        <div class="overflow-x-auto bg-blue-50 rounded-lg border border-blue-100">
-            <table class="min-w-full divide-y divide-blue-200">
-                <thead class="bg-blue-100">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
                     <tr>
-                        <th class="px-6 py-3 text-left text-xs font-bold text-blue-800 uppercase">Nama Pengirim</th>
-                        <th class="px-6 py-3 text-left text-xs font-bold text-blue-800 uppercase">No. HP</th>
-                        <th class="px-6 py-3 text-left text-xs font-bold text-blue-800 uppercase">Alamat Lengkap</th>
-                        <th class="px-6 py-3 text-left text-xs font-bold text-blue-800 uppercase">Lokasi</th>
-                        <th class="px-6 py-3 text-left text-xs font-bold text-blue-800 uppercase">Aksi</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No. HP</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Detail Alamat</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kel/Desa</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kecamatan</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kota/Kab</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Provinsi</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kode Pos</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-blue-200">
+                <tbody class="bg-white divide-y divide-gray-200">
                     @forelse ($pengirims as $pengirim)
-                    <tr class="hover:bg-blue-100 transition duration-150">
-                        <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ $pengirim->nama }}</td>
-                        <td class="px-6 py-4 text-sm text-gray-600">{{ $pengirim->no_hp }}</td>
-                        <td class="px-6 py-4 text-sm text-gray-600 max-w-xs truncate" title="{{ $pengirim->alamat }}">
+                    <tr class="hover:bg-gray-50 transition duration-150">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ $pengirim->nama }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $pengirim->no_hp }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-500 max-w-xs truncate" title="{{ $pengirim->alamat }}">
                             {{ $pengirim->alamat ?? '-' }}
                         </td>
-                        <td class="px-6 py-4 text-sm text-gray-600">
-                            {{ $pengirim->district ?? '-' }}, {{ $pengirim->regency ?? '-' }}
-                        </td>
-                        <td class="px-6 py-4 text-sm font-medium">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $pengirim->village ?? '-' }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $pengirim->district ?? '-' }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $pengirim->regency ?? '-' }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $pengirim->province ?? '-' }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $pengirim->postal_code ?? '-' }}</td>
+
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <div class="flex items-center space-x-2">
-                                <button type="button" class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded-md text-xs btnEditKontak" data-id="{{ $pengirim->id }}">
-                                    <i class="fas fa-pencil-alt"></i> Edit
+                                <button type="button" class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded-md text-xs btnEditKontak" data-id="{{ $pengirim->id }}">
+                                    <i class="fas fa-pencil-alt"></i>
                                 </button>
-                                
-                                <form action="{{ route('customer.kontak.destroy', $pengirim->id) }}" method="POST" onsubmit="return confirm('Hapus data pengirim ini?');">
+
+                                <form action="{{ route('customer.kontak.destroy', $pengirim->id) }}" method="POST" onsubmit="return confirm('Yakin hapus data pengirim ini?');">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded-md text-xs">
@@ -186,8 +192,11 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="5" class="text-center py-6 text-gray-500 italic">
-                            Belum ada data pengirim tersimpan.
+                        <td colspan="9" class="text-center py-8 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+                            <div class="flex flex-col items-center justify-center">
+                                <i class="fas fa-user-slash text-3xl text-gray-300 mb-2"></i>
+                                <span class="text-sm">Belum ada data pengirim tersimpan.</span>
+                            </div>
                         </td>
                     </tr>
                     @endforelse
