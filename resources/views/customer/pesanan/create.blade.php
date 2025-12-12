@@ -511,35 +511,47 @@ document.addEventListener('DOMContentLoaded', function () {
     // ----------------------------------------------------------------------------------
 
     // --- FUNGSI AUTOSAVE KONTAK VIA AJAX ---
+    // --- FUNGSI AUTOSAVE KONTAK VIA AJAX (UPDATED) ---
     function saveContactAutosave(prefix) {
         const addressSearchInput = document.getElementById(`${prefix}_address_search`);
+
+        // Ambil ID user yang sedang login dari blade (ditaruh di meta tag atau echo langsung)
+        // Cara paling aman di script blade adalah pakai {{ Auth::id() }}
+        const authUserId = "{{ Auth::id() }}"; 
 
         const contactData = {
             _token: document.querySelector('input[name="_token"]').value,
 
+            // Data Identitas
             prefix: prefix,
-            // Ambil semua data input yang relevan
-            // Ambil semua data input yang relevan
-        // Gunakan penamaan field yang SAMA dengan yang di-validate oleh Controller
-        [`${prefix}_name`]: document.getElementById(`${prefix}_name`).value,
-        [`${prefix}_phone`]: document.getElementById(`${prefix}_phone`).value,
-        [`${prefix}_address`]: document.getElementById(`${prefix}_address`).value,
-        [`${prefix}_province`]: document.getElementById(`${prefix}_province`).value,
-        [`${prefix}_regency`]: document.getElementById(`${prefix}_regency`).value,
-        [`${prefix}_district`]: document.getElementById(`${prefix}_district`).value,
-        [`${prefix}_village`]: document.getElementById(`${prefix}_village`).value,
-        [`${prefix}_postal_code`]: document.getElementById(`${prefix}_postal_code`).value,
+            user_id: authUserId, // <--- INI TAMBAHANNYA (User ID Auth)
             
-            tipe: (prefix === 'sender' ? 'Pengirim' : 'Penerima'),
-            id: document.getElementById(`${prefix}_id`).value
+            // Data Input Form
+            [`${prefix}_name`]: document.getElementById(`${prefix}_name`).value,
+            [`${prefix}_phone`]: document.getElementById(`${prefix}_phone`).value,
+            [`${prefix}_address`]: document.getElementById(`${prefix}_address`).value,
+            
+            // Data Wilayah
+            [`${prefix}_province`]: document.getElementById(`${prefix}_province`).value,
+            [`${prefix}_regency`]: document.getElementById(`${prefix}_regency`).value,
+            [`${prefix}_district`]: document.getElementById(`${prefix}_district`).value,
+            [`${prefix}_village`]: document.getElementById(`${prefix}_village`).value,
+            [`${prefix}_postal_code`]: document.getElementById(`${prefix}_postal_code`).value,
+            
+            // Hidden ID untuk Update (Jika ada)
+            id: document.getElementById(`${prefix}_id`).value,
+            
+            // Tipe Kontak
+            tipe: (prefix === 'sender' ? 'Pengirim' : 'Penerima')
         };
 
-        // Cek data minimal yang harus ada (Nama, HP, Alamat Detail, dan Alamat Ongkir)
-        if (!contactData.name || !contactData.phone || contactData.address.length < minAddressLength || !addressSearchInput.value) {
-            Swal.fire('Peringatan', `Data ${contactData.tipe} (Nama, HP, Alamat Detail min 10 karakter, dan Alamat Ongkir) wajib diisi sebelum disimpan.`, 'warning');
+        // Cek Validasi Client-Side Sederhana
+        if (!contactData[`${prefix}_name`] || !contactData[`${prefix}_phone`] || contactData[`${prefix}_address`].length < 10 || !addressSearchInput.value) {
+            Swal.fire('Peringatan', `Data ${contactData.tipe} (Nama, HP, Alamat Detail min 10 karakter, dan Alamat Ongkir) wajib diisi lengkap sebelum disimpan.`, 'warning');
             return;
         }
 
+        // Kirim ke Controller
         fetch('{{ route('customer.pesanan.save_contact') }}', {
             method: 'POST',
             headers: {
@@ -551,17 +563,18 @@ document.addEventListener('DOMContentLoaded', function () {
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {
+                // Update hidden ID jika ini data baru
                 if (data.contact_id) {
                      document.getElementById(`${prefix}_id`).value = data.contact_id;
                 }
-                Swal.fire('Berhasil', `${contactData.tipe} berhasil disimpan/diperbarui.`, 'success');
+                Swal.fire('Berhasil', `${contactData.tipe} berhasil disimpan ke Buku Alamat.`, 'success');
             } else {
-                Swal.fire('Gagal', `Gagal menyimpan data ${contactData.tipe}. Pesan: ` + (data.message || 'Error server.'), 'error');
+                Swal.fire('Gagal', `Gagal menyimpan data. Pesan: ` + (data.message || 'Error server.'), 'error');
             }
         })
         .catch(error => {
             console.error('AJAX Save Error:', error);
-            Swal.fire('Error', 'Gagal terhubung ke server untuk menyimpan data.', 'error');
+            Swal.fire('Error', 'Gagal terhubung ke server.', 'error');
         });
     }
     // ----------------------------------------------------------------------------------
