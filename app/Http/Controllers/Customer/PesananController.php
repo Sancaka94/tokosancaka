@@ -484,90 +484,52 @@ class PesananController extends Controller
     }
 
     /**
-     * Helper untuk menyimpan/update kontak.
-     * Mengembalikan objek Kontak agar ID-nya bisa diambil.
+     * Helper Simpan Kontak (FIXED: Wajib Auth User ID & Return Object)
      */
     private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
     {
-        // Cek apakah user mencentang checkbox "Simpan Kontak"
-        // Parameter 'save_sender' atau 'save_receiver' harus bernilai 'on'
+        // 1. Cek Checkbox (Wajib dicentang)
         if (empty($data["save_{$prefix}"]) || $data["save_{$prefix}"] !== 'on') {
-            return null; 
-        }
-
-        $phoneKey = "{$prefix}_phone";
-        // Validasi minimal: Nomor HP harus ada
-        if (!isset($data[$phoneKey])) {
-            Log::warning("Gagal simpan kontak (Customer): Nomor HP kosong.", ['prefix' => $prefix]);
             return null;
         }
+
+        // 2. Ambil User ID dari Auth (Keamanan Mutlak)
+        $userId = Auth::id();
+        if (!$userId) return null; // Cegah error jika sesi habis
+
+        // 3. Validasi Data Minimal
+        $phoneKey = "{$prefix}_phone";
+        if (!isset($data[$phoneKey])) return null;
 
         $sanitizedPhone = $this->_sanitizePhoneNumber($data[$phoneKey]);
         $name = $data["{$prefix}_name"] ?? null;
         $address = $data["{$prefix}_address"] ?? null;
 
-        // Validasi minimal: Data utama harus lengkap
         if (empty($sanitizedPhone) || empty($name) || empty($address)) {
-            Log::warning("Gagal simpan kontak (Customer): Data tidak lengkap.", [
-                'prefix' => $prefix, 'phone' => $sanitizedPhone
-            ]);
             return null;
         }
 
-        // Ambil ID User yang sedang login (WAJIB)
-        $userId = Auth::id();
+        // 4. LOGIKA SIMPAN (Update or Create)
+        // Kuncinya: Cari berdasarkan User ID DAN No HP. 
+        // Jadi 1 User bisa punya banyak kontak, dan HP yang sama boleh dipakai user lain (data terpisah).
+        $contact = Kontak::updateOrCreate(
+            [
+                'user_id' => $userId,        // KUNCI 1: Milik User Login
+                'no_hp'   => $sanitizedPhone // KUNCI 2: Nomor HP
+            ],
+            [
+                'nama'        => $name,
+                'alamat'      => $address,
+                'province'    => $data["{$prefix}_province"] ?? null,
+                'regency'     => $data["{$prefix}_regency"] ?? null,
+                'district'    => $data["{$prefix}_district"] ?? null,
+                'village'     => $data["{$prefix}_village"] ?? null,
+                'postal_code' => $data["{$prefix}_postal_code"] ?? null,
+                'tipe'        => $tipe // Simpan sesuai tipe (Pengirim/Penerima)
+            ]
+        );
 
-        // Cek apakah kita sedang mengupdate kontak spesifik (berdasarkan ID hidden)
-        // Ini penting jika user mengedit kontak yang sudah ada di database
-        $existingContactId = $data['id'] ?? null;
-        $contact = null;
-
-        if ($existingContactId) {
-            // Cari berdasarkan ID dan User ID (Security check)
-            $contact = Kontak::where('id', $existingContactId)->where('user_id', $userId)->first();
-        }
-
-        // Jika tidak ketemu by ID, cari by No HP (untuk mencegah duplikat)
-        if (!$contact) {
-            $contact = Kontak::where('user_id', $userId)
-                             ->where('no_hp', $sanitizedPhone)
-                             ->first();
-        }
-
-        // Tentukan Tipe Kontak (Pengirim/Penerima/Keduanya)
-        $newTipe = $tipe;
-        if ($contact) {
-            // Jika kontak sudah ada dan tipenya beda, upgrade jadi 'Keduanya'
-            if ($contact->tipe !== $tipe && $contact->tipe !== 'Keduanya') {
-                $newTipe = 'Keduanya';
-            } else {
-                $newTipe = $contact->tipe; // Pertahankan tipe lama jika sama atau sudah 'Keduanya'
-            }
-        }
-
-        // Data yang akan disimpan/diupdate
-        $contactData = [
-            'user_id'     => $userId, // Pastikan kepemilikan
-            'nama'        => $name,
-            'no_hp'       => $sanitizedPhone,
-            'alamat'      => $address,
-            'province'    => $data["{$prefix}_province"] ?? null,
-            'regency'     => $data["{$prefix}_regency"] ?? null,
-            'district'    => $data["{$prefix}_district"] ?? null,
-            'village'     => $data["{$prefix}_village"] ?? null,
-            'postal_code' => $data["{$prefix}_postal_code"] ?? null,
-            'tipe'        => $newTipe
-        ];
-
-        // Eksekusi Simpan ke Database
-        if ($contact) {
-            $contact->update($contactData);
-        } else {
-            $contact = Kontak::create($contactData);
-        }
-
-        // PENTING: Kembalikan objek kontak agar ID-nya bisa dipakai
-        return $contact;
+        return $contact; // Wajib return objek agar ID-nya bisa diambil
     }
 
     
