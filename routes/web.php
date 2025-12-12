@@ -153,7 +153,7 @@ Route::get('/marketplace/category/{category:slug}', [CategoryController::class, 
 Route::get('/pelanggan', [PublicPelangganController::class, 'index'])->name('pelanggan.public.index');
 
     // Fitur Multi Koli Admin (YANG BARU ANDA BUAT)
-    Route::get('/pesanan/buat-multi', [KoliController::class, 'create'])->name('pesanan.create_multi');
+    Route::get('/pesanan/buat-multi', [KoliController::class, 'create'])->name('admin.pesanan.create_multi');
     Route::post('/pesanan/store-multi', [KoliController::class, 'store'])->name('koli.store');
     Route::post('/pesanan/store-single', [KoliController::class, 'storeSingle'])->name('koli.store_single');
     Route::post('/cek-ongkir', [KoliController::class, 'cek_Ongkir'])->name('koli.cek_ongkir');
