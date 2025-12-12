@@ -24,7 +24,7 @@ class KontakController extends Controller
         // LOGIKA KHUSUS: Cek apakah user adalah Admin
         // Jika BUKAN Admin, batasi query hanya milik user tersebut.
         // Jika Admin, lewati blok ini (artinya ambil semua data).
-        if ($user->role !== 'Admin') { 
+        if ($user->role !== 'admin') { 
             $query->where('user_id', $user->id);
         }
 
@@ -47,7 +47,7 @@ class KontakController extends Controller
         $queryPengirim = Kontak::where('tipe', 'Pengirim');
 
         // Terapkan logika yang sama untuk list Pengirim
-        if ($user->role !== 'Admin') {
+        if ($user->role !== 'admin') {
             $queryPengirim->where('user_id', $user->id);
         }
 
