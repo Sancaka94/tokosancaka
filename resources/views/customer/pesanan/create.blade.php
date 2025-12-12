@@ -1091,102 +1091,77 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // --- [BARU] FUNGSI MEMBUKA MODAL KONFIRMASI ---
     document.getElementById('confirmBtn').addEventListener('click', (e) => {
         e.preventDefault();
         const form = document.getElementById('orderForm');
-        
-        // 1. Ambil Value Input Utama
-        const expeditionVal = document.getElementById('expedition').value;
+        const expedition = document.getElementById('expedition').value;
         const paymentMethod = document.getElementById('payment_method').value;
-        const senderName = document.getElementById('sender_name').value;
-        const senderPhone = document.getElementById('sender_phone').value;
-        const receiverName = document.getElementById('receiver_name').value;
-        const receiverPhone = document.getElementById('receiver_phone').value;
-        const weight = document.getElementById('weight').value;
-        const itemDesc = document.getElementById('item_description').value;
-        const isInsurance = document.getElementById('ansuransi').value === 'iya';
 
-        // 2. Validasi Klien (Sama seperti sebelumnya)
+        // Pengecekan Klien tambahan untuk alamat min 10 karakter
+        let addressError = false;
+        // Panggil validasi real-time untuk memastikan feedback kustom muncul/hilang
         validateAddressRealtime(senderAddressInput, senderAddressFeedback, 'Alamat Pengirim');
         validateAddressRealtime(receiverAddressInput, receiverAddressFeedback, 'Alamat Penerima');
 
-        let addressError = false;
-        if (senderAddressInput.value.trim().length < minAddressLength) addressError = true;
-        if (receiverAddressInput.value.trim().length < minAddressLength) addressError = true;
+        if (senderAddressInput.value.trim().length < minAddressLength) {
+             addressError = true;
+        }
+        if (receiverAddressInput.value.trim().length < minAddressLength) {
+             addressError = true;
+        }
         
-        if (!form.checkValidity() || !expeditionVal || !paymentMethod || addressError) {
+        if (!form.checkValidity() || !expedition || !paymentMethod || addressError) {
+            // Memaksa browser menampilkan error validasi HTML5
             form.reportValidity();
-            let missingFields = [];
-            if (!expeditionVal) missingFields.push('Ekspedisi');
-            if (!paymentMethod) missingFields.push('Metode Pembayaran');
-            if (addressError) missingFields.push('Alamat (Min. 10 Karakter)'); 
             
+            let missingFields = [];
+            if (!expedition) missingFields.push('Ekspedisi');
+            if (!paymentMethod) missingFields.push('Metode Pembayaran');
+             if (addressError) missingFields.push('Alamat (Min. 10 Karakter)'); 
+
             let message = 'Harap lengkapi semua field yang wajib diisi.';
-            if (missingFields.length > 0) message += ` Anda belum: ${missingFields.join(', ')}.`;
+            if (missingFields.length > 0) {
+                message += ` Anda belum: ${missingFields.join(', ')}.`;
+            }
+
             Swal.fire('Peringatan', message, 'warning');
             return;
         }
 
-        // 3. Parsing Data Ongkir dari Value Hidden Input
-        // Format value: service_type-courier-service-cost-insurance-cod
-        // Contoh: regular-jne-REG-15000-0-0
-        let totalCost = 0;
-        let expeditionName = document.getElementById('selected_expedition_display').value || '-';
-        
-        if (expeditionVal) {
-            const parts = expeditionVal.split('-');
-            // parts[3] adalah cost, parts[4] adalah asuransi, parts[5] adalah cod fee
-            const shippingCost = parseInt(parts[3]) || 0;
-            const insuranceCost = parseInt(parts[4]) || 0;
-            const codFee = parseInt(parts[5]) || 0;
-            totalCost = shippingCost + insuranceCost + codFee;
-        }
-
-        // 4. Masukkan Data ke dalam Modal HTML
-        document.getElementById('confirm_total_cost').innerText = formatRupiah(totalCost);
-        document.getElementById('confirm_expedition').innerText = expeditionName;
-        
-        document.getElementById('confirm_sender_name').innerText = senderName;
-        document.getElementById('confirm_sender_phone').innerText = senderPhone;
-        
-        document.getElementById('confirm_receiver_name').innerText = receiverName;
-        document.getElementById('confirm_receiver_phone').innerText = receiverPhone;
-        
-        document.getElementById('confirm_item_desc').innerText = itemDesc;
-        document.getElementById('confirm_weight').innerText = weight + ' Gram';
-        
-        // Ambil nama metode pembayaran dari label yang aktif atau elemen display
-        const paymentLabel = document.getElementById('selectedPaymentName').innerText;
-        document.getElementById('confirm_payment').innerText = paymentLabel;
-
-        // Tampilkan baris asuransi jika dipilih
-        document.getElementById('row_insurance').classList.toggle('hidden', !isInsurance);
-
-        // 5. Tampilkan Modal (Hapus class hidden)
-        document.getElementById('confirmationModal').classList.remove('hidden');
-    });
-
-    // --- [BARU] FUNGSI MENUTUP MODAL (TOMBOL PERBAIKI) ---
-    window.closeConfirmationModal = function() {
-        document.getElementById('confirmationModal').classList.add('hidden');
-    }
-
-    // --- [BARU] FUNGSI SUBMIT FINAL (TOMBOL LANJUT KIRIM) ---
-    window.submitFinalForm = function() {
-        const form = document.getElementById('orderForm');
-        const btn = document.querySelector('#confirmationModal button[onclick="submitFinalForm()"]');
-        
-        // Efek Loading pada tombol modal
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin animate-spin"></i> Memproses...';
-        btn.classList.add('opacity-75', 'cursor-not-allowed');
-
-        // Submit Form Asli
-        form.submit();
-    }
-        });
+        Swal.fire({
+            title: 'Konfirmasi Pesanan',
+            text: "Apakah semua data sudah benar?",
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#4f46e5',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Ya, Buat Pesanan',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            // Menjadi:
+if (result.isConfirmed) {
+    const confirmBtn = document.getElementById('confirmBtn');
     
+    // Nonaktifkan tombol secara visual & fungsional
+    confirmBtn.disabled = true;
+    confirmBtn.classList.add('opacity-50', 'cursor-not-allowed'); // Tambahkan visual disabled
+    confirmBtn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>Memproses...`;
+
+    // Pastikan form hanya bisa disubmit sekali di frontend
+    form.addEventListener('submit', function(e) {
+        if (form.hasSubmitted) {
+            e.preventDefault();
+        } else {
+            form.hasSubmitted = true;
+        }
+    });
+    
+    // Tandai form sudah disubmit sebelum kirim
+    form.hasSubmitted = true;
+    form.submit(); 
+}
+        });
+    });
 
     document.querySelectorAll('.cod-payment-option').forEach(opt => opt.style.display = 'none');
 
