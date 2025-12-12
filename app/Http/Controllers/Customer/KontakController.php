@@ -165,42 +165,53 @@ class KontakController extends Controller
     }
 
    /**
-     * Pencarian AJAX (DIPERBAIKI TOTAL)
+     * Pencarian Kontak (Smart Search: Admin Global + Flexible Type)
      */
     public function search(Request $request)
     {
         try {
-            // 1. Tangkap Input
+            // 1. Ambil Parameter
             $keyword = $request->input('search') ?? $request->input('query');
-            $scope = $request->input('scope'); // Parameter dari JS Admin ('global')
+            $tipe = $request->input('tipe');
+            $scope = $request->input('scope'); // Param 'global' dari JS Admin
             
-            // 2. Query Dasar
+            $user = Auth::user();
+
+            // 2. Mulai Query
             $query = Kontak::query();
 
-            // --- [FIX 1: LOGIKA GLOBAL] ---
-            // Jika scope = 'global', JANGAN filter user_id (Admin bisa cari data siapa saja)
-            // Jika TIDAK 'global', batasi ke user yang login
-            if ($scope !== 'global') {
-                $query->where('user_id', Auth::id());
+            // --- [LOGIKA 1: SCOPE & KEAMANAN ROLE] ---
+            // Syarat Global: Request minta 'global' DAN User yang login adalah 'admin'
+            // Jika tidak memenuhi syarat, otomatis fallback ke filter user_id (Data Sendiri)
+            
+            if ($scope === 'global' && $user->role === 'admin') {
+                // ADMIN MODE: Bebas cari data milik siapa saja (Tanpa filter user_id)
+            } else {
+                // USER MODE: Wajib filter user_id
+                $query->where('user_id', $user->id);
             }
 
-            // --- [FIX 2: CARI BERDASARKAN NAMA / HP] ---
+            // --- [LOGIKA 2: PENCARIAN KEYWORD] ---
             if ($keyword) {
                 $query->where(function($sub) use ($keyword) {
                     $sub->where('nama', 'LIKE', "%{$keyword}%")
-                        ->orWhere('no_hp', 'LIKE', "%{$keyword}%");
+                        ->orWhere('no_hp', 'LIKE', "%{$keyword}%")
+                        ->orWhere('alamat', 'LIKE', "%{$keyword}%"); // Bonus: Cari alamat juga
                 });
             }
 
-            // --- [FIX 3: FILTER TIPE DIMATIKAN] ---
-            // Komentar kode di bawah ini agar Pengirim bisa muncul di pencarian Penerima (dan sebaliknya)
-            // if ($request->filled('tipe')) {
-            //    $query->where('tipe', $request->input('tipe'));
-            // }
+            // --- [LOGIKA 3: FILTER TIPE (OPSIONAL)] ---
+            // SAYA MATIKAN (COMMENT) agar Data Pengirim bisa muncul di Penerima, dan sebaliknya.
+            // Jika Anda ingin membatasi lagi, hapus tanda // di bawah ini.
+            
+            /* if ($tipe) {
+               $query->where('tipe', $tipe);
+            }
+            */
 
-            // --- [FIX 4: FORMAT DATA ARRAY] ---
-            // Gunakan get() + limit(), JANGAN paginate() agar JS tidak error
-            $kontaks = $query->latest()->limit(20)->get();
+            // --- [LOGIKA 4: FORMAT HASIL] ---
+            // Ambil 15 data terbaru, format Array (bukan paginate)
+            $kontaks = $query->latest()->limit(15)->get();
 
             return response()->json($kontaks);
 
