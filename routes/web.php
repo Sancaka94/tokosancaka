@@ -107,11 +107,7 @@ Route::get('/dashboard', function () {
     return redirect()->route('customer.dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
-// Route Dashboard Customer
-Route::get('/customer/dashboard', function () {
-    return view('dashboard');
-})->middleware(['auth', 'verified', RoleMiddleware::class . ':Pelanggan'])->name('customer.dashboard');
-
+// ===> FIX ROUTE CUSTOMER DASHBOARD <===
 Route::get('/customer/dashboard', function () {
     return view('dashboard');
 })->middleware(['auth', 'verified', RoleMiddleware::class . ':Pelanggan'])->name('customer.dashboard');
@@ -131,39 +127,34 @@ Route::get('/seller/dashboard', function () {
 |--------------------------------------------------------------------------
 */
 
-// GROUP 1: Route Customer dengan Prefix 'customer' TAPI TANPA 'name' prefix
-// Ini untuk mengatasi error "Route [katalog.index] not defined"
+// GROUP KHUSUS: Mengembalikan nama route 'katalog.index' tanpa prefix 'customer.'
 Route::middleware(['auth', RoleMiddleware::class . ':Pelanggan|Seller'])->prefix('customer')->group(function () {
-    
-    // ===> INI FIX UNTUK KATALOG INDEX <===
-    // View memanggil 'katalog.index', bukan 'customer.katalog.index'
+    // ===> FIX ROUTE KATALOG INDEX <===
     Route::get('/marketplace', [CustomerMarketplaceController::class, 'index'])->name('katalog.index');
-
-    // Load file customer.php jika ada (opsional, tapi saya tulis route manualnya di bawah biar aman)
+    
+    // Load file customer.php bawaan jika ada
     require __DIR__.'/web/customer.php'; 
 });
 
-// GROUP 2: Route Customer dengan Prefix 'customer' DAN Name 'customer.'
+// GROUP UTAMA CUSTOMER (Prefix: customer, Name: customer.)
 Route::middleware(['auth', RoleMiddleware::class . ':Pelanggan|Seller'])->prefix('customer')->name('customer.')->group(function () {
     
+    // Profil Customer (FIX Route [customer.profile.show])
+    Route::get('/profile', [CustomerProfileController::class, 'edit'])->name('profile.show');
+    Route::patch('/profile', [CustomerProfileController::class, 'update'])->name('profile.update');
+
     // Pesanan Multi Koli
     Route::get('/pesanan/multi/create', [KoliController::class, 'create'])->name('koli.create');
     Route::post('/pesanan/multi/store', [KoliController::class, 'store'])->name('koli.store');
     Route::post('/koli/cek-ongkir', [KoliController::class, 'cek_Ongkir'])->name('koli.cek_ongkir');
     Route::post('/koli/store-single', [KoliController::class, 'storeSingle'])->name('koli.store_single');
 
-    // Marketplace (Versi Customer Name)
-    Route::get('/marketplace/index', [CustomerMarketplaceController::class, 'index'])->name('marketplace.index');
-    
     // Chat
     Route::prefix('chat')->name('chat.')->group(function () {
         Route::get('/', [CustomerChatController::class, 'index'])->name('index');
         Route::get('/messages', [CustomerChatController::class, 'fetchMessages'])->name('fetchMessages');
         Route::post('/messages', [CustomerChatController::class, 'sendMessage'])->name('sendMessage');
     });
-
-    Route::get('/profile', [CustomerProfileController::class, 'edit'])->name('profile.show');
-    Route::patch('/profile', [CustomerProfileController::class, 'update'])->name('profile.update');
 
     // Kontak Customer (FIX Route [customer.kontak.index])
     Route::resource('kontak', CustomerKontakController::class);
@@ -190,22 +181,16 @@ Route::middleware(['auth', RoleMiddleware::class . ':Pelanggan|Seller'])->prefix
     Route::post('/notifications/{id}/read', [NotifikasiCustomerController::class, 'markAsRead'])->name('notifications.markAsRead');
     Route::post('/notifications/read-all', [NotifikasiCustomerController::class, 'markAllAsRead'])->name('notifications.markAllAsRead');
 
-    // ===> TAMBAHKAN BARIS INI <===
-    // Ini untuk halaman "Pesanan Saya" di dashboard customer
-    Route::get('/pesanan', [PesananController::class, 'index'])->name('pesanan.index');
-    
-    // Opsional: Tambahkan detail pesanan juga agar tidak error saat diklik
-    Route::get('/pesanan/{pesanan}', [PesananController::class, 'show'])->name('pesanan.show');
-
-    // PPOB Customer
+    // PPOB Customer History
     Route::prefix('ppob')->name('ppob.')->group(function () {
         Route::get('/history', [PpobHistoryController::class, 'index'])->name('history');
         Route::get('/export/excel', [PpobHistoryController::class, 'exportExcel'])->name('export.excel');
         Route::get('/export/pdf', [PpobHistoryController::class, 'exportPdf'])->name('export.pdf');
-        Route::delete('/transaction/{id}', [AdminPpobController::class, 'destroy'])->name('transaction.destroy');
     });
 
-
+    // Pesanan List (FIX Route [customer.pesanan.index])
+    Route::get('/pesanan', [PesananController::class, 'index'])->name('pesanan.index');
+    Route::get('/pesanan/{pesanan}', [PesananController::class, 'show'])->name('pesanan.show');
 });
 
 
@@ -218,7 +203,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
     
     require __DIR__.'/web/admin.php';
 
-    // 1. ROUTE ORDERS, PRINT THERMAL & INVOICE PDF (FIX Route [admin.orders...])
+    // 1. ROUTE ORDERS
     Route::get('/orders/{invoice_number}/print-thermal', [AdminOrderController::class, 'printThermal'])->name('orders.print.thermal');
     Route::get('/orders/{invoice_number}/invoice-pdf', [AdminOrderController::class, 'exportInvoice'])->name('orders.invoice.pdf');
     Route::resource('orders', AdminOrderController::class);
@@ -230,8 +215,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
     Route::resource('reviews', AdminReviewController::class);
     Route::post('reviews/{review}/reply', [AdminReviewController::class, 'reply'])->name('reviews.reply');
 
-    // 4. ROUTE STORES & MARKETPLACE (FIX View Not Found)
-    // Gunakan StoreController untuk stores jika ada, jika tidak pakai AdminMarketplaceController
+    // 4. ROUTE STORES & MARKETPLACE
     Route::resource('stores', AdminMarketplaceController::class)->names('stores');
     Route::resource('marketplace', AdminMarketplaceController::class); 
 
@@ -239,7 +223,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
     Route::get('/kode-pos', [KodePosController::class, 'index'])->name('kodepos.index');
     Route::post('/kode-pos/import', [KodePosController::class, 'import'])->name('kodepos.import');
 
-    // 6. ROUTE PENGGUNA & EXPORT (FIX Route [admin.customers.pengguna.export])
+    // 6. ROUTE PENGGUNA
     Route::get('/customers/data/pengguna/export', [DataPenggunaController::class, 'export'])->name('customers.pengguna.export'); 
     Route::resource('customers/data/pengguna', DataPenggunaController::class)->names('customers.data.pengguna');
 
@@ -251,7 +235,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
         Route::get('/export-pdf', [PelangganController::class, 'exportPdf'])->name('export.pdf');
     });
 
-    // 8. ROUTE WILAYAH (FIX Route [admin.wilayah.kabupaten])
+    // 8. ROUTE WILAYAH
     Route::prefix('wilayah')->name('wilayah.')->group(function() {
         Route::get('/', [WilayahController::class, 'index'])->name('index');
         Route::post('/', [WilayahController::class, 'store'])->name('store');
@@ -268,7 +252,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
     Route::get('/posts/{id}/edit', [PostController::class, 'edit'])->name('posts.edit');
     Route::put('/posts/{post}', [PostController::class, 'update'])->name('posts.update');
 
-    // 10. PESANAN MULTI (FIX 404 /admin/pesanan/buat-multi)
+    // 10. PESANAN MULTI
     Route::get('/pesanan/buat-multi', [AdminKoliController::class, 'create'])->name('pesanan.create_multi');
     Route::post('/pesanan/store-multi', [AdminKoliController::class, 'store'])->name('koli.store');
     Route::post('/pesanan/store-single', [AdminKoliController::class, 'storeSingle'])->name('koli.store_single');
@@ -287,7 +271,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
         Route::post('/messages/{user}', [AdminChatController::class, 'sendMessage'])->name('send');
     });
 
-    // PPOB Admin (FIX [admin.ppob.export.excel])
+    // PPOB Admin
     Route::get('/digital', [AdminPpobController::class, 'index'])->name('ppob.index'); 
     Route::get('/digital/{slug}', [AdminPpobController::class, 'category'])->name('ppob.category');
     Route::post('/categories/ajax-store', [App\Http\Controllers\Admin\CategoryController::class, 'storeAjax'])->name('categories.storeAjax');
@@ -299,6 +283,13 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
         Route::get('/export/excel', [AdminPpobController::class, 'exportExcel'])->name('export.excel');
         Route::get('/export/pdf', [AdminPpobController::class, 'exportPdf'])->name('export.pdf');
         
+        // ===> FIX ROUTE CEK SALDO (admin.ppob.cek-saldo) <===
+        Route::get('/cek-saldo', [AdminPpobController::class, 'cekSaldo'])->name('cek-saldo');
+
+        // ===> FIX ROUTE HAPUS TRANSAKSI (admin.ppob.transaction.destroy) <===
+        Route::delete('/transaction/{id}', [AdminPpobController::class, 'destroy'])->name('transaction.destroy');
+        Route::get('/transaction/destroy/{id}', [AdminPpobController::class, 'destroy'])->name('transaction.destroy.get');
+
         // Produk PPOB
         Route::get('/product/export-excel', [PpobProductController::class, 'exportExcel'])->name('product.export-excel');
         Route::get('/product/export-pdf', [PpobProductController::class, 'exportPdf'])->name('product.export-pdf');
@@ -306,11 +297,6 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
         Route::get('/{id}', [PpobProductController::class, 'show'])->name('show');
         Route::put('/update-price/{id}', [PpobProductController::class, 'updatePrice'])->name('update-price');
         Route::delete('/destroy/{id}', [PpobProductController::class, 'destroy'])->name('destroy');
-        // Route untuk Hapus Transaksi PPOB
-        Route::delete('/transaction/{id}', [AdminPpobController::class, 'destroy'])->name('transaction.destroy');
-    
-        // Opsi Tambahan: Jika tombol hapus Anda berupa Link biasa (bukan form), gunakan ini juga:
-        Route::get('/transaction/destroy/{id}', [AdminPpobController::class, 'destroy'])->name('transaction.destroy.get');
     });
     
     Route::post('/deposit', [AdminPpobController::class, 'requestDeposit'])->name('ppob.deposit');
