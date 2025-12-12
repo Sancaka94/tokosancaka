@@ -187,35 +187,66 @@ public function searchAddressApi(Request $request, \App\Services\KiriminAjaServi
     {
         $keyword = $request->input('q') ?? $request->input('search');
 
-        if (!$keyword || strlen($keyword) < 3) return response()->json([]);
+        if (!$keyword || strlen($keyword) < 3) {
+            return response()->json([]);
+        }
 
         try {
             $response = $kirimaja->searchAddress($keyword);
 
-            if (empty($response) || empty($response['data'])) return response()->json([]);
+            if (empty($response) || empty($response['data'])) {
+                return response()->json([]);
+            }
 
             $formatted = collect($response['data'])->map(function ($item) {
                 
-                // --- KITA CARI LABEL APAPUN YANG ADA ---
-                // Cek text, address, name, atau description
-                $label = $item['text'] ?? $item['address'] ?? $item['name'] ?? $item['description'] ?? null;
+                // 1. AMBIL STRING ALAMAT LENGKAP
+                $fullAddress = $item['full_address'] ?? $item['address'] ?? $item['text'] ?? '';
+                
+                // 2. PECAH STRING MENJADI BAGIAN-BAGIAN
+                // Format KiriminAja biasanya: "Kelurahan, Kecamatan, Kota, Provinsi, KodePos"
+                $parts = array_map('trim', explode(',', $fullAddress));
+                
+                // Siapkan variabel default kosong
+                $village = ''; 
+                $district = ''; 
+                $regency = ''; 
+                $province = ''; 
+                $postalCode = '';
+
+                // Masukkan data berdasarkan urutan array hasil explode
+                // Cek jumlah bagian untuk menghindari error offset
+                if (count($parts) >= 5) {
+                    $village     = $parts[0]; // Ketanggi
+                    $district    = $parts[1]; // Ngawi
+                    $regency     = $parts[2]; // Ngawi
+                    $province    = $parts[3]; // Jawa Timur
+                    $postalCode  = $parts[4]; // 63211
+                } elseif (count($parts) >= 4) {
+                    // Kasus jarang jika kodepos tidak ada
+                    $village     = $parts[0];
+                    $district    = $parts[1];
+                    $regency     = $parts[2];
+                    $province    = $parts[3];
+                } else {
+                    // Jika format aneh, masukkan full address ke kelurahan biar tidak kosong melompong
+                    $village = $fullAddress;
+                }
 
                 return [
-                    'label' => $label ?? "Cek Console Browser (DEBUG)",
-                    'value' => $label ?? "Cek Console Browser (DEBUG)",
-                    
-                    // --- INI KUNCINYA: KITA KIRIM DATA MENTAH KE BROWSER ---
-                    'DEBUG_RAW' => $item, 
+                    'label' => $fullAddress, // Teks untuk Dropdown
+                    'value' => $fullAddress, // Teks untuk Input
                     
                     'data_lengkap' => [
-                        // Kita biarkan dulu mapping lama, nanti kita perbaiki setelah lihat DEBUG_RAW
-                        'village'        => $item['kelurahan'] ?? $item['village_name'] ?? '',
-                        'district'       => $item['kecamatan'] ?? $item['district_name'] ?? '',
-                        'regency'        => $item['kabupaten'] ?? $item['city_name'] ?? '', 
-                        'province'       => $item['provinsi'] ?? $item['province_name'] ?? '',
-                        'postal_code'    => $item['kodepos'] ?? $item['zip_code'] ?? '',
-                        'district_id'    => $item['kecamatan_id'] ?? $item['district_id'] ?? null,
-                        'subdistrict_id' => $item['kelurahan_id'] ?? $item['subdistrict_id'] ?? null,
+                        'village'        => $village,
+                        'district'       => $district,
+                        'regency'        => $regency, 
+                        'province'       => $province,
+                        'postal_code'    => $postalCode,
+                        
+                        // ID INI SUDAH BENAR DARI API
+                        'district_id'    => $item['district_id'] ?? null,
+                        'subdistrict_id' => $item['subdistrict_id'] ?? null,
                     ]
                 ];
             });
