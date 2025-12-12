@@ -973,6 +973,9 @@ Route::post('/setting-info-pesanan', [AdminController::class, 'updateInfoPesanan
         // ======================================================
 
 
+        
+
+        
 
     // Route untuk halaman daftar email (inbox)
 
@@ -1074,7 +1077,6 @@ Route::prefix('ppob')->name('ppob.')->group(function () {
     Route::get('/{id}', [App\Http\Controllers\PpobProductController::class, 'show'])->name('show');
     Route::put('/update-price/{id}', [App\Http\Controllers\PpobProductController::class, 'updatePrice'])->name('update-price');
     Route::delete('/destroy/{id}', [App\Http\Controllers\PpobProductController::class, 'destroy'])->name('destroy');
-
 });
 
     
