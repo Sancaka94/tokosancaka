@@ -1171,7 +1171,9 @@ type();
         return 'Rp ' + (parseInt(angka, 10) || 0).toLocaleString('id-ID'); 
     }
 
-    function openConfirmationModal() {
+    // --- FUNGSI GLOBAL UNTUK MODAL KONFIRMASI (VERSI REVISI LOGIKA BIAYA) ---
+
+function openConfirmationModal() {
     // 1. Ambil Nilai dari Input Form
     const senderName = document.getElementById('sender_name').value;
     const senderPhone = document.getElementById('sender_phone').value;
@@ -1179,19 +1181,30 @@ type();
     const receiverPhone = document.getElementById('receiver_phone').value;
     const itemDesc = document.getElementById('item_description').value;
     const weight = document.getElementById('weight').value;
-    const paymentMethodLabel = document.getElementById('selectedPaymentName').innerText;
     
-    // 2. Parse Data Ekspedisi (Format Value: serviceType-Service-Code-Cost-Insurance-CodFee)
-    // Contoh: regular-JNE-REG-15000-0-0
+    // Ambil Label & Value Metode Pembayaran
+    const paymentMethodLabel = document.getElementById('selectedPaymentName').innerText;
+    const paymentMethodValue = document.getElementById('payment_method').value; // Contoh: 'Potong Saldo', 'COD', 'CODBARANG'
+
+    // 2. Parse Data Ekspedisi 
+    // Format Value: serviceType-Service-Code-Cost-Insurance-CodFee
     const expeditionVal = document.getElementById('expedition').value;
     const parts = expeditionVal.split('-');
     
-    // Pastikan array parts cukup panjang untuk mencegah error
-    const cost = parseInt(parts[3]) || 0;
-    const insurance = parseInt(parts[4]) || 0;
-    const codFee = parseInt(parts[5]) || 0;
-    const serviceName = document.getElementById('selected_expedition_display').value;
+    // Mencegah error jika data belum lengkap
+    if (parts.length < 4) return; 
 
+    const cost = parseInt(parts[3]) || 0;       // Ongkir Murni
+    const insurance = parseInt(parts[4]) || 0;  // Asuransi
+    let codFee = parseInt(parts[5]) || 0;       // Biaya COD dari API
+
+    // --- LOGIKA PENTING: RESET BIAYA COD JIKA BUKAN METODE COD ---
+    // Cek apakah user memilih metode pembayaran COD atau CODBARANG
+    if (paymentMethodValue !== 'COD' && paymentMethodValue !== 'CODBARANG') {
+        codFee = 0; // Nol-kan biaya COD jika bayar pakai Saldo/Transfer
+    }
+
+    const serviceName = document.getElementById('selected_expedition_display').value;
     const totalCost = cost + insurance + codFee;
 
     // 3. Masukkan Data ke dalam Elemen HTML Modal
@@ -1218,10 +1231,10 @@ type();
         }
     }
 
-    // 4. Tampilkan Modal (Hapus class hidden)
+    // 4. Tampilkan Modal
     const modal = document.getElementById('confirmationModal');
     modal.classList.remove('hidden');
-    // Tambahkan sedikit animasi fade-in jika diinginkan
+    
     setTimeout(() => {
         modal.firstElementChild.classList.remove('scale-95', 'opacity-0');
         modal.firstElementChild.classList.add('scale-100', 'opacity-100');
