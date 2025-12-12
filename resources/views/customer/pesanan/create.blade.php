@@ -522,19 +522,19 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4 relative">
                 <div class="hidden md:block absolute left-1/2 top-0 bottom-0 w-px bg-gray-200 transform -translate-x-1/2"></div>
                 <div>
-                    <h4 class="text-xs font-bold text-gray-500 uppercase mb-2">Pengirim</h4>
+                    <h4 class="text-xs font-bold text-red-600 uppercase mb-2">Pengirim</h4>
                     <div class="pl-2 border-l-2 border-red-200 text-sm">
                         <p class="font-bold" id="confirm_sender_name">-</p>
-                        <p class="text-xs text-gray-500" id="confirm_sender_phone">-</p>
-                        <p class="text-gray-600" id="confirm_sender_address">-</p>
+                        <p class="text-xs text-red-500" id="confirm_sender_phone">-</p>
+                        <p class="text-red-600" id="confirm_sender_address">-</p>
                     </div>
                 </div>
                 <div>
                     <h4 class="text-xs font-bold text-blue-500 uppercase mb-2">Penerima</h4>
                     <div class="pl-2 border-l-2 border-blue-200 text-sm">
                         <p class="font-bold" id="confirm_receiver_name">-</p>
-                        <p class="text-xs text-gray-500" id="confirm_receiver_phone">-</p>
-                        <p class="text-gray-600" id="confirm_receiver_address">-</p>
+                        <p class="text-xs text-blue-500" id="confirm_receiver_phone">-</p>
+                        <p class="text-blue-600" id="confirm_receiver_address">-</p>
                     </div>
                 </div>
             </div>
