@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Http\Request;
 use App\Http\Middleware\RoleMiddleware;
 
-// --- DAFTAR SEMUA CONTROLLER (Pastikan file-file ini ada) ---
+// --- CONTROLLERS ---
 use App\Http\Controllers\Admin\ChatController as AdminChatController;
 use App\Http\Controllers\Admin\EmailController;
 use App\Http\Controllers\Admin\SpxScanController;
@@ -28,7 +28,7 @@ use App\Http\Controllers\TrackingController;
 use App\Http\Controllers\Admin\PesananController as AdminPesananController;
 use App\Http\Controllers\Admin\ImportController;
 use App\Http\Controllers\BlogController;
-use App\Http\Controllers\KodePosController; // <--- PENTING: Controller Kode Pos
+use App\Http\Controllers\KodePosController;
 use App\Http\Controllers\Admin\PesananController;
 use App\Http\Controllers\Api\KontakController;
 use App\Http\Controllers\Admin\WalletController;
@@ -80,7 +80,7 @@ use App\Http\Controllers\Admin\AdminLogController;
 
 /*
 |--------------------------------------------------------------------------
-| PUBLIC & AUTH ROUTES (Halaman Depan & Login)
+| PUBLIC & AUTH ROUTES
 |--------------------------------------------------------------------------
 */
 
@@ -99,7 +99,7 @@ Route::get('/register/success/{no_wa}', function ($no_wa) {
 })->name('register.success');
 Route::get('customer/profile/setup/{token}', [CustomerProfileController::class, 'setup'])->name('customer.profile.setup');
 
-// Dashboard Redirects (Mengarahkan user sesuai Role)
+// Dashboard Redirects
 Route::get('/dashboard', function () {
     $user = auth()->user();
     if ($user->role === 'Admin') {
@@ -123,15 +123,16 @@ Route::get('/seller/dashboard', function () {
 
 /*
 |--------------------------------------------------------------------------
-| ADMIN ROUTES (Area Backend Admin)
+| ADMIN ROUTES
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->name('admin.')->group(function () {
     
-    // Include file admin.php bawaan (dashboard, dll)
+    // Include file admin.php bawaan
     require __DIR__.'/web/admin.php';
 
-    // 1. ROUTE ORDERS (Agar menu Pesanan bisa dibuka)
+    // 1. ROUTE ORDERS & PRINT THERMAL (FIX Route [admin.orders.print.thermal])
+    Route::get('/orders/{invoice_number}/print-thermal', [AdminOrderController::class, 'printThermal'])->name('orders.print.thermal');
     Route::resource('orders', AdminOrderController::class);
 
     // 2. ROUTE SPX SCANS
@@ -141,18 +142,59 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
     Route::resource('reviews', AdminReviewController::class);
     Route::post('reviews/{review}/reply', [AdminReviewController::class, 'reply'])->name('reviews.reply');
 
-    // 4. ROUTE STORES (Untuk mengatasi 404 admin/stores)
+    // 4. ROUTE STORES & MARKETPLACE
     Route::resource('stores', AdminMarketplaceController::class)->names('stores');
-
-    // 5. ROUTE MARKETPLACE (Produk)
     Route::resource('marketplace', AdminMarketplaceController::class); 
 
-    // 6. ROUTE KODE POS (Untuk mengatasi error sidebar: admin.kodepos.index)
+    // 5. ROUTE KODE POS
     Route::get('/kode-pos', [KodePosController::class, 'index'])->name('kodepos.index');
     Route::post('/kode-pos/import', [KodePosController::class, 'import'])->name('kodepos.import');
 
-    // --- FITUR ADMIN LAINNYA ---
+    // 6. ROUTE PENGGUNA & EXPORT (FIX Route [admin.customers.pengguna.export])
+    Route::get('/customers/data/pengguna/export', [DataPenggunaController::class, 'export'])->name('customers.pengguna.export'); 
+    Route::get('/pengguna/export', [PelangganController::class, 'export'])->name('customers.pengguna.export_alt'); // Backup nama lain
     Route::resource('customers/data/pengguna', DataPenggunaController::class)->names('customers.data.pengguna');
+
+    // 7. ROUTE PELANGGAN (FIX Route [admin.pelanggan.store])
+    Route::resource('pelanggan', PelangganController::class);
+    Route::prefix('pelanggan')->name('pelanggan.')->group(function () {
+        Route::post('/import-excel', [PelangganController::class, 'importExcel'])->name('import.excel');
+        Route::get('/export-excel', [PelangganController::class, 'exportExcel'])->name('export.excel');
+        Route::get('/export-pdf', [PelangganController::class, 'exportPdf'])->name('export.pdf');
+    });
+
+    // 8. ROUTE WILAYAH LENGKAP (FIX Route [admin.wilayah.kabupaten])
+    Route::prefix('wilayah')->name('wilayah.')->group(function() {
+        Route::get('/', [WilayahController::class, 'index'])->name('index');
+        Route::post('/', [WilayahController::class, 'store'])->name('store');
+        Route::put('/{id}', [WilayahController::class, 'update'])->name('update');
+        Route::delete('/{id}', [WilayahController::class, 'destroy'])->name('destroy');
+        
+        // API Wilayah (Dependent Dropdown)
+        Route::get('/province/{province}/regencies', [WilayahController::class, 'getKabupaten'])->name('kabupaten');
+        Route::get('/regency/{regency}/districts', [WilayahController::class, 'getKecamatan'])->name('kecamatan');
+        Route::get('/district/{district}/villages', [WilayahController::class, 'getDesa'])->name('desa');
+        
+        // API Backup Name (sesuai request)
+        Route::get('/api/provinces', [WilayahController::class, 'getProvinces'])->name('api.provinces');
+        Route::get('/api/regencies/{province}', [WilayahController::class, 'getRegencies'])->name('api.regencies');
+        Route::get('/api/districts/{regency}', [WilayahController::class, 'getDistricts'])->name('api.districts');
+        Route::get('/api/villages/{district}', [WilayahController::class, 'getVillages'])->name('api.villages');
+    });
+
+    // 9. ROUTE POST DETAIL (FIX Route [admin.posts.post-detail])
+    Route::get('/post/{post:slug}', [PostController::class, 'show'])->name('posts.post-detail');
+    Route::get('/posts/{id}/edit', [PostController::class, 'edit'])->name('posts.edit');
+    Route::put('/posts/{post}', [PostController::class, 'update'])->name('posts.update');
+
+    // 10. ROUTE PESANAN MULTI ADMIN (FIX 404 /admin/pesanan/buat-multi)
+    // Pastikan Controller AdminKoliController ada dan method create ada
+    Route::get('/pesanan/buat-multi', [AdminKoliController::class, 'create'])->name('pesanan.create_multi');
+    Route::post('/pesanan/store-multi', [AdminKoliController::class, 'store'])->name('koli.store');
+    Route::post('/pesanan/store-single', [AdminKoliController::class, 'storeSingle'])->name('koli.store_single');
+    Route::post('/cek-ongkir', [AdminKoliController::class, 'cek_Ongkir'])->name('koli.cek_ongkir');
+
+    // --- LAINNYA ---
     Route::resource('couriers', CourierController::class);
     Route::resource('banners', BannerController::class);
     Route::resource('coa', CoaController::class)->except(['show']);
@@ -189,12 +231,6 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
     Route::post('/deposit', [AdminPpobController::class, 'requestDeposit'])->name('ppob.deposit');
     Route::post('/topup', [AdminPpobController::class, 'topup'])->name('ppob.topup');
 
-    // Admin Koli/Pesanan Multi
-    Route::get('/pesanan/buat-multi', [AdminKoliController::class, 'create'])->name('pesanan.create_multi');
-    Route::post('/pesanan/store-multi', [AdminKoliController::class, 'store'])->name('koli.store');
-    Route::post('/pesanan/store-single', [AdminKoliController::class, 'storeSingle'])->name('koli.store_single');
-    Route::post('/cek-ongkir', [AdminKoliController::class, 'cek_Ongkir'])->name('koli.cek_ongkir');
-
     // Admin Settings & Tools
     Route::get('/settings/api', [ApiSettingsController::class, 'index'])->name('settings.api.index');
     Route::put('/settings/api', [ApiSettingsController::class, 'update'])->name('settings.api.update');
@@ -218,33 +254,13 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
         Route::get('neraca', [LaporanKeuanganController::class, 'neraca'])->name('neraca');
     });
 
-    // Wilayah Admin
-    Route::prefix('wilayah')->name('wilayah.')->group(function() {
-        Route::get('/', [WilayahController::class, 'index'])->name('index');
-        Route::post('/', [WilayahController::class, 'store'])->name('store');
-        Route::put('/{id}', [WilayahController::class, 'update'])->name('update');
-        Route::delete('/{id}', [WilayahController::class, 'destroy'])->name('destroy');
-        Route::get('/api/provinces', [WilayahController::class, 'getProvinces'])->name('api.provinces');
-        Route::get('/api/regencies/{province}', [WilayahController::class, 'getRegencies'])->name('api.regencies');
-        Route::get('/api/districts/{regency}', [WilayahController::class, 'getDistricts'])->name('api.districts');
-        Route::get('/api/villages/{district}', [WilayahController::class, 'getVillages'])->name('api.villages');
-    });
-
-    // Sliders & Posts
+    // Sliders
     Route::get('/sliders', [SliderController::class, 'index'])->name('sliders.index');
     Route::post('/sliders', [SliderController::class, 'store'])->name('sliders.store');
     Route::delete('/sliders/{slide}', [SliderController::class, 'destroy'])->name('sliders.destroy');
-    Route::get('/posts/{id}/edit', [PostController::class, 'edit'])->name('posts.edit');
-    Route::put('/posts/{post}', [PostController::class, 'update'])->name('posts.update');
 
     // User Management
     Route::post('/users/{user}/toggle-freeze', [UserController::class, 'toggleFreeze'])->name('users.toggle-freeze');
-    Route::get('/pelanggan', [PelangganController::class, 'index'])->name('pelanggan.index'); // Resource manual jika perlu
-    Route::prefix('pelanggan')->name('pelanggan.')->group(function () {
-        Route::post('/import-excel', [PelangganController::class, 'importExcel'])->name('import.excel');
-        Route::get('/export-excel', [PelangganController::class, 'exportExcel'])->name('export.excel');
-        Route::get('/export-pdf', [PelangganController::class, 'exportPdf'])->name('export.pdf');
-    });
 
     // Info Pesanan
     Route::get('/setting-info-pesanan', [AdminController::class, 'editInfoPesanan'])->name('info.edit');
@@ -311,8 +327,9 @@ Route::middleware(['auth', RoleMiddleware::class . ':Pelanggan|Seller'])->prefix
         Route::post('/messages', [CustomerChatController::class, 'sendMessage'])->name('sendMessage');
     });
 
-    // Kontak
-    Route::get('/kontak/search', [CustomerKontakController::class, 'search'])->name('kontak.search');
+    // Kontak Customer (FIX Route [customer.kontak.index])
+    Route::resource('kontak', CustomerKontakController::class);
+    Route::get('/kontak/search', [CustomerKontakController::class, 'search'])->name('kontak.search'); // Search API
     
     // Seller Register
     Route::get('/seller/register', [SellerRegisterController::class, 'create'])->name('seller.register.form');
