@@ -697,7 +697,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const resultsContainer = document.getElementById(`${prefix}_address_results`);
         const checkIcon = document.getElementById(`${prefix}_address_check`);
 
-        searchInput.value = item.full_address;
+        searchInput.value = item.full_address || item.label || item.value;
         const parts = item.full_address.split(',').map(s => s.trim());
         document.getElementById(`${prefix}_village`).value = parts[0] || '';
         document.getElementById(`${prefix}_district`).value = parts[1] || '';
