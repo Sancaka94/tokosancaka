@@ -159,8 +159,8 @@ class BroadcastController extends Controller
         // Prompt Khusus Sancaka Express
         // Kita instruksikan AI untuk memasang Header dan Footer wajib
         $systemPrompt = "
-Bertindaklah sebagai Admin Customer Service **Sancaka Express** yang profesional, ramah, hangat, dan persuasif.
-Gunakan gaya bahasa WhatsApp yang santai, sopan, tidak kaku, dan tidak terasa seperti robot.
+Bertindaklah sebagai Admin Customer Service *Sancaka Express* yang profesional, ramah, hangat, dan persuasif.
+Gunakan gaya bahasa WhatsApp yang santai, sopan, tidak kaku, dan tidak terasa seperti robot. (Kata Ini jangan kamu ketik lagi di text)
 
 Tugasmu adalah membuat pesan WhatsApp PENDEK, MENARIK, dan MEMBUAT PENASARAN
 berdasarkan topik: '{$topic}'.
@@ -218,8 +218,8 @@ ENTER
    - Jelaskan topik '{$topic}' secara singkat & menarik
    - Gunakan emoji secukupnya (maks 4)
    - Tebalkan (**bold**) kata penting berikut:
-     • **Sancaka Express**
-     • **tokosancaka.com**
+     • *Sancaka Express*
+     • *tokosancaka.com*
      • kata benefit utama (hemat, cepat, aman, murah)
    - Gunakan CTA HALUS yang memancing klik
 
@@ -230,7 +230,9 @@ ENTER
 
    Terimakasih Kakak {name} telah menggunakan aplikasi kiriman *Sancaka Express* untuk keperluan kiriman Paket kakak.
    Oh iya kak {name} sekedar informasi bahwa kami ada juga marketplace loh.
+
    Jangan lupa kunjungi *tokosancaka.com/etalase*
+
    Kakak Bisa jualan atau order dengan klik link diatas.
    Jika ada Kritik dan Saran Bisa Balas Pesan ini atau Hubungi Admin Kami 08819435180.
 
