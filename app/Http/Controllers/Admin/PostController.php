@@ -227,6 +227,24 @@ Hasilkan konten HANYA dalam format HTML mentah (raw HTML), tanpa ``` html atau p
 2.  **Kata Kunci:** Gunakan kata kunci utama <strong>{$title}</strong> secara alami 3-5 kali. Sertakan juga variasi kata kunci (LSI) yang relevan dengan topik.
 3.  **Tautan Internal:** Sisipkan 2-3 tautan internal ke domain tokosancaka.com atau tokosancaka.biz.id. Gunakan anchor text yang relevan. Contoh: <a href=\"https://tokosancaka.com/cek-ongkir\">cek ongkos kirim</a>.
 4.  **Panjang Artikel:** Total panjang artikel **tidak boleh lebih dari 1000 kata**.
+5.  **Judul & Subjudul:** Gunakan judul dan subjudul yang menarik serta mengandung kata kunci.
+6.  **Meta Deskripsi:** Buat meta deskripsi singkat (maksimal 160 karakter) yang mengandung kata kunci utama.
+7.  **Call to Action (CTA):** Akhiri artikel dengan ajakan bertindak yang relevan, misalnya mengunjungi situs web atau menghubungi layanan pengiriman.
+8.  **Hindari Duplikasi:** Pastikan konten unik dan tidak menjiplak dari sumber lain.
+9.  **Gaya Penulisan:** Gunakan gaya bahasa yang ramah, mudah dipahami, dan sesuai dengan audiens Indonesia.
+10. **Pemeriksaan Ulang:** Periksa tata bahasa, ejaan, dan kesalahan ketik sebelum menyelesaikan artikel.
+11. **Penggunaan Gambar:** Jangan sertakan gambar atau tag gambar dalam output HTML.
+12. **Buatkan minimal hastag 100 kata kunci terkait {$title} untuk optimasi SEO di akhir artikel.**
+13. **Sisipkan blok informasi kontak Sancaka Express di akhir artikel sesuai format yang diberikan.**
+14. **Jangan sertakan nomor halaman, catatan kaki, atau referensi eksternal dalam artikel.**
+15. **Hindari penggunaan kata-kata yang bersifat promosi berlebihan atau clickbait.**
+16. **Pastikan artikel sesuai dengan pedoman konten Google dan tidak melanggar kebijakan apa pun.**
+17. **Periksa kembali fakta-fakta penting untuk memastikan keakuratan informasi yang disajikan.**
+18. **Hindari penggunaan jargon teknis yang sulit dipahami tanpa penjelasan.**
+19. **Gunakan variasi kalimat untuk menghindari repetisi yang berlebihan.**
+20. **Gunakan bahasa penasaran yang mengundang pembaca untuk terus membaca hingga akhir artikel.**
+21. **Sertakan statistik atau data relevan jika memungkinkan untuk mendukung argumen dalam artikel.**
+22. **gunakan bahasa jurnalistik yang objektif dan netral.**
 
 **Kaidah Bahasa & Keterbacaan (Sesuai EYD & KBBI):**
 
