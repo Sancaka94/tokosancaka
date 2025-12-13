@@ -266,8 +266,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/checkout-ppob/process', [PpobCheckoutController::class, 'store'])->name('ppob.checkout.store');
     Route::get('/checkout-ppob/remove/{id}', [PpobCheckoutController::class, 'removeItem'])->name('ppob.cart.remove');
     Route::post('/checkout-ppob/clear', [PpobCheckoutController::class, 'clearCart'])->name('ppob.cart.clear');
-    Route::get('/invoice/{invoice}', [PpobCheckoutController::class, 'invoice'])->name('ppob.invoice');
-
+    Route::get('/ppob/invoice/{invoice}', [PpobCheckoutController::class, 'invoice'])->name('ppob.invoice');
+    
     Route::prefix('digital')->name('ppob.')->group(function () {
         Route::post('/checkout', [PpobController::class, 'store'])->name('store');
         Route::get('/status/{ref_id}', [PpobController::class, 'checkStatus'])->name('status');
