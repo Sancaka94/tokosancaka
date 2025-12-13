@@ -1,8 +1,8 @@
 {{-- resources/views/customer/kontak/index.blade.php --}}
 
-@extends('layouts.customer')
+@extend('layouts.customer')
 
-@section('title', 'Buku Alamat Lengkap')
+@sectio('title', 'Buku Alamat Lengkap')
 
 @push('styles')
 <meta name="csrf-token" content="{{ csrf_token() }}">
