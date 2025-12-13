@@ -174,49 +174,35 @@ class KontakController extends Controller
 
    public function search(Request $request)
 {
-    // 1. Ambil User yang sedang login
     $user = Auth::user();
-    
-    // 2. Mulai Query
     $query = Kontak::query();
 
-    // ============================================================
-    // LOGIKA KRUSIAL (JANTUNG KEAMANAN)
-    // ============================================================
-    
-    // Cek Role (pakai strtolower biar aman dari 'Admin', 'admin', 'ADMIN')
+    // --- KEAMANAN LEVEL TINGGI ---
+    // 1. Cek Role (Case Insensitive / Huruf Besar Kecil disamakan)
     $isAdmin = strtolower($user->role) === 'admin';
 
-    if ($isAdmin) {
-        // --- JIKA ADMIN ---
-        // Bebas! Tidak ada filter user_id.
-        // Admin bisa melihat semua data pengirim/penerima di sistem.
-    } else {
-        // --- JIKA BUKAN ADMIN (Customer/Agent/Seller) ---
-        // WAJIB difilter berdasarkan ID user yang login.
-        // Data yang user_id-nya NULL atau milik orang lain TIDAK AKAN MUNCUL.
+    // 2. JIKA BUKAN ADMIN -> WAJIB FILTER USER_ID
+    if (!$isAdmin) {
         $query->where('user_id', $user->id);
     }
+    // (Jika Admin, biarkan dia melihat semua data)
 
-    // ============================================================
-    
-    // 3. Filter Tipe (Jika ada request tipe: Pengirim/Penerima)
-    if ($request->filled('tipe')) {
-        $query->where('tipe', $request->input('tipe'));
-    }
-
-    // 4. Logika Pencarian (Nama/HP/Alamat)
-    if ($request->filled('search')) {
-        $keyword = $request->input('search');
+    // --- LOGIKA PENCARIAN ---
+    if ($request->has('q') || $request->has('search')) {
+        $keyword = $request->input('q') ?? $request->input('search');
         $query->where(function($q) use ($keyword) {
             $q->where('nama', 'LIKE', "%{$keyword}%")
-              ->orWhere('no_hp', 'LIKE', "%{$keyword}%")
-              ->orWhere('alamat', 'LIKE', "%{$keyword}%");
+              ->orWhere('no_hp', 'LIKE', "%{$keyword}%");
         });
     }
 
-    // 5. Ambil Data
-    return response()->json($query->latest()->limit(20)->get());
+    // Hanya ambil tipe Pengirim jika diminta (biasanya untuk dropdown pengirim)
+    if ($request->has('tipe')) {
+        $query->where('tipe', $request->input('tipe'));
+    }
+
+    // Limit hasil agar loading cepat
+    return response()->json($query->limit(20)->get());
 }
 
     // ... method searchAddressApi tetap sama (tidak perlu diubah) ...
