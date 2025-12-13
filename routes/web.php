@@ -1,11 +1,21 @@
 <?php
 
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 use Illuminate\Http\Request;
 use App\Http\Middleware\RoleMiddleware;
 use App\Services\KiriminAjaService;
+
+Route::get('/cek-gemini', function () {
+    $apiKey = env('GEMINI_API_KEY');
+    
+    // Request ke endpoint "List Models"
+    $response = Http::get("https://generativelanguage.googleapis.com/v1beta/models?key={$apiKey}");
+    
+    return $response->json();
+});
 
 // =========================================================================
 // 1. IMPORT CONTROLLER (LENGKAP)
