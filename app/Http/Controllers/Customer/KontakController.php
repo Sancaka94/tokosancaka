@@ -16,23 +16,21 @@ class KontakController extends Controller
 {
   public function index(Request $request)
 {
-    $user = Auth::user();
-    $query = Kontak::query();
+    $user = Auth::user(); 
 
-    // --- LOGIKA FILTER (SOLUSI UTAMA) ---
-    // Cek apakah dia Admin? (Huruf besar/kecil dianggap sama)
+    // --- LOGIKA "HARGA MATI" ---
     $isAdmin = strtolower($user->role) === 'admin';
 
-    if ($isAdmin) {
-        // ADMIN: Bebas, ambil semua (termasuk yang NULL)
-    } else {
-        // CUSTOMER: HANYA ambil yang user_id nya SAMA dengan ID login.
-        // Secara otomatis SQL akan membuang data yang NULL.
+    // 1. Query Utama (Tabel Besar)
+    $query = Kontak::query();
+
+    // JIKA BUKAN ADMIN -> PAKSA FILTER USER_ID
+    // Data NULL otomatis tidak akan muncul.
+    if (!$isAdmin) { 
         $query->where('user_id', $user->id);
     }
-    // -------------------------------------
 
-    // Filter Pencarian (Search)
+    // Filter Pencarian
     if ($request->filled('search')) {
         $search = $request->input('search');
         $query->where(function($q) use ($search) {
@@ -42,17 +40,16 @@ class KontakController extends Controller
         });
     }
 
-    // Filter Tipe (Pengirim/Penerima)
     if ($request->filled('filter') && $request->input('filter') !== 'Semua') {
         $query->where('tipe', $request->input('filter'));
     }
 
     $kontaks = $query->latest()->paginate(10);
 
-    // --- LOGIKA UNTUK LIST PENGIRIM (Bagian Bawah) ---
+    // 2. Query Pengirim (Profil Saya)
     $queryPengirim = Kontak::where('tipe', 'Pengirim');
-    
-    // Terapkan filter yang sama untuk pengirim!
+
+    // JANGAN LUPA FILTER INI JUGA DIKUNCI
     if (!$isAdmin) {
         $queryPengirim->where('user_id', $user->id);
     }
