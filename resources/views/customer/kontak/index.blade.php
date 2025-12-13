@@ -194,7 +194,7 @@
                 <i class="fas fa-shipping-fast text-lg"></i>
             </div>
             <div>
-                <h3 class="text-xl font-bold text-gray-800">Data Pengirim (Profil Saya)</h3>
+                <h3 class="text-xl font-bold text-gray-800">Data Pengirim</h3>
                 <p class="text-sm text-gray-500">Daftar alamat yang disimpan sebagai pengirim.</p>
             </div>
         </div>
