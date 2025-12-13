@@ -17,21 +17,31 @@ class KontakController extends Controller
   public function index(Request $request)
 {
     $user = Auth::user(); 
+    
+    // 1. AMBIL ROLE DAN UBAH KE HURUF KECIL SEMUA (Biar aman)
+    // Contoh: 'Agent' jadi 'agent', 'Seller' jadi 'seller', 'Admin' jadi 'admin'
+    $role = strtolower($user->role); 
 
-    // --- LOGIKA KUNCI MATI (SECURITY) ---
-    // Cek Role (Huruf besar/kecil dianggap sama)
-    $isAdmin = strtolower($user->role) === 'admin';
-
-    // 1. QUERY UNTUK TABEL UTAMA
+    // 2. QUERY UTAMA
     $query = Kontak::query();
 
-    // JIKA BUKAN ADMIN -> WAJIB FILTER SESUAI ID LOGIN
-    // Data yang user_id-nya NULL otomatis TIDAK AKAN MUNCUL.
-    if (!$isAdmin) { 
+    // 3. LOGIKA RINCI PER ROLE
+    if ($role === 'admin') {
+        // --- KHUSUS ADMIN ---
+        // Bebas akses semua data (termasuk yang user_id NULL)
+    } 
+    elseif (in_array($role, ['agent', 'seller', 'pelanggan', 'member'])) {
+        // --- KHUSUS AGENT, SELLER, PELANGGAN ---
+        // Wajib filter user_id. Data NULL otomatis HILANG.
+        $query->where('user_id', $user->id);
+    } 
+    else {
+        // --- ROLE LAIN YANG TIDAK DIKENAL ---
+        // Default: Kunci data biar aman
         $query->where('user_id', $user->id);
     }
 
-    // --- Filter Pencarian & Tipe ---
+    // --- Filter Pencarian ---
     if ($request->filled('search')) {
         $search = $request->input('search');
         $query->where(function($q) use ($search) {
@@ -41,18 +51,19 @@ class KontakController extends Controller
         });
     }
 
+    // --- Filter Tipe ---
     if ($request->filled('filter') && $request->input('filter') !== 'Semua') {
         $query->where('tipe', $request->input('filter'));
     }
 
     $kontaks = $query->latest()->paginate(10);
 
-    // 2. QUERY UNTUK LIST PENGIRIM (Profil Saya)
+    // 4. QUERY KHUSUS PENGIRIM (Profil Saya)
     $queryPengirim = Kontak::where('tipe', 'Pengirim');
 
-    // JANGAN LUPA: Bagian ini juga harus dikunci!
-    if (!$isAdmin) {
-        $queryPengirim->where('user_id', $user->id_pengguna);
+    // Terapkan logika yang sama persis
+    if ($role !== 'admin') {
+        $queryPengirim->where('user_id', $user->id);
     }
 
     $pengirims = $queryPengirim->latest()->get();
