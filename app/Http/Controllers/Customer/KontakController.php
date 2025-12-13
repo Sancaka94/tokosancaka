@@ -14,7 +14,51 @@ use App\Models\User;
 
 class KontakController extends Controller
 {
+  public function index(Request $request)
+{
+    $user = Auth::user(); 
 
+    // --- LOGIKA KUNCI MATI (SECURITY) ---
+    // Cek Role (Huruf besar/kecil dianggap sama)
+    $isAdmin = strtolower($user->role) === 'admin';
+
+    // 1. QUERY UNTUK TABEL UTAMA
+    $query = Kontak::query();
+
+    // JIKA BUKAN ADMIN -> WAJIB FILTER SESUAI ID LOGIN
+    // Data yang user_id-nya NULL otomatis TIDAK AKAN MUNCUL.
+    if (!$isAdmin) { 
+        $query->where('user_id', $user->id);
+    }
+
+    // --- Filter Pencarian & Tipe ---
+    if ($request->filled('search')) {
+        $search = $request->input('search');
+        $query->where(function($q) use ($search) {
+            $q->where('nama', 'like', "%{$search}%")
+              ->orWhere('no_hp', 'like', "%{$search}%")
+              ->orWhere('district', 'like', "%{$search}%");
+        });
+    }
+
+    if ($request->filled('filter') && $request->input('filter') !== 'Semua') {
+        $query->where('tipe', $request->input('filter'));
+    }
+
+    $kontaks = $query->latest()->paginate(10);
+
+    // 2. QUERY UNTUK LIST PENGIRIM (Profil Saya)
+    $queryPengirim = Kontak::where('tipe', 'Pengirim');
+
+    // JANGAN LUPA: Bagian ini juga harus dikunci!
+    if (!$isAdmin) {
+        $queryPengirim->where('user_id', $user->id);
+    }
+
+    $pengirims = $queryPengirim->latest()->get();
+
+    return view('customer.kontak.index', compact('kontaks', 'pengirims'));
+}
 
    public function search(Request $request)
 {
