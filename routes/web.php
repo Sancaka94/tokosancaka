@@ -8,15 +8,24 @@ use Illuminate\Http\Request;
 use App\Http\Middleware\RoleMiddleware;
 use App\Services\KiriminAjaService;
 
-Route::get('/cek-gemini', function () {
-    $apiKey = env('GEMINI_API_KEY');
+Route::get('/debug-post', function () {
+    // Ini slug yang Anda kirimkan tadi yang error 404
+    $slug = 'jnt-express-ngawi-085745808809-693d843105042';
     
-    // Request ke endpoint "List Models"
-    $response = Http::get("https://generativelanguage.googleapis.com/v1beta/models?key={$apiKey}");
+    // Cari manual
+    $post = \App\Models\Post::where('slug', $slug)->first();
     
-    return $response->json();
+    if (!$post) {
+        return "❌ POST TIDAK DITEMUKAN! Slug di database pasti berbeda dengan URL di atas.";
+    }
+    
+    return [
+        "Status" => "✅ Ditemukan",
+        "Judul" => $post->title,
+        "Status Post" => $post->status, // Harus 'published'
+        "Slug Asli DB" => $post->slug
+    ];
 });
-
 // =========================================================================
 // 1. IMPORT CONTROLLER (LENGKAP)
 // =========================================================================
