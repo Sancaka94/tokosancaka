@@ -60,7 +60,7 @@
 
     {{-- HEADER: PENCARIAN & TOMBOL TAMBAH --}}
     <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-        <form ation="{{ route('customer.kontak.index') }}" method="GET" class="relative w-full md:w-1/2">
+        <form action="{{ route('customer.kontak.index') }}" method="GET" class="relative w-full md:w-1/2">
             @if(request('filter'))
                 <input type="hidden" name="filter" value="{{ request('filter') }}">
             @endif
@@ -100,7 +100,7 @@
             <i class="fas fa-check-circle text-xl mr-3"></i>
             <p>{{ session('success') }}</p>
         </div>
-    @endif
+    
 
     {{-- TABEL UTAMA --}}
     <div class="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
