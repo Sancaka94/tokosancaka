@@ -85,33 +85,43 @@ class KontakController extends Controller
    public function search(Request $request)
 {
     $user = Auth::user();
+    
+    // 1. EKSPLISIT: Pastikan ambil ID dari kolom 'id_pengguna'
+    // Jangan pakai $user->id takutnya null/salah mapping
+    $userId = $user->id_pengguna; 
+
     $query = Kontak::query();
 
     // --- KEAMANAN LEVEL TINGGI ---
-    // 1. Cek Role (Case Insensitive / Huruf Besar Kecil disamakan)
+    // 2. Cek Role (Huruf besar/kecil dianggap sama)
     $isAdmin = strtolower($user->role) === 'admin';
 
-    // 2. JIKA BUKAN ADMIN -> WAJIB FILTER USER_ID
+    // 3. JIKA BUKAN ADMIN -> WAJIB FILTER USER_ID
     if (!$isAdmin) {
-        $query->where('user_id', $user->id);
+        // Gunakan variable $userId yang pasti benar
+        $query->where('user_id', $userId);
     }
     // (Jika Admin, biarkan dia melihat semua data)
 
     // --- LOGIKA PENCARIAN ---
     if ($request->has('q') || $request->has('search')) {
         $keyword = $request->input('q') ?? $request->input('search');
+        
         $query->where(function($q) use ($keyword) {
             $q->where('nama', 'LIKE', "%{$keyword}%")
-              ->orWhere('no_hp', 'LIKE', "%{$keyword}%");
+              ->orWhere('no_hp', 'LIKE', "%{$keyword}%")
+              // Saya tambahkan pencarian Alamat & Kecamatan biar user makin mudah cari
+              ->orWhere('alamat', 'LIKE', "%{$keyword}%") 
+              ->orWhere('district', 'LIKE', "%{$keyword}%");
         });
     }
 
-    // Hanya ambil tipe Pengirim jika diminta (biasanya untuk dropdown pengirim)
-    if ($request->has('tipe')) {
+    // Hanya ambil tipe Pengirim/Penerima jika diminta
+    if ($request->filled('tipe')) {
         $query->where('tipe', $request->input('tipe'));
     }
 
-    // Limit hasil agar loading cepat
+    // Limit hasil agar loading cepat (AJAX ringan)
     return response()->json($query->limit(20)->get());
 }
 
