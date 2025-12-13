@@ -1,8 +1,8 @@
 {{-- resources/views/customer/kontak/index.blade.php --}}
 
-@extend('layouts.customer')
+@extends('layouts.customer')
 
-@sectio('title', 'Buku Alamat Lengkap')
+@section('title', 'Buku Alamat Lengkap')
 
 @push('styles')
 <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -53,7 +53,7 @@
         color: #6b7280; /* Gray-500 */
     }
 </style>
-@endpush
+
 
 @section('content')
 <div class="bg-white p-6 rounded-xl shadow-lg min-h-screen">
