@@ -32,6 +32,7 @@ use App\Models\Tag;
 
 use App\Models\User;
 
+use App\Services\GeminiService;
 
 
 class PostController extends Controller
@@ -183,29 +184,20 @@ public function show(Post $post)
 
      */
 
+    /**
+     * Menghasilkan konten artikel menggunakan AI.
+     */
     public function generateContent(Request $request)
-
     {
-
         $request->validate([
-
             'title' => 'required|string|max:255',
-
             'model' => 'required|in:openai,gemini,none'
-
         ]);
 
-
-
         $model = $request->input('model');
-
         if ($model === 'none') {
-
             return response()->json(['content' => '']);
-
         }
-
-
 
         $title = e($request->input('title'));
 
@@ -257,23 +249,32 @@ Website: tokosancaka.biz.id , tokosancaka.com , sancaka.biz.id </p>
 <p><em>Pilihan tepat untuk pengiriman barang cepat, aman, dan bergaransi ke seluruh Indonesia!</em></p>
 ";
         // --- AKHIR PROMPT DIPERBARUI ---
-
-
-
+        
+        // Opsi 1: OpenAI (Masih pakai cara lama/private function)
         if ($model === 'openai') {
-
             return $this->generateWithOpenAI($prompt);
+        } 
+        
+        // Opsi 2: GEMINI (SEKARANG MENGGUNAKAN SERVICE YANG SUDAH FIX)
+        elseif ($model === 'gemini') {
+            try {
+                // Memanggil fungsi generateText dari GeminiService
+                $content = $this->geminiService->generateText($prompt);
+                
+                // Cek apakah balasan berupa pesan error dari Service
+                if (Str::startsWith($content, 'Gagal') || Str::startsWith($content, 'Error')) {
+                     return response()->json(['error' => $content], 500);
+                }
 
-        } elseif ($model === 'gemini') {
+                return response()->json(['content' => $content]);
 
-            return $this->generateWithGemini($prompt);
-
+            } catch (\Exception $e) {
+                Log::error('Controller Gemini Error: ' . $e->getMessage());
+                return response()->json(['error' => 'Terjadi kesalahan sistem: ' . $e->getMessage()], 500);
+            }
         }
 
-
-
         return response()->json(['error' => 'Model AI tidak valid.'], 400);
-
     }
 
 
