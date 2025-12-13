@@ -175,12 +175,45 @@ Route::get('/layanan/{slug}', [PublicController::class, 'showCategory'])->name('
 Route::get('/debug-digi', [PpobController::class, 'debugDirect']);
 
 // Group Etalase PPOB
-Route::prefix('etalase/ppob')->name('ppob.')->group(function () {
-    Route::get('/digital/{slug}', [PpobController::class, 'index'])->name('category');
-    Route::post('/check-bill', [PpobController::class, 'checkBill'])->name('check.bill');
-    Route::post('/check-pln-prabayar', [PpobController::class, 'checkPlnPrabayar'])->name('check.pln.prabayar');
-    Route::post('/transaction', [PpobController::class, 'store'])->name('store');
-});
+// =====================================================================
+    // PPOB ADMIN (FIX FINAL: Export Excel & PDF)
+    // =====================================================================
+    Route::prefix('ppob')->name('ppob.')->group(function () {
+        
+        // 1. HALAMAN UTAMA
+        Route::get('/produk', [PpobProductController::class, 'index'])->name('product.index'); 
+        Route::get('/digital', [PpobProductController::class, 'index'])->name('index'); 
+        Route::get('/data', [AdminPpobController::class, 'index'])->name('data.index'); 
+
+        // 2. EXPORT (DATA TRANSAKSI)
+        Route::get('/data/export/excel', [AdminPpobController::class, 'exportExcel'])->name('data.export.excel');
+        Route::get('/data/export/pdf', [AdminPpobController::class, 'exportPdf'])->name('data.export.pdf');
+        
+        // 3. EXPORT (DATA PRODUK) - PERBAIKAN DISINI
+        // Kita buat 2 route yang mengarah ke controller sama agar aman (Support titik & strip)
+        Route::get('/export-excel', [PpobProductController::class, 'exportExcel'])->name('export.excel'); // <--- INI YANG DICARI ERROR TADI
+        Route::get('/export-pdf', [PpobProductController::class, 'exportPdf'])->name('export.pdf');
+        
+        // Alias tambahan (jaga-jaga jika ada view lama yang pakai strip)
+        Route::get('/produk/export/excel', [PpobProductController::class, 'exportExcel'])->name('export-excel');
+
+        // 4. HELPER & ACTIONS
+        Route::post('/bulk-update', [PpobProductController::class, 'bulkUpdate'])->name('bulk-update');
+        Route::put('/update-price/{id}', [PpobProductController::class, 'updatePrice'])->name('update-price');
+        
+        Route::post('/deposit', [AdminPpobController::class, 'requestDeposit'])->name('deposit');
+        Route::get('/cek-saldo', [AdminPpobController::class, 'cekSaldo'])->name('cek-saldo');
+        Route::post('/topup', [AdminPpobController::class, 'topup'])->name('topup');
+
+        Route::get('/transaction/{id}', [AdminPpobController::class, 'show'])->name('transaction.show');
+        Route::put('/transaction/{id}', [AdminPpobController::class, 'update'])->name('transaction.update');
+        Route::delete('/transaction/{id}', [AdminPpobController::class, 'destroy'])->name('transaction.destroy');
+        Route::get('/transaction/destroy/{id}', [AdminPpobController::class, 'destroy'])->name('transaction.destroy.get');
+
+        Route::delete('/destroy/{id}', [PpobProductController::class, 'destroy'])->name('destroy');
+        
+        Route::get('/{id}', [PpobProductController::class, 'show'])->name('show');
+    });
 
 // AJAX PPOB Public
 Route::post('/ppob/check-bill', [PpobController::class, 'checkBill'])->name('ppob.check.bill');
