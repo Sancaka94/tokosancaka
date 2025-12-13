@@ -63,6 +63,39 @@ class KontakController extends Controller
     return view('customer.kontak.index', compact('kontaks', 'pengirims'));
 }
 
+   public function search(Request $request)
+{
+    $user = Auth::user();
+    $query = Kontak::query();
+
+    // --- KEAMANAN LEVEL TINGGI ---
+    // 1. Cek Role (Case Insensitive / Huruf Besar Kecil disamakan)
+    $isAdmin = strtolower($user->role) === 'admin';
+
+    // 2. JIKA BUKAN ADMIN -> WAJIB FILTER USER_ID
+    if (!$isAdmin) {
+        $query->where('user_id', $user->id);
+    }
+    // (Jika Admin, biarkan dia melihat semua data)
+
+    // --- LOGIKA PENCARIAN ---
+    if ($request->has('q') || $request->has('search')) {
+        $keyword = $request->input('q') ?? $request->input('search');
+        $query->where(function($q) use ($keyword) {
+            $q->where('nama', 'LIKE', "%{$keyword}%")
+              ->orWhere('no_hp', 'LIKE', "%{$keyword}%");
+        });
+    }
+
+    // Hanya ambil tipe Pengirim jika diminta (biasanya untuk dropdown pengirim)
+    if ($request->has('tipe')) {
+        $query->where('tipe', $request->input('tipe'));
+    }
+
+    // Limit hasil agar loading cepat
+    return response()->json($query->limit(20)->get());
+}
+
     /**
      * Menyimpan kontak baru sesuai inputan Blade.
      */
@@ -172,38 +205,6 @@ class KontakController extends Controller
         return redirect()->route('customer.kontak.index')->with('success', 'Kontak berhasil dihapus.');
     }
 
-   public function search(Request $request)
-{
-    $user = Auth::user();
-    $query = Kontak::query();
-
-    // --- KEAMANAN LEVEL TINGGI ---
-    // 1. Cek Role (Case Insensitive / Huruf Besar Kecil disamakan)
-    $isAdmin = strtolower($user->role) === 'admin';
-
-    // 2. JIKA BUKAN ADMIN -> WAJIB FILTER USER_ID
-    if (!$isAdmin) {
-        $query->where('user_id', $user->id);
-    }
-    // (Jika Admin, biarkan dia melihat semua data)
-
-    // --- LOGIKA PENCARIAN ---
-    if ($request->has('q') || $request->has('search')) {
-        $keyword = $request->input('q') ?? $request->input('search');
-        $query->where(function($q) use ($keyword) {
-            $q->where('nama', 'LIKE', "%{$keyword}%")
-              ->orWhere('no_hp', 'LIKE', "%{$keyword}%");
-        });
-    }
-
-    // Hanya ambil tipe Pengirim jika diminta (biasanya untuk dropdown pengirim)
-    if ($request->has('tipe')) {
-        $query->where('tipe', $request->input('tipe'));
-    }
-
-    // Limit hasil agar loading cepat
-    return response()->json($query->limit(20)->get());
-}
 
     // ... method searchAddressApi tetap sama (tidak perlu diubah) ...
     public function searchAddressApi(Request $request, KiriminAjaService $kirimaja)
