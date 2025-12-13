@@ -39,6 +39,14 @@ class PostController extends Controller
 
 {
 
+    protected $geminiService;
+
+    // Inject GeminiService agar otomatis menggunakan settingan yang benar
+    public function __construct(GeminiService $geminiService)
+    {
+        $this->geminiService = $geminiService;
+    }
+
     /**
 
      * Menampilkan daftar semua post dengan fitur pencarian dan filter.
