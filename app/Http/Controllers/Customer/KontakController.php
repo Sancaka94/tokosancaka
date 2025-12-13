@@ -18,19 +18,22 @@ class KontakController extends Controller
 {
     $user = Auth::user(); 
 
-    // --- 1. LOGIKA SECURITY (KUNCI MATI) ---
-    // Cek Role (Huruf besar/kecil dianggap sama)
+    // --- 1. ID YANG VALID (Fix Masalah Database) ---
+    // Kita ambil 'id_pengguna' karena itu Primary Key di tabel Pengguna bapak.
+    // Jangan pakai $user->id kalau modelnya belum disetting primaryKey-nya.
+    $userId = $user->id_pengguna; 
+
+    // --- 2. CEK ROLE ---
     $isAdmin = strtolower($user->role) === 'admin';
 
     // ==========================================================
-    // QUERY A: TABEL UTAMA (GABUNGAN)
+    // QUERY 1: TABEL UTAMA (Untuk List "Semua Kontak")
     // ==========================================================
-    // Ini untuk tab "Semua Kontak" yang ada pagination & search
     $query = Kontak::query();
 
-    // SECURITY CHECK
+    // SECURITY: Kalau bukan admin, filter pakai id_pengguna yang benar
     if (!$isAdmin) { 
-        $query->where('user_id', $user->id);
+        $query->where('user_id', $userId);
     }
 
     // Filter Pencarian
@@ -43,7 +46,7 @@ class KontakController extends Controller
         });
     }
 
-    // Filter Dropdown Tipe (Jika user klik filter manual)
+    // Filter Filter (Penerima/Pengirim)
     if ($request->filled('filter') && $request->input('filter') !== 'Semua') {
         $query->where('tipe', $request->input('filter'));
     }
@@ -52,36 +55,30 @@ class KontakController extends Controller
 
 
     // ==========================================================
-    // QUERY B: DATA KHUSUS PENGIRIM
+    // QUERY 2: KHUSUS DATA PENGIRIM (Untuk Tab/Dropdown Pengirim)
     // ==========================================================
-    // Variabel ini untuk mengisi Tab "Pengirim" atau Dropdown Pengirim
     $qPengirim = Kontak::where('tipe', 'Pengirim');
-
+    
     if (!$isAdmin) {
-        // Pastikan konsisten pakai $user->id (sesuai tabel users/pengguna)
-        $qPengirim->where('user_id', $user->id); 
+        $qPengirim->where('user_id', $userId);
     }
-
+    
     $dataPengirim = $qPengirim->latest()->get();
 
 
     // ==========================================================
-    // QUERY C: DATA KHUSUS PENERIMA
+    // QUERY 3: KHUSUS DATA PENERIMA (Untuk Tab Penerima)
     // ==========================================================
-    // Variabel ini untuk mengisi Tab "Penerima"
     $qPenerima = Kontak::where('tipe', 'Penerima');
 
     if (!$isAdmin) {
-        $qPenerima->where('user_id', $user->id);
+        $qPenerima->where('user_id', $userId);
     }
 
     $dataPenerima = $qPenerima->latest()->get();
 
 
-    // Kirim semua variabel ke View
-    // - $kontaks      : Untuk Tabel Utama (Page 1)
-    // - $dataPengirim : Untuk List di Tab Pengirim
-    // - $dataPenerima : Untuk List di Tab Penerima
+    // Kirim ke View
     return view('customer.kontak.index', compact('kontaks', 'dataPengirim', 'dataPenerima'));
 }
 
