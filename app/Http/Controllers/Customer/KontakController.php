@@ -92,26 +92,30 @@ class KontakController extends Controller
     // 3. Ambil data dari database
     $pengirims = $qPengirim->latest()->get();
 
-    // 4. LOGIKA TAMBAHAN: Masukkan Data Profile Auth ke Paling Atas
-    // Agar user bisa memilih dirinya sendiri sebagai pengirim tanpa input ulang
+    // --- LOGIKA PROFILE AUTH (Agar data toko sendiri muncul) ---
+    // Cek apakah user punya nama toko atau nama lengkap
     if (!empty($user->store_name) || !empty($user->nama_lengkap)) {
         
-        // Buat object Kontak "Palsu" dari data tabel Pengguna
-        $profileSender = new Kontak([
-            'id'          => 'profile_auth', // ID Khusus Penanda
-            'nama'        => $user->store_name ?? $user->nama_lengkap, // Utamakan Nama Toko
-            'no_hp'       => $user->no_wa,
-            'alamat'      => $user->address_detail ?? $user->alamat ?? '-', 
-            'province'    => $user->province,
-            'regency'     => $user->regency,
-            'district'    => $user->district,
-            'village'     => $user->village,
-            'postal_code' => $user->postal_code,
-            'tipe'        => 'Pengirim',
-            'user_id'     => $userId
-        ]);
+        // CARA BENAR: Buat object kosong dulu, baru isi manual
+        // Ini menghindari 'Mass Assignment Protection' yang membuang ID
+        $profileSender = new Kontak();
+        
+        // Set ID Manual (PENTING!)
+        $profileSender->id = 'profile_auth'; 
+        
+        // Set Data Lainnya
+        $profileSender->user_id = $userId;
+        $profileSender->tipe = 'Pengirim';
+        $profileSender->nama = $user->store_name ?? $user->nama_lengkap;
+        $profileSender->no_hp = $user->no_wa ?? '-';
+        $profileSender->alamat = $user->address_detail ?? $user->alamat ?? '-';
+        $profileSender->province = $user->province ?? '';
+        $profileSender->regency = $user->regency ?? '';
+        $profileSender->district = $user->district ?? '';
+        $profileSender->village = $user->village ?? '';
+        $profileSender->postal_code = $user->postal_code ?? '';
 
-        // Tempelkan di urutan pertama (prepend)
+        // Masukkan ke urutan paling atas
         $pengirims->prepend($profileSender);
     }
 
