@@ -581,28 +581,28 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
     Route::get('/api/contacts/search', [AdminChatController::class, 'searchKontak'])->name('api.contacts.search');
 
     // =====================================================================
-    // PPOB ADMIN (FIX FINAL: Tambah Route Export Excel yang Hilang)
+    // PPOB ADMIN (FIX FINAL: Export Excel & PDF)
     // =====================================================================
     Route::prefix('ppob')->name('ppob.')->group(function () {
         
         // 1. HALAMAN UTAMA
         Route::get('/produk', [PpobProductController::class, 'index'])->name('product.index'); 
-        Route::get('/digital', [PpobProductController::class, 'index'])->name('index'); // Menu Digital
-        Route::get('/data', [AdminPpobController::class, 'index'])->name('data.index'); // Menu Transaksi
+        Route::get('/digital', [PpobProductController::class, 'index'])->name('index'); 
+        Route::get('/data', [AdminPpobController::class, 'index'])->name('data.index'); 
 
-        // 2. EXPORT (INI YANG TADI HILANG/ERROR)
-        // Export Transaksi
+        // 2. EXPORT (DATA TRANSAKSI)
         Route::get('/data/export/excel', [AdminPpobController::class, 'exportExcel'])->name('data.export.excel');
         Route::get('/data/export/pdf', [AdminPpobController::class, 'exportPdf'])->name('data.export.pdf');
         
-        // Export Produk (Alias Lama untuk mencegah Error)
-        Route::get('/export-excel', [PpobProductController::class, 'exportExcel'])->name('export-excel'); // <--- INI BARIS PENYELAMATNYA
-        Route::get('/export-pdf', [PpobProductController::class, 'exportPdf'])->name('export-pdf');
+        // 3. EXPORT (DATA PRODUK) - PERBAIKAN DISINI
+        // Kita buat 2 route yang mengarah ke controller sama agar aman (Support titik & strip)
+        Route::get('/export-excel', [PpobProductController::class, 'exportExcel'])->name('export.excel'); // <--- INI YANG DICARI ERROR TADI
+        Route::get('/export-pdf', [PpobProductController::class, 'exportPdf'])->name('export.pdf');
         
-        // Export Produk (Nama Baru)
-        Route::get('/product-export/excel', [PpobProductController::class, 'exportExcel'])->name('product.export.excel');
+        // Alias tambahan (jaga-jaga jika ada view lama yang pakai strip)
+        Route::get('/produk/export/excel', [PpobProductController::class, 'exportExcel'])->name('export-excel');
 
-        // 3. HELPER & ACTIONS
+        // 4. HELPER & ACTIONS
         Route::post('/bulk-update', [PpobProductController::class, 'bulkUpdate'])->name('bulk-update');
         Route::put('/update-price/{id}', [PpobProductController::class, 'updatePrice'])->name('update-price');
         
@@ -617,7 +617,6 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
 
         Route::delete('/destroy/{id}', [PpobProductController::class, 'destroy'])->name('destroy');
         
-        // Route ID (Paling Bawah)
         Route::get('/{id}', [PpobProductController::class, 'show'])->name('show');
     });
 });
