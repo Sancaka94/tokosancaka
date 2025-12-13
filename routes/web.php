@@ -581,7 +581,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
     Route::get('/api/contacts/search', [AdminChatController::class, 'searchKontak'])->name('api.contacts.search');
 
     // =====================================================================
-    // PPOB ADMIN (FIX FINAL: Export Excel & PDF)
+    // PPOB ADMIN (FIX FINAL: EXCEL & PDF - SUPPORT TITIK & STRIP)
     // =====================================================================
     Route::prefix('ppob')->name('ppob.')->group(function () {
         
@@ -590,17 +590,22 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
         Route::get('/digital', [PpobProductController::class, 'index'])->name('index'); 
         Route::get('/data', [AdminPpobController::class, 'index'])->name('data.index'); 
 
-        // 2. EXPORT (DATA TRANSAKSI)
-        Route::get('/data/export/excel', [AdminPpobController::class, 'exportExcel'])->name('data.export.excel');
-        Route::get('/data/export/pdf', [AdminPpobController::class, 'exportPdf'])->name('data.export.pdf');
+        // 2. EXPORT DATA TRANSAKSI (AdminPpobController)
+        // Kita beri 2 nama route sekaligus agar view manapun yang panggil tetap jalan
         
-        // 3. EXPORT (DATA PRODUK) - PERBAIKAN DISINI
-        // Kita buat 2 route yang mengarah ke controller sama agar aman (Support titik & strip)
-        Route::get('/export-excel', [PpobProductController::class, 'exportExcel'])->name('export.excel'); // <--- INI YANG DICARI ERROR TADI
-        Route::get('/export-pdf', [PpobProductController::class, 'exportPdf'])->name('export.pdf');
-        
-        // Alias tambahan (jaga-jaga jika ada view lama yang pakai strip)
-        Route::get('/produk/export/excel', [PpobProductController::class, 'exportExcel'])->name('export-excel');
+        // Excel
+        Route::get('/data/export/excel', [AdminPpobController::class, 'exportExcel'])->name('data.export.excel'); // Versi Titik
+        Route::get('/data/export-excel', [AdminPpobController::class, 'exportExcel'])->name('export-excel');      // Versi Strip
+        Route::get('/data/export-excel-alias', [AdminPpobController::class, 'exportExcel'])->name('export.excel'); // Alias Titik Pendek
+
+        // PDF (INI YANG ERROR TADI)
+        Route::get('/data/export/pdf', [AdminPpobController::class, 'exportPdf'])->name('data.export.pdf');   // Versi Titik
+        Route::get('/data/export-pdf', [AdminPpobController::class, 'exportPdf'])->name('export-pdf');        // Versi Strip (YANG DICARI ERROR)
+        Route::get('/data/export-pdf-alias', [AdminPpobController::class, 'exportPdf'])->name('export.pdf');  // Alias Titik Pendek
+
+        // 3. EXPORT DATA PRODUK (PpobProductController)
+        Route::get('/product-export/excel', [PpobProductController::class, 'exportExcel'])->name('product.export.excel');
+        Route::get('/product-export/pdf', [PpobProductController::class, 'exportPdf'])->name('product.export.pdf');
 
         // 4. HELPER & ACTIONS
         Route::post('/bulk-update', [PpobProductController::class, 'bulkUpdate'])->name('bulk-update');
