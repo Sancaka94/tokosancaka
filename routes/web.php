@@ -8,24 +8,15 @@ use Illuminate\Http\Request;
 use App\Http\Middleware\RoleMiddleware;
 use App\Services\KiriminAjaService;
 
-Route::get('/debug-post', function () {
-    // Ini slug yang Anda kirimkan tadi yang error 404
-    $slug = 'jnt-express-ngawi-085745808809-693d843105042';
+Route::get('/cek-gemini', function () {
+    $apiKey = env('GEMINI_API_KEY');
     
-    // Cari manual
-    $post = \App\Models\Post::where('slug', $slug)->first();
+    // Request ke endpoint "List Models"
+    $response = Http::get("https://generativelanguage.googleapis.com/v1beta/models?key={$apiKey}");
     
-    if (!$post) {
-        return "❌ POST TIDAK DITEMUKAN! Slug di database pasti berbeda dengan URL di atas.";
-    }
-    
-    return [
-        "Status" => "✅ Ditemukan",
-        "Judul" => $post->title,
-        "Status Post" => $post->status, // Harus 'published'
-        "Slug Asli DB" => $post->slug
-    ];
+    return $response->json();
 });
+
 // =========================================================================
 // 1. IMPORT CONTROLLER (LENGKAP)
 // =========================================================================
@@ -197,8 +188,7 @@ Route::post('/ppob/check-pln-prabayar', [PpobController::class, 'checkPlnPrabaya
 
 // Blog & Content
 Route::get('/feed', [BlogController::class, 'generateFeed'])->name('feed');
-Route::get('/blog/posts/{slug}', [BlogController::class, 'show'])->name('blog.show');
-Route::get('/blog/posts/{slug}', [BlogController::class, 'show'])->name('blog.posts.show');
+Route::get('/blog/posts/{post}', [BlogController::class, 'show']);
 Route::get('/pondok', [PondokController::class, 'index'])->name('pondok.index');
 
 // Utilities
@@ -277,7 +267,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/checkout-ppob/remove/{id}', [PpobCheckoutController::class, 'removeItem'])->name('ppob.cart.remove');
     Route::post('/checkout-ppob/clear', [PpobCheckoutController::class, 'clearCart'])->name('ppob.cart.clear');
     Route::get('/ppob/invoice/{invoice}', [PpobCheckoutController::class, 'invoice'])->name('ppob.invoice');
-
+    
     Route::prefix('digital')->name('ppob.')->group(function () {
         Route::post('/checkout', [PpobController::class, 'store'])->name('store');
         Route::get('/status/{ref_id}', [PpobController::class, 'checkStatus'])->name('status');
