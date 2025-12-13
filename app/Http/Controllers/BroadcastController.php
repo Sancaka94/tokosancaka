@@ -12,6 +12,7 @@ use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\BroadcastHistoryExport;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Str;
+use App\Jobs\SendBroadcastJob; // <--- JANGAN LUPA IMPORT INI DI ATAS
 
 class BroadcastController extends Controller
 {
@@ -42,10 +43,6 @@ class BroadcastController extends Controller
         return view('broadcast.index', compact('pelanggans', 'kontaks', 'histories'));
     }
 
-    /**
-     * 2. PROSES KIRIM PESAN (CORE LOGIC)
-     * Menangani Personal (Sapaan Nama) & Bulk Sending
-     */
     public function send(Request $request)
     {
         $request->validate([
@@ -53,99 +50,89 @@ class BroadcastController extends Controller
             'targets' => 'required|array|min:1'
         ]);
         
-        $rawTargets = $request->targets; // Array string "08xx|Nama|Tipe"
+        $rawTargets = $request->targets; 
         $baseMessage = $request->message;
-        
-        // Cek apakah pesan mengandung variabel {name} untuk personalisasi
         $isPersonalized = str_contains($baseMessage, '{name}');
         
-        $cleanTargets = []; // Penampung untuk mode Bulk
-        $historyData = [];  // Penampung untuk insert ke database
-        $successCount = 0;
+        $queueCount = 0;
+        
+        // 1. Kumpulkan semua target yang valid dulu
+        $validTargets = [];
 
         foreach ($rawTargets as $item) {
-            // 1. Parsing Value Checkbox
-            // Format: "08123456789|Budi Santoso|Pelanggan"
             $parts = explode('|', $item);
             $numberRaw = $parts[0] ?? '';
             $name = $parts[1] ?? 'Kak';
             $type = $parts[2] ?? 'Umum';
 
-            // 2. Bersihkan Nomor (08->62, dll)
             $formattedNumber = $this->formatNomorIndonesia($numberRaw);
             
             if ($formattedNumber) {
-                
-                // --- SKENARIO A: PESAN PERSONAL (Ada {name}) ---
-                // Harus dikirim satu per satu karena isinya beda-beda tiap orang
-                if ($isPersonalized) {
-                    // Ganti {name} dengan Nama Asli
-                    $personalMessage = str_replace('{name}', $name, $baseMessage);
-                    
-                    // Kirim Langsung via Fonnte Service
-                    $response = FonnteService::sendMessage($formattedNumber, $personalMessage);
-
-                    // Catat Status
-                    $status = ($response && $response->successful()) ? 'Terkirim' : 'Gagal';
-                    if($status == 'Terkirim') $successCount++;
-
-                    // Siapkan Data Riwayat
-                    $historyData[] = [
-                        'target_name' => $name,
-                        'target_number' => $numberRaw, // Simpan nomor asli biar mudah dibaca admin
-                        'target_type' => $type,
-                        'message' => $personalMessage,
-                        'status' => $status,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ];
-                } 
-                // --- SKENARIO B: PESAN UMUM (BULK) ---
-                // Kumpulkan dulu, nanti kirim sekali tembak
-                else {
-                    // Gunakan nomor sebagai key untuk menghindari duplikat
-                    $cleanTargets[$formattedNumber] = [
-                        'name' => $name,
-                        'raw' => $numberRaw,
-                        'type' => $type
-                    ]; 
-                }
-            }
-        }
-
-        // Eksekusi Pengiriman Bulk (Jika mode bukan personal)
-        if (!$isPersonalized && !empty($cleanTargets)) {
-            // Gabungkan nomor dengan koma: "6281,6282,6283"
-            $targetString = implode(',', array_keys($cleanTargets));
-            
-            // Kirim Sekali Tembak
-            $response = FonnteService::sendMessage($targetString, $baseMessage);
-            $statusBulk = ($response && $response->successful()) ? 'Terkirim' : 'Gagal';
-            
-            if($statusBulk == 'Terkirim') $successCount = count($cleanTargets);
-
-            // Catat Riwayat untuk setiap penerima
-            foreach ($cleanTargets as $info) {
-                $historyData[] = [
-                    'target_name' => $info['name'],
-                    'target_number' => $info['raw'],
-                    'target_type' => $info['type'],
-                    'message' => $baseMessage,
-                    'status' => $statusBulk,
-                    'created_at' => now(),
-                    'updated_at' => now(),
+                $validTargets[] = [
+                    'original_number' => $numberRaw, // Untuk display history
+                    'formatted_number' => $formattedNumber, // Untuk kirim API
+                    'name' => $name,
+                    'type' => $type
                 ];
             }
         }
 
-        // 3. Simpan Riwayat ke Database (Bulk Insert biar cepat)
-        if (!empty($historyData)) {
-            BroadcastHistory::insert($historyData);
+        // 2. BAGI MENJADI KELOMPOK (CHUNK) ISI 5
+        // Ini inti logikanya: [Batch 1 (5 org)], [Batch 2 (5 org)], dst...
+        $chunks = array_chunk($validTargets, 5);
+
+        foreach ($chunks as $batchIndex => $batchTargets) {
+            
+            // 3. HITUNG DELAY WAKTU
+            // Batch 0 (5 menit pertama) = delay 0 menit (langsung kirim / atau set 1 menit)
+            // Batch 1 (10 menit kedua)  = delay 5 menit
+            // Batch 2 (15 menit ketiga) = delay 10 menit
+            // Rumus: Index * 5 menit
+            $delayMinutes = $batchIndex * 5; 
+            
+            // Tambahkan sedikit variasi detik agar tidak persis bersamaan (tapi tetap dalam rentang menit)
+            // Agar WA tidak curiga kok kirimnya pas banget detik 00
+            
+            foreach ($batchTargets as $targetInfo) {
+                
+                // Siapkan Pesan
+                $finalMessage = $baseMessage;
+                if ($isPersonalized) {
+                    $finalMessage = str_replace('{name}', $targetInfo['name'], $baseMessage);
+                }
+
+                // Simpan ke Database dulu sebagai "Dalam Antrian"
+                $history = BroadcastHistory::create([
+                    'target_name' => $targetInfo['name'],
+                    'target_number' => $targetInfo['original_number'],
+                    'target_type' => $targetInfo['type'],
+                    'message' => $finalMessage,
+                    'status' => 'Dalam Antrian (Menunggu giliran...)', // Status awal
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+                // MASUKKAN KE ANTRIAN DENGAN DELAY
+                // Kita tambah delay acak 1-30 detik per item biar lebih natural
+                $randomSeconds = rand(1, 30); 
+                $totalDelay = now()->addMinutes($delayMinutes)->addSeconds($randomSeconds);
+
+                SendBroadcastJob::dispatch(
+                    $targetInfo['formatted_number'], 
+                    $finalMessage, 
+                    $history->id
+                )->delay($totalDelay);
+
+                $queueCount++;
+            }
         }
 
-        return back()->with('success', "Proses selesai! $successCount pesan berhasil diproses.");
-    }
+        // Hitung estimasi selesai
+        $totalBatch = count($chunks);
+        $totalTime = ($totalBatch - 1) * 5; 
 
+        return back()->with('success', "Berhasil! $queueCount pesan masuk antrian. Estimasi selesai dalam $totalTime menit (5 pesan per 5 menit).");
+    }
     /**
      * 3. GENERATE TEXT VIA GEMINI AI (AJAX)
      * Membuat pesan otomatis dengan Header & Footer Sancaka
