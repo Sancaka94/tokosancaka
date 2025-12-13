@@ -677,8 +677,6 @@ Route::put('products/{slug}/specifications', [\App\Http\Controllers\Admin\Produc
 
     Route::get('/wilayah', [WilayahController::class, 'index'])->name('wilayah.index');
 
-    Route::get('/api/contacts/search', [AdminKontakController::class, 'search'])->name('api.contacts.search');
-
     Route::get('/wilayah/province/{province}/regencies', [WilayahController::class, 'getKabupaten'])->name('wilayah.kabupaten');
 
     Route::get('/wilayah/regency/{regency}/districts', [WilayahController::class, 'getKecamatan'])->name('wilayah.kecamatan');

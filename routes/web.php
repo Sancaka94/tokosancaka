@@ -286,6 +286,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     //Route::get('/api/contacts/search', [App\Http\Controllers\Customer\KontakController::class, 'search'])
         //->name('api.contacts.search');
+        Route::get('/api/contacts/search', [KontakController::class, 'search'])->name('api.contacts.search');
+
 });
 
 
