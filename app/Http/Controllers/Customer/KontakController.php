@@ -204,25 +204,25 @@ public function search(Request $request)
         return redirect()->route('customer.kontak.index')->with('success', 'Kontak baru berhasil disimpan.');
     }
 
-   /**
+   
+    /**
      * Show the form for editing the specified resource.
      */
     public function edit($id)
     {
         $user = Auth::user();
         
-        // FIX: Pakai id_pengguna secara eksplisit
+        // --- FIX PENTING: Pakai id_pengguna ---
         $userId = $user->id_pengguna; 
 
         $query = Kontak::where('id', $id);
 
-        // Security Check
+        // Security: Jika bukan Admin, kunci query ke userId yang benar
         if (strtolower($user->role) !== 'admin') {
-            // Gunakan $userId yang benar (angka 8), bukan $user->id (null)
             $query->where('user_id', $userId);
         }
 
-        // Jika data tidak cocok dengan user yang login, akan otomatis 404
+        // Jika data tidak cocok dengan user yang login, otomatis error 404
         $kontak = $query->firstOrFail();
 
         return response()->json($kontak);
@@ -234,7 +234,9 @@ public function search(Request $request)
     public function update(Request $request, $id)
     {
         $user = Auth::user();
-        $userId = $user->id_pengguna; // FIX ID
+        
+        // --- FIX PENTING ---
+        $userId = $user->id_pengguna; 
 
         $query = Kontak::where('id', $id);
 
@@ -244,7 +246,7 @@ public function search(Request $request)
 
         $kontak = $query->firstOrFail();
 
-        // Validasi
+        // Validasi Input
         $validatedData = $request->validate([
             'nama'        => 'required|string|max:255',
             'no_hp'       => 'required|string|max:20',
@@ -255,7 +257,7 @@ public function search(Request $request)
             'district'    => 'required|string',
             'village'     => 'required|string',
             'postal_code' => 'required|string',
-            // Field opsional
+            // Field Opsional
             'district_id'    => 'nullable',
             'subdistrict_id' => 'nullable',
             'lat'            => 'nullable',
@@ -272,13 +274,15 @@ public function search(Request $request)
      */
     public function destroy($id)
     {
-        $user = Auth::user();
-        $userId = $user->id_pengguna; // FIX ID
-
-        // Cek ID Spesial Profile Auth (Cegah Hapus Akun Utama via URL)
+        // Cek ID Spesial Profile Auth (Cegah Hapus Akun Utama)
         if ($id === 'profile_auth') {
              return redirect()->back()->with('error', 'Data profil utama tidak bisa dihapus.');
         }
+
+        $user = Auth::user();
+        
+        // --- FIX PENTING ---
+        $userId = $user->id_pengguna; 
 
         $query = Kontak::where('id', $id);
 
@@ -291,7 +295,6 @@ public function search(Request $request)
 
         return redirect()->route('customer.kontak.index')->with('success', 'Kontak berhasil dihapus.');
     }
-
 
     // ... method searchAddressApi tetap sama (tidak perlu diubah) ...
     public function searchAddressApi(Request $request, KiriminAjaService $kirimaja)
