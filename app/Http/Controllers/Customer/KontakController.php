@@ -17,31 +17,23 @@ class KontakController extends Controller
   public function index(Request $request)
 {
     $user = Auth::user(); 
-    
-    // 1. AMBIL ROLE DAN UBAH KE HURUF KECIL SEMUA (Biar aman)
-    // Contoh: 'Agent' jadi 'agent', 'Seller' jadi 'seller', 'Admin' jadi 'admin'
-    $role = strtolower($user->role); 
 
-    // 2. QUERY UTAMA
+    // --- 1. LOGIKA SECURITY (KUNCI MATI) ---
+    // Cek Role (Huruf besar/kecil dianggap sama)
+    $isAdmin = strtolower($user->role) === 'admin';
+
+    // ==========================================================
+    // QUERY A: TABEL UTAMA (GABUNGAN)
+    // ==========================================================
+    // Ini untuk tab "Semua Kontak" yang ada pagination & search
     $query = Kontak::query();
 
-    // 3. LOGIKA RINCI PER ROLE
-    if ($role === 'admin') {
-        // --- KHUSUS ADMIN ---
-        // Bebas akses semua data (termasuk yang user_id NULL)
-    } 
-    elseif (in_array($role, ['agent', 'seller', 'pelanggan'])) {
-        // --- KHUSUS AGENT, SELLER, PELANGGAN ---
-        // Wajib filter user_id. Data NULL otomatis HILANG.
-        $query->where('user_id', $user->id);
-    } 
-    else {
-        // --- ROLE LAIN YANG TIDAK DIKENAL ---
-        // Default: Kunci data biar aman
+    // SECURITY CHECK
+    if (!$isAdmin) { 
         $query->where('user_id', $user->id);
     }
 
-    // --- Filter Pencarian ---
+    // Filter Pencarian
     if ($request->filled('search')) {
         $search = $request->input('search');
         $query->where(function($q) use ($search) {
@@ -51,24 +43,46 @@ class KontakController extends Controller
         });
     }
 
-    // --- Filter Tipe ---
+    // Filter Dropdown Tipe (Jika user klik filter manual)
     if ($request->filled('filter') && $request->input('filter') !== 'Semua') {
         $query->where('tipe', $request->input('filter'));
     }
 
     $kontaks = $query->latest()->paginate(10);
 
-    // 4. QUERY KHUSUS PENGIRIM (Profil Saya)
-    $queryPengirim = Kontak::where('tipe', 'Pengirim');
 
-    // Terapkan logika yang sama persis
-    if ($role !== 'admin') {
-        $queryPengirim->where('user_id', $user->id);
+    // ==========================================================
+    // QUERY B: DATA KHUSUS PENGIRIM
+    // ==========================================================
+    // Variabel ini untuk mengisi Tab "Pengirim" atau Dropdown Pengirim
+    $qPengirim = Kontak::where('tipe', 'Pengirim');
+
+    if (!$isAdmin) {
+        // Pastikan konsisten pakai $user->id (sesuai tabel users/pengguna)
+        $qPengirim->where('user_id', $user->id); 
     }
 
-    $pengirims = $queryPengirim->latest()->get();
+    $dataPengirim = $qPengirim->latest()->get();
 
-    return view('customer.kontak.index', compact('kontaks', 'pengirims'));
+
+    // ==========================================================
+    // QUERY C: DATA KHUSUS PENERIMA
+    // ==========================================================
+    // Variabel ini untuk mengisi Tab "Penerima"
+    $qPenerima = Kontak::where('tipe', 'Penerima');
+
+    if (!$isAdmin) {
+        $qPenerima->where('user_id', $user->id);
+    }
+
+    $dataPenerima = $qPenerima->latest()->get();
+
+
+    // Kirim semua variabel ke View
+    // - $kontaks      : Untuk Tabel Utama (Page 1)
+    // - $dataPengirim : Untuk List di Tab Pengirim
+    // - $dataPenerima : Untuk List di Tab Penerima
+    return view('customer.kontak.index', compact('kontaks', 'dataPengirim', 'dataPenerima'));
 }
 
    public function search(Request $request)
