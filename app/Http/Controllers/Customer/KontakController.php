@@ -77,9 +77,48 @@ class KontakController extends Controller
 
     $dataPenerima = $qPenerima->latest()->get();
 
+    // ==========================================================
+    // QUERY KHUSUS DATA PENGIRIM ($pengirims)
+    // ==========================================================
+    
+    // 1. Siapkan Query Dasar
+    $qPengirim = Kontak::where('tipe', 'Pengirim');
+    
+    // 2. Security: Jika bukan Admin, wajib filter ID
+    if (!$isAdmin) {
+        $qPengirim->where('user_id', $userId);
+    }
+    
+    // 3. Ambil data dari database
+    $pengirims = $qPengirim->latest()->get();
 
-    // Kirim ke View
-    return view('customer.kontak.index', compact('kontaks', 'dataPengirim', 'dataPenerima'));
+    // 4. LOGIKA TAMBAHAN: Masukkan Data Profile Auth ke Paling Atas
+    // Agar user bisa memilih dirinya sendiri sebagai pengirim tanpa input ulang
+    if (!empty($user->store_name) || !empty($user->nama_lengkap)) {
+        
+        // Buat object Kontak "Palsu" dari data tabel Pengguna
+        $profileSender = new Kontak([
+            'id'          => 'profile_auth', // ID Khusus Penanda
+            'nama'        => $user->store_name ?? $user->nama_lengkap, // Utamakan Nama Toko
+            'no_hp'       => $user->no_wa,
+            'alamat'      => $user->address_detail ?? $user->alamat ?? '-', 
+            'province'    => $user->province,
+            'regency'     => $user->regency,
+            'district'    => $user->district,
+            'village'     => $user->village,
+            'postal_code' => $user->postal_code,
+            'tipe'        => 'Pengirim',
+            'user_id'     => $userId
+        ]);
+
+        // Tempelkan di urutan pertama (prepend)
+        $pengirims->prepend($profileSender);
+    }
+
+    // ==========================================================
+
+    // Kirim ke View (Variable $pengirims sudah berisi data DB + Profile Auth)
+    return view('customer.kontak.index', compact('kontaks', 'pengirims', 'dataPenerima', 'dataPengirim'));
 }
 
 public function search(Request $request)
