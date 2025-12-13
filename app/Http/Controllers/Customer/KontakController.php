@@ -204,52 +204,62 @@ public function search(Request $request)
         return redirect()->route('customer.kontak.index')->with('success', 'Kontak baru berhasil disimpan.');
     }
 
-    /**
-     * Mengambil data untuk Modal Edit (AJAX).
+   /**
+     * Show the form for editing the specified resource.
      */
     public function edit($id)
     {
         $user = Auth::user();
+        
+        // FIX: Pakai id_pengguna secara eksplisit
+        $userId = $user->id_pengguna; 
+
         $query = Kontak::where('id', $id);
 
-        // Validasi kepemilikan hanya jika BUKAN Admin
-        if ($user->role !== 'Admin') {
-            $query->where('user_id', $user->id);
+        // Security Check
+        if (strtolower($user->role) !== 'admin') {
+            // Gunakan $userId yang benar (angka 8), bukan $user->id (null)
+            $query->where('user_id', $userId);
         }
 
+        // Jika data tidak cocok dengan user yang login, akan otomatis 404
         $kontak = $query->firstOrFail();
+
         return response()->json($kontak);
     }
 
     /**
-     * Update data kontak.
+     * Update the specified resource in storage.
      */
     public function update(Request $request, $id)
     {
         $user = Auth::user();
+        $userId = $user->id_pengguna; // FIX ID
+
         $query = Kontak::where('id', $id);
 
-        // Validasi kepemilikan hanya jika BUKAN Admin
-        if ($user->role !== 'Admin') {
-            $query->where('user_id', $user->id);
+        if (strtolower($user->role) !== 'admin') {
+            $query->where('user_id', $userId);
         }
 
         $kontak = $query->firstOrFail();
 
+        // Validasi
         $validatedData = $request->validate([
-            'nama'      => 'required|string|max:255',
-            'no_hp'     => 'required|string|max:20',
-            'alamat'    => 'required|string',
-            'tipe'      => 'nullable|string',
+            'nama'        => 'required|string|max:255',
+            'no_hp'       => 'required|string|max:20',
+            'alamat'      => 'required|string',
+            'tipe'        => 'required|in:Pengirim,Penerima',
             'province'    => 'required|string',
             'regency'     => 'required|string',
             'district'    => 'required|string',
             'village'     => 'required|string',
             'postal_code' => 'required|string',
-            'district_id'    => 'nullable|string',
-            'subdistrict_id' => 'nullable|string',
-            'lat'            => 'nullable|string',
-            'lng'            => 'nullable|string',
+            // Field opsional
+            'district_id'    => 'nullable',
+            'subdistrict_id' => 'nullable',
+            'lat'            => 'nullable',
+            'lng'            => 'nullable',
         ]);
 
         $kontak->update($validatedData);
@@ -258,16 +268,22 @@ public function search(Request $request)
     }
 
     /**
-     * Hapus kontak.
+     * Remove the specified resource from storage.
      */
     public function destroy($id)
     {
         $user = Auth::user();
+        $userId = $user->id_pengguna; // FIX ID
+
+        // Cek ID Spesial Profile Auth (Cegah Hapus Akun Utama via URL)
+        if ($id === 'profile_auth') {
+             return redirect()->back()->with('error', 'Data profil utama tidak bisa dihapus.');
+        }
+
         $query = Kontak::where('id', $id);
 
-        // Validasi kepemilikan hanya jika BUKAN Admin
-        if ($user->role !== 'Admin') {
-            $query->where('user_id', $user->id);
+        if (strtolower($user->role) !== 'admin') {
+            $query->where('user_id', $userId);
         }
 
         $kontak = $query->firstOrFail();
