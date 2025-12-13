@@ -18,19 +18,20 @@ class KontakController extends Controller
 {
     $user = Auth::user(); 
 
-    // --- LOGIKA "HARGA MATI" ---
+    // --- LOGIKA KUNCI MATI (SECURITY) ---
+    // Cek Role (Huruf besar/kecil dianggap sama)
     $isAdmin = strtolower($user->role) === 'admin';
 
-    // 1. Query Utama (Tabel Besar)
+    // 1. QUERY UNTUK TABEL UTAMA
     $query = Kontak::query();
 
-    // JIKA BUKAN ADMIN -> PAKSA FILTER USER_ID
-    // Data NULL otomatis tidak akan muncul.
+    // JIKA BUKAN ADMIN -> WAJIB FILTER SESUAI ID LOGIN
+    // Data yang user_id-nya NULL otomatis TIDAK AKAN MUNCUL.
     if (!$isAdmin) { 
         $query->where('user_id', $user->id);
     }
 
-    // Filter Pencarian
+    // --- Filter Pencarian & Tipe ---
     if ($request->filled('search')) {
         $search = $request->input('search');
         $query->where(function($q) use ($search) {
@@ -46,10 +47,10 @@ class KontakController extends Controller
 
     $kontaks = $query->latest()->paginate(10);
 
-    // 2. Query Pengirim (Profil Saya)
+    // 2. QUERY UNTUK LIST PENGIRIM (Profil Saya)
     $queryPengirim = Kontak::where('tipe', 'Pengirim');
 
-    // JANGAN LUPA FILTER INI JUGA DIKUNCI
+    // JANGAN LUPA: Bagian ini juga harus dikunci!
     if (!$isAdmin) {
         $queryPengirim->where('user_id', $user->id);
     }
