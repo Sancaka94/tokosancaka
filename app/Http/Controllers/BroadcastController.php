@@ -3,122 +3,139 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\Pelanggan; // Pastikan Model Pelanggan ada
-use App\Models\Kontak;    // Pastikan Model Kontak ada
-use App\Services\FonnteService; // Panggil Service Lama Anda
+use App\Models\Pelanggan;
+use App\Models\Kontak;
+use App\Models\BroadcastHistory; // Model Baru
+use App\Services\FonnteService;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\BroadcastHistoryExport;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class BroadcastController extends Controller
 {
-    /**
-     * Halaman Utama Broadcast
-     */
-    public function index()
+    public function index(Request $request)
     {
-        // 1. Ambil Data Pelanggan (Filter yang punya WA saja)
-        // Ambil kolom yang diperlukan saja biar ringan
-        $pelanggans = Pelanggan::whereNotNull('nomor_wa')
-            ->where('nomor_wa', '!=', '')
-            ->latest()
-            ->get(['id', 'nama_pelanggan', 'nomor_wa', 'keterangan']);
+        // 1. DATA UNTUK FORM KIRIM (Tab 1 & 2)
+        $pelanggans = Pelanggan::whereNotNull('nomor_wa')->latest()->get(['id', 'nama_pelanggan', 'nomor_wa', 'keterangan']);
+        $kontaks = Kontak::whereNotNull('no_hp')->latest()->get(['id', 'nama', 'no_hp', 'tipe']);
 
-        // 2. Ambil Data Kontak (Filter yang punya HP saja)
-        $kontaks = Kontak::whereNotNull('no_hp')
-            ->where('no_hp', '!=', '')
-            ->latest()
-            ->get(['id', 'nama', 'no_hp', 'tipe']);
+        // 2. DATA RIWAYAT (Tab 3 - Dengan Filter & Search)
+        $query = BroadcastHistory::latest();
 
-        return view('broadcast.index', compact('pelanggans', 'kontaks'));
+        // Filter Pencarian (Nama/Nomor)
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('target_name', 'like', "%$search%")
+                  ->orWhere('target_number', 'like', "%$search%");
+            });
+        }
+
+        // Filter Tipe (Pelanggan/Kontak)
+        if ($request->filled('filter_type')) {
+            $query->where('target_type', $request->filter_type);
+        }
+
+        // Pagination (10 data per halaman)
+        $histories = $query->paginate(10)->withQueryString();
+
+        return view('broadcast.index', compact('pelanggans', 'kontaks', 'histories'));
     }
 
-    /**
-     * Handler Pengiriman (Logika Cerdas Disini)
-     */
     public function send(Request $request)
     {
-        $request->validate([
-            'message' => 'required|string',
-            'targets' => 'required|array|min:1',
-        ]);
-
-        $rawTargets = $request->input('targets');
-        $message = $request->input('message');
-
-        // --- LOGIKA CERDAS (HANDLER DI CONTROLLER) ---
+        $request->validate(['message' => 'required', 'targets' => 'required|array']);
+        
+        $rawTargets = $request->targets; // Format: "08123|Nama|Tipe" (Kita ubah value checkbox di view nanti)
+        $message = $request->message;
         $cleanTargets = [];
+        $historyData = []; // Array untuk simpan ke DB
 
-        foreach ($rawTargets as $number) {
-            // Panggil fungsi pembersih nomor (ada di bawah)
+        foreach ($rawTargets as $item) {
+            // Pecah value checkbox: "08123|Pak Budi|Pelanggan"
+            $parts = explode('|', $item);
+            $number = $parts[0] ?? '';
+            $name = $parts[1] ?? 'Tanpa Nama';
+            $type = $parts[2] ?? 'Umum';
+
             $formatted = $this->formatNomorIndonesia($number);
             
             if ($formatted) {
                 $cleanTargets[] = $formatted;
+                
+                // Siapkan data untuk riwayat
+                $historyData[] = [
+                    'target_name' => $name,
+                    'target_number' => $number, // Simpan nomor asli biar enak dilihat
+                    'target_type' => $type,
+                    'message' => $message,
+                    'status' => 'Terkirim',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
             }
         }
 
-        // Hapus nomor ganda (misal ada di pelanggan DAN di kontak)
         $cleanTargets = array_unique($cleanTargets);
+        
+        if (empty($cleanTargets)) return back()->with('error', 'Tidak ada nomor valid.');
 
-        // Validasi jika setelah dibersihkan malah kosong
-        if (empty($cleanTargets)) {
-            return back()->with('error', 'Tidak ada nomor valid yang ditemukan.');
-        }
-
-        // Fonnte menerima broadcast dengan format: "nomor1,nomor2,nomor3"
         $targetString = implode(',', $cleanTargets);
 
         try {
-            // --- PANGGIL SERVICE LAMA ANDA ---
-            // Kita pakai method sendMessage yang sudah ada. 
-            // Karena $targetString isinya banyak nomor dipisah koma, Fonnte otomatis menganggap ini broadcast.
+            // Kirim via Fonnte Service
             $response = FonnteService::sendMessage($targetString, $message);
 
-            // Cek Response Laravel HTTP Client
             if ($response->successful()) {
-                $json = $response->json();
-                // Cek status dari body response Fonnte
-                if (isset($json['status']) && $json['status'] == true) {
-                    return back()->with('success', 'Broadcast berhasil dikirim ke ' . count($cleanTargets) . ' nomor.');
-                }
+                // SIMPAN RIWAYAT KE DATABASE (Bulk Insert biar cepat)
+                BroadcastHistory::insert($historyData);
+                
+                return back()->with('success', 'Broadcast berhasil dikirim dan riwayat disimpan.');
             }
             
-            return back()->with('error', 'Gagal kirim. Response Fonnte: ' . $response->body());
+            return back()->with('error', 'Gagal kirim via Fonnte.');
 
         } catch (\Exception $e) {
-            return back()->with('error', 'Terjadi kesalahan sistem: ' . $e->getMessage());
+            return back()->with('error', 'Error: ' . $e->getMessage());
         }
     }
 
-    /**
-     * PRIVATE HELPER: Format Nomor HP jadi 628xxx
-     * Ini yang membuat sistem "Cerdas" tanpa ubah Service
-     */
-    private function formatNomorIndonesia($no)
-    {
-        // 1. Hapus spasi, strip, +dll. Ambil angkanya saja.
+    // Export Excel
+    public function exportExcel(Request $request) {
+        $data = $this->getFilteredData($request);
+        return Excel::download(new BroadcastHistoryExport($data), 'riwayat-broadcast.xlsx');
+    }
+
+    // Export PDF
+    public function exportPdf(Request $request) {
+        $histories = $this->getFilteredData($request);
+        $pdf = Pdf::loadView('broadcast.pdf', compact('histories'));
+        return $pdf->download('riwayat-broadcast.pdf');
+    }
+
+    // Hapus Riwayat
+    public function destroy($id) {
+        BroadcastHistory::findOrFail($id)->delete();
+        return back()->with('success', 'Data riwayat dihapus.');
+    }
+
+    // Helper Private untuk Filter Data Export
+    private function getFilteredData($request) {
+        $query = BroadcastHistory::latest();
+        if ($request->filled('search')) {
+            $query->where('target_name', 'like', "%{$request->search}%");
+        }
+        if ($request->filled('filter_type')) {
+            $query->where('target_type', $request->filter_type);
+        }
+        return $query->get();
+    }
+
+    private function formatNomorIndonesia($no) {
         $no = preg_replace('/[^0-9]/', '', trim($no));
-
-        // 2. Cek Prefix
-        // Kalau 08... ganti 628...
-        if (substr($no, 0, 2) === '08') {
-            return '62' . substr($no, 1);
-        }
-        
-        // Kalau 8... (lupa 0) ganti 628...
-        if (substr($no, 0, 1) === '8') {
-            return '62' . $no;
-        }
-
-        // Kalau 62... biarkan
-        if (substr($no, 0, 2) === '62') {
-            return $no;
-        }
-
-        // Kalau nomor telepon rumah 021/031... ganti 6221/6231
-        if (substr($no, 0, 1) === '0') {
-            return '62' . substr($no, 1);
-        }
-
-        // Default: Kembalikan apa adanya (atau return null jika ingin strict)
+        if (substr($no, 0, 2) === '08') return '62' . substr($no, 1);
+        if (substr($no, 0, 1) === '8') return '62' . $no;
+        if (substr($no, 0, 2) === '62') return $no;
         return $no;
     }
 }
