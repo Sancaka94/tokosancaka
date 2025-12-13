@@ -412,12 +412,16 @@ Route::prefix('broadcast')->name('broadcast.')->group(function () {
     // 2. Proses Kirim Pesan (Ke Fonnte)
     Route::post('/send', [BroadcastController::class, 'send'])->name('send');
 
+    Route::post('/broadcast/generate-ai', [BroadcastController::class, 'generateAi'])->name('broadcast.ai');
+
     // 3. Fitur Export Laporan
     Route::get('/export-excel', [BroadcastController::class, 'exportExcel'])->name('export.excel');
     Route::get('/export-pdf', [BroadcastController::class, 'exportPdf'])->name('export.pdf');
 
     // 4. Hapus Riwayat
     Route::delete('/{id}', [BroadcastController::class, 'destroy'])->name('destroy');
+
+  
 
 });
 
