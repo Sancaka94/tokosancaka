@@ -188,7 +188,7 @@ Route::post('/ppob/check-pln-prabayar', [PpobController::class, 'checkPlnPrabaya
 
 // Blog & Content
 Route::get('/feed', [BlogController::class, 'generateFeed'])->name('feed');
-Route::get('/blog/posts/{post}', [BlogController::class, 'show']);
+Route::get('/blog/posts/{post:slug}', [BlogController::class, 'show']);
 Route::get('/pondok', [PondokController::class, 'index'])->name('pondok.index');
 
 // Utilities
@@ -267,7 +267,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/checkout-ppob/remove/{id}', [PpobCheckoutController::class, 'removeItem'])->name('ppob.cart.remove');
     Route::post('/checkout-ppob/clear', [PpobCheckoutController::class, 'clearCart'])->name('ppob.cart.clear');
     Route::get('/ppob/invoice/{invoice}', [PpobCheckoutController::class, 'invoice'])->name('ppob.invoice');
-    
+
     Route::prefix('digital')->name('ppob.')->group(function () {
         Route::post('/checkout', [PpobController::class, 'store'])->name('store');
         Route::get('/status/{ref_id}', [PpobController::class, 'checkStatus'])->name('status');
