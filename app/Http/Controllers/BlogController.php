@@ -91,31 +91,38 @@ class BlogController extends Controller
     }
 
     /**
-     * Menampilkan detail satu postingan menggunakan Route Model Binding.
-     * @param Post $post (Otomatis mencari berdasarkan slug jika Post model disiapkan)
+     * Menampilkan detail satu postingan (CARA MANUAL - ANTI 404)
+     * Kita menerima parameter $slug sebagai teks biasa, bukan object Post.
      */
-    public function show(Post $post)
+    public function show($slug)
     {
-        // Pastikan post berstatus 'published'
-        if ($post->status !== 'published') {
-            abort(404);
+        // 1. Cari Post secara manual berdasarkan kolom 'slug'
+        // Kita juga pastikan memuat relasi category & author agar hemat query
+        $post = Post::with(['category', 'author'])
+                    ->where('slug', $slug)
+                    ->first();
+
+        // 2. Cek Validasi:
+        // Jika post TIDAK DITEMUKAN (null) ATAU Statusnya BUKAN 'published'
+        if (!$post || $post->status !== 'published') {
+            abort(404); // Tampilkan halaman Not Found
         }
         
-        // Lazy load relationships jika belum terload (tergantung setup route binding)
-        $post->load('category', 'author');
-
-        // Ambil data untuk sidebar (Populer & Kategori)
+        // 3. Ambil data sidebar (Populer & Kategori)
         $popularPosts = Post::published()
-            ->where('id', '!=', $post->id) // Jangan tampilkan post yang sedang dibaca
+            ->where('id', '!=', $post->id)
             ->inRandomOrder()
             ->limit(5)
             ->get();
 
-        $categories = Category::withCount('posts')->orderBy('posts_count', 'desc')->limit(7)->get();
+        $categories = Category::withCount('posts')
+            ->orderBy('posts_count', 'desc')
+            ->limit(7)
+            ->get();
 
+        // 4. Tampilkan View
         return view('blog.show', compact('post', 'popularPosts', 'categories'));
     }
-
     /**
      * Menghasilkan halaman arsip blog/feed.
      */
