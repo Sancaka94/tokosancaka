@@ -82,49 +82,48 @@ class KontakController extends Controller
     return view('customer.kontak.index', compact('kontaks', 'dataPengirim', 'dataPenerima'));
 }
 
-   public function search(Request $request)
+public function search(Request $request)
 {
     $user = Auth::user();
     
-    // 1. EKSPLISIT: Pastikan ambil ID dari kolom 'id_pengguna'
-    // Jangan pakai $user->id takutnya null/salah mapping
-    $userId = $user->id_pengguna; 
+    // --- FIX 1: AMBIL ID EKSPLISIT ---
+    // Jangan pakai $user->id, tapi pakai kolom asli 'id_pengguna'
+    $userId = $user->id_pengguna;
 
     $query = Kontak::query();
 
-    // --- KEAMANAN LEVEL TINGGI ---
-    // 2. Cek Role (Huruf besar/kecil dianggap sama)
+    // --- FIX 2: LOGIKA SECURITY MATI ---
     $isAdmin = strtolower($user->role) === 'admin';
 
-    // 3. JIKA BUKAN ADMIN -> WAJIB FILTER USER_ID
     if (!$isAdmin) {
-        // Gunakan variable $userId yang pasti benar
+        // FILTER WAJIB: Hanya data milik user yang sedang login
         $query->where('user_id', $userId);
     }
-    // (Jika Admin, biarkan dia melihat semua data)
+    // (Admin bebas melihat semua)
 
-    // --- LOGIKA PENCARIAN ---
+    // --- LOGIKA PENCARIAN (Search Bar) ---
     if ($request->has('q') || $request->has('search')) {
         $keyword = $request->input('q') ?? $request->input('search');
         
         $query->where(function($q) use ($keyword) {
             $q->where('nama', 'LIKE', "%{$keyword}%")
               ->orWhere('no_hp', 'LIKE', "%{$keyword}%")
-              // Saya tambahkan pencarian Alamat & Kecamatan biar user makin mudah cari
-              ->orWhere('alamat', 'LIKE', "%{$keyword}%") 
-              ->orWhere('district', 'LIKE', "%{$keyword}%");
+              // Tambahkan pencarian alamat & wilayah biar user enak carinya
+              ->orWhere('alamat', 'LIKE', "%{$keyword}%")
+              ->orWhere('district', 'LIKE', "%{$keyword}%")
+              ->orWhere('village', 'LIKE', "%{$keyword}%");
         });
     }
 
-    // Hanya ambil tipe Pengirim/Penerima jika diminta
+    // --- FILTER TIPE (Pengirim/Penerima) ---
+    // Penting untuk dropdown di halaman Pesanan
     if ($request->filled('tipe')) {
         $query->where('tipe', $request->input('tipe'));
     }
 
-    // Limit hasil agar loading cepat (AJAX ringan)
+    // Limit 20 biar ringan
     return response()->json($query->limit(20)->get());
 }
-
     /**
      * Menyimpan kontak baru sesuai inputan Blade.
      */
