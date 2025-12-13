@@ -421,8 +421,6 @@ Route::prefix('broadcast')->name('broadcast.')->group(function () {
     // 4. Hapus Riwayat
     Route::delete('/{id}', [BroadcastController::class, 'destroy'])->name('destroy');
 
-  
-
 });
 
 Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->name('admin.')->group(function () {
