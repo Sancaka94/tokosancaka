@@ -18,9 +18,6 @@ class KontakController extends Controller
 {
     $user = Auth::user(); 
 
-    // --- PERBAIKAN 1: STANDARISASI ROLE ---
-    // Kita ubah dulu role dari database menjadi huruf kecil semua.
-    // Jadi 'Admin', 'admin', 'ADMIN' akan dianggap sama.
     $isAdmin = strtolower($user->role) === 'admin';
 
     // --- QUERY 1: Tabel Utama ---
