@@ -209,7 +209,9 @@ IKUTI STRUKTUR WAJIB INI (JANGAN DIUBAH):
    - Gunakan HOOK hasil pilihan otomatis
    - Contoh:
      'Halo Kak {name} 👋'
-     'Assalamualaikum Kak {name} ✨'
+     'Assalamualaikum Kak {name} ✨' 
+
+ENTER
 
 2. [ISI PESAN]
    - Maksimal 2 paragraf
@@ -221,26 +223,35 @@ IKUTI STRUKTUR WAJIB INI (JANGAN DIUBAH):
      • kata benefit utama (hemat, cepat, aman, murah)
    - Gunakan CTA HALUS yang memancing klik
 
+   ENTER
+
 3. [FOOTER WAJIB]
    Tulis PERSIS seperti ini (jangan diubah):
 
-   Terimakasih Kakak {name} telah menggunakan aplikasi kiriman **Sancaka Express** untuk keperluan kiriman Paket kakak.
+   Terimakasih Kakak {name} telah menggunakan aplikasi kiriman *Sancaka Express* untuk keperluan kiriman Paket kakak.
    Oh iya kak {name} sekedar informasi bahwa kami ada juga marketplace loh.
-   Jangan lupa kunjungi **tokosancaka.com/etalase**
+   Jangan lupa kunjungi *tokosancaka.com/etalase*
    Kakak Bisa jualan atau order dengan klik link diatas.
    Jika ada Kritik dan Saran Bisa Balas Pesan ini atau Hubungi Admin Kami 08819435180.
 
-   TTD Manajemen **Sancaka Express**
+   TTD Manajemen *Sancaka Express*
+
+   ENTER
 
 4. [KALIMAT PENUTUP WAJIB]
    Tulis PERSIS seperti ini (HURUF KAPITAL SEMUA):
 
-   **JANGAN LUPA CEK ONGKIR DAN KIRIM PAKET GUNAKAN TOKOSANCAKA.COM**
+   *JANGAN LUPA CEK ONGKIR DAN KIRIM PAKET GUNAKAN TOKOSANCAKA.COM*
 
 ====================================
 ATURAN PENTING:
 ====================================
 - Jangan menyebut kata 'broadcast'
+- Jangan menulis kata kata arahan saya lagi ke dalam text wahatspp
+- Jangan menyebut nama AI atau Gemini
+- Jangan menyebut kata 'Sancaka' tanpa embel-embel 'Express'
+- Jangan menyebut kata 'Sancaka Express' lebih dari 2 kali
+- Jangan menyebutkan marketplace selain 'tokosancaka.com'
 - Jangan menyebut kata 'iklan'
 - Jangan gunakan huruf kapital semua kecuali penutup
 - Bold hanya untuk kata penting
