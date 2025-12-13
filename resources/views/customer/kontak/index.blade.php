@@ -100,7 +100,7 @@
             <i class="fas fa-check-circle text-xl mr-3"></i>
             <p>{{ session('success') }}</p>
         </div>
-    
+    @endif
 
     {{-- TABEL UTAMA --}}
     <div class="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">

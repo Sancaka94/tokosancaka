@@ -52,7 +52,7 @@ class KontakController extends Controller
 
     // JANGAN LUPA: Bagian ini juga harus dikunci!
     if (!$isAdmin) {
-        $queryPengirim->where('user_id', $user->id);
+        $queryPengirim->where('user_id', $user->id_pengguna);
     }
 
     $pengirims = $queryPengirim->latest()->get();
