@@ -14,12 +14,25 @@ class DigiflazzWebhookController extends Controller
 {
     /**
      * Helper untuk membersihkan dan memformat nomor HP menjadi 62xxxx.
+     * PERBAIKAN PENTING: Hapus type hint 'string' agar tidak error jika inputnya NULL.
      */
-    private function _sanitizePhoneNumber(string $phone): ?string
+    private function _sanitizePhoneNumber($phone)
     {
+        // 1. Jika null atau bukan string/angka, langsung return null
+        if (empty($phone)) {
+            return null;
+        }
+
+        // 2. Paksa jadi string dulu untuk keamanan
+        $phone = (string) $phone;
+
+        // 3. Bersihkan karakter selain angka
         $phone = preg_replace('/[^0-9]/', '', $phone);
+        
+        // 4. Cek lagi setelah regex
         if (empty($phone)) return null;
     
+        // 5. Format ke 62
         if (Str::startsWith($phone, '08')) {
             return '62' . substr($phone, 1);
         }
@@ -61,8 +74,33 @@ class DigiflazzWebhookController extends Controller
                  return false;
             }
 
-            $agentWa = $this->_sanitizePhoneNumber($user->no_wa ?? $user->no_hp ?? null);
-            $customerWa = $this->_sanitizePhoneNumber($trx->customer_wa ?? null); 
+            // -------------------------------------------------------------
+            // LOGIKA PENCARIAN NOMOR WA (UPDATE)
+            // -------------------------------------------------------------
+            
+            // 1. Ambil dari kolom 'customer_wa' (Prioritas Utama)
+            $rawCustomerWa = $trx->customer_wa;
+
+            // 2. Jika kosong, Cek di dalam kolom 'desc' (Format JSON) <--- INI SOLUSINYA
+            if (empty($rawCustomerWa) && !empty($trx->desc)) {
+                $descJson = json_decode($trx->desc, true);
+                if (isset($descJson['wa'])) {
+                    $rawCustomerWa = $descJson['wa'];
+                }
+            }
+
+            // 3. Jika masih kosong, cek apakah 'customer_no' itu nomor HP (Khusus Pulsa/Data)
+            if (empty($rawCustomerWa)) {
+                // Cek awalan 08... atau 62...
+                if (Str::startsWith($trx->customer_no, '08') || Str::startsWith($trx->customer_no, '62')) {
+                    $rawCustomerWa = $trx->customer_no;
+                }
+            }
+            
+            // 4. Sanitize nomor yang ditemukan
+            $customerWa = $this->_sanitizePhoneNumber($rawCustomerWa);
+            $agentWa = $this->_sanitizePhoneNumber($user->no_wa ?? $user->no_hp);
+            // -------------------------------------------------------------
             
             $fmt = function($val) { return number_format($val, 0, ',', '.'); };
             
