@@ -30,7 +30,7 @@ class KontakController extends Controller
         // --- KHUSUS ADMIN ---
         // Bebas akses semua data (termasuk yang user_id NULL)
     } 
-    elseif (in_array($role, ['agent', 'seller', 'pelanggan', 'member'])) {
+    elseif (in_array($role, ['agent', 'seller', 'pelanggan'])) {
         // --- KHUSUS AGENT, SELLER, PELANGGAN ---
         // Wajib filter user_id. Data NULL otomatis HILANG.
         $query->where('user_id', $user->id);
