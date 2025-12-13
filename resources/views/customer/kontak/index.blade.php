@@ -189,24 +189,21 @@
     {{-- TABEL KHUSUS PENGIRIM --}}
     @if(isset($pengirims) && $pengirims->isNotEmpty())
     <div class="mt-12 pt-8 border-t-2 border-gray-100">
-        {{-- Judul Tabel --}}
         <div class="flex items-center mb-4 gap-3">
             <div class="p-2.5 bg-indigo-100 text-indigo-600 rounded-lg">
                 <i class="fas fa-shipping-fast text-lg"></i>
             </div>
             <div>
-                <h3 class="text-xl font-bold text-gray-800">Data Pengirim</h3>
-                <p class="text-sm text-gray-500">Daftar alamat pengirim (Toko & Gudang).</p>
+                <h3 class="text-xl font-bold text-gray-800">Data Pengirim (Profil Saya)</h3>
+                <p class="text-sm text-gray-500">Daftar alamat yang disimpan sebagai pengirim.</p>
             </div>
         </div>
-
-        {{-- Tabel --}}
         <div class="overflow-x-auto rounded-lg border border-indigo-100 shadow-sm">
             <table class="min-w-full divide-y divide-indigo-100">
                 <thead class="bg-indigo-50">
                     <tr>
-                        <th class="px-4 py-3 text-left text-xs font-bold text-indigo-800 uppercase">Nama</th>
-                        <th class="px-4 py-3 text-left text-xs font-bold text-indigo-800 uppercase">Alamat</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-indigo-800 uppercase">Nama & HP</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-indigo-800 uppercase">Detail Alamat</th>
                         <th class="px-4 py-3 text-left text-xs font-bold text-indigo-800 uppercase">Wilayah</th>
                         <th class="px-4 py-3 text-center text-xs font-bold text-indigo-800 uppercase">Aksi</th>
                     </tr>
@@ -214,55 +211,17 @@
                 <tbody class="bg-white divide-y divide-indigo-100">
                     @foreach ($pengirims as $p)
                     <tr class="hover:bg-indigo-50 transition duration-150">
-                        
-                        {{-- NAMA & HP --}}
                         <td class="px-4 py-3 whitespace-nowrap">
-                            <div class="text-sm font-bold text-gray-900">
-                                {{ $p->nama }}
-                                @if($p->id === 'profile_auth') 
-                                    <span class="ml-2 text-[10px] bg-blue-600 text-white px-2 py-0.5 rounded-full">UTAMA</span>
-                                @endif
-                            </div>
-                            <div class="text-xs text-gray-500 mt-1">
-                                <i class="fas fa-phone-alt mr-1"></i> {{ $p->no_hp }}
-                            </div>
+                            <div class="text-sm font-semibold text-gray-900">{{ $p->nama }}</div>
+                            <div class="text-xs text-gray-500">{{ $p->no_hp }}</div>
                         </td>
-
-                        {{-- ALAMAT --}}
-                        <td class="px-4 py-3 text-sm text-gray-600 max-w-xs truncate">
-                            {{ Str::limit($p->alamat, 45) }}
-                        </td>
-
-                        {{-- WILAYAH --}}
+                        <td class="px-4 py-3 text-sm text-gray-600 max-w-xs truncate">{{ Str::limit($p->alamat, 40) }}</td>
                         <td class="px-4 py-3 text-sm text-gray-600">
-                            {{ $p->village }}, {{ $p->district }}<br>
-                            <span class="text-xs text-gray-400">{{ $p->regency }}</span>
+                            {{ $p->village }}, {{ $p->district }}, {{ $p->regency }}
                         </td>
-
-                        {{-- AKSI (SOLUSI ERROR DISINI) --}}
                         <td class="px-4 py-3 text-center text-sm font-medium">
                             <div class="flex justify-center space-x-2">
-                                
-                                {{-- Jika ini Data PROFIL (ID String), Jangan Tampilkan Form Hapus --}}
-                                @if($p->id === 'profile_auth')
-                                    <span class="text-xs text-gray-400 italic py-1 px-2 border border-gray-200 rounded bg-gray-50">
-                                        <i class="fas fa-lock text-xs"></i> Akun Utama
-                                    </span>
-                                @else
-                                    {{-- Jika Kontak Biasa (ID Angka), Tampilkan Tombol --}}
-                                    <button type="button" class="text-blue-600 hover:text-blue-900 btnEditKontak" data-id="{{ $p->id }}" title="Edit">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-
-                                    <form action="{{ route('customer.kontak.destroy', $p->id) }}" method="POST" onsubmit="return confirm('Hapus pengirim ini?');" class="inline">
-                                        @csrf 
-                                        @method('DELETE')
-                                        <button type="submit" class="text-red-600 hover:text-red-900 ml-2" title="Hapus">
-                                            <i class="fas fa-trash-alt"></i>
-                                        </button>
-                                    </form>
-                                @endif
-
+                                <button type="button" class="text-blue-600 hover:text-blue-900 btnEditKontak" data-id="{{ $p->id }}"><i class="fas fa-edit"></i></button>
                             </div>
                         </td>
                     </tr>
