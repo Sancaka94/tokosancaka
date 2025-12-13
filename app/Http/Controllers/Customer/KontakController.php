@@ -14,22 +14,25 @@ use App\Models\User;
 
 class KontakController extends Controller
 {
-   public function index(Request $request)
+  public function index(Request $request)
 {
-    $user = Auth::user(); 
-
-    $isAdmin = strtolower($user->role) === 'admin';
-
-    // --- QUERY 1: Tabel Utama ---
+    $user = Auth::user();
     $query = Kontak::query();
 
-    // --- LOGIKA SECURITY UTAMA ---
-    // Jika BUKAN Admin, WAJIB filter berdasarkan user_id.
-    if (!$isAdmin) { 
+    // --- LOGIKA FILTER (SOLUSI UTAMA) ---
+    // Cek apakah dia Admin? (Huruf besar/kecil dianggap sama)
+    $isAdmin = strtolower($user->role) === 'admin';
+
+    if ($isAdmin) {
+        // ADMIN: Bebas, ambil semua (termasuk yang NULL)
+    } else {
+        // CUSTOMER: HANYA ambil yang user_id nya SAMA dengan ID login.
+        // Secara otomatis SQL akan membuang data yang NULL.
         $query->where('user_id', $user->id);
     }
+    // -------------------------------------
 
-    // Logika Pencarian
+    // Filter Pencarian (Search)
     if ($request->filled('search')) {
         $search = $request->input('search');
         $query->where(function($q) use ($search) {
@@ -39,18 +42,17 @@ class KontakController extends Controller
         });
     }
 
-    // Logika Filter Tipe
+    // Filter Tipe (Pengirim/Penerima)
     if ($request->filled('filter') && $request->input('filter') !== 'Semua') {
         $query->where('tipe', $request->input('filter'));
     }
 
     $kontaks = $query->latest()->paginate(10);
 
-    // --- QUERY 2: Tabel Khusus Pengirim ---
+    // --- LOGIKA UNTUK LIST PENGIRIM (Bagian Bawah) ---
     $queryPengirim = Kontak::where('tipe', 'Pengirim');
-
-    // --- TERAPKAN SECURITY YANG SAMA ---
-    // Jangan lupa filter ini juga diterapkan di list pengirim
+    
+    // Terapkan filter yang sama untuk pengirim!
     if (!$isAdmin) {
         $queryPengirim->where('user_id', $user->id);
     }
