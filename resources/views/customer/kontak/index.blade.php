@@ -53,14 +53,14 @@
         color: #6b7280; /* Gray-500 */
     }
 </style>
-
+@endpush
 
 @section('content')
 <div class="bg-white p-6 rounded-xl shadow-lg min-h-screen">
 
     {{-- HEADER: PENCARIAN & TOMBOL TAMBAH --}}
     <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-        <form action="{{ route('customer.kontak.index') }}" method="GET" class="relative w-full md:w-1/2">
+        <form ation="{{ route('customer.kontak.index') }}" method="GET" class="relative w-full md:w-1/2">
             @if(request('filter'))
                 <input type="hidden" name="filter" value="{{ request('filter') }}">
             @endif
