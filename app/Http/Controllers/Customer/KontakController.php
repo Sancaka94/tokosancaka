@@ -14,47 +14,54 @@ use App\Models\User;
 
 class KontakController extends Controller
 {
-    public function index(Request $request)
-    {
-        $user = Auth::user(); // Ambil object user lengkap untuk cek role
+   public function index(Request $request)
+{
+    $user = Auth::user(); 
 
-        // --- QUERY 1: Tabel Utama (Bisa difilter/search) ---
-        $query = Kontak::query();
+    // --- PERBAIKAN 1: STANDARISASI ROLE ---
+    // Kita ubah dulu role dari database menjadi huruf kecil semua.
+    // Jadi 'Admin', 'admin', 'ADMIN' akan dianggap sama.
+    $isAdmin = strtolower($user->role) === 'admin';
 
-        // LOGIKA KHUSUS: Cek apakah user adalah Admin
-        // Jika BUKAN Admin, batasi query hanya milik user tersebut.
-        // Jika Admin, lewati blok ini (artinya ambil semua data).
-        if ($user->role !== 'Admin') { 
-            $query->where('user_id', $user->id);
-        }
+    // --- QUERY 1: Tabel Utama ---
+    $query = Kontak::query();
 
-        if ($request->filled('search')) {
-            $search = $request->input('search');
-            $query->where(function($q) use ($search) {
-                $q->where('nama', 'like', "%{$search}%")
-                  ->orWhere('no_hp', 'like', "%{$search}%")
-                  ->orWhere('district', 'like', "%{$search}%");
-            });
-        }
-
-        if ($request->filled('filter') && $request->input('filter') !== 'Semua') {
-            $query->where('tipe', $request->input('filter'));
-        }
-
-        $kontaks = $query->latest()->paginate(10);
-
-        // --- QUERY 2: Tabel Khusus Pengirim (Selalu Tampil di Bawah) ---
-        $queryPengirim = Kontak::where('tipe', 'Pengirim');
-
-        // Terapkan logika yang sama untuk list Pengirim
-        if ($user->role !== 'Admin') {
-            $queryPengirim->where('user_id', $user->id);
-        }
-
-        $pengirims = $queryPengirim->latest()->get();
-
-        return view('customer.kontak.index', compact('kontaks', 'pengirims'));
+    // --- LOGIKA SECURITY UTAMA ---
+    // Jika BUKAN Admin, WAJIB filter berdasarkan user_id.
+    if (!$isAdmin) { 
+        $query->where('user_id', $user->id);
     }
+
+    // Logika Pencarian
+    if ($request->filled('search')) {
+        $search = $request->input('search');
+        $query->where(function($q) use ($search) {
+            $q->where('nama', 'like', "%{$search}%")
+              ->orWhere('no_hp', 'like', "%{$search}%")
+              ->orWhere('district', 'like', "%{$search}%");
+        });
+    }
+
+    // Logika Filter Tipe
+    if ($request->filled('filter') && $request->input('filter') !== 'Semua') {
+        $query->where('tipe', $request->input('filter'));
+    }
+
+    $kontaks = $query->latest()->paginate(10);
+
+    // --- QUERY 2: Tabel Khusus Pengirim ---
+    $queryPengirim = Kontak::where('tipe', 'Pengirim');
+
+    // --- TERAPKAN SECURITY YANG SAMA ---
+    // Jangan lupa filter ini juga diterapkan di list pengirim
+    if (!$isAdmin) {
+        $queryPengirim->where('user_id', $user->id);
+    }
+
+    $pengirims = $queryPengirim->latest()->get();
+
+    return view('customer.kontak.index', compact('kontaks', 'pengirims'));
+}
 
     /**
      * Menyimpan kontak baru sesuai inputan Blade.
