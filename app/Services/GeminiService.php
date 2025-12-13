@@ -7,22 +7,23 @@ use Illuminate\Support\Facades\Http;
 class GeminiService
 {
     protected $apiKey;
-    protected $baseUrl;
+    // Kita definisikan URL langsung di sini agar lebih aman
+    protected $baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
 
     public function __construct()
     {
         $this->apiKey = env('GEMINI_API_KEY');
-        // Menggunakan Gemini 1.5 Flash sebagai default karena lebih cepat
-        $this->baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
     }
 
     public function generateText($prompt)
     {
+        // 1. Cek API Key
         if (empty($this->apiKey)) {
             return 'Error: API Key Gemini belum diisi di file .env';
         }
 
         try {
+            // 2. Kirim Request ke Google
             $response = Http::withHeaders([
                 'Content-Type' => 'application/json',
             ])->post("{$this->baseUrl}?key={$this->apiKey}", [
@@ -35,18 +36,16 @@ class GeminiService
                 ]
             ]);
 
+            // 3. Cek Sukses
             if ($response->successful()) {
                 $data = $response->json();
                 return $data['candidates'][0]['content']['parts'][0]['text'] ?? 'Maaf, AI tidak memberikan respons.';
             }
 
-            // Menangkap pesan error spesifik dari Google
+            // 4. Handle Error dari Google
             $errorBody = $response->json();
             $errorMessage = $errorBody['error']['message'] ?? 'Unknown Error';
             
-            // Log error untuk developer (opsional)
-            // \Log::error('Gemini API Error: ' . $errorMessage);
-
             return 'Gagal (Google): ' . $errorMessage;
 
         } catch (\Exception $e) {
