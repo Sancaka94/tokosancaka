@@ -21,8 +21,7 @@
     <!-- Kiri: Toggle sidebar + judul halaman -->
     <div class="flex items-center">
         {{-- Tombol toggle sidebar --}}
-        <button type="button" 
-        id="btn-toggle-sidebar" 
+        <button type="button" id="btn-toggle-sidebar" 
         class="p-2 rounded-md text-white hover:bg-gray-600 lg:hidden focus:outline-none">
     <span class="sr-only">Toggle sidebar</span>
     <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
