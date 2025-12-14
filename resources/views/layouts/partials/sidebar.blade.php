@@ -47,7 +47,6 @@
     </button>
 </div>
 
-
     </div>
 
     <!-- User Panel -->
