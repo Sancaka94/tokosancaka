@@ -21,14 +21,11 @@
     <!-- Kiri: Toggle sidebar + judul halaman -->
     <div class="flex items-center">
         {{-- Tombol toggle sidebar --}}
-        <button @click="sidebarOpen = !sidebarOpen"
-            class="p-2 rounded-md text-white hover:bg-red-700 focus:outline-none lg:hidden">
-            <span class="sr-only">Toggle sidebar</span>
-            <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
+        <button @click="$store.sidebar.toggle()" class="p-2 rounded-md text-white hover:bg-red-700 focus:outline-none lg:hidden">
+    <span class="sr-only">Toggle sidebar</span>
+    <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
         </button>
 
         {{-- Judul halaman --}}

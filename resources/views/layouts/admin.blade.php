@@ -23,6 +23,29 @@
 
     <!-- AlpineJS -->
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+
+    <script>
+    document.addEventListener('alpine:init', () => {
+        Alpine.store('sidebar', {
+            open: window.innerWidth >= 1024,
+            toggle() {
+                this.open = ! this.open
+            },
+            close() {
+                this.open = false
+            }
+        });
+        
+        // Update otomatis saat layar di-resize
+        window.addEventListener('resize', () => {
+            if(window.innerWidth >= 1024) {
+                Alpine.store('sidebar').open = true;
+            } else {
+                Alpine.store('sidebar').open = false;
+            }
+        });
+    });
+</script>
     
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -76,16 +99,12 @@ body {
         .modal-transition { transition: opacity 0.3s ease, transform 0.3s ease; }
         .modal-hidden { opacity: 0; transform: scale(0.95); pointer-events: none; }
         .modal-visible { opacity: 1; transform: scale(1); pointer-events: auto; }
-        
-          
-        
-  
-
-        
+      
     </style>
     
     @stack('styles')
 </head>
+<body class="bg-gray-100 text-gray-800">
 
 @if(isset($error_message))
     <div class="alert alert-danger text-center">
@@ -93,11 +112,7 @@ body {
     </div>
 @endif
 
-<body class="bg-gray-100 text-gray-800"
-      x-data="{ sidebarOpen: window.innerWidth >= 1024 }"
-      @resize.window="sidebarOpen = window.innerWidth >= 1024">
-
-    <div class="flex main-layout-container bg-gray-100">
+<div x-data="{ sidebarOpen: window.innerWidth > 1024 ? true : false }" @resize.window="sidebarOpen = window.innerWidth > 1024 ? true : false" class="flex main-layout-container bg-gray-100">
         @include('layouts.partials.sidebar')
 
         <div class="flex-1 flex flex-col overflow-hidden">
@@ -460,20 +475,16 @@ body {
             }
         });
     </script>
-    
-<div x-show="sidebarOpen" 
-         @click="sidebarOpen = false"
-         x-transition:enter="transition-opacity ease-linear duration-300"
-         x-transition:enter-start="opacity-0"
-         x-transition:enter-end="opacity-100"
-         x-transition:leave="transition-opacity ease-linear duration-300"
-         x-transition:leave-start="opacity-100"
-         x-transition:leave-end="opacity-0"
-         class="fixed inset-0 bg-black bg-opacity-50 z-20 lg:hidden"
-         style="display: none;">
-    </div>
 
     @stack('scripts')
-</body>
 
+    <div x-data 
+     x-show="$store.sidebar.open" 
+     @click="$store.sidebar.close()"
+     class="fixed inset-0 bg-black bg-opacity-50 z-20 lg:hidden"
+     style="display: none;"
+     x-transition.opacity>
+    </div>
+
+</body>
 </html>
