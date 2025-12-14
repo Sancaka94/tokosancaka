@@ -718,57 +718,6 @@
 
 @push('scripts')
 
-{{-- ====================================================================== --}}
-
-{{-- == SEMUA SCRIPT UNTUK SIDEBAR DITEMPATKAN DI SINI == --}}
-
-{{-- ====================================================================== --}}
-
-
-
-{{-- 1. Script untuk menu dropdown --}}
-
-<script>
-
-    document.addEventListener("DOMContentLoaded", function () {
-
-        const sidebar = document.getElementById("sidebar-wrapper");
-
-        const toggleMobile = document.getElementById("sidebarToggle");
-
-        const closeBtn = document.getElementById("sidebarClose");
-
-
-
-        // buka sidebar
-
-        if (toggleMobile) {
-
-            toggleMobile.addEventListener("click", function () {
-
-                sidebar.classList.toggle("-translate-x-full");
-
-            });
-
-        }
-
-
-
-        // tutup sidebar
-
-        if (closeBtn) {
-
-            closeBtn.addEventListener("click", function () {
-
-                sidebar.classList.add("-translate-x-full");
-
-            });
-
-        }
-
-    });
-
-</script>
 
 <script>
 
