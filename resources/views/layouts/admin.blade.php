@@ -464,37 +464,26 @@ body {
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Ambil elemen berdasarkan ID
             const btnToggle = document.getElementById('btn-toggle-sidebar');
             const btnClose = document.getElementById('btn-close-sidebar');
-            const sidebar = document.getElementById('main-sidebar');
-            const overlay = document.getElementById('sidebar-overlay');
+            const sidebar = document.getElementById('main-sidebar'); // <--- INI BIANG KEROKNYA KALO NULL
+            const overlay = document.getElementById('sidebar-overlay'); // <--- ATAU INI
 
-            // Fungsi Buka/Tutup
             function toggleSidebar() {
-                // Toggle class translate (geser sidebar)
-                // Kalau ada -translate-x-full (ngumpet), dia bakal dihapus (muncul)
-                // Kalau gak ada, dia bakal ditambah (ngumpet)
-                sidebar.classList.toggle('-translate-x-full');
+                // KITA CEK DULU BIAR GAK CRASH
+                if (!sidebar || !overlay) {
+                    console.error('Error: Sidebar atau Overlay tidak ditemukan! Cek ID di HTML.');
+                    return;
+                }
                 
-                // Toggle overlay (layar hitam)
+                sidebar.classList.toggle('-translate-x-full');
                 overlay.classList.toggle('hidden');
             }
 
-            // Event Listener (Dengar Klik)
-            if(btnToggle) {
-                btnToggle.addEventListener('click', toggleSidebar);
-            }
-
-            if(btnClose) {
-                btnClose.addEventListener('click', toggleSidebar);
-            }
-
-            if(overlay) {
-                overlay.addEventListener('click', toggleSidebar);
-            }
+            if(btnToggle) btnToggle.addEventListener('click', toggleSidebar);
+            if(btnClose) btnClose.addEventListener('click', toggleSidebar);
+            if(overlay) overlay.addEventListener('click', toggleSidebar);
         });
     </script>
-    
 </body>
 </html>
