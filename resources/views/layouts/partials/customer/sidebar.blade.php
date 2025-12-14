@@ -3,11 +3,11 @@
     Deskripsi: Sidebar navigasi interaktif lengkap untuk dashboard pelanggan, seller, dan agen.
 --}}
 
-<div x-show="sidebarOpen" @click="sidebarOpen = false" class="fixed inset-0 z-20 bg-blue-900 bg-opacity-50 transition-opacity lg:hidden" x-cloak></div>
+<div x-show="sidebarOpen" @click="sidebarOpen = false" class="fixed inset-0 z-[90] bg-blue-900 bg-opacity-50 transition-opacity lg:hidden" x-cloak></div>
 
 <aside
     :class="sidebarOpen ? 'translate-x-0 ease-out' : '-translate-x-full ease-in'"
-    class="fixed inset-y-0 left-0 z-30 w-64 overflow-y-auto bg-blue-900 text-white transition duration-300 transform lg:translate-x-0 lg:static lg:inset-0"
+    class="fixed inset-y-0 left-0 z-[100] w-64 overflow-y-auto bg-blue-900 text-white transition duration-300 transform lg:translate-x-0 lg:static lg:inset-0"
     x-cloak>
 
    {{-- Header Sidebar (Logo & Nama Toko) --}}
