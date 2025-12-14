@@ -478,13 +478,7 @@ body {
 
     @stack('scripts')
 
-    <div x-data 
-     x-show="$store.sidebar.open" 
-     @click="$store.sidebar.close()"
-     class="fixed inset-0 bg-black bg-opacity-50 z-20 lg:hidden"
-     style="display: none;"
-     x-transition.opacity>
-    </div>
+
 
 </body>
 </html>
