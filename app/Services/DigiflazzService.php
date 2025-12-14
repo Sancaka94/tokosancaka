@@ -40,7 +40,7 @@ class DigiflazzService
         $this->apiKey = trim($apiKey);
         $this->testingMode = $testingMode;
         // Atur Base URL sesuai mode testing
-        $this->baseUrl = $testingMode ? self::URL_DEV : self::URL_PROD;
+        $this->baseUrl = self::URL_PROD;
     }
 
     // --- Core API Calls ---
