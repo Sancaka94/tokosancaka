@@ -250,11 +250,27 @@
                     </form>
                 </div>
 
-                {{-- TOOLBAR EXPORT --}}
-                <div class="flex justify-end gap-2 mb-4">
+                {{-- TOOLBAR EXPORT & DELETE --}}
+                <div class="flex flex-wrap justify-end gap-2 mb-4 items-center">
+                    
+                    {{-- Tombol Hapus Semua (BARU) --}}
+                    <form action="{{ route('broadcast.destroy.all') }}" method="POST" onsubmit="return confirm('PERINGATAN KERAS:\n\nApakah Anda yakin ingin MENGHAPUS SEMUA riwayat broadcast?\n\nData yang dihapus tidak dapat dikembalikan!');">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="flex items-center bg-gray-800 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-black shadow-sm transition border border-gray-700">
+                            <i class="fas fa-trash-alt mr-2"></i> Hapus Semua Riwayat
+                        </button>
+                    </form>
+
+                    {{-- Divider Kecil --}}
+                    <div class="w-px h-8 bg-gray-300 mx-1"></div>
+
+                    {{-- Tombol Export Excel --}}
                     <a href="{{ route('broadcast.export.excel', request()->all()) }}" class="flex items-center bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-green-700 shadow-sm transition">
                         <i class="fas fa-file-excel mr-2"></i> Export Excel
                     </a>
+
+                    {{-- Tombol Export PDF --}}
                     <a href="{{ route('broadcast.export.pdf', request()->all()) }}" class="flex items-center bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-red-700 shadow-sm transition">
                         <i class="fas fa-file-pdf mr-2"></i> Export PDF
                     </a>
