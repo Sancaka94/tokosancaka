@@ -12,12 +12,50 @@
 
         {{-- Tombol Close (Hanya di Mobile) --}}
     <div class="flex justify-end p-4 lg:hidden">
-        <button type="button" id="btn-close-sidebar" class="text-gray-400 hover:text-white focus:outline-none">
-            <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-        </button>
-    </div>
+    <button
+        type="button"
+        id="btn-close-sidebar"
+        aria-label="Tutup Sidebar"
+        class="
+            group
+            relative
+            inline-flex
+            items-center
+            justify-center
+            w-10 h-10
+            rounded-full
+            bg-white/10
+            backdrop-blur
+            border border-white/20
+            text-gray-300
+            transition-all duration-300
+            hover:bg-red-500/20
+            hover:text-red-400
+            hover:shadow-lg hover:shadow-red-500/30
+            focus:outline-none focus:ring-2 focus:ring-red-500/40
+            active:scale-90
+        "
+    >
+        <!-- Icon -->
+        <svg
+            class="w-5 h-5 transition-transform duration-300 group-hover:rotate-90"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+        >
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M6 18L18 6M6 6l12 12" />
+        </svg>
+
+        <!-- Glow ring -->
+        <span
+            class="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition
+                   bg-red-500/10 blur-md">
+        </span>
+    </button>
+</div>
+
 
     </div>
 
