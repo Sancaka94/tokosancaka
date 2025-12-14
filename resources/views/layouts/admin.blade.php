@@ -23,25 +23,6 @@
 
     <!-- AlpineJS -->
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
-
-    <script>
-    // Kita paksa variabel ini nempel di window (Global Browser)
-    // Jadi file manapun (header/sidebar) bisa akses tanpa peduli x-data
-    document.addEventListener('alpine:init', () => {
-        Alpine.store('layout', {
-            isSidebarOpen: window.innerWidth >= 1024,
-            
-            toggle() {
-                this.isSidebarOpen = !this.isSidebarOpen;
-                console.log('Sidebar Status:', this.isSidebarOpen); // Cek Console browser kalau masih gak jalan
-            },
-            
-            close() {
-                this.isSidebarOpen = false;
-            }
-        });
-    });
-</script>
     
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -95,7 +76,12 @@ body {
         .modal-transition { transition: opacity 0.3s ease, transform 0.3s ease; }
         .modal-hidden { opacity: 0; transform: scale(0.95); pointer-events: none; }
         .modal-visible { opacity: 1; transform: scale(1); pointer-events: auto; }
-      
+        
+          
+        
+  
+
+        
     </style>
     
     @stack('styles')
@@ -473,8 +459,5 @@ body {
     </script>
 
     @stack('scripts')
-
-
-
 </body>
 </html>
