@@ -6,7 +6,7 @@
 
 --}}
 
-<aside id="sidebar-wrapper" class="bg-blue-900 text-gray-300 flex-shrink-0 flex flex-col w-[280px] min-h-screen fixed inset-y-0 left-0 z-50 transform -translate-x-full lg:relative lg:translate-x-0 transition-transform duration-300 ease-in-out">
+<aside id="main-sidebar" class="bg-blue-900 text-gray-300 flex-shrink-0 flex flex-col w-[280px] min-h-screen fixed inset-y-0 left-0 z-50 transform -translate-x-full lg:relative lg:translate-x-0 transition-transform duration-300 ease-in-out">
 
     <div class="flex justify-end p-4 lg:hidden">
 
