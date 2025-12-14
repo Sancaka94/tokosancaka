@@ -323,3 +323,27 @@
 
     </nav>
 </aside>
+
+{{-- ========================================================== --}}
+{{-- TOMBOL CLOSE FLOATING (PANAH KIRI) --}}
+{{-- ========================================================== --}}
+<div x-show="sidebarOpen" 
+     x-transition:enter="transition ease-out duration-300"
+     x-transition:enter-start="opacity-0 -translate-x-10"
+     x-transition:enter-end="opacity-100 translate-x-0"
+     x-transition:leave="transition ease-in duration-200"
+     x-transition:leave-start="opacity-100 translate-x-0"
+     x-transition:leave-end="opacity-0 -translate-x-10"
+     class="fixed top-4 left-64 z-[110] ml-2 lg:hidden" 
+     x-cloak>
+    
+    <button @click="sidebarOpen = false"
+            class="flex items-center justify-center w-10 h-10 bg-blue-900 text-white rounded-full shadow-lg border-2 border-white/20 hover:bg-red-600 hover:scale-110 transition-all duration-300 focus:outline-none ring-2 ring-black/10">
+        
+        {{-- Ikon Panah Kiri --}}
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
+
+    </button>
+</div>
