@@ -331,4 +331,18 @@ ATURAN PENTING:
         // Jika tidak dikenali tapi panjangnya wajar, return apa adanya (siapa tahu format internasional lain)
         return (strlen($no) > 6) ? $no : null;
     }
+
+    public function destroyAll()
+{
+    try {
+        // Hapus semua data di tabel broadcast_histories
+        // Ganti 'BroadcastHistory' sesuai nama Model Anda
+        \App\Models\BroadcastHistory::truncate(); 
+
+        return redirect()->back()->with('success', 'Seluruh riwayat broadcast berhasil dihapus bersih.');
+    } catch (\Exception $e) {
+        return redirect()->back()->with('error', 'Gagal menghapus riwayat: ' . $e->getMessage());
+    }
+}
+
 }
