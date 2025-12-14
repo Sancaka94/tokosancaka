@@ -6,24 +6,25 @@
 
 --}}
 
-<aside id="sidebar-wrapper" class="bg-blue-900 text-gray-300 flex-shrink-0 flex flex-col w-[280px] min-h-screen fixed inset-y-0 left-0 z-50 transform -translate-x-full lg:relative lg:translate-x-0 transition-transform duration-300 ease-in-out">
+{{--
+    File: resources/views/layouts/partials/sidebar.blade.php
+    Deskripsi: Sidebar navigasi LENGKAP dengan integrasi AlpineJS agar Toggle Bar berfungsi.
+--}}
 
+<aside 
+    class="bg-blue-900 text-gray-300 flex-shrink-0 flex flex-col w-[280px] min-h-screen fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0"
+    :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
+    @click.away="if(window.innerWidth < 1024) sidebarOpen = false">
+
+    {{-- Tombol Close (Hanya di Mobile) --}}
     <div class="flex justify-end p-4 lg:hidden">
-
-        <button id="sidebarClose" class="text-gray-400 hover:text-white">
-
+        <button @click="sidebarOpen = false" class="text-gray-400 hover:text-white focus:outline-none">
             <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none"
-
                 viewBox="0 0 24 24" stroke="currentColor">
-
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-
                     d="M6 18L18 6M6 6l12 12" />
-
             </svg>
-
         </button>
-
     </div>
 
     <!-- User Panel -->
