@@ -433,7 +433,7 @@ Route::prefix('broadcast')->name('broadcast.')->group(function () {
 
     Route::post('/generate-ai', [BroadcastController::class, 'generateAi'])->name('ai');
 
-    Route::delete('/history/clear-all', [BroadcastController::class, 'destroyAll'])->name('broadcast.destroy.all');
+    Route::delete('/history/clear-all', [BroadcastController::class, 'destroyAll'])->name('destroy.all');
 
 });
 
