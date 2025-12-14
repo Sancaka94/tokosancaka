@@ -459,5 +459,42 @@ body {
     </script>
 
     @stack('scripts')
+
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden lg:hidden"></div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Ambil elemen berdasarkan ID
+            const btnToggle = document.getElementById('btn-toggle-sidebar');
+            const btnClose = document.getElementById('btn-close-sidebar');
+            const sidebar = document.getElementById('main-sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+
+            // Fungsi Buka/Tutup
+            function toggleSidebar() {
+                // Toggle class translate (geser sidebar)
+                // Kalau ada -translate-x-full (ngumpet), dia bakal dihapus (muncul)
+                // Kalau gak ada, dia bakal ditambah (ngumpet)
+                sidebar.classList.toggle('-translate-x-full');
+                
+                // Toggle overlay (layar hitam)
+                overlay.classList.toggle('hidden');
+            }
+
+            // Event Listener (Dengar Klik)
+            if(btnToggle) {
+                btnToggle.addEventListener('click', toggleSidebar);
+            }
+
+            if(btnClose) {
+                btnClose.addEventListener('click', toggleSidebar);
+            }
+
+            if(overlay) {
+                overlay.addEventListener('click', toggleSidebar);
+            }
+        });
+    </script>
+    
 </body>
 </html>

@@ -10,19 +10,14 @@
 
     <div class="flex justify-end p-4 lg:hidden">
 
-        <button id="sidebarClose" class="text-gray-400 hover:text-white">
-
-            <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none"
-
-                viewBox="0 0 24 24" stroke="currentColor">
-
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-
-                    d="M6 18L18 6M6 6l12 12" />
-
+        {{-- Tombol Close (Hanya di Mobile) --}}
+    <div class="flex justify-end p-4 lg:hidden">
+        <button type="button" id="btn-close-sidebar" class="text-gray-400 hover:text-white focus:outline-none">
+            <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
-
         </button>
+    </div>
 
     </div>
 
