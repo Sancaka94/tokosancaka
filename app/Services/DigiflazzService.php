@@ -17,7 +17,7 @@ class DigiflazzService
     protected bool $testingMode = false; // Tambahkan mode testing
 
     const URL_PROD = 'https://api.digiflazz.com/v1'; 
-    const URL_DEV  = 'https://sandbox.digiflazz.com/v1';
+    const URL_DEV  = 'https://api.digiflazz.com/v1';
 
     public function __construct()
     {
