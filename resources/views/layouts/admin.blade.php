@@ -8,7 +8,7 @@
     <title>@yield('title', 'Admin Panel') - {{ config('app.name', 'Sancaka Express') }}</title>
 
     <!-- Favicon -->
-    <link rel="icon" href="https://tokosancaka.biz.id/storage/uploads/sancaka.png" type="image/png">
+    <link rel="icon" href="https://tokosancaka.com/storage/uploads/sancaka.png" type="image/png">
     
     <!-- TailwindCSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -86,7 +86,6 @@ body {
     
     @stack('styles')
 </head>
-<body class="bg-gray-100 text-gray-800">
 
 @if(isset($error_message))
     <div class="alert alert-danger text-center">
@@ -94,7 +93,11 @@ body {
     </div>
 @endif
 
-<div x-data="{ sidebarOpen: window.innerWidth > 1024 ? true : false }" @resize.window="sidebarOpen = window.innerWidth > 1024 ? true : false" class="flex main-layout-container bg-gray-100">
+<body class="bg-gray-100 text-gray-800"
+      x-data="{ sidebarOpen: window.innerWidth >= 1024 }"
+      @resize.window="sidebarOpen = window.innerWidth >= 1024">
+
+    <div class="flex main-layout-container bg-gray-100">
         @include('layouts.partials.sidebar')
 
         <div class="flex-1 flex flex-col overflow-hidden">
@@ -457,7 +460,20 @@ body {
             }
         });
     </script>
+    
+<div x-show="sidebarOpen" 
+         @click="sidebarOpen = false"
+         x-transition:enter="transition-opacity ease-linear duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition-opacity ease-linear duration-300"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 bg-black bg-opacity-50 z-20 lg:hidden"
+         style="display: none;">
+    </div>
 
     @stack('scripts')
 </body>
+
 </html>
