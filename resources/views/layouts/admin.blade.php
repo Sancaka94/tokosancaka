@@ -25,23 +25,19 @@
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 
     <script>
+    // Kita paksa variabel ini nempel di window (Global Browser)
+    // Jadi file manapun (header/sidebar) bisa akses tanpa peduli x-data
     document.addEventListener('alpine:init', () => {
-        Alpine.store('sidebar', {
-            open: window.innerWidth >= 1024,
+        Alpine.store('layout', {
+            isSidebarOpen: window.innerWidth >= 1024,
+            
             toggle() {
-                this.open = ! this.open
+                this.isSidebarOpen = !this.isSidebarOpen;
+                console.log('Sidebar Status:', this.isSidebarOpen); // Cek Console browser kalau masih gak jalan
             },
+            
             close() {
-                this.open = false
-            }
-        });
-        
-        // Update otomatis saat layar di-resize
-        window.addEventListener('resize', () => {
-            if(window.innerWidth >= 1024) {
-                Alpine.store('sidebar').open = true;
-            } else {
-                Alpine.store('sidebar').open = false;
+                this.isSidebarOpen = false;
             }
         });
     });
