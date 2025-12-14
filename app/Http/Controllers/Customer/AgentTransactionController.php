@@ -26,7 +26,7 @@ class AgentTransactionController extends Controller
         // Pastikan di .env ada: DIGIFLAZZ_USERNAME, DIGIFLAZZ_KEY_PROD, dll
         $username = env('DIGIFLAZZ_USERNAME', 'mihetiDVGdeW');
         $apiKey   = env('DIGIFLAZZ_KEY_PROD', '1f48c69f-8676-5d56-a868-10a46a69f9b7');
-        $isDev    = env('APP_DEBUG', false); // Atau buat env khusus DIGIFLAZZ_MODE_DEV
+        $isDev = false; // Atau buat env khusus DIGIFLAZZ_MODE_DEV
         
         $this->digiflazz->setCredentials($username, $apiKey, $isDev);
     }
