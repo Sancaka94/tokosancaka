@@ -10,31 +10,28 @@
 
     <div class="flex justify-end p-4 lg:hidden">
 
-    {{-- ========================================================= --}}
-    {{-- MULAI: TOMBOL CLOSE BARU (Floating Style)                 --}}
-    {{-- ========================================================= --}}
-    
     <div id="close-wrapper" class="absolute top-4 -right-12 lg:hidden z-50">
-        <button
-            type="button"
-            id="btn-close-sidebar"
-            aria-label="Tutup Sidebar"
-            class="group flex items-center justify-center w-10 h-10 rounded-full
-                   bg-blue-800/50 backdrop-blur-md border border-white/20 text-white shadow-lg
-                   transition-all duration-300 hover:bg-red-500/80
-                   hover:text-white active:scale-90 ring-1 ring-white/10">
-            {{-- Icon Panah Kiri (Collapse) --}}
-            <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none"
-                 viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M15 19l-7-7 7-7" />
-            </svg>
-        </button>
-    </div>
-
-    {{-- ========================================================= --}}
-    {{-- SELESAI: TOMBOL CLOSE BARU                                --}}
-    {{-- ========================================================= --}}
+    <button
+        type="button"
+        id="btn-close-sidebar"
+        aria-label="Toggle Sidebar"
+        class="group flex items-center justify-center w-10 h-10 rounded-full
+               bg-blue-900 backdrop-blur-md border border-white/20 text-white shadow-lg
+               transition-all duration-300 hover:bg-blue-600
+               hover:text-white active:scale-90 ring-1 ring-white/10">
+        
+        {{-- PERUBAHAN DI SINI: --}}
+        {{-- 1. Tambah ID="toggle-icon" --}}
+        {{-- 2. Tambah class "transition-transform duration-300" (biar muternya halus) --}}
+        {{-- 3. Default Icon adalah Panah Kiri (<) --}}
+        
+        <svg id="toggle-icon" class="w-6 h-6 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" fill="none"
+             viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M15 19l-7-7 7-7" />
+        </svg>
+    </button>
+</div>
 
     </div>
 

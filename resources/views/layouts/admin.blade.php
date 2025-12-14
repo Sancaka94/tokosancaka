@@ -463,27 +463,49 @@ body {
     <div id="sidebar-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden lg:hidden"></div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const btnToggle = document.getElementById('btn-toggle-sidebar');
-            const btnClose = document.getElementById('btn-close-sidebar');
-            const sidebar = document.getElementById('main-sidebar'); // <--- INI BIANG KEROKNYA KALO NULL
-            const overlay = document.getElementById('sidebar-overlay'); // <--- ATAU INI
+    document.addEventListener('DOMContentLoaded', function() {
+        const btnToggle = document.getElementById('btn-toggle-sidebar'); // Tombol hamburger (opsional)
+        const btnClose = document.getElementById('btn-close-sidebar');   // Tombol bulat floating
+        const sidebar = document.getElementById('main-sidebar');
+        const overlay = document.getElementById('sidebar-overlay');
+        const icon = document.getElementById('toggle-icon'); // <--- Ambil element Icon
 
-            function toggleSidebar() {
-                // KITA CEK DULU BIAR GAK CRASH
-                if (!sidebar || !overlay) {
-                    console.error('Error: Sidebar atau Overlay tidak ditemukan! Cek ID di HTML.');
-                    return;
+        function toggleSidebar() {
+            if (!sidebar) return;
+
+            // 1. Buka/Tutup Sidebar
+            sidebar.classList.toggle('-translate-x-full');
+            
+            // 2. Tampilkan/Sembunyikan Overlay
+            if (overlay) overlay.classList.toggle('hidden');
+
+            // 3. LOGIKA ROTASI PANAH
+            if (icon) {
+                // Cek apakah sidebar sedang SEMBUNYI (ada class -translate-x-full)
+                if (sidebar.classList.contains('-translate-x-full')) {
+                    // Jika sembunyi, putar panah jadi KANAN (tambah class rotate-180)
+                    icon.classList.add('rotate-180');
+                } else {
+                    // Jika terbuka, kembalikan panah jadi KIRI (hapus class rotate-180)
+                    icon.classList.remove('rotate-180');
                 }
-                
-                sidebar.classList.toggle('-translate-x-full');
-                overlay.classList.toggle('hidden');
             }
+        }
 
-            if(btnToggle) btnToggle.addEventListener('click', toggleSidebar);
-            if(btnClose) btnClose.addEventListener('click', toggleSidebar);
-            if(overlay) overlay.addEventListener('click', toggleSidebar);
-        });
-    </script>
+        // Jalankan logika rotasi sekali saat halaman dimuat 
+        // untuk memastikan arah panah sesuai status awal sidebar
+        if(sidebar && icon) {
+             if (sidebar.classList.contains('-translate-x-full')) {
+                icon.classList.add('rotate-180');
+            } else {
+                icon.classList.remove('rotate-180');
+            }
+        }
+
+        if(btnToggle) btnToggle.addEventListener('click', toggleSidebar);
+        if(btnClose) btnClose.addEventListener('click', toggleSidebar);
+        if(overlay) overlay.addEventListener('click', toggleSidebar);
+    });
+</script>
 </body>
 </html>
