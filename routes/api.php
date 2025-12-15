@@ -49,7 +49,7 @@ use App\Http\Controllers\Customer\PesananController as CustomerPesananController
 // Website fontend WA Integration
 use App\Http\Controllers\WhatsappController;
 
-Route::post('/webhook/fonnte', [App\Http\Controllers\WhatsappController::class, 'webhook']);
+Route::post('/webhook/fonnte', [WhatsappController::class, 'webhook']);
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
