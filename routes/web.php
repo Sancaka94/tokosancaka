@@ -107,8 +107,13 @@ use App\Http\Controllers\Admin\AdminLogController;
 use App\Http\Controllers\SellerRegisterController;
 use App\Http\Controllers\SellerReviewController;
 
+// Website fontend WA Integration
+use App\Http\Controllers\WhatsappController;
+
 //Tools Broadcast Pesan WA
 use App\Http\Controllers\BroadcastController;
+
+
 // =========================================================================
 // 2. PUBLIC ROUTES (GUEST / AKSES UMUM)
 // =========================================================================
@@ -128,6 +133,12 @@ Route::get('/register/success/{no_wa}', function ($no_wa) {
     return view('auth.register-success', compact('no_wa'));
 })->name('register.success');
 Route::get('customer/profile/setup/{token}', [CustomerProfileController::class, 'setup'])->name('customer.profile.setup');
+
+
+Route::get('/whatsapp', [App\Http\Controllers\WhatsappController::class, 'index']);
+Route::post('/whatsapp/send', [App\Http\Controllers\WhatsappController::class, 'sendMessage']);
+Route::post('/webhook/fonnte', [WhatsappController::class, 'handleIncoming']);
+
 
 // Tracking & Ongkir (Public)
 Route::get('/tracking', [TrackingController::class, 'showTrackingPage'])->name('tracking.index');
