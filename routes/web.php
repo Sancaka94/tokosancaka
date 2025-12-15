@@ -135,12 +135,6 @@ Route::get('/register/success/{no_wa}', function ($no_wa) {
 Route::get('customer/profile/setup/{token}', [CustomerProfileController::class, 'setup'])->name('customer.profile.setup');
 
 
-// ==========================
-// WHATSAPP INTEGRATION
-// ==========================
-
-Route::get('/whatsapp', [WhatsappController::class, 'index'])->name('whatsapp.index');
-Route::post('/whatsapp/send', [WhatsappController::class, 'sendMessage'])->name('whatsapp.send');
 
 
 
