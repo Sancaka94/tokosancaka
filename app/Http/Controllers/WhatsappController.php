@@ -73,10 +73,6 @@ class WhatsappController extends Controller
         return view('whatsapp.index', compact('contacts', 'activeChat', 'activePhone'));
     }
 
-    /**
-     * 2. KIRIM PESAN (Outgoing - Dari Admin ke Customer)
-     * Route: POST /whatsapp/send
-     */
     public function sendMessage(Request $request)
     {
         // Validasi input
