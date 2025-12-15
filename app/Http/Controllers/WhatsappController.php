@@ -89,70 +89,61 @@ class WhatsappController extends Controller
         }
     }
 
-    /**
-     * 3. WEBHOOK (Incoming - Pesan Masuk dari Fonnte)
-     * Pastikan URL ini dipasang di Dashboard Fonnte (POST)
-     */
-    public function webhook(Request $request)
-    {
-        // Log untuk debugging (cek di storage/logs/laravel.log)
-        Log::info('Webhook Incoming:', $request->all());
+   public function webhook(Request $request)
+{
+    // 1. Log Incoming Data (Penting untuk Debugging)
+    Log::info('WA Incoming:', $request->all());
 
-        // Ambil Data dari Fonnte
-        $sender  = $request->sender;
+    try {
+        // 2. Cek apakah ini Pesan Grup?
+        $isGroup = $request->isgroup || $request->isgroup === 'true'; // Fonnte kadang kirim boolean atau string
+
+        // Jika Anda TIDAK ingin menyimpan chat grup (supaya database tidak penuh)
+        if ($isGroup) {
+            return response()->json(['status' => true, 'message' => 'Group message ignored']);
+        }
+
+        // 3. Ambil Data
+        $sender  = $request->sender; // Nomor HP (atau Group ID)
         $message = $request->message;
-        $name    = $request->name;     // Nama pengirim
-        $url     = $request->url;      // URL media (jika ada gambar/file)
-        $filename= $request->filename; // Nama file (jika ada)
-
-        if (!$sender) {
-            return response()->json(['status' => false, 'reason' => 'Invalid Data'], 400);
+        $name    = $request->name ?? 'Unknown';
+        
+        // Handle jika pesan kosong/non-text (misal: sticker)
+        if ($message == "non-text message" || empty($message)) {
+            $message = "(Sticker/Media/Non-Text)";
         }
 
-        try {
-            // A. Simpan Pesan Masuk ke Database
-            WhatsappLog::create([
-                'sender_number' => $sender,
-                'sender_name'   => $name ?? 'Unknown',
-                'message'       => $message,     // Bisa null jika cuma kirim file
-                'media_url'     => $url ?? null, // Simpan URL jika ada
-                'type'          => 'incoming',
-                'status'        => 'received'
-            ]);
+        // 4. Simpan ke Database
+        WhatsappLog::create([
+            'sender_number' => $sender,
+            'sender_name'   => $name,
+            'message'       => $message,
+            'media_url'     => $request->url ?? null,
+            'type'          => 'incoming',
+            'status'        => 'received'
+        ]);
 
-            // B. Auto Reply Logic (Sesuai kode native PHP Anda)
-            // Cek isi pesan, ubah ke huruf kecil semua
-            $msg = strtolower($message);
-
-            if ($msg == "test") {
-                $this->replyAuto($sender, "Working great! (Laravel Bot)");
-            } 
-            elseif ($msg == "image") {
-                $this->replyAuto($sender, "Here is your image", "https://filesamples.com/samples/image/jpg/sample_640%C3%97426.jpg", "sample.jpg");
-            } 
-            elseif ($msg == "audio") {
-                $this->replyAuto($sender, "Here is your audio", "https://filesamples.com/samples/audio/mp3/sample3.mp3", "music.mp3");
-            } 
-            elseif ($msg == "video") {
-                $this->replyAuto($sender, "Here is your video", "https://filesamples.com/samples/video/mp4/sample_640x360.mp4");
-            } 
-            elseif ($msg == "file") {
-                $this->replyAuto($sender, "Here is your document", "https://filesamples.com/samples/document/docx/sample3.docx", "document.docx");
+        // 5. Auto Reply (Hanya untuk Chat Pribadi)
+        // Kita tidak mau bot membalas di Grup (bisa spam)
+        if (!$isGroup) {
+            $msgLower = strtolower($message);
+            
+            if ($msgLower == "test") {
+                $this->replyAuto($sender, "Halo! Server Laravel siap menerima pesan.");
             }
-            // Jika Anda ingin pesan default (else)
-            /*
-            else {
-                $this->replyAuto($sender, "Halo, saya tidak mengerti. Ketik: Test, Image, Audio, Video, atau File.");
+            elseif ($msgLower == "info") {
+                $this->replyAuto($sender, "Ini adalah layanan otomatis Sancaka Express.");
             }
-            */
-
-            return response()->json(['status' => true]);
-
-        } catch (\Exception $e) {
-            Log::error('Webhook Failed: ' . $e->getMessage());
-            return response()->json(['status' => false, 'error' => $e->getMessage()], 500);
         }
+
+        return response()->json(['status' => true]);
+
+    } catch (\Exception $e) {
+        // Catat error asli ke Laravel Log agar ketahuan
+        Log::error('Webhook Error: ' . $e->getMessage());
+        return response()->json(['status' => false], 500);
     }
+}
 
     /**
      * Helper Function: Untuk kirim balasan otomatis (Auto Reply)
