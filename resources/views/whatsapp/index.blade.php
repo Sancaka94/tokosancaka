@@ -14,7 +14,7 @@
     .wa-wrapper {
         display: flex;
         /* Tinggi responsif: Full layar dikurangi header dashboard */
-        height: 80vh; 
+        height: 100vh; 
         width: 100%; /* Memaksa lebar penuh */
         background-color: #fff;
         border-radius: 8px;
