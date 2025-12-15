@@ -2,74 +2,36 @@
 
 @section('content')
 
-<audio id="wa-notification-sound" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
-
 <style>
-    /* --- Layout Utama --- */
+    /* Layout Utama */
     .wa-wrapper {
         display: flex;
-        height: 85vh;
+        height: 85vh; /* Tinggi fix agar scrollbar muncul di dalam */
         background-color: #fff;
-        border-radius: 0; /* WA Web biasanya kotak penuh atau radius kecil */
+        border-radius: 10px;
         overflow: hidden;
         box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         border: 1px solid #d1d7db;
-        position: relative;
-        font-family: "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
     }
 
-    /* --- SIDEBAR KIRI --- */
+    /* --- SIDEBAR KIRI (DAFTAR KONTAK) --- */
     .wa-sidebar {
-        width: 30%; /* WA standard sekitar 30-35% */
-        min-width: 300px;
+        width: 350px;
         background-color: #fff;
         border-right: 1px solid #e9edef;
         display: flex;
         flex-direction: column;
     }
 
-    /* Header Sidebar (User Profile) */
     .wa-sidebar-header {
         background-color: #f0f2f5;
         padding: 10px 16px;
-        height: 59px;
+        height: 60px;
         display: flex;
         align-items: center;
-        justify-content: space-between; /* Icon di kanan */
-        border-bottom: 1px solid #d1d7db;
-        flex-shrink: 0;
-    }
-
-    .wa-sidebar-icons {
-        display: flex;
-        gap: 20px;
-        color: #54656f;
-    }
-    .wa-sidebar-icons i { cursor: pointer; font-size: 18px; }
-
-    /* Search Bar di Sidebar (Opsional, style visual saja) */
-    .wa-search-bar {
-        height: 49px;
         border-bottom: 1px solid #e9edef;
-        background: #fff;
-        display: flex;
-        align-items: center;
-        padding: 0 12px;
-        flex-shrink: 0;
-    }
-    .wa-search-box {
-        background: #f0f2f5;
-        border-radius: 8px;
-        height: 35px;
-        width: 100%;
-        display: flex;
-        align-items: center;
-        padding: 0 10px;
-        font-size: 14px;
-        color: #54656f;
     }
 
-    /* List Kontak */
     .wa-contact-list {
         flex: 1;
         overflow-y: auto;
@@ -79,14 +41,12 @@
     .wa-contact-item {
         display: flex;
         align-items: center;
-        padding: 0 15px; /* Tinggi baris WA sekitar 72px */
-        height: 72px;
-        border-bottom: 1px solid #f0f2f5;
+        padding: 12px 15px;
+        border-bottom: 1px solid #f5f6f6;
         cursor: pointer;
         transition: background 0.2s;
         text-decoration: none;
         color: inherit;
-        position: relative;
     }
 
     .wa-contact-item:hover { background-color: #f5f6f6; }
@@ -94,77 +54,59 @@
 
     .wa-avatar {
         width: 49px; height: 49px;
+        background-color: #dfe5e7;
         border-radius: 50%;
         flex-shrink: 0;
-        overflow: hidden;
+        display: flex; align-items: center; justify-content: center;
+        color: #fff; font-size: 24px;
         margin-right: 15px;
-        background-color: #dfe5e7;
     }
-    .wa-avatar img { width: 100%; height: 100%; object-fit: cover; }
 
     .wa-contact-info {
         flex: 1;
         overflow: hidden;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        height: 100%;
-        border-bottom: 1px solid #f0f2f5; /* Garis pemisah */
-        padding-right: 10px;
     }
 
-    /* Text Styles */
-    .wa-name { font-size: 17px; font-weight: 400; color: #111b21; margin-bottom: 3px; }
+    .wa-contact-top {
+        display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px;
+    }
+
+    .wa-name { font-size: 16px; font-weight: 500; color: #111b21; }
     .wa-time { font-size: 12px; color: #667781; }
-    .wa-preview { font-size: 13px; color: #667781; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .wa-number { font-size: 13px; color: #667781; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 
-    /* Badge Notif */
-    .wa-badge {
-        background-color: #25d366; color: white;
-        min-width: 20px; height: 20px;
-        border-radius: 50%; font-size: 11px; font-weight: 600;
-        display: flex; align-items: center; justify-content: center;
-        padding: 0 5px; flex-shrink: 0;
-    }
-
-    /* --- CHAT AREA KANAN --- */
+    /* --- AREA CHAT KANAN --- */
     .wa-chat-area {
         flex: 1;
         display: flex;
         flex-direction: column;
         background-color: #efe7dd;
+        /* Background pattern WA */
         background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
         background-repeat: repeat;
-        background-size: 400px;
-        position: relative;
     }
 
     /* Header Chat */
     .wa-chat-header {
-        height: 59px;
+        height: 60px;
         background-color: #f0f2f5;
         padding: 10px 16px;
         display: flex; align-items: center;
-        justify-content: space-between;
         border-bottom: 1px solid #d1d7db;
         z-index: 10;
-        flex-shrink: 0;
     }
 
-    .wa-chat-header-info { display: flex; align-items: center; cursor: pointer; }
-    .wa-chat-header-icons { display: flex; gap: 24px; color: #54656f; font-size: 18px; }
-
-    /* Pesan */
+    /* Kotak Pesan (Scrollable) */
     .wa-messages-box {
         flex: 1;
-        padding: 20px 60px; /* Padding samping lebih lebar seperti WA Web */
+        padding: 20px 40px;
         overflow-y: auto;
         display: flex;
         flex-direction: column;
-        gap: 2px; /* Jarak antar bubble rapat */
+        gap: 8px;
     }
 
-    /* Bubble Styles */
+    /* Bubble Chat Base */
     .wa-bubble {
         max-width: 65%;
         padding: 6px 7px 8px 9px;
@@ -174,38 +116,55 @@
         position: relative;
         box-shadow: 0 1px 0.5px rgba(11,20,26,.13);
         word-wrap: break-word;
-        margin-bottom: 8px;
     }
 
+    /* Incoming (Putih) */
     .wa-bubble.incoming {
         align-self: flex-start;
         background-color: #ffffff;
         border-top-left-radius: 0;
     }
 
+    /* Outgoing (Hijau Muda) */
     .wa-bubble.outgoing {
         align-self: flex-end;
         background-color: #d9fdd3;
         border-top-right-radius: 0;
     }
 
+    /* Media Handling (Gambar/File) */
+    .media-preview img {
+        max-width: 100%;
+        border-radius: 5px;
+        margin-bottom: 5px;
+        cursor: pointer;
+    }
+    .media-file-link {
+        display: flex; align-items: center; gap: 10px;
+        background: rgba(0,0,0,0.05); padding: 10px; border-radius: 5px;
+        text-decoration: none; color: #333; font-weight: 500;
+        margin-bottom: 5px;
+    }
+
+    /* Meta Info (Jam & Centang) */
     .wa-meta {
-        float: right; margin-top: 4px; margin-left: 10px;
-        font-size: 11px; color: #667781;
+        float: right;
+        margin-top: 4px;
+        margin-left: 10px;
+        font-size: 11px;
+        color: #667781;
         display: flex; align-items: center; gap: 3px;
-        position: relative; top: 4px;
+        position: relative;
+        top: 4px;
     }
 
     /* Input Area */
     .wa-input-area {
         min-height: 62px;
         background-color: #f0f2f5;
-        padding: 5px 16px;
+        padding: 10px 16px;
         display: flex; align-items: center;
-        gap: 15px;
-        width: 100%;
-        flex-shrink: 0;
-        z-index: 10;
+        gap: 10px;
     }
 
     .wa-input {
@@ -216,127 +175,80 @@
         background-color: #fff;
         outline: none;
         font-size: 15px;
-        height: 42px;
+        resize: none;
+        height: 40px;
+        overflow-y: hidden;
     }
     
-    .btn-icon { background: none; border: none; font-size: 24px; color: #54656f; cursor: pointer; }
-
-    /* Flash Toast */
-    .flash-toast {
-        position: absolute; top: 80px; right: 20px; z-index: 100;
-        padding: 12px 24px; border-radius: 4px; color: white;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        animation: fadeOut 4s forwards;
+    .btn-send {
+        background: transparent; border: none; font-size: 20px; color: #54656f; cursor: pointer;
     }
-    .flash-success { background-color: #00a884; } 
-    .flash-error { background-color: #ea0038; }
+    .btn-send:hover { color: #00a884; }
 
-    @keyframes fadeOut {
-        0% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; display: none; }
-    }
-
+    /* Scrollbar Halus */
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); }
+    ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 3px; }
 </style>
 
-<div class="container-fluid py-3" style="background: #d1d7db; height: 100vh;">
-    
+<div class="container-fluid py-3">
     @if(session('success'))
-        <div class="flash-toast flash-success">{{ session('success') }}</div>
+        <div class="alert alert-success mb-2 py-2">{{ session('success') }}</div>
     @endif
     @if(session('error'))
-        <div class="flash-toast flash-error">{{ session('error') }}</div>
+        <div class="alert alert-danger mb-2 py-2">{{ session('error') }}</div>
     @endif
 
     <div class="wa-wrapper">
         
         <div class="wa-sidebar">
             <div class="wa-sidebar-header">
-                <div class="wa-avatar" style="width: 40px; height: 40px; margin: 0; cursor: pointer;">
-                    <img src="https://ui-avatars.com/api/?name=Admin&background=dfe5e7&color=fff" alt="Me">
+                <div class="wa-avatar" style="width:40px; height:40px; font-size:18px;">
+                    <i class="fas fa-user-circle"></i>
                 </div>
-                <div class="wa-sidebar-icons">
-                    <i class="fas fa-users" title="Komunitas"></i>
-                    <i class="fas fa-circle-notch" title="Status"></i>
-                    <i class="fas fa-message" title="Chat Baru"></i>
-                    <i class="fas fa-ellipsis-v" title="Menu"></i>
-                </div>
-            </div>
-
-            <div class="wa-search-bar">
-                <div class="wa-search-box">
-                    <i class="fas fa-search me-3"></i>
-                    <span>Cari atau mulai chat baru</span>
-                </div>
+                <h6 class="m-0 ms-2 text-dark">Chat Admin</h6>
             </div>
 
             <div class="wa-contact-list">
                 @foreach($contacts as $contact)
                     @php
-                        // --- SOLUSI MASALAH 1: LOGIC FILTER ---
-                        // Ganti '628819435180' dengan variabel nomor admin Anda jika ada di session/config
-                        // atau pastikan Logic di Controller sudah memfilter 'sender_number' != Admin.
-                        // Di sini kita pakai cara kasar di View: Skip jika nama/nomor terdeteksi sebagai Admin.
-                        if(strpos(strtolower($contact->sender_name), 'admin') !== false || strpos(strtolower($contact->sender_name), 'me') !== false) {
-                            continue; 
-                        }
-
+                        // Cek apakah ini kontak yang sedang aktif dibuka
                         $isActive = ($activePhone == $contact->sender_number);
-                        $displayName = (!empty($contact->sender_name) && strtolower($contact->sender_name) !== 'unknown') 
-                                        ? $contact->sender_name 
-                                        : $contact->sender_number;
-                        
-                        $unreadCount = $contact->unread ?? 0; 
                     @endphp
                     <a href="{{ route('whatsapp.index', ['phone' => $contact->sender_number]) }}" class="wa-contact-item {{ $isActive ? 'active' : '' }}">
                         <div class="wa-avatar">
-                            <img src="https://ui-avatars.com/api/?name={{ urlencode($displayName) }}&background=random&color=fff" alt="Profile">
+                            <i class="fas fa-user"></i>
                         </div>
                         <div class="wa-contact-info">
                             <div class="wa-contact-top">
-                                <span class="wa-name">{{ $displayName }}</span>
+                                <span class="wa-name">{{ $contact->sender_name ?: 'Tanpa Nama' }}</span>
                                 <span class="wa-time">{{ \Carbon\Carbon::parse($contact->last_msg_time)->format('H:i') }}</span>
                             </div>
-                            
-                            <div class="wa-contact-bottom">
-                                <div class="wa-preview">
-                                    {{-- Preview pesan terakhir (opsional jika data ada) --}}
-                                    {{ $contact->sender_number }}
-                                </div>
-                                
-                                @if($unreadCount > 0)
-                                    <div class="wa-badge">{{ $unreadCount }}</div>
-                                @endif
+                            <div class="wa-number">
+                                {{ $contact->sender_number }}
                             </div>
                         </div>
                     </a>
                 @endforeach
+
+                @if($contacts->isEmpty())
+                    <div class="text-center p-4 text-muted">
+                        <small>Belum ada riwayat chat.</small>
+                    </div>
+                @endif
             </div>
         </div>
 
         <div class="wa-chat-area">
             @if($activePhone)
-                @php
-                    $activeContact = $contacts->where('sender_number', $activePhone)->first();
-                    $activeName = $activeContact && !empty($activeContact->sender_name) && strtolower($activeContact->sender_name) !== 'unknown'
-                                  ? $activeContact->sender_name 
-                                  : $activePhone;
-                @endphp
-
+                
                 <div class="wa-chat-header">
-                    <div class="wa-chat-header-info">
-                        <div class="wa-avatar" style="width: 40px; height: 40px;">
-                            <img src="https://ui-avatars.com/api/?name={{ urlencode($activeName) }}&background=random&color=fff" alt="User">
-                        </div>
-                        <div class="ms-3">
-                            <div style="font-weight: 400; font-size:16px; color:#111b21;">{{ $activeName }}</div>
-                            <div style="font-size:12px; color:#667781;">Online</div>
-                        </div>
+                    <div class="wa-avatar" style="width:40px; height:40px; font-size:18px;">
+                        <i class="fas fa-user"></i>
                     </div>
-                    <div class="wa-chat-header-icons">
-                        <i class="fas fa-search"></i>
-                        <i class="fas fa-ellipsis-v"></i>
+                    <div class="ms-3">
+                        <div style="font-weight: 500; font-size:16px;">{{ $activePhone }}</div>
+                        <div style="font-size:12px; color:#667781;">Online</div>
                     </div>
                 </div>
 
@@ -345,10 +257,32 @@
                         <div class="wa-bubble {{ $chat->type == 'outgoing' ? 'outgoing' : 'incoming' }}">
                             
                             @if(!empty($chat->media_url))
-                                <div class="media-preview mb-1">
-                                    <a href="{{ $chat->media_url }}" target="_blank" style="text-decoration: underline; color: #00a884;">
-                                        <i class="fas fa-file"></i> Lihat Media
-                                    </a>
+                                @php
+                                    $ext = pathinfo($chat->media_url, PATHINFO_EXTENSION);
+                                    $isImage = in_array(strtolower($ext), ['jpg', 'jpeg', 'png', 'gif', 'webp']);
+                                    $isAudio = in_array(strtolower($ext), ['mp3', 'ogg', 'wav']);
+                                    $isVideo = in_array(strtolower($ext), ['mp4', 'mov']);
+                                @endphp
+
+                                <div class="media-preview">
+                                    @if($isImage)
+                                        <a href="{{ $chat->media_url }}" target="_blank">
+                                            <img src="{{ $chat->media_url }}" alt="Image">
+                                        </a>
+                                    @elseif($isAudio)
+                                        <audio controls style="width: 200px;">
+                                            <source src="{{ $chat->media_url }}">
+                                        </audio>
+                                    @elseif($isVideo)
+                                        <video controls style="max-width: 100%; border-radius:5px;">
+                                            <source src="{{ $chat->media_url }}">
+                                        </video>
+                                    @else
+                                        <a href="{{ $chat->media_url }}" target="_blank" class="media-file-link">
+                                            <i class="fas fa-file-alt fa-lg text-danger"></i>
+                                            <span>Lihat Dokumen</span>
+                                        </a>
+                                    @endif
                                 </div>
                             @endif
 
@@ -359,9 +293,10 @@
                             <span class="wa-meta">
                                 {{ $chat->created_at->format('H:i') }}
                                 @if($chat->type == 'outgoing')
-                                    <i class="fas fa-check-double text-primary" style="font-size: 10px;"></i>
+                                    <i class="fas fa-check-double text-primary"></i>
                                 @endif
                             </span>
+
                         </div>
                     @empty
                         <div class="text-center mt-5">
@@ -371,28 +306,25 @@
                 </div>
 
                 <div class="wa-input-area">
-                    <button class="btn-icon"><i class="far fa-smile"></i></button>
-                    <button class="btn-icon"><i class="fas fa-plus"></i></button>
-                    
-                    <form action="{{ route('whatsapp.send') }}" method="POST" class="d-flex flex-grow-1">
+                    <form action="{{ route('whatsapp.send') }}" method="POST" class="w-100 d-flex gap-2 align-items-center">
                         @csrf
                         <input type="hidden" name="target" value="{{ $activePhone }}">
                         
-                        <input type="text" name="message" class="wa-input" placeholder="Ketik pesan" autocomplete="off" required autofocus>
+                        <button type="button" class="btn-send"><i class="far fa-smile"></i></button>
                         
-                        <button type="submit" class="btn-icon ms-3">
-                            <i class="fas fa-paper-plane"></i>
+                        <input type="text" name="message" class="wa-input" placeholder="Ketik pesan..." autocomplete="off" required>
+                        
+                        <button type="submit" class="btn-send ms-1">
+                            <i class="fas fa-paper-plane text-secondary"></i>
                         </button>
                     </form>
-                    
-                    <button class="btn-icon"><i class="fas fa-microphone"></i></button>
                 </div>
 
             @else
-                <div class="h-100 d-flex flex-column justify-content-center align-items-center text-center" style="background-color: #f0f2f5; border-bottom: 6px solid #43c960;">
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/WhatsApp.svg/120px-WhatsApp.svg.png" width="80" class="mb-4 opacity-50" style="filter: grayscale(100%);">
-                    <h2 style="color: #41525d; font-weight: 300;">WhatsApp Web</h2>
-                    <p style="color: #667781; font-size: 14px;">Kirim dan terima pesan tanpa perlu menghubungkan telepon.</p>
+                <div class="h-100 d-flex flex-column justify-content-center align-items-center text-center">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/WhatsApp.svg/1200px-WhatsApp.svg.png" width="80" class="mb-3 opacity-50" style="filter: grayscale(100%);">
+                    <h4 class="text-secondary fw-light">WhatsApp Web Laravel</h4>
+                    <p class="text-muted small">Kirim dan terima pesan tanpa perlu membuka ponsel Anda.<br>Pilih kontak di sebelah kiri untuk memulai.</p>
                 </div>
             @endif
         </div>
@@ -403,44 +335,12 @@
 <script>
     document.addEventListener("DOMContentLoaded", function() {
         var messageBox = document.getElementById("messageBox");
-        var audio = document.getElementById("wa-notification-sound");
-        var lastMessageCount = document.querySelectorAll('.wa-bubble').length;
-
-        // Auto Scroll ke Bawah
-        if (messageBox) { messageBox.scrollTop = messageBox.scrollHeight; }
-
-        // Realtime Refresh Logic
-        @if($activePhone)
-            setInterval(function() {
-                fetch(window.location.href)
-                .then(response => response.text())
-                .then(html => {
-                    var parser = new DOMParser();
-                    var doc = parser.parseFromString(html, 'text/html');
-                    
-                    var newMessageBox = doc.getElementById('messageBox');
-                    var newContactList = doc.querySelector('.wa-contact-list');
-                    
-                    // Update Pesan
-                    if (newMessageBox) {
-                        var newMessageCount = newMessageBox.querySelectorAll('.wa-bubble').length;
-                        if (newMessageCount > lastMessageCount) {
-                            document.getElementById('messageBox').innerHTML = newMessageBox.innerHTML;
-                            if(audio) audio.play().catch(e => console.log(e));
-                            document.getElementById('messageBox').scrollTop = document.getElementById('messageBox').scrollHeight;
-                            lastMessageCount = newMessageCount;
-                        }
-                    }
-
-                    // Update List Kontak
-                    if(newContactList) {
-                        document.querySelector('.wa-contact-list').innerHTML = newContactList.innerHTML;
-                    }
-                })
-                .catch(err => console.error('Error fetching chat', err));
-            }, 2000); 
-        @endif
+        if (messageBox) {
+            // Langsung scroll ke posisi paling bawah saat halaman dimuat
+            messageBox.scrollTop = messageBox.scrollHeight;
+        }
     });
 </script>
+
 
 @endsection
