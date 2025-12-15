@@ -105,6 +105,18 @@ use App\Http\Controllers\WhatsappController;
 use App\Http\Controllers\BroadcastController;
 
 
+Route::get('/intip-token', function () {
+    // Paksa bersihkan cache konfigurasi saat route ini dibuka
+    \Artisan::call('config:clear');
+    
+    return response()->json([
+        'token_di_env' => env('FONNTE_API_KEY'), // Baca langsung dari file .env
+        'token_di_config' => config('services.fonnte.key'), // Baca dari memory Laravel
+        'status_fonnte' => 'Silakan cek apakah token di atas sudah Token Baru atau masih Token Lama'
+    ]);
+});
+
+
 Route::get('/cek-dokter', function () {
     // 1. Bersihkan Cache
     Artisan::call('route:clear');
