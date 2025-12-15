@@ -31,31 +31,25 @@ class WhatsappController extends Controller
             ->orderBy('last_msg_time', 'desc')
             ->get();
 
-        // B. Mapping Nama Kontak (Cari nama paling update)
+        // B. Mapping Nama Kontak (VERSI SIMPEL - TANPA CEK TABEL USER)
         $contacts = $rawContacts->map(function($contact) {
-            // Cek di tabel User dulu
-            $user = \App\Models\User::where('no_hp', $contact->sender_number)->first();
             
-            if ($user) {
-                $finalName = $user->name;
-            } else {
-                // Ambil dari log pesan masuk terakhir
+            // Langsung cari nama dari log WA terakhir
+            $lastLog = DB::table('whatsapp_logs')
+                ->where('sender_number', $contact->sender_number)
+                ->where('type', 'incoming')
+                ->orderBy('created_at', 'desc')
+                ->first();
+            
+            // Fallback
+            if (!$lastLog) {
                 $lastLog = DB::table('whatsapp_logs')
                     ->where('sender_number', $contact->sender_number)
-                    ->where('type', 'incoming')
                     ->orderBy('created_at', 'desc')
                     ->first();
-                
-                // Fallback jika tidak ada incoming
-                if (!$lastLog) {
-                    $lastLog = DB::table('whatsapp_logs')
-                        ->where('sender_number', $contact->sender_number)
-                        ->orderBy('created_at', 'desc')
-                        ->first();
-                }
-
-                $finalName = $lastLog->sender_name ?? 'Unknown';
             }
+
+            $finalName = $lastLog->sender_name ?? 'Unknown';
 
             return (object) [
                 'sender_number' => $contact->sender_number,
