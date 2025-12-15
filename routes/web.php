@@ -156,7 +156,12 @@ Route::get('customer/profile/setup/{token}', [CustomerProfileController::class, 
 // BENAR
 Route::post('/webhook/fonnte', [WhatsappController::class, 'webhook']);
 
+// ==========================
+// WHATSAPP INTEGRATION
+// ==========================
 
+Route::get('/whatsapp', [WhatsappController::class, 'index'])->name('whatsapp.index');
+Route::post('/whatsapp/send', [WhatsappController::class, 'sendMessage'])->name('whatsapp.send');
 
 
 // Tracking & Ongkir (Public)
