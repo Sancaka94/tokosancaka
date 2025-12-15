@@ -51,6 +51,7 @@
         transition: background 0.2s;
         text-decoration: none;
         color: inherit;
+        position: relative;
     }
 
     .wa-contact-item:hover { background-color: #f5f6f6; }
@@ -71,15 +72,43 @@
     .wa-contact-info {
         flex: 1;
         overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
     }
 
     .wa-contact-top {
         display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px;
     }
 
+    .wa-contact-bottom {
+        display: flex; justify-content: space-between; align-items: center;
+    }
+
     .wa-name { font-size: 16px; font-weight: 500; color: #111b21; }
     .wa-time { font-size: 12px; color: #667781; }
-    .wa-number { font-size: 13px; color: #667781; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    
+    .wa-number { 
+        font-size: 13px; color: #667781; 
+        overflow: hidden; white-space: nowrap; text-overflow: ellipsis; 
+        max-width: 85%;
+    }
+
+    /* BADGE NOTIFIKASI */
+    .wa-badge {
+        background-color: #25d366;
+        color: white;
+        min-width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        font-size: 11px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 5px;
+        flex-shrink: 0;
+    }
 
     /* --- AREA CHAT KANAN --- */
     .wa-chat-area {
@@ -87,9 +116,10 @@
         display: flex;
         flex-direction: column;
         background-color: #efe7dd;
-        /* Hapus background logo WA, ganti pattern halus atau warna solid */
-        background-image: none; 
-        background: #e5ddd5;
+        /* BACKGROUND DIKEMBALIKAN (DOODLE WA) */
+        background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
+        background-repeat: repeat;
+        background-size: 400px; /* Opsional: Mengatur ukuran pattern */
     }
 
     /* Header Chat */
@@ -124,14 +154,14 @@
         word-wrap: break-word;
     }
 
-    /* Incoming (Customer - Kiri - Putih) */
+    /* Incoming (Putih) */
     .wa-bubble.incoming {
         align-self: flex-start;
         background-color: #ffffff;
         border-top-left-radius: 0;
     }
 
-    /* Outgoing (Admin - Kanan - Hijau) */
+    /* Outgoing (Hijau) */
     .wa-bubble.outgoing {
         align-self: flex-end;
         background-color: #d9fdd3;
@@ -149,17 +179,16 @@
         position: relative; top: 4px;
     }
 
-    /* Input Area - LEBAR FIXED */
+    /* Input Area - LEBAR FULL */
     .wa-input-area {
         min-height: 62px;
         background-color: #f0f2f5;
         padding: 10px 16px;
         display: flex; align-items: center;
         gap: 10px;
-        width: 100%; /* Pastikan full width */
+        width: 100%;
     }
 
-    /* Form wrapper untuk input */
     .wa-form {
         display: flex;
         width: 100%;
@@ -168,8 +197,8 @@
     }
 
     .wa-input {
-        flex: 1; /* Mengisi sisa ruang */
-        width: 100%; /* Memaksa lebar penuh di dalam flex parent */
+        flex: 1; 
+        width: 100%; 
         padding: 9px 12px;
         border-radius: 8px;
         border: 1px solid #fff;
@@ -187,15 +216,11 @@
     }
     .btn-send:hover { color: #00a884; }
 
-    /* Flash Message Toast (Pojok Kanan Atas) */
+    /* Flash Toast */
     .flash-toast {
         position: absolute;
-        top: 20px;
-        right: 20px;
-        z-index: 100;
-        padding: 10px 20px;
-        border-radius: 5px;
-        color: white;
+        top: 20px; right: 20px; z-index: 100;
+        padding: 10px 20px; border-radius: 5px; color: white;
         box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         animation: fadeOut 4s forwards;
     }
@@ -203,12 +228,9 @@
     .flash-error { background-color: #dc3545; }
 
     @keyframes fadeOut {
-        0% { opacity: 1; }
-        70% { opacity: 1; }
-        100% { opacity: 0; display: none; }
+        0% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; display: none; }
     }
 
-    /* Scrollbar Halus */
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 3px; }
@@ -233,19 +255,20 @@
                     </div>
                     <h6 class="m-0 ms-2 text-dark">Chat Admin</h6>
                 </div>
-                <div>
-                    <span id="connection-status" class="badge bg-success" style="font-size: 10px;">Connected</span>
-                </div>
+                <span id="connection-status" class="badge bg-success" style="font-size: 10px;">Connected</span>
             </div>
 
             <div class="wa-contact-list">
                 @foreach($contacts as $contact)
                     @php
                         $isActive = ($activePhone == $contact->sender_number);
-                        // LOGIC: Jika nama kosong atau 'Unknown' atau 'unknown', pakai nomor HP
                         $displayName = (!empty($contact->sender_name) && strtolower($contact->sender_name) !== 'unknown') 
                                         ? $contact->sender_name 
                                         : $contact->sender_number;
+                        
+                        // Simulasi logic unread (Sesuaikan dengan field database Anda, misal: $contact->unread_count)
+                        // Jika field belum ada, badge tidak akan muncul (default 0)
+                        $unreadCount = $contact->unread ?? 0; 
                     @endphp
                     <a href="{{ route('whatsapp.index', ['phone' => $contact->sender_number]) }}" class="wa-contact-item {{ $isActive ? 'active' : '' }}">
                         <div class="wa-avatar">
@@ -256,8 +279,17 @@
                                 <span class="wa-name">{{ $displayName }}</span>
                                 <span class="wa-time">{{ \Carbon\Carbon::parse($contact->last_msg_time)->format('H:i') }}</span>
                             </div>
-                            <div class="wa-number">
-                                {{ $contact->sender_number }}
+                            
+                            <div class="wa-contact-bottom">
+                                <div class="wa-number">
+                                    {{ $contact->sender_number }}
+                                </div>
+                                
+                                @if($unreadCount > 0)
+                                    <div class="wa-badge">
+                                        {{ $unreadCount }}
+                                    </div>
+                                @endif
                             </div>
                         </div>
                     </a>
@@ -274,7 +306,6 @@
         <div class="wa-chat-area">
             @if($activePhone)
                 @php
-                    // Ambil nama dari kontak aktif untuk header
                     $activeContact = $contacts->where('sender_number', $activePhone)->first();
                     $activeName = $activeContact && !empty($activeContact->sender_name) && strtolower($activeContact->sender_name) !== 'unknown'
                                   ? $activeContact->sender_name 
@@ -347,11 +378,8 @@
                     <form action="{{ route('whatsapp.send') }}" method="POST" class="wa-form">
                         @csrf
                         <input type="hidden" name="target" value="{{ $activePhone }}">
-                        
                         <button type="button" class="btn-send"><i class="far fa-smile"></i></button>
-                        
                         <input type="text" name="message" class="wa-input" placeholder="Ketik pesan..." autocomplete="off" required autofocus>
-                        
                         <button type="submit" class="btn-send ms-1">
                             <i class="fas fa-paper-plane text-secondary"></i>
                         </button>
@@ -376,52 +404,34 @@
         var audio = document.getElementById("wa-notification-sound");
         var lastMessageCount = document.querySelectorAll('.wa-bubble').length;
 
-        // 1. Scroll ke bawah saat load pertama
-        if (messageBox) {
-            scrollToBottom();
-        }
+        // 1. Scroll ke bawah
+        if (messageBox) { scrollToBottom(); }
 
         function scrollToBottom() {
-            if(messageBox) {
-                messageBox.scrollTop = messageBox.scrollHeight;
-            }
+            if(messageBox) { messageBox.scrollTop = messageBox.scrollHeight; }
         }
 
-        // 2. Auto Refresh Logic (Tanpa Reload Browser)
-        // Kita menggunakan fetch untuk mengambil konten HTML halaman ini, lalu mengambil bagian pesan barunya saja.
+        // 2. Auto Refresh (Realtime)
         @if($activePhone)
             setInterval(function() {
                 fetch(window.location.href)
                 .then(response => response.text())
                 .then(html => {
-                    // Parse HTML string menjadi DOM
                     var parser = new DOMParser();
                     var doc = parser.parseFromString(html, 'text/html');
                     
-                    // Ambil konten messageBox yang baru
                     var newMessageBoxContent = doc.getElementById('messageBox').innerHTML;
                     var newContactListContent = doc.querySelector('.wa-contact-list').innerHTML;
-                    
-                    // Update Message Box
-                    // Cek apakah ada pesan baru dengan menghitung jumlah bubble
                     var newMessageCount = doc.querySelectorAll('.wa-bubble').length;
 
                     if (newMessageCount > lastMessageCount) {
-                        // Ada pesan baru!
                         messageBox.innerHTML = newMessageBoxContent;
-                        
-                        // Play Sound
                         playNotificationSound();
-                        
-                        // Scroll ke bawah
                         scrollToBottom();
-                        
-                        // Update counter
                         lastMessageCount = newMessageCount;
                     }
 
-                    // Update Contact List (Untuk update last message / time di sidebar)
-                    // Bandingkan string biar efisien
+                    // Update Sidebar (termasuk badge notifikasi)
                     var currentContactList = document.querySelector('.wa-contact-list');
                     if(currentContactList.innerHTML.length !== newContactListContent.length) {
                         currentContactList.innerHTML = newContactListContent;
@@ -429,22 +439,17 @@
                     
                     document.getElementById('connection-status').className = 'badge bg-success';
                     document.getElementById('connection-status').innerText = 'Live';
-
                 })
                 .catch(err => {
-                    console.error('Gagal refresh chat', err);
+                    console.error('Connection error', err);
                     document.getElementById('connection-status').className = 'badge bg-danger';
                     document.getElementById('connection-status').innerText = 'Offline';
                 });
-            }, 2000); // 2 Detik sekali
+            }, 2000); 
         @endif
 
         function playNotificationSound() {
-            if(audio) {
-                audio.play().catch(function(error) {
-                    console.log("Audio play blocked by browser policy until user interaction.");
-                });
-            }
+            if(audio) { audio.play().catch(e => console.log("Audio auto-play blocked")); }
         }
     });
 </script>
