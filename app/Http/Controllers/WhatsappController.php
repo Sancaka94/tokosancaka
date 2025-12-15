@@ -15,7 +15,7 @@ class WhatsappController extends Controller
 
     public function __construct()
     {
-        $this->token = env('FONNTE_TOKEN', 'ISI_TOKEN_FONNTE_ANDA_DISINI');
+        $this->token = env('FONNTE_TOKEN', 'UvqpsKd6ksLjGsGe4ARn');
     }
 
     /**
