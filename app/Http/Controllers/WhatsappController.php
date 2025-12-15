@@ -79,24 +79,28 @@ class WhatsappController extends Controller
         }
     }
 
-   /**
-     * WEBHOOK (Incoming - Menangani Pesan Masuk)
-     * Route: POST /api/webhook/fonnte
-     */
-    public function webhook(Request $request)
+   public function webhook(Request $request)
     {
-        // 1. Log data untuk debugging
         Log::info('Fonnte Webhook Data:', $request->all());
 
-        // 2. Ambil data
         $sender  = $request->sender;
         $message = $request->message;
         $name    = $request->name;
         $url     = $request->url;
+        
+        // 1. Cek apakah ini Pesan Grup?
+        // Fonnte mengirim parameter 'isgroup' (true/false) atau mengecek akhiran '@g.us'
+        $isGroup = $request->isgroup ?? false; 
+        
+        // JIKA INI GRUP, ABAIKAN SAJA (Return true biar Fonnte senang)
+        if ($isGroup || str_ends_with($sender, '@g.us')) {
+            return response()->json([
+                'status' => true, 
+                'detail' => 'Ignored: Group message'
+            ]);
+        }
 
-        // --- SOLUSI AGAR TIDAK ERROR 400 ---
-        // Jika 'sender' kosong, berarti ini bukan pesan chat (misal: update status device).
-        // Kita Return TRUE saja supaya Fonnte menganggap sukses & tidak merah.
+        // 2. Cek apakah Sender kosong (Status Update)
         if (empty($sender)) {
             return response()->json([
                 'status' => true, 
@@ -105,7 +109,7 @@ class WhatsappController extends Controller
         }
 
         try {
-            // 3. Simpan Pesan Chat ke Database
+            // 3. Simpan Pesan PRIBADI ke Database
             WhatsappLog::create([
                 'sender_number' => $sender,
                 'sender_name'   => $name ?? 'Unknown',
@@ -115,7 +119,6 @@ class WhatsappController extends Controller
                 'status'        => 'received'
             ]);
 
-            // 4. Return Sukses ke Fonnte
             return response()->json(['status' => true]);
 
         } catch (\Exception $e) {
