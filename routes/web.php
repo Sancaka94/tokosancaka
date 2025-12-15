@@ -8,15 +8,6 @@ use Illuminate\Http\Request;
 use App\Http\Middleware\RoleMiddleware;
 use App\Services\KiriminAjaService;
 
-Route::get('/cek-gemini', function () {
-    $apiKey = env('GEMINI_API_KEY');
-    
-    // Request ke endpoint "List Models"
-    $response = Http::get("https://generativelanguage.googleapis.com/v1beta/models?key={$apiKey}");
-    
-    return $response->json();
-});
-
 // =========================================================================
 // 1. IMPORT CONTROLLER (LENGKAP)
 // =========================================================================
@@ -135,12 +126,6 @@ Route::get('/register/success/{no_wa}', function ($no_wa) {
 Route::get('customer/profile/setup/{token}', [CustomerProfileController::class, 'setup'])->name('customer.profile.setup');
 
 
-// ==========================
-// WHATSAPP INTEGRATION
-// ==========================
-
-Route::get('/whatsapp', [WhatsappController::class, 'index'])->name('whatsapp.index');
-Route::post('/whatsapp/send', [WhatsappController::class, 'sendMessage'])->name('whatsapp.send');
 
 
 

@@ -83,9 +83,16 @@ use App\Http\Controllers\Customer\TopUpController;
 use App\Http\Controllers\Customer\AgentTransactionController; // <--- TAMBAHKAN INI
 use App\Http\Controllers\Admin\AdminPpobController;
 use App\Http\Controllers\Admin\AdminLogController; // <<< TAMBAHKAN BARIS INI
+use App\Http\Controllers\WhatsappController;
 
 
 
+// ==========================
+// WHATSAPP INTEGRATION
+// ==========================
+
+Route::get('/whatsapp', [WhatsappController::class, 'index'])->name('whatsapp.index');
+Route::post('/whatsapp/send', [WhatsappController::class, 'sendMessage'])->name('whatsapp.send');
 
 
 
