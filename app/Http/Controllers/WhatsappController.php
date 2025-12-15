@@ -3,68 +3,36 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\WhatsappLog;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
+use App\Models\WhatsappLog; // Model Database
+use App\Services\FonnteService; // Service API Fonnte Anda
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class WhatsappController extends Controller
 {
-    // Pastikan token ada di .env dengan nama FONNTE_TOKEN
-    protected $token;
-
-    public function __construct()
-    {
-        $this->token = env('FONNTE_TOKEN', 'ynMyPswSKr14wdtXMJF7'); // Ganti default jika perlu
-    }
-
     /**
-     * 1. HALAMAN INBOX (Admin Dashboard)
-     * Logika Grouping diperbaiki agar nama kontak valid.
+     * 1. HALAMAN INBOX (UI Chat seperti WA Web)
+     * Route: GET /whatsapp
      */
     public function index(Request $request)
     {
-        // A. Ambil Daftar Kontak (Sidebar)
-        $rawContacts = DB::table('whatsapp_logs')
-            ->select('sender_number', DB::raw('MAX(created_at) as last_msg_time'))
-            ->groupBy('sender_number')
+        // A. Ambil Daftar Kontak (Sidebar Kiri)
+        // Kita grouping berdasarkan nomor pengirim agar tidak duplikat.
+        // Diurutkan berdasarkan waktu pesan terakhir (MAX created_at).
+        $contacts = DB::table('whatsapp_logs')
+            ->select('sender_number', 'sender_name', DB::raw('MAX(created_at) as last_msg_time'))
+            ->groupBy('sender_number', 'sender_name')
             ->orderBy('last_msg_time', 'desc')
             ->get();
 
-        // B. Mapping Nama Kontak (VERSI SIMPEL - TANPA CEK TABEL USER)
-        $contacts = $rawContacts->map(function($contact) {
-            
-            // Langsung cari nama dari log WA terakhir
-            $lastLog = DB::table('whatsapp_logs')
-                ->where('sender_number', $contact->sender_number)
-                ->where('type', 'incoming')
-                ->orderBy('created_at', 'desc')
-                ->first();
-            
-            // Fallback
-            if (!$lastLog) {
-                $lastLog = DB::table('whatsapp_logs')
-                    ->where('sender_number', $contact->sender_number)
-                    ->orderBy('created_at', 'desc')
-                    ->first();
-            }
-
-            $finalName = $lastLog->sender_name ?? 'Unknown';
-
-            return (object) [
-                'sender_number' => $contact->sender_number,
-                'sender_name'   => $finalName,
-                'last_msg_time' => $contact->last_msg_time
-            ];
-        });
-
-        // C. Ambil Chat Aktif
+        // B. Ambil Isi Chat (Area Kanan)
+        // Hanya jika ada parameter ?phone=08xxx di URL
         $activeChat = [];
-        $activePhone = $request->query('phone'); 
+        $activePhone = $request->query('phone');
 
         if ($activePhone) {
             $activeChat = WhatsappLog::where('sender_number', $activePhone)
-                ->orderBy('created_at', 'asc')
+                ->orderBy('created_at', 'asc') // Chat lama di atas, baru di bawah
                 ->get();
         }
 
@@ -72,160 +40,90 @@ class WhatsappController extends Controller
     }
 
     /**
-     * 2. KIRIM PESAN (Outgoing - Dari Admin Web)
+     * 2. KIRIM PESAN (Outgoing - Dari Admin ke Customer)
+     * Route: POST /whatsapp/send
      */
     public function sendMessage(Request $request)
     {
+        // Validasi input
         $request->validate([
-            'target' => 'required',
-            'message' => 'required',
+            'target' => 'required', // Nomor tujuan
+            'message' => 'required', // Isi pesan
         ]);
 
         try {
-            // Menggunakan fungsi sendFonnte internal
-            $response = $this->sendFonnte($request->target, [
-                'message' => $request->message,
-                'url' => null,
-                'filename' => null,
-            ]);
+            // --- MENGGUNAKAN SERVICE FONNTE ANDA ---
+            $response = FonnteService::sendMessage($request->target, $request->message);
 
-            if ($response['status']) {
-                // Simpan ke Database
+            // Cek apakah API Fonnte berhasil menerima request
+            if ($response->successful()) {
+                
+                // Simpan LOG Pesan Keluar (Outgoing) ke Database
+                // Agar muncul di history chat admin
                 WhatsappLog::create([
-                    'sender_number' => $request->target,
-                    'sender_name'   => 'Me (Admin)',
+                    'sender_number' => $request->target, // Nomor tujuan
+                    'sender_name'   => 'Me (Admin)',     // Nama pengirim (kita sendiri)
                     'message'       => $request->message,
-                    'type'          => 'outgoing',
+                    'type'          => 'outgoing',       // Tipe pesan keluar
                     'status'        => 'sent'
                 ]);
 
-                return back()->with('success', 'Pesan terkirim!');
+                return back()->with('success', 'Pesan berhasil dikirim!');
             } else {
-                return back()->with('error', 'Gagal: ' . ($response['reason'] ?? 'Unknown error'));
+                // Jika API Fonnte menolak (misal token salah / server down)
+                return back()->with('error', 'Gagal kirim via Fonnte: ' . $response->body());
             }
 
         } catch (\Exception $e) {
-            return back()->with('error', 'Error: ' . $e->getMessage());
+            return back()->with('error', 'Terjadi kesalahan sistem: ' . $e->getMessage());
         }
     }
 
-    /**
-     * 3. WEBHOOK (Logic Utama dari Snippet Anda)
-     */
-    public function webhook(Request $request)
+   public function webhook(Request $request)
     {
-        // Log data mentah untuk debugging
-        Log::info('Webhook Incoming:', $request->all());
+        Log::info('Fonnte Webhook Data:', $request->all());
 
-        // Ambil Data sesuai dokumentasi Fonnte
-        $device   = $request->device;
-        $sender   = $request->sender;
-        $message  = $request->message;
-        $text     = $request->text; // Button text
-        $member   = $request->member; // Group member
-        $name     = $request->name;
-        $location = $request->location;
+        $sender  = $request->sender;
+        $message = $request->message;
+        $name    = $request->name;
+        $url     = $request->url;
         
-        // Cek Group (Optional: Abaikan jika dari grup agar database tidak penuh)
-        // Hapus blok if ini jika ingin bot membalas di grup juga
-        if ($request->isgroup || $member) {
-             return response()->json(['status' => true, 'message' => 'Group message ignored']);
+        // 1. Cek apakah ini Pesan Grup?
+        // Fonnte mengirim parameter 'isgroup' (true/false) atau mengecek akhiran '@g.us'
+        $isGroup = $request->isgroup ?? false; 
+        
+        // JIKA INI GRUP, ABAIKAN SAJA (Return true biar Fonnte senang)
+        if ($isGroup || str_ends_with($sender, '@g.us')) {
+            return response()->json([
+                'status' => true, 
+                'detail' => 'Ignored: Group message'
+            ]);
         }
 
-        // 1. SIMPAN PESAN MASUK (INCOMING) KE DATABASE
-        // Penting agar muncul di Dashboard Admin
+        // 2. Cek apakah Sender kosong (Status Update)
+        if (empty($sender)) {
+            return response()->json([
+                'status' => true, 
+                'detail' => 'Ignored: Not a chat message'
+            ]);
+        }
+
         try {
+            // 3. Simpan Pesan PRIBADI ke Database
             WhatsappLog::create([
                 'sender_number' => $sender,
                 'sender_name'   => $name ?? 'Unknown',
-                'message'       => $message ?? '(Media/Lainnya)',
-                'media_url'     => $request->url ?? null,
+                'message'       => $message,
+                'media_url'     => $url ?? null,
                 'type'          => 'incoming',
                 'status'        => 'received'
             ]);
+
+            return response()->json(['status' => true]);
+
         } catch (\Exception $e) {
-            Log::error('DB Save Error: ' . $e->getMessage());
-        }
-
-        // 2. LOGIKA AUTO REPLY (Sesuai Snippet Anda)
-        $reply = null;
-        $msgLower = strtolower($message); // Ubah ke huruf kecil biar fleksibel
-
-        if ( $msgLower == "test" ) {
-            $reply = [
-                "message" => "working great! (Laravel Response)",
-            ];
-        } elseif ( $msgLower == "image" ) {
-            $reply = [
-                "message" => "image message",
-                "url" => "https://filesamples.com/samples/image/jpg/sample_640%C3%97426.jpg",
-            ];
-        } elseif ( $msgLower == "audio" ) {
-            $reply = [
-                "message" => "audio message",
-                "url" => "https://filesamples.com/samples/audio/mp3/sample3.mp3",
-                "filename" => "music",
-            ];
-        } elseif ( $msgLower == "video" ) {
-            $reply = [
-                "message" => "video message",
-                "url" => "https://filesamples.com/samples/video/mp4/sample_640x360.mp4",
-            ];
-        } elseif ( $msgLower == "file" ) {
-            $reply = [
-                "message" => "file message",
-                "url" => "https://filesamples.com/samples/document/docx/sample3.docx",
-                "filename" => "document",
-            ];
-        } else {
-            // Default Reply jika keyword tidak dikenali
-            $reply = [
-                "message" => "Maaf, saya tidak mengerti. Silakan gunakan kata kunci berikut:\n\n- Test\n- Audio\n- Video\n- Image\n- File",
-            ];
-        }
-
-        // 3. KIRIM BALASAN (AUTO REPLY)
-        if ($reply) {
-            $this->sendFonnte($sender, $reply);
-
-            // Opsional: Simpan balasan bot ke database agar Admin tahu bot sudah menjawab
-            WhatsappLog::create([
-                'sender_number' => $sender,
-                'sender_name'   => 'Bot AutoReply',
-                'message'       => $reply['message'],
-                'media_url'     => $reply['url'] ?? null,
-                'type'          => 'outgoing',
-                'status'        => 'sent'
-            ]);
-        }
-
-        return response()->json(['status' => true]);
-    }
-
-    /**
-     * FUNGSI BANTUAN: Kirim ke API Fonnte (Pengganti CURL Native)
-     */
-    private function sendFonnte($target, $data)
-    {
-        try {
-            $response = Http::withHeaders([
-                'Authorization' => $this->token,
-            ])->post('https://api.fonnte.com/send', [
-                'target' => $target,
-                'message' => $data['message'],
-                'url' => $data['url'] ?? null,
-                'filename' => $data['filename'] ?? null,
-            ]);
-
-            return [
-                'status' => $response->successful(),
-                'reason' => $response->body()
-            ];
-        } catch (\Exception $e) {
-            return [
-                'status' => false,
-                'reason' => $e->getMessage()
-            ];
+            Log::error('Webhook Save Error: ' . $e->getMessage());
+            return response()->json(['status' => false, 'error' => $e->getMessage()], 500);
         }
     }
 }
