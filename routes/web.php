@@ -126,7 +126,11 @@ Route::get('/register/success/{no_wa}', function ($no_wa) {
 Route::get('customer/profile/setup/{token}', [CustomerProfileController::class, 'setup'])->name('customer.profile.setup');
 
 
+// BENAR
+Route::post('/webhook/fonnte', [WhatsappController::class, 'webhook']);
 
+// SALAH (Ini penyebab Error 500 jika controller tidak punya fungsi ini)
+Route::post('/webhook/fonnte', [WhatsappController::class, 'handleIncoming']);
 
 
 // Tracking & Ongkir (Public)

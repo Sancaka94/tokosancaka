@@ -47,14 +47,10 @@ use App\Http\Controllers\DokuController;
 use App\Http\Controllers\Api\OngkirApiController; // <-- IMPORT
 use App\Http\Controllers\Customer\PesananController as CustomerPesananController; // ALIAS
 // Website fontend WA Integration
-use App\Http\Controllers\WhatsappController;
+//use App\Http\Controllers\WhatsappController;
 
 
-// BENAR
-Route::post('/webhook/fonnte', [WhatsappController::class, 'webhook']);
 
-// SALAH (Ini penyebab Error 500 jika controller tidak punya fungsi ini)
-Route::post('/webhook/fonnte', [WhatsappController::class, 'handleIncoming']);
 
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
