@@ -141,6 +141,8 @@ Route::get('customer/profile/setup/{token}', [CustomerProfileController::class, 
 
 Route::get('/whatsapp', [WhatsappController::class, 'index'])->name('whatsapp.index');
 Route::post('/whatsapp/send', [WhatsappController::class, 'sendMessage'])->name('whatsapp.send');
+Route::post('/webhook/fonnte', [WhatsappController::class, 'webhook']);
+
 
 // Tracking & Ongkir (Public)
 Route::get('/tracking', [TrackingController::class, 'showTrackingPage'])->name('tracking.index');

@@ -46,10 +46,8 @@ use App\Http\Controllers\DokuWebhookController;
 use App\Http\Controllers\DokuController;
 use App\Http\Controllers\Api\OngkirApiController; // <-- IMPORT
 use App\Http\Controllers\Customer\PesananController as CustomerPesananController; // ALIAS
-// Website fontend WA Integration
-use App\Http\Controllers\WhatsappController;
 
-Route::post('/webhook/fonnte', [WhatsappController::class, 'webhook']);
+
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
