@@ -139,10 +139,7 @@ Route::get('customer/profile/setup/{token}', [CustomerProfileController::class, 
 // WHATSAPP INTEGRATION
 // ==========================
 
-// 1. Route untuk Halaman Inbox (PENTING: ->name('whatsapp.index'))
 Route::get('/whatsapp', [WhatsappController::class, 'index'])->name('whatsapp.index');
-
-// 2. Route untuk Kirim Pesan (PENTING: ->name('whatsapp.send'))
 Route::post('/whatsapp/send', [WhatsappController::class, 'sendMessage'])->name('whatsapp.send');
 
 // Tracking & Ongkir (Public)
