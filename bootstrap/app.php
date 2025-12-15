@@ -20,6 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             'digiflazz/webhook', // <--- Tambahkan baris ini
             'payment/*', // Jika ada webhook payment lain
+            'webhook/fonnte', // <--- Tambahkan baris ini
         ]);
 
         // --- TAMBAHKAN BAGIAN INI ---
