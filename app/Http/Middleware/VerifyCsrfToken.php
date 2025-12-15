@@ -46,7 +46,7 @@ class VerifyCsrfToken extends Middleware
 
             '/webhook/kiriminaja*',
 
-            'webhook/fonnte', // Masukkan URL route Anda di sini
+            '/webhook/fonnte', // Masukkan URL route Anda di sini
 
         ];
 
