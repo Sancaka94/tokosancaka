@@ -105,6 +105,33 @@ use App\Http\Controllers\WhatsappController;
 use App\Http\Controllers\BroadcastController;
 
 
+Route::get('/cek-dokter', function () {
+    // 1. Bersihkan Cache
+    Artisan::call('route:clear');
+    Artisan::call('config:clear');
+    
+    // 2. Cek Kolom Database
+    $hasMediaUrl = Schema::hasColumn('whatsapp_logs', 'media_url');
+    
+    // 3. Cek Support Emoji (Charset)
+    $charset = DB::select("SELECT CCSA.character_set_name FROM information_schema.`TABLES` T, information_schema.`COLLATION_CHARACTER_SET_APPLICABILITY` CCSA WHERE CCSA.collation_name = T.table_collation AND T.table_schema = DATABASE() AND T.table_name = 'whatsapp_logs';")[0]->character_set_name ?? 'unknown';
+
+    // 4. Tes Tulis Log
+    Log::info('Tes Diagnosa Berhasil - Sistem Siap');
+
+    return response()->json([
+        'status' => 'OK',
+        'cache_cleared' => 'YES',
+        'database_check' => [
+            'tabel_whatsapp_logs_ada' => Schema::hasTable('whatsapp_logs') ? 'YA' : 'TIDAK',
+            'kolom_media_url_ada' => $hasMediaUrl ? 'YA' : 'TIDAK (Error penyebab gagal simpan)',
+            'support_emoji_utf8mb4' => ($charset == 'utf8mb4') ? 'YA' : 'TIDAK (Ganti ke utf8mb4 agar tidak error emoji)',
+        ],
+        'pesan' => 'Silakan coba kirim WA lagi sekarang. Cek log jika masih gagal.'
+    ]);
+});
+
+
 // =========================================================================
 // 2. PUBLIC ROUTES (GUEST / AKSES UMUM)
 // =========================================================================
