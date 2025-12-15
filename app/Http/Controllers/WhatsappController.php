@@ -79,43 +79,47 @@ class WhatsappController extends Controller
         }
     }
 
-    /**
-     * 3. WEBHOOK (Incoming - Pesan Masuk dari Customer)
+   /**
+     * WEBHOOK (Incoming - Menangani Pesan Masuk)
      * Route: POST /api/webhook/fonnte
      */
     public function webhook(Request $request)
     {
-        // Log request masuk untuk debugging (Cek di storage/logs/laravel.log)
-        Log::info('Fonnte Webhook Received:', $request->all());
+        // 1. Log data untuk debugging
+        Log::info('Fonnte Webhook Data:', $request->all());
 
-        // Ambil data dari JSON yang dikirim Fonnte
-        $sender  = $request->sender;   // Nomor HP Pengirim
-        $message = $request->message;  // Isi Pesan
-        $name    = $request->name;     // Nama Kontak Pengirim
-        $url     = $request->url;      // URL Gambar/File (jika ada)
+        // 2. Ambil data
+        $sender  = $request->sender;
+        $message = $request->message;
+        $name    = $request->name;
+        $url     = $request->url;
 
-        // Validasi sederhana: Jika tidak ada pengirim, tolak request
-        if (!$sender) {
-            return response()->json(['status' => false, 'reason' => 'No Sender Data'], 400);
+        // --- SOLUSI AGAR TIDAK ERROR 400 ---
+        // Jika 'sender' kosong, berarti ini bukan pesan chat (misal: update status device).
+        // Kita Return TRUE saja supaya Fonnte menganggap sukses & tidak merah.
+        if (empty($sender)) {
+            return response()->json([
+                'status' => true, 
+                'detail' => 'Ignored: Not a chat message'
+            ]);
         }
 
         try {
-            // Simpan Pesan Masuk (Incoming) ke Database
+            // 3. Simpan Pesan Chat ke Database
             WhatsappLog::create([
                 'sender_number' => $sender,
-                'sender_name'   => $name ?? 'Unknown', // Jika nama kosong, isi Unknown
-                'message'       => $message,           // Isi pesan teks
-                'media_url'     => $url ?? null,       // URL file/gambar (penting!)
-                'type'          => 'incoming',         // Tipe pesan masuk
+                'sender_name'   => $name ?? 'Unknown',
+                'message'       => $message,
+                'media_url'     => $url ?? null,
+                'type'          => 'incoming',
                 'status'        => 'received'
             ]);
 
-            // Wajib return JSON true agar Fonnte tahu data sukses diterima
+            // 4. Return Sukses ke Fonnte
             return response()->json(['status' => true]);
 
         } catch (\Exception $e) {
-            // Jika database error (misal emoji, kolom kurang), catat di log
-            Log::error('Webhook Database Error: ' . $e->getMessage());
+            Log::error('Webhook Save Error: ' . $e->getMessage());
             return response()->json(['status' => false, 'error' => $e->getMessage()], 500);
         }
     }
