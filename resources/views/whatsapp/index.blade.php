@@ -1,221 +1,194 @@
-@extends('layouts.admin')
+<?php
 
-@section('content')
+namespace App\Http\Controllers;
 
-<style>
-    .wa-container {
-        height: 80vh; /* Tinggi area chat */
-        background-color: #f0f2f5;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        overflow: hidden;
-        display: flex;
-    }
-    
-    /* SIDEBAR KONTAK (KIRI) */
-    .wa-sidebar {
-        width: 30%;
-        background: #fff;
-        border-right: 1px solid #ddd;
-        display: flex;
-        flex-direction: column;
-    }
-    .wa-contacts-list {
-        overflow-y: auto;
-        flex: 1;
-    }
-    .wa-contact-item {
-        padding: 15px;
-        border-bottom: 1px solid #f0f0f0;
-        cursor: pointer;
-        transition: 0.2s;
-        display: flex;
-        align-items: center;
-    }
-    .wa-contact-item:hover { background-color: #f5f5f5; }
-    .wa-contact-item.active { background-color: #ebebeb; }
-    
-    .avatar-circle {
-        width: 45px; height: 45px;
-        background-color: #ddd;
-        border-radius: 50%;
-        display: flex; align-items: center; justify-content: center;
-        margin-right: 15px; font-size: 20px; color: #666;
+use Illuminate\Http\Request;
+use App\Models\WhatsappLog; // Pastikan Model ini sudah dibuat
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+
+class WhatsappController extends Controller
+{
+    // Token sebaiknya ditaruh di .env dengan nama FONNTE_TOKEN
+    protected $token;
+
+    public function __construct()
+    {
+        $this->token = env('FONNTE_TOKEN', 'ISI_TOKEN_FONNTE_ANDA_DISINI');
     }
 
-    /* AREA CHAT (KANAN) */
-    .wa-chat-area {
-        width: 70%;
-        display: flex;
-        flex-direction: column;
-        background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); /* Background WA */
-        background-color: #efe7dd; 
-    }
-    
-    .chat-header {
-        padding: 10px 20px;
-        background: #f0f2f5;
-        border-bottom: 1px solid #ddd;
-        display: flex; align-items: center;
-    }
+    /**
+     * 1. HALAMAN INBOX (Tampilan Chat)
+     */
+    public function index(Request $request)
+    {
+        // A. Ambil Daftar Kontak (Sidebar)
+        // Grouping berdasarkan nomor pengirim untuk mendapatkan list unik
+        // Menggunakan logika MAX(created_at) agar kontak yang baru chat naik ke atas
+        $contacts = DB::table('whatsapp_logs')
+            ->select('sender_number', 'sender_name', DB::raw('MAX(created_at) as last_msg_time'))
+            ->groupBy('sender_number', 'sender_name')
+            ->orderBy('last_msg_time', 'desc')
+            ->get();
 
-    .chat-messages {
-        flex: 1;
-        padding: 20px;
-        overflow-y: auto;
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-    }
+        // B. Ambil Chat Aktif (Area Kanan)
+        $activeChat = [];
+        $activePhone = $request->query('phone'); // ?phone=0812xxx
 
-    /* BUBBLE CHAT */
-    .message-bubble {
-        max-width: 60%;
-        padding: 8px 12px;
-        border-radius: 7px;
-        position: relative;
-        font-size: 14px;
-        line-height: 1.4;
-        box-shadow: 0 1px 1px rgba(0,0,0,0.1);
-    }
-    
-    /* Pesan Masuk (Kiri - Putih) */
-    .message-bubble.incoming {
-        align-self: flex-start;
-        background-color: #ffffff;
-        border-top-left-radius: 0;
-    }
-    
-    /* Pesan Keluar (Kanan - Hijau Muda) */
-    .message-bubble.outgoing {
-        align-self: flex-end;
-        background-color: #d9fdd3;
-        border-top-right-radius: 0;
-    }
-
-    .msg-time {
-        display: block;
-        font-size: 10px;
-        color: #999;
-        text-align: right;
-        margin-top: 4px;
-    }
-
-    /* INPUT AREA */
-    .chat-input-area {
-        padding: 10px;
-        background: #f0f2f5;
-        display: flex;
-        align-items: center;
-    }
-    .chat-input-area textarea {
-        resize: none;
-        border-radius: 20px;
-        padding: 10px 15px;
-    }
-</style>
-
-<div class="container-fluid">
-    <h3 class="mb-3">WhatsApp Inbox</h3>
-
-    @if(session('success'))
-        <div class="alert alert-success">{{ session('success') }}</div>
-    @endif
-    @if(session('error'))
-        <div class="alert alert-danger">{{ session('error') }}</div>
-    @endif
-
-    <div class="wa-container">
-        
-        <div class="wa-sidebar">
-            <div class="p-3 bg-light border-bottom">
-                <input type="text" class="form-control rounded-pill" placeholder="Cari chat...">
-            </div>
-            
-            <div class="wa-contacts-list">
-                @foreach($contacts as $contact)
-                    <a href="{{ route('whatsapp.index', ['phone' => $contact->sender_number]) }}" class="text-decoration-none text-dark">
-                        <div class="wa-contact-item {{ $activePhone == $contact->sender_number ? 'active' : '' }}">
-                            <div class="avatar-circle">
-                                <i class="fas fa-user"></i>
-                            </div>
-                            <div class="flex-grow-1">
-                                <div class="d-flex justify-content-between">
-                                    <strong>{{ $contact->sender_name ?: $contact->sender_number }}</strong>
-                                    <small class="text-muted">{{ \Carbon\Carbon::parse($contact->last_msg_time)->format('H:i') }}</small>
-                                </div>
-                                <small class="text-muted text-truncate d-block" style="max-width: 150px;">
-                                    {{ $contact->sender_number }}
-                                </small>
-                            </div>
-                        </div>
-                    </a>
-                @endforeach
-            </div>
-        </div>
-
-        <div class="wa-chat-area">
-            @if($activePhone)
-                <div class="chat-header">
-                    <div class="avatar-circle" style="width: 40px; height: 40px;">
-                        <i class="fas fa-user"></i>
-                    </div>
-                    <div>
-                        <h6 class="m-0">{{ $activePhone }}</h6>
-                        <small class="text-muted">Online</small>
-                    </div>
-                </div>
-
-                <div class="chat-messages" id="chatBox">
-                    @forelse($activeChat as $chat)
-                        <div class="message-bubble {{ $chat->type == 'outgoing' ? 'outgoing' : 'incoming' }}">
-                            {{ $chat->message }}
-                            <span class="msg-time">
-                                {{ \Carbon\Carbon::parse($chat->created_at)->format('H:i') }}
-                                @if($chat->type == 'outgoing')
-                                    <i class="fas fa-check-double text-primary" style="font-size: 10px;"></i>
-                                @endif
-                            </span>
-                        </div>
-                    @empty
-                        <div class="text-center mt-5">
-                            <span class="badge bg-secondary">Belum ada riwayat chat</span>
-                        </div>
-                    @endforelse
-                </div>
-
-                <div class="chat-input-area">
-                    <form action="{{ url('/whatsapp/send') }}" method="POST" class="d-flex w-100 gap-2">
-                        @csrf
-                        <input type="hidden" name="target" value="{{ $activePhone }}">
-                        
-                        <textarea name="message" class="form-control" rows="1" placeholder="Ketik pesan..." required></textarea>
-                        
-                        <button type="submit" class="btn btn-success rounded-circle" style="width: 50px; height: 45px;">
-                            <i class="fas fa-paper-plane"></i>
-                        </button>
-                    </form>
-                </div>
-
-            @else
-                <div class="d-flex flex-column align-items-center justify-content-center h-100 text-muted">
-                    <i class="fab fa-whatsapp" style="font-size: 80px; color: #ddd;"></i>
-                    <h5 class="mt-3">WhatsApp Web Laravel</h5>
-                    <p>Pilih kontak di sebelah kiri untuk melihat pesan.</p>
-                </div>
-            @endif
-        </div>
-    </div>
-</div>
-
-<script>
-    // Fitur: Otomatis Scroll ke Bawah saat halaman dimuat
-    document.addEventListener("DOMContentLoaded", function() {
-        var chatBox = document.getElementById("chatBox");
-        if(chatBox) {
-            chatBox.scrollTop = chatBox.scrollHeight;
+        if ($activePhone) {
+            $activeChat = WhatsappLog::where('sender_number', $activePhone)
+                ->orderBy('created_at', 'asc') // Chat lama di atas, baru di bawah
+                ->get();
         }
-    });
-</script>
 
-@endsection
+        return view('whatsapp.index', compact('contacts', 'activeChat', 'activePhone'));
+    }
+
+    /**
+     * 2. KIRIM PESAN (Outgoing - Dari Admin ke User)
+     */
+    public function sendMessage(Request $request)
+    {
+        // Validasi input
+        $request->validate([
+            'target' => 'required',
+            'message' => 'required',
+        ]);
+
+        try {
+            // Hit API Fonnte
+            $response = Http::withHeaders([
+                'Authorization' => $this->token,
+            ])->post('https://api.fonnte.com/send', [
+                'target' => $request->target,
+                'message' => $request->message,
+                'countryCode' => '62', // Default Indonesia
+            ]);
+
+            // Jika sukses terkirim ke server Fonnte
+            if ($response->successful()) {
+                $result = $response->json();
+                
+                // Simpan ke Database sebagai 'outgoing'
+                WhatsappLog::create([
+                    'sender_number' => $request->target,
+                    'sender_name'   => 'Me (Admin)',
+                    'message'       => $request->message,
+                    'type'          => 'outgoing',
+                    'status'        => 'sent'
+                ]);
+
+                return back()->with('success', 'Pesan berhasil dikirim!');
+            } else {
+                return back()->with('error', 'Gagal mengirim ke Fonnte: ' . $response->body());
+            }
+
+        } catch (\Exception $e) {
+            return back()->with('error', 'Error System: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * 3. WEBHOOK (Incoming - Pesan Masuk dari Fonnte)
+     * Pastikan URL ini dipasang di Dashboard Fonnte (POST)
+     */
+    public function webhook(Request $request)
+    {
+        // Log untuk debugging (cek di storage/logs/laravel.log)
+        Log::info('Webhook Incoming:', $request->all());
+
+        // Ambil Data dari Fonnte
+        $sender  = $request->sender;
+        $message = $request->message;
+        $name    = $request->name;     // Nama pengirim
+        $url     = $request->url;      // URL media (jika ada gambar/file)
+        $filename= $request->filename; // Nama file (jika ada)
+
+        if (!$sender) {
+            return response()->json(['status' => false, 'reason' => 'Invalid Data'], 400);
+        }
+
+        try {
+            // A. Simpan Pesan Masuk ke Database
+            WhatsappLog::create([
+                'sender_number' => $sender,
+                'sender_name'   => $name ?? 'Unknown',
+                'message'       => $message,     // Bisa null jika cuma kirim file
+                'media_url'     => $url ?? null, // Simpan URL jika ada
+                'type'          => 'incoming',
+                'status'        => 'received'
+            ]);
+
+            // B. Auto Reply Logic (Sesuai kode native PHP Anda)
+            // Cek isi pesan, ubah ke huruf kecil semua
+            $msg = strtolower($message);
+
+            if ($msg == "test") {
+                $this->replyAuto($sender, "Working great! (Laravel Bot)");
+            } 
+            elseif ($msg == "image") {
+                $this->replyAuto($sender, "Here is your image", "https://filesamples.com/samples/image/jpg/sample_640%C3%97426.jpg", "sample.jpg");
+            } 
+            elseif ($msg == "audio") {
+                $this->replyAuto($sender, "Here is your audio", "https://filesamples.com/samples/audio/mp3/sample3.mp3", "music.mp3");
+            } 
+            elseif ($msg == "video") {
+                $this->replyAuto($sender, "Here is your video", "https://filesamples.com/samples/video/mp4/sample_640x360.mp4");
+            } 
+            elseif ($msg == "file") {
+                $this->replyAuto($sender, "Here is your document", "https://filesamples.com/samples/document/docx/sample3.docx", "document.docx");
+            }
+            // Jika Anda ingin pesan default (else)
+            /*
+            else {
+                $this->replyAuto($sender, "Halo, saya tidak mengerti. Ketik: Test, Image, Audio, Video, atau File.");
+            }
+            */
+
+            return response()->json(['status' => true]);
+
+        } catch (\Exception $e) {
+            Log::error('Webhook Failed: ' . $e->getMessage());
+            return response()->json(['status' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Helper Function: Untuk kirim balasan otomatis (Auto Reply)
+     * Mendukung Teks dan Media (URL)
+     */
+    private function replyAuto($target, $message, $url = null, $filename = null)
+    {
+        $data = [
+            'target' => $target,
+            'message' => $message,
+            'countryCode' => '62',
+        ];
+
+        // Jika ada URL (file/gambar), tambahkan ke payload
+        if ($url) {
+            $data['url'] = $url;
+        }
+        if ($filename) {
+            $data['filename'] = $filename;
+        }
+
+        // Kirim request ke Fonnte
+        $response = Http::withHeaders([
+            'Authorization' => $this->token,
+        ])->post('https://api.fonnte.com/send', $data);
+        
+        // Opsional: Simpan log balasan bot ke database agar terlihat di Inbox Admin
+        if($response->successful()){
+             WhatsappLog::create([
+                'sender_number' => $target,
+                'sender_name'   => 'Bot AutoReply',
+                'message'       => $message,
+                'media_url'     => $url,
+                'type'          => 'outgoing',
+                'status'        => 'sent'
+            ]);
+        }
+    }
+}
