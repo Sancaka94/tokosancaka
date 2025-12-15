@@ -135,9 +135,11 @@ Route::get('/register/success/{no_wa}', function ($no_wa) {
 Route::get('customer/profile/setup/{token}', [CustomerProfileController::class, 'setup'])->name('customer.profile.setup');
 
 
-Route::get('/whatsapp', [App\Http\Controllers\WhatsappController::class, 'index']);
-Route::post('/whatsapp/send', [App\Http\Controllers\WhatsappController::class, 'sendMessage']);
-Route::post('/webhook/fonnte', [WhatsappController::class, 'handleIncoming']);
+// 1. Route untuk Halaman Inbox (PENTING: ada ->name('whatsapp.index'))
+Route::get('/whatsapp', [WhatsappController::class, 'index'])->name('whatsapp.index');
+
+// 2. Route untuk Kirim Pesan (PENTING: ada ->name('whatsapp.send'))
+Route::post('/whatsapp/send', [WhatsappController::class, 'sendMessage'])->name('whatsapp.send');Route::post('/webhook/fonnte', [WhatsappController::class, 'handleIncoming']);
 
 
 // Tracking & Ongkir (Public)
