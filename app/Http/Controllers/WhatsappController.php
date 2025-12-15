@@ -26,7 +26,7 @@ class WhatsappController extends Controller
         $contacts = $rawContacts->map(function($contact) {
             // 1. Cek apakah nomor ini terdaftar di Tabel User (Pelanggan)?
             // (Pastikan Model User dan kolom no_hp ada, jika tidak ada hapus bagian ini)
-            $user = \App\Models\User::where('no_hp', $contact->sender_number)->first();
+            $user = \App\Models\User::where('no_wa', $contact->sender_number)->first();
             
             if ($user) {
                 $finalName = $user->name; // Prioritas 1: Nama dari data Pelanggan
