@@ -10,30 +10,64 @@ use Illuminate\Support\Facades\Log;
 
 class WhatsappController extends Controller
 {
-    /**
-     * 1. HALAMAN INBOX (UI Chat seperti WA Web)
-     * Route: GET /whatsapp
-     */
     public function index(Request $request)
     {
-        // A. Ambil Daftar Kontak (Sidebar Kiri)
-        // Kita grouping berdasarkan nomor pengirim agar tidak duplikat.
-        // Diurutkan berdasarkan waktu pesan terakhir (MAX created_at).
-        $contacts = DB::table('whatsapp_logs')
-            ->select('sender_number', 'sender_name', DB::raw('MAX(created_at) as last_msg_time'))
-            ->groupBy('sender_number', 'sender_name')
+        // A. Ambil Daftar Kontak (Sidebar) - REVISI
+        // Logika Baru: Grouping HANYA berdasarkan sender_number
+        // Tujuannya agar nomor yang sama tidak muncul berkali-kali meski namanya berubah-ubah.
+        
+        $rawContacts = DB::table('whatsapp_logs')
+            ->select('sender_number', DB::raw('MAX(created_at) as last_msg_time'))
+            ->groupBy('sender_number')
             ->orderBy('last_msg_time', 'desc')
             ->get();
 
-        // B. Ambil Isi Chat (Area Kanan)
-        // Hanya jika ada parameter ?phone=08xxx di URL
+        // B. Proses Nama Kontak (Agar yang muncul nama paling update / benar)
+        $contacts = $rawContacts->map(function($contact) {
+            // 1. Cek apakah nomor ini terdaftar di Tabel User (Pelanggan)?
+            // (Pastikan Model User dan kolom no_hp ada, jika tidak ada hapus bagian ini)
+            $user = \App\Models\User::where('no_hp', $contact->sender_number)->first();
+            
+            if ($user) {
+                $finalName = $user->name; // Prioritas 1: Nama dari data Pelanggan
+            } else {
+                // 2. Jika bukan User, ambil nama dari Log WA terakhir yang masuk
+                $lastLog = DB::table('whatsapp_logs')
+                    ->where('sender_number', $contact->sender_number)
+                    ->where('type', 'incoming') // Utamakan nama dari pesan masuk
+                    ->orderBy('created_at', 'desc')
+                    ->first();
+                
+                // Jika masih kosong, ambil dari log apa saja
+                if (!$lastLog) {
+                    $lastLog = DB::table('whatsapp_logs')
+                        ->where('sender_number', $contact->sender_number)
+                        ->orderBy('created_at', 'desc')
+                        ->first();
+                }
+
+                $finalName = $lastLog->sender_name ?? 'Unknown';
+            }
+
+            // Kembalikan data yang sudah dirapikan
+            return (object) [
+                'sender_number' => $contact->sender_number,
+                'sender_name'   => $finalName,
+                'last_msg_time' => $contact->last_msg_time
+            ];
+        });
+
+        // C. Ambil Chat Aktif (Area Kanan)
         $activeChat = [];
-        $activePhone = $request->query('phone');
+        $activePhone = $request->query('phone'); 
 
         if ($activePhone) {
             $activeChat = WhatsappLog::where('sender_number', $activePhone)
-                ->orderBy('created_at', 'asc') // Chat lama di atas, baru di bawah
+                ->orderBy('created_at', 'asc')
                 ->get();
+            
+            // Opsional: Update status 'read' saat chat dibuka
+            // WhatsappLog::where('sender_number', $activePhone)->update(['status' => 'read']);
         }
 
         return view('whatsapp.index', compact('contacts', 'activeChat', 'activePhone'));
