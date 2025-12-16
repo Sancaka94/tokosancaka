@@ -83,16 +83,50 @@
         <div class="bg-white p-6 rounded-lg shadow-lg">
             <h3 class="text-lg font-semibold text-gray-700 mb-4">Aktivitas Pesanan Terbaru</h3>
             <div id="recent-activity-container" class="space-y-4">
-                @forelse ($pesananTerbaru as $pesanan)
-                <div class="flex items-center">
-                    <div class="p-3 rounded-full bg-gray-100"><i class="fas fa-shopping-bag text-gray-500"></i></div>
-                    <div class="ml-4 flex-1">
-                        <p class="text-sm font-semibold text-gray-800">{{ $pesanan->resi ?? $pesanan->nomor_invoice }}</p>
-                        <p class="text-xs text-gray-600">dari <span class="font-medium">{{ $pesanan->sender_name ?? $pesanan->store_name ?? $pesanan->nama_lengkap }}</span></p>
-                    </div>
-                    <span class="text-sm font-bold text-green-600">Rp {{ number_format($pesanan->shipping_cost, 0, ',', '.') }}</span>
-                </div>
-                @empty
+                {{-- GANTI BAGIAN @forelse ($pesananTerbaru ... SAMPAI @empty DENGAN INI --}}
+@forelse ($pesananTerbaru as $pesanan)
+<div class="flex items-start py-2 border-b border-gray-100 last:border-0">
+    {{-- Ikon Belanja --}}
+    <div class="p-3 rounded-full bg-indigo-50 mt-1">
+        <i class="fas fa-shopping-bag text-indigo-500"></i>
+    </div>
+
+    <div class="ml-3 flex-1">
+        {{-- Baris 1: RESI / INVOICE (Paling Menonjol) --}}
+        <div class="flex justify-between items-start">
+            <p class="text-sm font-bold text-gray-800">
+                {{ $pesanan->resi ?? $pesanan->nomor_invoice }}
+            </p>
+            {{-- Harga di Kanan Atas --}}
+            <span class="text-xs font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
+                Rp {{ number_format($pesanan->shipping_cost, 0, ',', '.') }}
+            </span>
+        </div>
+
+        {{-- Info Detail (Bertumpuk Rapi) --}}
+        <div class="mt-1 flex flex-col gap-0.5">
+            
+            {{-- Baris 2: NAMA TOKO (Warna Biru/Indigo) --}}
+            <div class="flex items-center text-xs text-indigo-600 font-semibold">
+                <i class="fas fa-store w-4 text-center mr-1 opacity-70"></i>
+                <span>{{ $pesanan->store_name ?? 'Tanpa Nama Toko' }}</span>
+            </div>
+
+            {{-- Baris 3: NAMA LENGKAP USER (Warna Abu Gelap) --}}
+            <div class="flex items-center text-xs text-gray-700 font-medium">
+                <i class="fas fa-user w-4 text-center mr-1 opacity-60"></i>
+                <span>{{ $pesanan->nama_lengkap ?? 'User Tidak Dikenal' }}</span>
+            </div>
+
+            {{-- Baris 4: SENDER NAME (Warna Abu Terang / Kecil) --}}
+            <div class="flex items-center text-[10px] text-gray-500">
+                <i class="fas fa-paper-plane w-4 text-center mr-1 opacity-50"></i>
+                <span>Pengirim: {{ $pesanan->sender_name ?? '-' }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+@empty
                 <p id="no-recent-activity" class="text-sm text-gray-500 text-center py-4">Belum ada aktivitas pesanan.</p>
                 @endforelse
             </div>
@@ -409,34 +443,57 @@
             if(document.getElementById('pengguna-baru')) document.getElementById('pengguna-baru').textContent = fmt(stats.penggunaBaru);
         }
 
-        function updateRecentActivity(activities) {
-            const container = document.getElementById('recent-activity-container');
-            if (!container) return;
+        // GANTI FUNCTION updateRecentActivity YANG LAMA DENGAN INI
 
-            container.innerHTML = ''; // Reset isi
+function updateRecentActivity(activities) {
+    const container = document.getElementById('recent-activity-container');
+    if (!container) return;
 
-            if (activities && activities.length > 0) {
-                activities.forEach(pesanan => {
-                    const resiOrInvoice = pesanan.resi || pesanan.nomor_invoice;
-                    const tokoNama = pesanan.sender_name ? pesanan.sender_name : '-';
-                    const harga = new Intl.NumberFormat('id-ID').format(pesanan.shipping_cost);
+    container.innerHTML = ''; // Kosongkan kontainer
 
-                    const html = `
-                        <div class="flex items-center">
-                            <div class="p-3 rounded-full bg-gray-100"><i class="fas fa-shopping-bag text-gray-500"></i></div>
-                            <div class="ml-4 flex-1">
-                                <p class="text-sm font-semibold text-gray-800">${resiOrInvoice}</p>
-                                <p class="text-xs text-gray-600">dari <span class="font-medium">${tokoNama}</span></p>
-                            </div>
-                            <span class="text-sm font-bold text-green-600">Rp ${harga}</span>
+    if (activities && activities.length > 0) {
+        activities.forEach(pesanan => {
+            // Siapkan Variabel
+            const resi = pesanan.resi || pesanan.nomor_invoice;
+            const harga = new Intl.NumberFormat('id-ID').format(pesanan.shipping_cost);
+            const storeName = pesanan.store_name || 'Tanpa Nama Toko';
+            const namaLengkap = pesanan.nama_lengkap || 'User Tidak Dikenal';
+            const senderName = pesanan.sender_name || '-';
+
+            // Template HTML Baru
+            const html = `
+                <div class="flex items-start py-2 border-b border-gray-100 last:border-0">
+                    <div class="p-3 rounded-full bg-indigo-50 mt-1">
+                        <i class="fas fa-shopping-bag text-indigo-500"></i>
+                    </div>
+                    <div class="ml-3 flex-1">
+                        <div class="flex justify-between items-start">
+                            <p class="text-sm font-bold text-gray-800">${resi}</p>
+                            <span class="text-xs font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">Rp ${harga}</span>
                         </div>
-                    `;
-                    container.insertAdjacentHTML('beforeend', html);
-                });
-            } else {
-                container.innerHTML = '<p id="no-recent-activity" class="text-sm text-gray-500 text-center py-4">Belum ada aktivitas pesanan.</p>';
-            }
-        }
+                        <div class="mt-1 flex flex-col gap-0.5">
+                            <div class="flex items-center text-xs text-indigo-600 font-semibold">
+                                <i class="fas fa-store w-4 text-center mr-1 opacity-70"></i>
+                                <span>${storeName}</span>
+                            </div>
+                            <div class="flex items-center text-xs text-gray-700 font-medium">
+                                <i class="fas fa-user w-4 text-center mr-1 opacity-60"></i>
+                                <span>${namaLengkap}</span>
+                            </div>
+                            <div class="flex items-center text-[10px] text-gray-500">
+                                <i class="fas fa-paper-plane w-4 text-center mr-1 opacity-50"></i>
+                                <span>Pengirim: ${senderName}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', html);
+        });
+    } else {
+        container.innerHTML = '<p id="no-recent-activity" class="text-sm text-gray-500 text-center py-4">Belum ada aktivitas pesanan.</p>';
+    }
+}
 
         function updateChart(chart, newData) {
             if (!chart || !newData) return;
