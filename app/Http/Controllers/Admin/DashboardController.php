@@ -157,10 +157,13 @@ class DashboardController extends Controller
 
           // ... inside your index function
 
+// Di dalam DashboardController.php
+
 $orders = Pesanan::query()
-    // 1. CHANGE 'users' TO 'Pengguna' (Matches your DB exactly)
     ->leftJoin('Pengguna', 'Pengguna.id_pengguna', '=', 'Pesanan.id_pengguna_pembeli')
     ->select(
+        'Pesanan.resi',           // <--- PASTIKAN INI ADA
+        'Pesanan.nomor_invoice',  // <--- PASTIKAN INI ADA
         'Pesanan.expedition',
         'Pesanan.shipping_cost',
         'Pesanan.sender_phone',
@@ -169,12 +172,13 @@ $orders = Pesanan::query()
         'Pesanan.sender_regency',
         'Pesanan.receiver_regency',
         'Pesanan.status_pesanan',
-        // 2. CHANGE 'users' TO 'Pengguna' here as well
-        'Pengguna.store_name',
+        'Pengguna.store_name',    // <--- PASTIKAN INI ADA
         'Pengguna.nama_lengkap'
     )
     ->whereNotNull('Pesanan.expedition')
     ->where('Pesanan.expedition', '!=', '')
+    ->latest('Pesanan.created_at') // Urutkan dari yang terbaru
+    ->take(5)
     ->get();
 
 // ... the rest of the logic
