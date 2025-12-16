@@ -418,7 +418,7 @@
             if (activities && activities.length > 0) {
                 activities.forEach(pesanan => {
                     const resiOrInvoice = pesanan.resi || pesanan.nomor_invoice;
-                    const tokoNama = pesanan.toko ? pesanan.toko.sender_name : 'Toko Dihapus';
+                    const tokoNama = pesanan.sender_name ? pesanan.sender_name : '-';
                     const harga = new Intl.NumberFormat('id-ID').format(pesanan.shipping_cost);
 
                     const html = `
