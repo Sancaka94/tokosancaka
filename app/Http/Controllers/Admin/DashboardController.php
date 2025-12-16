@@ -156,21 +156,21 @@ class DashboardController extends Controller
             }
 
             $orders = Pesanan::query()
-    ->leftJoin('users', 'users.id', '=', 'pesanans.id_pengguna_pembeli')
+    ->leftJoin('users', 'users.id', '=', 'pesanan.id_pengguna_pembeli')
     ->select(
-        'pesanans.expedition',
-        'pesanans.shipping_cost',
-        'pesanans.sender_phone',
-        'pesanans.sender_name',
-        'pesanans.receiver_name',
-        'pesanans.sender_regency',
-        'pesanans.receiver_regency',
-        'pesanans.status_pesanan',
+        'pesanan.expedition',
+        'pesanan.shipping_cost',
+        'pesanan.sender_phone',
+        'pesanan.sender_name',
+        'pesanan.receiver_name',
+        'pesanan.sender_regency',
+        'pesanan.receiver_regency',
+        'pesanan.status_pesanan',
         'users.store_name',
         'users.nama_lengkap'
     )
-    ->whereNotNull('pesanans.expedition')
-    ->where('pesanans.expedition', '!=', '')
+    ->whereNotNull('pesanan.expedition')
+    ->where('pesanan.expedition', '!=', '')
     ->get();
 
 
