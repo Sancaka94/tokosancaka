@@ -155,8 +155,8 @@ class DashboardController extends Controller
                 ];
             }
 
-            $orders = Pesanan::query()
-    ->leftJoin('users', 'users.id', '=', 'pesanan.id_pengguna_pembeli')
+          $orders = Pesanan::query()
+    ->leftJoin('users', 'users.id_pengguna', '=', 'pesanan.id_pengguna_pembeli')
     ->select(
         'pesanan.expedition',
         'pesanan.shipping_cost',
@@ -172,6 +172,7 @@ class DashboardController extends Controller
     ->whereNotNull('pesanan.expedition')
     ->where('pesanan.expedition', '!=', '')
     ->get();
+
             // 4. LOGIKA HITUNG
             foreach ($orders as $order) {
                 $parts = explode('-', $order->expedition);
