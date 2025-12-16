@@ -103,7 +103,7 @@ class DashboardController extends Controller
 
         // --- Mengambil Data Tabel (dengan Caching) ---
         $pesananTerbaru = Cache::remember('admin_dashboard_recent_orders_v5', $cacheDuration, function () {
-            return Pesanan::with('pembeli')->latest('created_at')->take(20)->get();
+            return Pesanan::with('pembeli')->latest('created_at')->take(7)->get();
         });
 
 // --- REKAPITULASI EKSPEDISI (LENGKAP: KOTA & STATUS) ---
