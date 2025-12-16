@@ -36,7 +36,7 @@ class DashboardController extends Controller
             return [
                 'totalPendapatan' => $totalTopUp + $totalOngkirPesanan,
                 'totalPesanan' => Pesanan::count(),
-                'jumlahToko' => User::where('role', 'Toko')->count(),
+                'jumlahToko' => User::where('role', 'Seller')->count(),
                 'penggunaBaru' => User::where('role', 'Pelanggan')->where('created_at', '>=', now()->subDays(30))->count(),
             ];
         });
