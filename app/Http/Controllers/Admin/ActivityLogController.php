@@ -48,7 +48,7 @@ class ActivityLogController extends Controller
 
         if (!$filter || $filter === 'order') {
             $newOrders = Pesanan::with('pembeli')
-                ->select('id_pesanan', 'id_pengguna_pembeli', 'resi', 'total_harga_barang', 'created_at', 'ip_address', 'user_agent', 'latitude', 'longitude', 'status_pesanan', 'sender_name')
+                ->select('id_pesanan', 'id_pengguna_pembeli', 'resi', 'shipping_cost', 'created_at', 'ip_address', 'user_agent', 'latitude', 'longitude', 'status_pesanan', 'sender_name')
                 ->latest()->take(100)->get();
             foreach ($newOrders as $order) {
                 $allActivities->push([
