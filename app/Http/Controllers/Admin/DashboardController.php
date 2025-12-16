@@ -158,11 +158,10 @@ class DashboardController extends Controller
           // ... inside your index function
 
 $orders = Pesanan::query()
-    // 1. Fix the JOIN to use Capital 'P'
-    ->leftJoin('users', 'users.id_pengguna', '=', 'Pesanan.id_pengguna_pembeli')
+    // 1. CHANGE 'users' TO 'Pengguna' (Matches your DB exactly)
+    ->leftJoin('Pengguna', 'Pengguna.id_pengguna', '=', 'Pesanan.id_pengguna_pembeli')
     ->select(
-        // 2. Fix all SELECTs to use Capital 'P'
-        'Pesanan.expedition', 
+        'Pesanan.expedition',
         'Pesanan.shipping_cost',
         'Pesanan.sender_phone',
         'Pesanan.sender_name',
@@ -170,13 +169,15 @@ $orders = Pesanan::query()
         'Pesanan.sender_regency',
         'Pesanan.receiver_regency',
         'Pesanan.status_pesanan',
-        'users.store_name',
-        'users.nama_lengkap'
+        // 2. CHANGE 'users' TO 'Pengguna' here as well
+        'Pengguna.store_name',
+        'Pengguna.nama_lengkap'
     )
-    // 3. Fix the WHERE clauses to use Capital 'P'
     ->whereNotNull('Pesanan.expedition')
     ->where('Pesanan.expedition', '!=', '')
     ->get();
+
+// ... the rest of the logic
             // 4. LOGIKA HITUNG
             foreach ($orders as $order) {
                 $parts = explode('-', $order->expedition);
