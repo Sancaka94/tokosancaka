@@ -155,17 +155,24 @@ class DashboardController extends Controller
                 ];
             }
 
-            // 3. AMBIL DATA DB
-            // Tambahkan: sender_regency (Kota Pengirim), receiver_regency (Kota Penerima), status_pesanan
-            $orders = Pesanan::select(
-                            'expedition', 'shipping_cost', 'id_pengguna_pembeli', 'sender_phone', 
-                            'sender_name', 'receiver_name', 
-                            'sender_regency', 'receiver_regency', 
-                            'status_pesanan'
-                        )
-                        ->whereNotNull('expedition')
-                        ->where('expedition', '!=', '')
-                        ->get();
+            $orders = Pesanan::query()
+    ->leftJoin('users', 'users.id', '=', 'pesanans.id_pengguna_pembeli')
+    ->select(
+        'pesanans.expedition',
+        'pesanans.shipping_cost',
+        'pesanans.sender_phone',
+        'pesanans.sender_name',
+        'pesanans.receiver_name',
+        'pesanans.sender_regency',
+        'pesanans.receiver_regency',
+        'pesanans.status_pesanan',
+        'users.store_name',
+        'users.nama_lengkap'
+    )
+    ->whereNotNull('pesanans.expedition')
+    ->where('pesanans.expedition', '!=', '')
+    ->get();
+
 
             // 4. LOGIKA HITUNG
             foreach ($orders as $order) {
