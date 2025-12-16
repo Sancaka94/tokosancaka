@@ -172,8 +172,6 @@ class DashboardController extends Controller
     ->whereNotNull('pesanan.expedition')
     ->where('pesanan.expedition', '!=', '')
     ->get();
-
-
             // 4. LOGIKA HITUNG
             foreach ($orders as $order) {
                 $parts = explode('-', $order->expedition);
