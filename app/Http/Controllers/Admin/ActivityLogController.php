@@ -157,7 +157,7 @@ class ActivityLogController extends Controller
                 $allActivities->push((object)[
                     'icon' => 'fa-solid fa-box text-green-500',
                     'title' => 'Pesanan baru dari ' . (optional($order->pembeli)->nama_lengkap ?? $order->sender_name),
-                    'details' => 'Total: Rp ' . number_format($order->total_harga_barang, 0, ',', '.'),
+                    'details' => 'Total: Rp ' . number_format($order->shipping_cost, 0, ',', '.'),
                     'url' => route('admin.pesanan.show', $order->resi),
                     'created_at' => $order->created_at,
                     'maps_url' => ($order->latitude && $order->longitude) ? "https://www.google.com/maps?q={$order->latitude},{$order->longitude}" : null,
