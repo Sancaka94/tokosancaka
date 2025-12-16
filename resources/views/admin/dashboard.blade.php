@@ -90,7 +90,7 @@
                         <p class="text-sm font-semibold text-gray-800">{{ $pesanan->resi ?? $pesanan->nomor_invoice }}</p>
                         <p class="text-xs text-gray-600">dari <span class="font-medium">{{ $pesanan->toko->nama_toko ?? 'Toko Dihapus' }}</span></p>
                     </div>
-                    <span class="text-sm font-bold text-green-600">Rp {{ number_format($pesanan->total_harga_barang, 0, ',', '.') }}</span>
+                    <span class="text-sm font-bold text-green-600">Rp {{ number_format($pesanan->shipping_cost, 0, ',', '.') }}</span>
                 </div>
                 @empty
                 <p id="no-recent-activity" class="text-sm text-gray-500 text-center py-4">Belum ada aktivitas pesanan.</p>
@@ -418,8 +418,8 @@
             if (activities && activities.length > 0) {
                 activities.forEach(pesanan => {
                     const resiOrInvoice = pesanan.resi || pesanan.nomor_invoice;
-                    const tokoNama = pesanan.toko ? pesanan.toko.nama_toko : 'Toko Dihapus';
-                    const harga = new Intl.NumberFormat('id-ID').format(pesanan.total_harga_barang);
+                    const tokoNama = pesanan.toko ? pesanan.toko.store_name : 'Toko Dihapus';
+                    const harga = new Intl.NumberFormat('id-ID').format(pesanan.shipping_cost);
 
                     const html = `
                         <div class="flex items-center">
