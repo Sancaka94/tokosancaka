@@ -31,7 +31,7 @@ class DashboardController extends Controller
             // Jika ingin total harga barang, gunakan total_harga_barang. 
             // Di sini saya biarkan total_harga_barang untuk stats global (sesuai kode asli), 
             // tapi Anda bisa ubah ke shipping_cost jika perlu.
-            $totalOngkirPesanan = Pesanan::sum('total_harga_barang'); 
+            $totalOngkirPesanan = Pesanan::sum('shipping_cost'); 
 
             return [
                 'totalPendapatan' => $totalTopUp + $totalOngkirPesanan,
@@ -55,7 +55,7 @@ class DashboardController extends Controller
         $chartData = Cache::remember('admin_dashboard_revenue_chart_v5', $cacheDuration, function () {
             $salesData = Pesanan::select(
                 DB::raw('DATE(created_at) as date'),
-                DB::raw('sum(total_harga_barang) as total')
+                DB::raw('sum(shipping_cost) as total')
             )
             ->where('created_at', '>=', now()->subDays(30))
             ->groupBy('date')
