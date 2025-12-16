@@ -26,7 +26,7 @@ class ActivityLogController extends Controller
         // Mengambil data berdasarkan filter. Jika tidak ada filter, ambil semua.
         if (!$filter || $filter === 'user') {
             $userRegistrations = User::withTrashed()
-                ->whereIn('role', ['Pelanggan', 'Toko', 'Admin']) 
+                ->whereIn('role', ['Pelanggan', 'Toko', 'Admin', 'Agent']) 
                 ->select('id_pengguna', 'nama_lengkap', 'role', 'created_at', 'ip_address', 'user_agent', 'latitude', 'longitude')
                 ->latest()->take(100)->get();
             foreach ($userRegistrations as $user) {
@@ -54,7 +54,7 @@ class ActivityLogController extends Controller
                 $allActivities->push([
                     'user' => optional($order->pembeli)->nama_lengkap ?? $order->sender_name,
                     'description' => 'Aktivitas Pesanan',
-                    'details' => 'Rp ' . number_format($order->total_harga_barang, 0, ',', '.'),
+                    'details' => 'Rp ' . number_format($order->shipping_cost, 0, ',', '.'),
                     'type' => 'order',
                     'status' => $order->status_pesanan ?? 'Baru',
                     'timestamp' => $order->created_at,
