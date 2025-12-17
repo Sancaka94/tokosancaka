@@ -203,6 +203,9 @@
             <div class="info-section">
                 <div class="info-box">
                    <h3 style="color:#b91c1c; font-weight:600;">Invoice To:</h3>
+                   <strong>
+    {{ $user->store_name ?? 'Pelanggan Setia' }}
+                    </strong><br>
                     <p>{{ $transaction->customer_no }}</p>
                     <div class="sub">
     
@@ -226,13 +229,6 @@
         $user->postal_code
     ]) : [];
 @endphp
-
-
-<h3 style="color:#b91c1c;">Invoice To:</h3>
-
-<strong>
-    {{ $user->store_name ?? 'Pelanggan Setia' }}
-</strong><br>
 
 @if($user)
     {{ implode(', ', $alamat) }}
