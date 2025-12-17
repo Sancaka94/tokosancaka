@@ -237,7 +237,7 @@
 @endif
 
                    
-                    <p>{{ $transaction->customer_no }}</p>
+                    <br><p>ID Pelanggan: {{ $transaction->customer_no }}</p>
                     <div class="sub">
     
                     </div>
