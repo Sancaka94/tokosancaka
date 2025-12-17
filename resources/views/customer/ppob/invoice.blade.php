@@ -209,7 +209,28 @@
                     <p>{{ $transaction->customer_no }}</p>
                     <div class="sub">
     
-   @if($user)
+    @php
+    $user = \App\Models\User::select(
+        'store_name',
+        'province',
+        'regency',
+        'district',
+        'village',
+        'postal_code',
+        'address_detail'
+    )->find($transaction->user_id);
+
+    $alamat = $user ? array_filter([
+        $user->address_detail,
+        $user->village,
+        $user->district,
+        $user->regency,
+        $user->province,
+        $user->postal_code
+    ]) : [];
+@endphp
+
+@if($user)
     {{ collect([
         $user->address_detail,
         $user->village,
