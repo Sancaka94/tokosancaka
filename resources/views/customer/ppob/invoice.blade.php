@@ -202,14 +202,8 @@
 
             <div class="info-section">
                 <div class="info-box">
-                   <h3 style="color:#b91c1c; font-weight:600;">Invoice To:</h3>
-                   <strong>
-    {{ $user->store_name ?? 'Pelanggan Setia' }}
-                    </strong><br>
-                    <p>{{ $transaction->customer_no }}</p>
-                    <div class="sub">
-    
-    @php
+
+                    @php
     $user = \App\Models\User::select(
         'store_name',
         'province',
@@ -219,16 +213,14 @@
         'postal_code',
         'address_detail'
     )->find($transaction->user_id);
-
-    $alamat = $user ? array_filter([
-        $user->address_detail,
-        $user->village,
-        $user->district,
-        $user->regency,
-        $user->province,
-        $user->postal_code
-    ]) : [];
 @endphp
+
+
+                    <h3 style="color:#b91c1c;">Invoice To:</h3>
+
+<strong>
+    {{ $user->store_name ?? 'Pelanggan Setia' }}
+</strong><br>
 
 @if($user)
     {{ collect([
@@ -244,6 +236,10 @@
     ])->filter()->implode(', ') }}
 @endif
 
+                   
+                    <p>{{ $transaction->customer_no }}</p>
+                    <div class="sub">
+    
                     </div>
                 </div>
                 <div class="info-box" style="text-align: right;">
