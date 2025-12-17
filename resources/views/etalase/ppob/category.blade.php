@@ -1264,29 +1264,46 @@
         }
 
         window.filterProductsList = function() {
-            const query = pSearchInput.value.toLowerCase().trim();
+            // Ambil input user & bersihkan spasi kiri kanan
+            const rawQuery = pSearchInput.value.toLowerCase().trim();
+            
+            // Query Versi Bersih (Hapus titik, koma, spasi, dash)
+            // Contoh: User ketik "50.000" atau "50 000" -> jadi "50000"
+            const cleanQuery = rawQuery.replace(/[\.\,\s\-]/g, ''); 
+
             let visibleCount = 0;
 
             // Toggle tombol Clear (X)
-            if (query.length > 0) {
+            if (rawQuery.length > 0) {
                 pClearBtn.classList.remove('hidden');
             } else {
                 pClearBtn.classList.add('hidden');
             }
 
             productItems.forEach(item => {
-                // Ambil data dari atribut dataset (pastikan di loop PHP Anda sudah ada data-name, data-price, data-brand)
-                const name = (item.dataset.name || '').toLowerCase();
-                const brand = (item.dataset.brand || '').toLowerCase();
-                const price = (item.dataset.price || '').toLowerCase(); // Harga mentah (contoh: 20000)
+                // Ambil data asli dari HTML
+                const originalName = (item.dataset.name || '').toLowerCase();
+                const originalBrand = (item.dataset.brand || '').toLowerCase();
+                const originalPrice = (item.dataset.price || '').toLowerCase();
                 
-                // Cek kecocokan
-                const matchName = name.includes(query);
-                const matchBrand = brand.includes(query);
-                const matchPrice = price.includes(query); // Bisa cari "20000"
+                // Buat Versi Bersih dari Data Produk juga
+                // Contoh: "PLN 50.000" -> jadi "pln50000"
+                const cleanName = originalName.replace(/[\.\,\s\-]/g, '');
+                
+                // --- LOGIKA PENCARIAN GANDA ---
+                
+                // 1. Cek Normal (Berdasarkan teks apa adanya)
+                // Biar kalau cari "PLN" tetap ketemu
+                const matchNormal = originalName.includes(rawQuery) || 
+                                    originalBrand.includes(rawQuery);
 
-                // Jika query kosong, atau ada kecocokan -> Tampilkan
-                if (query === '' || matchName || matchBrand || matchPrice) {
+                // 2. Cek Cerdas (Berdasarkan angka tanpa titik)
+                // Biar cari "50000" ketemu "50.000"
+                const matchSmart = cleanName.includes(cleanQuery) || 
+                                   originalPrice.includes(cleanQuery);
+
+                // Gabungkan kedua logika
+                if (rawQuery === '' || matchNormal || matchSmart) {
                     item.classList.remove('hidden');
                     visibleCount++;
                 } else {
@@ -1297,7 +1314,7 @@
             // Tampilkan pesan kosong jika tidak ada hasil
             if (visibleCount === 0) {
                 pNoResult.classList.remove('hidden');
-                pListContainer.classList.add('hidden'); // Sembunyikan grid biar rapi
+                pListContainer.classList.add('hidden');
             } else {
                 pNoResult.classList.add('hidden');
                 pListContainer.classList.remove('hidden');
