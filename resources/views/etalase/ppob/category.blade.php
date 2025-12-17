@@ -32,16 +32,49 @@
         'data' => 'data',
     ];
 
-    // Ambil SKU Aktif. Jika tidak ketemu di map, default gunakan 'pln'
+   // 1. DAFTAR KUNCI KHUSUS PASCABAYAR (Tagihan Bulanan)
+    // Pastikan HANYA kode di bawah ini yang dianggap Pascabayar.
+    // Hapus 'emoney', 'games', 'voucher' jika ada di sini sebelumnya.
+    $postpaidKeys = [
+        'pln',           // Khusus PLN Tagihan (Akan kita filter di bawah agar Token tidak kena)
+        'pdam', 
+        'bpjs', 
+        'bpjstk', 
+        'hp',            // Kartu Halo / Xplor (Pascabayar)
+        'internet',      // Indihome / Wifi ID
+        'tv',            // TV Kabel Langganan
+        'multifinance',  // Cicilan Leasing
+        'pbb', 
+        'samsat', 
+        'pgas', 
+        'plnnontaglist'
+    ];
+
+    // 2. DAFTAR KUNCI YANG PASTI PRABAYAR (Pengecualian Eksplisit)
+    // Ini untuk menjaga-jaga jika ada SKU yang kodenya mirip (seperti pln-token vs pln-pasca)
+    $prepaidSlugs = [
+        'pln-token',
+        'e-money',
+        'voucher-game',
+        'games',
+        'pulsa',
+        'data',
+        'streaming',
+        'tv-prabayar',  // Pastikan TV Prabayar masuk sini
+        'voucher',
+        'esim'
+    ];
+
+    // Ambil SKU Aktif
     $activeSku = $skuMap[$currentSlug] ?? 'pln';
 
-    // Logika penentuan apakah halaman ini Pascabayar atau Prabayar
-    $postpaidKeys = ['pln', 'pdam', 'bpjs', 'bpjstk', 'hp', 'internet', 'tv', 'multifinance', 'cimahi', 'pbb', 'samsat', 'pgas', 'plnnontaglist', 'emoney'];
-    // Tambahkan pengecualian khusus: Jika slug URL-nya 'pln-token', paksa jadi FALSE (Prabayar)
-$isPostpaid = (
-    ($pageInfo['is_postpaid'] ?? false) || 
-    in_array($activeSku, $postpaidKeys)
-) && $currentSlug !== 'pln-token';
+    // 3. LOGIKA FINAL PENENTUAN HALAMAN
+    // Halaman dianggap Pascabayar JIKA:
+    // (Ada di list postpaidKeys) DAN (URL-nya BUKAN termasuk kategori Prabayar)
+    $isPostpaid = (
+        ($pageInfo['is_postpaid'] ?? false) || 
+        in_array($activeSku, $postpaidKeys)
+    ) && !in_array($currentSlug, $prepaidSlugs);
     
     // Judul Halaman & Label Input
     $pageTitle = $pageInfo['title'] ?? ucfirst(str_replace('-', ' ', $currentSlug));
@@ -1060,6 +1093,6 @@ $isPostpaid = (
             });
         }
     });
-    
+
 </script>
 @endpush
