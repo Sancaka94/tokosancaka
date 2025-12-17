@@ -1005,5 +1005,61 @@ $isPostpaid = (
         });
     }
     @endif
+
+    // ==========================================================
+    // 🏃‍♂️ EFEK PLACEHOLDER BERJALAN (MARQUEE)
+    // ==========================================================
+    document.addEventListener("DOMContentLoaded", function() {
+        const inputField = document.getElementById('customer_no');
+        
+        // Cek apakah input ada
+        if (inputField) {
+            let originalPlaceholder = inputField.getAttribute('placeholder');
+            
+            // Tambahkan spasi di depan agar terlihat muncul dari kanan
+            // Sesuaikan jumlah spasi untuk mengatur jarak jeda
+            let space = "          |          "; 
+            let text = space + originalPlaceholder;
+            let interval;
+
+            function animatePlaceholder() {
+                // Ambil karakter pertama, pindahkan ke paling belakang
+                text = text.substring(1) + text.substring(0, 1);
+                inputField.setAttribute('placeholder', text);
+            }
+
+            // Jalankan animasi setiap 150ms (semakin kecil angka, semakin cepat)
+            function startAnimation() {
+                if (!interval) {
+                    interval = setInterval(animatePlaceholder, 150);
+                }
+            }
+
+            // Hentikan animasi
+            function stopAnimation() {
+                clearInterval(interval);
+                interval = null;
+                // Kembalikan ke teks asli saat user mau ngetik biar enak dilihat
+                inputField.setAttribute('placeholder', originalPlaceholder);
+            }
+
+            // Mulai animasi pertama kali
+            startAnimation();
+
+            // LOGIKA UX:
+            // Matikan animasi saat user klik input (Focus)
+            inputField.addEventListener('focus', stopAnimation);
+
+            // Nyalakan lagi saat user klik di luar input (Blur) & input kosong
+            inputField.addEventListener('blur', function() {
+                if (this.value === "") {
+                    // Reset teks agar mulus lagi
+                    text = space + originalPlaceholder;
+                    startAnimation();
+                }
+            });
+        }
+    });
+    
 </script>
 @endpush
