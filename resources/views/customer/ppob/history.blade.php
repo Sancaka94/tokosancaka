@@ -83,10 +83,10 @@
         </div>
         <div class="ml-3">
             <h3 class="text-sm font-bold text-red-800 uppercase tracking-wide">
-                PERINGATAN:
+                INFORMASI:
             </h3>
             <p class="text-sm text-red-700 mt-1 leading-relaxed">
-                AGAR <strong>SN DAN STATUS</strong> BERUBAH SETELAH TRANSAKSI, MOHON REFRESH HALAMAN INI DENGAN <strong>F5</strong> ATAU KLIK TOMBOL <strong>REFRESH</strong> PADA BROWSER. 
+                AGAR <strong>SN DAN STATUS</strong> UPDATE SETELAH TRANSAKSI, MOHON REFRESH HALAMAN INI DENGAN <strong>F5</strong> ATAU KLIK TOMBOL <strong>REFRESH</strong> PADA BROWSER. 
                 JIKA MENGGUNAKAN TABLET ATAU HANDPHONE, BISA <strong>TARIK LAYAR</strong> KE BAWAH AGAR DEVICE MEREFRESH HALAMAN INI.
             </p>
         </div>
