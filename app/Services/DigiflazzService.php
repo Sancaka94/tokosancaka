@@ -60,7 +60,7 @@ class DigiflazzService
             Log::info("➡️ [DIGIFLAZZ] Requesting Price List ($cmd)", ['payload' => $payload]);
 
             $url = $this->baseUrl . '/price-list';
-            $response = Http::timeout(30)->post($url, $payload);
+            $response = Http::timeout(250)->post($url, $payload);
             
             $responseData = $response->json();
 
