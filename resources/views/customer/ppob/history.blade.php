@@ -148,7 +148,7 @@
                             <div class="text-xs text-gray-500 uppercase">{{ $trx->payment_method ?? 'Unknown' }}</div>
                         </td>
 
-                        {{-- 4. STATUS & SN --}}
+                        {{-- 4. STATUS & SN (UPDATED) --}}
                         <td class="px-6 py-4 align-top">
                             @php
                                 $statusClasses = match($trx->status) {
@@ -156,7 +156,7 @@
                                     'Pending' => 'bg-yellow-100 text-yellow-800 border-yellow-200',
                                     'Processing' => 'bg-blue-100 text-blue-800 border-blue-200',
                                     'Failed' => 'bg-red-100 text-red-800 border-red-200',
-                                     default => 'bg-gray-100 text-gray-800 border-gray-200',
+                                    default => 'bg-gray-100 text-gray-800 border-gray-200',
                                 };
                             @endphp
                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border {{ $statusClasses }} mb-1">
@@ -164,12 +164,18 @@
                             </span>
                             
                             @if($trx->sn)
-                                {{-- UPDATE: Tambahkan onclick & cursor-pointer --}}
-                                <div class="mt-1 group cursor-pointer" onclick="copyToClipboard('{{ $trx->sn }}')" title="Klik untuk menyalin SN">
-                                    <code class="flex items-center justify-between text-xs bg-gray-100 group-hover:bg-blue-50 group-hover:border-blue-300 transition-colors px-2 py-1 rounded border border-gray-300 font-mono text-gray-600 max-w-[180px]">
-                                        <span class="truncate mr-2">SN: {{ $trx->sn }}</span>
-                                        <i class="fas fa-copy text-[10px] text-gray-400 group-hover:text-blue-500"></i>
-                                    </code>
+                                {{-- BUTTON PEMICU MODAL --}}
+                                <div class="mt-1 group cursor-pointer" onclick="showSnModal('{{ $trx->sn }}', '{{ $trx->buyer_sku_code }}')">
+                                    <div class="flex items-center justify-between text-xs bg-gray-50 hover:bg-green-50 hover:border-green-300 transition-all px-2 py-1.5 rounded border border-gray-300 border-dashed font-mono text-gray-600 max-w-[160px]">
+                                        <div class="flex flex-col truncate mr-2">
+                                            <span class="text-[10px] text-gray-400 uppercase leading-none mb-0.5">SN / Token</span>
+                                            <span class="font-bold text-green-700 truncate">
+                                                {{-- Ambil 20 karakter pertama saja biar rapi --}}
+                                                {{ Str::limit(explode('/', $trx->sn)[0], 18) }}
+                                            </span>
+                                        </div>
+                                        <i class="fas fa-eye text-gray-400 group-hover:text-green-600"></i>
+                                    </div>
                                 </div>
                             @elseif($trx->status == 'Failed')
                                 <div class="mt-1 text-xs text-red-500 italic max-w-[160px] truncate" title="{{ $trx->message }}">
@@ -222,38 +228,119 @@
 </div>
 
 <script>
-    function copyToClipboard(text) {
-        // 1. Salin Teks
-        navigator.clipboard.writeText(text).then(() => {
+    // Fungsi Menampilkan Modal Detail SN
+    function showSnModal(rawSn, skuCode) {
+        // 1. Cek apakah ini Format PLN (biasanya dipisah tanda /)
+        const parts = rawSn.split('/');
+        const isPln = parts.length > 1; // Asumsi kalau ada / berarti PLN token/tagihan
+        
+        let htmlContent = '';
+        let tokenOnly = rawSn; // Default untuk SN biasa
+
+        if (isPln) {
+            // --- TAMPILAN KHUSUS PLN (Sesuai Gambar Referensi) ---
+            const token = parts[0];
+            const nama  = parts[1] || '-';
+            const tarif = parts[2] || '-';
+            const daya  = parts[3] || '-';
+            const kwh   = parts[4] || '-';
             
-            // 2. Tampilkan Notifikasi Toast (Pojok Kanan Atas)
+            tokenOnly = token; // Untuk fungsi copy nanti
+
+            htmlContent = `
+                <div class="text-left">
+                    <div class="bg-green-50 border-2 border-dashed border-green-400 rounded-xl p-6 relative overflow-hidden">
+                        
+                        <div class="text-xs text-gray-500 font-bold tracking-widest uppercase mb-2">
+                            Token Listrik:
+                        </div>
+
+                        <div class="font-mono text-3xl sm:text-4xl font-extrabold text-green-600 tracking-wider mb-5 break-all leading-tight">
+                            ${token}
+                        </div>
+
+                        <div class="border-t border-dashed border-green-300 mb-4"></div>
+
+                        <div class="space-y-2 text-sm font-mono text-gray-700">
+                            <div class="flex">
+                                <span class="w-16 text-gray-500">Nama</span>
+                                <span class="mr-2 text-gray-400">:</span>
+                                <span class="font-bold truncate flex-1">${nama}</span>
+                            </div>
+                            <div class="flex">
+                                <span class="w-16 text-gray-500">Tarif</span>
+                                <span class="mr-2 text-gray-400">:</span>
+                                <span class="font-bold truncate flex-1">${tarif}</span>
+                            </div>
+                            <div class="flex">
+                                <span class="w-16 text-gray-500">Daya</span>
+                                <span class="mr-2 text-gray-400">:</span>
+                                <span class="font-bold truncate flex-1">${daya}</span>
+                            </div>
+                            <div class="flex">
+                                <span class="w-16 text-gray-500">KWH</span>
+                                <span class="mr-2 text-gray-400">:</span>
+                                <span class="font-bold truncate flex-1">${kwh}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            // --- TAMPILAN SN BIASA (Pulsa/Data) ---
+            htmlContent = `
+                <div class="text-left">
+                    <div class="bg-gray-50 border border-gray-200 rounded-xl p-6">
+                        <div class="text-xs text-gray-500 font-bold uppercase mb-1">Kode SN / Ref:</div>
+                        <div class="font-mono text-xl font-bold text-gray-800 break-all bg-white p-3 border rounded shadow-sm">
+                            ${rawSn}
+                        </div>
+                        <div class="mt-4 text-xs text-gray-400">
+                            Gunakan kode di atas sebagai bukti transaksi yang sah.
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Tampilkan SweetAlert
+        Swal.fire({
+            title: isPln ? 'Detail Token Listrik' : 'Detail Serial Number',
+            html: htmlContent,
+            showConfirmButton: false, // Kita buat tombol sendiri
+            showCloseButton: true,
+            width: '500px',
+            padding: '20px',
+            footer: `
+                <div class="grid grid-cols-2 gap-3 w-full">
+                    <button onclick="Swal.close()" class="w-full py-2.5 rounded-lg border border-gray-300 text-gray-700 font-bold hover:bg-gray-50 transition">
+                        KEMBALI
+                    </button>
+                    <button onclick="copySn('${tokenOnly}')" class="w-full py-2.5 rounded-lg bg-green-600 text-white font-bold hover:bg-green-700 transition flex items-center justify-center gap-2">
+                        <i class="fas fa-copy"></i> COPY SN
+                    </button>
+                </div>
+            `
+        });
+    }
+
+    // Fungsi Copy ke Clipboard
+    function copySn(text) {
+        navigator.clipboard.writeText(text).then(() => {
+            // Tampilkan Toast Kecil di atas modal
             const Toast = Swal.mixin({
                 toast: true,
-                position: 'top-end',
+                position: 'top', // Tampil di tengah atas agar terlihat jelas di hp
                 showConfirmButton: false,
                 timer: 2000,
-                timerProgressBar: false,
-                didOpen: (toast) => {
-                    toast.addEventListener('mouseenter', Swal.stopTimer)
-                    toast.addEventListener('mouseleave', Swal.resumeTimer)
-                }
+                customClass: { popup: 'z-[9999]' } // Pastikan di atas modal utama
             });
 
             Toast.fire({
                 icon: 'success',
-                title: 'SN Berhasil Disalin!',
-                background: '#f0fdf4', // Hijau muda soft
-                color: '#166534'       // Hijau tua text
-            });
-
-        }).catch(err => {
-            console.error('Gagal menyalin: ', err);
-            Swal.fire({
-                icon: 'error',
-                title: 'Oops...',
-                text: 'Gagal menyalin teks otomatis. Silakan salin manual.',
-                toast: true,
-                position: 'top-end'
+                title: 'Disalin!',
+                background: '#166534',
+                color: '#fff'
             });
         });
     }
