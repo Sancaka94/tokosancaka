@@ -317,7 +317,7 @@
                                 <strong>{{ strtoupper($transaction->buyer_sku_code) }}</strong><br>
                                 <span style="font-size: 12px; color: #888;">Metode: {{ str_replace('_', ' ', $transaction->payment_method) }}</span>
                                 @if($transaction->sn)
-                                    <br><span class="sn-badge">SN: {{ $transaction->sn }}</span>
+                                    <br><br><span class="sn-badge">SN: {{ $transaction->sn }}</span>
                                 @endif
                             </td>
                             <td>Rp {{ number_format($transaction->selling_price, 0, ',', '.') }}</td>
