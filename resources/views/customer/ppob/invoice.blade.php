@@ -159,25 +159,45 @@
         .info-box p { margin: 0; font-weight: bold; color: #333; font-size: 16px; }
         .info-box .sub { font-weight: normal; font-size: 14px; color: #555; }
 
-        /* Table */
-        .table-container { padding: 0 50px; }
-        table { width: 100%; border-collapse: collapse; }
+       /* ... CSS Lainnya ... */
+
+        /* TABLE HEADER */
         thead { background-color: #1a2a47; color: white; }
         th { padding: 15px; text-align: left; font-size: 12px; text-transform: uppercase; }
-        td { padding: 15px; border-bottom: 1px solid #eee; font-size: 14px; color: #555; }
+        
+        /* TABLE BODY - PERBAIKAN UTAMA DISINI */
+        td { 
+            padding: 15px; 
+            border-bottom: 1px solid #eee; 
+            font-size: 14px; 
+            color: #555;
+            
+            /* INI KUNCINYA: Agar angka Price/Qty/Total nempel di atas, tidak turun ke tengah */
+            vertical-align: top; 
+        }
+
         tr:nth-child(even) { background-color: #f9f9f9; }
         
-        /* Total Section */
+        /* TOTAL SECTION (KUNING) */
         .total-section {
             display: flex;
-            justify-content: flex-end;
+            justify-content: flex-end; /* Agar rata kanan */
             padding: 30px 50px;
         }
-        .total-box { width: 40%; }
-        .total-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px; color: #555; }
+        .total-box { width: 40%; } /* Lebar area total */
+        
+        .total-row { 
+            display: flex; 
+            justify-content: space-between; 
+            margin-bottom: 10px; 
+            font-size: 14px; 
+            color: #555; 
+        }
+        
+        /* Desain Kotak Kuning TOTAL */
         .grand-total {
-            background-color: #f8b300;
-            color: #1a2a47;
+            background-color: #f8b300; /* Warna Kuning Sancaka */
+            color: #1a2a47;            /* Tulisan Biru Gelap */
             padding: 15px;
             display: flex;
             justify-content: space-between;
@@ -185,7 +205,10 @@
             font-size: 18px;
             border-radius: 4px;
             margin-top: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
+
+        /* ... CSS Lainnya ... */
 
         /* Footer */
         .footer-invoice {
@@ -410,7 +433,7 @@
                     </div>
                     
                     <div class="grand-total">
-                        <span>TOTAL:</span>
+                        <span>GRAND TOTAL:</span>
                         <span>Rp {{ number_format($transaction->selling_price, 0, ',', '.') }}</span>
                     </div>
                 </div>
