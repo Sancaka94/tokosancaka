@@ -581,7 +581,7 @@ $isPostpaid = (
             '59': { status: 'Gagal', message: 'ID diluar wilayah layanan (Cluster).', alertType: 'error' },
 
             // --- GAGAL (TAGIHAN) ---
-            '60': { status: 'Gagal', message: 'Tagihan Belum Tersedia atau Sudah Lunas.', alertType: 'info' },
+            '60': { status: 'Sukses', message: 'Tagihan Belum Tersedia atau Sudah Lunas.', alertType: 'warning' },
             '63': { status: 'Gagal', message: 'Nominal tidak sesuai / Paket tidak tersedia.', alertType: 'error' },
             '68': { status: 'Gagal', message: 'Stok Voucher Kosong.', alertType: 'error' },
             '70': { status: 'Gagal', message: 'Timeout koneksi ke Biller. Silakan coba lagi.', alertType: 'error' },
