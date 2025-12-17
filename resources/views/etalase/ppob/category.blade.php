@@ -46,14 +46,34 @@ $isPostpaid = (
     // Judul Halaman & Label Input
     $pageTitle = $pageInfo['title'] ?? ucfirst(str_replace('-', ' ', $currentSlug));
     $inputLabel = "Nomor Pelanggan";
-    $inputPlace = "Contoh: 08123456789";
     
-    if($activeSku == 'samsat') {
-        $inputLabel = "Kode Bayar, No. KTP / Identitas";
-        $inputPlace = "Contoh: 8821...,3201...";
+    // 1. DEFAULT (Untuk Pulsa/Data/E-Wallet)
+    $inputPlace = "Contoh: 08123456789";
+
+    // 2. LOGIKA DETEKSI DINAMIS BERDASARKAN SLUG/SKU
+    if (strpos($currentSlug, 'pln') !== false || $activeSku == 'pln') {
+        // Khusus PLN (Token & Tagihan)
+        $inputPlace = "Contoh: 51234567890 (No. Meter/ID Pel)";
+    } elseif ($activeSku == 'pdam') {
+        // Khusus PDAM
+        $inputPlace = "Contoh: 100223344 (ID Pelanggan)";
+    } elseif (strpos($activeSku, 'bpjs') !== false) {
+        // Khusus BPJS
+        $inputPlace = "Contoh: 888880133445566";
+    } elseif ($activeSku == 'internet' || strpos($currentSlug, 'indihome') !== false) {
+        // Khusus Internet/Wifi
+        $inputPlace = "Contoh: 122333444455";
+    } elseif ($activeSku == 'samsat') {
+        // Khusus Samsat
+        $inputLabel = "Kode Bayar / No. KTP";
+        $inputPlace = "Contoh: 32011234..., 8821...";
     } elseif ($activeSku == 'pbb' || $activeSku == 'cimahi') {
+        // Khusus PBB
         $inputLabel = "Nomor Objek Pajak (NOP)";
-        $inputPlace = "Masukkan NOP";
+        $inputPlace = "Masukkan Nomor NOP";
+    } elseif ($activeSku == 'gas' || strpos($currentSlug, 'gas') !== false) {
+        // Khusus Gas
+        $inputPlace = "Contoh: 12345678 (ID Pelanggan)";
     }
 
     // ================================================================
