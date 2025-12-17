@@ -374,7 +374,8 @@
                     
                 </div>
                 @endauth
-                
+                </div>
+                @endauth
                 
                 {{-- Card Input --}}
                 <div class="bg-white rounded-2xl shadow-md p-6 border-t-4 border-red-500 relative overflow-hidden">
