@@ -74,6 +74,25 @@
         </form>
     </div>
 
+    {{-- ========================================== --}}
+    {{-- [BARU] ALERT MERAH PERINGATAN REFRESH --}}
+    {{-- ========================================== --}}
+    <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded-r shadow-sm flex items-start">
+        <div class="flex-shrink-0">
+            <i class="fas fa-exclamation-triangle text-red-500 text-xl mt-0.5"></i>
+        </div>
+        <div class="ml-3">
+            <h3 class="text-sm font-bold text-red-800 uppercase tracking-wide">
+                PERINGATAN:
+            </h3>
+            <p class="text-sm text-red-700 mt-1 leading-relaxed">
+                MOHON REFRESH HALAMAN INI DENGAN <strong>F5</strong> ATAU KLIK TOMBOL <strong>REFRESH</strong> PADA BROWSER. 
+                JIKA MENGGUNAKAN TABLET ATAU HANDPHONE, BISA <strong>TARIK LAYAR</strong> KE BAWAH AGAR DEVICE MEREFRESH HALAMAN INI.
+            </p>
+        </div>
+    </div>
+    {{-- ========================================== --}}
+
     {{-- Tabel Data --}}
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div class="overflow-x-auto">
