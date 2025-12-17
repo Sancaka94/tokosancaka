@@ -908,7 +908,7 @@ $isPostpaid = (
     // Cek dulu, kalau pesannya "Tagihan belum tersedia", paksa tipe alert jadi 'info' (Biru)
     let tipeAlert = rcInfo.alertType;
     
-    if (messageToUser.toLowerCase().includes("belum tersedia") || messageToUser.toLowerCase().includes("lunas")) {
+    if (messageToUser.toLowerCase().includes("belum tersedia / Lunas") || messageToUser.toLowerCase().includes("lunas")) {
         tipeAlert = 'info'; // Ubah jadi INFO (Ikon Tanda Seru Biru/Kuning)
     }
     // -----------------------
