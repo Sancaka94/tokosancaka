@@ -403,10 +403,12 @@
                         <span>SUB TOTAL:</span>
                         <span>Rp {{ number_format($transaction->selling_price, 0, ',', '.') }}</span>
                     </div>
+                    
                     <div class="total-row">
                         <span>TAX (0%):</span>
                         <span>0.00%</span>
                     </div>
+                    
                     <div class="grand-total">
                         <span>TOTAL:</span>
                         <span>Rp {{ number_format($transaction->selling_price, 0, ',', '.') }}</span>
