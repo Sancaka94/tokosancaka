@@ -652,6 +652,14 @@
                     </li>
                     {{-- ====================================================== --}}
 
+                    {{-- ✅ LINK BARU: DOMPET PELANGGAN --}}
+            <li>
+                <a href="{{ url('admin/wallet') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-gray-700 {{ request()->is('admin/wallet*') ? 'text-white' : 'text-gray-400' }}">
+                    Dompet Pelanggan
+                </a>
+            </li>
+            {{-- -------------------------- --}}
+
                   
 
                     <li><a href="{{ route('admin.laporan.pemasukan') }}" class="sidebar-link block px-4 py-2 text-sm rounded-md hover:text-white hover:bg-gray-700 {{ request()->routeIs('admin.laporan.pemasukan*') ? 'text-white' : 'text-gray-400' }}">Pemasukan</a></li>
