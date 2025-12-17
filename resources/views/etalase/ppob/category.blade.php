@@ -902,23 +902,11 @@ $isPostpaid = (
                     resultDiv.classList.remove('hidden');
 
                 } else {
-    // Gagal
-
-    // --- TAMBAHAN LOGIKA ---
-    // Cek dulu, kalau pesannya "Tagihan belum tersedia", paksa tipe alert jadi 'info' (Biru)
-    let tipeAlert = rcInfo.alertType;
-    
-    if (messageToUser.toLowerCase().includes("belum tersedia / Lunas") || messageToUser.toLowerCase().includes("lunas")) {
-        tipeAlert = 'info'; // Ubah jadi INFO (Ikon Tanda Seru Biru/Kuning)
-    }
-    // -----------------------
-
-    // Panggil notifikasi dengan tipe yang sudah disesuaikan
-    triggerCustomNotification(messageToUser, tipeAlert);
-
-    resultDiv.classList.add('hidden');
-    emptyDiv.classList.remove('hidden');
-}
+                    // Gagal
+                    triggerCustomNotification(messageToUser, rcInfo.alertType);
+                    resultDiv.classList.add('hidden');
+                    emptyDiv.classList.remove('hidden');
+                }
             })
             .catch(err => {
                 console.error(err);
