@@ -205,14 +205,40 @@
                    <h3 style="color:#b91c1c; font-weight:600;">Invoice To:</h3>
                     <p>{{ $transaction->customer_no }}</p>
                     <div class="sub">
-                        @php
-    $user = \App\Models\User::find($transaction->user_id);
+    
+    @php
+    $user = \App\Models\User::select(
+        'store_name',
+        'province',
+        'regency',
+        'district',
+        'village',
+        'postal_code',
+        'address_detail'
+    )->find($transaction->user_id);
+
+    $alamat = $user ? array_filter([
+        $user->address_detail,
+        $user->village,
+        $user->district,
+        $user->regency,
+        $user->province,
+        $user->postal_code
+    ]) : [];
 @endphp
 
+
+<h3 style="color:#b91c1c;">Invoice To:</h3>
+
 <strong>
-    {{ $user->nama_lengkap?? 'Pelanggan Setia' }}
+    {{ $user->store_name ?? 'Pelanggan Setia' }}
 </strong><br>
-Indonesia
+
+@if($user)
+    {{ implode(', ', $alamat) }}
+@else
+    Indonesia
+@endif
 
                     </div>
                 </div>
