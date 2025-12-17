@@ -181,7 +181,7 @@
             <div class="header-bg">
 
                 <div class="yellow-accent"></div>
-                
+
                 <div class="top-nav">
                     <div class="logo-area">
                         <h1>SANCAKA STORE</h1>
@@ -292,7 +292,7 @@
                             <td>02.</td>
                             <td>Biaya Layanan / Admin</td>
                             <td>Rp 0</td>
-                            <td>1</td>
+                            <td>0</td>
                             <td style="text-align: right;">Rp 0</td>
                         </tr>
                     </tbody>
