@@ -44,7 +44,10 @@
     $inputLabel = "Nomor Pelanggan";
     $inputPlace = "Contoh: 08123456789";
     
-    if($activeSku == 'samsat') {
+    if($currentSlug == 'pln-token') {
+        $inputLabel = "Nomor Meter / ID Pelanggan";
+        $inputPlace = "Contoh: 50123456789";
+    } elseif($activeSku == 'samsat') {
         $inputLabel = "Kode Bayar, No. KTP / Identitas";
         $inputPlace = "Contoh: 8821...,3201...";
     } elseif ($activeSku == 'pbb' || $activeSku == 'cimahi') {
@@ -248,19 +251,27 @@
                         <p class="text-xs text-gray-400 mt-2 ml-1 flex items-center gap-1">
                             <i class="fas fa-info-circle"></i> Pastikan nomor tujuan benar.
                         </p>
+
+                        {{-- AREA KHUSUS INFO PELANGGAN TOKEN PLN --}}
+                        @if($currentSlug == 'pln-token')
+                        <div id="pln_info" class="hidden mt-3 bg-yellow-50 p-3 rounded-lg border border-yellow-200 text-sm animate-fade-in">
+                            <div class="flex justify-between border-b border-yellow-200 pb-2 mb-2">
+                                <span class="text-gray-500">Nama Pelanggan:</span> 
+                                <span class="font-bold text-gray-800" id="pln_name">-</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-500">Tarif/Daya:</span> 
+                                <span class="font-bold text-gray-800" id="pln_power">-</span>
+                            </div>
+                        </div>
+                        
+                        <div id="loading-pln" class="hidden mt-3 text-center py-2 text-sm text-gray-500 bg-gray-50 rounded-lg">
+                            <i class="fas fa-circle-notch fa-spin text-red-500 mr-2"></i> Sedang mengecek ID Pelanggan...
+                        </div>
+                        @endif
                     </div>
 
-                    @if($currentSlug == 'pln-token')
-    <button onclick="cekPlnPrabayar()" id="btn-cek-pln" class="hidden w-full bg-yellow-500 ...">
-        <i class="fas fa-search"></i> Cek Nama Pelanggan
-    </button>
-    
-    <div id="loading-pln" class="hidden text-center py-2 text-sm text-gray-500">
-        <i class="fas fa-circle-notch fa-spin text-red-500"></i> Sedang mengecek ID Pelanggan...
-    </div>
-@endif
-
-                    {{-- TOMBOL CEK TAGIHAN (PASCABAYAR) --}}
+                    {{-- TOMBOL CEK TAGIHAN (HANYA MUNCUL DI PASCABAYAR) --}}
                     @if($isPostpaid)
                         <button onclick="cekTagihan()" id="btn-cek-tagihan" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition flex justify-center items-center gap-2 shadow-lg shadow-blue-200/50">
                             <span id="btn-text">Cek Tagihan</span>
@@ -269,8 +280,8 @@
                     @endif
                 </div>
 
-                {{-- Card Filter Operator (Hanya Prabayar) --}}
-                @if(!$isPostpaid)
+                {{-- Card Filter Operator (Hanya Prabayar & Bukan Token PLN) --}}
+                @if(!$isPostpaid && $currentSlug != 'pln-token')
                 <div class="bg-white rounded-2xl shadow-md p-6">
                     <h2 class="text-sm font-bold text-gray-700 mb-4 flex items-center justify-between">
                         <span>Pilih Provider / Kategori</span>
@@ -397,12 +408,11 @@
                                             <p class="font-bold text-gray-700 text-sm" id="bill_period">-</p>
                                         </div>
 
-                                        {{-- Data Dinamis 1 --}}
+                                        {{-- Data Dinamis --}}
                                         <div>
                                             <p class="text-gray-500 text-[10px] uppercase tracking-wider" id="label_info_1">Keterangan</p>
                                             <p class="font-bold text-gray-700 text-sm" id="val_info_1">-</p>
                                         </div>
-                                        {{-- Data Dinamis 2 --}}
                                         <div>
                                             <p class="text-gray-500 text-[10px] uppercase tracking-wider" id="label_info_2">Lembar</p>
                                             <p class="font-bold text-gray-700 text-sm" id="val_info_2">-</p>
@@ -435,14 +445,12 @@
                                 <i class="fas fa-check-circle mr-2"></i> Bayar Sekarang
                             </button>
 
-                            {{-- ⚡ FITUR BARU: CONTAINER ARRAY DETAIL (HIDDEN BY DEFAULT) ⚡ --}}
+                            {{-- Container Detail List --}}
                             <div id="detail_container" class="mt-6 border-t border-dashed border-gray-200 pt-4 hidden">
                                 <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
                                     <i class="fas fa-list-ul"></i> Rincian Item Tagihan
                                 </h4>
-                                <div id="detail_list" class="space-y-3">
-                                    {{-- ITEM AKAN DIMASUKKAN VIA JS DISINI --}}
-                                </div>
+                                <div id="detail_list" class="space-y-3"></div>
                             </div>
 
                         </div>
@@ -454,7 +462,7 @@
     </div>
 </div>
 
-{{-- MODAL KONFIRMASI (PRABAYAR) - SUDAH DIPERBAIKI --}}
+{{-- MODAL KONFIRMASI (PRABAYAR) --}}
 <div id="confirmModal" class="fixed inset-0 z-[999] hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
     <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
         <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity backdrop-blur-sm" onclick="closeModal()"></div>
@@ -475,11 +483,8 @@
                     </div>
                 </div>
             </div>
-            {{-- DIV BUTTONS (Form dihapus, diganti Logic Checkout via JS) --}}
             <div class="bg-gray-50 px-6 py-4 flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
                 <button type="button" onclick="closeModal()" class="w-full inline-flex justify-center rounded-xl border border-gray-300 shadow-sm px-4 py-3 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:w-auto sm:text-sm transition">Batal</button>
-                
-                {{-- Button Baru yang memanggil processPrepaidCheckout() --}}
                 <button type="button" id="btn-confirm-pay" onclick="processPrepaidCheckout()" class="w-full inline-flex justify-center rounded-xl border border-transparent shadow-lg shadow-red-200 px-6 py-3 bg-red-600 text-base font-bold text-white hover:bg-red-700 focus:outline-none sm:text-sm transition transform hover:scale-[1.02]">Bayar Sekarang</button>
             </div>
         </div>
@@ -501,7 +506,7 @@
     const inputNo = document.getElementById('customer_no');
     let currentBillData = null; 
     let currentPrepaidData = null;
-    let isProcessing = false; // [FIX] Flag untuk mencegah double submit
+    let isProcessing = false;
 
     // Setup Swiper
     var swiper = new Swiper(".heroSwiper", { 
@@ -521,7 +526,6 @@
         if (!periodeStr) return '-';
         let str = periodeStr.toString().trim().toUpperCase();
 
-        // Format Angka (202512)
         if (/^\d{5,6}$/.test(str)) {
             let len = str.length;
             let year = str.substring(len - 4, len);
@@ -529,7 +533,6 @@
             const months = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
             if (months[month]) return `${months[month]} ${year}`;
         }
-        // Format Teks (DES25)
         if (/^[A-Z]{3}\d{2}$/.test(str)) {
             let code = str.substring(0, 3);
             let year = "20" + str.substring(3, 5);
@@ -539,59 +542,23 @@
         return str;
     }
 
-    // --- HELPER: RC Message (LENGKAP) ---
+    // --- HELPER: RC Message ---
     function getRcMessage(rcCode) {
         const rc = String(rcCode);
         const rcMap = {
-            // --- SUKSES & PENDING ---
             '00': { status: 'Sukses', message: 'Transaksi Berhasil.', alertType: 'success' },
-            '03': { status: 'Pending', message: 'Transaksi sedang diproses sistem. Mohon tunggu.', alertType: 'warning' },
-            '99': { status: 'Pending', message: 'Menunggu respon provider (Router Issue).', alertType: 'warning' },
-
-            // --- GAGAL (USER/INPUT) ---
-            '40': { status: 'Gagal', message: 'Format data salah (Payload Error).', alertType: 'error' },
-            '41': { status: 'Gagal', message: 'Validasi Signature gagal.', alertType: 'error' },
-            '42': { status: 'Gagal', message: 'Konfigurasi akun belum sesuai.', alertType: 'error' },
-            '43': { status: 'Gagal', message: 'Produk/SKU sedang Gangguan atau Tidak Aktif.', alertType: 'error' },
-            '44': { status: 'Gagal', message: 'Saldo Server Agen tidak mencukupi.', alertType: 'error' },
-            '45': { status: 'Gagal', message: 'Akses ditolak (IP Not Allowed).', alertType: 'error' },
-            '47': { status: 'Gagal', message: 'Transaksi ganda (Double Request).', alertType: 'error' },
-            '49': { status: 'Gagal', message: 'Ref ID sudah pernah digunakan.', alertType: 'error' },
-
-            // --- GAGAL (TUJUAN/NOMOR) ---
-            '50': { status: 'Gagal', message: 'Nomor/ID Pelanggan tidak ditemukan atau Jaringan Sibuk.', alertType: 'error' },
-            '51': { status: 'Gagal', message: 'Nomor Tujuan Diblokir/Hangus.', alertType: 'error' },
-            '52': { status: 'Gagal', message: 'Prefix/Kode Operator tidak sesuai.', alertType: 'error' },
-            '53': { status: 'Gagal', message: 'Produk sedang ditutup sementara.', alertType: 'error' },
+            '03': { status: 'Pending', message: 'Transaksi sedang diproses.', alertType: 'warning' },
             '54': { status: 'Gagal', message: 'Nomor Tujuan Salah / Tidak Dikenali.', alertType: 'error' },
-            '55': { status: 'Gagal', message: 'Gangguan Provider Pusat.', alertType: 'error' },
-            '57': { status: 'Gagal', message: 'Jumlah digit nomor tidak sesuai.', alertType: 'error' },
-            '58': { status: 'Gagal', message: 'Sistem sedang Cut Off (Maintenance).', alertType: 'error' },
-            '59': { status: 'Gagal', message: 'ID diluar wilayah layanan (Cluster).', alertType: 'error' },
-
-            // --- GAGAL (TAGIHAN) ---
             '60': { status: 'Gagal', message: 'Tagihan Belum Tersedia atau Sudah Lunas.', alertType: 'info' },
-            '63': { status: 'Gagal', message: 'Nominal tidak sesuai / Paket tidak tersedia.', alertType: 'error' },
-            '68': { status: 'Gagal', message: 'Stok Voucher Kosong.', alertType: 'error' },
-            '70': { status: 'Gagal', message: 'Timeout koneksi ke Biller. Silakan coba lagi.', alertType: 'error' },
-            '73': { status: 'Gagal', message: 'Limit KWH terlampaui (Maksimum).', alertType: 'error' },
         };
-
-        return rcMap[rc] || { 
-            status: 'Gagal', 
-            message: `Gagal memproses transaksi (Kode RC: ${rc}).`, 
-            alertType: 'error' 
-        };
+        return rcMap[rc] || { status: 'Gagal', message: `Gagal (Kode: ${rc}).`, alertType: 'error' };
     }
 
-    // --- HELPER: Notification ---
     function triggerCustomNotification(msg, type) {
         if (typeof Swal !== 'undefined' && typeof Swal.fire === 'function') {
              const icon = type === 'success' ? 'success' : type === 'error' ? 'error' : 'warning';
              Swal.fire({ title: type.toUpperCase(), text: msg, icon: icon, confirmButtonText: 'Oke' });
-        } else {
-            alert(msg);
-        }
+        } else { alert(msg); }
     }
 
     // =================================================================
@@ -607,7 +574,7 @@
             });
         }
 
-        // Auto Detect Operator (Khusus Pulsa & Data)
+        // --- 1. DETEKSI OPERATOR (PULSA & DATA SAJA) ---
         @if(in_array($currentSlug, ['pulsa', 'data']))
         inputNo.addEventListener('input', function(e) {
             const val = e.target.value;
@@ -628,21 +595,79 @@
         });
         @endif
 
-        // Modal Pilih Produk
+        // --- 2. CEK NAMA OTOMATIS (KHUSUS PLN TOKEN) ---
+        @if($currentSlug == 'pln-token')
+        const plnInfo = document.getElementById('pln_info');
+        const loadingPln = document.getElementById('loading-pln');
+        
+        // Fungsi Debounce (Jeda Waktu Ketik)
+        function debounce(func, wait) {
+            let timeout;
+            return function(...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), wait);
+            };
+        }
+
+        // Listener Input
+        inputNo.addEventListener('input', debounce(function(e) {
+            let no = e.target.value.replace(/[^0-9]/g, '');
+            if (no.length < 10) {
+                plnInfo.classList.add('hidden');
+                return;
+            }
+            // Auto Check
+            autoCheckPLN(no);
+        }, 800)); // Delay 0.8 Detik setelah berhenti mengetik
+
+        function autoCheckPLN(no) {
+            loadingPln.classList.remove('hidden');
+            plnInfo.classList.add('hidden');
+
+            // FETCH KHUSUS PLN PRABAYAR (BUKAN CEK BILL)
+            fetch('{{ route("ppob.check.pln.prabayar") }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                body: JSON.stringify({ customer_no: no })
+            })
+            .then(res => res.json())
+            .then(data => {
+                loadingPln.classList.add('hidden');
+                if (data.status === 'success') {
+                    document.getElementById('pln_name').innerText = data.data.name;
+                    document.getElementById('pln_power').innerText = data.data.segment_power;
+                    plnInfo.classList.remove('hidden');
+                    // Opsional: Notif kecil
+                    // triggerCustomNotification("ID Valid: " + data.data.name, 'success');
+                }
+            })
+            .catch(err => {
+                loadingPln.classList.add('hidden');
+                console.error(err);
+            });
+        }
+        @endif
+
+        // --- 3. PILIH PRODUK & KONFIRMASI ---
         function selectProduct(el) {
             const no = inputNo.value.replace(/[^0-9]/g, '');
             let minLen = IS_TESTING ? 3 : 4; 
+            
+            // Validasi Nomor
             if(no.length < minLen) { 
-                triggerCustomNotification("Mohon isi nomor tujuan yang valid terlebih dahulu.", 'error'); 
+                triggerCustomNotification("Mohon isi nomor tujuan/ID Pelanggan dulu.", 'error'); 
                 inputNo.focus(); return; 
             }
+
             currentPrepaidData = {
                 sku: el.dataset.sku,
+                buyer_sku_code: el.dataset.sku,
                 name: el.dataset.name,
                 price: el.dataset.price,
                 customer_no: no,
                 desc: "Pembelian " + el.dataset.name
             };
+            
             document.getElementById('modal_no').innerText = no;
             document.getElementById('modal_product').innerText = el.dataset.name;
             document.getElementById('modal_price').innerText = 'Rp ' + parseInt(el.dataset.price).toLocaleString('id-ID');
@@ -653,10 +678,9 @@
             document.getElementById('confirmModal').classList.add('hidden'); 
         }
 
-        // [FIX] Checkout Prabayar (Mencegah Klik Ganda & Syntax Error)
         function processPrepaidCheckout() {
-            if(isProcessing) return; // Prevent Double Click
-            isProcessing = true; // Set Lock
+            if(isProcessing) return; 
+            isProcessing = true; 
 
             if(!currentPrepaidData) { isProcessing = false; return; }
 
@@ -678,7 +702,7 @@
                     triggerCustomNotification("Gagal: " + data.message, 'error');
                     btn.disabled = false;
                     btn.innerHTML = originalText;
-                    isProcessing = false; // Reset Lock
+                    isProcessing = false; 
                 }
             })
             .catch(err => {
@@ -686,45 +710,12 @@
                 triggerCustomNotification("Terjadi kesalahan sistem.", 'error');
                 btn.disabled = false;
                 btn.innerHTML = originalText;
-                isProcessing = false; // Reset Lock
+                isProcessing = false; 
             });
         }
-        
-        // Cek Nama PLN Prabayar
-        @if($currentSlug == 'pln-token')
-        function cekPlnPrabayar() {
-            const no = inputNo.value.replace(/[^0-9]/g, '');
-            if(no.length < 5) { triggerCustomNotification("Nomor Meter tidak valid!", 'error'); return; }
-            const btn = document.getElementById('btn-cek-pln');
-            const infoBox = document.getElementById('pln_info');
-            const oriText = btn.innerHTML;
-            
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengecek...'; btn.disabled = true; infoBox.classList.add('hidden');
-            
-            fetch('{{ route("ppob.check.pln.prabayar") }}', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-                body: JSON.stringify({ customer_no: no, testing: IS_TESTING })
-            })
-            .then(res => res.json())
-            .then(data => {
-                btn.innerHTML = oriText; btn.disabled = false;
-                const d = data.data || data;
-                if(d.status === 'success' || d.rc === '00' || d.name) {
-                    document.getElementById('pln_name').innerText = d.name || d.customer_name || 'Pelanggan';
-                    document.getElementById('pln_power').innerText = d.segment_power || '-';
-                    infoBox.classList.remove('hidden');
-                    triggerCustomNotification("Data pelanggan ditemukan!", 'success');
-                } else { triggerCustomNotification(d.message || "Nomor tidak ditemukan.", 'error'); }
-            })
-            .catch(err => {
-                btn.innerHTML = oriText; btn.disabled = false; triggerCustomNotification("Gagal koneksi server.", 'error');
-            });
-        }
-        @endif
-
+    
     // =================================================================
-    // 🔵 LOGIKA PASCABAYAR (PERBAIKAN TOTAL)
+    // 🔵 LOGIKA PASCABAYAR
     // =================================================================
     @else
     function cekTagihan() {
@@ -741,13 +732,11 @@
         const spinner = document.getElementById('loading-spinner');
         const text = document.getElementById('btn-text');
         
-        // UI Elements
         const resultDiv = document.getElementById('bill_result');
         const emptyDiv = document.getElementById('bill_empty');
         const detailContainer = document.getElementById('detail_container');
         const detailList = document.getElementById('detail_list');
 
-        // Reset UI
         btn.disabled = true;
         spinner.classList.remove('hidden');
         text.innerText = "Mengecek...";
@@ -756,14 +745,12 @@
         if (detailContainer) detailContainer.classList.add('hidden');
         currentBillData = null;
 
-        // --- REQUEST API ---
         fetch('{{ route("ppob.check.bill") }}', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
                 body: JSON.stringify({ 
                     customer_no: cleanNo, 
                     sku: ACTIVE_SKU,
-                    // Pastikan controller juga mengembalikan parameter ini
                     buyer_sku_code: ACTIVE_SKU, 
                     ref_id: generateRefID(),    
                     testing: IS_TESTING 
@@ -780,19 +767,16 @@
                 const rcInfo = getRcMessage(rc);
                 let messageToUser = d.message || rcInfo.message;
 
-                // --- JIKA SUKSES ---
                 if (d && (d.status === 'success' || d.status === 'Sukses' || rc === '00')) {
+                    // MAPPING DATA
+                    let apiSellingPrice = parseInt(d.selling_price || d.total_tagihan || 0);
+                    let apiAdmin = parseInt(d.admin || d.admin_fee || 0);
                     
-                    // 1. Ambil Data Detail
                     const desc = d.desc || {};
                     const detailArray = (desc.detail && Array.isArray(desc.detail)) ? desc.detail : [];
                     const firstDetail = detailArray.length > 0 ? detailArray[0] : {};
 
-                    // 2. Hitung Harga Total
-                    let apiSellingPrice = parseInt(d.selling_price || d.total_tagihan || 0);
-                    let apiAdmin = parseInt(d.admin || d.admin_fee || d.admin_fee_modal || 0);
-                    
-                    // Fallback hitung manual jika API return 0 (kasus langka)
+                    // Fallback hitung manual
                     if (apiSellingPrice === 0 && detailArray.length > 0) {
                          let totalTagihanDetail = 0;
                          let totalAdminDetail = 0;
@@ -804,36 +788,28 @@
                          if (apiAdmin === 0) apiAdmin = totalAdminDetail;
                     }
 
-                    let finalPrice = apiSellingPrice;
-                    let finalAdmin = apiAdmin;
-
-                    // 3. Mapping Tampilan
-                    let valAddr = desc.alamat || desc.address || d.address || firstDetail.alamat || '-';
                     document.getElementById('bill_ref').innerText = d.ref_id || '-';
                     document.getElementById('bill_name').innerText = d.customer_name || d.name || 'Pelanggan';
                     document.getElementById('bill_id').innerText = d.customer_no;
-                    document.getElementById('bill_amount').innerText = 'Rp ' + finalPrice.toLocaleString('id-ID');
-                    document.getElementById('bill_admin').innerText = 'Rp ' + finalAdmin.toLocaleString('id-ID');
-                    document.getElementById('val_address').innerText = valAddr;
+                    document.getElementById('bill_amount').innerText = 'Rp ' + apiSellingPrice.toLocaleString('id-ID');
+                    document.getElementById('bill_admin').innerText = 'Rp ' + apiAdmin.toLocaleString('id-ID');
+                    document.getElementById('val_address').innerText = desc.alamat || desc.address || d.address || firstDetail.alamat || '-';
 
-                    // 4. [FIX KRUSIAL] Update Data Checkout dengan SKU Asli API
+                    // Update Checkout Data
                     currentBillData = {
-                        // Priority: SKU dari API > SKU Request > SKU Default
                         sku: d.buyer_sku_code || ACTIVE_SKU, 
-                        // Wajib simpan SKU Asli ini (misal post641597) ke dalam 'desc' agar controller checkout bisa baca
                         buyer_sku_code: d.buyer_sku_code || ACTIVE_SKU,
                         name: "Tagihan " + ACTIVE_SKU.toUpperCase() + " - " + (d.customer_name || d.name),
-                        price: finalPrice,
-                        ref_id: d.ref_id, // Wajib untuk Payment Pascabayar
+                        price: apiSellingPrice,
+                        ref_id: d.ref_id,
                         customer_no: d.customer_no
                     };
 
-                    // 5. Mapping Periode & Detail Dinamis
                     let mainPeriode = firstDetail.periode || desc.periode || d.periode || '-';
                     document.getElementById('bill_period').innerText = formatPeriodeID(mainPeriode);
 
+                    // Mapping Detail Info
                     let lbl1 = "Info", val1 = "-", lbl2 = "Lembar", val2 = (desc.lembar_tagihan || '1') + ' Lembar';
-
                     if (ACTIVE_SKU.includes('pln')) {
                         lbl1 = "Tarif / Daya";
                         let tarifData = desc.tarif || d.segment_power || '-';
@@ -854,14 +830,12 @@
                         val1 = (firstDetail.meter_awal || '-') + ' - ' + (firstDetail.meter_akhir || '-');
                     }
 
-                    if(document.getElementById('label_info_1')) {
-                        document.getElementById('label_info_1').innerText = lbl1;
-                        document.getElementById('val_info_1').innerText = val1;
-                        document.getElementById('label_info_2').innerText = lbl2;
-                        document.getElementById('val_info_2').innerText = val2;
-                    }
+                    document.getElementById('label_info_1').innerText = lbl1;
+                    document.getElementById('val_info_1').innerText = val1;
+                    document.getElementById('label_info_2').innerText = lbl2;
+                    document.getElementById('val_info_2').innerText = val2;
 
-                    // 6. Render List Detail
+                    // Render List
                     if (detailList && detailArray.length > 0) {
                         detailList.innerHTML = '';
                         detailContainer.classList.remove('hidden');
@@ -883,15 +857,11 @@
                                 </div>`;
                             detailList.insertAdjacentHTML('beforeend', htmlItem);
                         });
-                    } else if(detailContainer) {
-                        detailContainer.classList.add('hidden');
                     }
 
                     triggerCustomNotification("Tagihan ditemukan.", 'success');
                     resultDiv.classList.remove('hidden');
-
                 } else {
-                    // Gagal
                     triggerCustomNotification(messageToUser, rcInfo.alertType);
                     resultDiv.classList.add('hidden');
                     emptyDiv.classList.remove('hidden');
@@ -902,17 +872,16 @@
                 btn.disabled = false;
                 spinner.classList.add('hidden');
                 text.innerText = "Cek Tagihan";
-                triggerCustomNotification("Gagal koneksi server. Periksa jaringan Anda.", 'error');
+                triggerCustomNotification("Gagal koneksi server.", 'error');
             });
     }
 
-    // [FIX] Checkout Pascabayar (Mencegah Klik Ganda & Syntax Error)
     function bayarTagihan() {
-        if(isProcessing) return; // Lock
-        isProcessing = true; // Set Lock
+        if(isProcessing) return; 
+        isProcessing = true; 
 
         if(!currentBillData) {
-            triggerCustomNotification("Data tagihan tidak valid/kadaluarsa. Silakan cek ulang.", 'error');
+            triggerCustomNotification("Data tagihan tidak valid.", 'error');
             isProcessing = false;
             return;
         }
@@ -924,10 +893,7 @@
 
         fetch('{{ route("ppob.prepare") }}', {
             method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json', 
-                'X-CSRF-TOKEN': '{{ csrf_token() }}' 
-            },
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
             body: JSON.stringify(currentBillData)
         })
         .then(res => res.json())
@@ -938,7 +904,7 @@
                 triggerCustomNotification("Gagal memproses pesanan.", 'error');
                 btnBayar.innerHTML = oriText;
                 btnBayar.disabled = false;
-                isProcessing = false; // Release Lock
+                isProcessing = false; 
             }
         })
         .catch(err => {
@@ -946,12 +912,9 @@
             triggerCustomNotification("Terjadi kesalahan sistem.", 'error');
             btnBayar.innerHTML = oriText;
             btnBayar.disabled = false;
-            isProcessing = false; // Release Lock
+            isProcessing = false; 
         });
     }
     @endif
 </script>
-
-
-    
 @endpush
