@@ -253,8 +253,8 @@ class AgentTransactionController extends Controller
                 ? 'Transaksi Sedang Diproses. Mohon Tunggu.' 
                 : 'Transaksi Berhasil! SN: ' . $trx->sn;
 
-            return redirect()->route('agent.transaction.create')->with('success', $pesanBalikan);
-
+        return redirect('customer/ppob/history')->with('success', $pesanBalikan);
+        
         } catch (Exception $e) {
             DB::rollBack();
             Log::error('Agent Transaction Error: ' . $e->getMessage());
