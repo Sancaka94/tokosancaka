@@ -322,6 +322,19 @@ $isPostpaid = (
 
                         <div id="product_list" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             @forelse($products ?? [] as $product)
+
+                            {{-- LOGIKA FILTER TAMBAHAN --}}
+    @php
+        // 1. Jika halaman ini 'pln-token', tapi nama produk mengandung kata 'Pascabayar' -> SKIP/SEMBUNYIKAN
+        if ($currentSlug == 'pln-token' && stripos($product->product_name, 'Pascabayar') !== false) {
+            continue;
+        }
+
+        // 2. (Opsional) Jika halaman ini 'pln-token', tapi nama produknya 'Cek Tagihan' -> SKIP
+        if ($currentSlug == 'pln-token' && stripos($product->product_name, 'Tagihan') !== false) {
+            continue;
+        }
+    @endphp
                             <div class="product-item border border-gray-200 rounded-xl p-4 cursor-pointer relative bg-white transition-all duration-300 group"
                                  data-brand="{{ $product->brand }}"
                                  data-sku="{{ $product->buyer_sku_code }}"
