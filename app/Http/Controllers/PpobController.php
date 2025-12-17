@@ -233,12 +233,15 @@ class PpobController extends Controller
             'icon' => $icon,
         ];
 
-        // 4. QUERY PRODUK
-        $products = PpobProduct::where('category', 'LIKE', "%{$dbCategoryKeyword}%")
-            ->where('buyer_product_status', true)
-            ->where('seller_product_status', true)
-            ->orderBy('sell_price', 'asc')
-            ->get();
+        // 4. QUERY PRODUK (DIPERBAIKI)
+$products = PpobProduct::where(function($query) use ($dbCategoryKeyword) {
+        $query->where('category', 'LIKE', "%{$dbCategoryKeyword}%")
+              ->orWhere('brand', 'LIKE', "%{$dbCategoryKeyword}%"); // Tambahkan cari by Brand juga
+    })
+    ->where('seller_product_status', 1) // Pastikan status seller aktif
+    ->where('buyer_product_status', 1)  // Pastikan status buyer aktif
+    ->orderBy('price', 'asc') // Urutkan dari termurah
+    ->get();
 
         $brands = $products->pluck('brand')->unique()->values();
 
