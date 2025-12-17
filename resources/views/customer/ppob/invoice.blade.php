@@ -315,7 +315,7 @@
                             <td>01.</td>
                             <td>
                                 <strong>{{ strtoupper($transaction->buyer_sku_code) }}</strong><br>
-                                <span style="font-size: 12px; color: #888;">Metode: {{ str_replace('_', ' ', $transaction->payment_method) }}</span>
+                                <span style="font-size: 12px; color: #888;">Metode Pembayaran: {{ str_replace('_', ' ', $transaction->payment_method) }}</span>
                                 
                                 @if($transaction->sn)
                                     @php
