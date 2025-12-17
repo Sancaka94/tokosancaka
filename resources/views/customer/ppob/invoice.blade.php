@@ -316,14 +316,70 @@
                             <td>
                                 <strong>{{ strtoupper($transaction->buyer_sku_code) }}</strong><br>
                                 <span style="font-size: 12px; color: #888;">Metode: {{ str_replace('_', ' ', $transaction->payment_method) }}</span>
+                                
                                 @if($transaction->sn)
-                                    
-                                    <br><br>
-<span style="color:#16a34a; font-weight:600;">
-    SN: {{ $transaction->sn }}
-</span>
+                                    @php
+                                        // Pecah string SN berdasarkan tanda '/'
+                                        $parts = explode('/', $transaction->sn);
+                                        // Cek apakah formatnya PLN (memiliki lebih dari 1 bagian)
+                                        $isPln = count($parts) > 1; 
+                                    @endphp
 
+                                    @if($isPln)
+                                        <div style="margin-top: 10px; padding: 15px; background-color: #f0fdf4; border: 1px dashed #16a34a; border-radius: 6px;">
+                                            
+                                            <div style="font-size: 10px; color: #666; text-transform: uppercase; margin-bottom: 4px;">
+                                                Token Listrik:
+                                            </div>
+                                            
+                                            <div style="font-family: 'Courier New', monospace; font-size: 18px; font-weight: 800; color: #16a34a; letter-spacing: 1px; margin-bottom: 12px;">
+                                                {{ $parts[0] }}
+                                            </div>
 
+                                            <div style="border-top: 1px dashed #cbd5e1; margin-bottom: 12px;"></div>
+
+                                            <div style="font-size: 12px; color: #334155;">
+                                                
+                                                @if(isset($parts[1]))
+                                                <div style="display: flex; margin-bottom: 8px;">
+                                                    <span style="width: 50px; color: #64748b;">Nama</span>
+                                                    <span style="margin-right: 8px;">:</span>
+                                                    <strong style="flex: 1;">{{ $parts[1] }}</strong>
+                                                </div>
+                                                @endif
+
+                                                @if(isset($parts[2]))
+                                                <div style="display: flex; margin-bottom: 8px;">
+                                                    <span style="width: 50px; color: #64748b;">Tarif</span>
+                                                    <span style="margin-right: 8px;">:</span>
+                                                    <span style="flex: 1;">{{ $parts[2] }}</span>
+                                                </div>
+                                                @endif
+
+                                                @if(isset($parts[3]))
+                                                <div style="display: flex; margin-bottom: 8px;">
+                                                    <span style="width: 50px; color: #64748b;">Daya</span>
+                                                    <span style="margin-right: 8px;">:</span>
+                                                    <span style="flex: 1;">{{ $parts[3] }}</span>
+                                                </div>
+                                                @endif
+
+                                                @if(isset($parts[4]))
+                                                <div style="display: flex; margin-bottom: 8px;">
+                                                    <span style="width: 50px; color: #64748b;">KWH</span>
+                                                    <span style="margin-right: 8px;">:</span>
+                                                    <span style="flex: 1;">{{ $parts[4] }}</span>
+                                                </div>
+                                                @endif
+
+                                            </div>
+                                        </div>
+                                    @else
+                                        <br><br>
+                                        <span style="color:#16a34a; font-weight:600; font-family: monospace; background: #f0fdf4; padding: 6px 10px; border-radius: 4px; border: 1px solid #dcfce7;">
+                                            SN: {{ $transaction->sn }}
+                                        </span>
+                                    @endif
                                 @endif
                             </td>
                             <td>Rp {{ number_format($transaction->selling_price, 0, ',', '.') }}</td>
