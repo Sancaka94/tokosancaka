@@ -432,12 +432,36 @@
                     
                     {{-- 1. MODE PRABAYAR --}}
                     @if(!$isPostpaid)
-                        <div class="flex justify-between items-center mb-6 pb-4 border-b border-gray-100">
-                            <h2 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                        <div class="flex flex-col sm:flex-row justify-between items-center mb-6 pb-4 border-b border-gray-100 gap-4">
+                            
+                            {{-- Judul Kiri --}}
+                            <h2 class="text-lg font-bold text-gray-800 flex items-center gap-2 w-full sm:w-auto">
                                 <i class="fas fa-list text-gray-400"></i> Daftar Produk
                             </h2>
+
+                            {{-- Form Pencarian Kanan (BARU) --}}
+                            <div class="relative w-full sm:w-1/2 md:w-1/3 group">
+                                <input type="text" id="productSearch" 
+                                       class="w-full border border-gray-200 bg-gray-50 rounded-xl px-4 py-2 pl-10 text-sm font-medium text-gray-700 focus:bg-white focus:ring-2 focus:ring-red-100 focus:border-red-500 outline-none transition"
+                                       placeholder="Cari produk...">
+                                <div class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 group-focus-within:text-red-500 transition">
+                                    <i class="fas fa-search"></i>
+                                </div>
+                                {{-- Tombol X (Clear) --}}
+                                <button id="clearProductSearch" onclick="document.getElementById('productSearch').value=''; filterProductsList();" 
+                                        class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-300 hover:text-red-500 transition hidden">
+                                    <i class="fas fa-times-circle"></i>
+                                </button>
+                            </div>
                         </div>
 
+                        {{-- Pesan "Tidak Ditemukan" (Hidden by default) --}}
+                        <div id="productNoResult" class="hidden text-center py-10 bg-gray-50 rounded-xl border border-dashed border-gray-200 mb-4">
+                             <i class="fas fa-search-minus text-4xl text-gray-300 mb-2"></i>
+                             <p class="text-gray-500 font-medium">Produk tidak ditemukan.</p>
+                        </div>
+
+                        {{-- Container Grid Produk (Pastikan ID-nya sama dengan script di bawah) --}}
                         <div id="product_list" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             @forelse($products ?? [] as $product)
 
@@ -1218,6 +1242,68 @@
             section.classList.remove('hidden');
         }
     }
+</script>
+
+<script>
+    // ==========================================================
+    // 🔍 FITUR PENCARIAN PRODUK (LIVE FILTER)
+    // ==========================================================
+    document.addEventListener("DOMContentLoaded", function() {
+        const pSearchInput = document.getElementById('productSearch');
+        const pClearBtn = document.getElementById('clearProductSearch');
+        const pNoResult = document.getElementById('productNoResult');
+        const pListContainer = document.getElementById('product_list');
+        
+        // Ambil semua item produk
+        const productItems = document.querySelectorAll('.product-item');
+
+        if (pSearchInput) {
+            pSearchInput.addEventListener('input', function() {
+                filterProductsList();
+            });
+        }
+
+        window.filterProductsList = function() {
+            const query = pSearchInput.value.toLowerCase().trim();
+            let visibleCount = 0;
+
+            // Toggle tombol Clear (X)
+            if (query.length > 0) {
+                pClearBtn.classList.remove('hidden');
+            } else {
+                pClearBtn.classList.add('hidden');
+            }
+
+            productItems.forEach(item => {
+                // Ambil data dari atribut dataset (pastikan di loop PHP Anda sudah ada data-name, data-price, data-brand)
+                const name = (item.dataset.name || '').toLowerCase();
+                const brand = (item.dataset.brand || '').toLowerCase();
+                const price = (item.dataset.price || '').toLowerCase(); // Harga mentah (contoh: 20000)
+                
+                // Cek kecocokan
+                const matchName = name.includes(query);
+                const matchBrand = brand.includes(query);
+                const matchPrice = price.includes(query); // Bisa cari "20000"
+
+                // Jika query kosong, atau ada kecocokan -> Tampilkan
+                if (query === '' || matchName || matchBrand || matchPrice) {
+                    item.classList.remove('hidden');
+                    visibleCount++;
+                } else {
+                    item.classList.add('hidden');
+                }
+            });
+
+            // Tampilkan pesan kosong jika tidak ada hasil
+            if (visibleCount === 0) {
+                pNoResult.classList.remove('hidden');
+                pListContainer.classList.add('hidden'); // Sembunyikan grid biar rapi
+            } else {
+                pNoResult.classList.add('hidden');
+                pListContainer.classList.remove('hidden');
+            }
+        };
+    });
 </script>
 
 @endpush
