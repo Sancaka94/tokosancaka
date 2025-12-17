@@ -177,10 +177,11 @@
 
     <div class="invoice-wrapper" id="invoice-area">
         <div class="invoice-content">
-            
-            <div class="yellow-accent"></div>
 
             <div class="header-bg">
+
+                <div class="yellow-accent"></div>
+                
                 <div class="top-nav">
                     <div class="logo-area">
                         <h1>SANCAKA STORE</h1>
