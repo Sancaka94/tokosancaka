@@ -147,9 +147,9 @@
             width: 100%;
             box-sizing: border-box;
         }
-        .footer-invoice h4 { margin: 0 0 5px 0; font-size: 14px; color: #f8b300; }
+        .footer-invoice h4 { margin: 0 0 5px 0; font-size: 14px; color: #1a2a47; }
         .footer-invoice p { margin: 0; font-size: 12px; opacity: 0.7; }
-        .footer-total-float { float: right; font-size: 20px; font-weight: bold; color: #f8b300; }
+        .footer-total-float { float: right; font-size: 20px; font-weight: bold; color: #1a2a47; }
 
         /* PRINT */
         @media print {
