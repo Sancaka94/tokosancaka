@@ -304,28 +304,6 @@
             {{-- KOLOM KIRI: INPUT NOMOR & FILTER --}}
             <div class="lg:w-1/3 space-y-6">
 
-                {{-- 💰 WIDGET SALDO USER (UPDATED) --}}
-                @auth
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex items-center justify-between relative overflow-hidden group transition hover:shadow-md">
-                    {{-- Hiasan Background --}}
-                    <div class="absolute right-0 top-0 w-24 h-24 bg-green-50 rounded-bl-full -mr-4 -mt-4 opacity-50 group-hover:scale-110 transition duration-500"></div>
-
-                    <div class="flex items-center gap-4 relative z-10">
-                        {{-- Icon Dompet --}}
-                        <div class="bg-green-100 w-12 h-12 rounded-2xl flex items-center justify-center text-green-600 shadow-sm">
-                            <i class="fas fa-wallet text-xl"></i>
-                        </div>
-                        
-                        {{-- Info Saldo --}}
-                        <div>
-                            <p class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Sisa Saldo Anda</p>
-                            <h3 class="text-xl font-extrabold text-gray-800">
-                                {{-- Menampilkan Saldo --}}
-                                Rp {{ number_format(Auth::user()->saldo ?? Auth::user()->balance ?? 0, 0, ',', '.') }}
-                            </h3>
-                        </div>
-                    </div>
-
                     {{-- 💰 WIDGET SALDO USER (DYNAMIC ROLE) --}}
                 @auth
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex items-center justify-between relative overflow-hidden group transition hover:shadow-md">
@@ -374,8 +352,7 @@
                     
                 </div>
                 @endauth
-                </div>
-                @endauth
+          
                 
                 {{-- Card Input --}}
                 <div class="bg-white rounded-2xl shadow-md p-6 border-t-4 border-red-500 relative overflow-hidden">
