@@ -220,8 +220,8 @@
     <div class="mb-6 relative" data-aos="fade-up">
         <div class="relative group">
             <input type="text" id="menuSearch" 
-                   class="w-full border border-gray-300 rounded-2xl px-5 py-4 pl-12 font-medium text-gray-700 focus:ring-4 focus:ring-red-100 focus:border-red-500 outline-none shadow-sm transition placeholder-gray-400"
-                   placeholder="Cari layanan (Contoh: Pulsa, PLN, DANA, BPJS)...">
+                   class="w-full border border-blue-400 rounded-2xl px-5 py-4 pl-12 font-medium text-gray-700 focus:ring-4 focus:ring-red-100 focus:border-red-500 outline-none shadow-sm transition placeholder-gray-400"
+                   placeholder="Cari layanan (Contoh: Pulsa, PLN, DANA, BPJS, SAMSAT, DANA, OVO)...">
             
             <div class="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 group-focus-within:text-red-500 transition">
                 <i class="fas fa-search text-xl"></i>
