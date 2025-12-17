@@ -37,7 +37,11 @@
 
     // Logika penentuan apakah halaman ini Pascabayar atau Prabayar
     $postpaidKeys = ['pln', 'pdam', 'bpjs', 'bpjstk', 'hp', 'internet', 'tv', 'multifinance', 'cimahi', 'pbb', 'samsat', 'pgas', 'plnnontaglist', 'emoney'];
-    $isPostpaid = ($pageInfo['is_postpaid'] ?? false) || in_array($activeSku, $postpaidKeys);
+    // Tambahkan pengecualian khusus: Jika slug URL-nya 'pln-token', paksa jadi FALSE (Prabayar)
+$isPostpaid = (
+    ($pageInfo['is_postpaid'] ?? false) || 
+    in_array($activeSku, $postpaidKeys)
+) && $currentSlug !== 'pln-token';
     
     // Judul Halaman & Label Input
     $pageTitle = $pageInfo['title'] ?? ucfirst(str_replace('-', ' ', $currentSlug));
