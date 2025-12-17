@@ -326,12 +326,55 @@
                         </div>
                     </div>
 
-                    {{-- Tombol Top Up Cepat (LINK SUDAH DIPERBAIKI) --}}
-                    <a href="https://tokosancaka.com/customer/topup/create" class="relative z-10 bg-gray-900 hover:bg-black text-white w-10 h-10 rounded-xl flex items-center justify-center shadow-lg shadow-gray-300 transition transform hover:-translate-y-1 hover:scale-105" title="Isi Saldo">
+                    {{-- 💰 WIDGET SALDO USER (DYNAMIC ROLE) --}}
+                @auth
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex items-center justify-between relative overflow-hidden group transition hover:shadow-md">
+                    {{-- Hiasan Background --}}
+                    <div class="absolute right-0 top-0 w-24 h-24 bg-green-50 rounded-bl-full -mr-4 -mt-4 opacity-50 group-hover:scale-110 transition duration-500"></div>
+
+                    <div class="flex items-center gap-4 relative z-10">
+                        {{-- Icon Dompet --}}
+                        <div class="bg-green-100 w-12 h-12 rounded-2xl flex items-center justify-center text-green-600 shadow-sm">
+                            <i class="fas fa-wallet text-xl"></i>
+                        </div>
+                        
+                        {{-- Info Saldo --}}
+                        <div>
+                            <p class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                                {{ Auth::user()->role === 'admin' ? 'Total Saldo Sistem' : 'Sisa Saldo Anda' }}
+                            </p>
+                            <h3 class="text-xl font-extrabold text-gray-800">
+                                Rp {{ number_format(Auth::user()->saldo ?? Auth::user()->balance ?? 0, 0, ',', '.') }}
+                            </h3>
+                        </div>
+                    </div>
+
+                    {{-- LOGIKA TOMBOL TOP UP BERDASARKAN ROLE --}}
+                    @php
+                        $userRole = Auth::user()->role ?? 'customer'; // Default customer jika null
+                        $topUpLink = null;
+
+                        // 1. Cek Role Customer
+                        if ($userRole === 'customer') {
+                            $topUpLink = 'https://tokosancaka.com/customer/topup/create';
+                        } 
+                        // 2. Cek Role Agent / Seller (Biasanya link sama atau khusus member)
+                        elseif ($userRole === 'agent' || $userRole === 'seller') {
+                            $topUpLink = 'https://tokosancaka.com/customer/topup/create'; 
+                        }
+                        // 3. Admin = Tetap null (Tidak ada tombol)
+                    @endphp
+
+                    {{-- Render Tombol Hanya Jika Link Tidak Null (Bukan Admin) --}}
+                    @if($topUpLink)
+                    <a href="{{ $topUpLink }}" class="relative z-10 bg-gray-900 hover:bg-black text-white w-10 h-10 rounded-xl flex items-center justify-center shadow-lg shadow-gray-300 transition transform hover:-translate-y-1 hover:scale-105" title="Isi Saldo">
                         <i class="fas fa-plus"></i>
                     </a>
+                    @endif
+                    
                 </div>
                 @endauth
+                
                 
                 {{-- Card Input --}}
                 <div class="bg-white rounded-2xl shadow-md p-6 border-t-4 border-red-500 relative overflow-hidden">
