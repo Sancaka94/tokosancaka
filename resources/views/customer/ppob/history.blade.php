@@ -195,7 +195,7 @@
                             <a href="{{ route('ppob.invoice', ['invoice' => $trx->order_id]) }}" 
                                class="text-gray-400 hover:text-blue-600 transition duration-150" 
                                title="Lihat Invoice">
-                                <i class="fas fa-eye text-lg"></i>
+                                <i class="fas fa-file-invoice text-lg"></i>
                             </a>
                         </td>
                     </tr>
