@@ -250,22 +250,15 @@
                         </p>
                     </div>
 
-                    {{-- TOMBOL CEK PLN TOKEN (PRABAYAR) --}}
                     @if($currentSlug == 'pln-token')
-                        <button onclick="cekPlnPrabayar()" id="btn-cek-pln" class="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-4 rounded-xl transition mb-4 shadow-lg shadow-yellow-200/50 flex items-center justify-center gap-2">
-                            <i class="fas fa-search"></i> Cek Nama Pelanggan
-                        </button>
-                        <div id="pln_info" class="hidden bg-yellow-50 p-4 rounded-xl border border-yellow-200 text-sm mb-4 animate-fade-in">
-                            <div class="flex justify-between mb-2 border-b border-yellow-200 pb-2">
-                                <span class="text-gray-500">Nama:</span>
-                                <span class="font-bold text-gray-800" id="pln_name">-</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-gray-500">Tarif/Daya:</span>
-                                <span class="font-bold text-gray-800" id="pln_power">-</span>
-                            </div>
-                        </div>
-                    @endif
+    <button onclick="cekPlnPrabayar()" id="btn-cek-pln" class="hidden w-full bg-yellow-500 ...">
+        <i class="fas fa-search"></i> Cek Nama Pelanggan
+    </button>
+    
+    <div id="loading-pln" class="hidden text-center py-2 text-sm text-gray-500">
+        <i class="fas fa-circle-notch fa-spin text-red-500"></i> Sedang mengecek ID Pelanggan...
+    </div>
+@endif
 
                     {{-- TOMBOL CEK TAGIHAN (PASCABAYAR) --}}
                     @if($isPostpaid)
@@ -497,7 +490,7 @@
 
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
-<script>
+<scrip>
     // =================================================================
     // ⚙️ KONFIGURASI GLOBAL
     // =================================================================
@@ -957,5 +950,96 @@
         });
     }
     @endif
+
+
+    // --- 1. Fungsi Debounce (Agar tidak spam API saat mengetik) ---
+    function debounce(func, wait) {
+        let timeout;
+        return function(...args) {
+            const context = this;
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(context, args), wait);
+        };
+    }
+
+    // --- 2. Event Listener Otomatis untuk PLN ---
+    @if($currentSlug == 'pln-token')
+    
+    const inputPln = document.getElementById('customer_no');
+    const loadingInd = document.getElementById('loading-pln');
+    const infoBox = document.getElementById('pln_info');
+    const productList = document.getElementById('product_list'); // Pastikan ID div list produk anda ini
+
+    // Pasang Event Listener dengan Debounce 1000ms (1 detik)
+    inputPln.addEventListener('input', debounce(function(e) {
+        const no = e.target.value.replace(/[^0-9]/g, ''); // Ambil angka saja
+
+        // Reset Tampilan jika nomor dihapus/pendek
+        if (no.length < 10) {
+            infoBox.classList.add('hidden');
+            if(productList) productList.classList.add('hidden'); // Sembunyikan produk jika nomor tidak valid
+            return;
+        }
+
+        // Jika nomor >= 11 digit, Jalankan Cek Otomatis
+        if (no.length >= 11) {
+            autoCekPln(no);
+        }
+    }, 1000)); // Delay 1 detik setelah user berhenti mengetik
+
+    // --- 3. Fungsi Cek PLN Otomatis (Modifikasi dari cekPlnPrabayar) ---
+    function autoCekPln(no) {
+        // Tampilkan Loading
+        if(loadingInd) loadingInd.classList.remove('hidden');
+        if(infoBox) infoBox.classList.add('hidden');
+
+        console.log("Mengecek otomatis untuk:", no);
+
+        fetch('{{ route("ppob.check.pln.prabayar") }}', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json', 
+                'X-CSRF-TOKEN': '{{ csrf_token() }}' 
+            },
+            body: JSON.stringify({ customer_no: no })
+        })
+        .then(res => res.json())
+        .then(response => {
+            // Sembunyikan Loading
+            if(loadingInd) loadingInd.classList.add('hidden');
+
+            if(response.status === 'success' && response.data) {
+                const d = response.data;
+                
+                // Isi Data Pelanggan
+                document.getElementById('pln_name').innerText = d.name;
+                document.getElementById('pln_power').innerText = d.segment_power;
+                
+                // Munculkan Box Info Pelanggan
+                if(infoBox) infoBox.classList.remove('hidden');
+                
+                // Munculkan Daftar Produk (Token 20k, 50k, dll)
+                // Asumsi: Daftar produk awalnya di-hidden atau perlu di-trigger filter "all"
+                if(productList) {
+                    productList.classList.remove('hidden'); 
+                    // Jika Anda menggunakan fungsi filterProducts, panggil disini:
+                    if(typeof filterProducts === 'function') filterProducts('all'); 
+                }
+
+                // Notifikasi haluis (Opsional)
+                // triggerCustomNotification("ID Ditemukan: " + d.name, 'success');
+            } else {
+                // Jika Gagal (Nomor salah)
+                if(productList) productList.classList.add('hidden'); // Sembunyikan produk agar user tidak beli ke nomor salah
+                triggerCustomNotification(response.message || "ID Pelanggan tidak ditemukan.", 'error');
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            if(loadingInd) loadingInd.classList.add('hidden');
+        });
+    }
+    @endif
 </script>
+
 @endpush
