@@ -295,6 +295,17 @@ $isPostpaid = (
                             </div>
                         </label>
                         @foreach($brands ?? [] as $brand)
+
+                        {{-- TAMBAHKAN LOGIKA FILTER INI --}}
+    @php
+        // Jika kita sedang di halaman 'pln-token', 
+        // tapi nama Brand mengandung kata 'Pascabayar' -> SKIP / Sembunyikan
+        if ($currentSlug == 'pln-token' && stripos($brand, 'Pascabayar') !== false) {
+            continue;
+        }
+    @endphp
+    {{-- END LOGIKA --}}
+    
                         <label class="cursor-pointer">
                             <input type="radio" name="brand_filter" value="{{ $brand }}" class="brand-radio hidden" onchange="filterProducts('{{ $brand }}')">
                             <div class="border border-gray-200 rounded-lg p-2 text-center transition h-full flex flex-col items-center justify-center hover:bg-gray-50 gap-1">
