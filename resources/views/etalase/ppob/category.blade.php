@@ -273,7 +273,7 @@ $isPostpaid = (
 
                     {{-- TOMBOL CEK TAGIHAN (PASCABAYAR) --}}
                     @if($isPostpaid)
-                        <button onclick="cekTagihan()" id="btn-cek-tagihan" class="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-4 rounded-xl transition flex justify-center items-center gap-2 shadow-lg shadow-yellow-200/50">
+                        <button onclick="cekTagihan()" id="btn-cek-tagihan" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-xl transition flex justify-center items-center gap-2 shadow-lg shadow-red-200/50">
                             <span id="btn-text">Cek Tagihan</span>
                             <div id="loading-spinner" class="loader hidden !border-t-white"></div>
                         </button>
