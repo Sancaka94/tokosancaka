@@ -305,7 +305,7 @@ $isPostpaid = (
         }
     @endphp
     {{-- END LOGIKA --}}
-    
+
                         <label class="cursor-pointer">
                             <input type="radio" name="brand_filter" value="{{ $brand }}" class="brand-radio hidden" onchange="filterProducts('{{ $brand }}')">
                             <div class="border border-gray-200 rounded-lg p-2 text-center transition h-full flex flex-col items-center justify-center hover:bg-gray-50 gap-1">
@@ -366,7 +366,7 @@ $isPostpaid = (
                                     @if(($product->stock ?? 0) < 5 && !($product->unlimited_stock ?? false))
                                         <span class="bg-red-50 text-red-600 text-[10px] font-bold px-2 py-1 rounded border border-red-100 animate-pulse">Sisa {{ $product->stock }}</span>
                                     @elseif($product->multi ?? false)
-                                        <span class="bg-blue-50 text-blue-600 text-[10px] font-bold px-2 py-1 rounded border border-blue-100">Promo</span>
+                                        <span class="bg-red-50 text-red-600 text-[10px] font-bold px-2 py-1 rounded border border-red-100">Promo</span>
                                     @endif
                                 </div>
 
