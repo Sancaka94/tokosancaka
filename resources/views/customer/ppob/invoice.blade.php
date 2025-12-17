@@ -205,7 +205,7 @@
                    <h3 style="color:#b91c1c; font-weight:600;">Invoice To:</h3>
                     <p>{{ $transaction->customer_no }}</p>
                     <div class="sub">
-                        {{ $transaction->desc['detail'][0]['nama_pelanggan'] ?? 'Pelanggan Setia' }}<br>Indonesia
+                        {{ $transaction->desc['detail'][0]['nama_lengkap'] ?? 'Pelanggan Setia' }}<br>Indonesia
                     </div>
                 </div>
                 <div class="info-box" style="text-align: right;">
