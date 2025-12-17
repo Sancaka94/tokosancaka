@@ -202,7 +202,7 @@
 
             <div class="info-section">
                 <div class="info-box">
-                    <h3>Invoice To:</h3>
+                   <h3 style="color:#b91c1c; font-weight:600;">Invoice To:</h3>
                     <p>{{ $transaction->customer_no }}</p>
                     <div class="sub">
                         {{ $transaction->desc['detail'][0]['nama_pelanggan'] ?? 'Pelanggan Setia' }}<br>Indonesia
