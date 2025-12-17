@@ -304,7 +304,7 @@
             {{-- KOLOM KIRI: INPUT NOMOR & FILTER --}}
             <div class="lg:w-1/3 space-y-6">
 
-                {{-- 💰 WIDGET SALDO USER (UPDATED) --}}
+                {{-- 💰 WIDGET SALDO USER (ROLE BASED LINK) --}}
                 @auth
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex items-center justify-between relative overflow-hidden group transition hover:shadow-md">
                     {{-- Hiasan Background --}}
@@ -318,17 +318,29 @@
                         
                         {{-- Info Saldo --}}
                         <div>
-                            <p class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Sisa Saldo Anda</p>
+                            <p class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                                {{ Auth::user()->role === 'admin' ? 'Total Saldo Sistem' : 'Sisa Saldo Anda' }}
+                            </p>
                             <h3 class="text-xl font-extrabold text-gray-800">
-                                {{-- Menampilkan Saldo --}}
                                 Rp {{ number_format(Auth::user()->saldo ?? Auth::user()->balance ?? 0, 0, ',', '.') }}
                             </h3>
                         </div>
                     </div>
 
-                    {{-- Tombol Top Up Cepat (LINK SUDAH DIPERBAIKI) --}}
-                    <a href="https://tokosancaka.com/customer/topup/create" class="relative z-10 bg-gray-900 hover:bg-black text-white w-10 h-10 rounded-xl flex items-center justify-center shadow-lg shadow-gray-300 transition transform hover:-translate-y-1 hover:scale-105" title="Isi Saldo">
-                        <i class="fas fa-plus"></i>
+                    {{-- LOGIKA LINK TOMBOL --}}
+                    @php
+                        $userRole = Auth::user()->role ?? 'customer';
+                        $topUpLink = 'https://tokosancaka.com/customer/topup/create'; // Default (Customer/Agent/Seller)
+
+                        // Jika Admin, ganti linknya
+                        if ($userRole === 'admin') {
+                            $topUpLink = 'https://tokosancaka.com/admin/wallet';
+                        }
+                    @endphp
+
+                    {{-- Tombol Action --}}
+                    <a href="{{ $topUpLink }}" class="relative z-10 bg-gray-900 hover:bg-black text-white w-10 h-10 rounded-xl flex items-center justify-center shadow-lg shadow-gray-300 transition transform hover:-translate-y-1 hover:scale-105" title="{{ $userRole === 'admin' ? 'Kelola Wallet' : 'Isi Saldo' }}">
+                        <i class="fas {{ $userRole === 'admin' ? 'fa-cog' : 'fa-plus' }}"></i>
                     </a>
                 </div>
                 @endauth
