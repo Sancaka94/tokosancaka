@@ -215,9 +215,34 @@
 
 {{-- SECTION MENU KATEGORI --}}
 <section class="mb-10 space-y-8" data-aos="fade-up">
+
+    {{-- SEARCH BAR SECTION --}}
+    <div class="mb-6 relative" data-aos="fade-up">
+        <div class="relative group">
+            <input type="text" id="menuSearch" 
+                   class="w-full border border-gray-300 rounded-2xl px-5 py-4 pl-12 font-medium text-gray-700 focus:ring-4 focus:ring-red-100 focus:border-red-500 outline-none shadow-sm transition placeholder-gray-400"
+                   placeholder="Cari layanan (Contoh: Pulsa, PLN, DANA, BPJS)...">
+            
+            <div class="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 group-focus-within:text-red-500 transition">
+                <i class="fas fa-search text-xl"></i>
+            </div>
+
+            {{-- Tombol Reset (X) - Muncul saat ada ketikan --}}
+            <button id="clearSearch" onclick="document.getElementById('menuSearch').value=''; filterMenu();" 
+                    class="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-300 hover:text-red-500 transition hidden">
+                <i class="fas fa-times-circle text-xl"></i>
+            </button>
+        </div>
+        
+        {{-- Pesan jika tidak ditemukan --}}
+        <div id="noResult" class="hidden text-center py-8 text-gray-500 bg-white rounded-xl mt-2 border border-dashed border-gray-300">
+            <i class="fas fa-search-minus text-3xl mb-2 text-gray-300"></i>
+            <p>Layanan tidak ditemukan.</p>
+        </div>
+    </div>
     
     {{-- PRABAYAR --}}
-    <div class="bg-white p-6 rounded-2xl shadow-md border-t-4 border-red-500">
+    <div id="prabayar-section" class="bg-white p-6 rounded-2xl shadow-md border-t-4 border-red-500">
         <h2 class="text-xl font-bold mb-6 text-gray-800 flex items-center border-b pb-2">
             <i class="fas fa-wallet text-red-500 mr-2"></i> Layanan Top Up & Prabayar
         </h2>
@@ -233,7 +258,7 @@
     </div>
 
     {{-- PASCABAYAR --}}
-    <div class="bg-white p-6 rounded-2xl shadow-md border-t-4 border-blue-500">
+    <div id="pascabayar-section" class="bg-white p-6 rounded-2xl shadow-md border-t-4 border-blue-500">
         <h2 class="text-xl font-bold mb-6 text-gray-800 flex items-center border-b pb-2">
             <i class="fas fa-file-invoice text-blue-500 mr-2"></i> Layanan Tagihan & Pascabayar
         </h2>
@@ -1095,4 +1120,75 @@
     });
 
 </script>
+
+<script>
+    // ==========================================================
+    // 🔍 FITUR PENCARIAN MENU (LIVE SEARCH)
+    // ==========================================================
+    const searchInput = document.getElementById('menuSearch');
+    const clearBtn = document.getElementById('clearSearch');
+    const noResultMsg = document.getElementById('noResult');
+    
+    // Ambil semua item menu (Prabayar & Pascabayar)
+    // Kita target class 'ppob-icon' yang ada di looping menu Anda
+    const menuItems = document.querySelectorAll('.ppob-icon');
+
+    // Event Listener saat mengetik
+    searchInput.addEventListener('input', function() {
+        filterMenu();
+    });
+
+    function filterMenu() {
+        const query = searchInput.value.toLowerCase().trim();
+        let foundCount = 0;
+
+        // Toggle tombol silang (clear)
+        if (query.length > 0) {
+            clearBtn.classList.remove('hidden');
+        } else {
+            clearBtn.classList.add('hidden');
+        }
+
+        menuItems.forEach(item => {
+            // Ambil teks nama menu (span di dalam a)
+            const menuName = item.querySelector('span').innerText.toLowerCase();
+            // Ambil link slug (opsional, buat pencarian lebih luas)
+            const menuSlug = item.getAttribute('href').toLowerCase();
+            
+            // Logika Pencarian: Cek Nama ATAU Link/Slug
+            if (menuName.includes(query) || menuSlug.includes(query)) {
+                item.classList.remove('hidden'); // Tampilkan
+                item.parentElement.classList.remove('hidden'); // Pastikan container grid tidak hidden (jika ada wrapper)
+                foundCount++;
+            } else {
+                item.classList.add('hidden'); // Sembunyikan
+            }
+        });
+
+        // Cek Logika Section (Sembunyikan Judul Kategori jika semua isinya hidden)
+        toggleSectionVisibility('prabayar-section', query); // *Pastikan ID section ditambahkan (lihat langkah 3)
+        toggleSectionVisibility('pascabayar-section', query); // *Pastikan ID section ditambahkan (lihat langkah 3)
+
+        // Tampilkan pesan "Tidak Ditemukan" jika semua item hidden
+        if (foundCount === 0) {
+            noResultMsg.classList.remove('hidden');
+        } else {
+            noResultMsg.classList.add('hidden');
+        }
+    }
+
+    // Helper: Sembunyikan satu kotak kategori besar jika tidak ada item yang cocok di dalamnya
+    function toggleSectionVisibility(sectionId, query) {
+        const section = document.getElementById(sectionId);
+        if(!section) return;
+
+        const visibleItems = section.querySelectorAll('.ppob-icon:not(.hidden)');
+        if (visibleItems.length === 0 && query !== '') {
+            section.classList.add('hidden');
+        } else {
+            section.classList.remove('hidden');
+        }
+    }
+</script>
+
 @endpush
