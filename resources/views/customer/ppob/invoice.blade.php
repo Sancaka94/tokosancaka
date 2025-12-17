@@ -318,7 +318,11 @@
                                 <span style="font-size: 12px; color: #888;">Metode: {{ str_replace('_', ' ', $transaction->payment_method) }}</span>
                                 @if($transaction->sn)
                                     
-                                    <br><br><span class="text-green-600 font-semibold">SN: {{ $transaction->sn }}</span>
+                                    <br><br>
+<span style="color:#16a34a; font-weight:600;">
+    SN: {{ $transaction->sn }}
+</span>
+
 
                                 @endif
                             </td>
