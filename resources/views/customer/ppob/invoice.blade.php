@@ -205,7 +205,15 @@
                    <h3 style="color:#b91c1c; font-weight:600;">Invoice To:</h3>
                     <p>{{ $transaction->customer_no }}</p>
                     <div class="sub">
-                        {{ $transaction->desc['detail'][0]['nama_lengkap'] ?? 'Pelanggan Setia' }}<br>Indonesia
+                        @php
+    $user = \App\Models\User::find($transaction->user_id);
+@endphp
+
+<strong>
+    {{ $user->nama_lengkap?? 'Pelanggan Setia' }}
+</strong><br>
+Indonesia
+
                     </div>
                 </div>
                 <div class="info-box" style="text-align: right;">
