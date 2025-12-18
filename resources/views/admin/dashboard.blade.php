@@ -157,6 +157,99 @@
 
 </div>
 
+{{-- Baris Baru: Kartu Status Pengiriman --}}
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
+    
+    {{-- Total Terkirim --}}
+    <div class="relative group">
+        <div class="absolute -inset-0.5 bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
+        <div class="relative bg-white border border-gray-100 p-6 rounded-2xl shadow-sm transition-all duration-300 transform group-hover:-translate-y-2 group-hover:shadow-xl group-hover:shadow-green-100">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Total Terkirim</p>
+                    <h3 class="text-2xl font-extrabold text-gray-800 leading-none">
+                        {{ number_format($totalTerkirim ?? 0, 0, ',', '.') }}
+                    </h3>
+                    <div class="flex items-center mt-2 text-[10px] font-bold text-green-500">
+                        <i class="fas fa-check-circle mr-1"></i><span>Pesanan Selesai</span>
+                    </div>
+                </div>
+                <div class="flex-shrink-0 w-14 h-14 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg transform transition-transform group-hover:rotate-12 group-hover:scale-110">
+                    <i class="fas fa-shipping-fast text-white text-xl"></i>
+                </div>
+            </div>
+            <div class="mt-4 w-full bg-gray-100 rounded-full h-1 border-b-2 border-green-500"></div>
+        </div>
+    </div>
+
+    {{-- Sedang Dikirim --}}
+    <div class="relative group">
+        <div class="absolute -inset-0.5 bg-gradient-to-r from-blue-400 to-cyan-500 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
+        <div class="relative bg-white border border-gray-100 p-6 rounded-2xl shadow-sm transition-all duration-300 transform group-hover:-translate-y-2 group-hover:shadow-xl group-hover:shadow-blue-100">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Sedang Dikirim</p>
+                    <h3 class="text-2xl font-extrabold text-gray-800 leading-none">
+                        {{ number_format($totalSedangDikirim ?? 0, 0, ',', '.') }}
+                    </h3>
+                    <div class="flex items-center mt-2 text-[10px] font-bold text-blue-500">
+                        <i class="fas fa-truck mr-1"></i><span>Dalam Perjalanan</span>
+                    </div>
+                </div>
+                <div class="flex-shrink-0 w-14 h-14 bg-gradient-to-br from-blue-400 to-cyan-500 rounded-xl flex items-center justify-center shadow-lg transform transition-transform group-hover:rotate-12 group-hover:scale-110">
+                    <i class="fas fa-route text-white text-xl"></i>
+                </div>
+            </div>
+            <div class="mt-4 w-full bg-gray-100 rounded-full h-1 border-b-2 border-blue-500"></div>
+        </div>
+    </div>
+
+    {{-- Menunggu Pickup --}}
+    <div class="relative group">
+        <div class="absolute -inset-0.5 bg-gradient-to-r from-orange-400 to-yellow-500 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
+        <div class="relative bg-white border border-gray-100 p-6 rounded-2xl shadow-sm transition-all duration-300 transform group-hover:-translate-y-2 group-hover:shadow-xl group-hover:shadow-orange-100">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Menunggu Pickup</p>
+                    <h3 class="text-2xl font-extrabold text-gray-800 leading-none">
+                        {{ number_format($totalMenungguPickup ?? 0, 0, ',', '.') }}
+                    </h3>
+                    <div class="flex items-center mt-2 text-[10px] font-bold text-orange-500">
+                        <i class="fas fa-box mr-1"></i><span>Siap Dijemput</span>
+                    </div>
+                </div>
+                <div class="flex-shrink-0 w-14 h-14 bg-gradient-to-br from-orange-400 to-yellow-500 rounded-xl flex items-center justify-center shadow-lg transform transition-transform group-hover:rotate-12 group-hover:scale-110">
+                    <i class="fas fa-hand-holding-box text-white text-xl"></i>
+                </div>
+            </div>
+            <div class="mt-4 w-full bg-gray-100 rounded-full h-1 border-b-2 border-orange-500"></div>
+        </div>
+    </div>
+
+    {{-- Gagal / Batal --}}
+    <div class="relative group">
+        <div class="absolute -inset-0.5 bg-gradient-to-r from-red-500 to-rose-600 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
+        <div class="relative bg-white border border-gray-100 p-6 rounded-2xl shadow-sm transition-all duration-300 transform group-hover:-translate-y-2 group-hover:shadow-xl group-hover:shadow-red-100">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Gagal / Cancel</p>
+                    <h3 class="text-2xl font-extrabold text-gray-800 leading-none">
+                        {{ number_format($totalGagal ?? 0, 0, ',', '.') }}
+                    </h3>
+                    <div class="flex items-center mt-2 text-[10px] font-bold text-red-500">
+                        <i class="fas fa-exclamation-triangle mr-1"></i><span>Masalah/Batal</span>
+                    </div>
+                </div>
+                <div class="flex-shrink-0 w-14 h-14 bg-gradient-to-br from-red-500 to-rose-600 rounded-xl flex items-center justify-center shadow-lg transform transition-transform group-hover:rotate-12 group-hover:scale-110">
+                    <i class="fas fa-times-circle text-white text-xl"></i>
+                </div>
+            </div>
+            <div class="mt-4 w-full bg-gray-100 rounded-full h-1 border-b-2 border-red-500"></div>
+        </div>
+    </div>
+
+</div>
+
     {{-- Grafik --}}
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
         <div class="lg:col-span-2 space-y-6">
