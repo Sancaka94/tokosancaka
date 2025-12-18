@@ -86,13 +86,32 @@
                 {{-- GANTI BAGIAN @forelse ($pesananTerbaru ... SAMPAI @empty DENGAN INI --}}
 @forelse ($pesananTerbaru as $pesanan)
 <div class="flex items-start py-2 border-b border-gray-100 last:border-0">
-    <div class="p-3 rounded-full bg-indigo-50 mt-1">
-        <i class="fas fa-shopping-bag text-indigo-500"></i>
+    {{-- LOGO EKSPEDISI (Pengganti Icon Cart) --}}
+    <div class="mt-1">
+        @php
+            // Ambil kode ekspedisi dari string (contoh: regular-jne-REG -> jne)
+            $parts = explode('-', $pesanan->expedition);
+            $kodeEks = isset($parts[1]) ? strtolower($parts[1]) : 'default';
+            
+            // Path folder logo ekspedisi Anda
+            $logoPath = "public/storage/logo-ekspedisi/{$kodeEks}.png";
+            $fullPath = asset($logoPath);
+        @endphp
+
+        <div class="w-12 h-12 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center overflow-hidden shadow-sm">
+            @if(file_exists(base_path($logoPath)) || $kodeEks != 'default')
+                <img src="{{ $fullPath }}" 
+                     alt="{{ $kodeEks }}" 
+                     class="w-10 h-10 object-contain"
+                     onerror="this.onerror=null; this.src='{{ asset('public/storage/uploads/sancaka.png') }}';">
+            @else
+                <i class="fas fa-shipping-fast text-indigo-500"></i>
+            @endif
+        </div>
     </div>
-    
-    
 
     <div class="ml-3 flex-1">
+        {{-- Baris 1: RESI & HARGA --}}
         <div class="flex justify-between items-start">
             <p class="text-sm font-bold text-gray-800">
                 {{ $pesanan->resi ?? $pesanan->nomor_invoice }}
@@ -102,16 +121,16 @@
             </span>
         </div>
 
+        {{-- Info Toko & User (Pakai ALIAS dari Controller sebelumnya) --}}
         <div class="mt-1 flex flex-col gap-0.5">
-            {{-- PEMBAHARUAN DISINI: Langsung panggil store_name --}}
             <div class="flex items-center text-xs text-indigo-600 font-semibold">
-    <i class="fas fa-store w-4 text-center mr-1 opacity-70"></i>
-    <span>{{ $pesanan->nama_toko_anda ?? 'Tanpa Nama Toko' }}</span>
+                <i class="fas fa-store w-4 text-center mr-1 opacity-70"></i>
+                <span>{{ $pesanan->nama_toko_anda ?? 'Tanpa Nama Toko' }}</span>
             </div>
 
             <div class="flex items-center text-xs text-gray-700 font-medium">
-    <i class="fas fa-user w-4 text-center mr-1 opacity-60"></i>
-    <span>{{ $pesanan->nama_user_anda ?? 'User Tidak Dikenal' }}</span>
+                <i class="fas fa-user w-4 text-center mr-1 opacity-60"></i>
+                <span>{{ $pesanan->nama_user_anda ?? 'User Tidak Dikenal' }}</span>
             </div>
 
             <div class="flex items-center text-[10px] text-gray-500">
@@ -123,7 +142,7 @@
 </div>
 @empty
     <p class="text-sm text-gray-500 text-center py-4">Belum ada aktivitas pesanan.</p>
-@endforelse 
+@endforelse
                 {{-- SAMPAI DISINI --}}
             </div>
         </div>
@@ -447,46 +466,39 @@ function updateRecentActivity(activities) {
 
     container.innerHTML = ''; 
 
-    if (activities && activities.length > 0) {
-        activities.forEach(pesanan => {
-            const resi = pesanan.resi || pesanan.nomor_invoice;
-            const harga = new Intl.NumberFormat('id-ID').format(pesanan.shipping_cost);
-            
-            // Karena menggunakan Join, data ada di level utama objek pesanan
-            const storeName = pesanan.nama_toko_anda || 'Tanpa Nama Toko';
-            const namaLengkap = pesanan.nama_user_anda || 'User Tidak Dikenal';
-            const senderName = pesanan.sender_name || '-';
+    activities.forEach(pesanan => {
+        const parts = (pesanan.expedition || '').split('-');
+        const kodeEks = parts[1] ? parts[1].toLowerCase() : 'default';
+        const logoUrl = `{{ asset('public/storage/logo-ekspedisi') }}/${kodeEks}.png`;
+        const defaultLogo = `{{ asset('public/storage/uploads/sancaka.png') }}`;
 
-            const html = `
-                <div class="flex items-start py-2 border-b border-gray-100 last:border-0">
-                    <div class="p-3 rounded-full bg-indigo-50 mt-1">
-                        <i class="fas fa-shopping-bag text-indigo-500"></i>
+        const html = `
+            <div class="flex items-start py-2 border-b border-gray-100 last:border-0">
+                <div class="mt-1">
+                    <div class="w-12 h-12 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center overflow-hidden">
+                        <img src="${logoUrl}" class="w-10 h-10 object-contain" onerror="this.src='${defaultLogo}'">
                     </div>
-                    <div class="ml-3 flex-1">
-                        <div class="flex justify-between items-start">
-                            <p class="text-sm font-bold text-gray-800">${resi}</p>
-                            <span class="text-xs font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">Rp ${harga}</span>
+                </div>
+                <div class="ml-3 flex-1">
+                    <div class="flex justify-between items-start">
+                        <p class="text-sm font-bold text-gray-800">${pesanan.resi || pesanan.nomor_invoice}</p>
+                        <span class="text-xs font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">Rp ${new Intl.NumberFormat('id-ID').format(pesanan.shipping_cost)}</span>
+                    </div>
+                    <div class="mt-1 flex flex-col gap-0.5">
+                        <div class="flex items-center text-xs text-indigo-600 font-semibold">
+                            <i class="fas fa-store w-4 text-center mr-1 opacity-70"></i>
+                            <span>${pesanan.nama_toko_anda || 'Tanpa Nama Toko'}</span>
                         </div>
-                        <div class="mt-1 flex flex-col gap-0.5">
-                            <div class="flex items-center text-xs text-indigo-600 font-semibold">
-                                <i class="fas fa-store w-4 text-center mr-1 opacity-70"></i>
-                                <span>${storeName}</span>
-                            </div>
-                            <div class="flex items-center text-xs text-gray-700 font-medium">
-                                <i class="fas fa-user w-4 text-center mr-1 opacity-60"></i>
-                                <span>${namaLengkap}</span>
-                            </div>
-                            <div class="flex items-center text-[10px] text-gray-500">
-                                <i class="fas fa-paper-plane w-4 text-center mr-1 opacity-50"></i>
-                                <span>Pengirim: ${senderName}</span>
-                            </div>
+                        <div class="flex items-center text-xs text-gray-700 font-medium">
+                            <i class="fas fa-user w-4 text-center mr-1 opacity-60"></i>
+                            <span>${pesanan.nama_user_anda || 'User Tidak Dikenal'}</span>
                         </div>
                     </div>
                 </div>
-            `;
-            container.insertAdjacentHTML('beforeend', html);
-        });
-    }
+            </div>
+        `;
+        container.insertAdjacentHTML('beforeend', html);
+    });
 }
 
         function updateChart(chart, newData) {
