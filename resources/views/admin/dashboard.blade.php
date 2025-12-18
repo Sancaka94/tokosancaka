@@ -614,39 +614,44 @@ if (expCtx) {
             }
         },
         // 3. PLUGIN KHUSUS UNTUK GAMBAR LOGO
-        // 3. PLUGIN ANTI-GEPENG (OBJECT-CONTAIN LOGIC)
         plugins: [{
-            id: 'yAxisLogos',
-            afterDraw: (chart) => {
-                const { ctx, scales: { y } } = chart;
-                y.ticks.forEach((tick, index) => {
-                    const img = new Image();
-                    img.src = brandLogos[index];
-                    
-                    if (img.complete || img.height > 0) {
-                        const yPos = y.getPixelForTick(index);
-                        const targetW = 35; // Lebar maks
-                        const targetH = 25; // Tinggi maks
-                        
-                        // Hitung Rasio agar tidak gepeng
-                        const ratio = img.width / img.height;
-                        let drawW = targetW;
-                        let drawH = targetW / ratio;
+    id: 'yAxisLogos',
+    afterDraw: (chart) => {
+        const { ctx, scales: { y } } = chart;
+        
+        y.ticks.forEach((tick, index) => {
+            const img = new Image();
+            img.src = brandLogos[index]; // brandLogos didefinisikan dari data labels
+            
+            if (img.complete || img.height > 0) {
+                const yPos = y.getPixelForTick(index);
+                const targetW = 35; // Lebar maksimal logo
+                const targetH = 25; // Tinggi maksimal logo
+                
+                // Kalkulasi rasio asli agar TIDAK GEPENG
+                const ratio = img.width / img.height;
+                let drawW = targetW;
+                let drawH = targetW / ratio;
 
-                        if (drawH > targetH) {
-                            drawH = targetH;
-                            drawW = targetH * ratio;
-                        }
+                // Jika tinggi melebihi batas, sesuaikan lebarnya
+                if (drawH > targetH) {
+                    drawH = targetH;
+                    drawW = targetH * ratio;
+                }
 
-                        const xOff = y.left - 50 + (targetW - drawW) / 2;
-                        const yOff = yPos - (drawH / 2);
-                        ctx.drawImage(img, xOff, yOff, drawW, drawH);
-                    } else {
-                        img.onload = () => chart.draw();
-                    }
-                });
+                // Posisi X: ditaruh di sebelah kiri label (y.left)
+                // y.left - 75 adalah posisi di dalam area padding yang kita buat tadi
+                const xOff = y.left - 75 + (targetW - drawW) / 2;
+                const yOff = yPos - (drawH / 2);
+
+                ctx.drawImage(img, xOff, yOff, drawW, drawH);
+            } else {
+                // Redraw jika gambar baru saja dimuat
+                img.onload = () => chart.draw();
             }
-        }]
+        });
+    }
+}]
     });
 }
 
