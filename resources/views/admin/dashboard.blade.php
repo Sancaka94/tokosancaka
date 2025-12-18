@@ -292,31 +292,50 @@
     <div class="mt-8">
         <h3 class="text-2xl font-bold leading-tight text-gray-800 mb-6">Rekap Transaksi Ekspedisi</h3>
 
-        <div class="mb-6 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-    <form action="{{ route('admin.dashboard') }}" method="GET" class="flex flex-wrap items-end gap-4">
-        <div>
+        <div class="mb-8 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 transition-all hover:shadow-md">
+    <div class="flex items-center gap-3 mb-5">
+        <div class="p-2 bg-indigo-50 rounded-lg">
+            <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+            </svg>
+        </div>
+        <h3 class="text-lg font-bold text-gray-800">Filter Laporan</h3>
+    </div>
+
+    <form action="{{ route('admin.dashboard') }}" method="GET" class="grid grid-cols-1 md:grid-cols-4 gap-5 items-end">
+        <div class="flex flex-col gap-1">
+            <label class="text-xs font-bold text-gray-400 uppercase tracking-wider">Opsi Cepat</label>
             <a href="{{ route('admin.dashboard') }}" 
-               class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+               class="flex items-center justify-center px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-600 bg-gray-50 hover:bg-white hover:border-indigo-300 hover:text-indigo-600 transition-all duration-200 group">
+                <svg class="w-4 h-4 mr-2 text-gray-400 group-hover:text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
                 Semua Waktu
             </a>
         </div>
 
-        <div>
-            <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Dari Tanggal</label>
-            <input type="date" name="start_date" value="{{ $startDate }}" 
-                   class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+        <div class="flex flex-col gap-1">
+            <label class="text-xs font-bold text-gray-400 uppercase tracking-wider">Dari Tanggal</label>
+            <div class="relative group">
+                <input type="date" name="start_date" value="{{ $startDate ?? '' }}" 
+                       class="block w-full px-4 py-2.5 rounded-xl border-gray-200 bg-gray-50 text-gray-700 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 outline-none border">
+            </div>
         </div>
 
-        <div>
-            <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Sampai Tanggal</label>
-            <input type="date" name="end_date" value="{{ $endDate }}" 
-                   class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+        <div class="flex flex-col gap-1">
+            <label class="text-xs font-bold text-gray-400 uppercase tracking-wider">Sampai Tanggal</label>
+            <div class="relative group">
+                <input type="date" name="end_date" value="{{ $endDate ?? '' }}" 
+                       class="block w-full px-4 py-2.5 rounded-xl border-gray-200 bg-gray-50 text-gray-700 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 outline-none border">
+            </div>
         </div>
 
         <div>
             <button type="submit" 
-                    class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+                    class="w-full flex items-center justify-center px-6 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 hover:shadow-indigo-300 transform active:scale-95 transition-all duration-200">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+                </svg>
                 Terapkan Filter
             </button>
         </div>
