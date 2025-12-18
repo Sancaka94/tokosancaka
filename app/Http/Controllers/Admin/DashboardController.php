@@ -14,45 +14,86 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use Carbon\Carbon;
 use Illuminate\Notifications\DatabaseNotification;
+use App\Helpers\ShippingHelper;
 
 class DashboardController extends Controller
 {
     public function index(Request $request)
     {
-        // 1. Ambil Input Filter Range Tanggal
-        $startDate = $request->input('start_date');
-        $endDate = $request->input('end_date');
+        // 1. Tangkap input dari form filter
+$startDate = $request->input('start_date');
+$endDate = $request->input('end_date');
 
-        // 2. Buat Base Query untuk Filter (PENTING: Gunakan clone nanti)
-        $baseQuery = Pesanan::query();
-        if ($startDate && $endDate) {
-            $baseQuery->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
-        }
+// 2. Buat query dasar. 
+// Jika tanggal kosong, otomatis jadi "Semua Waktu"
+$baseQuery = Pesanan::query();
 
-        // Suffix cache supaya data berganti saat filter tanggal berubah
-        $cacheSuffix = ($startDate && $endDate) ? '_' . $startDate . '_' . $endDate : '_all_time';
-        $cacheDuration = 600;
+if ($startDate && $endDate) {
+    // Jika filter diisi, filter berdasarkan range (Bulan ke Bulan / Tanggal ke Tanggal)
+    $baseQuery->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
+}
 
-        // --- 3. Statistik Utama (Total Akumulasi Sesuai Filter) ---
-        $stats = Cache::remember('admin_stats' . $cacheSuffix, $cacheDuration, function () use ($baseQuery) {
+        $allSlides = Slide::orderBy('created_at', 'desc')->get();
+        
+        $cacheDuration = 600; // Durasi cache dalam detik (10 menit)
+
+        // --- Mengambil Statistik Utama (dengan Caching) ---
+        $stats = Cache::remember('admin_dashboard_stats_v10', $cacheDuration, function () {
             $totalTopUp = TopUp::where('status', 'success')->sum('amount');
-            $totalOngkir = (clone $baseQuery)->sum('shipping_cost'); 
+            // Jika ingin total ongkir pesanan sebagai pendapatan, gunakan shipping_cost
+            // Jika ingin total harga barang, gunakan total_harga_barang. 
+            // Di sini saya biarkan total_harga_barang untuk stats global (sesuai kode asli), 
+            // tapi Anda bisa ubah ke shipping_cost jika perlu.
+            $totalOngkirPesanan = Pesanan::sum('shipping_cost'); 
 
             return [
-                'totalPendapatan' => $totalTopUp + $totalOngkir,
-                'totalPesanan' => (clone $baseQuery)->count(),
+                'totalPendapatan' => $totalTopUp + $totalOngkirPesanan,
+                'totalPesanan' => Pesanan::count(),
                 'jumlahToko' => User::where('role', 'Seller')->count(),
                 'penggunaBaru' => User::where('role', 'Pelanggan')->where('created_at', '>=', now()->subDays(30))->count(),
             ];
         });
 
-        // --- 4. Grafik Peringkat Ekspedisi (Jumlah & Omzet) ---
-        $expRankData = Cache::remember('admin_exp_rank' . $cacheSuffix, $cacheDuration, function () use ($baseQuery) {
-            $orders = (clone $baseQuery)
-                ->select('expedition', DB::raw('count(*) as total'))
-                ->whereNotNull('expedition')->where('expedition', '!=', '')
-                ->groupBy('expedition')->get();
+        // --- Mengambil Notifikasi untuk Flasher (dengan Caching) ---
+        $notifications = Cache::remember('admin_dashboard_notifications_v8', 60, function () {
+            return [
+                'pendaftaranBaru' => User::where('role', 'Pelanggan')->where('status', 'pending')->count(),
+                'pesananBaru' => Pesanan::where('status_pesanan', 'Menunggu Pickup')->count(),
+                'spxScanBaru' => ScannedPackage::whereDate('created_at', today())->count(),
+                'riwayatScanBaru' => ScannedPackage::whereDate('created_at', today())->count(), 
+            ];
+        });
+
+        // --- Mengambil Data Grafik Pendapatan (dengan Caching) ---
+        $chartData = Cache::remember('admin_dashboard_revenue_chart_v5', $cacheDuration, function () {
+            $salesData = Pesanan::select(
+                DB::raw('DATE(created_at) as date'),
+                DB::raw('sum(shipping_cost) as total')
+            )
+            ->where('created_at', '>=', now()->subDays(30))
+            ->groupBy('date')
+            ->orderBy('date', 'asc')
+            ->get()
+            ->pluck('total', 'date');
+
+            $dates = collect();
+            for ($i = 29; $i >= 0; $i--) {
+                $date = Carbon::now()->subDays($i)->format('Y-m-d');
+                $dates->put($date, 0);
+            }
+            $dailySales = $dates->merge($salesData);
             
+            return [
+                'labels' => $dailySales->keys()->map(fn($date) => Carbon::parse($date)->format('d M'))->toArray(),
+                'data' => $dailySales->values()->toArray(),
+            ];
+        });
+
+
+        // 3. Grafik Peringkat Ekspedisi (Mendatar)
+        $expeditionData = Cache::remember('admin_exp_rank_v1', $cacheDuration, function () {
+            $orders = DB::table('Pesanan')->select('expedition', DB::raw('count(*) as total'))
+                ->whereNotNull('expedition')->where('expedition', '!=', '')->groupBy('expedition')->get();
             $proc = [];
             foreach ($orders as $o) {
                 $name = strtoupper(explode('-', $o->expedition)[1] ?? 'LAINNYA');
@@ -62,125 +103,228 @@ class DashboardController extends Controller
             return ['labels' => array_keys($proc), 'data' => array_values($proc)];
         });
 
-        $expOmzetData = Cache::remember('admin_exp_omzet' . $cacheSuffix, $cacheDuration, function () use ($baseQuery) {
-            $orders = (clone $baseQuery)
-                ->select('expedition', DB::raw('sum(shipping_cost) as total_omzet'))
-                ->whereNotNull('expedition')->where('expedition', '!=', '')
-                ->groupBy('expedition')->get();
+        $expeditionOmzetData = Cache::remember('admin_exp_omzet_rank_v1', 600, function () {
+    $orders = DB::table('Pesanan')
+        ->select('expedition', DB::raw('sum(shipping_cost) as total_omzet'))
+        ->whereNotNull('expedition')
+        ->where('expedition', '!=', '')
+        ->groupBy('expedition')
+        ->get();
 
-            $processed = [];
-            foreach ($orders as $order) {
-                $name = strtoupper(explode('-', $order->expedition)[1] ?? 'LAINNYA');
-                $processed[$name] = ($processed[$name] ?? 0) + $order->total_omzet;
+    $processed = [];
+    foreach ($orders as $order) {
+        $parts = explode('-', $order->expedition);
+        // Menyesuaikan mapping nama seperti grafik sebelumnya
+        $name = strtoupper($parts[1] ?? 'LAINNYA');
+        
+        if (isset($processed[$name])) {
+            $processed[$name] += $order->total_omzet;
+        } else {
+            $processed[$name] = $order->total_omzet;
+        }
+    }
+
+    arsort($processed); // Urutkan dari omzet terbesar
+
+    return [
+        'labels' => array_keys($processed),
+        'data' => array_values($processed),
+    ];
+});
+        
+
+        // --- Mengambil Data Grafik Scan SPX (dengan Caching) ---
+        $spxChartData = Cache::remember('admin_dashboard_spx_chart_v5', $cacheDuration, function () {
+            $spxData = ScannedPackage::select(
+                DB::raw('DATE(created_at) as date'),
+                DB::raw('COUNT(id) as total')
+            )
+            ->where('created_at', '>=', now()->subDays(30))
+            ->groupBy('date')
+            ->orderBy('date', 'asc')
+            ->get()
+            ->pluck('total', 'date');
+            
+            $dates = collect();
+            for ($i = 29; $i >= 0; $i--) {
+                $date = Carbon::now()->subDays($i)->format('Y-m-d');
+                $dates->put($date, 0);
             }
-            arsort($processed);
-            return ['labels' => array_keys($processed), 'data' => array_values($processed)];
+            $dailyScans = $dates->merge($spxData);
+
+            return [
+                'labels' => $dailyScans->keys()->map(fn($date) => Carbon::parse($date)->format('d M'))->toArray(),
+                'data' => $dailyScans->values()->toArray(),
+            ];
         });
 
-        // --- 5. Rekapitulasi Ekspedisi (LENGKAP SEMUA KURIR TERMASUK BORZO) ---
-        $rekapEkspedisi = Cache::remember('admin_rekap_full' . $cacheSuffix, $cacheDuration, function () use ($baseQuery) {
+        // --- Mengambil Data Tabel (dengan Caching) ---
+        $pesananTerbaru = Cache::remember('admin_dashboard_recent_orders_v5', $cacheDuration, function () {
+            return Pesanan::with('pembeli')->latest('created_at')->take(6)->get();
+        });
+
+// --- REKAPITULASI EKSPEDISI (LENGKAP: KOTA & STATUS) ---
+        $rekapEkspedisi = Cache::remember('admin_dashboard_rekap_ekspedisi_v35', $cacheDuration, function () {
+            
+            // 1. MASTER DATA
             $courierMap = [
-                'jne'          => ['name' => 'JNE', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jne.png'],
-                'jnt'          => ['name' => 'J&T Express', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jnt.png'],
-                'spx'          => ['name' => 'SPX Express', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/spx.png'],
-                'sicepat'      => ['name' => 'SiCepat', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/sicepat.png'],
-                'tiki'         => ['name' => 'TIKI', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/tiki.png'],
+                'jne' => ['name' => 'JNE', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jne.png'],
+                'tiki' => ['name' => 'TIKI', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/tiki.png'],
                 'posindonesia' => ['name' => 'POS Indonesia', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/posindonesia.png'],
-                'lion'         => ['name' => 'Lion Parcel', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/lion.png'],
-                'anteraja'     => ['name' => 'Anteraja', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/anteraja.png'],
-                'ninja'        => ['name' => 'Ninja Xpress', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/ninja.png'],
-                'idx'          => ['name' => 'ID Express', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/idx.png'],
-                'jtcargo'      => ['name' => 'J&T Cargo', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jtcargo.png'],
-                'sap'          => ['name' => 'SAP Express', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/sap.png'],
-                'sentral'      => ['name' => 'Sentral Cargo', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/centralcargo.png'],
-                'indah'        => ['name' => 'Indah Logistik', 'logo_url' => 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEicOAaLoH2eElQ93_gbkzhvk4dRhWVlk5wQsGgilihIB58321aHchlJLdjyz1ToS25P_nWrHJ_E4QBiW_OVlI7tQt7cZ5I0HZqk6StS7jZltLVvDXp2d5ZDLB9yklhV4x6z2iXyURURDv_unhf-U6vyiD_8to9OC4PBwMwyU_5wAqOiCl6tKiaTA-ri1Q/s851/Logo%20Indah%20Logistik%20Cargo@0.5x.png'],
-                'ncs'          => ['name' => 'NCS Kurir', 'logo_url' => 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjxj3iyyZEjK2L4A4yCIr_E-4W3hF2lk_yb-t0Oj2oFPErCPCMHie5LHqps02xMb6sNa-Gqz5NSX_P_hzWlYpUpJUlCD4iN6_QxiSG9fzY4bsZ9XvLFDn7HCiORtNvIlPfuQbSSdW96p7x7uN8ek3FWyHW9c2bznrFBQkoLd5A9sVAFVKWLfUhT3Dxh/s320/GKL41_NCS%20Kurir%20-%20Koleksilogo.com.jpg'],
-                'gojek'        => ['name' => 'GoSend', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/gosend.png'],
-                'grab'         => ['name' => 'GrabExpress', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/grab.png'],
-                'borzo'        => ['name' => 'Borzo', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/borzo.png'],
+                'sicepat' => ['name' => 'SiCepat', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/sicepat.png'],
+                'sap' => ['name' => 'SAP Express', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/sap.png'],
+                'ncs' => ['name' => 'NCS Kurir', 'logo_url' => 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjxj3iyyZEjK2L4A4yCIr_E-4W3hF2lk_yb-t0Oj2oFPErCPCMHie5LHqps02xMb6sNa-Gqz5NSX_P_hzWlYpUpJUlCD4iN6_QxiSG9fzY4bsZ9XvLFDn7HCiORtNvIlPfuQbSSdW96p7x7uN8ek3FWyHW9c2bznrFBQkoLd5A9sVAFVKWLfUhT3Dxh/s320/GKL41_NCS%20Kurir%20-%20Koleksilogo.com.jpg'],
+                'idx' => ['name' => 'ID Express', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/idx.png'],
+                'gojek' => ['name' => 'GoSend', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/gosend.png'],
+                'grab' => ['name' => 'GrabExpress', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/grab.png'],
+                'jnt' => ['name' => 'J&T Express', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jnt.png'],
+                'indah' => ['name' => 'Indah Cargo', 'logo_url' => 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEicOAaLoH2eElQ93_gbkzhvk4dRhWVlk5wQsGgilihIB58321aHchlJLdjyz1ToS25P_nWrHJ_E4QBiW_OVlI7tQt7cZ5I0HZqk6StS7jZltLVvDXp2d5ZDLB9yklhV4x6z2iXyURURDv_unhf-U6vyiD_8to9OC4PBwMwyU_5wAqOiCl6tKiaTA-ri1Q/s851/Logo%20Indah%20Logistik%20Cargo@0.5x.png'],
+                'jtcargo' => ['name' => 'J&T Cargo', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jtcargo.png'],
+                'lion' => ['name' => 'Lion Parcel', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/lion.png'],
+                'spx' => ['name' => 'SPX Express', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/spx.png'],
+                'ninja' => ['name' => 'Ninja Express', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/ninja.png'],
+                'anteraja' => ['name' => 'Anteraja', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/anteraja.png'],
+                'sentral' => ['name' => 'Sentral Cargo', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/centralcargo.png'],
+                'borzo' => ['name' => 'Borzo', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/borzo.png'],
             ];
 
-            $statsRecap = [];
+            // 2. INISIALISASI
+            $stats = [];
             foreach ($courierMap as $code => $info) {
-                $statsRecap[$info['name']] = [
-                    'nama' => $info['name'], 'logo' => $info['logo_url'], 'filter_code' => $code,
-                    'total_order' => 0, 'total_profit' => 0, 'customers' => [],
-                    'status_selesai' => 0, 'status_gagal' => 0, 'status_dikirim' => 0, 'status_pickup' => 0
+                $displayName = $info['name'];
+                $stats[$displayName] = [
+                    'nama' => $displayName,
+                    'logo' => $info['logo_url'],
+                    'filter_code' => $code,
+                    'total_order' => 0,
+                    'total_profit' => 0,
+                    // Array Penampung Unik
+                    'customers' => [], 
+                    'senders' => [],   
+                    'receivers' => [], 
+                    'cities_origin' => [], // Kota Asal
+                    'cities_dest' => [],   // Kota Tujuan
+                    // Counter Status
+                    'status_selesai' => 0,
+                    'status_gagal' => 0,
+                    'status_dikirim' => 0,
+                    'status_pickup' => 0,
                 ];
             }
 
-            // HITUNG TOTAL AKUMULASI (Hapus take(5))
-            $allOrders = (clone $baseQuery)->get();
 
-            foreach ($allOrders as $order) {
+$orders = Pesanan::query()
+    ->leftJoin('Pengguna', 'Pengguna.id_pengguna', '=', 'Pesanan.customer_id')
+    ->select(
+        'Pesanan.resi',           // <--- PASTIKAN INI ADA
+        'Pesanan.nomor_invoice',  // <--- PASTIKAN INI ADA
+        'Pesanan.expedition',
+        'Pesanan.shipping_cost',
+        'Pesanan.sender_phone',
+        'Pesanan.sender_name',
+        'Pesanan.receiver_name',
+        'Pesanan.sender_regency',
+        'Pesanan.receiver_regency',
+        'Pesanan.status_pesanan',
+        'Pengguna.store_name as nama_toko_anda', // ALIAS KHUSUS
+        'Pengguna.nama_lengkap as nama_user_anda' // ALIAS KHUSUS
+    )
+    ->whereNotNull('expedition')
+        ->where('expedition', '!=', '')
+        ->get(); // <--- SEKARANG MENGAMBIL TOTAL SEMUA DATA
+
+// ... the rest of the logic
+            // 4. LOGIKA HITUNG
+            foreach ($orders as $order) {
                 $parts = explode('-', $order->expedition);
-                $dbCode = strtolower($parts[1] ?? '');
-                
-                if (isset($courierMap[$dbCode])) {
-                    $name = $courierMap[$dbCode]['name'];
-                    $statsRecap[$name]['total_order']++;
-                    $statsRecap[$name]['total_profit'] += $order->shipping_cost;
-                    $statsRecap[$name]['customers'][$order->customer_id ?? $order->sender_phone] = true;
+                if (count($parts) >= 2) {
+                    $dbCode = strtolower($parts[1]); 
+                    if (isset($courierMap[$dbCode])) {
+                        $displayName = $courierMap[$dbCode]['name'];
+                        
+                        // --- Metric Dasar ---
+                        $stats[$displayName]['total_order']++;
+                        $stats[$displayName]['total_profit'] += $order->shipping_cost;
+                        
+                        // --- Hitung Unik (Orang & Kota) ---
+                        // Pelanggan
+                        $customerId = $order->id_pengguna_pembeli ?? $order->sender_phone;
+                        if ($customerId) $stats[$displayName]['customers'][$customerId] = true;
 
-                    $st = strtolower($order->status_pesanan);
-                    if ($st == 'selesai') $statsRecap[$name]['status_selesai']++;
-                    elseif ($st == 'menunggu pickup') $statsRecap[$name]['status_pickup']++;
-                    elseif (in_array($st, ['dikirim', 'sedang dikirim'])) $statsRecap[$name]['status_dikirim']++;
-                    elseif (in_array($st, ['batal', 'gagal'])) $statsRecap[$name]['status_gagal']++;
+                        // Pengirim & Penerima
+                        if ($order->sender_name) $stats[$displayName]['senders'][strtoupper(trim($order->sender_name))] = true;
+                        if ($order->receiver_name) $stats[$displayName]['receivers'][strtoupper(trim($order->receiver_name))] = true;
+
+                        // Kota (Regency)
+                        if ($order->sender_regency) $stats[$displayName]['cities_origin'][strtoupper(trim($order->sender_regency))] = true;
+                        if ($order->receiver_regency) $stats[$displayName]['cities_dest'][strtoupper(trim($order->receiver_regency))] = true;
+
+                        // --- Klasifikasi Status ---
+                        $st = strtolower($order->status_pesanan);
+                        
+                        // Logic Mapping Status (Sesuaikan dengan value DB Anda)
+                        if ($st == 'selesai') {
+                            $stats[$displayName]['status_selesai']++;
+                        } 
+                        elseif ($st == 'menunggu pickup') {
+                            $stats[$displayName]['status_pickup']++;
+                        }
+                        elseif (in_array($st, ['sedang dikirim', 'diproses', 'dikirim', 'sedang diantar'])) {
+                            $stats[$displayName]['status_dikirim']++;
+                        }
+                        elseif (in_array($st, ['batal', 'gagal resi', 'retur', 'gagal'])) {
+                            $stats[$displayName]['status_gagal']++;
+                        }
+                    }
                 }
             }
 
-            return collect($statsRecap)->map(function ($item) {
-                $obj = (object) $item;
-                $obj->total_pelanggan = count($item['customers']);
-                $obj->url_detail = route('admin.pesanan.index', ['ekspedisi' => $item['filter_code']]);
-                return $obj;
-            })->sortByDesc('total_order')->values();
+            // 5. MAPPING OUTPUT
+            return collect($stats)->map(function ($item) {
+                return (object) [
+                    'nama' => $item['nama'],
+                    'logo' => $item['logo'],
+                    'url_detail' => route('admin.pesanan.index', ['ekspedisi' => $item['filter_code']]),
+                    
+                    'total_order' => $item['total_order'],
+                    'total_profit' => $item['total_profit'],
+                    
+                    // Count array keys untuk mendapatkan jumlah unik
+                    'total_pelanggan' => count($item['customers']),
+                    'total_pengirim' => count($item['senders']),
+                    'total_penerima' => count($item['receivers']),
+                    'total_kota_asal' => count($item['cities_origin']),
+                    'total_kota_tujuan' => count($item['cities_dest']),
+                    
+                    // Status
+                    'status_selesai' => $item['status_selesai'],
+                    'status_gagal' => $item['status_gagal'],
+                    'status_dikirim' => $item['status_dikirim'],
+                    'status_pickup' => $item['status_pickup'],
+                ];
+            })->sortByDesc('total_order')->values(); 
         });
 
-        // --- 6. Data Pelengkap (Tabel Pesanan & Notifikasi) ---
-        $pesananTerbaru = Pesanan::with('pembeli')->latest()->take(6)->get();
+        // --- Mengambil data notifikasi terbaru untuk tabel ---
         $recentNotifications = DatabaseNotification::latest()->take(10)->get();
-        $slides = Setting::where('key', 'slider_informasi')->first();
-        $slides = $slides ? json_decode($slides->value, true) : [];
 
+        // --- Mengambil data slider dari tabel settings ---
+        $sliderData = Setting::where('key', 'slider_informasi')->first();
+        $slides = $sliderData ? json_decode($sliderData->value, true) : [];
+
+        // --- Melewatkan semua data ke view ---
         return view('admin.dashboard', array_merge($stats, [
-            'startDate' => $startDate,
-            'endDate' => $endDate,
-            'expeditionData' => $expRankData,
-            'expeditionOmzetData' => $expOmzetData,
-            'rekapEkspedisi' => $rekapEkspedisi,
+            'chartData' => $chartData,
+            'spxChartData' => $spxChartData,
+            'expeditionData' => $expeditionData,
             'pesananTerbaru' => $pesananTerbaru,
+            'rekapEkspedisi' => $rekapEkspedisi,
+            'notifications' => $notifications,
+            'expeditionOmzetData' => $expeditionOmzetData,
             'recentNotifications' => $recentNotifications,
             'slides' => $slides,
-            'chartData' => $this->getChartRevenue(),
-            'spxChartData' => $this->getChartSpx(),
         ]));
     }
 
-    private function getChartRevenue() {
-        $data = Pesanan::select(DB::raw('DATE(created_at) as date'), DB::raw('sum(shipping_cost) as total'))
-            ->where('created_at', '>=', now()->subDays(30))
-            ->groupBy('date')->orderBy('date', 'asc')->get()->pluck('total', 'date');
-        $dates = collect();
-        for ($i = 29; $i >= 0; $i--) { $date = now()->subDays($i)->format('Y-m-d'); $dates->put($date, 0); }
-        $daily = $dates->merge($data);
-        return [
-            'labels' => $daily->keys()->map(fn($d) => Carbon::parse($d)->format('d M'))->toArray(),
-            'data' => $daily->values()->toArray()
-        ];
-    }
-
-    private function getChartSpx() {
-        $data = ScannedPackage::select(DB::raw('DATE(created_at) as date'), DB::raw('COUNT(id) as total'))
-            ->where('created_at', '>=', now()->subDays(30))
-            ->groupBy('date')->orderBy('date', 'asc')->get()->pluck('total', 'date');
-        $dates = collect();
-        for ($i = 29; $i >= 0; $i--) { $date = now()->subDays($i)->format('Y-m-d'); $dates->put($date, 0); }
-        $daily = $dates->merge($data);
-        return [
-            'labels' => $daily->keys()->map(fn($d) => Carbon::parse($d)->format('d M'))->toArray(),
-            'data' => $daily->values()->toArray()
-        ];
-    }
+    
 }
