@@ -76,6 +76,21 @@ class DashboardController extends Controller
             ];
         });
 
+
+        // 3. Grafik Peringkat Ekspedisi (Mendatar)
+        $expeditionData = Cache::remember('admin_exp_rank_v1', $cacheDuration, function () {
+            $orders = DB::table('Pesanan')->select('expedition', DB::raw('count(*) as total'))
+                ->whereNotNull('expedition')->where('expedition', '!=', '')->groupBy('expedition')->get();
+            $proc = [];
+            foreach ($orders as $o) {
+                $name = strtoupper(explode('-', $o->expedition)[1] ?? 'LAINNYA');
+                $proc[$name] = ($proc[$name] ?? 0) + $o->total;
+            }
+            arsort($proc);
+            return ['labels' => array_keys($proc), 'data' => array_values($proc)];
+        });
+        
+
         // --- Mengambil Data Grafik Scan SPX (dengan Caching) ---
         $spxChartData = Cache::remember('admin_dashboard_spx_chart_v5', $cacheDuration, function () {
             $spxData = ScannedPackage::select(
@@ -261,6 +276,7 @@ $orders = Pesanan::query()
         return view('admin.dashboard', array_merge($stats, [
             'chartData' => $chartData,
             'spxChartData' => $spxChartData,
+            'expeditionData' => $expeditionData,
             'pesananTerbaru' => $pesananTerbaru,
             'rekapEkspedisi' => $rekapEkspedisi,
             'notifications' => $notifications,
@@ -268,4 +284,6 @@ $orders = Pesanan::query()
             'slides' => $slides,
         ]));
     }
+
+    
 }
