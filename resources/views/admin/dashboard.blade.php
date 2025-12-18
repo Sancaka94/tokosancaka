@@ -351,8 +351,6 @@
 
             <div class="mb-6 bg-white rounded-2xl border border-gray-100 shadow-sm">
 
-    
-
            @forelse ($rekapEkspedisi as $item)
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-300 group">
                 
