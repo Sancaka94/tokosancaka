@@ -163,12 +163,16 @@ if ($startDate && $endDate) {
             return Pesanan::with('pembeli')->latest('created_at')->take(6)->get();
         });
 
-// --- REKAPITULASI EKSPEDISI (LENGKAP: KOTA & STATUS) ---
-        // --- REKAPITULASI EKSPEDISI (LENGKAP DENGAN FILTER TANGGAL) ---
+// --- REKAPITULASI EKSPEDISI ---
 
-// 1. Buat Cache Key Dinamis berdasarkan filter agar data tidak nyangkut (Stale Cache)
-$rekapCacheKey = 'admin_rekap_exp_v' . ($startDate ?? 'all') . '_' . ($endDate ?? 'all');
+// 1. Pastikan variabel ditangkap dulu di paling atas function index
+$startDate = $request->input('start_date');
+$endDate = $request->input('end_date');
 
+// 2. Buat Key Cache yang unik agar data berubah saat filter diganti
+$rekapCacheKey = 'admin_rekap_exp_v_' . ($startDate ?? 'all') . '_' . ($endDate ?? 'all');
+
+// 3. Tambahkan "use ($startDate, $endDate)" agar variabel bisa dibaca di dalam cache
 $rekapEkspedisi = Cache::remember($rekapCacheKey, $cacheDuration, function () use ($startDate, $endDate) {
     
     // 2. MASTER DATA COURIER
