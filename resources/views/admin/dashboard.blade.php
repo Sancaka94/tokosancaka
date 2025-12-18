@@ -567,7 +567,7 @@ if (expCtx) {
         'SPX': '#ee4d2d',
         'ANTERAJA': '#e0004d',
         'NINJA': '#c00d0d',
-        'ID': '#f37021',
+        'IDX': '#f37021',
         'SENTRAL': '#004b93'
     };
 
