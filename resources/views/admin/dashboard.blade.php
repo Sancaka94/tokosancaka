@@ -451,9 +451,9 @@ function updateRecentActivity(activities) {
             const resi = pesanan.resi || pesanan.nomor_invoice;
             const harga = new Intl.NumberFormat('id-ID').format(pesanan.shipping_cost);
             
-            // Perbaikan pengambilan nama: mengecek di objek pesanan langsung atau di dalam objek user
-            const storeName = (pesanan.user ? pesanan.user.store_name : pesanan.store_name) || 'Tanpa Nama Toko';
-            const namaLengkap = (pesanan.user ? pesanan.user.nama_lengkap : pesanan.nama_lengkap) || 'User Tidak Dikenal';
+            // Karena menggunakan Join, data ada di level utama objek pesanan
+            const storeName = pesanan.store_name || 'Tanpa Nama Toko';
+            const namaLengkap = pesanan.nama_lengkap || 'User Tidak Dikenal';
             const senderName = pesanan.sender_name || '-';
 
             const html = `
@@ -485,8 +485,6 @@ function updateRecentActivity(activities) {
             `;
             container.insertAdjacentHTML('beforeend', html);
         });
-    } else {
-        container.innerHTML = '<p id="no-recent-activity" class="text-sm text-gray-500 text-center py-4">Belum ada aktivitas pesanan.</p>';
     }
 }
 
