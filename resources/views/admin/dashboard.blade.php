@@ -496,7 +496,7 @@
     document.addEventListener('DOMContentLoaded', function() {
         // --- Inisialisasi & Setup Chart ---
         const notificationTableBody = document.getElementById('notification-table-body');
-        let adminTransactionChart, spxScanChart, expeditionRankChart, expeditionOmzetChart; // Tambahkan expeditionOmzetChart di sini
+        let adminTransactionChart, spxScanChart, expeditionRankChart, expeditionOmzetChart;
 
         function showNotificationModal(title, message, url) {
             window.dispatchEvent(new CustomEvent('new-notification', { detail: { title, message, url } }));
@@ -519,173 +519,136 @@
             notificationTableBody.prepend(newRow);
         }
 
+        // Fungsi pembantu untuk menggambar logo agar tidak gepeng
+        function createLogoPlugin(logos) {
+            return {
+                id: 'yAxisLogos',
+                afterDraw: (chart) => {
+                    const { ctx, scales: { y } } = chart;
+                    y.ticks.forEach((tick, index) => {
+                        const img = new Image();
+                        img.src = logos[index];
+                        if (img.complete || img.height > 0) {
+                            const yPos = y.getPixelForTick(index);
+                            const targetW = 40, targetH = 30;
+                            const ratio = img.width / img.height;
+                            let drawW = targetW, drawH = targetW / ratio;
+                            if (drawH > targetH) { drawH = targetH; drawW = targetH * ratio; }
+                            ctx.drawImage(img, y.left - 80 + (targetW - drawW) / 2, yPos - (drawH / 2), drawW, drawH);
+                        } else {
+                            img.onload = () => chart.draw();
+                        }
+                    });
+                }
+            };
+        }
+
         function initCharts() {
-            const chartOptions = (isDarkMode) => ({
+            const isDarkMode = localStorage.getItem('darkMode') === 'true';
+            const brandColors = {
+                'JNT': '#ff0000', 'JNTCARGO': '#008d36', 'JTCARGO': '#008d36',
+                'POSINDONESIA': '#ff6600', 'JNE': '#0054a6', 'SPX': '#ee4d2d',
+                'LION': '#e21f26', 'IDX': '#ff0000'
+            };
+
+            const chartOptions = (isDark) => ({
                 responsive: true, maintainAspectRatio: false,
                 scales: { 
-                    y: { 
-                        beginAtZero: true, 
-                        ticks: { color: isDarkMode ? '#9ca3af' : '#4b5563' },
-                        grid: { color: isDarkMode ? '#374151' : '#e5e7eb' }
-                    },
-                    x: {
-                        ticks: { color: isDarkMode ? '#9ca3af' : '#4b5563' },
-                        grid: { color: isDarkMode ? '#374151' : '#e5e7eb' }
-                    }
+                    y: { beginAtZero: true, ticks: { color: isDark ? '#9ca3af' : '#4b5563' }, grid: { color: isDark ? '#374151' : '#e5e7eb' } },
+                    x: { ticks: { color: isDark ? '#9ca3af' : '#4b5563' }, grid: { color: isDark ? '#374151' : '#e5e7eb' } }
                 },
-                plugins: { legend: { labels: { color: isDarkMode ? '#9ca3af' : '#4b5563' } } }
+                plugins: { legend: { labels: { color: isDark ? '#9ca3af' : '#4b5563' } } }
             });
 
-            // Data Awal dari Controller
-            const chartData = @json($chartData ?? ['labels' => [], 'data' => []]);
+            // 1. Admin Transaction Chart
             const ctx = document.getElementById('adminTransactionChart');
             if (ctx) {
+                const chartData = @json($chartData ?? ['labels' => [], 'data' => []]);
                 adminTransactionChart = new Chart(ctx, { 
                     type: 'line', 
                     data: { 
                         labels: chartData.labels, 
-                        datasets: [{ 
-                            label: 'Total Pendapatan', 
-                            data: chartData.data, 
-                            borderColor: 'rgb(79, 70, 229)', 
-                            backgroundColor: 'rgba(79, 70, 229, 0.1)', 
-                            fill: true, 
-                            tension: 0.4 
-                        }] 
+                        datasets: [{ label: 'Total Pendapatan', data: chartData.data, borderColor: 'rgb(79, 70, 229)', backgroundColor: 'rgba(79, 70, 229, 0.1)', fill: true, tension: 0.4 }] 
                     }, 
-                    options: chartOptions(localStorage.getItem('darkMode') === 'true') 
+                    options: chartOptions(isDarkMode) 
                 });
             }
 
-            const spxChartData = @json($spxChartData ?? ['labels' => [], 'data' => []]);
+            // 2. SPX Scan Chart
             const spxCtx = document.getElementById('spxScanChart');
             if (spxCtx) {
+                const spxChartData = @json($spxChartData ?? ['labels' => [], 'data' => []]);
                 spxScanChart = new Chart(spxCtx, { 
                     type: 'bar', 
                     data: { 
                         labels: spxChartData.labels, 
-                        datasets: [{ 
-                            label: 'Total Scan SPX', 
-                            data: spxChartData.data, 
-                            borderColor: 'rgb(239, 68, 68)', 
-                            backgroundColor: 'rgba(239, 68, 68, 0.5)', 
-                            borderWidth: 1 
-                        }] 
+                        datasets: [{ label: 'Total Scan SPX', data: spxChartData.data, borderColor: 'rgb(239, 68, 68)', backgroundColor: 'rgba(239, 68, 68, 0.5)', borderWidth: 1 }] 
                     }, 
-                    options: chartOptions(localStorage.getItem('darkMode') === 'true') 
+                    options: chartOptions(isDarkMode) 
                 });
             }
 
-
-    // 1. Inisialisasi Grafik Jumlah Kiriman
-    const countCtx = document.getElementById('expeditionRankChart');
-    if (countCtx) {
-        const countData = @json($expeditionData); //
-        const countLogos = countData.labels.map(l => `{{ asset('public/storage/logo-ekspedisi') }}/${l.toLowerCase().replace(/\s+/g, '')}.png`);
-        
-        expeditionRankChart = new Chart(countCtx, {
-            type: 'bar',
-            data: {
-                labels: countData.labels,
-                datasets: [{
-                    data: countData.data,
-                    backgroundColor: countData.labels.map(l => brandColors[l.toUpperCase().replace(/\s+/g, '')] || '#4f46e5'),
-                    borderRadius: 6,
-                    barThickness: 28
-                }]
-            },
-            options: {
-                indexAxis: 'y', //
-                responsive: true,
-                maintainAspectRatio: false,
-                layout: { padding: { left: 85, right: 35 } },
-                plugins: { legend: { display: false } },
-                scales: {
-                    x: { beginAtZero: true, grid: { display: false } },
-                    y: { grid: { display: false }, ticks: { padding: 25, font: { weight: 'bold' } } }
-                }
-            },
-            plugins: [createLogoPlugin(countLogos)] // Gunakan fungsi pembantu logo
-        });
-    }
-
-    // 2. Inisialisasi Grafik Omzet
-    const omzetCtx = document.getElementById('expeditionOmzetChart');
-    if (omzetCtx) {
-        const omzetData = @json($expeditionOmzetData); //
-        const omzetLogos = omzetData.labels.map(l => `{{ asset('public/storage/logo-ekspedisi') }}/${l.toLowerCase().replace(/\s+/g, '')}.png`);
-
-        expeditionOmzetChart = new Chart(omzetCtx, {
-            type: 'bar',
-            data: {
-                labels: omzetData.labels,
-                datasets: [{
-                    data: omzetData.data,
-                    backgroundColor: omzetData.labels.map(l => brandColors[l.toUpperCase().replace(/\s+/g, '')] || '#10b981'),
-                    borderRadius: 6,
-                    barThickness: 28
-                }]
-            },
-            options: {
-                indexAxis: 'y', //
-                responsive: true,
-                maintainAspectRatio: false,
-                layout: { padding: { left: 85, right: 45 } },
-                plugins: { 
-                    legend: { display: false },
-                    tooltip: {
-                        callbacks: {
-                            label: (ctx) => ' Omzet: ' + new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(ctx.parsed.x)
+            // 3. Expedition Rank Chart
+            const countCtx = document.getElementById('expeditionRankChart');
+            if (countCtx) {
+                const countData = @json($expeditionData);
+                const countLogos = countData.labels.map(l => `{{ asset('public/storage/logo-ekspedisi') }}/${l.toLowerCase().replace(/\s+/g, '')}.png`);
+                expeditionRankChart = new Chart(countCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: countData.labels,
+                        datasets: [{
+                            data: countData.data,
+                            backgroundColor: countData.labels.map(l => brandColors[l.toUpperCase().replace(/\s+/g, '')] || '#4f46e5'),
+                            borderRadius: 6, barThickness: 28
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                        layout: { padding: { left: 85, right: 35 } },
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { beginAtZero: true, grid: { display: false } },
+                            y: { grid: { display: false }, ticks: { padding: 25, font: { weight: 'bold' } } }
                         }
-                    }
-                },
-                scales: {
-                    x: { ticks: { callback: (v) => 'Rp ' + v.toLocaleString('id-ID') } },
-                    y: { grid: { display: false }, ticks: { padding: 25, font: { weight: 'bold' } } }
-                }
-            },
-            plugins: [createLogoPlugin(omzetLogos)]
-        });
-    }
-}
+                    },
+                    plugins: [createLogoPlugin(countLogos)]
+                });
+            }
 
-// Fungsi pembantu untuk menggambar logo agar tidak gepeng
-function createLogoPlugin(logos) {
-    return {
-        id: 'yAxisLogos',
-        afterDraw: (chart) => {
-            const { ctx, scales: { y } } = chart;
-            y.ticks.forEach((tick, index) => {
-                const img = new Image();
-                img.src = logos[index];
-                if (img.complete || img.height > 0) {
-                    const yPos = y.getPixelForTick(index);
-                    const targetW = 40, targetH = 30;
-                    const ratio = img.width / img.height;
-                    let drawW = targetW, drawH = targetW / ratio;
-                    if (drawH > targetH) { drawH = targetH; drawW = targetH * ratio; }
-                    ctx.drawImage(img, y.left - 80 + (targetW - drawW) / 2, yPos - (drawH / 2), drawW, drawH);
-                } else {
-                    img.onload = () => chart.draw();
-                }
-            });
+            // 4. Expedition Omzet Chart
+            const omzetCtx = document.getElementById('expeditionOmzetChart');
+            if (omzetCtx) {
+                const omzetData = @json($expeditionOmzetData);
+                const omzetLogos = omzetData.labels.map(l => `{{ asset('public/storage/logo-ekspedisi') }}/${l.toLowerCase().replace(/\s+/g, '')}.png`);
+                expeditionOmzetChart = new Chart(omzetCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: omzetData.labels,
+                        datasets: [{
+                            data: omzetData.data,
+                            backgroundColor: omzetData.labels.map(l => brandColors[l.toUpperCase().replace(/\s+/g, '')] || '#10b981'),
+                            borderRadius: 6, barThickness: 28
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                        layout: { padding: { left: 85, right: 45 } },
+                        plugins: { 
+                            legend: { display: false },
+                            tooltip: { callbacks: { label: (ctx) => ' Omzet: ' + new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(ctx.parsed.x) } }
+                        },
+                        scales: {
+                            x: { ticks: { callback: (v) => 'Rp ' + v.toLocaleString('id-ID') } },
+                            y: { grid: { display: false }, ticks: { padding: 25, font: { weight: 'bold' } } }
+                        }
+                    },
+                    plugins: [createLogoPlugin(omzetLogos)]
+                });
+            }
         }
-    };
-}
 
-            // Update chart saat Dark Mode berubah
-            window.addEventListener('dark-mode-toggled', (e) => {
-                if(adminTransactionChart) {
-                    adminTransactionChart.options = chartOptions(e.detail.darkMode);
-                    adminTransactionChart.update();
-                }
-                if(spxScanChart) {
-                    spxScanChart.options = chartOptions(e.detail.darkMode);
-                    spxScanChart.update();
-                }
-            });
-        }
-        
+        // --- Fungsi Realtime Lainnya (Tetap Seperti Kode Anda) ---
         function updateStats(stats) {
             if (!stats) return;
             const fmt = (val) => new Intl.NumberFormat('id-ID').format(val);
@@ -695,81 +658,41 @@ function createLogoPlugin(logos) {
             if(document.getElementById('pengguna-baru')) document.getElementById('pengguna-baru').textContent = fmt(stats.penggunaBaru);
         }
 
-        // GANTI FUNCTION updateRecentActivity YANG LAMA DENGAN INI
-
         function updateRecentActivity(activities) {
-    const container = document.getElementById('recent-activity-container');
-    if (!container) return;
-
-    container.innerHTML = ''; 
-
-    if (activities && activities.length > 0) {
-        activities.forEach(pesanan => {
-            // 1. Logika Penentuan Logo Ekspedisi
-            const parts = (pesanan.expedition || '').split('-');
-            const kodeEks = parts[1] ? parts[1].toLowerCase() : 'default';
-            const logoUrl = `{{ asset('public/storage/logo-ekspedisi') }}/${kodeEks}.png`;
-            const defaultLogo = `{{ asset('public/storage/uploads/sancaka.png') }}`;
-
-            // 2. Persiapan Data Teks
-            const resi = pesanan.resi || pesanan.nomor_invoice;
-            const harga = new Intl.NumberFormat('id-ID').format(pesanan.shipping_cost);
-            const storeName = pesanan.nama_toko_anda || 'Tanpa Nama Toko';
-            const userName = pesanan.nama_user_anda || 'User Tidak Dikenal';
-            const senderName = pesanan.sender_name || '-';
-
-            // 3. Logika Tombol Tracking
-            const trackingButton = pesanan.resi 
-                ? `<a href="https://tokosancaka.com/tracking?resi=${pesanan.resi}" target="_blank" class="mt-1 inline-flex items-center text-[10px] font-bold text-blue-600 hover:text-blue-800 uppercase tracking-tighter">
-                     <i class="fas fa-search-location mr-1"></i> Lacak Pesanan
-                   </a>` 
-                : '';
-
-            // 4. Template HTML
-            const html = `
-                <div class="flex items-start py-2 border-b border-gray-100 last:border-0">
-                    <div class="mt-1">
-                        <div class="w-12 h-12 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center overflow-hidden shadow-sm">
-                            <img src="${logoUrl}" class="w-10 h-10 object-contain" onerror="this.src='${defaultLogo}'">
-                        </div>
-                    </div>
-
-                    <div class="ml-3 flex-1">
-                        <div class="flex justify-between items-start">
-                            <div class="flex flex-col">
-                                <p class="text-sm font-bold text-gray-800">${resi}</p>
-                                ${trackingButton}
+            const container = document.getElementById('recent-activity-container');
+            if (!container) return;
+            container.innerHTML = ''; 
+            if (activities && activities.length > 0) {
+                activities.forEach(pesanan => {
+                    const parts = (pesanan.expedition || '').split('-');
+                    const kodeEks = parts[1] ? parts[1].toLowerCase() : 'default';
+                    const logoUrl = `{{ asset('public/storage/logo-ekspedisi') }}/${kodeEks}.png`;
+                    const resi = pesanan.resi || pesanan.nomor_invoice;
+                    const html = `
+                        <div class="flex items-start py-2 border-b border-gray-100 last:border-0">
+                            <div class="mt-1">
+                                <div class="w-12 h-12 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center overflow-hidden shadow-sm">
+                                    <img src="${logoUrl}" class="w-10 h-10 object-contain" onerror="this.src='{{ asset('public/storage/uploads/sancaka.png') }}'">
+                                </div>
                             </div>
-                            <span class="text-xs font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
-                                Rp ${harga}
-                            </span>
-                        </div>
-
-                        <div class="mt-1 flex flex-col gap-0.5">
-                            <div class="flex items-center text-xs text-indigo-600 font-semibold">
-                                <i class="fas fa-store w-4 text-center mr-1 opacity-70"></i>
-                                <span>${storeName}</span>
+                            <div class="ml-3 flex-1">
+                                <div class="flex justify-between items-start">
+                                    <div class="flex flex-col">
+                                        <p class="text-sm font-bold text-gray-800">${resi}</p>
+                                    </div>
+                                    <span class="text-xs font-bold text-green-600">Rp ${new Intl.NumberFormat('id-ID').format(pesanan.shipping_cost)}</span>
+                                </div>
+                                <div class="mt-1 flex flex-col gap-0.5">
+                                    <div class="flex items-center text-xs text-indigo-600 font-semibold">
+                                        <span>${pesanan.nama_toko_anda || 'Tanpa Toko'}</span>
+                                    </div>
+                                </div>
                             </div>
-
-                            <div class="flex items-center text-xs text-gray-700 font-medium">
-                                <i class="fas fa-user w-4 text-center mr-1 opacity-60"></i>
-                                <span>${userName}</span>
-                            </div>
-
-                            <div class="flex items-center text-[10px] text-gray-500">
-                                <i class="fas fa-paper-plane w-4 text-center mr-1 opacity-50"></i>
-                                <span>Pengirim: ${senderName}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-            container.insertAdjacentHTML('beforeend', html);
-        });
-    } else {
-        container.innerHTML = '<p id="no-recent-activity" class="text-sm text-gray-500 text-center py-4">Belum ada aktivitas pesanan.</p>';
-    }
-}
+                        </div>`;
+                    container.insertAdjacentHTML('beforeend', html);
+                });
+            }
+        }
 
         function updateChart(chart, newData) {
             if (!chart || !newData) return;
@@ -780,23 +703,18 @@ function createLogoPlugin(logos) {
             chart.update();
         }
 
-        
-
+        // --- Panggil Fungsi ---
         initCharts();
 
+        // Echo Listeners
         if (typeof window.Echo !== 'undefined' && {{ Auth::check() && strtolower(Auth::user()->role) === 'admin' ? 'true' : 'false' }}) {
             window.Echo.private('admin-notifications')
                 .listen('AdminNotificationEvent', (e) => {
-                    console.log('Event AdminNotificationEvent diterima:', e);
                     showNotificationModal(e.title, e.message, e.url);
                     addNotificationToTable(e);
-                    if (Notification.permission === "granted") {
-                        new Notification(e.title, { body: e.message, icon: '{{ asset("public/storage/uploads/sancaka.png") }}' });
-                    }
                 });
             window.Echo.private('admin-dashboard')
                 .listen('DashboardUpdated', (e) => {
-                    console.log('Event DashboardUpdated diterima:', e);
                     updateStats(e.stats);
                     updateChart(adminTransactionChart, e.chartData);
                     updateChart(spxScanChart, e.spxChartData);
