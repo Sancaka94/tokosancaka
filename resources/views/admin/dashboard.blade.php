@@ -453,8 +453,8 @@ function updateRecentActivity(activities) {
             const harga = new Intl.NumberFormat('id-ID').format(pesanan.shipping_cost);
             
             // Karena menggunakan Join, data ada di level utama objek pesanan
-            const storeName = pesanan.store_name || 'Tanpa Nama Toko';
-            const namaLengkap = pesanan.nama_lengkap || 'User Tidak Dikenal';
+            const storeName = pesanan.nama_toko_anda || 'Tanpa Nama Toko';
+            const namaLengkap = pesanan.nama_user_anda || 'User Tidak Dikenal';
             const senderName = pesanan.sender_name || '-';
 
             const html = `
