@@ -90,7 +90,7 @@
         <i class="fas fa-shopping-bag text-indigo-500"></i>
     </div>
     
-    <pre>{{ print_r($pesananTerbaru->first()->toArray(), true) }}</pre>
+    
 
     <div class="ml-3 flex-1">
         <div class="flex justify-between items-start">
