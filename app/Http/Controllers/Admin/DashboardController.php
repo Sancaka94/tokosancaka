@@ -164,74 +164,129 @@ if ($startDate && $endDate) {
         });
 
 // --- REKAPITULASI EKSPEDISI (LENGKAP: KOTA & STATUS) ---
-        $rekapEkspedisi = Cache::remember('admin_dashboard_rekap_ekspedisi_v35', $cacheDuration, function () {
-            
-            // 1. MASTER DATA
-            $courierMap = [
-                'jne' => ['name' => 'JNE', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jne.png'],
-                'tiki' => ['name' => 'TIKI', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/tiki.png'],
-                'posindonesia' => ['name' => 'POS Indonesia', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/posindonesia.png'],
-                'sicepat' => ['name' => 'SiCepat', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/sicepat.png'],
-                'sap' => ['name' => 'SAP Express', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/sap.png'],
-                'ncs' => ['name' => 'NCS Kurir', 'logo_url' => 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjxj3iyyZEjK2L4A4yCIr_E-4W3hF2lk_yb-t0Oj2oFPErCPCMHie5LHqps02xMb6sNa-Gqz5NSX_P_hzWlYpUpJUlCD4iN6_QxiSG9fzY4bsZ9XvLFDn7HCiORtNvIlPfuQbSSdW96p7x7uN8ek3FWyHW9c2bznrFBQkoLd5A9sVAFVKWLfUhT3Dxh/s320/GKL41_NCS%20Kurir%20-%20Koleksilogo.com.jpg'],
-                'idx' => ['name' => 'ID Express', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/idx.png'],
-                'gojek' => ['name' => 'GoSend', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/gosend.png'],
-                'grab' => ['name' => 'GrabExpress', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/grab.png'],
-                'jnt' => ['name' => 'J&T Express', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jnt.png'],
-                'indah' => ['name' => 'Indah Cargo', 'logo_url' => 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEicOAaLoH2eElQ93_gbkzhvk4dRhWVlk5wQsGgilihIB58321aHchlJLdjyz1ToS25P_nWrHJ_E4QBiW_OVlI7tQt7cZ5I0HZqk6StS7jZltLVvDXp2d5ZDLB9yklhV4x6z2iXyURURDv_unhf-U6vyiD_8to9OC4PBwMwyU_5wAqOiCl6tKiaTA-ri1Q/s851/Logo%20Indah%20Logistik%20Cargo@0.5x.png'],
-                'jtcargo' => ['name' => 'J&T Cargo', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jtcargo.png'],
-                'lion' => ['name' => 'Lion Parcel', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/lion.png'],
-                'spx' => ['name' => 'SPX Express', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/spx.png'],
-                'ninja' => ['name' => 'Ninja Express', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/ninja.png'],
-                'anteraja' => ['name' => 'Anteraja', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/anteraja.png'],
-                'sentral' => ['name' => 'Sentral Cargo', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/centralcargo.png'],
-                'borzo' => ['name' => 'Borzo', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/borzo.png'],
-            ];
+        // --- REKAPITULASI EKSPEDISI (LENGKAP DENGAN FILTER TANGGAL) ---
 
-            // 2. INISIALISASI
-            $stats = [];
-            foreach ($courierMap as $code => $info) {
-                $displayName = $info['name'];
-                $stats[$displayName] = [
-                    'nama' => $displayName,
-                    'logo' => $info['logo_url'],
-                    'filter_code' => $code,
-                    'total_order' => 0,
-                    'total_profit' => 0,
-                    // Array Penampung Unik
-                    'customers' => [], 
-                    'senders' => [],   
-                    'receivers' => [], 
-                    'cities_origin' => [], // Kota Asal
-                    'cities_dest' => [],   // Kota Tujuan
-                    // Counter Status
-                    'status_selesai' => 0,
-                    'status_gagal' => 0,
-                    'status_dikirim' => 0,
-                    'status_pickup' => 0,
-                ];
+// 1. Buat Cache Key Dinamis berdasarkan filter agar data tidak nyangkut (Stale Cache)
+$rekapCacheKey = 'admin_rekap_exp_v' . ($startDate ?? 'all') . '_' . ($endDate ?? 'all');
+
+$rekapEkspedisi = Cache::remember($rekapCacheKey, $cacheDuration, function () use ($startDate, $endDate) {
+    
+    // 2. MASTER DATA COURIER
+    $courierMap = [
+        'jne' => ['name' => 'JNE', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jne.png'],
+        'tiki' => ['name' => 'TIKI', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/tiki.png'],
+        'posindonesia' => ['name' => 'POS Indonesia', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/posindonesia.png'],
+        'sicepat' => ['name' => 'SiCepat', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/sicepat.png'],
+        'sap' => ['name' => 'SAP Express', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/sap.png'],
+        'ncs' => ['name' => 'NCS Kurir', 'logo_url' => 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjxj3iyyZEjK2L4A4yCIr_E-4W3hF2lk_yb-t0Oj2oFPErCPCMHie5LHqps02xMb6sNa-Gqz5NSX_P_hzWlYpUpJUlCD4iN6_QxiSG9fzY4bsZ9XvLFDn7HCiORtNvIlPfuQbSSdW96p7x7uN8ek3FWyHW9c2bznrFBQkoLd5A9sVAFVKWLfUhT3Dxh/s320/GKL41_NCS%20Kurir%20-%20Koleksilogo.com.jpg'],
+        'idx' => ['name' => 'ID Express', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/idx.png'],
+        'gojek' => ['name' => 'GoSend', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/gosend.png'],
+        'grab' => ['name' => 'GrabExpress', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/grab.png'],
+        'jnt' => ['name' => 'J&T Express', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jnt.png'],
+        'indah' => ['name' => 'Indah Cargo', 'logo_url' => 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEicOAaLoH2eElQ93_gbkzhvk4dRhWVlk5wQsGgilihIB58321aHchlJLdjyz1ToS25P_nWrHJ_E4QBiW_OVlI7tQt7cZ5I0HZqk6StS7jZltLVvDXp2d5ZDLB9yklhV4x6z2iXyURURDv_unhf-U6vyiD_8to9OC4PBwMwyU_5wAqOiCl6tKiaTA-ri1Q/s851/Logo%20Indah%20Logistik%20Cargo@0.5x.png'],
+        'jtcargo' => ['name' => 'J&T Cargo', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jtcargo.png'],
+        'lion' => ['name' => 'Lion Parcel', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/lion.png'],
+        'spx' => ['name' => 'SPX Express', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/spx.png'],
+        'ninja' => ['name' => 'Ninja Express', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/ninja.png'],
+        'anteraja' => ['name' => 'Anteraja', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/anteraja.png'],
+        'sentral' => ['name' => 'Sentral Cargo', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/centralcargo.png'],
+        'borzo' => ['name' => 'Borzo', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/borzo.png'],
+    ];
+
+    // 3. INISIALISASI STATS
+    $stats = [];
+    foreach ($courierMap as $code => $info) {
+        $displayName = $info['name'];
+        $stats[$displayName] = [
+            'nama' => $displayName,
+            'logo' => $info['logo_url'],
+            'filter_code' => $code,
+            'total_order' => 0,
+            'total_profit' => 0,
+            'customers' => [], 
+            'senders' => [],   
+            'receivers' => [], 
+            'cities_origin' => [], 
+            'cities_dest' => [],   
+            'status_selesai' => 0,
+            'status_gagal' => 0,
+            'status_dikirim' => 0,
+            'status_pickup' => 0,
+        ];
+    }
+
+    // 4. QUERY DATA DENGAN FILTER
+    $orderQuery = Pesanan::query()
+        ->leftJoin('Pengguna', 'Pengguna.id_pengguna', '=', 'Pesanan.customer_id')
+        ->select(
+            'Pesanan.expedition', 'Pesanan.shipping_cost', 'Pesanan.customer_id',
+            'Pesanan.sender_phone', 'Pesanan.sender_name', 'Pesanan.receiver_name',
+            'Pesanan.sender_regency', 'Pesanan.receiver_regency', 'Pesanan.status_pesanan'
+        )
+        ->whereNotNull('expedition')
+        ->where('expedition', '!=', '');
+
+    // Eksekusi filter tanggal jika input start_date & end_date ada
+    if ($startDate && $endDate) {
+        $orderQuery->whereBetween('Pesanan.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
+    }
+
+    $orders = $orderQuery->get();
+
+    // 5. LOOPING HITUNG DATA
+    foreach ($orders as $order) {
+        $parts = explode('-', $order->expedition);
+        if (count($parts) >= 2) {
+            $dbCode = strtolower($parts[1]); 
+            if (isset($courierMap[$dbCode])) {
+                $displayName = $courierMap[$dbCode]['name'];
+                
+                $stats[$displayName]['total_order']++;
+                $stats[$displayName]['total_profit'] += $order->shipping_cost;
+                
+                // Hitung Unik (Menggunakan Array Key agar otomatis distinct)
+                $cid = $order->customer_id ?? $order->sender_phone;
+                if ($cid) $stats[$displayName]['customers'][$cid] = true;
+                if ($order->sender_name) $stats[$displayName]['senders'][strtoupper(trim($order->sender_name))] = true;
+                if ($order->receiver_name) $stats[$displayName]['receivers'][strtoupper(trim($order->receiver_name))] = true;
+                if ($order->sender_regency) $stats[$displayName]['cities_origin'][strtoupper(trim($order->sender_regency))] = true;
+                if ($order->receiver_regency) $stats[$displayName]['cities_dest'][strtoupper(trim($order->receiver_regency))] = true;
+
+                // Klasifikasi Status
+                $st = strtolower($order->status_pesanan);
+                if ($st == 'selesai') {
+                    $stats[$displayName]['status_selesai']++;
+                } elseif ($st == 'menunggu pickup') {
+                    $stats[$displayName]['status_pickup']++;
+                } elseif (in_array($st, ['sedang dikirim', 'diproses', 'dikirim', 'sedang diantar'])) {
+                    $stats[$displayName]['status_dikirim']++;
+                } elseif (in_array($st, ['batal', 'gagal resi', 'retur', 'gagal'])) {
+                    $stats[$displayName]['status_gagal']++;
+                }
             }
+        }
+    }
 
-
-$orders = Pesanan::query()
-    ->leftJoin('Pengguna', 'Pengguna.id_pengguna', '=', 'Pesanan.customer_id')
-    ->select(
-        'Pesanan.resi',           // <--- PASTIKAN INI ADA
-        'Pesanan.nomor_invoice',  // <--- PASTIKAN INI ADA
-        'Pesanan.expedition',
-        'Pesanan.shipping_cost',
-        'Pesanan.sender_phone',
-        'Pesanan.sender_name',
-        'Pesanan.receiver_name',
-        'Pesanan.sender_regency',
-        'Pesanan.receiver_regency',
-        'Pesanan.status_pesanan',
-        'Pengguna.store_name as nama_toko_anda', // ALIAS KHUSUS
-        'Pengguna.nama_lengkap as nama_user_anda' // ALIAS KHUSUS
-    )
-    ->whereNotNull('expedition')
-        ->where('expedition', '!=', '')
-        ->get(); // <--- SEKARANG MENGAMBIL TOTAL SEMUA DATA
+    // 6. FORMAT KE OBJECT & SORTING
+    return collect($stats)->map(function ($item) {
+        return (object) [
+            'nama' => $item['nama'],
+            'logo' => $item['logo'],
+            'url_detail' => route('admin.pesanan.index', ['ekspedisi' => $item['filter_code']]),
+            'total_order' => $item['total_order'],
+            'total_profit' => $item['total_profit'],
+            'total_pelanggan' => count($item['customers']),
+            'total_pengirim' => count($item['senders']),
+            'total_penerima' => count($item['receivers']),
+            'total_kota_asal' => count($item['cities_origin']),
+            'total_kota_tujuan' => count($item['cities_dest']),
+            'status_selesai' => $item['status_selesai'],
+            'status_gagal' => $item['status_gagal'],
+            'status_dikirim' => $item['status_dikirim'],
+            'status_pickup' => $item['status_pickup'],
+        ];
+    })->sortByDesc('total_order')->values(); 
+});
 
 // ... the rest of the logic
             // 4. LOGIKA HITUNG
