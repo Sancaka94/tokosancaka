@@ -562,7 +562,7 @@ if (expCtx) {
         'JNT': '#ff0000',       // MERAH EXPRESS
         'JNE': '#0054a6',
         'LION': '#ff0000',
-        'POS': '#ff6600',
+        'POSINDONESIA': '#ff6600',
         'SICEPAT': '#d31027',
         'SPX': '#ee4d2d',
         'ANTERAJA': '#e0004d',
