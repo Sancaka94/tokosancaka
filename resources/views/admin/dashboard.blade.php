@@ -62,11 +62,100 @@
 
     {{-- Kartu Statistik --}}
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
-        @include('layouts.partials.stat-card', ['id' => 'total-pendapatan', 'title' => 'Total Pendapatan', 'value' => 'Rp ' . number_format($totalPendapatan ?? 0, 0, ',', '.'), 'icon' => 'fa-dollar-sign', 'color' => 'green'])
-        @include('layouts.partials.stat-card', ['id' => 'total-pesanan', 'title' => 'Total Pesanan', 'value' => number_format($totalPesanan ?? 0, 0, ',', '.'), 'icon' => 'fa-box', 'color' => 'blue'])
-        @include('layouts.partials.stat-card', ['id' => 'jumlah-toko', 'title' => 'Jumlah Toko', 'value' => number_format($jumlahToko ?? 0, 0, ',', '.'), 'icon' => 'fa-store', 'color' => 'indigo'])
-        @include('layouts.partials.stat-card', ['id' => 'pengguna-baru', 'title' => 'Pengguna Baru (30 Hari)', 'value' => number_format($penggunaBaru ?? 0, 0, ',', '.'), 'icon' => 'fa-user-plus', 'color' => 'yellow'])
+    
+    <div class="relative group">
+        <div class="absolute -inset-0.5 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"></div>
+        <div class="relative bg-white border border-gray-100 p-6 rounded-2xl shadow-sm transition-all duration-300 transform group-hover:-translate-y-2 group-hover:shadow-xl group-hover:shadow-emerald-100">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Total Pendapatan</p>
+                    <h3 id="total-pendapatan" class="text-2xl font-extrabold text-gray-800 leading-none">
+                        Rp {{ number_format($totalPendapatan ?? 0, 0, ',', '.') }}
+                    </h3>
+                    <div class="flex items-center mt-2 text-[10px] font-bold text-emerald-500">
+                        <i class="fas fa-arrow-trend-up mr-1"></i><span>Live Data</span>
+                    </div>
+                </div>
+                <div class="flex-shrink-0 w-14 h-14 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg transform transition-transform group-hover:rotate-12 group-hover:scale-110">
+                    <i class="fas fa-wallet text-white text-xl"></i>
+                </div>
+            </div>
+            <div class="mt-4 w-full bg-gray-100 rounded-full h-1">
+                <div class="bg-emerald-500 h-1 rounded-full opacity-60" style="width: 100%"></div>
+            </div>
+        </div>
     </div>
+
+    <div class="relative group">
+        <div class="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"></div>
+        <div class="relative bg-white border border-gray-100 p-6 rounded-2xl shadow-sm transition-all duration-300 transform group-hover:-translate-y-2 group-hover:shadow-xl group-hover:shadow-blue-100">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Total Pesanan</p>
+                    <h3 id="total-pesanan" class="text-2xl font-extrabold text-gray-800 leading-none">
+                        {{ number_format($totalPesanan ?? 0, 0, ',', '.') }}
+                    </h3>
+                    <div class="flex items-center mt-2 text-[10px] font-bold text-blue-500">
+                        <i class="fas fa-box-open mr-1"></i><span>Order Terproses</span>
+                    </div>
+                </div>
+                <div class="flex-shrink-0 w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg transform transition-transform group-hover:rotate-12 group-hover:scale-110">
+                    <i class="fas fa-shopping-cart text-white text-xl"></i>
+                </div>
+            </div>
+            <div class="mt-4 w-full bg-gray-100 rounded-full h-1">
+                <div class="bg-blue-500 h-1 rounded-full opacity-60" style="width: 100%"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="relative group">
+        <div class="absolute -inset-0.5 bg-gradient-to-r from-violet-500 to-purple-600 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"></div>
+        <div class="relative bg-white border border-gray-100 p-6 rounded-2xl shadow-sm transition-all duration-300 transform group-hover:-translate-y-2 group-hover:shadow-xl group-hover:shadow-purple-100">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Jumlah Toko</p>
+                    <h3 id="jumlah-toko" class="text-2xl font-extrabold text-gray-800 leading-none">
+                        {{ number_format($jumlahToko ?? 0, 0, ',', '.') }}
+                    </h3>
+                    <div class="flex items-center mt-2 text-[10px] font-bold text-purple-500">
+                        <i class="fas fa-store-alt mr-1"></i><span>Aktif</span>
+                    </div>
+                </div>
+                <div class="flex-shrink-0 w-14 h-14 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg transform transition-transform group-hover:rotate-12 group-hover:scale-110">
+                    <i class="fas fa-store text-white text-xl"></i>
+                </div>
+            </div>
+            <div class="mt-4 w-full bg-gray-100 rounded-full h-1">
+                <div class="bg-purple-500 h-1 rounded-full opacity-60" style="width: 100%"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="relative group">
+        <div class="absolute -inset-0.5 bg-gradient-to-r from-amber-400 to-orange-500 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"></div>
+        <div class="relative bg-white border border-gray-100 p-6 rounded-2xl shadow-sm transition-all duration-300 transform group-hover:-translate-y-2 group-hover:shadow-xl group-hover:shadow-orange-100">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Pengguna Baru (30 Hari)</p>
+                    <h3 id="pengguna-baru" class="text-2xl font-extrabold text-gray-800 leading-none">
+                        {{ number_format($penggunaBaru ?? 0, 0, ',', '.') }}
+                    </h3>
+                    <div class="flex items-center mt-2 text-[10px] font-bold text-orange-500">
+                        <i class="fas fa-user-plus mr-1"></i><span>Reguler</span>
+                    </div>
+                </div>
+                <div class="flex-shrink-0 w-14 h-14 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl flex items-center justify-center shadow-lg transform transition-transform group-hover:rotate-12 group-hover:scale-110">
+                    <i class="fas fa-users-beam text-white text-xl"></i>
+                </div>
+            </div>
+            <div class="mt-4 w-full bg-gray-100 rounded-full h-1">
+                <div class="bg-orange-500 h-1 rounded-full opacity-60" style="width: 100%"></div>
+            </div>
+        </div>
+    </div>
+
+</div>
 
     {{-- Grafik --}}
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
