@@ -471,67 +471,78 @@
 
         // GANTI FUNCTION updateRecentActivity YANG LAMA DENGAN INI
 
-function updateRecentActivity(activities) {
+        function updateRecentActivity(activities) {
     const container = document.getElementById('recent-activity-container');
     if (!container) return;
 
     container.innerHTML = ''; 
 
-    activities.forEach(pesanan => {
-        const parts = (pesanan.expedition || '').split('-');
-        const kodeEks = parts[1] ? parts[1].toLowerCase() : 'default';
-        const logoUrl = `{{ asset('public/storage/logo-ekspedisi') }}/${kodeEks}.png`;
-        const defaultLogo = `{{ asset('public/storage/uploads/sancaka.png') }}`;
-        // Di dalam loop activities.forEach(pesanan => { ... })
+    if (activities && activities.length > 0) {
+        activities.forEach(pesanan => {
+            // 1. Logika Penentuan Logo Ekspedisi
+            const parts = (pesanan.expedition || '').split('-');
+            const kodeEks = parts[1] ? parts[1].toLowerCase() : 'default';
+            const logoUrl = `{{ asset('public/storage/logo-ekspedisi') }}/${kodeEks}.png`;
+            const defaultLogo = `{{ asset('public/storage/uploads/sancaka.png') }}`;
 
-const resi = pesanan.resi || pesanan.nomor_invoice;
-const trackingButton = pesanan.resi 
-    ? `<a href="https://tokosancaka.com/tracking?resi=${pesanan.resi}" target="_blank" class="mt-1 inline-flex items-center text-[10px] font-bold text-blue-600 hover:text-blue-800 uppercase">
-         <i class="fas fa-search-location mr-1"></i> Lacak Pesanan
-       </a>` 
-    : '';
+            // 2. Persiapan Data Teks
+            const resi = pesanan.resi || pesanan.nomor_invoice;
+            const harga = new Intl.NumberFormat('id-ID').format(pesanan.shipping_cost);
+            const storeName = pesanan.nama_toko_anda || 'Tanpa Nama Toko';
+            const userName = pesanan.nama_user_anda || 'User Tidak Dikenal';
+            const senderName = pesanan.sender_name || '-';
 
-        const html = `
+            // 3. Logika Tombol Tracking
+            const trackingButton = pesanan.resi 
+                ? `<a href="https://tokosancaka.com/tracking?resi=${pesanan.resi}" target="_blank" class="mt-1 inline-flex items-center text-[10px] font-bold text-blue-600 hover:text-blue-800 uppercase tracking-tighter">
+                     <i class="fas fa-search-location mr-1"></i> Lacak Pesanan
+                   </a>` 
+                : '';
 
-    <div class="flex items-start py-2 border-b border-gray-100 last:border-0">
-                
-        <div class="ml-3 flex-1">
-            <div class="flex justify-between items-start">
-                <div class="flex flex-col">
-                    <p class="text-sm font-bold text-gray-800">${resi}</p>
-                    ${trackingButton}
-                </div>
-                <span class="text-xs font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
-                    Rp ${new Intl.NumberFormat('id-ID').format(pesanan.shipping_cost)}
-                </span>
-            </div>
-        </div>
-    
-                <div class="mt-1">
-                    <div class="w-12 h-12 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center overflow-hidden">
-                        <img src="${logoUrl}" class="w-10 h-10 object-contain" onerror="this.src='${defaultLogo}'">
-                    </div>
-                </div>
-                <div class="ml-3 flex-1">
-                    <div class="flex justify-between items-start">
-                        <p class="text-sm font-bold text-gray-800">${pesanan.resi || pesanan.nomor_invoice}</p>
-                        <span class="text-xs font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">Rp ${new Intl.NumberFormat('id-ID').format(pesanan.shipping_cost)}</span>
-                    </div>
-                    <div class="mt-1 flex flex-col gap-0.5">
-                        <div class="flex items-center text-xs text-indigo-600 font-semibold">
-                            <i class="fas fa-store w-4 text-center mr-1 opacity-70"></i>
-                            <span>${pesanan.nama_toko_anda || 'Tanpa Nama Toko'}</span>
-                        </div>
-                        <div class="flex items-center text-xs text-gray-700 font-medium">
-                            <i class="fas fa-user w-4 text-center mr-1 opacity-60"></i>
-                            <span>${pesanan.nama_user_anda || 'User Tidak Dikenal'}</span>
+            // 4. Template HTML
+            const html = `
+                <div class="flex items-start py-2 border-b border-gray-100 last:border-0">
+                    <div class="mt-1">
+                        <div class="w-12 h-12 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center overflow-hidden shadow-sm">
+                            <img src="${logoUrl}" class="w-10 h-10 object-contain" onerror="this.src='${defaultLogo}'">
                         </div>
                     </div>
+
+                    <div class="ml-3 flex-1">
+                        <div class="flex justify-between items-start">
+                            <div class="flex flex-col">
+                                <p class="text-sm font-bold text-gray-800">${resi}</p>
+                                ${trackingButton}
+                            </div>
+                            <span class="text-xs font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
+                                Rp ${harga}
+                            </span>
+                        </div>
+
+                        <div class="mt-1 flex flex-col gap-0.5">
+                            <div class="flex items-center text-xs text-indigo-600 font-semibold">
+                                <i class="fas fa-store w-4 text-center mr-1 opacity-70"></i>
+                                <span>${storeName}</span>
+                            </div>
+
+                            <div class="flex items-center text-xs text-gray-700 font-medium">
+                                <i class="fas fa-user w-4 text-center mr-1 opacity-60"></i>
+                                <span>${userName}</span>
+                            </div>
+
+                            <div class="flex items-center text-[10px] text-gray-500">
+                                <i class="fas fa-paper-plane w-4 text-center mr-1 opacity-50"></i>
+                                <span>Pengirim: ${senderName}</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </div>
-        `;
-        container.insertAdjacentHTML('beforeend', html);
-    });
+            `;
+            container.insertAdjacentHTML('beforeend', html);
+        });
+    } else {
+        container.innerHTML = '<p id="no-recent-activity" class="text-sm text-gray-500 text-center py-4">Belum ada aktivitas pesanan.</p>';
+    }
 }
 
         function updateChart(chart, newData) {
