@@ -73,11 +73,11 @@
                         Rp {{ number_format($totalPendapatan ?? 0, 0, ',', '.') }}
                     </h3>
                     <div class="flex items-center mt-2 text-[10px] font-bold text-emerald-500">
-                        <i class="fas fa-arrow-trend-up mr-1"></i><span>Live Data</span>
+                        <i class="fas fa-chart-line mr-1"></i><span>Akumulasi Saldo</span>
                     </div>
                 </div>
                 <div class="flex-shrink-0 w-14 h-14 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg transform transition-transform group-hover:rotate-12 group-hover:scale-110">
-                    <i class="fas fa-wallet text-white text-xl"></i>
+                    <i class="fas fa-coins text-white text-xl"></i>
                 </div>
             </div>
             <div class="mt-4 w-full bg-gray-100 rounded-full h-1">
@@ -96,11 +96,11 @@
                         {{ number_format($totalPesanan ?? 0, 0, ',', '.') }}
                     </h3>
                     <div class="flex items-center mt-2 text-[10px] font-bold text-blue-500">
-                        <i class="fas fa-box-open mr-1"></i><span>Order Terproses</span>
+                        <i class="fas fa-truck-ramp-box mr-1"></i><span>Total Transaksi</span>
                     </div>
                 </div>
                 <div class="flex-shrink-0 w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg transform transition-transform group-hover:rotate-12 group-hover:scale-110">
-                    <i class="fas fa-shopping-cart text-white text-xl"></i>
+                    <i class="fas fa-box-open text-white text-xl"></i>
                 </div>
             </div>
             <div class="mt-4 w-full bg-gray-100 rounded-full h-1">
@@ -119,11 +119,11 @@
                         {{ number_format($jumlahToko ?? 0, 0, ',', '.') }}
                     </h3>
                     <div class="flex items-center mt-2 text-[10px] font-bold text-purple-500">
-                        <i class="fas fa-store-alt mr-1"></i><span>Aktif</span>
+                        <i class="fas fa-shop mr-1"></i><span>Mitra Terdaftar</span>
                     </div>
                 </div>
                 <div class="flex-shrink-0 w-14 h-14 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg transform transition-transform group-hover:rotate-12 group-hover:scale-110">
-                    <i class="fas fa-store text-white text-xl"></i>
+                    <i class="fas fa-store-alt text-white text-xl"></i>
                 </div>
             </div>
             <div class="mt-4 w-full bg-gray-100 rounded-full h-1">
@@ -137,16 +137,16 @@
         <div class="relative bg-white border border-gray-100 p-6 rounded-2xl shadow-sm transition-all duration-300 transform group-hover:-translate-y-2 group-hover:shadow-xl group-hover:shadow-orange-100">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Pengguna Baru (30 Hari)</p>
+                    <p class="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Pengguna Baru</p>
                     <h3 id="pengguna-baru" class="text-2xl font-extrabold text-gray-800 leading-none">
                         {{ number_format($penggunaBaru ?? 0, 0, ',', '.') }}
                     </h3>
                     <div class="flex items-center mt-2 text-[10px] font-bold text-orange-500">
-                        <i class="fas fa-user-plus mr-1"></i><span>Reguler</span>
+                        <i class="fas fa-user-clock mr-1"></i><span>30 Hari Terakhir</span>
                     </div>
                 </div>
                 <div class="flex-shrink-0 w-14 h-14 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl flex items-center justify-center shadow-lg transform transition-transform group-hover:rotate-12 group-hover:scale-110">
-                    <i class="fas fa-users-beam text-white text-xl"></i>
+                    <i class="fas fa-user-check text-white text-xl"></i>
                 </div>
             </div>
             <div class="mt-4 w-full bg-gray-100 rounded-full h-1">
