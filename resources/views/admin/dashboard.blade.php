@@ -105,14 +105,13 @@
         <div class="mt-1 flex flex-col gap-0.5">
             {{-- PEMBAHARUAN DISINI: Langsung panggil store_name --}}
             <div class="flex items-center text-xs text-indigo-600 font-semibold">
-                <i class="fas fa-store w-4 text-center mr-1 opacity-70"></i>
-                <span>{{ $pesanan->store_name ?? 'Tanpa Nama Toko' }}</span>
+    <i class="fas fa-store w-4 text-center mr-1 opacity-70"></i>
+    <span>{{ $pesanan->nama_toko_anda ?? 'Tanpa Nama Toko' }}</span>
             </div>
 
-            {{-- PEMBAHARUAN DISINI: Langsung panggil nama_lengkap --}}
             <div class="flex items-center text-xs text-gray-700 font-medium">
-                <i class="fas fa-user w-4 text-center mr-1 opacity-60"></i>
-                <span>{{ $pesanan->nama_lengkap ?? 'User Tidak Dikenal' }}</span>
+    <i class="fas fa-user w-4 text-center mr-1 opacity-60"></i>
+    <span>{{ $pesanan->nama_user_anda ?? 'User Tidak Dikenal' }}</span>
             </div>
 
             <div class="flex items-center text-[10px] text-gray-500">

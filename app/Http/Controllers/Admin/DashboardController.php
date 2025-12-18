@@ -107,7 +107,7 @@ class DashboardController extends Controller
         });
 
 // --- REKAPITULASI EKSPEDISI (LENGKAP: KOTA & STATUS) ---
-        $rekapEkspedisi = Cache::remember('admin_dashboard_rekap_ekspedisi_v25', $cacheDuration, function () {
+        $rekapEkspedisi = Cache::remember('admin_dashboard_rekap_ekspedisi_v30', $cacheDuration, function () {
             
             // 1. MASTER DATA
             $courierMap = [
@@ -169,8 +169,8 @@ $orders = Pesanan::query()
         'Pesanan.sender_regency',
         'Pesanan.receiver_regency',
         'Pesanan.status_pesanan',
-        'Pengguna.store_name',    // <--- PASTIKAN INI ADA
-        'Pengguna.nama_lengkap'
+        'Pengguna.store_name as nama_toko_anda', // ALIAS KHUSUS
+        'Pengguna.nama_lengkap as nama_user_anda' // ALIAS KHUSUS
     )
     ->whereNotNull('Pesanan.expedition')
     ->where('Pesanan.expedition', '!=', '')
