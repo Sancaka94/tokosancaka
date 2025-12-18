@@ -615,21 +615,41 @@ if (expCtx) {
         },
         // 3. PLUGIN KHUSUS UNTUK GAMBAR LOGO
         plugins: [{
-            id: 'yAxisLogos',
-            afterDraw: (chart) => {
-                const { ctx, scales: { y } } = chart;
-                y.ticks.forEach((tick, index) => {
-                    const img = new Image();
-                    img.src = brandLogos[index];
-                    const yPos = y.getPixelForTick(index);
-                    
-                    // Gambar logo di sebelah kiri label
-                    ctx.drawImage(img, y.left - 35, yPos - 12, 25, 25); 
-                });
-            }
-        }]
-    });
-}
+    id: 'yAxisLogos',
+    afterDraw: (chart) => {
+        const { ctx, scales: { y } } = chart;
+        
+        y.ticks.forEach((tick, index) => {
+            const img = new Image();
+            img.src = brandLogos[index];
+            
+            const yPos = y.getPixelForTick(index);
+            const targetWidth = 32;  // Lebar maksimal logo
+            const targetHeight = 24; // Tinggi maksimal logo
+            
+            img.onload = () => {
+                // Kalkulasi Aspek Rasio agar tidak gepeng
+                const aspectRatio = img.width / img.height;
+                let drawWidth = targetWidth;
+                let drawHeight = targetWidth / aspectRatio;
+
+                if (drawHeight > targetHeight) {
+                    drawHeight = targetHeight;
+                    drawWidth = targetHeight * aspectRatio;
+                }
+
+                // Posisi tengah (centering) di dalam slot logo
+                const xOffset = y.left - 45 + (targetWidth - drawWidth) / 2;
+                const yOffset = yPos - (drawHeight / 2);
+
+                ctx.drawImage(img, xOffset, yOffset, drawWidth, drawHeight);
+            };
+            
+            // Trigger load jika gambar sudah ada di cache
+            if (img.complete) img.onload();
+        });
+    }
+}]
 
             // Update chart saat Dark Mode berubah
             window.addEventListener('dark-mode-toggled', (e) => {
