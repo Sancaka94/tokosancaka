@@ -104,7 +104,7 @@
     </div>
 
     <div class="relative group">
-        <div class="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-red-600 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"></div>
+        <div class="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"></div>
         <div class="relative bg-white border border-gray-100 p-6 rounded-2xl shadow-sm transition-all duration-300 transform group-hover:-translate-y-2 group-hover:shadow-xl group-hover:shadow-blue-100">
             <div class="flex items-center justify-between">
                 <div>
@@ -212,7 +212,7 @@
         </div>
     </div>
 
-    <div class="relative overflow-hidden bg-gradient-to-br from-orange-400 to-red-500 p-6 rounded-2xl shadow-lg shadow-orange-200 transition-all hover:scale-[1.02] duration-300 group">
+    <div class="relative overflow-hidden bg-gradient-to-br from-orange-400 to-orange-500 p-6 rounded-2xl shadow-lg shadow-orange-200 transition-all hover:scale-[1.02] duration-300 group">
         <div class="relative z-10 flex justify-between items-start text-white">
             <div>
                 <p class="text-xs font-bold uppercase tracking-wider opacity-80 mb-1">Menunggu Pickup</p>
