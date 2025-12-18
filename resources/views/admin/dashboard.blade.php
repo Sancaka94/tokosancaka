@@ -86,39 +86,33 @@
                 {{-- GANTI BAGIAN @forelse ($pesananTerbaru ... SAMPAI @empty DENGAN INI --}}
 @forelse ($pesananTerbaru as $pesanan)
 <div class="flex items-start py-2 border-b border-gray-100 last:border-0">
-    {{-- Ikon Belanja --}}
     <div class="p-3 rounded-full bg-indigo-50 mt-1">
         <i class="fas fa-shopping-bag text-indigo-500"></i>
     </div>
 
     <div class="ml-3 flex-1">
-        {{-- Baris 1: RESI / INVOICE (Paling Menonjol) --}}
         <div class="flex justify-between items-start">
             <p class="text-sm font-bold text-gray-800">
                 {{ $pesanan->resi ?? $pesanan->nomor_invoice }}
             </p>
-            {{-- Harga di Kanan Atas --}}
             <span class="text-xs font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
                 Rp {{ number_format($pesanan->shipping_cost, 0, ',', '.') }}
             </span>
         </div>
 
-        {{-- Info Detail (Bertumpuk Rapi) --}}
         <div class="mt-1 flex flex-col gap-0.5">
-            
-            {{-- Baris 2: NAMA TOKO --}}
-<div class="flex items-center text-xs text-indigo-600 font-semibold">
-    <i class="fas fa-store w-4 text-center mr-1 opacity-70"></i>
-    <span>{{ $order->user->store_name ?? 'Tanpa Nama Toko' }}</span>
-</div>
+            {{-- PEMBAHARUAN DISINI: Langsung panggil store_name --}}
+            <div class="flex items-center text-xs text-indigo-600 font-semibold">
+                <i class="fas fa-store w-4 text-center mr-1 opacity-70"></i>
+                <span>{{ $pesanan->store_name ?? 'Tanpa Nama Toko' }}</span>
+            </div>
 
-{{-- Baris 3: NAMA LENGKAP USER --}}
-<div class="flex items-center text-xs text-gray-700 font-medium">
-    <i class="fas fa-user w-4 text-center mr-1 opacity-60"></i>
-    <span>{{ $order->user->nama_lengkap ?? 'User Tidak Dikenal' }}</span>
-</div>
+            {{-- PEMBAHARUAN DISINI: Langsung panggil nama_lengkap --}}
+            <div class="flex items-center text-xs text-gray-700 font-medium">
+                <i class="fas fa-user w-4 text-center mr-1 opacity-60"></i>
+                <span>{{ $pesanan->nama_lengkap ?? 'User Tidak Dikenal' }}</span>
+            </div>
 
-            {{-- Baris 4: SENDER NAME (Warna Abu Terang / Kecil) --}}
             <div class="flex items-center text-[10px] text-gray-500">
                 <i class="fas fa-paper-plane w-4 text-center mr-1 opacity-50"></i>
                 <span>Pengirim: {{ $pesanan->sender_name ?? '-' }}</span>
@@ -127,8 +121,9 @@
     </div>
 </div>
 @empty
-                <p id="no-recent-activity" class="text-sm text-gray-500 text-center py-4">Belum ada aktivitas pesanan.</p>
-                @endforelse
+    <p class="text-sm text-gray-500 text-center py-4">Belum ada aktivitas pesanan.</p>
+@endforelse 
+                {{-- SAMPAI DISINI --}}
             </div>
         </div>
     </div>
