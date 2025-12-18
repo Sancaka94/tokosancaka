@@ -374,7 +374,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
             </svg>
         </div>
-        <h3 class="text-lg font-bold text-gray-800">Filter Laporan</h3>
+        <h3 class="text-lg font-bold text-gray-800">Filter Rekap Laporan</h3>
     </div>
 
     <form action="{{ route('admin.dashboard') }}" method="GET" class="grid grid-cols-1 md:grid-cols-4 gap-5 items-end">
