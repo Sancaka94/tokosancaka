@@ -201,7 +201,7 @@ class Pesanan extends Model
 {
     // 'id_pengguna' adalah PK di tabel Pengguna
     // 'id_pengguna' kedua adalah FK di tabel Pesanan
-    return $this->belongsTo(User::class, 'id_pengguna', 'id_pengguna');
+    return $this->belongsTo(User::class, 'id_pengguna_pembeli', 'id_pengguna_pembeli');
 }
 
 }
