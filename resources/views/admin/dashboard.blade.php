@@ -525,7 +525,7 @@
     document.addEventListener('DOMContentLoaded', function() {
         // --- Inisialisasi & Setup Chart ---
         const notificationTableBody = document.getElementById('notification-table-body');
-        let adminTransactionChart, spxScanChart, expeditionRankChart;
+        let adminTransactionChart, spxScanChart, expeditionRankChart, expeditionOmzetChart; // Tambahkan expeditionOmzetChart di sini
 
         function showNotificationModal(title, message, url) {
             window.dispatchEvent(new CustomEvent('new-notification', { detail: { title, message, url } }));
