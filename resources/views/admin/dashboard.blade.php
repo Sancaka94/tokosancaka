@@ -286,9 +286,13 @@
             </div>
         </div>
     </div>
-</div><br>
+</div>
 
-<div class="mb-6 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+    {{-- Rekapitulasi Ekspedisi --}}
+    <div class="mt-8">
+        <h3 class="text-2xl font-bold leading-tight text-gray-800 mb-6">Rekap Transaksi Ekspedisi</h3>
+
+        <div class="mb-6 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
     <form action="{{ route('admin.dashboard') }}" method="GET" class="flex flex-wrap items-end gap-4">
         <div>
             <a href="{{ route('admin.dashboard') }}" 
@@ -318,10 +322,6 @@
         </div>
     </form>
 </div>
-
-    {{-- Rekapitulasi Ekspedisi --}}
-    <div class="mt-8">
-        <h3 class="text-2xl font-bold leading-tight text-gray-800 mb-6">Rekap Transaksi Ekspedisi</h3>
         
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
            @forelse ($rekapEkspedisi as $item)
