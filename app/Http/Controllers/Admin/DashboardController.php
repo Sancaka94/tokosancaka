@@ -20,39 +20,39 @@ class DashboardController extends Controller
 {
     public function index(Request $request)
     {
-        // 1. Tangkap input dari form filter
-$startDate = $request->input('start_date');
-$endDate = $request->input('end_date');
+        // A. TANGKAP INPUT DULUAN
+    $startDate = $request->input('start_date');
+    $endDate = $request->input('end_date');
+    $cacheDuration = 600;
 
-// 2. Buat query dasar. 
-// Jika tanggal kosong, otomatis jadi "Semua Waktu"
-$baseQuery = Pesanan::query();
+    // B. DEFINISIKAN KEY CACHE
+    $statsCacheKey = 'admin_stats_v11_' . ($startDate ?? 'all') . '_' . ($endDate ?? 'all');
 
-if ($startDate && $endDate) {
-    // Jika filter diisi, filter berdasarkan range (Bulan ke Bulan / Tanggal ke Tanggal)
-    $baseQuery->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
-}
+    // C. JALANKAN CACHE
+    // Gunakan 'use ($startDate, $endDate)' agar fungsi di dalam bisa baca variabel luar
+    $statsData = Cache::remember($statsCacheKey, $cacheDuration, function () use ($startDate, $endDate) {
+        $topUpQuery = TopUp::where('status', 'success');
+        $pesananQuery = Pesanan::query();
 
-        $allSlides = Slide::orderBy('created_at', 'desc')->get();
-        
-        $cacheDuration = 600; // Durasi cache dalam detik (10 menit)
+        if ($startDate && $endDate) {
+            $range = [$startDate . ' 00:00:00', $endDate . ' 23:59:59'];
+            $topUpQuery->whereBetween('created_at', $range);
+            $pesananQuery->whereBetween('created_at', $range);
+        }
 
-        // --- Mengambil Statistik Utama (dengan Caching) ---
-        $stats = Cache::remember('admin_dashboard_stats_v10', $cacheDuration, function () {
-            $totalTopUp = TopUp::where('status', 'success')->sum('amount');
-            // Jika ingin total ongkir pesanan sebagai pendapatan, gunakan shipping_cost
-            // Jika ingin total harga barang, gunakan total_harga_barang. 
-            // Di sini saya biarkan total_harga_barang untuk stats global (sesuai kode asli), 
-            // tapi Anda bisa ubah ke shipping_cost jika perlu.
-            $totalOngkirPesanan = Pesanan::sum('shipping_cost'); 
-
-            return [
-                'totalPendapatan' => $totalTopUp + $totalOngkirPesanan,
-                'totalPesanan' => Pesanan::count(),
-                'jumlahToko' => User::where('role', 'Seller')->count(),
-                'penggunaBaru' => User::where('role', 'Pelanggan')->where('created_at', '>=', now()->subDays(30))->count(),
-            ];
-        });
+        return [
+            'totalPendapatan' => $topUpQuery->sum('amount') + $pesananQuery->sum('shipping_cost'),
+            'totalPesanan'    => $pesananQuery->count(),
+            'jumlahToko'      => User::where('role', 'Seller')->count(),
+            'penggunaBaru'    => User::where('role', 'Pelanggan')->where('created_at', '>=', now()->subDays(30))->count(),
+            
+            // Card Status Tambahan
+            'totalTerkirim'       => (clone $pesananQuery)->where('status_pesanan', 'Selesai')->count(),
+            'totalSedangDikirim'  => (clone $pesananQuery)->whereIn('status_pesanan', ['Sedang Dikirim', 'Dikirim', 'Diproses'])->count(),
+            'totalMenungguPickup' => (clone $pesananQuery)->where('status_pesanan', 'Menunggu Pickup')->count(),
+            'totalGagal'          => (clone $pesananQuery)->whereIn('status_pesanan', ['Batal', 'Gagal', 'Retur'])->count(),
+        ];
+    });
 
         // --- Mengambil Notifikasi untuk Flasher (dengan Caching) ---
         $notifications = Cache::remember('admin_dashboard_notifications_v8', 60, function () {
@@ -300,7 +300,7 @@ $rekapEkspedisi = Cache::remember($rekapCacheKey, $cacheDuration, function () us
         $slides = $sliderData ? json_decode($sliderData->value, true) : [];
 
         // --- Melewatkan semua data ke view ---
-        return view('admin.dashboard', array_merge($stats, [
+        return view('admin.dashboard', array_merge($statsData, [
             'chartData' => $chartData,
             'spxChartData' => $spxChartData,
             'expeditionData' => $expeditionData,
