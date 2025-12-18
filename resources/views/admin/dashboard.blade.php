@@ -277,6 +277,46 @@
         </div>
     </div>
 
+    <div class="mt-8" x-data="{ activeTab: 'count' }">
+    <div class="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+            <div class="flex items-center gap-3">
+                <div class="p-2 bg-indigo-50 rounded-lg text-indigo-600">
+                    <i class="fas fa-chart-bar fa-lg"></i>
+                </div>
+                <h3 class="text-xl font-bold text-gray-800">Analisis Performa Ekspedisi</h3>
+            </div>
+            
+            <div class="flex bg-gray-100 p-1 rounded-lg">
+                <button @click="activeTab = 'count'" 
+                    :class="activeTab === 'count' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-700'"
+                    class="px-4 py-1.5 rounded-md text-xs font-bold uppercase tracking-wider transition-all duration-200">
+                    <i class="fas fa-box mr-1"></i> Total Kiriman
+                </button>
+                <button @click="activeTab = 'omzet'" 
+                    :class="activeTab === 'omzet' ? 'bg-white shadow-sm text-emerald-600' : 'text-gray-500 hover:text-gray-700'"
+                    class="px-4 py-1.5 rounded-md text-xs font-bold uppercase tracking-wider transition-all duration-200">
+                    <i class="fas fa-wallet mr-1"></i> Total Omzet
+                </button>
+            </div>
+        </div>
+
+        <div class="p-6">
+            <div x-show="activeTab === 'count'" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4">
+                <div class="relative h-96">
+                    <canvas id="expeditionRankChart"></canvas>
+                </div>
+            </div>
+
+            <div x-show="activeTab === 'omzet'" x-cloak x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4">
+                <div class="relative h-96">
+                    <canvas id="expeditionOmzetChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
     {{-- Rekapitulasi Ekspedisi --}}
     <div class="mt-8">
         <h3 class="text-2xl font-bold leading-tight text-gray-800 mb-6">Rekap Transaksi Ekspedisi</h3>
@@ -565,202 +605,116 @@
                 });
             }
 
-            // --- TAMBAHKAN INI SAJA DI DALAM initCharts() ---
-const expCtx = document.getElementById('expeditionRankChart');
-if (expCtx) {
-    const expData = @json($expeditionData ?? ['labels' => [], 'data' => []]);
+            // Deklarasi Global
+let expeditionRankChart, expeditionOmzetChart;
 
-    // 1. Mapping Warna Brand Ekspedisi
+function initCharts() {
+    // Mapping Brand & Logo (Gunakan logika yang sudah kita buat sebelumnya)
     const brandColors = {
-        'JTCARGO': '#008d36', // HIJAU KHUSUS CARGO
-        'JNT': '#ff0000',       // MERAH EXPRESS
-        'JNE': '#0054a6',
-        'LION': '#ff0000',
+        'JNT': '#ff0000',
+        'JNTCARGO': '#008d36',
+        'JTCARGO': '#008d36', //
         'POSINDONESIA': '#ff6600',
-        'SICEPAT': '#d31027',
+        'JNE': '#0054a6',
         'SPX': '#ee4d2d',
-        'ANTERAJA': '#e0004d',
-        'NINJA': '#c00d0d',
-        'IDX': '#ff0000',
-        'SENTRAL': '#004b93'
+        'LION': '#e21f26',
+        'IDX': '#ff0000'
     };
 
-    // 2. Mapping Logo Ekspedisi
-    const brandLogos = expData.labels.map(label => {
-        const key = label.toUpperCase();
-        return `{{ asset('public/storage/logo-ekspedisi') }}/${key.toLowerCase()}.png`;
-    });
-
-    const bgColors = expData.labels.map(label => brandColors[label.toUpperCase()] || '#4f46e5');
-
-    expeditionRankChart = new Chart(expCtx, {
-        type: 'bar',
-        data: {
-            labels: expData.labels,
-            datasets: [{
-                label: 'Total Kiriman',
-                data: expData.data,
-                backgroundColor: bgColors, // Warna sesuai logo
-                borderRadius: 5,
-                barThickness: 25
-            }]
-        },
-        options: {
-    indexAxis: 'y',
-    responsive: true,
-    maintainAspectRatio: false,
-    layout: {
-        // Tambahkan padding kiri yang lebih besar (min 70-80) agar logo tidak mentok pinggir
-        padding: { left: 80, right: 20, top: 10, bottom: 10 } 
-    },
-    plugins: {
-        legend: { display: false }
-    },
-    scales: {
-        x: { beginAtZero: true, grid: { display: false } },
-        y: { 
-            grid: { display: false },
-            ticks: {
-                // Beri jarak antara teks label dengan garis bar
-                padding: 10, 
-                font: { weight: 'bold', size: 12 }
-            }
-        }
-    }
-},
-        // 3. PLUGIN KHUSUS UNTUK GAMBAR LOGO
-        plugins: [{
-    id: 'yAxisLogos',
-    afterDraw: (chart) => {
-        const { ctx, scales: { y } } = chart;
+    // 1. Inisialisasi Grafik Jumlah Kiriman
+    const countCtx = document.getElementById('expeditionRankChart');
+    if (countCtx) {
+        const countData = @json($expeditionData); //
+        const countLogos = countData.labels.map(l => `{{ asset('public/storage/logo-ekspedisi') }}/${l.toLowerCase().replace(/\s+/g, '')}.png`);
         
-        y.ticks.forEach((tick, index) => {
-            const img = new Image();
-            img.src = brandLogos[index]; // brandLogos didefinisikan dari data labels
-            
-            if (img.complete || img.height > 0) {
-                const yPos = y.getPixelForTick(index);
-                const targetW = 35; // Lebar maksimal logo
-                const targetH = 25; // Tinggi maksimal logo
-                
-                // Kalkulasi rasio asli agar TIDAK GEPENG
-                const ratio = img.width / img.height;
-                let drawW = targetW;
-                let drawH = targetW / ratio;
-
-                // Jika tinggi melebihi batas, sesuaikan lebarnya
-                if (drawH > targetH) {
-                    drawH = targetH;
-                    drawW = targetH * ratio;
-                }
-
-                // Posisi X: ditaruh di sebelah kiri label (y.left)
-                // y.left - 75 adalah posisi di dalam area padding yang kita buat tadi
-                const xOff = y.left - 75 + (targetW - drawW) / 2;
-                const yOff = yPos - (drawH / 2);
-
-                ctx.drawImage(img, xOff, yOff, drawW, drawH);
-            } else {
-                // Redraw jika gambar baru saja dimuat
-                img.onload = () => chart.draw();
-            }
-        });
-    }
-}]
-    });
-}
-
-const omzetCtx = document.getElementById('expeditionOmzetChart');
-if (omzetCtx) {
-    const expOmzetData = @json($expeditionOmzetData ?? ['labels' => [], 'data' => []]);
-
-        // 1. Mapping Warna Brand Ekspedisi
-    const brandColors = {
-        'JTCARGO': '#008d36', // HIJAU KHUSUS CARGO
-        'JNT': '#ff0000',       // MERAH EXPRESS
-        'JNE': '#0054a6',
-        'LION': '#ff0000',
-        'POSINDONESIA': '#ff6600',
-        'SICEPAT': '#d31027',
-        'SPX': '#ee4d2d',
-        'ANTERAJA': '#e0004d',
-        'NINJA': '#c00d0d',
-        'IDX': '#ff0000',
-        'SENTRAL': '#004b93'
-    };
-
-    const bgColors = expOmzetData.labels.map(label => brandColors[label.toUpperCase().replace(/\s+/g, '')] || '#4f46e5');
-    
-    // 2. Mapping Path Logo (Anti-Gepeng)
-    const brandLogos = expOmzetData.labels.map(label => {
-        return `{{ asset('public/storage/logo-ekspedisi') }}/${label.toLowerCase().replace(/\s+/g, '')}.png`;
-    });
-
-    expeditionOmzetChart = new Chart(omzetCtx, {
-        type: 'bar',
-        data: {
-            labels: expOmzetData.labels,
-            datasets: [{
-                label: 'Total Omzet',
-                data: expOmzetData.data,
-                backgroundColor: bgColors,
-                borderRadius: 6,
-                barThickness: 28
-            }]
-        },
-        options: {
-            indexAxis: 'y', // MENDATAR
-            responsive: true,
-            maintainAspectRatio: false,
-            layout: { padding: { left: 85, right: 35, top: 10, bottom: 10 } },
-            plugins: { 
-                legend: { display: false },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return ' Omzet: ' + new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(context.parsed.x);
-                        }
-                    }
+        expeditionRankChart = new Chart(countCtx, {
+            type: 'bar',
+            data: {
+                labels: countData.labels,
+                datasets: [{
+                    data: countData.data,
+                    backgroundColor: countData.labels.map(l => brandColors[l.toUpperCase().replace(/\s+/g, '')] || '#4f46e5'),
+                    borderRadius: 6,
+                    barThickness: 28
+                }]
+            },
+            options: {
+                indexAxis: 'y', //
+                responsive: true,
+                maintainAspectRatio: false,
+                layout: { padding: { left: 85, right: 35 } },
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { beginAtZero: true, grid: { display: false } },
+                    y: { grid: { display: false }, ticks: { padding: 25, font: { weight: 'bold' } } }
                 }
             },
-            scales: {
-                x: { 
-                    beginAtZero: true, 
-                    grid: { color: '#f3f4f6' },
-                    ticks: {
-                        callback: (value) => 'Rp ' + value.toLocaleString('id-ID')
+            plugins: [createLogoPlugin(countLogos)] // Gunakan fungsi pembantu logo
+        });
+    }
+
+    // 2. Inisialisasi Grafik Omzet
+    const omzetCtx = document.getElementById('expeditionOmzetChart');
+    if (omzetCtx) {
+        const omzetData = @json($expeditionOmzetData); //
+        const omzetLogos = omzetData.labels.map(l => `{{ asset('public/storage/logo-ekspedisi') }}/${l.toLowerCase().replace(/\s+/g, '')}.png`);
+
+        expeditionOmzetChart = new Chart(omzetCtx, {
+            type: 'bar',
+            data: {
+                labels: omzetData.labels,
+                datasets: [{
+                    data: omzetData.data,
+                    backgroundColor: omzetData.labels.map(l => brandColors[l.toUpperCase().replace(/\s+/g, '')] || '#10b981'),
+                    borderRadius: 6,
+                    barThickness: 28
+                }]
+            },
+            options: {
+                indexAxis: 'y', //
+                responsive: true,
+                maintainAspectRatio: false,
+                layout: { padding: { left: 85, right: 45 } },
+                plugins: { 
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => ' Omzet: ' + new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(ctx.parsed.x)
+                        }
                     }
                 },
-                y: { 
-                    grid: { display: false },
-                    ticks: { padding: 25, font: { weight: 'bold', size: 11 } }
+                scales: {
+                    x: { ticks: { callback: (v) => 'Rp ' + v.toLocaleString('id-ID') } },
+                    y: { grid: { display: false }, ticks: { padding: 25, font: { weight: 'bold' } } }
                 }
-            }
-        },
-        // 3. PLUGIN LOGO ANTI-GEPENG
-        plugins: [{
-            id: 'yAxisLogosOmzet',
-            afterDraw: (chart) => {
-                const { ctx, scales: { y } } = chart;
-                y.ticks.forEach((tick, index) => {
-                    const img = new Image();
-                    img.src = brandLogos[index];
-                    if (img.complete || img.height > 0) {
-                        const yPos = y.getPixelForTick(index);
-                        const targetW = 40; 
-                        const targetH = 30;
-                        const ratio = img.width / img.height;
-                        let drawW = targetW;
-                        let drawH = targetW / ratio;
-                        if (drawH > targetH) { drawH = targetH; drawW = targetH * ratio; }
-                        const xOff = y.left - 80 + (targetW - drawW) / 2;
-                        const yOff = yPos - (drawH / 2);
-                        ctx.drawImage(img, xOff, yOff, drawW, drawH);
-                    } else { img.onload = () => chart.draw(); }
-                });
-            }
-        }]
-    });
+            },
+            plugins: [createLogoPlugin(omzetLogos)]
+        });
+    }
+}
+
+// Fungsi pembantu untuk menggambar logo agar tidak gepeng
+function createLogoPlugin(logos) {
+    return {
+        id: 'yAxisLogos',
+        afterDraw: (chart) => {
+            const { ctx, scales: { y } } = chart;
+            y.ticks.forEach((tick, index) => {
+                const img = new Image();
+                img.src = logos[index];
+                if (img.complete || img.height > 0) {
+                    const yPos = y.getPixelForTick(index);
+                    const targetW = 40, targetH = 30;
+                    const ratio = img.width / img.height;
+                    let drawW = targetW, drawH = targetW / ratio;
+                    if (drawH > targetH) { drawH = targetH; drawW = targetH * ratio; }
+                    ctx.drawImage(img, y.left - 80 + (targetW - drawW) / 2, yPos - (drawH / 2), drawW, drawH);
+                } else {
+                    img.onload = () => chart.draw();
+                }
+            });
+        }
+    };
 }
 
             // Update chart saat Dark Mode berubah
