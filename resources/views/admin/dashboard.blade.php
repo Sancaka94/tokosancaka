@@ -286,7 +286,7 @@
             </div>
         </div>
     </div>
-</div><br><br><br>
+</div><br><br>
 
 <div class="mb-6 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
     <form action="{{ route('admin.dashboard') }}" method="GET" class="flex flex-wrap items-end gap-4">
