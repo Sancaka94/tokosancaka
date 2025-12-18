@@ -267,17 +267,17 @@
         <h3 class="text-lg font-semibold text-gray-700 mb-3">Aktivitas Pesanan Terbaru</h3>
         <div class="relative group">
             <span class="absolute inset-y-0 left-0 flex items-center pl-3">
-                <i class="fas fa-search text-gray-400 group-focus-within:text-indigo-500"></i>
+                <i class="fas fa-search text-gray-400 group-focus-within:text-red-500"></i>
             </span>
             <input type="text" 
                    id="searchPesanan"
                    placeholder="Cari Resi / Invoice / Toko..." 
-                   class="block w-full pl-10 pr-3 py-2 border border-gray-200 rounded-xl leading-5 bg-gray-50 placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition duration-150 ease-in-out">
+                   class="block w-full pl-10 pr-3 py-2 border border-gray-200 rounded-xl leading-5 bg-gray-50 placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-1 focus:ring-red-500 focus:border-red-500 sm:text-sm transition duration-150 ease-in-out">
         </div>
     </div>
 
     {{-- Container dengan Scrollbar --}}
-    <div class="flex-1 overflow-y-auto pr-2 custom-scrollbar" style="max-height: 520px;" id="recent-activity-container">
+    <div class="flex-1 overflow-y-auto pr-2 custom-scrollbar" style="max-height: 700px;" id="recent-activity-container">
         @forelse ($pesananTerbaru as $pesanan)
         <div class="pesanan-item flex items-start py-3 border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors rounded-lg px-2" 
              data-search="{{ strtolower(($pesanan->resi ?? '') . ' ' . ($pesanan->nomor_invoice ?? '') . ' ' . ($pesanan->nama_toko_anda ?? '') . ' ' . ($pesanan->nama_user_anda ?? '')) }}">
