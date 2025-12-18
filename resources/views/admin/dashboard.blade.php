@@ -551,6 +551,34 @@
                 });
             }
 
+            // --- TAMBAHKAN INI SAJA DI DALAM initCharts() ---
+const expCtx = document.getElementById('expeditionRankChart');
+if (expCtx) {
+    const expData = @json($expeditionData ?? ['labels' => [], 'data' => []]);
+    expeditionRankChart = new Chart(expCtx, {
+        type: 'bar',
+        data: {
+            labels: expData.labels,
+            datasets: [{
+                label: 'Total Kiriman',
+                data: expData.data,
+                backgroundColor: 'rgba(79, 70, 229, 0.8)',
+                borderRadius: 8
+            }]
+        },
+        options: {
+            indexAxis: 'y', // Biar mendatar
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { beginAtZero: true },
+                y: { grid: { display: false } }
+            }
+        }
+    });
+}
+
             // Update chart saat Dark Mode berubah
             window.addEventListener('dark-mode-toggled', (e) => {
                 if(adminTransactionChart) {
