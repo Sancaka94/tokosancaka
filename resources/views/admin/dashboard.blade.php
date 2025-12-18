@@ -670,11 +670,11 @@ if (expCtx) {
     });
 }
 
-// Di dalam script dashboard Anda
-const omzetCtx = document.getElementById('expeditionOmzetChart').getContext('2d');
-const expOmzetData = @json($expeditionOmzetData);
+const omzetCtx = document.getElementById('expeditionOmzetChart');
+if (omzetCtx) {
+    const expOmzetData = @json($expeditionOmzetData ?? ['labels' => [], 'data' => []]);
 
-// 1. Mapping Warna Brand Ekspedisi
+        // 1. Mapping Warna Brand Ekspedisi
     const brandColors = {
         'JTCARGO': '#008d36', // HIJAU KHUSUS CARGO
         'JNT': '#ff0000',       // MERAH EXPRESS
@@ -689,52 +689,79 @@ const expOmzetData = @json($expeditionOmzetData);
         'SENTRAL': '#004b93'
     };
 
-const omzetBgColors = expOmzetData.labels.map(label => brandColors[label.toUpperCase()] || '#4f46e5');
+    const bgColors = expOmzetData.labels.map(label => brandColors[label.toUpperCase().replace(/\s+/g, '')] || '#4f46e5');
+    
+    // 2. Mapping Path Logo (Anti-Gepeng)
+    const brandLogos = expOmzetData.labels.map(label => {
+        return `{{ asset('public/storage/logo-ekspedisi') }}/${label.toLowerCase().replace(/\s+/g, '')}.png`;
+    });
 
-new Chart(omzetCtx, {
-    type: 'bar',
-    data: {
-        labels: expOmzetData.labels,
-        datasets: [{
-            label: 'Total Omzet (Rp)',
-            data: expOmzetData.data,
-            backgroundColor: omzetBgColors,
-            borderRadius: 6,
-            barThickness: 28
-        }]
-    },
-    options: {
-        indexAxis: 'y',
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: { display: false },
-            tooltip: {
-                callbacks: {
-                    label: function(context) {
-                        let label = context.dataset.label || '';
-                        if (label) { label += ': '; }
-                        if (context.parsed.x !== null) {
-                            label += new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(context.parsed.x);
-                        }
-                        return label;
-                    }
-                }
-            }
+    expeditionOmzetChart = new Chart(omzetCtx, {
+        type: 'bar',
+        data: {
+            labels: expOmzetData.labels,
+            datasets: [{
+                label: 'Total Omzet',
+                data: expOmzetData.data,
+                backgroundColor: bgColors,
+                borderRadius: 6,
+                barThickness: 28
+            }]
         },
-        scales: {
-            x: { 
-                beginAtZero: true,
-                ticks: {
-                    callback: function(value) {
-                        return 'Rp ' + value.toLocaleString('id-ID');
+        options: {
+            indexAxis: 'y', // MENDATAR
+            responsive: true,
+            maintainAspectRatio: false,
+            layout: { padding: { left: 85, right: 35, top: 10, bottom: 10 } },
+            plugins: { 
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return ' Omzet: ' + new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(context.parsed.x);
+                        }
                     }
                 }
             },
-            y: { grid: { display: false } }
-        }
-    }
-});
+            scales: {
+                x: { 
+                    beginAtZero: true, 
+                    grid: { color: '#f3f4f6' },
+                    ticks: {
+                        callback: (value) => 'Rp ' + value.toLocaleString('id-ID')
+                    }
+                },
+                y: { 
+                    grid: { display: false },
+                    ticks: { padding: 25, font: { weight: 'bold', size: 11 } }
+                }
+            }
+        },
+        // 3. PLUGIN LOGO ANTI-GEPENG
+        plugins: [{
+            id: 'yAxisLogosOmzet',
+            afterDraw: (chart) => {
+                const { ctx, scales: { y } } = chart;
+                y.ticks.forEach((tick, index) => {
+                    const img = new Image();
+                    img.src = brandLogos[index];
+                    if (img.complete || img.height > 0) {
+                        const yPos = y.getPixelForTick(index);
+                        const targetW = 40; 
+                        const targetH = 30;
+                        const ratio = img.width / img.height;
+                        let drawW = targetW;
+                        let drawH = targetW / ratio;
+                        if (drawH > targetH) { drawH = targetH; drawW = targetH * ratio; }
+                        const xOff = y.left - 80 + (targetW - drawW) / 2;
+                        const yOff = yPos - (drawH / 2);
+                        ctx.drawImage(img, xOff, yOff, drawW, drawH);
+                    } else { img.onload = () => chart.draw(); }
+                });
+            }
+        }]
+    });
+}
 
             // Update chart saat Dark Mode berubah
             window.addEventListener('dark-mode-toggled', (e) => {
