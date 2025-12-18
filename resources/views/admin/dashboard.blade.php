@@ -288,15 +288,7 @@
     </div>
 </div>
 
-    {{-- Rekapitulasi Ekspedisi --}}
-    <div class="mt-8">
-        <h3 class="text-2xl font-bold leading-tight text-gray-800 mb-6">Rekap Transaksi Ekspedisi</h3>
-        
-        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-
-            <div class="mb-6 bg-white rounded-2xl border border-gray-100 shadow-sm">
-
-    <!-- Header FILTER REKAPAN-->
+<!-- Header FILTER REKAPAN-->
     <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
         <h3 class="text-sm font-semibold text-gray-800 flex items-center gap-2">
             <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -350,6 +342,16 @@
         </div>
     </form>
 </div>
+
+    {{-- Rekapitulasi Ekspedisi --}}
+    <div class="mt-8">
+        <h3 class="text-2xl font-bold leading-tight text-gray-800 mb-6">Rekap Transaksi Ekspedisi</h3>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+
+            <div class="mb-6 bg-white rounded-2xl border border-gray-100 shadow-sm">
+
+    
 
            @forelse ($rekapEkspedisi as $item)
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-300 group">
