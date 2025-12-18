@@ -593,26 +593,28 @@ if (expCtx) {
             }]
         },
         options: {
-            indexAxis: 'y', // Mendatar
-            responsive: true,
-            maintainAspectRatio: false,
-            layout: {
-                padding: { left: 40 } // Ruang untuk logo di kiri
-            },
-            plugins: {
-                legend: { display: false }
-            },
-            scales: {
-                x: { beginAtZero: true, grid: { display: false } },
-                y: { 
-                    grid: { display: false },
-                    ticks: {
-                        padding: 10,
-                        font: { weight: 'bold' }
-                    }
-                }
+    indexAxis: 'y',
+    responsive: true,
+    maintainAspectRatio: false,
+    layout: {
+        // Tambahkan padding kiri yang lebih besar (min 70-80) agar logo tidak mentok pinggir
+        padding: { left: 80, right: 20, top: 10, bottom: 10 } 
+    },
+    plugins: {
+        legend: { display: false }
+    },
+    scales: {
+        x: { beginAtZero: true, grid: { display: false } },
+        y: { 
+            grid: { display: false },
+            ticks: {
+                // Beri jarak antara teks label dengan garis bar
+                padding: 10, 
+                font: { weight: 'bold', size: 12 }
             }
-        },
+        }
+    }
+},
         // 3. PLUGIN KHUSUS UNTUK GAMBAR LOGO
         plugins: [{
     id: 'yAxisLogos',
