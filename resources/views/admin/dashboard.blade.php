@@ -614,42 +614,41 @@ if (expCtx) {
             }
         },
         // 3. PLUGIN KHUSUS UNTUK GAMBAR LOGO
+        // 3. PLUGIN ANTI-GEPENG (OBJECT-CONTAIN LOGIC)
         plugins: [{
-    id: 'yAxisLogos',
-    afterDraw: (chart) => {
-        const { ctx, scales: { y } } = chart;
-        
-        y.ticks.forEach((tick, index) => {
-            const img = new Image();
-            img.src = brandLogos[index];
-            
-            const yPos = y.getPixelForTick(index);
-            const targetWidth = 32;  // Lebar maksimal logo
-            const targetHeight = 24; // Tinggi maksimal logo
-            
-            img.onload = () => {
-                // Kalkulasi Aspek Rasio agar tidak gepeng
-                const aspectRatio = img.width / img.height;
-                let drawWidth = targetWidth;
-                let drawHeight = targetWidth / aspectRatio;
+            id: 'yAxisLogos',
+            afterDraw: (chart) => {
+                const { ctx, scales: { y } } = chart;
+                y.ticks.forEach((tick, index) => {
+                    const img = new Image();
+                    img.src = brandLogos[index];
+                    
+                    if (img.complete || img.height > 0) {
+                        const yPos = y.getPixelForTick(index);
+                        const targetW = 35; // Lebar maks
+                        const targetH = 25; // Tinggi maks
+                        
+                        // Hitung Rasio agar tidak gepeng
+                        const ratio = img.width / img.height;
+                        let drawW = targetW;
+                        let drawH = targetW / ratio;
 
-                if (drawHeight > targetHeight) {
-                    drawHeight = targetHeight;
-                    drawWidth = targetHeight * aspectRatio;
-                }
+                        if (drawH > targetH) {
+                            drawH = targetH;
+                            drawW = targetH * ratio;
+                        }
 
-                // Posisi tengah (centering) di dalam slot logo
-                const xOffset = y.left - 45 + (targetWidth - drawWidth) / 2;
-                const yOffset = yPos - (drawHeight / 2);
-
-                ctx.drawImage(img, xOffset, yOffset, drawWidth, drawHeight);
-            };
-            
-            // Trigger load jika gambar sudah ada di cache
-            if (img.complete) img.onload();
-        });
-    }
-}]
+                        const xOff = y.left - 50 + (targetW - drawW) / 2;
+                        const yOff = yPos - (drawH / 2);
+                        ctx.drawImage(img, xOff, yOff, drawW, drawH);
+                    } else {
+                        img.onload = () => chart.draw();
+                    }
+                });
+            }
+        }]
+    });
+}
 
             // Update chart saat Dark Mode berubah
             window.addEventListener('dark-mode-toggled', (e) => {
