@@ -157,98 +157,79 @@
 
 </div>
 
-{{-- Baris Baru: Kartu Status Pengiriman --}}
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
     
-    {{-- Total Terkirim --}}
-    <div class="relative group">
-        <div class="absolute -inset-0.5 bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
-        <div class="relative bg-white border border-gray-100 p-6 rounded-2xl shadow-sm transition-all duration-300 transform group-hover:-translate-y-2 group-hover:shadow-xl group-hover:shadow-green-100">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Total Terkirim</p>
-                    <h3 class="text-2xl font-extrabold text-gray-800 leading-none">
-                        {{ number_format($totalTerkirim ?? 0, 0, ',', '.') }}
-                    </h3>
-                    <div class="flex items-center mt-2 text-[10px] font-bold text-green-500">
-                        <i class="fas fa-check-circle mr-1"></i><span>Pesanan Selesai</span>
-                    </div>
-                </div>
-                <div class="flex-shrink-0 w-14 h-14 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg transform transition-transform group-hover:rotate-12 group-hover:scale-110">
-                    <i class="fas fa-shipping-fast text-white text-xl"></i>
-                </div>
-            </div>
-            <div class="mt-4 w-full bg-gray-100 rounded-full h-1 border-b-2 border-green-500"></div>
-        </div>
-    </div>
-
-    {{-- Sedang Dikirim --}}
-    <div class="relative group">
-        <div class="absolute -inset-0.5 bg-gradient-to-r from-blue-400 to-cyan-500 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
-        <div class="relative bg-white border border-gray-100 p-6 rounded-2xl shadow-sm transition-all duration-300 transform group-hover:-translate-y-2 group-hover:shadow-xl group-hover:shadow-blue-100">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Sedang Dikirim</p>
-                    <h3 class="text-2xl font-extrabold text-gray-800 leading-none">
-                        {{ number_format($totalSedangDikirim ?? 0, 0, ',', '.') }}
-                    </h3>
-                    <div class="flex items-center mt-2 text-[10px] font-bold text-blue-500">
-                        <i class="fas fa-truck mr-1"></i><span>Dalam Perjalanan</span>
-                    </div>
-                </div>
-                <div class="flex-shrink-0 w-14 h-14 bg-gradient-to-br from-blue-400 to-cyan-500 rounded-xl flex items-center justify-center shadow-lg transform transition-transform group-hover:rotate-12 group-hover:scale-110">
-                    <i class="fas fa-route text-white text-xl"></i>
-                </div>
-            </div>
-            <div class="mt-4 w-full bg-gray-100 rounded-full h-1 border-b-2 border-blue-500"></div>
-        </div>
-    </div>
-
-    {{-- Menunggu Pickup --}}
-<div class="relative group">
-    <div class="absolute -inset-0.5 bg-gradient-to-r from-orange-400 to-yellow-500 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
-    <div class="relative bg-white border border-gray-100 p-6 rounded-2xl shadow-sm transition-all duration-300 transform group-hover:-translate-y-2">
-        <div class="flex items-center justify-between">
+    <div class="relative overflow-hidden bg-gradient-to-br from-emerald-500 to-teal-700 p-6 rounded-2xl shadow-lg shadow-emerald-200 transition-all hover:scale-[1.02] duration-300 group">
+        <div class="relative z-10 flex justify-between items-start text-white">
             <div>
-                <p class="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Menunggu Pickup</p>
-                <h3 class="text-2xl font-extrabold text-gray-800 leading-none">
-                    {{ number_format($totalMenungguPickup ?? 0, 0, ',', '.') }}
-                </h3>
-                <div class="flex items-center mt-2 text-[10px] font-bold text-orange-500">
-                    <i class="fas fa-box mr-1"></i><span>Siap Dijemput</span>
-                </div>
+                <p class="text-xs font-bold uppercase tracking-wider opacity-80 mb-1">Total Terkirim</p>
+                <h3 class="text-3xl font-black">{{ number_format($totalTerkirim ?? 0) }}</h3>
+                <p class="text-[10px] mt-3 bg-white/20 backdrop-blur-md px-2 py-1 rounded-lg inline-block font-bold">
+                    <i class="fas fa-check-double mr-1"></i> Selesai
+                </p>
             </div>
-            {{-- IKON KURIR / DRIVER --}}
-            <div class="flex-shrink-0 w-14 h-14 bg-gradient-to-br from-orange-400 to-yellow-500 rounded-xl flex items-center justify-center shadow-lg transform transition-transform group-hover:rotate-12 group-hover:scale-110">
-                <i class="fas fa-user-ninja text-white text-xl"></i>
+            <div class="p-3 bg-white/20 backdrop-blur-md rounded-xl group-hover:rotate-12 transition-transform">
+                <i class="fas fa-shipping-fast text-2xl text-white"></i>
             </div>
         </div>
-        <div class="mt-4 w-full bg-gray-100 rounded-full h-1 border-b-2 border-orange-500"></div>
-    </div>
-</div>
-
-    {{-- Gagal / Batal --}}
-    <div class="relative group">
-        <div class="absolute -inset-0.5 bg-gradient-to-r from-red-500 to-rose-600 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
-        <div class="relative bg-white border border-gray-100 p-6 rounded-2xl shadow-sm transition-all duration-300 transform group-hover:-translate-y-2 group-hover:shadow-xl group-hover:shadow-red-100">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Gagal / Cancel</p>
-                    <h3 class="text-2xl font-extrabold text-gray-800 leading-none">
-                        {{ number_format($totalGagal ?? 0, 0, ',', '.') }}
-                    </h3>
-                    <div class="flex items-center mt-2 text-[10px] font-bold text-red-500">
-                        <i class="fas fa-exclamation-triangle mr-1"></i><span>Masalah/Batal</span>
-                    </div>
-                </div>
-                <div class="flex-shrink-0 w-14 h-14 bg-gradient-to-br from-red-500 to-rose-600 rounded-xl flex items-center justify-center shadow-lg transform transition-transform group-hover:rotate-12 group-hover:scale-110">
-                    <i class="fas fa-times-circle text-white text-xl"></i>
-                </div>
-            </div>
-            <div class="mt-4 w-full bg-gray-100 rounded-full h-1 border-b-2 border-red-500"></div>
+        <div class="absolute -right-4 -bottom-4 text-white/10 text-8xl rotate-12 group-hover:scale-110 transition-transform">
+            <i class="fas fa-box-check"></i>
         </div>
     </div>
 
+    <div class="relative overflow-hidden bg-gradient-to-br from-blue-500 to-indigo-700 p-6 rounded-2xl shadow-lg shadow-blue-200 transition-all hover:scale-[1.02] duration-300 group">
+        <div class="relative z-10 flex justify-between items-start text-white">
+            <div>
+                <p class="text-xs font-bold uppercase tracking-wider opacity-80 mb-1">Sedang Dikirim</p>
+                <h3 class="text-3xl font-black">{{ number_format($totalSedangDikirim ?? 0) }}</h3>
+                <p class="text-[10px] mt-3 bg-white/20 backdrop-blur-md px-2 py-1 rounded-lg inline-block font-bold">
+                    <i class="fas fa-road mr-1"></i> On Process
+                </p>
+            </div>
+            <div class="p-3 bg-white/20 backdrop-blur-md rounded-xl group-hover:rotate-12 transition-transform">
+                <i class="fas fa-truck-moving text-2xl text-white"></i>
+            </div>
+        </div>
+        <div class="absolute -right-4 -bottom-4 text-white/10 text-8xl rotate-12 group-hover:scale-110 transition-transform">
+            <i class="fas fa-route"></i>
+        </div>
+    </div>
+
+    <div class="relative overflow-hidden bg-gradient-to-br from-orange-400 to-red-500 p-6 rounded-2xl shadow-lg shadow-orange-200 transition-all hover:scale-[1.02] duration-300 group">
+        <div class="relative z-10 flex justify-between items-start text-white">
+            <div>
+                <p class="text-xs font-bold uppercase tracking-wider opacity-80 mb-1">Menunggu Pickup</p>
+                <h3 class="text-3xl font-black">{{ number_format($totalMenungguPickup ?? 0) }}</h3>
+                <p class="text-[10px] mt-3 bg-white/20 backdrop-blur-md px-2 py-1 rounded-lg inline-block font-bold">
+                    <i class="fas fa-user-clock mr-1"></i> Siap Dijemput
+                </p>
+            </div>
+            <div class="p-3 bg-white/20 backdrop-blur-md rounded-xl group-hover:rotate-12 transition-transform">
+                <i class="fas fa-user-ninja text-2xl text-white"></i>
+            </div>
+        </div>
+        <div class="absolute -right-4 -bottom-4 text-white/10 text-8xl rotate-12 group-hover:scale-110 transition-transform">
+            <i class="fas fa-hand-holding-box"></i>
+        </div>
+    </div>
+
+    <div class="relative overflow-hidden bg-gradient-to-br from-rose-500 to-red-800 p-6 rounded-2xl shadow-lg shadow-red-200 transition-all hover:scale-[1.02] duration-300 group">
+        <div class="relative z-10 flex justify-between items-start text-white">
+            <div>
+                <p class="text-xs font-bold uppercase tracking-wider opacity-80 mb-1">Gagal / Cancel</p>
+                <h3 class="text-3xl font-black">{{ number_format($totalGagal ?? 0) }}</h3>
+                <p class="text-[10px] mt-3 bg-white/20 backdrop-blur-md px-2 py-1 rounded-lg inline-block font-bold">
+                    <i class="fas fa-exclamation-triangle mr-1"></i> Bermasalah
+                </p>
+            </div>
+            <div class="p-3 bg-white/20 backdrop-blur-md rounded-xl group-hover:rotate-12 transition-transform">
+                <i class="fas fa-ban text-2xl text-white"></i>
+            </div>
+        </div>
+        <div class="absolute -right-4 -bottom-4 text-white/10 text-8xl rotate-12 group-hover:scale-110 transition-transform">
+            <i class="fas fa-times-circle"></i>
+        </div>
+    </div>
 </div>
 
     {{-- Grafik --}}
