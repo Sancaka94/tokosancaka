@@ -113,13 +113,24 @@
     <div class="ml-3 flex-1">
         {{-- Baris 1: RESI & HARGA --}}
         <div class="flex justify-between items-start">
-            <p class="text-sm font-bold text-gray-800">
-                {{ $pesanan->resi ?? $pesanan->nomor_invoice }}
-            </p>
-            <span class="text-xs font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
-                Rp {{ number_format($pesanan->shipping_cost, 0, ',', '.') }}
-            </span>
-        </div>
+    <div class="flex flex-col">
+        <p class="text-sm font-bold text-gray-800">
+            {{ $pesanan->resi ?? $pesanan->nomor_invoice }}
+        </p>
+        {{-- TOMBOL TRACKING BARU --}}
+        @if($pesanan->resi)
+        <a href="https://tokosancaka.com/tracking?resi={{ $pesanan->resi }}" 
+           target="_blank" 
+           class="mt-1 inline-flex items-center text-[10px] font-bold text-blue-600 hover:text-blue-800 uppercase tracking-tighter">
+            <i class="fas fa-search-location mr-1"></i> Lacak Pesanan
+        </a>
+        @endif
+    </div>
+    
+    <span class="text-xs font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
+        Rp {{ number_format($pesanan->shipping_cost, 0, ',', '.') }}
+    </span>
+</div>
 
         {{-- Info Toko & User (Pakai ALIAS dari Controller sebelumnya) --}}
         <div class="mt-1 flex flex-col gap-0.5">
@@ -471,9 +482,31 @@ function updateRecentActivity(activities) {
         const kodeEks = parts[1] ? parts[1].toLowerCase() : 'default';
         const logoUrl = `{{ asset('public/storage/logo-ekspedisi') }}/${kodeEks}.png`;
         const defaultLogo = `{{ asset('public/storage/uploads/sancaka.png') }}`;
+        // Di dalam loop activities.forEach(pesanan => { ... })
+
+const resi = pesanan.resi || pesanan.nomor_invoice;
+const trackingButton = pesanan.resi 
+    ? `<a href="https://tokosancaka.com/tracking?resi=${pesanan.resi}" target="_blank" class="mt-1 inline-flex items-center text-[10px] font-bold text-blue-600 hover:text-blue-800 uppercase">
+         <i class="fas fa-search-location mr-1"></i> Lacak Pesanan
+       </a>` 
+    : '';
 
         const html = `
-            <div class="flex items-start py-2 border-b border-gray-100 last:border-0">
+
+    <div class="flex items-start py-2 border-b border-gray-100 last:border-0">
+                
+        <div class="ml-3 flex-1">
+            <div class="flex justify-between items-start">
+                <div class="flex flex-col">
+                    <p class="text-sm font-bold text-gray-800">${resi}</p>
+                    ${trackingButton}
+                </div>
+                <span class="text-xs font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
+                    Rp ${new Intl.NumberFormat('id-ID').format(pesanan.shipping_cost)}
+                </span>
+            </div>
+        </div>
+    
                 <div class="mt-1">
                     <div class="w-12 h-12 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center overflow-hidden">
                         <img src="${logoUrl}" class="w-10 h-10 object-contain" onerror="this.src='${defaultLogo}'">
