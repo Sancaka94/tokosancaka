@@ -576,21 +576,6 @@
                 });
             }
 
-            // Deklarasi Global
-let expeditionRankChart, expeditionOmzetChart;
-
-function initCharts() {
-    // Mapping Brand & Logo (Gunakan logika yang sudah kita buat sebelumnya)
-    const brandColors = {
-        'JNT': '#ff0000',
-        'JNTCARGO': '#008d36',
-        'JTCARGO': '#008d36', //
-        'POSINDONESIA': '#ff6600',
-        'JNE': '#0054a6',
-        'SPX': '#ee4d2d',
-        'LION': '#e21f26',
-        'IDX': '#ff0000'
-    };
 
     // 1. Inisialisasi Grafik Jumlah Kiriman
     const countCtx = document.getElementById('expeditionRankChart');
