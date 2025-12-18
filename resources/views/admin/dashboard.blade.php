@@ -8,7 +8,24 @@
 .sidebar-container {
     height: 100%; 
 }
+
+    /* Styling Scrollbar agar keren */
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 5px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 10px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #e2e8f0;
+        border-radius: 10px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: #cbd5e1;
+    }
 </style>
+
 @endpush
 
 @section('title', 'Dashboard Admin')
@@ -244,83 +261,86 @@
                 <div class="relative h-80"><canvas id="spxScanChart"></canvas></div>
             </div>
         </div>
-        <div class="bg-white p-6 rounded-lg shadow-lg">
-            <h3 class="text-lg font-semibold text-gray-700 mb-4">Aktivitas Pesanan Terbaru</h3>
-            <div id="recent-activity-container" class="space-y-4">
-                {{-- GANTI BAGIAN @forelse ($pesananTerbaru ... SAMPAI @empty DENGAN INI --}}
-@forelse ($pesananTerbaru as $pesanan)
-<div class="flex items-start py-2 border-b border-gray-100 last:border-0">
-    {{-- LOGO EKSPEDISI (Pengganti Icon Cart) --}}
-    <div class="mt-1">
-        @php
-            // Ambil kode ekspedisi dari string (contoh: regular-jne-REG -> jne)
-            $parts = explode('-', $pesanan->expedition);
-            $kodeEks = isset($parts[1]) ? strtolower($parts[1]) : 'default';
+       <div class="bg-white p-6 rounded-lg shadow-lg h-full flex flex-col">
+    {{-- Header & Form Pencarian --}}
+    <div class="mb-4">
+        <h3 class="text-lg font-semibold text-gray-700 mb-3">Aktivitas Pesanan Terbaru</h3>
+        <div class="relative group">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3">
+                <i class="fas fa-search text-gray-400 group-focus-within:text-indigo-500"></i>
+            </span>
+            <input type="text" 
+                   id="searchPesanan"
+                   placeholder="Cari Resi / Invoice / Toko..." 
+                   class="block w-full pl-10 pr-3 py-2 border border-gray-200 rounded-xl leading-5 bg-gray-50 placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition duration-150 ease-in-out">
+        </div>
+    </div>
+
+    {{-- Container dengan Scrollbar --}}
+    <div class="flex-1 overflow-y-auto pr-2 custom-scrollbar" style="max-height: 520px;" id="recent-activity-container">
+        @forelse ($pesananTerbaru as $pesanan)
+        <div class="pesanan-item flex items-start py-3 border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors rounded-lg px-2" 
+             data-search="{{ strtolower(($pesanan->resi ?? '') . ' ' . ($pesanan->nomor_invoice ?? '') . ' ' . ($pesanan->nama_toko_anda ?? '') . ' ' . ($pesanan->nama_user_anda ?? '')) }}">
             
-            // Path folder logo ekspedisi Anda
-            $logoPath = "public/storage/logo-ekspedisi/{$kodeEks}.png";
-            $fullPath = asset($logoPath);
-        @endphp
+            {{-- LOGO EKSPEDISI --}}
+            <div class="mt-1 flex-shrink-0">
+                @php
+                    $parts = explode('-', $pesanan->expedition);
+                    $kodeEks = isset($parts[1]) ? strtolower($parts[1]) : 'default';
+                    $logoPath = "public/storage/logo-ekspedisi/{$kodeEks}.png";
+                    $fullPath = asset($logoPath);
+                @endphp
+                <div class="w-12 h-12 rounded-full bg-white border border-gray-100 flex items-center justify-center overflow-hidden shadow-sm">
+                    <img src="{{ $fullPath }}" 
+                         alt="{{ $kodeEks }}" 
+                         class="w-10 h-10 object-contain"
+                         onerror="this.onerror=null; this.src='{{ asset('public/storage/uploads/sancaka.png') }}';">
+                </div>
+            </div>
 
-        <div class="w-12 h-12 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center overflow-hidden shadow-sm">
-            @if(file_exists(base_path($logoPath)) || $kodeEks != 'default')
-                <img src="{{ $fullPath }}" 
-                     alt="{{ $kodeEks }}" 
-                     class="w-10 h-10 object-contain"
-                     onerror="this.onerror=null; this.src='{{ asset('public/storage/uploads/sancaka.png') }}';">
-            @else
-                <i class="fas fa-shipping-fast text-indigo-500"></i>
-            @endif
+            <div class="ml-4 flex-1">
+                <div class="flex justify-between items-start">
+                    <div class="flex flex-col">
+                        <p class="text-sm font-bold text-gray-800 tracking-tight">
+                            {{ $pesanan->resi ?? $pesanan->nomor_invoice }}
+                        </p>
+                        @if($pesanan->resi)
+                        <a href="https://tokosancaka.com/tracking?resi={{ $pesanan->resi }}" 
+                           target="_blank" 
+                           class="mt-1 inline-flex items-center text-[10px] font-bold text-red-600 hover:text-red-800 uppercase">
+                            <i class="fas fa-search-location mr-1"></i> Lacak Pesanan
+                        </a>
+                        @endif
+                    </div>
+                    <span class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">
+                        Rp {{ number_format($pesanan->shipping_cost, 0, ',', '.') }}
+                    </span>
+                </div>
+
+                <div class="mt-2 space-y-1">
+                    <div class="flex items-center text-xs text-indigo-600 font-bold">
+                        <i class="fas fa-store w-4 mr-1"></i>
+                        <span class="truncate">{{ $pesanan->nama_toko_anda ?? 'Tanpa Nama Toko' }}</span>
+                    </div>
+                    <div class="flex items-center text-[11px] text-gray-600">
+                        <i class="fas fa-user w-4 mr-1"></i>
+                        <span>{{ $pesanan->nama_user_anda ?? 'User Tidak Dikenal' }}</span>
+                    </div>
+                    <div class="flex items-center text-[10px] text-gray-400">
+                        <i class="fas fa-clock w-4 mr-1"></i>
+                        <span>{{ $pesanan->created_at->diffForHumans() }}</span>
+                    </div>
+                </div>
+            </div>
         </div>
+        @empty
+            <div class="flex flex-col items-center justify-center py-12">
+                <i class="fas fa-box-open text-gray-200 text-5xl mb-3"></i>
+                <p class="text-sm text-gray-400">Belum ada pesanan terbaru.</p>
+            </div>
+        @endforelse
     </div>
-
-    <div class="ml-3 flex-1">
-        {{-- Baris 1: RESI & HARGA --}}
-        <div class="flex justify-between items-start">
-    <div class="flex flex-col">
-        <p class="text-sm font-bold text-gray-800">
-            {{ $pesanan->resi ?? $pesanan->nomor_invoice }}
-        </p>
-        {{-- TOMBOL TRACKING BARU --}}
-        @if($pesanan->resi)
-        <a href="https://tokosancaka.com/tracking?resi={{ $pesanan->resi }}" 
-           target="_blank" 
-           class="mt-1 inline-flex items-center text-[10px] font-bold text-red-600 hover:text-red-800 uppercase tracking-tighter">
-            <i class="fas fa-search-location mr-1"></i> Lacak Pesanan
-        </a>
-        @endif
-    </div>
-    
-    <span class="text-xs font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
-        Rp {{ number_format($pesanan->shipping_cost, 0, ',', '.') }}
-    </span>
 </div>
-
-        {{-- Info Toko & User (Pakai ALIAS dari Controller sebelumnya) --}}
-        <div class="mt-1 flex flex-col gap-0.5">
-            <div class="flex items-center text-xs text-indigo-600 font-semibold">
-                <i class="fas fa-store w-4 text-center mr-1 opacity-70"></i>
-                <span>{{ $pesanan->nama_toko_anda ?? 'Tanpa Nama Toko' }}</span>
-            </div>
-
-            <div class="flex items-center text-xs text-gray-700 font-medium">
-                <i class="fas fa-user w-4 text-center mr-1 opacity-60"></i>
-                <span>{{ $pesanan->nama_user_anda ?? 'User Tidak Dikenal' }}</span>
-            </div>
-
-            <div class="flex items-center text-[10px] text-gray-500">
-                <i class="fas fa-paper-plane w-4 text-center mr-1 opacity-50"></i>
-                <span>Pengirim: {{ $pesanan->sender_name ?? '-' }}</span>
-            </div>
-        </div>
-    </div>
-</div>
-@empty
-    <p class="text-sm text-gray-500 text-center py-4">Belum ada aktivitas pesanan.</p>
-@endforelse
-                {{-- SAMPAI DISINI --}}
-            </div>
-        </div>
     </div>
 
     <div class="mt-8" x-data="{ activeTab: 'count' }">
@@ -848,4 +868,22 @@
         }
     });
 </script>
+
+{{-- Script Pencarian Real-time --}}
+<script>
+document.getElementById('searchPesanan').addEventListener('input', function(e) {
+    const searchTerm = e.target.value.toLowerCase();
+    const items = document.querySelectorAll('.pesanan-item');
+    
+    items.forEach(item => {
+        const text = item.getAttribute('data-search');
+        if (text.includes(searchTerm)) {
+            item.style.display = 'flex';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+});
+</script>
+
 @endpush
