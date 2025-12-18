@@ -248,6 +248,20 @@
         </div>
     </div>
 
+    <div class="mt-8">
+    <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
+        <div class="flex items-center gap-3 mb-6">
+            <div class="p-2 bg-green-50 rounded-lg text-green-600">
+                <i class="fas fa-money-bill-wave fa-lg"></i>
+            </div>
+            <h3 class="text-xl font-bold text-gray-800">Peringkat Ekspedisi (Omzet Terbanyak)</h3>
+        </div>
+        <div class="relative h-96">
+            <canvas id="expeditionOmzetChart"></canvas>
+        </div>
+    </div>
+</div>
+
     {{-- GRAFIK EKSPEDISI TERBANYAK (Diletakkan diatas Rekap) --}}
     <div class="mt-8">
         <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
@@ -655,6 +669,72 @@ if (expCtx) {
 }]
     });
 }
+
+// Di dalam script dashboard Anda
+const omzetCtx = document.getElementById('expeditionOmzetChart').getContext('2d');
+const expOmzetData = @json($expeditionOmzetData);
+
+// 1. Mapping Warna Brand Ekspedisi
+    const brandColors = {
+        'JTCARGO': '#008d36', // HIJAU KHUSUS CARGO
+        'JNT': '#ff0000',       // MERAH EXPRESS
+        'JNE': '#0054a6',
+        'LION': '#ff0000',
+        'POSINDONESIA': '#ff6600',
+        'SICEPAT': '#d31027',
+        'SPX': '#ee4d2d',
+        'ANTERAJA': '#e0004d',
+        'NINJA': '#c00d0d',
+        'IDX': '#ff0000',
+        'SENTRAL': '#004b93'
+    };
+
+const omzetBgColors = expOmzetData.labels.map(label => brandColors[label.toUpperCase()] || '#4f46e5');
+
+new Chart(omzetCtx, {
+    type: 'bar',
+    data: {
+        labels: expOmzetData.labels,
+        datasets: [{
+            label: 'Total Omzet (Rp)',
+            data: expOmzetData.data,
+            backgroundColor: omzetBgColors,
+            borderRadius: 6,
+            barThickness: 28
+        }]
+    },
+    options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        let label = context.dataset.label || '';
+                        if (label) { label += ': '; }
+                        if (context.parsed.x !== null) {
+                            label += new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(context.parsed.x);
+                        }
+                        return label;
+                    }
+                }
+            }
+        },
+        scales: {
+            x: { 
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) {
+                        return 'Rp ' + value.toLocaleString('id-ID');
+                    }
+                }
+            },
+            y: { grid: { display: false } }
+        }
+    }
+});
 
             // Update chart saat Dark Mode berubah
             window.addEventListener('dark-mode-toggled', (e) => {

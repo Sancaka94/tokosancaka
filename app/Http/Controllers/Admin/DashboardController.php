@@ -89,6 +89,35 @@ class DashboardController extends Controller
             arsort($proc);
             return ['labels' => array_keys($proc), 'data' => array_values($proc)];
         });
+
+        $expeditionOmzetData = Cache::remember('admin_exp_omzet_rank_v1', 600, function () {
+    $orders = DB::table('Pesanan')
+        ->select('expedition', DB::raw('sum(shipping_cost) as total_omzet'))
+        ->whereNotNull('expedition')
+        ->where('expedition', '!=', '')
+        ->groupBy('expedition')
+        ->get();
+
+    $processed = [];
+    foreach ($orders as $order) {
+        $parts = explode('-', $order->expedition);
+        // Menyesuaikan mapping nama seperti grafik sebelumnya
+        $name = strtoupper($parts[1] ?? 'LAINNYA');
+        
+        if (isset($processed[$name])) {
+            $processed[$name] += $order->total_omzet;
+        } else {
+            $processed[$name] = $order->total_omzet;
+        }
+    }
+
+    arsort($processed); // Urutkan dari omzet terbesar
+
+    return [
+        'labels' => array_keys($processed),
+        'data' => array_values($processed),
+    ];
+});
         
 
         // --- Mengambil Data Grafik Scan SPX (dengan Caching) ---
@@ -280,6 +309,7 @@ $orders = Pesanan::query()
             'pesananTerbaru' => $pesananTerbaru,
             'rekapEkspedisi' => $rekapEkspedisi,
             'notifications' => $notifications,
+            'expeditionOmzetData' => $expeditionOmzetData,
             'recentNotifications' => $recentNotifications,
             'slides' => $slides,
         ]));
