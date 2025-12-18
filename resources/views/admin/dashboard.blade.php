@@ -205,26 +205,27 @@
     </div>
 
     {{-- Menunggu Pickup --}}
-    <div class="relative group">
-        <div class="absolute -inset-0.5 bg-gradient-to-r from-orange-400 to-yellow-500 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
-        <div class="relative bg-white border border-gray-100 p-6 rounded-2xl shadow-sm transition-all duration-300 transform group-hover:-translate-y-2 group-hover:shadow-xl group-hover:shadow-orange-100">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Menunggu Pickup</p>
-                    <h3 class="text-2xl font-extrabold text-gray-800 leading-none">
-                        {{ number_format($totalMenungguPickup ?? 0, 0, ',', '.') }}
-                    </h3>
-                    <div class="flex items-center mt-2 text-[10px] font-bold text-orange-500">
-                        <i class="fas fa-box mr-1"></i><span>Siap Dijemput</span>
-                    </div>
-                </div>
-                <div class="flex-shrink-0 w-14 h-14 bg-gradient-to-br from-orange-400 to-yellow-500 rounded-xl flex items-center justify-center shadow-lg transform transition-transform group-hover:rotate-12 group-hover:scale-110">
-                    <i class="fas fa-hand-holding-box text-white text-xl"></i>
+<div class="relative group">
+    <div class="absolute -inset-0.5 bg-gradient-to-r from-orange-400 to-yellow-500 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
+    <div class="relative bg-white border border-gray-100 p-6 rounded-2xl shadow-sm transition-all duration-300 transform group-hover:-translate-y-2">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Menunggu Pickup</p>
+                <h3 class="text-2xl font-extrabold text-gray-800 leading-none">
+                    {{ number_format($totalMenungguPickup ?? 0, 0, ',', '.') }}
+                </h3>
+                <div class="flex items-center mt-2 text-[10px] font-bold text-orange-500">
+                    <i class="fas fa-box mr-1"></i><span>Siap Dijemput</span>
                 </div>
             </div>
-            <div class="mt-4 w-full bg-gray-100 rounded-full h-1 border-b-2 border-orange-500"></div>
+            {{-- IKON KURIR / DRIVER --}}
+            <div class="flex-shrink-0 w-14 h-14 bg-gradient-to-br from-orange-400 to-yellow-500 rounded-xl flex items-center justify-center shadow-lg transform transition-transform group-hover:rotate-12 group-hover:scale-110">
+                <i class="fas fa-user-ninja text-white text-xl"></i>
+            </div>
         </div>
+        <div class="mt-4 w-full bg-gray-100 rounded-full h-1 border-b-2 border-orange-500"></div>
     </div>
+</div>
 
     {{-- Gagal / Batal --}}
     <div class="relative group">
