@@ -157,7 +157,7 @@ class DashboardController extends Controller
 
 
 $orders = Pesanan::query()
-    ->leftJoin('Pengguna', 'Pengguna.id_pengguna', '=', 'Pesanan.id_pengguna')
+    ->leftJoin('Pengguna', 'Pengguna.id_pengguna', '=', 'Pesanan.id_pengguna_pembeli')
     ->select(
         'Pesanan.resi',           // <--- PASTIKAN INI ADA
         'Pesanan.nomor_invoice',  // <--- PASTIKAN INI ADA
