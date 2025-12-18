@@ -310,6 +310,8 @@ $rekapEkspedisi = Cache::remember($rekapCacheKey, $cacheDuration, function () us
             'expeditionOmzetData' => $expeditionOmzetData,
             'recentNotifications' => $recentNotifications,
             'slides' => $slides,
+            'startDate' => $startDate, 
+            'endDate' => $endDate,
         ]));
     }
 
