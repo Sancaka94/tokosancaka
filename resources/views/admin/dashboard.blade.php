@@ -658,50 +658,7 @@
             chart.update();
         }
 
-        const expeditionCtx = document.getElementById('expeditionRankChart').getContext('2d');
-const expData = @json($expeditionData);
-
-const expeditionRankChart = new Chart(expeditionCtx, {
-    type: 'bar',
-    data: {
-        labels: expData.labels,
-        datasets: [{
-            label: 'Total Kiriman',
-            data: expData.data,
-            backgroundColor: 'rgba(79, 70, 229, 0.8)',
-            borderColor: 'rgb(79, 70, 229)',
-            borderWidth: 1,
-            borderRadius: 8,
-            barThickness: 30
-        }]
-    },
-    options: {
-        indexAxis: 'y', // MENDATAR
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: { display: false },
-            tooltip: {
-                backgroundColor: 'rgba(31, 41, 55, 0.9)',
-                titleFont: { size: 14 },
-                bodyFont: { size: 13 },
-                padding: 12,
-                cornerRadius: 8
-            }
-        },
-        scales: {
-            x: {
-                beginAtZero: true,
-                grid: { display: true, color: '#f3f4f6' },
-                ticks: { font: { weight: 'bold' } }
-            },
-            y: {
-                grid: { display: false },
-                ticks: { font: { size: 12, weight: 'bold' } }
-            }
-        }
-    }
-});
+        
 
         initCharts();
 
