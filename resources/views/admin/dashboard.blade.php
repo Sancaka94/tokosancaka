@@ -465,11 +465,13 @@
 </div>
 @endsection
 
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // --- Inisialisasi & Setup Chart ---
         const notificationTableBody = document.getElementById('notification-table-body');
-        // Deklarasikan variabel chart di lingkup luar agar bisa diakses fungsi update
-        let adminTransactionChart, spxScanChart, expeditionRankChart;
+        let adminTransactionChart, spxScanChart;
 
         function showNotificationModal(title, message, url) {
             window.dispatchEvent(new CustomEvent('new-notification', { detail: { title, message, url } }));
@@ -493,7 +495,6 @@
         }
 
         function initCharts() {
-            const isDark = localStorage.getItem('darkMode') === 'true';
             const chartOptions = (isDarkMode) => ({
                 responsive: true, maintainAspectRatio: false,
                 scales: { 
@@ -510,7 +511,7 @@
                 plugins: { legend: { labels: { color: isDarkMode ? '#9ca3af' : '#4b5563' } } }
             });
 
-            // 1. Chart Transaksi
+            // Data Awal dari Controller
             const chartData = @json($chartData ?? ['labels' => [], 'data' => []]);
             const ctx = document.getElementById('adminTransactionChart');
             if (ctx) {
@@ -523,14 +524,14 @@
                             data: chartData.data, 
                             borderColor: 'rgb(79, 70, 229)', 
                             backgroundColor: 'rgba(79, 70, 229, 0.1)', 
-                            fill: true, tension: 0.4 
+                            fill: true, 
+                            tension: 0.4 
                         }] 
                     }, 
-                    options: chartOptions(isDark) 
+                    options: chartOptions(localStorage.getItem('darkMode') === 'true') 
                 });
             }
 
-            // 2. Chart SPX
             const spxChartData = @json($spxChartData ?? ['labels' => [], 'data' => []]);
             const spxCtx = document.getElementById('spxScanChart');
             if (spxCtx) {
@@ -546,43 +547,23 @@
                             borderWidth: 1 
                         }] 
                     }, 
-                    options: chartOptions(isDark) 
+                    options: chartOptions(localStorage.getItem('darkMode') === 'true') 
                 });
             }
 
-            // 3. Chart Peringkat Ekspedisi (Mendatar)
-            const expCtx = document.getElementById('expeditionRankChart');
-            const expData = @json($expeditionData ?? ['labels' => [], 'data' => []]);
-            if (expCtx) {
-                expeditionRankChart = new Chart(expCtx, {
-                    type: 'bar',
-                    data: {
-                        labels: expData.labels,
-                        datasets: [{
-                            label: 'Total Kiriman',
-                            data: expData.data,
-                            backgroundColor: 'rgba(79, 70, 229, 0.8)',
-                            borderColor: 'rgb(79, 70, 229)',
-                            borderWidth: 1,
-                            borderRadius: 8,
-                            barThickness: 30
-                        }]
-                    },
-                    options: {
-                        indexAxis: 'y',
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: { legend: { display: false } },
-                        scales: {
-                            x: { beginAtZero: true, grid: { color: isDark ? '#374151' : '#f3f4f6' } },
-                            y: { grid: { display: false } }
-                        }
-                    }
-                });
-            }
+            // Update chart saat Dark Mode berubah
+            window.addEventListener('dark-mode-toggled', (e) => {
+                if(adminTransactionChart) {
+                    adminTransactionChart.options = chartOptions(e.detail.darkMode);
+                    adminTransactionChart.update();
+                }
+                if(spxScanChart) {
+                    spxScanChart.options = chartOptions(e.detail.darkMode);
+                    spxScanChart.update();
+                }
+            });
         }
-
-        // Fungsi Update Real-time
+        
         function updateStats(stats) {
             if (!stats) return;
             const fmt = (val) => new Intl.NumberFormat('id-ID').format(val);
@@ -592,81 +573,157 @@
             if(document.getElementById('pengguna-baru')) document.getElementById('pengguna-baru').textContent = fmt(stats.penggunaBaru);
         }
 
-        function updateRecentActivity(activities) {
-            const container = document.getElementById('recent-activity-container');
-            if (!container) return;
-            container.innerHTML = ''; 
+        // GANTI FUNCTION updateRecentActivity YANG LAMA DENGAN INI
 
-            if (activities && activities.length > 0) {
-                activities.forEach(pesanan => {
-                    const parts = (pesanan.expedition || '').split('-');
-                    const kodeEks = parts[1] ? parts[1].toLowerCase() : 'default';
-                    const logoUrl = `{{ asset('public/storage/logo-ekspedisi') }}/${kodeEks}.png`;
-                    const defaultLogo = `{{ asset('public/storage/uploads/sancaka.png') }}`;
-                    const resi = pesanan.resi || pesanan.nomor_invoice;
-                    const harga = new Intl.NumberFormat('id-ID').format(pesanan.shipping_cost);
-                    
-                    const html = `
-                        <div class="flex items-start py-2 border-b border-gray-100 last:border-0">
-                            <div class="mt-1">
-                                <div class="w-12 h-12 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center overflow-hidden shadow-sm">
-                                    <img src="${logoUrl}" class="w-10 h-10 object-contain" onerror="this.src='${defaultLogo}'">
-                                </div>
+        function updateRecentActivity(activities) {
+    const container = document.getElementById('recent-activity-container');
+    if (!container) return;
+
+    container.innerHTML = ''; 
+
+    if (activities && activities.length > 0) {
+        activities.forEach(pesanan => {
+            // 1. Logika Penentuan Logo Ekspedisi
+            const parts = (pesanan.expedition || '').split('-');
+            const kodeEks = parts[1] ? parts[1].toLowerCase() : 'default';
+            const logoUrl = `{{ asset('public/storage/logo-ekspedisi') }}/${kodeEks}.png`;
+            const defaultLogo = `{{ asset('public/storage/uploads/sancaka.png') }}`;
+
+            // 2. Persiapan Data Teks
+            const resi = pesanan.resi || pesanan.nomor_invoice;
+            const harga = new Intl.NumberFormat('id-ID').format(pesanan.shipping_cost);
+            const storeName = pesanan.nama_toko_anda || 'Tanpa Nama Toko';
+            const userName = pesanan.nama_user_anda || 'User Tidak Dikenal';
+            const senderName = pesanan.sender_name || '-';
+
+            // 3. Logika Tombol Tracking
+            const trackingButton = pesanan.resi 
+                ? `<a href="https://tokosancaka.com/tracking?resi=${pesanan.resi}" target="_blank" class="mt-1 inline-flex items-center text-[10px] font-bold text-blue-600 hover:text-blue-800 uppercase tracking-tighter">
+                     <i class="fas fa-search-location mr-1"></i> Lacak Pesanan
+                   </a>` 
+                : '';
+
+            // 4. Template HTML
+            const html = `
+                <div class="flex items-start py-2 border-b border-gray-100 last:border-0">
+                    <div class="mt-1">
+                        <div class="w-12 h-12 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center overflow-hidden shadow-sm">
+                            <img src="${logoUrl}" class="w-10 h-10 object-contain" onerror="this.src='${defaultLogo}'">
+                        </div>
+                    </div>
+
+                    <div class="ml-3 flex-1">
+                        <div class="flex justify-between items-start">
+                            <div class="flex flex-col">
+                                <p class="text-sm font-bold text-gray-800">${resi}</p>
+                                ${trackingButton}
                             </div>
-                            <div class="ml-3 flex-1">
-                                <div class="flex justify-between items-start">
-                                    <div class="flex flex-col">
-                                        <p class="text-sm font-bold text-gray-800">${resi}</p>
-                                        ${pesanan.resi ? `<a href="https://tokosancaka.com/tracking?resi=${pesanan.resi}" target="_blank" class="mt-1 inline-flex items-center text-[10px] font-bold text-red-600 uppercase italic"><i class="fas fa-search-location mr-1"></i> Lacak</a>` : ''}
-                                    </div>
-                                    <span class="text-xs font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">Rp ${harga}</span>
-                                </div>
-                                <div class="mt-1 flex flex-col gap-0.5">
-                                    <div class="flex items-center text-xs text-indigo-600 font-semibold"><i class="fas fa-store w-4 text-center mr-1 opacity-70"></i><span>${pesanan.nama_toko_anda || 'Tanpa Toko'}</span></div>
-                                    <div class="flex items-center text-xs text-gray-700 font-medium"><i class="fas fa-user w-4 text-center mr-1 opacity-60"></i><span>${pesanan.nama_user_anda || 'Unknown'}</span></div>
-                                </div>
+                            <span class="text-xs font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
+                                Rp ${harga}
+                            </span>
+                        </div>
+
+                        <div class="mt-1 flex flex-col gap-0.5">
+                            <div class="flex items-center text-xs text-indigo-600 font-semibold">
+                                <i class="fas fa-store w-4 text-center mr-1 opacity-70"></i>
+                                <span>${storeName}</span>
                             </div>
-                        </div>`;
-                    container.insertAdjacentHTML('beforeend', html);
-                });
-            } else {
-                container.innerHTML = '<p class="text-sm text-gray-500 text-center py-4">Belum ada aktivitas.</p>';
-            }
-        }
+
+                            <div class="flex items-center text-xs text-gray-700 font-medium">
+                                <i class="fas fa-user w-4 text-center mr-1 opacity-60"></i>
+                                <span>${userName}</span>
+                            </div>
+
+                            <div class="flex items-center text-[10px] text-gray-500">
+                                <i class="fas fa-paper-plane w-4 text-center mr-1 opacity-50"></i>
+                                <span>Pengirim: ${senderName}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', html);
+        });
+    } else {
+        container.innerHTML = '<p id="no-recent-activity" class="text-sm text-gray-500 text-center py-4">Belum ada aktivitas pesanan.</p>';
+    }
+}
 
         function updateChart(chart, newData) {
             if (!chart || !newData) return;
             if (newData.labels) chart.data.labels = newData.labels;
-            if (newData.data && chart.data.datasets.length > 0) chart.data.datasets[0].data = newData.data;
+            if (newData.data && chart.data.datasets.length > 0) {
+                chart.data.datasets[0].data = newData.data;
+            }
             chart.update();
         }
 
-        // Jalankan inisialisasi
+        const expeditionCtx = document.getElementById('expeditionRankChart').getContext('2d');
+const expData = @json($expeditionData);
+
+const expeditionRankChart = new Chart(expeditionCtx, {
+    type: 'bar',
+    data: {
+        labels: expData.labels,
+        datasets: [{
+            label: 'Total Kiriman',
+            data: expData.data,
+            backgroundColor: 'rgba(79, 70, 229, 0.8)',
+            borderColor: 'rgb(79, 70, 229)',
+            borderWidth: 1,
+            borderRadius: 8,
+            barThickness: 30
+        }]
+    },
+    options: {
+        indexAxis: 'y', // MENDATAR
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                backgroundColor: 'rgba(31, 41, 55, 0.9)',
+                titleFont: { size: 14 },
+                bodyFont: { size: 13 },
+                padding: 12,
+                cornerRadius: 8
+            }
+        },
+        scales: {
+            x: {
+                beginAtZero: true,
+                grid: { display: true, color: '#f3f4f6' },
+                ticks: { font: { weight: 'bold' } }
+            },
+            y: {
+                grid: { display: false },
+                ticks: { font: { size: 12, weight: 'bold' } }
+            }
+        }
+    }
+});
+
         initCharts();
 
-        // Dark Mode Toggle Listener
-        window.addEventListener('dark-mode-toggled', (e) => {
-            [adminTransactionChart, spxScanChart].forEach(chart => {
-                if(chart) {
-                    chart.options.scales.y.ticks.color = e.detail.darkMode ? '#9ca3af' : '#4b5563';
-                    chart.options.scales.x.ticks.color = e.detail.darkMode ? '#9ca3af' : '#4b5563';
-                    chart.update();
-                }
-            });
-        });
-
-        // Echo Listeners
         if (typeof window.Echo !== 'undefined' && {{ Auth::check() && strtolower(Auth::user()->role) === 'admin' ? 'true' : 'false' }}) {
-            window.Echo.private('admin-notifications').listen('AdminNotificationEvent', (e) => {
-                showNotificationModal(e.title, e.message, e.url);
-                addNotificationToTable(e);
-            });
-            window.Echo.private('admin-dashboard').listen('DashboardUpdated', (e) => {
-                updateStats(e.stats);
-                updateChart(adminTransactionChart, e.chartData);
-                updateChart(spxScanChart, e.spxChartData);
-                updateRecentActivity(e.pesananTerbaru);
-            });
+            window.Echo.private('admin-notifications')
+                .listen('AdminNotificationEvent', (e) => {
+                    console.log('Event AdminNotificationEvent diterima:', e);
+                    showNotificationModal(e.title, e.message, e.url);
+                    addNotificationToTable(e);
+                    if (Notification.permission === "granted") {
+                        new Notification(e.title, { body: e.message, icon: '{{ asset("public/storage/uploads/sancaka.png") }}' });
+                    }
+                });
+            window.Echo.private('admin-dashboard')
+                .listen('DashboardUpdated', (e) => {
+                    console.log('Event DashboardUpdated diterima:', e);
+                    updateStats(e.stats);
+                    updateChart(adminTransactionChart, e.chartData);
+                    updateChart(spxScanChart, e.spxChartData);
+                    updateRecentActivity(e.pesananTerbaru);
+                });
         }
     });
 </script>
+@endpush
