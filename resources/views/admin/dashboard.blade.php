@@ -104,7 +104,7 @@
     </div>
 
     <div class="relative group">
-        <div class="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"></div>
+        <div class="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-red-600 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"></div>
         <div class="relative bg-white border border-gray-100 p-6 rounded-2xl shadow-sm transition-all duration-300 transform group-hover:-translate-y-2 group-hover:shadow-xl group-hover:shadow-blue-100">
             <div class="flex items-center justify-between">
                 <div>
@@ -116,7 +116,7 @@
                         <i class="fas fa-truck-ramp-box mr-1"></i><span>Total Transaksi</span>
                     </div>
                 </div>
-                <div class="flex-shrink-0 w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg transform transition-transform group-hover:rotate-12 group-hover:scale-110">
+                <div class="flex-shrink-0 w-14 h-14 bg-gradient-to-br from-blue-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg transform transition-transform group-hover:rotate-12 group-hover:scale-110">
                     <i class="fas fa-box-open text-white text-xl"></i>
                 </div>
             </div>
@@ -194,7 +194,7 @@
         </div>
     </div>
 
-    <div class="relative overflow-hidden bg-gradient-to-br from-blue-500 to-indigo-700 p-6 rounded-2xl shadow-lg shadow-blue-200 transition-all hover:scale-[1.02] duration-300 group">
+    <div class="relative overflow-hidden bg-gradient-to-br from-blue-500 to-red-700 p-6 rounded-2xl shadow-lg shadow-blue-200 transition-all hover:scale-[1.02] duration-300 group">
         <div class="relative z-10 flex justify-between items-start text-white">
             <div>
                 <p class="text-xs font-bold uppercase tracking-wider opacity-80 mb-1">Sedang Dikirim</p>
@@ -318,7 +318,7 @@
                 </div>
 
                 <div class="mt-2 space-y-1">
-                    <div class="flex items-center text-xs text-indigo-600 font-bold">
+                    <div class="flex items-center text-xs text-red-600 font-bold">
                         <i class="fas fa-store w-4 mr-1"></i>
                         <span class="truncate">{{ $pesanan->nama_toko_anda ?? 'Tanpa Nama Toko' }}</span>
                     </div>
@@ -347,7 +347,7 @@
     <div class="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/50">
             <div class="flex items-center gap-3">
-                <div class="p-2 bg-indigo-50 rounded-lg text-indigo-600">
+                <div class="p-2 bg-red-50 rounded-lg text-red-600">
                     <i class="fas fa-chart-bar fa-lg"></i>
                 </div>
                 <h3 class="text-xl font-bold text-gray-800">Analisis Performa Ekspedisi</h3>
@@ -355,7 +355,7 @@
             
             <div class="flex bg-gray-100 p-1 rounded-lg">
                 <button @click="activeTab = 'count'" 
-                    :class="activeTab === 'count' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-700'"
+                    :class="activeTab === 'count' ? 'bg-white shadow-sm text-red-600' : 'text-gray-500 hover:text-gray-700'"
                     class="px-4 py-1.5 rounded-md text-xs font-bold uppercase tracking-wider transition-all duration-200">
                     <i class="fas fa-box mr-1"></i> Total Kiriman
                 </button>
@@ -389,8 +389,8 @@
 
         <div class="mb-8 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 transition-all hover:shadow-md">
     <div class="flex items-center gap-3 mb-5">
-        <div class="p-2 bg-indigo-50 rounded-lg">
-            <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="p-2 bg-red-50 rounded-lg">
+            <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
             </svg>
         </div>
@@ -401,8 +401,8 @@
         <div class="flex flex-col gap-1">
             <label class="text-xs font-bold text-gray-400 uppercase tracking-wider">Opsi Cepat</label>
             <a href="{{ route('admin.dashboard') }}" 
-               class="flex items-center justify-center px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-600 bg-gray-50 hover:bg-white hover:border-indigo-300 hover:text-indigo-600 transition-all duration-200 group">
-                <svg class="w-4 h-4 mr-2 text-gray-400 group-hover:text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+               class="flex items-center justify-center px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-600 bg-gray-50 hover:bg-white hover:border-red-300 hover:text-red-600 transition-all duration-200 group">
+                <svg class="w-4 h-4 mr-2 text-gray-400 group-hover:text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                 </svg>
                 Semua Waktu
@@ -413,7 +413,7 @@
             <label class="text-xs font-bold text-gray-400 uppercase tracking-wider">Dari Tanggal</label>
             <div class="relative group">
                 <input type="date" name="start_date" value="{{ $startDate ?? '' }}" 
-                       class="block w-full px-4 py-2.5 rounded-xl border-gray-200 bg-gray-50 text-gray-700 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 outline-none border">
+                       class="block w-full px-4 py-2.5 rounded-xl border-gray-200 bg-gray-50 text-gray-700 text-sm focus:bg-white focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200 outline-none border">
             </div>
         </div>
 
@@ -421,13 +421,13 @@
             <label class="text-xs font-bold text-gray-400 uppercase tracking-wider">Sampai Tanggal</label>
             <div class="relative group">
                 <input type="date" name="end_date" value="{{ $endDate ?? '' }}" 
-                       class="block w-full px-4 py-2.5 rounded-xl border-gray-200 bg-gray-50 text-gray-700 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 outline-none border">
+                       class="block w-full px-4 py-2.5 rounded-xl border-gray-200 bg-gray-50 text-gray-700 text-sm focus:bg-white focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200 outline-none border">
             </div>
         </div>
 
         <div>
             <button type="submit" 
-                    class="w-full flex items-center justify-center px-6 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 hover:shadow-indigo-300 transform active:scale-95 transition-all duration-200">
+                    class="w-full flex items-center justify-center px-6 py-2.5 rounded-xl bg-red-600 text-white text-sm font-bold shadow-lg shadow-red-200 hover:bg-red-700 hover:shadow-red-300 transform active:scale-95 transition-all duration-200">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
                 </svg>
@@ -655,7 +655,7 @@
             newRow.className = 'hover:bg-gray-50 bg-red-50 font-semibold';
             newRow.innerHTML = `
                 <td class="px-6 py-4">
-                    <a href="${notification.url || '#'}" class="block text-gray-800 hover:text-indigo-600">
+                    <a href="${notification.url || '#'}" class="block text-gray-800 hover:text-red-600">
                         <p class="font-medium">${notification.title || 'Notifikasi'}</p>
                         <p class="text-xs text-gray-600">${notification.message || 'Tidak ada detail.'}</p>
                     </a>
@@ -828,7 +828,7 @@
                                     <span class="text-xs font-bold text-green-600">Rp ${new Intl.NumberFormat('id-ID').format(pesanan.shipping_cost)}</span>
                                 </div>
                                 <div class="mt-1 flex flex-col gap-0.5">
-                                    <div class="flex items-center text-xs text-indigo-600 font-semibold">
+                                    <div class="flex items-center text-xs text-red-600 font-semibold">
                                         <span>${pesanan.nama_toko_anda || 'Tanpa Toko'}</span>
                                     </div>
                                 </div>
