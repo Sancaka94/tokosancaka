@@ -558,8 +558,8 @@ if (expCtx) {
 
     // 1. Mapping Warna Brand Ekspedisi
     const brandColors = {
-        'J&T CARGO': '#008d36', // HIJAU KHUSUS CARGO
-        'J&T': '#ff0000',       // MERAH EXPRESS
+        'JTCARGO': '#008d36', // HIJAU KHUSUS CARGO
+        'JNT': '#ff0000',       // MERAH EXPRESS
         'JNE': '#0054a6',
         'POS': '#ff6600',
         'SICEPAT': '#d31027',
