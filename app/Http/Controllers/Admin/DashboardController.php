@@ -107,7 +107,7 @@ class DashboardController extends Controller
         });
 
 // --- REKAPITULASI EKSPEDISI (LENGKAP: KOTA & STATUS) ---
-        $rekapEkspedisi = Cache::remember('admin_dashboard_rekap_ekspedisi_v30', $cacheDuration, function () {
+        $rekapEkspedisi = Cache::remember('admin_dashboard_rekap_ekspedisi_v35', $cacheDuration, function () {
             
             // 1. MASTER DATA
             $courierMap = [
