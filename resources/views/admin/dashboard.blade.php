@@ -449,18 +449,18 @@ function updateRecentActivity(activities) {
     const container = document.getElementById('recent-activity-container');
     if (!container) return;
 
-    container.innerHTML = ''; // Kosongkan kontainer
+    container.innerHTML = ''; 
 
     if (activities && activities.length > 0) {
         activities.forEach(pesanan => {
-            // Siapkan Variabel
             const resi = pesanan.resi || pesanan.nomor_invoice;
             const harga = new Intl.NumberFormat('id-ID').format(pesanan.shipping_cost);
-            const storeName = pesanan.store_name || 'Tanpa Nama Toko';
-            const namaLengkap = pesanan.nama_lengkap || 'User Tidak Dikenal';
+            
+            // Perbaikan pengambilan nama: mengecek di objek pesanan langsung atau di dalam objek user
+            const storeName = (pesanan.user ? pesanan.user.store_name : pesanan.store_name) || 'Tanpa Nama Toko';
+            const namaLengkap = (pesanan.user ? pesanan.user.nama_lengkap : pesanan.nama_lengkap) || 'User Tidak Dikenal';
             const senderName = pesanan.sender_name || '-';
 
-            // Template HTML Baru
             const html = `
                 <div class="flex items-start py-2 border-b border-gray-100 last:border-0">
                     <div class="p-3 rounded-full bg-indigo-50 mt-1">
