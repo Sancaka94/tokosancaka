@@ -248,35 +248,6 @@
         </div>
     </div>
 
-    <div class="mt-8">
-    <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
-        <div class="flex items-center gap-3 mb-6">
-            <div class="p-2 bg-green-50 rounded-lg text-green-600">
-                <i class="fas fa-money-bill-wave fa-lg"></i>
-            </div>
-            <h3 class="text-xl font-bold text-gray-800">Peringkat Ekspedisi (Omzet Terbanyak)</h3>
-        </div>
-        <div class="relative h-96">
-            <canvas id="expeditionOmzetChart"></canvas>
-        </div>
-    </div>
-</div>
-
-    {{-- GRAFIK EKSPEDISI TERBANYAK (Diletakkan diatas Rekap) --}}
-    <div class="mt-8">
-        <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
-            <div class="flex items-center gap-3 mb-6">
-                <div class="p-2 bg-indigo-50 rounded-lg text-indigo-600">
-                    <i class="fas fa-chart-bar fa-lg"></i>
-                </div>
-                <h3 class="text-xl font-bold text-gray-800">Peringkat Ekspedisi Terbanyak</h3>
-            </div>
-            <div class="relative h-96">
-                <canvas id="expeditionRankChart"></canvas>
-            </div>
-        </div>
-    </div>
-
     <div class="mt-8" x-data="{ activeTab: 'count' }">
     <div class="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/50">
