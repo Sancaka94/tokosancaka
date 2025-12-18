@@ -121,7 +121,7 @@
         @if($pesanan->resi)
         <a href="https://tokosancaka.com/tracking?resi={{ $pesanan->resi }}" 
            target="_blank" 
-           class="mt-1 inline-flex items-center text-[10px] font-bold text-blue-600 hover:text-blue-800 uppercase tracking-tighter">
+           class="mt-1 inline-flex items-center text-[10px] font-bold text-red-600 hover:text-red-800 uppercase tracking-tighter">
             <i class="fas fa-search-location mr-1"></i> Lacak Pesanan
         </a>
         @endif
