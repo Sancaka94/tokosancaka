@@ -116,7 +116,7 @@
                         <i class="fas fa-truck-ramp-box mr-1"></i><span>Total Transaksi</span>
                     </div>
                 </div>
-                <div class="flex-shrink-0 w-14 h-14 bg-gradient-to-br from-blue-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg transform transition-transform group-hover:rotate-12 group-hover:scale-110">
+                <div class="flex-shrink-0 w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg transform transition-transform group-hover:rotate-12 group-hover:scale-110">
                     <i class="fas fa-box-open text-white text-xl"></i>
                 </div>
             </div>
@@ -194,7 +194,7 @@
         </div>
     </div>
 
-    <div class="relative overflow-hidden bg-gradient-to-br from-blue-500 to-red-700 p-6 rounded-2xl shadow-lg shadow-blue-200 transition-all hover:scale-[1.02] duration-300 group">
+    <div class="relative overflow-hidden bg-gradient-to-br from-blue-500 to-blue-700 p-6 rounded-2xl shadow-lg shadow-blue-200 transition-all hover:scale-[1.02] duration-300 group">
         <div class="relative z-10 flex justify-between items-start text-white">
             <div>
                 <p class="text-xs font-bold uppercase tracking-wider opacity-80 mb-1">Sedang Dikirim</p>
@@ -318,7 +318,7 @@
                 </div>
 
                 <div class="mt-2 space-y-1">
-                    <div class="flex items-center text-xs text-red-600 font-bold">
+                    <div class="flex items-center text-xs text-green-600 font-bold">
                         <i class="fas fa-store w-4 mr-1"></i>
                         <span class="truncate">{{ $pesanan->nama_toko_anda ?? 'Tanpa Nama Toko' }}</span>
                     </div>
