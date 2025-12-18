@@ -471,7 +471,7 @@
     document.addEventListener('DOMContentLoaded', function() {
         // --- Inisialisasi & Setup Chart ---
         const notificationTableBody = document.getElementById('notification-table-body');
-        let adminTransactionChart, spxScanChart;
+        let adminTransactionChart, spxScanChart, expeditionRankChart;
 
         function showNotificationModal(title, message, url) {
             window.dispatchEvent(new CustomEvent('new-notification', { detail: { title, message, url } }));
@@ -555,6 +555,31 @@
 const expCtx = document.getElementById('expeditionRankChart');
 if (expCtx) {
     const expData = @json($expeditionData ?? ['labels' => [], 'data' => []]);
+
+    // 1. Mapping Warna Brand Ekspedisi
+    const brandColors = {
+        'JNE': '#0054a6',
+        'J&T': '#ff0000',
+        'POS': '#ff6600',
+        'SICEPAT': '#d31027',
+        'NINJA': '#c00d0d',
+        'ANTERAJA': '#e0004d',
+        'LION': '#e21f26',
+        'SPX': '#ee4d2d',
+        'SENTRAL': '#004b93',
+        'ID': '#f37021',
+        'TIKI': '#003399',
+        'SAP': '#006cb7'
+    };
+
+    // 2. Mapping Logo Ekspedisi
+    const brandLogos = expData.labels.map(label => {
+        const key = label.toUpperCase();
+        return `{{ asset('public/storage/logo-ekspedisi') }}/${key.toLowerCase()}.png`;
+    });
+
+    const bgColors = expData.labels.map(label => brandColors[label.toUpperCase()] || '#4f46e5');
+
     expeditionRankChart = new Chart(expCtx, {
         type: 'bar',
         data: {
@@ -562,20 +587,47 @@ if (expCtx) {
             datasets: [{
                 label: 'Total Kiriman',
                 data: expData.data,
-                backgroundColor: 'rgba(79, 70, 229, 0.8)',
-                borderRadius: 8
+                backgroundColor: bgColors, // Warna sesuai logo
+                borderRadius: 5,
+                barThickness: 25
             }]
         },
         options: {
-            indexAxis: 'y', // Biar mendatar
+            indexAxis: 'y', // Mendatar
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
+            layout: {
+                padding: { left: 40 } // Ruang untuk logo di kiri
+            },
+            plugins: {
+                legend: { display: false }
+            },
             scales: {
-                x: { beginAtZero: true },
-                y: { grid: { display: false } }
+                x: { beginAtZero: true, grid: { display: false } },
+                y: { 
+                    grid: { display: false },
+                    ticks: {
+                        padding: 10,
+                        font: { weight: 'bold' }
+                    }
+                }
             }
-        }
+        },
+        // 3. PLUGIN KHUSUS UNTUK GAMBAR LOGO
+        plugins: [{
+            id: 'yAxisLogos',
+            afterDraw: (chart) => {
+                const { ctx, scales: { y } } = chart;
+                y.ticks.forEach((tick, index) => {
+                    const img = new Image();
+                    img.src = brandLogos[index];
+                    const yPos = y.getPixelForTick(index);
+                    
+                    // Gambar logo di sebelah kiri label
+                    ctx.drawImage(img, y.left - 35, yPos - 12, 25, 25); 
+                });
+            }
+        }]
     });
 }
 
