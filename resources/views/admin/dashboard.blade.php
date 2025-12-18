@@ -558,18 +558,16 @@ if (expCtx) {
 
     // 1. Mapping Warna Brand Ekspedisi
     const brandColors = {
+        'J&T CARGO': '#008d36', // HIJAU KHUSUS CARGO
+        'J&T': '#ff0000',       // MERAH EXPRESS
         'JNE': '#0054a6',
-        'J&T': '#ff0000',
         'POS': '#ff6600',
         'SICEPAT': '#d31027',
-        'NINJA': '#c00d0d',
-        'ANTERAJA': '#e0004d',
-        'LION': '#e21f26',
         'SPX': '#ee4d2d',
-        'SENTRAL': '#004b93',
+        'ANTERAJA': '#e0004d',
+        'NINJA': '#c00d0d',
         'ID': '#f37021',
-        'TIKI': '#003399',
-        'SAP': '#006cb7'
+        'SENTRAL': '#004b93'
     };
 
     // 2. Mapping Logo Ekspedisi
