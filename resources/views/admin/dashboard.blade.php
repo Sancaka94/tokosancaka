@@ -109,13 +109,13 @@
             {{-- Baris 2: NAMA TOKO --}}
 <div class="flex items-center text-xs text-indigo-600 font-semibold">
     <i class="fas fa-store w-4 text-center mr-1 opacity-70"></i>
-    <span>{{ $pesanan->user->store_name ?? 'Tanpa Nama Toko' }}</span>
+    <span>{{ $order->user->store_name ?? 'Tanpa Nama Toko' }}</span>
 </div>
 
 {{-- Baris 3: NAMA LENGKAP USER --}}
 <div class="flex items-center text-xs text-gray-700 font-medium">
     <i class="fas fa-user w-4 text-center mr-1 opacity-60"></i>
-    <span>{{ $pesanan->user->nama_lengkap ?? 'User Tidak Dikenal' }}</span>
+    <span>{{ $order->user->nama_lengkap ?? 'User Tidak Dikenal' }}</span>
 </div>
 
             {{-- Baris 4: SENDER NAME (Warna Abu Terang / Kecil) --}}
