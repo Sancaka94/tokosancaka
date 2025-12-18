@@ -561,6 +561,7 @@ if (expCtx) {
         'JTCARGO': '#008d36', // HIJAU KHUSUS CARGO
         'JNT': '#ff0000',       // MERAH EXPRESS
         'JNE': '#0054a6',
+        'LION': '#ff0000',
         'POS': '#ff6600',
         'SICEPAT': '#d31027',
         'SPX': '#ee4d2d',
