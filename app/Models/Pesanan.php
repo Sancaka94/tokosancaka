@@ -195,12 +195,7 @@ class Pesanan extends Model
         return $this->hasMany(Koli::class, 'pesanan_id', 'id_pesanan');
     }
 
-    public function user()
-{
-    // 'id_pengguna' adalah PK di tabel Pengguna
-    // 'id_pengguna' kedua adalah FK di tabel Pesanan
-    return $this->belongsTo(User::class, 'customer_id', 'id_pengguna');
-}
+
 
 }
 
