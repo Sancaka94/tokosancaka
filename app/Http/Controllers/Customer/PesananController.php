@@ -1194,4 +1194,14 @@ TEXT;
             return response()->json(['status' => 'error', 'message' => 'Terjadi kesalahan server.'], 500);
         }
     }
+
+    public function cetakThermal($resi)
+{
+    $order = Pesanan::where('resi', $resi)
+                    ->orWhere('nomor_invoice', $resi)
+                    ->firstOrFail();
+
+    return view('admin.pesanan.cetak_thermal', compact('order'));
+}
+
 }
