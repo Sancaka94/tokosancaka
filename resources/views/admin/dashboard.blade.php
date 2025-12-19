@@ -322,11 +322,11 @@
                         <i class="fas fa-store w-4 mr-1"></i>
                         <span class="truncate">{{ $pesanan->pembeli->store_name ?? 'Tanpa Nama Toko' }}</span>
                     </div>
-                    <div class="flex items-center text-[11px] text-gray-600">
+                    <div class="flex items-center text-[11px] text-blue-600">
                         <i class="fas fa-user w-4 mr-1"></i>
                         <span>{{ $pesanan->pembeli->nama_lengkap ?? 'User Tidak Dikenal' }}</span>
                     </div>
-                    <div class="flex items-center text-[10px] text-gray-400">
+                    <div class="flex items-center text-[10px] text-red-600">
                         <i class="fas fa-clock w-4 mr-1"></i>
                         <span>{{ $pesanan->created_at->diffForHumans() }}</span>
                     </div>
