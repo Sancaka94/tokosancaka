@@ -1559,4 +1559,5 @@ public function cetakThermal($resi)
     // Sesuaikan path view ini dengan lokasi file blade cetak Anda
     return view('admin.pesanan.cetak_thermal', compact('order'));
 }
+
 } // Akhir Class
