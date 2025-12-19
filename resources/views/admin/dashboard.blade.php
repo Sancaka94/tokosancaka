@@ -324,7 +324,7 @@
                     </div>
                     <div class="flex items-center text-[11px] text-gray-600">
                         <i class="fas fa-user w-4 mr-1"></i>
-                        <span>{{ $pesanan->nama_user_anda ?? 'User Tidak Dikenal' }}</span>
+                        <span>{{ $pesanan->pembeli->nama_lengkap ?? 'User Tidak Dikenal' }}</span>
                     </div>
                     <div class="flex items-center text-[10px] text-gray-400">
                         <i class="fas fa-clock w-4 mr-1"></i>
