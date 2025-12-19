@@ -164,9 +164,9 @@
                     <p class="value">- Isi Paket: {{ $pesanan->item_description }}</p>
                     <p class="value">- Dimensi: {{ $pesanan->length ?? 0 }} x {{ $pesanan->width ?? 0 }} x {{ $pesanan->height ?? 0 }} cm</p>
                     <p class="value">- Layanan: {{ strtoupper($expeditionService) }}</p><br>
-                    <p class="label text-red-600"><strong>Total Ongkir:</strong></p>
-                    
-<p class="value text-red-700 text-lg">
+                    <p class="label text-red-500"><strong>Total Ongkir:</strong></p>
+
+<p class="value text-red-600 text-lg">
     <strong>
         Rp {{ number_format($pesanan->shipping_cost, 0, ',', '.') }}
     </strong>
