@@ -160,7 +160,7 @@ class DashboardController extends Controller
 
         // --- Mengambil Data Tabel (dengan Caching) ---
 // Key diperbarui ke v6 agar cache lama yang berisi hanya 6 data terhapus
-$pesananTerbaru = Cache::remember('admin_dashboard_recent_orders_v6', $cacheDuration, function () {
+$pesananTerbaru = Cache::remember('admin_dashboard_recent_orders_v7', $cacheDuration, function () {
     // Menghapus ->take(6) agar mengambil semua data pesanan
     return Pesanan::with('pembeli')->latest('created_at')->get();
 });
