@@ -301,9 +301,26 @@
             <div class="ml-4 flex-1">
                 <div class="flex justify-between items-start">
                     <div class="flex flex-col">
-                        <p class="text-sm font-bold text-gray-800 tracking-tight">
-                            {{ $pesanan->resi ?? $pesanan->nomor_invoice }}
-                        </p>
+                        <p class="text-sm font-bold text-gray-800 tracking-tight flex items-center gap-2">
+    Resi:
+    <span id="resi-text">
+        {{ $pesanan->resi ?? $pesanan->nomor_invoice }}
+    </span>
+
+    <button
+        type="button"
+        onclick="copyResi()"
+        class="text-gray-400 hover:text-blue-600 transition"
+        title="Salin Resi"
+    >
+        <!-- icon copy -->
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+             viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-2 12h2a2 2 0 002-2V10a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+        </svg>
+    </button>
+</p>
                         @if($pesanan->resi)
                         <a href="https://tokosancaka.com/tracking?resi={{ $pesanan->resi }}" 
                            target="_blank" 
@@ -884,6 +901,15 @@ document.getElementById('searchPesanan').addEventListener('input', function(e) {
         }
     });
 });
+</script>
+
+<script>
+function copyResi() {
+    const text = document.getElementById('resi-text').innerText;
+    navigator.clipboard.writeText(text).then(() => {
+        alert('Resi berhasil disalin');
+    });
+}
 </script>
 
 @endpush
