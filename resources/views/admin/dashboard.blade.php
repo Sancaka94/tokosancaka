@@ -320,7 +320,7 @@
                 <div class="mt-2 space-y-1">
                     <div class="flex items-center text-xs text-green-600 font-bold">
                         <i class="fas fa-store w-4 mr-1"></i>
-                        <span class="truncate">{{ $pesanan->nama_toko_anda ?? 'Tanpa Nama Toko' }}</span>
+                        <span class="truncate">{{ $pesanan->pembeli->store_name ?? 'Tanpa Nama Toko' }}</span>
                     </div>
                     <div class="flex items-center text-[11px] text-gray-600">
                         <i class="fas fa-user w-4 mr-1"></i>
