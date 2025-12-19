@@ -1550,14 +1550,13 @@ TEXT;
  */
 public function cetakThermal($resi)
 {
-    // Cari data berdasarkan resi, jika tidak ada cari berdasarkan nomor invoice
-    $order = \App\Models\Pesanan::where('resi', $resi)
+    // Mengambil data berdasarkan resi atau nomor invoice
+    $pesanan = \App\Models\Pesanan::where('resi', $resi)
                 ->orWhere('nomor_invoice', $resi)
                 ->firstOrFail();
 
-    // Mengarahkan ke view cetak yang sudah ada
-    // Sesuaikan path view ini dengan lokasi file blade cetak Anda
-    return view('admin.pesanan.cetak_thermal', compact('order'));
+    // Kirim variabel $pesanan ke view
+    return view('admin.pesanan.cetak_thermal', compact('pesanan'));
 }
 
 } // Akhir Class
