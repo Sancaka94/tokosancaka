@@ -120,13 +120,11 @@ class Pesanan extends Model
 
      */
 
-    public function pembeli()
-
-    {
-
-        return $this->belongsTo(User::class, 'id_pengguna_pembeli', 'id_pengguna');
-
-    }
+   public function pembeli()
+{
+    // Mengacu pada id_pengguna di tabel Pengguna
+    return $this->belongsTo(User::class, 'customer_id', 'id_pengguna');
+}
 
 
 
