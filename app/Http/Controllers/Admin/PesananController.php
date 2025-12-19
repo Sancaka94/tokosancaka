@@ -1543,4 +1543,20 @@ TEXT;
             ], 500);
         }
     }
+
+    /**
+ * Menampilkan halaman cetak thermal berdasarkan Resi atau Nomor Invoice.
+ * URL: tokosancaka.com/{resi}/cetak_thermal
+ */
+public function cetakThermal($resi)
+{
+    // Cari data berdasarkan resi, jika tidak ada cari berdasarkan nomor invoice
+    $order = \App\Models\Pesanan::where('resi', $resi)
+                ->orWhere('nomor_invoice', $resi)
+                ->firstOrFail();
+
+    // Mengarahkan ke view cetak yang sudah ada
+    // Sesuaikan path view ini dengan lokasi file blade cetak Anda
+    return view('admin.pesanan.cetak_thermal', compact('order'));
+}
 } // Akhir Class
