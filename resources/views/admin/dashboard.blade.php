@@ -279,8 +279,8 @@
     {{-- Container dengan Scrollbar --}}
     <div class="flex-1 overflow-y-auto pr-2 custom-scrollbar" style="max-height: 700px;" id="recent-activity-container">
         @forelse ($pesananTerbaru as $pesanan)
-        <div class="pesanan-item flex items-start py-3 border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors rounded-lg px-2" 
-             data-search="{{ strtolower(($pesanan->resi ?? '') . ' ' . ($pesanan->nomor_invoice ?? '') . ' ' . ($pesanan->nama_toko_anda ?? '') . ' ' . ($pesanan->nama_user_anda ?? '')) }}">
+        <div class="pesanan-item flex items-start py-3 border-b border-gray-100 last:border-0 hover:bg-blue-50 transition-colors rounded-lg px-2" 
+             data-search="{{ strtolower(($pesanan->resi ?? '') . ' ' . ($pesanan->nomor_invoice ?? '') . ' ' . ($pesanan->pembeli->store_name ?? '') . ' ' . ($pesanan->pembeli->nama_lengkap ?? '')) }}">
             
             {{-- LOGO EKSPEDISI --}}
             <div class="mt-1 flex-shrink-0">
