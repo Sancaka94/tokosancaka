@@ -164,8 +164,14 @@
                     <p class="value">- Isi Paket: {{ $pesanan->item_description }}</p>
                     <p class="value">- Dimensi: {{ $pesanan->length ?? 0 }} x {{ $pesanan->width ?? 0 }} x {{ $pesanan->height ?? 0 }} cm</p>
                     <p class="value">- Layanan: {{ strtoupper($expeditionService) }}</p><br>
-                    <p class="label"><strong>Total Ongkir:</strong></p>
-                    <p class="value"><strong>Rp {{ number_format($pesanan->shipping_cost, 0, ',', '.') }}</strong></p><br>
+                    <p class="label text-red-600"><strong>Total Ongkir:</strong></p>
+                    
+<p class="value text-red-700 text-lg">
+    <strong>
+        Rp {{ number_format($pesanan->shipping_cost, 0, ',', '.') }}
+    </strong>
+</p><br>
+
                     <p class="value">CV. SANCAKA KARYA HUTAMA</p>
                      {{-- BAGIAN YANG DIPERBAIKI: LOGIKA COD ONGKIR vs COD BARANG --}}
         @php
