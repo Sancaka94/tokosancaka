@@ -134,4 +134,39 @@ class EmailController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Menampilkan form tulis email (Jika masih dibutuhkan secara konvensional)
+     */
+    public function create()
+    {
+        return view('admin.email.create');
+    }
+
+    /**
+     * Mengambil detail satu email (JSON).
+     */
+    public function show(Request $request, $id)
+    {
+        try {
+            $client = Client::account('default');
+            $client->connect();
+            $folder = $client->getFolder('INBOX');
+            $message = $folder->query()->where('uid', $id)->get()->first();
+            
+            if (!$message) throw new Exception("Email tidak ditemukan.");
+
+            $message->setFlag('Seen');
+
+            return response()->json([
+                'subject' => $message->getSubject(),
+                'from_name' => $message->getFrom()[0]->personal,
+                'from_address' => $message->getFrom()[0]->mail,
+                'created_at' => $message->getDate(),
+                'body' => $message->getHTMLBody() ?: $message->getTextBody(),
+            ]);
+        } catch (Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 500);
+        }
+    }
 }
