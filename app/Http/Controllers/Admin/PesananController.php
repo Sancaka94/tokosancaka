@@ -86,7 +86,7 @@ class PesananController extends Controller
     $incomeDikirim = Pesanan::whereIn('status_pesanan', ['Diproses', 'Terkirim', 'Sedang Dikirim'])->sum('price');
 
     // 4. Potensi Pendapatan Hilang: GAGAL (Batal/Kadaluarsa)
-    $incomeGagal = Pesanan::whereIn('status_pesanan', ['Batal', 'Kadaluarsa', 'Gagal Bayar'])->sum('price');
+    $incomeGagal = Pesanan::whereIn('status_pesanan', ['Batal', 'Kadaluarsa', 'Gagal Bayar', 'Dibatalkan'])->sum('price');
 
     // ---------------------------------------------------------
 
