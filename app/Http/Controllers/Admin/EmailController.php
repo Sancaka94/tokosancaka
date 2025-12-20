@@ -19,28 +19,23 @@ class EmailController extends Controller
     {
         if ($request->wantsJson() || $request->ajax()) {
             try {
-                $client = Client::account('default');
-                $client->connect();
-                $folder = $client->getFolder($request->get('folder', 'INBOX'));
-                
-                // Mengambil pesan dengan pagination
-                $messages = $folder->messages()->all()->paginate(20, $request->get('page', 1));
-                
-                return response()->json([
-                    'emails' => $messages,
-                    'unread_count' => $folder->messages()->unseen()->get()->count()
-                ]);
-            } catch (Exception $e) {
-                Log::error("IMAP Index Error: " . $e->getMessage());
-                return response()->json([
-                    'error' => true,
-                    'message' => 'Gagal memuat email: ' . $e->getMessage()
-                ], 500);
-            }
-        }
+        Mail::raw($request->body, function ($message) use ($request) {
+            $message->to($request->to)->subject($request->subject);
+        });
 
-        return view('admin.email.inbox');
+        return response()->json([
+            'success' => true,
+            'message' => 'Email berhasil dikirim!',
+            'payload' => $request->all() // Mengembalikan data yang dikirim sebagai info tambahan
+        ]);
+    } catch (Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Gagal mengirim email',
+            'error_detail' => $e->getMessage()
+        ], 500);
     }
+}
 
     /**
      * Menampilkan form tulis email (opsional).
