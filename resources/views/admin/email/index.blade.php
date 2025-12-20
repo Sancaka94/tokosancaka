@@ -16,6 +16,8 @@
 
     <script src="https://cdn.tailwindcss.com"></script>
 
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
     <style>
@@ -392,25 +394,30 @@
         let url = `${API_BASE_URL}?folder=${folder}`;
         if (searchQuery) url += `&search=${encodeURIComponent(searchQuery)}`;
 
-        const response = await fetch(url);
+        const response = await fetch(url, {
+            headers: { 'Accept': 'application/json' }
+        });
+        
         const data = await response.json();
 
-        // Jika controller mengirimkan 'error' dalam JSON
         if (!response.ok || data.error) {
-            throw new Error(data.message || data.error || 'Gagal terhubung ke server email');
+            throw new Error(data.message || 'Gagal mengambil email.');
         }
 
         renderEmailList(data.emails);
         unreadCountEl.textContent = data.unread_count || 0;
     } catch (error) {
-        console.error('Error fetching emails:', error);
-        // MENAMPILKAN LOG ERROR LANGSUNG KE PENGGUNA
+        // MENAMPILKAN LOG ERROR TEKNIS DI UI
         emailListContainer.innerHTML = `
-            <div class="p-6 text-center">
-                <i class="fa-solid fa-circle-exclamation text-red-500 text-4xl mb-2"></i>
-                <p class="text-red-600 font-bold">Terjadi Kesalahan Teknis</p>
-                <p class="text-sm text-gray-500 mt-2 bg-gray-100 p-2 rounded border">${error.message}</p>
-                <button onclick="location.reload()" class="mt-4 text-blue-600 underline">Coba Lagi</button>
+            <div class="p-8 text-center bg-red-50 m-4 rounded-lg border border-red-200">
+                <i class="fa-solid fa-triangle-exclamation text-red-500 text-5xl mb-4"></i>
+                <h3 class="text-lg font-bold text-red-800">Gagal Terhubung ke Server</h3>
+                <p class="text-sm text-red-600 mt-2 font-mono bg-white p-3 rounded border border-red-100 break-words">
+                    ${error.message}
+                </p>
+                <button onclick="location.reload()" class="mt-4 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition">
+                    Coba Hubungkan Kembali
+                </button>
             </div>`;
     }
 }
@@ -450,78 +457,61 @@
 
 
         async function sendEmail() {
+    const formData = new FormData(composeForm);
+    // Sesuaikan key dengan validator di Controller (to, subject, body)
+    const data = {
+        to: document.getElementById('compose-to').value,
+        subject: document.getElementById('compose-subject').value,
+        body: document.getElementById('compose-body').value
+    };
 
-            const formData = new FormData(composeForm);
+    sendEmailBtn.disabled = true;
+    sendEmailBtn.textContent = 'Mengirim...';
 
-            const data = Object.fromEntries(formData.entries());
+    try {
+        const response = await fetch(`${API_BASE_URL}/send`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json', // Memberitahu Laravel untuk kirim JSON, bukan View
+                'X-CSRF-TOKEN': CSRF_TOKEN
+            },
+            body: JSON.stringify(data)
+        });
 
+        const result = await response.json();
 
-
-            sendEmailBtn.disabled = true;
-
-            sendEmailBtn.textContent = 'Mengirim...';
-
-
-
-            try {
-
-                const response = await fetch(`${API_BASE_URL}/send`, {
-
-                    method: 'POST',
-
-                    headers: {
-
-                        'Content-Type': 'application/json',
-
-                        'X-CSRF-TOKEN': CSRF_TOKEN
-
-                    },
-
-                    body: JSON.stringify(data)
-
-                });
-
-
-
-                if (!response.ok) {
-
-                    const errorText = await response.text();
-
-                    console.error('Server returned an error:', response.status, errorText);
-
-                    throw new Error(`Gagal mengirim email. Server merespons dengan status ${response.status}. Periksa console (F12) untuk melihat error HTML dari server.`);
-
-                }
-
-
-
-                const result = await response.json();
-
-
-
-                alert('Email berhasil dikirim!');
-
-                closeComposeModal();
-
-                switchFolder('sent');
-
-
-
-            } catch (error) {
-
-                console.error('Error sending email detail:', error);
-
-                alert(error.message);
-
-            } finally {
-
-                sendEmailBtn.disabled = false;
-
-                sendEmailBtn.textContent = 'Kirim';
-
-            }
-
+        if (response.ok && result.success) {
+            // MUNCULKAN POP-UP BERHASIL
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil!',
+                text: result.message,
+                confirmButtonColor: '#1a73e8'
+            });
+            closeComposeModal();
+            switchFolder('sent');
+        } else {
+            // MUNCULKAN POP-UP ERROR DENGAN LOG DARI SERVER
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal Mengirim!',
+                text: result.message || 'Terjadi kesalahan pada server SMTP.'
+            });
         }
+
+    } catch (error) {
+        console.error('Error detail:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Kesalahan Sistem',
+            text: 'Tidak dapat menghubungi server: ' + error.message
+        });
+    } finally {
+        sendEmailBtn.disabled = false;
+        sendEmailBtn.textContent = 'Kirim';
+    }
+}
 
         
 
