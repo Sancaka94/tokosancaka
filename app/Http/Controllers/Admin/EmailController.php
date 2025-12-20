@@ -140,26 +140,26 @@ class EmailController extends Controller
 {
     $request->validate([
         'to' => 'required|email',
-        'subject' => 'required|string|max:255',
-        'body' => 'required|string',
+        'subject' => 'required',
+        'body' => 'required',
     ]);
 
     try {
         $data = [
-            'bodyContent' => $request->body, // Dikirim ke template
+            'bodyContent' => $request->body,
         ];
 
-        // Memanggil template branding.blade.php
         Mail::send('emails.branding', $data, function ($message) use ($request) {
             $message->to($request->to)
+                    ->from('admin@tokosancaka.com', 'Sancaka Express') // Nama Pengirim Profesional
                     ->subject($request->subject);
         });
 
-        return redirect()->route('admin.email.index')->with('success', 'Email branding berhasil dikirim!');
-        
+        return back()->with('success', 'Email Sancaka Express berhasil dikirim!');
     } catch (\Exception $e) {
-        return back()->with('error', 'Gagal mengirim: ' . $e->getMessage())->withInput();
+        return back()->with('error', 'Gagal: ' . $e->getMessage());
     }
+}
 }
 
 
