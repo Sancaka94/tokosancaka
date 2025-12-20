@@ -143,7 +143,7 @@ class AdminOrderController extends Controller
     $pSelesai = Pesanan::where('status_pesanan', 'Selesai')->sum('price');
     $pPickup  = Pesanan::whereIn('status_pesanan', ['Menunggu Pickup', 'Pembayaran Lunas (Gagal Auto-Resi)'])->sum('price');
     $pDikirim = Pesanan::whereIn('status_pesanan', ['Diproses', 'Terkirim', 'Sedang Dikirim'])->sum('price');
-    $pGagal   = Pesanan::whereIn('status_pesanan', ['Batal', 'Kadaluarsa', 'Gagal Bayar'])->sum('price');
+    $pGagal   = Pesanan::whereIn('status_pesanan', ['Batal', 'Kadaluarsa', 'Gagal Bayar', 'Dibatalkan'])->sum('price');
 
     // 2. Hitung dari Tabel 'Order' (Website/Otomatis)
     $oSelesai = Order::where('status', 'completed')->sum('total_amount');
