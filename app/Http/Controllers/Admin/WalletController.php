@@ -65,58 +65,55 @@ class WalletController extends Controller
      * Memproses permintaan perubahan saldo (top up atau pengurangan).
      */
     public function topup(Request $request)
-    {
-        // Validasi input dari form
-        $validated = $request->validate([
-            'user_id' => 'required|exists:Pengguna,id_pengguna',
-            'amount' => 'required|numeric|min:1',
-            'action' => 'required|in:add,subtract' // Memvalidasi aksi yang diizinkan
-        ]);
+{
+    // 1. Sesuaikan validasi dengan nama tabel yang benar (biasanya lowercase di production)
+    // Jika tetap error, gunakan nama koneksi atau pastikan nama tabel sesuai database
+    $validated = $request->validate([
+        'user_id' => 'required|exists:Pengguna,id_pengguna', // Pastikan P besar/kecil sesuai database
+        'amount'  => 'required|numeric|min:1',
+        'action'  => 'required|in:add,subtract'
+    ]);
 
-        $pelanggan = User::find($validated['user_id']);
+    // 2. Gunakan findOrFail agar jika data tidak ditemukan langsung melempar error yang jelas
+    try {
+        $pelanggan = User::findOrFail($validated['user_id']);
         $amount = (float) $validated['amount'];
 
-        // Mencegah saldo menjadi negatif
         if ($validated['action'] === 'subtract' && $pelanggan->saldo < $amount) {
             return back()->with('error', 'Gagal mengurangi. Saldo pengguna tidak mencukupi.');
         }
 
-        try {
-            // 3. Menggunakan transaksi database untuk memastikan kedua operasi (update saldo dan insert transaksi) berhasil atau gagal bersamaan
-            DB::transaction(function () use ($pelanggan, $amount, $validated) {
-                $description = '';
-                $type = 'topup';
+        DB::transaction(function () use ($pelanggan, $amount, $validated) {
+            $type = ($validated['action'] === 'add') ? 'topup' : 'withdrawal';
+            $description = ($validated['action'] === 'add') ? 'Top up saldo oleh Admin' : 'Pengurangan saldo oleh Admin';
 
-                if ($validated['action'] === 'add') {
-                    $pelanggan->increment('saldo', $amount);
-                    $description = 'Top up saldo oleh Admin';
-                    $type = 'topup';
-                } else { // 'subtract'
-                    $pelanggan->decrement('saldo', $amount);
-                    $description = 'Pengurangan saldo oleh Admin';
-                    $type = 'withdrawal';
-                }
+            // Mengupdate saldo
+            if ($validated['action'] === 'add') {
+                $pelanggan->increment('saldo', $amount);
+            } else {
+                $pelanggan->decrement('saldo', $amount);
+            }
 
-                // 4. Membuat catatan di tabel 'transactions' menggunakan model
-                Transaction::create([
-                    'user_id'     => $pelanggan->id_pengguna,
-                    'type'        => $type,
-                    'amount'      => $amount,
-                    'description' => $description,
-                ]);
-            });
+            // SIMPAN TRANSAKSI
+            // Pastikan tabel 'transactions' sudah ada di database tokq3391_db
+            Transaction::create([
+                'user_id'     => $pelanggan->id_pengguna,
+                'type'        => $type,
+                'amount'      => $amount,
+                'description' => $description,
+            ]);
+        });
 
-        } catch (\Exception $e) {
-            // Menangani jika terjadi error selama transaksi database
-            return back()->with('error', 'Gagal memproses saldo. Terjadi kesalahan teknis.');
-        }
-
-        // Menyiapkan pesan sukses yang dinamis
-        $actionText = $validated['action'] === 'add' ? 'menambahkan' : 'mengurangi';
-        $formattedAmount = number_format($amount, 0, ',', '.');
-        
         return redirect()->route('admin.wallet.index')
-                         ->with('success', "Berhasil {$actionText} saldo Rp {$formattedAmount} pada akun {$pelanggan->nama_lengkap}.");
+                         ->with('success', "Berhasil memperbarui saldo {$pelanggan->nama_lengkap}.");
+
+    } catch (\Exception $e) {
+        // Log error asli agar Anda bisa cek di storage/logs/laravel.log
+        \Log::error("Wallet Error: " . $e->getMessage());
+        
+        // Tampilkan pesan error spesifik sementara untuk debugging
+        return back()->with('error', 'Gagal: ' . $e->getMessage());
     }
+}
 }
 
