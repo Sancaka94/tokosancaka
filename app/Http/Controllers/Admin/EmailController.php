@@ -137,64 +137,30 @@ class EmailController extends Controller
      */
 
     public function send(Request $request)
+{
+    $request->validate([
+        'to' => 'required|email',
+        'subject' => 'required|string|max:255',
+        'body' => 'required|string',
+    ]);
 
-    {
+    try {
+        $data = [
+            'bodyContent' => $request->body, // Dikirim ke template
+        ];
 
-        $validator = Validator::make($request->all(), [
+        // Memanggil template branding.blade.php
+        Mail::send('emails.branding', $data, function ($message) use ($request) {
+            $message->to($request->to)
+                    ->subject($request->subject);
+        });
 
-            'to' => 'required|email',
-
-            'subject' => 'required|string|max:255',
-
-            'body' => 'required|string',
-
-        ]);
-
-
-
-        if ($validator->fails()) {
-
-            return redirect()->back()->withErrors($validator)->withInput();
-
-        }
-
-
-
-        $to = $request->input('to');
-
-        $subject = $request->input('subject');
-
-        $body = $request->input('body');
-
-
-
-        try {
-
-            Mail::raw($body, function ($message) use ($to, $subject) {
-
-                $message->to($to)
-
-                        ->subject($subject);
-
-            });
-
-
-
-            return redirect()->route('admin.email.index')->with('success', 'Email berhasil dikirim!');
-
-
-
-        } catch (Exception $e) {
-
-            return redirect()->back()
-
-                ->withInput()
-
-                ->with('error', 'Gagal mengirim email: ' . $e->getMessage());
-
-        }
-
+        return redirect()->route('admin.email.index')->with('success', 'Email branding berhasil dikirim!');
+        
+    } catch (\Exception $e) {
+        return back()->with('error', 'Gagal mengirim: ' . $e->getMessage())->withInput();
     }
+}
 
 
 
