@@ -13,62 +13,78 @@ use Illuminate\Support\Facades\Log;
 class EmailController extends Controller
 {
     /**
-     * Menampilkan daftar email dari folder Inbox (IMAP).
+     * Menampilkan halaman utama email (View) atau data JSON untuk AJAX.
      */
     public function index(Request $request)
     {
-        try {
-            $client = Client::account('default');
-            $client->connect();
-            $folder = $client->getFolder('INBOX');
-            
-            // Mengambil pesan dengan penanganan error jika folder tidak ditemukan
-            $messages = $folder->messages()->all()->paginate(20, $request->get('page', 1));
-
-            return view('admin.email.inbox', compact('messages'));
-
-        } catch (Exception $e) {
-            // Mencatat log teknis di storage/logs/laravel.log
-            Log::error("IMAP Connection Error: " . $e->getMessage());
-
-            // Menampilkan pesan error detail di halaman inbox, bukan redirect ke dashboard
-            return view('admin.email.inbox', [
-                'messages' => collect([]), // Kirim koleksi kosong agar view tidak crash
-                'error_detail' => $e->getMessage()
-            ])->with('error', 'Gagal terhubung ke server email. Lihat detail di bawah.');
+        if ($request->wantsJson() || $request->ajax()) {
+            try {
+                $client = Client::account('default');
+                $client->connect();
+                $folder = $client->getFolder($request->get('folder', 'INBOX'));
+                
+                // Mengambil pesan dengan pagination
+                $messages = $folder->messages()->all()->paginate(20, $request->get('page', 1));
+                
+                return response()->json([
+                    'emails' => $messages,
+                    'unread_count' => $folder->messages()->unseen()->get()->count()
+                ]);
+            } catch (Exception $e) {
+                Log::error("IMAP Index Error: " . $e->getMessage());
+                return response()->json([
+                    'error' => true,
+                    'message' => 'Gagal memuat email: ' . $e->getMessage()
+                ], 500);
+            }
         }
+
+        return view('admin.email.inbox');
     }
 
     /**
-     * Menampilkan detail satu email (IMAP).
+     * Menampilkan form tulis email (opsional).
      */
-    public function show($messageId)
+    public function create()
+    {
+        return view('admin.email.create');
+    }
+
+    /**
+     * Mengambil detail satu email (JSON).
+     */
+    public function show($id)
     {
         try {
             $client = Client::account('default');
             $client->connect();
             $folder = $client->getFolder('INBOX');
-            $message = $folder->query()->where('uid', $messageId)->get()->first();
             
-            if ($message) {
-                $message->setFlag('Seen');
-            } else {
-                throw new Exception("Email dengan UID $messageId tidak ditemukan di server.");
+            // Mencari pesan berdasarkan UID
+            $message = $folder->query()->where('uid', $id)->get()->first();
+            
+            if (!$message) {
+                return response()->json(['message' => 'Email tidak ditemukan.'], 404);
             }
-            
-            return view('admin.email.imap-show', compact('message'));
 
+            // Tandai sudah dibaca
+            $message->setFlag('Seen');
+
+            return response()->json([
+                'subject' => $message->getSubject()->get(),
+                'from_name' => $message->getFrom()[0]->personal,
+                'from_address' => $message->getFrom()[0]->mail,
+                'created_at' => $message->getDate()->get()->format('Y-m-d H:i:s'),
+                'body' => $message->getHTMLBody() ?: $message->getTextBody(),
+            ]);
         } catch (Exception $e) {
             Log::error("IMAP Show Error: " . $e->getMessage());
-            
-            // Kembali ke index dengan membawa pesan error teknis
-            return redirect()->route('admin.email.index')
-                ->with('error', 'Gagal mengambil email: ' . $e->getMessage());
+            return response()->json(['message' => 'Gagal membuka detail: ' . $e->getMessage()], 500);
         }
     }
 
     /**
-     * Mengirim email menggunakan SMTP.
+     * Mengirim email melalui SMTP.
      */
     public function send(Request $request)
     {
@@ -79,94 +95,42 @@ class EmailController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return redirect()->back()->withErrors($validator)->withInput();
+            return response()->json(['message' => $validator->errors()->first()], 422);
         }
 
         try {
-            $to = $request->input('to');
-            $subject = $request->input('subject');
-            $body = $request->input('body');
-
-            Mail::raw($body, function ($message) use ($to, $subject) {
-                $message->to($to)
-                        ->subject($subject);
+            Mail::raw($request->body, function ($message) use ($request) {
+                $message->to($request->to)
+                        ->subject($request->subject);
             });
 
-            return redirect()->route('admin.email.index')->with('success', 'Email berhasil dikirim!');
-
+            return response()->json(['success' => true, 'message' => 'Email berhasil dikirim!']);
         } catch (Exception $e) {
             Log::error("SMTP Send Error: " . $e->getMessage());
-            
-            // Menampilkan error detail di form agar admin bisa troubleshoot (misal: SMTP auth failed)
-            return redirect()->back()
-                ->withInput()
-                ->with('error', 'Gagal mengirim email: ' . $e->getMessage());
+            return response()->json(['message' => 'Gagal mengirim: ' . $e->getMessage()], 500);
         }
     }
 
     /**
-     * Menghapus email dari server (IMAP).
+     * Menghapus email (IMAP).
      */
-    public function delete($messageId)
-    {
-        try {
-            $client = Client::account('default');
-            $client->connect();
-            $folder = $client->getFolder('INBOX');
-            $message = $folder->query()->where('uid', $messageId)->get()->first();
-
-            if ($message) {
-                $message->delete(true); 
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Email berhasil dihapus secara permanen.'
-                ]);
-            }
-            
-            throw new Exception("UID $messageId tidak ditemukan.");
-
-        } catch (Exception $e) {
-            Log::error("IMAP Delete Error: " . $e->getMessage());
-            
-            return response()->json([
-                'success' => false,
-                'message' => 'Gagal menghapus email: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * Menampilkan form tulis email (Jika masih dibutuhkan secara konvensional)
-     */
-    public function create()
-    {
-        return view('admin.email.create');
-    }
-
-    /**
-     * Mengambil detail satu email (JSON).
-     */
-    public function show(Request $request, $id)
+    public function delete($id)
     {
         try {
             $client = Client::account('default');
             $client->connect();
             $folder = $client->getFolder('INBOX');
             $message = $folder->query()->where('uid', $id)->get()->first();
+
+            if ($message) {
+                $message->delete(true); 
+                return response()->json(['success' => true, 'message' => 'Email dihapus.']);
+            }
             
-            if (!$message) throw new Exception("Email tidak ditemukan.");
-
-            $message->setFlag('Seen');
-
-            return response()->json([
-                'subject' => $message->getSubject(),
-                'from_name' => $message->getFrom()[0]->personal,
-                'from_address' => $message->getFrom()[0]->mail,
-                'created_at' => $message->getDate(),
-                'body' => $message->getHTMLBody() ?: $message->getTextBody(),
-            ]);
+            return response()->json(['message' => 'Email tidak ditemukan.'], 404);
         } catch (Exception $e) {
-            return response()->json(['message' => $e->getMessage()], 500);
+            Log::error("IMAP Delete Error: " . $e->getMessage());
+            return response()->json(['message' => 'Gagal menghapus: ' . $e->getMessage()], 500);
         }
     }
 }
