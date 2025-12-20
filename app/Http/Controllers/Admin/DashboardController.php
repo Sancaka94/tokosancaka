@@ -50,7 +50,7 @@ class DashboardController extends Controller
             'totalTerkirim'       => (clone $pesananQuery)->where('status_pesanan', 'Selesai')->count(),
             'totalSedangDikirim'  => (clone $pesananQuery)->whereIn('status_pesanan', ['Sedang Dikirim', 'Dikirim', 'Diproses'])->count(),
             'totalMenungguPickup' => (clone $pesananQuery)->where('status_pesanan', 'Menunggu Pickup')->count(),
-            'totalGagal'          => (clone $pesananQuery)->whereIn('status_pesanan', ['Batal', 'Gagal', 'Retur'])->count(),
+            'totalGagal'          => (clone $pesananQuery)->whereIn('status_pesanan', ['Batal', 'Gagal', 'Retur', 'Kadaluarsa', 'Dibatalkan'])->count(),
         ];
     });
 
