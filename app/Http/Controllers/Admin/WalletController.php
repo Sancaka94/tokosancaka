@@ -101,6 +101,7 @@ class WalletController extends Controller
                 'type'        => $type,
                 'amount'      => $amount,
                 'description' => $description,
+                'reference_id' => 'ADM-' . time() . '-' . $pelanggan->id_pengguna, // Menambahkan nilai reference_id
             ]);
         });
 
