@@ -160,7 +160,7 @@ class EmailController extends Controller
         return back()->with('error', 'Gagal: ' . $e->getMessage());
     }
 }
-}
+
 
 
 
