@@ -16,25 +16,54 @@ class EmailController extends Controller
      * Menampilkan halaman utama email (View) atau data JSON untuk AJAX.
      */
     public function index(Request $request)
-    {
-        if ($request->wantsJson() || $request->ajax()) {
-            try {
-        Mail::raw($request->body, function ($message) use ($request) {
-            $message->to($request->to)->subject($request->subject);
-        });
+{
+    if ($request->wantsJson() || $request->ajax()) {
+        try {
+            $client = Client::account('default');
+            $client->connect();
+            
+            $folderName = $request->get('folder', 'INBOX');
+            $folder = $client->getFolder($folderName);
+            
+            // Logika Pencarian jika ada query
+            $query = $folder->messages();
+            if ($request->has('search')) {
+                $query = $query->whereText($request->search);
+            }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Email berhasil dikirim!',
-            'payload' => $request->all() // Mengembalikan data yang dikirim sebagai info tambahan
-        ]);
-    } catch (Exception $e) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Gagal mengirim email',
-            'error_detail' => $e->getMessage()
-        ], 500);
+            // Ambil pesan dengan pagination
+            $messages = $query->all()->paginate(20, $request->get('page', 1));
+            
+            // Format data untuk mempermudah JavaScript
+            $formattedEmails = collect($messages->items())->map(function($msg) {
+                return [
+                    'id' => $msg->getUid(),
+                    'from_name' => $msg->getFrom()[0]->personal ?? 'Unknown',
+                    'subject' => $msg->getSubject()->get(),
+                    'created_at' => $msg->getDate()->get()->format('Y-m-d H:i:s'),
+                    'is_starred' => $msg->hasFlag('Flagged'),
+                    'read_at' => $msg->hasFlag('Seen') ? now() : null,
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'emails' => $formattedEmails,
+                'unread_count' => $folder->query()->unseen()->get()->count(),
+                'current_page' => $messages->currentPage(),
+                'last_page' => $messages->lastPage()
+            ]);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Koneksi IMAP Gagal: ' . $e->getMessage(),
+                'error_code' => $e->getCode()
+            ], 500);
+        }
     }
+
+    return view('admin.email.inbox');
 }
 
     /**

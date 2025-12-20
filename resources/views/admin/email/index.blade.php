@@ -390,38 +390,82 @@
 
         async function fetchEmails(folder = 'inbox', searchQuery = '') {
     showLoader(emailListContainer);
+    
     try {
         let url = `${API_BASE_URL}?folder=${folder}`;
         if (searchQuery) url += `&search=${encodeURIComponent(searchQuery)}`;
 
         const response = await fetch(url, {
-            headers: { 'Accept': 'application/json' }
+            headers: { 
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
         });
-        
-        const data = await response.json();
 
-        if (!response.ok || data.error) {
-            throw new Error(data.message || 'Gagal mengambil email.');
+        const result = await response.json();
+
+        if (!response.ok) {
+            // JIKA GAGAL (Status 4xx/5xx): Munculkan Modal JSON
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal Memuat Data',
+                html: `
+                    <div class="text-left">
+                        <p class="mb-2 text-sm">Server merespon dengan error:</p>
+                        <pre class="bg-red-50 p-3 text-xs rounded border border-red-200 overflow-x-auto text-red-700">${JSON.stringify(result, null, 2)}</pre>
+                    </div>
+                `,
+                confirmButtonText: 'Tutup'
+            });
+            emailListContainer.innerHTML = `<div class="p-10 text-center text-gray-400">Gagal mengambil email. Silakan muat ulang halaman.</div>`;
+            return;
         }
 
-        renderEmailList(data.emails);
-        unreadCountEl.textContent = data.unread_count || 0;
+        // JIKA SUKSES
+        renderEmailList(result.emails);
+        unreadCountEl.textContent = result.unread_count;
+        
     } catch (error) {
-        // MENAMPILKAN LOG ERROR TEKNIS DI UI
-        emailListContainer.innerHTML = `
-            <div class="p-8 text-center bg-red-50 m-4 rounded-lg border border-red-200">
-                <i class="fa-solid fa-triangle-exclamation text-red-500 text-5xl mb-4"></i>
-                <h3 class="text-lg font-bold text-red-800">Gagal Terhubung ke Server</h3>
-                <p class="text-sm text-red-600 mt-2 font-mono bg-white p-3 rounded border border-red-100 break-words">
-                    ${error.message}
-                </p>
-                <button onclick="location.reload()" class="mt-4 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition">
-                    Coba Hubungkan Kembali
-                </button>
-            </div>`;
+        // JIKA KESALAHAN JARINGAN (CORS/Offline)
+        Swal.fire({
+            icon: 'warning',
+            title: 'Masalah Koneksi',
+            html: `<pre class="text-left bg-gray-100 p-2 text-xs">${JSON.stringify({message: error.message}, null, 2)}</pre>`
+        });
     }
 }
 
+// Fungsi render yang diperbaiki untuk mendukung status "Sudah Dibaca"
+function renderEmailList(emails = []) {
+    emailListContainer.innerHTML = '';
+    
+    if (emails.length === 0) {
+        emailListContainer.innerHTML = `<div class="p-10 text-center text-gray-500">Folder ini kosong.</div>`;
+        return;
+    }
+
+    emails.forEach(email => {
+        const isUnread = !email.read_at;
+        const item = document.createElement('div');
+        item.className = `email-item flex items-center gap-4 p-3 border-b cursor-pointer hover:shadow-sm transition-all ${isUnread ? 'bg-blue-50 font-bold border-l-4 border-l-blue-500' : 'bg-white'}`;
+        item.dataset.id = email.id;
+
+        item.innerHTML = `
+            <div class="flex items-center gap-3 min-w-0 flex-1">
+                <input type="checkbox" class="h-4 w-4 rounded border-gray-300">
+                <i class="${email.is_starred ? 'fa-solid fa-star text-yellow-400' : 'fa-regular fa-star text-gray-300'}"></i>
+                <div class="flex-1 min-w-0">
+                    <div class="flex justify-between">
+                        <span class="truncate text-sm text-gray-700">${email.from_name}</span>
+                        <span class="text-xs text-gray-400 font-normal">${formatDate(email.created_at)}</span>
+                    </div>
+                    <p class="text-sm truncate text-gray-600">${email.subject}</p>
+                </div>
+            </div>
+        `;
+        emailListContainer.appendChild(item);
+    });
+}
 
 
         async function fetchEmailDetail(id) {
