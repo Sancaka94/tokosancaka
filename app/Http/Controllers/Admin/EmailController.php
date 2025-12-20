@@ -262,5 +262,23 @@ class EmailController extends Controller
 
     }
 
+    public function sendBrandingEmail(Request $request) {
+    $data = [
+        'name' => $request->to_name,
+        'body' => $request->body
+    ];
+
+    try {
+        Mail::send('emails.branding', $data, function($message) use ($request) {
+            $message->to($request->to_email)
+                    ->subject('Kabar Terbaru dari Brand Kami');
+        });
+
+        return response()->json(['success' => true, 'message' => 'Email terkirim dengan template HTML!']);
+    } catch (\Exception $e) {
+        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+    }
+}
+
 }
 
