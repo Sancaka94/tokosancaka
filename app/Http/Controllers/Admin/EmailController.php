@@ -15,54 +15,51 @@ class EmailController extends Controller
     /**
      * Menampilkan halaman utama email (View) atau data JSON untuk AJAX.
      */
-    public function index(Request $request)
+public function index(Request $request)
 {
     if ($request->wantsJson() || $request->ajax()) {
         try {
-            $client = Client::account('default');
+            // Gunakan akun yang sesuai dengan cPanel (admin@tokosancaka.com)
+            $client = Client::account('default'); 
             $client->connect();
             
-            $folderName = $request->get('folder', 'INBOX');
+            // Nama folder di cPanel biasanya case-sensitive (INBOX)
+            $folderName = strtoupper($request->get('folder', 'INBOX'));
             $folder = $client->getFolder($folderName);
             
-            // Logika Pencarian jika ada query
-            $query = $folder->messages();
-            if ($request->has('search')) {
-                $query = $query->whereText($request->search);
+            if (!$folder) {
+                return response()->json(['success' => false, 'message' => "Folder $folderName tidak ditemukan."], 404);
             }
 
-            // Ambil pesan dengan pagination
-            $messages = $query->all()->paginate(20, $request->get('page', 1));
+            // Ambil pesan terbaru (descending) agar sinkron dengan tampilan cPanel
+            $messages = $folder->messages()->all()->sort('created_at', 'desc')->paginate(15, $request->get('page', 1));
             
-            // Format data untuk mempermudah JavaScript
-            $formattedEmails = collect($messages->items())->map(function($msg) {
-                return [
+            $formattedEmails = [];
+            foreach ($messages as $msg) {
+                $formattedEmails[] = [
                     'id' => $msg->getUid(),
-                    'from_name' => $msg->getFrom()[0]->personal ?? 'Unknown',
-                    'subject' => $msg->getSubject()->get(),
+                    'from_name' => $msg->getFrom()[0]->personal ?: $msg->getFrom()[0]->mail,
+                    'subject' => $msg->getSubject()->get() ?: '(no subject)',
                     'created_at' => $msg->getDate()->get()->format('Y-m-d H:i:s'),
+                    'is_read' => $msg->hasFlag('Seen'),
                     'is_starred' => $msg->hasFlag('Flagged'),
-                    'read_at' => $msg->hasFlag('Seen') ? now() : null,
                 ];
-            });
+            }
 
             return response()->json([
                 'success' => true,
                 'emails' => $formattedEmails,
                 'unread_count' => $folder->query()->unseen()->get()->count(),
-                'current_page' => $messages->currentPage(),
-                'last_page' => $messages->lastPage()
+                'total' => $messages->total()
             ]);
 
         } catch (Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Koneksi IMAP Gagal: ' . $e->getMessage(),
-                'error_code' => $e->getCode()
+                'message' => 'Kesalahan IMAP: ' . $e->getMessage()
             ], 500);
         }
     }
-
     return view('admin.email.inbox');
 }
 
