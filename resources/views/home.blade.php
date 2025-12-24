@@ -448,6 +448,7 @@ width: 22px;
         <h1 class="display-4 fw-bold">Solusi Pengiriman Terlengkap dan Terpercaya</h1>
 
         <p class="lead mt-3 col-lg-8 mx-auto">Kirim paket ke seluruh Indonesia dengan mudah, cepat, dan aman bersama Sancaka Express.</p>
+        
 
     </div>
 
@@ -536,7 +537,6 @@ width: 22px;
     </div>
 
 </div>
-
 
 
 {{-- ====================================================================== --}}
