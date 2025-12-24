@@ -17,7 +17,7 @@
                 <div class="card post-card shadow-sm h-100">
                     <a href="{{ route('blog.posts.show', $headline->slug) }}" class="text-decoration-none text-dark">
                         {{-- PERBAIKAN 1: Tambahkan prefix 'storage/' --}}
-                        <img src="{{ asset('public/storage/' . $headline->featured_image) }}"
+                        <img src="{{ asset('/storage/' . $headline->featured_image) }}"
                              class="card-img-top post-card-img"
                              onerror="this.onerror=null;this.src='https://placehold.co/800x450/1a73e8/ffffff?text=Headline';"
                              alt="{{ $headline->title }}">
@@ -37,7 +37,7 @@
                     <a href="{{ route('blog.posts.show', $article->slug) }}" class="text-decoration-none text-dark">
                         <div class="card post-card shadow-sm flex-row h-100">
                            {{-- PERBAIKAN 2: Tambahkan prefix 'storage/' --}}
-                           <img src="{{ asset('public/storage/' . $article->featured_image) }}" class="w-25" style="aspect-ratio: 1/1; object-fit: cover;" onerror="this.onerror=null;this.src='https://placehold.co/100x100/CCCCCC/FFFFFF?text=Image';" alt="{{ $article->title }}">
+                           <img src="{{ asset('/storage/' . $article->featured_image) }}" class="w-25" style="aspect-ratio: 1/1; object-fit: cover;" onerror="this.onerror=null;this.src='https://placehold.co/100x100/CCCCCC/FFFFFF?text=Image';" alt="{{ $article->title }}">
                             <div class="card-body d-flex align-items-center p-3">
                                 <h6 class="fw-bold small mb-0">{{ $article->title }}</h6>
                             </div>
@@ -58,7 +58,7 @@
                             <div class="col-md-4">
                                 <a href="{{ route('blog.posts.show', $post->slug) }}">
                                     {{-- PERBAIKAN 3: Tambahkan prefix 'storage/' --}}
-                                    <img src="{{ asset('public/storage/' . $post->featured_image) }}" class="img-fluid rounded-start h-100 post-card-img" onerror="this.onerror=null;this.src='https://placehold.co/400x250/CCCCCC/FFFFFF?text=Image';" alt="{{ $post->title }}">
+                                    <img src="{{ asset('/storage/' . $post->featured_image) }}" class="img-fluid rounded-start h-100 post-card-img" onerror="this.onerror=null;this.src='https://placehold.co/400x250/CCCCCC/FFFFFF?text=Image';" alt="{{ $post->title }}">
                                 </a>
                             </div>
                             <div class="col-md-8">
