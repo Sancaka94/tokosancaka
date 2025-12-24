@@ -103,12 +103,12 @@
     @include('layouts.partials.notifications')
     
     {{-- === MULAI CARD MONITOR PENDAPATAN (GAYA WARNA-WARNI) === --}}
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6">
     
     {{-- CARD 1: SELESAI (HIJAU - Sukses) --}}
     <div class="relative overflow-hidden rounded-lg bg-green-500 p-5 shadow-lg">
         <div class="relative z-10 text-white">
-            <p class="text-3xl font-bold">
+            <p class="text-xl md:text-3xl font-bold truncate">
                 Rp{{ number_format($incomeSelesai, 0, ',', '.') }}
             </p>
             <p class="text-sm font-bold uppercase opacity-90 mt-1">Pendapatan Selesai</p>
