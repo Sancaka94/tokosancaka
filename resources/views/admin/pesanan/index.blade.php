@@ -1,6 +1,6 @@
 {{--
     File: resources/views/admin/pesanan/index.blade.php
-    Deskripsi: Halaman Admin untuk manajemen semua pesanan.
+    Deskripsi: Halaman Admin untuk manajemen semua pesanan (Full Responsive + Read More Mobile).
 --}}
 
 @extends('layouts.admin')
@@ -10,24 +10,64 @@
 
 @push('styles')
 <style>
-    .table-container {
-        overflow-x: auto;
+    /* === DESKTOP VIEW === */
+    @media (min-width: 768px) {
+        .table-container {
+            overflow-x: auto;
+        }
+        th.sticky-col, td.sticky-col {
+            position: -webkit-sticky;
+            position: sticky;
+            right: 0;
+            background-color: white;
+            z-index: 10;
+            border-left: 1px solid #e5e7eb;
+        }
+        thead th.sticky-col {
+            background-color: #fce7f3;
+            z-index: 20; 
+        }
+        tr:hover td.sticky-col {
+            background-color: #f9fafb;
+        }
     }
-    th.sticky-col, td.sticky-col {
-        position: -webkit-sticky;
-        position: sticky;
-        right: 0;
-        background-color: white;
-        z-index: 10;
-        border-left: 1px solid #e5e7eb; /* Garis pemisah */
-    }
-    thead th.sticky-col {
-        background-color: #fce7f3; /* Sesuaikan dengan bg-red-100 header (kira-kira pink/red muda) */
-        z-index: 20; /* Header harus lebih tinggi dari body */
-    }
-    /* Fix untuk background saat hover di baris tabel */
-    tr:hover td.sticky-col {
-        background-color: #f9fafb; /* bg-gray-50 */
+
+    /* === MOBILE VIEW (KARTU & READ MORE) === */
+    @media (max-width: 767px) {
+        /* Ubah tabel jadi blok (tampilan kartu) */
+        table, thead, tbody, th, td, tr { 
+            display: block; 
+        }
+        /* Sembunyikan Header Tabel Asli */
+        thead tr { 
+            position: absolute;
+            top: -9999px;
+            left: -9999px;
+        }
+        /* Styling Kartu per Pesanan */
+        tr { 
+            margin-bottom: 1rem; 
+            border: 1px solid #e5e7eb;
+            border-radius: 0.75rem;
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            overflow: hidden;
+        }
+        /* Styling Isi Kartu */
+        td { 
+            border: none;
+            border-bottom: 1px solid #f3f4f6; 
+            position: relative;
+            padding: 0.75rem 1rem !important;
+        }
+        td:last-child { 
+            border-bottom: none; 
+        }
+        
+        /* Animasi Transisi Read More */
+        .mobile-details {
+            transition: all 0.3s ease-in-out;
+        }
     }
 </style>
 @endpush
@@ -39,7 +79,6 @@
     <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
         <div class="w-full md:w-1/3">
             <form action="{{ route('admin.pesanan.index') }}" method="GET" class="relative">
-                {{-- Simpan filter status saat mencari --}}
                 @if(request('status'))
                     <input type="hidden" name="status" value="{{ request('status') }}">
                 @endif
@@ -51,10 +90,10 @@
             </form>
         </div>
         <div class="flex items-center gap-2 w-full md:w-auto justify-end">
-            <button type="button" onclick="openModal('exportModal')" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-300">
+            <button type="button" onclick="openModal('exportModal')" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-300 w-full md:w-auto">
                 <i class="fas fa-file-export me-2"></i>Export
             </button>
-            <a href="{{ route('admin.pesanan.create') }}" class="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-700">
+            <a href="{{ route('admin.pesanan.create') }}" class="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-700 w-full md:w-auto text-center">
                 <i class="fas fa-plus me-2"></i>Tambah Pesanan
             </a>
         </div>
@@ -63,10 +102,7 @@
     {{-- TAB STATUS --}}
     <div class="flex flex-wrap gap-2 mb-4 border-b pb-4">
         @php
-            // 1. Route Admin
             $routeIndex = 'admin.pesanan.index';
-
-            // 2. Definisi Status (Sesuai Database)
             $statuses = [
                 'Menunggu Pickup' => 'Menunggu Pickup',
                 'Diproses'        => 'Diproses',
@@ -75,22 +111,16 @@
                 'Batal'           => 'Batal',
                 'Gagal Resi'      => 'Pembayaran Lunas (Gagal Auto-Resi)' 
             ];
-
-            // 3. Status Aktif
             $currentStatus = request('status');
-            
-            // 4. Base Query (Simpan search/page saat pindah tab)
             $baseQuery = request()->except(['status', 'page']);
         @endphp
 
-        {{-- TOMBOL SEMUA --}}
         <a href="{{ route($routeIndex, $baseQuery) }}" 
            class="px-4 py-2 text-xs font-bold rounded-full border transition 
                   {{ !$currentStatus ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50' }}">
             Semua
         </a>
 
-        {{-- LOOP STATUS --}}
         @foreach($statuses as $label => $value)
             <a href="{{ route($routeIndex, array_merge($baseQuery, ['status' => $value, 'page' => 1])) }}" 
                class="px-4 py-2 text-xs font-bold rounded-full border transition 
@@ -102,281 +132,266 @@
 
     @include('layouts.partials.notifications')
     
-    {{-- === MULAI CARD MONITOR PENDAPATAN (GAYA WARNA-WARNI) === --}}
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    {{-- CARD MONITOR PENDAPATAN --}}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        {{-- CARD 1: SELESAI --}}
+        <div class="relative overflow-hidden rounded-lg bg-green-500 p-5 shadow-lg">
+            <div class="relative z-10 text-white">
+                <p class="text-3xl font-bold">Rp{{ number_format($incomeSelesai, 0, ',', '.') }}</p>
+                <p class="text-sm font-bold uppercase opacity-90 mt-1">Pendapatan Selesai</p>
+                <p class="text-xs opacity-75 mt-0.5">Total pesanan sukses</p>
+            </div>
+            <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12">
+                <i class="fas fa-store fa-5x text-white"></i>
+            </div>
+        </div>
+
+        {{-- CARD 2: MENUNGGU PICKUP --}}
+        <div class="relative overflow-hidden rounded-lg bg-cyan-600 p-5 shadow-lg">
+            <div class="relative z-10 text-white">
+                <p class="text-3xl font-bold">Rp{{ number_format($incomePickup, 0, ',', '.') }}</p>
+                <p class="text-sm font-bold uppercase opacity-90 mt-1">Menunggu Pickup</p>
+                <p class="text-xs opacity-75 mt-0.5">Sudah lunas, belum kirim</p>
+            </div>
+            <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12">
+                <i class="fas fa-box-open fa-5x text-white"></i>
+            </div>
+        </div>
+
+        {{-- CARD 3: SEDANG DIKIRIM --}}
+        <div class="relative overflow-hidden rounded-lg bg-blue-600 p-5 shadow-lg">
+            <div class="relative z-10 text-white">
+                <p class="text-3xl font-bold">Rp{{ number_format($incomeDikirim, 0, ',', '.') }}</p>
+                <p class="text-sm font-bold uppercase opacity-90 mt-1">Sedang Dikirim</p>
+                <p class="text-xs opacity-75 mt-0.5">Sedang dalam perjalanan</p>
+            </div>
+            <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12">
+                <i class="fas fa-shipping-fast fa-5x text-white"></i>
+            </div>
+        </div>
+
+        {{-- CARD 4: GAGAL / BATAL --}}
+        <div class="relative overflow-hidden rounded-lg bg-red-500 p-5 shadow-lg">
+            <div class="relative z-10 text-white">
+                <p class="text-3xl font-bold">Rp{{ number_format($incomeGagal, 0, ',', '.') }}</p>
+                <p class="text-sm font-bold uppercase opacity-90 mt-1">Gagal / Batal</p>
+                <p class="text-xs opacity-75 mt-0.5">Potensi pendapatan hilang</p>
+            </div>
+            <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12">
+                <i class="fas fa-arrow-up fa-5x text-white"></i>
+            </div>
+        </div>
+    </div>
     
-    {{-- CARD 1: SELESAI (HIJAU - Sukses) --}}
-    <div class="relative overflow-hidden rounded-lg bg-green-500 p-5 shadow-lg">
-        <div class="relative z-10 text-white">
-            <p class="text-3xl font-bold">
-                Rp{{ number_format($incomeSelesai, 0, ',', '.') }}
-            </p>
-            <p class="text-sm font-bold uppercase opacity-90 mt-1">Pendapatan Selesai</p>
-            <p class="text-xs opacity-75 mt-0.5">Total pesanan sukses</p>
-        </div>
-        {{-- Ikon Background --}}
-        <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12">
-            <i class="fas fa-store fa-5x text-white"></i>
-        </div>
-    </div>
-
-    {{-- CARD 2: MENUNGGU PICKUP (CYAN/BIRU MUDA - Menunggu) --}}
-    <div class="relative overflow-hidden rounded-lg bg-cyan-600 p-5 shadow-lg">
-        <div class="relative z-10 text-white">
-            <p class="text-3xl font-bold">
-                Rp{{ number_format($incomePickup, 0, ',', '.') }}
-            </p>
-            <p class="text-sm font-bold uppercase opacity-90 mt-1">Menunggu Pickup</p>
-            <p class="text-xs opacity-75 mt-0.5">Sudah lunas, belum kirim</p>
-        </div>
-        {{-- Ikon Background --}}
-        <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12">
-            <i class="fas fa-box-open fa-5x text-white"></i>
-        </div>
-    </div>
-
-    {{-- CARD 3: SEDANG DIKIRIM (BIRU - Proses) --}}
-    <div class="relative overflow-hidden rounded-lg bg-blue-600 p-5 shadow-lg">
-        <div class="relative z-10 text-white">
-            <p class="text-3xl font-bold">
-                Rp{{ number_format($incomeDikirim, 0, ',', '.') }}
-            </p>
-            <p class="text-sm font-bold uppercase opacity-90 mt-1">Sedang Dikirim</p>
-            <p class="text-xs opacity-75 mt-0.5">Sedang dalam perjalanan</p>
-        </div>
-        {{-- Ikon Background --}}
-        <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12">
-            <i class="fas fa-shipping-fast fa-5x text-white"></i>
-        </div>
-    </div>
-
-    {{-- CARD 4: GAGAL / BATAL (MERAH - Warning) --}}
-    <div class="relative overflow-hidden rounded-lg bg-red-500 p-5 shadow-lg">
-        <div class="relative z-10 text-white">
-            <p class="text-3xl font-bold">
-                Rp{{ number_format($incomeGagal, 0, ',', '.') }}
-            </p>
-            <p class="text-sm font-bold uppercase opacity-90 mt-1">Gagal / Batal</p>
-            <p class="text-xs opacity-75 mt-0.5">Potensi pendapatan hilang</p>
-        </div>
-        {{-- Ikon Background --}}
-        <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12">
-            <i class="fas fa-arrow-up fa-5x text-white"></i> {{-- Ikon panah ke atas seperti di gambar referensi --}}
-        </div>
-    </div>
-
-</div>
-{{-- === SELESAI CARD MONITOR === --}}
-
     {{-- TABEL DATA --}}
     <div class="table-container">
-        <table class="table min-w-full divide-y divide-gray-200">
-          <thead class="bg-red-100">
-            <tr>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">No</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider"><strong>Transaksi</strong></th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider"><strong>Alamat</strong></th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider"><strong>Ekspedisi & Ongkir</strong></th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider"><strong>Isi Paket</strong></th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider"><strong>Status</strong></th>
-                <th class="px-4 py-3 text-center text-xs font-medium text-gray-600 uppercase tracking-wider sticky-col"><strong>Aksi</strong></th>
-            </tr>
-        </thead>
-        <tbody class="bg-white divide-y divide-gray-200">
-            @forelse ($orders as $index => $order)
-            <tr class="group hover:bg-gray-50">
-                {{-- No --}}
-                <td class="px-4 py-4 align-top text-sm text-gray-500">{{ $orders->firstItem() + $index }}</td>
-
-                {{-- Transaksi --}}
-                <td class="px-4 py-4 align-top text-sm">
-                    @if(Str::contains($order->payment_method, 'COD'))
-                        <span class="font-bold text-green-600">COD</span><br>
-                    @else
-                        <span class="font-bold text-blue-600">{{$order->payment_method}}</span><br>
-                    @endif
-
-@php
-    $resiValue = $order->resi ?? null;
-    $isResiReady = !empty($resiValue) && strtolower($resiValue) !== 'menunggu resi';
-@endphp
-
-@if($isResiReady)
-    <div class="bg-red-200 border border-red-500 text-gray-800 font-bold mt-1 p-2 rounded 
-                flex items-center justify-between">
-        
-        <span>
-            RESI: <span id="resiNumber">{{ $resiValue }}</span>
-        </span>
-
-        <button 
-            onclick="copyResiNumber()" 
-            class="text-gray-700 hover:text-gray-900 ml-2"
-            title="Copy">
-            <i class="fas fa-copy"></i>
-        </button>
-    </div>
-@else
-    <div class="font-bold text-red-800 mt-1">
-        RESI: Menunggu Resi
-    </div>
-@endif
-                    <div class="text-xs text-gray-500">Invoice: <strong>{{ $order->nomor_invoice }}</strong></div>
-                    <div class="text-xs text-gray-500 mt-1">{{ \Carbon\Carbon::parse($order->tanggal_pesanan)->format('d M Y, H:i') }}</div>
-                </td>
-
-                {{-- Alamat --}}
-                <td class="px-4 py-4 align-top text-sm">
-                    <div class="mb-2">
-                        <div class="text-xs text-gray-500">Dari:</div>
-                        <div class="font-semibold text-blue-700 space-y-1">
-    <div class="flex items-center gap-2">
-        <i class="fas fa-user"></i>
-        {{ $order->sender_name }}
-    </div>
-
-    <div class="flex items-center gap-2">
-        <i class="fas fa-phone-alt"></i>
-        {{ $order->sender_phone }}
-    </div>
-                        </div>
-
-                        <div class="text-xs text-gray-600 leading-tight flex items-start gap-2">
-    
-    <i class="fas fa-map-marker-alt mt-1 text-red-500"></i>
-
-    <div>
-        {{ $order->sender_address }}<br>
-        {{ $order->sender_village }}, {{ $order->sender_district }}<br>
-        {{ $order->sender_regency }}, {{ $order->sender_province }}<br>
-        <span class="font-semibold">Kode Pos: {{ $order->sender_postal_code }}</span>
-    </div>
-
-</div>
-
-                    </div>
-                    <div>
-    <div class="text-xs text-gray-500 flex items-center gap-1">
-        <i class="fas fa-arrow-right text-gray-400"></i> Ke:
-    </div>
-
-    <div class="font-semibold text-red-700 space-y-1 mt-1">
-        <div class="flex items-center gap-2">
-            <i class="fas fa-user"></i>
-            {{ $order->receiver_name ?? $order->nama_pembeli }}
-        </div>
-        <div class="flex items-center gap-2">
-            <i class="fas fa-phone-alt"></i>
-            {{ $order->receiver_phone }}
-        </div>
-    </div>
-
-    <div class="text-xs text-gray-600 leading-tight flex items-start gap-2 mt-1">
-        <i class="fas fa-map-marker-alt mt-1 text-red-500"></i>
-        <div>
-            {{ $order->receiver_address }}<br>
-            {{ $order->receiver_village }}, {{ $order->receiver_district }}<br>
-            {{ $order->receiver_regency }}, {{ $order->receiver_province }}<br>
-            <span class="font-semibold">Kode Pos: {{ $order->receiver_postal_code }}</span>
-        </div>
-    </div>
-</div>
-
-                </td>
-
-                {{-- Ekspedisi --}}
-                <td class="px-4 py-4 align-top text-sm">
-                    @php
-                        $ship = \App\Helpers\ShippingHelper::parseShippingMethod($order->expedition);
-                        $courierName = $ship['courier_name'] ?? 'N/A';
-                        $serviceName = $ship['service_name'] ?? 'N/A';
-                        $logoUrl = $ship['logo_url'] ?? null;
-                    @endphp
-
-                    @if($logoUrl)
-                        <img src="{{ $logoUrl }}" alt="{{ $courierName }}" class="h-6 mb-1 object-contain">
-                    @else
-                        <div class="font-bold text-gray-800">{{ $courierName }}</div>
-                    @endif
-
-                    <div class="text-xs text-gray-500">{{ $serviceName }}</div>
-                    <div class="font-semibold text-green-700 mt-1">
-                        Rp{{ number_format($order->shipping_cost, 0, ',', '.') }}
-                    </div>
-                </td>
-
-                {{-- Isi Paket --}}
-                <td class="px-4 py-4 align-top text-sm">
-                    <div class="font-semibold text-gray-800">Isi Paket: {{ $order->item_description }}</div>
-                    <div class="text-xs text-gray-500 mt-1">Dimensi: {{ $order->length ?? '0' }} x {{ $order->width ?? '0' }} x {{ $order->height ?? '0' }}</div>
-                    <div class="text-xs text-gray-500 mt-1">Berat: {{ $order->weight }}gr</div>
-                    Nilai Barang: Rp {{ number_format($order->total_harga_barang ?? $order->item_price ?? 0, 0, ',', '.') }}
+        <table class="w-full divide-y divide-gray-200">
+            <thead class="bg-red-100">
+                <tr>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">No</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider"><strong>Transaksi</strong></th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider"><strong>Alamat</strong></th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider"><strong>Ekspedisi & Ongkir</strong></th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider"><strong>Isi Paket</strong></th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider"><strong>Status</strong></th>
+                    <th class="px-4 py-3 text-center text-xs font-medium text-gray-600 uppercase tracking-wider sticky-col"><strong>Aksi</strong></th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                @forelse ($orders as $index => $order)
+                <tr class="group hover:bg-gray-50">
                     
-                </td>
+                    {{-- 1. NO (Selalu Tampil) --}}
+                    <td class="px-4 py-4 align-top text-sm text-gray-500 md:w-12 border-b-0 pb-0 md:pb-4 md:border-b">
+                        <div class="flex items-center justify-between md:block">
+                            <div>
+                                <span class="md:hidden font-bold text-gray-400 text-xs mr-2">NO:</span>
+                                {{ $orders->firstItem() + $index }}
+                            </div>
+                        </div>
+                    </td>
 
-                {{-- Status --}}
-                <td class="px-4 py-4 align-top text-sm">
-                    @php
-                        $statusText = $order->status_pesanan;
-                        $bgClass = match($statusText) {
-                            'Terkirim', 'Selesai', 'Sedang Dikirim' => 'bg-green-100 text-green-800',
-                            'Diproses' => 'bg-blue-100 text-blue-800',
-                            'Menunggu Pickup' => 'bg-yellow-100 text-yellow-800',
-                            'Batal', 'Gagal Bayar', 'Kadaluarsa' => 'bg-red-100 text-red-800',
-                            default => 'bg-gray-100 text-gray-800',
-                        };
-                        // Persingkat status panjang
-                        if (Str::contains($statusText, 'Gagal Auto-Resi')) $statusText = 'Gagal Resi';
-                    @endphp
-                    <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full {{ $bgClass }}">
-                        {{ $statusText }}
-                    </span>
-                </td>
-
-                {{-- Aksi --}}
-                <td class="px-6 py-4 align-middle whitespace-nowrap text-sm font-medium sticky-col">
-                    <div class="flex items-center justify-center space-x-3">
-
-                        {{-- 1. Detail (Selalu Ada) --}}
-                        <a href="{{ route('admin.pesanan.show', ['resi' => $order->resi ?? $order->nomor_invoice]) }}" class="text-gray-500 hover:text-indigo-600" title="Detail">
-                            <i class="fas fa-eye fa-lg"></i>
-                        </a>
-
-                        {{-- 2. Edit (Selalu Ada - Untuk Input Resi Manual/Edit Data) --}}
-                        <a href="{{ route('admin.pesanan.edit', ['resi' => $order->resi ?? $order->nomor_invoice]) }}" class="text-gray-500 hover:text-blue-600" title="Edit">
-                            <i class="fas fa-pencil-alt fa-lg"></i>
-                        </a>
-
-                        {{-- 3. Cetak & Lacak (Hanya jika ada Resi) --}}
-                        @if($order->resi)
-                            <a href="{{ route('admin.pesanan.cetak_thermal', ['resi' => $order->resi]) }}" target="_blank" class="text-gray-500 hover:text-gray-800" title="Cetak Label">
-                                <i class="fas fa-print fa-lg"></i>
-                            </a>
-                            <a href="https://tokosancaka.com/tracking/search?resi={{ $order->resi }}" target="_blank" class="text-gray-500 hover:text-green-600" title="Lacak Resi">
-                                <i class="fas fa-truck fa-lg"></i>
-                            </a>
+                    {{-- 2. TRANSAKSI (Selalu Tampil + Tombol Read More) --}}
+                    <td class="px-4 py-4 align-top text-sm relative">
+                        <span class="md:hidden block font-bold text-gray-400 text-xs mb-1">TRANSAKSI:</span>
+                        
+                        {{-- Metode Pembayaran --}}
+                        @if(Str::contains($order->payment_method, 'COD'))
+                            <span class="font-bold text-green-600">COD</span><br>
+                        @else
+                            <span class="font-bold text-blue-600">{{$order->payment_method}}</span><br>
                         @endif
 
-                        {{-- 4. Hapus (Selalu Ada) --}}
-                        <form action="{{ route('admin.pesanan.destroy', ['resi' => $order->resi ?? $order->nomor_invoice]) }}" method="POST" onsubmit="return confirm('Yakin hapus pesanan ini?');" class="inline-block">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="text-gray-500 hover:text-red-600" title="Hapus">
-                                <i class="fas fa-trash-alt fa-lg"></i>
+                        {{-- Resi --}}
+                        @php
+                            $resiValue = $order->resi ?? null;
+                            $isResiReady = !empty($resiValue) && strtolower($resiValue) !== 'menunggu resi';
+                        @endphp
+
+                        @if($isResiReady)
+                            <div class="bg-red-200 border border-red-500 text-gray-800 font-bold mt-1 p-2 rounded flex items-center justify-between">
+                                <span>RESI: <span id="resiNumber-{{$index}}">{{ $resiValue }}</span></span>
+                                <button onclick="copyResiNumber('resiNumber-{{$index}}')" class="text-gray-700 hover:text-gray-900 ml-2" title="Copy">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                        @else
+                            <div class="font-bold text-red-800 mt-1">RESI: Menunggu Resi</div>
+                        @endif
+                        
+                        <div class="text-xs text-gray-500 mt-1">Invoice: <strong>{{ $order->nomor_invoice }}</strong></div>
+                        <div class="text-xs text-gray-500 mt-1">{{ \Carbon\Carbon::parse($order->tanggal_pesanan)->format('d M Y, H:i') }}</div>
+
+                        {{-- TOMBOL TRIGGER READ MORE (KHUSUS MOBILE) --}}
+                        <div class="md:hidden mt-3">
+                            <button type="button" 
+                                    onclick="toggleDetails({{$index}}, this)" 
+                                    class="w-full bg-gray-100 text-gray-600 py-2 rounded text-sm font-semibold hover:bg-gray-200 flex items-center justify-center gap-2 transition-colors duration-200">
+                                <span>Lihat Detail Lengkap</span>
+                                <i class="fas fa-chevron-down"></i>
                             </button>
-                        </form>
-                    </div>
-                </td>
-            </tr>
-            @empty
-            <tr>
-                <td colspan="7" class="text-center py-8 text-gray-500">
-                    <i class="fas fa-box-open text-4xl mb-3 text-gray-300"></i><br>
-                    Data pesanan tidak ditemukan.
-                </td>
-            </tr>
-            @endforelse
-        </tbody>
+                        </div>
+                    </td>
+
+                    {{-- 3. ALAMAT (Hidden di Mobile, Show via JS) --}}
+                    <td class="hidden md:table-cell px-4 py-4 align-top text-sm bg-gray-50 md:bg-white toggle-target-{{$index}}">
+                         <span class="md:hidden block font-bold text-gray-500 text-xs mb-1 uppercase tracking-wider border-b pb-1 mt-2">📍 Alamat Pengiriman</span>
+                        <div class="mb-2">
+                            <div class="text-xs text-gray-500">Dari:</div>
+                            <div class="font-semibold text-blue-700 space-y-1">
+                                <div class="flex items-center gap-2">
+                                    <i class="fas fa-user w-4 text-center"></i> {{ $order->sender_name }}
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <i class="fas fa-phone-alt w-4 text-center"></i> {{ $order->sender_phone }}
+                                </div>
+                            </div>
+                            <div class="text-xs text-gray-600 leading-tight flex items-start gap-2 mt-1">
+                                <i class="fas fa-map-marker-alt mt-1 text-red-500 w-4 text-center"></i>
+                                <div>
+                                    {{ $order->sender_address }}<br>
+                                    {{ $order->sender_village }}, {{ $order->sender_district }}<br>
+                                    {{ $order->sender_regency }}, {{ $order->sender_province }}<br>
+                                    <span class="font-semibold">Kode Pos: {{ $order->sender_postal_code }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="border-t border-dashed my-2 pt-2 md:border-none md:my-0 md:pt-0">
+                            <div class="text-xs text-gray-500 flex items-center gap-1"><i class="fas fa-arrow-right text-gray-400"></i> Ke:</div>
+                            <div class="font-semibold text-red-700 space-y-1 mt-1">
+                                <div class="flex items-center gap-2">
+                                    <i class="fas fa-user w-4 text-center"></i> {{ $order->receiver_name ?? $order->nama_pembeli }}
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <i class="fas fa-phone-alt w-4 text-center"></i> {{ $order->receiver_phone }}
+                                </div>
+                            </div>
+                            <div class="text-xs text-gray-600 leading-tight flex items-start gap-2 mt-1">
+                                <i class="fas fa-map-marker-alt mt-1 text-red-500 w-4 text-center"></i>
+                                <div>
+                                    {{ $order->receiver_address }}<br>
+                                    {{ $order->receiver_village }}, {{ $order->receiver_district }}<br>
+                                    {{ $order->receiver_regency }}, {{ $order->receiver_province }}<br>
+                                    <span class="font-semibold">Kode Pos: {{ $order->receiver_postal_code }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+
+                    {{-- 4. EKSPEDISI (Hidden di Mobile) --}}
+                    <td class="hidden md:table-cell px-4 py-4 align-top text-sm bg-gray-50 md:bg-white toggle-target-{{$index}}">
+                         <span class="md:hidden block font-bold text-gray-500 text-xs mb-1 uppercase tracking-wider border-b pb-1">🚚 Ekspedisi & Ongkir</span>
+                        @php
+                            $ship = \App\Helpers\ShippingHelper::parseShippingMethod($order->expedition);
+                            $courierName = $ship['courier_name'] ?? 'N/A';
+                            $serviceName = $ship['service_name'] ?? 'N/A';
+                            $logoUrl = $ship['logo_url'] ?? null;
+                        @endphp
+
+                        @if($logoUrl)
+                            <img src="{{ $logoUrl }}" alt="{{ $courierName }}" class="h-6 mb-1 object-contain">
+                        @else
+                            <div class="font-bold text-gray-800">{{ $courierName }}</div>
+                        @endif
+
+                        <div class="text-xs text-gray-500">{{ $serviceName }}</div>
+                        <div class="font-semibold text-green-700 mt-1">
+                            Rp{{ number_format($order->shipping_cost, 0, ',', '.') }}
+                        </div>
+                    </td>
+
+                    {{-- 5. ISI PAKET (Hidden di Mobile) --}}
+                    <td class="hidden md:table-cell px-4 py-4 align-top text-sm bg-gray-50 md:bg-white toggle-target-{{$index}}">
+                         <span class="md:hidden block font-bold text-gray-500 text-xs mb-1 uppercase tracking-wider border-b pb-1">📦 Detail Paket</span>
+                        <div class="font-semibold text-gray-800">Isi: {{ $order->item_description }}</div>
+                        <div class="text-xs text-gray-500 mt-1">Dimensi: {{ $order->length ?? '0' }} x {{ $order->width ?? '0' }} x {{ $order->height ?? '0' }}</div>
+                        <div class="text-xs text-gray-500 mt-1">Berat: {{ $order->weight }}gr</div>
+                        <div class="mt-1 text-xs">Nilai: Rp {{ number_format($order->total_harga_barang ?? $order->item_price ?? 0, 0, ',', '.') }}</div>
+                    </td>
+
+                    {{-- 6. STATUS (Hidden di Mobile) --}}
+                    <td class="hidden md:table-cell px-4 py-4 align-top text-sm bg-gray-50 md:bg-white toggle-target-{{$index}}">
+                         <span class="md:hidden block font-bold text-gray-500 text-xs mb-1 uppercase tracking-wider border-b pb-1">🔖 Status Pesanan</span>
+                        @php
+                            $statusText = $order->status_pesanan;
+                            $bgClass = match($statusText) {
+                                'Terkirim', 'Selesai', 'Sedang Dikirim' => 'bg-green-100 text-green-800',
+                                'Diproses' => 'bg-blue-100 text-blue-800',
+                                'Menunggu Pickup' => 'bg-yellow-100 text-yellow-800',
+                                'Batal', 'Gagal Bayar', 'Kadaluarsa' => 'bg-red-100 text-red-800',
+                                default => 'bg-gray-100 text-gray-800',
+                            };
+                            if (Str::contains($statusText, 'Gagal Auto-Resi')) $statusText = 'Gagal Resi';
+                        @endphp
+                        <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full {{ $bgClass }}">
+                            {{ $statusText }}
+                        </span>
+                    </td>
+
+                    {{-- 7. AKSI (Hidden di Mobile) --}}
+                    <td class="hidden md:table-cell px-4 py-4 align-middle whitespace-nowrap text-sm font-medium sticky-col bg-gray-50 md:bg-white border-t md:border-none toggle-target-{{$index}}">
+                         <span class="md:hidden block font-bold text-gray-500 text-xs mb-2 text-center uppercase border-b pb-2">⚙️ Aksi</span>
+                        <div class="flex items-center justify-center md:justify-center space-x-3 md:space-x-3 w-full py-2 md:py-0">
+                            {{-- Detail --}}
+                            <a href="{{ route('admin.pesanan.show', ['resi' => $order->resi ?? $order->nomor_invoice]) }}" class="text-gray-500 hover:text-indigo-600 transform hover:scale-110 transition" title="Detail">
+                                <i class="fas fa-eye fa-lg"></i>
+                            </a>
+
+                            {{-- Edit --}}
+                            <a href="{{ route('admin.pesanan.edit', ['resi' => $order->resi ?? $order->nomor_invoice]) }}" class="text-gray-500 hover:text-blue-600 transform hover:scale-110 transition" title="Edit">
+                                <i class="fas fa-pencil-alt fa-lg"></i>
+                            </a>
+
+                            {{-- Cetak & Lacak --}}
+                            @if($order->resi)
+                                <a href="{{ route('admin.pesanan.cetak_thermal', ['resi' => $order->resi]) }}" target="_blank" class="text-gray-500 hover:text-gray-800 transform hover:scale-110 transition" title="Cetak Label">
+                                    <i class="fas fa-print fa-lg"></i>
+                                </a>
+                                <a href="https://tokosancaka.com/tracking/search?resi={{ $order->resi }}" target="_blank" class="text-gray-500 hover:text-green-600 transform hover:scale-110 transition" title="Lacak Resi">
+                                    <i class="fas fa-truck fa-lg"></i>
+                                </a>
+                            @endif
+
+                            {{-- Hapus --}}
+                            <form action="{{ route('admin.pesanan.destroy', ['resi' => $order->resi ?? $order->nomor_invoice]) }}" method="POST" onsubmit="return confirm('Yakin hapus pesanan ini?');" class="inline-block">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="text-gray-500 hover:text-red-600 transform hover:scale-110 transition" title="Hapus">
+                                    <i class="fas fa-trash-alt fa-lg"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                @empty
+                <tr>
+                    <td colspan="7" class="text-center py-8 text-gray-500">
+                        <i class="fas fa-box-open text-4xl mb-3 text-gray-300"></i><br>
+                        Data pesanan tidak ditemukan.
+                    </td>
+                </tr>
+                @endforelse
+            </tbody>
         </table>
     </div>
 
@@ -394,14 +409,60 @@
 
 @push('scripts')
 <script>
+    // Modal Logic
     function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
     function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
     
-     function copyResiNumber() {
-        const text = document.getElementById('resiNumber').innerText;
-        navigator.clipboard.writeText(text).then(() => {
-            alert('Nomor resi berhasil disalin!');
+    // Copy Resi Logic
+    function copyResiNumber(elementId) {
+        const targetId = elementId || 'resiNumber';
+        const textElement = document.getElementById(targetId);
+        
+        if(textElement) {
+            const text = textElement.innerText;
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Nomor resi berhasil disalin!');
+            }).catch(err => {
+                console.error('Gagal copy: ', err);
+            });
+        }
+    }
+
+    // === LOGIC READ MORE (MOBILE) ===
+    function toggleDetails(index, btn) {
+        // Ambil semua elemen hidden di baris ini berdasarkan index
+        const targets = document.querySelectorAll('.toggle-target-' + index);
+        const icon = btn.querySelector('i');
+        const textSpan = btn.querySelector('span');
+        
+        targets.forEach(target => {
+            // Kita pakai class 'block' untuk override 'hidden' di mobile
+            if (target.classList.contains('hidden')) {
+                target.classList.remove('hidden');
+                target.classList.add('block'); // Paksa tampil sebagai block di mobile
+                target.style.animation = "fadeIn 0.5s";
+            } else {
+                target.classList.add('hidden');
+                target.classList.remove('block');
+            }
         });
+
+        // Ubah Icon dan Teks Tombol
+        if (icon.classList.contains('fa-chevron-down')) {
+            // State: Sedang Terbuka
+            icon.classList.remove('fa-chevron-down');
+            icon.classList.add('fa-chevron-up');
+            textSpan.innerText = "Tutup Detail";
+            btn.classList.add('bg-red-50', 'text-red-600');
+            btn.classList.remove('bg-gray-100', 'text-gray-600');
+        } else {
+            // State: Sedang Tertutup
+            icon.classList.remove('fa-chevron-up');
+            icon.classList.add('fa-chevron-down');
+            textSpan.innerText = "Lihat Detail Lengkap";
+            btn.classList.remove('bg-red-50', 'text-red-600');
+            btn.classList.add('bg-gray-100', 'text-gray-600');
+        }
     }
 </script>
 @endpush
