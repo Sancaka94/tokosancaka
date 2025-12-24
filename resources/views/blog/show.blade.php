@@ -50,14 +50,12 @@
 
                     <img 
     class="img-fluid rounded" 
-    src="{{ $post->featured_image ? asset('public/storage/' . $post->featured_image) : 'https://placehold.co/900x400/6c757d/ffffff?text=Gambar+Postingan' }}" 
+    src="{{ $post->featured_image ? asset('/storage/' . $post->featured_image) : 'https://placehold.co/900x400/6c757d/ffffff?text=Gambar+Postingan' }}" 
     alt="{{ $post->title ?? 'Gambar' }}"
 >
 
 
                 </figure>
-
-                
 
                 <!-- Konten Artikel -->
 
