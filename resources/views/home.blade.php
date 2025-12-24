@@ -1338,7 +1338,7 @@ width: 22px;
 
     <div class="container">
 
-        <h2 class="section-title">Tanya Jawab Customer(Q&A)</h2>
+        <h2 class="section-title">Tanya Jawab Customer (Q&A)</h2>
 
         <div class="accordion" id="accordionQA">
 
