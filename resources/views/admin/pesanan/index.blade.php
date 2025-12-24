@@ -102,66 +102,63 @@
 
     @include('layouts.partials.notifications')
     
-    {{-- === MULAI CARD MONITOR PENDAPATAN (GAYA WARNA-WARNI) === --}}
+   {{-- === MULAI CARD MONITOR PENDAPATAN (FULL RESPONSIVE) === --}}
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6">
     
-    {{-- CARD 1: SELESAI (HIJAU - Sukses) --}}
-    <div class="relative overflow-hidden rounded-lg bg-green-500 p-5 shadow-lg">
+    {{-- CARD 1: SELESAI --}}
+    <div class="relative overflow-hidden rounded-xl bg-green-500 p-3 md:p-5 shadow-md">
         <div class="relative z-10 text-white">
-            <p class="text-xl md:text-3xl font-bold truncate">
+            <p class="text-base md:text-2xl lg:text-3xl font-bold truncate">
                 Rp{{ number_format($incomeSelesai, 0, ',', '.') }}
             </p>
-            <p class="text-sm font-bold uppercase opacity-90 mt-1">Pendapatan Selesai</p>
-            <p class="text-xs opacity-75 mt-0.5">Total pesanan sukses</p>
+            <p class="text-[10px] md:text-sm font-bold uppercase opacity-90 mt-1 leading-tight">Pendapatan Selesai</p>
+            <p class="hidden md:block text-xs opacity-75 mt-0.5">Total pesanan sukses</p>
         </div>
-        {{-- Ikon Background --}}
-        <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12">
-            <i class="fas fa-store fa-5x text-white"></i>
+        {{-- Ikon Background Responsif --}}
+        <div class="absolute right-0 top-0 -mt-2 -mr-2 md:-mr-4 h-16 w-16 md:h-24 md:w-24 opacity-20 transform rotate-12 transition-transform">
+            <i class="fas fa-store fa-3x md:fa-5x text-white"></i>
         </div>
     </div>
 
-    {{-- CARD 2: MENUNGGU PICKUP (CYAN/BIRU MUDA - Menunggu) --}}
-    <div class="relative overflow-hidden rounded-lg bg-cyan-600 p-5 shadow-lg">
+    {{-- CARD 2: MENUNGGU PICKUP --}}
+    <div class="relative overflow-hidden rounded-xl bg-cyan-600 p-3 md:p-5 shadow-md">
         <div class="relative z-10 text-white">
-            <p class="text-3xl font-bold">
+            <p class="text-base md:text-2xl lg:text-3xl font-bold truncate">
                 Rp{{ number_format($incomePickup, 0, ',', '.') }}
             </p>
-            <p class="text-sm font-bold uppercase opacity-90 mt-1">Menunggu Pickup</p>
-            <p class="text-xs opacity-75 mt-0.5">Sudah lunas, belum kirim</p>
+            <p class="text-[10px] md:text-sm font-bold uppercase opacity-90 mt-1 leading-tight">Menunggu Pickup</p>
+            <p class="hidden md:block text-xs opacity-75 mt-0.5">Sudah lunas, belum kirim</p>
         </div>
-        {{-- Ikon Background --}}
-        <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12">
-            <i class="fas fa-box-open fa-5x text-white"></i>
+        <div class="absolute right-0 top-0 -mt-2 -mr-2 md:-mr-4 h-16 w-16 md:h-24 md:w-24 opacity-20 transform rotate-12">
+            <i class="fas fa-box-open fa-3x md:fa-5x text-white"></i>
         </div>
     </div>
 
-    {{-- CARD 3: SEDANG DIKIRIM (BIRU - Proses) --}}
-    <div class="relative overflow-hidden rounded-lg bg-blue-600 p-5 shadow-lg">
+    {{-- CARD 3: SEDANG DIKIRIM --}}
+    <div class="relative overflow-hidden rounded-xl bg-blue-600 p-3 md:p-5 shadow-md">
         <div class="relative z-10 text-white">
-            <p class="text-3xl font-bold">
+            <p class="text-base md:text-2xl lg:text-3xl font-bold truncate">
                 Rp{{ number_format($incomeDikirim, 0, ',', '.') }}
             </p>
-            <p class="text-sm font-bold uppercase opacity-90 mt-1">Sedang Dikirim</p>
-            <p class="text-xs opacity-75 mt-0.5">Sedang dalam perjalanan</p>
+            <p class="text-[10px] md:text-sm font-bold uppercase opacity-90 mt-1 leading-tight">Sedang Dikirim</p>
+            <p class="hidden md:block text-xs opacity-75 mt-0.5">Dalam perjalanan</p>
         </div>
-        {{-- Ikon Background --}}
-        <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12">
-            <i class="fas fa-shipping-fast fa-5x text-white"></i>
+        <div class="absolute right-0 top-0 -mt-2 -mr-2 md:-mr-4 h-16 w-16 md:h-24 md:w-24 opacity-20 transform rotate-12">
+            <i class="fas fa-shipping-fast fa-3x md:fa-5x text-white"></i>
         </div>
     </div>
 
-    {{-- CARD 4: GAGAL / BATAL (MERAH - Warning) --}}
-    <div class="relative overflow-hidden rounded-lg bg-red-500 p-5 shadow-lg">
+    {{-- CARD 4: GAGAL / BATAL --}}
+    <div class="relative overflow-hidden rounded-xl bg-red-500 p-3 md:p-5 shadow-md">
         <div class="relative z-10 text-white">
-            <p class="text-3xl font-bold">
+            <p class="text-base md:text-2xl lg:text-3xl font-bold truncate">
                 Rp{{ number_format($incomeGagal, 0, ',', '.') }}
             </p>
-            <p class="text-sm font-bold uppercase opacity-90 mt-1">Gagal / Batal</p>
-            <p class="text-xs opacity-75 mt-0.5">Potensi pendapatan hilang</p>
+            <p class="text-[10px] md:text-sm font-bold uppercase opacity-90 mt-1 leading-tight">Gagal / Batal</p>
+            <p class="hidden md:block text-xs opacity-75 mt-0.5">Potensi hilang</p>
         </div>
-        {{-- Ikon Background --}}
-        <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12">
-            <i class="fas fa-arrow-up fa-5x text-white"></i> {{-- Ikon panah ke atas seperti di gambar referensi --}}
+        <div class="absolute right-0 top-0 -mt-2 -mr-2 md:-mr-4 h-16 w-16 md:h-24 md:w-24 opacity-20 transform rotate-12">
+            <i class="fas fa-arrow-up fa-3x md:fa-5x text-white"></i>
         </div>
     </div>
 
