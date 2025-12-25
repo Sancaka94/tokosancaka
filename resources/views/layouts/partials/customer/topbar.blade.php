@@ -12,31 +12,37 @@
         {{-- Bagian Kanan Topbar --}}
         <ul class="flex items-center flex-shrink-0 space-x-2 sm:space-x-4">
             
-            {{-- Saldo & Tombol Top Up (Mobile) --}}
+            {{-- ========================================== --}}
+            {{-- 1. PERBAIKAN SALDO MOBILE                  --}}
+            {{-- ========================================== --}}
             <li class="flex md:hidden items-center space-x-2">
                 <span class="fas fa-wallet font-semibold text-xs sm:text-sm text-gray-700">
                     <a class="text-green-600">Saldo Anda: </a> 
-                    {{-- ID untuk update Saldo Mobile --}}
-                    <strong id="saldo-mobile">Rp {{ number_format($saldo ?? 0, 0, ',', '.') }}</strong>
+                    {{-- GANTI $saldo JADI Auth::user()->saldo --}}
+                    <strong id="saldo-mobile">Rp {{ number_format(Auth::user()->saldo ?? 0, 0, ',', '.') }}</strong>
                 </span>
                 <a href="{{ route('customer.topup.create') }}" class="inline-flex items-center justify-center w-8 h-8 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-full hover:bg-indigo-700 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     <i class="fas fa-plus"></i>
                 </a>
             </li>
 
-            <!-- Saldo & Tombol Top Up (Desktop) -->
+            {{-- ========================================== --}}
+            {{-- 2. PERBAIKAN SALDO DESKTOP                 --}}
+            {{-- ========================================== --}}
             <li class="hidden md:flex items-center space-x-2 bg-gray-50 px-3 py-1.5 rounded-lg">
                 <i class="fas fa-wallet text-gray-500"></i>
                 <span class="font-semibold text-sm text-gray-700">
                     <a class="text-green-600">Saldo Anda: </a> 
-                    {{-- ID untuk update Saldo Desktop --}}
-                    <strong id="saldo-desktop">Rp {{ number_format($saldo ?? 0, 0, ',', '.') }}</strong>
+                    {{-- GANTI $saldo JADI Auth::user()->saldo --}}
+                    <strong id="saldo-desktop">Rp {{ number_format(Auth::user()->saldo ?? 0, 0, ',', '.') }}</strong>
                 </span>
                 <a href="{{ route('customer.topup.create') }}" class="inline-flex items-center px-3 py-1 text-xs font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 transition-colors duration-150">
                     <i class="fas fa-plus mr-1"></i>
                     Top Up
                 </a>
             </li>
+
+            {{-- ... SISA KODE KE BAWAH TETAP SAMA ... --}}
 
             {{-- Tombol Ikon Toko --}}
             @if(Auth::user() && Auth::user()->role == 'Seller')
@@ -50,15 +56,11 @@
             </li>
             @endif
 
-            <!-- Tombol Notifikasi -->
             <li class="relative">
                 <button class="relative align-middle rounded-md focus:outline-none" @click="isNotificationsMenuOpen = !isNotificationsMenuOpen" aria-label="Notifikasi" aria-haspopup="true"
                         title="Notifikasi">
                     <i class="fas fa-bell w-5 h-5 text-gray-600"></i>
-                    
-                    {{-- ID untuk Badge Angka Notifikasi --}}
                     <span id="notification-count-badge" class="absolute -top-2 -right-2 bg-red-600 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full" style="display: none;">0</span>
-
                 </button>
 
                 <div x-show="isNotificationsMenuOpen" @click.away="isNotificationsMenuOpen = false" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 transform scale-95" x-transition:enter-end="opacity-100 transform scale-100" x-transition:leave="transition ease-in duration-75" x-transition:leave-start="opacity-100 transform scale-100" x-transition:leave-end="opacity-0 transform scale-95" class="absolute right-0 w-80 mt-2 origin-top-right bg-white rounded-md shadow-lg">
@@ -66,13 +68,8 @@
                         <div class="flex justify-between items-center p-2 border-b">
                             <h4 class="font-semibold text-gray-700">Notifikasi</h4>
                         </div>
-                        
-                        {{-- ID untuk Daftar List Notifikasi --}}
                         <div id="notification-list" class="max-h-64 overflow-y-auto">
-                        
-                            {{-- ID untuk Status Kosong --}}
                             <p id="notification-empty-state" class="p-4 text-sm text-center text-gray-500" style="display: none;">Tidak ada notifikasi baru.</p>
-
                         </div>
                     </div>
                 </div>
@@ -88,7 +85,6 @@
                 @endif
             </a>
 
-            <!-- Menu Profil Pengguna -->
             <li class="relative">
                 <button class="align-middle rounded-full focus:outline-none" @click="isProfileMenuOpen = !isProfileMenuOpen" aria-label="Akun" aria-haspopup="true"
                         title="Akun Anda">
