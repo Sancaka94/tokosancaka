@@ -5,7 +5,7 @@
 
 @extends('layouts.admin')
 
-@section('title', 'Data Pesanan')
+@section('title', 'Data Pesanan Customer')
 @section('page-title', 'Data Pesanan Customer')
 
 @push('styles')
