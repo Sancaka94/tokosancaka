@@ -1,29 +1,33 @@
-name: 🚀 Auto Deploy ke cPanel
+name: Auto Deploy to cPanel
 
 on:
   push:
     branches:
-      - master  # Ganti dengan 'master' jika branch utama Anda bernama master
+      - master  # Sesuaikan nama branch (master/main)
 
 jobs:
   web-deploy:
-    name: 🎉 Deploy
+    name: Deploy
     runs-on: ubuntu-latest
     steps:
-    - name: 🚚 Get latest code
-      uses: actions/checkout@v4
-
-    - name: 📂 Sync files to cPanel
-      uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-      with:
-        server: ${{ secrets.FTP_SERVER }}
-        username: ${{ secrets.FTP_USERNAME }}
-        password: ${{ secrets.FTP_PASSWORD }}
-        # Ganti public_html jika folder proyek Anda di cPanel ada di subfolder
-        # Contoh: public_html/tokosancaka
-        server-dir: public_html/ 
-        exclude: |
-          **/.git*
-          **/.github*
-          **/node_modules/**
-          .env
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.CPANEL_HOST }}
+          username: ${{ secrets.CPANEL_USERNAME }}
+          key: ${{ secrets.CPANEL_KEY }}
+          port: 2223  # PENTING: Ganti 22 dengan port SSH hostingmu jika beda (misal 65002)
+          script: |
+            # Masuk ke folder project
+            cd ~/public_html
+            
+            # Tarik data terbaru dari GitHub
+            # (Tenang, ini tidak akan menimpa .env server karena .env tidak ada di GitHub)
+            git pull origin master
+            
+            # Bersihkan cache agar perubahan config/view langsung ngefek
+            php artisan optimize:clear
+            
+            # Opsional: Jalankan migrasi database jika ada perubahan tabel
+            # Hapus tanda pagar (#) di bawah jika ingin otomatis update database
+            # php artisan migrate --force
