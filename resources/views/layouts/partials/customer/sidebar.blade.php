@@ -99,7 +99,7 @@
                 <button @click="open = !open" 
                     class="flex items-center w-full px-4 py-2.5 text-white hover:bg-red-700 bg-red-600 hover:text-white rounded-md transition-colors duration-200 shadow-sm">
                     <i class="fas fa-mobile-alt fa-fw w-6"></i>
-                    <span class="ml-3 flex-1 text-left">Payment PPOB</span>
+                    <span class="ml-3 flex-1 text-left">LOKET PPOB</span>
                     <i :class="open ? 'fas fa-chevron-up' : 'fas fa-chevron-down'" class="ml-auto text-xs"></i>
                 </button>
 
