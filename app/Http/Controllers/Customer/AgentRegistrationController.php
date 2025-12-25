@@ -16,20 +16,24 @@ use Exception;
 
 class AgentRegistrationController extends Controller
 {
-
     /**
      * Halaman Utama / Riwayat Transaksi Agen
      */
     public function index()
     {
+        // 1. Ambil user yang login
         $user = Auth::user();
 
-        // Ambil data transaksi milik user ini, urutkan dari terbaru
-        $transactions = PpobTransaction::where('user_id', $user->id_pengguna) // Pastikan kolom user_id sesuai database
+        // 2. (Opsional) Ambil riwayat transaksi jika ingin ditampilkan di halaman registrasi
+        // Jika tidak dipakai di view, bagian ini bisa dihapus/diabaikan
+        $transactions = PpobTransaction::where('user_id', $user->id_pengguna)
             ->orderBy('created_at', 'desc')
             ->paginate(10);
 
-        return view('customer.agent_registration.index');
+        // 3. Return ke View
+        // PERBAIKAN: Gunakan compact('user') saja.
+        // Hapus 'registration' karena variabelnya tidak ada.
+        return view('customer.agent_registration.index', compact('user'));
     }
     /**
      * Halaman Kasir / Transaksi Offline
