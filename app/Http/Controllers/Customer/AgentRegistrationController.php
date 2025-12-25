@@ -29,7 +29,7 @@ class AgentRegistrationController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate(10);
 
-        return view('customer.agent_transaction.index', compact('transactions'));
+        return view('customer.agent_transaction.create', compact('transactions'));
     }
     /**
      * Halaman Kasir / Transaksi Offline
