@@ -30,9 +30,6 @@ class AgentRegistrationController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate(10);
 
-        // 3. Return ke View
-        // PERBAIKAN: Gunakan compact('user') saja.
-        // Hapus 'registration' karena variabelnya tidak ada.
         return view('customer.agent_registration.index', compact('user'));
     }
     /**
