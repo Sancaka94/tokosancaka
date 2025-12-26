@@ -104,6 +104,18 @@ use App\Http\Controllers\WhatsappController;
 //Tools Broadcast Pesan WA
 use App\Http\Controllers\BroadcastController;
 
+//Aplikasi Python AI Detection
+use App\Http\Controllers\DetectionController;
+
+
+// 1. Route untuk Menampilkan Halaman Scanner
+Route::get('/apps', function () {
+    return view('apps');
+})->name('apps.index');
+
+// 2. Route untuk Memproses Gambar (AJAX ke Python)
+Route::post('/detection/process', [DetectionController::class, 'process'])
+    ->name('detection.process');
 
 
 // ROUTE UTAMA CETAK THERMAL (Top Level)
