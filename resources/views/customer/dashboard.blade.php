@@ -135,11 +135,11 @@
                             <div class="flex items-center space-x-3">
                                 <div class="flex-shrink-0 h-8 w-8">
                                     <img class="h-8 w-8 rounded-full object-contain bg-gray-50 p-1 border border-gray-200" 
-                                         src="{{ asset('storage/' . $order->expedition_logo) }}" 
-                                         alt="{{ $order->expedition_name }}">
+                                         src="{{ asset('storage/' . $order->expedition) }}" 
+                                         alt="{{ $order->expedition }}">
                                 </div>
                                 <div class="text-sm font-medium text-gray-900">
-                                    {{ $order->expedition_name }}
+                                    {{ $order->expedition }}
                                 </div>
                             </div>
                         </td>
