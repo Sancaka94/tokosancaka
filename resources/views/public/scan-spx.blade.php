@@ -126,13 +126,14 @@
     </div>
     
     <div class="spx-alert-content">
-        <strong>INFORMASI PENTING:</strong>
-            
-            <p>
-                FOKUSKAN KAMERA ANDA ATAU KETIK PADA KOLOM RESI, KEMUDIAN TEKAN (ENTER) UNTUK MEMINDAI, DAN PASTIKAN HANYA SCAN
-                <span class="highlight">BARCODE 2D (QR) KOTAK PERSEGI</span> ATAU INPUT RESI BERAWALAN 
-                <span class="highlight">SPX / ID </span>. FORMAT LAIN AKAN DIABAIKAN & TANDA BAHWA SCAN BERHASIL ADALAH SUARA "BEEP" DAN NOTIFIKASI DI LAYAR. PASTIKAN JUGA GPS ANDA AKTIF DAN JUMLAH PAKET BERTAMBAH JIKA LEBIH DARI SATU. KEMUDIAN JANGAN LUPA KLIK <strong>TOMBOL SURAT JALAN</strong> JIKA SCAN TELAH SELESAI.
-            </p>
+    <strong>INFORMASI PENTING:</strong>
+    <p style="margin-top: 5px;">
+        1. FOKUSKAN KAMERA ATAU KETIK DI KOLOM RESI, LALU TEKAN (ENTER).<br>
+        2. PASTIKAN HANYA SCAN <span class="highlight">BARCODE 2D (QR) kotak persergi</span> ATAU RESI BERAWALAN <span class="highlight">SPX / ID</span>.<br>
+        3. TANDA BERHASIL ADALAH SUARA "BEEP" DAN NOTIFIKASI PADA LAYAR.<br>
+        4. PASTIKAN GPS AKTIF DAN JUMLAH PAKET BERTAMBAH JIKA PAKET LEBIH DARI SATU.<br>
+        5. KLIK TOMBOL SURAT JALAN JIKA SCAN TELAH SELESAI.
+    </p>
     </div>
 
     <div class="spx-close-btn" onclick="this.closest('.spx-alert-box').style.display='none'" title="Tutup Peringatan">
