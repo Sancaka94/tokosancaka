@@ -757,6 +757,22 @@
         initGeolocation();
 
     });
+
+    // Fungsi untuk Menutup Alert Merah & Memunculkan Promo
+function showPromo() {
+    // 1. Sembunyikan Alert Merah
+    const alertBox = document.getElementById('scan-warning');
+    if(alertBox) {
+        alertBox.style.display = 'none';
+    }
+
+    // 2. Munculkan Box Promo
+    const promoBox = document.getElementById('promo-offer');
+    if(promoBox) {
+        promoBox.classList.remove('d-none');
+    }
+}
+
     </script>
 
 </body>
