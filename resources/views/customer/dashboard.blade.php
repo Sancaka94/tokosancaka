@@ -128,7 +128,7 @@
                         <tbody class="divide-y divide-gray-200">
                             @forelse ($recentOrders as $order)
                             <tr class="hover:bg-gray-50">
-                                <td class="px-6 py-4 whitespace-nowrap font-medium text-gray-900">#{{ $order->id_pesanan }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap font-medium text-gray-900">#{{ $order->nomor_invoice }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <span class="px-3 py-1 inline-flex text-xs font-semibold rounded-full {{ $order->status_pesanan == 'Terkirim' ? 'bg-blue-100 text-blue-800' : ($order->status_pesanan == 'Tiba di Tujuan' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800') }}">
                                         {{ $order->status_pesanan }}
