@@ -111,107 +111,106 @@
             </div>
         </div>
 
-        <div class="overflow-x-auto">
-            <table class="min-w-full text-sm">
-                <thead class="bg-gray-50">
-                    <tr>
-                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Order Id</th>
-                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Ekspedisi</th>
-                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Status</th>
-                        <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">Biaya Ongkir</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-200">
-    @forelse ($recentOrders as $order)
-    <tr class="hover:bg-gray-50">
-        {{-- Kolom Order ID --}}
-        <td class="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
-            {{ $order->nomor_invoice }}
-        </td>
-        
-        {{-- KOLOM EKSPEDISI (LOGIC DISESUAIKAN DENGAN FILE MANAGER ANDA) --}}
-        <td class="px-6 py-4 whitespace-nowrap">
-            @php
-                // 1. Ambil string raw, misal: "regular-jnt-EZ-17000..."
-                $rawExpedition = strtolower($order->expedition ?? '');
-                
-                // 2. Default Values
-                $courierName = $order->expedition; 
-                $logoFile = 'default.png'; // Fallback jika tidak ditemukan
+        <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+    <div class="flex justify-between items-center p-6 border-b border-gray-100">
+        <h2 class="text-lg font-bold text-gray-800">5 Pesanan Terbaru</h2>
+    </div>
 
-                // 3. Logic Pencocokan Nama File berdasarkan Screenshot File Manager Anda
-                // Path Folder: logo-ekspedisi
-                
-                if (str_contains($rawExpedition, 'jnt') || str_contains($rawExpedition, 'j&t')) {
-                    $courierName = 'J&T Express';
-                    $logoFile = 'jnt.png'; // Sesuai screenshot
-                } elseif (str_contains($rawExpedition, 'jne')) {
-                    $courierName = 'JNE';
-                    $logoFile = 'jne.png';
-                } elseif (str_contains($rawExpedition, 'sicepat')) {
-                    $courierName = 'SiCepat';
-                    $logoFile = 'sicepat.png';
-                } elseif (str_contains($rawExpedition, 'posindonesia') || str_contains($rawExpedition, 'pos')) {
-                    $courierName = 'POS Indonesia';
-                    $logoFile = 'posindonesia.png'; // Sesuai screenshot (bukan pos.png)
-                } elseif (str_contains($rawExpedition, 'anteraja')) {
-                    $courierName = 'AnterAja';
-                    $logoFile = 'anteraja.png';
-                } elseif (str_contains($rawExpedition, 'spx') || str_contains($rawExpedition, 'shopee')) {
-                    $courierName = 'SPX Express';
-                    $logoFile = 'spx.png';
-                } elseif (str_contains($rawExpedition, 'ninja')) {
-                    $courierName = 'Ninja Xpress';
-                    $logoFile = 'ninja.png';
-                } elseif (str_contains($rawExpedition, 'lion')) {
-                    $courierName = 'Lion Parcel';
-                    $logoFile = 'lion.png';
-                } elseif (str_contains($rawExpedition, 'tiki')) {
-                    $courierName = 'TIKI';
-                    $logoFile = 'tiki.png';
-                } elseif (str_contains($rawExpedition, 'rpx')) {
-                    $courierName = 'RPX';
-                    $logoFile = 'rpx.png';
-                } elseif (str_contains($rawExpedition, 'gosend')) {
-                    $courierName = 'GoSend';
-                    $logoFile = 'gosend.png';
-                } elseif (str_contains($rawExpedition, 'grab')) {
-                    $courierName = 'GrabExpress';
-                    $logoFile = 'grab.png';
-                } elseif (str_contains($rawExpedition, 'borzo')) {
-                    $courierName = 'Borzo';
-                    $logoFile = 'borzo.png';
-                }
-            @endphp
+    <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Order Id</th>
+                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Ekspedisi</th>
+                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Status</th>
+                    <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">Biaya Ongkir</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+                @forelse ($recentOrders as $order)
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
+                        {{ $order->nomor_invoice }}
+                    </td>
+                    
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        @php
+                            $rawExpedition = strtolower($order->expedition ?? '');
+                            $courierName = $order->expedition; 
+                            $logoFile = 'default.png'; 
 
-            <div class="flex items-center space-x-3">
-                <div class="flex-shrink-0 h-8 w-8">
-                    <img class="h-8 w-8 rounded-full object-contain bg-gray-50 p-1 border border-gray-200" 
-                         src="{{ asset('storage/logo-ekspedisi/' . $logoFile) }}" 
-                         alt="{{ $courierName }}"
-                         onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode($courierName) }}&background=random&color=fff&size=32&font-size=0.4';">
-                </div>
-                <div class="flex flex-col">
-                    <span class="text-sm font-medium text-gray-900">{{ $courierName }}</span>
-                </div>
-            </div>
-        </td>
+                            // Mapping sesuai file manager Anda (folder: logo-ekspedisi)
+                            if (str_contains($rawExpedition, 'jnt') || str_contains($rawExpedition, 'j&t')) {
+                                $courierName = 'J&T Express';
+                                $logoFile = 'jnt.png';
+                            } elseif (str_contains($rawExpedition, 'jne')) {
+                                $courierName = 'JNE';
+                                $logoFile = 'jne.png';
+                            } elseif (str_contains($rawExpedition, 'sicepat')) {
+                                $courierName = 'SiCepat';
+                                $logoFile = 'sicepat.png';
+                            } elseif (str_contains($rawExpedition, 'posindonesia') || str_contains($rawExpedition, 'pos')) {
+                                $courierName = 'POS Indonesia';
+                                $logoFile = 'posindonesia.png';
+                            } elseif (str_contains($rawExpedition, 'anteraja')) {
+                                $courierName = 'AnterAja';
+                                $logoFile = 'anteraja.png';
+                            } elseif (str_contains($rawExpedition, 'spx') || str_contains($rawExpedition, 'shopee')) {
+                                $courierName = 'SPX Express';
+                                $logoFile = 'spx.png';
+                            } elseif (str_contains($rawExpedition, 'ninja')) {
+                                $courierName = 'Ninja Xpress';
+                                $logoFile = 'ninja.png';
+                            } elseif (str_contains($rawExpedition, 'lion')) {
+                                $courierName = 'Lion Parcel';
+                                $logoFile = 'lion.png';
+                            } elseif (str_contains($rawExpedition, 'tiki')) {
+                                $courierName = 'TIKI';
+                                $logoFile = 'tiki.png';
+                            } elseif (str_contains($rawExpedition, 'rpx')) {
+                                $courierName = 'RPX';
+                                $logoFile = 'rpx.png';
+                            } elseif (str_contains($rawExpedition, 'gosend')) {
+                                $courierName = 'GoSend';
+                                $logoFile = 'gosend.png';
+                            } elseif (str_contains($rawExpedition, 'grab')) {
+                                $courierName = 'GrabExpress';
+                                $logoFile = 'grab.png';
+                            } elseif (str_contains($rawExpedition, 'borzo')) {
+                                $courierName = 'Borzo';
+                                $logoFile = 'borzo.png';
+                            }
+                        @endphp
 
-        <td class="px-6 py-4 whitespace-nowrap">
-             <span class="px-3 py-1 inline-flex text-xs font-semibold rounded-full {{ $order->status_pesanan == 'Terkirim' ? 'bg-blue-100 text-blue-800' : ($order->status_pesanan == 'Tiba di Tujuan' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800') }}">
-                {{ $order->status_pesanan }}
-            </span>
-        </td>
-        <td class="px-6 py-4 whitespace-nowrap text-right font-semibold text-gray-800">
-            Rp {{ number_format($order->shipping_cost, 0, ',', '.') }}
-        </td>
-    </tr>
-    @empty
-    <tr><td colspan="4" class="px-6 py-4 text-center text-gray-500">Belum ada pesanan terbaru.</td></tr>
-    @endforelse
-</tbody>
-            </table>
-        </div>
+                        <div class="flex items-center space-x-3">
+                            <div class="flex-shrink-0 h-8 w-8">
+                                <img class="h-8 w-8 rounded-full object-contain bg-gray-50 p-1 border border-gray-200" 
+                                     src="{{ asset('storage/logo-ekspedisi/' . $logoFile) }}" 
+                                     alt="{{ $courierName }}"
+                                     onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode($courierName) }}&background=random&color=fff&size=32&font-size=0.4';">
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="text-sm font-medium text-gray-900">{{ $courierName }}</span>
+                            </div>
+                        </div>
+                    </td>
+
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-3 py-1 inline-flex text-xs font-semibold rounded-full {{ $order->status_pesanan == 'Terkirim' ? 'bg-blue-100 text-blue-800' : ($order->status_pesanan == 'Tiba di Tujuan' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800') }}">
+                            {{ $order->status_pesanan }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right font-semibold text-gray-800">
+                        Rp {{ number_format($order->shipping_cost, 0, ',', '.') }}
+                    </td>
+                </tr>
+                @empty
+                <tr><td colspan="4" class="px-6 py-4 text-center text-gray-500">Belum ada pesanan terbaru.</td></tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
+</div>
 
       {{-- ======================================================= --}}
         {{-- 7. GRAFIK DISTRIBUSI PENGIRIMAN (BARU)                  --}}
