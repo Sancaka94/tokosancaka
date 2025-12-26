@@ -124,6 +124,7 @@
                     <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase bg-gray-50">Ekspedisi</th>
                     <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase bg-gray-50">Status</th>
                     <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase bg-gray-50">Biaya Ongkir</th>
+                    <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase bg-gray-50">Lacak</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-200">
@@ -190,9 +191,18 @@
                     <td class="px-6 py-4 whitespace-nowrap text-right font-semibold text-gray-800">
                         Rp {{ number_format($order->shipping_cost, 0, ',', '.') }}
                     </td>
+                    
+                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                        <a href="https://tokosancaka.com/tracking/{{ $order->nomor_invoice }}" 
+                           target="_blank" 
+                           class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 hover:text-indigo-700 border border-indigo-200 rounded-lg text-xs font-bold transition-colors duration-200"
+                           title="Lacak Paket {{ $order->nomor_invoice }}">
+                            <i class="fas fa-search-location"></i> Lacak
+                        </a>
+                    </td>
                 </tr>
                 @empty
-                <tr><td colspan="4" class="px-6 py-4 text-center text-gray-500">Belum ada pesanan terbaru.</td></tr>
+                <tr><td colspan="5" class="px-6 py-4 text-center text-gray-500">Belum ada pesanan terbaru.</td></tr>
                 @endforelse
             </tbody>
         </table>
