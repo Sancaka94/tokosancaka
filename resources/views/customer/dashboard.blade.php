@@ -113,17 +113,17 @@
 
         <div class="bg-white rounded-xl shadow-lg overflow-hidden">
     <div class="flex justify-between items-center p-6 border-b border-gray-100">
-        <h2 class="text-lg font-bold text-gray-800">5 Pesanan Terbaru</h2>
+        <h2 class="text-lg font-bold text-gray-800">Riwayat Pesanan Terbaru</h2>
     </div>
 
-    <div class="overflow-x-auto">
-        <table class="min-w-full text-sm">
-            <thead class="bg-gray-50">
+    <div class="overflow-x-auto overflow-y-auto max-h-96">
+        <table class="min-w-full text-sm relative">
+            <thead class="bg-gray-50 sticky top-0 z-10 shadow-sm">
                 <tr>
-                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Order Id</th>
-                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Ekspedisi</th>
-                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Status</th>
-                    <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">Biaya Ongkir</th>
+                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase bg-gray-50">Order Id</th>
+                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase bg-gray-50">Ekspedisi</th>
+                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase bg-gray-50">Status</th>
+                    <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase bg-gray-50">Biaya Ongkir</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-200">
@@ -133,52 +133,39 @@
                         {{ $order->nomor_invoice }}
                     </td>
                     
+                    {{-- LOGIC EKSPEDISI --}}
                     <td class="px-6 py-4 whitespace-nowrap">
                         @php
                             $rawExpedition = strtolower($order->expedition ?? '');
                             $courierName = $order->expedition; 
                             $logoFile = 'default.png'; 
 
-                            // Mapping sesuai file manager Anda (folder: logo-ekspedisi)
                             if (str_contains($rawExpedition, 'jnt') || str_contains($rawExpedition, 'j&t')) {
-                                $courierName = 'J&T Express';
-                                $logoFile = 'jnt.png';
+                                $courierName = 'J&T Express'; $logoFile = 'jnt.png';
                             } elseif (str_contains($rawExpedition, 'jne')) {
-                                $courierName = 'JNE';
-                                $logoFile = 'jne.png';
+                                $courierName = 'JNE'; $logoFile = 'jne.png';
                             } elseif (str_contains($rawExpedition, 'sicepat')) {
-                                $courierName = 'SiCepat';
-                                $logoFile = 'sicepat.png';
+                                $courierName = 'SiCepat'; $logoFile = 'sicepat.png';
                             } elseif (str_contains($rawExpedition, 'posindonesia') || str_contains($rawExpedition, 'pos')) {
-                                $courierName = 'POS Indonesia';
-                                $logoFile = 'posindonesia.png';
+                                $courierName = 'POS Indonesia'; $logoFile = 'posindonesia.png';
                             } elseif (str_contains($rawExpedition, 'anteraja')) {
-                                $courierName = 'AnterAja';
-                                $logoFile = 'anteraja.png';
+                                $courierName = 'AnterAja'; $logoFile = 'anteraja.png';
                             } elseif (str_contains($rawExpedition, 'spx') || str_contains($rawExpedition, 'shopee')) {
-                                $courierName = 'SPX Express';
-                                $logoFile = 'spx.png';
+                                $courierName = 'SPX Express'; $logoFile = 'spx.png';
                             } elseif (str_contains($rawExpedition, 'ninja')) {
-                                $courierName = 'Ninja Xpress';
-                                $logoFile = 'ninja.png';
+                                $courierName = 'Ninja Xpress'; $logoFile = 'ninja.png';
                             } elseif (str_contains($rawExpedition, 'lion')) {
-                                $courierName = 'Lion Parcel';
-                                $logoFile = 'lion.png';
+                                $courierName = 'Lion Parcel'; $logoFile = 'lion.png';
                             } elseif (str_contains($rawExpedition, 'tiki')) {
-                                $courierName = 'TIKI';
-                                $logoFile = 'tiki.png';
+                                $courierName = 'TIKI'; $logoFile = 'tiki.png';
                             } elseif (str_contains($rawExpedition, 'rpx')) {
-                                $courierName = 'RPX';
-                                $logoFile = 'rpx.png';
+                                $courierName = 'RPX'; $logoFile = 'rpx.png';
                             } elseif (str_contains($rawExpedition, 'gosend')) {
-                                $courierName = 'GoSend';
-                                $logoFile = 'gosend.png';
+                                $courierName = 'GoSend'; $logoFile = 'gosend.png';
                             } elseif (str_contains($rawExpedition, 'grab')) {
-                                $courierName = 'GrabExpress';
-                                $logoFile = 'grab.png';
+                                $courierName = 'GrabExpress'; $logoFile = 'grab.png';
                             } elseif (str_contains($rawExpedition, 'borzo')) {
-                                $courierName = 'Borzo';
-                                $logoFile = 'borzo.png';
+                                $courierName = 'Borzo'; $logoFile = 'borzo.png';
                             }
                         @endphp
 

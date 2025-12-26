@@ -31,7 +31,8 @@ public function index()
         $pesananSelesai = (clone $semuaPesananQuery)->where('status_pesanan', 'Tiba di Tujuan')->count();
         $pesananPending = (clone $semuaPesananQuery)->whereIn('status_pesanan', ['pending', 'Menunggu Pembayaran'])->count();
         
-        $recentOrders = (clone $semuaPesananQuery)->latest('tanggal_pesanan')->take(5)->get();
+        // Hapus 'take(5)' agar semua data terambil
+        $recentOrders = (clone $semuaPesananQuery)->latest('tanggal_pesanan')->get();
         $recentSpxScans = ScannedPackage::where('user_id', $customerId)->latest()->take(5)->get();
 
         // --- PENGAMBILAN DATA UNTUK GRAFIK ---
