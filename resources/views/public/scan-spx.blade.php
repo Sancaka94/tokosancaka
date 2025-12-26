@@ -184,108 +184,105 @@
                 <div class="row g-4">
 
                     <div class="col-lg-7">
-                        <div id="alert-container"></div>
-                        <div id="gps-status-container" class="mb-3"></div> 
-
-                        <div class="spx-alert-box" id="sticky-alert">
     
-    <div class="spx-alert-icon">
-        <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
-            <path d="M12 2L1 21h22L12 2zm0 3.516L20.297 19H3.703L12 5.516zM11 10v4h2v-4h-2zm0 6v2h2v-2h-2z"/>
-        </svg>
-    </div>
+    <div id="alert-container"></div>
+    
+    <div id="gps-status-container" class="mb-3"></div> 
 
     <div class="spx-alert-box" id="scan-warning">
-    <div class="spx-alert-icon">
-        <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
-            <path d="M12 2L1 21h22L12 2zm0 3.516L20.297 19H3.703L12 5.516zM11 10v4h2v-4h-2zm0 6v2h2v-2h-2z"/>
-        </svg>
-    </div>
-    
-    <div class="spx-alert-content">
-    <strong>INFORMASI PENTING:</strong>
-    <p style="margin-top: 5px;">
-        1. FOKUSKAN KAMERA ATAU KETIK DI KOLOM RESI, LALU TEKAN (ENTER).<br>
-        2. PASTIKAN HANYA SCAN <span class="highlight">BARCODE 2D (QR) kotak persergi</span> ATAU RESI BERAWALAN <span class="highlight">SPX / ID</span>.<br>
-        3. TANDA BERHASIL ADALAH SUARA "BEEP" DAN NOTIFIKASI PADA LAYAR.<br>
-        4. PASTIKAN GPS ANDA AKTIF DAN JUMLAH PAKET BERTAMBAH JIKA PAKET LEBIH DARI SATU.<br>
-        5. KLIK TOMBOL SURAT JALAN JIKA SCAN TELAH SELESAI.
-    </p>
+        <div class="spx-alert-icon">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+                <path d="M12 2L1 21h22L12 2zm0 3.516L20.297 19H3.703L12 5.516zM11 10v4h2v-4h-2zm0 6v2h2v-2h-2z"/>
+            </svg>
+        </div>
+        
+        <div class="spx-alert-content">
+            <strong>INFORMASI PENTING:</strong>
+            <p style="margin-top: 5px;">
+                1. FOKUSKAN KAMERA ATAU KETIK DI KOLOM RESI, LALU TEKAN (ENTER).<br>
+                2. PASTIKAN HANYA SCAN <span class="highlight">BARCODE 2D (QR)</span> ATAU RESI BERAWALAN <span class="highlight">SPX / ID</span>.<br>
+                3. TANDA BERHASIL ADALAH SUARA "BEEP" DAN NOTIFIKASI PADA LAYAR.<br>
+                4. PASTIKAN GPS AKTIF DAN JUMLAH PAKET BERTAMBAH.<br>
+                5. KLIK TOMBOL SURAT JALAN JIKA SCAN SELESAI.
+            </p>
+        </div>
+
+        <div class="spx-close-btn" onclick="showPromo()" title="Tutup">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+        </div>
     </div>
 
-    <div class="spx-close-btn" onclick="showPromo()" title="Tutup">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
-    </div>
-</div>
+    <div id="promo-offer" class="promo-box-blue d-none">
+        <div style="display: flex; align-items: flex-start; gap: 15px;">
+            <div style="font-size: 24px;">🚀</div>
+            <div>
+                <strong style="font-size: 16px;">MAU FITUR LEBIH LENGKAP? GABUNG MITRA SANCAKA!</strong>
+                <p style="font-size: 13px; margin-bottom: 8px; opacity: 0.8;">Dapatkan akses eksklusif dengan menjadi member/agen kami:</p>
+                
+                <ul class="promo-list">
+                    <li><i class="fas fa-check-circle"></i> Akses Full Fitur Aplikasi Sancaka.</li>
+                    <li><i class="fas fa-store"></i> <a href="https://tokosancaka.com/etalase" target="_blank" style="text-decoration: underline; color: inherit;"><strong>Berjualan di Marketplace Sancaka</strong></a> (Jangkauan Luas).</li>
+                    <li><i class="fas fa-wallet"></i> Jadi AGEN Loket PPOB (Jual Pulsa, Token Listrik, Bayar Air PDAM, dll).</li>
+                    <li><i class="fas fa-chart-line"></i> Monitor Jumlah Kiriman Paket ALL Ekpedisi & SPX Realtime.</li>
+                    <li><i class="fas fa-search-location"></i> Lacak Status & Surat Jalan SPX dengan Detail.</li>
+                </ul>
 
-<div id="promo-offer" class="promo-box-blue d-none">
-    <div style="display: flex; align-items: flex-start; gap: 15px;">
-        <div style="font-size: 24px;">🚀</div> <div>
-            <strong style="font-size: 16px;">MAU FITUR LEBIH LENGKAP? GABUNG MITRA SANCAKA! GRATISSSS...</strong>
-            <p style="font-size: 13px; margin-bottom: 8px; opacity: 0.8;">Dapatkan akses eksklusif dengan menjadi member/agen kami:</p>
-            
-            <ul class="promo-list">
-                <li><i class="fas fa-check-circle"></i> Akses Full Fitur Aplikasi Sancaka.</li>
-                <li><i class="fas fa-store"></i> <a href="https://tokosancaka.com/etalase" target="_blank" style="text-decoration: underline; color: inherit;"><strong>Berjualan di Marketplace Sancaka</strong></a> (Jangkauan Luas).</li>
-                <li><i class="fas fa-wallet"></i> Jadi AGEN Loket PPOB (Jual Pulsa, Token Listrik, Bayar Air PDAM, dll).</li>
-                <li><i class="fas fa-chart-line"></i> Monitor Jumlah Kiriman Paket ALL Ekpedisi & SPX Realtime.</li>
-                <li><i class="fas fa-search-location"></i> Lacak Status & Surat Jalan SPX dengan Detail.</li>
-            </ul>
-
-            <a href="{{ route('register') }}" class="btn-join">DAFTAR AGEN SEKARANG <i class="fas fa-arrow-right ms-1"></i></a>
+                <a href="{{ route('register') }}" class="btn-join">DAFTAR AGEN SEKARANG <i class="fas fa-arrow-right ms-1"></i></a>
             </div>
+        </div>
+
+        <div class="spx-close-btn" onclick="document.getElementById('promo-offer').classList.add('d-none')" style="color: #1e40af;" title="Tutup Promo">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+        </div>
     </div>
 
-    <div class="spx-close-btn" onclick="document.getElementById('promo-offer').classList.add('d-none')" style="color: #1e40af;" title="Tutup Promo">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body p-4">
+            <label for="search-input" class="form-label fw-semibold text-dark">Langkah 1: Cari Nama Anda</label>
+            <div class="position-relative">
+                <i class="fas fa-user position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
+                <input type="text" id="search-input" placeholder="Ketik nama atau nomor HP Anda..." class="form-control ps-5" autocomplete="off" disabled>
+                <div id="search-results-container" class="position-absolute z-3 w-100 mt-1 bg-white border rounded-3 shadow-lg d-none">
+                    <ul id="search-results" class="list-group list-group-flush"></ul>
+                </div>
+            </div>
+        </div>
     </div>
+
+    <div id="registration-form-container" class="card border-0 shadow-sm mb-4 d-none">
+        <div class="card-body p-4">
+            <h3 class="h5 fw-semibold text-dark mb-3">Nama tidak ditemukan, silakan daftar.</h3>
+            <form id="registration-form">
+                <div class="mb-3"><label for="reg-nama" class="form-label">Nama Lengkap</label><input type="text" id="reg-nama" class="form-control" required></div>
+                <div class="mb-3"><label for="reg-no_hp" class="form-label">No. HP (WhatsApp)</label><input type="tel" id="reg-no_hp" class="form-control" required></div>
+                <div class="mb-3"><label for="reg-alamat" class="form-label">Alamat Lengkap</label><textarea id="reg-alamat" rows="3" class="form-control" required></textarea></div>
+                <button type="submit" class="btn btn-orange w-100 fw-bold">Daftar & Lanjutkan</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="scan-resi-section" class="card border-0 shadow-sm opacity-50" style="pointer-events: none; transition: opacity 0.3s;">
+        <div class="card-body p-4">
+            <label class="form-label fw-semibold text-dark">Langkah 2: Scan atau Ketik Resi SPX</label>
+            <div class="input-group mb-3">
+                <span class="input-group-text"><i class="fas fa-barcode"></i></span>
+                <input type="text" id="resi-input" placeholder="Nomor resi SPX..." class="form-control">
+            </div>
+            <div class="d-grid gap-2">
+                <button type="button" id="start-camera-btn" class="btn btn-orange w-100 fw-bold"><i class="fas fa-camera me-2"></i>Gunakan Kamera</button>
+                <button type="button" id="gallery-scan-btn" class="btn btn-outline-secondary w-100 fw-bold"><i class="fas fa-images me-2"></i>Dari Galeri</button>
+            </div>
+            <input type="file" id="gallery-file-input" class="d-none" accept="image/*">
+        </div>
+    </div>
+
 </div>
-                        <div class="card border-0 shadow-sm mb-4">
-                            <div class="card-body p-4">
-                                <label for="search-input" class="form-label fw-semibold text-dark">Langkah 1: Cari Nama Anda</label>
-                                <div class="position-relative">
-                                    <i class="fas fa-user position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
-                                    <input type="text" id="search-input" placeholder="Ketik nama atau nomor HP Anda..." class="form-control ps-5" autocomplete="off" disabled>
-                                    <div id="search-results-container" class="position-absolute z-3 w-100 mt-1 bg-white border rounded-3 shadow-lg d-none">
-                                        <ul id="search-results" class="list-group list-group-flush"></ul>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div id="registration-form-container" class="card border-0 shadow-sm mb-4 d-none">
-                            <div class="card-body p-4">
-                                <h3 class="h5 fw-semibold text-dark mb-3">Nama tidak ditemukan, silakan daftar.</h3>
-                                <form id="registration-form">
-                                    <div class="mb-3"><label for="reg-nama" class="form-label">Nama Lengkap</label><input type="text" id="reg-nama" class="form-control" required></div>
-                                    <div class="mb-3"><label for="reg-no_hp" class="form-label">No. HP (WhatsApp)</label><input type="tel" id="reg-no_hp" class="form-control" required></div>
-                                    <div class="mb-3"><label for="reg-alamat" class="form-label">Alamat Lengkap</label><textarea id="reg-alamat" rows="3" class="form-control" required></textarea></div>
-                                    <button type="submit" class="btn btn-orange w-100 fw-bold">Daftar & Lanjutkan</button>
-                                </form>
-                            </div>
-                        </div>
-
-                        <div id="scan-resi-section" class="card border-0 shadow-sm opacity-50" style="pointer-events: none; transition: opacity 0.3s;">
-                            <div class="card-body p-4">
-                                <label class="form-label fw-semibold text-dark">Langkah 2: Scan atau Ketik Resi SPX</label>
-                                <div class="input-group mb-3">
-                                    <span class="input-group-text"><i class="fas fa-barcode"></i></span>
-                                    <input type="text" id="resi-input" placeholder="Nomor resi SPX..." class="form-control">
-                                </div>
-                                <div class="d-grid gap-2">
-                                    <button type="button" id="start-camera-btn" class="btn btn-orange w-100 fw-bold"><i class="fas fa-camera me-2"></i>Gunakan Kamera</button>
-                                    <button type="button" id="gallery-scan-btn" class="btn btn-outline-secondary w-100 fw-bold"><i class="fas fa-images me-2"></i>Dari Galeri</button>
-                                </div>
-                                <input type="file" id="gallery-file-input" class="d-none" accept="image/*">
-                            </div>
-                        </div>
-                    </div>
 
                     <div class="col-lg-5">
                         <div class="card border-0 shadow-sm">
