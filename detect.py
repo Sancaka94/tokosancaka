@@ -5,6 +5,7 @@ import cv2
 import numpy as np
 import urllib.request
 
+
 # Konfigurasi Cache Folder
 os.environ['YOLO_CONFIG_DIR'] = '/home/tokq3391/tmp'
 os.environ['MPLCONFIGDIR'] = '/home/tokq3391/tmp'

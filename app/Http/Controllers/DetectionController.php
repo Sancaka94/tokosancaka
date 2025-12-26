@@ -112,6 +112,7 @@ class DetectionController extends Controller
             if (Storage::disk('local')->exists('temp/' . $imageName)) {
                 Storage::disk('local')->delete('temp/' . $imageName);
             }
+            
 
             // SUKSES
             return response()->json([

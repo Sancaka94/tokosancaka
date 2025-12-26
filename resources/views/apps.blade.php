@@ -44,6 +44,7 @@
             50% { top: 100%; }
             100% { top: 0%; }
         }
+        
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen flex flex-col font-sans">
