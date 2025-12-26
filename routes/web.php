@@ -650,6 +650,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
 
         Route::delete('/destroy/{id}', [PpobProductController::class, 'destroy'])->name('destroy');
         
-        Route::get('/{id}', [PpobProductController::class, 'show'])->name('show');
+        // Ubah PpobProductController menjadi AdminPpobController
+        Route::get('/{id}', [AdminPpobController::class, 'show'])->name('show');
     });
 });
