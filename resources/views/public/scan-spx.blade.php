@@ -189,7 +189,7 @@
                         <div class="card border-0 shadow-sm">
                             <div class="card-body p-4">
                                 <h2 class="h5 fw-bold text-dark mb-3">Hasil Scan Sesi Ini</h2>
-                                <div class="bg-green-200 p-3 rounded-3 mb-3 text-center">
+                                <div class="bg-success p-3 rounded-3 mb-3 text-center">
                                     <p class="text-muted mb-1">Jumlah Paket:</p>
                                     <p id="pickup-count" class="h1 fw-bolder text-primary">0</p>
                                 </div>
