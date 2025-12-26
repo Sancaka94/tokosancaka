@@ -4,119 +4,109 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Sancaka AI - Cyber Interface</title>
+    <title>Sancaka Neural Interface</title>
     
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script> <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface"></script> <script src="https://cdn.tailwindcss.com"></script>
-
+    <script src="https://cdn.tailwindcss.com"></script>
+    
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
 
     <style>
-        body { background: #000; overflow: hidden; font-family: 'Rajdhani', sans-serif; }
-        
-        .camera-container { 
-            position: relative; 
-            width: 100vw; 
-            height: 100vh; 
+        body { 
+            background-color: #020202; 
+            color: #00ffcc; 
+            font-family: 'Rajdhani', sans-serif; 
+            overflow: hidden; /* Hilangkan scrollbar */
+        }
+
+        /* Container Kamera Fullscreen */
+        .camera-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
             background: #000;
         }
-        
-        /* Video & Canvas Fullscreen tapi proporsional */
-        video, canvas { 
-            position: absolute; 
-            top: 0; left: 0; 
-            width: 100%; height: 100%; 
-            object-fit: cover; 
+
+        /* Video & Canvas Menumpuk Sempurna */
+        video, canvas {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            object-fit: cover; /* Agar full layar HP */
         }
 
-        /* Overlay Loading Keren */
-        #loading {
-            background: radial-gradient(circle, rgba(10,20,30,1) 0%, rgba(0,0,0,1) 100%);
+        /* Status Badge di Pojok Kanan Atas */
+        .status-badge {
+            position: absolute;
+            top: 20px; right: 20px;
+            padding: 5px 15px;
+            border-radius: 4px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 10px;
+            letter-spacing: 1px;
+            backdrop-filter: blur(4px);
+            border: 1px solid;
+            z-index: 50;
         }
-        
-        .cyber-loader {
-            width: 64px; height: 64px;
-            border: 2px solid #00ffcc;
-            border-top: 2px solid transparent;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            box-shadow: 0 0 15px #00ffcc;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* HUD Panel di Bawah */
-        .hud-panel {
-            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
-            width: 90%; max-width: 400px;
-            background: rgba(0, 10, 20, 0.85);
-            border: 1px solid rgba(0, 255, 204, 0.3);
-            border-left: 4px solid #00ffcc;
-            padding: 15px;
-            backdrop-filter: blur(8px);
-            display: none;
-            box-shadow: 0 0 20px rgba(0, 255, 204, 0.1);
-            animation: slideUp 0.3s ease-out;
+        /* Animasi Loading */
+        .scanner-line {
+            position: absolute;
+            width: 100%; height: 2px;
+            background: rgba(0, 255, 204, 0.5);
+            box-shadow: 0 0 10px #00ffcc;
+            animation: scan 3s infinite linear;
+            z-index: 10;
+            pointer-events: none;
         }
-        @keyframes slideUp { from { bottom: -100px; opacity: 0; } to { bottom: 30px; opacity: 1; } }
-
-        .hud-label { font-family: 'Orbitron', sans-serif; letter-spacing: 1px; }
-
-        /* Garis Scan Animasi */
-        .scan-line {
-            position: absolute; top: 0; left: 0; width: 100%; height: 2px;
-            background: rgba(0, 255, 204, 0.8);
-            box-shadow: 0 0 10px #00ffcc, 0 0 20px #00ffcc;
-            animation: scanAnim 3s ease-in-out infinite;
-            z-index: 5;
-            opacity: 0.5;
-        }
-        @keyframes scanAnim { 0% { top: 10%; opacity: 0; } 50% { opacity: 1; } 100% { top: 90%; opacity: 0; } }
+        @keyframes scan { 0% {top: 0%} 50% {top: 100%} 100% {top: 0%} }
     </style>
 </head>
 <body>
 
-    <div id="loading" class="fixed inset-0 z-50 flex flex-col items-center justify-center text-center">
-        <div class="cyber-loader mb-6"></div>
-        <h2 class="text-[#00ffcc] font-bold text-2xl tracking-widest font-['Orbitron']">INITIALIZING AI</h2>
-        <p class="text-teal-800 text-sm mt-2 animate-pulse">Memuat Neural Network Wajah & Objek...</p>
+    <div id="statusBadge" class="status-badge border-gray-600 text-gray-400 bg-black/60">
+        SYSTEM OFFLINE
     </div>
 
     <div class="camera-container">
         <video id="video" autoplay playsinline muted></video>
         <canvas id="canvas"></canvas>
-        <div class="scan-line"></div> </div>
-
-    <div id="hudPanel" class="hud-panel z-20" onclick="openManualInput()">
-        <div class="flex items-start gap-4">
-            <div id="hudIcon" class="text-3xl pt-1">📦</div>
-            <div class="flex-1">
-                <p class="text-[10px] text-teal-500 uppercase tracking-widest mb-1">TARGET LOCKED</p>
-                <h3 id="lblMain" class="text-xl text-white font-bold hud-label leading-none">UNKNOWN</h3>
-                <p id="lblDetail" class="text-sm text-gray-400 mt-1 font-mono">Tap untuk identifikasi</p>
-            </div>
-            <div id="dbStatus" class="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_10px_red]"></div>
+        <div id="scanAnim" class="scanner-line hidden"></div>
+        
+        <div id="startOverlay" class="absolute inset-0 bg-black/90 flex flex-col items-center justify-center z-40">
+            <div class="mb-6 w-16 h-16 border-t-4 border-b-4 border-teal-500 rounded-full animate-spin"></div>
+            <h1 class="text-2xl font-bold font-['Orbitron'] text-teal-400 tracking-widest mb-2">SANCAKA AI</h1>
+            <p class="text-xs text-gray-500 mb-6">Neural Object & Face Detection</p>
+            <button onclick="initCamera()" class="px-8 py-3 border border-teal-500 text-teal-400 hover:bg-teal-500/20 font-bold rounded tracking-wider transition">
+                ACTIVATE CAMERA
+            </button>
         </div>
     </div>
 
-    <div id="manualModal" class="fixed inset-0 bg-black/90 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm">
-        <div class="bg-gray-900 p-6 rounded-none border border-teal-500 w-full max-w-sm shadow-[0_0_30px_rgba(0,255,204,0.2)]">
-            <h3 class="text-lg font-bold text-[#00ffcc] mb-6 font-['Orbitron'] border-b border-gray-700 pb-2">INPUT DATA MEMORI</h3>
-            <input type="hidden" id="inpRawLabel">
+    <div id="modalInput" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-gray-900 border border-teal-500/50 p-6 w-full max-w-sm shadow-[0_0_30px_rgba(0,255,204,0.1)]">
+            <h3 class="text-teal-400 font-['Orbitron'] mb-4 text-lg border-b border-gray-700 pb-2">DATA MEMORI BARU</h3>
             
-            <div class="space-y-4">
+            <input type="hidden" id="inpRawLabel"> <div class="space-y-4">
                 <div>
-                    <label class="text-xs text-gray-500 block mb-1">IDENTITAS / NAMA</label>
-                    <input type="text" id="inpName" class="w-full bg-black border border-gray-700 p-3 text-white focus:border-[#00ffcc] focus:outline-none transition-colors" placeholder="Contoh: Kopi, Plat AD 1234">
+                    <label class="text-[10px] text-gray-500 uppercase">Label AI</label>
+                    <div id="displayRaw" class="text-xs font-mono text-yellow-500 mb-2">...</div>
                 </div>
                 <div>
-                    <label class="text-xs text-gray-500 block mb-1">INFO TAMBAHAN (HARGA/DLL)</label>
-                    <input type="text" id="inpPrice" class="w-full bg-black border border-gray-700 p-3 text-white focus:border-[#00ffcc] focus:outline-none transition-colors" placeholder="Contoh: Rp 5.000">
+                    <label class="text-[10px] text-gray-500 uppercase">Nama Asli / Plat</label>
+                    <input type="text" id="inpName" class="w-full bg-black border border-gray-700 text-white p-2 text-sm focus:border-teal-500 outline-none" placeholder="Contoh: Kopi Kenangan">
+                </div>
+                <div>
+                    <label class="text-[10px] text-gray-500 uppercase">Harga / Info</label>
+                    <input type="text" id="inpPrice" class="w-full bg-black border border-gray-700 text-white p-2 text-sm focus:border-teal-500 outline-none" placeholder="Contoh: 15000">
                 </div>
             </div>
 
-            <div class="flex gap-3 mt-6">
-                <button onclick="document.getElementById('manualModal').classList.add('hidden')" class="flex-1 border border-gray-600 text-gray-400 py-2 hover:bg-gray-800 transition">BATAL</button>
-                <button onclick="saveToDb()" class="flex-1 bg-teal-900/50 border border-teal-500 text-[#00ffcc] py-2 font-bold hover:bg-teal-500/20 transition shadow-[0_0_15px_rgba(0,255,204,0.3)]">SIMPAN</button>
+            <div class="flex gap-2 mt-6">
+                <button onclick="closeModal()" class="flex-1 py-2 bg-gray-800 text-gray-400 text-xs hover:bg-gray-700">BATAL</button>
+                <button onclick="saveData()" class="flex-1 py-2 bg-teal-900/80 border border-teal-500 text-teal-400 text-xs font-bold hover:bg-teal-800">SIMPAN DATABASE</button>
             </div>
         </div>
     </div>
@@ -125,194 +115,235 @@
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
-        const hudPanel = document.getElementById('hudPanel');
+        const statusBadge = document.getElementById('statusBadge');
         
-        let objectModel, faceModel;
-        let lastLabel = "";
-        let dbCache = {}; 
+        let isProcessing = false; // Flag Antrian
+        let lastBoxes = []; // Simpan data terakhir untuk fitur klik
 
-        // 1. LOAD 2 MODEL SEKALIGUS (Objek & Wajah)
-        Promise.all([
-            cocoSsd.load(),          // Model Objek Umum (Ringan)
-            blazeface.load()         // Model Wajah (Sangat Cepat & Ringan)
-        ]).then(([loadedCoco, loadedFace]) => {
-            objectModel = loadedCoco;
-            faceModel = loadedFace;
-            startCamera();
-        });
-
-        async function startCamera() {
+        // 1. AKTIVASI KAMERA
+        async function initCamera() {
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: 'environment' }, audio: false
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: 'environment' }, 
+                    audio: false 
                 });
                 video.srcObject = stream;
+                
                 video.onloadedmetadata = () => {
-                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('startOverlay').classList.add('hidden');
+                    document.getElementById('scanAnim').classList.remove('hidden');
+                    
+                    // Set ukuran canvas sama persis dengan video
                     canvas.width = video.videoWidth;
                     canvas.height = video.videoHeight;
-                    predictFrame(); // Mulai Loop AI
+                    
+                    updateStatus("STANDBY", "text-gray-400", "border-gray-600");
+                    
+                    // Mulai Loop Pintar
+                    requestAnimationFrame(smartLoop);
                 };
-            } catch (err) { alert("Kamera Gagal: " + err); }
-        }
-
-        // 2. LOOP DETEKSI
-        async function predictFrame() {
-            // Jalankan deteksi Wajah & Objek secara paralel
-            const [objects, faces] = await Promise.all([
-                objectModel.detect(video),
-                faceModel.estimateFaces(video, false) // false = return tensors (lebih cepat)
-            ]);
-            
-            drawCombined(objects, faces);
-            requestAnimationFrame(predictFrame); 
-        }
-
-        // 3. GAMBAR HASIL (STYLISTIC)
-        function drawCombined(objects, faces) {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            let detectedSomething = false;
-
-            // A. GAMBAR WAJAH (Prioritas Visual)
-            if (faces.length > 0) {
-                detectedSomething = true;
-                const face = faces[0]; // Ambil 1 wajah utama
-                const start = face.topLeft;
-                const end = face.bottomRight;
-                const x = start[0];
-                const y = start[1];
-                const w = end[0] - start[0];
-                const h = end[1] - start[1];
-
-                // Style Kotak Wajah (Ungu Neon)
-                drawFancyBox(x, y, w, h, '#d946ef', 'WAJAH'); 
-                updateHUD('face', 'WAJAH MANUSIA', 'Suhu: ' + (36 + Math.random()).toFixed(1) + '°C', true);
-            }
-
-            // B. GAMBAR OBJEK (Jika tidak ada wajah atau ada objek lain)
-            // Filter: Jangan gambar 'person' dari COCO jika BlazeFace sudah deteksi wajah (biar gak dobel kotak)
-            const filteredObjects = objects.filter(obj => obj.class !== 'person');
-            
-            if (filteredObjects.length > 0) {
-                // Ambil objek dengan score tertinggi
-                const obj = filteredObjects[0]; 
-                const [x, y, w, h] = obj.bbox;
                 
-                // Style Kotak Objek (Cyan Neon)
-                drawFancyBox(x, y, w, h, '#00ffcc', obj.class.toUpperCase());
+                // Event Listener Klik Canvas (Untuk Input Manual)
+                canvas.addEventListener('click', handleCanvasClick);
 
-                // Logic Database Laravel
-                if (obj.class !== lastLabel) {
-                    lastLabel = obj.class;
-                    checkLaravelDB(obj.class);
-                }
-
-                // Update HUD berdasarkan Database
-                if (!detectedSomething) { // Hanya update HUD jika belum di-isi wajah
-                    detectedSomething = true;
-                    const data = dbCache[obj.class] || { 
-                        label: obj.class.toUpperCase(), 
-                        detail: "Tap untuk simpan", 
-                        found: false,
-                        type: 'unknown'
-                    };
-                    updateHUD(obj.class, data.label, data.detail, data.found);
-                }
-            }
-
-            if (!detectedSomething) {
-                hudPanel.style.display = 'none';
+            } catch (e) {
+                alert("Gagal akses kamera: " + e.message);
             }
         }
 
-        // FUNGSI GAMBAR KOTAK KEREN (Tipis & Bercahaya)
-        function drawFancyBox(x, y, w, h, color, labelText) {
-            ctx.shadowBlur = 15;
-            ctx.shadowColor = color;
-            ctx.strokeStyle = color;
-            ctx.lineWidth = 2; // TIPIS (Sesuai request)
-            
-            // Gambar Kotak
-            ctx.strokeRect(x, y, w, h);
-
-            // Label kecil di atas kotak
-            ctx.shadowBlur = 0; // Matikan glow untuk teks biar tajam
-            ctx.fillStyle = color;
-            ctx.font = "bold 12px Rajdhani";
-            ctx.fillText(labelText, x + 5, y - 8);
-            
-            // Hiasan Pojok (Corner Brackets) - Biar makin Sci-Fi
-            ctx.lineWidth = 4;
-            const cornerLen = 15;
-            ctx.beginPath();
-            // Pojok Kiri Atas
-            ctx.moveTo(x, y + cornerLen); ctx.lineTo(x, y); ctx.lineTo(x + cornerLen, y);
-            // Pojok Kanan Bawah
-            ctx.moveTo(x + w, y + h - cornerLen); ctx.lineTo(x + w, y + h); ctx.lineTo(x + w - cornerLen, y + h);
-            ctx.stroke();
-        }
-
-        function updateHUD(rawKey, label, detail, found) {
-            hudPanel.style.display = 'block';
-            document.getElementById('lblMain').innerText = label;
-            document.getElementById('lblDetail').innerText = detail;
-            document.getElementById('inpRawLabel').value = rawKey;
-
-            const iconEl = document.getElementById('hudIcon');
-            const statusEl = document.getElementById('dbStatus');
-
-            if (rawKey === 'face') {
-                iconEl.innerText = '👤';
-                statusEl.className = "w-2 h-2 rounded-full bg-purple-500 shadow-[0_0_10px_purple]";
-            } else if (found) {
-                iconEl.innerText = '✅';
-                statusEl.className = "w-2 h-2 rounded-full bg-[#00ffcc] shadow-[0_0_10px_#00ffcc]";
-            } else {
-                iconEl.innerText = '❓';
-                statusEl.className = "w-2 h-2 rounded-full bg-red-500 shadow-[0_0_10px_red] animate-pulse";
+        // 2. LOOP PINTAR (ANTRIAN)
+        // Fungsi ini akan terus berputar, tapi hanya mengirim data jika Server sedang NGANGGUR
+        function smartLoop() {
+            if (!isProcessing) {
+                processFrame();
             }
+            // Cek ulang setiap 500ms agar UI responsif
+            setTimeout(() => requestAnimationFrame(smartLoop), 500);
         }
 
-        // --- DATABASE LOGIC (Sama seperti sebelumnya) ---
-        async function checkLaravelDB(keyword) {
-            if (dbCache[keyword]) return;
+        // 3. PROSES KIRIM KE SERVER
+        async function processFrame() {
+            isProcessing = true; // Kunci Antrian (Pintu Tertutup)
+            updateStatus("ANALYZING...", "text-yellow-400", "border-yellow-500");
+
+            // Ambil Snapshot & Kompres (0.5)
+            const tmpCanvas = document.createElement('canvas');
+            tmpCanvas.width = video.videoWidth;
+            tmpCanvas.height = video.videoHeight;
+            tmpCanvas.getContext('2d').drawImage(video, 0, 0);
+            const jpgData = tmpCanvas.toDataURL('image/jpeg', 0.5);
+
             try {
-                const res = await fetch("{{ route('apps.check_db') }}", {
+                const res = await fetch("{{ route('detection.process') }}", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
                         "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content
                     },
-                    body: JSON.stringify({ keyword: keyword })
+                    body: JSON.stringify({ image: jpgData })
                 });
-                const data = await res.json();
-                dbCache[keyword] = data;
-            } catch (e) { console.error(e); }
+
+                // Handle jika Server menolak (429 Too Many Requests)
+                if (res.status === 429) {
+                    throw new Error("Queue Full");
+                }
+
+                const json = await res.json();
+
+                if (json.status === 'success') {
+                    lastBoxes = json.data; // Simpan data untuk klik
+                    drawCyberHUD(json.data);
+                    updateStatus("ONLINE", "text-teal-400", "border-teal-500");
+                } else {
+                    console.warn("AI Info:", json);
+                }
+
+            } catch (e) {
+                console.log("Skip frame: " + e.message);
+                // Jangan update UI error jika cuma antrian penuh
+                if(e.message !== "Queue Full") {
+                    updateStatus("RETRYING...", "text-red-400", "border-red-500");
+                }
+            } finally {
+                // JEDA 3 DETIK SEBELUM MEMBUKA ANTRIAN LAGI
+                // Ini sesuai request Anda agar server tidak berat
+                setTimeout(() => {
+                    isProcessing = false; // Pintu Dibuka Kembali
+                    updateStatus("READY", "text-blue-400", "border-blue-500");
+                }, 3000); 
+            }
         }
 
-        function openManualInput() {
-            const raw = document.getElementById('inpRawLabel').value;
-            if (raw === 'face') return; // Jangan simpan wajah sebagai barang
-            document.getElementById('manualModal').classList.remove('hidden');
+        // 4. MENGGAMBAR HUD (CYBER STYLE)
+        function drawCyberHUD(boxes) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            boxes.forEach(box => {
+                const [x, y, x2, y2] = box.box;
+                const w = x2 - x;
+                const h = y2 - y;
+
+                // TENTUKAN WARNA BERDASARKAN TIPE
+                let color = '#00ffcc'; // Default Cyan (Benda/Kendaraan)
+                if (box.type === 'face') color = '#d946ef'; // Ungu Neon (Wajah)
+                if (box.type === 'barcode') color = '#facc15'; // Kuning (Resi)
+
+                // A. KOTAK TIPIS (Glow)
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = color;
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2; // TIPIS (Sesuai Request)
+                ctx.strokeRect(x, y, w, h);
+
+                // B. SUDUT TEBAL (Corner Brackets) - Biar Keren
+                ctx.shadowBlur = 0; // Matikan glow biar tajam
+                ctx.lineWidth = 4;
+                const cLen = 20; // Panjang sudut
+                
+                ctx.beginPath();
+                // Kiri Atas
+                ctx.moveTo(x, y + cLen); ctx.lineTo(x, y); ctx.lineTo(x + cLen, y);
+                // Kanan Bawah
+                ctx.moveTo(x + w, y + h - cLen); ctx.lineTo(x + w, y + h); ctx.lineTo(x + w - cLen, y + h);
+                ctx.stroke();
+
+                // C. LABEL & DETAIL
+                let label = box.label;
+                let detail = "";
+                
+                // Cek Data DB
+                if (box.db_info && box.db_info.found) {
+                    // Jika ketemu di DB, warna jadi Hijau
+                    ctx.fillStyle = '#22c55e'; 
+                    detail = box.db_info.detail;
+                } else if (box.db_info && !box.db_info.found) {
+                    // Jika barang baru (Unknown)
+                    ctx.fillStyle = color;
+                    detail = "TAP UNTUK INPUT";
+                } else {
+                    ctx.fillStyle = color;
+                }
+
+                // Gambar Background Label
+                ctx.font = "bold 14px Rajdhani";
+                const tw = ctx.measureText(label).width;
+                ctx.globalAlpha = 0.8;
+                ctx.fillRect(x, y - 24, tw + 20, 24);
+                
+                // Tulis Label
+                ctx.globalAlpha = 1.0;
+                ctx.fillStyle = "#000";
+                ctx.fillText(label, x + 5, y - 7);
+
+                // Tulis Detail di Bawah Kotak
+                if (detail) {
+                    ctx.fillStyle = color;
+                    ctx.font = "12px monospace";
+                    ctx.fillText(detail, x, y + h + 15);
+                }
+            });
+        }
+
+        // 5. FITUR KLIK UNTUK INPUT DATA
+        function handleCanvasClick(e) {
+            // Skalakan koordinat klik (jika ukuran layar beda dgn canvas)
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const clickX = (e.clientX - rect.left) * scaleX;
+            const clickY = (e.clientY - rect.top) * scaleY;
+
+            lastBoxes.forEach(box => {
+                const [x, y, x2, y2] = box.box;
+                if (clickX >= x && clickX <= x2 && clickY >= y && clickY <= y2) {
+                    // Jika barang belum dikenal (found = false) & bukan wajah
+                    if (box.db_info && !box.db_info.found && box.type !== 'face') {
+                        openModal(box.label_raw);
+                    }
+                }
+            });
+        }
+
+        function openModal(rawLabel) {
+            document.getElementById('modalInput').classList.remove('hidden');
+            document.getElementById('inpRawLabel').value = rawLabel;
+            document.getElementById('displayRaw').innerText = rawLabel.toUpperCase();
+            document.getElementById('inpName').value = "";
+            document.getElementById('inpPrice').value = "";
             document.getElementById('inpName').focus();
         }
 
-        async function saveToDb() {
+        function closeModal() {
+            document.getElementById('modalInput').classList.add('hidden');
+        }
+
+        // 6. SIMPAN DATA KE LARAVEL
+        async function saveData() {
             const raw = document.getElementById('inpRawLabel').value;
             const name = document.getElementById('inpName').value;
             const price = document.getElementById('inpPrice').value;
 
             try {
-                await fetch("{{ route('apps.store') }}", {
+                // Gunakan route yang sudah Anda buat sebelumnya
+                const res = await fetch("{{ route('apps.store') }}", {
                     method: "POST",
-                    headers: { "Content-Type": "application/json", "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content },
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content
+                    },
                     body: JSON.stringify({ barcode: raw, name: name, price: price })
                 });
-                dbCache[raw] = { found: true, label: name, detail: price };
-                alert("Data Tersimpan di Neural Network!");
-                document.getElementById('manualModal').classList.add('hidden');
-            } catch(e) { alert("Error Save"); }
+                
+                alert("Data berhasil disimpan! Scan ulang objeknya.");
+                closeModal();
+            } catch(e) {
+                alert("Gagal menyimpan data.");
+            }
+        }
+
+        function updateStatus(text, textColor, borderColor) {
+            statusBadge.innerText = text;
+            statusBadge.className = `status-badge bg-black/60 ${textColor} ${borderColor}`;
         }
     </script>
 </body>
