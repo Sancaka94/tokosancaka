@@ -234,11 +234,11 @@
                     </td>
                     
                     <td class="px-6 py-4 whitespace-nowrap text-center">
-                        @if(!empty($order->no_resi))
-                            <a href="https://tokosancaka.com/tracking/search?resi={{ $order->no_resi }}" 
+                        @if(!empty($order->nomor_invoice) && !empty($order->no_resi))
+                            <a href="https://tokosancaka.com/tracking/search?resi={{ $order->nomor_invoice }}&courier={{ $order->expedition }}" 
                                target="_blank" 
                                class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 hover:text-indigo-700 border border-indigo-200 rounded-lg text-xs font-bold transition-colors duration-200"
-                               title="Lacak Resi: {{ $order->no_resi }}">
+                               title="Lacak Resi: {{ $order->nomor_invoice }}">
                                 <i class="fas fa-search-location"></i> Lacak
                             </a>
                         @else
