@@ -136,32 +136,32 @@ class AdminPpobController extends Controller
         return $query;
     }
 
+/**
+     * Menampilkan Detail Transaksi
+     * Perbaikan: Menghapus dd() dan memastikan return View.
+     */
+    public function show($id)
+    {
+        // 1. Ambil Data
+        $transaction = PpobTransaction::with('user')->findOrFail($id);
 
+        // 2. Logika Parsing JSON yang Aman
+        // Agar kolom 'desc' yang berisi JSON string bisa dibaca sebagai Array di View
+        $responseData = $transaction->desc;
 
-public function show($id)
-{
-    dd('STOP DISINI - FILE BENAR'); // <--- Tambahkan Baris Ini
-    // 1. Gunakan Eager Loading untuk performa
-    $transaction = PpobTransaction::with('user')->findOrFail($id);
-
-    // 2. Logika Parsing JSON yang Lebih Aman
-    $responseData = $transaction->desc;
-
-    // Cek apakah data masih berupa string sebelum di-decode
-    if (is_string($responseData)) {
-        $decoded = json_decode($responseData, true);
-        // Jika decode berhasil (valid JSON), gunakan hasilnya. Jika tidak, tetap string asli.
-        if (json_last_error() === JSON_ERROR_NONE) {
-            $responseData = $decoded;
+        if (is_string($responseData)) {
+            $decoded = json_decode($responseData, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $responseData = $decoded;
+            }
         }
-    }
 
-    // 3. Return View
-    return view('admin.ppob.data.show', [
-        'transaction'   => $transaction,
-        'response_data' => $responseData
-    ]);
-}
+        // 3. Return ke View (Pastikan file resources/views/admin/ppob/data/show.blade.php ADA)
+        return view('admin.ppob.data.show', [
+            'transaction'   => $transaction,
+            'response_data' => $responseData
+        ]);
+    }
 
     /**
      * Update status transaksi secara manual (Emergency use).
