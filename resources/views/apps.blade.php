@@ -4,100 +4,107 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Sancaka Smart Auto-Scanner</title>
+    <title>Sancaka AI - Auto Mode</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
 
     <style>
-        body { background-color: #111; color: white; }
-        .camera-wrapper {
+        body { background-color: #0f172a; color: white; }
+        .camera-container {
             position: relative;
             width: 100%;
             max-width: 640px;
             margin: 0 auto;
-            border-radius: 12px;
+            border-radius: 16px;
             overflow: hidden;
-            box-shadow: 0 0 20px rgba(0, 150, 255, 0.3);
+            border: 1px solid #334155; /* Border container tipis aja */
+            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
         }
-        video { width: 100%; height: auto; display: block; }
-        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; }
+        video { width: 100%; display: block; }
+        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
         
-        /* Efek Garis Scanning Biar Keren */
-        .scan-line {
+        /* Garis Scan Animasi */
+        .scan-laser {
             position: absolute;
             width: 100%;
-            height: 4px;
+            height: 2px;
             background: #00ff00;
-            box-shadow: 0 0 15px #00ff00;
-            animation: scanAnim 3s infinite linear;
+            box-shadow: 0 0 10px #00ff00;
+            animation: scanDown 2.5s infinite linear;
             z-index: 5;
             opacity: 0.6;
-            display: none; /* Muncul saat scanning */
+            display: none;
         }
-        @keyframes scanAnim {
-            0% { top: 0%; }
-            50% { top: 100%; }
-            100% { top: 0%; }
+        @keyframes scanDown {
+            0% { top: 0%; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
         }
     </style>
 </head>
-<body class="min-h-screen flex flex-col items-center p-4">
+<body class="min-h-screen flex flex-col items-center p-4 font-sans">
 
-    <div class="text-center mb-4 z-10">
-        <h1 class="text-2xl font-bold text-blue-400">Smart Auto Scanner</h1>
-        <p class="text-xs text-gray-400">Powered by Python & Laravel</p>
+    <div class="text-center mb-6">
+        <h1 class="text-xl font-bold text-white tracking-wide">
+            Sancaka AI Scanner
+        </h1>
+        <p class="text-[10px] text-slate-400 uppercase tracking-widest">Auto Detect Mode</p>
     </div>
 
-    <div class="camera-wrapper border-2 border-gray-700 relative">
+    <div class="camera-container">
         <video id="video" autoplay playsinline muted></video>
         <canvas id="canvas"></canvas>
-        <div id="scanLine" class="scan-line"></div>
-        
-        <div id="statusBadge" class="absolute top-4 right-4 bg-black/70 px-3 py-1 rounded-full text-xs font-mono hidden">
-            <span class="w-2 h-2 rounded-full bg-green-500 inline-block mr-1 animate-pulse"></span>
-            <span id="statusText">Standby</span>
+        <div id="scanLaser" class="scan-laser"></div>
+
+        <div class="absolute top-3 right-3 bg-black/60 backdrop-blur px-3 py-1 rounded-full border border-white/10 flex items-center gap-2 shadow-sm">
+            <div id="statusDot" class="w-1.5 h-1.5 rounded-full bg-gray-500"></div>
+            <span id="statusText" class="text-[10px] font-mono text-gray-300 uppercase">Idle</span>
         </div>
 
-        <div id="overlayStart" class="absolute inset-0 bg-black/80 flex items-center justify-center z-20">
-            <button onclick="startAutoScan()" class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-full font-bold shadow-lg transition transform hover:scale-105 flex items-center gap-2">
-                <i class="fas fa-camera"></i> Mulai Auto Scan
+        <div id="startOverlay" class="absolute inset-0 bg-slate-900/95 flex flex-col items-center justify-center z-20">
+            <button onclick="startAutoMode()" class="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-xl font-bold shadow-lg transition transform hover:scale-105 flex items-center gap-2">
+                <i class="fas fa-play"></i> Mulai
             </button>
+            <p class="text-slate-500 text-xs mt-4">Kamera akan memotret otomatis.</p>
         </div>
     </div>
 
-    <div id="resultCard" class="mt-4 w-full max-w-md bg-gray-800 p-4 rounded-xl border-l-4 border-green-500 hidden">
-        <h3 class="text-xs font-bold text-gray-400 uppercase mb-1">Data Terbaca:</h3>
-        <p id="resultText" class="text-lg font-mono text-green-400 break-all">...</p>
+    <div id="resultBox" class="mt-4 w-full max-w-md hidden">
+        <div class="bg-slate-800 border border-slate-700 p-3 rounded-lg flex items-center gap-3 shadow-lg">
+            <div class="bg-green-500/10 p-2 rounded-md">
+                <i class="fas fa-qrcode text-green-500 text-xl"></i>
+            </div>
+            <div class="overflow-hidden">
+                <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Terdeteksi</h3>
+                <p id="resultText" class="text-sm font-mono text-white font-bold break-all leading-tight">...</p>
+            </div>
+        </div>
     </div>
 
-    <div class="mt-6 flex gap-4">
-        <button onclick="switchCamera()" class="px-4 py-2 bg-gray-700 rounded-lg text-sm hover:bg-gray-600">
-            <i class="fas fa-sync-alt"></i> Balik Kamera
-        </button>
-        <button onclick="stopAutoScan()" class="px-4 py-2 bg-red-900/50 text-red-300 rounded-lg text-sm hover:bg-red-900">
-            <i class="fas fa-stop"></i> Stop
-        </button>
-    </div>
+    <button onclick="switchCamera()" class="mt-6 px-5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-full text-xs font-medium transition text-slate-300 flex items-center gap-2">
+        <i class="fas fa-sync-alt text-gray-400"></i> Ganti Kamera
+    </button>
 
     <script>
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
-        const overlayStart = document.getElementById('overlayStart');
-        const scanLine = document.getElementById('scanLine');
-        const statusBadge = document.getElementById('statusBadge');
+        const scanLaser = document.getElementById('scanLaser');
+        const statusDot = document.getElementById('statusDot');
         const statusText = document.getElementById('statusText');
-        const resultCard = document.getElementById('resultCard');
+        const startOverlay = document.getElementById('startOverlay');
+        const resultBox = document.getElementById('resultBox');
         const resultText = document.getElementById('resultText');
 
         let stream;
-        let facingMode = 'environment';
-        let isProcessing = false; // Mencegah request bertumpuk
+        let facingMode = 'environment'; // Kamera belakang
         let scanInterval;
+        let isProcessing = false;
 
-        // 1. MULAI KAMERA & AUTO SCAN
-        async function startAutoScan() {
+        // 1. Mulai Aplikasi
+        async function startAutoMode() {
             try {
                 if (stream) stream.getTracks().forEach(t => t.stop());
                 
@@ -107,17 +114,17 @@
                 });
                 
                 video.srcObject = stream;
-                overlayStart.classList.add('hidden');
-                scanLine.style.display = 'block';
-                statusBadge.classList.remove('hidden');
+                startOverlay.classList.add('hidden');
+                scanLaser.style.display = 'block';
 
                 video.onloadedmetadata = () => {
                     canvas.width = video.videoWidth;
                     canvas.height = video.videoHeight;
                     
-                    // MULAI LOOPING OTOMATIS (Setiap 3 Detik)
-                    // Jangan ubah jadi di bawah 2000ms (2 detik) agar server aman!
-                    scanInterval = setInterval(processFrame, 3000); 
+                    // MULAI LOOP OTOMATIS (Jeda 3 Detik)
+                    scanInterval = setInterval(captureAndSend, 3000);
+                    
+                    updateStatus('Ready', 'green');
                 };
 
             } catch (err) {
@@ -125,21 +132,20 @@
             }
         }
 
-        // 2. PROSES FRAME (Kirim ke Python)
-        async function processFrame() {
-            // Jika masih memproses foto sebelumnya, skip dulu (biar gak macet)
-            if (isProcessing) return; 
-
+        // 2. Fungsi Foto & Kirim ke Python
+        async function captureAndSend() {
+            if (isProcessing) return;
+            
             isProcessing = true;
-            statusText.innerText = "Menganalisa...";
-            statusText.classList.add('text-yellow-400');
+            updateStatus('Scanning...', 'yellow');
 
-            // Ambil gambar dari video
             const tempCanvas = document.createElement('canvas');
             tempCanvas.width = video.videoWidth;
             tempCanvas.height = video.videoHeight;
-            tempCanvas.getContext('2d').drawImage(video, 0, 0);
-            const imageData = tempCanvas.toDataURL('image/jpeg', 0.7); // Kualitas 0.7 biar ringan
+            const tCtx = tempCanvas.getContext('2d');
+            tCtx.drawImage(video, 0, 0);
+            
+            const imageData = tempCanvas.toDataURL('image/jpeg', 0.6); // Kualitas 0.6 (lebih ringan)
 
             try {
                 const response = await fetch("{{ route('detection.process') }}", {
@@ -154,84 +160,89 @@
                 const result = await response.json();
 
                 if (result.status === 'success') {
-                    drawBoxes(result.data);
+                    drawResult(result.data);
+                    updateStatus('OK', 'blue');
                 } else {
                     console.error("Server Error:", result);
+                    updateStatus('Error', 'red');
                 }
 
             } catch (err) {
-                console.error("Koneksi Error:", err);
+                console.error("Network Error:", err);
+                updateStatus('Retry', 'red');
             } finally {
                 isProcessing = false;
-                statusText.innerText = "Standby";
-                statusText.classList.remove('text-yellow-400');
+                setTimeout(() => {
+                    if(!isProcessing) updateStatus('Ready', 'green');
+                }, 1000);
             }
         }
 
-        // 3. GAMBAR HASIL DETEKSI
-        function drawBoxes(objects) {
-            // Bersihkan canvas lama
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // 3. Gambar Kotak (YANG DIUBAH DI SINI)
+        function drawResult(objects) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height); 
             
-            let detectedText = [];
+            let foundData = [];
+
+            if (objects.length === 0) return;
 
             objects.forEach(obj => {
                 const [x1, y1, x2, y2] = obj.box;
                 const width = x2 - x1;
                 const height = y2 - y1;
-                
-                let color = '#00FF00'; // Default Hijau
+
+                let color = '#22c55e'; // Hijau
                 let label = obj.label;
 
-                // Logika Warna & Label khusus
                 if (obj.type === 'barcode') {
-                    color = '#ff9900'; // Oranye untuk Resi
-                    label = "📦 " + obj.text_content;
-                    detectedText.push(obj.text_content);
+                    color = '#f59e0b'; // Orange
+                    label = obj.text_content;
+                    foundData.push(obj.text_content);
                 } else if (obj.type === 'face') {
-                    color = '#00ccff'; // Biru untuk Wajah
-                    label = "👤 Wajah";
+                    color = '#3b82f6'; // Biru
+                    label = "Face";
                 }
 
-                // Gambar Kotak
+                // --- SETTINGAN BARU: GARIS TIPIS ---
                 ctx.strokeStyle = color;
-                ctx.lineWidth = 4;
+                ctx.lineWidth = 2; // TEBAL GARIS (Dulu 4, sekarang 2)
                 ctx.strokeRect(x1, y1, width, height);
 
-                // Background Label
-                ctx.font = "bold 16px Arial";
+                // --- LABEL RAPI ---
+                ctx.font = "bold 12px Arial"; // Font lebih kecil (12px)
                 const textWidth = ctx.measureText(label).width;
+                
+                // Background label pas sesuai teks
                 ctx.fillStyle = color;
-                ctx.fillRect(x1, y1 > 25 ? y1 - 25 : 0, textWidth + 10, 25);
+                ctx.fillRect(x1, y1 > 20 ? y1 - 20 : 0, textWidth + 8, 20);
 
                 // Teks Label
-                ctx.fillStyle = "black";
-                ctx.fillText(label, x1 + 5, y1 > 25 ? y1 - 7 : 18);
+                ctx.fillStyle = "#000"; // Tulisan Hitam
+                ctx.fillText(label, x1 + 4, y1 > 20 ? y1 - 5 : 14);
             });
 
-            // Tampilkan hasil teks resi di bawah jika ada
-            if (detectedText.length > 0) {
-                resultText.innerText = detectedText.join(', ');
-                resultCard.classList.remove('hidden');
-            } else {
-                resultCard.classList.add('hidden');
+            // Tampilkan data resi di kotak bawah
+            if (foundData.length > 0) {
+                resultText.innerText = foundData.join(', ');
+                resultBox.classList.remove('hidden');
             }
-        }
-
-        // 4. Utility Functions
-        function stopAutoScan() {
-            clearInterval(scanInterval);
-            if (stream) stream.getTracks().forEach(t => t.stop());
-            scanLine.style.display = 'none';
-            overlayStart.classList.remove('hidden');
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            resultCard.classList.add('hidden');
         }
 
         function switchCamera() {
             facingMode = facingMode === 'user' ? 'environment' : 'user';
-            clearInterval(scanInterval); // Stop dulu
-            startAutoScan(); // Mulai lagi dengan kamera baru
+            clearInterval(scanInterval);
+            startAutoMode();
+        }
+
+        function updateStatus(text, colorName) {
+            statusText.innerText = text;
+            const colors = {
+                'green': 'bg-green-500',
+                'yellow': 'bg-yellow-500',
+                'red': 'bg-red-500',
+                'blue': 'bg-blue-500'
+            };
+            statusDot.className = `w-1.5 h-1.5 rounded-full ${colors[colorName] || 'bg-gray-500'} ${colorName === 'green' ? 'animate-pulse' : ''}`;
         }
     </script>
 </body>
