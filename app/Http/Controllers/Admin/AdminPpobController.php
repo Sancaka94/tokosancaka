@@ -136,18 +136,31 @@ class AdminPpobController extends Controller
         return $query;
     }
 
-    /**
-     * Menampilkan detail transaksi spesifik.
-     */
-    public function show($id)
-    {
-        $transaction = PpobTransaction::with('user')->findOrFail($id);
-        
-        // Decode JSON response jika ada, agar rapi saat ditampilkan
-        $response_data = json_decode($transaction->desc, true) ?? $transaction->desc;
 
-        return view('admin.ppob.data.show', compact('transaction', 'response_data'));
+
+public function show($id)
+{
+    // 1. Gunakan Eager Loading untuk performa
+    $transaction = PpobTransaction::with('user')->findOrFail($id);
+
+    // 2. Logika Parsing JSON yang Lebih Aman
+    $responseData = $transaction->desc;
+
+    // Cek apakah data masih berupa string sebelum di-decode
+    if (is_string($responseData)) {
+        $decoded = json_decode($responseData, true);
+        // Jika decode berhasil (valid JSON), gunakan hasilnya. Jika tidak, tetap string asli.
+        if (json_last_error() === JSON_ERROR_NONE) {
+            $responseData = $decoded;
+        }
     }
+
+    // 3. Return View
+    return view('admin.ppob.data.show', [
+        'transaction'   => $transaction,
+        'response_data' => $responseData
+    ]);
+}
 
     /**
      * Update status transaksi secara manual (Emergency use).
