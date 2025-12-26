@@ -108,6 +108,41 @@ use App\Http\Controllers\BroadcastController;
 //Aplikasi Python AI Detection
 use App\Http\Controllers\DetectionController;
 
+use App\Models\Product;
+
+Route::post('/apps/store', function (Request $request) {
+    try {
+        // Cek apakah produk dengan SKU ini sudah ada
+        $product = Product::where('sku', $request->barcode)->first();
+
+        if ($product) {
+            // Jika ada, UPDATE data
+            $product->update([
+                'name' => $request->name,
+                'price' => $request->price
+            ]);
+            $msg = 'Produk Berhasil Diupdate!';
+        } else {
+            // Jika belum ada, BUAT BARU
+            Product::create([
+                'sku' => $request->barcode, // Barcode masuk ke kolom SKU
+                'name' => $request->name,
+                'price' => $request->price,
+                'store_id' => 4, // DEFAULT STORE ID (Sesuaikan dengan toko utama Anda)
+                'category_id' => 203, // DEFAULT CATEGORY (Sesuaikan)
+                'status' => 'active',
+                'stock' => 10,
+                'is_new' => 1
+            ]);
+            $msg = 'Produk Baru Disimpan!';
+        }
+
+        return response()->json(['status' => 'success', 'message' => $msg]);
+    } catch (\Exception $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()]);
+    }
+})->name('apps.store');
+
 
 // 1. Route untuk Menampilkan Halaman Scanner
 Route::get('/apps', function () {
