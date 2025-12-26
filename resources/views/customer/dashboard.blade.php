@@ -138,7 +138,7 @@
                         {{ $order->nomor_invoice }}
                     </td>
                     
-                    {{-- LOGIC EKSPEDISI (UPDATE: TAMBAH IDX & J&T CARGO) --}}
+                    {{-- LOGIC EKSPEDISI (LENGKAP: IDX, J&T CARGO, DLL) --}}
                     <td class="px-6 py-4 whitespace-nowrap">
                         @php
                             $rawExpedition = strtolower($order->expedition ?? '');
@@ -146,68 +146,36 @@
                             $logoFile = 'default.png'; 
 
                             // --- LOGIKA PENCOCOKAN ---
-                            // J&T Cargo
                             if (str_contains($rawExpedition, 'jtcargo')) {
-                                $courierName = 'J&T Cargo'; 
-                                $logoFile = 'jtcargo.png';
-                            } 
-                            // ID Express (idx)
-                            elseif (str_contains($rawExpedition, 'idx')) {
-                                $courierName = 'ID Express'; 
-                                $logoFile = 'idx.png';
-                            }
-                            // J&T Express (Biasa)
-                            elseif (str_contains($rawExpedition, 'jnt') || str_contains($rawExpedition, 'j&t')) {
-                                $courierName = 'J&T Express'; 
-                                $logoFile = 'jnt.png';
-                            } 
-                            elseif (str_contains($rawExpedition, 'jne')) {
-                                $courierName = 'JNE'; 
-                                $logoFile = 'jne.png';
-                            } 
-                            elseif (str_contains($rawExpedition, 'sicepat')) {
-                                $courierName = 'SiCepat'; 
-                                $logoFile = 'sicepat.png';
-                            } 
-                            elseif (str_contains($rawExpedition, 'posindonesia') || str_contains($rawExpedition, 'pos')) {
-                                $courierName = 'POS Indonesia'; 
-                                $logoFile = 'posindonesia.png';
-                            } 
-                            elseif (str_contains($rawExpedition, 'anteraja')) {
-                                $courierName = 'AnterAja'; 
-                                $logoFile = 'anteraja.png';
-                            } 
-                            elseif (str_contains($rawExpedition, 'spx') || str_contains($rawExpedition, 'shopee')) {
-                                $courierName = 'SPX Express'; 
-                                $logoFile = 'spx.png';
-                            } 
-                            elseif (str_contains($rawExpedition, 'ninja')) {
-                                $courierName = 'Ninja Xpress'; 
-                                $logoFile = 'ninja.png';
-                            } 
-                            elseif (str_contains($rawExpedition, 'lion')) {
-                                $courierName = 'Lion Parcel'; 
-                                $logoFile = 'lion.png';
-                            } 
-                            elseif (str_contains($rawExpedition, 'tiki')) {
-                                $courierName = 'TIKI'; 
-                                $logoFile = 'tiki.png';
-                            } 
-                            elseif (str_contains($rawExpedition, 'rpx')) {
-                                $courierName = 'RPX'; 
-                                $logoFile = 'rpx.png';
-                            } 
-                            elseif (str_contains($rawExpedition, 'gosend')) {
-                                $courierName = 'GoSend'; 
-                                $logoFile = 'gosend.png';
-                            } 
-                            elseif (str_contains($rawExpedition, 'grab')) {
-                                $courierName = 'GrabExpress'; 
-                                $logoFile = 'grab.png';
-                            } 
-                            elseif (str_contains($rawExpedition, 'borzo')) {
-                                $courierName = 'Borzo'; 
-                                $logoFile = 'borzo.png';
+                                $courierName = 'J&T Cargo'; $logoFile = 'jtcargo.png';
+                            } elseif (str_contains($rawExpedition, 'idx')) {
+                                $courierName = 'ID Express'; $logoFile = 'idx.png';
+                            } elseif (str_contains($rawExpedition, 'jnt') || str_contains($rawExpedition, 'j&t')) {
+                                $courierName = 'J&T Express'; $logoFile = 'jnt.png';
+                            } elseif (str_contains($rawExpedition, 'jne')) {
+                                $courierName = 'JNE'; $logoFile = 'jne.png';
+                            } elseif (str_contains($rawExpedition, 'sicepat')) {
+                                $courierName = 'SiCepat'; $logoFile = 'sicepat.png';
+                            } elseif (str_contains($rawExpedition, 'posindonesia') || str_contains($rawExpedition, 'pos')) {
+                                $courierName = 'POS Indonesia'; $logoFile = 'posindonesia.png';
+                            } elseif (str_contains($rawExpedition, 'anteraja')) {
+                                $courierName = 'AnterAja'; $logoFile = 'anteraja.png';
+                            } elseif (str_contains($rawExpedition, 'spx') || str_contains($rawExpedition, 'shopee')) {
+                                $courierName = 'SPX Express'; $logoFile = 'spx.png';
+                            } elseif (str_contains($rawExpedition, 'ninja')) {
+                                $courierName = 'Ninja Xpress'; $logoFile = 'ninja.png';
+                            } elseif (str_contains($rawExpedition, 'lion')) {
+                                $courierName = 'Lion Parcel'; $logoFile = 'lion.png';
+                            } elseif (str_contains($rawExpedition, 'tiki')) {
+                                $courierName = 'TIKI'; $logoFile = 'tiki.png';
+                            } elseif (str_contains($rawExpedition, 'rpx')) {
+                                $courierName = 'RPX'; $logoFile = 'rpx.png';
+                            } elseif (str_contains($rawExpedition, 'gosend')) {
+                                $courierName = 'GoSend'; $logoFile = 'gosend.png';
+                            } elseif (str_contains($rawExpedition, 'grab')) {
+                                $courierName = 'GrabExpress'; $logoFile = 'grab.png';
+                            } elseif (str_contains($rawExpedition, 'borzo')) {
+                                $courierName = 'Borzo'; $logoFile = 'borzo.png';
                             }
                         @endphp
 
@@ -234,16 +202,12 @@
                     </td>
                     
                     <td class="px-6 py-4 whitespace-nowrap text-center">
-                        @if(!empty($order->nomor_invoice) && !empty($order->no_resi))
-                            <a href="https://tokosancaka.com/tracking/search?resi={{ $order->nomor_invoice }}&courier={{ $order->expedition }}" 
-                               target="_blank" 
-                               class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 hover:text-indigo-700 border border-indigo-200 rounded-lg text-xs font-bold transition-colors duration-200"
-                               title="Lacak Resi: {{ $order->nomor_invoice }}">
-                                <i class="fas fa-search-location"></i> Lacak
-                            </a>
-                        @else
-                            <span class="text-xs text-gray-400 italic">Resi Belum Ada</span>
-                        @endif
+                        <a href="https://tokosancaka.com/tracking/search?resi={{ $order->nomor_invoice }}" 
+                           target="_blank" 
+                           class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-red-600 hover:bg-indigo-100 hover:text-red-700 border border-indigo-200 rounded-lg text-xs font-bold transition-colors duration-200"
+                           title="Lacak Invoice: {{ $order->nomor_invoice }}">
+                            <i class="fas fa-search-location"></i> Lacak
+                        </a>
                     </td>
                 </tr>
                 @empty
