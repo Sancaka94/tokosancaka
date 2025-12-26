@@ -41,6 +41,7 @@
         <canvas id="canvas"></canvas>
     </div>
 
+    
     <div id="hudPanel" class="hud-panel z-20" onclick="openManualInput()">
         <div class="flex items-center gap-4">
             <div id="iconType" class="text-3xl">🔍</div>
