@@ -136,33 +136,6 @@ class AdminPpobController extends Controller
         return $query;
     }
 
-public function show($id)
-{
-    // 1. Ambil data transaksi
-    $transaction = PpobTransaction::with('user')->findOrFail($id);
-
-    // 2. TANGKAP JSON SEBAGAI ARRAY
-    // Ambil data mentah
-    $rawDesc = $transaction->desc;
-    
-    // Default array kosong jika null
-    $responseData = []; 
-
-    // Cek: Jika tipe datanya string, kita decode. 
-    // Jika sudah array (karena $casts di model), biarkan saja.
-    if (is_string($rawDesc)) {
-        // Parameter 'true' membuat hasil menjadi ARRAY, bukan Object.
-        $responseData = json_decode($rawDesc, true);
-    } elseif (is_array($rawDesc)) {
-        $responseData = $rawDesc;
-    }
-
-    // 3. Kirim ke View
-    return view('admin.ppob.data.show', [
-        'transaction'   => $transaction,
-        'response_data' => $responseData // Ini sekarang sudah jadi Array
-    ]);
-}
 
     /**
      * Update status transaksi secara manual (Emergency use).
