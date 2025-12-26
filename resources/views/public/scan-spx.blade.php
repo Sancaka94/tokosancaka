@@ -189,10 +189,18 @@
                         <div class="card border-0 shadow-sm">
                             <div class="card-body p-4">
                                 <h2 class="h5 fw-bold text-dark mb-3">Hasil Scan Sesi Ini</h2>
-                                <div class="bg-success p-3 rounded-3 mb-3 text-center">
-                                    <p class="text-muted mb-1">Jumlah Paket:</p>
-                                    <p id="pickup-count" class="h1 fw-bolder text-primary">0</p>
-                                </div>
+                                <div class="p-4 rounded-4 mb-3 text-center"
+     style="background: rgba(25, 135, 84, 0.12); border: 1px solid rgba(25, 135, 84, 0.35);">
+    
+    <p class="mb-1 fw-semibold" style="color:#198754;">
+        Jumlah Paket
+    </p>
+
+    <p id="pickup-count" class="display-6 fw-bolder mb-0" style="color:#198754;">
+        0
+    </p>
+</div>
+
                                 <hr>
                                 <h3 class="h6 fw-semibold text-dark mb-3">Riwayat Scan:</h3>
                                 <div id="scan-history" class="vstack gap-2" style="max-height: 260px; overflow-y: auto;">
