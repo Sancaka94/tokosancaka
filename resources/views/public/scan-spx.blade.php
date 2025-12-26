@@ -188,7 +188,7 @@
                     <div class="col-lg-5">
                         <div class="card border-0 shadow-sm">
                             <div class="card-body p-4">
-                                <h2 class="h5 fw-bold text-dark mb-3">Hasil Scan Sesi Ini</h2>
+                                <h2 class="h5 fw-bold text-dark mb-3">Hasil Scan Paket Anda</h2>
                                 <div class="p-4 rounded-4 mb-3 text-center"
      style="background: rgba(25, 135, 84, 0.12); border: 1px solid rgba(25, 135, 84, 0.35);">
     
