@@ -155,30 +155,49 @@
 
         // --- 2. SCANNING PROCESS ---
         async function scanFrame() {
-            const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = video.videoWidth;
-            tempCanvas.height = video.videoHeight;
-            tempCanvas.getContext('2d').drawImage(video, 0, 0);
+            const tCanvas = document.createElement('canvas');
+            tCanvas.width = video.videoWidth;
+            tCanvas.height = video.videoHeight;
+            tCanvas.getContext('2d').drawImage(video, 0, 0);
             
-            updateStatus("PROCESSING...", "text-yellow-400");
+            // Gunakan kualitas lebih rendah (0.5) agar ukuran file kecil dan tidak bikin server timeout
+            const imageData = tCanvas.toDataURL('image/jpeg', 0.5); 
 
             try {
                 const res = await fetch("{{ route('detection.process') }}", {
                     method: "POST",
                     headers: { 
-                        "Content-Type": "application/json", 
-                        "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content 
+                        "Content-Type": "application/json",
+                        "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content,
+                        "Accept": "application/json" // Pastikan minta JSON
                     },
-                    body: JSON.stringify({ image: tempCanvas.toDataURL('image/jpeg', 0.6) })
+                    body: JSON.stringify({ image: imageData })
                 });
+
+                // Cek jika server error (500)
+                if (!res.ok) {
+                    const errorText = await res.text();
+                    console.error("SERVER ERROR:", errorText);
+                    updateStatus("SERVER ERROR", "text-red-500");
+                    return; // Stop
+                }
+
                 const json = await res.json();
                 
                 if (json.status === 'success') {
-                    lastObjects = json.data; // Simpan ke variabel global
+                    lastObjects = json.data;
                     drawHUD(json.data);
                     updateStatus("ONLINE", "text-teal-500");
+                } else {
+                    console.error("APP ERROR:", json.message);
+                    console.warn("PYTHON DEBUG:", json.debug_output);
+                    updateStatus("AI ERROR", "text-red-500");
                 }
-            } catch (e) { console.error(e); updateStatus("CONNECTION LOST", "text-red-500"); }
+
+            } catch (e) { 
+                console.error("NETWORK ERROR:", e); 
+                updateStatus("CONNECTION LOST", "text-red-500"); 
+            }
         }
 
         // --- 3. DRAW HUD (TAMPILAN CANGGIH) ---
