@@ -224,7 +224,7 @@
 <div id="promo-offer" class="promo-box-blue d-none">
     <div style="display: flex; align-items: flex-start; gap: 15px;">
         <div style="font-size: 24px;">🚀</div> <div>
-            <strong style="font-size: 16px;">MAU FITUR LEBIH LENGKAP? GABUNG MITRA SANCAKA!</strong>
+            <strong style="font-size: 16px;">MAU FITUR LEBIH LENGKAP? GABUNG MITRA SANCAKA! GRATISSSS...</strong>
             <p style="font-size: 13px; margin-bottom: 8px; opacity: 0.8;">Dapatkan akses eksklusif dengan menjadi member/agen kami:</p>
             
             <ul class="promo-list">
