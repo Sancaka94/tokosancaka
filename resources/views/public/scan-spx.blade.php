@@ -72,9 +72,9 @@
         <div class="spx-alert-content">
             <strong>INFORMASI PENTING:</strong>
             <p>
-                KAMERA HANYA AKAN MERESPON JIKA ANDA MEN-SCAN 
-                <span class="highlight">BARCODE 2D (QR)</span> ATAU RESI BERAWALAN 
-                <span class="highlight">SPX</span>. FORMAT LAIN AKAN DIABAIKAN.
+                FOKUSKAN KAMERA ANDA ATAU KETIK PADA KOLOM RESI, KEMUDIAN TEKAN (ENTER) UNTUK MEMINDAI, DAN PASTIKAN HANYA SCAN
+                <span class="highlight">BARCODE 2D (QR) KOTAK PERSEGI</span> ATAU INPUT RESI BERAWALAN 
+                <span class="highlight">SPX / ID </span>. FORMAT LAIN AKAN DIABAIKAN.
             </p>
         </div>
     </div>
