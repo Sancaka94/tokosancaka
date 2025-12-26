@@ -140,6 +140,7 @@ class AdminPpobController extends Controller
 
 public function show($id)
 {
+    dd('STOP DISINI - FILE BENAR'); // <--- Tambahkan Baris Ini
     // 1. Gunakan Eager Loading untuk performa
     $transaction = PpobTransaction::with('user')->findOrFail($id);
 
