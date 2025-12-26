@@ -111,7 +111,7 @@
                     <div>
                         <p class="font-bold text-gray-900">{{ $transaction->user->nama_lengkap ?? ($transaction->user->name ?? 'User Terhapus') }}</p>
                         <p class="text-sm text-gray-500">{{ $transaction->user->email ?? '-' }}</p>
-                        <p class="text-xs text-gray-400 mt-1"><i class="fas fa-phone-alt mr-1"></i> {{ $transaction->user->no_hp ?? '-' }}</p>
+                        <p class="text-xs text-gray-400 mt-1"><i class="fas fa-phone-alt mr-1"></i> {{ $transaction->user->no_wa ?? '-' }}</p>
                     </div>
                 </div>
             </div>
