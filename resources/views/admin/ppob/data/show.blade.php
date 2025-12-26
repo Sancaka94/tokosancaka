@@ -8,7 +8,7 @@
     {{-- HEADER & TOMBOL KEMBALI --}}
     <div class="flex items-center justify-between">
         <div>
-            <a href="{{ route('admin.ppob.index') }}" class="text-sm text-gray-500 hover:text-blue-600 transition mb-1 inline-flex items-center gap-1">
+            <a href="{{ route('/') }}" class="text-sm text-gray-500 hover:text-blue-600 transition mb-1 inline-flex items-center gap-1">
                 <i class="fas fa-arrow-left"></i> Kembali ke Riwayat
             </a>
             <h2 class="text-2xl font-bold text-gray-800">Detail Transaksi</h2>
