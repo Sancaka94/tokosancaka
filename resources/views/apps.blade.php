@@ -3,191 +3,235 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sancaka Live Scanner</title>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>Sancaka Smart Auto-Scanner</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
 
     <style>
-        body { background-color: #1a1a1a; color: white; }
-        .camera-container {
+        body { background-color: #111; color: white; }
+        .camera-wrapper {
             position: relative;
             width: 100%;
             max-width: 640px;
             margin: 0 auto;
-            border-radius: 16px;
+            border-radius: 12px;
             overflow: hidden;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            box-shadow: 0 0 20px rgba(0, 150, 255, 0.3);
         }
-        /* Video dan Canvas harus bertumpuk presisi */
-        video {
-            display: block;
-            width: 100%;
-            height: auto;
-        }
-        canvas {
+        video { width: 100%; height: auto; display: block; }
+        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; }
+        
+        /* Efek Garis Scanning Biar Keren */
+        .scan-line {
             position: absolute;
-            top: 0;
-            left: 0;
             width: 100%;
-            height: 100%;
-            z-index: 10;
+            height: 4px;
+            background: #00ff00;
+            box-shadow: 0 0 15px #00ff00;
+            animation: scanAnim 3s infinite linear;
+            z-index: 5;
+            opacity: 0.6;
+            display: none; /* Muncul saat scanning */
+        }
+        @keyframes scanAnim {
+            0% { top: 0%; }
+            50% { top: 100%; }
+            100% { top: 0%; }
         }
     </style>
 </head>
-<body class="min-h-screen flex flex-col items-center justify-center p-4">
+<body class="min-h-screen flex flex-col items-center p-4">
 
-    <div class="text-center mb-4">
-        <h1 class="text-2xl font-bold text-blue-400">Sancaka Live AI</h1>
-        <p class="text-xs text-gray-400">Mode Real-time (Client Side)</p>
+    <div class="text-center mb-4 z-10">
+        <h1 class="text-2xl font-bold text-blue-400">Smart Auto Scanner</h1>
+        <p class="text-xs text-gray-400">Powered by Python & Laravel</p>
     </div>
 
-    <div class="camera-container ring-2 ring-blue-500">
-        <video id="video" playsinline muted autoplay></video>
+    <div class="camera-wrapper border-2 border-gray-700 relative">
+        <video id="video" autoplay playsinline muted></video>
         <canvas id="canvas"></canvas>
+        <div id="scanLine" class="scan-line"></div>
         
-        <div id="loading" class="absolute inset-0 bg-black flex flex-col items-center justify-center z-20">
-            <div class="animate-spin rounded-full h-10 w-10 border-4 border-blue-500 border-t-transparent mb-3"></div>
-            <p class="text-blue-400 font-semibold animate-pulse">Menyiapkan Otak AI...</p>
+        <div id="statusBadge" class="absolute top-4 right-4 bg-black/70 px-3 py-1 rounded-full text-xs font-mono hidden">
+            <span class="w-2 h-2 rounded-full bg-green-500 inline-block mr-1 animate-pulse"></span>
+            <span id="statusText">Standby</span>
+        </div>
+
+        <div id="overlayStart" class="absolute inset-0 bg-black/80 flex items-center justify-center z-20">
+            <button onclick="startAutoScan()" class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-full font-bold shadow-lg transition transform hover:scale-105 flex items-center gap-2">
+                <i class="fas fa-camera"></i> Mulai Auto Scan
+            </button>
         </div>
     </div>
 
-    <div class="mt-6 w-full max-w-md flex justify-center gap-4">
-        <button id="btnStart" onclick="startApp()" class="hidden px-8 py-3 bg-green-600 rounded-full font-bold shadow-lg hover:bg-green-500 transition active:scale-95">
-            Mulai Kamera
-        </button>
-        
-        <button id="btnSwitch" onclick="switchCamera()" class="hidden px-6 py-3 bg-gray-700 rounded-full font-bold shadow-lg hover:bg-gray-600 transition active:scale-95 flex items-center gap-2">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-            Ganti Kamera
-        </button>
+    <div id="resultCard" class="mt-4 w-full max-w-md bg-gray-800 p-4 rounded-xl border-l-4 border-green-500 hidden">
+        <h3 class="text-xs font-bold text-gray-400 uppercase mb-1">Data Terbaca:</h3>
+        <p id="resultText" class="text-lg font-mono text-green-400 break-all">...</p>
     </div>
 
-    <div class="mt-4 bg-gray-800 p-3 rounded-lg text-xs text-gray-400 text-center max-w-xs">
-        Mendeteksi: Orang, HP, Laptop, Botol, Kursi, dll.<br>
-        <span class="text-yellow-500">*Tidak bisa membaca teks Resi secara spesifik di mode ini.</span>
+    <div class="mt-6 flex gap-4">
+        <button onclick="switchCamera()" class="px-4 py-2 bg-gray-700 rounded-lg text-sm hover:bg-gray-600">
+            <i class="fas fa-sync-alt"></i> Balik Kamera
+        </button>
+        <button onclick="stopAutoScan()" class="px-4 py-2 bg-red-900/50 text-red-300 rounded-lg text-sm hover:bg-red-900">
+            <i class="fas fa-stop"></i> Stop
+        </button>
     </div>
 
     <script>
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
-        const loading = document.getElementById('loading');
-        const btnStart = document.getElementById('btnStart');
-        const btnSwitch = document.getElementById('btnSwitch');
+        const overlayStart = document.getElementById('overlayStart');
+        const scanLine = document.getElementById('scanLine');
+        const statusBadge = document.getElementById('statusBadge');
+        const statusText = document.getElementById('statusText');
+        const resultCard = document.getElementById('resultCard');
+        const resultText = document.getElementById('resultText');
 
-        let model = undefined;
-        let stream = undefined;
-        let facingMode = 'environment'; // Kamera belakang
-        let isDetecting = false;
+        let stream;
+        let facingMode = 'environment';
+        let isProcessing = false; // Mencegah request bertumpuk
+        let scanInterval;
 
-        // 1. Load Model Saat Halaman Dibuka
-        cocoSsd.load().then(loadedModel => {
-            model = loadedModel;
-            // Sembunyikan loading, munculkan tombol start
-            loading.classList.add('hidden');
-            btnStart.classList.remove('hidden');
-            
-            // Langsung coba start kamera jika user sudah pernah izinkan (opsional)
-        }).catch(err => {
-            alert("Gagal memuat model AI: " + err);
-        });
-
-        // 2. Fungsi Mulai Kamera
-        async function startApp() {
-            btnStart.classList.add('hidden');
-            
+        // 1. MULAI KAMERA & AUTO SCAN
+        async function startAutoScan() {
             try {
-                if (stream) {
-                    stream.getTracks().forEach(track => track.stop());
-                }
-
+                if (stream) stream.getTracks().forEach(t => t.stop());
+                
                 stream = await navigator.mediaDevices.getUserMedia({
-                    video: { 
-                        facingMode: facingMode,
-                        width: { ideal: 640 },
-                        height: { ideal: 480 }
-                    }, 
+                    video: { facingMode: facingMode, width: { ideal: 640 }, height: { ideal: 480 } },
                     audio: false
                 });
-
+                
                 video.srcObject = stream;
+                overlayStart.classList.add('hidden');
+                scanLine.style.display = 'block';
+                statusBadge.classList.remove('hidden');
 
-                // Tunggu video siap
                 video.onloadedmetadata = () => {
-                    video.play();
-                    
-                    // Sesuaikan ukuran canvas dengan video asli
                     canvas.width = video.videoWidth;
                     canvas.height = video.videoHeight;
-
-                    btnSwitch.classList.remove('hidden');
                     
-                    if (!isDetecting) {
-                        isDetecting = true;
-                        detectFrame(); // Mulai loop deteksi
-                    }
+                    // MULAI LOOPING OTOMATIS (Setiap 3 Detik)
+                    // Jangan ubah jadi di bawah 2000ms (2 detik) agar server aman!
+                    scanInterval = setInterval(processFrame, 3000); 
                 };
 
             } catch (err) {
-                alert("Gagal akses kamera: " + err);
-                btnStart.classList.remove('hidden');
+                alert("Gagal akses kamera: " + err.message);
             }
         }
 
-        // 3. Loop Deteksi (Jantung Aplikasi Live)
-        function detectFrame() {
-            // Prediksi frame video saat ini
-            model.detect(video).then(predictions => {
-                renderPredictions(predictions);
-                
-                // Panggil fungsi ini lagi secepat mungkin (Loop)
-                requestAnimationFrame(detectFrame);
-            });
-        }
+        // 2. PROSES FRAME (Kirim ke Python)
+        async function processFrame() {
+            // Jika masih memproses foto sebelumnya, skip dulu (biar gak macet)
+            if (isProcessing) return; 
 
-        // 4. Gambar Kotak Hasil
-        function renderPredictions(predictions) {
-            // Bersihkan canvas dari frame sebelumnya
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            isProcessing = true;
+            statusText.innerText = "Menganalisa...";
+            statusText.classList.add('text-yellow-400');
 
-            predictions.forEach(prediction => {
-                // Filter: Hanya tampilkan jika yakin > 60%
-                if (prediction.score > 0.6) {
-                    const [x, y, width, height] = prediction.bbox;
-                    const text = prediction.class.toUpperCase();
-                    
-                    // Warna khusus
-                    let color = '#00FF00'; // Hijau (Default)
-                    if (text === 'PERSON') color = '#00FFFF'; // Cyan untuk Orang
-                    if (text === 'CELL PHONE') color = '#FF00FF'; // Ungu untuk HP
+            // Ambil gambar dari video
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = video.videoWidth;
+            tempCanvas.height = video.videoHeight;
+            tempCanvas.getContext('2d').drawImage(video, 0, 0);
+            const imageData = tempCanvas.toDataURL('image/jpeg', 0.7); // Kualitas 0.7 biar ringan
 
-                    // Gambar Kotak
-                    ctx.strokeStyle = color;
-                    ctx.lineWidth = 4;
-                    ctx.strokeRect(x, y, width, height);
+            try {
+                const response = await fetch("{{ route('detection.process') }}", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify({ image: imageData })
+                });
 
-                    // Gambar Background Label
-                    ctx.font = 'bold 18px Arial';
-                    const textWidth = ctx.measureText(text).width;
-                    const textHeight = 24;
-                    
-                    ctx.fillStyle = color;
-                    ctx.fillRect(x, y > 24 ? y - 24 : 0, textWidth + 10, textHeight);
+                const result = await response.json();
 
-                    // Gambar Teks
-                    ctx.fillStyle = '#000000';
-                    ctx.fillText(text, x + 5, y > 24 ? y - 6 : 18);
+                if (result.status === 'success') {
+                    drawBoxes(result.data);
+                } else {
+                    console.error("Server Error:", result);
                 }
-            });
+
+            } catch (err) {
+                console.error("Koneksi Error:", err);
+            } finally {
+                isProcessing = false;
+                statusText.innerText = "Standby";
+                statusText.classList.remove('text-yellow-400');
+            }
         }
 
-        // 5. Ganti Kamera
+        // 3. GAMBAR HASIL DETEKSI
+        function drawBoxes(objects) {
+            // Bersihkan canvas lama
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            let detectedText = [];
+
+            objects.forEach(obj => {
+                const [x1, y1, x2, y2] = obj.box;
+                const width = x2 - x1;
+                const height = y2 - y1;
+                
+                let color = '#00FF00'; // Default Hijau
+                let label = obj.label;
+
+                // Logika Warna & Label khusus
+                if (obj.type === 'barcode') {
+                    color = '#ff9900'; // Oranye untuk Resi
+                    label = "📦 " + obj.text_content;
+                    detectedText.push(obj.text_content);
+                } else if (obj.type === 'face') {
+                    color = '#00ccff'; // Biru untuk Wajah
+                    label = "👤 Wajah";
+                }
+
+                // Gambar Kotak
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 4;
+                ctx.strokeRect(x1, y1, width, height);
+
+                // Background Label
+                ctx.font = "bold 16px Arial";
+                const textWidth = ctx.measureText(label).width;
+                ctx.fillStyle = color;
+                ctx.fillRect(x1, y1 > 25 ? y1 - 25 : 0, textWidth + 10, 25);
+
+                // Teks Label
+                ctx.fillStyle = "black";
+                ctx.fillText(label, x1 + 5, y1 > 25 ? y1 - 7 : 18);
+            });
+
+            // Tampilkan hasil teks resi di bawah jika ada
+            if (detectedText.length > 0) {
+                resultText.innerText = detectedText.join(', ');
+                resultCard.classList.remove('hidden');
+            } else {
+                resultCard.classList.add('hidden');
+            }
+        }
+
+        // 4. Utility Functions
+        function stopAutoScan() {
+            clearInterval(scanInterval);
+            if (stream) stream.getTracks().forEach(t => t.stop());
+            scanLine.style.display = 'none';
+            overlayStart.classList.remove('hidden');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            resultCard.classList.add('hidden');
+        }
+
         function switchCamera() {
             facingMode = facingMode === 'user' ? 'environment' : 'user';
-            startApp();
+            clearInterval(scanInterval); // Stop dulu
+            startAutoScan(); // Mulai lagi dengan kamera baru
         }
     </script>
 </body>
