@@ -228,6 +228,35 @@
                     <li><i class="fas fa-wallet"></i> Jadi AGEN Loket PPOB Dengan Harga Kulak Kompetitif dan Realtime (Jual Pulsa, Token Listrik, Bayar Air PDAM, dll).</li>
                     <li><i class="fas fa-chart-line"></i> Monitor Jumlah Kiriman Paket ALL Ekpedisi & SPX Realtime.</li>
                     <li><i class="fas fa-search-location"></i> Lacak Status & Surat Jalan SPX dengan Detail.</li>
+                    
+                    <li>
+                        <i class="fas fa-truck-fast"></i> 
+                    <span>
+                        <strong>Kirim Paket Multi Ekspedisi:</strong> Support POS, JNE, J&T (Express/Cargo), ID Express, SiCepat, Ninja Xpress, dll.
+                    </span>
+                    </li>
+
+                    <li>
+                    <i class="fas fa-wallet"></i> 
+                    <span>
+                        <strong>Pembayaran Otomatis:</strong> Topup Saldo, QRIS, Virtual Account (Semua Bank), Indomaret & Alfamart.
+                    </span>
+                    </li>
+
+                    <li>
+                    <i class="fas fa-map-location-dot"></i> 
+                    <span>
+                        <strong>Live Tracking</strong> Realtime via Link: <a href="https://tokosancaka.com/tracking" target="_blank" style="color: #2563eb; font-weight: bold;">tokosancaka.com/tracking</a>
+                    </span>
+                    </li>
+
+                    <li>
+                    <i class="fas fa-chart-pie"></i> 
+                    <span>
+                        <strong>Laporan Keuangan & Grafik Analisa:</strong> Monitor omzet penjualan dan performa pengiriman ekspedisi Anda.
+                    </span>
+                    </li>
+
                 </ul>
 
                 <a href="{{ route('register') }}" class="btn-join">DAFTAR AGEN SEKARANG <i class="fas fa-arrow-right ms-1"></i></a>
