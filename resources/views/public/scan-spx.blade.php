@@ -475,7 +475,7 @@
         
         searchResultsUl.appendChild(li);
     });
-}
+
                     } else {
                         searchResultsUl.innerHTML = '<li class="list-group-item">Nama tidak ditemukan. Silakan daftar di bawah.</li>';
                         registrationFormContainer.classList.remove('d-none');
