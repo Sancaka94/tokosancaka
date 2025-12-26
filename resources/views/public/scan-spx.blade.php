@@ -26,6 +26,26 @@
         #reader { border: 3px dashed #fd7e14; border-radius: 0.75rem; }
         .scan-history-item, .flash-message { animation: fadeIn 0.5s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; translateY(0); } }
+
+        /* === TAMBAHKAN CSS INI COK === */
+        .spx-alert-box {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            background-color: #FEF2F2;
+            border-left: 5px solid #DC2626;
+            color: #991B1B;
+            padding: 16px 20px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            line-height: 1.5;
+        }
+        .spx-alert-icon { color: #DC2626; flex-shrink: 0; margin-top: 2px; }
+        .spx-alert-content strong { display: block; margin-bottom: 4px; font-size: 15px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .spx-alert-content p { margin: 0; font-size: 14px; }
+        .spx-alert-content .highlight { font-weight: bold; text-decoration: underline; }
     </style>
 </head>
 <body>
@@ -42,6 +62,22 @@
                     <div class="col-lg-7">
                         <div id="alert-container"></div>
                         <div id="gps-status-container" class="mb-3"></div> 
+
+                        <div class="spx-alert-box">
+        <div class="spx-alert-icon">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+                <path d="M12 2L1 21h22L12 2zm0 3.516L20.297 19H3.703L12 5.516zM11 10v4h2v-4h-2zm0 6v2h2v-2h-2z"/>
+            </svg>
+        </div>
+        <div class="spx-alert-content">
+            <strong>INFORMASI PENTING:</strong>
+            <p>
+                KAMERA HANYA AKAN MERESPON JIKA ANDA MEN-SCAN 
+                <span class="highlight">BARCODE 2D (QR)</span> ATAU RESI BERAWALAN 
+                <span class="highlight">SPX</span>. FORMAT LAIN AKAN DIABAIKAN.
+            </p>
+        </div>
+    </div>
 
                         <div class="card border-0 shadow-sm mb-4">
                             <div class="card-body p-4">
