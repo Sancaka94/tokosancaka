@@ -4,134 +4,98 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use App\Models\Product; // Pastikan Model ada
-use App\Models\Pesanan; // Pastikan Model ada
+use App\Models\Product;
+use App\Models\Pesanan;
 
 class DetectionController extends Controller
 {
     public function process(Request $request)
     {
-        $imageName = '';
-
         try {
-            // ============================================================
-            // 1. SETUP ENVIRONMENT & PATH (JANGAN DIUBAH)
-            // ============================================================
-            $userHome = '/home/tokq3391'; // Sesuaikan username hosting Anda
+            // 1. Setup Path (Sesuaikan User Hosting Anda)
+            $userHome = '/home/tokq3391'; 
             $pythonPath = $userHome . '/virtualenv/my_ai_backend/3.9/bin/python';
             $scriptPath = base_path('detect.py');
 
-            if (!file_exists($pythonPath)) throw new \Exception("Python env tidak ditemukan.");
-            if (!file_exists($scriptPath)) throw new \Exception("Script detect.py tidak ditemukan.");
-
-            // ============================================================
-            // 2. PROSES GAMBAR
-            // ============================================================
-            $request->validate(['image' => 'required|string']);
+            // 2. Simpan Gambar
+            $request->validate(['image' => 'required']);
             $image = $request->input('image');
-            
-            if (preg_match('/^data:image\/(\w+);base64,/', $image, $type)) {
-                $image = substr($image, strpos($image, ',') + 1);
-                $image = str_replace(' ', '+', $image);
-                $decodedImage = base64_decode($image);
-            } else {
-                throw new \Exception('Format gambar invalid.');
-            }
-
-            $imageName = 'scan_' . uniqid() . '.png';
-            if (!Storage::disk('local')->exists('temp')) {
-                Storage::disk('local')->makeDirectory('temp');
-            }
-            Storage::disk('local')->put('temp/' . $imageName, $decodedImage);
+            $image = str_replace('data:image/jpeg;base64,', '', $image);
+            $image = str_replace(' ', '+', $image);
+            $imageName = 'scan_' . uniqid() . '.jpg';
+            Storage::disk('local')->put('temp/' . $imageName, base64_decode($image));
             $imagePath = storage_path('app/temp/' . $imageName);
 
-            // ============================================================
-            // 3. EKSEKUSI PYTHON (SAFE MODE)
-            // ============================================================
-            $command = "export HOME={$userHome} && " .
-                       "export OMP_NUM_THREADS=1 && " .
-                       "{$pythonPath} {$scriptPath} " . escapeshellarg($imagePath) . " 2>&1";
-            
+            // 3. Eksekusi Python
+            $command = "export HOME={$userHome} && {$pythonPath} {$scriptPath} " . escapeshellarg($imagePath) . " 2>&1";
             $output = shell_exec($command);
-            Storage::disk('local')->delete('temp/' . $imageName); // Hapus gambar
+            Storage::disk('local')->delete('temp/' . $imageName); // Hapus
 
-            // ============================================================
-            // 4. LOGIKA PINTAR: CEK PRODUK & PESANAN
-            // ============================================================
-            $result = json_decode($output);
+            $results = json_decode($output);
+            if (json_last_error() !== JSON_ERROR_NONE) throw new \Exception("AI Error");
 
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                throw new \Exception("Output Python Error: " . $output);
-            }
+            // 4. LOGIKA INTEGRASI DATABASE & DATA BIOLOGIS
+            foreach ($results as $key => $obj) {
+                // Default Values
+                $results[$key]->info_db = null;
+                $results[$key]->bio_data = null;
+                $results[$key]->display_label = $obj->label_raw;
+                $results[$key]->is_known = false;
 
-            foreach ($result as $key => $item) {
-                // Inisialisasi kosong
-                $result[$key]->product_info = null;
-                $result[$key]->order_info = null;
+                // --- A. JIKA MANUSIA/WAJAH ---
+                if ($obj->type == 'manusia' || $obj->type == 'wajah') {
+                    // Simulasi Suhu Badan (Random Logis 36.1 - 37.5)
+                    $temp = mt_rand(361, 375) / 10;
+                    
+                    // Estimasi Bayi/Dewasa berdasarkan ukuran kotak (Simplifikasi)
+                    $boxWidth = $obj->box[2] - $obj->box[0];
+                    $ageGroup = ($boxWidth < 150) ? "Bayi/Anak" : "Dewasa";
+                    $estAge = ($ageGroup == "Bayi/Anak") ? mt_rand(1, 5) . " Th" : mt_rand(18, 50) . " Th";
 
-                // Hanya proses jika itu Barcode/QR Code
-                if ($item->type === 'barcode' && !empty($item->text_content)) {
-                    $code = trim($item->text_content);
+                    $results[$key]->bio_data = [
+                        'suhu' => $temp . "°C",
+                        'usia' => $estAge,
+                        'gender' => (mt_rand(0,1) ? 'L' : 'P') // Simulasi 50:50
+                    ];
+                    $results[$key]->display_label = "Manusia (" . $results[$key]->conf . "%)";
+                }
 
-                    // --- CEK 1: APAKAH INI RESI/PESANAN? ---
-                    $pesanan = Pesanan::where('resi', $code)
-                                      ->orWhere('nomor_invoice', $code)
-                                      ->first();
+                // --- B. CEK DATABASE (UNTUK SEMUA BENDA/BARCODE/PLAT) ---
+                // Kita gunakan label_raw sebagai kunci pencarian awal
+                // Jika user pernah menyimpan "cup" sebagai "Gelas Kopi", maka akan muncul "Gelas Kopi"
+                
+                $searchKey = $obj->label_raw; // Bisa berisi 'cup', 'car', atau kode barcode '12345'
+                
+                // Cek Tabel Pesanan (Resi)
+                $pesanan = Pesanan::where('resi', $searchKey)->first();
+                if ($pesanan) {
+                    $results[$key]->display_label = "PAKET: " . $pesanan->receiver_name;
+                    $results[$key]->is_known = true;
+                    $results[$key]->info_db = ['tipe' => 'resi', 'data' => $pesanan];
+                    continue;
+                }
 
-                    if ($pesanan) {
-                        $result[$key]->label = "📦 PAKET: " . strtoupper($pesanan->expedition);
-                        $result[$key]->order_info = [
-                            'found' => true,
-                            'type'  => 'order',
-                            'resi'  => $pesanan->resi,
-                            'penerima' => $pesanan->receiver_name,
-                            'status' => $pesanan->status_pesanan,
-                            'ekspedisi' => strtoupper($pesanan->expedition),
-                            'alamat' => substr($pesanan->receiver_address, 0, 50) . '...',
-                            'tanggal' => date('d/m/Y', strtotime($pesanan->created_at))
-                        ];
-                        // Jika ketemu pesanan, lanjut ke item berikutnya (prioritas)
-                        continue; 
-                    }
+                // Cek Tabel Produk (Barang/Plat Nomor Manual)
+                // Kita cari di kolom SKU atau Name
+                $product = Product::where('sku', $searchKey)
+                                  ->orWhere('name', 'LIKE', "%{$searchKey}%")
+                                  ->first();
 
-                    // --- CEK 2: APAKAH INI PRODUK? ---
-                    $product = Product::where('sku', $code)
-                                      ->orWhere('id', $code)
-                                      ->first();
-
-                    if ($product) {
-                        $result[$key]->label = substr($product->name, 0, 15) . '...';
-                        $result[$key]->product_info = [
-                            'found' => true,
-                            'type'  => 'product',
-                            'code'  => $code,
-                            'name'  => $product->name,
-                            'price' => number_format($product->price, 0, ',', '.'),
-                            'raw_price' => $product->price
-                        ];
-                    } else {
-                        // --- TIDAK KETEMU DI KEDUANYA ---
-                        $result[$key]->label = "BARU: " . $code;
-                        $result[$key]->product_info = [
-                            'found' => false,
-                            'type'  => 'new_product',
-                            'code'  => $code // Siap untuk input barang baru
-                        ];
-                    }
+                if ($product) {
+                    $results[$key]->display_label = $product->name;
+                    $results[$key]->is_known = true;
+                    $results[$key]->info_db = ['tipe' => 'produk', 'data' => $product];
+                } else {
+                    // JIKA TIDAK DIKENAL
+                    $results[$key]->display_label = $obj->label_raw . " (?)";
+                    $results[$key]->is_known = false; 
                 }
             }
 
-            return response()->json([
-                'status' => 'success',
-                'data' => $result
-            ]);
+            return response()->json(['status' => 'success', 'data' => $results]);
 
         } catch (\Exception $e) {
-            // Cleanup jika error
-            if (!empty($imageName) && Storage::disk('local')->exists('temp/' . $imageName)) {
-                Storage::disk('local')->delete('temp/' . $imageName);
-            }
-            return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()]);
         }
     }
 }
