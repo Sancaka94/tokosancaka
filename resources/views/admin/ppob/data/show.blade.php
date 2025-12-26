@@ -158,7 +158,7 @@
                 @endif
 
                 @if(isset($transaction->user->no_hp))
-                <a href="https://wa.me/{{ preg_replace('/^0/', '62', $transaction->user->no_hp) }}?text=Halo%20kak,%20terkait%20transaksi%20{{ $transaction->product_name }}%20ke%20{{ $transaction->customer_no }}..." target="_blank" class="w-full flex items-center justify-center bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl shadow transition">
+                <a href="https://wa.me/{{ preg_replace('/^0/', '62', $transaction->user->no_wa) }}?text=Halo%20kak,%20terkait%20transaksi%20{{ $transaction->product_name }}%20ke%20{{ $transaction->customer_no }}..." target="_blank" class="w-full flex items-center justify-center bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl shadow transition">
                     <i class="fab fa-whatsapp mr-2"></i> Hubungi Agen
                 </a>
                 @else
