@@ -350,7 +350,16 @@
             }
 
             selectedKontak = kontak;
-            searchInput.value = `${kontak.nama} (${kontak.no_hp})`;
+    
+    // LOGIC SENSOR (Copy paste yang tadi)
+    let hpSensor = kontak.no_hp;
+    if(hpSensor.length > 6) {
+        let depan = hpSensor.substring(0, 3);
+        let belakang = hpSensor.substring(hpSensor.length - 3);
+        hpSensor = `${depan} *** *** ${belakang}`;
+    }
+    // Tampilkan versi sensor di Input Box
+            searchInput.value = `${kontak.nama} (${hpSensor})`;
             searchInput.disabled = true;
             searchResultsContainer.classList.add('d-none');
             registrationFormContainer.classList.add('d-none');
@@ -442,14 +451,31 @@
                     const response = await fetch(`{{ route('api.search.kontak') }}?query=${searchInput.value}`);
                     const data = await response.json();
                     searchResultsUl.innerHTML = '';
-                    if(data.length>0){
-                        data.forEach(kontak => {
-                            const li = document.createElement('li');
-                            li.className = 'list-group-item list-group-item-action';
-                            li.innerHTML = `<div class="fw-semibold">${kontak.nama}</div><small>${kontak.no_hp}</small>`;
-                            li.onclick = () => selectKontak(kontak);
-                            searchResultsUl.appendChild(li);
-                        });
+                    if(data.length > 0){
+    data.forEach(kontak => {
+        const li = document.createElement('li');
+        li.className = 'list-group-item list-group-item-action';
+        
+        // === LOGIC SENSOR NO HP ===
+        // Ambil 3 digit awal dan 3 digit akhir
+        let hpSensor = kontak.no_hp;
+        if(hpSensor.length > 6) {
+            let depan = hpSensor.substring(0, 3);
+            let belakang = hpSensor.substring(hpSensor.length - 3);
+            hpSensor = `${depan} *** *** ${belakang}`;
+        }
+        // ==========================
+
+        // Tampilkan hpSensor di layar (bukan nomor asli)
+        li.innerHTML = `<div class="fw-semibold">${kontak.nama}</div><small class="text-muted">${hpSensor}</small>`;
+        
+        // PENTING: Saat diklik, kita tetap kirim data 'kontak' yang ASLI (lengkap) ke sistem
+        // agar proses selanjutnya tidak error.
+        li.onclick = () => selectKontak(kontak);
+        
+        searchResultsUl.appendChild(li);
+    });
+}
                     } else {
                         searchResultsUl.innerHTML = '<li class="list-group-item">Nama tidak ditemukan. Silakan daftar di bawah.</li>';
                         registrationFormContainer.classList.remove('d-none');
