@@ -44,6 +44,7 @@ class PpobTransaction extends Model
      * Memastikan harga diperlakukan sebagai angka, bukan string.
      */
     protected $casts = [
+        'desc' => 'array', // Otomatis ubah JSON jadi Array saat diambil dari DB
         'price' => 'integer',
         'desc' => 'array',
         'selling_price' => 'integer',
