@@ -223,7 +223,7 @@
                 <p style="font-size: 13px; margin-bottom: 8px; opacity: 0.8;">Dapatkan akses eksklusif dengan menjadi member/agen kami:</p>
                 
                 <ul class="promo-list">
-                    <li><i class="fas fa-check-circle"></i> Akses Full Fitur Aplikasi Sancaka.</li>
+                    <li><i class="fas fa-check-circle"></i> Akses Full Fitur Aplikasi Sancaka Express.</li>
                     <li><i class="fas fa-store"></i> <a href="https://tokosancaka.com/etalase" target="_blank" style="text-decoration: underline; color: inherit;"><strong>Berjualan di Marketplace Sancaka</strong></a> (Jangkauan Luas).</li>
                     <li><i class="fas fa-wallet"></i> Jadi AGEN Loket PPOB Dengan Harga Kulak Kompetitif dan Realtime (Jual Pulsa, Token Listrik, Bayar Air PDAM, dll).</li>
                     <li><i class="fas fa-chart-line"></i> Monitor Jumlah Kiriman Paket ALL Ekpedisi & SPX Realtime.</li>
