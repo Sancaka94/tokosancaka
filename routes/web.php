@@ -5,6 +5,10 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 use Illuminate\Http\Request;
+
+use App\Models\Product;
+use App\Models\Pesanan;
+
 use App\Http\Middleware\RoleMiddleware;
 use App\Services\KiriminAjaService;
 
@@ -108,14 +112,17 @@ use App\Http\Controllers\BroadcastController;
 //Aplikasi Python AI Detection
 use App\Http\Controllers\DetectionController;
 
-use App\Models\Product;
-use App\Models\Pesanan;
 
-// Route untuk Cek Database (Tanpa Python)
+// 1. Route Halaman Utama Scanner
+Route::get('/apps', function () {
+    return view('apps');
+})->name('apps.index');
+
+// 2. Route Cek Database (Untuk TensorFlow.js)
 Route::post('/apps/check-db', function (Request $request) {
-    $keyword = $request->keyword; // Misal: "cup", "person", atau barcode
+    $keyword = $request->keyword;
     
-    // 1. Cek Pesanan
+    // Cek Pesanan
     $pesanan = Pesanan::where('resi', $keyword)->orWhere('nomor_invoice', $keyword)->first();
     if ($pesanan) {
         return response()->json([
@@ -126,7 +133,7 @@ Route::post('/apps/check-db', function (Request $request) {
         ]);
     }
 
-    // 2. Cek Produk
+    // Cek Produk
     $product = Product::where('sku', $keyword)->orWhere('name', 'LIKE', "%{$keyword}%")->first();
     if ($product) {
         return response()->json([
@@ -137,13 +144,35 @@ Route::post('/apps/check-db', function (Request $request) {
         ]);
     }
 
-    // 3. Jika Tidak Ketemu
+    // Tidak Ketemu
     return response()->json([
         'found' => false,
         'label' => strtoupper($keyword) . " (?)",
         'detail' => "Tap untuk simpan"
     ]);
 })->name('apps.check_db');
+
+// 3. Route Simpan Produk Baru
+Route::post('/apps/store', function (Request $request) {
+    try {
+        Product::updateOrCreate(
+            ['sku' => $request->barcode], // Cek berdasarkan SKU/Barcode
+            [
+                'name' => $request->name,
+                'price' => $request->price,
+                // Field wajib lain diisi default agar tidak error
+                'store_id' => 4, 
+                'category_id' => 203,
+                'status' => 'active',
+                'stock' => 10,
+                'is_new' => 1
+            ]
+        );
+        return response()->json(['status' => 'success', 'message' => 'Produk Disimpan!']);
+    } catch (\Exception $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()]);
+    }
+})->name('apps.store');
 
 
 // ROUTE UTAMA CETAK THERMAL (Top Level)
