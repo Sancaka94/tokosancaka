@@ -207,7 +207,7 @@
                                 <i class="fas {{ $icon }} mr-1.5"></i> {{ $trx->status }}
                             </span>
 
-                            @if($trx->status == 'Success' && $trx->sn)
+                            ($trx->status == 'Success' && $trx->sn)
                                 <div class="relative group/sn">
                                     <code class="text-[10px] bg-gray-50 px-2 py-1.5 border rounded block w-full max-w-[160px] truncate cursor-pointer hover:bg-gray-100 hover:text-blue-600 transition" onclick="navigator.clipboard.writeText('{{ $trx->sn }}'); alert('SN disalin!');" title="Klik untuk salin">
                                         SN: {{ $trx->sn }}
