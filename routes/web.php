@@ -112,6 +112,8 @@ use App\Http\Controllers\BroadcastController;
 //Aplikasi Python AI Detection
 use App\Http\Controllers\DetectionController;
 
+// 1. Jalur Utama AI (Menerima Gambar dari Kamera)
+Route::post('/detect/process', [DetectionController::class, 'process'])->name('detection.process');
 
 // 1. Route Halaman Utama Scanner
 Route::get('/apps', function () {
