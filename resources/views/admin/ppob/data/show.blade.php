@@ -51,10 +51,11 @@
                         {{-- Logo Brand --}}
                         @php
                             $brandName = strtolower($transaction->brand ?? 'other');
-                            $logoUrl = asset('public/storage/logo-ppob/' . $brandName . '.png');
+                            // Menggunakan asset() standar Laravel. Pastikan file ada di public/storage/logo-ppob/
+                            $logoUrl = asset('storage/logo-ppob/' . $brandName . '.png');
                         @endphp
                         <div class="h-16 w-16 bg-gray-50 rounded-lg border border-gray-200 flex items-center justify-center p-2">
-                            <img src="{{ $logoUrl }}" onerror="this.src='https://via.placeholder.com/64?text=IMG'" alt="{{ $brandName }}" class="max-h-full max-w-full object-contain">
+                            <img src="{{ $logoUrl }}" onerror="this.onerror=null; this.src='https://via.placeholder.com/64?text={{ substr($transaction->brand ?? 'NA', 0, 3) }}'" alt="{{ $brandName }}" class="max-h-full max-w-full object-contain">
                         </div>
                         
                         <div class="flex-1">
@@ -101,14 +102,15 @@
                 </div>
                 <div class="p-6 flex items-center gap-4">
                     @php
+                        // Perbaikan path gambar user. Hapus 'public/' di dalam asset() jika storage link sudah benar.
                         $userImage = !empty($transaction->user->store_logo_path) 
-                            ? asset('public/storage/' . $transaction->user->store_logo_path) 
+                            ? asset('storage/' . $transaction->user->store_logo_path) 
                             : 'https://ui-avatars.com/api/?name='.urlencode($transaction->user->name ?? 'User').'&background=random&color=fff';
                     @endphp
-                    <img src="{{ $userImage }}" class="h-12 w-12 rounded-full object-cover border border-gray-200">
+                    <img src="{{ $userImage }}" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=User&background=random&color=fff'" class="h-12 w-12 rounded-full object-cover border border-gray-200">
                     <div>
-                        <p class="font-bold text-gray-900">{{ $transaction->user->nama_lengkap ?? $transaction->user->name }}</p>
-                        <p class="text-sm text-gray-500">{{ $transaction->user->email }}</p>
+                        <p class="font-bold text-gray-900">{{ $transaction->user->nama_lengkap ?? ($transaction->user->name ?? 'User Terhapus') }}</p>
+                        <p class="text-sm text-gray-500">{{ $transaction->user->email ?? '-' }}</p>
                         <p class="text-xs text-gray-400 mt-1"><i class="fas fa-phone-alt mr-1"></i> {{ $transaction->user->no_hp ?? '-' }}</p>
                     </div>
                 </div>
@@ -155,9 +157,15 @@
                 </button>
                 @endif
 
+                @if(isset($transaction->user->no_hp))
                 <a href="https://wa.me/{{ preg_replace('/^0/', '62', $transaction->user->no_hp) }}?text=Halo%20kak,%20terkait%20transaksi%20{{ $transaction->product_name }}%20ke%20{{ $transaction->customer_no }}..." target="_blank" class="w-full flex items-center justify-center bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl shadow transition">
                     <i class="fab fa-whatsapp mr-2"></i> Hubungi Agen
                 </a>
+                @else
+                <button disabled class="w-full bg-gray-300 text-gray-500 font-bold py-3 rounded-xl cursor-not-allowed">
+                    <i class="fab fa-whatsapp mr-2"></i> No HP Tidak Tersedia
+                </button>
+                @endif
             </div>
 
         </div>
