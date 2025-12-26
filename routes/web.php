@@ -110,6 +110,21 @@ use App\Http\Controllers\DetectionController;
 
 use App\Models\Product;
 
+Route::get('/debug-logs', function () {
+    $path = storage_path('logs/laravel.log');
+    
+    if (!File::exists($path)) {
+        return "Log file not found.";
+    }
+
+    // Ambil 100 baris terakhir biar tidak berat
+    $content = File::get($path);
+    $lines = explode("\n", $content);
+    $lastLines = array_slice($lines, -100); 
+    
+    return "<pre>" . implode("\n", $lastLines) . "</pre>";
+});
+
 Route::post('/apps/store', function (Request $request) {
     try {
         // Cek apakah produk dengan SKU ini sudah ada
