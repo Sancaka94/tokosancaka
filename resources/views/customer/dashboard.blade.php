@@ -112,67 +112,83 @@
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div class="bg-white rounded-xl shadow-lg overflow-hidden">
-                <div class="flex justify-between items-center p-6 border-b border-gray-100">
-                    <h2 class="text-lg font-bold text-gray-800">5 Pesanan Terbaru</h2>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full text-sm">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">ID Pesanan</th>
-                                <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Status</th>
-                                <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">Total</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-200">
-                            @forelse ($recentOrders as $order)
-                            <tr class="hover:bg-gray-50">
-                                <td class="px-6 py-4 whitespace-nowrap font-medium text-gray-900">#{{ $order->nomor_invoice }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="px-3 py-1 inline-flex text-xs font-semibold rounded-full {{ $order->status_pesanan == 'Terkirim' ? 'bg-blue-100 text-blue-800' : ($order->status_pesanan == 'Tiba di Tujuan' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800') }}">
-                                        {{ $order->status_pesanan }}
-                                    </span>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-right font-semibold text-gray-800">Rp {{ number_format($order->shipping_cost, 0, ',', '.') }}</td>
-                            </tr>
-                            @empty
-                            <tr><td colspan="3" class="px-6 py-4 text-center text-gray-500">Belum ada pesanan terbaru.</td></tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            <div class="bg-white rounded-xl shadow-lg overflow-hidden">
-                <div class="flex justify-between items-center p-6 border-b border-gray-100">
-                    <h2 class="text-lg font-bold text-gray-800">5 Riwayat Scan SPX Terbaru</h2>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full text-sm">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">No. Resi</th>
-                                <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Status</th>
-                                <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Waktu Scan</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-200">
-                            @forelse ($recentSpxScans as $scan)
-                            <tr class="hover:bg-gray-50">
-                                <td class="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{{ $scan->resi_number }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="px-3 py-1 inline-flex text-xs font-semibold rounded-full bg-cyan-100 text-cyan-800">{{ $scan->status }}</span>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-gray-500">{{ $scan->created_at->isoFormat('D MMM YYYY, HH:mm') }}</td>
-                            </tr>
-                            @empty
-                            <tr><td colspan="3" class="px-6 py-4 text-center text-gray-500">Belum ada riwayat scan SPX.</td></tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+    <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+        <div class="flex justify-between items-center p-6 border-b border-gray-100">
+            <h2 class="text-lg font-bold text-gray-800">5 Pesanan Terbaru</h2>
         </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Order Id</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Ekspedisi</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Status</th>
+                        <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">Biaya Ongkir</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    @forelse ($recentOrders as $order)
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{{ $order->nomor_invoice }}</td>
+                        
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center space-x-3">
+                                <div class="flex-shrink-0 h-8 w-8">
+                                    <img class="h-8 w-8 rounded-full object-contain bg-gray-50 p-1 border border-gray-200" 
+                                         src="{{ asset('storage/' . $order->expedition_logo) }}" 
+                                         alt="{{ $order->expedition_name }}">
+                                </div>
+                                <div class="text-sm font-medium text-gray-900">
+                                    {{ $order->expedition_name }}
+                                </div>
+                            </div>
+                        </td>
+
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-3 py-1 inline-flex text-xs font-semibold rounded-full {{ $order->status_pesanan == 'Terkirim' ? 'bg-blue-100 text-blue-800' : ($order->status_pesanan == 'Tiba di Tujuan' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800') }}">
+                                    {{ $order->status_pesanan }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right font-semibold text-gray-800">Rp {{ number_format($order->shipping_cost, 0, ',', '.') }}</td>
+                    </tr>
+                    @empty
+                    <tr><td colspan="4" class="px-6 py-4 text-center text-gray-500">Belum ada pesanan terbaru.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+        <div class="flex justify-between items-center p-6 border-b border-gray-100">
+            <h2 class="text-lg font-bold text-gray-800">5 Riwayat Scan SPX Terbaru</h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">No. Resi</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Waktu Scan</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    @forelse ($recentSpxScans as $scan)
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{{ $scan->resi_number }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-3 py-1 inline-flex text-xs font-semibold rounded-full bg-cyan-100 text-cyan-800">{{ $scan->status }}</span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-gray-500">{{ $scan->created_at->isoFormat('D MMM YYYY, HH:mm') }}</td>
+                    </tr>
+                    @empty
+                    <tr><td colspan="3" class="px-6 py-4 text-center text-gray-500">Belum ada riwayat scan SPX.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
 
       {{-- ======================================================= --}}
         {{-- 7. GRAFIK DISTRIBUSI PENGIRIMAN (BARU)                  --}}
