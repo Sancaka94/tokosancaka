@@ -109,64 +109,41 @@ use App\Http\Controllers\BroadcastController;
 use App\Http\Controllers\DetectionController;
 
 use App\Models\Product;
+use App\Models\Pesanan;
 
-Route::get('/debug-logs', function () {
-    $path = storage_path('logs/laravel.log');
+// Route untuk Cek Database (Tanpa Python)
+Route::post('/apps/check-db', function (Request $request) {
+    $keyword = $request->keyword; // Misal: "cup", "person", atau barcode
     
-    if (!File::exists($path)) {
-        return "Log file not found.";
+    // 1. Cek Pesanan
+    $pesanan = Pesanan::where('resi', $keyword)->orWhere('nomor_invoice', $keyword)->first();
+    if ($pesanan) {
+        return response()->json([
+            'found' => true,
+            'type' => 'resi',
+            'label' => "📦 " . $pesanan->receiver_name,
+            'detail' => $pesanan->status_pesanan . " (" . $pesanan->expedition . ")"
+        ]);
     }
 
-    // Ambil 100 baris terakhir biar tidak berat
-    $content = File::get($path);
-    $lines = explode("\n", $content);
-    $lastLines = array_slice($lines, -100); 
-    
-    return "<pre>" . implode("\n", $lastLines) . "</pre>";
-});
-
-Route::post('/apps/store', function (Request $request) {
-    try {
-        // Cek apakah produk dengan SKU ini sudah ada
-        $product = Product::where('sku', $request->barcode)->first();
-
-        if ($product) {
-            // Jika ada, UPDATE data
-            $product->update([
-                'name' => $request->name,
-                'price' => $request->price
-            ]);
-            $msg = 'Produk Berhasil Diupdate!';
-        } else {
-            // Jika belum ada, BUAT BARU
-            Product::create([
-                'sku' => $request->barcode, // Barcode masuk ke kolom SKU
-                'name' => $request->name,
-                'price' => $request->price,
-                'store_id' => 4, // DEFAULT STORE ID (Sesuaikan dengan toko utama Anda)
-                'category_id' => 203, // DEFAULT CATEGORY (Sesuaikan)
-                'status' => 'active',
-                'stock' => 10,
-                'is_new' => 1
-            ]);
-            $msg = 'Produk Baru Disimpan!';
-        }
-
-        return response()->json(['status' => 'success', 'message' => $msg]);
-    } catch (\Exception $e) {
-        return response()->json(['status' => 'error', 'message' => $e->getMessage()]);
+    // 2. Cek Produk
+    $product = Product::where('sku', $keyword)->orWhere('name', 'LIKE', "%{$keyword}%")->first();
+    if ($product) {
+        return response()->json([
+            'found' => true,
+            'type' => 'produk',
+            'label' => $product->name,
+            'detail' => "Rp " . number_format($product->price)
+        ]);
     }
-})->name('apps.store');
 
-
-// 1. Route untuk Menampilkan Halaman Scanner
-Route::get('/apps', function () {
-    return view('apps');
-})->name('apps.index');
-
-// 2. Route untuk Memproses Gambar (AJAX ke Python)
-Route::post('/detection/process', [DetectionController::class, 'process'])
-    ->name('detection.process');
+    // 3. Jika Tidak Ketemu
+    return response()->json([
+        'found' => false,
+        'label' => strtoupper($keyword) . " (?)",
+        'detail' => "Tap untuk simpan"
+    ]);
+})->name('apps.check_db');
 
 
 // ROUTE UTAMA CETAK THERMAL (Top Level)
