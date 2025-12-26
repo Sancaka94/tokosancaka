@@ -14,13 +14,26 @@
         
         .camera-frame {
             position: relative;
-            width: 100%; max-width: 640px; aspect-ratio: 3/4;
+            width: 100%; 
+            max-width: 640px; 
+            /* Hapus aspect-ratio paksa, biarkan menyesuaikan video */
             margin: 0 auto;
             border: 1px solid #333;
             background: #000;
             overflow: hidden;
+            display: flex;       /* Tambahan agar center */
+            justify-content: center;
+            align-items: center;
         }
-        video, canvas { position: absolute; top:0; left:0; width:100%; height:100%; object-fit: cover; }
+        
+        video, canvas { 
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            object-fit: contain; /* PENTING: Ganti COVER jadi CONTAIN agar koordinat pas */
+        }
         
         /* Animasi Scanning */
         .scanner-bar {
@@ -103,215 +116,246 @@
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
-        let scanInterval;
-        let lastObjects = []; // Simpan hasil scan terakhir agar bisa diklik
+        
+        // Element UI
+        const scanLaser = document.getElementById('scanLaser');
+        const startOverlay = document.getElementById('startOverlay');
+        
+        // Modal Manual Input
+        const manualInputModal = document.getElementById('manualInputModal');
+        const inpName = document.getElementById('inpName');
+        const inpPrice = document.getElementById('inpPrice');
+        const rawLabelInput = document.getElementById('rawLabel');
+        const modalObjRaw = document.getElementById('modalObjRaw');
 
-        // --- 1. SYSTEM START & WEATHER ---
+        let stream;
+        let lastObjects = []; // Simpan data terakhir untuk klik
+        let isProcessing = false;
+
+        // 1. START SYSTEM
         async function startSystem() {
             try {
-                // Jam
-                setInterval(() => {
-                    document.getElementById('clock').innerText = new Date().toLocaleTimeString();
-                }, 1000);
-
-                // Cuaca (Open-Meteo API - Free)
-                if (navigator.geolocation) {
-                    navigator.geolocation.getCurrentPosition(async (pos) => {
-                        const { latitude, longitude } = pos.coords;
-                        try {
-                            const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`);
-                            const data = await res.json();
-                            const temp = data.current_weather.temperature;
-                            const code = data.current_weather.weathercode;
-                            // Mapping kode cuaca sederhana
-                            let weatherDesc = "Cerah";
-                            if(code > 3) weatherDesc = "Berawan";
-                            if(code > 50) weatherDesc = "Hujan";
-                            
-                            document.getElementById('weatherInfo').innerHTML = `<i class="fas fa-temperature-high"></i> ${temp}°C | ${weatherDesc}`;
-                            document.getElementById('locationInfo').innerText = `Lat: ${latitude.toFixed(2)}, Long: ${longitude.toFixed(2)}`;
-                        } catch(e) { console.error(e); }
-                    });
-                }
-
-                // Kamera
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-                video.srcObject = stream;
-                document.getElementById('startOverlay').classList.add('hidden');
+                // Minta izin kamera
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        facingMode: 'environment', // Kamera Belakang
+                        width: { ideal: 640 },     // Ideal resolusi agar tidak terlalu berat
+                        height: { ideal: 480 } 
+                    }, 
+                    audio: false 
+                });
                 
+                video.srcObject = stream;
+                
+                // Tunggu video siap, baru mulai loop
                 video.onloadedmetadata = () => {
+                    video.play();
+                    
+                    // Sembunyikan Overlay Start
+                    startOverlay.classList.add('hidden');
+                    
+                    // Setting ukuran Canvas agar SAMA PERSIS dengan Video asli
                     canvas.width = video.videoWidth;
                     canvas.height = video.videoHeight;
-                    // Auto Scan tiap 2.5 Detik
-                    scanInterval = setInterval(scanFrame, 2500);
-                    updateStatus("SCANNING ACTIVE", "animate-pulse");
+                    
+                    console.log("Kamera Siap: " + canvas.width + "x" + canvas.height);
+
+                    // Mulai Scanning Loop (Tiap 2 detik)
+                    setInterval(scanFrame, 2000);
+                    
+                    updateStatus("ONLINE - SCANNING...", "text-teal-400");
                 };
 
-                // Event Listener Klik Canvas (Untuk Input Manual)
+                // Event Klik Canvas (Input Manual)
                 canvas.addEventListener('click', handleCanvasClick);
 
-            } catch (e) { alert("Camera Error: " + e); }
+            } catch (err) {
+                alert("Gagal Akses Kamera: " + err.message);
+                console.error(err);
+            }
         }
 
-        // --- 2. SCANNING PROCESS ---
+        // 2. PROSES FRAME
         async function scanFrame() {
-            const tCanvas = document.createElement('canvas');
-            tCanvas.width = video.videoWidth;
-            tCanvas.height = video.videoHeight;
-            tCanvas.getContext('2d').drawImage(video, 0, 0);
+            if(isProcessing) return; // Jangan tumpuk request
+            isProcessing = true;
+            updateStatus("MENGANALISA...", "text-yellow-400");
+
+            // Ambil gambar snapshot
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = video.videoWidth;
+            tempCanvas.height = video.videoHeight;
+            const tCtx = tempCanvas.getContext('2d');
+            tCtx.drawImage(video, 0, 0);
             
-            // Gunakan kualitas lebih rendah (0.5) agar ukuran file kecil dan tidak bikin server timeout
-            const imageData = tCanvas.toDataURL('image/jpeg', 0.5); 
+            // Kompres gambar (Quality 0.5) agar ringan dikirim
+            const imageData = tempCanvas.toDataURL('image/jpeg', 0.5);
 
             try {
-                const res = await fetch("{{ route('detection.process') }}", {
+                const response = await fetch("{{ route('detection.process') }}", {
                     method: "POST",
-                    headers: { 
+                    headers: {
                         "Content-Type": "application/json",
                         "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content,
-                        "Accept": "application/json" // Pastikan minta JSON
+                        "Accept": "application/json"
                     },
                     body: JSON.stringify({ image: imageData })
                 });
 
-                // Cek jika server error (500)
-                if (!res.ok) {
-                    const errorText = await res.text();
-                    console.error("SERVER ERROR:", errorText);
-                    updateStatus("SERVER ERROR", "text-red-500");
-                    return; // Stop
+                // Cek jika server error (bukan JSON)
+                if (!response.ok) {
+                    throw new Error("Server Error: " + response.status);
                 }
 
-                const json = await res.json();
-                
+                const json = await response.json();
+
                 if (json.status === 'success') {
+                    // SUKSES! Gambar Kotak
+                    console.log("Data Diterima:", json.data); // Cek di Console Browser
                     lastObjects = json.data;
                     drawHUD(json.data);
-                    updateStatus("ONLINE", "text-teal-500");
+                    updateStatus("SYSTEM ACTIVE", "text-teal-500");
                 } else {
-                    console.error("APP ERROR:", json.message);
-                    console.warn("PYTHON DEBUG:", json.debug_output);
-                    updateStatus("AI ERROR", "text-red-500");
+                    console.warn("API Warning:", json);
+                    updateStatus("AI GAGAL MEMBACA", "text-red-400");
                 }
 
-            } catch (e) { 
-                console.error("NETWORK ERROR:", e); 
-                updateStatus("CONNECTION LOST", "text-red-500"); 
+            } catch (err) {
+                console.error("Error Fetch:", err);
+                updateStatus("KONEKSI TERPUTUS", "text-red-600");
+            } finally {
+                isProcessing = false;
             }
         }
 
-        // --- 3. DRAW HUD (TAMPILAN CANGGIH) ---
+        // 3. GAMBAR HUD (KOTAK-KOTAK)
         function drawHUD(objects) {
+            // Bersihkan canvas lama
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
+            // Jika tidak ada objek
+            if (objects.length === 0) return;
+
             objects.forEach(obj => {
-                const [x, y, x2, y2] = obj.box;
-                const w = x2 - x;
-                const h = y2 - y;
+                // Koordinat dari Python [x1, y1, x2, y2]
+                const [x1, y1, x2, y2] = obj.box;
+                const width = x2 - x1;
+                const height = y2 - y1;
 
-                // Warna HUD
-                let color = '#00ffcc'; // Default Teal
-                if (!obj.is_known) color = '#ff3300'; // Merah (Unknown)
-                if (obj.type === 'manusia') color = '#00ccff'; // Biru (Manusia)
+                // Tentukan Warna
+                let color = '#00ffcc'; // Teal (Default)
+                let text = obj.display_label || obj.label_raw;
+                
+                if (obj.is_known) {
+                    color = '#00ff00'; // Hijau (Dikenali Database)
+                } else if (obj.type === 'manusia') {
+                    color = '#00aaff'; // Biru (Manusia)
+                } else {
+                    color = '#ff3300'; // Merah (Unknown/Baru)
+                }
 
-                // Kotak
-                ctx.strokeStyle = color;
-                ctx.lineWidth = 1.5;
-                ctx.strokeRect(x, y, w, h);
-
-                // Garis Konektor ke Label
+                // GAMBAR KOTAK
                 ctx.beginPath();
-                ctx.moveTo(x + w, y);
-                ctx.lineTo(x + w + 20, y - 20);
-                ctx.lineTo(x + w + 100, y - 20);
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = color;
+                ctx.rect(x1, y1, width, height);
                 ctx.stroke();
 
-                // INFO UTAMA (Label)
-                ctx.fillStyle = color;
-                ctx.font = "bold 14px Rajdhani";
-                ctx.fillText(obj.display_label.toUpperCase(), x + w + 25, y - 25);
-
-                // INFO TAMBAHAN (Suhu, Usia, dll)
-                let yOffset = y - 5;
-                if (obj.bio_data) {
-                    ctx.fillStyle = "#ffffff";
-                    ctx.font = "12px monospace";
-                    ctx.fillText(`🌡️ ${obj.bio_data.suhu}`, x, y + h + 15);
-                    ctx.fillText(`👤 ${obj.bio_data.usia} (${obj.bio_data.gender})`, x, y + h + 30);
-                }
+                // GAMBAR LABEL BACKGROUND
+                ctx.font = "bold 16px Arial";
+                const textWidth = ctx.measureText(text).width;
                 
-                // Prompt Input Manual (Jika Unknown)
-                if (!obj.is_known && obj.type !== 'manusia') {
-                    ctx.fillStyle = "#ff3300";
-                    ctx.font = "italic 10px sans-serif";
-                    ctx.fillText("[TAP UNTUK IDENTIFIKASI]", x, y - 5);
+                ctx.fillStyle = color;
+                ctx.fillRect(x1, y1 > 30 ? y1 - 30 : 0, textWidth + 10, 30);
+
+                // TULISAN LABEL
+                ctx.fillStyle = '#000000';
+                ctx.fillText(text, x1 + 5, y1 > 30 ? y1 - 8 : 22);
+
+                // JIKA MANUSIA (Tampilkan Data Bio)
+                if (obj.bio_data) {
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = "12px monospace";
+                    ctx.fillText(`🌡️ ${obj.bio_data.suhu}`, x1, y1 + height + 15);
+                    ctx.fillText(`👤 ${obj.bio_data.usia}`, x1, y1 + height + 30);
                 }
             });
         }
 
-        // --- 4. MANUAL INPUT LOGIC ---
+        // 4. HANDLE KLIK (INPUT MANUAL)
         function handleCanvasClick(e) {
+            // Hitung skala (karena ukuran canvas di layar HP beda dengan resolusi asli)
             const rect = canvas.getBoundingClientRect();
-            // Skala koordinat klik karena canvas mungkin di-resize CSS
             const scaleX = canvas.width / rect.width;
             const scaleY = canvas.height / rect.height;
+
             const clickX = (e.clientX - rect.left) * scaleX;
             const clickY = (e.clientY - rect.top) * scaleY;
 
-            // Cek apakah klik kena kotak objek
             lastObjects.forEach(obj => {
-                const [x, y, x2, y2] = obj.box;
-                if (clickX >= x && clickX <= x2 && clickY >= y && clickY <= y2) {
-                    // Hanya izinkan edit jika bukan manusia (karena manusia data bio-nya random)
-                    // Atau bisa juga diedit namanya misal "Budi"
-                    openModal(obj);
+                const [x1, y1, x2, y2] = obj.box;
+                
+                // Cek apakah klik di dalam kotak
+                if (clickX >= x1 && clickX <= x2 && clickY >= y1 && clickY <= y2) {
+                    if (!obj.is_known && obj.type !== 'manusia') {
+                        openModal(obj);
+                    }
                 }
             });
         }
 
         function openModal(obj) {
-            document.getElementById('manualInputModal').classList.remove('hidden');
-            document.getElementById('rawLabel').value = obj.label_raw; // Ini kuncinya (misal: 'cup' atau 'car')
-            document.getElementById('modalObjRaw').innerText = obj.label_raw.toUpperCase();
-            document.getElementById('inpName').focus();
+            manualInputModal.classList.remove('hidden');
+            rawLabelInput.value = obj.label_raw; // Kunci pencarian (misal: 'cup')
+            modalObjRaw.innerText = obj.label_raw.toUpperCase();
+            inpName.value = ""; // Reset form
+            inpPrice.value = "";
+            inpName.focus();
         }
 
         function closeModal() {
-            document.getElementById('manualInputModal').classList.add('hidden');
+            manualInputModal.classList.add('hidden');
         }
 
         async function saveManualData(e) {
             e.preventDefault();
-            const raw = document.getElementById('rawLabel').value;
-            const name = document.getElementById('inpName').value;
-            const price = document.getElementById('inpPrice').value;
-
             try {
-                // Gunakan route existing 'apps.store'
                 const res = await fetch("{{ route('apps.store') }}", {
                     method: "POST",
-                    headers: { 
-                        "Content-Type": "application/json", 
-                        "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content 
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content
                     },
-                    // KITA SIMPAN 'rawLabel' (misal: cup) SEBAGAI SKU/BARCODE
-                    // Agar nanti kalau AI nemu 'cup' lagi, dia cek SKU 'cup' dan nemu nama barunya
-                    body: JSON.stringify({ barcode: raw, name: name, price: price })
+                    body: JSON.stringify({
+                        barcode: rawLabelInput.value, // Kita pakai label raw sbg ID
+                        name: inpName.value,
+                        price: inpPrice.value
+                    })
                 });
                 
                 const json = await res.json();
                 if(json.status === 'success') {
-                    alert("✅ Data Tersimpan! Sistem sekarang mengenali objek ini.");
+                    alert("✅ Berhasil Disimpan! Scan ulang objeknya.");
                     closeModal();
+                } else {
+                    alert("Gagal: " + json.message);
                 }
-            } catch(e) { alert("Gagal Simpan"); }
+            } catch(e) { 
+                alert("Error Koneksi"); 
+            }
         }
 
-        function updateStatus(text, extraClass) {
-            const el = document.getElementById('statusBadge');
-            el.innerText = text;
-            el.className = `inline-block px-4 py-1 bg-black/50 border border-teal-900 rounded-full text-xs text-teal-500 ${extraClass}`;
+        function updateStatus(text, colorClass) {
+            const badge = document.getElementById('statusBadge');
+            badge.innerText = text;
+            // Reset class warna
+            badge.className = "inline-block px-4 py-1 bg-black/50 border border-teal-900 rounded-full text-xs " + colorClass;
         }
+
+        // Jam Digital
+        setInterval(() => {
+            document.getElementById('clock').innerText = new Date().toLocaleTimeString();
+        }, 1000);
     </script>
 </body>
 </html>
