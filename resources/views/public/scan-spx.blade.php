@@ -99,6 +99,76 @@
         opacity: 1;
         background-color: rgba(0,0,0,0.05); /* Efek hover halus */
     }
+
+    /* Style untuk Box Promo Member (Warna Biru Langit) */
+.promo-box-blue {
+    position: sticky;
+    top: 20px;
+    z-index: 99;
+    
+    display: flex;
+    flex-direction: column; /* Agar isi vertikal */
+    gap: 10px;
+    
+    background-color: #eff6ff; /* Biru sangat muda */
+    border-left: 5px solid #2563eb; /* Garis Biru Utama */
+    color: #1e40af; /* Teks Biru Gelap */
+    
+    padding: 16px 40px 16px 20px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    line-height: 1.5;
+    position: relative;
+    
+    /* Animasi muncul */
+    animation: slideIn 0.4s ease-out;
+}
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.promo-list {
+    list-style: none;
+    padding: 0;
+    margin: 5px 0;
+}
+
+.promo-list li {
+    margin-bottom: 6px;
+    font-size: 14px;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.promo-list li i {
+    color: #2563eb; /* Ikon biru */
+    margin-top: 3px;
+}
+
+.btn-join {
+    background-color: #2563eb;
+    color: white;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 14px;
+    text-decoration: none;
+    display: inline-block;
+    margin-top: 10px;
+    width: fit-content;
+}
+
+.btn-join:hover {
+    background-color: #1d4ed8;
+    color: white;
+}
     
     </style>
 </head>
@@ -124,6 +194,13 @@
             <path d="M12 2L1 21h22L12 2zm0 3.516L20.297 19H3.703L12 5.516zM11 10v4h2v-4h-2zm0 6v2h2v-2h-2z"/>
         </svg>
     </div>
+
+    <div class="spx-alert-box" id="scan-warning">
+    <div class="spx-alert-icon">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+            <path d="M12 2L1 21h22L12 2zm0 3.516L20.297 19H3.703L12 5.516zM11 10v4h2v-4h-2zm0 6v2h2v-2h-2z"/>
+        </svg>
+    </div>
     
     <div class="spx-alert-content">
     <strong>INFORMASI PENTING:</strong>
@@ -136,13 +213,38 @@
     </p>
     </div>
 
-    <div class="spx-close-btn" onclick="this.closest('.spx-alert-box').style.display='none'" title="Tutup Peringatan">
+    <div class="spx-close-btn" onclick="showPromo()" title="Tutup">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
         </svg>
     </div>
+</div>
 
+<div id="promo-offer" class="promo-box-blue d-none">
+    <div style="display: flex; align-items: flex-start; gap: 15px;">
+        <div style="font-size: 24px;">🚀</div> <div>
+            <strong style="font-size: 16px;">MAU FITUR LEBIH LENGKAP? GABUNG MITRA SANCAKA!</strong>
+            <p style="font-size: 13px; margin-bottom: 8px; opacity: 0.8;">Dapatkan akses eksklusif dengan menjadi member/agen kami:</p>
+            
+            <ul class="promo-list">
+                <li><i class="fas fa-check-circle"></i> Akses Full Fitur Aplikasi Sancaka.</li>
+                <li><i class="fas fa-store"></i> <a href="https://tokosancaka.com/etalase" target="_blank" style="text-decoration: underline; color: inherit;"><strong>Berjualan di Marketplace Sancaka</strong></a> (Jangkauan Luas).</li>
+                <li><i class="fas fa-wallet"></i> Jadi AGEN Loket PPOB (Jual Pulsa, Token Listrik, Bayar Air PDAM, dll).</li>
+                <li><i class="fas fa-chart-line"></i> Monitor Jumlah Kiriman Paket ALL Ekpedisi & SPX Realtime.</li>
+                <li><i class="fas fa-search-location"></i> Lacak Status & Surat Jalan SPX dengan Detail.</li>
+            </ul>
+
+            <a href="{{ route('register') }}" class="btn-join">DAFTAR AGEN SEKARANG <i class="fas fa-arrow-right ms-1"></i></a>
+            </div>
+    </div>
+
+    <div class="spx-close-btn" onclick="document.getElementById('promo-offer').classList.add('d-none')" style="color: #1e40af;" title="Tutup Promo">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+    </div>
 </div>
                         <div class="card border-0 shadow-sm mb-4">
                             <div class="card-body p-4">
