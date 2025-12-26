@@ -136,7 +136,7 @@
                                         // Mengubah nama ekspedisi jadi huruf kecil dan menghapus spasi. 
                                         // Contoh: "J&T Express" menjadi "j&texpress.png"
                                         $cleanName = strtolower(str_replace(' ', '', $order->expedition));
-                                        $logoPath = 'logos/' . $cleanName . '.png'; 
+                                        $logoPath = 'logo-ekspedisi/' . $cleanName . '.png'; 
                                     @endphp
 
                                     <img class="h-8 w-8 rounded-full object-contain bg-gray-50 p-1 border border-gray-200" 
