@@ -192,11 +192,33 @@
                         </div>
                     </td>
 
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <span class="px-3 py-1 inline-flex text-xs font-semibold rounded-full {{ $order->status_pesanan == 'Terkirim' ? 'bg-blue-100 text-blue-800' : ($order->status_pesanan == 'Tiba di Tujuan' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800') }}">
-                            {{ $order->status_pesanan }}
-                        </span>
-                    </td>
+                    {{-- 3. KOLOM STATUS (LOGIC WARNA DISINI) --}}
+        <td class="px-6 py-4 whitespace-nowrap">
+            @php
+                $status = $order->status_pesanan;
+                
+                // Default warna (Abu-abu)
+                $badgeClass = 'bg-gray-100 text-gray-800';
+
+                // Logika Warna
+                if ($status == 'Selesai' || $status == 'Tiba di Tujuan') {
+                    $badgeClass = 'bg-green-100 text-green-800'; // HIJAU
+                } 
+                elseif ($status == 'Menunggu Pickup' || $status == 'Diproses') {
+                    $badgeClass = 'bg-yellow-100 text-yellow-800'; // KUNING
+                } 
+                elseif ($status == 'Dibatalkan' || $status == 'Batal' || $status == 'Retur') {
+                    $badgeClass = 'bg-red-100 text-red-800'; // MERAH
+                } 
+                elseif ($status == 'Dikirim' || $status == 'Sedang Dikirim') {
+                    $badgeClass = 'bg-blue-100 text-blue-800'; // BIRU (Optional)
+                }
+            @endphp
+
+            <span class="px-3 py-1 inline-flex text-xs font-semibold rounded-full {{ $badgeClass }}">
+                {{ $status }}
+            </span>
+        </td>
                     <td class="px-6 py-4 whitespace-nowrap text-right font-semibold text-gray-800">
                         Rp {{ number_format($order->shipping_cost, 0, ',', '.') }}
                     </td>
