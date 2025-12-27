@@ -1106,12 +1106,10 @@ width: 22px;
 
         <h2 class="section-title">
     Didukung Jaringan Ekspedisi Lengkap Dan Profesional
-    <a href="https://tokosancaka.com/buat-pesanan" class="badge-kirim">
-        Kirim Sekarang !
-    </a>
         </h2>
-
         <p class="text-lg text-gray-600 mb-5 text-center">Fleksibilitas, jangkauan terluas, dan harga terbaik untuk pengiriman Anda.</p>
+
+        <a href="https://tokosancaka.com/buat-pesanan" class="badge-kirim">Kirim Sekarang !</a>
 
         <div class="row g-4 justify-content-center">
 
