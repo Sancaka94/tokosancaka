@@ -657,7 +657,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
 
 
 // Grouping berdasarkan domain
-Route::domain('umroh.tokosancaka.com')->group(function () {
+Route::domain('tokosancaka.com/umroh')->group(function () {
     
     // Langsung return view 'index' tanpa Controller
     Route::get('/', function () {
