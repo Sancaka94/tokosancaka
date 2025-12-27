@@ -62,31 +62,31 @@
     display: inline-block;
     margin-left: 10px;
     padding: 8px 18px;
-    background: linear-gradient(135deg, #8b0000, #c40000); /* merah tua */
+    background: linear-gradient(135deg, #8b0000, #c40000);
     color: #fff;
     font-weight: 800;
     font-size: 0.85em;
     border-radius: 999px;
     cursor: pointer;
+    text-decoration: none;
     box-shadow: 0 6px 14px rgba(139, 0, 0, 0.45);
     transition: all 0.3s ease;
     animation: blink 1.2s infinite, pulse 1.8s infinite;
 }
 
-/* Hover seperti tombol */
 .badge-gratis:hover {
     transform: translateY(-2px) scale(1.05);
     background: linear-gradient(135deg, #a30000, #ff0000);
     box-shadow: 0 10px 22px rgba(255, 0, 0, 0.55);
 }
 
-/* Efek berkedip */
+/* Berkedip */
 @keyframes blink {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.6; }
 }
 
-/* Efek pulse */
+/* Pulse */
 @keyframes pulse {
     0% {
         box-shadow: 0 0 0 0 rgba(196, 0, 0, 0.7);
@@ -992,7 +992,9 @@ width: 22px;
 
         <h2 class="section-title">
     Join Mitra Agent Loket PPOB & Top Up Game
-    <span class="badge-gratis">GRATIS!</span>
+    <a href="https://tokosancaka.com/register" class="badge-gratis">
+    GRATIS!
+    </a>
         </h2>
 
         <p class="text-lg text-muted mb-5 text-center">Layanan pembayaran tagihan bulanan, pulsa, paket data, PDAM , hingga top up game terlengkap dan Harga Terbaik.</p>
