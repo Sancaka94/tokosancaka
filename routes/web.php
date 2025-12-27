@@ -654,3 +654,15 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
         Route::get('/{id}', [AdminPpobController::class, 'show'])->name('show');
     });
 });
+
+
+// Grouping berdasarkan domain
+Route::domain('umroh.tokosancaka.com')->group(function () {
+    
+    // Langsung return view 'index' tanpa Controller
+    Route::get('/', function () {
+        // Pastikan file view ada di: resources/views/umroh/index.blade.php
+        return view('umroh.index'); 
+    });
+
+});
