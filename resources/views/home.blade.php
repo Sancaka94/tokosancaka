@@ -110,23 +110,20 @@
 
     }
 
-    .partner-logo-card:hover {
+    /* KODE BARU (GAMBAR BERWARNA & TERANG) */
+.partner-logo-card img {
+    max-height: 60px;       /* Ukuran disesuaikan agar pas */
+    width: 100%;
+    object-fit: contain;    /* Agar gambar tidak gepeng */
+    filter: none !important;  /* MEMATIKAN EFEK ABU-ABU */
+    opacity: 1 !important;    /* MEMATIKAN EFEK TRANSPARAN/PUDAR */
+    transition: transform 0.3s ease; /* Efek animasi saat disentuh */
+}
 
-        transform: translateY(-5px);
-
-        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
-
-    }
-
-    .partner-logo-card img {
-
-        max-height: 60px;
-
-        width: 100%;
-
-        object-fit: contain;
-
-    }
+/* Efek saat mouse diarahkan (Hover) */
+.partner-logo-card:hover img {
+    transform: scale(1.1); /* Gambar membesar sedikit saat di-hover */
+}
 
 
 
