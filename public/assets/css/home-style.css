@@ -188,7 +188,7 @@
 
 /* CSS untuk Judul Utama (H1) - Hitam dengan Bayangan Putih */
 .hero-section h1 {
-    font-weight: 800;
+    font-weight: 950;
     color: #000000 !important; /* Teks tetap Hitam */
     /* Menambahkan efek bersinar putih di sekeliling teks */
     text-shadow: 0px 0px 10px #ffffff, 0px 0px 20px #ffffff !important;
@@ -196,7 +196,7 @@
 
 /* CSS untuk Paragraf (P) - Hitam dengan Bayangan Putih */
 .hero-section p {
-    font-weight: 700;
+    font-weight: 750;
     color: #000000 !important; /* Teks tetap Hitam */
     /* Menambahkan efek bersinar putih yang sedikit lebih halus */
     text-shadow: 0px 0px 8px #ffffff !important;
