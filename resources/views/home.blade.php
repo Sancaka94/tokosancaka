@@ -16,6 +16,48 @@
 
     }
 
+    .badge-kirim {
+    display: inline-block;
+    margin-left: 12px;
+    padding: 8px 20px;
+    background: linear-gradient(135deg, #0d6efd, #084298); /* biru premium */
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.85em;
+    border-radius: 999px;
+    text-decoration: none;
+    cursor: pointer;
+    box-shadow: 0 6px 14px rgba(13, 110, 253, 0.45);
+    transition: all 0.3s ease;
+    animation: blinkBlue 1.6s infinite, pulseBlue 2s infinite;
+}
+
+/* Hover seperti tombol */
+.badge-kirim:hover {
+    transform: translateY(-2px) scale(1.05);
+    background: linear-gradient(135deg, #0b5ed7, #0a58ca);
+    box-shadow: 0 10px 22px rgba(13, 110, 253, 0.6);
+}
+
+/* Berkedip halus */
+@keyframes blinkBlue {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.65; }
+}
+
+/* Pulse biru */
+@keyframes pulseBlue {
+    0% {
+        box-shadow: 0 0 0 0 rgba(13, 110, 253, 0.6);
+    }
+    70% {
+        box-shadow: 0 0 0 14px rgba(13, 110, 253, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(13, 110, 253, 0);
+    }
+}
+
     .badge-gratis {
     display: inline-block;
     margin-left: 10px;
@@ -1062,7 +1104,12 @@ width: 22px;
 
     <div class="container">
 
-        <h2 class="section-title">Didukung Jaringan Ekspedisi Ternama</h2>
+        <h2 class="section-title">
+    Didukung Jaringan Ekspedisi Lengkap Dan Profesional
+    <a href="https://tokosancaka.com/buat-pesanan" class="badge-kirim">
+        Kirim Sekarang !
+    </a>
+        </h2>
 
         <p class="text-lg text-gray-600 mb-5 text-center">Fleksibilitas, jangkauan terluas, dan harga terbaik untuk pengiriman Anda.</p>
 
