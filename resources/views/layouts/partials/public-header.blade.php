@@ -36,7 +36,7 @@
 
                         <a class="btn btn-outline-primary ms-lg-2" href="{{ route('login') }}">
 
-                            <i class="fas fa-sign-in-alt me-1"></i> Login Pelanggan
+                            <i class="fas fa-sign-in-alt me-1"></i> Login Member
 
                         </a>
 
