@@ -176,7 +176,7 @@
 
       .hero-section {
     /* Hapus linear-gradient, langsung url gambar saja */
-    background: url('https://tokosancaka.com/storage/gambar/header3.png') no-repeat center center;
+    background: url('https://tokosancaka.com/storage/gambar/header4.jpg') no-repeat center center;
     background-size: cover;
     color: #fff;
     padding: 120px 0;
@@ -186,11 +186,31 @@
 
 
 
-        .hero-section h1 {
+/* Update CSS ini */
+.hero-section h1 {
     font-weight: 700;
     font-size: clamp(2.5rem, 5vw, 3.5rem);
-    /* Gunakan shadow yang lebih kuat/gelap agar teks putih tetap terbaca di background terang */
-    text-shadow: 0px 4px 10px rgba(0,0,0, 0.9); 
+    color: #ffffff;
+    /* Memberikan outline hitam tebal di sekeliling teks */
+    text-shadow: 
+        -2px -2px 0 #000,  
+         2px -2px 0 #000,
+        -2px  2px 0 #000,
+         2px  2px 0 #000,
+         0px 4px 15px rgba(0,0,0,0.8); /* Bayangan tambahan agar 3D */
+}
+
+.hero-section p {
+    color: #ffffff;
+    font-weight: 600; /* Sedikit ditebalkan */
+    font-size: 1.25rem;
+    /* Outline hitam sedikit lebih tipis untuk paragraf */
+    text-shadow: 
+        -1px -1px 0 #000,  
+         1px -1px 0 #000,
+        -1px  1px 0 #000,
+         1px  1px 0 #000,
+         0px 2px 10px rgba(0,0,0,0.8);
 }
 
 
