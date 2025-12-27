@@ -187,22 +187,11 @@
 
 
         .hero-section h1 {
-
-
-
-            font-weight: 700;
-
-
-
-            font-size: clamp(2.5rem, 5vw, 3.5rem);
-
-
-
-            text-shadow: 2px 2px 8px rgba(0,0,0,0.6);
-
-
-
-        }
+    font-weight: 700;
+    font-size: clamp(2.5rem, 5vw, 3.5rem);
+    /* Gunakan shadow yang lebih kuat/gelap agar teks putih tetap terbaca di background terang */
+    text-shadow: 0px 4px 10px rgba(0,0,0, 0.9); 
+}
 
 
 
