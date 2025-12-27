@@ -186,31 +186,18 @@
 
 
 
-/* Update CSS ini */
+/* CSS untuk Judul Utama (H1) menjadi Hitam */
 .hero-section h1 {
-    font-weight: 700;
-    font-size: clamp(2.5rem, 5vw, 3.5rem);
-    color: #000000;
-    /* Memberikan outline hitam tebal di sekeliling teks */
-    text-shadow: 
-        -2px -2px 0 #000,  
-         2px -2px 0 #000,
-        -2px  2px 0 #000,
-         2px  2px 0 #000,
-         0px 4px 15px rgba(0,0,0,0.8); /* Bayangan tambahan agar 3D */
+    font-weight: 800; /* Dibuat sangat tebal agar tegas */
+    color: #000000 !important; /* Warna Hitam Pekat */
+    text-shadow: none !important; /* Menghapus semua efek bayangan/outline sebelumnya */
 }
 
+/* CSS untuk Paragraf Deskripsi (P) menjadi Hitam */
 .hero-section p {
-    color: #000000;
-    font-weight: 600; /* Sedikit ditebalkan */
-    font-size: 1.25rem;
-    /* Outline hitam sedikit lebih tipis untuk paragraf */
-    text-shadow: 
-        -1px -1px 0 #000,  
-         1px -1px 0 #000,
-        -1px  1px 0 #000,
-         1px  1px 0 #000,
-         0px 2px 10px rgba(0,0,0,0.8);
+    font-weight: 700; /* Dibuat agak tebal */
+    color: #000000 !important; /* Warna Hitam Pekat */
+    text-shadow: none !important; /* Menghapus semua efek bayangan/outline sebelumnya */
 }
 
 
