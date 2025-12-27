@@ -186,23 +186,26 @@
 
 
 
-/* Update CSS ini */
+/* CSS untuk Judul Utama (H1) - KOMBINASI Garis & Bayangan Putih */
 .hero-section h1 {
     font-weight: 800;
     color: #000000 !important;
-    /* Membuat outline solid 3px ke segala arah */
+    /* Layer 1-4: Membuat Garis Putih Tajam (Outline 2px) */
+    /* Layer 5-7: Membuat Bayangan Putih Lembut (Glow) di belakang garis */
     text-shadow: 
-        3px 0 0 #fff, -3px 0 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff,
-        2px 2px 0 #fff, -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff !important;
+        2px 2px 0 #fff, -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff,
+        0 0 10px #fff, 0 0 20px #fff, 0 0 30px #fff !important;
 }
 
+/* CSS untuk Paragraf (P) - KOMBINASI Garis & Bayangan Putih (Lebih Tipis) */
 .hero-section p {
     font-weight: 700;
     color: #000000 !important;
-    /* Outline solid sedikit lebih tipis (2px) untuk paragraf */
+    /* Layer 1-4: Membuat Garis Putih Tajam (Outline 1px) */
+    /* Layer 5-6: Membuat Bayangan Putih Lembut (Glow) */
     text-shadow: 
-        2px 0 0 #fff, -2px 0 0 #fff, 0 2px 0 #fff, 0 -2px 0 #fff,
-        1px 1px 0 #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff !important;
+        1px 1px 0 #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff,
+        0 0 5px #fff, 0 0 10px #fff !important;
 }
 
 
