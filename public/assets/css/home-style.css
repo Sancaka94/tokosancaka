@@ -178,7 +178,7 @@
     /* Hapus linear-gradient, langsung url gambar saja */
     background: url('https://tokosancaka.com/storage/gambar/header4.jpg') no-repeat center center;
     background-size: cover;
-    color: #fff;
+    color: #ffffff;
     padding: 120px 0;
     text-align: center;
     position: relative; /* Tambahkan ini untuk jaga-jaga layout */
@@ -190,7 +190,7 @@
 .hero-section h1 {
     font-weight: 700;
     font-size: clamp(2.5rem, 5vw, 3.5rem);
-    color: #ffffff;
+    color: #000000;
     /* Memberikan outline hitam tebal di sekeliling teks */
     text-shadow: 
         -2px -2px 0 #000,  
@@ -201,7 +201,7 @@
 }
 
 .hero-section p {
-    color: #ffffff;
+    color: #000000;
     font-weight: 600; /* Sedikit ditebalkan */
     font-size: 1.25rem;
     /* Outline hitam sedikit lebih tipis untuk paragraf */
