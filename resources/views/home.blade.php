@@ -762,6 +762,113 @@ width: 22px;
 </section>
 
 
+<section id="ppob" class="section bg-light">
+    <div class="container">
+        <h2 class="section-title">Agent Loket PPOB & Top Up Game</h2>
+        <p class="text-lg text-muted mb-5 text-center">Layanan pembayaran tagihan bulanan, pulsa, paket data, hingga top up game terlengkap.</p>
+
+        <div class="row g-4 justify-content-center">
+            
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="partner-logo-card">
+                    <img src="https://tokosancaka.com/storage/logo-ppob/pln.png" alt="PLN" loading="lazy">
+                </div>
+            </div>
+             <div class="col-6 col-md-4 col-lg-2">
+                <div class="partner-logo-card">
+                    <img src="https://tokosancaka.com/storage/logo-ppob/pln pascabayar.png" alt="PLN Pascabayar" loading="lazy">
+                </div>
+            </div>
+             <div class="col-6 col-md-4 col-lg-2">
+                <div class="partner-logo-card">
+                    <img src="https://tokosancaka.com/storage/logo-ppob/pertamina gas.png" alt="Pertamina Gas" loading="lazy">
+                </div>
+            </div>
+
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="partner-logo-card">
+                    <img src="https://tokosancaka.com/storage/logo-ppob/dana.png" alt="Dana" loading="lazy">
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="partner-logo-card">
+                    <img src="https://tokosancaka.com/storage/logo-ppob/ovo.png" alt="OVO" loading="lazy">
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="partner-logo-card">
+                    <img src="https://tokosancaka.com/storage/logo-ppob/go pay.png" alt="GoPay" loading="lazy">
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="partner-logo-card">
+                    <img src="https://tokosancaka.com/storage/logo-ppob/shopee pay.png" alt="Shopee Pay" loading="lazy">
+                </div>
+            </div>
+
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="partner-logo-card">
+                    <img src="https://tokosancaka.com/storage/logo-ppob/telkomsel.png" alt="Telkomsel" loading="lazy">
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="partner-logo-card">
+                    <img src="https://tokosancaka.com/storage/logo-ppob/indosat.png" alt="Indosat" loading="lazy">
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="partner-logo-card">
+                    <img src="https://tokosancaka.com/storage/logo-ppob/xl.png" alt="XL" loading="lazy">
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="partner-logo-card">
+                    <img src="https://tokosancaka.com/storage/logo-ppob/axis.png" alt="Axis" loading="lazy">
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="partner-logo-card">
+                    <img src="https://tokosancaka.com/storage/logo-ppob/tri.png" alt="Tri" loading="lazy">
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="partner-logo-card">
+                    <img src="https://tokosancaka.com/storage/logo-ppob/smartfren.png" alt="Smartfren" loading="lazy">
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="partner-logo-card">
+                    <img src="https://tokosancaka.com/storage/logo-ppob/by.u.png" alt="By.U" loading="lazy">
+                </div>
+            </div>
+
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="partner-logo-card">
+                    <img src="https://tokosancaka.com/storage/logo-ppob/bpjs.png" alt="BPJS Kesehatan" loading="lazy">
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="partner-logo-card">
+                    <img src="https://tokosancaka.com/storage/logo-ppob/k-vision dan gol.png" alt="K-Vision" loading="lazy">
+                </div>
+            </div>
+
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="partner-logo-card">
+                    <img src="https://tokosancaka.com/storage/logo-ppob/mobile legends.png" alt="Mobile Legends" loading="lazy">
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="partner-logo-card">
+                    <img src="https://tokosancaka.com/storage/logo-ppob/free fire.png" alt="Free Fire" loading="lazy">
+                </div>
+            </div>
+
+        </div>
+    </div>
+</section>
+
+
 <!-- Layanan Section -->
 
 <section id="layanan" class="section">
