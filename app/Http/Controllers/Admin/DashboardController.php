@@ -23,7 +23,7 @@ class DashboardController extends Controller
         // A. TANGKAP INPUT DULUAN
     $startDate = $request->input('start_date');
     $endDate = $request->input('end_date');
-    $cacheDuration = 600;
+    $cacheDuration = 60;
 
     // B. DEFINISIKAN KEY CACHE
     $statsCacheKey = 'admin_stats_v11_' . ($startDate ?? 'all') . '_' . ($endDate ?? 'all');
