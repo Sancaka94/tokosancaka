@@ -839,6 +839,12 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
 
         $pesananCoreData = collect($validatedData)->only($fieldsToSave)->all();
 
+    // ============================================================
+    // TAMBAHAN: MAPPING MANUAL KE total_harga_barang
+    // ============================================================
+    // Mengisi kolom 'total_harga_barang' dengan nilai dari input 'item_price'
+    $pesananCoreData['total_harga_barang'] = $validatedData['item_price'];
+
         return array_merge($pesananCoreData, [
             'nomor_invoice' => $nomorInvoice,
             'status' => 'Menunggu Pembayaran',
