@@ -798,7 +798,8 @@ class PesananController extends Controller
                     // --- DATA FINAL KE API ---
                     'item_value' => (int)$apiItemPrice, 
                     'insurance_amount' => (int)$finalInsuranceAmount, 
-                    'cod' => (int)$finalCodValue, 
+                    'cod' => (int)$finalCodValue,
+                    'schedule' => $scheduleClock, // <--- Menggunakan jadwal hasil logika di atas
                     // -------------------------
 
                     'service' => $courier, 'service_type' => $service_type,
