@@ -10,8 +10,7 @@ class GeminiService
     protected $keys = [];
     
     // Kita tetap pakai 1.5 Flash karena ini yang paling stabil & kuota besar
-    protected $baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
-
+protected $baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-001:generateContent';
     public function __construct()
     {
         // Masukkan semua key ke dalam array
