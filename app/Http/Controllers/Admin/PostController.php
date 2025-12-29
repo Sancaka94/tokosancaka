@@ -225,7 +225,7 @@ Hasilkan konten HANYA dalam format HTML mentah (raw HTML), tanpa ``` html atau p
 
 1.  **Riset & Kedalaman:** Bahas topik secara mendalam dan berikan informasi yang benar-benar bernilai bagi pembaca.
 2.  **Kata Kunci:** Gunakan kata kunci utama <strong>{$title}</strong> secara alami 3-5 kali. Sertakan juga variasi kata kunci (LSI) yang relevan dengan topik.
-3.  **Tautan Internal:** Sisipkan 2-3 tautan internal ke domain tokosancaka.com atau tokosancaka.biz.id. Gunakan anchor text yang relevan. Contoh: <a href=\"https://tokosancaka.com/cek-ongkir\">cek ongkos kirim</a>.
+3.  **Tautan Internal:** Sisipkan 2-3 tautan internal ke domain tokosancaka.com. Gunakan anchor text yang relevan. Contoh: <a href=\"https://tokosancaka.com/cek-ongkir\">cek ongkos kirim</a>.
 4.  **Panjang Artikel:** Total panjang artikel **tidak boleh lebih dari 1000 kata**.
 5.  **Judul & Subjudul:** Gunakan judul dan subjudul yang menarik serta mengandung kata kunci.
 6.  **Meta Deskripsi:** Buat meta deskripsi singkat (maksimal 160 karakter) yang mengandung kata kunci utama.
@@ -270,7 +270,7 @@ Hasilkan konten HANYA dalam format HTML mentah (raw HTML), tanpa ``` html atau p
 CV. Sancaka Karya Hutama<br>
 Jl. Dr. Wahidin No.18A RT.22/05 Kel. Ketanggi Kec. Ngawi Kab. Ngawi, Jawa Timur 63211<br>
 HP/WA: 0857-4580-8809<br>
-Website: tokosancaka.biz.id , tokosancaka.com , sancaka.biz.id </p>
+Website: tokosancaka.com </p>
 
 <p><em>Pilihan tepat untuk pengiriman barang cepat, aman, dan bergaransi ke seluruh Indonesia!</em></p>
 ";
