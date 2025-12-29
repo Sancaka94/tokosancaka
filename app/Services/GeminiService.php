@@ -9,8 +9,9 @@ class GeminiService
 {
     protected $apiKey;
     
-    // ✅ PERBAIKAN: Saya tambahkan "-latest" agar dikenali Google
-    protected $baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro-latest:generateContent';
+    // ✅ UPDATE TERBARU: Menggunakan Model Gemini 3 Pro Preview
+    // Sesuai data yang Anda kirimkan.
+    protected $baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-preview:generateContent';
 
     public function __construct()
     {
@@ -25,6 +26,7 @@ class GeminiService
         }
 
         try {
+            // Setup Request
             $response = Http::withHeaders([
                 'Content-Type' => 'application/json',
             ])->post("{$this->baseUrl}?key={$this->apiKey}", [
@@ -37,17 +39,18 @@ class GeminiService
                 ]
             ]);
 
+            // Cek Jika Berhasil
             if ($response->successful()) {
                 $data = $response->json();
                 return $data['candidates'][0]['content']['parts'][0]['text'] ?? 'Maaf, AI tidak memberikan respons.';
             }
 
-            // Log Error Detail
+            // Cek Jika Gagal
             $errorBody = $response->json();
             
             Log::error('Gemini API Error', [
                 'status' => $response->status(),
-                'model'  => 'gemini-1.5-pro-latest', 
+                'model'  => 'gemini-3-pro-preview', 
                 'error'  => $errorBody
             ]);
             
