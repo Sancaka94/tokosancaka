@@ -73,6 +73,15 @@
 </style>
 @endpush
 
+@if (session('warning'))
+    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        <strong>Info Pengiriman:</strong> {{ session('warning') }}
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+@endif
+
 @section('content')
 <div class="bg-white p-4 sm:p-6 rounded-lg shadow-md">
 
