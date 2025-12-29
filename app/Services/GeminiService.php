@@ -12,8 +12,6 @@ class GeminiService
     protected $baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
     public function __construct()
     {
-        // Masukkan semua key ke dalam array
-        // Anda bisa menambah KEY_3, KEY_4, dst jika mau
         $this->keys = [
             env('GEMINI_API_KEY_1'),
             env('GEMINI_API_KEY_2'),
@@ -22,7 +20,6 @@ class GeminiService
 
     public function generateText($prompt)
     {
-        // Hapus key yang kosong (jika user lupa isi di .env)
         $availableKeys = array_filter($this->keys);
 
         if (empty($availableKeys)) {
@@ -31,49 +28,46 @@ class GeminiService
 
         $lastError = 'Unknown Error';
 
-        // --- LOOPING PINTAR ---
-        // Coba satu per satu key yang ada
         foreach ($availableKeys as $index => $apiKey) {
-            
+            $apiKey = trim($apiKey);
+            if (empty($apiKey)) continue;
+
             try {
-                // Info log untuk debugging
                 $keyNumber = $index + 1;
                 
-                // Request ke Google
-                $response = Http::withHeaders([
-                    'Content-Type' => 'application/json',
-                ])->post("{$this->baseUrl}?key={$apiKey}", [
-                    'contents' => [
-                        [
-                            'parts' => [['text' => $prompt]]
-                        ]
-                    ]
-                ]);
+                // Jeda sedikit saat pindah key
+                if ($index > 0) sleep(2);
 
-                // JIKA SUKSES: Langsung kembalikan hasil & BERHENTI looping
+                // ✅ PERBAIKAN UTAMA: timeout(120)
+                // Kita beri waktu 120 detik (2 menit) agar tidak error "cURL timeout"
+                $response = Http::timeout(120)
+                    ->withHeaders(['Content-Type' => 'application/json'])
+                    ->post("{$this->baseUrl}?key={$apiKey}", [
+                        'contents' => [
+                            [
+                                'parts' => [['text' => $prompt]]
+                            ]
+                        ]
+                    ]);
+
                 if ($response->successful()) {
                     $data = $response->json();
                     return $data['candidates'][0]['content']['parts'][0]['text'] ?? 'Maaf, AI tidak memberikan respons.';
                 }
 
-                // JIKA GAGAL:
-                // Simpan errornya, lalu lanjut ke loop berikutnya (Key selanjutnya)
                 $errorBody = $response->json();
                 $errorMessage = $errorBody['error']['message'] ?? 'Unknown API Error';
-                $lastError = "Key ke-{$keyNumber} Gagal: {$errorMessage}";
+                $lastError = "Key-{$keyNumber}: {$errorMessage}";
 
-                Log::warning("Gemini Key ke-{$keyNumber} gagal. Mencoba key berikutnya...", [
-                    'error' => $errorMessage
-                ]);
+                Log::warning("Gemini Key ke-{$keyNumber} Gagal.", ['error' => $errorMessage]);
 
             } catch (\Exception $e) {
-                $lastError = "Key ke-{$keyNumber} Error Sistem: " . $e->getMessage();
+                // Menangkap error timeout
+                $lastError = "Key-{$keyNumber} Error Koneksi: " . $e->getMessage();
                 Log::error($lastError);
             }
         }
 
-        // Jika sampai sini, berarti SEMUA Key sudah dicoba dan SEMUANYA gagal
-        Log::error('Semua API Key Gemini Gagal digunakan.');
-        return 'Gagal Total: Semua API Key sedang limit atau bermasalah. Terakhir: ' . $lastError;
+        return 'Gagal Total. Pesan Terakhir: ' . $lastError;
     }
 }
