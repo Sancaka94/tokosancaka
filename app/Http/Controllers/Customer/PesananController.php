@@ -747,8 +747,18 @@ class PesananController extends Controller
             return $kirimaja->createInstantOrder($payload);
 
         } else { 
+            // ----- PERBAIKAN DI SINI UNTUK SCHEDULE -----
+            // Ambil jadwal default dari KiriminAja atau gunakan waktu sekarang
             $scheduleResponse = $kirimaja->getSchedules(); 
-            $scheduleClock = $scheduleResponse['clock'] ?? null;
+            $scheduleClock = $scheduleResponse['clock'] ?? date('Y-m-d H:i:s');
+            
+            // JIKA JAM >= 15:00, SET JADWAL PICKUP BESOK PAGI JAM 09:00
+            // Ini untuk menghindari error 'melewati batas pemrosesan' dari SPX/J&T
+            if ((int)date('H') >= 15) {
+                $scheduleClock = date('Y-m-d H:i:s', strtotime('+1 day 09:00:00'));
+                Log::info("Jadwal Pickup digeser ke besok ($scheduleClock) karena sudah sore.");
+            }
+            // ---------------------------------------------
             $category = ($data['service_type'] ?? $serviceGroup) === 'cargo' ? 'trucking' : 'regular';
 
             $weightInput = (int) $data['weight'];
