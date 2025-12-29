@@ -9,8 +9,9 @@ class GeminiService
 {
     protected $apiKey;
     
-    // PERBAIKAN: Menggunakan 'gemini-2.5-flash' sesuai daftar JSON Anda
-    protected $baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+    // ✅ PERUBAHAN DI SINI:
+    // Saya ganti 'gemini-2.5-flash' menjadi 'gemini-1.5-pro'
+    protected $baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent';
 
     public function __construct()
     {
@@ -44,9 +45,11 @@ class GeminiService
 
             // Log Error Detail
             $errorBody = $response->json();
+            
+            // Log nama modelnya agar kita tahu ini pakai Pro
             Log::error('Gemini API Error', [
                 'status' => $response->status(),
-                'model'  => 'gemini-2.5-flash',
+                'model'  => 'gemini-1.5-pro', 
                 'error'  => $errorBody
             ]);
             
