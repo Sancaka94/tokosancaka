@@ -296,6 +296,13 @@ if (($kiriminResponse['status'] ?? false) !== true) {
         'invoice' => $pesanan->nomor_invoice,
         'resi' => $pesanan->resi
     ]);
+
+    // 🔥 TAMBAHAN: CEK APAKAH ADA INFO JADWAL DIGESER?
+    if (isset($kiriminResponse['custom_warning'])) {
+        // Gunakan 'warning' agar muncul kotak kuning/oranye di interface
+        session()->flash('warning', $kiriminResponse['custom_warning']);
+    }
+    
 }
 
 // Simpan perubahan status/resi ke database
