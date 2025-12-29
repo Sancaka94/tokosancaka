@@ -390,10 +390,9 @@ Website: tokosancaka.biz.id , tokosancaka.com , sancaka.biz.id </p>
 
         // Updated to a newer, recommended model.
 
-        $model = 'gemini-2.5-flash-preview-05-20';
+        $model = 'gemini-1.5-pro'; // <--- GANTI JADI INI
 
-        $response = Http::retry(3, 2000)->post("https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}", [
-            'contents' => [[
+    $response = Http::retry(3, 2000)->post("https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}", ['contents' => [[
                 'parts' => [['text' => $prompt]]
             ]],
             'generationConfig' => [
