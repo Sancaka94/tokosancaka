@@ -160,7 +160,7 @@
                 <div class="mt-2 pt-2">
                     <p class="label"><strong>Rincian Paket:</strong></p>
                     <p class="value">- Berat: {{ $pesanan->weight }} Gram</p>
-                    <p class="value">- Harga Barang: Rp {{ number_format($pesanan->price, 0, ',', '.') }}</p>
+                    <p class="value">- Harga Barang: Rp {{ number_format($order->item_price ?? $order->total_harga_barang ?? 0) }}</p>
                     <p class="value">- Isi Paket: {{ $pesanan->item_description }}</p>
                     <p class="value">- Dimensi: {{ $pesanan->length ?? 0 }} x {{ $pesanan->width ?? 0 }} x {{ $pesanan->height ?? 0 }} cm</p>
                     <p class="value">- Layanan: {{ strtoupper($expeditionService) }}</p><br>
