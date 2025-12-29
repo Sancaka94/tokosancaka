@@ -457,180 +457,80 @@ Website: tokosancaka.biz.id , tokosancaka.com , sancaka.biz.id </p>
 
 
 
-
-    /**
-
-     * Menyimpan post baru ke dalam database.
-
-     */
+// --- CRUD STORE & UPDATE ---
 
     public function store(Request $request)
-
     {
-
         $request->validate([
-
             'title' => 'required|string|max:255|unique:posts,title',
-
             'content' => 'required|string',
-
             'category_id' => 'required|exists:categories,id',
-
-            'featured_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
-
+            'featured_image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
             'tags' => 'nullable|array'
-
         ]);
 
-
-
-        $imagePath = null;
-
-        if ($request->hasFile('featured_image')) {
-
-            // PERBAIKAN: Menyimpan file ke storage/app/public/uploads/posts
-
-            $imagePath = $request->file('featured_image')->store('uploads/posts', 'public');
-
-        }
-
-
+        $imagePath = $request->file('featured_image') 
+            ? $request->file('featured_image')->store('uploads/posts', 'public') 
+            : null;
 
         $post = Post::create([
-
             'user_id' => Auth::id(),
-
             'category_id' => $request->category_id,
-
             'title' => $request->title,
-
-            'slug' => Str::slug($request->title, '-') . '-' . uniqid(),
-
+            // Slug dibuat sekali saat create
+            'slug' => Str::slug($request->title, '-') . '-' . uniqid(), 
             'content' => $request->content,
-
             'featured_image' => $imagePath,
-
             'status' => 'published',
-
         ]);
-
-
 
         if ($request->has('tags')) {
-
             $post->tags()->attach($request->tags);
-
         }
-
-
 
         return redirect()->route('admin.posts.index')->with('success', 'Postingan berhasil ditambahkan.');
-
     }
-
-
-
-    /**
-
-     * Memperbarui post yang sudah ada di database.
-
-     */
 
     public function update(Request $request, Post $post)
-
     {
-
         $request->validate([
-
             'title' => 'required|string|max:255|unique:posts,title,' . $post->id,
-
             'content' => 'required|string',
-
             'category_id' => 'required|exists:categories,id',
-
-            'featured_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
-
+            'featured_image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
             'tags' => 'nullable|array'
-
         ]);
 
+        $dataToUpdate = [
+            'category_id' => $request->category_id,
+            'title' => $request->title,
+            'content' => $request->content,
+        ];
 
-
-        $imagePath = $post->featured_image;
-
-
+        // PERBAIKAN: Slug sebaiknya tidak berubah otomatis saat update untuk menjaga SEO.
+        // Jika Anda MEMANG ingin merubah slug saat judul berubah, uncomment baris di bawah:
+        // $dataToUpdate['slug'] = Str::slug($request->title, '-') . '-' . uniqid(); 
 
         if ($request->hasFile('featured_image')) {
-
-            // PERBAIKAN: Hapus file lama dari storage jika ada
-
             if ($post->featured_image) {
-
                 Storage::disk('public')->delete($post->featured_image);
-
             }
-
-
-
-            // PERBAIKAN: Simpan file baru ke storage
-
-            $imagePath = $request->file('featured_image')->store('uploads/posts', 'public');
-
+            $dataToUpdate['featured_image'] = $request->file('featured_image')->store('uploads/posts', 'public');
         }
 
-
-
-        $post->update([
-
-            'category_id' => $request->category_id,
-
-            'title' => $request->title,
-
-            'slug' => Str::slug($request->title, '-') . '-' . uniqid(),
-
-            'content' => $request->content,
-
-            'featured_image' => $imagePath,
-
-        ]);
-
-
-
+        $post->update($dataToUpdate);
         $post->tags()->sync($request->tags ?? []);
 
-
-
         return redirect()->route('admin.posts.index')->with('success', 'Postingan berhasil diperbarui.');
-
     }
-
-
-
-    /**
-
-     * Menghapus post dari database.
-
-     */
 
     public function destroy(Post $post)
-
     {
-
-        // PERBAIKAN: Hapus file dari storage jika ada
-
         if ($post->featured_image) {
-
             Storage::disk('public')->delete($post->featured_image);
-
         }
-
-
-
         $post->delete();
-
         return redirect()->route('admin.posts.index')->with('success', 'Postingan berhasil dihapus.');
-
     }
-
 }
 
