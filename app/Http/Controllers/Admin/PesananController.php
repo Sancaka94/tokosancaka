@@ -995,8 +995,22 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
             return $kirimaja->createInstantOrder($payload);
 
         } else { 
-            $scheduleResponse = $kirimaja->getSchedules(); 
-            $scheduleClock = $scheduleResponse['clock'] ?? null;
+            $scheduleResponse = $kirimaja->getSchedules();
+    $scheduleClock = $scheduleResponse['clock'] ?? date('Y-m-d H:i:s');
+    
+    // Variabel penampung pesan
+    $pesanGeserJadwal = null; 
+
+    // LOGIKA AUTO-BESOK
+    if (date('H') >= 15) {
+        $besok = strtotime('+1 day 09:00:00');
+        $scheduleClock = date('Y-m-d H:i:s', $besok);
+        
+        // Simpan pesan info untuk ditampilkan di interface
+        $pesanGeserJadwal = "Jadwal Pickup digeser ke besok (" . date('d M Y H:i', $besok) . ") karena sudah sore (Lewat jam 15:00).";
+        
+        Log::info("Jadwal Pickup digeser: " . $scheduleClock);
+    }
             $category = ($data['service_type'] ?? $serviceGroup) === 'cargo' ? 'trucking' : 'regular';
 
             $weightInput = (int) $data['weight'];
@@ -1044,7 +1058,18 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
                 ]]
             ];
             Log::info('KiriminAja Create Express/Cargo Order Payload (Customer):', $payload);
-            return $kirimaja->createExpressOrder($payload);
+
+            // PANGGIL API
+    $apiResponse = $kirimaja->createExpressOrder($payload);
+
+    // 🔥 TAMBAHAN: Masukkan pesan geser jadwal ke dalam array response API
+    if ($pesanGeserJadwal) {
+        $apiResponse['custom_warning'] = $pesanGeserJadwal;
+    }
+
+    return $apiResponse;
+
+            //return $kirimaja->createExpressOrder($payload);
         }
     }
 
