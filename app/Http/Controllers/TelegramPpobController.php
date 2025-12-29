@@ -14,26 +14,26 @@ use App\Models\User;
 class TelegramPpobController extends Controller
 {
     protected $telegramToken;
-    protected $defaultUserId = 8; // ID Default (Sesuai data histori Anda)
+    protected $defaultUserId = 4; // ID Default (Sesuai data histori Anda)
     
     // Konfigurasi Provider (Contoh: Digiflazz)
     protected $providerUrl = 'https://api.digiflazz.com/v1/transaction';
-    protected $providerUser = 'username_anda';
-    protected $providerKey = 'key_anda';
+    protected $providerUser = 'mihetiDVGdeW';
+    protected $providerKey = '1f48c69f-8676-5d56-a868-10a46a69f9b7';
 
     public function __construct()
     {
         $this->telegramToken = env('TELEGRAM_BOT_TOKEN');
     }
 
-    /**
-     * MAIN HANDLER: Menerima Webhook
-     */
     public function handle(Request $request)
     {
+        // 1. LOG DEBUG (Cek di storage/logs/laravel.log apakah ini muncul)
+        Log::info('Webhook Telegram Masuk:', $request->all());
+
         $update = $request->all();
 
-        // 1. Validasi Payload
+        // 2. Validasi Payload
         if (!isset($update['message']) || !isset($update['message']['text'])) {
             return response()->json(['status' => 'ignored']);
         }
@@ -43,11 +43,18 @@ class TelegramPpobController extends Controller
         $username = $update['message']['chat']['username'] ?? 'Gan';
 
         try {
-            // 2. Routing Perintah
+            // 3. Routing Perintah
             if ($text == '/start' || $text == '/menu') {
                 $this->sendMenu($chatId, $username);
             } 
             elseif (Str::startsWith($text, '/beli')) {
+                // TAMBAHAN CEK USER (Agar tidak crash)
+                $user = User::find($this->defaultUserId);
+                if (!$user) {
+                    $this->sendMessage($chatId, "⚠️ Error: User Agen Default (ID {$this->defaultUserId}) tidak ditemukan di Database.");
+                    return response()->json(['status' => 'error_user']);
+                }
+                
                 $this->processTransaction($chatId, $text);
             }
             elseif ($text == '/cek' || $text == '/riwayat') {
@@ -60,11 +67,16 @@ class TelegramPpobController extends Controller
                 $this->sendMessage($chatId, "📞 Hubungi CS: @AdminSancaka");
             }
             else {
+                // Balas pesan default agar kita tahu bot hidup
                 $this->sendMessage($chatId, "⚠️ Perintah tidak dikenal. Ketik /menu");
             }
         } catch (\Exception $e) {
+            // Log Error Lengkap
             Log::error("Telegram Bot Error: " . $e->getMessage());
-            $this->sendMessage($chatId, "❌ Terjadi kesalahan sistem internal.");
+            Log::error($e->getTraceAsString());
+            
+            // Kirim pesan error ke Telegram agar kita tahu ada yang salah
+            $this->sendMessage($chatId, "❌ System Error: " . $e->getMessage());
         }
 
         return response()->json(['status' => 'ok']);
