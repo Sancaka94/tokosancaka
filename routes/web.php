@@ -670,4 +670,4 @@ Route::domain('tokosancaka.com/umroh')->group(function () {
 
 });
 
-Route::any('/telegram-webhook', [TelegramPpobController::class, 'handle']);
+Route::post('/telegram-webhook', [TelegramPpobController::class, 'handle']);
