@@ -21,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'digiflazz/webhook', // <--- Tambahkan baris ini
             'payment/*', // Jika ada webhook payment lain
             'webhook/fonnte', // <--- Tambahkan baris ini
+            'api/telegram/webhook', // Sesuaikan dengan route
         ]);
 
         // --- TAMBAHKAN BAGIAN INI ---
