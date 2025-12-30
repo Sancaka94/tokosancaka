@@ -100,7 +100,15 @@ class TelegramPpobController extends Controller
                     break;
 
                 default:
-                    $this->sendMessage($chatId, "⚠️ Perintah tidak dikenal. Ketik /menu untuk bantuan.");
+                    // --- LOGIKA BARU DI SINI ---
+                    
+                    // Cek apakah formatnya dipisahkan titik? (Contoh: pln.123.20.0812)
+                    if (str_contains($text, '.') && count(explode('.', $text)) >= 3) {
+                        $this->processDotTransaction($chatId, $text);
+                    } else {
+                        // Jika bukan format titik dan bukan perintah dikenal
+                        $this->sendMessage($chatId, "⚠️ Perintah tidak dikenal. Ketik /menu untuk bantuan.");
+                    }
                     break;
             }
 
@@ -110,6 +118,92 @@ class TelegramPpobController extends Controller
         }
 
         return response('OK', 200);
+    }
+
+    /**
+     * Handle Transaksi Format Titik (SERVER PULSA CLASSIC)
+     * Format: prefix.idpel.nominal.nopenerima
+     * Contoh: pln.132456789.20.085745808809
+     */
+    private function processDotTransaction($chatId, $text)
+    {
+        // 1. Pecah String berdasarkan titik
+        $parts = explode('.', $text);
+
+        // Validasi jumlah parameter minimal 3 (Produk, Tujuan, Nominal)
+        if (count($parts) < 3) {
+            $this->sendMessage($chatId, "❌ <b>Format Salah!</b>\n\nFormat: <code>kode.tujuan.nominal.penerima</code>\nContoh: <code>pln.12345678.20.0812xxx</code>");
+            return;
+        }
+
+        // 2. Mapping Data
+        $prefix  = strtolower(trim($parts[0])); // pln
+        $idPel   = trim($parts[1]);             // 132456789 (ID Pelanggan / No Meter)
+        $nominal = trim($parts[2]);             // 20
+        
+        // Nomor Penerima (Opsional). 
+        // Jika parameter ke-4 ada, pakai itu. Jika tidak, pakai ID Pelanggan (kasus pulsa biasa)
+        $receiverPhone = isset($parts[3]) ? trim($parts[3]) : $idPel;
+
+        // 3. Susun Kode Produk (SKU) sesuai Database ppob_products
+        // Logika: Gabungkan Prefix + Nominal. Contoh: pln + 20 = pln20
+        // Kita pakai strtolower karena di database kamu kodenya huruf kecil (pln20, s10, dll)
+        $skuCode = strtolower($prefix . $nominal);
+
+        // ------------------------------------------
+        // MULAI PROSES TRANSAKSI
+        // ------------------------------------------
+
+        $this->sendMessage($chatId, "🔍 Mencari produk: <b>$skuCode</b>...");
+
+        // 4. Cek Produk di Database (Tabel: ppob_products)
+        $product = DB::table('ppob_products')
+                    ->where('buyer_sku_code', $skuCode) // Sesuai kolom database kamu
+                    ->first(); 
+
+        if (!$product) {
+            $this->sendMessage($chatId, "❌ Produk <b>$skuCode</b> tidak ditemukan.\nPastikan format kode dan nominal benar (misal: pln20, s10, x5).");
+            return;
+        }
+
+        // Cek Status Produk (buyer_product_status / seller_product_status)
+        if ($product->seller_product_status == 0) {
+            $this->sendMessage($chatId, "❌ Maaf, produk <b>{$product->product_name}</b> sedang gangguan/ditutup.");
+            return;
+        }
+
+        // 5. Cek Saldo User
+        $user = User::find($this->defaultUserId);
+        
+        // Gunakan kolom 'sell_price' sesuai database kamu
+        $hargaJual = $product->sell_price; 
+
+        if (($user->saldo ?? 0) < $hargaJual) {
+            $this->sendMessage($chatId, "❌ <b>Saldo Tidak Cukup!</b>\nSisa Saldo: Rp " . number_format($user->saldo, 0, ',', '.') . "\nHarga Produk: Rp " . number_format($hargaJual, 0, ',', '.'));
+            return;
+        }
+
+        // 6. Respon Sukses & Simpan Transaksi
+        $priceFmt = number_format($hargaJual, 0, ',', '.');
+        $namaProduk = $product->product_name;
+        
+        $msg = "🚀 <b>TRANSAKSI PPOB DIPROSES</b>\n";
+        $msg .= "━━━━━━━━━━━━━━━━━━\n";
+        $msg .= "📦 Produk: $namaProduk\n";
+        $msg .= "🏷 Kode: <b>$skuCode</b>\n";
+        $msg .= "🆔 ID Pel: <code>$idPel</code>\n";
+        $msg .= "📱 Penerima: <code>$receiverPhone</code>\n";
+        $msg .= "💰 Harga: Rp $priceFmt\n";
+        $msg .= "⏳ Status: <i>Pending...</i>\n\n";
+        $msg .= "<i>Mohon tunggu, sistem sedang memproses permintaan Anda.</i>";
+
+        $this->sendMessage($chatId, $msg);
+
+        // TODO: MASUKKAN LOGIC PENGURANGAN SALDO & REQUEST KE SUPPLIER DI SINI
+        // Contoh:
+        // $user->decrement('saldo', $hargaJual);
+        // Transaction::create([...]);
+        // KiriminAjaService->topup($skuCode, $idPel, ...);
     }
     
     /**
