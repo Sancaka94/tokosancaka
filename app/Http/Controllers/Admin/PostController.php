@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\File;
 
 use Illuminate\Support\Facades\Storage; // <-- PASTIKAN INI ADA
 
-
+use Illuminate\Support\Facades\Validator; // Pastikan ini ada
 
 use App\Models\Post;
 
