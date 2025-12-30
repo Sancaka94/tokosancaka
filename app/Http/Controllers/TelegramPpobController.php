@@ -12,6 +12,7 @@ use Carbon\Carbon;
 use App\Models\User;
 use App\Models\Pesanan;
 use App\Services\KiriminAjaService; // Pastikan Service ini terimport
+use App\Services\FonnteService; // <--- Tambahkan baris ini
 
 class TelegramPpobController extends Controller
 {
@@ -94,10 +95,13 @@ class TelegramPpobController extends Controller
                     break;
                 // ---------------------
 
-                // ... di dalam switch ($command) ...
-    case '/setpin':
-    $this->setPin($chatId, $text);
-    break;
+                case '/setpin':
+        $this->requestSetPin($chatId, $text);
+        break;
+
+        case '/verifikasi': // Command baru untuk input OTP
+        $this->verifyOtpAndSetPin($chatId, $text);
+        break;
 
                 case '/harga':
                 case '/cek':
@@ -240,165 +244,216 @@ class TelegramPpobController extends Controller
     }
 
     /**
-     * TRANSAKSI PPOB (PIN DEFAULT HIDDEN)
+     * TRANSAKSI SUPER CERDAS (AUTO DETECT PRABAYAR / PASCABAYAR)
+     * Format: keyword.tujuan.nominal_atau_perintah.pin
      */
     private function processDotTransaction($chatId, $text)
     {
-        // 1. Pecah String & Validasi Format
+        // 1. Pecah String
         $parts = explode('.', $text);
         
-        if (count($parts) < 3) {
-            $this->sendMessage($chatId, "❌ <b>Format Salah!</b>\nFormat: <code>KODE.TUJUAN.PIN</code>");
+        // Minimal 4 bagian: [Produk].[Tujuan].[Nominal/Perintah].[PIN]
+        if (count($parts) < 4) {
+            $this->sendMessage($chatId, "❌ <b>Format Salah!</b>\n\n🔹 <b>Prabayar:</b>\n<code>[Produk].[NoHP].[Nominal].[PIN]</code>\nContoh: <code>tsel.0812xxx.10.123456</code>\n\n🔹 <b>Pascabayar:</b>\n<code>[Produk].[IDPel].[Cek].[PIN]</code>\nContoh: <code>pln.5123xxx.cek.123456</code>");
             return;
         }
 
         // ========================================================
-        // TAHAP 1: VALIDASI PIN (DEFAULT PIN DISEMBUNYIKAN)
+        // TAHAP 1: VALIDASI PIN (Hidden Default)
         // ========================================================
-
-        $inputPin = trim(array_pop($parts)); // Ambil PIN dari input
+        $inputPin = trim(array_pop($parts)); // Ambil bagian terakhir (PIN)
         $user = User::find($this->defaultUserId);
         
         $isPinValid = false;
         $usingDefault = false;
 
         if (!empty($user->pin)) {
-            // A. User SUDAH punya PIN sendiri -> Cek Database
-            if (\Illuminate\Support\Facades\Hash::check($inputPin, $user->pin)) {
-                $isPinValid = true;
-            }
+            if (\Illuminate\Support\Facades\Hash::check($inputPin, $user->pin)) $isPinValid = true;
         } else {
-            // B. User BELUM punya PIN -> Cek PIN Default (Angka rahasia di codingan)
-            $defaultPin = '940611'; 
-            
-            if ($inputPin === $defaultPin) {
-                $isPinValid = true;
-                $usingDefault = true;
-            }
+            if ($inputPin === '940611') { $isPinValid = true; $usingDefault = true; }
         }
 
-        // Jika PIN Salah
         if (!$isPinValid) {
-            // Kita ubah pesannya jadi umum, jangan sebutkan PIN Default
-            $this->sendMessage($chatId, "⛔ <b>PIN SALAH!</b>\nJika lupa PIN atau belum tahu PIN Default Anda, silakan hubungi Admin.\nAtau buat PIN baru dengan ketik: <code>/setpin [PIN_BARU]</code>");
+            $this->sendMessage($chatId, "⛔ <b>PIN SALAH!</b> Transaksi ditolak.");
             return;
         }
-
-        // Jika PIN Benar tapi masih pakai Default (Beri peringatan tanpa sebut angka)
         if ($usingDefault) {
-            $this->sendMessage($chatId, "⚠️ <b>PERINGATAN KEAMANAN</b>\nAnda masih menggunakan <b>PIN Default</b>.\nDemi keamanan akun, mohon segera ganti PIN Anda.\nKetik: <code>/setpin [PIN_BARU]</code>");
+            $this->sendMessage($chatId, "⚠️ <b>PERINGATAN:</b> Segera ganti PIN Default dengan <code>/setpin</code>");
         }
 
         // ========================================================
-        // TAHAP 2: PARSING DATA (LANJUTKAN SEPERTI BIASA)
+        // TAHAP 2: ANALISA INPUT (OTAK CERDAS)
         // ========================================================
         
-        $prefix = strtolower(trim($parts[0])); 
-        $idPel  = trim($parts[1]);
-        $receiverPhone = $idPel;
+        $rawKeyword = strtolower(trim($parts[0])); // pln, tsel, bpjs, pdam
+        $destNo     = trim($parts[1]);             // nomor tujuan
+        $param      = strtolower(trim($parts[2])); // '20' atau 'cek'
 
-        if (isset($parts[2])) {
-            $nominal = trim($parts[2]);
-            $skuCode = strtolower($prefix . $nominal);
-            if (isset($parts[3])) {
-                $receiverPhone = trim($parts[3]);
-            }
+        // Mapping Alias (Agar bot paham singkatan)
+        $aliases = [
+            'tsel' => 'telkomsel', 'simp' => 'telkomsel', 'isat' => 'indosat', 
+            'tri' => 'three', '3' => 'three', 'sf' => 'smartfren', 'smart' => 'smartfren',
+            'pln' => 'pln', 'listrik' => 'pln', 'token' => 'pln',
+            'bpjs' => 'bpjs', 'pdam' => 'pdam', 'halo' => 'k-vision', // sesuaikan
+        ];
+        $searchKeyword = $aliases[$rawKeyword] ?? $rawKeyword;
+
+        // --- LOGIKA PEMISAH (DECISION MAKER) ---
+        // Jika parameter ke-3 adalah ANGKA -> Masuk PRABAYAR (Prepaid)
+        // Jika parameter ke-3 adalah HURUF -> Masuk PASCABAYAR (Postpaid)
+        
+        if (is_numeric($param)) {
+            // >>>>>>>>> MASUK MODE PRABAYAR (PULSA/TOKEN) >>>>>>>>>
+            $this->processPrepaid($chatId, $user, $searchKeyword, $destNo, $param);
         } else {
-            $skuCode = strtolower($prefix);
+            // >>>>>>>>> MASUK MODE PASCABAYAR (TAGIHAN) >>>>>>>>>
+            // Hanya jalankan jika perintahnya 'cek', 'pasca', 'tagihan', 'bayar'
+            if (in_array($param, ['cek', 'info', 'tagihan', 'pasca', 'bayar'])) {
+                $this->processPostpaid($chatId, $user, $searchKeyword, $destNo, $param);
+            } else {
+                $this->sendMessage($chatId, "❌ Perintah <b>'$param'</b> tidak dikenal.\nGunakan angka untuk pulsa, atau 'cek' untuk tagihan.");
+            }
+        }
+    }
+
+    /**
+     * SUB-FUNGSI: PROSES PRABAYAR (PULSA/TOKEN)
+     */
+    private function processPrepaid($chatId, $user, $keyword, $destNo, $nominalRaw)
+    {
+        // Normalisasi Nominal (5 -> 5000)
+        $searchNominal = $nominalRaw;
+        $formattedNominal = $nominalRaw;
+        if ($nominalRaw < 1000) {
+            $searchNominal = $nominalRaw * 1000;
+            $formattedNominal = number_format($searchNominal, 0, ',', '.');
         }
 
-        $this->sendMessage($chatId, "🔒 PIN Diterima. Memproses <b>$skuCode</b>...");
+        $this->sendMessage($chatId, "🔍 [PRABAYAR] Mencari <b>$keyword</b> nominal <b>$formattedNominal</b>...");
 
-        // 4. Cek Produk (Ambil harga modal dan jual)
+        // Query Database Prabayar
         $product = DB::table('ppob_products')
-                    ->where('buyer_sku_code', $skuCode)
-                    ->select('buyer_sku_code', 'product_name', 'price', 'sell_price', 'seller_product_status')
-                    ->first(); 
+            ->where('seller_product_status', 1)
+            ->where(function($query) use ($keyword) {
+                $query->where('brand', 'LIKE', "%$keyword%")
+                      ->orWhere('product_name', 'LIKE', "%$keyword%")
+                      ->orWhere('buyer_sku_code', 'LIKE', "$keyword%");
+            })
+            ->where(function($query) use ($searchNominal, $formattedNominal) {
+                $query->where('product_name', 'LIKE', "%$searchNominal%")
+                      ->orWhere('product_name', 'LIKE', "%$formattedNominal%")
+                      ->orWhere('product_name', 'LIKE', "% $searchNominal %");
+            })
+            ->orderBy('sell_price', 'asc')
+            ->first();
 
         if (!$product) {
-            $this->sendMessage($chatId, "❌ Produk <b>$skuCode</b> tidak ditemukan.");
+            $this->sendMessage($chatId, "❌ <b>Produk Prabayar Tidak Ditemukan!</b>\nKeyword: $keyword, Nominal: $formattedNominal");
             return;
         }
 
-        if ($product->seller_product_status == 0) {
-            $this->sendMessage($chatId, "❌ Produk <b>{$product->product_name}</b> sedang gangguan.");
+        // Eksekusi Transaksi Prabayar (Langsung Potong Saldo)
+        $this->executeTransaction($chatId, $user, $product, $destNo, 'pra');
+    }
+
+    /**
+     * SUB-FUNGSI: PROSES PASCABAYAR (TAGIHAN BULANAN)
+     */
+    private function processPostpaid($chatId, $user, $keyword, $destNo, $command)
+    {
+        $this->sendMessage($chatId, "🔍 [PASCABAYAR] Cek tagihan <b>$keyword</b>...");
+
+        // Query Database Pascabayar
+        // Biasanya produk pascabayar kategorinya 'Pascabayar' atau kodenya 'post...'
+        $product = DB::table('ppob_products')
+            ->where('seller_product_status', 1)
+            ->where(function($query) use ($keyword) {
+                // Cari yang Brand/Namanya cocok DAN Kategorinya Pascabayar
+                $query->where('brand', 'LIKE', "%$keyword%")
+                      ->orWhere('product_name', 'LIKE', "%$keyword%");
+            })
+            ->where(function($query) {
+                $query->where('category', 'Pascabayar')
+                      ->orWhere('buyer_sku_code', 'LIKE', 'post%');
+            })
+            ->first();
+
+        if (!$product) {
+            $this->sendMessage($chatId, "❌ <b>Layanan Pascabayar Tidak Ditemukan</b> untuk $keyword.\nPastikan ketik: <code>pln.ID.cek.PIN</code> atau <code>bpjs.ID.cek.PIN</code>");
             return;
         }
 
-        // 5. Cek Saldo
-        $hargaModal = $product->price;       // Harga beli dari supplier
-        $hargaJual  = $product->sell_price;  // Harga potong saldo agen
-        $profit     = $hargaJual - $hargaModal;
+        // Jika perintahnya "BAYAR", langsung eksekusi (biasanya butuh Inquiry dulu, tapi ini logic simplenya)
+        if ($command == 'bayar') {
+             // Logic bayar pascabayar (harus ada nominal tagihan yang valid dari inquiry sebelumnya)
+             // Untuk saat ini kita arahkan ke Inquiry dulu
+             $this->sendMessage($chatId, "⚠️ Untuk Pascabayar, silakan lakukan <b>CEK</b> terlebih dahulu.");
+        } else {
+            // Logic INQUIRY (Cek Tagihan)
+            // Disini kita tidak potong saldo dulu, tapi request ke API Supplier untuk cek tagihan
+            // Karena belum ada API, kita simpan sebagai history 'Inquiry'
+            
+            $msg = "📄 <b>HASIL CEK TAGIHAN</b>\n";
+            $msg .= "━━━━━━━━━━━━━━━━━━\n";
+            $msg .= "layanan: {$product->product_name}\n";
+            $msg .= "ID Pel: $destNo\n";
+            $msg .= "Status: <b>Perlu Pengecekan Server</b>\n\n";
+            $msg .= "<i>(Sistem Inquiry ke API Supplier akan dipasang di sini)</i>";
+            
+            $this->sendMessage($chatId, $msg);
+            
+            // Catatan: Pascabayar butuh integrasi API khusus (Inquiry & Payment)
+        }
+    }
+
+    /**
+     * CORE EKSEKUSI DB (Agar kodingan rapi)
+     */
+    private function executeTransaction($chatId, $user, $product, $destNo, $type)
+    {
+        $hargaJual = $product->sell_price;
+        $hargaModal = $product->price;
+        $profit = $hargaJual - $hargaModal;
 
         if ($user->saldo < $hargaJual) {
-            $this->sendMessage($chatId, "❌ <b>SALDO TIDAK CUKUP!</b>\nKurang: Rp " . number_format($hargaJual - $user->saldo, 0, ',', '.'));
+            $this->sendMessage($chatId, "❌ <b>SALDO TIDAK CUKUP!</b>");
             return;
         }
 
-        // 6. EKSEKUSI TRANSAKSI (Insert ke ppob_transactions)
         try {
-            DB::transaction(function () use ($user, $product, $idPel, $receiverPhone, $hargaModal, $hargaJual, $profit, $chatId, $skuCode) {
-                
-                // A. Potong Saldo
+            DB::transaction(function () use ($user, $product, $destNo, $hargaModal, $hargaJual, $profit, $chatId, $type) {
                 $user->decrement('saldo', $hargaJual);
+                $orderId = "TRX-" . strtoupper($type) . "-" . floor(microtime(true) * 1000);
 
-                // B. Generate Order ID (Format: TRX-PRA-[TIMESTAMP])
-                // Menggunakan microtime agar unik seperti contoh data Anda
-                $timestamp = floor(microtime(true) * 1000); 
-                $orderId = "TRX-PRA-" . $timestamp;
-
-                // C. Siapkan Data JSON untuk kolom 'desc'
-                $descData = json_encode([
-                    "type" => "pra",
-                    "wa"   => $receiverPhone
-                ]);
-
-                // D. Insert ke Tabel ppob_transactions
                 DB::table('ppob_transactions')->insert([
-                    'idempotency_key'   => \Illuminate\Support\Str::uuid(), // Opsional, biar aman
+                    'idempotency_key'   => \Illuminate\Support\Str::uuid(),
                     'user_id'           => $user->id,
-                    'telegram_chat_id'  => $chatId, // Simpan Chat ID Telegram
+                    'telegram_chat_id'  => $chatId,
                     'order_id'          => $orderId,
-                    'group_order_id'    => NULL,
-                    'buyer_sku_code'    => $skuCode,
-                    'customer_no'       => $idPel,
-                    'customer_wa'       => $receiverPhone,
-                    'price'             => $hargaModal, // Harga Modal
-                    'selling_price'     => $hargaJual,  // Harga Jual ke Agen
-                    'profit'            => $profit,     // Keuntungan
-                    'status'            => 'Processing', // Status Awal
-                    'rc'                => NULL,
+                    'buyer_sku_code'    => $product->buyer_sku_code,
+                    'customer_no'       => $destNo,
+                    'customer_wa'       => $destNo,
+                    'price'             => $hargaModal,
+                    'selling_price'     => $hargaJual,
+                    'profit'            => $profit,
+                    'status'            => 'Processing',
                     'payment_method'    => 'SALDO_AGEN',
-                    'desc'              => $descData,
-                    'sn'                => NULL,
+                    'desc'              => json_encode(["type" => $type, "wa" => $destNo]),
                     'message'           => 'Transaksi Sedang Diproses',
-                    'payment_url'       => NULL,
                     'created_at'        => now(),
                     'updated_at'        => now(),
                 ]);
 
-                // E. Kirim Pesan Sukses
-                $sisaSaldo = number_format($user->saldo, 0, ',', '.');
-                $priceFmt  = number_format($hargaJual, 0, ',', '.');
-                
-                $msg = "✅ <b>TRANSAKSI DALAM PROSES</b>\n";
-                $msg .= "━━━━━━━━━━━━━━━━━━\n";
-                $msg .= "🆔 Order ID: <code>$orderId</code>\n";
+                $msg = "✅ <b>ORDER BERHASIL</b>\n";
+                $msg .= "🆔 ID: <code>$orderId</code>\n";
                 $msg .= "📦 Produk: {$product->product_name}\n";
-                $msg .= "📱 Tujuan: <code>$idPel</code>\n";
-                $msg .= "💰 Harga: Rp $priceFmt\n";
-                $msg .= "💳 Sisa Saldo: Rp $sisaSaldo\n\n";
-                $msg .= "<i>Mohon tunggu SN/Token keluar...</i>";
-
+                $msg .= "💰 Harga: Rp " . number_format($hargaJual, 0, ',', '.') . "\n";
+                $msg .= "⏳ <i>Sedang diproses...</i>";
                 $this->sendMessage($chatId, $msg);
-                
-                // TODO: Di sini Anda harus memanggil Service/API ke Supplier (Digiflazz/Lainnya)
-                // $this->kiriminAjaService->topup($orderId, $skuCode, $idPel);
             });
-
         } catch (\Exception $e) {
-            Log::error("Transaction Failed: " . $e->getMessage());
-            $this->sendMessage($chatId, "❌ <b>SISTEM ERROR!</b>\nSaldo aman (tidak terpotong). Silakan coba lagi nanti.");
+            Log::error("Trx Error: " . $e->getMessage());
+            $this->sendMessage($chatId, "❌ Error Sistem.");
         }
     }
     
@@ -1017,6 +1072,98 @@ class TelegramPpobController extends Controller
         }
 
         $this->sendMessage($chatId, $msg);
+    }
+
+    private function requestSetPin($chatId, $text)
+    {
+        $parts = explode(' ', $text);
+
+        // 1. Validasi Input
+        if (count($parts) < 3) {
+            $msg = "🔐 <b>KEAMANAN PENGATURAN PIN</b>\n\n";
+            $msg .= "Verifikasi Data Diperlukan.\n";
+            $msg .= "Ketik: <code>/setpin [ID_PENGGUNA] [NO_WA]</code>\n";
+            $msg .= "Contoh: <code>/setpin 8 08819435180</code>";
+            $this->sendMessage($chatId, $msg);
+            return;
+        }
+
+        $inputId = trim($parts[1]);
+        $inputWa = trim($parts[2]);
+
+        // 2. Cek Database
+        // Bersihkan input WA agar sesuai format database (misal database pakai 08xx)
+        $cleanWa = $inputWa; 
+        if (substr($cleanWa, 0, 2) == '62') $cleanWa = '0' . substr($cleanWa, 2);
+
+        $user = DB::table('Pengguna')
+            ->where('id_pengguna', $inputId)
+            ->where('no_wa', $cleanWa) // Sesuaikan format dengan DB kamu
+            ->first();
+
+        if (!$user) {
+            $this->sendMessage($chatId, "❌ <b>DATA TIDAK DITEMUKAN!</b>\nID atau Nomor WA salah.");
+            return;
+        }
+
+        // 3. Generate & Cache OTP
+        $otp = rand(100000, 999999);
+        Cache::put("otp_pin_{$chatId}", [
+            'otp' => $otp,
+            'id_pengguna' => $user->id_pengguna
+        ], 300); // 5 Menit
+
+        // 4. Kirim WA (Panggil Helper yang baru diupdate)
+        $pesanWA = "🔐 *KODE OTP SANCAKA*\n\n";
+        $pesanWA .= "Kode: *$otp*\n\n";
+        $pesanWA .= "Gunakan kode ini untuk reset PIN di Telegram.\n";
+        $pesanWA .= "JANGAN BAGIKAN KODE INI KE SIAPAPUN.";
+
+        $isSent = $this->sendWhatsAppMessage($user->no_wa, $pesanWA);
+
+        // 5. Feedback ke Telegram
+        if ($isSent) {
+            $maskedWa = substr($user->no_wa, 0, 4) . 'xxxx' . substr($user->no_wa, -3);
+            $msg = "✅ <b>OTP TERKIRIM!</b>\n";
+            $msg .= "Cek WhatsApp: $maskedWa\n\n";
+            $msg .= "Lalu ketik:\n<code>/verifikasi [OTP] [PIN_BARU]</code>";
+        } else {
+            $msg = "❌ Gagal mengirim WhatsApp. Coba lagi nanti.";
+        }
+
+        $this->sendMessage($chatId, $msg);
+    }
+
+    /**
+     * Helper: Kirim Pesan WhatsApp Menggunakan Service Anda
+     */
+    private function sendWhatsAppMessage($target, $message)
+    {
+        try {
+            // Normalisasi Nomor HP (Fonnte butuh 08xx atau 628xx)
+            // Hapus karakter selain angka
+            $target = preg_replace('/[^0-9]/', '', $target);
+            
+            // Jika diawali 62, biarkan. Jika 08, ubah jadi 628 (opsional, fonnte biasanya pintar)
+            if (substr($target, 0, 2) == '08') {
+                $target = '62' . substr($target, 1);
+            }
+
+            // Panggil Static Method dari Service Kamu
+            $response = FonnteService::sendMessage($target, $message);
+
+            // Cek apakah response sukses (Status HTTP 2xx)
+            if ($response->successful()) {
+                return true;
+            } else {
+                Log::error("Fonnte Gagal: " . $response->body());
+                return false;
+            }
+
+        } catch (\Exception $e) {
+            Log::error("WA Error: " . $e->getMessage());
+            return false;
+        }
     }
 
 }
