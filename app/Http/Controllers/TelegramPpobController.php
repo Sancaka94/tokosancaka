@@ -343,7 +343,7 @@ class TelegramPpobController extends Controller
             return; 
         }
 
-        // Jika tidak ada kunci, BUAT KUNCI BARU (Berlaku 60 detik)
+        // Jika tidak ada kunci, BUAT KUNCI BARU (Berlaku 5 menit)
         Cache::put($lockKey, true, 300); // Kunci berlaku 5 menit
 
         // ========================================================
