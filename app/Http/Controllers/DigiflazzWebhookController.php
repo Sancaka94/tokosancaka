@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http; // Tambahkan ini untuk Request ke Telegram
 use App\Models\PpobTransaction; 
 use Illuminate\Support\Facades\DB;
 use App\Models\User;
@@ -12,6 +13,46 @@ use Illuminate\Support\Str;
 
 class DigiflazzWebhookController extends Controller
 {
+    /**
+     * Helper: Kirim Notifikasi Sukses ke TELEGRAM (Bot)
+     * Ini yang kurang sebelumnya!
+     */
+    private function _sendTelegramNotificationSN($trx, $sn)
+    {
+        // Cek apakah transaksi ini berasal dari Telegram?
+        if (empty($trx->telegram_chat_id)) {
+            return; // Jika tidak ada Chat ID, skip.
+        }
+
+        try {
+            $token = env('TELEGRAM_BOT_TOKEN'); // Pastikan token ada di .env
+            $chatId = $trx->telegram_chat_id;
+            
+            // Format Pesan Telegram
+            $price = number_format($trx->selling_price, 0, ',', '.');
+            
+            $message = "✅ <b>TRANSAKSI SUKSES!</b>\n";
+            $message .= "━━━━━━━━━━━━━━━━━━\n";
+            $message .= "🆔 ID: <code>{$trx->order_id}</code>\n";
+            $message .= "📦 Produk: <b>{$trx->buyer_sku_code}</b>\n";
+            $message .= "📱 Tujuan: {$trx->customer_no}\n";
+            $message .= "🔢 SN: <code>{$sn}</code>\n";
+            $message .= "💰 Harga: Rp {$price}\n";
+            $message .= "📝 Status: Transaksi Berhasil";
+
+            // Kirim via API Telegram
+            Http::post("https://api.telegram.org/bot{$token}/sendMessage", [
+                'chat_id' => $chatId,
+                'text' => $message,
+                'parse_mode' => 'HTML'
+            ]);
+
+            Log::info("Notif Telegram SN Terkirim ke: $chatId");
+
+        } catch (\Exception $e) {
+            Log::error("Gagal Kirim Notif Telegram: " . $e->getMessage());
+        }
+    }
     /**
      * Helper untuk membersihkan dan memformat nomor HP menjadi 62xxxx.
      * PERBAIKAN PENTING: Hapus type hint 'string' agar tidak error jika inputnya NULL.

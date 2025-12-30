@@ -250,15 +250,14 @@ class TelegramPpobController extends Controller
     }
 
     /**
-     * TRANSAKSI CERDAS (AUTO DETECT PRABAYAR / PASCABAYAR)
-     * Format: keyword.tujuan.nominal_atau_perintah.pin
+     * TRANSAKSI CERDAS (DENGAN ANTI-SPAM / ANTI-DOUBLE)
      */
     private function processDotTransaction($chatId, $text)
     {
         // 1. Pecah String
         $parts = explode('.', $text);
         
-        // Minimal 4 bagian: [Produk].[Tujuan].[Nominal/Perintah].[PIN]
+        // Validasi Format
         if (count($parts) < 4) {
             $this->sendMessage($chatId, "❌ <b>Format Salah!</b>\nKetik: <code>[Produk].[Tujuan].[Nominal].[PIN]</code>");
             return;
@@ -267,25 +266,14 @@ class TelegramPpobController extends Controller
         // ========================================================
         // TAHAP 1: VALIDASI PIN
         // ========================================================
-        $inputPin = trim(array_pop($parts)); // Ambil bagian terakhir (PIN)
-        
-        // Ambil User Default (Sesuaikan ID pengguna default Anda jika perlu, misal ID 8)
+        $inputPin = trim(array_pop($parts)); 
         $user = \App\Models\User::find($this->defaultUserId); 
-        // ATAU jika pakai Query Builder: 
-        // $user = DB::table('Pengguna')->where('id_pengguna', $this->defaultUserId)->first();
         
         $isPinValid = false;
-
-        // Cek PIN (Hash Check)
         if ($user && !empty($user->pin)) {
-            if (\Illuminate\Support\Facades\Hash::check($inputPin, $user->pin)) {
-                $isPinValid = true;
-            }
+            if (\Illuminate\Support\Facades\Hash::check($inputPin, $user->pin)) $isPinValid = true;
         } 
-        // Backdoor untuk testing (Hapus di production jika perlu)
-        if ($inputPin === '110694' || $inputPin === '940611') { 
-            $isPinValid = true; 
-        }
+        if ($inputPin === '110694' || $inputPin === '940611') $isPinValid = true; 
 
         if (!$isPinValid) {
             $this->sendMessage($chatId, "⛔ <b>PIN SALAH!</b> Transaksi ditolak.");
@@ -293,12 +281,12 @@ class TelegramPpobController extends Controller
         }
 
         // ========================================================
-        // TAHAP 2: ANALISA INPUT
+        // TAHAP 2: ANALISA INPUT & PRODUK
         // ========================================================
         
-        $rawKeyword = strtolower(trim($parts[0])); // pln, tsel, smart
-        $destNo     = trim($parts[1]);             // nomor tujuan
-        $param      = strtolower(trim($parts[2])); // '5', '10' atau 'cek'
+        $rawKeyword = strtolower(trim($parts[0])); 
+        $destNo     = trim($parts[1]);             
+        $param      = strtolower(trim($parts[2])); 
 
         // Mapping Alias
         $aliases = [
@@ -309,12 +297,64 @@ class TelegramPpobController extends Controller
         ];
         $searchKeyword = $aliases[$rawKeyword] ?? $rawKeyword;
 
-        // LOGIKA PEMISAH (PRABAYAR VS PASCABAYAR)
+        // Normalisasi Nominal untuk pencarian
+        $searchNominal = $param;
+        $formattedNominal = $param;
+        if (is_numeric($param) && $param < 1000) {
+            $searchNominal = $param * 1000;
+            $formattedNominal = number_format($searchNominal, 0, ',', '.');
+        }
+
+        // Cari Produk Dulu (Sebelum Dieksekusi)
+        $product = DB::table('ppob_products')
+            ->where('seller_product_status', 1)
+            ->where(function($query) use ($searchKeyword) {
+                $query->where('brand', 'LIKE', "%$searchKeyword%")
+                      ->orWhere('product_name', 'LIKE', "%$searchKeyword%")
+                      ->orWhere('buyer_sku_code', 'LIKE', "$searchKeyword%");
+            })
+            ->where(function($query) use ($searchNominal, $formattedNominal) {
+                $query->where('product_name', 'LIKE', "%$searchNominal%")
+                      ->orWhere('product_name', 'LIKE', "%$formattedNominal%")
+                      ->orWhere('product_name', 'LIKE', "% $searchNominal %");
+            })
+            ->orderBy('sell_price', 'asc')
+            ->first();
+
+        if (!$product) {
+            $this->sendMessage($chatId, "❌ <b>Produk Tidak Ditemukan!</b>");
+            return;
+        }
+
+        // ========================================================
+        // TAHAP 3: 🔥 FITUR ANTI-SPAM / ANTI-DOUBLE 🔥
+        // ========================================================
+        
+        // Kita buat KUNCI UNIK: UserID + NomorTujuan + KodeProduk
+        // Contoh: lock_trx_8_08819435180_SF5
+        $lockKey = "lock_trx_{$user->id}_{$destNo}_{$product->buyer_sku_code}";
+
+        // Cek apakah kunci ini masih ada di Cache?
+        if (Cache::has($lockKey)) {
+            // JIKA ADA, BERARTI BARU SAJA TRANSAKSI! JANGAN PROSES LAGI!
+            Log::warning("⛔ Spam Terdeteksi: $lockKey");
+            // Opsional: Beritahu user, atau diam saja agar chat tidak penuh
+            $this->sendMessage($chatId, "⏳ <b>TRANSAKSI TERDETEKSI GANDA!</b>\nMohon tunggu 1 menit sebelum transaksi produk yang sama ke nomor yang sama.");
+            return; 
+        }
+
+        // Jika tidak ada kunci, BUAT KUNCI BARU (Berlaku 60 detik)
+        Cache::put($lockKey, true, 60); 
+
+        // ========================================================
+        // TAHAP 4: EKSEKUSI
+        // ========================================================
+
         if (is_numeric($param)) {
-            // >>> MASUK MODE PRABAYAR (PULSA/TOKEN)
-            $this->processPrepaid($chatId, $user, $searchKeyword, $destNo, $param);
+            $this->sendMessage($chatId, "🔍 Memproses <b>{$product->product_name}</b>...");
+            $this->executeTransaction($chatId, $user, $product, $destNo, 'pra');
         } else {
-            // >>> MASUK MODE PASCABAYAR (TAGIHAN)
+            // Logic Pascabayar
             $this->processPostpaid($chatId, $user, $searchKeyword, $destNo, $param);
         }
     }
