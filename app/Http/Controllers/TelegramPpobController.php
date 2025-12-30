@@ -94,6 +94,11 @@ class TelegramPpobController extends Controller
                     break;
                 // ---------------------
 
+                // ... di dalam switch ($command) ...
+    case '/setpin':
+    $this->setPin($chatId, $text);
+    break;
+
                 case '/harga':
                 case '/cek':
                 case '/list':
@@ -124,6 +129,39 @@ class TelegramPpobController extends Controller
         }
 
         return response('OK', 200);
+    }
+
+    /**
+     * Set PIN Transaksi
+     * Format: /setpin [PIN_BARU]
+     */
+    private function setPin($chatId, $text)
+    {
+        $parts = explode(' ', $text);
+        if (!isset($parts[1])) {
+            $this->sendMessage($chatId, "🔐 <b>Atur PIN Transaksi</b>\n\nKetik: <code>/setpin [AngkaPIN]</code>\nContoh: <code>/setpin 123456</code>");
+            return;
+        }
+
+        $newPin = trim($parts[1]);
+
+        // Validasi: PIN harus angka
+        if (!is_numeric($newPin)) {
+            $this->sendMessage($chatId, "❌ PIN harus berupa angka.");
+            return;
+        }
+
+        // Update ke Database User
+        // Kita gunakan bcrypt agar aman (standar Laravel)
+        $user = User::find($this->defaultUserId); // Atau sesuaikan dengan ID User Telegram jika sudah link akun
+        
+        if ($user) {
+            $user->pin = bcrypt($newPin); // Enkripsi PIN
+            $user->save();
+            $this->sendMessage($chatId, "✅ <b>PIN Berhasil Disimpan!</b>\nSekarang gunakan PIN ini di akhir format transaksi.");
+        } else {
+            $this->sendMessage($chatId, "❌ User tidak ditemukan.");
+        }
     }
 
     /**
@@ -202,89 +240,166 @@ class TelegramPpobController extends Controller
     }
 
     /**
-     * Handle Transaksi Format Titik (SERVER PULSA CLASSIC)
-     * Format: prefix.idpel.nominal.nopenerima
-     * Contoh: pln.132456789.20.085745808809
+     * TRANSAKSI PPOB (PIN DEFAULT HIDDEN)
      */
     private function processDotTransaction($chatId, $text)
     {
-        // 1. Pecah String berdasarkan titik
+        // 1. Pecah String & Validasi Format
         $parts = explode('.', $text);
-
-        // Validasi jumlah parameter minimal 3 (Produk, Tujuan, Nominal)
+        
         if (count($parts) < 3) {
-            $this->sendMessage($chatId, "❌ <b>Format Salah!</b>\n\nFormat: <code>kode.tujuan.nominal.penerima</code>\nContoh: <code>pln.12345678.20.0812xxx</code>");
+            $this->sendMessage($chatId, "❌ <b>Format Salah!</b>\nFormat: <code>KODE.TUJUAN.PIN</code>");
             return;
         }
 
-        // 2. Mapping Data
-        $prefix  = strtolower(trim($parts[0])); // pln
-        $idPel   = trim($parts[1]);             // 132456789 (ID Pelanggan / No Meter)
-        $nominal = trim($parts[2]);             // 20
+        // ========================================================
+        // TAHAP 1: VALIDASI PIN (DEFAULT PIN DISEMBUNYIKAN)
+        // ========================================================
+
+        $inputPin = trim(array_pop($parts)); // Ambil PIN dari input
+        $user = User::find($this->defaultUserId);
         
-        // Nomor Penerima (Opsional). 
-        // Jika parameter ke-4 ada, pakai itu. Jika tidak, pakai ID Pelanggan (kasus pulsa biasa)
-        $receiverPhone = isset($parts[3]) ? trim($parts[3]) : $idPel;
+        $isPinValid = false;
+        $usingDefault = false;
 
-        // 3. Susun Kode Produk (SKU) sesuai Database ppob_products
-        // Logika: Gabungkan Prefix + Nominal. Contoh: pln + 20 = pln20
-        // Kita pakai strtolower karena di database kamu kodenya huruf kecil (pln20, s10, dll)
-        $skuCode = strtolower($prefix . $nominal);
+        if (!empty($user->pin)) {
+            // A. User SUDAH punya PIN sendiri -> Cek Database
+            if (\Illuminate\Support\Facades\Hash::check($inputPin, $user->pin)) {
+                $isPinValid = true;
+            }
+        } else {
+            // B. User BELUM punya PIN -> Cek PIN Default (Angka rahasia di codingan)
+            $defaultPin = '940611'; 
+            
+            if ($inputPin === $defaultPin) {
+                $isPinValid = true;
+                $usingDefault = true;
+            }
+        }
 
-        // ------------------------------------------
-        // MULAI PROSES TRANSAKSI
-        // ------------------------------------------
+        // Jika PIN Salah
+        if (!$isPinValid) {
+            // Kita ubah pesannya jadi umum, jangan sebutkan PIN Default
+            $this->sendMessage($chatId, "⛔ <b>PIN SALAH!</b>\nJika lupa PIN atau belum tahu PIN Default Anda, silakan hubungi Admin.\nAtau buat PIN baru dengan ketik: <code>/setpin [PIN_BARU]</code>");
+            return;
+        }
 
-        $this->sendMessage($chatId, "🔍 Mencari produk: <b>$skuCode</b>...");
+        // Jika PIN Benar tapi masih pakai Default (Beri peringatan tanpa sebut angka)
+        if ($usingDefault) {
+            $this->sendMessage($chatId, "⚠️ <b>PERINGATAN KEAMANAN</b>\nAnda masih menggunakan <b>PIN Default</b>.\nDemi keamanan akun, mohon segera ganti PIN Anda.\nKetik: <code>/setpin [PIN_BARU]</code>");
+        }
 
-        // 4. Cek Produk di Database (Tabel: ppob_products)
+        // ========================================================
+        // TAHAP 2: PARSING DATA (LANJUTKAN SEPERTI BIASA)
+        // ========================================================
+        
+        $prefix = strtolower(trim($parts[0])); 
+        $idPel  = trim($parts[1]);
+        $receiverPhone = $idPel;
+
+        if (isset($parts[2])) {
+            $nominal = trim($parts[2]);
+            $skuCode = strtolower($prefix . $nominal);
+            if (isset($parts[3])) {
+                $receiverPhone = trim($parts[3]);
+            }
+        } else {
+            $skuCode = strtolower($prefix);
+        }
+
+        $this->sendMessage($chatId, "🔒 PIN Diterima. Memproses <b>$skuCode</b>...");
+
+        // 4. Cek Produk (Ambil harga modal dan jual)
         $product = DB::table('ppob_products')
-                    ->where('buyer_sku_code', $skuCode) // Sesuai kolom database kamu
+                    ->where('buyer_sku_code', $skuCode)
+                    ->select('buyer_sku_code', 'product_name', 'price', 'sell_price', 'seller_product_status')
                     ->first(); 
 
         if (!$product) {
-            $this->sendMessage($chatId, "❌ Produk <b>$skuCode</b> tidak ditemukan.\nPastikan format kode dan nominal benar (misal: pln20, s10, x5).");
+            $this->sendMessage($chatId, "❌ Produk <b>$skuCode</b> tidak ditemukan.");
             return;
         }
 
-        // Cek Status Produk (buyer_product_status / seller_product_status)
         if ($product->seller_product_status == 0) {
-            $this->sendMessage($chatId, "❌ Maaf, produk <b>{$product->product_name}</b> sedang gangguan/ditutup.");
+            $this->sendMessage($chatId, "❌ Produk <b>{$product->product_name}</b> sedang gangguan.");
             return;
         }
 
-        // 5. Cek Saldo User
-        $user = User::find($this->defaultUserId);
-        
-        // Gunakan kolom 'sell_price' sesuai database kamu
-        $hargaJual = $product->sell_price; 
+        // 5. Cek Saldo
+        $hargaModal = $product->price;       // Harga beli dari supplier
+        $hargaJual  = $product->sell_price;  // Harga potong saldo agen
+        $profit     = $hargaJual - $hargaModal;
 
-        if (($user->saldo ?? 0) < $hargaJual) {
-            $this->sendMessage($chatId, "❌ <b>Saldo Tidak Cukup!</b>\nSisa Saldo: Rp " . number_format($user->saldo, 0, ',', '.') . "\nHarga Produk: Rp " . number_format($hargaJual, 0, ',', '.'));
+        if ($user->saldo < $hargaJual) {
+            $this->sendMessage($chatId, "❌ <b>SALDO TIDAK CUKUP!</b>\nKurang: Rp " . number_format($hargaJual - $user->saldo, 0, ',', '.'));
             return;
         }
 
-        // 6. Respon Sukses & Simpan Transaksi
-        $priceFmt = number_format($hargaJual, 0, ',', '.');
-        $namaProduk = $product->product_name;
-        
-        $msg = "🚀 <b>TRANSAKSI PPOB DIPROSES</b>\n";
-        $msg .= "━━━━━━━━━━━━━━━━━━\n";
-        $msg .= "📦 Produk: $namaProduk\n";
-        $msg .= "🏷 Kode: <b>$skuCode</b>\n";
-        $msg .= "🆔 ID Pel: <code>$idPel</code>\n";
-        $msg .= "📱 Penerima: <code>$receiverPhone</code>\n";
-        $msg .= "💰 Harga: Rp $priceFmt\n";
-        $msg .= "⏳ Status: <i>Pending...</i>\n\n";
-        $msg .= "<i>Mohon tunggu, sistem sedang memproses permintaan Anda.</i>";
+        // 6. EKSEKUSI TRANSAKSI (Insert ke ppob_transactions)
+        try {
+            DB::transaction(function () use ($user, $product, $idPel, $receiverPhone, $hargaModal, $hargaJual, $profit, $chatId, $skuCode) {
+                
+                // A. Potong Saldo
+                $user->decrement('saldo', $hargaJual);
 
-        $this->sendMessage($chatId, $msg);
+                // B. Generate Order ID (Format: TRX-PRA-[TIMESTAMP])
+                // Menggunakan microtime agar unik seperti contoh data Anda
+                $timestamp = floor(microtime(true) * 1000); 
+                $orderId = "TRX-PRA-" . $timestamp;
 
-        // TODO: MASUKKAN LOGIC PENGURANGAN SALDO & REQUEST KE SUPPLIER DI SINI
-        // Contoh:
-        // $user->decrement('saldo', $hargaJual);
-        // Transaction::create([...]);
-        // KiriminAjaService->topup($skuCode, $idPel, ...);
+                // C. Siapkan Data JSON untuk kolom 'desc'
+                $descData = json_encode([
+                    "type" => "pra",
+                    "wa"   => $receiverPhone
+                ]);
+
+                // D. Insert ke Tabel ppob_transactions
+                DB::table('ppob_transactions')->insert([
+                    'idempotency_key'   => \Illuminate\Support\Str::uuid(), // Opsional, biar aman
+                    'user_id'           => $user->id,
+                    'telegram_chat_id'  => $chatId, // Simpan Chat ID Telegram
+                    'order_id'          => $orderId,
+                    'group_order_id'    => NULL,
+                    'buyer_sku_code'    => $skuCode,
+                    'customer_no'       => $idPel,
+                    'customer_wa'       => $receiverPhone,
+                    'price'             => $hargaModal, // Harga Modal
+                    'selling_price'     => $hargaJual,  // Harga Jual ke Agen
+                    'profit'            => $profit,     // Keuntungan
+                    'status'            => 'Processing', // Status Awal
+                    'rc'                => NULL,
+                    'payment_method'    => 'SALDO_AGEN',
+                    'desc'              => $descData,
+                    'sn'                => NULL,
+                    'message'           => 'Transaksi Sedang Diproses',
+                    'payment_url'       => NULL,
+                    'created_at'        => now(),
+                    'updated_at'        => now(),
+                ]);
+
+                // E. Kirim Pesan Sukses
+                $sisaSaldo = number_format($user->saldo, 0, ',', '.');
+                $priceFmt  = number_format($hargaJual, 0, ',', '.');
+                
+                $msg = "✅ <b>TRANSAKSI DALAM PROSES</b>\n";
+                $msg .= "━━━━━━━━━━━━━━━━━━\n";
+                $msg .= "🆔 Order ID: <code>$orderId</code>\n";
+                $msg .= "📦 Produk: {$product->product_name}\n";
+                $msg .= "📱 Tujuan: <code>$idPel</code>\n";
+                $msg .= "💰 Harga: Rp $priceFmt\n";
+                $msg .= "💳 Sisa Saldo: Rp $sisaSaldo\n\n";
+                $msg .= "<i>Mohon tunggu SN/Token keluar...</i>";
+
+                $this->sendMessage($chatId, $msg);
+                
+                // TODO: Di sini Anda harus memanggil Service/API ke Supplier (Digiflazz/Lainnya)
+                // $this->kiriminAjaService->topup($orderId, $skuCode, $idPel);
+            });
+
+        } catch (\Exception $e) {
+            Log::error("Transaction Failed: " . $e->getMessage());
+            $this->sendMessage($chatId, "❌ <b>SISTEM ERROR!</b>\nSaldo aman (tidak terpotong). Silakan coba lagi nanti.");
+        }
     }
     
     /**
@@ -778,7 +893,7 @@ class TelegramPpobController extends Controller
         $msg .= "Ketik: <code>/harga [Nama Produk]</code>\n";
         $msg .= "<i>Contoh: /harga pln</i>\n\n";
         // ---------------------
-        
+
         $msg .= "💰 <b>Cek Saldo Agen</b>\n";
         $msg .= "Klik 👉 /saldo\n\n";
         
