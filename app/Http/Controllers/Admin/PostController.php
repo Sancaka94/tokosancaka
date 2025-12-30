@@ -623,43 +623,7 @@ Website: tokosancaka.com </p>
         }
     }
 
-    // --- HELPER FUNCTIONS ---
-
-    private function generateWithGemini($prompt, $raw = false)
-    {
-        $apiKey = env('GEMINI_API_KEY');
-        $apiKey = trim($apiKey);
-        $model = $this->aiModel; // gemini-2.5-flash-image
-
-        $response = Http::retry(3, 2000)->post("[https://generativelanguage.googleapis.com/v1beta/models/](https://generativelanguage.googleapis.com/v1beta/models/){$model}:generateContent?key={$apiKey}", [
-            'contents' => [[
-                'parts' => [['text' => $prompt]]
-            ]],
-            'generationConfig' => [
-                'temperature' => 0.7,
-            ]
-        ]);
-
-        if ($response->failed()) {
-            // Cek error message
-            $err = $response->json()['error']['message'] ?? $response->body();
-            Log::error("Gemini Error ({$model}): " . $err);
-            return response()->json(['error' => "Gagal: $err"], 500);
-        }
-
-        $data = $response->json();
-        $content = $data['candidates'][0]['content']['parts'][0]['text'] ?? '';
-
-        if (empty($content)) {
-            return response()->json(['error' => 'AI tidak menghasilkan teks.'], 422);
-        }
-
-        if ($raw) {
-            return response()->json(['content' => $content]);
-        }
-
-        return response()->json(['content' => $content]);
-    }
+    
 
     private function generateWithImagenFallback($prompt, $apiKey)
     {
