@@ -14,23 +14,30 @@ use Illuminate\Support\Str;
 class DigiflazzWebhookController extends Controller
 {
     /**
-     * Helper: Kirim Notifikasi Sukses ke TELEGRAM (Bot)
-     * Ini yang kurang sebelumnya!
+     * 🔥 FITUR BARU: Kirim Notifikasi Sukses ke TELEGRAM
      */
     private function _sendTelegramNotificationSN($trx, $sn)
     {
-        // Cek apakah transaksi ini berasal dari Telegram?
+        // Cek apakah transaksi ini punya ID Chat Telegram?
         if (empty($trx->telegram_chat_id)) {
-            return; // Jika tidak ada Chat ID, skip.
+            Log::warning("Skip Notif Telegram: Tidak ada Chat ID untuk TRX " . $trx->order_id);
+            return; 
         }
 
         try {
-            $token = env('TELEGRAM_BOT_TOKEN'); // Pastikan token ada di .env
-            $chatId = $trx->telegram_chat_id;
+            // Ambil Token dari .env (Pastikan TELEGRAM_BOT_TOKEN diisi)
+            // Atau Anda bisa hardcode disini jika darurat: $token = 'TOKEN_BOT_ANDA';
+            $token = env('TELEGRAM_BOT_TOKEN'); 
             
-            // Format Pesan Telegram
+            if (empty($token)) {
+                Log::error("GAGAL KIRIM TELEGRAM: Token Bot belum diisi di .env");
+                return;
+            }
+
+            $chatId = $trx->telegram_chat_id;
             $price = number_format($trx->selling_price, 0, ',', '.');
             
+            // Format Pesan Sukses
             $message = "✅ <b>TRANSAKSI SUKSES!</b>\n";
             $message .= "━━━━━━━━━━━━━━━━━━\n";
             $message .= "🆔 ID: <code>{$trx->order_id}</code>\n";
@@ -40,17 +47,21 @@ class DigiflazzWebhookController extends Controller
             $message .= "💰 Harga: Rp {$price}\n";
             $message .= "📝 Status: Transaksi Berhasil";
 
-            // Kirim via API Telegram
-            Http::post("https://api.telegram.org/bot{$token}/sendMessage", [
+            // Tembak API Telegram
+            $response = Http::post("https://api.telegram.org/bot{$token}/sendMessage", [
                 'chat_id' => $chatId,
                 'text' => $message,
                 'parse_mode' => 'HTML'
             ]);
 
-            Log::info("Notif Telegram SN Terkirim ke: $chatId");
+            if ($response->successful()) {
+                Log::info("✅ Notif Telegram Terkirim ke: $chatId");
+            } else {
+                Log::error("❌ Gagal Kirim Telegram: " . $response->body());
+            }
 
         } catch (\Exception $e) {
-            Log::error("Gagal Kirim Notif Telegram: " . $e->getMessage());
+            Log::error("❌ Error Telegram: " . $e->getMessage());
         }
     }
     /**
