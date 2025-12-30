@@ -168,33 +168,20 @@ public function show(Post $post)
 
      */
 
-// Ganti "Post $post" menjadi "$id" untuk mematikan auto-binding
-    public function edit($id)
+    public function edit(Post $post)
+
     {
-        // 1. Cek paksa ke database (termasuk yang sudah dihapus/soft delete)
-        $post = Post::withTrashed()->find($id);
 
-        // Jika benar-benar tidak ada
-        if (!$post) {
-            dd("ERROR: Database mengonfirmasi ID $id TIDAK ADA.");
-        }
-
-        // Jika ada tapi statusnya Soft Deleted (Masuk tong sampah)
-        if ($post->trashed()) {
-            dd("ERROR: Data ID $id ADA, tapi statusnya TERHAPUS (Soft Delete). Laravel otomatis menolaknya (404).");
-        }
-
-        // Jika sampai sini, berarti data ADA & SEHAT.
-        // Masalahnya ada di Route Model Binding (routes/web.php tidak sinkron dengan Controller)
-        
-        // Kembalikan kode normal tapi manual:
         $categories = Category::all();
+
         $tags = Tag::all();
+
+        $post->load('tags'); // Memuat relasi tags untuk post yang dipilih
+
         
-        // Load tags manual karena $post didapat dari find()
-        $post->load('tags'); 
-        
+
         return view('admin.posts.edit', compact('post', 'categories', 'tags'));
+
     }
 
 
