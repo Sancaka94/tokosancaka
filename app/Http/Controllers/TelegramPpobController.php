@@ -900,13 +900,10 @@ class TelegramPpobController extends Controller
     // HELPER
     // =========================================================================
 
-    /**
-     * Menampilkan Menu Utama (Humanis & Adaptif)
-     */
     private function sendMenu($chatId, $name)
     {
         // 1. Logika Sapaan Waktu (Adaptif)
-        $hour = Carbon::now('Asia/Jakarta')->format('H');
+        $hour = \Carbon\Carbon::now('Asia/Jakarta')->format('H');
         if ($hour >= 3 && $hour < 11) {
             $salam = "Selamat Pagi ☀️";
         } elseif ($hour >= 11 && $hour < 15) {
@@ -917,14 +914,48 @@ class TelegramPpobController extends Controller
             $salam = "Selamat Malam 🌙";
         }
 
-        // 2. Susun Pesan
+        // 2. Susun Pesan Menu
         $msg = "$salam, Kak <b>$name</b>! 👋\n";
-        $msg .= "Terima kasih telah setia bersama <b>Sancaka Express</b>. 🥰\n\n";
+        $msg .= "Selamat datang di <b>Sancaka Express & PPOB</b>.\n";
+        $msg .= "Satu Bot untuk semua kebutuhan digital & logistik Anda. ✨\n\n";
         
-        $msg .= "Ada yang bisa kami bantu urus hari ini?\n";
         $msg .= "Silakan pilih layanan di bawah ini:\n\n";
 
-        // --- SECTION EKSPEDISI ---
+        // --- SECTION 1: KEAMANAN & AKUN (New Feature) ---
+        $msg .= "🔐 <b>AKUN & KEAMANAN</b>\n";
+        $msg .= "━━━━━━━━━━━━━━━━━━\n";
+        $msg .= "🆔 <b>Cek ID Pengguna</b>\n";
+        $msg .= "Ketik: <code>/tanya id [NoWA]</code>\n";
+        $msg .= "<i>Contoh: /tanya id 085745808809</i>\n";
+        $msg .= "(Data dikirim via WA setelah approval Admin)\n\n";
+
+        $msg .= "🛡 <b>Atur PIN Transaksi</b>\n";
+        $msg .= "1. Req OTP: <code>/setpin [ID] [NoWA]</code>\n";
+        $msg .= "2. Verifikasi: <code>/verifikasi [OTP] [PIN_BARU]</code>\n";
+        $msg .= "<i>Wajib diatur untuk keamanan saldo.</i>\n\n";
+
+        $msg .= "💰 <b>Cek Saldo Agen</b>\n";
+        $msg .= "Ketik: <code>/saldo</code> atau <code>/cek_saldo</code>\n\n";
+
+        // --- SECTION 2: PPOB CERDAS (Smart Transaction) ---
+        $msg .= "📱 <b>TRANSAKSI PPOB (FORMAT BARU)</b>\n";
+        $msg .= "━━━━━━━━━━━━━━━━━━\n";
+        $msg .= "🏷 <b>Cek Harga Produk</b>\n";
+        $msg .= "Ketik: <code>/harga [Nama Produk]</code>\n";
+        $msg .= "<i>Contoh: /harga tsel, /harga pln, /harga dana</i>\n\n";
+
+        $msg .= "⚡ <b>Isi Pulsa / Data / Token (Prabayar)</b>\n";
+        $msg .= "Format: <code>[Produk].[Tujuan].[Nominal].[PIN]</code>\n";
+        $msg .= "✅ <i>Contoh Pulsa:</i> <code>tsel.08123456789.10.121212</code>\n";
+        $msg .= "✅ <i>Contoh Token:</i> <code>pln.56701234567.20.121212</code>\n";
+        $msg .= "(Cukup ketik angka nominal: 5, 10, 20, 50)\n\n";
+
+        $msg .= "📄 <b>Cek Tagihan (Pascabayar)</b>\n";
+        $msg .= "Format: <code>[Produk].[ID_Pel].[cek].[PIN]</code>\n";
+        $msg .= "✅ <i>Contoh:</i> <code>pln.5123456789.cek.121212</code>\n";
+        $msg .= "✅ <i>Contoh:</i> <code>bpjs.8888888888.cek.121212</code>\n\n";
+
+        // --- SECTION 3: EKSPEDISI ---
         $msg .= "🚚 <b>LAYANAN PENGIRIMAN</b>\n";
         $msg .= "━━━━━━━━━━━━━━━━━━\n";
         $msg .= "🔎 <b>Cek Ongkir Pintar</b>\n";
@@ -933,40 +964,21 @@ class TelegramPpobController extends Controller
 
         $msg .= "📦 <b>Lacak Paket (Resi)</b>\n";
         $msg .= "Ketik: <code>/resi [Nomor Resi]</code>\n";
-        $msg .= "<i>Contoh: /resi IDE700217577xxx Atau SPX12345xxxx</i>\n\n";
+        $msg .= "<i>Contoh: /resi IDE700217577xxx</i>\n\n";
 
-        // --- TAMBAHKAN BAGIAN INI ---
         $msg .= "📮 <b>Cek Kode Pos</b>\n";
         $msg .= "Ketik: <code>/kodepos [Nama Wilayah]</code>\n";
         $msg .= "<i>Contoh: /kodepos Ketanggi Ngawi</i>\n\n";
-        // ----------------------------
 
         $msg .= "📍 <b>Cari ID Wilayah</b>\n";
         $msg .= "Ketik: <code>/cari [Nama Kecamatan]</code>\n\n";
 
-        // --- SECTION PPOB ---
-        $msg .= "📱 <b>PPOB & PULSA</b>\n";
-        $msg .= "━━━━━━━━━━━━━━━━━━\n";
-
-        // --- TAMBAHKAN INI ---
-        $msg .= "🏷 <b>Cek Harga Produk</b>\n";
-        $msg .= "Ketik: <code>/harga [Nama Produk]</code>\n";
-        $msg .= "<i>Contoh: /harga pln</i>\n\n";
-        // ---------------------
-
-        $msg .= "💰 <b>Cek Saldo Agen</b>\n";
-        $msg .= "Klik 👉 /saldo\n\n";
-        
-        $msg .= "🛒 <b>Isi Pulsa / Data</b>\n";
-        $msg .= "Ketik: <code>/beli [Kode] [NomorHP]</code>\n";
-        $msg .= "<i>Contoh: /beli TN10 08123456789</i>\n\n";
-
         // --- FOOTER ---
         $msg .= "➖➖➖➖➖➖➖➖➖➖\n";
-        $msg .= "💬 <b>Butuh Bantuan CS?</b>\n";
-        $msg .= "Hubungi Admin kami: @sancakaexpress\n";
-        $msg .= "WA Admin +628819435180\n";
-        $msg .= "<i>Kami siap melayani dengan sepenuh hati. 🙏</i>";
+        $msg .= "💬 <b>Butuh Bantuan?</b>\n";
+        $msg .= "Hubungi Admin: @sancakaexpress\n";
+        $msg .= "WA Admin: 08819435180\n";
+        $msg .= "<i>Sancaka Express - Partner Bisnis Terpercaya.</i>";
 
         $this->sendMessage($chatId, $msg);
     }
