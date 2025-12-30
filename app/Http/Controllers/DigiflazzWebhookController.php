@@ -14,30 +14,28 @@ use Illuminate\Support\Str;
 class DigiflazzWebhookController extends Controller
 {
     /**
-     * 🔥 FITUR BARU: Kirim Notifikasi Sukses ke TELEGRAM
+     * Helper: Kirim Telegram dengan LOG LENGKAP
      */
     private function _sendTelegramNotificationSN($trx, $sn)
     {
-        // Cek apakah transaksi ini punya ID Chat Telegram?
+        Log::info("📡 [TELEGRAM] Memulai proses kirim notif untuk Order: " . $trx->order_id);
+
         if (empty($trx->telegram_chat_id)) {
-            Log::warning("Skip Notif Telegram: Tidak ada Chat ID untuk TRX " . $trx->order_id);
+            Log::warning("⚠️ [TELEGRAM] Skip. Chat ID kosong di database.");
             return; 
         }
 
         try {
-            // Ambil Token dari .env (Pastikan TELEGRAM_BOT_TOKEN diisi)
-            // Atau Anda bisa hardcode disini jika darurat: $token = 'TOKEN_BOT_ANDA';
             $token = env('TELEGRAM_BOT_TOKEN'); 
-            
             if (empty($token)) {
-                Log::error("GAGAL KIRIM TELEGRAM: Token Bot belum diisi di .env");
+                Log::error("❌ [TELEGRAM] Error: Token Bot tidak ditemukan di .env");
                 return;
             }
 
             $chatId = $trx->telegram_chat_id;
+            Log::info("🔍 [TELEGRAM] Target Chat ID: " . $chatId);
+
             $price = number_format($trx->selling_price, 0, ',', '.');
-            
-            // Format Pesan Sukses
             $message = "✅ <b>TRANSAKSI SUKSES!</b>\n";
             $message .= "━━━━━━━━━━━━━━━━━━\n";
             $message .= "🆔 ID: <code>{$trx->order_id}</code>\n";
@@ -47,7 +45,8 @@ class DigiflazzWebhookController extends Controller
             $message .= "💰 Harga: Rp {$price}\n";
             $message .= "📝 Status: Transaksi Berhasil";
 
-            // Tembak API Telegram
+            // Tembak API
+            Log::info("🚀 [TELEGRAM] Menembak API Telegram...");
             $response = Http::post("https://api.telegram.org/bot{$token}/sendMessage", [
                 'chat_id' => $chatId,
                 'text' => $message,
@@ -55,13 +54,13 @@ class DigiflazzWebhookController extends Controller
             ]);
 
             if ($response->successful()) {
-                Log::info("✅ Notif Telegram Terkirim ke: $chatId");
+                Log::info("✅ [TELEGRAM] Berhasil Terkirim!");
             } else {
-                Log::error("❌ Gagal Kirim Telegram: " . $response->body());
+                Log::error("❌ [TELEGRAM] Gagal! Response: " . $response->body());
             }
 
         } catch (\Exception $e) {
-            Log::error("❌ Error Telegram: " . $e->getMessage());
+            Log::error("🔥 [TELEGRAM] Exception Error: " . $e->getMessage());
         }
     }
     /**
@@ -317,6 +316,8 @@ class DigiflazzWebhookController extends Controller
             // KIRIM NOTIFIKASI WA
             if ($transaction->status === 'Success' && !empty($sn)) {
                 $this->_sendWhatsappNotificationSN($transaction, $sn);
+
+                $this->_sendTelegramNotificationSN($transaction, $sn);
             }
 
             DB::commit();
