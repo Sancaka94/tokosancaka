@@ -566,7 +566,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
     // Content
     Route::get('/import/wordpress', [ImportController::class, 'showForm'])->name('import.wordpress.form');
     Route::post('/import/wordpress', [ImportController::class, 'handleImport'])->name('import.wordpress.handle');
-    Route::get('/posts/{id}/edit', [PostController::class, 'edit'])->name('posts.edit');
+    Route::get('/posts/{post}/edit', [PostController::class, 'edit'])->name('posts.edit');
     Route::put('/posts/{post}', [PostController::class, 'update'])->name('posts.update');
     Route::get('/post/{post:slug}', [PostController::class, 'show'])->name('posts.post-detail');
     
