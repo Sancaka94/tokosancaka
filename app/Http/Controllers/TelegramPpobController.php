@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache; // <--- TAMBAHKAN INI
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 use App\Models\User;
@@ -1163,6 +1164,63 @@ class TelegramPpobController extends Controller
         } catch (\Exception $e) {
             Log::error("WA Error: " . $e->getMessage());
             return false;
+        }
+    }
+
+    /**
+     * LANGKAH 2: Verifikasi OTP & Simpan PIN
+     * Format: /verifikasi [OTP] [PIN_BARU]
+     */
+    private function verifyOtpAndSetPin($chatId, $text)
+    {
+        $parts = explode(' ', $text);
+
+        // 1. Validasi Input
+        if (count($parts) < 3) {
+            $this->sendMessage($chatId, "❌ <b>Format Salah!</b>\nKetik: <code>/verifikasi [KODE_OTP] [PIN_BARU]</code>");
+            return;
+        }
+
+        $inputOtp = trim($parts[1]);
+        $newPin   = trim($parts[2]);
+
+        // Validasi PIN Baru (Harus Angka 6 Digit)
+        if (!is_numeric($newPin) || strlen($newPin) < 6) {
+            $this->sendMessage($chatId, "❌ PIN harus berupa 6 digit angka.");
+            return;
+        }
+
+        // 2. Ambil Data dari Cache
+        // Pastikan Anda sudah import Cache di atas: use Illuminate\Support\Facades\Cache;
+        $cachedData = Cache::get("otp_pin_{$chatId}");
+
+        if (!$cachedData) {
+            $this->sendMessage($chatId, "❌ <b>OTP KADALUARSA!</b>\nSilakan ulangi permintaan dari awal: <code>/setpin [ID] [NO_WA]</code>");
+            return;
+        }
+
+        // 3. Cek OTP
+        if ($cachedData['otp'] != $inputOtp) {
+            $this->sendMessage($chatId, "⛔ <b>KODE OTP SALAH!</b>");
+            return;
+        }
+
+        // 4. Update PIN di Database (Tabel Pengguna)
+        try {
+            DB::table('Pengguna')
+                ->where('id_pengguna', $cachedData['id_pengguna'])
+                ->update([
+                    'pin' => \Illuminate\Support\Facades\Hash::make($newPin) // Enkripsi PIN
+                ]);
+
+            // Hapus Cache agar OTP tidak bisa dipakai lagi
+            Cache::forget("otp_pin_{$chatId}");
+
+            $this->sendMessage($chatId, "✅ <b>PIN BERHASIL DISIMPAN!</b>\n\nSekarang akun Anda aman.\nGunakan PIN <b>$newPin</b> di akhir setiap format transaksi.");
+
+        } catch (\Exception $e) {
+            Log::error("Set PIN Error: " . $e->getMessage());
+            $this->sendMessage($chatId, "❌ Gagal menyimpan PIN (Database Error).");
         }
     }
 
