@@ -430,16 +430,33 @@
         </li>
         
         {{-- =================================================== --}}
-        {{-- MENU ADMIN --}}
+        {{-- MENU ADMIN (DIPERBARUI) --}}
         {{-- =================================================== --}}
         @if ($userRole === 'admin')
             <li><hr class="dropdown-divider"></li>
             <li><h6 class="dropdown-header text-primary fw-bold">Menu Admin</h6></li>
             
+            {{-- Menu Lama --}}
             <li><a class="dropdown-item" href="{{ route('admin.pesanan.create') }}"><i class="fa-solid fa-truck-fast me-2 text-success"></i> Kirim Paket Baru</a></li>
             <li><a class="dropdown-item" href="{{ route('admin.pesanan.index') }}"><i class="fa-solid fa-box-open me-2 text-warning"></i> Data Pesanan</a></li>
             <li><a class="dropdown-item" href="{{ route('admin.customers.index') }}"><i class="fa-solid fa-users me-2 text-info"></i> Manajemen Pelanggan</a></li>
-            <li><a class="dropdown-item" href="{{ route('admin.spx_scans.index') }}"><i class="fa-solid fa-qrcode me-2 text-secondary"></i> Data Scan SPX</a></li>
+
+            {{-- MENU BARU SESUAI REQUEST --}}
+            <li>
+                <a class="dropdown-item" href="{{ url('/admin/spx-scans') }}">
+                    <i class="fa-solid fa-qrcode me-2 text-secondary"></i> Data Scan SPX
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item" href="{{ url('/admin/ppob/data') }}">
+                    <i class="fa-solid fa-file-invoice-dollar me-2 text-primary"></i> Data Transaksi PPOB
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item" href="{{ url('/admin/registrations') }}">
+                    <i class="fa-solid fa-user-plus me-2 text-danger"></i> Pendaftaran User Baru
+                </a>
+            </li>
         @endif
         
         {{-- =================================================== --}}
