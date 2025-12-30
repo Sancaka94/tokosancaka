@@ -432,7 +432,7 @@ class TelegramPpobController extends Controller
 
                 DB::table('ppob_transactions')->insert([
                     'idempotency_key'   => \Illuminate\Support\Str::uuid(),
-                    'user_id'           => $user->id,
+                    'user_id'           => $user->id_pengguna,
                     'telegram_chat_id'  => $chatId,
                     'order_id'          => $orderId,
                     'buyer_sku_code'    => $product->buyer_sku_code,
@@ -1298,18 +1298,32 @@ class TelegramPpobController extends Controller
 
     public function approveDataRequest($no_wa)
     {
-        // 1. Ambil Data User Lengkap
+        // 1. Ambil Data User
         $user = DB::table('Pengguna')->where('no_wa', $no_wa)->first();
 
         if (!$user) {
-            // Tampilan Error sederhana jika data tidak ditemukan
             return "<div style='text-align:center; padding:50px; font-family:sans-serif;'>
                         <h1 style='color:red;'>❌ Data Tidak Ditemukan</h1>
                         <p>Nomor WA: $no_wa tidak terdaftar.</p>
                     </div>";
         }
 
-        // 2. Susun Pesan Rahasia untuk Customer
+        // ============================================================
+        // 🔥 FITUR ANTI-SPAM / ANTI-DOUBLE SEND
+        // ============================================================
+        $cacheKey = "sent_id_lock_" . $no_wa;
+
+        // Cek apakah sudah pernah dikirim dalam 5 menit terakhir?
+        if (Cache::has($cacheKey)) {
+            // Jika sudah, JANGAN KIRIM WA LAGI, langsung tampilkan halaman sukses saja
+            // Ini mencegah dobel chat jika admin refresh halaman atau double click
+            return view('admin.telegram.success_send_id', compact('user'));
+        }
+
+        // ============================================================
+        // PROSES PENGIRIMAN (Hanya jalan jika belum ada di cache)
+        // ============================================================
+        
         $alamatLengkap = "{$user->address_detail}, {$user->village}, {$user->district}, {$user->regency}, {$user->province} ({$user->postal_code})";
 
         $msgToCustomer = "👋 Halo Kak *{$user->nama_lengkap}*,\n";
@@ -1321,13 +1335,14 @@ class TelegramPpobController extends Controller
         $msgToCustomer .= "💰 Saldo: Rp " . number_format($user->saldo, 0, ',', '.') . "\n\n";
         $msgToCustomer .= "Mohon simpan ID Pengguna Anda (Angka ID diatas) untuk keperluan Topup atau Reset PIN. Terima kasih! 🙏";
 
-        // 3. Kirim Pesan ke Customer
+        // Kirim WA
         $isSent = $this->sendWhatsAppMessage($user->no_wa, $msgToCustomer);
 
-        // 4. Tampilkan View Blade
         if ($isSent) {
-            // ---> INI PERUBAHANNYA <---
-            // Mengirim data $user ke view blade
+            // ✅ SUKSES KIRIM -> KUNCI KODE SELAMA 5 MENIT
+            // Agar kalau direfresh tidak kirim lagi
+            Cache::put($cacheKey, true, 300); // 300 detik = 5 menit
+
             return view('admin.telegram.success_send_id', compact('user'));
         } else {
             return "<div style='text-align:center; padding:50px; font-family:sans-serif;'>
