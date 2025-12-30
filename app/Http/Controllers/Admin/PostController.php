@@ -390,7 +390,7 @@ Website: tokosancaka.com </p>
 
         // Updated to a newer, recommended model.
 
-        $model = 'gemini-1.5-pro'; // <--- GANTI JADI INI
+        $model = 'gemini-1.5-flash';
 
     $response = Http::retry(3, 2000)->post("https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}", ['contents' => [[
                 'parts' => [['text' => $prompt]]
@@ -563,7 +563,7 @@ Website: tokosancaka.com </p>
             
             $apiKey = env('GEMINI_API_KEY');
             $apiKey = trim($apiKey);
-            $model = 'gemini-1.5-pro'; 
+            $model = 'gemini-1.5-flash';
 
             $response = Http::retry(3, 2000)->post("https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}", [
                 'contents' => [[
@@ -601,7 +601,7 @@ Website: tokosancaka.com </p>
         $apiKey = trim($apiKey);
 
         // Model Google untuk gambar adalah "imagen-3.0-generate-001" (atau versi yang tersedia di akun Anda)
-        $model = 'imagen-3.0-generate-001'; 
+        $model = 'gemini-1.5-flash'; 
 
         try {
             // Request ke API Imagen
