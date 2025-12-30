@@ -251,6 +251,7 @@ class TelegramPpobController extends Controller
 
     /**
      * EKSEKUSI TRANSAKSI (Disesuaikan dengan DigiflazzService Anda)
+     * Pastikan hanya ada SATU fungsi ini di file controller
      */
     private function executeTransaction($chatId, $user, $product, $destNo, $type)
     {
@@ -274,12 +275,12 @@ class TelegramPpobController extends Controller
             
             DB::beginTransaction();
 
-            // 1. Potong Saldo User (Gunakan id_pengguna sesuai tabel Anda)
+            // 1. Potong Saldo User
             DB::table('Pengguna')
                 ->where('id_pengguna', $user->id_pengguna)
                 ->decrement('saldo', $hargaJual);
 
-            // 2. Simpan History Transaksi (Status Awal: Processing)
+            // 2. Simpan History Transaksi
             DB::table('ppob_transactions')->insert([
                 'idempotency_key'   => \Illuminate\Support\Str::uuid(),
                 'user_id'           => $user->id_pengguna,
@@ -299,10 +300,9 @@ class TelegramPpobController extends Controller
                 'updated_at'        => now(),
             ]);
 
-            DB::commit(); // Komit perubahan saldo agar aman
+            DB::commit(); 
             
             $this->sendMessage($chatId, "⏳ Permintaan dikirim ke Operator...");
-
 
             // ============================================================
             // TAHAP B: TEMBAK API DIGIFLAZZ (SESUAI SERVICE ANDA)
@@ -311,8 +311,7 @@ class TelegramPpobController extends Controller
             // 1. Instansiasi Service Anda
             $digi = new DigiflazzService();
 
-            // 2. Panggil method 'transaction' sesuai file Anda
-            // Signature di file Anda: transaction($sku, $customerNo, $refId, $maxPrice, $commands)
+            // 2. Panggil method 'transaction'
             $response = $digi->transaction(
                 $product->buyer_sku_code, // SKU
                 $destNo,                  // Nomor Tujuan
@@ -320,7 +319,6 @@ class TelegramPpobController extends Controller
             );
             
             // 3. Ambil Data dari Response
-            // File Anda mengembalikan array hasil json_decode($response->json())
             $dataDigi = $response['data'] ?? [];
             $rc       = $dataDigi['rc'] ?? '99';       
             $sn       = $dataDigi['sn'] ?? '';         
@@ -330,9 +328,7 @@ class TelegramPpobController extends Controller
             // TAHAP C: UPDATE STATUS & RESPON KE TELEGRAM
             // ============================================================
 
-            // Sukses (00) atau Pending (03)
             if ($rc == '00' || $rc == '03') {
-                
                 $statusFinal = ($rc == '00') ? 'Success' : 'Processing';
                 
                 DB::table('ppob_transactions')
@@ -345,7 +341,6 @@ class TelegramPpobController extends Controller
                         'updated_at' => now()
                     ]);
 
-                // Kirim Pesan Sukses/Pending
                 $emoji = ($rc == '00') ? "✅" : "⏳";
                 $head  = ($rc == '00') ? "TRANSAKSI SUKSES" : "TRANSAKSI PENDING";
                 
@@ -361,9 +356,7 @@ class TelegramPpobController extends Controller
                 $this->sendMessage($chatId, $msg);
 
             } else {
-                // GAGAL (RC Lain) -> AUTO REFUND
-                
-                // 1. Update Status Failed
+                // GAGAL -> AUTO REFUND
                 DB::table('ppob_transactions')
                     ->where('order_id', $orderId)
                     ->update([
@@ -373,24 +366,20 @@ class TelegramPpobController extends Controller
                         'updated_at' => now()
                     ]);
 
-                // 2. KEMBALIKAN SALDO USER (REFUND)
                 DB::table('Pengguna')
                     ->where('id_pengguna', $user->id_pengguna)
                     ->increment('saldo', $hargaJual);
 
-                // 3. Info Gagal
                 $this->sendMessage($chatId, "❌ <b>TRANSAKSI GAGAL!</b>\n\nAlasan: $pesan\n\n💳 <b>Saldo Anda telah dikembalikan otomatis.</b>");
             }
 
         } catch (\Exception $e) {
             Log::error("Execute Transaction Error: " . $e->getMessage());
             
-            // Jika error terjadi di tengah jalan (DB Transaction macet), Rollback
             if (DB::transactionLevel() > 0) {
                 DB::rollBack();
                 $this->sendMessage($chatId, "❌ <b>GAGAL SISTEM</b>\nTransaksi dibatalkan. Saldo aman.");
             } else {
-                // Jika error terjadi setelah saldo terpotong (misal timeout API)
                 $this->sendMessage($chatId, "⚠️ <b>TIMEOUT / GANGGUAN</b>\nSilakan cek status transaksi secara berkala.");
             }
         }
@@ -483,57 +472,6 @@ class TelegramPpobController extends Controller
             $this->sendMessage($chatId, $msg);
             
             // Catatan: Pascabayar butuh integrasi API khusus (Inquiry & Payment)
-        }
-    }
-
-    /**
-     * CORE EKSEKUSI DB (Agar kodingan rapi)
-     */
-    private function executeTransaction($chatId, $user, $product, $destNo, $type)
-    {
-        $hargaJual = $product->sell_price;
-        $hargaModal = $product->price;
-        $profit = $hargaJual - $hargaModal;
-
-        if ($user->saldo < $hargaJual) {
-            $this->sendMessage($chatId, "❌ <b>SALDO TIDAK CUKUP!</b>");
-            return;
-        }
-
-        try {
-            DB::transaction(function () use ($user, $product, $destNo, $hargaModal, $hargaJual, $profit, $chatId, $type) {
-                $user->decrement('saldo', $hargaJual);
-                $orderId = "TRX-" . strtoupper($type) . "-" . floor(microtime(true) * 1000);
-
-                DB::table('ppob_transactions')->insert([
-                    'idempotency_key'   => \Illuminate\Support\Str::uuid(),
-                    'user_id'           => $user->id_pengguna,
-                    'telegram_chat_id'  => $chatId,
-                    'order_id'          => $orderId,
-                    'buyer_sku_code'    => $product->buyer_sku_code,
-                    'customer_no'       => $destNo,
-                    'customer_wa'       => $destNo,
-                    'price'             => $hargaModal,
-                    'selling_price'     => $hargaJual,
-                    'profit'            => $profit,
-                    'status'            => 'Processing',
-                    'payment_method'    => 'SALDO_AGEN',
-                    'desc'              => json_encode(["type" => $type, "wa" => $destNo]),
-                    'message'           => 'Transaksi Sedang Diproses',
-                    'created_at'        => now(),
-                    'updated_at'        => now(),
-                ]);
-
-                $msg = "✅ <b>ORDER BERHASIL</b>\n";
-                $msg .= "🆔 ID: <code>$orderId</code>\n";
-                $msg .= "📦 Produk: {$product->product_name}\n";
-                $msg .= "💰 Harga: Rp " . number_format($hargaJual, 0, ',', '.') . "\n";
-                $msg .= "⏳ <i>Sedang diproses...</i>";
-                $this->sendMessage($chatId, $msg);
-            });
-        } catch (\Exception $e) {
-            Log::error("Trx Error: " . $e->getMessage());
-            $this->sendMessage($chatId, "❌ Error Sistem.");
         }
     }
     
