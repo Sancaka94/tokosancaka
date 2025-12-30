@@ -12,7 +12,8 @@ use Illuminate\Support\Str;
 use Carbon\Carbon;
 use App\Models\User;
 use App\Models\Pesanan;
-use App\Services\KiriminAjaService; // Pastikan Service ini terimport
+use App\Services\KiriminAjaService;
+use App\Services\DigiflazzService; // Pastikan Service ini terimport
 use App\Services\FonnteService; // <--- Tambahkan baris ini
 
 class TelegramPpobController extends Controller
@@ -249,74 +250,148 @@ class TelegramPpobController extends Controller
     }
 
     /**
-     * TRANSAKSI SUPER CERDAS (AUTO DETECT PRABAYAR / PASCABAYAR)
-     * Format: keyword.tujuan.nominal_atau_perintah.pin
+     * EKSEKUSI TRANSAKSI (Disesuaikan dengan DigiflazzService Anda)
      */
-    private function processDotTransaction($chatId, $text)
+    private function executeTransaction($chatId, $user, $product, $destNo, $type)
     {
-        // 1. Pecah String
-        $parts = explode('.', $text);
-        
-        // Minimal 4 bagian: [Produk].[Tujuan].[Nominal/Perintah].[PIN]
-        if (count($parts) < 4) {
-            $this->sendMessage($chatId, "❌ <b>Format Salah!</b>\n\n🔹 <b>Prabayar:</b>\n<code>[Produk].[NoHP].[Nominal].[PIN]</code>\nContoh: <code>tsel.0812xxx.10.123456</code>\n\n🔹 <b>Pascabayar:</b>\n<code>[Produk].[IDPel].[Cek].[PIN]</code>\nContoh: <code>pln.5123xxx.cek.123456</code>");
+        $hargaJual = $product->sell_price;
+        $hargaModal = $product->price;
+        $profit = $hargaJual - $hargaModal;
+
+        // 1. Cek Saldo Awal
+        if ($user->saldo < $hargaJual) {
+            $this->sendMessage($chatId, "❌ <b>SALDO TIDAK CUKUP!</b>");
             return;
         }
 
-        // ========================================================
-        // TAHAP 1: VALIDASI PIN (Hidden Default)
-        // ========================================================
-        $inputPin = trim(array_pop($parts)); // Ambil bagian terakhir (PIN)
-        $user = User::find($this->defaultUserId);
-        
-        $isPinValid = false;
-        $usingDefault = false;
+        // Generate Order ID (TRX-PRA-TIMESTAMP)
+        $orderId = "TRX-" . strtoupper($type) . "-" . floor(microtime(true) * 1000);
 
-        if (!empty($user->pin)) {
-            if (\Illuminate\Support\Facades\Hash::check($inputPin, $user->pin)) $isPinValid = true;
-        } else {
-            if ($inputPin === '940611') { $isPinValid = true; $usingDefault = true; }
-        }
+        try {
+            // ============================================================
+            // TAHAP A: PROSES DB LOKAL (POTONG SALDO DULU)
+            // ============================================================
+            
+            DB::beginTransaction();
 
-        if (!$isPinValid) {
-            $this->sendMessage($chatId, "⛔ <b>PIN SALAH!</b> Transaksi ditolak.");
-            return;
-        }
-        if ($usingDefault) {
-            $this->sendMessage($chatId, "⚠️ <b>PERINGATAN:</b> Segera ganti PIN Default dengan <code>/setpin</code>");
-        }
+            // 1. Potong Saldo User (Gunakan id_pengguna sesuai tabel Anda)
+            DB::table('Pengguna')
+                ->where('id_pengguna', $user->id_pengguna)
+                ->decrement('saldo', $hargaJual);
 
-        // ========================================================
-        // TAHAP 2: ANALISA INPUT (OTAK CERDAS)
-        // ========================================================
-        
-        $rawKeyword = strtolower(trim($parts[0])); // pln, tsel, bpjs, pdam
-        $destNo     = trim($parts[1]);             // nomor tujuan
-        $param      = strtolower(trim($parts[2])); // '20' atau 'cek'
+            // 2. Simpan History Transaksi (Status Awal: Processing)
+            DB::table('ppob_transactions')->insert([
+                'idempotency_key'   => \Illuminate\Support\Str::uuid(),
+                'user_id'           => $user->id_pengguna,
+                'telegram_chat_id'  => $chatId,
+                'order_id'          => $orderId,
+                'buyer_sku_code'    => $product->buyer_sku_code,
+                'customer_no'       => $destNo,
+                'customer_wa'       => $destNo,
+                'price'             => $hargaModal,
+                'selling_price'     => $hargaJual,
+                'profit'            => $profit,
+                'status'            => 'Processing', 
+                'payment_method'    => 'SALDO_AGEN',
+                'desc'              => json_encode(["type" => $type, "wa" => $destNo]),
+                'message'           => 'Menghubungi Server...',
+                'created_at'        => now(),
+                'updated_at'        => now(),
+            ]);
 
-        // Mapping Alias (Agar bot paham singkatan)
-        $aliases = [
-            'tsel' => 'telkomsel', 'simp' => 'telkomsel', 'isat' => 'indosat', 
-            'tri' => 'three', '3' => 'three', 'sf' => 'smartfren', 'smart' => 'smartfren',
-            'pln' => 'pln', 'listrik' => 'pln', 'token' => 'pln',
-            'bpjs' => 'bpjs', 'pdam' => 'pdam', 'halo' => 'k-vision', // sesuaikan
-        ];
-        $searchKeyword = $aliases[$rawKeyword] ?? $rawKeyword;
+            DB::commit(); // Komit perubahan saldo agar aman
+            
+            $this->sendMessage($chatId, "⏳ Permintaan dikirim ke Operator...");
 
-        // --- LOGIKA PEMISAH (DECISION MAKER) ---
-        // Jika parameter ke-3 adalah ANGKA -> Masuk PRABAYAR (Prepaid)
-        // Jika parameter ke-3 adalah HURUF -> Masuk PASCABAYAR (Postpaid)
-        
-        if (is_numeric($param)) {
-            // >>>>>>>>> MASUK MODE PRABAYAR (PULSA/TOKEN) >>>>>>>>>
-            $this->processPrepaid($chatId, $user, $searchKeyword, $destNo, $param);
-        } else {
-            // >>>>>>>>> MASUK MODE PASCABAYAR (TAGIHAN) >>>>>>>>>
-            // Hanya jalankan jika perintahnya 'cek', 'pasca', 'tagihan', 'bayar'
-            if (in_array($param, ['cek', 'info', 'tagihan', 'pasca', 'bayar'])) {
-                $this->processPostpaid($chatId, $user, $searchKeyword, $destNo, $param);
+
+            // ============================================================
+            // TAHAP B: TEMBAK API DIGIFLAZZ (SESUAI SERVICE ANDA)
+            // ============================================================
+            
+            // 1. Instansiasi Service Anda
+            $digi = new DigiflazzService();
+
+            // 2. Panggil method 'transaction' sesuai file Anda
+            // Signature di file Anda: transaction($sku, $customerNo, $refId, $maxPrice, $commands)
+            $response = $digi->transaction(
+                $product->buyer_sku_code, // SKU
+                $destNo,                  // Nomor Tujuan
+                $orderId                  // Ref ID
+            );
+            
+            // 3. Ambil Data dari Response
+            // File Anda mengembalikan array hasil json_decode($response->json())
+            $dataDigi = $response['data'] ?? [];
+            $rc       = $dataDigi['rc'] ?? '99';       
+            $sn       = $dataDigi['sn'] ?? '';         
+            $pesan    = $dataDigi['message'] ?? 'Tidak ada respon server';
+            
+            // ============================================================
+            // TAHAP C: UPDATE STATUS & RESPON KE TELEGRAM
+            // ============================================================
+
+            // Sukses (00) atau Pending (03)
+            if ($rc == '00' || $rc == '03') {
+                
+                $statusFinal = ($rc == '00') ? 'Success' : 'Processing';
+                
+                DB::table('ppob_transactions')
+                    ->where('order_id', $orderId)
+                    ->update([
+                        'status' => $statusFinal,
+                        'sn' => $sn,
+                        'message' => $pesan,
+                        'rc' => $rc,
+                        'updated_at' => now()
+                    ]);
+
+                // Kirim Pesan Sukses/Pending
+                $emoji = ($rc == '00') ? "✅" : "⏳";
+                $head  = ($rc == '00') ? "TRANSAKSI SUKSES" : "TRANSAKSI PENDING";
+                
+                $msg = "$emoji <b>$head</b>\n";
+                $msg .= "━━━━━━━━━━━━━━━━━━\n";
+                $msg .= "🆔 ID: <code>$orderId</code>\n";
+                $msg .= "📦 Produk: {$product->product_name}\n";
+                $msg .= "📱 Tujuan: $destNo\n";
+                if (!empty($sn)) $msg .= "🔢 SN: <code>$sn</code>\n";
+                $msg .= "💰 Harga: Rp " . number_format($hargaJual, 0, ',', '.') . "\n";
+                $msg .= "📝 Info: $pesan";
+
+                $this->sendMessage($chatId, $msg);
+
             } else {
-                $this->sendMessage($chatId, "❌ Perintah <b>'$param'</b> tidak dikenal.\nGunakan angka untuk pulsa, atau 'cek' untuk tagihan.");
+                // GAGAL (RC Lain) -> AUTO REFUND
+                
+                // 1. Update Status Failed
+                DB::table('ppob_transactions')
+                    ->where('order_id', $orderId)
+                    ->update([
+                        'status' => 'Failed',
+                        'rc' => $rc,
+                        'message' => $pesan,
+                        'updated_at' => now()
+                    ]);
+
+                // 2. KEMBALIKAN SALDO USER (REFUND)
+                DB::table('Pengguna')
+                    ->where('id_pengguna', $user->id_pengguna)
+                    ->increment('saldo', $hargaJual);
+
+                // 3. Info Gagal
+                $this->sendMessage($chatId, "❌ <b>TRANSAKSI GAGAL!</b>\n\nAlasan: $pesan\n\n💳 <b>Saldo Anda telah dikembalikan otomatis.</b>");
+            }
+
+        } catch (\Exception $e) {
+            Log::error("Execute Transaction Error: " . $e->getMessage());
+            
+            // Jika error terjadi di tengah jalan (DB Transaction macet), Rollback
+            if (DB::transactionLevel() > 0) {
+                DB::rollBack();
+                $this->sendMessage($chatId, "❌ <b>GAGAL SISTEM</b>\nTransaksi dibatalkan. Saldo aman.");
+            } else {
+                // Jika error terjadi setelah saldo terpotong (misal timeout API)
+                $this->sendMessage($chatId, "⚠️ <b>TIMEOUT / GANGGUAN</b>\nSilakan cek status transaksi secara berkala.");
             }
         }
     }
