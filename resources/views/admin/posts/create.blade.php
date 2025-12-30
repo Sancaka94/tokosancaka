@@ -163,11 +163,8 @@ document.addEventListener('DOMContentLoaded', function () {
         button.addEventListener('click', function() {
             const selectedModel = this.dataset.model;
             aiModelInput.value = selectedModel;
-
-            // Update slider position
             aiToggleSlider.style.transform = `translateX(${index * 100}%)`;
             
-            // Update text colors
             aiChoiceButtons.forEach(btn => {
                 btn.classList.remove('text-white');
                 btn.classList.add('text-gray-600', 'dark:text-gray-300');
@@ -175,7 +172,6 @@ document.addEventListener('DOMContentLoaded', function () {
             this.classList.add('text-white');
             this.classList.remove('text-gray-600', 'dark:text-gray-300');
 
-            // Show/hide generate button
             if (selectedModel === 'none') {
                 generateBtnContainer.classList.add('hidden');
             } else {
@@ -184,59 +180,72 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // 4. Logika Generate Artikel (Text)
-    generateButton.addEventListener('click', function() {
+    // 4. Logika Generate Artikel (Text) dengan ERROR HANDLING KUAT
+    generateButton.addEventListener('click', async function() {
         const title = titleInput.value.trim();
         const selectedModel = aiModelInput.value;
 
         if (selectedModel === 'none') return;
-
         if (title.length < 5) {
             alert('Judul terlalu pendek untuk generate konten.');
             return;
         }
 
+        // UI Loading
         loadingIndicator.style.display = 'block';
+        loadingIndicator.innerText = 'Sedang menghubungi AI...';
         generateButton.disabled = true;
-        generateButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Generating...';
         tinymce.get('content').setContent('');
 
-        fetch('{{ route("admin.posts.generateContent") }}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-            },
-            body: JSON.stringify({ 
-                title: title,
-                model: selectedModel 
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
+        try {
+            const response = await fetch('{{ route("admin.posts.generateContent") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json' // Paksa server return JSON
+                },
+                body: JSON.stringify({ 
+                    title: title,
+                    model: selectedModel 
+                })
+            });
+
+            // Cek apakah response berupa JSON
+            const contentType = response.headers.get("content-type");
+            if (!contentType || !contentType.includes("application/json")) {
+                const text = await response.text();
+                throw new Error("Server Error (Bukan JSON): " + text.substring(0, 100) + "...");
+            }
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || "Gagal menghubungi server.");
+            }
+
             if (data.content) {
                 tinymce.get('content').setContent(data.content);
             } else {
-                tinymce.get('content').setContent('<p style="color: red;">Error: ' + (data.error || 'Gagal') + '</p>');
+                throw new Error("Konten kosong dari AI.");
             }
-        })
-        .catch(error => {
+
+        } catch (error) {
             console.error('Error:', error);
-            alert('Terjadi kesalahan koneksi.');
-        })
-        .finally(() => {
+            tinymce.get('content').setContent('<p style="color: red;"><strong>Error:</strong> ' + error.message + '</p>');
+            alert("Gagal: " + error.message);
+        } finally {
             loadingIndicator.style.display = 'none';
             generateButton.disabled = false;
-            generateButton.innerHTML = '<i class="fas fa-magic mr-2"></i>Tulis Artikel';
-        });
+        }
     });
 });
 
 // ==========================================================
-// 5. FUNGSI BARU: GENERATE GAMBAR AI (Global Functions)
+// 5. FUNGSI GENERATE GAMBAR AI (Global Functions)
 // ==========================================================
 
-function generatePrompt() {
+async function generatePrompt() {
     let title = document.getElementById('title').value;
     if(!title || title.length < 5) {
         alert('Harap isi Judul Artikel terlebih dahulu minimal 5 karakter!');
@@ -246,41 +255,55 @@ function generatePrompt() {
     const btn = document.getElementById('btn-gen-prompt');
     const originalText = btn.innerHTML;
     
-    // UI Loading
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
 
-    fetch("{{ route('admin.posts.generate_image_prompt') }}", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "X-CSRF-TOKEN": "{{ csrf_token() }}"
-        },
-        body: JSON.stringify({ title: title })
-    })
-    .then(response => response.json())
-    .then(data => {
+    try {
+        const response = await fetch("{{ route('admin.posts.generate_image_prompt') }}", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-TOKEN": "{{ csrf_token() }}",
+                "Accept": 'application/json'
+            },
+            body: JSON.stringify({ title: title })
+        });
+
+        // Handle Non-JSON Response (HTML Error Page)
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+            const text = await response.text();
+            throw new Error("Server Error (HTML): " + text.substring(0, 50)); 
+        }
+
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.error || 'Server Error ' + response.status);
+        }
+
         if(data.prompt) {
             document.getElementById('ai_image_prompt').value = data.prompt;
         } else {
-            alert('Gagal membuat prompt: ' + (data.error || 'Unknown error'));
+            throw new Error('Prompt kosong dari server.');
         }
-    })
-    .catch(error => alert('Error: ' + error))
-    .finally(() => {
+
+    } catch (error) {
+        console.error(error);
+        alert('Gagal: ' + error.message);
+    } finally {
         btn.disabled = false;
         btn.innerHTML = originalText;
-    });
+    }
 }
 
-function generateImage() {
+async function generateImage() {
     let prompt = document.getElementById('ai_image_prompt').value;
     if(!prompt) {
         alert('Prompt tidak boleh kosong!');
         return;
     }
 
-    // UI Loading
     const loadingDiv = document.getElementById('ai-image-loading');
     const previewDiv = document.getElementById('ai-image-preview-container');
     const btn = document.getElementById('btn-gen-image');
@@ -290,61 +313,61 @@ function generateImage() {
     btn.disabled = true;
     btn.classList.add('opacity-50', 'cursor-not-allowed');
 
-    fetch("{{ route('admin.posts.generate_image') }}", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "X-CSRF-TOKEN": "{{ csrf_token() }}"
-        },
-        body: JSON.stringify({ prompt: prompt })
-    })
-    .then(response => response.json())
-    .then(data => {
+    try {
+        const response = await fetch("{{ route('admin.posts.generate_image') }}", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-TOKEN": "{{ csrf_token() }}",
+                "Accept": 'application/json'
+            },
+            body: JSON.stringify({ prompt: prompt })
+        });
+
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+            const text = await response.text();
+            throw new Error("Server Error (HTML): " + text.substring(0, 50));
+        }
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Gagal menghubungi API Gambar.');
+        }
+
         if(data.success) {
-            // Tampilkan Preview
             document.getElementById('ai-result-image').src = data.image_url;
-            // Simpan path di element sementara
             document.getElementById('temp-ai-path').innerText = data.file_path;
-            
             previewDiv.classList.remove('hidden');
         } else {
-            alert('Gagal: ' + (data.error || 'API Error'));
+            throw new Error(data.error || 'API Error Unknown');
         }
-    })
-    .catch(error => {
+
+    } catch (error) {
         console.error(error);
-        alert('Terjadi kesalahan sistem saat generate gambar.');
-    })
-    .finally(() => {
+        alert('Gagal: ' + error.message);
+    } finally {
         loadingDiv.classList.add('hidden');
         btn.disabled = false;
         btn.classList.remove('opacity-50', 'cursor-not-allowed');
-    });
+    }
 }
 
 function useAiImage() {
-    // Ambil path dari element sementara
     let filePath = document.getElementById('temp-ai-path').innerText;
-    
     if(!filePath) {
         alert('Belum ada gambar yang digenerate.');
         return;
     }
-
-    // Masukkan ke Input Hidden agar dikirim ke Controller
     document.getElementById('ai_generated_image_path').value = filePath;
-    
-    // Beri Feedback Visual
     const useBtn = document.querySelector('#ai-image-preview-container button');
     useBtn.innerHTML = '<i class="fas fa-check-circle"></i> Terpilih!';
     useBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
     useBtn.classList.add('bg-gray-500', 'cursor-default');
     useBtn.disabled = true;
-
-    // Reset input file manual agar tidak double
     document.getElementById('featured_image').value = '';
-
-    alert('Gambar AI berhasil dipilih! Klik tombol "Simpan Postingan" di bawah untuk menyimpan artikel.');
+    alert('Gambar AI berhasil dipilih! Klik tombol "Simpan Postingan" di bawah.');
 }
 </script>
 @endpush
