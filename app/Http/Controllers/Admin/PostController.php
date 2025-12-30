@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\File;
 
 use Illuminate\Support\Facades\Storage; // <-- PASTIKAN INI ADA
 
-use Illuminate\Support\Facades\Validator; // Pastikan ini ada
+
 
 use App\Models\Post;
 
@@ -38,13 +38,8 @@ use App\Services\GeminiService;
 class PostController extends Controller
 
 {
-       // Model terbaru sesuai screenshot Anda (Oktober 2025)
-    // Mendukung Text-to-Text DAN Text-to-Image
-    protected $aiModel = 'gemini-2.5-flash-image';
 
     protected $geminiService;
-
-    protected $textModel = 'gemini-1.5-flash'; // Model default untuk text generation
 
     // Inject GeminiService agar otomatis menggunakan settingan yang benar
     public function __construct(GeminiService $geminiService)
@@ -61,7 +56,7 @@ class PostController extends Controller
     public function index(Request $request)
 
     {
-     
+
         // Memulai query builder
 
         $query = Post::with('author', 'category')->latest();
@@ -395,7 +390,7 @@ Website: tokosancaka.com </p>
 
         // Updated to a newer, recommended model.
 
-        $model = 'gemini-1.5-flash';
+        $model = 'gemini-1.5-pro'; // <--- GANTI JADI INI
 
     $response = Http::retry(3, 2000)->post("https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}", ['contents' => [[
                 'parts' => [['text' => $prompt]]
@@ -536,204 +531,5 @@ Website: tokosancaka.com </p>
         $post->delete();
         return redirect()->route('admin.posts.index')->with('success', 'Postingan berhasil dihapus.');
     }
-
-    /**
-     * GENERATE PROMPT GAMBAR (TEXT)
-     */
-    public function generateImagePrompt(Request $request)
-    {
-        $request->validate([
-            'title' => 'required|string|max:255',
-        ]);
-
-        $title = $request->input('title');
-
-        $prompt = "Act as an AI Art Prompter. Create a detailed image generation prompt in English for a blog post titled: '{$title}'.
-        Style: Photorealistic, 4K, Professional.
-        Constraint: No text, no watermark in the image.
-        Output: ONLY the prompt text.";
-
-        // Panggil fungsi private Gemini
-        $response = $this->generateWithGemini($prompt, true); // true = return raw string prompt
-        
-        if ($response->status() == 200) {
-            $data = $response->getData(true); // Get array form json response
-            return response()->json(['prompt' => $data['content'] ?? '']);
-        }
-        
-        return $response;
-    }
-
-    /**
-     * GENERATE GAMBAR FISIK (IMAGE)
-     * Menggunakan model gemini-2.5-flash-image
-     */
-    public function generatePostImage(Request $request)
-    {
-        $request->validate([
-            'prompt' => 'required|string',
-        ]);
-
-        $textPrompt = $request->input('prompt');
-        $apiKey = env('GEMINI_API_KEY');
-        $apiKey = trim($apiKey);
-        $model = $this->aiModel;
-
-        try {
-            // URL untuk generateContent (Model Gemini yang support gambar)
-            // Dokumentasi: [https://ai.google.dev/api/generate-content](https://ai.google.dev/api/generate-content)
-            $url = "[https://generativelanguage.googleapis.com/v1beta/models/](https://generativelanguage.googleapis.com/v1beta/models/){$model}:generateContent?key={$apiKey}";
-
-            $response = Http::withHeaders(['Content-Type' => 'application/json'])
-                ->post($url, [
-                    'contents' => [[
-                        'parts' => [['text' => $textPrompt]]
-                    ]],
-                    // Konfigurasi khusus untuk meminta output gambar
-                    // Perhatikan: Struktur ini mungkin berbeda tergantung update API Google terbaru.
-                    // Jika gemini-2.5-flash-image menggunakan standar Imagen, kita perlu format khusus.
-                    // Namun, untuk model Gemini multimodal, biasanya kita minta via prompt atau config.
-                    // JIKA ERROR: Kita akan fallback ke endpoint imagen-3.0 seperti kode awal, tapi kita coba Gemini dulu.
-                    
-                    'generationConfig' => [
-                        'responseMimeType' => 'image/jpeg', // Meminta output gambar
-                        'candidateCount' => 1
-                    ]
-                ]);
-
-            // Jika metode di atas gagal (karena Gemini Text model tidak return binary langsung), 
-            // kita gunakan fallback ke IMAGEN (karena user terbukti punya akses ke model baru).
-            if ($response->failed() || !isset($response->json()['candidates'])) {
-                 // FALLBACK KE IMAGEN-3.0 (Atau versi yang tersedia)
-                 return $this->generateWithImagenFallback($textPrompt, $apiKey);
-            }
-
-            $data = $response->json();
-            
-            // Cek apakah outputnya berupa gambar (Inline Data)
-            if (isset($data['candidates'][0]['content']['parts'][0]['inlineData']['data'])) {
-                $base64Image = $data['candidates'][0]['content']['parts'][0]['inlineData']['data'];
-                return $this->saveBase64Image($base64Image);
-            }
-
-            // Jika response sukses tapi tidak ada inlineData, coba fallback
-            return $this->generateWithImagenFallback($textPrompt, $apiKey);
-
-        } catch (\Exception $e) {
-            Log::error('Image Gen Exception: ' . $e->getMessage());
-            return response()->json(['error' => 'Server Error: ' . $e->getMessage()], 500);
-        }
-    }
-
-    // ==========================================
-    // 1. FITUR DIAGNOSA / CEK KONEKSI
-    // ==========================================
-    public function testConnection()
-    {
-        try {
-            $apiKey = trim(env('GEMINI_API_KEY'));
-            if (empty($apiKey)) {
-                throw new \Exception('API Key kosong. Cek file .env Anda.');
-            }
-
-            $response = Http::get("https://generativelanguage.googleapis.com/v1beta/models?key={$apiKey}");
-
-            if ($response->failed()) {
-                return response()->json(['error' => $response->json()], $response->status());
-            }
-
-            return response()->json(['status' => 'OK', 'models' => $response->json()]);
-        } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
-        }
-    }
-
-    
-
-    // ==========================================
-    // HELPER: FALLBACK IMAGE GENERATION
-    // ==========================================
-    private function generateWithImagenFallback($prompt, $apiKey)
-    {
-        $model = 'imagen-3.0-generate-001'; 
-        
-        $response = Http::withHeaders(['Content-Type' => 'application/json'])
-            ->post("https://generativelanguage.googleapis.com/v1beta/models/{$model}:predict?key={$apiKey}", [
-            'instances' => [['prompt' => $prompt]],
-            'parameters' => [
-                'sampleCount' => 1,
-                'aspectRatio' => '16:9',
-                'sampleImageSize' => '1024',
-            ]
-        ]);
-
-        if ($response->failed()) {
-            $msg = $response->json()['error']['message'] ?? $response->body();
-             return response()->json(['error' => "Gagal Generate Gambar (Semua Model): $msg"], 500);
-        }
-
-        $data = $response->json();
-        if (isset($data['predictions'][0]['bytesBase64Encoded'])) {
-            return $this->saveBase64Image($data['predictions'][0]['bytesBase64Encoded']);
-        }
-
-        return response()->json(['error' => 'Tidak ada data gambar dari API.'], 500);
-    }
-
-    private function saveBase64Image($base64)
-    {
-        $imageContents = base64_decode($base64);
-        $fileName = 'ai_gen_' . time() . '_' . Str::random(10) . '.png';
-        $path = 'uploads/posts/' . $fileName;
-
-        Storage::disk('public')->put($path, $imageContents);
-
-        return response()->json([
-            'success' => true,
-            'image_url' => Storage::url($path),
-            'file_path' => $path
-        ]);
-    }
-
-    // ==========================================
-    // HELPER: API TEXT GEMINI (DENGAN AUTO FALLBACK)
-    // ==========================================
-    private function callGeminiTextAPI($prompt, $rawText = false)
-    {
-        $apiKey = trim(env('GEMINI_API_KEY'));
-        $model = $this->textModel;
-
-        if (empty($apiKey)) throw new \Exception("API Key belum disetting.");
-
-        $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}";
-
-        $response = Http::withHeaders(['Content-Type' => 'application/json'])
-            ->retry(2, 2000)
-            ->post($url, [
-                'contents' => [['parts' => [['text' => $prompt]]]],
-                'generationConfig' => ['temperature' => 0.7]
-            ]);
-
-        if ($response->failed()) {
-            $status = $response->status();
-            
-            // JIKA 404, coba fallback ke model 'gemini-pro' (versi lama yang stabil)
-            if ($status == 404 && $model !== 'gemini-pro') {
-                $this->textModel = 'gemini-pro'; 
-                return $this->callGeminiTextAPI($prompt, $rawText);
-            }
-            
-            $msg = $response->json()['error']['message'] ?? 'Unknown Error';
-            throw new \Exception("Google AI Error ($status): $msg");
-        }
-
-        $data = $response->json();
-        $content = $data['candidates'][0]['content']['parts'][0]['text'] ?? '';
-
-        if (empty($content)) throw new \Exception("AI merespon sukses tapi konten kosong.");
-
-        return response()->json($rawText ? ['prompt' => $content] : ['content' => $content]);
-    }
-    
 }
 
