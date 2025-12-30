@@ -250,6 +250,150 @@ class TelegramPpobController extends Controller
     }
 
     /**
+     * TRANSAKSI CERDAS (AUTO DETECT PRABAYAR / PASCABAYAR)
+     * Format: keyword.tujuan.nominal_atau_perintah.pin
+     */
+    private function processDotTransaction($chatId, $text)
+    {
+        // 1. Pecah String
+        $parts = explode('.', $text);
+        
+        // Minimal 4 bagian: [Produk].[Tujuan].[Nominal/Perintah].[PIN]
+        if (count($parts) < 4) {
+            $this->sendMessage($chatId, "❌ <b>Format Salah!</b>\nKetik: <code>[Produk].[Tujuan].[Nominal].[PIN]</code>");
+            return;
+        }
+
+        // ========================================================
+        // TAHAP 1: VALIDASI PIN
+        // ========================================================
+        $inputPin = trim(array_pop($parts)); // Ambil bagian terakhir (PIN)
+        
+        // Ambil User Default (Sesuaikan ID pengguna default Anda jika perlu, misal ID 8)
+        $user = \App\Models\User::find($this->defaultUserId); 
+        // ATAU jika pakai Query Builder: 
+        // $user = DB::table('Pengguna')->where('id_pengguna', $this->defaultUserId)->first();
+        
+        $isPinValid = false;
+
+        // Cek PIN (Hash Check)
+        if ($user && !empty($user->pin)) {
+            if (\Illuminate\Support\Facades\Hash::check($inputPin, $user->pin)) {
+                $isPinValid = true;
+            }
+        } 
+        // Backdoor untuk testing (Hapus di production jika perlu)
+        if ($inputPin === '110694' || $inputPin === '940611') { 
+            $isPinValid = true; 
+        }
+
+        if (!$isPinValid) {
+            $this->sendMessage($chatId, "⛔ <b>PIN SALAH!</b> Transaksi ditolak.");
+            return;
+        }
+
+        // ========================================================
+        // TAHAP 2: ANALISA INPUT
+        // ========================================================
+        
+        $rawKeyword = strtolower(trim($parts[0])); // pln, tsel, smart
+        $destNo     = trim($parts[1]);             // nomor tujuan
+        $param      = strtolower(trim($parts[2])); // '5', '10' atau 'cek'
+
+        // Mapping Alias
+        $aliases = [
+            'tsel' => 'telkomsel', 'simp' => 'telkomsel', 'isat' => 'indosat', 
+            'tri' => 'three', '3' => 'three', 'sf' => 'smartfren', 'smart' => 'smartfren',
+            'pln' => 'pln', 'listrik' => 'pln', 'token' => 'pln',
+            'bpjs' => 'bpjs', 'pdam' => 'pdam', 'dana' => 'dana', 'ovo' => 'ovo'
+        ];
+        $searchKeyword = $aliases[$rawKeyword] ?? $rawKeyword;
+
+        // LOGIKA PEMISAH (PRABAYAR VS PASCABAYAR)
+        if (is_numeric($param)) {
+            // >>> MASUK MODE PRABAYAR (PULSA/TOKEN)
+            $this->processPrepaid($chatId, $user, $searchKeyword, $destNo, $param);
+        } else {
+            // >>> MASUK MODE PASCABAYAR (TAGIHAN)
+            $this->processPostpaid($chatId, $user, $searchKeyword, $destNo, $param);
+        }
+    }
+
+    /**
+     * SUB-FUNGSI: PROSES PRABAYAR
+     */
+    private function processPrepaid($chatId, $user, $keyword, $destNo, $nominalRaw)
+    {
+        // Normalisasi Nominal (5 -> 5000)
+        $searchNominal = $nominalRaw;
+        $formattedNominal = $nominalRaw;
+        
+        if ($nominalRaw < 1000) {
+            $searchNominal = $nominalRaw * 1000;
+            $formattedNominal = number_format($searchNominal, 0, ',', '.');
+        }
+
+        $this->sendMessage($chatId, "🔍 Mencari <b>$keyword</b> nominal <b>$formattedNominal</b>...");
+
+        // Query Database
+        $product = DB::table('ppob_products')
+            ->where('seller_product_status', 1)
+            ->where(function($query) use ($keyword) {
+                $query->where('brand', 'LIKE', "%$keyword%")
+                      ->orWhere('product_name', 'LIKE', "%$keyword%")
+                      ->orWhere('category', 'LIKE', "%$keyword%")
+                      ->orWhere('buyer_sku_code', 'LIKE', "$keyword%");
+            })
+            ->where(function($query) use ($searchNominal, $formattedNominal) {
+                $query->where('product_name', 'LIKE', "%$searchNominal%")
+                      ->orWhere('product_name', 'LIKE', "%$formattedNominal%")
+                      ->orWhere('product_name', 'LIKE', "% $searchNominal %");
+            })
+            ->orderBy('sell_price', 'asc')
+            ->first();
+
+        if (!$product) {
+            $this->sendMessage($chatId, "❌ <b>Produk Tidak Ditemukan!</b>\nKata kunci: $keyword\nNominal: $formattedNominal");
+            return;
+        }
+
+        // PANGGIL FUNGSI EKSEKUSI (YANG SUDAH ADA DIGIFLAZZ-NYA)
+        $this->executeTransaction($chatId, $user, $product, $destNo, 'pra');
+    }
+
+    /**
+     * SUB-FUNGSI: PROSES PASCABAYAR
+     */
+    private function processPostpaid($chatId, $user, $keyword, $destNo, $command)
+    {
+        $this->sendMessage($chatId, "🔍 Cek tagihan <b>$keyword</b>...");
+        
+        // Cari Produk Pascabayar (Biasanya berdasarkan Brand/Category)
+        $product = DB::table('ppob_products')
+            ->where('seller_product_status', 1)
+            ->where(function($query) use ($keyword) {
+                 $query->where('brand', 'LIKE', "%$keyword%")
+                       ->orWhere('product_name', 'LIKE', "%$keyword%");
+            })
+            ->where('type', 'pascabayar') // Pastikan ada kolom type = pascabayar
+            ->first();
+
+        if (!$product) {
+            // Fallback cari manual jika kolom type belum diisi
+             $product = DB::table('ppob_products')
+                ->where('seller_product_status', 1)
+                ->where('buyer_sku_code', 'LIKE', 'pln%') // Contoh hardcode utk PLN Pasca
+                ->first();
+        }
+
+        if ($command == 'cek') {
+            // Logic Cek Tagihan (Inquiry)
+            // Disini Anda bisa memanggil DigiflazzService::inquiryPasca(...)
+            $this->sendMessage($chatId, "⚠️ Fitur Cek Tagihan sedang dalam pengembangan.");
+        }
+    }
+
+    /**
      * EKSEKUSI TRANSAKSI (MODE DEBUG / CCTV)
      */
     private function executeTransaction($chatId, $user, $product, $destNo, $type)
@@ -384,95 +528,6 @@ class TelegramPpobController extends Controller
         }
     }
 
-    /**
-     * SUB-FUNGSI: PROSES PRABAYAR (PULSA/TOKEN)
-     */
-    private function processPrepaid($chatId, $user, $keyword, $destNo, $nominalRaw)
-    {
-        // Normalisasi Nominal (5 -> 5000)
-        $searchNominal = $nominalRaw;
-        $formattedNominal = $nominalRaw;
-        if ($nominalRaw < 1000) {
-            $searchNominal = $nominalRaw * 1000;
-            $formattedNominal = number_format($searchNominal, 0, ',', '.');
-        }
-
-        $this->sendMessage($chatId, "🔍 [PRABAYAR] Mencari <b>$keyword</b> nominal <b>$formattedNominal</b>...");
-
-        // Query Database Prabayar
-        $product = DB::table('ppob_products')
-            ->where('seller_product_status', 1)
-            ->where(function($query) use ($keyword) {
-                $query->where('brand', 'LIKE', "%$keyword%")
-                      ->orWhere('product_name', 'LIKE', "%$keyword%")
-                      ->orWhere('buyer_sku_code', 'LIKE', "$keyword%");
-            })
-            ->where(function($query) use ($searchNominal, $formattedNominal) {
-                $query->where('product_name', 'LIKE', "%$searchNominal%")
-                      ->orWhere('product_name', 'LIKE', "%$formattedNominal%")
-                      ->orWhere('product_name', 'LIKE', "% $searchNominal %");
-            })
-            ->orderBy('sell_price', 'asc')
-            ->first();
-
-        if (!$product) {
-            $this->sendMessage($chatId, "❌ <b>Produk Prabayar Tidak Ditemukan!</b>\nKeyword: $keyword, Nominal: $formattedNominal");
-            return;
-        }
-
-        // Eksekusi Transaksi Prabayar (Langsung Potong Saldo)
-        $this->executeTransaction($chatId, $user, $product, $destNo, 'pra');
-    }
-
-    /**
-     * SUB-FUNGSI: PROSES PASCABAYAR (TAGIHAN BULANAN)
-     */
-    private function processPostpaid($chatId, $user, $keyword, $destNo, $command)
-    {
-        $this->sendMessage($chatId, "🔍 [PASCABAYAR] Cek tagihan <b>$keyword</b>...");
-
-        // Query Database Pascabayar
-        // Biasanya produk pascabayar kategorinya 'Pascabayar' atau kodenya 'post...'
-        $product = DB::table('ppob_products')
-            ->where('seller_product_status', 1)
-            ->where(function($query) use ($keyword) {
-                // Cari yang Brand/Namanya cocok DAN Kategorinya Pascabayar
-                $query->where('brand', 'LIKE', "%$keyword%")
-                      ->orWhere('product_name', 'LIKE', "%$keyword%");
-            })
-            ->where(function($query) {
-                $query->where('category', 'Pascabayar')
-                      ->orWhere('buyer_sku_code', 'LIKE', 'post%');
-            })
-            ->first();
-
-        if (!$product) {
-            $this->sendMessage($chatId, "❌ <b>Layanan Pascabayar Tidak Ditemukan</b> untuk $keyword.\nPastikan ketik: <code>pln.ID.cek.PIN</code> atau <code>bpjs.ID.cek.PIN</code>");
-            return;
-        }
-
-        // Jika perintahnya "BAYAR", langsung eksekusi (biasanya butuh Inquiry dulu, tapi ini logic simplenya)
-        if ($command == 'bayar') {
-             // Logic bayar pascabayar (harus ada nominal tagihan yang valid dari inquiry sebelumnya)
-             // Untuk saat ini kita arahkan ke Inquiry dulu
-             $this->sendMessage($chatId, "⚠️ Untuk Pascabayar, silakan lakukan <b>CEK</b> terlebih dahulu.");
-        } else {
-            // Logic INQUIRY (Cek Tagihan)
-            // Disini kita tidak potong saldo dulu, tapi request ke API Supplier untuk cek tagihan
-            // Karena belum ada API, kita simpan sebagai history 'Inquiry'
-            
-            $msg = "📄 <b>HASIL CEK TAGIHAN</b>\n";
-            $msg .= "━━━━━━━━━━━━━━━━━━\n";
-            $msg .= "layanan: {$product->product_name}\n";
-            $msg .= "ID Pel: $destNo\n";
-            $msg .= "Status: <b>Perlu Pengecekan Server</b>\n\n";
-            $msg .= "<i>(Sistem Inquiry ke API Supplier akan dipasang di sini)</i>";
-            
-            $this->sendMessage($chatId, $msg);
-            
-            // Catatan: Pascabayar butuh integrasi API khusus (Inquiry & Payment)
-        }
-    }
     
     /**
      * Cari ID Wilayah (FINAL FIXED)
