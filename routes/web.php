@@ -672,3 +672,7 @@ Route::domain('tokosancaka.com/umroh')->group(function () {
     });
 
 });
+
+// Route untuk Admin menyetujui pengiriman data ID ke Customer
+Route::get('/admin/approve-data-request/{no_wa}', [TelegramPpobController::class, 'approveDataRequest'])
+    ->name('admin.approve.data');

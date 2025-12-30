@@ -82,6 +82,10 @@ class TelegramPpobController extends Controller
                     $this->processPpobTransaction($chatId, $text);
                     break;
 
+                case '/tanya': // Command Baru
+                    $this->requestInfoId($chatId, $text);
+                    break;
+
                 case '/cari': // Cari Kota
                     $this->searchLocation($chatId, $text);
                     break;
