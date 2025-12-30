@@ -1228,4 +1228,101 @@ class TelegramPpobController extends Controller
         }
     }
 
+    /**
+     * FITUR 1: User Minta ID (Bot Kirim Link ke WA Admin)
+     * Format: /tanya id [NO_WA]
+     */
+    private function requestInfoId($chatId, $text)
+    {
+        $parts = explode(' ', $text);
+
+        // Validasi Input
+        // Harapkan parts: /tanya, id, 08xxxx
+        if (count($parts) < 3 || strtolower($parts[1]) !== 'id') {
+            $this->sendMessage($chatId, "ℹ️ <b>LUPA ID PENGGUNA?</b>\n\nSilakan minta bantuan Admin.\nFormat: <code>/tanya id [NO_WA_TERDAFTAR]</code>\nContoh: <code>/tanya id 085745808809</code>");
+            return;
+        }
+
+        $inputWa = trim($parts[2]);
+
+        // Normalisasi WA (agar match database)
+        if (substr($inputWa, 0, 2) == '62') $inputWa = '0' . substr($inputWa, 2);
+
+        $this->sendMessage($chatId, "⏳ Memproses permintaan...");
+
+        // 1. Cek Apakah Nomor Ada di Database?
+        $user = DB::table('Pengguna')->where('no_wa', $inputWa)->first();
+
+        if (!$user) {
+            $this->sendMessage($chatId, "❌ Nomor WA <b>$inputWa</b> tidak ditemukan di sistem.");
+            return;
+        }
+
+        // 2. Generate Link Approval (Link ini akan dikirim ke Admin)
+        // Kita gunakan route() laravel
+        $approvalLink = route('admin.approve.data', ['no_wa' => $inputWa]);
+
+        // 3. Susun Pesan untuk Admin
+        $msgToAdmin = "🔔 *REQUEST DATA USER*\n\n";
+        $msgToAdmin .= "Ada user meminta informasi ID Pengguna.\n\n";
+        $msgToAdmin .= "👤 Nama: *{$user->nama_lengkap}*\n";
+        $msgToAdmin .= "🏠 Toko: {$user->store_name}\n";
+        $msgToAdmin .= "📱 WA: {$user->no_wa}\n\n";
+        $msgToAdmin .= "Klik link di bawah untuk mengirim data ke user tersebut:\n";
+        $msgToAdmin .= $approvalLink . "\n\n";
+        $msgToAdmin .= "_(Jika ini bukan user valid, abaikan pesan ini)_";
+
+        // 4. Kirim WA ke Admin (Nomor Hardcode sesuai request)
+        $adminWa = '08819435180'; 
+        
+        $isSent = $this->sendWhatsAppMessage($adminWa, $msgToAdmin);
+
+        if ($isSent) {
+            $this->sendMessage($chatId, "✅ <b>PERMINTAAN TERKIRIM!</b>\n\nSistem telah menghubungi Admin.\nMohon tunggu, data ID & Akun akan dikirimkan ke WhatsApp <b>$inputWa</b> setelah disetujui Admin.");
+        } else {
+            $this->sendMessage($chatId, "❌ Gagal menghubungi Admin. Silakan coba lagi nanti.");
+        }
+    }
+
+    public function approveDataRequest($no_wa)
+    {
+        // 1. Ambil Data User Lengkap
+        $user = DB::table('Pengguna')->where('no_wa', $no_wa)->first();
+
+        if (!$user) {
+            // Tampilan Error sederhana jika data tidak ditemukan
+            return "<div style='text-align:center; padding:50px; font-family:sans-serif;'>
+                        <h1 style='color:red;'>❌ Data Tidak Ditemukan</h1>
+                        <p>Nomor WA: $no_wa tidak terdaftar.</p>
+                    </div>";
+        }
+
+        // 2. Susun Pesan Rahasia untuk Customer
+        $alamatLengkap = "{$user->address_detail}, {$user->village}, {$user->district}, {$user->regency}, {$user->province} ({$user->postal_code})";
+
+        $msgToCustomer = "👋 Halo Kak *{$user->nama_lengkap}*,\n";
+        $msgToCustomer .= "Berikut adalah data akun Sancaka Anda:\n\n";
+        $msgToCustomer .= "🆔 **ID PENGGUNA: {$user->id_pengguna}**\n";
+        $msgToCustomer .= "👤 Nama: {$user->nama_lengkap}\n";
+        $msgToCustomer .= "🏠 Toko: {$user->store_name}\n";
+        $msgToCustomer .= "📍 Alamat: {$alamatLengkap}\n";
+        $msgToCustomer .= "💰 Saldo: Rp " . number_format($user->saldo, 0, ',', '.') . "\n\n";
+        $msgToCustomer .= "Mohon simpan ID Pengguna Anda (Angka ID diatas) untuk keperluan Topup atau Reset PIN. Terima kasih! 🙏";
+
+        // 3. Kirim Pesan ke Customer
+        $isSent = $this->sendWhatsAppMessage($user->no_wa, $msgToCustomer);
+
+        // 4. Tampilkan View Blade
+        if ($isSent) {
+            // ---> INI PERUBAHANNYA <---
+            // Mengirim data $user ke view blade
+            return view('admin.telegram.success_send_id', compact('user'));
+        } else {
+            return "<div style='text-align:center; padding:50px; font-family:sans-serif;'>
+                        <h1 style='color:red;'>❌ GAGAL KIRIM WA</h1>
+                        <p>Cek koneksi Fonnte/Gateway.</p>
+                    </div>";
+        }
+    }
+
 }
