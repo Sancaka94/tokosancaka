@@ -714,7 +714,7 @@ class TelegramPpobController extends Controller
                 $msg .= "➖➖➖➖➖➖➖➖\n";
             }
             
-            $msg .= "💡 <i>Data bersumber dari database kurir nasional.</i>";
+            $msg .= "💡 <i>Data bersumber dari database Sancaka Express.</i>";
         } else {
             $msg = "❌ <b>Tidak Ditemukan.</b>\nCoba periksa ejaan nama Kelurahan atau Kecamatan.";
         }
