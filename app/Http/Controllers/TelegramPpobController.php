@@ -88,6 +88,12 @@ class TelegramPpobController extends Controller
                     $this->checkOngkir($chatId, $text);
                     break;
 
+                // --- TAMBAHKAN INI ---
+                case '/kodepos': // Cari Kode Pos
+                    $this->searchPostalCode($chatId, $text);
+                    break;
+                // ---------------------
+
                 case '/resi':
                 case '/lacak':
                     $this->trackResi($chatId, $text);
@@ -579,6 +585,12 @@ class TelegramPpobController extends Controller
         $msg .= "Ketik: <code>/resi [Nomor Resi]</code>\n";
         $msg .= "<i>Contoh: /resi IDE700217577xxx Atau SPX12345xxxx</i>\n\n";
 
+        // --- TAMBAHKAN BAGIAN INI ---
+        $msg .= "📮 <b>Cek Kode Pos</b>\n";
+        $msg .= "Ketik: <code>/kodepos [Nama Wilayah]</code>\n";
+        $msg .= "<i>Contoh: /kodepos Ketanggi Ngawi</i>\n\n";
+        // ----------------------------
+
         $msg .= "📍 <b>Cari ID Wilayah</b>\n";
         $msg .= "Ketik: <code>/cari [Nama Kecamatan]</code>\n\n";
 
@@ -660,4 +672,54 @@ class TelegramPpobController extends Controller
 
         return null;
     }
+
+    /**
+     * Cari Kode Pos Otomatis
+     * Format: /kodepos [Kelurahan Kecamatan Kota]
+     */
+    private function searchPostalCode($chatId, $text)
+    {
+        $parts = explode(' ', $text, 2);
+        
+        // Cek jika user tidak mengetik kata kunci
+        if (!isset($parts[1])) {
+            $this->sendMessage($chatId, "📮 <b>Cari Kode Pos</b>\n\nKetik: <code>/kodepos [Nama Kelurahan/Kecamatan]</code>\nContoh: <code>/kodepos Ketanggi Ngawi</code>");
+            return;
+        }
+
+        $keyword = trim($parts[1]);
+        $this->sendMessage($chatId, "⏳ Mencari kode pos: <b>$keyword</b>...");
+
+        // Panggil Service KiriminAja (Sama dengan fungsi searchLocation)
+        $response = $this->kiriminAjaService->searchAddress($keyword);
+
+        if ($response && !empty($response['data'])) {
+            $msg = "📮 <b>HASIL PENCARIAN KODE POS</b>\n";
+            $msg .= "Pencarian: <i>$keyword</i>\n";
+            $msg .= "━━━━━━━━━━━━━━━━━━\n\n";
+            
+            $count = 0;
+            foreach ($response['data'] as $item) {
+                if ($count++ >= 10) break; // Batasi 10 hasil
+                
+                // Ambil string alamat lengkap
+                $fullAddress = $item['full_address'] ?? $item['text'] ?? 'Alamat tidak tersedia';
+                
+                // LOGIKA PINTAR: Cari 5 digit angka (Kode Pos) menggunakan Regex
+                preg_match('/\b\d{5}\b/', $fullAddress, $matches);
+                $zipCode = $matches[0] ?? '????'; // Jika tidak ketemu 5 digit, tulis ????
+
+                $msg .= "🔢 <b>KODE POS: $zipCode</b>\n";
+                $msg .= "📍 $fullAddress\n";
+                $msg .= "➖➖➖➖➖➖➖➖\n";
+            }
+            
+            $msg .= "💡 <i>Data bersumber dari database kurir nasional.</i>";
+        } else {
+            $msg = "❌ <b>Tidak Ditemukan.</b>\nCoba periksa ejaan nama Kelurahan atau Kecamatan.";
+        }
+
+        $this->sendMessage($chatId, $msg);
+    }
+
 }
