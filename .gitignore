@@ -32,4 +32,4 @@ error_log
 
 # Ignore cached view files
 /storage/framework/views/*
-!/storage/framework/views/.gitignore
+!/storage/framework/views/.gitignore.git.zip

@@ -108,8 +108,11 @@ use App\Http\Controllers\BroadcastController;
 //Aplikasi Python AI Detection
 use App\Http\Controllers\DetectionController;
 
-//Bot Telegram PPOB
+//Telegram Bot
 use App\Http\Controllers\TelegramPpobController;
+
+
+Route::any('/telegram-webhook', [TelegramPpobController::class, 'handle']);
 
 // 1. Jalur Utama AI (Menerima Gambar dari Kamera)
 Route::post('/detect/process', [DetectionController::class, 'process'])->name('detection.process');
@@ -669,5 +672,3 @@ Route::domain('tokosancaka.com/umroh')->group(function () {
     });
 
 });
-
-Route::post('/telegram-webhook', [TelegramPpobController::class, 'handle']);

@@ -22,7 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'payment/*', // Jika ada webhook payment lain
             'webhook/fonnte', // <--- Tambahkan baris ini
             //'api/telegram/webhook', // Sesuaikan dengan route
-            'telegram-webhook', // Harus sama persis dengan URL di route
+            'telegram-webhook',
         ]);
 
         // --- TAMBAHKAN BAGIAN INI ---

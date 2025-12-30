@@ -46,13 +46,13 @@ use App\Http\Controllers\DokuWebhookController;
 use App\Http\Controllers\DokuController;
 use App\Http\Controllers\Api\OngkirApiController; // <-- IMPORT
 use App\Http\Controllers\Customer\PesananController as CustomerPesananController; // ALIAS
-//use App\Http\Controllers\TelegramPpobController;
+use App\Http\Controllers\TelegramPpobController;
 
 // Website fontend WA Integration
 //use App\Http\Controllers\WhatsappController;
 
 
-//Route::post('/telegram/webhook', [TelegramPpobController::class, 'handle']);
+Route::post('/telegram/webhook', [TelegramPpobController::class, 'handle']);
 
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {

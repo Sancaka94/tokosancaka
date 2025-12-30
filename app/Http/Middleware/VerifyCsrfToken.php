@@ -47,6 +47,8 @@ class VerifyCsrfToken extends Middleware
             '/webhook/kiriminaja*',
 
             '/webhook/fonnte', // Masukkan URL route Anda di sini
+            
+            '/telegram-webhook',
 
         ];
 
