@@ -563,7 +563,7 @@ Website: tokosancaka.com </p>
             
             $apiKey = env('GEMINI_API_KEY');
             $apiKey = trim($apiKey);
-            $model = 'gemini-1.5-flash';
+            $model = 'gemini-pro';
 
             $response = Http::retry(3, 2000)->post("https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}", [
                 'contents' => [[
@@ -601,7 +601,7 @@ Website: tokosancaka.com </p>
         $apiKey = trim($apiKey);
 
         // Model Google untuk gambar adalah "imagen-3.0-generate-001" (atau versi yang tersedia di akun Anda)
-        $model = 'gemini-1.5-flash'; 
+        $model = 'gemini-pro'; 
 
         try {
             // Request ke API Imagen
