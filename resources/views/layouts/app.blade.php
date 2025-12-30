@@ -372,163 +372,128 @@
                     </ul>
 
 @auth
-            @php
-                $user = Auth::user();
-                $userRole = strtolower($user->role ?? 'user'); // Pastikan role ada, default ke 'user'
-                $dashboardRoute = route('home'); // Default fallback route
-                $roleName = 'User';
+    @php
+        $user = Auth::user();
+        // Pastikan role lowercase agar tidak error saat pengecekan (misal: "Agent" jadi "agent")
+        $userRole = strtolower($user->role ?? 'user'); 
+        
+        // Default values
+        $dashboardRoute = route('home'); 
+        $roleName = 'User';
 
-                // Tentukan rute dashboard dan nama role berdasarkan role
-                if ($userRole === 'admin') {
-                    $dashboardRoute = route('admin.dashboard');
-                    $roleName = 'Admin';
-                } elseif ($userRole === 'seller') {
-                    // Gunakan route yang lebih spesifik jika ada, atau customer.dashboard sebagai default
-                    $dashboardRoute = route('seller.dashboard') ?? route('customer.dashboard'); 
-                    $roleName = 'Seller';
-                } elseif ($userRole === 'pelanggan') {
-                    $dashboardRoute = route('customer.dashboard');
-                    $roleName = 'Pelanggan';
-                }
-                
-                // Ambil NAMA LENGKAP untuk tampilan. Ini yang diperbaiki agar tampil nama lengkap.
-                $displayName = $user->nama_lengkap ?? $user->name ?? $user->email;
-            @endphp
+        // LOGIKA PENENTUAN ROLE & LINK DASHBOARD
+        if ($userRole === 'admin') {
+            $dashboardRoute = route('admin.dashboard');
+            $roleName = 'Admin';
+        } elseif ($userRole === 'seller') {
+            $dashboardRoute = route('seller.dashboard') ?? route('customer.dashboard'); 
+            $roleName = 'Seller';
+        } elseif ($userRole === 'agent') {
+            // Gunakan route agent.dashboard jika ada, atau fallback ke customer
+            $dashboardRoute = Route::has('agent.dashboard') ? route('agent.dashboard') : route('customer.dashboard');
+            $roleName = 'Agen Sancaka';
+        } elseif ($userRole === 'pelanggan') {
+            $dashboardRoute = route('customer.dashboard');
+            $roleName = 'Pelanggan';
+        }
+        
+        // Ambil NAMA LENGKAP
+        $displayName = $user->nama_lengkap ?? $user->name ?? $user->email;
+    @endphp
 
-            <button class="btn btn-danger dropdown-toggle fw-bold" type="button" id="authDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                <i class="fa-solid fa-user-check me-1"></i> {{ $displayName }} ({{ $roleName }})
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="authDropdown">
-                
-                {{-- Tautan Dashboard Umum --}}
-                <li>
-                    <a class="dropdown-item fw-bold text-danger" href="{{ $dashboardRoute }}">
-                        <i class="fa-solid fa-house-chimney-user me-2"></i> Dashboard {{ $roleName }}
-                    </a>
-                </li>
-                
-                {{-- Submenu Khusus Admin (TAMBAHAN SESUAI PERMINTAAN) --}}
-                @if ($userRole === 'admin')
-                    <li><hr class="dropdown-divider"></li>
-                    <li><h6 class="dropdown-header text-primary fw-bold">Menu Admin</h6></li>
-                    
-                    {{-- 1. Kirim Paket --}}
-                    <li>
-                        <a class="dropdown-item" href="{{ route('admin.pesanan.create') }}">
-                            <i class="fa-solid fa-truck-fast me-2 text-success"></i> Kirim Paket Baru
-                        </a>
-                    </li>
-                    
-                    {{-- 2. Data Pesanan --}}
-                    <li>
-                        <a class="dropdown-item" href="{{ route('admin.pesanan.index') }}">
-                            <i class="fa-solid fa-box-open me-2 text-warning"></i> Data Pesanan
-                        </a>
-                    </li>
-                    
-                    {{-- 3. Manajemen Pelanggan --}}
-                    <li>
-                        <a class="dropdown-item" href="{{ route('admin.customers.index') }}">
-                            <i class="fa-solid fa-users me-2 text-info"></i> Manajemen Pelanggan
-                        </a>
-                    </li>
-                    
-                    {{-- 4. Data Scan SPX --}}
-                    <li>
-                        <a class="dropdown-item" href="{{ route('admin.spx_scans.index') }}">
-                            <i class="fa-solid fa-qrcode me-2 text-secondary"></i> Data Scan SPX
-                        </a>
-                    </li>
+    <button class="btn btn-danger dropdown-toggle fw-bold" type="button" id="authDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+        <i class="fa-solid fa-circle-user me-2"></i> MEMBER AREA
+    </button>
 
-                @endif
-                
-                
-                {{-- =================================================== --}}
-                {{-- Submenu Khusus Pelanggan --}}
-                {{-- =================================================== --}}
-                @if ($userRole === 'pelanggan')
-                    <li><hr class="dropdown-divider"></li>
-                    <li><h6 class="dropdown-header text-primary fw-bold">Menu Pelanggan</h6></li>
-                    
-                    {{-- 1. Kirim Paket --}}
-                    <li>
-                        <a class="dropdown-item" href="{{ route('customer.pesanan.create') }}">
-                            <i class="fa-solid fa-map-location-dot me-2 text-success"></i> Kirim Paket Saya
-                        </a>
-                    </li>
-                    
-                    {{-- 2. Data Pesanan (Riwayat Order) --}}
-                    <li>
-                        <a class="dropdown-item" href="{{ route('customer.pesanan.index') }}">
-                            <i class="fa-solid fa-list-ul me-2 text-warning"></i> Riwayat Pesanan
-                        </a>
-                    </li>
-                    
-                    {{-- 3. Topup --}}
-                    <li>
-                        <a class="dropdown-item" href="{{ route('customer.topup.index') }}">
-                            <i class="fa-solid fa-wallet me-2 text-info"></i> Isi Saldo (Topup)
-                        </a>
-                    </li>
-                    
-                    {{-- 4. Riwayat Scan SPX --}}
-                    <li>
-                        <a class="dropdown-item" href="{{ route('customer.scan.spx') }}">
-                            <i class="fa-solid fa-barcode me-2 text-secondary"></i> Riwayat Scan SPX
-                        </a>
-                    </li>
-                @endif
-                
-                 
-                {{-- =================================================== --}}
-                {{-- Submenu Khusus Seller (TAMBAHAN BARU) --}}
-                {{-- =================================================== --}}
-                @if ($userRole === 'seller')
-                    <li><hr class="dropdown-divider"></li>
-                    <li><h6 class="dropdown-header text-primary fw-bold">Menu Seller</h6></li>
-                    
-                    {{-- 1. Kirim Paket --}}
-                    <li>
-                        <a class="dropdown-item" href="{{ route('customer.pesanan.create') }}">
-                            <i class="fa-solid fa-map-location-dot me-2 text-success"></i> Kirim Paket Saya
-                        </a>
-                    </li>
-                    
-                    {{-- 2. Data Pesanan (Riwayat Order) --}}
-                    <li>
-                        <a class="dropdown-item" href="{{ route('customer.pesanan.index') }}">
-                            <i class="fa-solid fa-list-ul me-2 text-warning"></i> Riwayat Pesanan
-                        </a>
-                    </li>
-                    
-                    {{-- 3. Topup --}}
-                    <li>
-                        <a class="dropdown-item" href="{{ route('customer.topup.index') }}">
-                            <i class="fa-solid fa-wallet me-2 text-info"></i> Isi Saldo (Topup)
-                        </a>
-                    </li>
-                    
-                    {{-- 4. Riwayat Scan SPX --}}
-                    <li>
-                        <a class="dropdown-item" href="{{ route('customer.scan.spx') }}">
-                            <i class="fa-solid fa-barcode me-2 text-secondary"></i> Riwayat Scan SPX
-                        </a>
-                    </li>
-                @endif
+    <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="authDropdown">
+        
+        <li class="px-3 py-2 bg-light border-bottom mb-2 text-center">
+            <div class="fw-bold text-dark text-truncate" style="max-width: 250px; margin: 0 auto;">
+                {{ $displayName }}
+            </div>
+            @if($userRole === 'admin')
+                <span class="badge bg-danger rounded-pill mt-1">Administrator</span>
+            @elseif($userRole === 'agent')
+                <span class="badge bg-primary rounded-pill mt-1">Official Agent</span>
+            @elseif($userRole === 'seller')
+                <span class="badge bg-success rounded-pill mt-1">Seller / VIP</span>
+            @else
+                <span class="badge bg-secondary rounded-pill mt-1">Member</span>
+            @endif
+        </li>
 
-                <li><hr class="dropdown-divider"></li>
-                
-                {{-- Tautan Logout --}}
-                <li>
-                    <form method="POST" action="{{ route('logout') }}">
-                        @csrf
-                        <button type="submit" class="dropdown-item">
-                            <i class="fa-solid fa-right-from-bracket me-2"></i> Logout
-                        </button>
-                    </form>
-                </li>
-            </ul>
-        @endauth
+        {{-- Tautan Dashboard Umum --}}
+        <li>
+            <a class="dropdown-item fw-bold text-danger" href="{{ $dashboardRoute }}">
+                <i class="fa-solid fa-gauge-high me-2"></i> Dashboard {{ $roleName }}
+            </a>
+        </li>
+        
+        {{-- =================================================== --}}
+        {{-- MENU ADMIN --}}
+        {{-- =================================================== --}}
+        @if ($userRole === 'admin')
+            <li><hr class="dropdown-divider"></li>
+            <li><h6 class="dropdown-header text-primary fw-bold">Menu Admin</h6></li>
+            
+            <li><a class="dropdown-item" href="{{ route('admin.pesanan.create') }}"><i class="fa-solid fa-truck-fast me-2 text-success"></i> Kirim Paket Baru</a></li>
+            <li><a class="dropdown-item" href="{{ route('admin.pesanan.index') }}"><i class="fa-solid fa-box-open me-2 text-warning"></i> Data Pesanan</a></li>
+            <li><a class="dropdown-item" href="{{ route('admin.customers.index') }}"><i class="fa-solid fa-users me-2 text-info"></i> Manajemen Pelanggan</a></li>
+            <li><a class="dropdown-item" href="{{ route('admin.spx_scans.index') }}"><i class="fa-solid fa-qrcode me-2 text-secondary"></i> Data Scan SPX</a></li>
+        @endif
+        
+        {{-- =================================================== --}}
+        {{-- MENU AGENT (BARU) --}}
+        {{-- =================================================== --}}
+        @if ($userRole === 'agent')
+            <li><hr class="dropdown-divider"></li>
+            <li><h6 class="dropdown-header text-primary fw-bold">Menu Agen</h6></li>
+            
+            <li><a class="dropdown-item" href="{{ route('customer.pesanan.create') }}"><i class="fa-solid fa-paper-plane me-2 text-success"></i> Input Paket Agen</a></li>
+            <li><a class="dropdown-item" href="{{ route('customer.pesanan.index') }}"><i class="fa-solid fa-clipboard-list me-2 text-warning"></i> Riwayat Transaksi</a></li>
+            <li><a class="dropdown-item" href="{{ route('customer.topup.index') }}"><i class="fa-solid fa-wallet me-2 text-info"></i> Saldo Agen</a></li>
+            <li><a class="dropdown-item" href="{{ route('customer.scan.spx') }}"><i class="fa-solid fa-barcode me-2 text-secondary"></i> Scan Resi (Dropoff)</a></li>
+        @endif
+
+        {{-- =================================================== --}}
+        {{-- MENU SELLER --}}
+        {{-- =================================================== --}}
+        @if ($userRole === 'seller')
+            <li><hr class="dropdown-divider"></li>
+            <li><h6 class="dropdown-header text-primary fw-bold">Menu Seller</h6></li>
+            
+            <li><a class="dropdown-item" href="{{ route('customer.pesanan.create') }}"><i class="fa-solid fa-box me-2 text-success"></i> Kirim Paket</a></li>
+            <li><a class="dropdown-item" href="{{ route('customer.pesanan.index') }}"><i class="fa-solid fa-clock-rotate-left me-2 text-warning"></i> Riwayat Kiriman</a></li>
+            <li><a class="dropdown-item" href="{{ route('customer.topup.index') }}"><i class="fa-solid fa-wallet me-2 text-info"></i> Dompet Seller</a></li>
+            <li><a class="dropdown-item" href="{{ route('customer.scan.spx') }}"><i class="fa-solid fa-barcode me-2 text-secondary"></i> Scan Resi</a></li>
+        @endif
+
+        {{-- =================================================== --}}
+        {{-- MENU PELANGGAN BIASA --}}
+        {{-- =================================================== --}}
+        @if ($userRole === 'pelanggan')
+            <li><hr class="dropdown-divider"></li>
+            <li><h6 class="dropdown-header text-primary fw-bold">Menu Pelanggan</h6></li>
+            
+            <li><a class="dropdown-item" href="{{ route('customer.pesanan.create') }}"><i class="fa-solid fa-map-location-dot me-2 text-success"></i> Kirim Paket Saya</a></li>
+            <li><a class="dropdown-item" href="{{ route('customer.pesanan.index') }}"><i class="fa-solid fa-list-ul me-2 text-warning"></i> Riwayat Pesanan</a></li>
+            <li><a class="dropdown-item" href="{{ route('customer.topup.index') }}"><i class="fa-solid fa-wallet me-2 text-info"></i> Isi Saldo (Topup)</a></li>
+            <li><a class="dropdown-item" href="{{ route('customer.scan.spx') }}"><i class="fa-solid fa-barcode me-2 text-secondary"></i> Riwayat Scan</a></li>
+        @endif
+
+        <li><hr class="dropdown-divider"></li>
+        
+        {{-- Tautan Logout --}}
+        <li>
+            <form method="POST" action="{{ route('logout') }}">
+                @csrf
+                <button type="submit" class="dropdown-item text-danger">
+                    <i class="fa-solid fa-right-from-bracket me-2"></i> Logout
+                </button>
+            </form>
+        </li>
+    </ul>
+@endauth
 
         @guest
             <button class="btn btn-danger dropdown-toggle fw-bold" type="button" id="guestDropdown" data-bs-toggle="dropdown" aria-expanded="false">
