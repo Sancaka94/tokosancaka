@@ -533,6 +533,12 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
     Route::get('couriers/{id}/print', [CourierController::class, 'printDeliveryOrder'])->name('couriers.print');
     Route::resource('couriers', CourierController::class);
 
+    // Route untuk Generate Prompt Gambar
+    Route::post('/posts/generate-image-prompt', [App\Http\Controllers\Admin\PostController::class, 'generateImagePrompt'])->name('posts.generate_image_prompt');
+    
+    // Route untuk Generate Gambar Fisik
+    Route::post('/posts/generate-image', [App\Http\Controllers\Admin\PostController::class, 'generatePostImage'])->name('posts.generate_image');
+    
     // SPX & Barcode
     Route::resource('spx-scans', SpxScanController::class)->names('spx_scans');
     Route::get('/surat-jalan/monitor', [SpxScanController::class, 'showMonitorPage'])->name('suratjalan.monitor.index');

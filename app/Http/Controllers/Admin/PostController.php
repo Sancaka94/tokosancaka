@@ -531,5 +531,131 @@ Website: tokosancaka.com </p>
         $post->delete();
         return redirect()->route('admin.posts.index')->with('success', 'Postingan berhasil dihapus.');
     }
+
+    /**
+     * TAHAP 1: Membuat Prompt Gambar Otomatis berdasarkan Judul (Menggunakan Gemini Text)
+     */
+    public function generateImagePrompt(Request $request)
+    {
+        $request->validate([
+            'title' => 'required|string|max:255',
+        ]);
+
+        $title = $request->input('title');
+
+        // Prompt khusus untuk menyuruh Gemini membuatkan deskripsi gambar
+        $prompt = "Bertindaklah sebagai prompter AI Art profesional (Midjourney/DALL-E/Imagen). 
+        Tugas Anda: Buatkan 1 (satu) paragraf prompt gambar dalam BAHASA INGGRIS untuk artikel blog berjudul: '{$title}'.
+        
+        Spesifikasi Prompt:
+        - Gaya: Photorealistic, Cinematic Lighting, High Quality, 4K resolution.
+        - Aspek Rasio: 16:9 (Landscape).
+        - Mood: Professional, Modern, Trustworthy.
+        - PENTING: Tuliskan instruksi 'No text, no letters, no watermark' dalam prompt.
+        - Output: HANYA berikan teks prompt-nya saja, tanpa pembuka atau penutup.";
+
+        try {
+            // Kita gunakan logic Gemini Text yang sudah ada di controller ini
+            // Jika Anda menggunakan Service, bisa disesuaikan. Di sini saya pakai method generateWithGemini yang ada.
+            
+            // Panggil method private generateWithGemini yang sudah ada di bawah
+            // (Kita bungkus dalam logic response json manual karena generateWithGemini me-return JSON response object)
+            
+            $apiKey = env('GEMINI_API_KEY');
+            $apiKey = trim($apiKey);
+            $model = 'gemini-1.5-pro'; 
+
+            $response = Http::retry(3, 2000)->post("https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}", [
+                'contents' => [[
+                    'parts' => [['text' => $prompt]]
+                ]],
+                'generationConfig' => [
+                    'temperature' => 0.7,
+                ]
+            ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                $generatedPrompt = $data['candidates'][0]['content']['parts'][0]['text'] ?? '';
+                return response()->json(['prompt' => trim($generatedPrompt)]);
+            } else {
+                return response()->json(['error' => 'Gagal membuat prompt gambar.'], 500);
+            }
+
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * TAHAP 2: Membuat Gambar Fisik dari Prompt (Menggunakan Google Imagen Model)
+     */
+    public function generatePostImage(Request $request)
+    {
+        $request->validate([
+            'prompt' => 'required|string',
+        ]);
+
+        $textPrompt = $request->input('prompt');
+        $apiKey = env('GEMINI_API_KEY');
+        $apiKey = trim($apiKey);
+
+        // Model Google untuk gambar adalah "imagen-3.0-generate-001" (atau versi yang tersedia di akun Anda)
+        $model = 'imagen-3.0-generate-001'; 
+
+        try {
+            // Request ke API Imagen
+            $response = Http::withHeaders([
+                'Content-Type' => 'application/json',
+            ])->post("https://generativelanguage.googleapis.com/v1beta/models/{$model}:predict?key={$apiKey}", [
+                'instances' => [
+                    [
+                        'prompt' => $textPrompt,
+                    ]
+                ],
+                'parameters' => [
+                    'sampleCount' => 1,
+                    'aspectRatio' => '16:9', // Format Blog Post
+                    'sampleImageSize' => '1024',
+                ]
+            ]);
+
+            if ($response->failed()) {
+                Log::error('Imagen API Error:', ['body' => $response->body()]);
+                return response()->json(['error' => 'Gagal generate gambar. Pastikan API Key mendukung Model Imagen.'], 500);
+            }
+
+            $data = $response->json();
+
+            // Cek apakah ada data gambar (Base64)
+            if (isset($data['predictions'][0]['bytesBase64Encoded'])) {
+                $base64Image = $data['predictions'][0]['bytesBase64Encoded'];
+                
+                // Decode Base64 ke binary image
+                $imageContents = base64_decode($base64Image);
+                
+                // Buat nama file unik
+                $fileName = 'ai_gen_' . time() . '_' . Str::random(10) . '.png';
+                $path = 'uploads/posts/' . $fileName;
+
+                // Simpan ke Storage Public
+                Storage::disk('public')->put($path, $imageContents);
+
+                // Kembalikan URL gambar agar bisa dipreview di frontend
+                return response()->json([
+                    'success' => true,
+                    'image_url' => Storage::url($path), // URL untuk preview
+                    'file_path' => $path // Path untuk disimpan ke database (hidden input)
+                ]);
+            } else {
+                return response()->json(['error' => 'API tidak mengembalikan data gambar.'], 500);
+            }
+
+        } catch (\Exception $e) {
+            Log::error('Image Gen Exception: ' . $e->getMessage());
+            return response()->json(['error' => 'Terjadi kesalahan server: ' . $e->getMessage()], 500);
+        }
+    }
+    
 }
 
