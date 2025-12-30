@@ -44,6 +44,8 @@ class PostController extends Controller
 
     protected $geminiService;
 
+    protected $textModel = 'gemini-1.5-flash'; // Model default untuk text generation
+
     // Inject GeminiService agar otomatis menggunakan settingan yang benar
     public function __construct(GeminiService $geminiService)
     {
@@ -623,14 +625,40 @@ Website: tokosancaka.com </p>
         }
     }
 
+    // ==========================================
+    // 1. FITUR DIAGNOSA / CEK KONEKSI
+    // ==========================================
+    public function testConnection()
+    {
+        try {
+            $apiKey = trim(env('GEMINI_API_KEY'));
+            if (empty($apiKey)) {
+                throw new \Exception('API Key kosong. Cek file .env Anda.');
+            }
+
+            $response = Http::get("https://generativelanguage.googleapis.com/v1beta/models?key={$apiKey}");
+
+            if ($response->failed()) {
+                return response()->json(['error' => $response->json()], $response->status());
+            }
+
+            return response()->json(['status' => 'OK', 'models' => $response->json()]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
     
 
+    // ==========================================
+    // HELPER: FALLBACK IMAGE GENERATION
+    // ==========================================
     private function generateWithImagenFallback($prompt, $apiKey)
     {
-        // Fallback ke Imagen 3.0 jika Gemini 2.5 Image gagal formatnya
         $model = 'imagen-3.0-generate-001'; 
         
-        $response = Http::post("[https://generativelanguage.googleapis.com/v1beta/models/](https://generativelanguage.googleapis.com/v1beta/models/){$model}:predict?key={$apiKey}", [
+        $response = Http::withHeaders(['Content-Type' => 'application/json'])
+            ->post("https://generativelanguage.googleapis.com/v1beta/models/{$model}:predict?key={$apiKey}", [
             'instances' => [['prompt' => $prompt]],
             'parameters' => [
                 'sampleCount' => 1,
@@ -640,7 +668,8 @@ Website: tokosancaka.com </p>
         ]);
 
         if ($response->failed()) {
-             return response()->json(['error' => 'Gagal Generate Gambar (Imagen & Gemini): ' . $response->body()], 500);
+            $msg = $response->json()['error']['message'] ?? $response->body();
+             return response()->json(['error' => "Gagal Generate Gambar (Semua Model): $msg"], 500);
         }
 
         $data = $response->json();
@@ -667,41 +696,14 @@ Website: tokosancaka.com </p>
     }
 
     // ==========================================
-    // 1. FITUR DIAGNOSA / CEK KONEKSI
+    // HELPER: API TEXT GEMINI (DENGAN AUTO FALLBACK)
     // ==========================================
-    public function testConnection()
-    {
-        try {
-            $apiKey = trim(env('GEMINI_API_KEY'));
-            if (empty($apiKey)) {
-                throw new \Exception('API Key kosong. Cek file .env Anda.');
-            }
-
-            $response = Http::get("https://generativelanguage.googleapis.com/v1beta/models?key={$apiKey}");
-
-            if ($response->failed()) {
-                return response()->json(['error' => $response->json()], $response->status());
-            }
-
-            return response()->json(['status' => 'OK', 'models' => $response->json()]);
-        } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
-        }
-    }
-
-    // ==========================================
-    // HELPER: PANGGIL API GEMINI
-    // ==========================================
-    private function callGeminiAPI($prompt, $rawText = false)
+    private function callGeminiTextAPI($prompt, $rawText = false)
     {
         $apiKey = trim(env('GEMINI_API_KEY'));
-        
-        // Gunakan model properti class
-        $model = $this->aiModel; 
+        $model = $this->textModel;
 
-        if (empty($apiKey)) {
-            throw new \Exception("API Key belum disetting di file .env");
-        }
+        if (empty($apiKey)) throw new \Exception("API Key belum disetting.");
 
         $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}";
 
@@ -714,24 +716,21 @@ Website: tokosancaka.com </p>
 
         if ($response->failed()) {
             $status = $response->status();
-            $body = $response->json();
-            $msg = $body['error']['message'] ?? 'Unknown Google Error';
-
-            // Auto Fallback jika model 1.5 tidak ketemu (404)
+            
+            // JIKA 404, coba fallback ke model 'gemini-pro' (versi lama yang stabil)
             if ($status == 404 && $model !== 'gemini-pro') {
-                $this->aiModel = 'gemini-pro'; // Ganti model ke legacy
-                return $this->callGeminiAPI($prompt, $rawText); // Coba lagi
+                $this->textModel = 'gemini-pro'; 
+                return $this->callGeminiTextAPI($prompt, $rawText);
             }
-
+            
+            $msg = $response->json()['error']['message'] ?? 'Unknown Error';
             throw new \Exception("Google AI Error ($status): $msg");
         }
 
         $data = $response->json();
         $content = $data['candidates'][0]['content']['parts'][0]['text'] ?? '';
 
-        if (empty($content)) {
-            throw new \Exception("AI merespon sukses tapi tidak ada teks yang dihasilkan.");
-        }
+        if (empty($content)) throw new \Exception("AI merespon sukses tapi konten kosong.");
 
         return response()->json($rawText ? ['prompt' => $content] : ['content' => $content]);
     }
