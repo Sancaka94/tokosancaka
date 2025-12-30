@@ -94,6 +94,12 @@ class TelegramPpobController extends Controller
                     break;
                 // ---------------------
 
+                case '/harga':
+                case '/cek':
+                case '/list':
+                    $this->checkProductPrice($chatId, $text);
+                    break;
+
                 case '/resi':
                 case '/lacak':
                     $this->trackResi($chatId, $text);
@@ -118,6 +124,81 @@ class TelegramPpobController extends Controller
         }
 
         return response('OK', 200);
+    }
+
+    /**
+     * Cek Daftar Harga Produk
+     * Format: /harga [Nama/Brand]
+     */
+    private function checkProductPrice($chatId, $text)
+    {
+        // 1. Ambil Keyword
+        $keyword = trim(str_ireplace(['/harga', '/cek', '/list'], '', $text));
+
+        // Jika user cuma ketik /harga tanpa keyword, tampilkan Brand populer
+        if (empty($keyword)) {
+            $msg = "🏷 <b>CEK DAFTAR HARGA</b>\n\n";
+            $msg .= "Ketik: <code>/harga [Nama_Produk]</code>\n";
+            $msg .= "Contoh:\n";
+            $msg .= "👉 <code>/harga pln</code> (Token Listrik)\n";
+            $msg .= "👉 <code>/harga telkomsel</code> (Pulsa Tsel)\n";
+            $msg .= "👉 <code>/harga dana</code> (E-Wallet)\n";
+            $msg .= "👉 <code>/harga mobile</code> (Game)\n";
+            
+            $this->sendMessage($chatId, $msg);
+            return;
+        }
+
+        $this->sendMessage($chatId, "🔍 Mencari harga: <b>$keyword</b>...");
+
+        try {
+            // 2. Query ke Database ppob_products
+            $products = DB::table('ppob_products')
+                ->where('seller_product_status', 1) // Hanya tampilkan yang aktif
+                ->where(function($query) use ($keyword) {
+                    $query->where('product_name', 'LIKE', "%$keyword%")
+                          ->orWhere('brand', 'LIKE', "%$keyword%")
+                          ->orWhere('category', 'LIKE', "%$keyword%")
+                          ->orWhere('buyer_sku_code', 'LIKE', "%$keyword%");
+                })
+                ->orderBy('sell_price', 'asc') // Urutkan dari yang termurah
+                ->limit(20) // Batasi maksimal 20 produk agar chat tidak kepanjangan
+                ->get();
+
+            // 3. Susun Pesan Balasan
+            if ($products->count() > 0) {
+                $msg = "🏷 <b>DAFTAR HARGA: " . strtoupper($keyword) . "</b>\n";
+                $msg .= "━━━━━━━━━━━━━━━━━━\n";
+
+                foreach ($products as $p) {
+                    $code  = strtoupper($p->buyer_sku_code); // Contoh: PLN20
+                    $price = number_format($p->sell_price, 0, ',', '.');
+                    $name  = $p->product_name;
+                    
+                    // Format: KODE : Harga - Nama
+                    $msg .= "🔹 <code>$code</code> : <b>Rp $price</b>\n";
+                    $msg .= "   $name\n\n";
+                }
+
+                $msg .= "🛒 <b>Cara Transaksi:</b>\n";
+                $msg .= "Ketik: <code>[KODE].[TUJUAN].[PIN]</code>\n";
+                $msg .= "<i>Contoh: pln20.0812345.1234</i>"; // Sesuaikan format transaksi kamu
+                
+                // Jika hasil mencapai limit, beri info
+                if ($products->count() >= 20) {
+                    $msg .= "\n\n⚠️ <i>Hasil dibatasi 20 item. Ketik lebih spesifik jika belum ketemu.</i>";
+                }
+
+            } else {
+                $msg = "❌ Produk dengan kata kunci <b>'$keyword'</b> tidak ditemukan atau sedang gangguan.";
+            }
+
+            $this->sendMessage($chatId, $msg);
+
+        } catch (\Exception $e) {
+            Log::error("Cek Harga Error: " . $e->getMessage());
+            $this->sendMessage($chatId, "❌ Gagal memuat harga.");
+        }
     }
 
     /**
@@ -691,6 +772,13 @@ class TelegramPpobController extends Controller
         // --- SECTION PPOB ---
         $msg .= "📱 <b>PPOB & PULSA</b>\n";
         $msg .= "━━━━━━━━━━━━━━━━━━\n";
+
+        // --- TAMBAHKAN INI ---
+        $msg .= "🏷 <b>Cek Harga Produk</b>\n";
+        $msg .= "Ketik: <code>/harga [Nama Produk]</code>\n";
+        $msg .= "<i>Contoh: /harga pln</i>\n\n";
+        // ---------------------
+        
         $msg .= "💰 <b>Cek Saldo Agen</b>\n";
         $msg .= "Klik 👉 /saldo\n\n";
         
