@@ -665,6 +665,76 @@ Website: tokosancaka.com </p>
             'file_path' => $path
         ]);
     }
+
+    // ==========================================
+    // 1. FITUR DIAGNOSA / CEK KONEKSI
+    // ==========================================
+    public function testConnection()
+    {
+        try {
+            $apiKey = trim(env('GEMINI_API_KEY'));
+            if (empty($apiKey)) {
+                throw new \Exception('API Key kosong. Cek file .env Anda.');
+            }
+
+            $response = Http::get("https://generativelanguage.googleapis.com/v1beta/models?key={$apiKey}");
+
+            if ($response->failed()) {
+                return response()->json(['error' => $response->json()], $response->status());
+            }
+
+            return response()->json(['status' => 'OK', 'models' => $response->json()]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    // ==========================================
+    // HELPER: PANGGIL API GEMINI
+    // ==========================================
+    private function callGeminiAPI($prompt, $rawText = false)
+    {
+        $apiKey = trim(env('GEMINI_API_KEY'));
+        
+        // Gunakan model properti class
+        $model = $this->aiModel; 
+
+        if (empty($apiKey)) {
+            throw new \Exception("API Key belum disetting di file .env");
+        }
+
+        $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}";
+
+        $response = Http::withHeaders(['Content-Type' => 'application/json'])
+            ->retry(2, 2000)
+            ->post($url, [
+                'contents' => [['parts' => [['text' => $prompt]]]],
+                'generationConfig' => ['temperature' => 0.7]
+            ]);
+
+        if ($response->failed()) {
+            $status = $response->status();
+            $body = $response->json();
+            $msg = $body['error']['message'] ?? 'Unknown Google Error';
+
+            // Auto Fallback jika model 1.5 tidak ketemu (404)
+            if ($status == 404 && $model !== 'gemini-pro') {
+                $this->aiModel = 'gemini-pro'; // Ganti model ke legacy
+                return $this->callGeminiAPI($prompt, $rawText); // Coba lagi
+            }
+
+            throw new \Exception("Google AI Error ($status): $msg");
+        }
+
+        $data = $response->json();
+        $content = $data['candidates'][0]['content']['parts'][0]['text'] ?? '';
+
+        if (empty($content)) {
+            throw new \Exception("AI merespon sukses tapi tidak ada teks yang dihasilkan.");
+        }
+
+        return response()->json($rawText ? ['prompt' => $content] : ['content' => $content]);
+    }
     
 }
 
