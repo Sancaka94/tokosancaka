@@ -1,30 +1,20 @@
-<?php
-
-use Illuminate\Support\Facades\Route;
-// Pastikan baris ini ada di atas
-use App\Http\Controllers\Pondok\Admin\SantriController;
-
-/* ... komentar lain ... */
-
-Route::get('/', function () {
-    return redirect()->route('admin.santri.index');
-});
-
-// Grup untuk semua rute admin
-// Prefix 'admin' membuat URL menjadi /admin/...
-// Name 'admin.' membuat nama rute menjadi admin....
-Route::prefix('admin')->name('admin.')->group(function() {
-
-    // Rute untuk resource santri (sudah ada)
-    Route::resource('santri', SantriController::class);
-
-    // TAMBAHKAN RUTE INI
-    // Nama 'santri.updateStatus' akan otomatis menjadi 'admin.santri.updateStatus'
-    // karena berada di dalam grup 'admin.'
-    Route::patch('/santri/{id}/status', [SantriController::class, 'updateStatus'])
-         ->name('santri.updateStatus');
-
-});
-
-
-require __DIR__.'/web/pondok.php';
+<?php
+
+use App\Http\Controllers\ProfileController;
+use Illuminate\Support\Facades\Route;
+
+Route::get('/', function () {
+    return view('home');
+});
+
+Route::get('/dashboard', function () {
+    return view('dashboard');
+})->middleware(['auth', 'verified'])->name('dashboard');
+
+Route::middleware('auth')->group(function () {
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+});
+
+require __DIR__.'/auth.php';
