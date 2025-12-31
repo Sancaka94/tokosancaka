@@ -81,7 +81,7 @@
                                     <i class="fas fa-pencil-alt text-lg"></i>
                                 </a>
                                 <!-- Tombol Hapus -->
-                                <form action="{{ route('admin.posts.destroy', $post->id) }}" method="POST" class="inline-block" onsubmit="return confirm('Apakah Anda yakin ingin menghapus postingan ini?');">
+                                <form action="{{ route('admin.posts.destroy', $post->slug) }}" method="POST" class="inline-block" onsubmit="return confirm('Apakah Anda yakin ingin menghapus postingan ini?');">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="text-red-600 hover:text-red-900" title="Hapus Postingan">
