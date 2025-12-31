@@ -55,21 +55,7 @@ class TransaksiKasBankController extends Controller
 
 
 
-    /**
 
-     * Show the form for creating a new resource.
-
-     */
-
-    public function create()
-
-    {
-
-        $akun = $this->connection->table('akun_akuntansi')->get();
-
-        return view('pondok.admin.transaksi_kas_bank.create', compact('akun'));
-
-    }
 
     /**
 
