@@ -77,7 +77,7 @@
                                     <i class="fas fa-eye text-lg"></i>
                                 </a>
                                 <!-- Tombol Edit -->
-                                <a href="{{ route('admin.posts.edit', $post->id) }}" class="text-indigo-600 hover:text-indigo-900" title="Edit Postingan">
+                                <a href="{{ route('admin.posts.edit', $post->slug) }}" class="text-indigo-600 hover:text-indigo-900" title="Edit Postingan">
                                     <i class="fas fa-pencil-alt text-lg"></i>
                                 </a>
                                 <!-- Tombol Hapus -->
