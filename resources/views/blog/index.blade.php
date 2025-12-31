@@ -245,9 +245,12 @@
                 </div>
             @endforelse
             
-            {{-- Pagination --}}
-            <div class="col-12 mt-4">
-                {{ $latestPosts->links() }}
+            <div class="mt-8 px-4 w-full flex justify-center">
+    {{-- 
+        onEachSide(1): Membatasi jumlah angka di HP agar tidak meluber.
+        links(): Akan otomatis merender HTML Tailwind yang cantik.
+    --}}
+    {{ $latestPosts->onEachSide(1)->links() }}
             </div>
         </div>
 
