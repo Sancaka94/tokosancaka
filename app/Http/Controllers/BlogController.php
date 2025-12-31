@@ -56,7 +56,7 @@ class BlogController extends Controller
         $topArticles = (clone $baseQuery)
             ->whereNotIn('id', $excludeIds)
             ->latest()
-            ->limit(5)
+            ->limit(20)
             ->get();
 
         // Masukkan ID topArticles ke daftar pengecualian
@@ -67,7 +67,7 @@ class BlogController extends Controller
         $latestPosts = (clone $baseQuery)
             ->whereNotIn('id', $excludeIds)
             ->latest()
-            ->paginate(6) // Tampilkan 6 per halaman (kelipatan 3 agar rapi di grid)
+            ->paginate(17) // Tampilkan 6 per halaman (kelipatan 3 agar rapi di grid)
             ->withQueryString(); // Agar parameter search/category tidak hilang saat klik page 2
 
         // --- BAGIAN SIDEBAR & MENU ---
@@ -128,14 +128,13 @@ class BlogController extends Controller
         return view('blog.show', compact('post', 'popularPosts', 'categories'));
     }
 
-    /**
-     * Halaman Homepage Utama (Opsional, jika beda dengan blog index)
-     */
-    public function index(Request $request)
-    {
-        // Bisa diarahkan ke blogIndex atau punya tampilan beda
-        return $this->blogIndex($request);
-    }
+    public function index()
+{
+    // Jangan panggil $this->blogIndex($request);
+    
+    // Tampilkan view landing page khusus (Anda harus buat file view-nya dulu)
+    return view('home'); // Pastikan ada file resources/views/welcome.blade.php
+}
 
     /**
      * Halaman About

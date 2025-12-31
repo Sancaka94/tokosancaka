@@ -669,9 +669,6 @@ Route::get('/admin/approve-data-request/{no_wa}', [TelegramPpobController::class
 
 // Group Route untuk Blog Publik
 Route::controller(BlogController::class)->group(function () {
-    
-    // Homepage utama
-    Route::get('/', 'index')->name('home');
 
     // Halaman Index Blog (Tempat Slider & List Berita berada)
     // Nama route ini PENTING karena dipanggil di view blade Anda
