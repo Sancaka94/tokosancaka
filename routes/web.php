@@ -665,3 +665,26 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
 // Route untuk Admin menyetujui pengiriman data ID ke Customer
 Route::get('/admin/approve-data-request/{no_wa}', [TelegramPpobController::class, 'approveDataRequest'])
     ->name('admin.approve.data');
+
+
+// Group Route untuk Blog Publik
+Route::controller(BlogController::class)->group(function () {
+    
+    // Homepage utama
+    Route::get('/', 'index')->name('home');
+
+    // Halaman Index Blog (Tempat Slider & List Berita berada)
+    // Nama route ini PENTING karena dipanggil di view blade Anda
+    Route::get('/blog', 'blogIndex')->name('blog.posts.index');
+
+    // Halaman Detail Postingan
+    Route::get('/blog/posts/{post:slug}', 'show')->name('blog.posts.show'); 
+    // ATAU jika pakai logic manual di controller show($slug):
+    // Route::get('/blog/posts/{slug}', 'show')->name('blog.posts.show');
+
+    // Halaman About
+    Route::get('/about', 'about')->name('about');
+
+    // Feed RSS (Opsional)
+    Route::get('/feed', 'generateFeed')->name('feed');
+});
