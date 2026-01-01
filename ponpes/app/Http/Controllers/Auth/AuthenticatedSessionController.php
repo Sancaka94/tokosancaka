@@ -14,8 +14,14 @@ class AuthenticatedSessionController extends Controller
     /**
      * Display the login view.
      */
-    public function create(): View
+    public function create(): View|RedirectResponse
     {
+        // Tambahan: Jika user sudah login tapi mencoba akses halaman /login lewat URL,
+        // arahkan otomatis ke dashboard sesuai role mereka.
+        if (Auth::check()) {
+            return $this->redirectBasedOnRole(Auth::user());
+        }
+
         return view('auth.login');
     }
 
@@ -24,21 +30,28 @@ class AuthenticatedSessionController extends Controller
      */
     public function store(LoginRequest $request): RedirectResponse
     {
+        // Melakukan validasi email & password serta throttling (pembatasan percobaan login)
         $request->authenticate();
 
+        // Mencegah Session Fixation Attack
         $request->session()->regenerate();
 
-        // --- LOGIKA PENGECEKAN ROLE ---
-        // Ambil data user yang sedang login
-        $user = $request->user();
+        // Mengarahkan user berdasarkan role menggunakan helper function
+        return $this->redirectBasedOnRole($request->user());
+    }
 
+    /**
+     * Helper function untuk menentukan arah redirect berdasarkan role.
+     */
+    protected function redirectBasedOnRole($user): RedirectResponse
+    {
         // Jika role-nya admin, arahkan ke Admin Dashboard
         if ($user->role === 'admin') {
-            return redirect()->intended('/admin/dashboard');
+            return redirect()->intended(route('admin.dashboard', [], false));
         }
 
-        // Jika bukan admin (misal: user/santri), arahkan ke Dashboard biasa
-        return redirect()->intended('/dashboard');
+        // Jika user biasa/santri
+        return redirect()->intended(route('dashboard', [], false));
     }
 
     /**
@@ -48,10 +61,13 @@ class AuthenticatedSessionController extends Controller
     {
         Auth::guard('web')->logout();
 
+        // Hapus data session
         $request->session()->invalidate();
 
+        // Regenerasi CSRF token untuk keamanan
         $request->session()->regenerateToken();
 
+        // Kembali ke halaman landing page
         return redirect('/');
     }
 }
