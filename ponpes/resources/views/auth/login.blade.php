@@ -2,7 +2,7 @@
     <div class="grid lg:grid-cols-2 min-h-screen w-full bg-white overflow-hidden">
         
         <div class="hidden lg:relative lg:flex bg-indigo-600 items-center justify-center p-16">
-            <img src="https://images.unsplash.com/photo-1541829070764-84a7d30dee3f?q=80&w=2070&auto=format&fit=crop" 
+            <img src="https://ponpes.tokosancaka.com/storage/auth/ponpes.jpg" 
                  class="absolute inset-0 w-full h-full object-cover opacity-30" alt="Background">
             
             <div class="relative z-10 w-full max-w-lg">
