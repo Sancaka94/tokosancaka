@@ -12,12 +12,19 @@
             <span class="font-bold text-sm">Dashboard</span>
         </a>
 
-        <a href="{{ route('orders.create') }}" class="flex items-center gap-3 p-3 rounded-xl transition {{ request()->routeIs('orders.create') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-slate-400 hover:bg-slate-800' }}">
-            <span class="text-lg">🛒</span>
-            <span class="font-bold text-sm">Buka Kasir (POS)</span>
+        <div class="pt-4 pb-2 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Transaksi</div>
+        
+        <a href="{{ route('orders.create') }}" class="flex items-center gap-3 p-3 rounded-xl transition {{ request()->routeIs('orders.create') ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/30' : 'text-slate-400 hover:bg-slate-800' }}">
+            <span class="text-lg">➕</span>
+            <span class="font-bold text-sm">Buat Pesanan Baru</span>
         </a>
 
         <div class="pt-4 pb-2 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Manajemen</div>
+
+        <a href="#" class="flex items-center gap-3 p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition">
+            <span class="text-lg">📦</span>
+            <span class="font-bold text-sm">Data Produk</span>
+        </a>
 
         <a href="#" class="flex items-center gap-3 p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition">
             <span class="text-lg">📑</span>
