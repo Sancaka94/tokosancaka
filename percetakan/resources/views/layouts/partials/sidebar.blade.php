@@ -21,7 +21,7 @@
 
         <div class="pt-4 pb-2 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Manajemen</div>
 
-        <a href="#" class="flex items-center gap-3 p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition">
+        <a href="{{ route('products.index') }}" class="flex items-center gap-3 p-3 rounded-xl transition {{ request()->routeIs('products.index') ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800' }}">
             <span class="text-lg">📦</span>
             <span class="font-bold text-sm">Data Produk</span>
         </a>
