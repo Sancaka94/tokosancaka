@@ -4,7 +4,7 @@
         <div class="hidden lg:relative lg:flex bg-green-600 items-center justify-center p-16 overflow-hidden">
             
             <img src="https://ponpes.tokosancaka.com/storage/auth/ponpes.jpg" 
-                 class="absolute inset-0 w-full h-full object-contain opacity-60 transition-transform duration-700 hover:scale-105" 
+                 class="absolute inset-0 w-full h-full object-contain opacity-80 transition-transform duration-700 hover:scale-105" 
                  alt="Background">
             
             <div class="relative z-10 w-full max-w-lg">
