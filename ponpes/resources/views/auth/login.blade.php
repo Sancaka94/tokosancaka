@@ -3,7 +3,9 @@
         
         <div class="hidden lg:relative lg:flex bg-indigo-600 items-center justify-center p-16">
             <img src="https://ponpes.tokosancaka.com/storage/auth/ponpes.jpg" 
-            class="absolute inset-0 w-full h-full object-cover object-center opacity-30" alt="Background">
+     class="absolute inset-0 w-full h-full object-cover opacity-50" 
+     style="object-position: center 20%;" 
+     alt="Background">
             
             <div class="relative z-10 w-full max-w-lg">
                 <div class="inline-flex items-center gap-2 bg-white/10 backdrop-blur-lg border border-white/20 px-4 py-2 rounded-xl mb-8">
