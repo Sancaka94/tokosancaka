@@ -1,5 +1,8 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
+    
+    # Tambahkan baris ini untuk mengabaikan folder percetakan
+    RewriteCond %{REQUEST_URI} !^/percetakan
 
     # Arahkan semua request ke folder public
     RewriteCond %{REQUEST_URI} !^/public/
