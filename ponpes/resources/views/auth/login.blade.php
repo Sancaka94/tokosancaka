@@ -42,7 +42,7 @@
 
                 <h1 class="text-4xl lg:text-5xl font-extrabold leading-tight mb-6 drop-shadow-md">
                     Manajemen<br>
-                    Jadi Lebih <span class="italic text-indigo-300">Mudah.</span>
+                    Jadi Lebih <span class="italic text-green-300">Mudah.</span>
                 </h1>
 
                 <p class="text-white/90 max-w-md leading-relaxed text-lg drop-shadow-sm">
@@ -84,7 +84,7 @@
                                 Alamat Email
                             </label>
                             <input type="email" name="email" value="{{ old('email') }}" required autofocus
-                                   class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all placeholder-slate-400 bg-slate-50 focus:bg-white"
+                                   class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all placeholder-slate-400 bg-slate-50 focus:bg-white"
                                    placeholder="admin@email.com">
                         </div>
 
@@ -94,10 +94,10 @@
                             </label>
                             <div class="relative">
                                 <input id="password" type="password" name="password" required autocomplete="current-password"
-                                       class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all placeholder-slate-400 bg-slate-50 focus:bg-white"
+                                       class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all placeholder-slate-400 bg-slate-50 focus:bg-white"
                                        placeholder="••••••••">
                                 <button type="button" onclick="togglePassword()"
-                                        class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 transition-colors">
+                                        class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-green-600 transition-colors">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
@@ -108,25 +108,25 @@
 
                         <div class="flex items-center justify-between text-sm">
                             <label class="flex items-center gap-2 cursor-pointer group">
-                                <input type="checkbox" name="remember" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
-                                <span class="text-slate-600 group-hover:text-indigo-600 transition-colors">Ingat saya</span>
+                                <input type="checkbox" name="remember" class="rounded border-gray-300 text-green-600 focus:ring-green-500">
+                                <span class="text-slate-600 group-hover:text-green-600 transition-colors">Ingat saya</span>
                             </label>
                             
                             @if (Route::has('password.request'))
-                                <a href="{{ route('password.request') }}" class="text-indigo-600 font-bold hover:text-indigo-800 transition-colors">
+                                <a href="{{ route('password.request') }}" class="text-green-600 font-bold hover:text-green-800 transition-colors">
                                     Lupa Password?
                                 </a>
                             @endif
                         </div>
 
                         <button type="submit"
-                                class="w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-lg shadow-lg shadow-indigo-200 transition-all transform hover:-translate-y-0.5">
+                                class="w-full py-3.5 rounded-xl bg-green-600 hover:bg-green-700 text-white font-bold text-lg shadow-lg shadow-green-200 transition-all transform hover:-translate-y-0.5">
                             Masuk Sekarang
                         </button>
 
                         <div class="text-center pt-6 border-t border-slate-100">
                             <p class="text-sm text-slate-500">Belum memiliki akun?</p>
-                            <a href="{{ route('register') }}" class="text-indigo-600 font-bold hover:text-indigo-800 transition-colors inline-flex items-center gap-1">
+                            <a href="{{ route('register') }}" class="text-green-600 font-bold hover:text-green-800 transition-colors inline-flex items-center gap-1">
                                 Daftar Gratis Disini <span>&rarr;</span>
                             </a>
                         </div>

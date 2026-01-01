@@ -43,7 +43,7 @@
 
                 <h1 class="text-4xl lg:text-5xl font-extrabold leading-tight mb-6 drop-shadow-md">
                     Bergabung<br>
-                    Bersama <span class="italic text-indigo-300">Kami.</span>
+                    Bersama <span class="italic text-green-300">Kami.</span>
                 </h1>
 
                 <p class="text-white/90 max-w-md leading-relaxed text-lg drop-shadow-sm">
@@ -77,14 +77,14 @@
                         <div>
                             <label class="block text-sm font-semibold mb-2 text-slate-700">Nama Lengkap</label>
                             <input type="text" name="name" required
-                                   class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all placeholder-slate-400"
+                                   class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all placeholder-slate-400"
                                    placeholder="Nama Pesantren / Admin">
                         </div>
 
                         <div>
                             <label class="block text-sm font-semibold mb-2 text-slate-700">Alamat Email</label>
                             <input type="email" name="email" required
-                                   class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all placeholder-slate-400"
+                                   class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all placeholder-slate-400"
                                    placeholder="admin@email.com">
                         </div>
 
@@ -92,11 +92,11 @@
                             <label class="block text-sm font-semibold mb-2 text-slate-700">Kata Sandi</label>
                             <div class="relative">
                                 <input id="password" type="password" name="password" required
-                                       class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all placeholder-slate-400"
+                                       class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all placeholder-slate-400"
                                        placeholder="Minimal 8 karakter">
                                 
                                 <button type="button" onclick="toggleVisibility('password')"
-                                        class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 transition-colors cursor-pointer">
+                                        class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-green-600 transition-colors cursor-pointer">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
@@ -109,11 +109,11 @@
                             <label class="block text-sm font-semibold mb-2 text-slate-700">Konfirmasi Sandi</label>
                             <div class="relative">
                                 <input id="password_confirmation" type="password" name="password_confirmation" required
-                                       class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all placeholder-slate-400"
+                                       class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all placeholder-slate-400"
                                        placeholder="Ulangi kata sandi">
                                 
                                 <button type="button" onclick="toggleVisibility('password_confirmation')"
-                                        class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 transition-colors cursor-pointer">
+                                        class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-green-600 transition-colors cursor-pointer">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
@@ -124,14 +124,14 @@
 
                         <div class="pt-2">
                             <button type="submit"
-                                    class="w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-lg shadow-lg shadow-indigo-200 transition-all transform hover:-translate-y-0.5">
+                                    class="w-full py-3.5 rounded-xl bg-green-600 hover:bg-green-700 text-white font-bold text-lg shadow-lg shadow-green-200 transition-all transform hover:-translate-y-0.5">
                                 Daftar Sekarang
                             </button>
                         </div>
 
                         <div class="text-center pt-6 border-t border-slate-100">
                             <p class="text-sm text-slate-500">Sudah memiliki akun?</p>
-                            <a href="{{ route('login') }}" class="text-indigo-600 font-bold hover:text-indigo-800 transition-colors inline-flex items-center gap-1">
+                            <a href="{{ route('login') }}" class="text-green-600 font-bold hover:text-green-800 transition-colors inline-flex items-center gap-1">
                                 Masuk ke Akun <span>&rarr;</span>
                             </a>
                         </div>
