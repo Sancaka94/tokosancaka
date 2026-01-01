@@ -28,7 +28,7 @@
     <!-- Background -->
     <div class="absolute inset-0">
         <img src="https://ponpes.tokosancaka.com/storage/auth/bg_ponpes.jpg"
-             class="w-full h-full object-cover">
+            class="w-full h-full object-contain bg-black">
         <div class="absolute inset-0 bg-gradient-to-r from-black/40 via-black/20 to-black/10"></div>
     </div>
 
