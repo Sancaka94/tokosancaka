@@ -44,14 +44,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    // --- ROUTE PENGATURAN (SETTINGS) ---
-    Route::get('/admin/settings', [SettingController::class, 'index'])->name('admin.settings.index');
-    Route::post('/admin/settings', [SettingController::class, 'update'])->name('admin.settings.update');
-
     // --- MEMANGGIL ROUTE ADMIN (PONDOK.PHP) ---
     if (file_exists(base_path('routes/web/pondok.php'))) {
         require base_path('routes/web/pondok.php');
     }
+});
+
+Route::middleware('auth')->group(function () {
+    // ... route lainnya
+    
+    Route::get('/admin/settings', [SettingController::class, 'index'])->name('admin.settings.index');
+    
+    // PASTIKAN BARIS INI ADA DAN MENGGUNAKAN METHOD POST/PATCH
+    Route::post('/admin/settings', [SettingController::class, 'update'])->name('admin.settings.update');
 });
 
 // --- AUTHENTICATION ROUTES (LOGIN, REGISTER, DLL) ---
