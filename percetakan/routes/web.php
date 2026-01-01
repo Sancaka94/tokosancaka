@@ -5,6 +5,10 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\OrderController; // <-- BARIS INI WAJIB ADA
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ReportController;
+
+Route::middleware(['auth'])->group(function () {
+});
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth'])
@@ -25,6 +29,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // Laporan Penjualan
+        Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
 
     // Rute tambahan untuk produk
 

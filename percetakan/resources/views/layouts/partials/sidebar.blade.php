@@ -26,7 +26,7 @@
             <span class="font-bold text-sm">Data Produk</span>
         </a>
 
-        <a href="#" class="flex items-center gap-3 p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition">
+        <a href="{{ route('reports.index') }}" class="flex items-center gap-3 p-3 rounded-xl transition {{ request()->routeIs('reports.index') ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800' }}">
             <span class="text-lg">📑</span>
             <span class="font-bold text-sm">Laporan Pesanan</span>
         </a>
