@@ -1,18 +1,23 @@
 <x-guest-layout>
     <div class="grid lg:grid-cols-2 min-h-screen w-full bg-white overflow-hidden">
         
-        <div class="hidden lg:relative lg:flex bg-green-600 items-center justify-center p-16">
+        <div class="hidden lg:relative lg:flex bg-green-600 items-center justify-center p-16 overflow-hidden">
+            
             <img src="https://ponpes.tokosancaka.com/storage/auth/ponpes.jpg" 
-     class="absolute inset-0 w-full h-full object-cover opacity-50" 
-     style="object-position: center 20%;" 
-     alt="Background">
+                 class="absolute inset-0 w-full h-full object-cover opacity-40 blur-[2px] transition-transform duration-700 hover:scale-105" 
+                 style="object-position: center center;" 
+                 alt="Background">
             
             <div class="relative z-10 w-full max-w-lg">
-                <div class="inline-flex items-center gap-2 bg-white/10 backdrop-blur-lg border border-white/20 px-4 py-2 rounded-xl mb-8">
-                    <span class="font-bold tracking-widest uppercase text-xs text-white">Sancaka ePesantren</span>
+                <div class="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/20 px-4 py-2 rounded-xl mb-8 shadow-lg">
+                    <span class="font-bold tracking-widest uppercase text-xs text-white drop-shadow-md">Sancaka ePesantren</span>
                 </div>
-                <h1 class="text-5xl font-black leading-tight text-white mb-6">Manajemen <br> Jadi Lebih <span class="text-indigo-200">Mudah.</span></h1>
-                <p class="text-xl text-indigo-50 font-light leading-relaxed">
+                
+                <h1 class="text-5xl font-black leading-tight text-white mb-6 drop-shadow-[0_4px_3px_rgba(0,0,0,0.5)]">
+                    Manajemen <br> Jadi Lebih <span class="text-indigo-200">Mudah.</span>
+                </h1>
+                
+                <p class="text-xl text-indigo-50 font-light leading-relaxed drop-shadow-md">
                     Solusi digital terintegrasi untuk pengelolaan administrasi, keuangan, dan data santri secara real-time.
                 </p>
             </div>
@@ -104,7 +109,6 @@
             
             if (pwd.type === 'password') {
                 pwd.type = 'text';
-                // Ganti icon ke mata dicoret (opsional) atau ubah warna
             } else {
                 pwd.type = 'password';
             }
