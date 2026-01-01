@@ -26,20 +26,11 @@
 <div class="relative min-h-screen w-full overflow-hidden">
 
     <!-- Background -->
-    <div class="absolute inset-0 overflow-hidden">
-
-    <!-- Layer 1: Full layar (cover, blur) -->
-    <img src="https://ponpes.tokosancaka.com/storage/auth/bg_ponpes.jpg"
-         class="absolute inset-0 w-full h-full object-cover blur-lg scale-110">
-
-    <!-- Overlay gelap -->
-    <div class="absolute inset-0 bg-black/40"></div>
-
-    <!-- Layer 2: Gambar UTUH (contain) -->
-    <img src="https://ponpes.tokosancaka.com/storage/auth/bg_ponpes.jpg"
-         class="relative z-10 w-full h-full object-contain">
-</div>
-
+    <div class="absolute inset-0">
+        <img src="https://ponpes.tokosancaka.com/storage/auth/bg_ponpes.jpg"
+             class="w-full h-full object-cover">
+        <div class="absolute inset-0 bg-gradient-to-r from-black/40 via-black/20 to-black/10"></div>
+    </div>
 
     <!-- Content -->
     <div class="relative z-10 min-h-screen flex items-center justify-center px-6">
