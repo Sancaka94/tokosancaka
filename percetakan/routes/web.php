@@ -27,6 +27,15 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // Rute tambahan untuk produk
+    
+    // Daftar Produk & Form Tambah
+    Route::get('/products', [ProductController::class, 'index'])->name('products.index');
+    // Proses Simpan Produk Baru
+    Route::post('/products', [ProductController::class, 'store'])->name('products.store');
+    // Hapus Produk
+    Route::delete('/products/{product}', [ProductController::class, 'destroy'])->name('products.destroy');
 });
 
 Route::get('/orders/create', [OrderController::class, 'create'])->name('orders.create');
