@@ -131,7 +131,7 @@
 
                         <div class="text-center pt-6 border-t border-slate-100">
                             <p class="text-sm text-slate-500">Sudah memiliki akun?</p>
-                            <a href="login.html" class="text-indigo-600 font-bold hover:text-indigo-800 transition-colors inline-flex items-center gap-1">
+                            <a href="{{ route('login') }}" class="text-indigo-600 font-bold hover:text-indigo-800 transition-colors inline-flex items-center gap-1">
                                 Masuk ke Akun <span>&rarr;</span>
                             </a>
                         </div>
