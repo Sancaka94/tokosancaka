@@ -4,8 +4,8 @@
         <div class="hidden lg:relative lg:flex bg-green-600 items-center justify-center p-16 overflow-hidden">
             
             <img src="https://ponpes.tokosancaka.com/storage/auth/ponpes.jpg" 
-     class="absolute inset-0 w-full h-full object-cover object-top opacity-50 transition-transform duration-700 hover:scale-105" 
-     alt="Background">
+                 class="absolute inset-0 w-full h-full object-contain opacity-60 transition-transform duration-700 hover:scale-105" 
+                 alt="Background">
             
             <div class="relative z-10 w-full max-w-lg">
     <div class="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md border border-white/30 px-4 py-2 rounded-xl mb-8 shadow-lg">
