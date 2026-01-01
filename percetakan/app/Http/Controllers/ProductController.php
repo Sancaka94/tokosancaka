@@ -29,4 +29,11 @@ class ProductController extends Controller
 
         return back()->with('success', 'Produk berhasil diposting!');
     }
+
+    public function destroy(Product $product)
+{
+    $product->delete();
+    return back()->with('success', 'Produk berhasil dihapus!');
+}
+
 }
