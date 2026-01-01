@@ -4,23 +4,23 @@
         <div class="hidden lg:relative lg:flex bg-green-600 items-center justify-center p-16 overflow-hidden">
             
             <img src="https://ponpes.tokosancaka.com/storage/auth/ponpes.jpg" 
-                 class="absolute inset-0 w-full h-full object-cover opacity-40 blur-[2px] transition-transform duration-700 hover:scale-105" 
-                 style="object-position: center center;" 
-                 alt="Background">
+     class="absolute inset-0 w-full h-full object-cover object-top opacity-50 transition-transform duration-700 hover:scale-105" 
+     alt="Background">
             
             <div class="relative z-10 w-full max-w-lg">
-                <div class="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/20 px-4 py-2 rounded-xl mb-8 shadow-lg">
-                    <span class="font-bold tracking-widest uppercase text-xs text-white drop-shadow-md">Sancaka ePesantren</span>
-                </div>
-                
-                <h1 class="text-5xl font-black leading-tight text-white mb-6 drop-shadow-[0_4px_3px_rgba(0,0,0,0.5)]">
-                    Manajemen <br> Jadi Lebih <span class="text-indigo-200">Mudah.</span>
-                </h1>
-                
-                <p class="text-xl text-indigo-50 font-light leading-relaxed drop-shadow-md">
-                    Solusi digital terintegrasi untuk pengelolaan administrasi, keuangan, dan data santri secara real-time.
-                </p>
-            </div>
+    <div class="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md border border-white/30 px-4 py-2 rounded-xl mb-8 shadow-lg">
+        <span class="font-bold tracking-widest uppercase text-[10px] text-white drop-shadow-md">Sancaka ePesantren</span>
+    </div>
+
+    <h1 class="text-5xl font-black leading-tight text-white mb-6 drop-shadow-[0_2px_10px_rgba(255,255,255,0.3)]" 
+        style="text-shadow: 2px 2px 4px rgba(0,0,0,0.5), 0 0 20px rgba(255,255,255,0.2);">
+        Manajemen <br> Jadi Lebih <span class="text-indigo-200">Mudah.</span>
+    </h1>
+
+    <p class="text-xl text-indigo-50 font-medium leading-relaxed drop-shadow-md">
+        Solusi digital terintegrasi untuk pengelolaan administrasi, keuangan, dan data santri secara real-time.
+    </p>
+</div>
         </div>
 
         <div class="flex items-center justify-center p-8 sm:p-12 lg:p-20 bg-white">
