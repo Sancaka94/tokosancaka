@@ -82,8 +82,12 @@
 
                   <a href="#kontak" class="text-gray-600 hover:text-indigo-600">Kontak</a>
 
-                <a href="https://ponpes.tokosancaka.com/login" class="text-indigo-600 font-semibold hover:text-indigo-800 transition duration-300">
-                    Login
+                <a href="https://ponpes.tokosancaka.com/login" class="flex items-center gap-2 text-indigo-600 font-semibold hover:text-indigo-800 transition duration-300">
+    
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                Login
                 </a>
 
                   <a href="#" class="bg-indigo-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-indigo-700 transition duration-300">Daftar Sekarang</a>
