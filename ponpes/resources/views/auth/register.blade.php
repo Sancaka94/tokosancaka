@@ -72,8 +72,8 @@
                         Lengkapi data di bawah ini untuk mendaftar.
                     </p>
 
-                    <form action="#" method="POST" class="space-y-4">
-                        
+                    <form method="POST" action="{{ route('register') }}" class="space-y-4">
+                    @csrf
                         <div>
                             <label class="block text-sm font-semibold mb-2 text-slate-700">Nama Lengkap</label>
                             <input type="text" name="name" required
