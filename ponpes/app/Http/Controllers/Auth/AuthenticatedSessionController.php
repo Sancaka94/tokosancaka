@@ -54,20 +54,18 @@ class AuthenticatedSessionController extends Controller
         return redirect()->intended(route('dashboard', [], false));
     }
 
-    /**
-     * Destroy an authenticated session.
-     */
-    public function destroy(Request $request): RedirectResponse
-    {
-        Auth::guard('web')->logout();
+   public function destroy(Request $request): RedirectResponse
+{
+    Auth::guard('web')->logout();
 
-        // Hapus data session
-        $request->session()->invalidate();
+    // 1. Matikan sesi yang ada
+    $request->session()->invalidate();
 
-        // Regenerasi CSRF token untuk keamanan
-        $request->session()->regenerateToken();
+    // 2. Buat token baru agar token lama tidak bisa dipakai lagi (Keamanan)
+    $request->session()->regenerateToken();
 
-        // Kembali ke halaman landing page
-        return redirect('/');
-    }
+    // 3. Paksa redirect ke halaman depan (bukan dashboard)
+    return redirect('/');
+}
+
 }
