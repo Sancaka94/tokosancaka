@@ -1,7 +1,7 @@
 <x-guest-layout>
     <div class="grid lg:grid-cols-2 min-h-screen w-full bg-white overflow-hidden">
         
-        <div class="hidden lg:relative lg:flex bg-indigo-600 items-center justify-center p-16">
+        <div class="hidden lg:relative lg:flex bg-green-600 items-center justify-center p-16">
             <img src="https://ponpes.tokosancaka.com/storage/auth/ponpes.jpg" 
      class="absolute inset-0 w-full h-full object-cover opacity-50" 
      style="object-position: center 20%;" 
