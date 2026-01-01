@@ -54,7 +54,7 @@ class DashboardController extends Controller
         $recentOrders = Order::orderBy('created_at', 'desc')->take(5)->get();
 
         // 5 Produk terbaru yang ditambahkan
-        $newProducts = Product::orderBy('created_at', 'desc')->take(5)->get();
+        $newProducts = Product::orderBy('id', 'desc')->take(5)->get();
 
 
         // 4. KIRIM DATA KE VIEW
