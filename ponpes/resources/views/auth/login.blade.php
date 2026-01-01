@@ -1,136 +1,169 @@
-<x-guest-layout>
-    <div class="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
-        
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Sancaka e-Pesantren</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .glass-effect {
+            backdrop-filter: blur(10px);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-slate-900 antialiased">
+
+    <div class="min-h-screen w-full flex items-center justify-center p-4 relative overflow-hidden">
+
         <div class="absolute inset-0 z-0">
             <img src="https://ponpes.tokosancaka.com/storage/auth/bg_ponpes.jpg" 
-                 class="w-full h-full object-cover blur-sm opacity-50" 
-                 alt="Background">
-            <div class="absolute inset-0 bg-slate-900/60 mix-blend-multiply"></div>
+                 class="w-full h-full object-cover blur-[3px] opacity-60 scale-105" 
+                 alt="Background Pesantren">
+            <div class="absolute inset-0 bg-gradient-to-br from-indigo-900/60 via-slate-900/50 to-black/70"></div>
         </div>
 
-        <div class="relative z-10 w-full max-w-[1000px] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col lg:flex-row min-h-[600px]">
+        <div class="relative z-10 w-full max-w-[1000px] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col lg:flex-row min-h-[600px] border border-white/10">
             
             <div class="hidden lg:flex flex-col justify-between w-1/2 bg-indigo-700 p-12 text-white relative overflow-hidden">
                 
-                <div class="absolute top-0 right-0 -mr-10 -mt-10 w-40 h-40 rounded-full bg-white/10 blur-2xl"></div>
-                <div class="absolute bottom-0 left-0 -ml-10 -mb-10 w-40 h-40 rounded-full bg-indigo-500 blur-2xl"></div>
+                <div class="absolute top-0 right-0 -mt-12 -mr-12 w-48 h-48 bg-indigo-500 rounded-full blur-3xl opacity-50"></div>
+                <div class="absolute bottom-0 left-0 -mb-12 -ml-12 w-48 h-48 bg-indigo-900 rounded-full blur-3xl opacity-50"></div>
 
                 <div class="relative z-10">
-                    <div class="inline-flex items-center gap-2 bg-indigo-600 border border-indigo-500 px-3 py-1.5 rounded-lg shadow-sm">
-                        <div class="w-2 h-2 rounded-full bg-green-400"></div>
-                        <span class="text-xs font-bold tracking-widest uppercase text-indigo-100">Sancaka e-Pesantren</span>
+                    <div class="inline-flex items-center gap-2 bg-indigo-600 border border-indigo-500/50 px-3 py-1.5 rounded-lg shadow-sm mb-8">
+                        <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
+                        <span class="text-[11px] font-bold tracking-widest uppercase text-indigo-100">Sancaka e-Pesantren</span>
                     </div>
-                </div>
 
-                <div class="relative z-10">
                     <h1 class="text-4xl font-bold leading-tight mb-4">
-                        Kelola Pesantren <br> Secara <span class="text-indigo-200">Profesional.</span>
+                        Manajemen <br> Jadi Lebih <span class="text-indigo-300">Mudah.</span>
                     </h1>
-                    <p class="text-indigo-100 text-sm leading-relaxed opacity-90 max-w-sm">
-                        Sistem manajemen terintegrasi untuk administrasi, keuangan, dan akademik yang lebih efisien, transparan, dan akuntabel.
+                    
+                    <p class="text-indigo-100/90 text-sm leading-relaxed font-light max-w-sm">
+                        Solusi digital terintegrasi untuk pengelolaan administrasi, keuangan, dan data santri secara real-time dan akurat.
                     </p>
                 </div>
 
-                <div class="relative z-10 text-xs text-indigo-200 font-medium">
-                    &copy; {{ date('Y') }} PT Toko Sancaka. All rights reserved.
+                <div class="relative z-10 pt-8 flex items-center gap-4">
+                    <div class="flex -space-x-2">
+                        <div class="w-8 h-8 rounded-full border-2 border-indigo-700 bg-gray-300"></div>
+                        <div class="w-8 h-8 rounded-full border-2 border-indigo-700 bg-gray-400"></div>
+                        <div class="w-8 h-8 rounded-full border-2 border-indigo-700 bg-gray-500"></div>
+                    </div>
+                    <div class="text-xs font-medium text-indigo-200">
+                        <strong class="text-white block">100+ Pesantren</strong> Percaya pada kami
+                    </div>
                 </div>
             </div>
 
             <div class="w-full lg:w-1/2 bg-white flex flex-col justify-center p-8 md:p-12 lg:p-16">
                 
                 <div class="mb-8">
-                    <h2 class="text-2xl font-bold text-slate-900">Selamat Datang Kembali</h2>
-                    <p class="text-sm text-slate-500 mt-2">Silakan masukkan detail akun Anda untuk masuk.</p>
+                    <h2 class="text-2xl font-bold text-slate-900">Selamat Datang</h2>
+                    <p class="text-sm text-slate-500 mt-2">Silakan masuk untuk mengakses dashboard admin.</p>
                 </div>
 
-                <x-auth-session-status class="mb-4" :status="session('status')" />
-
-                <form method="POST" action="{{ route('login') }}" class="space-y-6">
-                    @csrf
-
-                    <div class="space-y-2">
-                        <label for="email" class="text-sm font-semibold text-slate-700">Alamat Email</label>
-                        <div class="relative">
-                            <input id="email" 
-                                   class="w-full px-4 py-3 rounded-lg border border-slate-300 bg-white text-slate-900 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-20 outline-none transition-all duration-200 placeholder-slate-400" 
-                                   type="email" 
-                                   name="email" 
-                                   :value="old('email')" 
-                                   required 
-                                   autofocus 
-                                   placeholder="nama@pesantren.com" />
+                <form action="#" method="POST" class="space-y-5">
+                    
+                    <div>
+                        <label for="email" class="block text-sm font-semibold text-slate-700 mb-2">Alamat Email</label>
+                        <div class="relative group">
+                            <input type="email" id="email" name="email" placeholder="admin@sancaka.com" required
+                                class="w-full px-4 py-3.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-sm focus:bg-white focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 outline-none transition-all duration-200 placeholder-slate-400">
                             
-                            <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none text-slate-400">
+                            <div class="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-slate-400">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
                                 </svg>
                             </div>
                         </div>
-                        <x-input-error :messages="$errors->get('email')" class="mt-1" />
                     </div>
 
-                    <div class="space-y-2">
-                        <div class="flex items-center justify-between">
-                            <label for="password" class="text-sm font-semibold text-slate-700">Kata Sandi</label>
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <label for="password" class="block text-sm font-semibold text-slate-700">Kata Sandi</label>
                         </div>
                         
-                        <div class="relative">
-                            <input id="password" 
-                                   class="w-full px-4 py-3 rounded-lg border border-slate-300 bg-white text-slate-900 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-20 outline-none transition-all duration-200 placeholder-slate-400"
-                                   type="password" 
-                                   name="password" 
-                                   required 
-                                   autocomplete="current-password" 
-                                   placeholder="Masukkan kata sandi" />
+                        <div class="relative group">
+                            <input type="password" id="password" name="password" placeholder="••••••••" required
+                                class="w-full px-4 py-3.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-sm focus:bg-white focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 outline-none transition-all duration-200 placeholder-slate-400">
                             
-                            <button type="button" onclick="togglePasswordVisibility()" class="absolute inset-y-0 right-3 flex items-center cursor-pointer text-slate-400 hover:text-indigo-600 transition-colors focus:outline-none">
+                            <button type="button" onclick="togglePassword()" class="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-indigo-600 transition-colors cursor-pointer focus:outline-none">
                                 <svg id="eye-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path id="eye-path" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    <path id="eye-body" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                 </svg>
                             </button>
                         </div>
-                        <x-input-error :messages="$errors->get('password')" class="mt-1" />
                     </div>
 
-                    <div class="flex items-center justify-between">
+                    <div class="flex items-center justify-between pt-1">
                         <label class="flex items-center cursor-pointer">
-                            <input id="remember_me" type="checkbox" class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" name="remember">
+                            <input type="checkbox" name="remember" class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
                             <span class="ml-2 text-sm text-slate-600 font-medium">Ingat saya</span>
                         </label>
-                        <a class="text-sm font-bold text-indigo-600 hover:text-indigo-800 transition-colors" href="{{ route('password.request') }}">
+                        <a href="#" class="text-sm font-bold text-indigo-600 hover:text-indigo-800 transition-colors">
                             Lupa Password?
                         </a>
                     </div>
 
-                    <button type="submit" class="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-600">
-                        Masuk Dashboard
-                    </button>
+                    <div class="pt-2">
+                        <button type="submit" class="w-full py-3.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-xl shadow-lg shadow-indigo-200 transition-all duration-300 transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-600">
+                            Masuk Sekarang
+                        </button>
+                    </div>
 
-                    <div class="text-center pt-2">
-                        <p class="text-sm text-slate-500">
-                            Belum memiliki akun? 
-                            <a href="{{ route('register') }}" class="font-bold text-indigo-600 hover:text-indigo-800 transition-colors ml-1">
-                                Daftar disini
-                            </a>
-                        </p>
+                    <div class="text-center mt-6 pt-6 border-t border-slate-100">
+                        <p class="text-sm text-slate-500">Belum memiliki akun?</p>
+                        <a href="#" class="inline-block mt-1 text-sm font-bold text-indigo-600 hover:text-indigo-800 transition-colors">
+                            Daftar Gratis Disini &rarr;
+                        </a>
                     </div>
                 </form>
             </div>
         </div>
+        
+        <div class="absolute bottom-4 w-full text-center z-10 opacity-70">
+            <p class="text-[10px] text-white font-medium tracking-wide uppercase">&copy; 2024 Sancaka e-Pesantren. All rights reserved.</p>
+        </div>
+
     </div>
 
     <script>
-        function togglePasswordVisibility() {
-            const pwd = document.getElementById('password');
-            const iconPath = document.getElementById('eye-path');
+        function togglePassword() {
+            const passwordInput = document.getElementById('password');
+            const eyeIcon = document.getElementById('eye-icon');
             
-            if (pwd.type === 'password') {
-                pwd.type = 'text';
-                // Opsional: Logika ganti icon visual disini jika diinginkan
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                // Ubah warna icon saat aktif (opsional)
+                eyeIcon.style.stroke = '#4f46e5'; 
             } else {
-                pwd.type = 'password';
+                passwordInput.type = 'password';
+                eyeIcon.style.stroke = 'currentColor';
             }
         }
     </script>
-</x-guest-layout>
+</body>
+</html>
