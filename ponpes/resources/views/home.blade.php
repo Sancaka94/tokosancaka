@@ -72,25 +72,24 @@
 
         <div class="container mx-auto px-6 py-4 flex justify-between items-center">
 
-            <a href="#" class="text-2xl font-bold text-indigo-600">Sancaka ePesantren</a>
+            <a href="#" class="text-2xl font-bold text-green-600">Sancaka ePesantren</a>
 
             <nav class="hidden md:flex space-x-6 items-center">
 
-                  <a href="#fitur" class="text-gray-600 hover:text-indigo-600">Fitur</a>
+                  <a href="#fitur" class="text-gray-600 hover:text-green-600">Fitur</a>
 
-                  <a href="#harga" class="text-gray-600 hover:text-indigo-600">Harga</a>
+                  <a href="#harga" class="text-gray-600 hover:text-green-600">Harga</a>
 
-                  <a href="#kontak" class="text-gray-600 hover:text-indigo-600">Kontak</a>
+                  <a href="#kontak" class="text-gray-600 hover:text-green-600">Kontak</a>
+                <a href="https://ponpes.tokosancaka.com/login" class="flex items-center gap-2 text-green-600 font-semibold hover:text-green-800 transition duration-300">
 
-                <a href="https://ponpes.tokosancaka.com/login" class="flex items-center gap-2 text-indigo-600 font-semibold hover:text-indigo-800 transition duration-300">
-    
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
                 Login
                 </a>
 
-                  <a href="#" class="bg-indigo-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-indigo-700 transition duration-300">Daftar Sekarang</a>
+                  <a href="#" class="bg-green-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-green-700 transition duration-300">Daftar Sekarang</a>
 
             </nav>
 
@@ -128,7 +127,7 @@
 
             </p>
 
-            <a href="#fitur" class="bg-indigo-600 text-white font-bold px-8 py-4 rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition duration-300">
+            <a href="#fitur" class="bg-green-600 text-white font-bold px-8 py-4 rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition duration-300">
 
                 Lihat Semua Fitur
 
@@ -250,13 +249,13 @@
 
                         @endphp
 
-                        <div class="relative w-full bg-white rounded-xl shadow-lg p-8 transition duration-300 {{ $isPopular ? 'border-4 border-indigo-500 transform scale-105' : 'hover:shadow-xl' }}">
+                        <div class="relative w-full bg-white rounded-xl shadow-lg p-8 transition duration-300 {{ $isPopular ? 'border-4 border-green-500 transform scale-105' : 'hover:shadow-xl' }}">
 
                             @if($isPopular)
 
                                 <div class="absolute top-0 -translate-y-1/2 left-1/2 -translate-x-1/2">
 
-                                    <span class="bg-indigo-500 text-white text-sm font-semibold px-4 py-1 rounded-full uppercase">Paling Populer</span>
+                                    <span class="bg-green-500 text-white text-sm font-semibold px-4 py-1 rounded-full uppercase">Paling Populer</span>
 
                                 </div>
 
@@ -290,7 +289,7 @@
 
                             </ul>
 
-                            <a href="#" class="block w-full text-center font-semibold py-3 rounded-lg transition duration-300 {{ $isPopular ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-gray-200 text-gray-800 hover:bg-gray-300' }}">
+                            <a href="#" class="block w-full text-center font-semibold py-3 rounded-lg transition duration-300 {{ $isPopular ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-200 text-gray-800 hover:bg-gray-300' }}">
 
                                 {{ $package->nama_paket == 'Trial' ? 'Coba Gratis 14 Hari' : 'Pilih Paket' }}
 
@@ -364,7 +363,7 @@
 
                             <label for="nama" class="block text-sm font-medium text-gray-700">Nama Anda</label>
 
-                            <input type="text" name="nama" id="nama" class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" placeholder="John Doe">
+                            <input type="text" name="nama" id="nama" class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500" placeholder="John Doe">
 
                         </div>
 
@@ -372,7 +371,7 @@
 
                             <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
 
-                            <input type="email" name="email" id="email" class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" placeholder="anda@email.com">
+                            <input type="email" name="email" id="email" class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500" placeholder="anda@email.com">
 
                         </div>
 
@@ -380,13 +379,13 @@
 
                             <label for="pesan" class="block text-sm font-medium text-gray-700">Pesan</label>
 
-                            <textarea name="pesan" id="pesan" rows="5" class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" placeholder="Tulis pesan Anda di sini..."></textarea>
+                            <textarea name="pesan" id="pesan" rows="5" class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500" placeholder="Tulis pesan Anda di sini..."></textarea>
 
                         </div>
 
                         <div>
 
-                            <button type="submit" class="w-full bg-indigo-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-indigo-700 transition duration-300">
+                            <button type="submit" class="w-full bg-green-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-green-700 transition duration-300">
 
                                 Kirim Pesan
 
@@ -546,7 +545,7 @@
 
     </a>
 
-    <button id="scrollTopBtn" class="bg-indigo-600 text-white p-4 rounded-full shadow-lg hover:bg-indigo-700 transition duration-300">
+    <button id="scrollTopBtn" class="bg-green-600 text-white p-4 rounded-full shadow-lg hover:bg-green-700 transition duration-300">
 
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
 
