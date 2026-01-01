@@ -32,7 +32,7 @@ Route::get('/dashboard', function () {
     if (Auth::user()->role === 'admin') {
         return redirect()->route('admin.dashboard');
     }
-    return view('dashboard');
+    return view('pondok.user.dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 
