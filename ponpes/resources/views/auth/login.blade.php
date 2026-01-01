@@ -9,7 +9,7 @@
             
             <div class="relative z-10 w-full max-w-lg">
     <div class="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md border border-white/30 px-4 py-2 rounded-xl mb-8 shadow-lg">
-        <span class="font-bold tracking-widest uppercase text-[10px] text-white drop-shadow-md">Sancaka ePesantren</span>
+        <span class="font-bold tracking-widest uppercase text-[10px] text-white drop-shadow-md">Sancaka e-Pesantren</span>
     </div>
 
     <h1 class="text-5xl font-black leading-tight text-white mb-6 drop-shadow-[0_2px_10px_rgba(255,255,255,0.3)]" 
