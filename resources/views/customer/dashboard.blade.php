@@ -116,8 +116,8 @@
         {{-- ======================================================= --}}
 
         <div class="bg-white rounded-xl shadow-lg overflow-hidden">
-    <div class="flex justify-between items-center p-6 border-b border-gray-100">
-        <h2 class="text-lg font-bold bg-red-300 text-gray-800">Riwayat Pesanan Terbaru</h2>
+    <div class="flex justify-between items-center p-6 border-b border-gray-100 bg-red-300">
+        <h2 class="text-lg font-bold text-gray-800">Riwayat Pesanan Terbaru</h2>
     </div>
 
     <div class="overflow-x-auto overflow-y-auto max-h-96">
