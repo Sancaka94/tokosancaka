@@ -236,15 +236,39 @@ class OrderController extends Controller
                 $order->update(['payment_url' => $paymentUrl]); // Simpan link ke DB
             }
             
-            // Integrasi Doku
+           // Integrasi Doku
             elseif ($request->payment_method === 'doku') {
-                // Asumsi: Anda sudah punya service DokuJokulService yang valid
-                $dokuService = new DokuJokulService();
-                $paymentUrl = $dokuService->createPayment($order->order_number, $order->final_price);
+                
+                // 1. Siapkan Data Customer (Wajib untuk Doku Jokul)
+                $customerData = [
+                    'name'  => $order->customer_name,
+                    'email' => 'customer@tokosancaka.com', // Email wajib, gunakan dummy jika guest
+                    'phone' => $order->customer_phone ?? '081234567890',
+                ];
+
+                // 2. Jika customer member terdaftar, ambil email aslinya
+                if ($order->user_id) {
+                    $user = User::find($order->user_id);
+                    if ($user) {
+                        $customerData['email'] = $user->email;
+                    }
+                }
+
+                // 3. Panggil Service
+                // Kita inject DokuJokulService di method store atau panggil via app()
+                // Agar lebih mudah, kita gunakan instance baru atau dependency injection
+                $dokuService = app(\App\Services\DokuJokulService::class);
+                
+                $paymentUrl = $dokuService->createPayment(
+                    $order->order_number, 
+                    $order->final_price,
+                    $customerData // <-- Parameter ke-3 yang dibutuhkan service Anda
+                );
                 
                 if (empty($paymentUrl)) {
-                    throw new \Exception("Gagal generate link pembayaran DOKU.");
+                    throw new \Exception("Gagal generate link pembayaran DOKU. Cek Log Laravel.");
                 }
+                
                 $order->update(['payment_url' => $paymentUrl]);
             }
 
