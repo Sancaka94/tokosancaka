@@ -125,13 +125,13 @@
                                 <td class="px-6 py-4 text-center">
                                     <div class="flex items-center justify-center gap-2">
                                         
-                                        <a href="#" 
+                                        <a href="{{ route('products.show', $product->id) }}" 
                                            class="h-8 w-8 rounded-full bg-white border border-slate-200 text-slate-400 hover:text-blue-500 hover:border-blue-200 hover:bg-blue-50 transition-all flex items-center justify-center shadow-sm"
                                            title="Lihat Detail">
                                             <i class="fas fa-eye text-xs"></i>
                                         </a>
 
-                                        <a href="#" 
+                                        <a href="{{ route('products.edit', $product->id) }}" 
                                            class="h-8 w-8 rounded-full bg-white border border-slate-200 text-slate-400 hover:text-amber-500 hover:border-amber-200 hover:bg-amber-50 transition-all flex items-center justify-center shadow-sm"
                                            title="Edit Produk">
                                             <i class="fas fa-pencil-alt text-xs"></i>
