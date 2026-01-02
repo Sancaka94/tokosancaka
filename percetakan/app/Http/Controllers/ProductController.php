@@ -21,15 +21,19 @@ class ProductController extends Controller
     }
 
     public function store(Request $request)
-    {
-        $request->validate([
-            'name'       => 'required|string|max:255',
-            'base_price' => 'required|numeric|min:0',
-            'sell_price' => 'required|numeric|min:0|gte:base_price',
-            'unit'       => 'required|string',
-            'stock'      => 'required|integer|min:0', // Validasi Stok
-            'supplier'   => 'nullable|string|max:255', // Validasi Supplier
-        ]);
+{
+    $request->validate([
+        // Tambahkan 'unique:products' agar nama tidak boleh sama
+        'name'       => 'required|string|max:255|unique:products,name', 
+        'base_price' => 'required|numeric|min:0',
+        'sell_price' => 'required|numeric|min:0|gte:base_price',
+        'unit'       => 'required|string',
+        'stock'      => 'required|integer|min:0',
+        'supplier'   => 'nullable|string|max:255',
+    ], [
+        'name.unique'    => 'Nama produk ini sudah ada di database.',
+        'sell_price.gte' => 'Harga jual tidak boleh lebih rendah dari modal.',
+    ]);
 
         Product::create([
             'name'       => $request->name,
