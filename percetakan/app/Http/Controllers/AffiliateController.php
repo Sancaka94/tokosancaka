@@ -3,22 +3,20 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\Affiliate; // Buat model ini nanti
+use App\Models\Affiliate;
 use App\Models\Coupon;
-use App\Services\FonteeService;
-use Illuminate\Support\Str;
+use App\Services\FonnteService; // <--- PERBAIKAN 1: Sesuaikan nama class
 use Illuminate\Support\Facades\DB;
 
 class AffiliateController extends Controller
 {
-    // Halaman Form Publik
     public function create()
     {
         return view('affiliate.register');
     }
 
-    // Proses Simpan
-    public function store(Request $request, FonteeService $fontee)
+    // Hapus 'FonteeService $fontee' dari parameter karena kita pakai Static Method
+    public function store(Request $request) 
     {
         $request->validate([
             'name' => 'required|string|max:255',
@@ -33,7 +31,6 @@ class AffiliateController extends Controller
         DB::beginTransaction();
         try {
             // 1. Generate Kode Unik
-            // Ambil nama depan, hapus spasi, tambah angka random
             $firstName = explode(' ', trim($request->name))[0];
             $cleanName = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $firstName));
             $couponCode = 'DISKON-' . $cleanName . rand(100, 999);
@@ -48,11 +45,11 @@ class AffiliateController extends Controller
                 'coupon_code' => $couponCode,
             ]);
 
-            // 3. Daftarkan Kode ke Tabel Coupon (Agar bisa dipakai buyer)
+            // 3. Daftarkan Kode ke Tabel Coupon
             Coupon::create([
                 'code' => $couponCode,
-                'type' => 'percent', // Misal diskon persen
-                'value' => 5,        // Diskon 5% untuk pembeli
+                'type' => 'percent', 
+                'value' => 5, // Diskon 5%
                 'description' => 'Kupon Afiliasi dari ' . $request->name
             ]);
 
@@ -64,8 +61,8 @@ class AffiliateController extends Controller
             $message .= "Sebarkan kode ini. Setiap orang yang membeli menggunakan kode ini akan mendapat diskon, dan Anda akan mendapatkan komisi!\n\n";
             $message .= "Semangat Cuan! 🚀";
 
-            // 5. Kirim WA via Fontee
-            $fontee->sendMessage($request->whatsapp, $message);
+            // 5. Kirim WA (PERBAIKAN 2: Panggil Static Method)
+            FonnteService::sendMessage($request->whatsapp, $message);
 
             DB::commit();
 
