@@ -50,8 +50,8 @@ class AffiliateController extends Controller
                 'code' => $couponCode,
                 'type' => 'percent', 
                 'value' => 5, // Diskon 5%
-                'start_date' => now(), // <--- TAMBAHKAN INI (Mulai hari ini)
-                'end_date' => now()->addYears(5), // <--- TAMBAHKAN INI (Berlaku 5 tahun)
+                'start_date' => now(), // Mengisi start_date
+                'expiry_date' => now()->addYears(5), // <--- SESUAIKAN DENGAN NAMA KOLOM DI DB
                 'description' => 'Kupon Afiliasi dari ' . $request->name
             ]);
 
