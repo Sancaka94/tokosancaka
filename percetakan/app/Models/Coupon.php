@@ -21,6 +21,8 @@ class Coupon extends Model
         'start_date',
         'expiry_date',
         'usage_limit',
+        'start_date', // <--- Pastikan ada ini
+        'end_date',
         'used_count',
         'is_active'
     ];
