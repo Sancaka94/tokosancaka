@@ -61,7 +61,7 @@
                         <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Waktu</th>
                         <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Invoice</th>
                         <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Pelanggan</th>
-                        <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Total</th>
+                        <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Metode</th> <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Total</th>
                         <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Status</th>
                         <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Aksi</th>
                     </tr>
@@ -84,6 +84,29 @@
                             <div class="text-xs text-slate-400"><i class="fas fa-phone text-[10px] mr-1"></i> {{ $order->customer_phone }}</div>
                             @endif
                         </td>
+                        <td class="px-6 py-4 text-center"> @php
+                                $method = strtolower($order->payment_method);
+                                $icon = 'fa-money-bill-wave';
+                                $bg = 'bg-slate-100 text-slate-600';
+                                
+                                if($method == 'cash') {
+                                    $icon = 'fa-money-bill-wave';
+                                    $bg = 'bg-green-50 text-green-600 border border-green-200';
+                                } elseif($method == 'saldo') {
+                                    $icon = 'fa-wallet';
+                                    $bg = 'bg-blue-50 text-blue-600 border border-blue-200';
+                                } elseif($method == 'tripay') {
+                                    $icon = 'fa-qrcode';
+                                    $bg = 'bg-purple-50 text-purple-600 border border-purple-200';
+                                } elseif($method == 'doku') {
+                                    $icon = 'fa-credit-card';
+                                    $bg = 'bg-red-50 text-red-600 border border-red-200';
+                                }
+                            @endphp
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold uppercase rounded-lg {{ $bg }}">
+                                <i class="fas {{ $icon }}"></i> {{ $order->payment_method }}
+                            </span>
+                        </td>
                         <td class="px-6 py-4 text-right">
                             <div class="font-black text-slate-800">Rp {{ number_format($order->final_price, 0, ',', '.') }}</div>
                             @if($order->discount_amount > 0)
@@ -103,15 +126,15 @@
                         </td>
                         <td class="px-6 py-4 text-center">
                             <div class="flex items-center justify-center gap-2">
-                                <a href="{{ route('reports.show', $order->id) }}" class="h-8 w-8 rounded-full bg-white border border-slate-200 text-slate-400 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50 transition-all shadow-sm flex items-center justify-center">
+                                <a href="{{ route('reports.show', $order->id) }}" class="h-8 w-8 rounded-full bg-white border border-slate-200 text-slate-400 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50 transition-all shadow-sm flex items-center justify-center" title="Lihat Detail">
                                     <i class="fas fa-eye"></i>
                                 </a>
-                                <a href="{{ route('reports.edit', $order->id) }}" class="h-8 w-8 rounded-full bg-white border border-slate-200 text-slate-400 hover:text-amber-500 hover:border-amber-200 hover:bg-amber-50 transition-all shadow-sm flex items-center justify-center">
+                                <a href="{{ route('reports.edit', $order->id) }}" class="h-8 w-8 rounded-full bg-white border border-slate-200 text-slate-400 hover:text-amber-500 hover:border-amber-200 hover:bg-amber-50 transition-all shadow-sm flex items-center justify-center" title="Edit Status">
                                     <i class="fas fa-pencil-alt"></i>
                                 </a>
                                 <form action="{{ route('reports.destroy', $order->id) }}" method="POST" onsubmit="return confirm('Hapus pesanan ini beserta filenya?');">
                                     @csrf @method('DELETE')
-                                    <button type="submit" class="h-8 w-8 rounded-full bg-white border border-slate-200 text-slate-400 hover:text-red-600 hover:border-red-200 hover:bg-red-50 transition-all shadow-sm flex items-center justify-center">
+                                    <button type="submit" class="h-8 w-8 rounded-full bg-white border border-slate-200 text-slate-400 hover:text-red-600 hover:border-red-200 hover:bg-red-50 transition-all shadow-sm flex items-center justify-center" title="Hapus">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </form>
@@ -120,7 +143,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="6" class="px-6 py-12 text-center text-slate-400 italic">Tidak ada data pesanan.</td>
+                        <td colspan="7" class="px-6 py-12 text-center text-slate-400 italic">Tidak ada data pesanan.</td>
                     </tr>
                     @endforelse
                 </tbody>
