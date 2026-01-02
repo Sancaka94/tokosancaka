@@ -125,7 +125,7 @@
             <thead class="bg-gray-50 sticky top-0 z-10 shadow-sm">
                 <tr>
                     <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase bg-gray-50">Tanggal</th>
-                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase bg-gray-50">Order Id</th>
+                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase bg-gray-50">Order Id / Invoice</th>
                     <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase bg-gray-50">Ekspedisi</th>
                     <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase bg-gray-50">Status</th>
                     <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase bg-gray-50">Biaya Ongkir</th>
