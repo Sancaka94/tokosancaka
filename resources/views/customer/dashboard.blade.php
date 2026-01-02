@@ -134,6 +134,17 @@
             <tbody class="divide-y divide-gray-200">
                 @forelse ($recentOrders as $order)
                 <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4 whitespace-nowrap text-gray-500">
+                        <div class="flex flex-col">
+                            <span class="font-medium text-gray-900">
+                                {{ \Carbon\Carbon::parse($order->created_at)->translatedFormat('d M Y') }}
+                            </span>
+                            <span class="text-xs text-gray-400">
+                                {{ \Carbon\Carbon::parse($order->created_at)->format('H:i') }} WIB
+                            </span>
+                        </div>
+                    </td>
+                    
                     <td class="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
                         {{ $order->nomor_invoice }}
                     </td>
