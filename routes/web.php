@@ -111,9 +111,6 @@ use App\Http\Controllers\DetectionController;
 //Telegram Bot
 use App\Http\Controllers\TelegramPpobController;
 
-//Setting Theme Sancaka Express
-use App\Http\Controllers\SettingThemeController;
-
 
 Route::any('/telegram-webhook', [TelegramPpobController::class, 'handle']);
 
@@ -689,7 +686,3 @@ Route::controller(BlogController::class)->group(function () {
     Route::get('/feed', 'generateFeed')->name('feed');
 });
 
-// Setting Theme
-
-Route::get('/admin/theme', [SettingThemeController::class, 'edit'])->name('theme.edit');
-Route::post('/admin/theme', [SettingThemeController::class, 'update'])->name('theme.update');
