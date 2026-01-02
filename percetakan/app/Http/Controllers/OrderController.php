@@ -283,8 +283,13 @@ class OrderController extends Controller
                 OrderDetail::create([
                     'order_id'       => $order->id,
                     'product_id'     => $prod->id,
-                    'product_name'   => $prod->name,     // Simpan nama saat ini (snapshot)
-                    'price_at_order' => $prod->sell_price, 
+                    'product_name'   => $prod->name,     
+                    
+                    // --- PERBAIKAN DISINI ---
+                    'base_price_at_order' => $prod->base_price, // <--- INI PENTING: Simpan Modal saat itu
+                    // ------------------------
+
+                    'price_at_order' => $prod->sell_price, // Harga Jual saat itu 
                     'quantity'       => $data['qty'],
                     'subtotal'       => $data['subtotal'],
                 ]);

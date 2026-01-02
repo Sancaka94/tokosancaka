@@ -3,37 +3,44 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
+use App\Models\Product; // Tambahkan ini untuk update stok
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
+use Symfony\Component\HttpFoundation\StreamedResponse; // Untuk Export CSV
 
 class ReportController extends Controller
 {
     public function index(Request $request)
     {
-        // 1. Filter Tanggal
+        // 1. Filter Tanggal (Default: Bulan Ini)
         $fromDate = $request->from_date ?? now()->startOfMonth()->format('Y-m-d');
         $toDate = $request->to_date ?? now()->endOfMonth()->format('Y-m-d');
 
         // 2. Query Dasar
         $query = Order::query()
-            ->with(['details.product']) // Eager load untuk performa
+            ->with(['details.product']) // Eager load
             ->whereDate('created_at', '>=', $fromDate)
             ->whereDate('created_at', '<=', $toDate);
 
-        // 3. Clone query untuk hitungan ringkasan
-        $ordersForStats = (clone $query)->get(); // Ambil semua data sesuai filter
+        // Filter status spesifik (Opsional jika ada filter status di view)
+        if ($request->has('status') && $request->status != '') {
+            $query->where('status', $request->status);
+        }
+
+        // 3. Clone query untuk statistik (Agar tidak merusak query pagination)
+        $ordersForStats = (clone $query)->get(); 
 
         $totalOmzet = $ordersForStats->where('payment_status', 'paid')->sum('final_price');
         $totalPesanan = $ordersForStats->count();
         $piutang = $ordersForStats->where('payment_status', 'unpaid')->sum('final_price');
 
-        // 4. Hitung Total Profit (Looping data yang sudah diambil)
+        // 4. Hitung Total Profit (Hanya yang status Paid & Tidak Cancelled)
         $totalProfit = 0;
         foreach ($ordersForStats as $o) {
-            // Hanya hitung profit jika status LUNAS (opsional, tergantung kebijakan toko)
-            if ($o->payment_status == 'paid') {
-                $totalProfit += $o->profit; // Memanggil accessor getProfitAttribute yg dibuat di Model
+            if ($o->payment_status == 'paid' && $o->status != 'cancelled') {
+                $totalProfit += $o->profit; // Memanggil Accessor di Model Order
             }
         }
 
@@ -44,28 +51,63 @@ class ReportController extends Controller
     }
 
     /**
-     * 2. READ (SHOW) - Detail Pesanan & File
+     * FITUR TAMBAHAN: EXPORT KE CSV (Tanpa Library Berat)
      */
+    public function export(Request $request)
+    {
+        $fromDate = $request->from_date ?? now()->startOfMonth()->format('Y-m-d');
+        $toDate = $request->to_date ?? now()->endOfMonth()->format('Y-m-d');
+
+        $orders = Order::with('details')
+            ->whereDate('created_at', '>=', $fromDate)
+            ->whereDate('created_at', '<=', $toDate)
+            ->get();
+
+        $csvFileName = 'Laporan_Transaksi_' . $fromDate . '_sd_' . $toDate . '.csv';
+
+        $headers = [
+            "Content-type"        => "text/csv",
+            "Content-Disposition" => "attachment; filename=$csvFileName",
+            "Pragma"              => "no-cache",
+            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
+            "Expires"             => "0"
+        ];
+
+        $callback = function() use ($orders) {
+            $file = fopen('php://output', 'w');
+            
+            // Header CSV
+            fputcsv($file, ['No Invoice', 'Tanggal', 'Pelanggan', 'Status', 'Pembayaran', 'Total Belanja', 'Profit']);
+
+            foreach ($orders as $order) {
+                fputcsv($file, [
+                    $order->order_number ?? $order->invoice_number,
+                    $order->created_at->format('Y-m-d H:i'),
+                    $order->customer_name,
+                    $order->status,
+                    $order->payment_status,
+                    $order->final_price,
+                    $order->profit // Accessor profit
+                ]);
+            }
+            fclose($file);
+        };
+
+        return new StreamedResponse($callback, 200, $headers);
+    }
+
     public function show($id)
     {
-        // Ambil order beserta detail item dan file lampiran
         $order = Order::with(['details', 'attachments'])->findOrFail($id);
-        
         return view('reports.show', compact('order'));
     }
 
-    /**
-     * 3. UPDATE (EDIT) - Tampilkan Form Edit
-     */
     public function edit($id)
     {
         $order = Order::findOrFail($id);
         return view('reports.edit', compact('order'));
     }
 
-    /**
-     * 3. UPDATE (STORE) - Simpan Perubahan Status
-     */
     public function update(Request $request, $id)
     {
         $request->validate([
@@ -74,37 +116,78 @@ class ReportController extends Controller
             'note' => 'nullable|string'
         ]);
 
-        $order = Order::findOrFail($id);
-        
-        $order->update([
-            'status' => $request->status,
-            'payment_status' => $request->payment_status,
-            'note' => $request->note
-        ]);
+        $order = Order::with('details')->findOrFail($id);
+        $oldStatus = $order->status;
 
-        return redirect()->route('reports.index')->with('success', 'Data pesanan berhasil diperbarui!');
+        DB::beginTransaction();
+        try {
+            // LOGIKA PENGEMBALIAN STOK (RESTOCK)
+            // Jika status berubah JADI 'cancelled' DAN sebelumnya BUKAN 'cancelled'
+            if ($request->status == 'cancelled' && $oldStatus != 'cancelled') {
+                foreach ($order->details as $detail) {
+                    Product::where('id', $detail->product_id)
+                        ->increment('stock', $detail->quantity);
+                }
+            }
+            
+            // Opsional: Jika status berubah DARI 'cancelled' KE 'processing' (Stok ditarik lagi)
+            if ($oldStatus == 'cancelled' && $request->status != 'cancelled') {
+                foreach ($order->details as $detail) {
+                    $prod = Product::find($detail->product_id);
+                    if ($prod->stock < $detail->quantity) {
+                         throw new \Exception("Stok produk {$prod->name} tidak cukup untuk mengaktifkan kembali pesanan ini.");
+                    }
+                    $prod->decrement('stock', $detail->quantity);
+                }
+            }
+
+            $order->update([
+                'status' => $request->status,
+                'payment_status' => $request->payment_status,
+                'note' => $request->note
+            ]);
+
+            DB::commit();
+            return redirect()->route('reports.index')->with('success', 'Data pesanan berhasil diperbarui!');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', $e->getMessage());
+        }
     }
 
-    /**
-     * 4. DELETE (DESTROY) - Hapus Pesanan & File Fisik
-     */
     public function destroy($id)
     {
-        $order = Order::with('attachments')->findOrFail($id);
+        $order = Order::with(['attachments', 'details'])->findOrFail($id);
 
-        // A. Hapus File Fisik di Storage
-        foreach ($order->attachments as $file) {
-            if (Storage::disk('public')->exists($file->file_path)) {
-                Storage::disk('public')->delete($file->file_path);
+        DB::beginTransaction();
+        try {
+            // 1. KEMBALIKAN STOK BARANG (Jika order belum dibatalkan sebelumnya)
+            if ($order->status != 'cancelled') {
+                foreach ($order->details as $detail) {
+                    Product::where('id', $detail->product_id)
+                        ->increment('stock', $detail->quantity);
+                }
             }
+
+            // 2. Hapus File Fisik
+            foreach ($order->attachments as $file) {
+                if (Storage::disk('public')->exists($file->file_path)) {
+                    Storage::disk('public')->delete($file->file_path);
+                }
+            }
+
+            // 3. Hapus Data (Cascade delete detail & attachment)
+            $order->details()->delete();
+            $order->attachments()->delete();
+            $order->delete();
+
+            DB::commit();
+            return redirect()->route('reports.index')->with('success', 'Pesanan dihapus dan stok barang telah dikembalikan.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->route('reports.index')->with('error', 'Gagal menghapus: ' . $e->getMessage());
         }
-
-        // B. Hapus Data di Database (Cascade delete akan menghapus details & attachments jika disetting di migration, 
-        // tapi manual delete lebih aman jika foreign key constraint tidak strict)
-        $order->details()->delete();
-        $order->attachments()->delete();
-        $order->delete();
-
-        return redirect()->route('reports.index')->with('success', 'Pesanan dan file terkait berhasil dihapus.');
     }
 }
