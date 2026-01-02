@@ -46,7 +46,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/products/{product}', [ProductController::class, 'destroy'])->name('products.destroy');
 
     Route::resource('products', ProductController::class);
-    Route::resource('coupons', CouponController::class)->except(['show']);
+    
 });
 
 Route::get('/orders/create', [OrderController::class, 'create'])->name('orders.create');
@@ -68,6 +68,8 @@ Route::get('/affiliates', [AffiliateController::class, 'index'])->name('affiliat
 
 // Resourceful Routes untuk Order
 Route::resource('reports', ReportController::class)->except(['create', 'store']);
+
+Route::resource('coupons', CouponController::class)->except(['show']);
 
 // Pastikan baris ini ada di paling bawah untuk memuat rute Login/Register
 require __DIR__.'/auth.php';
