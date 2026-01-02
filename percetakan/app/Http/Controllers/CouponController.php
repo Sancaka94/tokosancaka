@@ -78,4 +78,11 @@ class CouponController extends Controller
         Coupon::findOrFail($id)->delete();
         return back()->with('success', 'Kupon berhasil dihapus.');
     }
+
+    // Tambahkan method ini untuk mencegah error jika link /coupons/{id} terakses
+    public function show($id)
+    {
+        // Langsung kembalikan ke halaman utama tabel kupon
+        return redirect()->route('coupons.index');
+    }
 }

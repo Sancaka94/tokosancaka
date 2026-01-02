@@ -46,7 +46,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/products/{product}', [ProductController::class, 'destroy'])->name('products.destroy');
 
     Route::resource('products', ProductController::class);
-    Route::resource('coupons', CouponController::class);
+    Route::resource('coupons', CouponController::class)->except(['show']);
 });
 
 Route::get('/orders/create', [OrderController::class, 'create'])->name('orders.create');
