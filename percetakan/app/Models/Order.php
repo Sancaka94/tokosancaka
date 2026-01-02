@@ -43,23 +43,19 @@ class Order extends Model
 
     // Tambahkan ke app/Models/Order.php
 
-   /**
-     * ACCESSOR: Menghitung Profit Bersih secara Dinamis
-     * Cara panggil di Controller: $order->profit
-     */
-    public function getProfitAttribute()
-    {
-        // 1. Hitung Gross Profit dari setiap item
-        // Rumus: (Harga Jual saat itu - Modal saat itu) * Qty
-        $grossProfit = $this->details->sum(function ($item) {
-            // Pastikan kolom base_price_at_order ada di tabel order_details
-            // Jika null, anggap 0 (safety)
-            $modal = $item->base_price_at_order ?? 0; 
-            return ($item->price_at_order - $modal) * $item->quantity;
-        });
+  public function getProfitAttribute()
+{
+    // Ambil semua detail barang
+    $grossProfit = $this->details->sum(function ($item) {
+        // PENTING: Jika base_price_at_order 0, kita coba ambil dari master product sebagai cadangan (fallback)
+        // Ini trik biar data lama gak error
+        $modal = $item->base_price_at_order > 0 
+                 ? $item->base_price_at_order 
+                 : ($item->product->base_price ?? 0); 
+                 
+        return ($item->price_at_order - $modal) * $item->quantity;
+    });
 
-        // 2. Kurangi dengan Diskon Global (jika ada)
-        // Profit Bersih = Gross Profit - Diskon Nota
-        return $grossProfit - ($this->discount_amount ?? 0);
-    }
+    return $grossProfit - ($this->discount_amount ?? 0);
+}
 }
