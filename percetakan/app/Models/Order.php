@@ -13,7 +13,7 @@ class Order extends Model
     public $timestamps = true;
 
     protected $fillable = [
-        'invoice_number',   // PENTING: Tambahkan ini
+        // 'invoice_number',   // PENTING: Tambahkan ini
         'order_number',
         'customer_name',
         'customer_phone',

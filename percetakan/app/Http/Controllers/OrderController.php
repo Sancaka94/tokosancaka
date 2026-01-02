@@ -4,25 +4,21 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
-// Import Models
+// Import Model
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\OrderDetail;
-use App\Models\OrderAttachment;
+use App\Models\OrderAttachment; // Pastikan model ini sudah dibuat
 use App\Models\Coupon;
 
 class OrderController extends Controller
 {
-    /**
-     * Menampilkan Halaman Kasir (POS)
-     */
+    // 1. Menampilkan Halaman Kasir
     public function create()
     {
-        // Ambil produk yang stoknya tersedia
-        // Urutkan dari yang terbaru
+        // Ambil produk yang stoknya tersedia (>0) dan status available
         $products = Product::where('stock_status', 'available')
                            ->where('stock', '>', 0)
                            ->orderBy('created_at', 'desc')
@@ -31,34 +27,32 @@ class OrderController extends Controller
         return view('orders.create', compact('products'));
     }
 
-    /**
-     * Memproses Checkout (Simpan Order, Detail, dan File)
-     */
+    // 2. Proses Simpan Pesanan (Checkout)
     public function store(Request $request)
     {
-        // 1. Validasi Input
+        // A. Validasi Input
         $request->validate([
-            'items' => 'required', // JSON string dari keranjang
-            'total' => 'required|numeric',
-            // Validasi File: Maksimal 10MB per file, format dokumen/gambar
+            'items'       => 'required', // JSON String dari Frontend
+            'total'       => 'required|numeric',
+            // Validasi File Upload (Gambar/Dokumen max 10MB)
             'attachments.*' => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png|max:10240'
         ]);
 
-        // Decode JSON item keranjang
+        // B. Decode JSON dari Frontend (Karena dikirim via FormData sebagai string)
         $cartItems = json_decode($request->items, true);
 
         if (!is_array($cartItems) || count($cartItems) < 1) {
-            return response()->json(['status' => 'error', 'message' => 'Keranjang belanja kosong.'], 400);
+            return response()->json(['success' => false, 'message' => 'Keranjang belanja kosong.'], 400);
         }
 
-        // Mulai Transaksi Database
-        DB::beginTransaction();
+        DB::beginTransaction(); // Mulai Transaksi Database
 
         try {
             $subtotal = 0;
             $finalCart = []; 
+            $couponId = null;
 
-            // 2. Validasi Stok & Hitung Harga Server-Side (Keamanan)
+            // --- TAHAP 1: VALIDASI STOK & HITUNG HARGA (Server Side) ---
             foreach ($cartItems as $item) {
                 $product = Product::find($item['id']);
 
@@ -66,16 +60,15 @@ class OrderController extends Controller
                     throw new \Exception("Produk ID {$item['id']} tidak ditemukan.");
                 }
 
-                // Cek ketersediaan stok
+                // Cek Stok Realtime
                 if ($product->stock < $item['qty']) {
                     throw new \Exception("Stok '{$product->name}' tidak cukup. Sisa: {$product->stock}");
                 }
 
-                // Hitung total pakai harga database (bukan harga kiriman client)
+                // Gunakan 'sell_price' (Harga Jual) dari database, JANGAN dari request (biar aman)
                 $lineTotal = $product->sell_price * $item['qty'];
                 $subtotal += $lineTotal;
 
-                // Masukkan ke array final untuk diproses nanti
                 $finalCart[] = [
                     'product' => $product,
                     'qty' => $item['qty'],
@@ -83,11 +76,12 @@ class OrderController extends Controller
                 ];
             }
 
-            // 3. Cek Kupon (Opsional)
+            // --- TAHAP 2: CEK KUPON ---
             $discount = 0;
             if ($request->coupon) {
-                $couponDB = Coupon::where('code', $request->coupon)->first(); // Tambahkan logika validasi tanggal/aktif jika perlu
+                $couponDB = Coupon::where('code', $request->coupon)->first();
                 if ($couponDB) {
+                    $couponId = $couponDB->id; // Simpan ID untuk relasi database
                     if ($couponDB->type == 'percent') {
                         $discount = $subtotal * ($couponDB->value / 100);
                     } else {
@@ -96,18 +90,22 @@ class OrderController extends Controller
                 }
             }
 
-            // 4. Simpan Order Utama
+            // --- TAHAP 3: SIMPAN KE TABEL ORDERS ---
+            // Sesuai gambar database image_d0b88a.png
             $order = Order::create([
-                'invoice_number'  => 'INV-' . date('YmdHis') . rand(100,999),
-                'customer_name'   => 'Guest', // Bisa diubah jika ada input nama customer
+                'order_number'    => 'INV-' . date('YmdHis') . rand(100, 999),
+                'customer_name'   => $request->customer_name ?? 'Guest',
+                'customer_phone'  => $request->customer_phone ?? null,
+                'coupon_id'       => $couponId,
                 'total_price'     => $subtotal,
                 'discount_amount' => $discount,
                 'final_price'     => $subtotal - $discount,
                 'status'          => 'pending',
                 'payment_status'  => 'unpaid',
+                'note'            => $request->note ?? null,
             ]);
 
-            // 5. Simpan Detail Item & Potong Stok
+            // --- TAHAP 4: SIMPAN DETAIL & KURANGI STOK ---
             foreach ($finalCart as $data) {
                 $prod = $data['product'];
                 
@@ -115,23 +113,27 @@ class OrderController extends Controller
                     'order_id'     => $order->id,
                     'product_id'   => $prod->id,
                     'product_name' => $prod->name,
-                    'price'        => $prod->sell_price,
+                    'price'        => $prod->sell_price, // Harga Jual
                     'qty'          => $data['qty'],
                     'subtotal'     => $data['subtotal'],
                 ]);
 
-                // Kurangi stok & tambah counter terjual
+                // Kurangi Stok & Tambah Terjual
                 $prod->decrement('stock', $data['qty']);
                 $prod->increment('sold', $data['qty']);
+                
+                // Jika stok habis, set status unavailable
+                if ($prod->stock <= 0) {
+                    $prod->update(['stock_status' => 'unavailable']);
+                }
             }
 
-            // 6. Simpan File Upload (Jika Ada)
+            // --- TAHAP 5: UPLOAD BERKAS (Jika Ada) ---
             if ($request->hasFile('attachments')) {
                 foreach ($request->file('attachments') as $file) {
-                    // Simpan fisik file ke storage/app/public/orders
+                    // Upload ke storage/app/public/orders
                     $path = $file->store('orders', 'public');
 
-                    // Simpan info ke database
                     OrderAttachment::create([
                         'order_id'  => $order->id,
                         'file_path' => $path,
@@ -141,19 +143,19 @@ class OrderController extends Controller
                 }
             }
 
-            DB::commit(); // Simpan permanen
+            DB::commit(); // Simpan Permanen
 
             return response()->json([
-                'status' => 'success',
-                'message' => 'Transaksi Berhasil!',
-                'invoice' => $order->invoice_number
+                'status' => 'success', // Sesuai pengecekan di JS (result.status === 'success')
+                'message' => 'Pesanan berhasil dibuat!',
+                'invoice' => $order->order_number
             ]);
 
         } catch (\Exception $e) {
-            DB::rollBack(); // Batalkan jika error
+            DB::rollBack(); // Batalkan semua jika error
             return response()->json([
                 'status' => 'error',
-                'message' => $e->getMessage()
+                'message' => 'Gagal: ' . $e->getMessage()
             ], 500);
         }
     }
