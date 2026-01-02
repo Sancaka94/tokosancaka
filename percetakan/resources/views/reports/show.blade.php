@@ -1,15 +1,15 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Detail Pesanan #{{ $order->order_number }}</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-</head>
-<body class="bg-slate-50 font-sans text-slate-800 p-6">
+@extends('layouts.app')
 
-    <div class="max-w-4xl mx-auto bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+@section('title', 'Detail Pesanan')
+
+@section('content')
+    <div class="mb-6">
+        <a href="{{ route('reports.index') }}" class="text-slate-500 hover:text-slate-800 text-sm font-bold flex items-center gap-2 transition">
+            <i class="fas fa-arrow-left"></i> Kembali ke Riwayat
+        </a>
+    </div>
+
+    <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
         
         <div class="bg-slate-800 text-white p-6 flex justify-between items-center">
             <div>
@@ -97,10 +97,7 @@
         </div>
 
         <div class="bg-slate-50 p-6 flex justify-end gap-3 border-t border-slate-100">
-            <a href="{{ route('reports.index') }}" class="px-6 py-2.5 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-200 transition">Kembali</a>
-            <a href="{{ route('reports.edit', $order->id) }}" class="px-6 py-2.5 rounded-xl text-sm font-bold bg-slate-800 text-white hover:bg-black transition">Edit Status</a>
+            <a href="{{ route('reports.edit', $order->id) }}" class="px-6 py-2.5 rounded-xl text-sm font-bold bg-slate-800 text-white hover:bg-black transition shadow-lg">Edit Status</a>
         </div>
     </div>
-
-</body>
-</html>
+@endsection
