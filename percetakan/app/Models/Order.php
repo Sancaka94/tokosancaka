@@ -9,6 +9,9 @@ class Order extends Model
 {
     use HasFactory;
 
+    // Pastikan timestamps aktif agar created_at & updated_at terisi otomatis
+    public $timestamps = true;
+
     protected $fillable = [
         'invoice_number',   // PENTING: Tambahkan ini
         'order_number',
@@ -35,4 +38,11 @@ class Order extends Model
     {
         return $this->belongsTo(Coupon::class);
     }
+
+    // Relasi ke Attachments (File)
+    public function attachments()
+    {
+        return $this->hasMany(OrderAttachment::class);
+    }
+
 }
