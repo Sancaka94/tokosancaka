@@ -352,4 +352,93 @@ class OrderController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * API Cek Kupon (Live Search dari Frontend)
+     */
+    public function checkCoupon(Request $request)
+    {
+        // 1. Validasi Input
+        $request->validate([
+            'coupon_code'   => 'required|string',
+            'total_belanja' => 'required|numeric|min:0'
+        ]);
+
+        $code = trim($request->coupon_code); // Hapus spasi depan/belakang
+        $total = $request->total_belanja;
+
+        // 2. Cari Kupon (Case Insensitive)
+        // Kita gunakan 'LIKE' tanpa % agar pencarian tetap spesifik tapi tidak sensitif huruf besar/kecil
+        $coupon = Coupon::where('code', 'LIKE', $code)->first();
+
+        // --- FILTER 1: Cek Ketersediaan ---
+        if (!$coupon) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Kode kupon tidak ditemukan.'
+            ], 404);
+        }
+
+        // --- FILTER 2: Cek Status Aktif ---
+        if (!$coupon->is_active) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Kupon ini sudah dinonaktifkan.'
+            ], 400);
+        }
+
+        // --- FILTER 3: Cek Tanggal (Mulai & Expired) ---
+        $now = now();
+        if ($coupon->start_date && $now->lt($coupon->start_date)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Promo belum dimulai. Berlaku mulai: ' . $coupon->start_date->format('d M Y')
+            ], 400);
+        }
+
+        if ($coupon->expiry_date && $now->gt($coupon->expiry_date)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Yah, kupon ini sudah kedaluwarsa pada ' . $coupon->expiry_date->format('d M Y')
+            ], 400);
+        }
+
+        // --- FILTER 4: Cek Kuota Pemakaian ---
+        if ($coupon->usage_limit > 0 && $coupon->used_count >= $coupon->usage_limit) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Kuota penggunaan kupon ini sudah habis.'
+            ], 400);
+        }
+
+        // --- FILTER 5: Cek Minimal Belanja ---
+        // Ini validasi paling penting agar toko tidak rugi
+        if ($coupon->min_order_amount > 0 && $total < $coupon->min_order_amount) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Minimal belanja Rp ' . number_format($coupon->min_order_amount, 0, ',', '.') . ' untuk memakai kupon ini.'
+            ], 400);
+        }
+
+        // --- JIKA LOLOS SEMUA ---
+        // Hitung Diskon
+        $discountAmount = $coupon->calculateDiscount($total);
+
+        // Pastikan diskon tidak melebihi total belanja (biar gak minus)
+        if ($discountAmount > $total) {
+            $discountAmount = $total;
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Kupon berhasil diterapkan!',
+            'data' => [
+                'coupon_id'       => $coupon->id, // Kirim ID buat disimpan nanti
+                'code'            => $coupon->code,
+                'discount_amount' => $discountAmount,
+                'final_total'     => max(0, $total - $discountAmount),
+                'type'            => $coupon->type // percent/fixed (opsional buat UI)
+            ]
+        ]);
+    }
 }

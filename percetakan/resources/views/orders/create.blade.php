@@ -177,13 +177,40 @@
             </div>
 
             <div class="p-4 bg-slate-50 border-t border-slate-200 z-20 shrink-0 shadow-[0_-5px_15px_rgba(0,0,0,0.02)]">
-                <div class="flex gap-2 mb-3">
-                    <input type="text" x-model="couponCode" placeholder="Kode Promo" class="flex-1 px-3 py-2 text-sm rounded-lg border border-slate-200 focus:ring-red-500 uppercase">
+                <div class="mb-3">
+                    <div class="relative">
+                        <input type="text" 
+                               x-model="couponCode" 
+                               @input.debounce.500ms="checkCoupon()" 
+                               placeholder="Kode Promo (Ketik...)" 
+                               class="w-full pl-3 pr-10 py-2 text-sm rounded-lg border border-slate-200 focus:ring-red-500 uppercase font-bold text-slate-700"
+                               :class="{'border-emerald-500 bg-emerald-50': discountAmount > 0, 'border-red-300 bg-red-50': couponMessage && discountAmount === 0}">
+                        
+                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                            <i x-show="isValidatingCoupon" class="fas fa-circle-notch fa-spin text-slate-400"></i>
+                            <i x-show="!isValidatingCoupon && discountAmount > 0" class="fas fa-check-circle text-emerald-500"></i>
+                            <i x-show="!isValidatingCoupon && couponMessage && discountAmount === 0" class="fas fa-times-circle text-red-500"></i>
+                        </div>
+                    </div>
+                    <p x-show="couponMessage" x-text="couponMessage" class="text-[10px] font-bold mt-1" 
+                       :class="discountAmount > 0 ? 'text-emerald-600' : 'text-red-500'"></p>
                 </div>
 
-                <div class="flex justify-between items-end mb-4">
-                    <span class="text-sm font-bold text-slate-500">Total Tagihan</span>
-                    <span class="text-2xl font-black text-slate-800 tracking-tight" x-text="'Rp ' + rupiah(subtotal)"></span>
+                <div class="space-y-1 mb-4">
+                    <div class="flex justify-between items-end text-xs text-slate-500">
+                        <span>Subtotal</span>
+                        <span x-text="'Rp ' + rupiah(subtotal)"></span>
+                    </div>
+                    
+                    <div x-show="discountAmount > 0" class="flex justify-between items-end text-xs text-emerald-600 font-bold" x-transition>
+                        <span>Diskon</span>
+                        <span x-text="'- Rp ' + rupiah(discountAmount)"></span>
+                    </div>
+
+                    <div class="flex justify-between items-end pt-2 border-t border-dashed border-slate-300">
+                        <span class="text-sm font-bold text-slate-800">Total Tagihan</span>
+                        <span class="text-2xl font-black text-slate-800 tracking-tight" x-text="'Rp ' + rupiah(grandTotal)"></span>
+                    </div>
                 </div>
 
                 <button @click="openPaymentModal()" 
@@ -222,7 +249,8 @@
                 
                 <div class="text-center">
                     <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Total Yang Harus Dibayar</p>
-                    <h2 class="text-4xl font-black text-slate-800 tracking-tight" x-text="'Rp ' + rupiah(subtotal)"></h2>
+                    <h2 class="text-4xl font-black text-slate-800 tracking-tight" x-text="'Rp ' + rupiah(grandTotal)"></h2>
+                    <p x-show="discountAmount > 0" class="text-xs text-emerald-600 font-bold mt-1">Hemat Rp <span x-text="rupiah(discountAmount)"></span></p>
                 </div>
 
                 <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
@@ -306,7 +334,7 @@
                     <div class="flex gap-2 mt-3 justify-end">
                          <button @click="cashAmount = 50000" class="text-[10px] px-3 py-1.5 bg-slate-100 rounded-lg font-bold hover:bg-slate-200">50k</button>
                          <button @click="cashAmount = 100000" class="text-[10px] px-3 py-1.5 bg-slate-100 rounded-lg font-bold hover:bg-slate-200">100k</button>
-                         <button @click="cashAmount = subtotal" class="text-[10px] px-3 py-1.5 bg-slate-800 text-white rounded-lg font-bold hover:bg-black">Uang Pas</button>
+                         <button @click="cashAmount = grandTotal" class="text-[10px] px-3 py-1.5 bg-slate-800 text-white rounded-lg font-bold hover:bg-black">Uang Pas</button>
                     </div>
                 </div>
 
@@ -331,9 +359,13 @@
             cart: [],
             uploadedFiles: [],
             isProcessing: false,
+            isValidatingCoupon: false,
             
             // Form Data
             couponCode: '',
+            couponMessage: '',
+            discountAmount: 0,
+            
             customerType: 'guest',
             customerName: '',
             customerPhone: '',
@@ -345,9 +377,15 @@
             get subtotal() { return this.cart.reduce((sum, item) => sum + (item.price * item.qty), 0); },
             get cartTotalQty() { return this.cart.reduce((sum, item) => sum + item.qty, 0); },
             
+            // Total yang harus dibayar setelah diskon
+            get grandTotal() { 
+                let total = this.subtotal - this.discountAmount;
+                return total < 0 ? 0 : total;
+            },
+            
             get change() {
                 let received = parseInt(this.cashAmount) || 0;
-                return received - this.subtotal;
+                return received - this.grandTotal;
             },
 
             // --- HELPERS ---
@@ -362,31 +400,69 @@
             
             itemMatchesSearch(name) { return name.toLowerCase().includes(this.search.toLowerCase()); },
             
-            // --- [FIX] FUNGSI INI SEBELUMNYA HILANG ---
             getItemQty(id) {
                 let item = this.cart.find(i => i.id === id);
                 return item ? item.qty : 0;
             },
-            // -------------------------------------------
 
             getSelectedMemberSaldo() {
                 if(!this.selectedCustomerId) return 0;
                 const select = document.querySelector(`select[x-model="selectedCustomerId"]`);
-                // Handle jika element belum render sempurna
                 if (!select) return 0;
-                
                 const option = select.querySelector(`option[value="${this.selectedCustomerId}"]`);
                 return option ? parseFloat(option.dataset.saldo) : 0;
             },
 
-            // --- FUNGSI UTAMA ---
-            
-            openPaymentModal() {
-                if(this.cart.length === 0) { alert('Keranjang masih kosong!'); return; }
-                this.showPaymentModal = true;
-                if(this.paymentMethod !== 'cash') this.cashAmount = '';
+            // --- FUNGSI CEK KUPON ---
+            async checkCoupon() {
+                // Reset diskon jika input kosong
+                if (!this.couponCode.trim()) {
+                    this.discountAmount = 0;
+                    this.couponMessage = '';
+                    return;
+                }
+
+                if (this.cart.length === 0) {
+                    this.couponMessage = 'Isi keranjang dulu.';
+                    return;
+                }
+
+                this.isValidatingCoupon = true;
+                this.couponMessage = '';
+
+                try {
+                    const response = await fetch("{{ route('orders.check-coupon') }}", {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                        },
+                        body: JSON.stringify({
+                            coupon_code: this.couponCode,
+                            total_belanja: this.subtotal
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.status === 'success') {
+                        this.discountAmount = data.data.discount_amount;
+                        this.couponMessage = `✅ Hemat Rp ${this.rupiah(data.data.discount_amount)}`;
+                    } else {
+                        this.discountAmount = 0;
+                        this.couponMessage = data.message;
+                    }
+
+                } catch (error) {
+                    console.error(error);
+                    this.couponMessage = 'Gagal cek server.';
+                    this.discountAmount = 0;
+                } finally {
+                    this.isValidatingCoupon = false;
+                }
             },
 
+            // --- FUNGSI KERANJANG ---
             addToCart(id, name, price, maxStock) {
                 if (maxStock <= 0) { alert('Stok Habis!'); return; }
                 let item = this.cart.find(i => i.id === id);
@@ -397,6 +473,9 @@
                     this.cart.push({ id, name, price, qty: 1, maxStock });
                 }
                 if(navigator.vibrate) navigator.vibrate(30);
+                
+                // Cek ulang kupon jika ada, karena subtotal berubah
+                if(this.couponCode) this.checkCoupon();
             },
 
             updateQty(id, amount) {
@@ -406,11 +485,38 @@
                     item.qty += amount;
                     if (item.qty <= 0) this.removeFromCart(id);
                 }
+                // Cek ulang kupon
+                if(this.couponCode) setTimeout(() => this.checkCoupon(), 500); 
             },
 
-            removeFromCart(id) { this.cart = this.cart.filter(i => i.id !== id); },
-            confirmClearCart() { if(confirm('Kosongkan keranjang?')) { this.cart = []; this.uploadedFiles = []; } },
+            removeFromCart(id) { 
+                this.cart = this.cart.filter(i => i.id !== id);
+                if(this.cart.length === 0) {
+                    this.discountAmount = 0;
+                    this.couponCode = '';
+                    this.couponMessage = '';
+                } else if(this.couponCode) {
+                    this.checkCoupon();
+                }
+            },
+            
+            confirmClearCart() { 
+                if(confirm('Kosongkan keranjang?')) { 
+                    this.cart = []; 
+                    this.uploadedFiles = []; 
+                    this.discountAmount = 0;
+                    this.couponCode = '';
+                    this.couponMessage = '';
+                } 
+            },
 
+            openPaymentModal() {
+                if(this.cart.length === 0) { alert('Keranjang masih kosong!'); return; }
+                this.showPaymentModal = true;
+                if(this.paymentMethod !== 'cash') this.cashAmount = '';
+            },
+
+            // --- UPLOAD ---
             handleFileUpload(event) {
                 const files = event.target.files;
                 for (let i = 0; i < files.length; i++) {
@@ -421,21 +527,22 @@
             },
             removeFile(index) { this.uploadedFiles.splice(index, 1); },
 
+            // --- CHECKOUT ---
             async checkout() {
-                // Validasi Client Side
+                // Validasi Client Side (Pakai GrandTotal)
                 if (this.paymentMethod === 'cash') {
                     if (!this.cashAmount || this.change < 0) { alert('❌ Uang tunai kurang!'); return; }
                 } else if (this.paymentMethod === 'saldo') {
                     if (!this.selectedCustomerId) { alert('❌ Pilih Member!'); return; }
-                    if (this.getSelectedMemberSaldo() < this.subtotal) { alert('❌ Saldo tidak cukup!'); return; }
+                    if (this.getSelectedMemberSaldo() < this.grandTotal) { alert('❌ Saldo tidak cukup!'); return; }
                 }
 
                 this.isProcessing = true;
                 
                 let formData = new FormData();
                 formData.append('items', JSON.stringify(this.cart));
-                formData.append('total', this.subtotal);
-                formData.append('coupon', this.couponCode);
+                formData.append('total', this.subtotal); // Kirim subtotal asli
+                formData.append('coupon', this.couponCode); // Backend akan hitung ulang diskonnya
                 formData.append('payment_method', this.paymentMethod);
                 
                 if(this.customerType === 'member' && this.selectedCustomerId) {
@@ -453,15 +560,14 @@
                         method: "POST",
                         headers: { 
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                            'Accept': 'application/json' // PENTING AGAR ERROR JADI JSON
+                            'Accept': 'application/json'
                         },
                         body: formData
                     });
                     
-                    // Cek error HTML (500)
                     const contentType = response.headers.get("content-type");
                     if (!contentType || !contentType.includes("application/json")) {
-                        throw new Error("Terjadi kesalahan Server (Error 500). Cek file Service/Controller.");
+                        throw new Error("Terjadi kesalahan Server (Error 500).");
                     }
 
                     const result = await response.json();
