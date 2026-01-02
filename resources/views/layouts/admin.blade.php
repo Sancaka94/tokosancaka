@@ -1,71 +1,84 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" x-data="{ darkMode: localStorage.getItem('darkMode') === 'true' }" x-init="$watch('darkMode', val => localStorage.setItem('darkMode', val))" :class="{ 'dark': darkMode }">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" 
+      x-data="{ darkMode: localStorage.getItem('darkMode') === 'true' }" 
+      x-init="$watch('darkMode', val => localStorage.setItem('darkMode', val))" 
+      :class="{ 'dark': darkMode }">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     
-    <title>@yield('title', 'Admin Panel') - {{ config('app.name', 'Sancaka Express') }}</title>
+    <title>@yield('title', 'Admin Panel') - {{ $theme['site_title'] ?? config('app.name', 'Sancaka Express') }}</title>
 
-    <!-- Favicon -->
     <link rel="icon" href="https://tokosancaka.com/storage/uploads/sancaka.png" type="image/png">
     
-    <!-- TailwindCSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- Google Fonts - Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
 
-    <!-- AlpineJS -->
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
     
-    <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-<style>
+    <style>
+        /* [MODIFIKASI] 2. Inject Variable CSS dari Database */
+        :root {
+            --theme-primary: {{ $theme['primary_color'] ?? '#3b82f6' }}; /* Default Blue */
+            --theme-bg: {{ $theme['bg_color'] ?? '#f3f4f6' }};       /* Default Gray-100 */
+            --theme-text: {{ $theme['text_color'] ?? '#1f2937' }};   /* Default Gray-800 */
+        }
 
-html, body {
-    margin: 0;
-    padding: 0;
-}
+        /* Helper Class untuk Warna Dinamis */
+        .bg-theme-primary { background-color: var(--theme-primary) !important; }
+        .text-theme-primary { color: var(--theme-primary) !important; }
+        .border-theme-primary { border-color: var(--theme-primary) !important; }
+        .hover\:bg-theme-primary:hover { background-color: var(--theme-primary) !important; }
 
-html {
-    /* Wajib untuk referensi tinggi root */
-    height: 100%; 
-}
+        html, body {
+            margin: 0;
+            padding: 0;
+        }
 
-body {
-    font-family: 'Inter', sans-serif;
-    
-    /* 🔑 KUNCI: Untuk melebar KANAN (100% / 0.75) */
-    width: 133.33vw; 
-    
-    /* Wajib untuk menjaga konsistensi TINGGI, atasi efek "mengecil" */
-    min-height: 133.33vh; 
-    
-    /* Terapkan Scale dari sudut kiri atas */
-    transform: scale(0.75);
-    transform-origin: 0 0;
-    
-    overflow-x: hidden;
-}
+        html {
+            /* Wajib untuk referensi tinggi root */
+            height: 100%; 
+        }
 
-/* Kunci: Pastikan kontainer utama ikut memanjang setidaknya setinggi layar */
-.main-layout-container {
-    min-height: 133.33vh; 
-}
+        body {
+            font-family: 'Inter', sans-serif;
+            
+            /* Gunakan background dari tema database */
+            background-color: var(--theme-bg);
+            color: var(--theme-text);
+            
+            /* 🔑 KUNCI: Untuk melebar KANAN (100% / 0.75) */
+            width: 133.33vw; 
+            
+            /* Wajib untuk menjaga konsistensi TINGGI, atasi efek "mengecil" */
+            min-height: 133.33vh; 
+            
+            /* Terapkan Scale dari sudut kiri atas */
+            transform: scale(0.75);
+            transform-origin: 0 0;
+            
+            overflow-x: hidden;
+        }
 
-/* ========================================================= */
-/* END: PERBAIKAN TINGGI PENUH + ZOOM OUT 75% */
-/* ========================================================= */
+        /* Kunci: Pastikan kontainer utama ikut memanjang setidaknya setinggi layar */
+        .main-layout-container {
+            min-height: 133.33vh; 
+        }
+
+        /* ========================================================= */
+        /* END: PERBAIKAN TINGGI PENUH + ZOOM OUT 75% */
+        /* ========================================================= */
         
-[x-cloak] { display: none !important; }
-        /* ... (style Anda yang lain) ... */
+        [x-cloak] { display: none !important; }
+        
         .custom-scrollbar::-webkit-scrollbar { width: 8px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
@@ -76,25 +89,22 @@ body {
         .modal-transition { transition: opacity 0.3s ease, transform 0.3s ease; }
         .modal-hidden { opacity: 0; transform: scale(0.95); pointer-events: none; }
         .modal-visible { opacity: 1; transform: scale(1); pointer-events: auto; }
-        
-          
-        
-  
-
-        
     </style>
     
     @stack('styles')
 </head>
-<body class="bg-gray-100 text-gray-800">
+<body class="bg-gray-100 text-gray-800" style="background-color: var(--theme-bg);">
 
 @if(isset($error_message))
-    <div class="alert alert-danger text-center">
+    <div class="alert alert-danger text-center bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
         {{ $error_message }}
     </div>
 @endif
 
-<div x-data="{ sidebarOpen: window.innerWidth > 1024 ? true : false }" @resize.window="sidebarOpen = window.innerWidth > 1024 ? true : false" class="flex main-layout-container bg-gray-100">
+<div x-data="{ sidebarOpen: window.innerWidth > 1024 ? true : false }" 
+     @resize.window="sidebarOpen = window.innerWidth > 1024 ? true : false" 
+     class="flex main-layout-container">
+        
         @include('layouts.partials.sidebar')
 
         <div class="flex-1 flex flex-col overflow-hidden">
@@ -103,15 +113,27 @@ body {
             {{-- 'notification-list-body', 'notification-empty-state', 'notification-count-badge' --}}
             @include('layouts.partials.header')
 
-            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 custom-scrollbar">
+            <main class="flex-1 overflow-x-hidden overflow-y-auto custom-scrollbar" style="background-color: var(--theme-bg);">
                 <div class="w-full px-4 sm:px-6 lg:px-8 py-8">
                     @yield('content')
                 </div>
             </main>
         </div>
     </div>
+
+    @auth
+        @if(strtolower(Auth::user()->role ?? '') === 'admin')
+        <a href="{{ route('theme.edit') }}" 
+           class="fixed bottom-10 right-10 z-50 text-white p-4 rounded-full shadow-xl transition-all duration-300 transform hover:scale-110 flex items-center justify-center group"
+           style="background-color: var(--theme-primary); border: 2px solid white;">
+            <i class="fas fa-palette text-xl"></i>
+            <span class="absolute right-full mr-3 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                Edit Tampilan
+            </span>
+        </a>
+        @endif
+    @endauth
     
-    <!-- Tombol & Modal Chat (Global) -->
     {{-- ... (Modal Chat Anda, biarkan saja) ... --}}
     
     {{-- SweetAlert Scripts --}}
@@ -136,7 +158,7 @@ body {
         document.addEventListener('DOMContentLoaded', function() {
 
             // ======================================================================
-            // == FUNGSI NOTIFIKASI BROWSER (Ini sudah benar, biarkan)
+            // == FUNGSI NOTIFIKASI BROWSER
             // ======================================================================
             function requestNotificationPermission() {
                 if ('Notification' in window) {
@@ -175,17 +197,17 @@ body {
             requestNotificationPermission();
 
             // ======================================================================
-            // == [MULAI] LOGIKA BARU NOTIFIKASI DROPDOWN (MENGGANTIKAN KODE LAMA)
+            // == [MULAI] LOGIKA NOTIFIKASI DROPDOWN
             // ======================================================================
             
             /**
-             * [BARU] Fungsi untuk menandai notifikasi sebagai dibaca, lalu mengarahkan.
+             * Fungsi untuk menandai notifikasi sebagai dibaca, lalu mengarahkan.
              */
-            async function markAndRedirect(notificationId, targetUrl) {
+            window.markAndRedirect = async function(notificationId, targetUrl) {
                 try {
                     // 1. Tandai sebagai dibaca di server
                     const response = await fetch(`/admin/notifications/mark-as-read/${notificationId}`, {
-                        method: 'POST', // Pastikan rute Anda menerima POST
+                        method: 'POST', 
                         headers: {
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
                             'Content-Type': 'application/json',
@@ -215,7 +237,7 @@ body {
             }
 
             /**
-             * Helper untuk format 'time ago' (disederhanakan)
+             * Helper untuk format 'time ago'
              */
             function timeAgo(dateString) {
                 const date = new Date(dateString);
@@ -234,25 +256,22 @@ body {
             }
 
             /**
-             * Memuat notifikasi (5 terakhir) dan mengisinya ke dalam TABEL dropdown.
-             * (Ini akan dipanggil oleh Alpine.js @click di header)
+             * Memuat notifikasi dan mengisinya ke dalam TABEL dropdown.
              */
-            async function loadInitialNotifications() {
+            window.loadInitialNotifications = async function() {
                 try {
-                    // Pastikan rute ini benar
                     const response = await fetch('{{ route('admin.notifications.getUnread') }}'); 
                     if (!response.ok) throw new Error('Network response was not ok');
                     
                     const data = await response.json();
 
-                    // [PENTING] Ini adalah ID baru dari HTML Anda
                     const listBody = document.getElementById('notification-list-body');
                     const emptyState = document.getElementById('notification-empty-state');
                     const badge = document.getElementById('notification-count-badge');
 
                     // Pengaman jika elemen tidak ditemukan
                     if (!listBody || !emptyState || !badge) {
-                        console.error('Elemen notifikasi (list-body/empty/badge) tidak ditemukan di DOM.');
+                        console.error('Elemen notifikasi tidak ditemukan di DOM.');
                         return;
                     }
 
@@ -268,18 +287,22 @@ body {
 
                     // Tampilkan status kosong jika tidak ada notifikasi
                     if (data.notifications.length === 0) {
-                        emptyState.style.display = 'table-row-group'; // Tipe display untuk tbody
+                        emptyState.style.display = 'table-row-group'; 
                     } else {
                         emptyState.style.display = 'none';
 
                         // Isi tabel dengan data notifikasi
                         data.notifications.forEach(notification => {
-                            const notifData = notification.data;
+                            const notifData = notification.data || {};
                             const title = notifData.judul || 'Notifikasi';
                             const message = notifData.pesan_utama || 'Tidak ada detail.';
                             const url = notifData.url || '#';
                             const hasLocation = notifData.latitude && notifData.longitude;
-                            const locationUrl = `https://www.google.com/maps?q=${notifData.latitude},${notifData.longitude}`;
+                            
+                            // [PERBAIKAN] Menggunakan Backticks (`) untuk string template URL
+                            const locationUrl = hasLocation 
+                                ? `https://www.google.com/maps?q=$?q=${notifData.latitude},${notifData.longitude}` 
+                                : '#';
 
                             let lacakButtonHtml = '';
                             if (hasLocation) {
@@ -291,19 +314,18 @@ body {
                                     </a>`;
                             }
                             
-                             // Tombol "Lihat"
+                            // Tombol "Lihat"
                             const lihatButtonHtml = `
                                 <button onclick="event.preventDefault(); markAndRedirect('${notification.id}', '${url}')"
-                                   class="inline-flex items-center gap-1.5 text-xs px-2 py-1 bg-green border border-gray-300 text-gray-700 rounded-md hover:bg-green-50 transition-colors font-medium">
+                                   class="inline-flex items-center gap-1.5 text-xs px-2 py-1 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors font-medium">
                                     <i class="fas fa-eye w-3 h-3"></i>
                                     Lihat
                                 </button>`;
 
                             // Buat baris tabel (tr)
                             const row = document.createElement('tr');
-                            row.className = 'hover:bg-gray-50';
+                            row.className = 'hover:bg-gray-50 border-b border-gray-100';
                             
-                            // [PERBAIKAN DARI ANDA] Menggunakan break-words alih-alih truncate
                             row.innerHTML = `
                                 <td class="px-4 py-3 align-top w-2/3 overflow-hidden break-words">
                                     <p class="text-sm font-semibold text-gray-900">${title}</p>
@@ -324,7 +346,7 @@ body {
                     console.error('Gagal memuat notifikasi:', error);
                     const listBody = document.getElementById('notification-list-body');
                     if(listBody) {
-                         listBody.innerHTML = `<tr><td class="text-red-500 p-4">Gagal memuat notifikasi.</td></tr>`;
+                         listBody.innerHTML = `<tr><td colspan="2" class="text-red-500 p-4 text-center">Gagal memuat notifikasi.</td></tr>`;
                     }
                 }
             }
@@ -353,19 +375,9 @@ body {
             
             // Panggil hitungan saat halaman dimuat
             fetchNotificationCount();
-            
-            // [PENTING] Buat fungsi loadInitialNotifications TERSEDIA SECARA GLOBAL
-            // agar Alpine.js di header.blade.php bisa memanggilnya
-            // (Tombol @click di header ada di file lain, jadi fungsi ini harus global)
-            window.loadInitialNotifications = loadInitialNotifications;
 
             // ======================================================================
-            // == [AKHIR] LOGIKA BARU NOTIFIKASI
-            // ======================================================================
-            
-
-            // ======================================================================
-            // == INISIALISASI LARAVEL ECHO (Ini sudah benar, biarkan)
+            // == INISIALISASI LARAVEL ECHO
             // ======================================================================
 
             if (window.EchoInitialized) return;
@@ -385,10 +397,9 @@ body {
                     window.EchoInitialized = true;
                     console.log("Laravel Echo initialized for admin.");
 
-                    // Listener untuk 'AdminNotificationEvent' (Sudah ada)
+                    // Listener untuk 'AdminNotificationEvent'
                     window.Echo.private('admin-notifications')
                         .on('pusher:subscription_succeeded', () => console.log("Subscribed to 'admin-notifications' channel!"))
-                        .on('pusher:subscription_error', (status) => console.error("Subscription to 'admin-notifications' failed. Status:", status))
                         .listen('AdminNotificationEvent', (e) => {
                             console.log('Notifikasi (AdminEvent) diterima:', e);
                             showBrowserNotification(e.title, e.message, e.url);
@@ -399,14 +410,14 @@ body {
                                 showCancelButton: true,
                                 confirmButtonText: 'Lihat Detail',
                                 cancelButtonText: 'Tutup',
-                                confirmButtonColor: '#4f46e5',
+                                confirmButtonColor: 'var(--theme-primary)',
                                 cancelButtonColor: '#6b7280',
                             }).then((result) => {
                                 if (result.isConfirmed && e.url) {
                                     window.location.href = e.url;
                                 }
                             });
-                            // [PERBAIKAN] Saat notifikasi baru masuk, cukup update angkanya
+                            // Update badge
                             fetchNotificationCount();
                         });
                         
@@ -414,22 +425,20 @@ body {
                     const userId = {{ auth()->id() }};
                     window.Echo.private(`App.Models.User.${userId}`)
                         .on('pusher:subscription_succeeded', () => console.log(`Subscribed to 'App.Models.User.${userId}' channel!`))
-                        .on('pusher:subscription_error', (status) => console.error(`Subscription to 'App.Models.User.${userId}' failed. Status:`, status))
                         .notification((notification) => {
                             
                             console.log('NOTIFIKASI BARU DITERIMA (dari NotifikasiUmum):', notification);
                             
                             const data = notification.data ? notification.data : notification;
 
-                            // Tampilkan notifikasi di browser (Pop-up Desktop)
+                            // Tampilkan notifikasi di browser
                             showBrowserNotification(
-                                data.judul,      // <-- DIPERBAIKI
-                                data.pesan_utama, // <-- DIPERBAIKI
-                                data.url          // <-- DIPERBAIKI
+                                data.judul,
+                                data.pesan_utama,
+                                data.url
                             );
                             
-                            // [PERBAIKAN] Update angka badge. 
-                            // Daftar lengkap akan di-refresh saat user mengklik lonceng.
+                            // Update angka badge
                             fetchNotificationCount(); 
                         });
 
@@ -464,11 +473,11 @@ body {
 
     <script>
     document.addEventListener('DOMContentLoaded', function() {
-        const btnToggle = document.getElementById('btn-toggle-sidebar'); // Tombol hamburger (opsional)
-        const btnClose = document.getElementById('btn-close-sidebar');   // Tombol bulat floating
+        const btnToggle = document.getElementById('btn-toggle-sidebar'); 
+        const btnClose = document.getElementById('btn-close-sidebar');   
         const sidebar = document.getElementById('main-sidebar');
         const overlay = document.getElementById('sidebar-overlay');
-        const icon = document.getElementById('toggle-icon'); // <--- Ambil element Icon
+        const icon = document.getElementById('toggle-icon'); 
 
         function toggleSidebar() {
             if (!sidebar) return;
@@ -493,7 +502,6 @@ body {
         }
 
         // Jalankan logika rotasi sekali saat halaman dimuat 
-        // untuk memastikan arah panah sesuai status awal sidebar
         if(sidebar && icon) {
              if (sidebar.classList.contains('-translate-x-full')) {
                 icon.classList.add('rotate-180');
