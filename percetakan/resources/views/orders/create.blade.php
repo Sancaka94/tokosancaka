@@ -2,144 +2,206 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>POS Percetakan - Toko Sancaka</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
+    
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
         [x-cloak] { display: none !important; }
-        ::-webkit-scrollbar { width: 5px; }
-        ::-webkit-scrollbar-thumb { background: #888; border-radius: 10px; }
+        
+        /* Hide scrollbar for Chrome, Safari and Opera */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        /* Hide scrollbar for IE, Edge and Firefox */
+        .no-scrollbar { -ms-overflow-style: none;  scrollbar-width: none; }
+        
+        /* Smooth scrolling for touch devices */
+        .touch-scroll { -webkit-overflow-scrolling: touch; }
     </style>
 </head>
-<body class="bg-gray-100 font-sans">
+<body class="bg-slate-100 font-sans text-slate-800 h-screen overflow-hidden select-none" x-data="posSystem()">
 
-    <div x-data="posSystem()" x-cloak class="flex flex-col lg:flex-row h-screen overflow-hidden">
+    <div class="flex h-full flex-col lg:flex-row">
         
-        <div class="w-full lg:w-2/3 p-4 lg:p-6 overflow-y-auto">
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                <div>
-                    <h2 class="text-2xl font-extrabold text-gray-800">Layanan Percetakan</h2>
-                    <p class="text-sm text-gray-500">Pilih layanan untuk menambah ke pesanan</p>
+        <div class="flex-1 flex flex-col h-full relative overflow-hidden">
+            
+            <div class="p-4 bg-white shadow-sm z-20 flex flex-col sm:flex-row gap-3 items-center justify-between shrink-0">
+                <div class="w-full sm:w-auto">
+                    <h1 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                        <i class="fas fa-print text-indigo-600"></i>
+                        <span>Sancaka POS</span>
+                    </h1>
                 </div>
-                <div class="relative w-full md:w-64">
-                    <input type="text" x-model="search" placeholder="Cari produk..." 
-                           class="w-full rounded-xl border-none shadow-sm focus:ring-2 focus:ring-indigo-500 py-3 px-4">
+                
+                <div class="relative w-full sm:max-w-md">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                        <i class="fas fa-search"></i>
+                    </span>
+                    <input type="text" x-model="search" placeholder="Cari layanan atau produk..." 
+                           class="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-100 border-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm font-medium">
+                    <button x-show="search.length > 0" @click="search = ''" class="absolute inset-y-0 right-0 pr-3 text-slate-400 hover:text-slate-600">
+                        <i class="fas fa-times-circle"></i>
+                    </button>
+                </div>
+
+                <button @click="mobileCartOpen = !mobileCartOpen" 
+                        class="lg:hidden relative p-3 bg-indigo-50 rounded-xl text-indigo-700 active:scale-95 transition-transform">
+                    <i class="fas fa-shopping-cart text-lg"></i>
+                    <span x-show="cartTotalQty > 0" 
+                          class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold h-5 w-5 flex items-center justify-center rounded-full border-2 border-white"
+                          x-text="cartTotalQty"></span>
+                </button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-4 touch-scroll pb-24 lg:pb-4">
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
+                    @foreach($products as $product)
+                    <template x-if="itemMatchesSearch('{{ $product->name }}')">
+                        <div @click="addToCart({{ $product->id }}, '{{ $product->name }}', {{ $product->base_price }})"
+                             class="bg-white rounded-2xl p-3 sm:p-4 shadow-sm border border-slate-100 active:scale-95 active:border-indigo-500 hover:shadow-md transition-all cursor-pointer flex flex-col h-full relative group">
+                            
+                            <div x-show="getItemQty({{ $product->id }}) > 0" 
+                                 class="absolute top-2 right-2 bg-indigo-600 text-white text-xs font-bold h-6 w-6 rounded-full flex items-center justify-center shadow-md z-10"
+                                 x-text="getItemQty({{ $product->id }})">
+                            </div>
+
+                            <div class="aspect-square bg-indigo-50 rounded-xl flex items-center justify-center mb-3 text-3xl sm:text-4xl">
+                                📦
+                            </div>
+
+                            <div class="flex-1 flex flex-col">
+                                <h3 class="font-bold text-slate-800 text-sm leading-tight mb-1 line-clamp-2">{{ $product->name }}</h3>
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-auto">{{ $product->unit }}</p>
+                                <p class="text-indigo-600 font-black text-sm sm:text-base mt-2">
+                                    Rp {{ number_format($product->base_price, 0, ',', '.') }}
+                                </p>
+                            </div>
+                        </div>
+                    </template>
+                    @endforeach
                 </div>
             </div>
 
-            <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-                @foreach($products as $product)
-                <template x-if="itemMatchesSearch('{{ $product->name }}')">
-                    <div @click="addToCart({{ $product->id }}, '{{ $product->name }}', {{ $product->base_price }})"
-                         class="bg-white p-4 rounded-2xl shadow-sm hover:shadow-xl transition-all cursor-pointer border-2 border-transparent hover:border-indigo-500 group relative overflow-hidden">
-                        
-                        <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <span class="bg-indigo-600 text-white p-1 rounded-full text-xs">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 4v16m8-8H4" />
-                                </svg>
-                            </span>
-                        </div>
-
-                        <div class="w-full h-24 bg-indigo-50 rounded-xl mb-3 flex items-center justify-center group-hover:bg-indigo-100 transition-colors">
-                            <span class="text-3xl">📦</span>
-                        </div>
-
-                        <h3 class="font-bold text-gray-800 group-hover:text-indigo-600 truncate text-sm lg:text-base">{{ $product->name }}</h3>
-                        <p class="text-[10px] text-gray-400 font-semibold mb-2 uppercase tracking-wider">{{ $product->unit }}</p>
-                        
-                        <div class="text-indigo-600 font-bold text-sm">
-                            Rp {{ number_format($product->base_price, 0, ',', '.') }}
-                        </div>
-                    </div>
-                </template>
-                @endforeach
-            </div>
         </div>
 
-        <div class="w-full lg:w-1/3 bg-white border-l border-gray-200 flex flex-col h-full shadow-2xl">
-            <div class="p-6 border-b flex justify-between items-center bg-white sticky top-0 z-10">
-                <div>
-                    <h2 class="text-xl font-bold text-gray-800">Detail Pesanan</h2>
-                    <span class="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full font-bold">INV-{{ date('YmdHi') }}</span>
+        <div x-show="mobileCartOpen" 
+             class="fixed inset-0 bg-black/50 z-30 lg:hidden backdrop-blur-sm"
+             @click="mobileCartOpen = false"
+             x-transition.opacity></div>
+
+        <div class="fixed inset-y-0 right-0 w-[85%] sm:w-[400px] lg:static lg:w-[380px] bg-white shadow-2xl lg:shadow-none border-l border-slate-200 z-40 transform transition-transform duration-300 ease-in-out flex flex-col h-full"
+             :class="mobileCartOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'">
+            
+            <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <div class="flex items-center gap-2">
+                    <h2 class="font-bold text-lg text-slate-800">Detail Pesanan</h2>
+                    <span class="bg-indigo-100 text-indigo-700 text-[10px] font-bold px-2 py-0.5 rounded">#{{ date('Hi') }}</span>
                 </div>
-                <button @click="cart = []" class="text-red-500 hover:text-red-700 text-xs font-semibold">Kosongkan</button>
+                <button @click="mobileCartOpen = false" class="lg:hidden p-2 text-slate-400 hover:text-slate-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+                <button x-show="cart.length > 0" @click="confirmClearCart()" class="hidden lg:block text-xs font-bold text-red-500 hover:text-red-700">
+                    <i class="fas fa-trash-alt mr-1"></i> Reset
+                </button>
             </div>
 
-            <div class="flex-grow overflow-y-auto p-4 space-y-3 bg-gray-50/50">
-                <template x-for="item in cart" :key="item.id">
-                    <div class="flex flex-col bg-white p-3 rounded-xl shadow-sm border border-gray-100">
-                        <div class="flex justify-between mb-2">
-                            <span class="font-bold text-gray-700 text-sm" x-text="item.name"></span>
-                            <button @click="removeFromCart(item.id)" class="text-gray-300 hover:text-red-500">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M6 18L18 6M6 6l12 12" stroke-width="2"/></svg>
-                            </button>
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <div class="flex items-center gap-2">
-                                <button @click="updateQty(item.id, -1)" class="w-7 h-7 flex items-center justify-center bg-gray-100 rounded-lg hover:bg-gray-200">-</button>
-                                <span class="w-8 text-center font-bold text-sm" x-text="item.qty"></span>
-                                <button @click="updateQty(item.id, 1)" class="w-7 h-7 flex items-center justify-center bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">+</button>
-                            </div>
-                            <span class="font-bold text-gray-800 text-sm" x-text="formatCurrency(item.price * item.qty)"></span>
-                        </div>
+            <div class="flex-1 overflow-y-auto p-4 space-y-3 bg-white touch-scroll">
+                <template x-if="cart.length === 0">
+                    <div class="h-full flex flex-col items-center justify-center text-slate-300 space-y-4">
+                        <i class="fas fa-shopping-basket text-6xl"></i>
+                        <p class="font-medium text-sm">Keranjang masih kosong</p>
                     </div>
                 </template>
 
-                <div x-show="cart.length === 0" class="flex flex-col items-center justify-center h-full opacity-30 py-20">
-                    <span class="text-6xl mb-4">🛒</span>
-                    <p class="font-bold">Belum ada item dipilih</p>
-                </div>
+                <template x-for="item in cart" :key="item.id">
+                    <div class="flex items-center gap-3 p-3 rounded-xl bg-white border border-slate-100 shadow-sm">
+                        <div class="flex flex-col items-center gap-1 bg-slate-50 rounded-lg p-1">
+                            <button @click="updateQty(item.id, 1)" class="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-md text-indigo-600 shadow-sm active:scale-90 transition-transform">
+                                <i class="fas fa-plus text-xs"></i>
+                            </button>
+                            <span class="font-bold text-sm py-1 w-8 text-center" x-text="item.qty"></span>
+                            <button @click="updateQty(item.id, -1)" class="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-md text-slate-500 shadow-sm active:scale-90 transition-transform">
+                                <i class="fas fa-minus text-xs"></i>
+                            </button>
+                        </div>
+
+                        <div class="flex-1 min-w-0">
+                            <div class="font-bold text-slate-800 text-sm truncate" x-text="item.name"></div>
+                            <div class="text-xs text-slate-500 mt-1">
+                                <span x-text="formatCurrency(item.price)"></span> x <span x-text="item.qty"></span>
+                            </div>
+                            <div class="font-bold text-indigo-600 text-sm mt-1" x-text="formatCurrency(item.price * item.qty)"></div>
+                        </div>
+
+                        <button @click="removeFromCart(item.id)" class="p-2 text-slate-300 hover:text-red-500 transition-colors">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </div>
+                </template>
             </div>
 
-            <div class="p-6 bg-white border-t border-gray-200 space-y-4">
-                <div class="space-y-2">
-                    <div class="flex gap-2">
-                        <input type="text" x-model="couponCode" placeholder="Kode Kupon" class="flex-1 rounded-xl border-gray-200 text-sm focus:ring-indigo-500">
-                        <button class="bg-gray-800 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-black transition-colors">Klaim</button>
-                    </div>
-                    <div class="flex gap-2">
-                        <input type="text" x-model="referralCode" placeholder="Kode Referral" class="flex-1 rounded-xl border-gray-200 text-sm focus:ring-indigo-500">
-                        <button class="bg-indigo-100 text-indigo-700 px-4 py-2 rounded-xl text-xs font-bold hover:bg-indigo-200 transition-colors">Cek</button>
+            <div class="p-4 bg-white border-t border-slate-100 shadow-[0_-5px_15px_rgba(0,0,0,0.05)] z-20">
+                
+                <div x-data="{ showPromo: false }" class="mb-4">
+                    <button @click="showPromo = !showPromo" class="text-xs font-bold text-indigo-600 flex items-center gap-1 mb-2">
+                        <i class="fas fa-tag"></i> <span>Punya kode promo?</span>
+                    </button>
+                    <div x-show="showPromo" class="flex gap-2" x-transition>
+                        <input type="text" x-model="couponCode" placeholder="Masukkan kode..." class="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm">
+                        <button class="bg-slate-800 text-white px-3 py-2 rounded-lg text-xs font-bold">Gunakan</button>
                     </div>
                 </div>
 
-                <div class="space-y-2 pt-2">
-                    <div class="flex justify-between text-gray-500 text-sm">
-                        <span>Subtotal</span>
-                        <span x-text="formatCurrency(subtotal)"></span>
+                <div class="flex justify-between items-end mb-4">
+                    <div>
+                        <p class="text-xs text-slate-500 font-bold uppercase tracking-wider">Total Pembayaran</p>
+                        <p class="text-xs text-slate-400 mt-0.5" x-text="cartTotalQty + ' Item'"></p>
                     </div>
-                    <div class="flex justify-between text-xl font-black text-gray-900 pt-2 border-t">
-                        <span>Total Bayar</span>
-                        <span class="text-indigo-600" x-text="formatCurrency(subtotal)"></span>
-                    </div>
+                    <div class="text-2xl font-black text-slate-800" x-text="formatCurrency(subtotal)"></div>
                 </div>
 
                 <button @click="checkout()" 
                         :disabled="cart.length === 0"
-                        class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold text-lg shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
-                    Buat Pesanan Sekarang
+                        class="w-full bg-indigo-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-indigo-200 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3">
+                    <i class="fas fa-cash-register"></i>
+                    <span>Bayar Sekarang</span>
                 </button>
             </div>
+
         </div>
+
     </div>
 
     <script>
         function posSystem() {
             return {
+                mobileCartOpen: false,
                 search: '',
                 cart: [],
                 couponCode: '',
-                referralCode: '',
                 
+                // Helper: Cek stok item di keranjang
+                getItemQty(id) {
+                    let item = this.cart.find(i => i.id === id);
+                    return item ? item.qty : 0;
+                },
+
+                get cartTotalQty() {
+                    return this.cart.reduce((sum, item) => sum + item.qty, 0);
+                },
+
                 itemMatchesSearch(name) {
                     return name.toLowerCase().includes(this.search.toLowerCase());
                 },
 
                 addToCart(id, name, price) {
+                    // Feedback getar di HP saat tombol ditekan
+                    if (navigator.vibrate) navigator.vibrate(50);
+
                     let found = this.cart.find(i => i.id === id);
                     if (found) {
                         found.qty++;
@@ -149,6 +211,8 @@
                 },
 
                 updateQty(id, amount) {
+                    if (navigator.vibrate) navigator.vibrate(30); // Feedback getar ringan
+                    
                     let item = this.cart.find(i => i.id === id);
                     if (item) {
                         item.qty += amount;
@@ -160,22 +224,36 @@
                     this.cart = this.cart.filter(i => i.id !== id);
                 },
 
+                confirmClearCart() {
+                    if(confirm('Kosongkan keranjang belanja?')) {
+                        this.cart = [];
+                    }
+                },
+
                 get subtotal() {
                     return this.cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
                 },
 
                 formatCurrency(val) {
-                    return 'Rp ' + new Intl.NumberFormat('id-ID').format(val);
+                    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
                 },
 
                 checkout() {
-                    alert('Data pesanan siap dikirim ke database!');
-                    console.log('Order Data:', {
+                    if (this.cart.length === 0) return;
+                    
+                    // Simpan data ke variabel (untuk dikirim ke backend nantinya)
+                    const orderPayload = {
                         items: this.cart,
-                        coupon: this.couponCode,
-                        referral: this.referralCode,
-                        total: this.subtotal
-                    });
+                        total: this.subtotal,
+                        coupon: this.couponCode
+                    };
+
+                    console.log('Checkout Payload:', orderPayload);
+                    alert('Pesanan berhasil dibuat! Total: ' + this.formatCurrency(this.subtotal));
+                    
+                    // Reset setelah checkout
+                    this.cart = [];
+                    this.mobileCartOpen = false;
                 }
             }
         }
