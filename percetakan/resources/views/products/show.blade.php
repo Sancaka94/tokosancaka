@@ -1,78 +1,37 @@
-@extends('layouts.app')
-
-@section('title', 'Detail Produk')
-
-@section('content')
-
-    <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-        <div>
-            <h1 class="text-2xl font-bold text-slate-800 tracking-tight">Detail Produk</h1>
-            <p class="text-slate-500 font-medium text-sm">Analisa harga modal dan keuntungan.</p>
+<div class="p-8">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        
+        <div class="p-4 bg-slate-50 rounded-xl border border-slate-100 text-center">
+            <p class="text-xs font-bold text-slate-400 uppercase mb-1">Sisa Stok</p>
+            <p class="text-2xl font-black text-slate-800">{{ number_format($product->stock) }}</p>
+            <p class="text-[10px] text-slate-400 uppercase">{{ $product->unit }}</p>
         </div>
-        <div class="flex gap-3">
-            <a href="{{ route('products.index') }}" class="px-4 py-2 bg-white text-slate-600 border border-slate-200 rounded-lg font-bold shadow-sm hover:bg-slate-50 transition">Kembali</a>
-            <a href="{{ route('products.edit', $product->id) }}" class="px-4 py-2 bg-amber-500 text-white rounded-lg font-bold shadow-md hover:bg-amber-600 transition flex items-center gap-2"><i class="fas fa-edit"></i> Edit</a>
+
+        <div class="p-4 bg-slate-50 rounded-xl border border-slate-100 text-center">
+            <p class="text-xs font-bold text-slate-400 uppercase mb-1">Terjual</p>
+            <p class="text-2xl font-black text-slate-800">{{ number_format($product->sold) }}</p>
+            <p class="text-[10px] text-slate-400 uppercase">Unit</p>
         </div>
-    </div>
 
-    <div class="max-w-4xl mx-auto">
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-            
-            <div class="bg-indigo-600 p-8 flex flex-col items-center text-center relative overflow-hidden">
-                <div class="absolute top-0 right-0 p-4 opacity-10"><i class="fas fa-box text-9xl text-white"></i></div>
-                <h2 class="text-3xl font-black text-white tracking-tight relative z-10">{{ $product->name }}</h2>
-                <span class="mt-2 px-3 py-1 bg-white/20 text-white text-xs font-bold uppercase rounded-full tracking-widest backdrop-blur-sm relative z-10">Produk Aktif</span>
-            </div>
-
-            <div class="p-8">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    
-                    <div class="p-5 bg-slate-50 rounded-xl border border-slate-100 text-center">
-                        <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Harga Modal</p>
-                        <p class="text-xl font-bold text-slate-600">Rp {{ number_format($product->base_price, 0, ',', '.') }}</p>
-                    </div>
-
-                    <div class="p-5 bg-emerald-50 rounded-xl border border-emerald-100 text-center">
-                        <p class="text-xs font-bold text-emerald-500 uppercase tracking-widest mb-1">Harga Jual</p>
-                        <p class="text-2xl font-black text-emerald-600">Rp {{ number_format($product->sell_price, 0, ',', '.') }}</p>
-                    </div>
-
-                    <div class="p-5 bg-blue-50 rounded-xl border border-blue-100 text-center relative overflow-hidden">
-                        <div class="absolute -right-2 -top-2 text-blue-100 text-6xl opacity-50"><i class="fas fa-chart-line"></i></div>
-                        <p class="text-xs font-bold text-blue-500 uppercase tracking-widest mb-1">Estimasi Profit</p>
-                        <p class="text-xl font-bold text-blue-600">
-                            Rp {{ number_format($product->sell_price - $product->base_price, 0, ',', '.') }}
-                        </p>
-                        <p class="text-[10px] text-blue-400 mt-1 font-medium">Per {{ $product->unit }}</p>
-                    </div>
-
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="flex items-center gap-4 p-4 rounded-lg border border-slate-100">
-                        <div class="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500"><i class="fas fa-ruler"></i></div>
-                        <div>
-                            <p class="text-xs font-bold text-slate-400 uppercase">Satuan Unit</p>
-                            <p class="font-bold text-slate-700 capitalize">Hitungan per {{ $product->unit }}</p>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-4 p-4 rounded-lg border border-slate-100">
-                        <div class="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500"><i class="fas fa-calendar"></i></div>
-                        <div>
-                            <p class="text-xs font-bold text-slate-400 uppercase">Terakhir Update</p>
-                            <p class="font-bold text-slate-700">{{ $product->updated_at->format('d F Y, H:i') }}</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="bg-slate-50 px-8 py-4 border-t border-slate-100 flex justify-between items-center">
-                <span class="text-xs text-slate-400 font-medium">ID Produk: #{{ $product->id }}</span>
-                <form action="{{ route('products.destroy', $product->id) }}" method="POST" onsubmit="return confirm('Hapus permanen?');">
-                    @csrf @method('DELETE')
-                    <button type="submit" class="text-xs font-bold text-red-500 hover:text-red-700 transition flex items-center gap-1"><i class="fas fa-trash-alt"></i> Hapus Produk</button>
-                </form>
-            </div>
+        <div class="p-4 bg-blue-50 rounded-xl border border-blue-100 text-center col-span-2">
+            <p class="text-xs font-bold text-blue-500 uppercase mb-1">Estimasi Keuntungan</p>
+            <p class="text-2xl font-black text-blue-600">Rp {{ number_format($product->sell_price - $product->base_price, 0, ',', '.') }}</p>
+            <p class="text-[10px] text-blue-400">Per satu {{ $product->unit }}</p>
         </div>
     </div>
-@endsection
+
+    <div class="space-y-3">
+        <div class="flex justify-between p-3 border-b border-slate-100">
+            <span class="text-sm text-slate-500 font-medium">Supplier</span>
+            <span class="text-sm text-slate-800 font-bold">{{ $product->supplier ?? '-' }}</span>
+        </div>
+        <div class="flex justify-between p-3 border-b border-slate-100">
+            <span class="text-sm text-slate-500 font-medium">Harga Modal</span>
+            <span class="text-sm text-slate-800 font-bold">Rp {{ number_format($product->base_price, 0, ',', '.') }}</span>
+        </div>
+        <div class="flex justify-between p-3 border-b border-slate-100">
+            <span class="text-sm text-slate-500 font-medium">Harga Jual</span>
+            <span class="text-sm text-emerald-600 font-black">Rp {{ number_format($product->sell_price, 0, ',', '.') }}</span>
+        </div>
+    </div>
+</div>
