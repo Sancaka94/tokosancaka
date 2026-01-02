@@ -323,171 +323,168 @@
     </div>
 
     <script>
-        function posSystem() {
-            return {
-                mobileCartOpen: false,
-                showPaymentModal: false, // State Modal
-                search: '',
-                cart: [],
-                uploadedFiles: [],
-                isProcessing: false,
+    function posSystem() {
+        return {
+            mobileCartOpen: false,
+            showPaymentModal: false,
+            search: '',
+            cart: [],
+            uploadedFiles: [],
+            isProcessing: false,
+            
+            // Form Data
+            couponCode: '',
+            customerType: 'guest',
+            customerName: '',
+            customerPhone: '',
+            selectedCustomerId: '',
+            paymentMethod: 'cash',
+            cashAmount: '',
+
+            // --- COMPUTED ---
+            get subtotal() { return this.cart.reduce((sum, item) => sum + (item.price * item.qty), 0); },
+            get cartTotalQty() { return this.cart.reduce((sum, item) => sum + item.qty, 0); },
+            
+            get change() {
+                let received = parseInt(this.cashAmount) || 0;
+                return received - this.subtotal;
+            },
+
+            // --- HELPERS ---
+            rupiah(val) { return new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(val); },
+            
+            formatFileSize(bytes) {
+                if(bytes === 0) return '0 B';
+                const k = 1024; const sizes = ['B', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+            },
+            
+            itemMatchesSearch(name) { return name.toLowerCase().includes(this.search.toLowerCase()); },
+            
+            // --- [FIX] FUNGSI INI SEBELUMNYA HILANG ---
+            getItemQty(id) {
+                let item = this.cart.find(i => i.id === id);
+                return item ? item.qty : 0;
+            },
+            // -------------------------------------------
+
+            getSelectedMemberSaldo() {
+                if(!this.selectedCustomerId) return 0;
+                const select = document.querySelector(`select[x-model="selectedCustomerId"]`);
+                // Handle jika element belum render sempurna
+                if (!select) return 0;
                 
-                // Form Data
-                couponCode: '',
-                customerType: 'guest',
-                customerName: '',
-                customerPhone: '',
-                selectedCustomerId: '',
-                paymentMethod: 'cash',
-                cashAmount: '',
+                const option = select.querySelector(`option[value="${this.selectedCustomerId}"]`);
+                return option ? parseFloat(option.dataset.saldo) : 0;
+            },
 
-                // --- COMPUTED ---
-                get subtotal() { return this.cart.reduce((sum, item) => sum + (item.price * item.qty), 0); },
-                get cartTotalQty() { return this.cart.reduce((sum, item) => sum + item.qty, 0); },
+            // --- FUNGSI UTAMA ---
+            
+            openPaymentModal() {
+                if(this.cart.length === 0) { alert('Keranjang masih kosong!'); return; }
+                this.showPaymentModal = true;
+                if(this.paymentMethod !== 'cash') this.cashAmount = '';
+            },
+
+            addToCart(id, name, price, maxStock) {
+                if (maxStock <= 0) { alert('Stok Habis!'); return; }
+                let item = this.cart.find(i => i.id === id);
+                if (item) {
+                    if (item.qty < maxStock) item.qty++;
+                    else alert('Stok maksimal tercapai!');
+                } else {
+                    this.cart.push({ id, name, price, qty: 1, maxStock });
+                }
+                if(navigator.vibrate) navigator.vibrate(30);
+            },
+
+            updateQty(id, amount) {
+                let item = this.cart.find(i => i.id === id);
+                if (item) {
+                    if (amount > 0 && item.qty >= item.maxStock) { alert('Stok maksimal tercapai'); return; }
+                    item.qty += amount;
+                    if (item.qty <= 0) this.removeFromCart(id);
+                }
+            },
+
+            removeFromCart(id) { this.cart = this.cart.filter(i => i.id !== id); },
+            confirmClearCart() { if(confirm('Kosongkan keranjang?')) { this.cart = []; this.uploadedFiles = []; } },
+
+            handleFileUpload(event) {
+                const files = event.target.files;
+                for (let i = 0; i < files.length; i++) {
+                    if(files[i].size > 10 * 1024 * 1024) { alert(files[i].name + ' Terlalu besar (Max 10MB)'); continue; }
+                    this.uploadedFiles.push(files[i]);
+                }
+                event.target.value = '';
+            },
+            removeFile(index) { this.uploadedFiles.splice(index, 1); },
+
+            async checkout() {
+                // Validasi Client Side
+                if (this.paymentMethod === 'cash') {
+                    if (!this.cashAmount || this.change < 0) { alert('❌ Uang tunai kurang!'); return; }
+                } else if (this.paymentMethod === 'saldo') {
+                    if (!this.selectedCustomerId) { alert('❌ Pilih Member!'); return; }
+                    if (this.getSelectedMemberSaldo() < this.subtotal) { alert('❌ Saldo tidak cukup!'); return; }
+                }
+
+                this.isProcessing = true;
                 
-                get change() {
-                    let received = parseInt(this.cashAmount) || 0;
-                    return received - this.subtotal;
-                },
-
-                // --- HELPERS ---
-                rupiah(val) { return new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(val); },
+                let formData = new FormData();
+                formData.append('items', JSON.stringify(this.cart));
+                formData.append('total', this.subtotal);
+                formData.append('coupon', this.couponCode);
+                formData.append('payment_method', this.paymentMethod);
                 
-                formatFileSize(bytes) {
-                    if(bytes === 0) return '0 B';
-                    const k = 1024; const sizes = ['B', 'KB', 'MB', 'GB'];
-                    const i = Math.floor(Math.log(bytes) / Math.log(k));
-                    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-                },
-                
-                itemMatchesSearch(name) { return name.toLowerCase().includes(this.search.toLowerCase()); },
-                
-                getSelectedMemberSaldo() {
-                    if(!this.selectedCustomerId) return 0;
-                    const select = document.querySelector(`select[x-model="selectedCustomerId"]`);
-                    const option = select ? select.querySelector(`option[value="${this.selectedCustomerId}"]`) : null;
-                    return option ? parseFloat(option.dataset.saldo) : 0;
-                },
+                if(this.customerType === 'member' && this.selectedCustomerId) {
+                    formData.append('customer_id', this.selectedCustomerId);
+                } else {
+                    formData.append('customer_name', this.customerName || 'Guest');
+                    formData.append('customer_phone', this.customerPhone || '');
+                }
 
-                // --- FUNGSI UTAMA ---
-                
-                // 1. Buka Modal (Validasi Awal)
-                openPaymentModal() {
-                    if(this.cart.length === 0) {
-                        alert('Keranjang masih kosong!');
-                        return;
-                    }
-                    this.showPaymentModal = true;
-                    // Reset cash amount jika metode bukan cash atau kosong
-                    if(this.paymentMethod !== 'cash') this.cashAmount = '';
-                },
+                if(this.paymentMethod === 'cash') formData.append('cash_amount', this.cashAmount);
+                this.uploadedFiles.forEach(file => formData.append('attachments[]', file));
 
-                // 2. Tambah ke Cart
-                addToCart(id, name, price, maxStock) {
-                    if (maxStock <= 0) { alert('Stok Habis!'); return; }
-                    let item = this.cart.find(i => i.id === id);
-                    if (item) {
-                        if (item.qty < maxStock) item.qty++;
-                        else alert('Stok maksimal tercapai!');
-                    } else {
-                        this.cart.push({ id, name, price, qty: 1, maxStock });
-                    }
-                    if(navigator.vibrate) navigator.vibrate(30);
-                },
-
-                updateQty(id, amount) {
-                    let item = this.cart.find(i => i.id === id);
-                    if (item) {
-                        if (amount > 0 && item.qty >= item.maxStock) { alert('Stok maksimal tercapai'); return; }
-                        item.qty += amount;
-                        if (item.qty <= 0) this.removeFromCart(id);
-                    }
-                },
-
-                removeFromCart(id) { this.cart = this.cart.filter(i => i.id !== id); },
-                confirmClearCart() { if(confirm('Kosongkan keranjang?')) { this.cart = []; this.uploadedFiles = []; } },
-
-                // 3. File Upload
-                handleFileUpload(event) {
-                    const files = event.target.files;
-                    for (let i = 0; i < files.length; i++) {
-                        if(files[i].size > 10 * 1024 * 1024) { alert(files[i].name + ' Terlalu besar (Max 10MB)'); continue; }
-                        this.uploadedFiles.push(files[i]);
-                    }
-                    event.target.value = '';
-                },
-                removeFile(index) { this.uploadedFiles.splice(index, 1); },
-
-                // 4. CHECKOUT (Submit ke Server)
-                async checkout() {
-                    // Validasi di dalam Modal
-                    if (this.paymentMethod === 'cash') {
-                        if (!this.cashAmount || this.change < 0) {
-                            alert('❌ Uang tunai kurang dari total tagihan!'); return;
-                        }
-                    } else if (this.paymentMethod === 'saldo') {
-                        if (!this.selectedCustomerId) { alert('❌ Pilih Member untuk Potong Saldo!'); return; }
-                        if (this.getSelectedMemberSaldo() < this.subtotal) { alert('❌ Saldo Member tidak cukup!'); return; }
-                    }
-
-                    this.isProcessing = true;
+                try {
+                    const response = await fetch("{{ route('orders.store') }}", {
+                        method: "POST",
+                        headers: { 
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                            'Accept': 'application/json' // PENTING AGAR ERROR JADI JSON
+                        },
+                        body: formData
+                    });
                     
-                    let formData = new FormData();
-                    formData.append('items', JSON.stringify(this.cart));
-                    formData.append('total', this.subtotal);
-                    formData.append('coupon', this.couponCode);
-                    formData.append('payment_method', this.paymentMethod);
-                    
-                    // Data Pelanggan
-                    if(this.customerType === 'member' && this.selectedCustomerId) {
-                        formData.append('customer_id', this.selectedCustomerId);
+                    // Cek error HTML (500)
+                    const contentType = response.headers.get("content-type");
+                    if (!contentType || !contentType.includes("application/json")) {
+                        throw new Error("Terjadi kesalahan Server (Error 500). Cek file Service/Controller.");
+                    }
+
+                    const result = await response.json();
+
+                    if (result.status === 'success') {
+                        this.showPaymentModal = false;
+                        let msg = `✅ Transaksi Berhasil!\nInvoice: ${result.invoice}`;
+                        if(this.paymentMethod === 'cash') msg += `\n💰 KEMBALIAN: Rp ${this.rupiah(result.change_amount)}`;
+                        alert(msg);
+                        if (result.payment_url) window.open(result.payment_url, '_blank');
+                        window.location.reload();
                     } else {
-                        formData.append('customer_name', this.customerName || 'Guest');
-                        formData.append('customer_phone', this.customerPhone || '');
+                        throw new Error(result.message);
                     }
-
-                    // Data Cash
-                    if(this.paymentMethod === 'cash') {
-                        formData.append('cash_amount', this.cashAmount);
-                    }
-
-                    // Files
-                    this.uploadedFiles.forEach(file => formData.append('attachments[]', file));
-
-                    try {
-                        const response = await fetch("{{ route('orders.store') }}", {
-                            method: "POST",
-                            headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content') },
-                            body: formData
-                        });
-                        
-                        const result = await response.json();
-
-                        if (result.status === 'success') {
-                            this.showPaymentModal = false; // Tutup Modal
-                            
-                            let msg = `✅ Transaksi Berhasil!\nInvoice: ${result.invoice}`;
-                            if(this.paymentMethod === 'cash') msg += `\n💰 KEMBALIAN: Rp ${this.rupiah(result.change_amount)}`;
-                            
-                            alert(msg);
-
-                            // Redirect Pembayaran Online
-                            if (result.payment_url) {
-                                window.open(result.payment_url, '_blank');
-                            }
-
-                            window.location.reload();
-                        } else {
-                            throw new Error(result.message);
-                        }
-                    } catch (error) {
-                        alert('❌ Gagal: ' + error.message);
-                    } finally {
-                        this.isProcessing = false;
-                    }
+                } catch (error) {
+                    console.error(error);
+                    alert('❌ Gagal: ' + error.message);
+                } finally {
+                    this.isProcessing = false;
                 }
             }
         }
-    </script>
+    }
+</script>
 </body>
 </html>
