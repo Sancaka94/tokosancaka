@@ -7,7 +7,7 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\AffiliateController;
-
+use App\Http\Controllers\CouponController;
 
 
 Route::middleware(['auth'])->group(function () {
@@ -46,6 +46,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/products/{product}', [ProductController::class, 'destroy'])->name('products.destroy');
 
     Route::resource('products', ProductController::class);
+    Route::resource('coupons', CouponController::class);
 });
 
 Route::get('/orders/create', [OrderController::class, 'create'])->name('orders.create');

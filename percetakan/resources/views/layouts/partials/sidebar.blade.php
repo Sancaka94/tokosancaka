@@ -54,9 +54,12 @@
             <span>Partner Afiliasi</span>
         </a>
 
-        <a href="#" 
-           class="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-colors duration-200">
-            <i class="fas fa-ticket-alt w-5 text-center text-amber-400"></i>
+        <a href="{{ route('coupons.index') }}" 
+           class="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors duration-200
+           {{ request()->routeIs('coupons.index') 
+              ? 'bg-blue-600 text-white shadow-md' 
+              : 'text-slate-300 hover:bg-slate-700 hover:text-white' }}">
+            <i class="fas fa-ticket-alt w-5 text-center {{ request()->routeIs('coupons.index') ? 'text-white' : 'text-amber-400' }}"></i>
             <span>Manajemen Kupon</span>
         </a>
 
@@ -71,12 +74,6 @@
               : 'text-slate-300 hover:bg-slate-700 hover:text-white' }}">
             <i class="fas fa-box-open w-5 text-center {{ request()->routeIs('products.index') ? 'text-white' : 'text-slate-400' }}"></i>
             <span>Data Produk</span>
-        </a>
-
-        <a href="#" 
-           class="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-colors duration-200">
-            <i class="fas fa-user-friends w-5 text-center text-slate-400"></i>
-            <span>Data Pelanggan</span>
         </a>
 
     </nav>
