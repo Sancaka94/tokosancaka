@@ -42,9 +42,8 @@
 
         <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
             
-            <header class="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-4 lg:px-6">
-                    <div class="flex items-center gap-4">@include('layouts.partials.header')</div>
-            </header>
+          @include('layouts.partials.header')
+          
 
             <main class="flex-1 overflow-y-auto p-4 lg:p-6">
                 
