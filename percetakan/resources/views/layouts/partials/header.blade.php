@@ -1,5 +1,17 @@
 <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 lg:px-6 sticky top-0 z-40 shadow-sm" x-data="{ userOpen: false }">
     
+    <aside class="flex-shrink-0 w-64 bg-slate-800 text-white transition-all duration-300 ease-in-out flex flex-col"
+               :class="sidebarOpen ? 'translate-x-0' : '-translate-x-64 absolute h-full z-50 lg:relative lg:translate-x-0 lg:w-64'">
+               
+            <div class="h-14 flex items-center justify-center border-b border-slate-700 bg-slate-900 px-4">
+                <span class="text-xl font-bold tracking-wider">SANCAKA<span class="font-light">POS</span></span>
+            </div>
+
+            <nav class="flex-1 overflow-y-auto py-4 px-2 space-y-1">
+                @include('layouts.partials.sidebar') 
+                </nav>
+        </aside>
+
     <div class="flex items-center gap-4">
         <button @click="sidebarOpen = !sidebarOpen" class="text-slate-500 hover:text-indigo-600 focus:outline-none lg:hidden p-2 rounded-md hover:bg-slate-50 transition-colors">
             <i class="fas fa-bars text-xl"></i>

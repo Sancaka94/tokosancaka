@@ -27,18 +27,6 @@
 <body class="bg-gray-100 text-gray-800 antialiased" x-data="{ sidebarOpen: true, darkMode: false }">
 
     <div class="flex h-screen overflow-hidden">
-        
-        <aside class="flex-shrink-0 w-64 bg-slate-800 text-white transition-all duration-300 ease-in-out flex flex-col"
-               :class="sidebarOpen ? 'translate-x-0' : '-translate-x-64 absolute h-full z-50 lg:relative lg:translate-x-0 lg:w-64'">
-               
-            <div class="h-14 flex items-center justify-center border-b border-slate-700 bg-slate-900 px-4">
-                <span class="text-xl font-bold tracking-wider">SANCAKA<span class="font-light">POS</span></span>
-            </div>
-
-            <nav class="flex-1 overflow-y-auto py-4 px-2 space-y-1">
-                @include('layouts.partials.sidebar') 
-                </nav>
-        </aside>
 
         <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
             
