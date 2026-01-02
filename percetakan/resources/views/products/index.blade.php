@@ -123,15 +123,31 @@
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 text-center">
-                                    <form action="{{ route('products.destroy', $product->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus produk {{ $product->name }}?');">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" 
-                                                class="h-8 w-8 rounded-full bg-white border border-slate-200 text-slate-400 hover:text-red-500 hover:border-red-200 hover:bg-red-50 transition-all flex items-center justify-center shadow-sm"
-                                                title="Hapus Produk">
-                                            <i class="fas fa-trash-alt text-xs"></i>
-                                        </button>
-                                    </form>
+                                    <div class="flex items-center justify-center gap-2">
+                                        
+                                        <a href="#" 
+                                           class="h-8 w-8 rounded-full bg-white border border-slate-200 text-slate-400 hover:text-blue-500 hover:border-blue-200 hover:bg-blue-50 transition-all flex items-center justify-center shadow-sm"
+                                           title="Lihat Detail">
+                                            <i class="fas fa-eye text-xs"></i>
+                                        </a>
+
+                                        <a href="#" 
+                                           class="h-8 w-8 rounded-full bg-white border border-slate-200 text-slate-400 hover:text-amber-500 hover:border-amber-200 hover:bg-amber-50 transition-all flex items-center justify-center shadow-sm"
+                                           title="Edit Produk">
+                                            <i class="fas fa-pencil-alt text-xs"></i>
+                                        </a>
+
+                                        <form action="{{ route('products.destroy', $product->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus produk {{ $product->name }}?');">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" 
+                                                    class="h-8 w-8 rounded-full bg-white border border-slate-200 text-slate-400 hover:text-red-500 hover:border-red-200 hover:bg-red-50 transition-all flex items-center justify-center shadow-sm"
+                                                    title="Hapus Produk">
+                                                <i class="fas fa-trash-alt text-xs"></i>
+                                            </button>
+                                        </form>
+
+                                    </div>
                                 </td>
                             </tr>
                             @empty
