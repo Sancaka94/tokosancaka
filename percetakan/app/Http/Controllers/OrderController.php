@@ -243,7 +243,7 @@ class OrderController extends Controller
                 $customerData = [
                     'name'  => $order->customer_name,
                     'email' => 'customer@tokosancaka.com', // Email wajib, gunakan dummy jika guest
-                    'phone' => $order->customer_phone ?? '081234567890',
+                    'phone' => $order->customer_phone ?? '085745808809',
                 ];
 
                 // 2. Jika customer member terdaftar, ambil email aslinya
