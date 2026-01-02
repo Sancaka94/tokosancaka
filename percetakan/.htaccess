@@ -1,0 +1,5 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    # Reset base agar tidak ikut induk
+    RewriteBase /
+</IfModule>
