@@ -52,5 +52,7 @@ Route::post('/orders/store', [OrderController::class, 'store'])->name('orders.st
 
 Route::resource('reports', ReportController::class)->except(['create', 'store']);
 
+Route::get('/reports/export', [ReportController::class, 'export'])->name('reports.export');
+
 // Pastikan baris ini ada di paling bawah untuk memuat rute Login/Register
 require __DIR__.'/auth.php';
