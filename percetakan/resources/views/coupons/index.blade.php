@@ -219,7 +219,8 @@
             editCoupon(coupon) {
                 this.isModalOpen = true;
                 this.modalTitle = 'Edit Kupon: ' + coupon.code;
-                this.formAction = `/coupons/${coupon.id}`; // URL Update
+                // PERBAIKAN: Gunakan helper route Laravel agar subfolder terbawa otomatis
+                this.formAction = "{{ route('coupons.index') }}/" + coupon.id;
                 this.formMethod = 'PUT'; // Method Spoofing Laravel
                 
                 // Format tanggal agar bisa masuk ke input type="date"
