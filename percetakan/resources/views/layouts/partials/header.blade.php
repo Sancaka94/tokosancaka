@@ -4,10 +4,6 @@
         <button @click="sidebarOpen = !sidebarOpen" class="text-slate-500 hover:text-indigo-600 focus:outline-none lg:hidden p-2 rounded-md hover:bg-slate-50 transition-colors">
             <i class="fas fa-bars text-xl"></i>
         </button>
-
-        <div class="hidden sm:block">
-            <h1 class="text-lg font-bold text-slate-800 tracking-tight">Dashboard</h1>
-        </div>
     </div>
 
     <div class="flex items-center gap-2 sm:gap-4">
