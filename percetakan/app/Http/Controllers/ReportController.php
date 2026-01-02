@@ -9,31 +9,38 @@ use Illuminate\Support\Facades\Storage;
 
 class ReportController extends Controller
 {
-    /**
-     * 1. READ (INDEX) - Menampilkan Laporan & Filter
-     */
     public function index(Request $request)
     {
-        // Filter Tanggal (Default: Bulan Ini)
-        $fromDate = $request->get('from_date', Carbon::now()->startOfMonth()->format('Y-m-d'));
-        $toDate = $request->get('to_date', Carbon::now()->endOfMonth()->format('Y-m-d'));
+        // 1. Filter Tanggal
+        $fromDate = $request->from_date ?? now()->startOfMonth()->format('Y-m-d');
+        $toDate = $request->to_date ?? now()->endOfMonth()->format('Y-m-d');
 
-        // Query Dasar
-        $query = Order::whereDate('created_at', '>=', $fromDate)
-                      ->whereDate('created_at', '<=', $toDate);
+        // 2. Query Dasar
+        $query = Order::query()
+            ->with(['details.product']) // Eager load untuk performa
+            ->whereDate('created_at', '>=', $fromDate)
+            ->whereDate('created_at', '<=', $toDate);
 
-        // Hitung Ringkasan (Cloning query agar tidak merusak pagination)
-        $totalOmzet   = (clone $query)->where('payment_status', 'paid')->sum('final_price');
-        $totalPesanan = (clone $query)->count();
-        $piutang      = (clone $query)->where('payment_status', 'unpaid')->sum('final_price');
+        // 3. Clone query untuk hitungan ringkasan
+        $ordersForStats = (clone $query)->get(); // Ambil semua data sesuai filter
 
-        // Ambil Data (Pagination)
-        $orders = $query->with('details') // Eager load untuk performa
-                        ->orderBy('created_at', 'desc')
-                        ->paginate(10)
-                        ->withQueryString();
+        $totalOmzet = $ordersForStats->where('payment_status', 'paid')->sum('final_price');
+        $totalPesanan = $ordersForStats->count();
+        $piutang = $ordersForStats->where('payment_status', 'unpaid')->sum('final_price');
 
-        return view('reports.index', compact('orders', 'totalOmzet', 'totalPesanan', 'piutang', 'fromDate', 'toDate'));
+        // 4. Hitung Total Profit (Looping data yang sudah diambil)
+        $totalProfit = 0;
+        foreach ($ordersForStats as $o) {
+            // Hanya hitung profit jika status LUNAS (opsional, tergantung kebijakan toko)
+            if ($o->payment_status == 'paid') {
+                $totalProfit += $o->profit; // Memanggil accessor getProfitAttribute yg dibuat di Model
+            }
+        }
+
+        // 5. Data Tabel (Pagination)
+        $orders = $query->latest()->paginate(10)->withQueryString();
+
+        return view('reports.index', compact('orders', 'fromDate', 'toDate', 'totalOmzet', 'totalPesanan', 'piutang', 'totalProfit'));
     }
 
     /**

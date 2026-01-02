@@ -40,4 +40,22 @@ class Order extends Model
     {
         return $this->belongsTo(User::class, 'user_id');
     }
+
+    // Tambahkan ke app/Models/Order.php
+
+    // Accessor untuk memanggil $order->profit
+    public function getProfitAttribute()
+    {
+        $totalModal = 0;
+
+        foreach ($this->details as $item) {
+            // Ambil harga modal dari produk terkait
+            // Pastikan tabel products punya kolom 'buy_price' (harga beli/modal)
+            $modalPerItem = $item->product->buy_price ?? 0; 
+            $totalModal += ($modalPerItem * $item->quantity);
+        }
+
+        // Profit = Harga Jual Akhir - Total Modal
+        return $this->final_price - $totalModal;
+    }
 }
