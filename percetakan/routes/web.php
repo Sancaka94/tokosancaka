@@ -50,5 +50,7 @@ Route::get('/orders/create', [OrderController::class, 'create'])->name('orders.c
 // Proses Simpan Pesanan (API Endpoint untuk AJAX)
 Route::post('/orders/store', [OrderController::class, 'store'])->name('orders.store');
 
+Route::resource('reports', ReportController::class)->except(['create', 'store']);
+
 // Pastikan baris ini ada di paling bawah untuk memuat rute Login/Register
 require __DIR__.'/auth.php';
