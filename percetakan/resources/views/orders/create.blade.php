@@ -32,7 +32,7 @@
             <div class="p-4 bg-white shadow-sm z-20 flex flex-col sm:flex-row gap-3 items-center justify-between shrink-0">
                 <div class="w-full sm:w-auto">
                     <h1 class="text-xl font-bold text-slate-800 flex items-center gap-2">
-                        <i class="fas fa-print text-indigo-600"></i>
+                        <i class="fas fa-print text-red-600"></i>
                         <span>Sancaka POS</span>
                     </h1>
                 </div>
@@ -40,13 +40,13 @@
                 <div class="relative w-full sm:max-w-md">
                     <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fas fa-search"></i></span>
                     <input type="text" x-model="search" placeholder="Cari layanan atau produk..." 
-                           class="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-100 border-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm font-medium">
+                           class="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-100 border-none focus:ring-2 focus:ring-red-500 transition-all text-sm font-medium">
                     <button x-show="search.length > 0" @click="search = ''" class="absolute inset-y-0 right-0 pr-3 text-slate-400 hover:text-slate-600">
                         <i class="fas fa-times-circle"></i>
                     </button>
                 </div>
 
-                <button @click="mobileCartOpen = !mobileCartOpen" class="lg:hidden relative p-3 bg-indigo-50 rounded-xl text-indigo-700">
+                <button @click="mobileCartOpen = !mobileCartOpen" class="lg:hidden relative p-3 bg-red-50 rounded-xl text-red-700">
                     <i class="fas fa-shopping-cart text-lg"></i>
                     <span x-show="cartTotalQty > 0" class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold h-5 w-5 flex items-center justify-center rounded-full border-2 border-white" x-text="cartTotalQty"></span>
                 </button>
@@ -58,7 +58,7 @@
                     <template x-if="itemMatchesSearch('{{ $product->name }}')">
                         <div @click="addToCart({{ $product->id }}, '{{ $product->name }}', {{ $product->sell_price }}, {{ $product->stock }})"
                              class="relative bg-white rounded-2xl p-3 sm:p-4 shadow-sm border border-slate-100 transition-all flex flex-col h-full group
-                             {{ $product->stock <= 0 ? 'opacity-60 cursor-not-allowed grayscale' : 'cursor-pointer active:scale-95 active:border-indigo-500 hover:shadow-md' }}">
+                             {{ $product->stock <= 0 ? 'opacity-60 cursor-not-allowed grayscale' : 'cursor-pointer active:scale-95 active:border-red-500 hover:shadow-md' }}">
                             
                             <div class="absolute top-2 left-2 z-10">
                                 @if($product->stock <= 0)
@@ -71,11 +71,11 @@
                             </div>
 
                             <div x-show="getItemQty({{ $product->id }}) > 0" 
-                                 class="absolute top-2 right-2 bg-indigo-600 text-white text-xs font-bold h-6 w-6 rounded-full flex items-center justify-center shadow-md z-10"
+                                 class="absolute top-2 right-2 bg-red-600 text-white text-xs font-bold h-6 w-6 rounded-full flex items-center justify-center shadow-md z-10"
                                  x-text="getItemQty({{ $product->id }})">
                             </div>
 
-                            <div class="aspect-square bg-indigo-50 rounded-xl flex items-center justify-center mb-3 text-3xl sm:text-4xl mt-4">
+                            <div class="aspect-square bg-red-50 rounded-xl flex items-center justify-center mb-3 text-3xl sm:text-4xl mt-4">
                                 📦
                             </div>
 
@@ -83,7 +83,7 @@
                                 <h3 class="font-bold text-slate-800 text-sm leading-tight mb-1 line-clamp-2">{{ $product->name }}</h3>
                                 <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-auto">{{ $product->unit }}</p>
                                 
-                                <p class="text-indigo-600 font-black text-sm sm:text-base mt-2">
+                                <p class="text-red-600 font-black text-sm sm:text-base mt-2">
                                     Rp {{ number_format($product->sell_price, 0, ',', '.') }}
                                 </p>
                             </div>
@@ -102,7 +102,7 @@
             <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                 <div class="flex items-center gap-2">
                     <h2 class="font-bold text-lg text-slate-800">Detail Pesanan</h2>
-                    <span class="bg-indigo-100 text-indigo-700 text-[10px] font-bold px-2 py-0.5 rounded">#{{ date('Hi') }}</span>
+                    <span class="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded">#{{ date('Hi') }}</span>
                 </div>
                 <button @click="mobileCartOpen = false" class="lg:hidden p-2 text-slate-400 hover:text-slate-600"><i class="fas fa-times text-xl"></i></button>
                 <button x-show="cart.length > 0" @click="confirmClearCart()" class="hidden lg:block text-xs font-bold text-red-500 hover:text-red-700"><i class="fas fa-trash-alt mr-1"></i> Reset</button>
@@ -119,7 +119,7 @@
                 <template x-for="item in cart" :key="item.id">
                     <div class="flex items-center gap-3 p-3 rounded-xl bg-white border border-slate-100 shadow-sm">
                         <div class="flex flex-col items-center gap-1 bg-slate-50 rounded-lg p-1">
-                            <button @click="updateQty(item.id, 1, item.maxStock)" class="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-md text-indigo-600 shadow-sm active:scale-90 transition-transform">
+                            <button @click="updateQty(item.id, 1, item.maxStock)" class="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-md text-red-600 shadow-sm active:scale-90 transition-transform">
                                 <i class="fas fa-plus text-xs"></i>
                             </button>
                             <span class="font-bold text-sm py-1 w-8 text-center" x-text="item.qty"></span>
@@ -131,7 +131,7 @@
                         <div class="flex-1 min-w-0">
                             <div class="font-bold text-slate-800 text-sm truncate" x-text="item.name"></div>
                             <div class="text-[10px] text-slate-400 mt-0.5">Sisa Stok: <span x-text="item.maxStock - item.qty"></span></div>
-                            <div class="font-bold text-indigo-600 text-sm mt-1" x-text="formatCurrency(item.price * item.qty)"></div>
+                            <div class="font-bold text-red-600 text-sm mt-1" x-text="formatCurrency(item.price * item.qty)"></div>
                         </div>
 
                         <button @click="removeFromCart(item.id)" class="p-2 text-slate-300 hover:text-red-500 transition-colors"><i class="fas fa-trash-alt"></i></button>
@@ -141,7 +141,7 @@
 
             <div class="p-4 bg-white border-t border-slate-100 shadow-[0_-5px_15px_rgba(0,0,0,0.05)] z-20">
                 <div x-data="{ showPromo: false }" class="mb-4">
-                    <button @click="showPromo = !showPromo" class="text-xs font-bold text-indigo-600 flex items-center gap-1 mb-2"><i class="fas fa-tag"></i> <span>Punya kode promo?</span></button>
+                    <button @click="showPromo = !showPromo" class="text-xs font-bold text-red-600 flex items-center gap-1 mb-2"><i class="fas fa-tag"></i> <span>Punya kode promo?</span></button>
                     <div x-show="showPromo" class="flex gap-2" x-transition><input type="text" x-model="couponCode" placeholder="Masukkan kode..." class="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm"><button class="bg-slate-800 text-white px-3 py-2 rounded-lg text-xs font-bold">Gunakan</button></div>
                 </div>
 
@@ -153,7 +153,7 @@
                     <div class="text-2xl font-black text-slate-800" x-text="formatCurrency(subtotal)"></div>
                 </div>
 
-                <button @click="checkout()" :disabled="cart.length === 0" class="w-full bg-indigo-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-indigo-200 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3">
+                <button @click="checkout()" :disabled="cart.length === 0" class="w-full bg-red-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-red-200 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3">
                     <i class="fas fa-cash-register"></i><span>Bayar Sekarang</span>
                 </button>
             </div>
