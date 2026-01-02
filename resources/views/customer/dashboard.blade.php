@@ -124,12 +124,12 @@
         <table class="min-w-full text-sm relative">
             <thead class="bg-red-100 sticky top-0 z-10 shadow-sm">
                 <tr>
-                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase bg-gray-50">Tanggal</th>
-                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase bg-gray-50">Order Id / Invoice</th>
-                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase bg-gray-50">Ekspedisi</th>
-                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase bg-gray-50">Status</th>
-                    <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase bg-gray-50">Biaya Ongkir</th>
-                    <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase bg-gray-50">Lacak</th>
+                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase bg-red-100">Tanggal</th>
+                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase bg-red-100">Order Id / Invoice</th>
+                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase bg-red-100">Ekspedisi</th>
+                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase bg-red-100">Status</th>
+                    <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase bg-red-100">Biaya Ongkir</th>
+                    <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase bg-red-100">Lacak</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-200">
