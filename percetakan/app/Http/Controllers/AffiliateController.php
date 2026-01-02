@@ -10,6 +10,29 @@ use Illuminate\Support\Facades\DB;
 
 class AffiliateController extends Controller
 {
+    public function index()
+    {
+        // Ambil data afiliasi beserta kupon dan order-nya (Hanya order yang SUDAH LUNAS)
+        $affiliates = Affiliate::with(['coupon.orders' => function($query) {
+            $query->where('payment_status', 'paid'); 
+        }])->latest()->get();
+
+        // Hitung Ringkasan untuk Card di atas
+        $totalAffiliates = $affiliates->count();
+        $totalTransactions = 0;
+        $totalRevenueGenerated = 0; // Total omzet toko dari afiliasi
+
+        foreach($affiliates as $aff) {
+            if($aff->coupon) {
+                $orders = $aff->coupon->orders;
+                $totalTransactions += $orders->count();
+                $totalRevenueGenerated += $orders->sum('final_price');
+            }
+        }
+
+        return view('affiliate.index', compact('affiliates', 'totalAffiliates', 'totalTransactions', 'totalRevenueGenerated'));
+    }
+    
     public function create()
     {
         return view('affiliate.register');

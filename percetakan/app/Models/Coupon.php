@@ -106,4 +106,10 @@ class Coupon extends Model
         // Jika tipe 'fixed' (potongan nominal langsung)
         return $this->value;
     }
+
+    // Relasi ke tabel orders (Untuk menghitung total omzet yg dihasilkan kupon ini)
+    public function orders()
+    {
+        return $this->hasMany(Order::class, 'coupon_id');
+    }
 }
