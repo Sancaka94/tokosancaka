@@ -231,7 +231,7 @@
                 {{ $status }}
             </span>
         </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-right font-semibold text-gray-800">
+                    <td class="px-6 py-4 whitespace-nowrap text-left font-semibold text-gray-800">
                         Rp {{ number_format($order->shipping_cost, 0, ',', '.') }}
                     </td>
                     
