@@ -9,22 +9,29 @@ class OrderDetail extends Model
 {
     use HasFactory;
 
-    public $timestamps = true; // Sekarang tabel sudah punya kolom waktu
+    // Aktifkan timestamps karena kita sudah menambahkan kolom created_at & updated_at di SQL sebelumnya
+    public $timestamps = true;
 
+    // PENTING: Daftarkan semua nama kolom ini agar bisa disimpan
     protected $fillable = [
         'order_id',
         'product_id',
-        'product_name',   // Kolom baru
-        'price_at_order', // SESUAI DATABASE ANDA (bukan 'price')
-        'quantity',       // SESUAI DATABASE ANDA (bukan 'qty', lihat gambar image_d0c72b.png)
+        'product_name',   // Kolom yang baru ditambahkan
+        'price_at_order', // WAJIB ADA (Penyebab Error Anda)
+        'quantity',       // WAJIB ADA
         'subtotal',
-        'file_design',    // Sesuai gambar database
-        'width',
-        'height'
+        'file_design',    // Sesuai struktur database lama Anda
+        'width',          // Sesuai struktur database lama Anda
+        'height'          // Sesuai struktur database lama Anda
     ];
 
     public function product()
     {
         return $this->belongsTo(Product::class);
+    }
+    
+    public function order()
+    {
+        return $this->belongsTo(Order::class);
     }
 }
