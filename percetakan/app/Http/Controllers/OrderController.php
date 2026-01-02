@@ -110,19 +110,19 @@ class OrderController extends Controller
                 $prod = $data['product'];
                 
                 OrderDetail::create([
-                    'order_id'     => $order->id,
-                    'product_id'   => $prod->id,
-                    'product_name' => $prod->name,
-                    'price'        => $prod->sell_price, // Harga Jual
-                    'qty'          => $data['qty'],
-                    'subtotal'     => $data['subtotal'],
+                    'order_id'       => $order->id,
+                    'product_id'     => $prod->id,
+                    'product_name'   => $prod->name,     // Disimpan ke kolom baru
+                    'price_at_order' => $prod->sell_price, // SESUAIKAN DENGAN DB (price_at_order)
+                    'quantity'       => $data['qty'],      // SESUAIKAN DENGAN DB (quantity)
+                    'subtotal'       => $data['subtotal'],
                 ]);
 
                 // Kurangi Stok & Tambah Terjual
                 $prod->decrement('stock', $data['qty']);
                 $prod->increment('sold', $data['qty']);
                 
-                // Jika stok habis, set status unavailable
+                // Update status jika habis
                 if ($prod->stock <= 0) {
                     $prod->update(['stock_status' => 'unavailable']);
                 }
