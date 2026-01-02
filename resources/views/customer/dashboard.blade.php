@@ -122,7 +122,7 @@
 
     <div class="overflow-x-auto overflow-y-auto max-h-96">
         <table class="min-w-full text-sm relative">
-            <thead class="bg-gray-50 sticky top-0 z-10 shadow-sm">
+            <thead class="bg-red-100 sticky top-0 z-10 shadow-sm">
                 <tr>
                     <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase bg-gray-50">Tanggal</th>
                     <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase bg-gray-50">Order Id / Invoice</th>
