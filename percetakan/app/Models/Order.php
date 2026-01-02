@@ -11,30 +11,33 @@ class Order extends Model
 
     protected $fillable = [
         'order_number',
-        'customer_name',
+        'user_id',          // Baru (ID Customer Registered)
+        'customer_name',    // Nama Tamu (Guest) atau Nama User
         'customer_phone',
         'coupon_id',
-        'referral_id',
         'total_price',
         'discount_amount',
         'final_price',
+        'payment_method',   // Baru
+        'payment_url',      // Baru
         'status',
         'payment_status',
         'note'
     ];
 
-    // RELASI KE DETAIL ORDER
     public function details()
     {
-        // SALAH: return hasMany(OrderDetail::class);
-        // BENAR: Pakai $this->
         return $this->hasMany(OrderDetail::class);
     }
 
-    // RELASI KE FILE LAMPIRAN
     public function attachments()
     {
-        // BENAR: Pakai $   this->
         return $this->hasMany(OrderAttachment::class);
+    }
+
+    // Relasi ke Customer (User)
+    public function customer()
+    {
+        return $this->belongsTo(User::class, 'user_id');
     }
 }
