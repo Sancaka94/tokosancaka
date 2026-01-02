@@ -9,11 +9,7 @@ class Order extends Model
 {
     use HasFactory;
 
-    // Pastikan timestamps aktif agar created_at & updated_at terisi otomatis
-    public $timestamps = true;
-
     protected $fillable = [
-        // 'invoice_number',   // PENTING: Tambahkan ini
         'order_number',
         'customer_name',
         'customer_phone',
@@ -27,22 +23,18 @@ class Order extends Model
         'note'
     ];
 
-    // Relasi ke detail pesanan (One to Many)
+    // RELASI KE DETAIL ORDER
     public function details()
     {
-        return $this.hasMany(OrderDetail::class);
+        // SALAH: return hasMany(OrderDetail::class);
+        // BENAR: Pakai $this->
+        return $this->hasMany(OrderDetail::class);
     }
 
-    // Relasi ke kupon
-    public function coupon()
-    {
-        return $this->belongsTo(Coupon::class);
-    }
-
-    // Relasi ke Attachments (File)
+    // RELASI KE FILE LAMPIRAN
     public function attachments()
     {
+        // BENAR: Pakai $   this->
         return $this->hasMany(OrderAttachment::class);
     }
-
 }
