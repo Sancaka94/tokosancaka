@@ -8,9 +8,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\AffiliateController;
 
-// Route untuk Halaman Depan (Publik)
-Route::get('/join-partner', [AffiliateController::class, 'create'])->name('affiliate.create');
-Route::post('/join-partner', [AffiliateController::class, 'store'])->name('affiliate.store');
+
 
 Route::middleware(['auth'])->group(function () {
 });
@@ -59,6 +57,13 @@ Route::post('/orders/store', [OrderController::class, 'store'])->name('orders.st
 Route::post('/orders/check-coupon', [OrderController::class, 'checkCoupon'])->name('orders.check-coupon');
 
 Route::get('/reports/export', [ReportController::class, 'export'])->name('reports.export');
+
+
+// Route untuk Halaman Depan (Publik)
+Route::get('/join-partner', [AffiliateController::class, 'create'])->name('affiliate.create');
+Route::post('/join-partner', [AffiliateController::class, 'store'])->name('affiliate.store');
+// Route untuk Admin melihat daftar Afiliasi
+Route::get('/affiliates', [AffiliateController::class, 'index'])->name('affiliate.index');
 
 // Resourceful Routes untuk Order
 Route::resource('reports', ReportController::class)->except(['create', 'store']);
