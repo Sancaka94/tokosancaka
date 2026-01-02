@@ -28,56 +28,26 @@
                     </div>
                 </div>
 
-                <form action="{{ route('products.store') }}" method="POST" class="space-y-4">
-                    @csrf
-                    
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Nama Produk <span class="text-red-500">*</span></label>
-                        <input type="text" name="name" required placeholder="Contoh: Kertas A4 70gsm" 
-                               class="w-full px-3 py-2 rounded-lg border-slate-300 focus:ring-indigo-500 transition text-sm">
-                    </div>
+                <form action="{{ route('products.store') }}" method="POST" class="space-y-4" 
+      x-data="{ submitting: false }" 
+      @submit="submitting = true">
+    
+    @csrf
+    
+    <button type="submit" 
+            class="w-full py-3 bg-slate-800 hover:bg-slate-900 text-white rounded-lg font-bold shadow-md transition flex items-center justify-center gap-2 mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
+            :disabled="submitting">
+        
+        <span x-show="!submitting" class="flex items-center gap-2">
+            <i class="fas fa-save"></i> Simpan Data
+        </span>
 
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Modal (Rp)</label>
-                            <input type="number" name="base_price" required placeholder="0" class="w-full px-3 py-2 rounded-lg border-slate-300 transition text-sm bg-slate-50">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-emerald-600 uppercase mb-1">Jual (Rp)</label>
-                            <input type="number" name="sell_price" required placeholder="0" class="w-full px-3 py-2 rounded-lg border-emerald-300 transition text-sm bg-emerald-50 text-emerald-700 font-bold">
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Stok Awal</label>
-                            <input type="number" name="stock" required placeholder="0" class="w-full px-3 py-2 rounded-lg border-slate-300 transition text-sm">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Satuan</label>
-                            <select name="unit" class="w-full px-3 py-2 rounded-lg border-slate-300 bg-white text-sm">
-                                <option value="pcs">Pcs</option>
-                                <option value="box">Box</option>
-                                <option value="rim">Rim</option>
-                                <option value="meter">Meter</option>
-                                <option value="paket">Paket</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Nama Supplier</label>
-                        <div class="relative">
-                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fas fa-truck"></i></span>
-                            <input type="text" name="supplier" placeholder="Contoh: PT. Sinar Dunia" 
-                                   class="w-full pl-9 pr-3 py-2 rounded-lg border-slate-300 focus:ring-indigo-500 transition text-sm">
-                        </div>
-                    </div>
-
-                    <button type="submit" class="w-full py-3 bg-slate-800 hover:bg-slate-900 text-white rounded-lg font-bold shadow-md transition flex items-center justify-center gap-2 mt-4">
-                        <i class="fas fa-save"></i> Simpan Data
-                    </button>
-                </form>
+        <span x-show="submitting" class="flex items-center gap-2" style="display: none;">
+            <i class="fas fa-spinner fa-spin"></i> Menyimpan...
+        </span>
+        
+    </button>
+</form>
             </div>
         </div>
 
