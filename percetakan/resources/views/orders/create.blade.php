@@ -12,13 +12,10 @@
     
     <style>
         [x-cloak] { display: none !important; }
-        /* Custom Scrollbar */
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-        
-        /* Hide Number Arrows */
         input[type=number]::-webkit-inner-spin-button, 
         input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
     </style>
@@ -28,7 +25,6 @@
     <div class="flex h-full w-full flex-col lg:flex-row overflow-hidden">
         
         <div class="flex-1 flex flex-col h-full relative border-r border-slate-200">
-            
             <div class="h-16 px-4 bg-white shadow-sm z-20 flex items-center justify-between shrink-0 border-b border-slate-100">
                 <div class="flex items-center gap-2">
                     <div class="h-8 w-8 bg-red-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">
@@ -70,8 +66,7 @@
 
                             <div x-show="getItemQty({{ $product->id }}) > 0" 
                                  class="absolute top-2 right-2 bg-red-600 text-white text-[10px] font-bold h-6 w-6 rounded-full flex items-center justify-center shadow-md z-10 ring-2 ring-white"
-                                 x-text="getItemQty({{ $product->id }})"
-                                 x-transition.scale>
+                                 x-text="getItemQty({{ $product->id }})" x-transition.scale>
                             </div>
 
                             <div class="aspect-[4/3] bg-slate-50 rounded-xl flex items-center justify-center mb-3 text-3xl text-slate-300 group-hover:text-red-400 group-hover:bg-red-50 transition-colors">
@@ -179,89 +174,6 @@
                         </div>
                     </template>
                 </div>
-
-                <div class="p-4 border-t border-slate-100 bg-slate-50/50">
-                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Pelanggan</label>
-                    
-                    <div class="flex p-1 bg-white border border-slate-200 rounded-xl mb-3">
-                        <button @click="customerType = 'guest'; selectedCustomerId = ''; customerName = ''; customerPhone = '';" 
-                                class="flex-1 py-1.5 text-xs font-bold rounded-lg transition-all"
-                                :class="customerType === 'guest' ? 'bg-slate-800 text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'">
-                            Tamu
-                        </button>
-                        <button @click="customerType = 'member'" 
-                                class="flex-1 py-1.5 text-xs font-bold rounded-lg transition-all"
-                                :class="customerType === 'member' ? 'bg-slate-800 text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'">
-                            Member
-                        </button>
-                    </div>
-
-                    <div x-show="customerType === 'guest'" x-transition>
-                        <input type="text" x-model="customerName" placeholder="Nama Pelanggan" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm mb-2 focus:ring-2 focus:ring-red-500 focus:border-red-500 transition">
-                        <input type="number" x-model="customerPhone" placeholder="No. HP / WA (628...)" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 transition">
-                    </div>
-
-                    <div x-show="customerType === 'member'" style="display: none;" x-transition>
-                        <select x-model="selectedCustomerId" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white font-bold text-slate-700 focus:ring-2 focus:ring-red-500">
-                            <option value="">-- Pilih Member --</option>
-                            @foreach($customers as $c)
-                                <option value="{{ $c->id }}" data-saldo="{{ $c->saldo }}" data-name="{{ $c->name }}" data-phone="{{ $c->phone }}">
-                                    {{ $c->name }} (Saldo: Rp {{ number_format($c->saldo, 0, ',', '.') }})
-                                </option>
-                            @endforeach
-                        </select>
-                        <div x-show="selectedCustomerId" class="mt-2 text-center p-2 bg-blue-50 rounded-lg border border-blue-100">
-                            <p class="text-[10px] text-blue-500 font-bold uppercase">Sisa Saldo Member</p>
-                            <p class="text-sm font-black text-blue-700" x-text="'Rp ' + rupiah(getSelectedMemberSaldo())"></p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="p-4 border-t border-slate-100">
-                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Metode Pembayaran</label>
-                    <div class="grid grid-cols-2 gap-2 mb-4">
-                        <div @click="paymentMethod = 'cash'" 
-                             class="cursor-pointer border rounded-xl p-3 flex flex-col items-center gap-1 transition relative overflow-hidden"
-                             :class="paymentMethod === 'cash' ? 'border-red-500 bg-red-50 text-red-700 ring-1 ring-red-500' : 'border-slate-200 bg-white hover:border-red-200'">
-                            <div x-show="paymentMethod === 'cash'" class="absolute top-0 right-0 bg-red-500 text-white text-[8px] px-1.5 rounded-bl-lg"><i class="fas fa-check"></i></div>
-                            <i class="fas fa-money-bill-wave"></i> <span class="text-xs font-bold">Tunai</span>
-                        </div>
-                        <div @click="paymentMethod = 'saldo'" 
-                             class="cursor-pointer border rounded-xl p-3 flex flex-col items-center gap-1 transition relative overflow-hidden"
-                             :class="paymentMethod === 'saldo' ? 'border-red-500 bg-red-50 text-red-700 ring-1 ring-red-500' : 'border-slate-200 bg-white hover:border-red-200'">
-                            <div x-show="paymentMethod === 'saldo'" class="absolute top-0 right-0 bg-red-500 text-white text-[8px] px-1.5 rounded-bl-lg"><i class="fas fa-check"></i></div>
-                            <i class="fas fa-wallet"></i> <span class="text-xs font-bold">Saldo</span>
-                        </div>
-                        <div @click="paymentMethod = 'tripay'" 
-                             class="cursor-pointer border rounded-xl p-3 flex flex-col items-center gap-1 transition relative overflow-hidden"
-                             :class="paymentMethod === 'tripay' ? 'border-red-500 bg-red-50 text-red-700 ring-1 ring-red-500' : 'border-slate-200 bg-white hover:border-red-200'">
-                             <div x-show="paymentMethod === 'tripay'" class="absolute top-0 right-0 bg-red-500 text-white text-[8px] px-1.5 rounded-bl-lg"><i class="fas fa-check"></i></div>
-                             <i class="fas fa-qrcode"></i> <span class="text-xs font-bold">QRIS/VA</span>
-                        </div>
-                        <div @click="paymentMethod = 'doku'" 
-                             class="cursor-pointer border rounded-xl p-3 flex flex-col items-center gap-1 transition relative overflow-hidden"
-                             :class="paymentMethod === 'doku' ? 'border-red-500 bg-red-50 text-red-700 ring-1 ring-red-500' : 'border-slate-200 bg-white hover:border-red-200'">
-                             <div x-show="paymentMethod === 'doku'" class="absolute top-0 right-0 bg-red-500 text-white text-[8px] px-1.5 rounded-bl-lg"><i class="fas fa-check"></i></div>
-                             <i class="fas fa-credit-card"></i> <span class="text-xs font-bold">Doku</span>
-                        </div>
-                    </div>
-
-                    <div x-show="paymentMethod === 'cash'" x-transition class="bg-white border border-slate-200 rounded-xl p-3 shadow-sm mb-4">
-                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Uang Diterima</label>
-                        <div class="relative">
-                            <span class="absolute left-0 top-0 text-slate-400 font-bold p-2">Rp</span>
-                            <input type="number" x-model="cashAmount" placeholder="0" 
-                                   class="w-full pl-8 pr-2 py-2 text-right font-black text-lg text-slate-800 border-b-2 border-slate-200 focus:border-red-500 focus:outline-none bg-transparent">
-                        </div>
-                        <div class="flex justify-between items-center mt-3 pt-2 border-t border-dashed border-slate-100">
-                            <span class="text-xs font-bold text-slate-400">Kembalian:</span>
-                            <span class="text-lg font-black" :class="change < 0 ? 'text-red-500' : 'text-emerald-500'" x-text="'Rp ' + rupiah(change)"></span>
-                        </div>
-                        <div class="flex justify-end mt-2">
-                             <button @click="cashAmount = subtotal" class="text-[10px] px-2 py-1 bg-slate-100 rounded text-slate-600 font-bold hover:bg-slate-200">Uang Pas</button>
-                        </div>
-                    </div>
-                </div>
             </div>
 
             <div class="p-4 bg-slate-50 border-t border-slate-200 z-20 shrink-0 shadow-[0_-5px_15px_rgba(0,0,0,0.02)]">
@@ -274,14 +186,137 @@
                     <span class="text-2xl font-black text-slate-800 tracking-tight" x-text="'Rp ' + rupiah(subtotal)"></span>
                 </div>
 
-                <button @click="checkout()" :disabled="cart.length === 0 || isProcessing" 
+                <button @click="openPaymentModal()" 
+                        :disabled="cart.length === 0" 
                         class="w-full bg-slate-900 text-white py-4 rounded-xl font-bold text-base shadow-lg hover:bg-black active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 group">
-                    <span x-show="!isProcessing" class="flex items-center gap-2">
-                        <span>Bayar & Proses</span> <i class="fas fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
+                    <span class="flex items-center gap-2">
+                        <span>Bayar Sekarang</span> <i class="fas fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
                     </span>
-                    <span x-show="isProcessing" class="flex items-center gap-2">
-                        <i class="fas fa-spinner fa-spin"></i> <span>Memproses Transaksi...</span>
-                    </span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div x-show="showPaymentModal" style="display: none;" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" 
+             x-transition.opacity 
+             @click="showPaymentModal = false"></div>
+
+        <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]" 
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0 scale-90 translate-y-4"
+             x-transition:enter-end="opacity-100 scale-100 translate-y-0">
+            
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <div>
+                    <h3 class="font-black text-lg text-slate-800">Pembayaran</h3>
+                    <p class="text-xs text-slate-500">Selesaikan transaksi</p>
+                </div>
+                <button @click="showPaymentModal = false" class="h-8 w-8 rounded-full bg-white text-slate-400 hover:text-red-500 hover:bg-red-50 flex items-center justify-center transition shadow-sm">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="p-6 overflow-y-auto custom-scrollbar space-y-6">
+                
+                <div class="text-center">
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Total Yang Harus Dibayar</p>
+                    <h2 class="text-4xl font-black text-slate-800 tracking-tight" x-text="'Rp ' + rupiah(subtotal)"></h2>
+                </div>
+
+                <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Pelanggan</label>
+                    
+                    <div class="flex p-1 bg-white border border-slate-200 rounded-xl mb-3 shadow-sm">
+                        <button @click="customerType = 'guest'; selectedCustomerId = '';" 
+                                class="flex-1 py-2 text-xs font-bold rounded-lg transition-all"
+                                :class="customerType === 'guest' ? 'bg-slate-800 text-white shadow' : 'text-slate-400 hover:bg-slate-50'">
+                            Tamu (Guest)
+                        </button>
+                        <button @click="customerType = 'member'" 
+                                class="flex-1 py-2 text-xs font-bold rounded-lg transition-all"
+                                :class="customerType === 'member' ? 'bg-slate-800 text-white shadow' : 'text-slate-400 hover:bg-slate-50'">
+                            Member
+                        </button>
+                    </div>
+
+                    <div x-show="customerType === 'guest'" x-transition>
+                        <div class="grid grid-cols-2 gap-3">
+                            <input type="text" x-model="customerName" placeholder="Nama..." class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-red-500 transition">
+                            <input type="number" x-model="customerPhone" placeholder="No. WA..." class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-red-500 transition">
+                        </div>
+                    </div>
+
+                    <div x-show="customerType === 'member'" style="display: none;" x-transition>
+                        <select x-model="selectedCustomerId" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm bg-white font-bold text-slate-700 focus:ring-2 focus:ring-red-500">
+                            <option value="">-- Cari Member --</option>
+                            @foreach($customers as $c)
+                                <option value="{{ $c->id }}" data-saldo="{{ $c->saldo }}">
+                                    {{ $c->name }} (Saldo: Rp {{ number_format($c->saldo, 0, ',', '.') }})
+                                </option>
+                            @endforeach
+                        </select>
+                        <div x-show="selectedCustomerId" class="mt-2 flex justify-between items-center p-3 bg-blue-50 rounded-xl border border-blue-100">
+                            <span class="text-xs font-bold text-blue-500">Sisa Saldo:</span>
+                            <span class="text-sm font-black text-blue-700" x-text="'Rp ' + rupiah(getSelectedMemberSaldo())"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Pilih Metode Bayar</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div @click="paymentMethod = 'cash'" class="cursor-pointer border-2 rounded-2xl p-4 flex flex-col items-center gap-2 transition relative overflow-hidden group"
+                             :class="paymentMethod === 'cash' ? 'border-red-500 bg-red-50 text-red-700' : 'border-slate-100 bg-white hover:border-red-200'">
+                            <i class="fas fa-money-bill-wave text-2xl mb-1"></i> <span class="text-xs font-bold">Tunai (Cash)</span>
+                            <div x-show="paymentMethod === 'cash'" class="absolute top-2 right-2 text-red-500"><i class="fas fa-check-circle"></i></div>
+                        </div>
+                        <div @click="paymentMethod = 'saldo'" class="cursor-pointer border-2 rounded-2xl p-4 flex flex-col items-center gap-2 transition relative overflow-hidden group"
+                             :class="paymentMethod === 'saldo' ? 'border-red-500 bg-red-50 text-red-700' : 'border-slate-100 bg-white hover:border-red-200'">
+                            <i class="fas fa-wallet text-2xl mb-1"></i> <span class="text-xs font-bold">Potong Saldo</span>
+                            <div x-show="paymentMethod === 'saldo'" class="absolute top-2 right-2 text-red-500"><i class="fas fa-check-circle"></i></div>
+                        </div>
+                        <div @click="paymentMethod = 'tripay'" class="cursor-pointer border-2 rounded-2xl p-4 flex flex-col items-center gap-2 transition relative overflow-hidden group"
+                             :class="paymentMethod === 'tripay' ? 'border-red-500 bg-red-50 text-red-700' : 'border-slate-100 bg-white hover:border-red-200'">
+                            <i class="fas fa-qrcode text-2xl mb-1"></i> <span class="text-xs font-bold">QRIS / VA</span>
+                            <div x-show="paymentMethod === 'tripay'" class="absolute top-2 right-2 text-red-500"><i class="fas fa-check-circle"></i></div>
+                        </div>
+                        <div @click="paymentMethod = 'doku'" class="cursor-pointer border-2 rounded-2xl p-4 flex flex-col items-center gap-2 transition relative overflow-hidden group"
+                             :class="paymentMethod === 'doku' ? 'border-red-500 bg-red-50 text-red-700' : 'border-slate-100 bg-white hover:border-red-200'">
+                            <i class="fas fa-credit-card text-2xl mb-1"></i> <span class="text-xs font-bold">Doku Jokul</span>
+                            <div x-show="paymentMethod === 'doku'" class="absolute top-2 right-2 text-red-500"><i class="fas fa-check-circle"></i></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div x-show="paymentMethod === 'cash'" x-transition class="bg-white border-2 border-slate-100 rounded-2xl p-4 shadow-sm">
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-2">Uang Diterima</label>
+                    <div class="relative">
+                        <span class="absolute left-4 top-3 text-slate-400 font-bold">Rp</span>
+                        <input type="number" x-model="cashAmount" placeholder="0" 
+                               class="w-full pl-12 pr-4 py-3 text-xl font-black text-slate-800 bg-slate-50 rounded-xl border-none focus:ring-2 focus:ring-red-500 transition">
+                    </div>
+                    
+                    <div class="flex justify-between items-center mt-4 pt-4 border-t border-dashed border-slate-200">
+                        <span class="text-xs font-bold text-slate-400">Kembalian</span>
+                        <span class="text-xl font-black" :class="change < 0 ? 'text-red-500' : 'text-emerald-500'" x-text="'Rp ' + rupiah(change)"></span>
+                    </div>
+                    
+                    <div class="flex gap-2 mt-3 justify-end">
+                         <button @click="cashAmount = 50000" class="text-[10px] px-3 py-1.5 bg-slate-100 rounded-lg font-bold hover:bg-slate-200">50k</button>
+                         <button @click="cashAmount = 100000" class="text-[10px] px-3 py-1.5 bg-slate-100 rounded-lg font-bold hover:bg-slate-200">100k</button>
+                         <button @click="cashAmount = subtotal" class="text-[10px] px-3 py-1.5 bg-slate-800 text-white rounded-lg font-bold hover:bg-black">Uang Pas</button>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="p-6 border-t border-slate-100 bg-white">
+                <button @click="checkout()" :disabled="isProcessing" 
+                        class="w-full bg-red-600 text-white py-4 rounded-2xl font-bold text-lg shadow-xl shadow-red-200 hover:bg-red-700 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3">
+                    <span x-show="!isProcessing">Proses Pembayaran</span>
+                    <span x-show="isProcessing"><i class="fas fa-spinner fa-spin"></i> Memproses...</span>
                 </button>
             </div>
         </div>
@@ -291,6 +326,7 @@
         function posSystem() {
             return {
                 mobileCartOpen: false,
+                showPaymentModal: false, // State Modal
                 search: '',
                 cart: [],
                 uploadedFiles: [],
@@ -306,38 +342,47 @@
                 cashAmount: '',
 
                 // --- COMPUTED ---
-                get subtotal() {
-                    return this.cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
-                },
-                get cartTotalQty() {
-                    return this.cart.reduce((sum, item) => sum + item.qty, 0);
-                },
+                get subtotal() { return this.cart.reduce((sum, item) => sum + (item.price * item.qty), 0); },
+                get cartTotalQty() { return this.cart.reduce((sum, item) => sum + item.qty, 0); },
+                
                 get change() {
                     let received = parseInt(this.cashAmount) || 0;
                     return received - this.subtotal;
                 },
 
                 // --- HELPERS ---
-                rupiah(val) {
-                    return new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(val);
-                },
+                rupiah(val) { return new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(val); },
+                
                 formatFileSize(bytes) {
                     if(bytes === 0) return '0 B';
                     const k = 1024; const sizes = ['B', 'KB', 'MB', 'GB'];
                     const i = Math.floor(Math.log(bytes) / Math.log(k));
                     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
                 },
-                itemMatchesSearch(name) {
-                    return name.toLowerCase().includes(this.search.toLowerCase());
-                },
+                
+                itemMatchesSearch(name) { return name.toLowerCase().includes(this.search.toLowerCase()); },
+                
                 getSelectedMemberSaldo() {
                     if(!this.selectedCustomerId) return 0;
                     const select = document.querySelector(`select[x-model="selectedCustomerId"]`);
-                    const option = select.querySelector(`option[value="${this.selectedCustomerId}"]`);
+                    const option = select ? select.querySelector(`option[value="${this.selectedCustomerId}"]`) : null;
                     return option ? parseFloat(option.dataset.saldo) : 0;
                 },
 
-                // --- CART ACTIONS ---
+                // --- FUNGSI UTAMA ---
+                
+                // 1. Buka Modal (Validasi Awal)
+                openPaymentModal() {
+                    if(this.cart.length === 0) {
+                        alert('Keranjang masih kosong!');
+                        return;
+                    }
+                    this.showPaymentModal = true;
+                    // Reset cash amount jika metode bukan cash atau kosong
+                    if(this.paymentMethod !== 'cash') this.cashAmount = '';
+                },
+
+                // 2. Tambah ke Cart
                 addToCart(id, name, price, maxStock) {
                     if (maxStock <= 0) { alert('Stok Habis!'); return; }
                     let item = this.cart.find(i => i.id === id);
@@ -349,6 +394,7 @@
                     }
                     if(navigator.vibrate) navigator.vibrate(30);
                 },
+
                 updateQty(id, amount) {
                     let item = this.cart.find(i => i.id === id);
                     if (item) {
@@ -357,31 +403,24 @@
                         if (item.qty <= 0) this.removeFromCart(id);
                     }
                 },
-                removeFromCart(id) {
-                    this.cart = this.cart.filter(i => i.id !== id);
-                },
-                confirmClearCart() {
-                    if(confirm('Kosongkan keranjang?')) { this.cart = []; this.uploadedFiles = []; }
-                },
 
-                // --- FILE UPLOAD ---
+                removeFromCart(id) { this.cart = this.cart.filter(i => i.id !== id); },
+                confirmClearCart() { if(confirm('Kosongkan keranjang?')) { this.cart = []; this.uploadedFiles = []; } },
+
+                // 3. File Upload
                 handleFileUpload(event) {
                     const files = event.target.files;
                     for (let i = 0; i < files.length; i++) {
                         if(files[i].size > 10 * 1024 * 1024) { alert(files[i].name + ' Terlalu besar (Max 10MB)'); continue; }
                         this.uploadedFiles.push(files[i]);
                     }
-                    event.target.value = ''; // Reset input
+                    event.target.value = '';
                 },
-                removeFile(index) {
-                    this.uploadedFiles.splice(index, 1);
-                },
+                removeFile(index) { this.uploadedFiles.splice(index, 1); },
 
-                // --- CHECKOUT ---
+                // 4. CHECKOUT (Submit ke Server)
                 async checkout() {
-                    if (this.cart.length === 0) return;
-
-                    // 1. Validasi Metode Bayar
+                    // Validasi di dalam Modal
                     if (this.paymentMethod === 'cash') {
                         if (!this.cashAmount || this.change < 0) {
                             alert('❌ Uang tunai kurang dari total tagihan!'); return;
@@ -391,8 +430,8 @@
                         if (this.getSelectedMemberSaldo() < this.subtotal) { alert('❌ Saldo Member tidak cukup!'); return; }
                     }
 
-                    // 2. Siapkan Data
                     this.isProcessing = true;
+                    
                     let formData = new FormData();
                     formData.append('items', JSON.stringify(this.cart));
                     formData.append('total', this.subtotal);
@@ -415,7 +454,6 @@
                     // Files
                     this.uploadedFiles.forEach(file => formData.append('attachments[]', file));
 
-                    // 3. Kirim ke Server
                     try {
                         const response = await fetch("{{ route('orders.store') }}", {
                             method: "POST",
@@ -426,12 +464,14 @@
                         const result = await response.json();
 
                         if (result.status === 'success') {
+                            this.showPaymentModal = false; // Tutup Modal
+                            
                             let msg = `✅ Transaksi Berhasil!\nInvoice: ${result.invoice}`;
-                            if(this.paymentMethod === 'cash') msg += `\n💰 Kembalian: Rp ${this.rupiah(result.change_amount)}`;
+                            if(this.paymentMethod === 'cash') msg += `\n💰 KEMBALIAN: Rp ${this.rupiah(result.change_amount)}`;
                             
                             alert(msg);
 
-                            // Buka Link Pembayaran (Tripay/Doku)
+                            // Redirect Pembayaran Online
                             if (result.payment_url) {
                                 window.open(result.payment_url, '_blank');
                             }
