@@ -6,6 +6,11 @@ use App\Http\Controllers\OrderController; // <-- BARIS INI WAJIB ADA
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\AffiliateController;
+
+// Route untuk Halaman Depan (Publik)
+Route::get('/join-partner', [AffiliateController::class, 'create'])->name('affiliate.create');
+Route::post('/join-partner', [AffiliateController::class, 'store'])->name('affiliate.store');
 
 Route::middleware(['auth'])->group(function () {
 });
