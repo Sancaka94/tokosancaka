@@ -42,7 +42,7 @@
 
         <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
             
-            <header class="bg-white border-b border-gray-200 h-14 flex items-center justify-between px-4 lg:px-6">
+            <header class="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-4 lg:px-6">
                 <div class="flex items-center gap-4">
                     <button @click="sidebarOpen = !sidebarOpen" class="text-gray-500 hover:text-gray-700 focus:outline-none lg:hidden">
                         <i class="fas fa-bars text-lg"></i>
@@ -50,7 +50,7 @@
                     <h1 class="text-lg font-semibold text-gray-700 hidden sm:block">Dashboard</h1>
                 </div>
 
-                <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-4">
                     @include('layouts.partials.header')
                     </div>
             </header>
