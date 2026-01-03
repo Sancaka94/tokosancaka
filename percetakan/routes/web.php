@@ -66,6 +66,8 @@ Route::post('/join-partner', [AffiliateController::class, 'store'])->name('affil
 // Route untuk Admin melihat daftar Afiliasi
 Route::get('/affiliates', [AffiliateController::class, 'index'])->name('affiliate.index');
 
+Route::get('/affiliate/print-qr/{id}', [AffiliateController::class, 'printQr'])->name('affiliate.print_qr');
+
 // Resourceful Routes untuk Order
 Route::resource('reports', ReportController::class)->except(['create', 'store']);
 
