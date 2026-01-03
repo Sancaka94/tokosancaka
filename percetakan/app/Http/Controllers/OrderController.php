@@ -16,6 +16,7 @@ use App\Models\OrderDetail;
 use App\Models\OrderAttachment;
 use App\Models\Coupon;
 use App\Models\User;
+use App\Models\Affiliate;
 
 // Services (Pastikan file Service ini sudah Anda buat)
 use App\Services\TripayService;
@@ -346,31 +347,39 @@ class OrderController extends Controller
                             'message' => $msgAdmin,
                         ]);
 
-                    // --- C. Kirim ke PEMILIK KUPON (Affiliator) ---
-                    if ($couponId) {
-                        $couponUsed = Coupon::with('user')->find($couponId);
+                    // --- C. Kirim ke PEMILIK KUPON (Cek Tabel Affiliates) ---
+                    if ($request->coupon) {
+                        
+                        // Cari data di tabel affiliates yang kode kuponnya sama
+                        $affiliateData = Affiliate::where('coupon_code', $request->coupon)->first();
 
-                        // Cek: Kupon ada, User (pemilik) ada, dan User punya No HP
-                        if ($couponUsed && $couponUsed->user) {
-                            $affiliateUser = $couponUsed->user;
-                            $affiliatePhone = $affiliateUser->no_hp ?? $affiliateUser->phone;
+                        // Cek apakah data ketemu DAN kolom 'whatsapp' ada isinya
+                        if ($affiliateData && !empty($affiliateData->whatsapp)) {
+                            
+                            $targetPhone = $affiliateData->whatsapp; // <--- AMBIL DARI KOLOM WHATSAPP
+                            $affiliateName = $affiliateData->name ?? 'Partner';
 
-                            if ($affiliatePhone) {
-                                $msgAff = "Halo Partner *$affiliateUser->name*,\n\n";
-                                $msgAff .= "Kabar Gembira! 🎉\n";
-                                $msgAff .= "Ada order baru menggunakan kode kupon Anda: *{$couponUsed->code}*.\n\n";
-                                $msgAff .= "Detail Transaksi:\n";
-                                $msgAff .= "- Invoice: $order->order_number\n";
-                                $msgAff .= "- Nominal Belanja: Rp " . number_format($subtotal,0,',','.') . "\n";
-                                $msgAff .= "- Diskon diberikan: Rp " . number_format($discount,0,',','.') . "\n\n";
-                                $msgAff .= "Komisi akan dihitung sesuai ketentuan sistem. Semangat!";
-
-                                Http::withHeaders(['Authorization' => $fonnteToken])
-                                    ->post('https://api.fonnte.com/send', [
-                                        'target' => $affiliatePhone,
-                                        'message' => $msgAff,
-                                    ]);
+                            $msgAff = "Halo Partner *$affiliateName*,\n\n";
+                            $msgAff .= "Kabar Gembira! 🎉\n";
+                            $msgAff .= "Ada order masuk pakai kupon: *{$request->coupon}*.\n";
+                            $msgAff .= "Invoice: $order->order_number\n";
+                            $msgAff .= "Nominal Belanja: Rp " . number_format($subtotal,0,',','.') . "\n";
+                            
+                            if (!empty($affiliateData->bank)) {
+                                $msgAff .= "Komisi akan masuk ke Bank {$affiliateData->bank}.\n";
                             }
+                            
+                            $msgAff .= "\nSemangat terus promosinya!";
+
+                            Http::withHeaders(['Authorization' => $fonnteToken])
+                                ->post('https://api.fonnte.com/send', [
+                                    'target' => $targetPhone,
+                                    'message' => $msgAff,
+                                ]);
+                                
+                        } else {
+                            // Log error jika nomor whatsapp kosong
+                            Log::warning("Kupon {$request->coupon} dipakai, tapi kolom 'whatsapp' di tabel affiliates kosong/tidak ditemukan.");
                         }
                     }
                 }
