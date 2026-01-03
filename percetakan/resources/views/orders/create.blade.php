@@ -99,8 +99,8 @@
             
             <div class="h-16 px-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
                 <div class="flex flex-col">
-                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Pesanan Baru</span>
-                    <span class="font-black text-slate-800 text-lg">#{{ date('ymd') }}-{{ rand(100,999) }}</span>
+                    <span class="text-[10px] font-bold text-green-600 uppercase tracking-widest">Pesanan Baru</span>
+                    <span class="font-black text-green-700 text-lg">#{{ date('ymd') }}-{{ rand(100,999) }}</span>
                 </div>
                 <div class="flex items-center gap-2">
                     <button x-show="cart.length > 0" @click="confirmClearCart()" class="hidden lg:flex items-center gap-1 text-[10px] font-bold text-red-500 hover:bg-red-50 px-3 py-1.5 rounded-lg transition">
