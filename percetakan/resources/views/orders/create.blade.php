@@ -239,9 +239,15 @@
     </div>
 
     <div x-show="showPaymentModal" style="display: none;" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" x-transition.opacity @click="showPaymentModal = false"></div>
+        
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" 
+             x-transition.opacity 
+             @click="showPaymentModal = false"></div>
+
         <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]" 
-             x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-90 translate-y-4" x-transition:enter-end="opacity-100 scale-100 translate-y-0">
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0 scale-90 translate-y-4"
+             x-transition:enter-end="opacity-100 scale-100 translate-y-0">
             
             <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                 <div>
@@ -254,6 +260,7 @@
             </div>
 
             <div class="p-6 overflow-y-auto custom-scrollbar space-y-6">
+                
                 <div class="text-center">
                     <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Total Yang Harus Dibayar</p>
                     <h2 class="text-4xl font-black text-slate-800 tracking-tight" x-text="'Rp ' + rupiah(grandTotal)"></h2>
@@ -262,13 +269,18 @@
 
                 <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
                     <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Pelanggan</label>
+                    
                     <div class="flex p-1 bg-white border border-slate-200 rounded-xl mb-3 shadow-sm">
                         <button @click="customerType = 'guest'; selectedCustomerId = '';" 
                                 class="flex-1 py-2 text-xs font-bold rounded-lg transition-all"
-                                :class="customerType === 'guest' ? 'bg-red-600 text-white shadow' : 'text-black hover:bg-red-300'">Tamu</button>
+                                :class="customerType === 'guest' ? 'bg-red-600 text-white shadow' : 'text-black hover:bg-red-300'">
+                            Tamu (Guest)
+                        </button>
                         <button @click="customerType = 'member'" 
                                 class="flex-1 py-2 text-xs font-bold rounded-lg transition-all"
-                                :class="customerType === 'member' ? 'bg-green-600 text-white shadow' : 'text-black hover:bg-green-300'">Member</button>
+                                :class="customerType === 'member' ? 'bg-green-600 text-white shadow' : 'text-black hover:bg-green-300'">
+                            Member
+                        </button>
                     </div>
 
                     <div x-show="customerType === 'guest'" x-transition>
@@ -282,14 +294,24 @@
                         <select x-model="selectedCustomerId" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm bg-white font-bold text-slate-700 focus:ring-2 focus:ring-red-500">
                             <option value="">-- Cari Member --</option>
                             @foreach($customers as $c)
-                                <option value="{{ $c->id }}" data-saldo="{{ $c->saldo }}">
-                                    {{ $c->name }} (Saldo: Rp {{ number_format($c->saldo, 0, ',', '.') }})
+                                <option value="{{ $c->id }}" 
+                                        data-saldo="{{ $c->saldo }}" 
+                                        data-affiliate-balance="{{ $c->affiliate_balance ?? 0 }}"
+                                        data-has-pin="{{ $c->has_pin ? 'yes' : 'no' }}">
+                                    {{ $c->name }} (Topup: Rp {{ number_format($c->saldo,0,',','.') }} | Profit: Rp {{ number_format($c->affiliate_balance ?? 0,0,',','.') }})
                                 </option>
                             @endforeach
                         </select>
-                        <div x-show="selectedCustomerId" class="mt-2 flex justify-between items-center p-3 bg-blue-50 rounded-xl border border-blue-100">
-                            <span class="text-xs font-bold text-blue-500">Sisa Saldo:</span>
-                            <span class="text-sm font-black text-blue-700" x-text="'Rp ' + rupiah(getSelectedMemberSaldo())"></span>
+                        
+                        <div x-show="selectedCustomerId" class="mt-2 grid grid-cols-2 gap-2">
+                            <div class="p-2 bg-blue-50 rounded-lg border border-blue-100 text-center">
+                                <span class="text-[9px] font-bold text-blue-400 block uppercase">Saldo Topup</span>
+                                <span class="text-xs font-black text-blue-700" x-text="'Rp ' + rupiah(getSelectedMemberSaldo())"></span>
+                            </div>
+                            <div class="p-2 bg-purple-50 rounded-lg border border-purple-100 text-center">
+                                <span class="text-[9px] font-bold text-purple-400 block uppercase">Profit Afiliasi</span>
+                                <span class="text-xs font-black text-purple-700" x-text="'Rp ' + rupiah(getSelectedAffiliateBalance())"></span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -302,22 +324,38 @@
                             <i class="fas fa-money-bill-wave text-2xl mb-1"></i> <span class="text-xs font-bold">Tunai</span>
                             <div x-show="paymentMethod === 'cash'" class="absolute top-2 right-2 text-red-500"><i class="fas fa-check-circle"></i></div>
                         </div>
-                        <div @click="paymentMethod = 'saldo'" class="cursor-pointer border-2 rounded-2xl p-4 flex flex-col items-center gap-2 transition relative overflow-hidden group"
-                             :class="paymentMethod === 'saldo' ? 'border-red-500 bg-red-50 text-red-700' : 'border-slate-100 bg-white hover:border-red-200'">
-                            <i class="fas fa-wallet text-2xl mb-1"></i> <span class="text-xs font-bold">Saldo</span>
-                            <div x-show="paymentMethod === 'saldo'" class="absolute top-2 right-2 text-red-500"><i class="fas fa-check-circle"></i></div>
+                        
+                        <div @click="selectAffiliatePayment()" 
+                             class="cursor-pointer border-2 rounded-2xl p-4 flex flex-col items-center gap-2 transition relative overflow-hidden group"
+                             :class="paymentMethod === 'affiliate_balance' ? 'border-purple-500 bg-purple-50 text-purple-700' : 'border-slate-100 bg-white hover:border-purple-200'">
+                            <i class="fas fa-coins text-2xl mb-1"></i> 
+                            <div class="text-center leading-tight">
+                                <span class="text-xs font-bold block">Saldo Profit</span>
+                            </div>
+                            <div x-show="paymentMethod === 'affiliate_balance'" class="absolute top-2 right-2 text-purple-500"><i class="fas fa-check-circle"></i></div>
                         </div>
+
+                        <div @click="paymentMethod = 'saldo'" class="cursor-pointer border-2 rounded-2xl p-4 flex flex-col items-center gap-2 transition relative overflow-hidden group"
+                             :class="paymentMethod === 'saldo' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-100 bg-white hover:border-blue-200'">
+                            <i class="fas fa-wallet text-2xl mb-1"></i> <span class="text-xs font-bold">Saldo Topup</span>
+                            <div x-show="paymentMethod === 'saldo'" class="absolute top-2 right-2 text-blue-500"><i class="fas fa-check-circle"></i></div>
+                        </div>
+
                         <div @click="paymentMethod = 'tripay'" class="cursor-pointer border-2 rounded-2xl p-4 flex flex-col items-center gap-2 transition relative overflow-hidden group"
                              :class="paymentMethod === 'tripay' ? 'border-red-500 bg-red-50 text-red-700' : 'border-slate-100 bg-white hover:border-red-200'">
                             <i class="fas fa-qrcode text-2xl mb-1"></i> <span class="text-xs font-bold">QRIS/VA</span>
                             <div x-show="paymentMethod === 'tripay'" class="absolute top-2 right-2 text-red-500"><i class="fas fa-check-circle"></i></div>
                         </div>
-                        <div @click="paymentMethod = 'doku'" class="cursor-pointer border-2 rounded-2xl p-4 flex flex-col items-center gap-2 transition relative overflow-hidden group"
-                             :class="paymentMethod === 'doku' ? 'border-red-500 bg-red-50 text-red-700' : 'border-slate-100 bg-white hover:border-red-200'">
-                            <i class="fas fa-credit-card text-2xl mb-1"></i> <span class="text-xs font-bold">Jokul</span>
-                            <div x-show="paymentMethod === 'doku'" class="absolute top-2 right-2 text-red-500"><i class="fas fa-check-circle"></i></div>
-                        </div>
                     </div>
+                </div>
+
+                <div x-show="paymentMethod === 'affiliate_balance'" x-transition class="bg-purple-50 border-2 border-purple-200 rounded-2xl p-4 shadow-sm text-center">
+                    <label class="block text-[10px] font-bold text-purple-600 uppercase mb-2">Masukkan PIN Keamanan</label>
+                    <div class="relative max-w-[200px] mx-auto">
+                        <input type="password" x-model="affiliatePin" placeholder="******" maxlength="6"
+                               class="w-full px-4 py-3 text-center text-xl font-black text-purple-800 bg-white rounded-xl border-purple-200 focus:ring-2 focus:ring-purple-500 tracking-widest transition">
+                    </div>
+                    <p class="text-[9px] text-purple-400 mt-2">*PIN diperlukan untuk menggunakan saldo profit.</p>
                 </div>
 
                 <div x-show="paymentMethod === 'cash'" x-transition class="bg-white border-2 border-slate-100 rounded-2xl p-4 shadow-sm">
@@ -327,16 +365,19 @@
                         <input type="number" x-model="cashAmount" placeholder="0" 
                                class="w-full pl-12 pr-4 py-3 text-xl font-black text-slate-800 bg-slate-50 rounded-xl border-none focus:ring-2 focus:ring-red-500 transition">
                     </div>
+                    
                     <div class="flex justify-between items-center mt-4 pt-4 border-t border-dashed border-slate-200">
                         <span class="text-xs font-bold text-slate-400">Kembalian</span>
                         <span class="text-xl font-black" :class="change < 0 ? 'text-red-500' : 'text-emerald-500'" x-text="'Rp ' + rupiah(change)"></span>
                     </div>
+                    
                     <div class="flex gap-2 mt-3 justify-end">
                          <button @click="cashAmount = 50000" class="text-[10px] px-3 py-1.5 bg-slate-100 rounded-lg font-bold hover:bg-slate-200">50k</button>
                          <button @click="cashAmount = 100000" class="text-[10px] px-3 py-1.5 bg-slate-100 rounded-lg font-bold hover:bg-slate-200">100k</button>
                          <button @click="cashAmount = grandTotal" class="text-[10px] px-3 py-1.5 bg-slate-800 text-white rounded-lg font-bold hover:bg-black">Pas</button>
                     </div>
                 </div>
+
             </div>
 
             <div class="p-6 border-t border-slate-100 bg-white">
@@ -366,7 +407,6 @@
             isProcessing: false,
             isValidatingCoupon: false,
             
-            // --- Tangkap Kupon dari Controller ---
             couponCode: '{{ $autoCoupon ?? "" }}',
             couponMessage: '',
             discountAmount: 0,
@@ -377,7 +417,9 @@
             selectedCustomerId: '',
             paymentMethod: 'cash',
             cashAmount: '',
+            affiliatePin: '', // Variable Baru untuk PIN
 
+            // --- COMPUTED ---
             get subtotal() { return this.cart.reduce((sum, item) => sum + (item.price * item.qty), 0); },
             get cartTotalQty() { return this.cart.reduce((sum, item) => sum + item.qty, 0); },
             
@@ -391,6 +433,7 @@
                 return received - this.grandTotal;
             },
 
+            // --- HELPERS ---
             rupiah(val) { return new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(val); },
             
             formatFileSize(bytes) {
@@ -407,6 +450,7 @@
                 return item ? item.qty : 0;
             },
 
+            // --- MEMBER HELPERS (Updated with Affiliate Profit) ---
             getSelectedMemberSaldo() {
                 if(!this.selectedCustomerId) return 0;
                 const select = document.querySelector(`select[x-model="selectedCustomerId"]`);
@@ -414,7 +458,25 @@
                 const option = select.querySelector(`option[value="${this.selectedCustomerId}"]`);
                 return option ? parseFloat(option.dataset.saldo) : 0;
             },
+            
+            getSelectedAffiliateBalance() {
+                if(!this.selectedCustomerId) return 0;
+                const select = document.querySelector(`select[x-model="selectedCustomerId"]`);
+                if (!select) return 0;
+                const option = select.querySelector(`option[value="${this.selectedCustomerId}"]`);
+                // Ambil data profit dari attribute data-affiliate-balance
+                return option ? parseFloat(option.dataset.affiliateBalance) : 0;
+            },
 
+            // Logic klik tombol bayar pakai profit
+            selectAffiliatePayment() {
+                if(!this.selectedCustomerId) { alert('❌ Pilih Member terlebih dahulu!'); return; }
+                if(this.getSelectedAffiliateBalance() < this.grandTotal) { alert('❌ Saldo Profit tidak cukup!'); return; }
+                this.paymentMethod = 'affiliate_balance';
+                this.affiliatePin = ''; // Reset input
+            },
+
+            // --- FUNGSI CEK KUPON ---
             async checkCoupon() {
                 if (!this.couponCode.trim()) {
                     this.discountAmount = 0;
@@ -456,6 +518,7 @@
                 }
             },
 
+            // --- FUNGSI KERANJANG ---
             addToCart(id, name, price, maxStock) {
                 if (maxStock <= 0) { alert('Stok Habis!'); return; }
                 let item = this.cart.find(i => i.id === id);
@@ -479,14 +542,10 @@
                 if(this.couponCode) setTimeout(() => this.checkCoupon(), 500); 
             },
 
-            // --- FUNGSI VALIDASI INPUT MANUAL ---
             validateManualQty(id) {
                 let item = this.cart.find(i => i.id === id);
                 if (!item) return;
-                
-                // Pastikan input adalah angka valid
                 let parsed = parseInt(item.qty);
-                
                 if (isNaN(parsed) || parsed < 1) {
                     item.qty = 1;
                 } else if (parsed > item.maxStock) {
@@ -495,7 +554,6 @@
                 } else {
                     item.qty = parsed;
                 }
-                // Hitung ulang kupon jika ada perubahan total
                 if(this.couponCode) this.checkCoupon();
             },
 
@@ -535,11 +593,16 @@
             removeFile(index) { this.uploadedFiles.splice(index, 1); },
 
             async checkout() {
+                // Validasi Client Side
                 if (this.paymentMethod === 'cash') {
                     if (!this.cashAmount || this.change < 0) { alert('❌ Uang tunai kurang!'); return; }
                 } else if (this.paymentMethod === 'saldo') {
                     if (!this.selectedCustomerId) { alert('❌ Pilih Member!'); return; }
-                    if (this.getSelectedMemberSaldo() < this.grandTotal) { alert('❌ Saldo tidak cukup!'); return; }
+                    if (this.getSelectedMemberSaldo() < this.grandTotal) { alert('❌ Saldo Topup kurang!'); return; }
+                } else if (this.paymentMethod === 'affiliate_balance') {
+                    if (!this.selectedCustomerId) { alert('❌ Pilih Member!'); return; }
+                    if (this.getSelectedAffiliateBalance() < this.grandTotal) { alert('❌ Saldo Profit kurang!'); return; }
+                    if (!this.affiliatePin || this.affiliatePin.length < 4) { alert('❌ Masukkan PIN Keamanan!'); return; }
                 }
 
                 this.isProcessing = true;
@@ -558,6 +621,8 @@
                 }
 
                 if(this.paymentMethod === 'cash') formData.append('cash_amount', this.cashAmount);
+                if(this.paymentMethod === 'affiliate_balance') formData.append('affiliate_pin', this.affiliatePin); // KIRIM PIN
+
                 this.uploadedFiles.forEach(file => formData.append('attachments[]', file));
 
                 try {
