@@ -113,7 +113,7 @@
             <div class="flex-1 overflow-y-auto custom-scrollbar bg-white">
                 
                 <div class="p-4 border-b border-slate-100 bg-slate-50/50">
-                    <div class="relative border-2 border-dashed border-slate-300 rounded-xl bg-white hover:border-red-400 hover:bg-red-50 transition-all cursor-pointer group h-20 flex items-center justify-center">
+                    <div class="relative border-2 border-dashed border-green-300 rounded-xl bg-green-50 hover:border-red-400 hover:bg-red-50 transition-all cursor-pointer group h-20 flex items-center justify-center">
                         <input type="file" multiple @change="handleFileUpload" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
                                accept=".doc,.docx,.pdf,.xls,.xlsx,.jpg,.jpeg,.png">
                         <div class="text-center pointer-events-none flex flex-col items-center">
