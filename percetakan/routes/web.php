@@ -73,6 +73,8 @@ Route::post('/affiliate/sync-balance', [AffiliateController::class, 'syncBalance
 // API Public untuk Edit Data (Cek PIN & Update)
 Route::post('/join-partner/check-account', [AffiliateController::class, 'checkAccountPublic'])->name('affiliate.check_account');
 Route::put('/join-partner/update-public', [AffiliateController::class, 'updateAccountPublic'])->name('affiliate.update_public');
+// Tambahkan Route Khusus Reset PIN ini:
+Route::post('/join-partner/forgot-pin', [AffiliateController::class, 'forgotPin'])->name('affiliate.forgot_pin');
 
 // Resourceful Routes untuk Order
 Route::resource('reports', ReportController::class)->except(['create', 'store']);
