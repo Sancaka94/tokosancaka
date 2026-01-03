@@ -201,29 +201,30 @@ public function syncBalance()
     }
 }
 
-/**
-     * 1. MENAMPILKAN HALAMAN PENGATURAN (MEMBER AREA)
-     */
-    public function settings()
+// PASTIKAN METHOD INI BENAR
+    public function settings() // atau function index() jika Anda menaruhnya di index
     {
-        // CATATAN: Pastikan Anda memiliki mekanisme login untuk mengetahui siapa affiliate yang sedang aktif.
-        // Di sini saya asumsikan Anda menggunakan Session 'affiliate_id' atau Auth user.
-        // Jika menggunakan Auth standard Laravel, ganti dengan: $affiliate = Auth::user();
+        // 1. Ambil ID member yang sedang login
+        // Jika Anda pakai Session manual:
+        $affiliateId = Session::get('affiliate_id'); 
         
-        // Contoh Penggunaan Session manual (jika login custom):
-        $affiliateId = Session::get('affiliate_id'); // Atau Auth::id();
+        // JIKA TESTING MANUAL (Belum ada login), BISA TEMBAK ID SEMENTARA:
+        // $affiliateId = 1; // Hapus baris ini nanti jika login sudah jalan
 
         if (!$affiliateId) {
-            return redirect()->route('login')->with('error', 'Silakan login terlebih dahulu.');
+            return redirect()->route('login')->with('error', 'Harap login dahulu');
         }
 
+        // 2. Ambil Data dari Database
         $affiliate = Affiliate::find($affiliateId);
 
         if (!$affiliate) {
-             return redirect()->route('login')->with('error', 'Akun tidak ditemukan.');
+             return redirect()->back()->with('error', 'Data tidak ditemukan');
         }
 
-        return view('affiliate.settings', compact('affiliate'));
+        // 3. PENTING: Kirim variabel $affiliate ke View
+        // Pastikan nama file view sesuai lokasi Anda, misal: 'affiliate.register' atau 'affiliate.settings'
+        return view('affiliate.register', compact('affiliate')); 
     }
 
     /**
