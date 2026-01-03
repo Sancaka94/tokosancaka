@@ -14,6 +14,12 @@ class AffiliateController extends Controller
         return view('affiliate.register'); // Sesuaikan nama file view Anda
     }
 
+    // Tambahkan method ini agar error hilang
+    public function create()
+    {
+        return view('affiliate.register);
+    }
+
     // 1. DAFTAR BARU
     public function store(Request $request)
     {
