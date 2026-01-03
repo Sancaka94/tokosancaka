@@ -64,18 +64,12 @@ Route::get('/reports/export', [ReportController::class, 'export'])->name('report
 Route::get('/join-partner', [AffiliateController::class, 'create'])->name('affiliate.create');
 Route::post('/join-partner', [AffiliateController::class, 'store'])->name('affiliate.store');
 // Route untuk Admin melihat daftar Afiliasi
+Route::get('/affiliates', [AffiliateController::class, 'index'])->name('affiliate.index');
 
-// Route untuk Proses Simpan Pendaftaran
-Route::post('/affiliate/store', [AffiliateController::class, 'store'])->name('affiliate.store');
-
-// Route Dashboard Admin Afiliasi
-Route::get('/affiliate', [AffiliateController::class, 'index'])->name('affiliate.index');
-
-// Route Cetak QR Code Member
-Route::get('/affiliate/print-qr/{id}', [AffiliateController::class, 'printQr'])->name('affiliate.print_qr');
 // Resourceful Routes untuk Order
 Route::resource('reports', ReportController::class)->except(['create', 'store']);
 
+// routes/web.php
 
 // Kembalikan jadi resource biasa (tanpa except)
 Route::resource('coupons', CouponController::class);
