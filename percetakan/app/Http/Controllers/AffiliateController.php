@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Session;
 
 // Models
 use App\Models\Affiliate;
@@ -197,5 +200,102 @@ public function syncBalance()
         return redirect()->back()->with('error', 'Gagal sinkronisasi: ' . $e->getMessage());
     }
 }
+
+/**
+     * 1. MENAMPILKAN HALAMAN PENGATURAN (MEMBER AREA)
+     */
+    public function settings()
+    {
+        // CATATAN: Pastikan Anda memiliki mekanisme login untuk mengetahui siapa affiliate yang sedang aktif.
+        // Di sini saya asumsikan Anda menggunakan Session 'affiliate_id' atau Auth user.
+        // Jika menggunakan Auth standard Laravel, ganti dengan: $affiliate = Auth::user();
+        
+        // Contoh Penggunaan Session manual (jika login custom):
+        $affiliateId = Session::get('affiliate_id'); // Atau Auth::id();
+
+        if (!$affiliateId) {
+            return redirect()->route('login')->with('error', 'Silakan login terlebih dahulu.');
+        }
+
+        $affiliate = Affiliate::find($affiliateId);
+
+        if (!$affiliate) {
+             return redirect()->route('login')->with('error', 'Akun tidak ditemukan.');
+        }
+
+        return view('affiliate.settings', compact('affiliate'));
+    }
+
+    /**
+     * 2. PROSES UPDATE PROFIL (NAMA, WA, ALAMAT, BANK)
+     */
+    public function updateProfile(Request $request)
+    {
+        // Ambil ID Affiliate yang sedang login
+        $affiliateId = Session::get('affiliate_id'); // Sesuaikan dengan cara login Anda
+        $affiliate = Affiliate::findOrFail($affiliateId);
+
+        // Validasi Input
+        $request->validate([
+            'name'                => 'required|string|max:255',
+            'whatsapp'            => 'required|numeric|digits_between:10,15',
+            'address'             => 'required|string',
+            'bank_name'           => 'required|string',
+            'bank_account_number' => 'required|numeric',
+        ]);
+
+        // Update Data
+        $affiliate->update([
+            'name'                => $request->name,
+            'whatsapp'            => $request->whatsapp,
+            'address'             => $request->address,
+            'bank_name'           => $request->bank_name,
+            'bank_account_number' => $request->bank_account_number,
+        ]);
+
+        return redirect()->back()->with('success', 'Profil dan data kontak berhasil diperbarui!');
+    }
+
+    /**
+     * 3. PROSES UPDATE PIN (KEAMANAN)
+     */
+    public function updatePin(Request $request)
+    {
+        // Ambil ID Affiliate yang sedang login
+        $affiliateId = Session::get('affiliate_id'); // Sesuaikan dengan cara login Anda
+        $affiliate = Affiliate::findOrFail($affiliateId);
+
+        // Cek apakah user sudah punya PIN sebelumnya atau belum
+        if (empty($affiliate->pin)) {
+            // A. KONDISI: BUAT PIN BARU (Belum punya PIN)
+            $request->validate([
+                'new_pin'              => 'required|numeric|digits:6|confirmed', // confirmed cek field new_pin_confirmation
+            ], [
+                'new_pin.confirmed'    => 'Konfirmasi PIN tidak cocok.',
+                'new_pin.digits'       => 'PIN harus 6 digit angka.'
+            ]);
+
+        } else {
+            // B. KONDISI: GANTI PIN (Sudah punya PIN)
+            $request->validate([
+                'current_pin'          => 'required|numeric',
+                'new_pin'              => 'required|numeric|digits:6|confirmed',
+            ], [
+                'new_pin.confirmed'    => 'Konfirmasi PIN Baru tidak cocok.',
+            ]);
+
+            // Cek apakah PIN Lama benar
+            if (!Hash::check($request->current_pin, $affiliate->pin)) {
+                return redirect()->back()->withErrors(['current_pin' => 'PIN Lama yang Anda masukkan salah!']);
+            }
+        }
+
+        // Simpan PIN Baru (Dihash)
+        $affiliate->update([
+            'pin' => Hash::make($request->new_pin)
+        ]);
+
+        return redirect()->back()->with('success', 'PIN Keamanan berhasil diperbarui!');
+    }
 
 }
