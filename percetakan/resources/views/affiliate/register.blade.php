@@ -15,8 +15,8 @@
 <body class="bg-slate-50 font-sans text-slate-800" x-data="partnerApp()" x-cloak>
 
     <div class="bg-gradient-to-br from-red-900 via-red-700 to-red-600 text-white pt-12 pb-24 px-6 text-center rounded-b-[3rem] shadow-2xl relative overflow-hidden">
-        <h1 class="text-4xl font-black mb-3 tracking-tight">Program Partner Sancaka</h1>
-        <p class="text-red-100 text-base font-medium">Bergabunglah bersama kami atau perbarui data kemitraan Anda.</p>
+        <h1 class="text-4xl font-black mb-3 tracking-tight">Program Partner / Affiliete Sancaka Express</h1>
+        <p class="text-red-100 text-base font-medium">Bergabunglah bersama kami untuk menjadi marketer atau perbarui data kemitraan Anda.</p>
     </div>
 
     <div class="max-w-xl mx-auto -mt-20 px-4 sm:px-6 relative z-20 pb-20">
@@ -54,7 +54,7 @@
                 <div x-show="mode === 'register'" x-transition:enter="transition ease-out duration-300 transform" x-transition:enter-start="opacity-0 translate-x-4" x-transition:enter-end="opacity-100 translate-x-0">
                     <div class="text-center mb-6">
                         <h2 class="text-2xl font-bold text-slate-800">Formulir Pendaftaran</h2>
-                        <p class="text-slate-500 text-sm mt-1">Isi data diri Anda untuk bergabung.</p>
+                        <p class="text-slate-500 text-sm mt-1">Isi data diri Anda untuk bergabung sebagai partner kami.</p>
                     </div>
 
                     <form action="{{ route('affiliate.store') }}" method="POST" class="space-y-5">
