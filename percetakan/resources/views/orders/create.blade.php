@@ -104,7 +104,7 @@
                 </div>
                 <div class="flex items-center gap-2">
                     <button x-show="cart.length > 0" @click="confirmClearCart()" class="hidden lg:flex items-center gap-1 text-[10px] font-bold text-red-500 hover:bg-red-50 px-3 py-1.5 rounded-lg transition">
-                        <i class="fas fa-trash-alt"></i> Reset
+                        <i class="fas fa-trash-alt"></i> Reset Cart
                     </button>
                     <button @click="mobileCartOpen = false" class="lg:hidden p-2 text-slate-400 hover:text-slate-600"><i class="fas fa-times text-xl"></i></button>
                 </div>
