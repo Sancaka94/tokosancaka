@@ -70,22 +70,9 @@ Route::get('/affiliate/print-qr/{id}', [AffiliateController::class, 'printQr'])-
 
 Route::post('/affiliate/sync-balance', [AffiliateController::class, 'syncBalance'])->name('affiliate.sync');
 
-// Group Route untuk Affiliate
-Route::prefix('affiliate')->name('affiliate.')->group(function () {
-    
-    // 1. Halaman Pengaturan (Menampilkan Form)
-    //Route::get('/settings', [AffiliateController::class, 'settings'])->name('settings');
-
-    // 2. Proses Update Profil (Nama, WA, Alamat, Bank)
-    Route::put('/update-profile', [AffiliateController::class, 'updateProfile'])->name('update_profile');
-
-    // 3. Proses Update PIN (Buat Baru / Ganti PIN)
-    Route::put('/update-pin', [AffiliateController::class, 'updatePin'])->name('update_pin');
-
-});
-
-// Jangan arahkan langsung ke view, tapi ke Controller
-Route::get('/affiliate/settings', [App\Http\Controllers\AffiliateController::class, 'settings'])->name('affiliate.settings');
+// API Public untuk Edit Data (Cek PIN & Update)
+Route::post('/join-partner/check-account', [AffiliateController::class, 'checkAccountPublic'])->name('affiliate.check_account');
+Route::put('/join-partner/update-public', [AffiliateController::class, 'updateAccountPublic'])->name('affiliate.update_public');
 
 // Resourceful Routes untuk Order
 Route::resource('reports', ReportController::class)->except(['create', 'store']);
