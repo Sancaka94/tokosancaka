@@ -16,6 +16,8 @@ use App\Models\Coupon;
 // Services
 use App\Services\FonnteService; 
 
+use Illuminate\Support\Facades\Log;
+
 class AffiliateController extends Controller
 {
     /**
@@ -201,62 +203,131 @@ public function syncBalance()
     }
 }
 
-// PASTIKAN METHOD INI BENAR
-    public function settings() // atau function index() jika Anda menaruhnya di index
+/**
+     * API CEK AKUN (DENGAN DEBUG LOG)
+     */
+    public function checkAccountPublic(Request $request)
     {
-        // 1. Ambil ID member yang sedang login
-        // Jika Anda pakai Session manual:
-        $affiliateId = Session::get('affiliate_id'); 
-        
-        // JIKA TESTING MANUAL (Belum ada login), BISA TEMBAK ID SEMENTARA:
-        // $affiliateId = 1; // Hapus baris ini nanti jika login sudah jalan
+        // DEBUG: Cek apakah request masuk
+        Log::info('>>> START CHECK ACCOUNT PUBLIC <<<');
+        Log::info('Input Data:', $request->all());
 
-        if (!$affiliateId) {
-            return redirect()->route('login')->with('error', 'Harap login dahulu');
+        try {
+            // 1. Validasi Input
+            $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
+                'whatsapp' => 'required',
+                'pin' => 'required'
+            ]);
+
+            if ($validator->fails()) {
+                Log::warning('Validasi Gagal:', $validator->errors()->toArray());
+                return response()->json([
+                    'status' => 'error', 
+                    'message' => 'Data tidak lengkap: ' . implode(', ', $validator->errors()->all())
+                ], 400);
+            }
+
+            // 2. Cari Data Berdasarkan WhatsApp
+            Log::info('Mencari Affiliate dengan WA: ' . $request->whatsapp);
+            
+            $affiliate = Affiliate::where('whatsapp', $request->whatsapp)->first();
+
+            if (!$affiliate) {
+                Log::error('Affiliate tidak ditemukan di database.');
+                return response()->json([
+                    'status' => 'error', 
+                    'message' => 'Nomor WhatsApp tidak terdaftar.'
+                ], 404);
+            }
+
+            Log::info('Affiliate Ditemukan: ID ' . $affiliate->id . ' - Nama: ' . $affiliate->name);
+
+            // 3. Verifikasi PIN
+            // Cek apakah PIN di database null/kosong
+            if (empty($affiliate->pin)) {
+                Log::error('PIN di database kosong untuk user ini.');
+                return response()->json(['status' => 'error', 'message' => 'Akun ini belum memiliki PIN.'], 401);
+            }
+
+            if (!Hash::check($request->pin, $affiliate->pin)) {
+                Log::warning('PIN Salah. Input: ' . $request->pin);
+                return response()->json([
+                    'status' => 'error', 
+                    'message' => 'PIN Keamanan Salah!'
+                ], 401);
+            }
+
+            Log::info('PIN Cocok. Mengirim data balik.');
+
+            // 4. Sukses
+            return response()->json([
+                'status' => 'success',
+                'data' => $affiliate
+            ]);
+
+        } catch (\Exception $e) {
+            // TANGKAP ERROR 500 DISINI
+            Log::error('CRITICAL ERROR di checkAccountPublic: ' . $e->getMessage());
+            Log::error('File: ' . $e->getFile() . ' baris ' . $e->getLine());
+            
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Server Error: ' . $e->getMessage()
+            ], 500);
         }
-
-        // 2. Ambil Data dari Database
-        $affiliate = Affiliate::find($affiliateId);
-
-        if (!$affiliate) {
-             return redirect()->back()->with('error', 'Data tidak ditemukan');
-        }
-
-        // 3. PENTING: Kirim variabel $affiliate ke View
-        // Pastikan nama file view sesuai lokasi Anda, misal: 'affiliate.register' atau 'affiliate.settings'
-        return view('affiliate.register', compact('affiliate')); 
     }
 
     /**
-     * 2. PROSES UPDATE PROFIL (NAMA, WA, ALAMAT, BANK)
+     * API UPDATE DATA PUBLIC (DENGAN DEBUG LOG)
      */
-    public function updateProfile(Request $request)
+    public function updateAccountPublic(Request $request)
     {
-        // Ambil ID Affiliate yang sedang login
-        $affiliateId = Session::get('affiliate_id'); // Sesuaikan dengan cara login Anda
-        $affiliate = Affiliate::findOrFail($affiliateId);
+        Log::info('>>> START UPDATE ACCOUNT PUBLIC <<<');
+        Log::info('Data Update:', $request->except(['verification_pin', 'new_pin'])); // Jangan log PIN asli
 
-        // Validasi Input
-        $request->validate([
-            'name'                => 'required|string|max:255',
-            'whatsapp'            => 'required|numeric|digits_between:10,15',
-            'address'             => 'required|string',
-            'bank_name'           => 'required|string',
-            'bank_account_number' => 'required|numeric',
-        ]);
+        try {
+            $request->validate([
+                'id' => 'required|exists:affiliates,id',
+                'verification_pin' => 'required',
+                'name' => 'required|string|max:255',
+                'whatsapp' => 'required|numeric',
+            ]);
 
-        // Update Data
-        $affiliate->update([
-            'name'                => $request->name,
-            'whatsapp'            => $request->whatsapp,
-            'address'             => $request->address,
-            'bank_name'           => $request->bank_name,
-            'bank_account_number' => $request->bank_account_number,
-        ]);
+            $affiliate = Affiliate::find($request->id);
 
-        return redirect()->back()->with('success', 'Profil dan data kontak berhasil diperbarui!');
+            // Security Check
+            if (!Hash::check($request->verification_pin, $affiliate->pin)) {
+                Log::warning('Gagal Update: PIN Verifikasi Salah user ID: ' . $affiliate->id);
+                return redirect()->back()->with('error', 'Gagal Update: Validasi PIN tidak cocok.');
+            }
+
+            // Update Data
+            $dataToUpdate = [
+                'name' => $request->name,
+                'whatsapp' => $request->whatsapp,
+                'address' => $request->address,
+                'bank_name' => $request->bank_name,
+                'bank_account_number' => $request->bank_account_number,
+            ];
+
+            // Cek ganti PIN
+            if ($request->filled('new_pin')) {
+                Log::info('User meminta ganti PIN baru.');
+                $request->validate(['new_pin' => 'numeric|digits:6']);
+                $dataToUpdate['pin'] = Hash::make($request->new_pin);
+            }
+
+            $affiliate->update($dataToUpdate);
+            
+            Log::info('Update Berhasil untuk ID: ' . $affiliate->id);
+
+            return redirect()->back()->with('success', 'Data Berhasil Diperbarui!');
+
+        } catch (\Exception $e) {
+            Log::error('CRITICAL ERROR di updateAccountPublic: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Terjadi kesalahan server: ' . $e->getMessage());
+        }
     }
-
     /**
      * 3. PROSES UPDATE PIN (KEAMANAN)
      */
