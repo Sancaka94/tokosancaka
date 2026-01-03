@@ -161,4 +161,41 @@ class AffiliateController extends Controller
 
         return view('affiliate.print_qr', compact('affiliate', 'qrCode', 'shopLinkWithCoupon'));
     }
+
+    // Tambahkan di App\Http\Controllers\AffiliateController.php
+
+public function syncBalance()
+{
+    // 1. Ambil semua affiliate beserta data ordernya yang sudah LUNAS (paid)
+    $affiliates = Affiliate::with(['coupon.orders' => function($q) {
+        $q->where('payment_status', 'paid');
+    }])->get();
+
+    DB::beginTransaction();
+    try {
+        foreach ($affiliates as $aff) {
+            if ($aff->coupon) {
+                // 2. Hitung total omzet dari order yang menggunakan kupon ini
+                $totalOmzet = $aff->coupon->orders->sum('final_price');
+                
+                // 3. Hitung Komisi (10%)
+                $komisiSeharusnya = $totalOmzet * 0.10;
+
+                // 4. Update Saldo Affiliate
+                // PENTING: Ini akan me-reset saldo sesuai hitungan transaksi. 
+                // Jika nanti ada fitur "Penarikan Dana", logikanya harus disesuaikan (dikurangi penarikan).
+                $aff->update([
+                    'balance' => $komisiSeharusnya
+                ]);
+            }
+        }
+        DB::commit();
+        return redirect()->back()->with('success', 'Saldo Profit semua member berhasil disinkronisasi ulang!');
+        
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return redirect()->back()->with('error', 'Gagal sinkronisasi: ' . $e->getMessage());
+    }
+}
+
 }
