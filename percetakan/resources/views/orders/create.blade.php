@@ -250,7 +250,7 @@
                 <div class="text-center">
                     <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Total Yang Harus Dibayar</p>
                     <h2 class="text-4xl font-black text-slate-800 tracking-tight" x-text="'Rp ' + rupiah(grandTotal)"></h2>
-                    <p x-show="discountAmount > 0" class="text-xs text-emerald-600 font-bold mt-1">Hemat Rp <span x-text="rupiah(discountAmount)"></span></p>
+                    <p x-show="discountAmount > 0" class="text-xs text-emerald-600 font-bold mt-1">Anda Hemat Rp <span x-text="rupiah(discountAmount)"></span></p>
                 </div>
 
                 <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
@@ -259,12 +259,12 @@
                     <div class="flex p-1 bg-white border border-slate-200 rounded-xl mb-3 shadow-sm">
                         <button @click="customerType = 'guest'; selectedCustomerId = '';" 
                                 class="flex-1 py-2 text-xs font-bold rounded-lg transition-all"
-                                :class="customerType === 'guest' ? 'bg-slate-800 text-white shadow' : 'text-slate-400 hover:bg-slate-50'">
+                                :class="customerType === 'guest' ? 'bg-red-600 text-black shadow' : 'text-white hover:bg-red-50'">
                             Tamu (Guest)
                         </button>
                         <button @click="customerType = 'member'" 
                                 class="flex-1 py-2 text-xs font-bold rounded-lg transition-all"
-                                :class="customerType === 'member' ? 'bg-slate-800 text-white shadow' : 'text-slate-400 hover:bg-slate-50'">
+                                :class="customerType === 'member' ? 'bg-green-600 text-black shadow' : 'text-white hover:bg-green-50'">
                             Member
                         </button>
                     </div>
