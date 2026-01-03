@@ -348,72 +348,62 @@ class OrderController extends Controller
                         ]);
 
                     // ==========================================================
-// C. KIRIM KE PEMILIK KUPON (FIXED LOGIC)
-// ==========================================================
-if ($request->coupon) {
-    
-    $affiliateData = Affiliate::where('coupon_code', $request->coupon)->first();
+                    // C. KIRIM KE PEMILIK KUPON (SIMPLE LOGIC: 10% DARI OMZET)
+                    // ==========================================================
+                    if ($request->coupon) {
+                        
+                        // 1. Cari Data Affiliate
+                        $affiliateData = Affiliate::where('coupon_code', $request->coupon)->first();
 
-    if ($affiliateData && !empty($affiliateData->whatsapp)) {
-        
-        // --- 1. Hitung Gross Profit dari Item (Selisih Harga Jual - Modal) ---
-        // Ini profit murni barang sebelum kena potongan diskon kupon
-        $grossProfit = DB::table('orders')
-            ->join('order_details', 'orders.id', '=', 'order_details.order_id')
-            ->where('orders.coupon_id', $couponId)
-            ->where('orders.status', '!=', 'cancelled')
-            ->sum(DB::raw('(order_details.price_at_order - order_details.base_price_at_order) * order_details.quantity'));
+                        if ($affiliateData && !empty($affiliateData->whatsapp)) {
+                            
+                            // --- HITUNG SEDERHANA (SESUAI REQUEST) ---
+                            
+                            // A. Total Transaksi (Count)
+                            $totalTrax = Order::where('coupon_id', $couponId)
+                                            ->where('status', '!=', 'cancelled')
+                                            ->count();
 
-        // --- 2. Hitung Total Diskon yang diberikan ke Customer ---
-        // Karena diskon mengurangi keuntungan toko, ini harus jadi pengurang
-        $totalDiskonDiberikan = Order::where('coupon_id', $couponId)
-            ->where('status', '!=', 'cancelled')
-            ->sum('discount_amount');
+                            // B. Total Omzet (Sum Final Price - Uang yang dibayar customer)
+                            $totalOmzet = Order::where('coupon_id', $couponId)
+                                            ->where('status', '!=', 'cancelled')
+                                            ->sum('final_price'); 
 
-        // --- 3. Hitung PROFIT BERSIH ---
-        // Profit Barang - Diskon yang dikasih ke orang
-        $realProfit = $grossProfit - $totalDiskonDiberikan;
-
-        // --- 4. Hitung Omzet (Uang yang masuk/dibayar Customer) ---
-        $totalOmzet = Order::where('coupon_id', $couponId)
-            ->where('status', '!=', 'cancelled')
-            ->sum('final_price'); // Pakai final_price (setelah diskon)
-
-        $totalTrax = Order::where('coupon_id', $couponId)
-            ->where('status', '!=', 'cancelled')
-            ->count();
+                            // C. Hitung Estimasi Komisi (10% dari Omzet)
+                            $komisiRate = 0.10; 
+                            $estimasiKomisi = $totalOmzet * $komisiRate;
 
 
-        // --- SUSUN PESAN WHATSAPP ---
-        $affiliateName = $affiliateData->name ?? 'Partner';
-        $bankName      = $affiliateData->bank_name ?? 'Bank';
-        $targetPhone   = $affiliateData->whatsapp;
+                            // --- SUSUN PESAN WHATSAPP ---
+                            $affiliateName = $affiliateData->name ?? 'Partner';
+                            $bankName      = $affiliateData->bank_name ?? 'Bank';
+                            $targetPhone   = $affiliateData->whatsapp;
 
-        $msgAff = "Halo Partner *$affiliateName*, 👋\n\n";
-        $msgAff .= "Kabar Gembira! 🎉\n";
-        $msgAff .= "Ada order BARU masuk pakai kupon: *{$request->coupon}*\n\n";
-        
-        $msgAff .= "📄 *DETAIL TRANSAKSI SAAT INI:*\n";
-        $msgAff .= "├ Invoice: $order->order_number\n";
-        $msgAff .= "├ Nominal Belanja: Rp " . number_format($finalPrice, 0, ',', '.') . "\n"; // Tampilkan yang dibayar customer
-        $msgAff .= "└ Status: " . strtoupper($paymentStatus) . "\n\n";
+                            $msgAff = "Halo Partner *$affiliateName*, 👋\n\n";
+                            $msgAff .= "Kabar Gembira! 🎉\n";
+                            $msgAff .= "Ada order BARU masuk pakai kupon: *{$request->coupon}*\n\n";
+                            
+                            $msgAff .= "📄 *DETAIL TRANSAKSI SAAT INI:*\n";
+                            $msgAff .= "├ Invoice: $order->order_number\n";
+                            $msgAff .= "├ Nominal Belanja: Rp " . number_format($finalPrice, 0, ',', '.') . "\n";
+                            $msgAff .= "└ Status: " . strtoupper($paymentStatus) . "\n\n";
 
-        $msgAff .= "💰 *PERFORMA ANDA (AKUMULASI):*\n";
-        $msgAff .= "├ Total Order Masuk: *$totalTrax x*\n";
-        $msgAff .= "├ Total Omzet: *Rp " . number_format($totalOmzet, 0, ',', '.') . "*\n";
-        $msgAff .= "└ Total Profit Bersih: *Rp " . number_format($realProfit, 0, ',', '.') . "*\n\n"; // <--- INI SUDAH BENAR SEKARANG
+                            $msgAff .= "💰 *PERFORMA ANDA (AKUMULASI):*\n";
+                            $msgAff .= "├ Total Order Masuk: *$totalTrax x*\n";
+                            $msgAff .= "├ Total Omzet: *Rp " . number_format($totalOmzet, 0, ',', '.') . "*\n";
+                            $msgAff .= "└ Estimasi Komisi (10%): *Rp " . number_format($estimasiKomisi, 0, ',', '.') . "*\n\n";
 
-        $msgAff .= "Pencairan dana Kakak *$affiliateName* Akan di transfer ke Rekening Bank *$bankName* kakak Sebulan sekali ya, Terimakasih \n\n";
-        $msgAff .= "Semangat terus promosinya! 🚀";
+                            $msgAff .= "Pencairan dana Kakak *$affiliateName* Akan di transfer ke Rekening Bank *$bankName* kakak sebulan sekali, Terimakasih \n\n";
+                            $msgAff .= "Semangat terus promosinya! 🚀";
 
-        Http::withHeaders(['Authorization' => $fonnteToken])
-            ->post('https://api.fonnte.com/send', [
-                'target' => $targetPhone,
-                'message' => $msgAff,
-            ]);
-            
-    }
-}
+                            // --- KIRIM ---
+                            Http::withHeaders(['Authorization' => $fonnteToken])
+                                ->post('https://api.fonnte.com/send', [
+                                    'target' => $targetPhone,
+                                    'message' => $msgAff,
+                                ]);
+                        }
+                    }
                 }
 
             } catch (\Exception $waError) {
