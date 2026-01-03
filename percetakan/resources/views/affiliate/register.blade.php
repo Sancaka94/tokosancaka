@@ -15,7 +15,7 @@
 <body class="bg-slate-50 font-sans text-slate-800" x-data="partnerApp()" x-cloak>
 
     <div class="bg-gradient-to-br from-red-900 via-red-700 to-red-600 text-white pt-12 pb-24 px-6 text-center rounded-b-[3rem] shadow-2xl relative overflow-hidden">
-        <h1 class="text-4xl font-black mb-3 tracking-tight">Program Partner / Affiliete Sancaka Express</h1>
+        <h1 class="text-4xl font-black mb-3 tracking-tight">Program Partner / Affiliete <strong>TOKO SANCAKA</strong></h1>
         <p class="text-red-100 text-base font-medium">Bergabunglah bersama kami untuk menjadi marketer atau perbarui data kemitraan Anda.</p>
     </div>
 
