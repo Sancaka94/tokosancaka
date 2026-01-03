@@ -148,6 +148,57 @@ class AffiliateController extends Controller
     }
 
     /**
+     * FITUR LUPA PIN (RESET VIA WA)
+     */
+    public function forgotPin(Request $request)
+    {
+        $request->validate([
+            'whatsapp' => 'required|numeric',
+        ]);
+
+        // Cari user berdasarkan WA
+        $affiliate = Affiliate::where('whatsapp', $request->whatsapp)->first();
+
+        if (!$affiliate) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Nomor WhatsApp tidak terdaftar.'
+            ], 404);
+        }
+
+        try {
+            // 1. Generate PIN Baru (6 Angka Random)
+            $newPin = rand(100000, 999999);
+
+            // 2. Update di Database (Hash)
+            $affiliate->update([
+                'pin' => Hash::make($newPin)
+            ]);
+
+            // 3. Susun Pesan
+            $message = "🔑 *RESET PIN BERHASIL*\n\n";
+            $message .= "Halo Kak *{$affiliate->name}*,\n";
+            $message .= "PIN akun partner Anda telah direset.\n\n";
+            $message .= "PIN BARU: *{$newPin}*\n\n";
+            $message .= "Silakan gunakan PIN ini untuk login. Segera ganti PIN Anda di menu Edit Data demi keamanan.";
+
+            // 4. Kirim WA
+            $this->sendFonnte($affiliate->whatsapp, $message);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'PIN Baru telah dikirim ke WhatsApp Anda.'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Gagal memproses: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * API CEK AKUN (LOGIN DENGAN WA ATAU ID)
      */
     public function checkAccountPublic(Request $request)
