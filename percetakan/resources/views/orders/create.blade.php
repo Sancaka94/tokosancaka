@@ -17,7 +17,7 @@
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         
-        /* Hapus spinner arrow di input number */
+        /* Hapus panah spinner di input number agar rapi */
         input[type=number]::-webkit-inner-spin-button, 
         input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         input[type=number] { -moz-appearance: textfield; }
@@ -166,7 +166,8 @@
                                 <input type="number" 
                                        x-model="item.qty" 
                                        @change="validateManualQty(item.id)" 
-                                       class="w-full text-center text-xs font-bold bg-transparent border-none p-1 focus:ring-0 text-slate-800 h-7">
+                                       class="w-full text-center text-xs font-bold bg-transparent border-none p-0 focus:ring-0 text-slate-800 h-8"
+                                       >
                                 
                                 <button @click="updateQty(item.id, -1)" class="w-full h-6 flex items-center justify-center text-slate-500 hover:text-white hover:bg-red-500 rounded-b-lg transition border-t border-slate-200">
                                     <i class="fas fa-minus text-[8px]"></i>
@@ -365,6 +366,7 @@
             isProcessing: false,
             isValidatingCoupon: false,
             
+            // --- Tangkap Kupon dari Controller ---
             couponCode: '{{ $autoCoupon ?? "" }}',
             couponMessage: '',
             discountAmount: 0,
@@ -477,12 +479,12 @@
                 if(this.couponCode) setTimeout(() => this.checkCoupon(), 500); 
             },
 
-            // --- FUNGSI BARU: VALIDASI INPUT MANUAL ---
+            // --- FUNGSI VALIDASI INPUT MANUAL ---
             validateManualQty(id) {
                 let item = this.cart.find(i => i.id === id);
                 if (!item) return;
                 
-                // Pastikan input adalah angka
+                // Pastikan input adalah angka valid
                 let parsed = parseInt(item.qty);
                 
                 if (isNaN(parsed) || parsed < 1) {
@@ -493,8 +495,7 @@
                 } else {
                     item.qty = parsed;
                 }
-                
-                // Update hitungan diskon jika ada kupon
+                // Hitung ulang kupon jika ada perubahan total
                 if(this.couponCode) this.checkCoupon();
             },
 
@@ -595,7 +596,6 @@
             }
         }
     }
-
 </script>
 </body>
 </html>
