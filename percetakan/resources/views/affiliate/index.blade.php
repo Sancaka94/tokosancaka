@@ -3,21 +3,37 @@
 @section('title', 'Data Partner Afiliasi')
 
 @section('content')
+    {{-- Hidden Element: Menyimpan QR Register untuk diprint via JS --}}
+    <div id="qr-register-content" style="display: none;">
+        {!! $qrRegister ?? '' !!}
+    </div>
+
     <div class="mb-8 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
             <h1 class="text-2xl font-black text-slate-800 uppercase tracking-tight">Partner Afiliasi</h1>
             <p class="text-sm font-medium text-slate-500 mt-1">Data partner, performa kupon, dan hitungan komisi.</p>
         </div>
         
-        <div x-data="{ copied: false }">
-            <button @click="navigator.clipboard.writeText('{{ route('affiliate.create') }}'); copied = true; setTimeout(() => copied = false, 2000)" 
-                class="bg-blue-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-blue-200 hover:bg-blue-700 transition flex items-center gap-2">
-                <i class="fas" :class="copied ? 'fa-check' : 'fa-link'"></i> 
-                <span x-text="copied ? 'Link Disalin!' : 'Salin Link Pendaftaran'"></span>
+        <div class="flex gap-2">
+            {{-- TOMBOL 1: CETAK QR PENDAFTARAN (NEW) --}}
+            <button onclick="printRegistrationQR()" 
+                class="bg-slate-800 text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-slate-300 hover:bg-slate-900 transition flex items-center gap-2">
+                <i class="fas fa-print"></i> 
+                <span>Cetak QR Daftar</span>
             </button>
+
+            {{-- TOMBOL 2: SALIN LINK --}}
+            <div x-data="{ copied: false }">
+                <button @click="navigator.clipboard.writeText('{{ $registerUrl ?? route('affiliate.create') }}'); copied = true; setTimeout(() => copied = false, 2000)" 
+                    class="bg-blue-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-blue-200 hover:bg-blue-700 transition flex items-center gap-2">
+                    <i class="fas" :class="copied ? 'fa-check' : 'fa-link'"></i> 
+                    <span x-text="copied ? 'Link Disalin!' : 'Salin Link'"></span>
+                </button>
+            </div>
         </div>
     </div>
 
+    {{-- STATISTIK CARDS --}}
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
         <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden group">
             <div class="absolute right-0 top-0 opacity-10 transform translate-x-4 -translate-y-4 group-hover:scale-110 transition-transform">
@@ -44,6 +60,7 @@
         </div>
     </div>
 
+    {{-- TABEL --}}
     <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-left whitespace-nowrap">
@@ -60,9 +77,7 @@
                 <tbody class="divide-y divide-slate-50 text-sm">
                     @forelse($affiliates as $aff)
                     @php
-                        // LOGIKA HITUNG KOMISI SEDERHANA
-                        // Misal: Komisi adalah 10% dari total omzet yang dihasilkan
-                        // Anda bisa ubah logika ini sesuai kebijakan toko
+                        // LOGIKA HITUNG KOMISI 10% DARI OMZET
                         $omzetGenerated = 0;
                         $trxCount = 0;
                         
@@ -132,13 +147,23 @@
 
                         <td class="px-6 py-4 text-center">
                             <div class="flex items-center justify-center gap-2">
+                                {{-- TOMBOL KIRIM WA --}}
                                 <a href="https://wa.me/{{ preg_replace('/^0/', '62', $aff->whatsapp) }}?text=Halo%20{{ urlencode($aff->name) }},%20berikut%20laporan%20komisi%20Anda:%0A%0ATotal%20Transaksi:%20{{ $trxCount }}%0AOmzet:%20Rp%20{{ number_format($omzetGenerated,0,',','.') }}%0AKomisi:%20Rp%20{{ number_format($estimasiKomisi,0,',','.') }}%0A%0AMohon%20dikonfirmasi." 
                                    target="_blank"
                                    class="h-8 w-8 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-600 hover:text-white transition flex items-center justify-center" title="Hubungi WA">
                                     <i class="fab fa-whatsapp"></i>
                                 </a>
+
+                                {{-- TOMBOL CETAK QR CODE KUPON (NEW) --}}
+                                <a href="{{ route('affiliate.print_qr', $aff->id) }}" 
+                                   target="_blank"
+                                   class="h-8 w-8 rounded-full bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-600 hover:text-white transition flex items-center justify-center" 
+                                   title="Cetak QR Kupon">
+                                    <i class="fas fa-qrcode text-xs"></i>
+                                </a>
                                 
-                                <button class="h-8 w-8 rounded-full bg-white border border-slate-200 text-slate-400 hover:text-blue-600 hover:border-blue-200 transition flex items-center justify-center" title="Detail">
+                                {{-- TOMBOL DETAIL --}}
+                                <button class="h-8 w-8 rounded-full bg-white border border-slate-200 text-slate-400 hover:text-slate-800 hover:border-slate-300 transition flex items-center justify-center" title="Detail">
                                     <i class="fas fa-eye text-xs"></i>
                                 </button>
                             </div>
@@ -159,4 +184,32 @@
             </table>
         </div>
     </div>
+
+    {{-- Script untuk Print QR Register --}}
+    <script>
+        function printRegistrationQR() {
+            // Ambil konten SVG dari hidden div
+            const qrContent = document.getElementById('qr-register-content').innerHTML;
+            const registerLink = '{{ $registerUrl ?? route("affiliate.create") }}';
+
+            if(!qrContent.trim()) {
+                alert('Gagal memuat QR Code. Pastikan Controller mengirim data $qrRegister.');
+                return;
+            }
+
+            // Buka jendela baru untuk print
+            const printWindow = window.open('', '', 'height=600,width=500');
+            
+            printWindow.document.write('<html><head><title>Scan untuk Daftar Partner</title>');
+            printWindow.document.write('<style>body { font-family: sans-serif; text-align: center; padding-top: 50px; } .qr-box { margin: 20px auto; width: fit-content; } h2 { color: #333; } p { color: #666; font-size: 12px; margin-top: 10px; }</style>');
+            printWindow.document.write('</head><body>');
+            printWindow.document.write('<h2>Scan untuk Daftar Partner Afiliasi</h2>');
+            printWindow.document.write('<p>Jadilah partner kami dan dapatkan komisi menarik!</p>');
+            printWindow.document.write('<div class="qr-box">' + qrContent + '</div>');
+            printWindow.document.write('<p><strong>' + registerLink + '</strong></p>');
+            printWindow.document.write('<script>window.print();<\/script>');
+            printWindow.document.write('</body></html>');
+            printWindow.document.close();
+        }
+    </script>
 @endsection
