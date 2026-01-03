@@ -259,12 +259,12 @@
                     <div class="flex p-1 bg-white border border-slate-200 rounded-xl mb-3 shadow-sm">
                         <button @click="customerType = 'guest'; selectedCustomerId = '';" 
                                 class="flex-1 py-2 text-xs font-bold rounded-lg transition-all"
-                                :class="customerType === 'guest' ? 'bg-red-600 text-black shadow' : 'text-white hover:bg-red-50'">
+                                :class="customerType === 'guest' ? 'bg-red-600 text-white shadow' : 'text-black hover:bg-red-300'">
                             Tamu (Guest)
                         </button>
                         <button @click="customerType = 'member'" 
                                 class="flex-1 py-2 text-xs font-bold rounded-lg transition-all"
-                                :class="customerType === 'member' ? 'bg-green-600 text-black shadow' : 'text-white hover:bg-green-50'">
+                                :class="customerType === 'member' ? 'bg-green-600 text-white shadow' : 'text-black hover:bg-green-300'">
                             Member
                         </button>
                     </div>
