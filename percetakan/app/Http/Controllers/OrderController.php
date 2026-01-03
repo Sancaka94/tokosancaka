@@ -386,7 +386,7 @@ if ($request->coupon) {
 
         // --- SUSUN PESAN WHATSAPP ---
         $affiliateName = $affiliateData->name ?? 'Partner';
-        $bankName      = $affiliateData->bank_name ?? 'BCA/Bank Lain';
+        $bankName      = $affiliateData->bank_name ?? 'Bank';
         $targetPhone   = $affiliateData->whatsapp;
 
         $msgAff = "Halo Partner *$affiliateName*, 👋\n\n";
