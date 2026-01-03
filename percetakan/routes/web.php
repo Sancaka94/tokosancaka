@@ -68,6 +68,8 @@ Route::get('/affiliates', [AffiliateController::class, 'index'])->name('affiliat
 
 Route::get('/affiliate/print-qr/{id}', [AffiliateController::class, 'printQr'])->name('affiliate.print_qr');
 
+Route::post('/affiliate/sync-balance', [AffiliateController::class, 'syncBalance'])->name('affiliate.sync');
+
 // Resourceful Routes untuk Order
 Route::resource('reports', ReportController::class)->except(['create', 'store']);
 
