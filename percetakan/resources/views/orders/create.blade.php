@@ -118,7 +118,7 @@
                                accept=".doc,.docx,.pdf,.xls,.xlsx,.jpg,.jpeg,.png">
                         <div class="text-center pointer-events-none flex flex-col items-center">
                             <i class="fas fa-cloud-upload-alt text-slate-400 group-hover:text-red-500 text-xl mb-1 transition-colors"></i>
-                            <p class="text-[10px] font-bold text-slate-500 group-hover:text-red-600">Klik / Drag File Pesanan</p>
+                            <p class="text-[10px] font-bold text-slate-500 group-hover:text-red-600">Klik / Drag File, Dokumen atau Berkas Anda</p>
                         </div>
                     </div>
 
