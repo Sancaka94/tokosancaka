@@ -27,6 +27,13 @@ class Affiliate extends Model
         'bank_account_number',
         'coupon_code', // Kode unik afiliasi
         'is_active',   // Status aktif/tidak
+        'balance', // <--- Tambahkan ini (Saldo Profit)
+        'pin',
+    ];
+
+    // Sembunyikan PIN agar tidak terekspos di JSON response (Security)
+    protected $hidden = [
+        'pin',
     ];
 
     /**
