@@ -343,8 +343,14 @@
 
                         <div @click="paymentMethod = 'tripay'" class="cursor-pointer border-2 rounded-2xl p-4 flex flex-col items-center gap-2 transition relative overflow-hidden group"
                              :class="paymentMethod === 'tripay' ? 'border-red-500 bg-red-50 text-red-700' : 'border-slate-100 bg-white hover:border-red-200'">
-                            <i class="fas fa-qrcode text-2xl mb-1"></i> <span class="text-xs font-bold">QRIS/VA</span>
+                            <i class="fas fa-qrcode text-2xl mb-1"></i> <span class="text-xs font-bold">QRIS/VA (Tripay)</span>
                             <div x-show="paymentMethod === 'tripay'" class="absolute top-2 right-2 text-red-500"><i class="fas fa-check-circle"></i></div>
+                        </div>
+
+                        <div @click="paymentMethod = 'doku'" class="cursor-pointer border-2 rounded-2xl p-4 flex flex-col items-center gap-2 transition relative overflow-hidden group"
+                             :class="paymentMethod === 'doku' ? 'border-red-500 bg-red-50 text-red-700' : 'border-slate-100 bg-white hover:border-red-200'">
+                            <i class="fas fa-credit-card text-2xl mb-1"></i> <span class="text-xs font-bold">DOKU Payment</span>
+                            <div x-show="paymentMethod === 'doku'" class="absolute top-2 right-2 text-red-500"><i class="fas fa-check-circle"></i></div>
                         </div>
                     </div>
                 </div>
@@ -417,7 +423,7 @@
             selectedCustomerId: '',
             paymentMethod: 'cash',
             cashAmount: '',
-            affiliatePin: '', // Variable Baru untuk PIN
+            affiliatePin: '', 
 
             // --- COMPUTED ---
             get subtotal() { return this.cart.reduce((sum, item) => sum + (item.price * item.qty), 0); },
@@ -450,7 +456,7 @@
                 return item ? item.qty : 0;
             },
 
-            // --- MEMBER HELPERS (Updated with Affiliate Profit) ---
+            // --- MEMBER HELPERS ---
             getSelectedMemberSaldo() {
                 if(!this.selectedCustomerId) return 0;
                 const select = document.querySelector(`select[x-model="selectedCustomerId"]`);
@@ -464,7 +470,6 @@
                 const select = document.querySelector(`select[x-model="selectedCustomerId"]`);
                 if (!select) return 0;
                 const option = select.querySelector(`option[value="${this.selectedCustomerId}"]`);
-                // Ambil data profit dari attribute data-affiliate-balance
                 return option ? parseFloat(option.dataset.affiliateBalance) : 0;
             },
 
@@ -621,7 +626,7 @@
                 }
 
                 if(this.paymentMethod === 'cash') formData.append('cash_amount', this.cashAmount);
-                if(this.paymentMethod === 'affiliate_balance') formData.append('affiliate_pin', this.affiliatePin); // KIRIM PIN
+                if(this.paymentMethod === 'affiliate_balance') formData.append('affiliate_pin', this.affiliatePin); 
 
                 this.uploadedFiles.forEach(file => formData.append('attachments[]', file));
 
