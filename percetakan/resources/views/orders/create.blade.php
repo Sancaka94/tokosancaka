@@ -16,8 +16,11 @@
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        /* Hapus spinner arrow di input number */
         input[type=number]::-webkit-inner-spin-button, 
         input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
     </style>
 </head>
 <body class="bg-slate-100 font-sans text-slate-800 h-screen overflow-hidden select-none" x-data="posSystem()">
@@ -104,7 +107,7 @@
                 </div>
                 <div class="flex items-center gap-2">
                     <button x-show="cart.length > 0" @click="confirmClearCart()" class="hidden lg:flex items-center gap-1 text-[10px] font-bold text-red-500 hover:bg-red-50 px-3 py-1.5 rounded-lg transition">
-                        <i class="fas fa-trash-alt"></i> Reset Cart
+                        <i class="fas fa-trash-alt"></i> Reset
                     </button>
                     <button @click="mobileCartOpen = false" class="lg:hidden p-2 text-slate-400 hover:text-slate-600"><i class="fas fa-times text-xl"></i></button>
                 </div>
@@ -118,7 +121,7 @@
                                accept=".doc,.docx,.pdf,.xls,.xlsx,.jpg,.jpeg,.png">
                         <div class="text-center pointer-events-none flex flex-col items-center">
                             <i class="fas fa-cloud-upload-alt text-slate-400 group-hover:text-red-500 text-xl mb-1 transition-colors"></i>
-                            <p class="text-[10px] font-bold text-slate-500 group-hover:text-red-600">Klik / Drag File, Dokumen atau Berkas Anda</p>
+                            <p class="text-[10px] font-bold text-slate-500 group-hover:text-red-600">Klik / Drag File, Dokumen atau Berkas</p>
                         </div>
                     </div>
 
@@ -154,10 +157,20 @@
 
                     <template x-for="item in cart" :key="item.id">
                         <div class="flex items-start gap-3 p-3 bg-white border border-slate-100 rounded-xl shadow-sm hover:border-red-200 transition-colors group">
-                            <div class="flex flex-col items-center bg-slate-50 rounded-lg p-0.5 border border-slate-200 shrink-0">
-                                <button @click="updateQty(item.id, 1)" class="w-6 h-6 flex items-center justify-center text-slate-500 hover:text-red-600 hover:bg-white rounded transition"><i class="fas fa-plus text-[9px]"></i></button>
-                                <span class="font-bold text-xs py-0.5 w-6 text-center" x-text="item.qty"></span>
-                                <button @click="updateQty(item.id, -1)" class="w-6 h-6 flex items-center justify-center text-slate-500 hover:text-red-600 hover:bg-white rounded transition"><i class="fas fa-minus text-[9px]"></i></button>
+                            
+                            <div class="flex flex-col items-center bg-slate-50 rounded-lg border border-slate-200 shrink-0 w-10">
+                                <button @click="updateQty(item.id, 1)" class="w-full h-6 flex items-center justify-center text-slate-500 hover:text-white hover:bg-green-500 rounded-t-lg transition border-b border-slate-200">
+                                    <i class="fas fa-plus text-[8px]"></i>
+                                </button>
+                                
+                                <input type="number" 
+                                       x-model="item.qty" 
+                                       @change="validateManualQty(item.id)" 
+                                       class="w-full text-center text-xs font-bold bg-transparent border-none p-1 focus:ring-0 text-slate-800 h-7">
+                                
+                                <button @click="updateQty(item.id, -1)" class="w-full h-6 flex items-center justify-center text-slate-500 hover:text-white hover:bg-red-500 rounded-b-lg transition border-t border-slate-200">
+                                    <i class="fas fa-minus text-[8px]"></i>
+                                </button>
                             </div>
 
                             <div class="flex-1 min-w-0 py-0.5">
@@ -182,7 +195,7 @@
                         <input type="text" 
                                x-model="couponCode" 
                                @input.debounce.500ms="checkCoupon()" 
-                               placeholder="Kode Promo (Ketik...)" 
+                               placeholder="KODE PROMO..." 
                                class="w-full pl-3 pr-10 py-2 text-sm rounded-lg border border-slate-200 focus:ring-red-500 uppercase font-bold text-slate-700"
                                :class="{'border-emerald-500 bg-emerald-50': discountAmount > 0, 'border-red-300 bg-red-50': couponMessage && discountAmount === 0}">
                         
@@ -225,15 +238,9 @@
     </div>
 
     <div x-show="showPaymentModal" style="display: none;" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        
-        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" 
-             x-transition.opacity 
-             @click="showPaymentModal = false"></div>
-
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" x-transition.opacity @click="showPaymentModal = false"></div>
         <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]" 
-             x-transition:enter="transition ease-out duration-300"
-             x-transition:enter-start="opacity-0 scale-90 translate-y-4"
-             x-transition:enter-end="opacity-100 scale-100 translate-y-0">
+             x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-90 translate-y-4" x-transition:enter-end="opacity-100 scale-100 translate-y-0">
             
             <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                 <div>
@@ -246,7 +253,6 @@
             </div>
 
             <div class="p-6 overflow-y-auto custom-scrollbar space-y-6">
-                
                 <div class="text-center">
                     <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Total Yang Harus Dibayar</p>
                     <h2 class="text-4xl font-black text-slate-800 tracking-tight" x-text="'Rp ' + rupiah(grandTotal)"></h2>
@@ -255,18 +261,13 @@
 
                 <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
                     <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Pelanggan</label>
-                    
                     <div class="flex p-1 bg-white border border-slate-200 rounded-xl mb-3 shadow-sm">
                         <button @click="customerType = 'guest'; selectedCustomerId = '';" 
                                 class="flex-1 py-2 text-xs font-bold rounded-lg transition-all"
-                                :class="customerType === 'guest' ? 'bg-red-600 text-white shadow' : 'text-black hover:bg-red-300'">
-                            Tamu (Guest)
-                        </button>
+                                :class="customerType === 'guest' ? 'bg-red-600 text-white shadow' : 'text-black hover:bg-red-300'">Tamu</button>
                         <button @click="customerType = 'member'" 
                                 class="flex-1 py-2 text-xs font-bold rounded-lg transition-all"
-                                :class="customerType === 'member' ? 'bg-green-600 text-white shadow' : 'text-black hover:bg-green-300'">
-                            Member
-                        </button>
+                                :class="customerType === 'member' ? 'bg-green-600 text-white shadow' : 'text-black hover:bg-green-300'">Member</button>
                     </div>
 
                     <div x-show="customerType === 'guest'" x-transition>
@@ -297,22 +298,22 @@
                     <div class="grid grid-cols-2 gap-3">
                         <div @click="paymentMethod = 'cash'" class="cursor-pointer border-2 rounded-2xl p-4 flex flex-col items-center gap-2 transition relative overflow-hidden group"
                              :class="paymentMethod === 'cash' ? 'border-red-500 bg-red-50 text-red-700' : 'border-slate-100 bg-white hover:border-red-200'">
-                            <i class="fas fa-money-bill-wave text-2xl mb-1"></i> <span class="text-xs font-bold">Tunai (Cash)</span>
+                            <i class="fas fa-money-bill-wave text-2xl mb-1"></i> <span class="text-xs font-bold">Tunai</span>
                             <div x-show="paymentMethod === 'cash'" class="absolute top-2 right-2 text-red-500"><i class="fas fa-check-circle"></i></div>
                         </div>
                         <div @click="paymentMethod = 'saldo'" class="cursor-pointer border-2 rounded-2xl p-4 flex flex-col items-center gap-2 transition relative overflow-hidden group"
                              :class="paymentMethod === 'saldo' ? 'border-red-500 bg-red-50 text-red-700' : 'border-slate-100 bg-white hover:border-red-200'">
-                            <i class="fas fa-wallet text-2xl mb-1"></i> <span class="text-xs font-bold">Potong Saldo</span>
+                            <i class="fas fa-wallet text-2xl mb-1"></i> <span class="text-xs font-bold">Saldo</span>
                             <div x-show="paymentMethod === 'saldo'" class="absolute top-2 right-2 text-red-500"><i class="fas fa-check-circle"></i></div>
                         </div>
                         <div @click="paymentMethod = 'tripay'" class="cursor-pointer border-2 rounded-2xl p-4 flex flex-col items-center gap-2 transition relative overflow-hidden group"
                              :class="paymentMethod === 'tripay' ? 'border-red-500 bg-red-50 text-red-700' : 'border-slate-100 bg-white hover:border-red-200'">
-                            <i class="fas fa-qrcode text-2xl mb-1"></i> <span class="text-xs font-bold">QRIS / VA</span>
+                            <i class="fas fa-qrcode text-2xl mb-1"></i> <span class="text-xs font-bold">QRIS/VA</span>
                             <div x-show="paymentMethod === 'tripay'" class="absolute top-2 right-2 text-red-500"><i class="fas fa-check-circle"></i></div>
                         </div>
                         <div @click="paymentMethod = 'doku'" class="cursor-pointer border-2 rounded-2xl p-4 flex flex-col items-center gap-2 transition relative overflow-hidden group"
                              :class="paymentMethod === 'doku' ? 'border-red-500 bg-red-50 text-red-700' : 'border-slate-100 bg-white hover:border-red-200'">
-                            <i class="fas fa-credit-card text-2xl mb-1"></i> <span class="text-xs font-bold">Doku Jokul</span>
+                            <i class="fas fa-credit-card text-2xl mb-1"></i> <span class="text-xs font-bold">Jokul</span>
                             <div x-show="paymentMethod === 'doku'" class="absolute top-2 right-2 text-red-500"><i class="fas fa-check-circle"></i></div>
                         </div>
                     </div>
@@ -325,19 +326,16 @@
                         <input type="number" x-model="cashAmount" placeholder="0" 
                                class="w-full pl-12 pr-4 py-3 text-xl font-black text-slate-800 bg-slate-50 rounded-xl border-none focus:ring-2 focus:ring-red-500 transition">
                     </div>
-                    
                     <div class="flex justify-between items-center mt-4 pt-4 border-t border-dashed border-slate-200">
                         <span class="text-xs font-bold text-slate-400">Kembalian</span>
                         <span class="text-xl font-black" :class="change < 0 ? 'text-red-500' : 'text-emerald-500'" x-text="'Rp ' + rupiah(change)"></span>
                     </div>
-                    
                     <div class="flex gap-2 mt-3 justify-end">
                          <button @click="cashAmount = 50000" class="text-[10px] px-3 py-1.5 bg-slate-100 rounded-lg font-bold hover:bg-slate-200">50k</button>
                          <button @click="cashAmount = 100000" class="text-[10px] px-3 py-1.5 bg-slate-100 rounded-lg font-bold hover:bg-slate-200">100k</button>
-                         <button @click="cashAmount = grandTotal" class="text-[10px] px-3 py-1.5 bg-slate-800 text-white rounded-lg font-bold hover:bg-black">Uang Pas</button>
+                         <button @click="cashAmount = grandTotal" class="text-[10px] px-3 py-1.5 bg-slate-800 text-white rounded-lg font-bold hover:bg-black">Pas</button>
                     </div>
                 </div>
-
             </div>
 
             <div class="p-6 border-t border-slate-100 bg-white">
@@ -354,7 +352,6 @@
     function posSystem() {
         return {
             init() {
-                 // --- PERBAIKAN: JIKA ADA KUPON DI URL, BERI PESAN VISUAL ---
                  if(this.couponCode) { 
                      this.couponMessage = 'Kupon terdeteksi! Masukkan barang untuk cek diskon.';
                  }
@@ -368,9 +365,7 @@
             isProcessing: false,
             isValidatingCoupon: false,
             
-            // --- PERBAIKAN: OTOMATIS TANGKAP VARIABLE DARI PHP CONTROLLER ---
             couponCode: '{{ $autoCoupon ?? "" }}',
-            
             couponMessage: '',
             discountAmount: 0,
             
@@ -381,11 +376,9 @@
             paymentMethod: 'cash',
             cashAmount: '',
 
-            // --- COMPUTED ---
             get subtotal() { return this.cart.reduce((sum, item) => sum + (item.price * item.qty), 0); },
             get cartTotalQty() { return this.cart.reduce((sum, item) => sum + item.qty, 0); },
             
-            // Total yang harus dibayar setelah diskon
             get grandTotal() { 
                 let total = this.subtotal - this.discountAmount;
                 return total < 0 ? 0 : total;
@@ -396,7 +389,6 @@
                 return received - this.grandTotal;
             },
 
-            // --- HELPERS ---
             rupiah(val) { return new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(val); },
             
             formatFileSize(bytes) {
@@ -421,23 +413,18 @@
                 return option ? parseFloat(option.dataset.saldo) : 0;
             },
 
-            // --- FUNGSI CEK KUPON ---
             async checkCoupon() {
-                // Reset diskon jika input kosong
                 if (!this.couponCode.trim()) {
                     this.discountAmount = 0;
                     this.couponMessage = '';
                     return;
                 }
-
                 if (this.cart.length === 0) {
                     this.couponMessage = 'Isi keranjang dulu.';
                     return;
                 }
-
                 this.isValidatingCoupon = true;
                 this.couponMessage = '';
-
                 try {
                     const response = await fetch("{{ route('orders.check-coupon') }}", {
                         method: 'POST',
@@ -450,9 +437,7 @@
                             total_belanja: this.subtotal
                         })
                     });
-
                     const data = await response.json();
-
                     if (data.status === 'success') {
                         this.discountAmount = data.data.discount_amount;
                         this.couponMessage = `✅ Hemat Rp ${this.rupiah(data.data.discount_amount)}`;
@@ -460,7 +445,6 @@
                         this.discountAmount = 0;
                         this.couponMessage = data.message;
                     }
-
                 } catch (error) {
                     console.error(error);
                     this.couponMessage = 'Gagal cek server.';
@@ -470,7 +454,6 @@
                 }
             },
 
-            // --- FUNGSI KERANJANG ---
             addToCart(id, name, price, maxStock) {
                 if (maxStock <= 0) { alert('Stok Habis!'); return; }
                 let item = this.cart.find(i => i.id === id);
@@ -481,8 +464,6 @@
                     this.cart.push({ id, name, price, qty: 1, maxStock });
                 }
                 if(navigator.vibrate) navigator.vibrate(30);
-                
-                // Cek ulang kupon jika ada, karena subtotal berubah
                 if(this.couponCode) this.checkCoupon();
             },
 
@@ -493,17 +474,35 @@
                     item.qty += amount;
                     if (item.qty <= 0) this.removeFromCart(id);
                 }
-                // Cek ulang kupon
                 if(this.couponCode) setTimeout(() => this.checkCoupon(), 500); 
+            },
+
+            // --- FUNGSI BARU: VALIDASI INPUT MANUAL ---
+            validateManualQty(id) {
+                let item = this.cart.find(i => i.id === id);
+                if (!item) return;
+                
+                // Pastikan input adalah angka
+                let parsed = parseInt(item.qty);
+                
+                if (isNaN(parsed) || parsed < 1) {
+                    item.qty = 1;
+                } else if (parsed > item.maxStock) {
+                    alert('Stok tidak mencukupi! Max: ' + item.maxStock);
+                    item.qty = item.maxStock;
+                } else {
+                    item.qty = parsed;
+                }
+                
+                // Update hitungan diskon jika ada kupon
+                if(this.couponCode) this.checkCoupon();
             },
 
             removeFromCart(id) { 
                 this.cart = this.cart.filter(i => i.id !== id);
                 if(this.cart.length === 0) {
                     this.discountAmount = 0;
-                    // JANGAN kosongkan couponCode agar user tidak perlu ketik ulang
-                    // this.couponCode = ''; 
-                    this.couponMessage = 'Keranjang kosong.';
+                    this.couponMessage = '';
                 } else if(this.couponCode) {
                     this.checkCoupon();
                 }
@@ -514,7 +513,6 @@
                     this.cart = []; 
                     this.uploadedFiles = []; 
                     this.discountAmount = 0;
-                    // JANGAN kosongkan couponCode
                     this.couponMessage = '';
                 } 
             },
@@ -525,7 +523,6 @@
                 if(this.paymentMethod !== 'cash') this.cashAmount = '';
             },
 
-            // --- UPLOAD ---
             handleFileUpload(event) {
                 const files = event.target.files;
                 for (let i = 0; i < files.length; i++) {
@@ -536,9 +533,7 @@
             },
             removeFile(index) { this.uploadedFiles.splice(index, 1); },
 
-            // --- CHECKOUT ---
             async checkout() {
-                // Validasi Client Side (Pakai GrandTotal)
                 if (this.paymentMethod === 'cash') {
                     if (!this.cashAmount || this.change < 0) { alert('❌ Uang tunai kurang!'); return; }
                 } else if (this.paymentMethod === 'saldo') {
@@ -550,8 +545,8 @@
                 
                 let formData = new FormData();
                 formData.append('items', JSON.stringify(this.cart));
-                formData.append('total', this.subtotal); // Kirim subtotal asli
-                formData.append('coupon', this.couponCode); // Backend akan hitung ulang diskonnya
+                formData.append('total', this.subtotal);
+                formData.append('coupon', this.couponCode);
                 formData.append('payment_method', this.paymentMethod);
                 
                 if(this.customerType === 'member' && this.selectedCustomerId) {
