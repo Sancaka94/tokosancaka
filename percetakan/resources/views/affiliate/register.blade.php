@@ -3,204 +3,140 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pengaturan Akun - Sancaka Affiliate</title>
+    <title>Join Partner / Edit Data - Toko Sancaka</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        [x-cloak] { display: none !important; }
-    </style>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
 </head>
-<body class="bg-slate-50 font-sans text-slate-800">
+<body class="bg-slate-50 font-sans text-slate-800" x-data="partnerApp()">
 
-    <div class="bg-slate-900 text-white py-6 px-6 shadow-md">
-        <div class="max-w-4xl mx-auto flex justify-between items-center">
-            <div class="flex items-center gap-3">
-                <i class="fas fa-id-card-clip text-amber-400 text-2xl"></i>
-                <div>
-                    <h1 class="font-bold text-lg leading-tight">Member Area</h1>
-                    <p class="text-xs text-slate-400">Kelola Profil & Keamanan</p>
-                </div>
-            </div>
-            <a href="{{ route('logout') }}" class="text-xs bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg font-bold transition">
-                Logout <i class="fas fa-sign-out-alt ml-1"></i>
-            </a>
-        </div>
+    <div class="bg-gradient-to-r from-red-800 to-red-600 text-white pt-10 pb-20 px-6 text-center rounded-b-[3rem] shadow-xl relative overflow-hidden">
+        <h1 class="text-3xl font-black mb-2">Program Partner Sancaka</h1>
+        <p class="text-red-100 text-sm">Daftar baru atau perbarui data kemitraan Anda.</p>
     </div>
 
-    <div class="max-w-4xl mx-auto px-6 py-8">
+    <div class="max-w-xl mx-auto -mt-16 px-6 relative z-20 pb-20">
 
         @if(session('success'))
-        <div class="bg-emerald-100 border-l-4 border-emerald-500 text-emerald-700 p-4 mb-6 rounded shadow-sm flex items-center justify-between">
-            <div class="flex items-center gap-2">
-                <i class="fas fa-check-circle"></i>
-                <span>{{ session('success') }}</span>
+        <div class="bg-emerald-500 text-white p-4 rounded-xl mb-4 shadow-lg flex items-center gap-3">
+            <i class="fas fa-check-circle"></i> <span>{{ session('success') }}</span>
+        </div>
+        @endif
+        @if(session('error'))
+        <div class="bg-red-500 text-white p-4 rounded-xl mb-4 shadow-lg flex items-center gap-3">
+            <i class="fas fa-times-circle"></i> <span>{{ session('error') }}</span>
+        </div>
+        @endif
+
+        <div class="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
+            
+            <div class="flex border-b border-slate-100">
+                <button @click="switchMode('register')" 
+                        class="flex-1 py-4 text-sm font-bold uppercase tracking-wider transition-colors duration-300"
+                        :class="mode === 'register' ? 'bg-white text-red-600 border-b-2 border-red-600' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'">
+                    <i class="fas fa-user-plus mr-1"></i> Daftar Baru
+                </button>
+                <button @click="switchMode('edit')" 
+                        class="flex-1 py-4 text-sm font-bold uppercase tracking-wider transition-colors duration-300"
+                        :class="mode === 'edit' ? 'bg-white text-blue-600 border-b-2 border-blue-600' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'">
+                    <i class="fas fa-user-edit mr-1"></i> Edit Data
+                </button>
             </div>
-        </div>
-        @endif
 
-        @if($errors->any())
-        <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded shadow-sm">
-            <ul class="list-disc list-inside text-sm">
-                @foreach ($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
-        </div>
-        @endif
+            <div class="p-8">
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-
-            <div class="md:col-span-1 space-y-4">
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 text-center">
-                    <div class="w-20 h-20 bg-slate-100 rounded-full mx-auto flex items-center justify-center text-3xl text-slate-400 mb-3">
-                        <i class="fas fa-user"></i>
-                    </div>
-                    <h2 class="font-bold text-lg">{{ $affiliate->name ?? 'Nama Member' }}</h2>
-                    <p class="text-sm text-slate-500 mb-4">{{ $affiliate->whatsapp ?? '-' }}</p>
-                    <div class="inline-block bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-xs font-bold">
-                        Saldo: Rp {{ number_format($affiliate->balance ?? 0, 0, ',', '.') }}
-                    </div>
+                <div x-show="mode === 'register'" x-transition:enter="transition ease-out duration-300">
+                    <h2 class="text-xl font-bold mb-4 text-slate-800">Formulir Pendaftaran</h2>
+                    <form action="{{ route('affiliate.store') }}" method="POST">
+                        @csrf
+                        @include('affiliate.partials.form_fields', ['isEdit' => false])
+                        
+                        <button type="submit" class="w-full bg-red-600 text-white font-bold py-3 rounded-xl shadow-lg hover:bg-red-700 transition mt-6">
+                            Daftar Sekarang
+                        </button>
+                    </form>
                 </div>
-            </div>
 
-            <div class="md:col-span-2 space-y-6">
-
-                <div class="bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden" x-data="{ editing: false }">
-                    <div class="bg-slate-50 px-6 py-4 border-b border-slate-100 flex justify-between items-center">
-                        <h3 class="font-bold text-slate-800 flex items-center gap-2">
-                            <i class="fas fa-user-edit text-blue-500"></i> Data Profil & Kontak
-                        </h3>
-                    </div>
+                <div x-show="mode === 'edit'" x-transition:enter="transition ease-out duration-300" style="display: none;">
                     
-                    <div class="p-6">
-                        <form action="{{ route('affiliate.update_profile') }}" method="POST">
+                    <div x-show="!isVerified">
+                        <div class="text-center mb-6">
+                            <div class="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl">
+                                <i class="fas fa-lock"></i>
+                            </div>
+                            <h2 class="text-xl font-bold text-slate-800">Verifikasi Keamanan</h2>
+                            <p class="text-xs text-slate-400">Masukkan WA dan PIN untuk mengedit data.</p>
+                        </div>
+
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">No. WhatsApp</label>
+                                <input type="number" x-model="loginForm.whatsapp" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="08xxxxx">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">PIN Keamanan</label>
+                                <input type="password" x-model="loginForm.pin" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-center tracking-widest text-lg" placeholder="******" maxlength="6">
+                            </div>
+
+                            <div x-show="errorMessage" x-text="errorMessage" class="text-red-500 text-xs font-bold text-center"></div>
+
+                            <button @click="checkAccount()" :disabled="isLoading" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl shadow-lg hover:bg-blue-700 transition disabled:opacity-50">
+                                <span x-show="!isLoading">Cari & Edit Data</span>
+                                <span x-show="isLoading"><i class="fas fa-spinner fa-spin"></i> Memproses...</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div x-show="isVerified">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-xl font-bold text-slate-800">Edit Data Partner</h2>
+                            <button @click="resetEdit()" class="text-xs text-slate-400 hover:text-red-500">Batal / Ganti Akun</button>
+                        </div>
+
+                        <form action="{{ route('affiliate.update_public') }}" method="POST">
                             @csrf
                             @method('PUT')
+                            
+                            <input type="hidden" name="id" x-model="editData.id">
+                            <input type="hidden" name="verification_pin" x-model="loginForm.pin">
 
-                            <div class="grid grid-cols-1 gap-5">
+                            <div class="space-y-4">
                                 <div>
                                     <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Nama Lengkap</label>
-                                    <input type="text" name="name" value="{{ old('name', $affiliate->name) }}" class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition font-medium">
+                                    <input type="text" name="name" x-model="editData.name" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
                                 </div>
-
                                 <div>
-                                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Nomor WhatsApp (Aktif)</label>
-                                    <div class="relative">
-                                        <span class="absolute left-3 top-2.5 text-slate-400"><i class="fab fa-whatsapp"></i></span>
-                                        <input type="number" name="whatsapp" value="{{ old('whatsapp', $affiliate->whatsapp) }}" class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none transition font-medium">
-                                    </div>
-                                    <p class="text-[10px] text-slate-400 mt-1">Mengubah nomor ini akan mengubah tujuan pengiriman notifikasi komisi.</p>
+                                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">No. WhatsApp</label>
+                                    <input type="number" name="whatsapp" x-model="editData.whatsapp" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
                                 </div>
-
                                 <div>
                                     <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Alamat</label>
-                                    <textarea name="address" rows="2" class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition">{{ old('address', $affiliate->address) }}</textarea>
+                                    <textarea name="address" x-model="editData.address" rows="2" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500"></textarea>
                                 </div>
-
-                                <div class="grid grid-cols-2 gap-4 pt-2 border-t border-slate-100">
+                                <div class="grid grid-cols-2 gap-3">
                                     <div>
-                                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Bank / E-Wallet</label>
-                                        <input type="text" name="bank_name" value="{{ old('bank_name', $affiliate->bank_name) }}" placeholder="Contoh: BCA" class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 transition">
+                                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Bank</label>
+                                        <input type="text" name="bank_name" x-model="editData.bank_name" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
                                     </div>
                                     <div>
                                         <label class="block text-xs font-bold text-slate-500 uppercase mb-1">No. Rekening</label>
-                                        <input type="number" name="bank_account_number" value="{{ old('bank_account_number', $affiliate->bank_account_number) }}" class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 transition">
+                                        <input type="number" name="bank_account_number" x-model="editData.bank_account_number" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
                                     </div>
+                                </div>
+
+                                <div class="border-t border-slate-100 pt-4 mt-4">
+                                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Ganti PIN Baru (Opsional)</label>
+                                    <input type="password" name="new_pin" placeholder="Kosongkan jika tidak ubah" maxlength="6" class="w-full px-4 py-3 bg-yellow-50 border border-yellow-200 rounded-xl outline-none focus:ring-2 focus:ring-yellow-500 text-center tracking-widest">
                                 </div>
                             </div>
 
-                            <div class="mt-6 text-right">
-                                <button type="submit" class="bg-slate-800 text-white px-6 py-2 rounded-lg font-bold text-sm hover:bg-black transition shadow-md">
-                                    <i class="fas fa-save mr-1"></i> Simpan Perubahan
-                                </button>
-                            </div>
+                            <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl shadow-lg hover:bg-blue-700 transition mt-6">
+                                Simpan Perubahan
+                            </button>
                         </form>
                     </div>
-                </div>
 
-                <div class="bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden" x-data="{ showPin: false }">
-                    <div class="bg-slate-50 px-6 py-4 border-b border-slate-100 flex justify-between items-center">
-                        <h3 class="font-bold text-slate-800 flex items-center gap-2">
-                            <i class="fas fa-shield-alt text-red-500"></i> Keamanan PIN
-                        </h3>
-                        @if(empty($affiliate->pin))
-                            <span class="bg-red-100 text-red-600 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">Belum Ada PIN</span>
-                        @else
-                            <span class="bg-emerald-100 text-emerald-600 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">PIN Aktif</span>
-                        @endif
-                    </div>
-
-                    <div class="p-6">
-                        <form action="{{ route('affiliate.update_pin') }}" method="POST">
-                            @csrf
-                            @method('PUT')
-
-                            @if(empty($affiliate->pin))
-                                <div class="text-center mb-6">
-                                    <div class="inline-block p-3 bg-red-50 rounded-full text-red-500 mb-2">
-                                        <i class="fas fa-lock-open text-2xl"></i>
-                                    </div>
-                                    <h4 class="font-bold text-slate-800">Buat PIN Keamanan</h4>
-                                    <p class="text-sm text-slate-500">Lindungi saldo komisi Anda dengan 6 digit angka.</p>
-                                </div>
-
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">PIN Baru (6 Angka)</label>
-                                        <input type="password" name="new_pin" required maxlength="6" pattern="[0-9]*" inputmode="numeric" class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-red-500 text-center tracking-widest font-bold text-lg">
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Konfirmasi PIN</label>
-                                        <input type="password" name="new_pin_confirmation" required maxlength="6" pattern="[0-9]*" inputmode="numeric" class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-red-500 text-center tracking-widest font-bold text-lg">
-                                    </div>
-                                </div>
-                                
-                                <button type="submit" class="w-full mt-6 bg-red-600 text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-red-700 transition shadow-md">
-                                    Buat PIN Sekarang
-                                </button>
-
-                            @else
-                                <div class="bg-yellow-50 border border-yellow-100 rounded-lg p-3 mb-4 flex items-start gap-3">
-                                    <i class="fas fa-info-circle text-yellow-500 mt-0.5"></i>
-                                    <p class="text-xs text-yellow-700 leading-relaxed">
-                                        Masukkan PIN Lama untuk verifikasi sebelum membuat PIN Baru.
-                                    </p>
-                                </div>
-
-                                <div class="space-y-4">
-                                    <div>
-                                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">PIN Saat Ini</label>
-                                        <div class="relative">
-                                            <input :type="showPin ? 'text' : 'password'" name="current_pin" required maxlength="6" pattern="[0-9]*" inputmode="numeric" class="w-full px-4 py-2 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 tracking-widest font-bold">
-                                            <button type="button" @click="showPin = !showPin" class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600">
-                                                <i class="fas" :class="showPin ? 'fa-eye-slash' : 'fa-eye'"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <div class="border-t border-slate-100 my-4"></div>
-
-                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">PIN Baru</label>
-                                            <input type="password" name="new_pin" required maxlength="6" pattern="[0-9]*" inputmode="numeric" class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-red-500 text-center tracking-widest font-bold">
-                                        </div>
-                                        <div>
-                                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Ulangi PIN Baru</label>
-                                            <input type="password" name="new_pin_confirmation" required maxlength="6" pattern="[0-9]*" inputmode="numeric" class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-red-500 text-center tracking-widest font-bold">
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="mt-6 text-right">
-                                    <button type="submit" class="bg-red-600 text-white px-6 py-2 rounded-lg font-bold text-sm hover:bg-red-700 transition shadow-md">
-                                        <i class="fas fa-key mr-1"></i> Update PIN
-                                    </button>
-                                </div>
-                            @endif
-                        </form>
-                    </div>
                 </div>
 
             </div>
@@ -208,16 +144,78 @@
     </div>
 
     <script>
-        // Contoh sederhana validasi input hanya angka untuk PIN
-        const pinInputs = document.querySelectorAll('input[type="password"], input[name="whatsapp"], input[name="bank_account_number"]');
-        pinInputs.forEach(input => {
-            input.addEventListener('input', function (e) {
-                // Hapus karakter non-numeric jika field khusus angka
-                if (this.name.includes('pin') || this.name.includes('whatsapp') || this.name.includes('number')) {
-                    this.value = this.value.replace(/[^0-9]/g, '');
+        function partnerApp() {
+            return {
+                mode: 'register', // 'register' atau 'edit'
+                isLoading: false,
+                isVerified: false, // Apakah user sudah lolos cek WA+PIN
+                errorMessage: '',
+                
+                // Data Login Guest
+                loginForm: {
+                    whatsapp: '',
+                    pin: ''
+                },
+
+                // Data yang akan diedit (diisi oleh Server)
+                editData: {
+                    id: '',
+                    name: '',
+                    whatsapp: '',
+                    address: '',
+                    bank_name: '',
+                    bank_account_number: ''
+                },
+
+                switchMode(newMode) {
+                    this.mode = newMode;
+                    this.errorMessage = '';
+                },
+
+                async checkAccount() {
+                    if(!this.loginForm.whatsapp || !this.loginForm.pin) {
+                        this.errorMessage = "Mohon isi WhatsApp dan PIN.";
+                        return;
+                    }
+
+                    this.isLoading = true;
+                    this.errorMessage = '';
+
+                    try {
+                        const response = await fetch("{{ route('affiliate.check_account') }}", {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content
+                            },
+                            body: JSON.stringify(this.loginForm)
+                        });
+
+                        const result = await response.json();
+
+                        if (response.ok && result.status === 'success') {
+                            // Sukses: Isi data ke form edit
+                            this.editData = result.data;
+                            this.isVerified = true; 
+                        } else {
+                            // Gagal
+                            this.errorMessage = result.message || "Validasi gagal.";
+                        }
+                    } catch (error) {
+                        this.errorMessage = "Terjadi kesalahan koneksi.";
+                        console.error(error);
+                    } finally {
+                        this.isLoading = false;
+                    }
+                },
+
+                resetEdit() {
+                    this.isVerified = false;
+                    this.loginForm.pin = '';
+                    this.editData = {};
                 }
-            });
-        });
+            }
+        }
     </script>
 </body>
 </html>
