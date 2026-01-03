@@ -17,7 +17,7 @@ class AffiliateController extends Controller
     // Tambahkan method ini agar error hilang
     public function create()
     {
-        return view('affiliate.register);
+        return view('affiliate.register');
     }
 
     // 1. DAFTAR BARU
