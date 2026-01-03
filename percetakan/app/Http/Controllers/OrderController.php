@@ -368,7 +368,7 @@ if ($request->coupon) {
         // B. Total Omzet (Total Belanja Kotor)
         $totalOmzet = Order::where('coupon_id', $couponId)
                         ->where('status', '!=', 'cancelled')
-                        ->sum('total_price'); 
+                        ->sum('final_price'); 
 
         // C. Hitung REAL PROFIT (Laba Bersih = Harga Jual - Harga Modal)
         // Kita gunakan DB::table agar performa cepat tanpa loading model satu per satu
