@@ -84,6 +84,9 @@ Route::prefix('affiliate')->name('affiliate.')->group(function () {
 
 });
 
+// Jangan arahkan langsung ke view, tapi ke Controller
+Route::get('/affiliate/settings', [App\Http\Controllers\AffiliateController::class, 'settings'])->name('affiliate.settings');
+
 // Resourceful Routes untuk Order
 Route::resource('reports', ReportController::class)->except(['create', 'store']);
 
