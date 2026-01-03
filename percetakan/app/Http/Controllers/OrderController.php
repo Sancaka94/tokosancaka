@@ -396,7 +396,7 @@ class OrderController extends Controller
                             $msgAff .= "└ Estimasi Profit Anda: *Rp " . number_format($totalProfit, 0, ',', '.') . "*\n\n";
 
                             if (!empty($affiliateData->bank)) {
-                                $msgAff .= "Komisi akan ditransfer ke Bank {$affiliateData->bank}.\n";
+                                $msgAff .= "Komisi akan ditransfer ke Bank {$affiliateData->bank} Sebulan sekali, Terimakasih kak *$affiliateName*.\n";
                             }
 
                             $msgAff .= "Semangat terus promosinya! 🚀";
