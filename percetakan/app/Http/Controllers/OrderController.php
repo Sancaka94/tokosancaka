@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http; // <--- Wajib tambah ini biar WA terkirim
 use Illuminate\Support\Str;
 
 // Models
@@ -42,28 +43,20 @@ class OrderController extends Controller
         return view('orders.create', compact('products', 'customers'));
     }
 
-    /**
-     * Proses Simpan Pesanan (Checkout)
-     */
     public function store(Request $request, TripayService $tripayService)
     {
         // ==========================================
         // 1. VALIDASI INPUT
         // ==========================================
         $request->validate([
-            'items'          => 'required', // Dikirim sebagai JSON string dari FormData
+            'items'          => 'required', 
             'total'          => 'required|numeric',
             'payment_method' => 'required|in:cash,saldo,tripay,doku',
-            
-            // Validasi Kondisional: Cash butuh jumlah uang, Saldo butuh ID Customer
             'cash_amount'    => 'nullable|numeric|required_if:payment_method,cash',
             'customer_id'    => 'nullable|exists:users,id|required_if:payment_method,saldo',
-            
-            // Validasi File Upload (Gambar/Dokumen max 10MB)
             'attachments.*'  => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png|max:10240'
         ]);
 
-        // Decode JSON Keranjang menjadi Array PHP
         $cartItems = json_decode($request->items, true);
 
         if (!is_array($cartItems) || count($cartItems) < 1) {
@@ -75,13 +68,13 @@ class OrderController extends Controller
 
         try {
             $subtotal = 0;
-            $finalCart = []; // Menampung item yang sudah divalidasi
+            $finalCart = []; 
 
             // ==========================================
             // 2. VALIDASI STOK & HITUNG HARGA (Server Side)
             // ==========================================
             foreach ($cartItems as $item) {
-                // Lock baris database (Pessimistic Locking) agar stok tidak diambil user lain saat proses ini
+                // Lock baris database (Pessimistic Locking)
                 $product = Product::lockForUpdate()->find($item['id']);
 
                 if (!$product) {
@@ -112,14 +105,30 @@ class OrderController extends Controller
 
             if ($request->coupon) {
                 $couponDB = Coupon::where('code', $request->coupon)->first();
-                // Opsional: Tambahkan cek tanggal expired kupon disini
                 
-                if ($couponDB) {
-                    $couponId = $couponDB->id;
-                    if ($couponDB->type == 'percent') {
-                        $discount = $subtotal * ($couponDB->value / 100);
-                    } else {
-                        $discount = $couponDB->value;
+                // Gunakan validasi manual atau function model jika ada
+                if ($couponDB && $couponDB->is_active) {
+                    // Cek validitas standar (tanggal & limit)
+                    $now = now();
+                    $isValid = true;
+                    if ($couponDB->start_date && $now->lt($couponDB->start_date)) $isValid = false;
+                    if ($couponDB->expiry_date && $now->gt($couponDB->expiry_date)) $isValid = false;
+                    if ($couponDB->usage_limit > 0 && $couponDB->used_count >= $couponDB->usage_limit) $isValid = false;
+                    if ($couponDB->min_order_amount > 0 && $subtotal < $couponDB->min_order_amount) $isValid = false;
+
+                    if ($isValid) {
+                        $couponId = $couponDB->id;
+                        if ($couponDB->type == 'percent') {
+                            $discount = $subtotal * ($couponDB->value / 100);
+                            if($couponDB->max_discount_amount > 0 && $discount > $couponDB->max_discount_amount) {
+                                $discount = $couponDB->max_discount_amount;
+                            }
+                        } else {
+                            $discount = $couponDB->value;
+                        }
+                        
+                        // Tambah counter penggunaan
+                        $couponDB->increment('used_count');
                     }
                 }
             }
@@ -132,68 +141,52 @@ class OrderController extends Controller
             // 4. LOGIKA PEMBAYARAN (Inti Sistem)
             // ==========================================
             $paymentStatus = 'unpaid';
-            $paymentUrl = null;     // Untuk Tripay/Doku
-            $changeAmount = 0;      // Kembalian Cash
-            $userId = null;         // ID Customer (jika ada)
+            $paymentUrl = null;    // Untuk Tripay/Doku
+            $changeAmount = 0;     // Kembalian Cash
+            $userId = null;        // ID Customer (jika ada)
             $customerName = $request->customer_name ?? 'Guest';
             $customerPhone = $request->customer_phone;
             $note = $request->note;
 
-            // Jika admin memilih member dari dropdown (berlaku utk semua metode bayar jika mau)
+            // Jika admin memilih member dari dropdown
             if ($request->customer_id) {
                 $member = User::find($request->customer_id);
                 if ($member) {
                     $userId = $member->id;
-                    $customerName = $member->name; // Pakai nama asli dari DB
+                    $customerName = $member->name; 
                     $customerPhone = $member->no_hp ?? $member->phone ?? $customerPhone;
                 }
             }
 
             switch ($request->payment_method) {
-                // KASUS A: BAYAR TUNAI
                 case 'cash':
                     $cashReceived = (int) $request->cash_amount;
-                    
-                    // Validasi: Uang tidak boleh kurang
                     if ($cashReceived < $finalPrice) {
-                        throw new \Exception("Uang tunai kurang! Total Tagihan: Rp " . number_format($finalPrice,0,',','.') . ", Diterima: Rp " . number_format($cashReceived,0,',','.'));
+                        throw new \Exception("Uang tunai kurang! Total: Rp " . number_format($finalPrice,0,',','.') . ", Diterima: Rp " . number_format($cashReceived,0,',','.'));
                     }
-
                     $changeAmount = $cashReceived - $finalPrice;
                     $paymentStatus = 'paid'; // Lunas
-                    
                     $note .= "\n[INFO PEMBAYARAN]\nMetode: Tunai\nDiterima: Rp " . number_format($cashReceived,0,',','.') . "\nKembali: Rp " . number_format($changeAmount,0,',','.');
                     break;
 
-                // KASUS B: POTONG SALDO MEMBER
                 case 'saldo':
                     if (!$userId) {
                         throw new \Exception("Metode Potong Saldo wajib memilih Member terdaftar.");
                     }
-
                     // Lock saldo user agar aman
                     $member = User::lockForUpdate()->find($userId);
 
                     if ($member->saldo < $finalPrice) {
                         throw new \Exception("Saldo member tidak cukup. Sisa Saldo: Rp " . number_format($member->saldo,0,',','.'));
                     }
-
                     // Eksekusi Potong Saldo
                     $member->decrement('saldo', $finalPrice);
-                    
-                    $paymentStatus = 'paid'; // Lunas
+                    $paymentStatus = 'paid'; 
                     $note .= "\n[INFO PEMBAYARAN]\nMetode: Potong Saldo\nMember ID: $userId";
                     break;
 
-                // KASUS C: TRIPAY (Online)
                 case 'tripay':
-                    // Proses generate link dilakukan SETELAH order ID terbentuk (di bawah)
-                    $paymentStatus = 'unpaid';
-                    break;
-
-                // KASUS D: DOKU (Online)
                 case 'doku':
-                    // Proses generate link dilakukan SETELAH order ID terbentuk (di bawah)
                     $paymentStatus = 'unpaid';
                     break;
             }
@@ -212,7 +205,7 @@ class OrderController extends Controller
                 'discount_amount' => $discount,
                 'final_price'     => $finalPrice,
                 'payment_method'  => $request->payment_method,
-                'status'          => ($paymentStatus === 'paid') ? 'processing' : 'pending', // Kalau lunas langsung diproses
+                'status'          => ($paymentStatus === 'paid') ? 'processing' : 'pending', 
                 'payment_status'  => $paymentStatus,
                 'note'            => $note,
             ]);
@@ -224,51 +217,39 @@ class OrderController extends Controller
             
             // Integrasi Tripay
             if ($request->payment_method === 'tripay') {
-                // Panggil Service Tripay (createTransaction)
-                // Parameter ke-3 null = User bisa pilih metode (QRIS/VA) di halaman Tripay
                 $tripayRes = $tripayService->createTransaction($order, $finalCart, null);
 
                 if (!$tripayRes['success']) {
                     throw new \Exception("Gagal koneksi ke Tripay: " . ($tripayRes['message'] ?? 'Unknown Error'));
                 }
                 
-                $paymentUrl = $tripayRes['data']['checkout_url']; // Link bayar
-                $order->update(['payment_url' => $paymentUrl]); // Simpan link ke DB
+                $paymentUrl = $tripayRes['data']['checkout_url']; 
+                $order->update(['payment_url' => $paymentUrl]); 
             }
             
-           // Integrasi Doku
+            // Integrasi Doku
             elseif ($request->payment_method === 'doku') {
-                
-                // 1. Siapkan Data Customer (Wajib untuk Doku Jokul)
                 $customerData = [
                     'name'  => $order->customer_name,
-                    'email' => 'customer@tokosancaka.com', // Email wajib, gunakan dummy jika guest
+                    'email' => 'customer@tokosancaka.com', 
                     'phone' => $order->customer_phone ?? '085745808809',
                 ];
 
-                // 2. Jika customer member terdaftar, ambil email aslinya
                 if ($order->user_id) {
                     $user = User::find($order->user_id);
-                    if ($user) {
-                        $customerData['email'] = $user->email;
-                    }
+                    if ($user) $customerData['email'] = $user->email;
                 }
 
-                // 3. Panggil Service
-                // Kita inject DokuJokulService di method store atau panggil via app()
-                // Agar lebih mudah, kita gunakan instance baru atau dependency injection
                 $dokuService = app(\App\Services\DokuJokulService::class);
-                
                 $paymentUrl = $dokuService->createPayment(
                     $order->order_number, 
                     $order->final_price,
-                    $customerData // <-- Parameter ke-3 yang dibutuhkan service Anda
+                    $customerData 
                 );
                 
                 if (empty($paymentUrl)) {
-                    throw new \Exception("Gagal generate link pembayaran DOKU. Cek Log Laravel.");
+                    throw new \Exception("Gagal generate link pembayaran DOKU.");
                 }
-                
                 $order->update(['payment_url' => $paymentUrl]);
             }
 
@@ -279,26 +260,20 @@ class OrderController extends Controller
             foreach ($finalCart as $data) {
                 $prod = $data['product'];
                 
-                // Simpan ke tabel order_details
                 OrderDetail::create([
-                    'order_id'       => $order->id,
-                    'product_id'     => $prod->id,
-                    'product_name'   => $prod->name,     
-                    
-                    // --- PERBAIKAN DISINI ---
-                    'base_price_at_order' => $prod->base_price, // <--- INI PENTING: Simpan Modal saat itu
-                    // ------------------------
-
-                    'price_at_order' => $prod->sell_price, // Harga Jual saat itu 
-                    'quantity'       => $data['qty'],
-                    'subtotal'       => $data['subtotal'],
+                    'order_id'          => $order->id,
+                    'product_id'        => $prod->id,
+                    'product_name'      => $prod->name,     
+                    'base_price_at_order' => $prod->base_price, 
+                    'price_at_order'    => $prod->sell_price, 
+                    'quantity'          => $data['qty'],
+                    'subtotal'          => $data['subtotal'],
                 ]);
 
                 // Kurangi Stok & Tambah Counter Terjual
                 $prod->decrement('stock', $data['qty']);
                 $prod->increment('sold', $data['qty']);
                 
-                // Update status produk jika habis
                 if ($prod->stock <= 0) {
                     $prod->update(['stock_status' => 'unavailable']);
                 }
@@ -310,10 +285,7 @@ class OrderController extends Controller
             // ==========================================
             if ($request->hasFile('attachments')) {
                 foreach ($request->file('attachments') as $file) {
-                    // Upload fisik file ke folder storage/app/public/orders
                     $path = $file->store('orders', 'public');
-
-                    // Simpan info ke database
                     OrderAttachment::create([
                         'order_id'  => $order->id,
                         'file_path' => $path,
@@ -327,7 +299,93 @@ class OrderController extends Controller
             DB::commit();
 
             // ==========================================
-            // 9. RETURN RESPONSE JSON KE FRONTEND
+            // 9. FITUR FONNTE (NOTIFIKASI WHATSAPP)
+            // ==========================================
+            try {
+                // Ambil Token (sesuai settingan env Anda)
+                $fonnteToken = env('FONNTE_API_KEY') ?? env('FONNTE_KEY');
+
+                if ($fonnteToken) {
+                    
+                    // --- A. Kirim ke CUSTOMER (Pembeli) ---
+                    if ($customerPhone) {
+                        $msgCust = "Halo Kak *$customerName*,\n\n";
+                        $msgCust .= "Terima kasih, pesananmu berhasil dibuat! ✅\n";
+                        $msgCust .= "No Invoice: *$order->order_number*\n";
+                        $msgCust .= "Total: Rp " . number_format($finalPrice,0,',','.') . "\n";
+                        $msgCust .= "Status Bayar: *$paymentStatus*\n";
+                        
+                        if ($paymentUrl) {
+                            $msgCust .= "Link Pembayaran: $paymentUrl\n";
+                        }
+                        
+                        $msgCust .= "\nTerima kasih telah berbelanja di Sancaka Express.";
+
+                        Http::withHeaders(['Authorization' => $fonnteToken])
+                            ->post('https://api.fonnte.com/send', [
+                                'target' => $customerPhone,
+                                'message' => $msgCust,
+                            ]);
+                    }
+
+                    // --- B. Kirim ke ADMIN TOKO (085745808809) ---
+                    $adminPhone = '085745808809'; 
+                    
+                    $msgAdmin = "🔔 *ORDER BARU MASUK*\n\n";
+                    $msgAdmin .= "Invoice: *$order->order_number*\n";
+                    $msgAdmin .= "Customer: $customerName\n";
+                    $msgAdmin .= "Total: Rp " . number_format($finalPrice, 0, ',', '.') . "\n";
+                    $msgAdmin .= "Metode: " . strtoupper($request->payment_method) . "\n";
+                    $msgAdmin .= "Status: *$paymentStatus*\n";
+                    $msgAdmin .= "Waktu: " . date('d-m-Y H:i') . "\n\n";
+                    $msgAdmin .= "Mohon segera cek dashboard.";
+
+                    Http::withHeaders(['Authorization' => $fonnteToken])
+                        ->post('https://api.fonnte.com/send', [
+                            'target' => $adminPhone,
+                            'message' => $msgAdmin,
+                        ]);
+
+                    // --- C. Kirim ke PEMILIK KUPON (Affiliator) ---
+                    if ($couponId) {
+                        $couponUsed = Coupon::with('user')->find($couponId);
+
+                        // Cek: Kupon ada, User (pemilik) ada, dan User punya No HP
+                        if ($couponUsed && $couponUsed->user) {
+                            $affiliateUser = $couponUsed->user;
+                            $affiliatePhone = $affiliateUser->no_hp ?? $affiliateUser->phone;
+
+                            if ($affiliatePhone) {
+                                $msgAff = "Halo Partner *$affiliateUser->name*,\n\n";
+                                $msgAff .= "Kabar Gembira! 🎉\n";
+                                $msgAff .= "Ada order baru menggunakan kode kupon Anda: *{$couponUsed->code}*.\n\n";
+                                $msgAff .= "Detail Transaksi:\n";
+                                $msgAff .= "- Invoice: $order->order_number\n";
+                                $msgAff .= "- Nominal Belanja: Rp " . number_format($subtotal,0,',','.') . "\n";
+                                $msgAff .= "- Diskon diberikan: Rp " . number_format($discount,0,',','.') . "\n\n";
+                                $msgAff .= "Komisi akan dihitung sesuai ketentuan sistem. Semangat!";
+
+                                Http::withHeaders(['Authorization' => $fonnteToken])
+                                    ->post('https://api.fonnte.com/send', [
+                                        'target' => $affiliatePhone,
+                                        'message' => $msgAff,
+                                    ]);
+                            }
+                        }
+                    }
+                }
+
+            } catch (\Exception $waError) {
+                // Log error WA agar bisa dicek developer, tapi JANGAN gagalkan transaksi utama
+                Log::error('Fonnte WA Error: ' . $waError->getMessage());
+            }
+            // ==========================================
+            // END NOTIFIKASI
+            // ==========================================
+
+
+            // ==========================================
+            // 10. RETURN RESPONSE JSON KE FRONTEND
             // ==========================================
             return response()->json([
                 'status'         => 'success',

@@ -13,50 +13,63 @@ class Coupon extends Model
     /**
      * Konfigurasi Timestamp
      * Set ke 'false' jika tabel Anda TIDAK punya kolom 'updated_at'.
-     * Jika tabel Anda punya 'created_at' DAN 'updated_at', hapus baris ini.
      */
     public $timestamps = false; 
 
     /**
      * Daftar kolom yang boleh diisi (Mass Assignment).
-     * Sesuai dengan struktur tabel di Database Anda.
      */
     protected $fillable = [
+        'user_id',          // <--- PENTING: ID Pemilik Kupon (Affiliator)
         'code',
-        'type',                 // 'percent' atau 'fixed'
-        'value',                // Nilai diskon
-        'min_order_amount',     // Minimal belanja (opsional)
-        'max_discount_amount',  // Maksimal potongan (opsional)
+        'type',             // 'percent' atau 'fixed'
+        'value',            // Nilai diskon
+        'min_order_amount', // Minimal belanja (opsional)
+        'max_discount_amount', // Maksimal potongan (opsional)
         'start_date',
-        'expiry_date',          // <--- NAMA YANG BENAR (Sesuai DB)
-        'usage_limit',          // Batas penggunaan kupon
-        'used_count',           // Jumlah kupon terpakai
+        'expiry_date',
+        'usage_limit',      // Batas penggunaan kupon
+        'used_count',       // Jumlah kupon terpakai
         'is_active'
     ];
 
     /**
-     * CASTING: Mengubah tipe data otomatis saat diambil dari DB.
-     * PENTING: Agar start_date & expiry_date dianggap sebagai Tanggal (Carbon), bukan Teks.
+     * CASTING: Mengubah tipe data otomatis.
      */
     protected $casts = [
         'start_date' => 'datetime',
         'expiry_date' => 'datetime',
         'is_active' => 'boolean',
-        'value' => 'integer', // atau 'decimal:2' jika butuh koma
+        'value' => 'integer', 
         'min_order_amount' => 'integer',
         'used_count' => 'integer',
         'usage_limit' => 'integer',
     ];
 
     /**
+     * RELASI KE USER (PEMILIK KUPON)
+     * Ini wajib ada agar Controller bisa mengambil No HP pemilik kupon.
+     */
+    public function user()
+    {
+        // Pastikan nama kolom di database 'coupons' adalah 'user_id'
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    /**
+     * Relasi ke tabel orders (Untuk menghitung total omzet yg dihasilkan kupon ini)
+     */
+    public function orders()
+    {
+        return $this->hasMany(Order::class, 'coupon_id');
+    }
+
+    /**
      * Fungsi Cek Validitas Kupon
-     * Memastikan kupon aktif, belum expired, dan memenuhi syarat belanja.
-     * * @param int $totalOrder Total belanja saat checkout
-     * @return bool
      */
     public function isValid($totalOrder = 0)
     {
-        $now = now(); // Waktu sekarang
+        $now = now(); 
 
         // 1. Cek Status Aktif
         if (!$this->is_active) {
@@ -65,23 +78,22 @@ class Coupon extends Model
 
         // 2. Cek Tanggal Mulai (Jika diatur)
         if ($this->start_date && $now->lt($this->start_date)) {
-            return false; // Belum mulai
+            return false; 
         }
 
         // 3. Cek Tanggal Kadaluarsa (Jika diatur)
         if ($this->expiry_date && $now->gt($this->expiry_date)) {
-            return false; // Sudah expired
+            return false; 
         }
 
         // 4. Cek Batas Penggunaan (Kuota)
-        // Jika usage_limit diisi (>0) DAN used_count sudah >= limit
         if ($this->usage_limit > 0 && $this->used_count >= $this->usage_limit) {
-            return false; // Kuota habis
+            return false; 
         }
 
         // 5. Cek Minimal Belanja
         if ($this->min_order_amount > 0 && $totalOrder < $this->min_order_amount) {
-            return false; // Belum mencapai minimal belanja
+            return false; 
         }
 
         return true;
@@ -105,11 +117,5 @@ class Coupon extends Model
 
         // Jika tipe 'fixed' (potongan nominal langsung)
         return $this->value;
-    }
-
-    // Relasi ke tabel orders (Untuk menghitung total omzet yg dihasilkan kupon ini)
-    public function orders()
-    {
-        return $this->hasMany(Order::class, 'coupon_id');
     }
 }
