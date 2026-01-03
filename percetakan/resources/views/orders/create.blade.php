@@ -353,6 +353,13 @@
     <script>
     function posSystem() {
         return {
+            init() {
+                 // --- PERBAIKAN: JIKA ADA KUPON DI URL, BERI PESAN VISUAL ---
+                 if(this.couponCode) { 
+                     this.couponMessage = 'Kupon terdeteksi! Masukkan barang untuk cek diskon.';
+                 }
+            },
+            
             mobileCartOpen: false,
             showPaymentModal: false,
             search: '',
@@ -361,8 +368,9 @@
             isProcessing: false,
             isValidatingCoupon: false,
             
-            // Form Data
-            couponCode: '',
+            // --- PERBAIKAN: OTOMATIS TANGKAP VARIABLE DARI PHP CONTROLLER ---
+            couponCode: '{{ $autoCoupon ?? "" }}',
+            
             couponMessage: '',
             discountAmount: 0,
             
@@ -493,8 +501,9 @@
                 this.cart = this.cart.filter(i => i.id !== id);
                 if(this.cart.length === 0) {
                     this.discountAmount = 0;
-                    this.couponCode = '';
-                    this.couponMessage = '';
+                    // JANGAN kosongkan couponCode agar user tidak perlu ketik ulang
+                    // this.couponCode = ''; 
+                    this.couponMessage = 'Keranjang kosong.';
                 } else if(this.couponCode) {
                     this.checkCoupon();
                 }
@@ -505,7 +514,7 @@
                     this.cart = []; 
                     this.uploadedFiles = []; 
                     this.discountAmount = 0;
-                    this.couponCode = '';
+                    // JANGAN kosongkan couponCode
                     this.couponMessage = '';
                 } 
             },
