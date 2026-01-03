@@ -403,7 +403,7 @@ if ($request->coupon) {
         $msgAff .= "├ Total Omzet: *Rp " . number_format($totalOmzet, 0, ',', '.') . "*\n";
         $msgAff .= "└ Total Profit Bersih: *Rp " . number_format($realProfit, 0, ',', '.') . "*\n\n"; // <--- INI SUDAH BENAR SEKARANG
 
-        $msgAff .= "Pencairan dana Kakak *$affiliateName* Akan di transfer ke Rekening Bank *$bankName* kakak, Terimakasih \n\n";
+        $msgAff .= "Pencairan dana Kakak *$affiliateName* Akan di transfer ke Rekening Bank *$bankName* kakak Sebulan sekali ya, Terimakasih \n\n";
         $msgAff .= "Semangat terus promosinya! 🚀";
 
         Http::withHeaders(['Authorization' => $fonnteToken])
