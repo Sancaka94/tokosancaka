@@ -204,101 +204,106 @@ public function syncBalance()
 }
 
 /**
-     * API CEK AKUN (DENGAN DEBUG LOG)
+     * API CEK AKUN (AUTO FIX PIN PLAIN TEXT)
      */
     public function checkAccountPublic(Request $request)
     {
-        // DEBUG: Cek apakah request masuk
         Log::info('>>> START CHECK ACCOUNT PUBLIC <<<');
-        Log::info('Input Data:', $request->all());
 
         try {
-            // 1. Validasi Input
             $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
                 'whatsapp' => 'required',
                 'pin' => 'required'
             ]);
 
             if ($validator->fails()) {
-                Log::warning('Validasi Gagal:', $validator->errors()->toArray());
-                return response()->json([
-                    'status' => 'error', 
-                    'message' => 'Data tidak lengkap: ' . implode(', ', $validator->errors()->all())
-                ], 400);
+                return response()->json(['status' => 'error', 'message' => 'Data tidak lengkap.'], 400);
             }
 
-            // 2. Cari Data Berdasarkan WhatsApp
-            Log::info('Mencari Affiliate dengan WA: ' . $request->whatsapp);
-            
             $affiliate = Affiliate::where('whatsapp', $request->whatsapp)->first();
 
             if (!$affiliate) {
-                Log::error('Affiliate tidak ditemukan di database.');
-                return response()->json([
-                    'status' => 'error', 
-                    'message' => 'Nomor WhatsApp tidak terdaftar.'
-                ], 404);
+                return response()->json(['status' => 'error', 'message' => 'Nomor WhatsApp tidak ditemukan.'], 404);
             }
 
-            Log::info('Affiliate Ditemukan: ID ' . $affiliate->id . ' - Nama: ' . $affiliate->name);
+            // --- LOGIKA PERBAIKAN ERROR "Not Bcrypt" ---
+            
+            $inputPin = $request->pin;
+            $dbPin    = $affiliate->pin;
 
-            // 3. Verifikasi PIN
-            // Cek apakah PIN di database null/kosong
-            if (empty($affiliate->pin)) {
-                Log::error('PIN di database kosong untuk user ini.');
-                return response()->json(['status' => 'error', 'message' => 'Akun ini belum memiliki PIN.'], 401);
+            // Cek apakah data di DB adalah Hash Valid atau Angka Biasa?
+            $isHashed = \Illuminate\Support\Facades\Hash::info($dbPin)['algoName'] !== 'unknown';
+
+            $isValid = false;
+
+            if (!$isHashed) {
+                // KASUS 1: PIN di DB masih Angka Biasa (Penyebab Error Anda)
+                if ($dbPin == $inputPin) {
+                    $isValid = true;
+                    // AUTO-FIX: Langsung update ke Hash biar besok tidak error lagi
+                    $affiliate->update(['pin' => Hash::make($inputPin)]);
+                    Log::info('AUTO-FIX: Mengubah PIN plain text menjadi Hash untuk ID: ' . $affiliate->id);
+                }
+            } else {
+                // KASUS 2: PIN sudah terenkripsi (Normal)
+                if (Hash::check($inputPin, $dbPin)) {
+                    $isValid = true;
+                }
             }
 
-            if (!Hash::check($request->pin, $affiliate->pin)) {
-                Log::warning('PIN Salah. Input: ' . $request->pin);
-                return response()->json([
-                    'status' => 'error', 
-                    'message' => 'PIN Keamanan Salah!'
-                ], 401);
+            if (!$isValid) {
+                return response()->json(['status' => 'error', 'message' => 'PIN Keamanan Salah!'], 401);
             }
 
-            Log::info('PIN Cocok. Mengirim data balik.');
-
-            // 4. Sukses
             return response()->json([
                 'status' => 'success',
                 'data' => $affiliate
             ]);
 
         } catch (\Exception $e) {
-            // TANGKAP ERROR 500 DISINI
-            Log::error('CRITICAL ERROR di checkAccountPublic: ' . $e->getMessage());
-            Log::error('File: ' . $e->getFile() . ' baris ' . $e->getLine());
-            
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Server Error: ' . $e->getMessage()
-            ], 500);
+            Log::error('ERROR checkAccountPublic: ' . $e->getMessage());
+            return response()->json(['status' => 'error', 'message' => 'Server Error: ' . $e->getMessage()], 500);
         }
     }
 
     /**
-     * API UPDATE DATA PUBLIC (DENGAN DEBUG LOG)
+     * API UPDATE DATA PUBLIC (AUTO FIX PIN PLAIN TEXT)
      */
     public function updateAccountPublic(Request $request)
     {
-        Log::info('>>> START UPDATE ACCOUNT PUBLIC <<<');
-        Log::info('Data Update:', $request->except(['verification_pin', 'new_pin'])); // Jangan log PIN asli
-
         try {
             $request->validate([
                 'id' => 'required|exists:affiliates,id',
                 'verification_pin' => 'required',
-                'name' => 'required|string|max:255',
-                'whatsapp' => 'required|numeric',
+                'name' => 'required',
+                'whatsapp' => 'required',
             ]);
 
             $affiliate = Affiliate::find($request->id);
+            
+            // --- LOGIKA PERBAIKAN ERROR "Not Bcrypt" ---
+            
+            $inputPin = $request->verification_pin;
+            $dbPin    = $affiliate->pin;
+            $isHashed = \Illuminate\Support\Facades\Hash::info($dbPin)['algoName'] !== 'unknown';
+            $isValid  = false;
 
-            // Security Check
-            if (!Hash::check($request->verification_pin, $affiliate->pin)) {
-                Log::warning('Gagal Update: PIN Verifikasi Salah user ID: ' . $affiliate->id);
-                return redirect()->back()->with('error', 'Gagal Update: Validasi PIN tidak cocok.');
+            if (!$isHashed) {
+                // Jika DB masih angka biasa, bandingkan langsung
+                if ($dbPin == $inputPin) {
+                    $isValid = true;
+                    // Sekalian update jadi hash
+                    $affiliate->update(['pin' => Hash::make($inputPin)]); 
+                }
+            } else {
+                // Jika DB sudah hash, pakai Hash::check
+                if (Hash::check($inputPin, $dbPin)) {
+                    $isValid = true;
+                }
+            }
+
+            if (!$isValid) {
+                return redirect()->back()->with('error', 'Gagal Update: PIN Verifikasi Salah.');
             }
 
             // Update Data
@@ -310,22 +315,19 @@ public function syncBalance()
                 'bank_account_number' => $request->bank_account_number,
             ];
 
-            // Cek ganti PIN
+            // Cek ganti PIN Baru
             if ($request->filled('new_pin')) {
-                Log::info('User meminta ganti PIN baru.');
                 $request->validate(['new_pin' => 'numeric|digits:6']);
                 $dataToUpdate['pin'] = Hash::make($request->new_pin);
             }
 
             $affiliate->update($dataToUpdate);
-            
-            Log::info('Update Berhasil untuk ID: ' . $affiliate->id);
 
             return redirect()->back()->with('success', 'Data Berhasil Diperbarui!');
 
         } catch (\Exception $e) {
-            Log::error('CRITICAL ERROR di updateAccountPublic: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Terjadi kesalahan server: ' . $e->getMessage());
+            Log::error('ERROR updateAccountPublic: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Terjadi kesalahan server.');
         }
     }
     /**
