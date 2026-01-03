@@ -21,6 +21,7 @@ class Order extends Model
         'payment_method',   // Baru
         'payment_url',      // Baru
         'status',
+        'base_price_at_order',
         'payment_status',
         'note'
     ];
