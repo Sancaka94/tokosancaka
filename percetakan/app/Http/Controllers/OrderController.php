@@ -21,7 +21,7 @@ use App\Models\Affiliate;
 
 // Services
 use App\Services\TripayService;
-use App\Services\DokuJokulService;
+use App\Services\DokuJokulService; // Pastikan Service ini di-import
 
 class OrderController extends Controller
 {
@@ -56,8 +56,9 @@ class OrderController extends Controller
 
     /**
      * Proses Penyimpanan Transaksi
+     * Kita inject TripayService dan DokuJokulService di sini
      */
-    public function store(Request $request, TripayService $tripayService)
+    public function store(Request $request, TripayService $tripayService, DokuJokulService $dokuService)
     {
         // ==========================================
         // 1. VALIDASI INPUT
@@ -65,12 +66,9 @@ class OrderController extends Controller
         $request->validate([
             'items'           => 'required', 
             'total'           => 'required|numeric',
-            // Tambahkan 'affiliate_balance' ke metode bayar
             'payment_method'  => 'required|in:cash,saldo,affiliate_balance,tripay,doku',
             'cash_amount'     => 'nullable|numeric|required_if:payment_method,cash',
-            // Cek customer_id ke tabel affiliates jika bayar pakai saldo profit
             'customer_id'     => 'nullable|exists:affiliates,id|required_if:payment_method,affiliate_balance',
-            // Wajib input PIN jika bayar pakai saldo profit
             'affiliate_pin'   => 'nullable|required_if:payment_method,affiliate_balance',
             'attachments.*'   => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png|max:10240'
         ]);
@@ -159,9 +157,10 @@ class OrderController extends Controller
             $paymentStatus = 'unpaid';
             $paymentUrl    = null;    
             $changeAmount  = 0;     
-            $userId        = null; // User ID NULL karena pembeli adalah Affiliate/Guest (Bukan Admin)
+            $userId        = null; 
             $customerName  = $request->customer_name ?? 'Guest';
             $customerPhone = $request->customer_phone;
+            $customerEmail = 'customer@tokosancaka.com'; // Default email dummy
             $note          = $request->note;
 
             // Jika Member Dipilih (ID dari tabel Affiliates)
@@ -170,6 +169,10 @@ class OrderController extends Controller
                 if ($affiliateMember) {
                     $customerName  = $affiliateMember->name; 
                     $customerPhone = $affiliateMember->whatsapp;
+                    // Gunakan email member jika ada
+                    if (!empty($affiliateMember->email)) {
+                        $customerEmail = $affiliateMember->email;
+                    }
                 }
             }
 
@@ -185,7 +188,7 @@ class OrderController extends Controller
                     $note .= "\n[INFO PEMBAYARAN]\nMetode: Tunai\nDiterima: Rp " . number_format($cashReceived,0,',','.') . "\nKembali: Rp " . number_format($changeAmount,0,',','.');
                     break;
 
-                // --- SALDO PROFIT AFILIASI (FITUR BARU) ---
+                // --- SALDO PROFIT AFILIASI ---
                 case 'affiliate_balance':
                     if (!$request->customer_id) {
                         throw new \Exception("Wajib pilih Member Afiliasi untuk metode ini.");
@@ -215,10 +218,10 @@ class OrderController extends Controller
                     $note .= "\n[INFO PEMBAYARAN]\nMetode: Potong Profit Afiliasi\nSisa Profit: Rp " . number_format($affiliatePayor->balance,0,',','.');
                     break;
 
-                // --- SALDO TOPUP (Tidak dipakai user admin) ---
+                // --- SALDO TOPUP (Belum Tersedia) ---
                 case 'saldo':
-                     throw new \Exception("Fitur Saldo Topup User belum tersedia.");
-                     break;
+                      throw new \Exception("Fitur Saldo Topup User belum tersedia.");
+                      break;
 
                 // --- PAYMENT GATEWAY ---
                 case 'tripay':
@@ -261,21 +264,22 @@ class OrderController extends Controller
                 $order->update(['payment_url' => $paymentUrl]); 
             }
             elseif ($request->payment_method === 'doku') {
-                $customerData = [
+                // Siapkan Data Customer untuk DOKU
+                $dokuCustomerData = [
                     'name'  => $order->customer_name,
-                    'email' => 'customer@tokosancaka.com', 
-                    'phone' => $order->customer_phone ?? '085745808809',
+                    'email' => $customerEmail, 
+                    'phone' => $order->customer_phone ?? '081234567890',
                 ];
 
-                $dokuService = app(\App\Services\DokuJokulService::class);
+                // Panggil Service DOKU
                 $paymentUrl = $dokuService->createPayment(
                     $order->order_number, 
                     $order->final_price,
-                    $customerData 
+                    $dokuCustomerData 
                 );
                 
                 if (empty($paymentUrl)) {
-                    throw new \Exception("Gagal generate link pembayaran DOKU.");
+                    throw new \Exception("Gagal generate link pembayaran DOKU. Cek konfigurasi server.");
                 }
                 $order->update(['payment_url' => $paymentUrl]);
             }
@@ -327,9 +331,8 @@ class OrderController extends Controller
 
 
             // ==========================================
-            // 9. LOGIKA KOMISI / BAGI HASIL (Add Balance)
+            // 9. LOGIKA KOMISI / BAGI HASIL
             // ==========================================
-            // Jika ada kupon yang dipakai, pemilik kupon dapat komisi
             if ($request->coupon && $paymentStatus == 'paid') {
                 try {
                     $affiliateOwner = Affiliate::where('coupon_code', $request->coupon)->first();
