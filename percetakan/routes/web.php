@@ -69,7 +69,6 @@ Route::get('/affiliates', [AffiliateController::class, 'index'])->name('affiliat
 // Resourceful Routes untuk Order
 Route::resource('reports', ReportController::class)->except(['create', 'store']);
 
-// routes/web.php
 
 // Kembalikan jadi resource biasa (tanpa except)
 Route::resource('coupons', CouponController::class);
