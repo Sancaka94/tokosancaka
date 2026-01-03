@@ -5,22 +5,23 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Affiliate;
 use App\Models\Coupon;
-use App\Services\FonnteService; // <--- PERBAIKAN 1: Sesuaikan nama class
+use App\Services\FonnteService;
 use Illuminate\Support\Facades\DB;
+use SimpleSoftwareIO\QrCode\Facades\QrCode; // Pastikan library sudah diinstall
 
 class AffiliateController extends Controller
 {
     public function index()
     {
-        // Ambil data afiliasi beserta kupon dan order-nya (Hanya order yang SUDAH LUNAS)
+        // 1. Ambil data afiliasi
         $affiliates = Affiliate::with(['coupon.orders' => function($query) {
             $query->where('payment_status', 'paid'); 
         }])->latest()->get();
 
-        // Hitung Ringkasan untuk Card di atas
+        // 2. Hitung Ringkasan
         $totalAffiliates = $affiliates->count();
         $totalTransactions = 0;
-        $totalRevenueGenerated = 0; // Total omzet toko dari afiliasi
+        $totalRevenueGenerated = 0;
 
         foreach($affiliates as $aff) {
             if($aff->coupon) {
@@ -30,15 +31,31 @@ class AffiliateController extends Controller
             }
         }
 
-        return view('affiliate.index', compact('affiliates', 'totalAffiliates', 'totalTransactions', 'totalRevenueGenerated'));
+        // ============================================================
+        // 3. GENERATE QR CODE PENDAFTARAN (Untuk Admin Sebarkan)
+        // ============================================================
+        // Link statis sesuai request Anda
+        $registerUrl = 'https://tokosancaka.com/percetakan/public/join-partner'; 
+        
+        // Generate QR Code (Ukuran 150px)
+        $qrRegister = QrCode::size(150)->generate($registerUrl);
+
+        return view('affiliate.index', compact(
+            'affiliates', 
+            'totalAffiliates', 
+            'totalTransactions', 
+            'totalRevenueGenerated',
+            'qrRegister', // Kirim variable QR gambar
+            'registerUrl' // Kirim variable Link text
+        ));
     }
     
+    // Halaman Form Pendaftaran (Pastikan route-nya '/join-partner')
     public function create()
     {
         return view('affiliate.register');
     }
 
-    // Hapus 'FonteeService $fontee' dari parameter karena kita pakai Static Method
     public function store(Request $request) 
     {
         $request->validate([
@@ -53,12 +70,12 @@ class AffiliateController extends Controller
 
         DB::beginTransaction();
         try {
-            // 1. Generate Kode Unik
+            // Generate Kode Unik
             $firstName = explode(' ', trim($request->name))[0];
             $cleanName = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $firstName));
             $couponCode = 'DISKON-' . $cleanName . rand(100, 999);
 
-            // 2. Simpan Data Afiliator
+            // Simpan Data
             $affiliate = Affiliate::create([
                 'name' => $request->name,
                 'address' => $request->address,
@@ -68,25 +85,29 @@ class AffiliateController extends Controller
                 'coupon_code' => $couponCode,
             ]);
 
-            // 3. Daftarkan Kode ke Tabel Coupon
+            // Buat Kupon
             Coupon::create([
                 'code' => $couponCode,
                 'type' => 'percent', 
                 'value' => 5, // Diskon 5%
-                'start_date' => now(), // Mengisi start_date
-                'expiry_date' => now()->addYears(5), // <--- SESUAIKAN DENGAN NAMA KOLOM DI DB
+                'start_date' => now(),
+                'expiry_date' => now()->addYears(5), 
                 'description' => 'Kupon Afiliasi dari ' . $request->name
             ]);
 
-            // 4. Siapkan Pesan WA
+            // Siapkan Link Toko Anda
+            $shopLink = "https://tokosancaka.com/percetakan/public/";
+
+            // Pesan WA
             $message = "Halo {$request->name}! 👋\n\n";
             $message .= "Selamat! Anda resmi menjadi Partner Afiliasi Kami.\n\n";
             $message .= "Berikut adalah KODE KUPON Khusus Anda:\n";
             $message .= "*{$couponCode}*\n\n";
+            $message .= "Link Website Toko:\n" . $shopLink . "\n\n"; 
             $message .= "Sebarkan kode ini. Setiap orang yang membeli menggunakan kode ini akan mendapat diskon, dan Anda akan mendapatkan komisi!\n\n";
             $message .= "Semangat Cuan! 🚀";
 
-            // 5. Kirim WA (PERBAIKAN 2: Panggil Static Method)
+            // Kirim WA
             FonnteService::sendMessage($request->whatsapp, $message);
 
             DB::commit();
@@ -97,5 +118,25 @@ class AffiliateController extends Controller
             DB::rollBack();
             return redirect()->back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage())->withInput();
         }
+    }
+
+    /**
+     * Method Cetak QR Code Spesifik untuk Member
+     */
+    public function printQr($id)
+    {
+        $affiliate = Affiliate::findOrFail($id);
+
+        // ============================================================
+        // LINK KHUSUS MEMBER (Domain Anda + Parameter Kupon)
+        // Hasil: https://tokosancaka.com/percetakan/public/?coupon=KODEUNIK
+        // ============================================================
+        $baseUrl = 'https://tokosancaka.com/percetakan/public/';
+        $shopLinkWithCoupon = $baseUrl . '?coupon=' . $affiliate->coupon_code;
+
+        // Generate QR Code berisi Link Member
+        $qrCode = QrCode::size(300)->generate($shopLinkWithCoupon);
+
+        return view('affiliate.print_qr', compact('affiliate', 'qrCode', 'shopLinkWithCoupon'));
     }
 }
