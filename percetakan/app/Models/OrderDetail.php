@@ -20,6 +20,7 @@ class OrderDetail extends Model
         'price_at_order', // WAJIB ADA (Penyebab Error Anda)
         'quantity',       // WAJIB ADA
         'subtotal',
+        'base_price_at_order', // <--- INI BIANG KEROKNYA (Wajib Ada)
         'file_design',    // Sesuai struktur database lama Anda
         'width',          // Sesuai struktur database lama Anda
         'height'          // Sesuai struktur database lama Anda
