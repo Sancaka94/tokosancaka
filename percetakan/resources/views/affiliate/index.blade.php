@@ -15,6 +15,16 @@
         </div>
         
         <div class="flex gap-2">
+
+            {{-- TOMBOL SYNC SALDO (BARU) --}}
+    <form action="{{ route('affiliate.sync') }}" method="POST" onsubmit="return confirm('Yakin ingin hitung ulang saldo semua member berdasarkan riwayat transaksi?');">
+        @csrf
+        <button type="submit" 
+            class="bg-emerald-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-emerald-200 hover:bg-emerald-700 transition flex items-center gap-2">
+            <i class="fas fa-sync-alt"></i> 
+            <span>Sync Saldo</span>
+        </button>
+    </form>
             {{-- TOMBOL 1: CETAK QR PENDAFTARAN (NEW) --}}
             <button onclick="printRegistrationQR()" 
                 class="bg-slate-800 text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-slate-300 hover:bg-slate-900 transition flex items-center gap-2">
