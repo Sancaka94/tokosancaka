@@ -11,7 +11,7 @@ class AffiliateController extends Controller
 {
     public function index()
     {
-        return view('affiliate.join_partner'); // Sesuaikan nama file view Anda
+        return view('affiliate.register'); // Sesuaikan nama file view Anda
     }
 
     // 1. DAFTAR BARU
