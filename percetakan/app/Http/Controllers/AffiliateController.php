@@ -67,86 +67,136 @@ class AffiliateController extends Controller
     }
 
     /**
-     * Proses Simpan Pendaftaran (LOGIKA UTAMA)
+     * PROSES DAFTAR (Kirim ID & PIN ke WA)
      */
-    public function store(Request $request) 
+    public function store(Request $request)
     {
-        // 1. Validasi Input
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'address' => 'required|string',
-            'whatsapp' => 'required|numeric|unique:affiliates,whatsapp',
-            'bank_name' => 'required|string',
-            'bank_account_number' => 'required|numeric',
-        ], [
-            'whatsapp.unique' => 'Nomor WhatsApp ini sudah terdaftar sebagai partner.',
+        // 1. Validasi
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
+            'name' => 'required',
+            'whatsapp' => 'required|numeric',
+            'pin' => 'required|numeric|digits:6',
         ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator)->withInput()->with('error', 'Cek kembali data Anda.');
+        }
+
+        // Cek Duplikat WA Manual
+        if (Affiliate::where('whatsapp', $request->whatsapp)->exists()) {
+             return redirect()->back()->with('error', 'Nomor WhatsApp sudah terdaftar. Silakan login/edit data.')->withInput();
+        }
 
         DB::beginTransaction();
         try {
-            // 2. Tentukan Besaran Diskon (Contoh: 5%)
-            $discountValue = 5; 
-
-            // 3. Simpan Data Afiliasi DULU dengan kode sementara
-            // Kita butuh simpan dulu agar Database memberikan ID (Nomor Urut)
+            // 2. Simpan Data
             $affiliate = Affiliate::create([
                 'name' => $request->name,
-                'address' => $request->address,
                 'whatsapp' => $request->whatsapp,
+                'address' => $request->address,
                 'bank_name' => $request->bank_name,
                 'bank_account_number' => $request->bank_account_number,
-                'coupon_code' => 'PENDING', // Kode sementara
+                'pin' => Hash::make($request->pin), // Hash PIN untuk database
+                'coupon_code' => 'PENDING',
+                'balance' => 0
             ]);
 
-            // 4. Generate Kode Kupon Format: SANCAKA-{ID}-{DISKON}
-            // Contoh: Pendaftar ke-12 akan jadi SANCAKA-12-5
+            // 3. Generate Kupon (ID - 5%)
+            $discountValue = 5;
             $finalCouponCode = "SANCAKA-" . $affiliate->id . "-" . $discountValue;
+            
+            $affiliate->update(['coupon_code' => $finalCouponCode]);
 
-            // 5. Update Data Afiliasi dengan Kode yang Benar
-            $affiliate->update([
-                'coupon_code' => $finalCouponCode
-            ]);
-
-            // 6. Buat Data Kupon di Tabel Coupons
             Coupon::create([
                 'code' => $finalCouponCode,
-                'type' => 'percent', // Tipe persen
-                'value' => $discountValue, // Nilai 5
+                'type' => 'percent',
+                'value' => $discountValue,
                 'start_date' => now(),
-                'expiry_date' => now()->addYears(5), 
-                'description' => 'Kupon Partner: ' . $request->name . ' (ID: ' . $affiliate->id . ')',
+                'expiry_date' => now()->addYears(5),
+                'description' => 'Partner: ' . $request->name,
                 'is_active' => true
             ]);
 
-            // 7. Generate Link Khusus (Langsung ke Kasir + Auto Kupon)
-            // Hasil: https://domain.com/orders/create?coupon=SANCAKA-12-5
-            $targetUrl = route('orders.create', ['coupon' => $finalCouponCode]);
+            // 4. SUSUN PESAN WHATSAPP (LENGKAP ID & PIN)
+            $targetUrl = route('orders.create', ['coupon' => $finalCouponCode]); // Ganti route sesuai sistem order Anda
+            
+            $msg  = "🎉 *SELAMAT! PENDAFTARAN BERHASIL* 🎉\n\n";
+            $msg .= "Halo Kak *{$request->name}*,\n";
+            $msg .= "Akun Partner Sancaka Anda sudah aktif.\n\n";
+            
+            $msg .= "📋 *DATA AKUN ANDA:*\n";
+            $msg .= "🆔 ID Partner: *{$affiliate->id}* (Simpan ini!)\n";
+            $msg .= "📱 No. WA: {$request->whatsapp}\n";
+            $msg .= "🔐 PIN: *{$request->pin}*\n\n";
+            
+            $msg .= "⚠️ *PENTING:* Simpan ID dan PIN ini. Jika Anda lupa nomor HP, Anda bisa login menggunakan ID Partner.\n\n";
 
-            // 8. Susun Pesan WhatsApp
-            $message = "Halo Partner *{$request->name}*! 👋\n\n";
-            $message .= "Selamat! Anda resmi terdaftar sebagai Partner Afiliasi Sancaka.\n";
-            $message .= "No. Registrasi: *#{$affiliate->id}*\n\n";
-            
-            $message .= "🎫 KODE KUPON ANDA:\n";
-            $message .= "*{$finalCouponCode}*\n";
-            $message .= "(Diskon {$discountValue}% untuk pelanggan)\n\n";
-            
-            $message .= "👇 *LINK KHUSUS ANDA (SEBARKAN INI):* 👇\n";
-            $message .= $targetUrl . "\n\n";
-            
-            $message .= "Siapapun yang klik link di atas akan otomatis mendapatkan Diskon, dan Anda mendapatkan Komisi!\n\n";
-            $message .= "Semangat Cuan! 🚀";
+            $msg .= "🎫 *KODE KUPON:* *{$finalCouponCode}*\n";
+            $msg .= "🔗 *LINK JUALAN:* {$targetUrl}\n\n";
+            $msg .= "Semangat Cuan! 🚀";
 
-            // 9. Kirim WhatsApp
-            FonnteService::sendMessage($request->whatsapp, $message);
+            // 5. Kirim WA (Gunakan fungsi CURL atau Service Anda)
+            $this->sendFonnte($request->whatsapp, $msg);
 
             DB::commit();
-
-            return redirect()->back()->with('success', 'Pendaftaran Berhasil! Kode Kupon: ' . $finalCouponCode . ' telah dikirim ke WhatsApp Anda.');
+            return redirect()->back()->with('success', 'Berhasil! ID Partner dan PIN telah dikirim ke WhatsApp Anda.');
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage())->withInput();
+            return redirect()->back()->with('error', 'Gagal mendaftar: ' . $e->getMessage())->withInput();
+        }
+    }
+
+    /**
+     * API CEK AKUN (LOGIN DENGAN WA ATAU ID)
+     */
+    public function checkAccountPublic(Request $request)
+    {
+        try {
+            // Ubah validasi: login_key bisa WA atau ID
+            if (!$request->login_key || !$request->pin) {
+                return response()->json(['status' => 'error', 'message' => 'Masukkan No. WA / ID dan PIN.'], 400);
+            }
+
+            // CARI BERDASARKAN WA ATAU ID
+            $affiliate = Affiliate::where('whatsapp', $request->login_key)
+                        ->orWhere('id', $request->login_key)
+                        ->first();
+
+            if (!$affiliate) {
+                return response()->json(['status' => 'error', 'message' => 'Akun tidak ditemukan (Cek ID/WA).'], 404);
+            }
+
+            // AUTO-FIX PIN (Seperti request sebelumnya)
+            $inputPin = $request->pin;
+            $dbPin    = $affiliate->pin;
+            $isHashed = \Illuminate\Support\Facades\Hash::info($dbPin)['algoName'] !== 'unknown';
+            
+            $pinValid = false;
+
+            if (!$isHashed) {
+                if ($dbPin == $inputPin) {
+                    $pinValid = true;
+                    $affiliate->update(['pin' => Hash::make($inputPin)]);
+                }
+            } else {
+                if (Hash::check($inputPin, $dbPin)) {
+                    $pinValid = true;
+                }
+            }
+
+            if (!$pinValid) {
+                return response()->json(['status' => 'error', 'message' => 'PIN Salah!'], 401);
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'data' => $affiliate
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error($e);
+            return response()->json(['status' => 'error', 'message' => 'Server Error.'], 500);
         }
     }
 
@@ -203,68 +253,7 @@ public function syncBalance()
     }
 }
 
-/**
-     * API CEK AKUN (AUTO FIX PIN PLAIN TEXT)
-     */
-    public function checkAccountPublic(Request $request)
-    {
-        Log::info('>>> START CHECK ACCOUNT PUBLIC <<<');
 
-        try {
-            $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
-                'whatsapp' => 'required',
-                'pin' => 'required'
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json(['status' => 'error', 'message' => 'Data tidak lengkap.'], 400);
-            }
-
-            $affiliate = Affiliate::where('whatsapp', $request->whatsapp)->first();
-
-            if (!$affiliate) {
-                return response()->json(['status' => 'error', 'message' => 'Nomor WhatsApp tidak ditemukan.'], 404);
-            }
-
-            // --- LOGIKA PERBAIKAN ERROR "Not Bcrypt" ---
-            
-            $inputPin = $request->pin;
-            $dbPin    = $affiliate->pin;
-
-            // Cek apakah data di DB adalah Hash Valid atau Angka Biasa?
-            $isHashed = \Illuminate\Support\Facades\Hash::info($dbPin)['algoName'] !== 'unknown';
-
-            $isValid = false;
-
-            if (!$isHashed) {
-                // KASUS 1: PIN di DB masih Angka Biasa (Penyebab Error Anda)
-                if ($dbPin == $inputPin) {
-                    $isValid = true;
-                    // AUTO-FIX: Langsung update ke Hash biar besok tidak error lagi
-                    $affiliate->update(['pin' => Hash::make($inputPin)]);
-                    Log::info('AUTO-FIX: Mengubah PIN plain text menjadi Hash untuk ID: ' . $affiliate->id);
-                }
-            } else {
-                // KASUS 2: PIN sudah terenkripsi (Normal)
-                if (Hash::check($inputPin, $dbPin)) {
-                    $isValid = true;
-                }
-            }
-
-            if (!$isValid) {
-                return response()->json(['status' => 'error', 'message' => 'PIN Keamanan Salah!'], 401);
-            }
-
-            return response()->json([
-                'status' => 'success',
-                'data' => $affiliate
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('ERROR checkAccountPublic: ' . $e->getMessage());
-            return response()->json(['status' => 'error', 'message' => 'Server Error: ' . $e->getMessage()], 500);
-        }
-    }
 
     /**
      * API UPDATE DATA PUBLIC (AUTO FIX PIN PLAIN TEXT)
@@ -370,6 +359,32 @@ public function syncBalance()
         ]);
 
         return redirect()->back()->with('success', 'PIN Keamanan berhasil diperbarui!');
+    }
+
+    // Fungsi Helper Kirim WA (Jika belum punya class service)
+    private function sendFonnte($target, $message) {
+        try {
+            $curl = curl_init();
+            curl_setopt_array($curl, array(
+              CURLOPT_URL => 'https://api.fonnte.com/send',
+              CURLOPT_RETURNTRANSFER => true,
+              CURLOPT_ENCODING => '',
+              CURLOPT_MAXREDIRS => 10,
+              CURLOPT_TIMEOUT => 0,
+              CURLOPT_FOLLOWLOCATION => true,
+              CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+              CURLOPT_CUSTOMREQUEST => 'POST',
+              CURLOPT_POSTFIELDS => array(
+                'target' => $target,
+                'message' => $message,
+              ),
+              CURLOPT_HTTPHEADER => array(
+                'Authorization: ' . env('FONNTE_TOKEN', 'ynMyPswSKr14wdtXMJF7') // Ganti dengan token fonnte Anda
+              ),
+            ));
+            $response = curl_exec($curl);
+            curl_close($curl);
+        } catch(\Exception $e) {}
     }
 
 }
