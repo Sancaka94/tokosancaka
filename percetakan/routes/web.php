@@ -74,7 +74,7 @@ Route::post('/affiliate/sync-balance', [AffiliateController::class, 'syncBalance
 Route::prefix('affiliate')->name('affiliate.')->group(function () {
     
     // 1. Halaman Pengaturan (Menampilkan Form)
-    Route::get('/settings', [AffiliateController::class, 'settings'])->name('settings');
+    //Route::get('/settings', [AffiliateController::class, 'settings'])->name('settings');
 
     // 2. Proses Update Profil (Nama, WA, Alamat, Bank)
     Route::put('/update-profile', [AffiliateController::class, 'updateProfile'])->name('update_profile');
