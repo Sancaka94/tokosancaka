@@ -113,7 +113,7 @@
                         Teruskan (Forward) pesan WA tersebut ke <span class="text-amber-400 font-semibold">Teman, Saudara, atau Grup</span>. Saat mereka klik & order, Anda dapat komisi!
                     </p>
                     
-                    <a href="https://wa.me/?text=Halo%2C%20mau%20cetak%20murah%20dan%20cepat%3F%20Cek%20di%20Sancaka%20POS%20ya!" target="_blank" class="inline-flex items-center justify-center w-full px-5 py-3 text-sm font-bold text-slate-900 transition-all bg-amber-400 rounded-lg hover:bg-amber-500 focus:ring-4 focus:ring-amber-600 shadow-lg hover:shadow-amber-400/30">
+                    <a href="https://tokosancaka.com/percetakan/public/join-partner" target="_blank" class="inline-flex items-center justify-center w-full px-5 py-3 text-sm font-bold text-slate-900 transition-all bg-amber-400 rounded-lg hover:bg-amber-500 focus:ring-4 focus:ring-amber-600 shadow-lg hover:shadow-amber-400/30">
                         Coba Share Sekarang <i class="fas fa-paper-plane ml-2"></i>
                     </a>
                 </div>
