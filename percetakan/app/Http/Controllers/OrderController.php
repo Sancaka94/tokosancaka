@@ -213,7 +213,7 @@ class OrderController extends Controller
                     (float) $destLng, 
                     $request->destination_text,
                     (int) $request->weight,
-                    100000, 
+                    1000, 
                     'motor',
                     ['gosend', 'grab_express']
                 ); // <--- Tanda kurung tutup & titik koma ini WAJIB ada dulu
