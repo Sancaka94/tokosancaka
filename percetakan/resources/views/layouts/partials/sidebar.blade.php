@@ -6,8 +6,10 @@
         <img src="https://tokosancaka.com/storage/uploads/sancaka.png" class="h-8 w-8 object-contain" alt="Logo">
         
         <span class="text-xl font-bold tracking-wide text-gray-100">
-            SANCAKA<span class="text-blue-500">POS</span>
+    SANCAKA
+    <span class="text-blue-500 italic">POS</span>
         </span>
+
     </a>
     </div>
 
