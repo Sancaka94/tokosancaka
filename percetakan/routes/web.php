@@ -34,7 +34,11 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     // Laporan Penjualan
-        Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+    Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+
+    // Route untuk Admin melihat daftar Afiliasi
+    Route::get('/affiliates', [AffiliateController::class, 'index'])->name('affiliate.index');
+    Route::post('/affiliate/sync-balance', [AffiliateController::class, 'syncBalance'])->name('affiliate.sync');
 
     // Rute tambahan untuk produk
 
@@ -46,6 +50,13 @@ Route::middleware('auth')->group(function () {
     Route::delete('/products/{product}', [ProductController::class, 'destroy'])->name('products.destroy');
 
     Route::resource('products', ProductController::class);
+
+    // Resourceful Routes untuk Order
+Route::resource('reports', ReportController::class)->except(['create', 'store']);
+
+
+// Kembalikan jadi resource biasa (tanpa except)
+Route::resource('coupons', CouponController::class);
     
 });
 
@@ -76,12 +87,11 @@ Route::get('/reports/export', [ReportController::class, 'export'])->name('report
 // Route untuk Halaman Depan (Publik)
 Route::get('/join-partner', [AffiliateController::class, 'create'])->name('affiliate.create');
 Route::post('/join-partner', [AffiliateController::class, 'store'])->name('affiliate.store');
-// Route untuk Admin melihat daftar Afiliasi
-Route::get('/affiliates', [AffiliateController::class, 'index'])->name('affiliate.index');
+
 
 Route::get('/affiliate/print-qr/{id}', [AffiliateController::class, 'printQr'])->name('affiliate.print_qr');
 
-Route::post('/affiliate/sync-balance', [AffiliateController::class, 'syncBalance'])->name('affiliate.sync');
+
 
 // --- ROUTE BARU YANG PERLU DITAMBAHKAN ---
     Route::get('/edit/{id}', [AffiliateController::class, 'edit'])->name('edit');
@@ -97,13 +107,6 @@ Route::post('/join-partner/check-account', [AffiliateController::class, 'checkAc
 Route::put('/join-partner/update-public', [AffiliateController::class, 'updateAccountPublic'])->name('affiliate.update_public');
 // Tambahkan Route Khusus Reset PIN ini:
 Route::post('/join-partner/forgot-pin', [AffiliateController::class, 'forgotPin'])->name('affiliate.forgot_pin');
-
-// Resourceful Routes untuk Order
-Route::resource('reports', ReportController::class)->except(['create', 'store']);
-
-
-// Kembalikan jadi resource biasa (tanpa except)
-Route::resource('coupons', CouponController::class);
 
 // Pastikan baris ini ada di paling bawah untuk memuat rute Login/Register
 require __DIR__.'/auth.php';
