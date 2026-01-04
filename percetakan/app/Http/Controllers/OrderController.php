@@ -19,7 +19,8 @@ use App\Models\Coupon;
 use App\Models\Affiliate;
 
 // Services (Hanya Doku yang masih pakai service, Tripay sudah manual di sini)
-use App\Services\DokuJokulService; 
+use App\Services\DokuJokulService;
+use App\Services\KiriminAjaService; // Pastikan ini di-use
 
 class OrderController extends Controller
 {
@@ -48,6 +49,38 @@ class OrderController extends Controller
         return view('orders.create', compact('products', 'customers', 'autoCoupon'));
     }
 
+
+    /**
+     * API: Cek Ongkir KiriminAja
+     */
+    public function checkShippingRates(Request $request, KiriminAjaService $kiriminAja)
+    {
+        $request->validate([
+            'weight' => 'required|numeric',
+            'destination_district_id' => 'required' // ID Kecamatan Tujuan
+        ]);
+
+        try {
+            // Asumsi: Origin diambil dari config toko Anda
+            $origin = config('kiriminaja.origin_district_id'); 
+            
+            // Panggil Service KiriminAja (Sesuaikan nama method dengan Service Anda)
+            // Contoh: $kiriminAja->getPrice($origin, $destination, $weight)
+            $rates = $kiriminAja->getPrice(
+                $origin, 
+                $request->destination_district_id, 
+                $request->weight
+            );
+
+            return response()->json([
+                'status' => 'success',
+                'data' => $rates
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    }
+
     /**
      * Proses Penyimpanan Transaksi & Pembayaran
      */
@@ -62,7 +95,10 @@ class OrderController extends Controller
             'cash_amount'     => 'nullable|numeric|required_if:payment_method,cash',
             'customer_id'     => 'nullable|exists:affiliates,id|required_if:payment_method,affiliate_balance',
             'affiliate_pin'   => 'nullable|required_if:payment_method,affiliate_balance',
-            'attachments.*'   => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png|max:10240'
+            'attachments.*'   => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png|max:10240',
+            'delivery_type'   => 'required|in:pickup,shipping',
+            'shipping_cost'   => 'required_if:delivery_type,shipping|numeric',
+            'courier_name'    => 'required_if:delivery_type,shipping|string'
         ]);
 
         $cartItems = json_decode($request->items, true);
@@ -191,6 +227,8 @@ class OrderController extends Controller
                 'status'          => ($paymentStatus === 'paid') ? 'processing' : 'pending', 
                 'payment_status'  => $paymentStatus,
                 'note'            => $note,
+                'shipping_cost'   => $request->delivery_type === 'shipping' ? $request->shipping_cost : 0,
+                'courier_service' => $request->delivery_type === 'shipping' ? $request->courier_name : null,
             ]);
 
             // ==========================================
