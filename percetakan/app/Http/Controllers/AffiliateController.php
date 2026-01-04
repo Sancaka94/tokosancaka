@@ -101,8 +101,8 @@ class AffiliateController extends Controller
                 'balance' => 0
             ]);
 
-            // 3. Generate Kupon (ID - 150%)
-            $discountValue = 150;
+            // 3. Generate Kupon (ID - 30%)
+            $discountValue = 30; // Diskon 30%
             $finalCouponCode = "SANCAKA-" . $affiliate->id . "-" . $discountValue;
             
             $affiliate->update(['coupon_code' => $finalCouponCode]);
@@ -449,6 +449,104 @@ public function syncBalance()
             $response = curl_exec($curl);
             curl_close($curl);
         } catch(\Exception $e) {}
+    }
+
+    /**
+     * MENAMPILKAN FORM EDIT (ADMIN)
+     */
+    public function edit($id)
+    {
+        // Ambil data affiliate beserta kuponnya
+        $affiliate = Affiliate::with('coupon')->findOrFail($id);
+        
+        return view('affiliate.edit', compact('affiliate'));
+    }
+
+    /**
+     * PROSES UPDATE DATA (ADMIN)
+     * Bisa ubah semua data termasuk Saldo dan Kupon
+     */
+    public function update(Request $request, $id)
+    {
+        $affiliate = Affiliate::findOrFail($id);
+
+        // 1. Validasi Data
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'whatsapp' => 'required|numeric|unique:affiliates,whatsapp,' . $id, // Ignore unique untuk ID ini
+            'address' => 'nullable|string',
+            'bank_name' => 'nullable|string',
+            'bank_account_number' => 'nullable|numeric',
+            'balance' => 'required|numeric', // Admin bisa koreksi saldo
+            'coupon_code' => 'required|string', // Admin bisa ganti kode kupon custom
+            'pin' => 'nullable|numeric|digits:6', // Opsional, diisi jika ingin reset PIN
+        ]);
+
+        DB::beginTransaction();
+        try {
+            // 2. Siapkan data update dasar
+            $dataToUpdate = [
+                'name' => $request->name,
+                'whatsapp' => $request->whatsapp,
+                'address' => $request->address,
+                'bank_name' => $request->bank_name,
+                'bank_account_number' => $request->bank_account_number,
+                'balance' => $request->balance,
+                'coupon_code' => $request->coupon_code,
+            ];
+
+            // 3. Cek jika PIN diisi, maka update PIN (Hash ulang)
+            if ($request->filled('pin')) {
+                $dataToUpdate['pin'] = Hash::make($request->pin);
+            }
+
+            // 4. Update Tabel Affiliate
+            $affiliate->update($dataToUpdate);
+
+            // 5. Update Tabel Coupons (PENTING: Agar kode kupon sinkron)
+            // Jika kode kupon di tabel affiliate berubah, di tabel coupon juga harus berubah
+            if ($affiliate->coupon) {
+                $affiliate->coupon->update([
+                    'code' => $request->coupon_code,
+                    'description' => 'Partner: ' . $request->name // Update nama di deskripsi kupon juga
+                ]);
+            } else {
+                // Jika belum punya kupon, buatkan baru (jaga-jaga error data lama)
+                Coupon::create([
+                    'code' => $request->coupon_code,
+                    'type' => 'percent',
+                    'value' => 30, // Default value jika create baru
+                    'start_date' => now(),
+                    'expiry_date' => now()->addYears(5),
+                    'description' => 'Partner: ' . $request->name,
+                    'is_active' => true
+                ]);
+            }
+
+            DB::commit();
+            return redirect()->route('affiliate.index')->with('success', 'Data Affiliate berhasil diperbarui sepenuhnya!');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Gagal update: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * HAPUS AFFILIATE (Opsional jika butuh)
+     */
+    public function destroy($id)
+    {
+        $affiliate = Affiliate::findOrFail($id);
+        
+        // Hapus kupon terkait dulu
+        if($affiliate->coupon) {
+            $affiliate->coupon->delete();
+        }
+        
+        $affiliate->delete();
+
+        return redirect()->route('affiliate.index')->with('success', 'Affiliate berhasil dihapus.');
     }
 
 }

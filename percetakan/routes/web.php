@@ -77,6 +77,11 @@ Route::get('/affiliate/print-qr/{id}', [AffiliateController::class, 'printQr'])-
 
 Route::post('/affiliate/sync-balance', [AffiliateController::class, 'syncBalance'])->name('affiliate.sync');
 
+// --- ROUTE BARU YANG PERLU DITAMBAHKAN ---
+    Route::get('/edit/{id}', [AffiliateController::class, 'edit'])->name('edit');
+    Route::put('/update/{id}', [AffiliateController::class, 'update'])->name('update');
+    Route::delete('/delete/{id}', [AffiliateController::class, 'destroy'])->name('destroy');
+    
 // API Public untuk Edit Data (Cek PIN & Update)
 Route::post('/join-partner/check-account', [AffiliateController::class, 'checkAccountPublic'])->name('affiliate.check_account');
 Route::put('/join-partner/update-public', [AffiliateController::class, 'updateAccountPublic'])->name('affiliate.update_public');
