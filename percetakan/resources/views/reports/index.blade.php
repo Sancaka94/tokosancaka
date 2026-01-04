@@ -113,7 +113,7 @@
                                 @if(!empty($order->courier_service))
                                     <div class="text-[10px] text-slate-400 leading-tight max-w-[180px] mt-1">
                                         <i class="fas fa-map-marker-alt text-red-400 mr-1"></i>
-                                        Ke: {{ Str::limit($order->destination_text ?? 'Alamat tidak tersedia', 40) }}
+                                        Ke: Ke: {{ Str::limit($order->destination_address ?? 'Alamat tidak tersedia', 40) }}
                                     </div>
                                     <div class="text-[9px] font-bold text-slate-500 mt-0.5">
                                         Pengirim: Toko Sancaka

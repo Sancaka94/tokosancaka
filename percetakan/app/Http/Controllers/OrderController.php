@@ -630,6 +630,15 @@ class OrderController extends Controller
                 }
             }
 
+            // SIAPKAN STRING ALAMAT LENGKAP
+            $fullAddressSaved = null;
+            if ($request->delivery_type === 'shipping') {
+                // Gabungkan: "Jalan Merpati No 1 (Kecamatan Wiyung, Surabaya...)"
+                $detail = $request->customer_address_detail ?? '';
+                $district = $request->destination_text ?? '';
+                $fullAddressSaved = $detail . ' (' . $district . ')';
+            }
+
            // =========================================================
             // TARUH KODE BARU DI SINI (GANTIKAN KODE Order::create LAMA)
             // =========================================================
@@ -651,7 +660,9 @@ class OrderController extends Controller
                     'note'            => $note,
                     'shipping_cost'   => $request->delivery_type === 'shipping' ? $request->shipping_cost : 0,
                     'courier_service' => $request->delivery_type === 'shipping' ? $request->courier_name : null,
-                    'shipping_ref'    => $shippingRef, 
+                    'shipping_ref'    => $shippingRef,
+                    // --- UPDATE BAGIAN INI (SIMPAN ALAMAT) ---
+                    'destination_address' => $fullAddressSaved,
                 ]);
                 
                 Log::info("DATABASE SUKSES. Order ID: " . $order->id);
