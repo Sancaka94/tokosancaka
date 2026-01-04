@@ -57,7 +57,7 @@
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 xl:grid-cols-4 gap-3">
                     @forelse($products as $product)
                     <template x-if="itemMatchesSearch('{{ addslashes($product->name) }}')">
-                        <div @click="addToCart({{ $product->id }}, '{{ addslashes($product->name) }}', {{ $product->sell_price }}, {{ $product->stock }})"
+                        <div @click="addToCart({{ $product->id }}, '{{ addslashes($product->name) }}', {{ $product->sell_price }}, {{ $product->stock }}, {{ $product->weight ?? 100 }})"
                              class="relative bg-white rounded-2xl p-3 shadow-sm border border-slate-100 flex flex-col h-full group
                              {{ $product->stock <= 0 ? 'opacity-60 grayscale cursor-not-allowed' : 'cursor-pointer active:scale-95 hover:border-red-300 hover:shadow-md' }} transition-all duration-200">
                             
@@ -724,9 +724,13 @@
             async checkOngkir() {
                 if (!this.destinationDistrictId) return;
                 
-                // Hitung berat total (Default 1000 gram jika data kosong)
-                let totalWeight = this.cart.reduce((w, item) => w + (item.qty * 1), 0) * 1000; 
-                if(totalWeight === 0) totalWeight = 1000;
+                // --- PERBAIKAN RUMUS BERAT ---
+                // Hitung: Jumlah Barang * Berat Asli Barang
+                let totalWeight = this.cart.reduce((w, item) => w + (item.qty * item.weight), 0);
+                
+                // Validasi: KiriminAja menolak berat 0, minimal set 100 gram
+                if(totalWeight <= 0) totalWeight = 100; 
+                // -----------------------------
 
                 this.isLoadingShipping = true;
                 this.courierList = [];
@@ -832,11 +836,26 @@
             // LOGIKA KERANJANG (CART)
             // ============================================================
             
-            addToCart(id, name, price, maxStock) {
+            // Tambahkan parameter 'weight' di sini
+            addToCart(id, name, price, maxStock, weight = 100) { 
                 if (maxStock <= 0) { alert('Stok Habis!'); return; }
+                
                 let item = this.cart.find(i => i.id === id);
-                if (item) { if (item.qty < maxStock) item.qty++; else alert('Stok maksimal tercapai!'); } 
-                else { this.cart.push({ id, name, price, qty: 1, maxStock }); }
+                if (item) {
+                    if (item.qty < maxStock) item.qty++;
+                    else alert('Stok maksimal tercapai!');
+                } else {
+                    // Simpan berat asli ke keranjang
+                    this.cart.push({ 
+                        id, 
+                        name, 
+                        price, 
+                        qty: 1, 
+                        maxStock, 
+                        weight: parseInt(weight) // Pastikan jadi angka
+                    });
+                }
+                
                 if(navigator.vibrate) navigator.vibrate(30);
                 if(this.couponCode) this.checkCoupon();
             },
