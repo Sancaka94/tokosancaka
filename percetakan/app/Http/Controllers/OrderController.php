@@ -19,6 +19,9 @@ use App\Models\OrderDetail;
 use App\Models\OrderAttachment;
 use App\Models\Coupon;
 use App\Models\Affiliate;
+use App\Models\Store; 
+use App\Models\TopUp;
+use App\Models\User;
 
 // Services
 use App\Services\DokuJokulService;
@@ -880,6 +883,181 @@ class OrderController extends Controller
             return response()->json(['status' => 'error', 'message' => 'Gagal koneksi ke Tripay: ' . $response->status(), 'debug' => $response->json()], 500);
         } catch (\Exception $e) {
             return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    // =========================================================================
+    // WEBHOOK HANDLER KIRIMINAJA
+    // =========================================================================
+    public function handleWebhook(Request $request)
+    {
+        $payload = $request->all();
+        
+        // 1. Log Payload Masuk (Penting untuk Debugging)
+        Log::info('WEBHOOK KIRIMINAJA RECEIVED:', $payload);
+        
+        $method    = $payload['method'] ?? null;
+        $dataArray = $payload['data'] ?? [];
+
+        if (empty($dataArray)) {
+            return response()->json(['error' => 'Invalid payload, data[] is missing'], 400);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // 2. Mapping Status KiriminAja -> Status Database Kita
+            $statusMap = [
+                'processed_packages'       => 'processing',  // Paket diproses
+                'shipped_packages'         => 'shipped',     // Sedang dikirim (Kurir jalan)
+                'finished_packages'        => 'completed',   // Selesai/Diterima
+                'canceled_packages'        => 'cancelled',   // Dibatalkan
+                'returned_packages'        => 'returning',   // Retur (Dikembalikan)
+                'return_finished_packages' => 'returned',    // Retur Selesai
+            ];
+
+            // 3. Mapping Timestamp (Kolom waktu di DB)
+            $timestampMap = [
+                'shipped_packages'         => 'shipped_at',
+                'finished_packages'        => 'finished_at', // Pastikan kolom ini ada di DB orders
+                'canceled_packages'        => 'cancelled_at',
+            ];
+
+            $orderStatus = $statusMap[$method] ?? null;
+
+            foreach ($dataArray as $data) {
+                if (!$data) continue;
+
+                $orderNumber = $data['order_id'] ?? null; // Di KiriminAja kita kirim order_number sebagai order_id
+                $awb         = $data['awb'] ?? null;      // Nomor Resi Asli (JNE/J&T/dll)
+                
+                if (!$orderNumber) {
+                    Log::warning('Webhook KiriminAja: Data tanpa order_id dilewati.', $data);
+                    continue; 
+                }
+
+                // 4. Cari Order (Gunakan lockForUpdate agar aman dari race condition)
+                $order = Order::where('order_number', $orderNumber)->lockForUpdate()->first();
+
+                if ($order) {
+                    // A. Update Nomor Resi (Jika belum ada atau berubah)
+                    if ($awb && $order->shipping_ref !== $awb) {
+                        $order->shipping_ref = $awb;
+                        Log::info("Resi Update Order #$orderNumber: $awb");
+                    }
+
+                    // B. Update Status Order
+                    if ($orderStatus && $order->status !== 'completed' && $order->status !== 'cancelled') {
+                        $order->status = $orderStatus;
+
+                        // Ambil waktu dari payload atau gunakan waktu sekarang
+                        $datePayload = $data['date'] ?? null;
+                        $updateTime  = $datePayload ? Carbon::parse($datePayload)->timezone('Asia/Jakarta') : now();
+
+                        // C. Update Timestamp Spesifik
+                        // Jika status shipped
+                        if ($method === 'shipped_packages') {
+                            $shippedTime = $data['shipped_at'] ?? $datePayload;
+                            $order->shipped_at = $shippedTime ? Carbon::parse($shippedTime)->timezone('Asia/Jakarta') : $updateTime;
+                        } 
+                        // Jika status completed
+                        elseif ($method === 'finished_packages') {
+                            $finishedTime = $data['finished_at'] ?? $datePayload;
+                            // Pastikan Anda punya kolom 'finished_at' di tabel orders, atau hapus baris ini
+                            // $order->finished_at = $finishedTime ? Carbon::parse($finishedTime)->timezone('Asia/Jakarta') : $updateTime;
+                        }
+
+                        // D. Logika Tambah Saldo Seller (Jika Sistem Marketplace)
+                        // Fitur ini diambil dari referensi Anda. Hapus jika tidak pakai sistem Multi-Vendor/Store.
+                        if ($orderStatus === 'completed') {
+                            $this->_processSellerBalance($order, $updateTime); 
+                        }
+                    }
+
+                    $order->save();
+                    Log::info("Order #$orderNumber updated to status: $orderStatus");
+                } else {
+                    Log::warning("Webhook: Order #$orderNumber tidak ditemukan di database.");
+                }
+            }
+
+            DB::commit();
+            return response()->json(['success' => true]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('WEBHOOK ERROR:', [
+                'message' => $e->getMessage(),
+                'line'    => $e->getLine(),
+                'file'    => $e->getFile()
+            ]);
+            return response()->json(['success' => false, 'message' => 'Internal Server Error'], 500);
+        }
+    }
+
+    // Helper: Proses Saldo Seller (Dari Kode Referensi Anda)
+    private function _processSellerBalance($order, $updateTime)
+    {
+        // Cek apakah model Store/User/TopUp ada di aplikasi Anda
+        if (class_exists('App\Models\Store') && $order->store_id) {
+            try {
+                $store = Store::find($order->store_id);
+                if ($store) {
+                    $seller = User::where('id', $store->user_id)->first(); // Sesuaikan 'id' atau 'id_pengguna'
+                    if ($seller) {
+                        $revenue = $order->total_price; // Atau subtotal, sesuaikan logika bisnis
+                        
+                        $seller->saldo += $revenue;
+                        $seller->save();
+                        
+                        // Catat Mutasi Saldo
+                        if (class_exists('App\Models\TopUp')) {
+                            TopUp::create([
+                                'user_id'        => $seller->id,
+                                'amount'         => $revenue,             
+                                'status'         => 'success',
+                                'payment_method' => 'sales_revenue', 
+                                'transaction_id' => 'REV-' . $order->order_number,
+                                'created_at'     => $updateTime, 
+                            ]);
+                        }
+                        Log::info('Saldo Seller berhasil ditambah.', ['order_id' => $order->id, 'revenue' => $revenue]);
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::error('Error Saldo Seller: ' . $e->getMessage());
+            }
+        }
+    }
+
+    // =========================================================================
+    // SET CALLBACK URL (Jalankan sekali saja via Postman/Browser)
+    // =========================================================================
+    public function setCallback(Request $request, \App\Services\KiriminAjaService $kiriminAja)
+    {
+        // URL Webhook Anda (Pastikan sudah ONLINE / Ngrok, bukan localhost)
+        // Ganti 'api/kiriminaja/webhook' sesuai route yang Anda buat
+        $url = url('/api/kiriminaja/webhook'); 
+        
+        try {
+            $response = $kiriminAja->setCallback($url);
+        
+            if (!empty($response) && isset($response['status']) && $response['status'] === true) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Callback URL berhasil diset di KiriminAja',
+                    'url_set' => $url,
+                    'data'    => $response
+                ]);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => $response['text'] ?? 'Gagal menyet callback URL',
+                    'data'    => $response
+                ], 400);
+            }
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
 }
