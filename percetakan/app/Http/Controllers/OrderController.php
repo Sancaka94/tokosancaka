@@ -643,7 +643,7 @@ class OrderController extends Controller
                     Log::error("KIRIMINAJA GAGAL: " . json_encode($kaResponse));
                     throw new \Exception("Gagal Membuat Order Kurir: " . $errMsg);
                 }
-            }
+            
 
             // =========================================================
             // 8. SIMPAN ORDER KE DATABASE
