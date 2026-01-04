@@ -547,7 +547,9 @@ class OrderController extends Controller
                         Log::info("Jadwal Siang. Set Pickup Sekarang (+30m): $pickupSchedule");
                     }
 
-                    // 3. Buat Payload Reguler (Lengkap dengan Packages)
+                    // ... (Setelah logika jadwal pickup) ...
+
+                    // 3. Buat Payload Reguler (UPDATE BAGIAN INI SECARA MENYELURUH)
                     $kaPayload = [
                         'order_id'        => $orderNumber,
                         'service'         => $serviceCode, 
@@ -564,21 +566,22 @@ class OrderController extends Controller
                         'destination_address' => $request->destination_text,
                         'destination_district_id' => $request->destination_district_id,
                         'destination_zip_code' => $request->postal_code ?? '',
-                        'schedule' => $pickupSchedule, // Wajib ada jadwal
+                        'schedule' => $pickupSchedule,
                         
-                        // Detail Paket (Wajib menduplikasi info tujuan & service di sini)
+                        // Detail Paket (PASTIKAN BAGIAN INI SAMA PERSIS)
                         'packages' => [
                             [
-                                'order_id'    => $orderNumber, 
-                                'service'     => $serviceCode, // Wajib!
-                                'name'        => 'Paket Order ' . $orderNumber,
-                                'description' => 'Produk Toko Sancaka',
-                                'value'       => (int) $subtotal,
-                                'weight'      => (int) $totalWeight,
-                                'quantity'    => 1,
-                                'length'      => 10,
-                                'width'       => 10,
-                                'height'      => 10,
+                                'order_id'     => $orderNumber, 
+                                'service'      => $serviceCode, 
+                                'service_type' => $serviceType, // <--- BARIS INI WAJIB ADA!
+                                'name'         => 'Paket Order ' . $orderNumber,
+                                'description'  => 'Produk Toko Sancaka',
+                                'value'        => (int) $subtotal,
+                                'weight'       => (int) $totalWeight,
+                                'quantity'     => 1,
+                                'length'       => 10,
+                                'width'        => 10,
+                                'height'       => 10,
                                 'destination_name'        => $customerName,
                                 'destination_phone'       => $customerPhone,
                                 'destination_address'     => $request->destination_text,
