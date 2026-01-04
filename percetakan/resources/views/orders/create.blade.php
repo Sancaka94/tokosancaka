@@ -764,12 +764,11 @@
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
                         },
                         body: JSON.stringify({
-                            // Kirim semua data lokasi agar Controller bisa memilih yang paling akurat
-                            destination_district_id: this.destinationDistrictId, // Kecamatan ID
-                            destination_subdistrict_id: this.destinationSubdistrictId, // Kelurahan ID
-                            postal_code: this.destinationZipCode, // Kode Pos
-                            weight: finalWeight 
-                        })
+    destination_district_id: this.destinationDistrictId,
+    destination_subdistrict_id: this.destinationSubdistrictId,
+    postal_code: this.destinationZipCode, 
+    destination_text: this.searchQuery, // <-- WAJIB DITAMBAHKAN!
+    weight: finalWeight 
                     });
                     
                     const result = await response.json();
