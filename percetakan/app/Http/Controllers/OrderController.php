@@ -232,6 +232,9 @@ class OrderController extends Controller
                         'service' => $rate['service_name'] ?? 'Layanan', 
                         'cost'    => (int) $rate['cost'], 
                         'etd'     => $rate['etd'] ?? '-',
+                        // TAMBAHKAN 2 BARIS INI (PENTING UNTUK API):
+                        'courier_code' => $rate['service'],      // Contoh: 'jne', 'sicepat'
+                        'service_type' => $rate['service_type'], // Contoh: 'REG', 'GOKIL'
                     ];
                 }
             } else {
@@ -503,17 +506,28 @@ class OrderController extends Controller
                         'destination_phone'   => $customerPhone,
                         'destination_address' => $request->destination_text,
                         'destination_district_id' => $request->destination_district_id,
-                        'destination_zip_code' => $request->postal_code ?? '',
-                    ];
+                        'destination_zip_code' => $request->postal_code ?? '',// TAMBAHKAN ARRAY PACKAGES INI (SOLUSI ERROR "Packages wajib diisi")
+        'packages' => [
+            [
+                'name'        => 'Paket Dokumen' . $orderNumber,
+                'description' => 'Dokumen / Berkas', // Sesuaikan
+                'value'       => $subtotal,
+                'weight'      => $totalWeight,
+                'quantity'    => 1,
+                'length'      => 10,
+                'width'       => 10,
+                'height'      => 10
+            ]
+        ]
+    ];
 
-                    if ($destLat && $destLng) {
-                        $kaPayload['destination_latitude']  = $destLat;
-                        $kaPayload['destination_longitude'] = $destLng;
-                        Log::info("Menyisipkan Koordinat ke Payload Reguler: $destLat, $destLng");
-                    }
+    if ($destLat && $destLng) {
+        $kaPayload['destination_latitude']  = $destLat;
+        $kaPayload['destination_longitude'] = $destLng;
+    }
 
-                    $kaResponse = $kiriminAja->createExpressOrder($kaPayload);
-                }
+    $kaResponse = $kiriminAja->createExpressOrder($kaPayload);
+}
 
                 // Log Response KiriminAja
                 if (isset($kaResponse['status']) && $kaResponse['status'] == true) {

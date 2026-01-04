@@ -1013,6 +1013,9 @@
                     formData.append('destination_district_id', this.destinationDistrictId);
                     formData.append('destination_subdistrict_id', this.destinationSubdistrictId);
                     formData.append('destination_text', this.searchQuery);
+                    // TAMBAHKAN INI (Untuk API KiriminAja):
+                    formData.append('courier_code', this.selectedCourier.courier_code); 
+                    formData.append('service_type', this.selectedCourier.service_type);
                 }
 
                 // Data Pembayaran Tripay
