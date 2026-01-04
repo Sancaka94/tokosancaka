@@ -2,10 +2,13 @@
        :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'">
     
     <div class="flex items-center justify-center h-16 bg-slate-900 border-b border-slate-700/50 shadow-sm flex-shrink-0">
-        <a href="{{ route('dashboard') }}" class="flex items-center gap-3">
-            <img src="https://tokosancaka.com/storage/uploads/sancaka.png" class="h-8 w-8 object-contain" alt="Logo">
-            <span class="text-xl font-bold tracking-wide text-gray-100">SANCAKA<span class="text-blue-500 font-light"><strong>POS</strong></span></span>
-        </a>
+    <a href="{{ route('dashboard') }}" class="flex items-center gap-3">
+        <img src="https://tokosancaka.com/storage/uploads/sancaka.png" class="h-8 w-8 object-contain" alt="Logo">
+        
+        <span class="text-xl font-bold tracking-wide text-gray-100">
+            SANCAKA<span class="text-blue-500">POS</span>
+        </span>
+    </a>
     </div>
 
     <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto custom-scrollbar">
