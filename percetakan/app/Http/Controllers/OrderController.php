@@ -102,10 +102,10 @@ class OrderController extends Controller
             $destSubDistrict = $request->destination_subdistrict_id ?? 0; 
 
             // 3. PARAMETER TAMBAHAN
-            $length    = 10;      
-            $width     = 10;      
-            $height    = 10;      
-            $itemValue = 100000;  
+            $length    = 1;      
+            $width     = 1;      
+            $height    = 1;      
+            $itemValue = 1000;  
 
             // 4. PANGGIL SERVICE
             $response = $kiriminAja->getExpressPricing(
