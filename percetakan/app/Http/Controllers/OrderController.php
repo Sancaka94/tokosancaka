@@ -93,39 +93,46 @@ class OrderController extends Controller
         ]);
 
         try {
-            // 1. DATA REFERENSI LOGO & NAMA (Sesuai Request Anda)
+            // ==========================================================
+            // 1. MAPPING KODE KURIR KE LOGO & NAMA RESMI
+            // ==========================================================
             $courierMap = [
-                'pos'          => ['name' => 'POS Indonesia', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/posindonesia.png'],
+                // --- INSTANT (GRAB & GOJEK) ---
+                // Pastikan key-nya 'gojek' dan 'grab' (huruf kecil)
+                'gojek'        => ['name' => 'GoSend',      'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/gosend.png'],
+                'grab'         => ['name' => 'GrabExpress', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/grab.png'],
+
+                // --- REGULER & CARGO ---
                 'jne'          => ['name' => 'JNE', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jne.png'],
-                'tiki'         => ['name' => 'TIKI', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/tiki.png'],
-                'posindonesia' => ['name' => 'POS Indonesia', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/posindonesia.png'],
+                'jnt'          => ['name' => 'J&T Express', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jnt.png'],
                 'sicepat'      => ['name' => 'SiCepat', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/sicepat.png'],
+                'anteraja'     => ['name' => 'Anteraja', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/anteraja.png'],
+                'pos'          => ['name' => 'POS Indonesia', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/posindonesia.png'],
+                'tiki'         => ['name' => 'TIKI', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/tiki.png'],
+                'lion'         => ['name' => 'Lion Parcel', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/lion.png'],
+                'ninja'        => ['name' => 'Ninja Express', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/ninja.png'],
+                'idx'          => ['name' => 'ID Express', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/idx.png'],
+                'spx'          => ['name' => 'SPX Express', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/spx.png'],
                 'sap'          => ['name' => 'SAP Express', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/sap.png'],
                 'ncs'          => ['name' => 'NCS Kurir', 'logo_url' => 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjxj3iyyZEjK2L4A4yCIr_E-4W3hF2lk_yb-t0Oj2oFPErCPCMHie5LHqps02xMb6sNa-Gqz5NSX_P_hzWlYpUpJUlCD4iN6_QxiSG9fzY4bsZ9XvLFDn7HCiORtNvIlPfuQbSSdW96p7x7uN8ek3FWyHW9c2bznrFBQkoLd5A9sVAFVKWLfUhT3Dxh/s320/GKL41_NCS%20Kurir%20-%20Koleksilogo.com.jpg'],
-                'idx'          => ['name' => 'ID Express', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/idx.png'],
-                'gojek'        => ['name' => 'GoSend', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/gosend.png'],
-                'grab'         => ['name' => 'GrabExpress', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/grab.png'],
-                'jnt'          => ['name' => 'J&T Express', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jnt.png'],
-                'indah'        => ['name' => 'Indah Cargo', 'logo_url' => 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEicOAaLoH2eElQ93_gbkzhvk4dRhWVlk5wQsGgilihIB58321aHchlJLdjyz1ToS25P_nWrHJ_E4QBiW_OVlI7tQt7cZ5I0HZqk6StS7jZltLVvDXp2d5ZDLB9yklhV4x6z2iXyURURDv_unhf-U6vyiD_8to9OC4PBwMwyU_5wAqOiCl6tKiaTA-ri1Q/s851/Logo%20Indah%20Logistik%20Cargo@0.5x.png'],
                 'jtcargo'      => ['name' => 'J&T Cargo', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jtcargo.png'],
-                'lion'         => ['name' => 'Lion Parcel', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/lion.png'],
-                'spx'          => ['name' => 'SPX Express', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/spx.png'],
-                'ninja'        => ['name' => 'Ninja Express', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/ninja.png'],
-                'anteraja'     => ['name' => 'Anteraja', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/anteraja.png'],
                 'sentral'      => ['name' => 'Sentral Cargo', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/centralcargo.png'],
+                'indah'        => ['name' => 'Indah Cargo', 'logo_url' => 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEicOAaLoH2eElQ93_gbkzhvk4dRhWVlk5wQsGgilihIB58321aHchlJLdjyz1ToS25P_nWrHJ_E4QBiW_OVlI7tQt7cZ5I0HZqk6StS7jZltLVvDXp2d5ZDLB9yklhV4x6z2iXyURURDv_unhf-U6vyiD_8to9OC4PBwMwyU_5wAqOiCl6tKiaTA-ri1Q/s851/Logo%20Indah%20Logistik%20Cargo@0.5x.png'],
                 'borzo'        => ['name' => 'Borzo', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/borzo.png'],
             ];
 
-            // 2. CONFIG ASAL & TUJUAN
+            // 2. CONFIG ASAL (Dari ENV/Config yang baru Anda set)
             $originDistrict    = config('services.kiriminaja.origin_district_id'); 
             $originSubDistrict = config('services.kiriminaja.origin_subdistrict_id');
+            
+            // 3. CONFIG TUJUAN (Dari Input User)
             $destDistrict    = $request->destination_district_id;
             $destSubDistrict = $request->destination_subdistrict_id ?? 0; 
             
-            // Parameter Default
-            $length = 10; $width = 10; $height = 10; $itemValue = 1000;  
+            // Parameter Default Paket
+            $length = 10; $width = 10; $height = 10; $itemValue = 100000;  
 
-            // 3. PANGGIL API
+            // 4. PANGGIL API (Service otomatis ambil Lat/Lng dari config)
             $response = $kiriminAja->getExpressPricing(
                 (int) $originDistrict, (int) $originSubDistrict, 
                 (int) $destDistrict, (int) $destSubDistrict,   
@@ -137,28 +144,29 @@ class OrderController extends Controller
                 $formattedRates = [];
                 $results = $response['results'] ?? [];
 
-                // 4. MAPPING DATA
+                // 5. LOOPING DATA HASIL API
                 foreach ($results as $rate) {
-                    // Ambil kode kurir (misal: 'jne', 'lion')
+                    // Normalize kode service (misal: 'JNE' jadi 'jne')
                     $serviceCode = strtolower($rate['service']);
                     
-                    // Cari data logo & nama resmi dari array di atas
-                    // Jika tidak ada, pakai default (Nama uppercase, Logo kosong)
+                    // Ambil detail Logo & Nama dari Map
                     $mapData = $courierMap[$serviceCode] ?? null;
+                    
+                    // Jika map ada, pakai nama & logo dari map. Jika tidak, pakai default API.
                     $displayName = $mapData ? $mapData['name'] : strtoupper($serviceCode);
                     $displayLogo = $mapData ? $mapData['logo_url'] : null;
 
                     $formattedRates[] = [
                         'code'     => 'kiriminaja',
-                        'name'     => $displayName, // Nama Resmi (Contoh: Lion Parcel)
-                        'logo'     => $displayLogo, // URL Logo
+                        'name'     => $displayName, 
+                        'logo'     => $displayLogo, 
                         'service'  => $rate['service_name'] ?? 'Layanan', 
-                        'cost'     => (int) $rate['cost'], // Pastikan Integer agar bisa disort
+                        'cost'     => (int) $rate['cost'], 
                         'etd'      => $rate['etd'] ?? '-',
                     ];
                 }
 
-                // 5. SORTING (URUTKAN) DARI TERMURAH KE TERMAHAL
+                // 6. SORTING: URUTKAN DARI HARGA TERMURAH
                 usort($formattedRates, function ($a, $b) {
                     return $a['cost'] <=> $b['cost'];
                 });
@@ -166,6 +174,7 @@ class OrderController extends Controller
                 return response()->json(['status' => 'success', 'data' => $formattedRates]);
             }
 
+            // Jika API Gagal (misal jangkauan tidak ada)
             return response()->json(['status' => 'error', 'message' => $response['text'] ?? 'Gagal cek ongkir.']);
 
         } catch (\Exception $e) {
