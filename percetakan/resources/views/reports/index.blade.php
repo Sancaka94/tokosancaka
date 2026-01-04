@@ -75,154 +75,170 @@
     </div>
 
     <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <div class="overflow-x-auto">
-            <table class="w-full text-left whitespace-nowrap">
-                <thead class="bg-slate-50 border-b border-slate-100">
+            <table class="w-full text-left border-collapse">
+                <thead class="bg-indigo-50/50 border-b border-indigo-100">
                     <tr>
-                        <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Order Info</th>
-                        <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Pelanggan & Tujuan</th>
-                        <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Logistik (Resi)</th>
-                        <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Pembayaran</th>
-                        <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Total Tagihan</th>
-                        <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Status</th>
-                        <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Aksi</th>
+                        <th class="px-4 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider w-[20%]">Transaksi</th>
+                        <th class="px-4 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider w-[25%]">Alamat Pengiriman</th>
+                        <th class="px-4 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider w-[20%]">Ekspedisi & Ongkir</th>
+                        <th class="px-4 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider w-[15%] text-right">Total & Status</th>
+                        <th class="px-4 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider w-[10%] text-center">Aksi</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-50 text-sm">
+                <tbody class="divide-y divide-slate-100 text-sm">
                     @forelse($orders as $order)
-                    <tr class="transition group {{ $order->status == 'cancelled' ? 'bg-slate-50 opacity-60 grayscale' : 'hover:bg-red-50/10' }}">
+                    <tr class="hover:bg-slate-50 transition duration-150 ease-in-out">
                         
-                        <td class="px-6 py-4 align-top">
-                            <div class="flex flex-col">
-                                <span class="font-bold text-slate-700 text-xs">{{ $order->created_at->format('d M Y') }}</span>
-                                <span class="text-[10px] text-slate-400 mb-1">{{ $order->created_at->format('H:i') }} WIB</span>
-                                <span class="font-mono text-[10px] font-bold bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded border border-slate-200 select-all w-fit">
-                                    {{ $order->order_number }}
-                                </span>
-                                <span class="text-[9px] text-slate-400 mt-1">ID: #{{ $order->id }}</span>
-                            </div>
-                        </td>
-
-                        <td class="px-6 py-4 align-top">
-                            <div class="flex flex-col">
-                                <div class="font-bold text-slate-700">{{ $order->customer_name }}</div>
-                                <div class="text-[11px] text-slate-500 mb-1">
-                                    <i class="fas fa-phone-alt text-[9px] mr-1"></i> {{ $order->customer_phone ?? '-' }}
-                                </div>
-                                
-                                @if(!empty($order->courier_service))
-                                    <div class="text-[10px] text-slate-400 leading-tight max-w-[180px] mt-1">
-                                        <i class="fas fa-map-marker-alt text-red-400 mr-1"></i>
-                                        Ke: Ke: {{ Str::limit($order->destination_address ?? 'Alamat tidak tersedia', 40) }}
-                                    </div>
-                                    <div class="text-[9px] font-bold text-slate-500 mt-0.5">
-                                        Pengirim: Toko Sancaka
-                                    </div>
-                                @else
-                                    <span class="inline-flex items-center gap-1 text-[10px] text-blue-600 bg-blue-50 px-2 py-1 rounded w-fit mt-1">
-                                        <i class="fas fa-store"></i> Ambil di Toko
+                        <td class="px-4 py-4 align-top">
+                            <div class="flex flex-col gap-1.5">
+                                <div>
+                                    @php
+                                        $payBg = 'bg-slate-100 text-slate-600';
+                                        if($order->payment_method == 'cod') $payBg = 'bg-orange-100 text-orange-700 border border-orange-200';
+                                        elseif($order->payment_method == 'cash') $payBg = 'bg-emerald-100 text-emerald-700 border border-emerald-200';
+                                        elseif($order->payment_method == 'tripay') $payBg = 'bg-indigo-100 text-indigo-700 border border-indigo-200';
+                                    @endphp
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide {{ $payBg }}">
+                                        {{ $order->payment_method }}
                                     </span>
-                                @endif
+                                </div>
+
+                                <div>
+                                    <div class="font-bold text-slate-800 text-xs">{{ $order->order_number }}</div>
+                                    <div class="text-[10px] text-slate-400 mt-0.5">
+                                        {{ $order->created_at->format('d M Y, H:i') }}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    @if($order->payment_status == 'paid')
+                                        <span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">
+                                            <i class="fas fa-check-circle mr-1"></i>Lunas
+                                        </span>
+                                    @else
+                                        <span class="text-[10px] font-bold text-rose-500 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100">
+                                            <i class="fas fa-clock mr-1"></i>Belum Bayar
+                                        </span>
+                                    @endif
+                                </div>
                             </div>
                         </td>
 
-                        <td class="px-6 py-4 align-top">
-                            @if(!empty($order->courier_service))
-                                <div class="flex flex-col gap-1">
-                                    <div class="font-bold text-slate-700 text-xs uppercase flex items-center gap-1">
-                                        <i class="fas fa-truck text-slate-400"></i>
-                                        {{ $order->courier_service ?? 'Kurir Manual' }}
+                        <td class="px-4 py-4 align-top">
+                            <div class="relative pl-4 border-l-2 border-slate-200 ml-1 flex flex-col gap-4">
+                                <div class="relative">
+                                    <span class="absolute -left-[21px] top-0.5 bg-white">
+                                        <i class="fas fa-arrow-circle-up text-blue-500 text-sm"></i>
+                                    </span>
+                                    <div class="leading-tight">
+                                        <div class="text-[10px] text-slate-400">Pengirim</div>
+                                        <div class="font-bold text-slate-700 text-xs">Toko Sancaka</div>
+                                        <div class="text-[10px] text-slate-500 truncate max-w-[200px]">Ngawi, Jawa Timur</div>
                                     </div>
-                                    
-                                    @if($order->shipping_ref)
-                                        <div class="flex items-center gap-1">
-                                            <span class="font-mono text-[11px] text-blue-600 font-bold select-all bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">
-                                                {{ $order->shipping_ref }}
-                                            </span>
-                                            <button onclick="navigator.clipboard.writeText('{{ $order->shipping_ref }}'); alert('Resi disalin!')" class="text-slate-300 hover:text-blue-500" title="Copy Resi">
-                                                <i class="far fa-copy"></i>
-                                            </button>
-                                        </div>
-                                    @else
-                                        <span class="text-[10px] text-amber-500 italic"><i class="fas fa-clock"></i> Menunggu Resi</span>
-                                    @endif
+                                </div>
 
-                                    <div class="text-[10px] text-slate-500 mt-1">
-                                        Ongkir: <span class="font-bold text-slate-700">Rp {{ number_format($order->shipping_cost, 0, ',', '.') }}</span>
+                                <div class="relative">
+                                    <span class="absolute -left-[21px] top-0.5 bg-white">
+                                        <i class="fas fa-arrow-circle-down text-orange-500 text-sm"></i>
+                                    </span>
+                                    <div class="leading-tight">
+                                        <div class="text-[10px] text-slate-400">Penerima</div>
+                                        <div class="font-bold text-slate-700 text-xs">{{ $order->customer_name }}</div>
+                                        <div class="text-[10px] text-slate-500 font-mono">{{ $order->customer_phone }}</div>
+                                        
+                                        @if(!empty($order->courier_service))
+                                            <div class="text-[10px] text-slate-600 mt-1 leading-snug">
+                                                {{ Str::limit($order->destination_address ?? '-', 60) }}
+                                            </div>
+                                        @else
+                                            <div class="mt-1">
+                                                <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 text-[10px] font-bold border border-blue-100">
+                                                    <i class="fas fa-store"></i> Ambil di Toko
+                                                </span>
+                                            </div>
+                                        @endif
                                     </div>
+                                </div>
+                            </div>
+                        </td>
+
+                        <td class="px-4 py-4 align-top">
+                            @if(!empty($order->courier_service))
+                                <div class="flex flex-col gap-2">
+                                    <div class="flex items-start gap-2">
+                                        <div class="bg-slate-100 p-1.5 rounded text-slate-500">
+                                            <i class="fas fa-truck text-xs"></i>
+                                        </div>
+                                        <div>
+                                            <div class="font-bold text-slate-700 text-xs uppercase">{{ $order->courier_service }}</div>
+                                            <div class="text-[11px] font-bold text-emerald-600">
+                                                Rp {{ number_format($order->shipping_cost, 0, ',', '.') }}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="bg-slate-50 border border-slate-200 rounded p-1.5">
+                                        <div class="text-[9px] text-slate-400 uppercase tracking-wider mb-0.5">Nomor Resi</div>
+                                        @if($order->shipping_ref)
+                                            <div class="flex items-center justify-between gap-2">
+                                                <span class="font-mono text-[11px] font-bold text-slate-700 select-all">{{ $order->shipping_ref }}</span>
+                                                <button onclick="navigator.clipboard.writeText('{{ $order->shipping_ref }}'); alert('Resi disalin!')" class="text-slate-400 hover:text-blue-500 transition">
+                                                    <i class="far fa-copy"></i>
+                                                </button>
+                                            </div>
+                                        @else
+                                            <span class="text-[10px] text-amber-500 italic">Menunggu Resi...</span>
+                                        @endif
+                                    </div>
+
+                                    <div class="text-[10px] text-slate-500">
+                                        Berat: <span class="font-bold text-slate-700">1.000 gram</span> 
+                                        </div>
                                 </div>
                             @else
-                                <div class="text-center text-slate-300">
-                                    <i class="fas fa-minus"></i>
+                                <div class="text-slate-400 text-xs italic py-2">
+                                    Tidak ada pengiriman (Pickup)
                                 </div>
                             @endif
                         </td>
 
-                        <td class="px-6 py-4 align-top text-center">
-                            <div class="flex flex-col gap-1 items-center">
-                                @php
-                                    $method = strtolower($order->payment_method);
-                                    $icon = 'fa-money-bill-wave';
-                                    $bg = 'bg-slate-100 text-slate-600';
-                                    
-                                    if($method == 'cash') { $icon = 'fa-money-bill-wave'; $bg = 'bg-green-50 text-green-600 border border-green-200'; }
-                                    elseif($method == 'saldo') { $icon = 'fa-wallet'; $bg = 'bg-blue-50 text-blue-600 border border-blue-200'; }
-                                    elseif($method == 'tripay') { $icon = 'fa-qrcode'; $bg = 'bg-purple-50 text-purple-600 border border-purple-200'; }
-                                    elseif($method == 'doku') { $icon = 'fa-credit-card'; $bg = 'bg-red-50 text-red-600 border border-red-200'; }
-                                    elseif($method == 'affiliate_balance') { $icon = 'fa-coins'; $bg = 'bg-amber-50 text-amber-600 border border-amber-200'; }
-                                @endphp
-                                <span class="inline-flex items-center gap-1.5 px-2 py-1 text-[9px] font-bold uppercase rounded-lg {{ $bg }}">
-                                    <i class="fas {{ $icon }}"></i> {{ $order->payment_method }}
-                                </span>
+                        <td class="px-4 py-4 align-top text-right">
+                            <div class="flex flex-col items-end gap-1">
+                                <div class="font-black text-slate-800 text-sm">
+                                    Rp {{ number_format($order->final_price, 0, ',', '.') }}
+                                </div>
+                                <div class="text-[10px] text-slate-400">
+                                    Produk: {{ number_format($order->final_price - $order->shipping_cost, 0, ',', '.') }}
+                                </div>
 
-                                @if($order->payment_status == 'paid')
-                                    <span class="text-[9px] text-emerald-600 font-bold"><i class="fas fa-check-circle"></i> Lunas</span>
-                                @else
-                                    <span class="text-[9px] text-red-500 font-bold animate-pulse"><i class="fas fa-exclamation-circle"></i> Belum Lunas</span>
-                                @endif
+                                <div class="mt-2">
+                                    @php
+                                        $statusClass = 'bg-slate-100 text-slate-500 border-slate-200';
+                                        $icon = 'fa-clock';
+                                        
+                                        if($order->status == 'processing') { $statusClass = 'bg-amber-50 text-amber-600 border-amber-200'; $icon = 'fa-spinner fa-spin'; }
+                                        elseif($order->status == 'shipped') { $statusClass = 'bg-indigo-50 text-indigo-600 border-indigo-200'; $icon = 'fa-shipping-fast'; }
+                                        elseif($order->status == 'completed') { $statusClass = 'bg-emerald-50 text-emerald-600 border-emerald-200'; $icon = 'fa-check-double'; }
+                                        elseif($order->status == 'cancelled') { $statusClass = 'bg-rose-50 text-rose-600 border-rose-200'; $icon = 'fa-times-circle'; }
+                                    @endphp
+                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase border {{ $statusClass }}">
+                                        <i class="fas {{ $icon }}"></i> {{ $order->status }}
+                                    </span>
+                                </div>
                             </div>
                         </td>
 
-                        <td class="px-6 py-4 align-top text-right">
-                            <div class="font-black text-slate-800 text-sm {{ $order->status == 'cancelled' ? 'line-through decoration-red-500' : '' }}">
-                                Rp {{ number_format($order->final_price, 0, ',', '.') }}
-                            </div>
-                            <div class="text-[9px] text-slate-400 mt-1 flex flex-col items-end">
-                                <span>Produk: {{ number_format($order->final_price - $order->shipping_cost, 0, ',', '.') }}</span>
-                                @if($order->discount_amount > 0)
-                                    <span class="text-emerald-500">Hemat: -{{ number_format($order->discount_amount, 0, ',', '.') }}</span>
-                                @endif
-                            </div>
-                        </td>
-
-                        <td class="px-6 py-4 align-top text-center">
-                            @php
-                                $statusColor = 'bg-slate-100 text-slate-500 border-slate-200';
-                                $iconStatus = 'fa-circle';
-                                if($order->status == 'completed') { $statusColor = 'bg-blue-50 text-blue-600 border-blue-200'; $iconStatus = 'fa-check-double'; }
-                                if($order->status == 'processing') { $statusColor = 'bg-amber-50 text-amber-600 border-amber-200'; $iconStatus = 'fa-spinner fa-spin'; }
-                                if($order->status == 'pending') { $statusColor = 'bg-slate-100 text-slate-500 border-slate-200'; $iconStatus = 'fa-clock'; }
-                                if($order->status == 'cancelled') { $statusColor = 'bg-red-50 text-red-600 border-red-200'; $iconStatus = 'fa-times-circle'; }
-                            @endphp
-                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 text-[9px] font-bold uppercase rounded-full border {{ $statusColor }}">
-                                <i class="fas {{ $iconStatus }}"></i> {{ $order->status }}
-                            </span>
-                        </td>
-
-                        <td class="px-6 py-4 align-top text-center">
-                            <div class="flex items-center justify-center gap-2">
-                                <a href="{{ route('reports.show', $order->id) }}" class="h-8 w-8 rounded-full bg-white border border-slate-200 text-slate-400 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50 transition shadow-sm flex items-center justify-center" title="Detail & Cetak Invoice">
-                                    <i class="fas fa-eye text-xs"></i>
+                        <td class="px-4 py-4 align-top text-center">
+                            <div class="flex justify-center gap-1">
+                                <a href="{{ route('reports.show', $order->id) }}" class="p-2 rounded hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 transition" title="Lihat Detail">
+                                    <i class="fas fa-eye"></i>
                                 </a>
-                                @if($order->status != 'cancelled' && $order->status != 'completed')
-                                    <a href="{{ route('reports.edit', $order->id) }}" class="h-8 w-8 rounded-full bg-white border border-slate-200 text-slate-400 hover:text-amber-500 hover:border-amber-200 hover:bg-amber-50 transition shadow-sm flex items-center justify-center" title="Update Status">
-                                        <i class="fas fa-pencil-alt text-xs"></i>
-                                    </a>
-                                @endif
-                                <form action="{{ route('reports.destroy', $order->id) }}" method="POST" onsubmit="return confirm('Hapus pesanan ini?\nData tidak bisa dikembalikan.');">
+                                <form action="{{ route('reports.destroy', $order->id) }}" method="POST" onsubmit="return confirm('Hapus pesanan ini?');">
                                     @csrf @method('DELETE')
-                                    <button type="submit" class="h-8 w-8 rounded-full bg-white border border-slate-200 text-slate-400 hover:text-red-600 hover:border-red-200 hover:bg-red-50 transition shadow-sm flex items-center justify-center" title="Hapus">
-                                        <i class="fas fa-trash text-xs"></i>
+                                    <button type="submit" class="p-2 rounded hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition" title="Hapus">
+                                        <i class="fas fa-trash-alt"></i>
                                     </button>
                                 </form>
                             </div>
@@ -230,10 +246,10 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="7" class="px-6 py-12 text-center">
-                            <div class="flex flex-col items-center justify-center text-slate-400">
-                                <i class="fas fa-inbox text-4xl mb-3 text-slate-300"></i>
-                                <p class="italic">Tidak ada data transaksi.</p>
+                        <td colspan="5" class="px-6 py-12 text-center text-slate-400">
+                            <div class="flex flex-col items-center">
+                                <i class="fas fa-box-open text-4xl mb-3 text-slate-200"></i>
+                                <span>Belum ada data pesanan.</span>
                             </div>
                         </td>
                     </tr>
@@ -242,8 +258,10 @@
             </table>
         </div>
         
-        <div class="px-6 py-4 bg-slate-50 border-t border-slate-100">
+        <div class="px-4 py-3 border-t border-slate-200 bg-slate-50">
             {{ $orders->links() }}
         </div>
     </div>
+        
+       
 @endsection
