@@ -49,6 +49,11 @@ Route::middleware('auth')->group(function () {
     
 });
 
+// Route untuk halaman Cara / Panduan
+Route::get('/cara', function () {
+    return view('cara');
+});
+
 // Halaman POS
 Route::get('/orders/create', [OrderController::class, 'create'])->name('orders.create');
 
