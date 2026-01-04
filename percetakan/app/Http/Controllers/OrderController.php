@@ -599,10 +599,12 @@ class OrderController extends Controller
                         $kaPayload['destination_longitude'] = $destLng;
                     }
 
+                    Log::info("Mencoba Request Pickup...", ['schedule' => $pickupSchedule]);
                     $kaResponse = $kiriminAja->createExpressOrder($kaPayload);
-                }
+                    Log::info("Response KiriminAja:", $kaResponse);
 
-                // ========================================================
+                }
+                    // ========================================================
                     // 4. LOGIKA RETRY (JIKA JADWAL DITOLAK)
                     // ========================================================
                     if (isset($kaResponse['status']) && $kaResponse['status'] == false) {
@@ -643,7 +645,7 @@ class OrderController extends Controller
                     Log::error("KIRIMINAJA GAGAL: " . json_encode($kaResponse));
                     throw new \Exception("Gagal Membuat Order Kurir: " . $errMsg);
                 }
-            
+            }
 
             // =========================================================
             // 8. SIMPAN ORDER KE DATABASE
