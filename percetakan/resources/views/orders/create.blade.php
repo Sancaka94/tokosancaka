@@ -269,6 +269,34 @@
                     <p x-show="discountAmount > 0" class="text-xs text-emerald-600 font-bold mt-1">Anda Hemat Rp <span x-text="rupiah(discountAmount)"></span></p>
                 </div>
 
+                <div class="mt-4 mb-6 bg-slate-50 border border-slate-200 rounded-xl p-4">
+    <div class="space-y-2">
+        <div class="flex justify-between items-center text-xs">
+            <span class="text-slate-600 font-medium">
+                Total Harga (<span x-text="cartTotalQty"></span> Pcs)
+            </span>
+            <span class="font-bold text-slate-800" x-text="'Rp ' + rupiah(subtotal)"></span>
+        </div>
+
+        <div x-show="discountAmount > 0" class="flex justify-between items-center text-xs text-emerald-600">
+            <span class="font-medium">Potongan Diskon</span>
+            <span class="font-bold" x-text="'- Rp ' + rupiah(discountAmount)"></span>
+        </div>
+
+        <div x-show="deliveryType === 'shipping'" class="flex justify-between items-center text-xs text-blue-600">
+            <span class="font-medium">Ongkos Kirim</span>
+            <span class="font-bold" x-text="shippingCost > 0 ? '+ Rp ' + rupiah(shippingCost) : 'Rp 0'"></span>
+        </div>
+
+        <div class="border-t border-dashed border-slate-300 my-2"></div>
+
+        <div class="flex justify-between items-center">
+            <span class="font-bold text-slate-800 text-sm">Total Tagihan</span>
+            <span class="font-black text-red-600 text-base" x-text="'Rp ' + rupiah(grandTotal)"></span>
+        </div>
+    </div>
+</div>
+
                 <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
                     <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Pelanggan</label>
                     
