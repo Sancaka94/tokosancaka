@@ -100,7 +100,7 @@
         <div class="fixed inset-y-0 right-0 w-[90%] sm:w-[420px] lg:static lg:w-[400px] bg-white shadow-2xl lg:shadow-none z-40 transform transition-transform duration-300 ease-out flex flex-col h-full border-l border-slate-200"
              :class="mobileCartOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'">
             
-            <div class="h-16 px-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+            <div class="h-16 px-5 border-b border-slate-100 flex justify-between items-center bg-green-50 shrink-0">
                 <div class="flex flex-col">
                     <span class="text-[10px] font-bold text-green-600 uppercase tracking-widest">Pesanan Baru</span>
                     <span class="font-black text-green-700 text-lg">#{{ date('ymd') }}-{{ rand(100,999) }}</span>
