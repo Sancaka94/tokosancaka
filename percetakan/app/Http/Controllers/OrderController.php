@@ -206,6 +206,9 @@ class OrderController extends Controller
 
                 // PERBAIKAN: Cast ke float agar API KiriminAja tidak menolak "must numeric data"
 $responseInstant = $kiriminAja->getInstantPricing(
+    // Tambahkan Log ini untuk melihat isi ASLI balasan KiriminAja Instant
+Log::info("RESPONSE MENTAH INSTANT:", ['body' => $responseInstant]);
+
     (float) $originLat, (float) $originLng, $originAddr,
     (float) $destLat, (float) $destLng, $request->destination_text,
     (int) $request->weight,
