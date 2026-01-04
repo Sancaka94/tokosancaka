@@ -25,6 +25,7 @@ class Order extends Model
         'payment_status',
         'note',
         'shipping_cost',
+        'destination_address', // <--- TAMBAHKAN INI
         'courier_service',
         'shipping_ref'
     ];
