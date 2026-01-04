@@ -77,30 +77,41 @@ class OrderController extends Controller
     }
 
    /**
-     * Fungsi Cerdas: Mencari Koordinat dari Nama Alamat
+     * Fungsi Geocode "Anti-Koma" (Sesuai Request Abang)
+     * Mengubah "Beran, Ngawi, Jawa Timur" jadi "Beran Ngawi Jawa Timur"
      */
     private function geocode(string $address): ?array
     {
-        Log::info("GEOCODING START: Mencari koordinat untuk -> $address");
+        // 1. Bersihkan Alamat dari Koma
+        $cleanAddress = str_replace(',', '', $address);
+        
+        // (Opsional) Hapus spasi berlebih biar rapi
+        $cleanAddress = preg_replace('/\s+/', ' ', $cleanAddress);
+
+        Log::info("GEOCODING CLEAN QUERY: $cleanAddress");
 
         try {
-            $response = Http::timeout(5)
-                ->withHeaders(['User-Agent' => 'AplikasiKasir/1.0'])
+            $response = Http::timeout(10)
+                ->withHeaders(['User-Agent' => 'AplikasiKasirSancaka/1.0'])
                 ->get("https://nominatim.openstreetmap.org/search", [
-                    'q'            => $address,
+                    'q'            => $cleanAddress, // Kirim yang sudah bersih
                     'format'       => 'json',
                     'limit'        => 1,
                     'countrycodes' => 'id'
                 ]);
             
-            if ($response->successful() && isset($response[0]['lat']) && isset($response[0]['lon'])) {
-                $lat = (float) $response[0]['lat'];
-                $lng = (float) $response[0]['lon'];
+            if ($response->successful() && isset($response[0]['lat'])) {
+                $data = $response[0];
+                $lat = (float) $data['lat'];
+                $lng = (float) $data['lng'];
+                $displayName = $data['display_name'] ?? '';
+
+                Log::info("GEOCODING SUCCESS: Ketemu -> $displayName");
+                Log::info("Koordinat: $lat, $lng");
                 
-                Log::info("GEOCODING SUCCESS: Lat: $lat, Lng: $lng");
                 return ['lat' => $lat, 'lng' => $lng];
             } else {
-                Log::warning("GEOCODING FAILED: Tidak ada hasil dari Nominatim.");
+                Log::warning("GEOCODING FAILED: Tidak ada hasil untuk '$cleanAddress'");
             }
         } catch (\Exception $e) {
             Log::error("GEOCODING ERROR: " . $e->getMessage());
