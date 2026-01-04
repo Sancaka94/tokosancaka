@@ -498,7 +498,7 @@ class OrderController extends Controller
     }
 
     Log::info("TIPE KURIR FINAL: $serviceCode");
-    
+
                     if (!$destLat || !$destLng) {
                         throw new \Exception("Pengiriman Instan GAGAL: Koordinat alamat tujuan tidak ditemukan.");
                     }
@@ -524,7 +524,7 @@ class OrderController extends Controller
                         'weight' => $totalWeight,
                         'vehicle' => 'motor',
                     ];
-                    
+                }
                     Log::info("PAYLOAD INSTANT:", $instantPayload);
                     $kaResponse = $kiriminAja->createInstantOrder($instantPayload);
 
