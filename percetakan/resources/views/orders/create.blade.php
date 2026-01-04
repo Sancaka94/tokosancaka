@@ -769,6 +769,7 @@
     postal_code: this.destinationZipCode, 
     destination_text: this.searchQuery, // <-- WAJIB DITAMBAHKAN!
     weight: finalWeight 
+})
                     });
                     
                     const result = await response.json();
