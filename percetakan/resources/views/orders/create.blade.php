@@ -728,20 +728,32 @@
                 this.checkOngkir();
             },
 
-            // C. Hitung Ongkir ke Backend
+            // --- FUNGSI CEK ONGKIR (LOGIKA BARU) ---
             async checkOngkir() {
                 if (!this.destinationDistrictId) return;
                 
-                // --- PERBAIKAN RUMUS BERAT ---
-                // Hitung: Jumlah Barang * Berat Asli Barang
-                let totalWeight = this.cart.reduce((w, item) => w + (item.qty * item.weight), 0);
-                
-                // Validasi: KiriminAja menolak berat 0, minimal set 100 gram
-                if(totalWeight <= 0) totalWeight = 100; 
-                // -----------------------------
+                // 1. HITUNG BERAT REAL (Berdasarkan Data Database)
+                // Pastikan input di database adalah berat per satuan (misal: 5 gram)
+                let realTotalWeight = this.cart.reduce((w, item) => {
+                    // Ambil berat per item, jika kosong anggap 0
+                    let itemWeight = parseInt(item.weight) || 0; 
+                    return w + (item.qty * itemWeight);
+                }, 0);
+
+                // 2. TERAPKAN ATURAN MINIMAL 1000 GRAM
+                let finalWeight = realTotalWeight;
+
+                if (finalWeight < 1000) {
+                    finalWeight = 1000; // Jika enteng (cth: 50g), set jadi 1000g (1kg)
+                } 
+                // Jika berat > 1000g (cth: 1500g), biarkan apa adanya.
+
+                // Debugging di Console (Opsional, biar Anda bisa cek hitungannya)
+                console.log('Berat Asli:', realTotalWeight, 'gram');
+                console.log('Berat Dikirim API:', finalWeight, 'gram');
 
                 this.isLoadingShipping = true;
-                this.courierList = [];
+                this.courierList = []; 
                 this.selectedCourier = null;
                 this.shippingCost = 0;
 
@@ -755,7 +767,7 @@
                         body: JSON.stringify({
                             destination_district_id: this.destinationDistrictId,
                             destination_subdistrict_id: this.destinationSubdistrictId,
-                            weight: totalWeight
+                            weight: finalWeight // Kirim berat hasil logika di atas
                         })
                     });
                     
