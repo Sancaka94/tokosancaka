@@ -233,9 +233,9 @@ class OrderController extends Controller
                         'service' => $rate['service_name'] ?? 'Layanan', 
                         'cost'    => (int) $rate['cost'], 
                         'etd'     => $rate['etd'] ?? '-',
-                        // TAMBAHKAN 2 BARIS INI (PENTING UNTUK API):
-                        'courier_code' => $rate['service'],      // Contoh: 'jne', 'sicepat'
-                        'service_type' => $rate['service_type'], // Contoh: 'REG', 'GOKIL'
+                        // === CRITICAL ADDITION ===
+                        'courier_code' => $rate['service'], // e.g., 'jne', 'sicepat' - This was missing!
+                        'service_type' => $rate['service_type'],
                     ];
                 }
             } else {
@@ -462,6 +462,43 @@ class OrderController extends Controller
 
                 if ($isInstant) {
                     Log::info("TIPE KURIR: INSTANT ($serviceCode)");
+
+                    } else {
+    // ============================================================
+    // PASTE KODE ANDA DI SINI (DI DALAM BLOK ELSE REGULER)
+    // ============================================================
+
+    // 1. Try direct code from request (Primary)
+    $serviceCode = $request->courier_code;
+    
+    // 2. Fallback: Parse from 'courier_name' string if code is empty
+    // Input format example: "JNE - JNE Reguler" -> extract "jne"
+    if (empty($serviceCode) && $request->courier_name) {
+        $parts = explode('-', $request->courier_name); 
+        $namaKurir = strtolower(trim($parts[0])); 
+        
+        $mapManual = [
+            'jne' => 'jne', 'j&t express' => 'jnt', 'sicepat' => 'sicepat',
+            'anteraja' => 'anteraja', 'pos indonesia' => 'posindonesia', 'tiki' => 'tiki',
+            'lion parcel' => 'lion', 'ninja express' => 'ninja', 'id express' => 'idx',
+            'spx express' => 'spx', 'sap express' => 'sap', 'j&t cargo' => 'jtcargo'
+        ];
+        
+        foreach ($mapManual as $nameKey => $codeVal) {
+            if (str_contains($namaKurir, $nameKey)) {
+                $serviceCode = $codeVal;
+                break;
+            }
+        }
+    }
+    
+    // 3. Final Safety: Default to 'jne' to prevent API error
+    if (empty($serviceCode)) {
+        $serviceCode = 'jne'; 
+    }
+
+    Log::info("TIPE KURIR FINAL: $serviceCode");
+    
                     if (!$destLat || !$destLng) {
                         throw new \Exception("Pengiriman Instan GAGAL: Koordinat alamat tujuan tidak ditemukan.");
                     }
