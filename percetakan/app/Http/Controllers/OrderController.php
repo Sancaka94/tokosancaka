@@ -103,7 +103,7 @@ class OrderController extends Controller
             if ($response->successful() && isset($response[0]['lat'])) {
                 $data = $response[0];
                 $lat = (float) $data['lat'];
-                $lng = (float) $data['lng'];
+                $lng = (float) $data['lon'];
                 $displayName = $data['display_name'] ?? '';
 
                 Log::info("GEOCODING SUCCESS: Ketemu -> $displayName");
