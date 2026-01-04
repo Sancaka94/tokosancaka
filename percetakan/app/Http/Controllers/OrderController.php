@@ -378,8 +378,11 @@ class OrderController extends Controller
                 $lineTotal = $product->sell_price * $item['qty'];
                 $subtotal += $lineTotal;
                 
-                $weight = $product->weight ?? 1000; 
-                $totalWeight += ($weight * $item['qty']);
+                // --- PERBAIKAN LOGIKA BERAT DI SINI ---
+                // Jika berat di DB kosong/0, anggap 5 gram (kertas), JANGAN 1000.
+                $weightPerItem = ($product->weight > 0) ? $product->weight : 5; 
+                $totalWeight += ($weightPerItem * $item['qty']);
+                // --------------------------------------
 
                 $finalCart[] = [
                     'product'  => $product,
@@ -387,6 +390,13 @@ class OrderController extends Controller
                     'subtotal' => $lineTotal
                 ];
             }
+
+            // --- TAMBAHAN: SAFETY NET (SETELAH LOOP SELESAI) ---
+            // Jika total berat kurang dari 1kg (1000g), bulatkan jadi 1kg agar API menerima
+            if ($totalWeight < 1000) {
+                $totalWeight = 1000;
+            }
+            Log::info("BERAT FIX DIKIRIM KE API: " . $totalWeight);
 
             // 3. DISKON KUPON
             $discount = 0;
