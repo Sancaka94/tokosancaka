@@ -728,23 +728,18 @@
 
             // --- B. MEMILIH LOKASI ---
             selectLocation(location) {
-                // 1. Tampilkan teks lengkap di input agar user yakin
-                this.searchQuery = location.text; 
-                if(location.zip_code) {
-                     this.searchQuery += ` (${location.zip_code})`;
-                }
-                
-                // 2. Simpan ID Hirarki Wilayah
-                // Pastikan data location dari backend memiliki field ini
-                this.destinationDistrictId = location.district_id; // ID Kecamatan (Penting untuk Ongkir)
-                this.destinationSubdistrictId = location.id;       // ID Kelurahan/Subdistrict spesifik
-                this.destinationZipCode = location.zip_code || ''; // Simpan Kode Pos
+    // 1. Ganti 'text' jadi 'full_address'
+    this.searchQuery = location.full_address; 
+    
+    // 2. Simpan ID Hirarki Wilayah (Sesuaikan dengan JSON di gambar)
+    this.destinationDistrictId = location.district_id; 
+    
+    // PERHATIKAN INI: JSON Anda pakai 'subdistrict_id', bukan 'id'
+    this.destinationSubdistrictId = location.subdistrict_id; 
 
-                // 3. Reset UI Dropdown
-                this.searchResults = [];
-                
-                // 4. OTOMATIS HITUNG ONGKIR
-                this.checkOngkir();
+    // Reset dropdown & hitung ongkir
+    this.searchResults = [];
+    this.checkOngkir();
             },
 
             // --- C. CEK ONGKIR (Update Payload) ---
