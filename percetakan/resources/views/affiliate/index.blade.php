@@ -16,23 +16,24 @@
         
         <div class="flex gap-2">
 
-            {{-- TOMBOL SYNC SALDO (BARU) --}}
-    <form action="{{ route('affiliate.sync') }}" method="POST" onsubmit="return confirm('Yakin ingin hitung ulang saldo semua member berdasarkan riwayat transaksi?');">
-        @csrf
-        <button type="submit" 
-            class="bg-emerald-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-emerald-200 hover:bg-emerald-700 transition flex items-center gap-2">
-            <i class="fas fa-sync-alt"></i> 
-            <span>Sync Saldo</span>
-        </button>
-    </form>
-            {{-- TOMBOL 1: CETAK QR PENDAFTARAN (NEW) --}}
+            {{-- TOMBOL SYNC SALDO --}}
+            <form action="{{ route('affiliate.sync') }}" method="POST" onsubmit="return confirm('Yakin ingin hitung ulang saldo semua member berdasarkan riwayat transaksi?');">
+                @csrf
+                <button type="submit" 
+                    class="bg-emerald-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-emerald-200 hover:bg-emerald-700 transition flex items-center gap-2">
+                    <i class="fas fa-sync-alt"></i> 
+                    <span>Sync Saldo</span>
+                </button>
+            </form>
+
+            {{-- TOMBOL CETAK QR PENDAFTARAN --}}
             <button onclick="printRegistrationQR()" 
                 class="bg-slate-800 text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-slate-300 hover:bg-slate-900 transition flex items-center gap-2">
                 <i class="fas fa-print"></i> 
                 <span>Cetak QR Daftar</span>
             </button>
 
-            {{-- TOMBOL 2: SALIN LINK --}}
+            {{-- TOMBOL SALIN LINK --}}
             <div x-data="{ copied: false }">
                 <button @click="navigator.clipboard.writeText('{{ $registerUrl ?? route('affiliate.create') }}'); copied = true; setTimeout(() => copied = false, 2000)" 
                     class="bg-blue-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-blue-200 hover:bg-blue-700 transition flex items-center gap-2">
@@ -164,7 +165,7 @@
                                     <i class="fab fa-whatsapp"></i>
                                 </a>
 
-                                {{-- TOMBOL CETAK QR CODE KUPON (NEW) --}}
+                                {{-- TOMBOL CETAK QR CODE KUPON --}}
                                 <a href="{{ route('affiliate.print_qr', $aff->id) }}" 
                                    target="_blank"
                                    class="h-8 w-8 rounded-full bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-600 hover:text-white transition flex items-center justify-center" 
@@ -172,10 +173,13 @@
                                     <i class="fas fa-qrcode text-xs"></i>
                                 </a>
                                 
-                                {{-- TOMBOL DETAIL --}}
-                                <button class="h-8 w-8 rounded-full bg-white border border-slate-200 text-slate-400 hover:text-slate-800 hover:border-slate-300 transition flex items-center justify-center" title="Detail">
-                                    <i class="fas fa-eye text-xs"></i>
-                                </button>
+                                {{-- TOMBOL EDIT (BARU DITAMBAHKAN DISINI) --}}
+                                <a href="{{ route('affiliate.edit', $aff->id) }}"
+                                   class="h-8 w-8 rounded-full bg-amber-50 text-amber-600 border border-amber-200 hover:bg-amber-500 hover:text-white transition flex items-center justify-center"
+                                   title="Edit Data">
+                                    <i class="fas fa-edit text-xs"></i>
+                                </a>
+
                             </div>
                         </td>
                     </tr>
