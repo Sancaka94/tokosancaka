@@ -438,6 +438,8 @@ class OrderController extends Controller
             // =========================================================
             // 7. PROSES KIRIM KE KIRIMINAJA (REGULER & INSTANT)
             // =========================================================
+            $shippingRef = null; // Inisialisasi variabel
+
             if ($request->delivery_type === 'shipping') {
                 Log::info("DELIVERY: Memulai Request KiriminAja...");
                 
@@ -456,144 +458,142 @@ class OrderController extends Controller
                     }
                 }
 
-                $serviceCode = strtolower($request->courier_service); 
-                $isInstant = (str_contains($serviceCode, 'gosend') || str_contains($serviceCode, 'grab'));
+                // Cek Tipe Kurir (Instant vs Reguler)
+                // Ambil input courier_service (misal: "gosend", "grab") atau "jne", dll.
+                $serviceCodeCheck = strtolower($request->courier_service ?? ''); 
+                $isInstant = (str_contains($serviceCodeCheck, 'gosend') || str_contains($serviceCodeCheck, 'grab'));
                 $kaResponse = null;
 
+                // --- BLOK LOGIKA INSTANT ---
                 if ($isInstant) {
-                    Log::info("TIPE KURIR: INSTANT ($serviceCode)");
-
-                    } else {
-    // ============================================================
-    // PASTE KODE ANDA DI SINI (DI DALAM BLOK ELSE REGULER)
-    // ============================================================
-
-    // 1. Try direct code from request (Primary)
-    $serviceCode = $request->courier_code;
-    
-    // 2. Fallback: Parse from 'courier_name' string if code is empty
-    // Input format example: "JNE - JNE Reguler" -> extract "jne"
-    if (empty($serviceCode) && $request->courier_name) {
-        $parts = explode('-', $request->courier_name); 
-        $namaKurir = strtolower(trim($parts[0])); 
-        
-        $mapManual = [
-            'jne' => 'jne', 'j&t express' => 'jnt', 'sicepat' => 'sicepat',
-            'anteraja' => 'anteraja', 'pos indonesia' => 'posindonesia', 'tiki' => 'tiki',
-            'lion parcel' => 'lion', 'ninja express' => 'ninja', 'id express' => 'idx',
-            'spx express' => 'spx', 'sap express' => 'sap', 'j&t cargo' => 'jtcargo'
-        ];
-        
-        foreach ($mapManual as $nameKey => $codeVal) {
-            if (str_contains($namaKurir, $nameKey)) {
-                $serviceCode = $codeVal;
-                break;
-            }
-        }
-    }
-    
-    // 3. Final Safety: Default to 'jne' to prevent API error
-    if (empty($serviceCode)) {
-        $serviceCode = 'jne'; 
-    }
-
-    Log::info("TIPE KURIR FINAL: $serviceCode");
+                    Log::info("TIPE KURIR: INSTANT ($serviceCodeCheck)");
 
                     if (!$destLat || !$destLng) {
                         throw new \Exception("Pengiriman Instan GAGAL: Koordinat alamat tujuan tidak ditemukan.");
                     }
 
                     $instantPayload = [
-                        'order_id' => $orderNumber,
-                        'service'  => $serviceCode,
+                        'order_id'   => $orderNumber,
+                        'service'    => $serviceCodeCheck,
                         'item_price' => $subtotal,
-                        'origin' => [
-                            'lat' => config('services.kiriminaja.origin_lat'),
-                            'long' => config('services.kiriminaja.origin_long'),
+                        'origin'     => [
+                            'lat'     => config('services.kiriminaja.origin_lat'),
+                            'long'    => config('services.kiriminaja.origin_long'),
                             'address' => config('services.kiriminaja.origin_address'),
-                            'phone' => '085745808809',
-                            'name' => 'Toko Sancaka'
+                            'phone'   => '085745808809',
+                            'name'    => 'Toko Sancaka'
                         ],
                         'destination' => [
-                            'lat' => $destLat,
-                            'long' => $destLng,
+                            'lat'     => $destLat,
+                            'long'    => $destLng,
                             'address' => $request->destination_text,
-                            'phone' => $customerPhone,
-                            'name' => $customerName
+                            'phone'   => $customerPhone,
+                            'name'    => $customerName
                         ],
-                        'weight' => $totalWeight,
+                        'weight'  => $totalWeight,
                         'vehicle' => 'motor',
                     ];
-                }
+
                     Log::info("PAYLOAD INSTANT:", $instantPayload);
                     $kaResponse = $kiriminAja->createInstantOrder($instantPayload);
 
-                } else {
-                    Log::info("TIPE KURIR: REGULER ($serviceCode)");
+                } 
+                // --- BLOK LOGIKA REGULER (JNE, SICEPAT, DLL) ---
+                else {
+                    
+                    // 1. Tentukan Service Code (Logika Robust/Kuat)
+                    $serviceCode = $request->courier_code; // Coba ambil dari request langsung
 
-                    // === LOGIKA JADWAL PICKUP (SCHEDULE) ===
-    $now = Carbon::now();
-    $pickupSchedule = null;
+                    // Fallback: Jika kosong, parse dari string nama kurir
+                    if (empty($serviceCode) && $request->courier_name) {
+                        $parts = explode('-', $request->courier_name); 
+                        $namaKurir = strtolower(trim($parts[0])); 
+                        
+                        $mapManual = [
+                            'jne' => 'jne', 'j&t express' => 'jnt', 'sicepat' => 'sicepat',
+                            'anteraja' => 'anteraja', 'pos indonesia' => 'posindonesia', 'tiki' => 'tiki',
+                            'lion parcel' => 'lion', 'ninja express' => 'ninja', 'id express' => 'idx',
+                            'spx express' => 'spx', 'sap express' => 'sap', 'j&t cargo' => 'jtcargo'
+                        ];
+                        
+                        foreach ($mapManual as $nameKey => $codeVal) {
+                            if (str_contains($namaKurir, $nameKey)) {
+                                $serviceCode = $codeVal;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    // Safety: Default ke 'jne' jika masih kosong agar tidak error
+                    if (empty($serviceCode)) {
+                        $serviceCode = 'jne'; 
+                    }
+                    Log::info("TIPE KURIR FINAL: $serviceCode");
 
-    // Batas waktu "mepet" (Contoh: Jam 15:00 / 3 Sore)
-    // Jika lewat jam 15:00, dianggap mepet -> Jadwal Besok Jam 09:00
-    if ($now->hour >= 15) {
-        $pickupSchedule = $now->addDay()->setTime(9, 0, 0)->format('Y-m-d H:i:s');
-        Log::info("Jadwal Mepet/Sore. Set Pickup Besok: $pickupSchedule");
-    } else {
-        // Jika masih siang, set "NOW" (Diberi jeda 30 menit agar driver siap)
-        $pickupSchedule = $now->addMinutes(30)->format('Y-m-d H:i:s');
-        Log::info("Jadwal Siang. Set Pickup Sekarang (+30m): $pickupSchedule");
-    }
+                    // 2. Tentukan Jadwal Pickup
+                    $now = \Carbon\Carbon::now();
+                    $pickupSchedule = null;
+
+                    // Jika lewat jam 15:00, set jadwal besok jam 09:00
+                    if ($now->hour >= 15) {
+                        $pickupSchedule = $now->addDay()->setTime(9, 0, 0)->format('Y-m-d H:i:s');
+                        Log::info("Jadwal Mepet/Sore. Set Pickup Besok: $pickupSchedule");
+                    } else {
+                        // Jika masih siang, set "NOW" + 30 menit
+                        $pickupSchedule = $now->addMinutes(30)->format('Y-m-d H:i:s');
+                        Log::info("Jadwal Siang. Set Pickup Sekarang (+30m): $pickupSchedule");
+                    }
+
+                    // 3. Buat Payload Reguler (Lengkap dengan Packages)
                     $kaPayload = [
-                        'order_id'       => $orderNumber,
-                        'service'        => $serviceCode, 
-                        'package_type_id'=> 1,
-                        'cod'            => 0,
-                        'item_value'     => $subtotal,
-                        'weight'         => $totalWeight,
-                        'origin_name'    => 'Toko Sancaka',
-                        'origin_phone'   => '085745808809',
-                        'origin_address' => config('services.kiriminaja.origin_address'),
+                        'order_id'        => $orderNumber,
+                        'service'         => $serviceCode, 
+                        'package_type_id' => 1,
+                        'cod'             => 0,
+                        'item_value'      => (int) $subtotal,
+                        'weight'          => (int) $totalWeight,
+                        'origin_name'     => 'Toko Sancaka',
+                        'origin_phone'    => '085745808809',
+                        'origin_address'  => config('services.kiriminaja.origin_address'),
                         'origin_district_id' => config('services.kiriminaja.origin_district_id'),
                         'destination_name'    => $customerName,
                         'destination_phone'   => $customerPhone,
                         'destination_address' => $request->destination_text,
                         'destination_district_id' => $request->destination_district_id,
-                        'destination_zip_code' => $request->postal_code ?? '',// TAMBAHKAN ARRAY PACKAGES INI (SOLUSI ERROR "Packages wajib diisi")
-                        'schedule' => $pickupSchedule, // <--- MASUKKAN JADWAL DI SINI
+                        'destination_zip_code' => $request->postal_code ?? '',
+                        'schedule' => $pickupSchedule, // Wajib ada jadwal
+                        
+                        // Detail Paket (Wajib menduplikasi info tujuan & service di sini)
                         'packages' => [
-            [
-                'order_id'    => $orderNumber,
-                'name'        => 'Paket Dokumen' . $orderNumber,
-                // TAMBAHAN WAJIB (Copy Service Code ke sini):
-                'service'     => $serviceCode,
-                'description' => 'Dokumen / Berkas', // Sesuaikan
-                'value'       => $subtotal,
-                'weight'      => $totalWeight,
-                'quantity'    => 1,
-                'length'      => 10,
-                'width'       => 10,
-                'height'      => 10,
-                // TAMBAHAN WAJIB (Copy dari data destination di atas):
-                'destination_name'        => $customerName,
-                'destination_phone'       => $customerPhone,
-                'destination_address'     => $request->destination_text,
-                'destination_district_id' => $request->destination_district_id,
-                'destination_zip_code'    => $request->postal_code ?? '',
-            ]
-        ]
-    ];
+                            [
+                                'order_id'    => $orderNumber, 
+                                'service'     => $serviceCode, // Wajib!
+                                'name'        => 'Paket Order ' . $orderNumber,
+                                'description' => 'Produk Toko Sancaka',
+                                'value'       => (int) $subtotal,
+                                'weight'      => (int) $totalWeight,
+                                'quantity'    => 1,
+                                'length'      => 10,
+                                'width'       => 10,
+                                'height'      => 10,
+                                'destination_name'        => $customerName,
+                                'destination_phone'       => $customerPhone,
+                                'destination_address'     => $request->destination_text,
+                                'destination_district_id' => $request->destination_district_id,
+                                'destination_zip_code'    => $request->postal_code ?? '',
+                            ]
+                        ]
+                    ];
 
-    if ($destLat && $destLng) {
-        $kaPayload['destination_latitude']  = $destLat;
-        $kaPayload['destination_longitude'] = $destLng;
-    }
+                    if ($destLat && $destLng) {
+                        $kaPayload['destination_latitude']  = $destLat;
+                        $kaPayload['destination_longitude'] = $destLng;
+                    }
 
-    $kaResponse = $kiriminAja->createExpressOrder($kaPayload);
-}
+                    $kaResponse = $kiriminAja->createExpressOrder($kaPayload);
+                }
 
-                // Log Response KiriminAja
+                // Cek Response KiriminAja (Untuk Instant & Reguler)
                 if (isset($kaResponse['status']) && $kaResponse['status'] == true) {
                     $shippingRef = $kaResponse['data']['order_id'] ?? $kaResponse['data']['payment_ref'] ?? null;
                     Log::info("KIRIMINAJA SUKSES. Ref: $shippingRef");
@@ -604,8 +604,10 @@ class OrderController extends Controller
                     throw new \Exception("Gagal Membuat Order Kurir: " . $errMsg);
                 }
             }
-            // =========================================================
 
+            // =========================================================
+            // 8. SIMPAN ORDER KE DATABASE
+            // =========================================================
             $order = Order::create([
                 'order_number'    => $orderNumber,
                 'user_id'         => null,
@@ -624,7 +626,7 @@ class OrderController extends Controller
                 'shipping_ref'    => $shippingRef, 
             ]);
 
-            // 8. PROSES BAYAR
+            // 9. PROSES BAYAR (Tripay / Doku)
             if ($request->payment_method === 'tripay') {
                 if (empty($request->payment_channel)) throw new \Exception("Harap pilih Channel Pembayaran.");
                 $orderItems = [];
@@ -648,7 +650,7 @@ class OrderController extends Controller
                 $order->update(['payment_url' => $paymentUrl]);
             }
 
-            // 9. SIMPAN DETAIL & UPLOAD
+            // 10. SIMPAN DETAIL & UPLOAD
              foreach ($finalCart as $data) {
                 $prod = $data['product'];
                 OrderDetail::create([
