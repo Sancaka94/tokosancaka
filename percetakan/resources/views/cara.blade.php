@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panduan & Cara Order - Toko Sancaka</title>
+    <title>Cara Kerja Afiliasi - Toko Sancaka</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     
@@ -18,7 +18,14 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
-        [x-cloak] { display: none !important; }
+        /* Animasi halus untuk icon */
+        .hover-bounce:hover {
+            animation: bounce 1s infinite;
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(-5%); }
+            50% { transform: translateY(5%); }
+        }
     </style>
 </head>
 <body class="bg-slate-900 text-slate-300 antialiased selection:bg-blue-500 selection:text-white">
@@ -37,80 +44,95 @@
         </div>
     </nav>
 
-    <section class="pt-32 pb-16 px-4 mx-auto max-w-screen-xl text-center lg:pt-40 lg:px-12">
-        <div class="inline-flex justify-between items-center py-1 px-1 pr-4 mb-7 text-sm rounded-full bg-slate-800 text-blue-400 hover:bg-slate-700 border border-slate-700 transition-colors" role="alert">
-            <span class="text-xs bg-blue-600 rounded-full text-white px-4 py-1.5 mr-3">Info</span> <span class="text-sm font-medium">Panduan Lengkap Partner Sancaka</span> 
+    <section class="pt-32 pb-10 px-4 mx-auto max-w-screen-xl text-center lg:pt-40 lg:px-12">
+        <div class="inline-flex justify-between items-center py-1 px-1 pr-4 mb-7 text-sm rounded-full bg-slate-800 text-blue-400 hover:bg-slate-700 border border-slate-700 transition-colors">
+            <span class="text-xs bg-emerald-600 rounded-full text-white px-4 py-1.5 mr-3">Simpel</span> <span class="text-sm font-medium">Cukup Modal WhatsApp!</span> 
         </div>
         <h1 class="mb-4 text-4xl font-extrabold tracking-tight leading-none text-white md:text-5xl lg:text-6xl">
-            Cara Mudah <span class="gradient-text">Dapat Cuan</span><br> Dari Percetakan
+            Alur Menjadi <span class="gradient-text">Partner Sukses</span>
         </h1>
         <p class="mb-8 text-lg font-normal text-slate-400 lg:text-xl sm:px-16 xl:px-48">
-            Panduan langkah demi langkah mulai dari mendaftar sebagai partner afiliasi hingga membuat pesanan pertama Anda.
+            Ikuti 3 langkah mudah ini agar komisi cair lancar ke rekening Anda.
         </p>
-        <div class="flex flex-col mb-8 lg:mb-16 space-y-4 sm:flex-row sm:justify-center sm:space-y-0 sm:space-x-4">
-            <a href="#tutorial" class="inline-flex justify-center items-center py-3 px-5 text-base font-medium text-center text-white rounded-lg bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-900 transition-all">
-                Mulai Belajar
-                <svg class="ml-2 -mr-1 w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+    </section>
+
+    <section id="tutorial" class="pb-20">
+        <div class="max-w-screen-xl px-4 mx-auto">
+            
+            <div class="grid gap-8 lg:grid-cols-3 md:grid-cols-1">
+                
+                <div class="relative p-8 bg-slate-800 rounded-2xl border border-slate-700 shadow-xl hover:border-blue-500 transition-all duration-300 group text-center">
+                    <div class="absolute -top-6 left-1/2 transform -translate-x-1/2 w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-2xl shadow-lg border-4 border-slate-900">1</div>
+                    
+                    <div class="mt-4 mb-6 flex justify-center">
+                        <div class="w-20 h-20 rounded-full bg-blue-900/30 flex items-center justify-center text-blue-400 group-hover:scale-110 transition-transform duration-300">
+                            <i class="fas fa-user-edit text-4xl"></i>
+                        </div>
+                    </div>
+                    
+                    <h3 class="mb-3 text-2xl font-bold text-white">Daftar Akun</h3>
+                    <p class="text-slate-400 mb-6 leading-relaxed">
+                        Isi data diri Anda di halaman pendaftaran. <br><span class="text-blue-400 font-semibold">Pastikan Nomor WA Aktif</span> agar sistem bisa mengirim info.
+                    </p>
+                    
+                    <a href="https://tokosancaka.com/percetakan/public/join-partner" class="inline-flex items-center justify-center w-full px-5 py-3 text-sm font-bold text-white transition-all bg-blue-600 rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-800 shadow-lg hover:shadow-blue-500/30">
+                        Daftar Di Sini <i class="fas fa-arrow-right ml-2"></i>
+                    </a>
+                </div>
+
+                <div class="relative p-8 bg-slate-800 rounded-2xl border border-slate-700 shadow-xl hover:border-emerald-500 transition-all duration-300 group text-center">
+                    <div class="absolute -top-6 left-1/2 transform -translate-x-1/2 w-12 h-12 bg-emerald-600 rounded-full flex items-center justify-center text-white font-bold text-2xl shadow-lg border-4 border-slate-900">2</div>
+                    
+                    <div class="mt-4 mb-6 flex justify-center">
+                        <div class="w-20 h-20 rounded-full bg-emerald-900/30 flex items-center justify-center text-emerald-400 hover-bounce">
+                            <i class="fab fa-whatsapp text-5xl"></i>
+                        </div>
+                    </div>
+                    
+                    <h3 class="mb-3 text-2xl font-bold text-white">Cek WhatsApp</h3>
+                    <p class="text-slate-400 mb-6 leading-relaxed">
+                        Sistem otomatis mengirimkan <span class="text-emerald-400 font-bold">Link Order Khusus</span> & <span class="text-emerald-400 font-bold">Kode Kupon</span> ke nomor WhatsApp Anda.
+                    </p>
+                    
+                    <div class="inline-block px-4 py-2 bg-slate-900 rounded border border-slate-600 text-xs text-slate-400">
+                        <i class="fas fa-check-circle text-emerald-500 mr-1"></i> Pesan masuk otomatis
+                    </div>
+                </div>
+
+                <div class="relative p-8 bg-slate-800 rounded-2xl border border-slate-700 shadow-xl hover:border-amber-500 transition-all duration-300 group text-center">
+                    <div class="absolute -top-6 left-1/2 transform -translate-x-1/2 w-12 h-12 bg-amber-500 rounded-full flex items-center justify-center text-white font-bold text-2xl shadow-lg border-4 border-slate-900">3</div>
+                    
+                    <div class="mt-4 mb-6 flex justify-center">
+                        <div class="w-20 h-20 rounded-full bg-amber-900/30 flex items-center justify-center text-amber-400 group-hover:rotate-12 transition-transform duration-300">
+                            <i class="fas fa-share-nodes text-4xl"></i>
+                        </div>
+                    </div>
+                    
+                    <h3 class="mb-3 text-2xl font-bold text-white">Sebarkan Link</h3>
+                    <p class="text-slate-400 mb-6 leading-relaxed">
+                        Teruskan (Forward) pesan WA tersebut ke <span class="text-amber-400 font-semibold">Teman, Saudara, atau Grup</span>. Saat mereka klik & order, Anda dapat komisi!
+                    </p>
+                    
+                    <a href="https://wa.me/?text=Halo%2C%20mau%20cetak%20murah%20dan%20cepat%3F%20Cek%20di%20Sancaka%20POS%20ya!" target="_blank" class="inline-flex items-center justify-center w-full px-5 py-3 text-sm font-bold text-slate-900 transition-all bg-amber-400 rounded-lg hover:bg-amber-500 focus:ring-4 focus:ring-amber-600 shadow-lg hover:shadow-amber-400/30">
+                        Coba Share Sekarang <i class="fas fa-paper-plane ml-2"></i>
+                    </a>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <section class="py-12 px-4 text-center">
+        <div class="max-w-3xl mx-auto bg-gradient-to-r from-blue-900 to-slate-900 border border-blue-800 rounded-2xl p-8 shadow-2xl relative overflow-hidden">
+            <h2 class="text-2xl font-bold text-white mb-2">Belum Mendaftar?</h2>
+            <p class="text-slate-300 mb-6">Jangan lewatkan kesempatan dapat penghasilan tambahan tanpa modal.</p>
+            <a href="https://tokosancaka.com/percetakan/public/join-partner" class="inline-block bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-8 rounded-full transition-transform hover:scale-105 shadow-lg">
+                Daftar Jadi Partner Sekarang
             </a>
         </div>
     </section>
 
-    <section id="tutorial" class="bg-slate-800 py-16">
-        <div class="max-w-screen-xl px-4 mx-auto">
-            <div class="text-center mb-12">
-                <h2 class="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">Alur Menjadi Partner Sukses</h2>
-                <p class="mt-4 text-lg text-slate-400">Ikuti 4 tahapan ini agar komisi cair lancar.</p>
-            </div>
-
-            <div class="grid gap-8 lg:grid-cols-4 md:grid-cols-2">
-                
-                <div class="relative p-6 bg-slate-900 rounded-xl border border-slate-700 shadow-lg hover:-translate-y-2 transition-transform duration-300 group">
-                    <div class="absolute -top-4 -left-4 w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-lg border-4 border-slate-800">1</div>
-                    <div class="w-12 h-12 mb-4 rounded-full bg-blue-900/50 flex items-center justify-center text-blue-400 group-hover:scale-110 transition-transform">
-                        <i class="fas fa-file-signature text-2xl"></i>
-                    </div>
-                    <h3 class="mb-2 text-xl font-bold text-white">Daftar Akun</h3>
-                    <p class="text-slate-400 mb-4 text-sm">Isi data diri Anda di halaman pendaftaran partner Sancaka.</p>
-                    <a href="https://tokosancaka.com/percetakan/public/join-partner" class="text-blue-400 hover:text-blue-300 font-bold text-sm flex items-center mt-auto">
-                        Daftar Di Sini <i class="fas fa-arrow-right ml-2 animate-bounce-x"></i>
-                    </a>
-                </div>
-
-                <div class="relative p-6 bg-slate-900 rounded-xl border border-slate-700 shadow-lg hover:-translate-y-2 transition-transform duration-300 group">
-                    <div class="absolute -top-4 -left-4 w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-lg border-4 border-slate-800">2</div>
-                    <div class="w-12 h-12 mb-4 rounded-full bg-purple-900/50 flex items-center justify-center text-purple-400 group-hover:scale-110 transition-transform">
-                        <i class="fas fa-key text-2xl"></i>
-                    </div>
-                    <h3 class="mb-2 text-xl font-bold text-white">Login Dashboard</h3>
-                    <p class="text-slate-400 mb-4 text-sm">Setelah diverifikasi admin, login untuk melihat dashboard Anda.</p>
-                </div>
-
-                <div class="relative p-6 bg-slate-900 rounded-xl border border-slate-700 shadow-lg hover:-translate-y-2 transition-transform duration-300 group">
-                    <div class="absolute -top-4 -left-4 w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-lg border-4 border-slate-800">3</div>
-                    <div class="w-12 h-12 mb-4 rounded-full bg-amber-900/50 flex items-center justify-center text-amber-400 group-hover:scale-110 transition-transform">
-                        <i class="fas fa-share-alt text-2xl"></i>
-                    </div>
-                    <h3 class="mb-2 text-xl font-bold text-white">Share / Input</h3>
-                    <p class="text-slate-400 mb-4 text-sm">Sebarkan Link/QR Code ke pelanggan, ATAU input pesanan mereka langsung.</p>
-                </div>
-
-                <div class="relative p-6 bg-slate-900 rounded-xl border-2 border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.2)] hover:-translate-y-2 transition-transform duration-300 group">
-                    <div class="absolute -top-4 -left-4 w-10 h-10 bg-emerald-600 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-lg border-4 border-slate-800">4</div>
-                    <div class="w-12 h-12 mb-4 rounded-full bg-emerald-900/50 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform">
-                        <i class="fas fa-shopping-cart text-2xl"></i>
-                    </div>
-                    <h3 class="mb-2 text-xl font-bold text-white">Order Masuk!</h3>
-                    <p class="text-slate-400 mb-4 text-sm">Arahkan ke halaman Order untuk memproses pesanan cetak.</p>
-                    <a href="https://tokosancaka.com/percetakan/public/orders/create" class="inline-block w-full text-center bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded transition-colors shadow-lg">
-                        Klik Untuk Order <i class="fas fa-paper-plane ml-1"></i>
-                    </a>
-                </div>
-
-            </div>
-        </div>
-    </section>
-
-    <footer class="bg-slate-900 border-t border-slate-800 py-8 text-center">
+    <footer class="bg-slate-900 border-t border-slate-800 py-8 text-center mt-auto">
         <p class="text-slate-500 text-sm">
             © 2026 Sancaka POS. Butuh bantuan? <a href="https://wa.me/6285745808809" class="text-emerald-500 hover:underline">Chat WhatsApp Admin</a>
         </p>
