@@ -351,7 +351,7 @@
 
                         <div @click="paymentMethod = 'doku'" class="cursor-pointer border-2 rounded-2xl p-4 flex flex-col items-center gap-2 transition relative overflow-hidden group"
                              :class="paymentMethod === 'doku' ? 'border-red-500 bg-red-50 text-red-700' : 'border-slate-100 bg-white hover:border-red-200'">
-                            <i class="fas fa-credit-card text-2xl mb-1"></i> <span class="text-xs font-bold">Doku</span>
+                            <i class="fas fa-credit-card text-2xl mb-1"></i> <span class="text-xs font-bold">QRIS/VA SANCAKA</span>
                             <div x-show="paymentMethod === 'doku'" class="absolute top-2 right-2 text-red-500"><i class="fas fa-check-circle"></i></div>
                         </div>
                     </div>
