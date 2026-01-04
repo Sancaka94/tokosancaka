@@ -115,13 +115,13 @@
     <div id="area-capture">
         
         <div class="mb-4 text-white">
-            <h3 class="fw-bold m-0">PROMO SPESIAL</h3>
+            <h3 class="fw-bold m-0">PROMO SPESIAL 30%</h3>
             <small>Scan & Dapatkan Diskon!</small>
         </div>
 
         <div class="card-inner">
             <h5 class="fw-bold text-dark mb-1">{{ $affiliate->name }}</h5>
-            <p class="text-muted small mb-3">Partner Resmi Sancaka Express</p>
+            <p class="text-muted small mb-3">Partner Resmi TokoSancaka.Com/p>
 
             <div class="qr-container">
                 {!! $qrCode !!}
