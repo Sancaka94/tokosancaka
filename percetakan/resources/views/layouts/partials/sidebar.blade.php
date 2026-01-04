@@ -110,14 +110,6 @@
                  x-collapse
                  x-cloak
                  class="mt-1 space-y-1 bg-slate-900/50 rounded-md overflow-hidden">
-                
-                <a href="{{ route('profile.edit') }}" 
-                   class="flex items-center gap-3 pl-11 pr-3 py-2 text-sm transition-colors duration-200
-                   {{ request()->routeIs('profile.edit') 
-                        ? 'text-blue-400 font-medium' 
-                        : 'text-slate-400 hover:text-white hover:bg-slate-700/50' }}">
-                    <span>Edit Profile</span>
-                </a>
 
                 <a href="{{ route('profile.index') }}" 
                    class="flex items-center gap-3 pl-11 pr-3 py-2 text-sm transition-colors duration-200
@@ -125,6 +117,14 @@
                         ? 'text-blue-400 font-medium' 
                         : 'text-slate-400 hover:text-white hover:bg-slate-700/50' }}">
                     <span>Data Profile</span>
+                </a>
+
+                <a href="{{ route('profile.edit') }}" 
+                   class="flex items-center gap-3 pl-11 pr-3 py-2 text-sm transition-colors duration-200
+                   {{ request()->routeIs('profile.edit') 
+                        ? 'text-blue-400 font-medium' 
+                        : 'text-slate-400 hover:text-white hover:bg-slate-700/50' }}">
+                    <span>Edit Profile</span>
                 </a>
             </div>
         </div>

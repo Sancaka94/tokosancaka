@@ -74,10 +74,10 @@
                     </div>
 
                     <div class="p-2 space-y-1">
-                        <a href="#" class="flex items-center gap-3 px-3 py-2 text-sm font-medium text-slate-600 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 transition-colors">
+                        <a href="{{ route('profile.index') }}" class="flex items-center gap-3 px-3 py-2 text-sm font-medium text-slate-600 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 transition-colors">
                             <i class="fas fa-user w-5 text-center text-slate-400"></i> Profile Saya
                         </a>
-                        <a href="#" class="flex items-center gap-3 px-3 py-2 text-sm font-medium text-slate-600 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 transition-colors">
+                        <a href="{{ route('profile.edit') }}" class="flex items-center gap-3 px-3 py-2 text-sm font-medium text-slate-600 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 transition-colors">
                             <i class="fas fa-cog w-5 text-center text-slate-400"></i> Pengaturan
                         </a>
                     </div>
