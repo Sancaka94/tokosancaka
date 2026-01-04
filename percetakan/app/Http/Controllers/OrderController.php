@@ -529,6 +529,8 @@ class OrderController extends Controller
             [
                 'order_id'    => $orderNumber,
                 'name'        => 'Paket Dokumen' . $orderNumber,
+                // TAMBAHAN WAJIB (Copy Service Code ke sini):
+                'service'     => $serviceCode,
                 'description' => 'Dokumen / Berkas', // Sesuaikan
                 'value'       => $subtotal,
                 'weight'      => $totalWeight,
