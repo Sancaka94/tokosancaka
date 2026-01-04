@@ -526,6 +526,7 @@ class OrderController extends Controller
                         'schedule' => $pickupSchedule, // <--- MASUKKAN JADWAL DI SINI
                         'packages' => [
             [
+                'order_id'    => $orderNumber,
                 'name'        => 'Paket Dokumen' . $orderNumber,
                 'description' => 'Dokumen / Berkas', // Sesuaikan
                 'value'       => $subtotal,
