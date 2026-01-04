@@ -175,7 +175,7 @@ class OrderController extends Controller
                 (int) $originDistrict, (int) $originSubDistrict, 
                 (int) $destDistrict, (int) $destSubDistrict,   
                 (int) $request->weight,
-                10, 10, 10, 100000, [], 'regular', 0
+                10, 10, 10, 1000, [], 'regular', 0
             );
 
             if (isset($responseReguler['status']) && $responseReguler['status'] == true) {
@@ -204,14 +204,15 @@ class OrderController extends Controller
                 Log::info("Mencoba Ongkir INSTANT (Grab/Gojek)...");
                 Log::info("Route: $originLat,$originLng -> $destLat,$destLng");
 
-                $responseInstant = $kiriminAja->getInstantPricing(
-                    $originLat, $originLng, $originAddr,
-                    $destLat, $destLng, $request->destination_text,
-                    $request->weight,
-                    100000, 
-                    'motor',
-                    ['gosend', 'grab_express']
-                );
+                // PERBAIKAN: Cast ke float agar API KiriminAja tidak menolak "must numeric data"
+$responseInstant = $kiriminAja->getInstantPricing(
+    (float) $originLat, (float) $originLng, $originAddr,
+    (float) $destLat, (float) $destLng, $request->destination_text,
+    (int) $request->weight,
+    1000, 
+    'motor',
+    ['gosend', 'grab_express']
+);
 
                 if (isset($responseInstant['status']) && $responseInstant['status'] == true) {
                     $instantPrices = $responseInstant['data']['price'] ?? []; 
