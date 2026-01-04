@@ -136,7 +136,7 @@
             @csrf
             <button type="submit" class="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-red-400 bg-red-400/10 rounded-md hover:bg-red-500 hover:text-white transition-all duration-200 group">
                 <i class="fas fa-sign-out-alt group-hover:animate-pulse"></i>
-                <span>Keluar Sistem</span>
+                <span>Logout</span>
             </button>
         </form>
     </div>
