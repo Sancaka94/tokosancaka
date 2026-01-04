@@ -110,7 +110,7 @@
                                     <i class="fas fa-phone-alt text-[9px] mr-1"></i> {{ $order->customer_phone ?? '-' }}
                                 </div>
                                 
-                                @if($order->delivery_type == 'shipping')
+                                @if(!empty($order->courier_service))
                                     <div class="text-[10px] text-slate-400 leading-tight max-w-[180px] mt-1">
                                         <i class="fas fa-map-marker-alt text-red-400 mr-1"></i>
                                         Ke: {{ Str::limit($order->destination_text ?? 'Alamat tidak tersedia', 40) }}
@@ -127,7 +127,7 @@
                         </td>
 
                         <td class="px-6 py-4 align-top">
-                            @if($order->delivery_type == 'shipping')
+                            @if(!empty($order->courier_service))
                                 <div class="flex flex-col gap-1">
                                     <div class="font-bold text-slate-700 text-xs uppercase flex items-center gap-1">
                                         <i class="fas fa-truck text-slate-400"></i>
