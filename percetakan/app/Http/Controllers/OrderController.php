@@ -472,7 +472,7 @@ class OrderController extends Controller
                             'lat' => config('services.kiriminaja.origin_lat'),
                             'long' => config('services.kiriminaja.origin_long'),
                             'address' => config('services.kiriminaja.origin_address'),
-                            'phone' => '081234567890',
+                            'phone' => '085745808809',
                             'name' => 'Toko Sancaka'
                         ],
                         'destination' => [
