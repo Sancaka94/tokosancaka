@@ -587,7 +587,22 @@ class OrderController extends Controller
                                 'destination_phone'       => $customerPhone,
                                 'destination_address'     => $request->destination_text,
                                 'destination_district_id' => $request->destination_district_id,
-                                'destination_zip_code'    => $request->postal_code ?? '',
+                                'destination_zip_code'    => $request->postal_code ?? '',// DIMENSI & BERAT
+                                
+                                // NILAI BARANG & ONGKIR
+                                'item_value'    => (int) $subtotal,
+                                'shipping_cost' => (int) $request->shipping_cost, // Wajib ada!
+                                'insurance_amount' => 0,
+                                
+                                // LAYANAN KURIR
+                                'service'       => $serviceCode, // Contoh: 'jne'
+                                'service_type'  => $serviceType, // Contoh: 'REG'
+                                
+                                // DETAIL ITEM
+                                'item_name'       => 'Paket Order ' . $orderNumber, // Sesuai Docs: 'item_name' (Bukan 'name')
+                                'package_type_id' => 1, // 1 = Paket Biasa
+                                'cod'             => 0, // 0 karena Non-COD
+                                'note'            => 'Hati-hati barang mudah pecah',
                             ]
                         ]
                     ];
