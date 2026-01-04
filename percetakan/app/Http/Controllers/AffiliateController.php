@@ -101,8 +101,8 @@ class AffiliateController extends Controller
                 'balance' => 0
             ]);
 
-            // 3. Generate Kupon (ID - 10%)
-            $discountValue = 10;
+            // 3. Generate Kupon (ID - 150%)
+            $discountValue = 150;
             $finalCouponCode = "SANCAKA-" . $affiliate->id . "-" . $discountValue;
             
             $affiliate->update(['coupon_code' => $finalCouponCode]);
