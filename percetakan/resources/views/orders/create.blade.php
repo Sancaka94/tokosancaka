@@ -378,7 +378,7 @@
                     </div>
                     
                     <div class="flex-1 leading-tight">
-                        <p class="text-[11px] font-bold text-slate-700 group-hover:text-blue-700" x-text="JSON.stringify(loc)"></p>
+                        <p class="text-[11px] font-bold text-slate-700 group-hover:text-blue-700" x-text="loc.full_address"></p>
                         <div class="flex flex-wrap gap-1 mt-1">
                             <span class="text-[9px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-500 border border-slate-200" 
                                   x-show="loc.type" x-text="loc.type"></span>
