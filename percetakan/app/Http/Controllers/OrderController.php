@@ -261,7 +261,8 @@ class OrderController extends Controller
                 Log::info("RESPONSE MENTAH INSTANT:", ['body' => $responseInstant]);
 
                 // --- UPDATE PARSING JSON SESUAI LOG TERBARU ---
-                $bodyResponse = $responseInstant['body'] ?? [];
+                // PERBAIKAN: Ambil langsung dari $responseInstant
+                $bodyResponse = $responseInstant;
                 
                 if (isset($bodyResponse['status']) && $bodyResponse['status'] == true) {
                     $instantResults = $bodyResponse['result'] ?? []; 
@@ -297,7 +298,7 @@ class OrderController extends Controller
                 } else {
                     Log::warning("Ongkir INSTANT Gagal/Tidak Ada Driver", ['response' => $responseInstant]);
                 }
-                
+
             } else {
                 Log::info("Ongkir INSTANT Skipped: Koordinat tidak lengkap.");
             }
