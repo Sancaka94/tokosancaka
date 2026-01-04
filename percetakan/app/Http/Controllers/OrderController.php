@@ -393,9 +393,9 @@ class OrderController extends Controller
             $paymentStatus = 'unpaid';
             $paymentUrl    = null;    
             $changeAmount  = 0;     
-            $customerName  = $request->customer_name ?? 'Guest';
-            $customerPhone = $request->customer_phone ?? '08123456789';
-            $customerEmail = 'customer@tokosancaka.com'; 
+            $customerName  = $request->customer_name ?? 'Customer';
+            $customerPhone = $request->customer_phone ?? '08819435180';
+            $customerEmail = 'tokosancaka@gmail.com'; 
             $note          = $request->note;
             
              if ($request->customer_id) {

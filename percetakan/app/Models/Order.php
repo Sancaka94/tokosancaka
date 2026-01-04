@@ -23,7 +23,10 @@ class Order extends Model
         'status',
         'base_price_at_order',
         'payment_status',
-        'note'
+        'note',
+        'shipping_cost',
+        'courier_service',
+        'shipping_ref'
     ];
 
     public function details()
