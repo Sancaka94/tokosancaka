@@ -77,41 +77,69 @@ class OrderController extends Controller
     }
 
    /**
-     * Fungsi Geocode "Anti-Koma" (Sesuai Request Abang)
-     * Mengubah "Beran, Ngawi, Jawa Timur" jadi "Beran Ngawi Jawa Timur"
+     * Fungsi Geocode "Smart Filter"
+     * Mencari prioritas tipe 'village' agar koordinat akurat di tengah desa.
      */
     private function geocode(string $address): ?array
     {
-        // 1. Bersihkan Alamat dari Koma
-        $cleanAddress = str_replace(',', '', $address);
-        
-        // (Opsional) Hapus spasi berlebih biar rapi
-        $cleanAddress = preg_replace('/\s+/', ' ', $cleanAddress);
+        // 1. Bersihkan query (Hapus koma agar pencarian lebih fleksibel)
+        $cleanAddress = str_replace(',', ' ', $address); 
+        $cleanAddress = preg_replace('/\s+/', ' ', $cleanAddress); // Hapus spasi ganda
 
-        Log::info("GEOCODING CLEAN QUERY: $cleanAddress");
+        Log::info("GEOCODING QUERY: $cleanAddress");
 
         try {
             $response = Http::timeout(10)
                 ->withHeaders(['User-Agent' => 'AplikasiKasirSancaka/1.0'])
                 ->get("https://nominatim.openstreetmap.org/search", [
-                    'q'            => $cleanAddress, // Kirim yang sudah bersih
+                    'q'            => $cleanAddress,
                     'format'       => 'json',
-                    'limit'        => 1,
-                    'countrycodes' => 'id'
+                    'limit'        => 5, // Ambil 5 opsi untuk difilter
+                    'countrycodes' => 'id',
+                    'addressdetails' => 1
                 ]);
             
-            if ($response->successful() && isset($response[0]['lat'])) {
-                $data = $response[0];
-                $lat = (float) $data['lat'];
-                $lng = (float) $data['lon'];
-                $displayName = $data['display_name'] ?? '';
-
-                Log::info("GEOCODING SUCCESS: Ketemu -> $displayName");
-                Log::info("Koordinat: $lat, $lng");
+            if ($response->successful()) {
+                $results = $response->json();
                 
-                return ['lat' => $lat, 'lng' => $lng];
-            } else {
-                Log::warning("GEOCODING FAILED: Tidak ada hasil untuk '$cleanAddress'");
+                // === FILTER PINTAR (SMART FILTERING) ===
+                $selectedPlace = null;
+
+                // PRIORITAS 1: Cari yang tipe-nya 'village' (Desa/Kelurahan)
+                // Ini yang paling akurat untuk ongkir (biasanya titik tengah desa)
+                foreach ($results as $place) {
+                    if (isset($place['type']) && $place['type'] === 'village') {
+                        $selectedPlace = $place;
+                        Log::info("GEOCODING: Mengambil prioritas 'VILLAGE' -> " . ($place['display_name'] ?? ''));
+                        break; // Ketemu desa, stop looping!
+                    }
+                }
+
+                // PRIORITAS 2: Jika Desa tidak ketemu, cari 'administrative', 'city', atau 'town'
+                if (!$selectedPlace) {
+                    foreach ($results as $place) {
+                        if (isset($place['type']) && in_array($place['type'], ['administrative', 'city', 'town', 'residential'])) {
+                            $selectedPlace = $place;
+                            Log::info("GEOCODING: Mengambil prioritas 'ADMINISTRATIVE/CITY'");
+                            break;
+                        }
+                    }
+                }
+
+                // PRIORITAS 3: Fallback (Ambil data pertama apapun itu)
+                if (!$selectedPlace && isset($results[0])) {
+                    $selectedPlace = $results[0];
+                    Log::info("GEOCODING: Mengambil hasil teratas (Tanpa Filter Khusus)");
+                }
+
+                // Return Hasil Akhir
+                if ($selectedPlace) {
+                    $lat = (float) $selectedPlace['lat'];
+                    $lng = (float) $selectedPlace['lon']; // API Nominatim pakai key 'lon'
+                    
+                    Log::info("GEOCODING FINAL: $lat, $lng");
+                    return ['lat' => $lat, 'lng' => $lng];
+                }
             }
         } catch (\Exception $e) {
             Log::error("GEOCODING ERROR: " . $e->getMessage());
