@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Log; // Logging aktif
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Carbon\Carbon; // <--- Pastikan baris ini ada di paling atas file
 
 // Models
 use App\Models\Order;
@@ -491,6 +492,21 @@ class OrderController extends Controller
 
                 } else {
                     Log::info("TIPE KURIR: REGULER ($serviceCode)");
+
+                    // === LOGIKA JADWAL PICKUP (SCHEDULE) ===
+    $now = Carbon::now();
+    $pickupSchedule = null;
+
+    // Batas waktu "mepet" (Contoh: Jam 15:00 / 3 Sore)
+    // Jika lewat jam 15:00, dianggap mepet -> Jadwal Besok Jam 09:00
+    if ($now->hour >= 15) {
+        $pickupSchedule = $now->addDay()->setTime(9, 0, 0)->format('Y-m-d H:i:s');
+        Log::info("Jadwal Mepet/Sore. Set Pickup Besok: $pickupSchedule");
+    } else {
+        // Jika masih siang, set "NOW" (Diberi jeda 30 menit agar driver siap)
+        $pickupSchedule = $now->addMinutes(30)->format('Y-m-d H:i:s');
+        Log::info("Jadwal Siang. Set Pickup Sekarang (+30m): $pickupSchedule");
+    }
                     $kaPayload = [
                         'order_id'       => $orderNumber,
                         'service'        => $serviceCode, 
@@ -507,7 +523,8 @@ class OrderController extends Controller
                         'destination_address' => $request->destination_text,
                         'destination_district_id' => $request->destination_district_id,
                         'destination_zip_code' => $request->postal_code ?? '',// TAMBAHKAN ARRAY PACKAGES INI (SOLUSI ERROR "Packages wajib diisi")
-        'packages' => [
+                        'schedule' => $pickupSchedule, // <--- MASUKKAN JADWAL DI SINI
+                        'packages' => [
             [
                 'name'        => 'Paket Dokumen' . $orderNumber,
                 'description' => 'Dokumen / Berkas', // Sesuaikan
