@@ -40,10 +40,12 @@ return [
     ],
 
     // --- KONFIGURASI KIRIMINAJA ---
+ 
     'kiriminaja' => [
         'token'    => env('KIRIMINAJA_TOKEN'),
+        // Default fallback hanya jika env kosong. Jika env ada isinya, dia pakai env.
         'base_url' => env('KIRIMINAJA_BASE_URL', 'https://client.kiriminaja.com'),
-        // ID Lokasi Toko (Kecamatan & Kelurahan)
+        
         'origin_district_id'    => env('KIRIMINAJA_ORIGIN_DISTRICT'),
         'origin_subdistrict_id' => env('KIRIMINAJA_ORIGIN_SUBDISTRICT'), 
     ],

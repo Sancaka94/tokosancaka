@@ -89,42 +89,31 @@ class OrderController extends Controller
     {
         $request->validate([
             'weight' => 'required|numeric',
-            // Kita butuh ID kecamatan & kelurahan tujuan untuk akurasi harga
-            'destination_district_id' => 'required', 
-            'destination_subdistrict_id' => 'nullable', // Opsional tapi disarankan ada
+            'destination_district_id' => 'required',
         ]);
 
         try {
-            // 1. SETTING KOTA ASAL (KETANGGI, NGAWI)
-            // Masukkan ID Kecamatan & Kelurahan Ketanggi di file .env Anda
-            $originDistrict    = env('KIRIMINAJA_ORIGIN_DISTRICT', 574);    // ID Kec. Ngawi (Contoh)
-            $originSubDistrict = env('KIRIMINAJA_ORIGIN_SUBDISTRICT', 0);   // ID Kel. Ketanggi (Opsional jika service mengizinkan 0)
+            // AMBIL DARI ENV ANDA (Ketanggi, Ngawi)
+            // 574
+            $originDistrict    = config('services.kiriminaja.origin_district_id'); 
+            // 63211
+            $originSubDistrict = config('services.kiriminaja.origin_subdistrict_id');
 
-            // 2. SETTING KOTA TUJUAN (DARI INPUTAN)
+            // Data Tujuan (Dari Inputan Kasir)
             $destDistrict    = $request->destination_district_id;
-            $destSubDistrict = $request->destination_subdistrict_id ?? 0;
+            // Jika ada subdistrict dari frontend pakai itu, jika tidak 0
+            $destSubDistrict = $request->destination_subdistrict_id ?? 0; 
 
-            // 3. PARAMETER BARANG
-            // KiriminAja v6.1 butuh dimensi
-            $length    = 10; 
-            $width     = 10;
-            $height    = 10;
-            $itemValue = 100000; // Estimasi harga barang (untuk asuransi)
-
-            // 4. PANGGIL API (Sesuai Service Anda: getExpressPricing)
+            // Panggil Service
             $response = $kiriminAja->getExpressPricing(
-                $originDistrict,    // Origin Kecamatan
-                $originSubDistrict, // Origin Kelurahan (Ketanggi)
-                $destDistrict,      // Destination Kecamatan
-                $destSubDistrict,   // Destination Kelurahan
-                $request->weight,   // Berat
-                $length,            
-                $width,             
-                $height,            
-                $itemValue          
+                $originDistrict,    
+                $originSubDistrict, 
+                $destDistrict,      
+                $destSubDistrict,   
+                $request->weight
+                // Parameter lain pakai default di service (10x10x10, 100k)
             );
 
-            // 5. FORMAT HASIL
             if (isset($response['status']) && $response['status'] == true) {
                 $formattedRates = [];
                 $results = $response['results'] ?? [];
@@ -132,26 +121,24 @@ class OrderController extends Controller
                 foreach ($results as $rate) {
                     $formattedRates[] = [
                         'code'    => 'kiriminaja',
-                        'name'    => $rate['courier'], // JNE, J&T, SiCepat
-                        'service' => $rate['service'], // REG, BEST
+                        'name'    => $rate['courier'], // JNE / J&T
+                        'service' => $rate['service'], // REG / OKE
                         'cost'    => $rate['cost'],
                         'etd'     => $rate['etd'] ?? '-',
                     ];
                 }
 
-                return response()->json([
-                    'status' => 'success',
-                    'data'   => $formattedRates
-                ]);
+                return response()->json(['status' => 'success', 'data' => $formattedRates]);
             }
 
+            // Jika Gagal (Misal area tidak tercover)
             return response()->json([
                 'status' => 'error', 
-                'message' => $response['text'] ?? 'Kurir tidak tersedia untuk rute ini.'
+                'message' => $response['text'] ?? 'Gagal cek ongkir.'
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Check Ongkir Error: ' . $e->getMessage());
+            Log::error('Controller Ongkir Error: ' . $e->getMessage());
             return response()->json(['status' => 'error', 'message' => $e->getMessage()]);
         }
     }
