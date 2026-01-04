@@ -23,7 +23,7 @@
         /* --- 1. Area yang akan MENJADI GAMBAR (Desain Story) --- */
         #area-capture {
             /* Background gradasi agar bagus di Story WA/IG */
-            background: linear-gradient(135deg, #0d6efd 0%, #0099ff 100%);
+            background: linear-gradient(135deg, #0066ff 0%, #0099ff 100%);
             width: 375px; /* Lebar standar HP */
             min-height: 667px; /* Tinggi standar HP (16:9 vertical) */
             padding: 40px 25px;
