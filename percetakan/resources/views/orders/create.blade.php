@@ -314,11 +314,22 @@
                     </div>
 
                     <div x-show="customerType === 'guest'" x-transition>
-                        <div class="grid grid-cols-2 gap-3">
-                            <input type="text" x-model="customerName" placeholder="Nama..." class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-red-500 transition">
-                            <input type="number" x-model="customerPhone" placeholder="No. WA..." class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-red-500 transition">
-                        </div>
-                    </div>
+    <div class="grid grid-cols-2 gap-3">
+        <div>
+            <input type="text" x-model="customerName" placeholder="Nama..." 
+                   class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-red-500 transition"
+                   :class="{'border-red-500 ring-1 ring-red-500': deliveryType === 'shipping' && !customerName}">
+            <p x-show="deliveryType === 'shipping' && !customerName" class="text-[9px] text-red-500 mt-1 font-bold">*Wajib diisi</p>
+        </div>
+
+        <div>
+            <input type="number" x-model="customerPhone" placeholder="No. WA..." 
+                   class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-red-500 transition"
+                   :class="{'border-red-500 ring-1 ring-red-500': deliveryType === 'shipping' && !customerPhone}">
+            <p x-show="deliveryType === 'shipping' && !customerPhone" class="text-[9px] text-red-500 mt-1 font-bold">*Wajib diisi</p>
+        </div>
+    </div>
+</div>
 
                     <div x-show="customerType === 'member'" style="display: none;" x-transition>
                         <select x-model="selectedCustomerId" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm bg-white font-bold text-slate-700 focus:ring-2 focus:ring-red-500">
