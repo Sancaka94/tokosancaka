@@ -93,60 +93,79 @@ class OrderController extends Controller
         ]);
 
         try {
-            // 1. ASAL PENGIRIMAN (Dari Config)
+            // 1. DATA REFERENSI LOGO & NAMA (Sesuai Request Anda)
+            $courierMap = [
+                'jne'          => ['name' => 'JNE', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jne.png'],
+                'tiki'         => ['name' => 'TIKI', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/tiki.png'],
+                'posindonesia' => ['name' => 'POS Indonesia', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/posindonesia.png'],
+                'sicepat'      => ['name' => 'SiCepat', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/sicepat.png'],
+                'sap'          => ['name' => 'SAP Express', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/sap.png'],
+                'ncs'          => ['name' => 'NCS Kurir', 'logo_url' => 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjxj3iyyZEjK2L4A4yCIr_E-4W3hF2lk_yb-t0Oj2oFPErCPCMHie5LHqps02xMb6sNa-Gqz5NSX_P_hzWlYpUpJUlCD4iN6_QxiSG9fzY4bsZ9XvLFDn7HCiORtNvIlPfuQbSSdW96p7x7uN8ek3FWyHW9c2bznrFBQkoLd5A9sVAFVKWLfUhT3Dxh/s320/GKL41_NCS%20Kurir%20-%20Koleksilogo.com.jpg'],
+                'idx'          => ['name' => 'ID Express', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/idx.png'],
+                'gojek'        => ['name' => 'GoSend', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/gosend.png'],
+                'grab'         => ['name' => 'GrabExpress', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/grab.png'],
+                'jnt'          => ['name' => 'J&T Express', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jnt.png'],
+                'indah'        => ['name' => 'Indah Cargo', 'logo_url' => 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEicOAaLoH2eElQ93_gbkzhvk4dRhWVlk5wQsGgilihIB58321aHchlJLdjyz1ToS25P_nWrHJ_E4QBiW_OVlI7tQt7cZ5I0HZqk6StS7jZltLVvDXp2d5ZDLB9yklhV4x6z2iXyURURDv_unhf-U6vyiD_8to9OC4PBwMwyU_5wAqOiCl6tKiaTA-ri1Q/s851/Logo%20Indah%20Logistik%20Cargo@0.5x.png'],
+                'jtcargo'      => ['name' => 'J&T Cargo', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jtcargo.png'],
+                'lion'         => ['name' => 'Lion Parcel', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/lion.png'],
+                'spx'          => ['name' => 'SPX Express', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/spx.png'],
+                'ninja'        => ['name' => 'Ninja Express', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/ninja.png'],
+                'anteraja'     => ['name' => 'Anteraja', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/anteraja.png'],
+                'sentral'      => ['name' => 'Sentral Cargo', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/centralcargo.png'],
+                'borzo'        => ['name' => 'Borzo', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/borzo.png'],
+            ];
+
+            // 2. CONFIG ASAL & TUJUAN
             $originDistrict    = config('services.kiriminaja.origin_district_id'); 
             $originSubDistrict = config('services.kiriminaja.origin_subdistrict_id');
-
-            // 2. TUJUAN PENGIRIMAN (Dari Input)
             $destDistrict    = $request->destination_district_id;
             $destSubDistrict = $request->destination_subdistrict_id ?? 0; 
+            
+            // Parameter Default
+            $length = 10; $width = 10; $height = 10; $itemValue = 1000;  
 
-            // 3. PARAMETER TAMBAHAN
-            $length    = 1;      
-            $width     = 1;      
-            $height    = 1;      
-            $itemValue = 1000;  
-
-            // 4. PANGGIL SERVICE
+            // 3. PANGGIL API
             $response = $kiriminAja->getExpressPricing(
-                (int) $originDistrict,    
-                (int) $originSubDistrict, 
-                (int) $destDistrict,      
-                (int) $destSubDistrict,   
+                (int) $originDistrict, (int) $originSubDistrict, 
+                (int) $destDistrict, (int) $destSubDistrict,   
                 (int) $request->weight,
-                (int) $length,     
-                (int) $width,      
-                (int) $height,     
-                (int) $itemValue   
+                (int) $length, (int) $width, (int) $height, (int) $itemValue   
             );
-
-            // Log Response Mentah untuk Debugging (Bisa dihapus nanti)
-            // \Illuminate\Support\Facades\Log::info('KiriminAja Response:', $response);
 
             if (isset($response['status']) && $response['status'] == true) {
                 $formattedRates = [];
-                // Ambil array 'results' dari response
                 $results = $response['results'] ?? [];
 
+                // 4. MAPPING DATA
                 foreach ($results as $rate) {
+                    // Ambil kode kurir (misal: 'jne', 'lion')
+                    $serviceCode = strtolower($rate['service']);
+                    
+                    // Cari data logo & nama resmi dari array di atas
+                    // Jika tidak ada, pakai default (Nama uppercase, Logo kosong)
+                    $mapData = $courierMap[$serviceCode] ?? null;
+                    $displayName = $mapData ? $mapData['name'] : strtoupper($serviceCode);
+                    $displayLogo = $mapData ? $mapData['logo_url'] : null;
+
                     $formattedRates[] = [
-                        'code'    => 'kiriminaja',
-                        // PERBAIKAN DI SINI: Gunakan 'service' sebagai nama kurir
-                        'name'    => strtoupper($rate['service'] ?? 'KURIR'), 
-                        // Gunakan 'service_name' sebagai detail layanan
-                        'service' => $rate['service_name'] ?? 'Layanan', 
-                        'cost'    => $rate['cost'],
-                        'etd'     => $rate['etd'] ?? '-',
+                        'code'     => 'kiriminaja',
+                        'name'     => $displayName, // Nama Resmi (Contoh: Lion Parcel)
+                        'logo'     => $displayLogo, // URL Logo
+                        'service'  => $rate['service_name'] ?? 'Layanan', 
+                        'cost'     => (int) $rate['cost'], // Pastikan Integer agar bisa disort
+                        'etd'      => $rate['etd'] ?? '-',
                     ];
                 }
+
+                // 5. SORTING (URUTKAN) DARI TERMURAH KE TERMAHAL
+                usort($formattedRates, function ($a, $b) {
+                    return $a['cost'] <=> $b['cost'];
+                });
 
                 return response()->json(['status' => 'success', 'data' => $formattedRates]);
             }
 
-            return response()->json([
-                'status' => 'error', 
-                'message' => $response['text'] ?? 'Gagal cek ongkir.'
-            ]);
+            return response()->json(['status' => 'error', 'message' => $response['text'] ?? 'Gagal cek ongkir.']);
 
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('Controller Ongkir Error: ' . $e->getMessage());

@@ -391,25 +391,33 @@
                         </div>
 
                         <div x-show="courierList.length > 0" x-transition class="space-y-2 max-h-56 overflow-y-auto custom-scrollbar pr-1 bg-white p-2 rounded-xl border border-blue-100">
-                            <p class="text-[10px] font-bold text-slate-400 px-1 mb-1">PILIH KURIR:</p>
-                            <template x-for="courier in courierList" :key="courier.service">
+                            <p class="text-[10px] font-bold text-slate-400 px-1 mb-1">PILIH KURIR (TERMURAH):</p>
+                            
+                            <template x-for="courier in courierList" :key="courier.service + courier.cost">
                                 <div @click="selectCourier(courier)" 
                                      class="flex justify-between items-center p-3 rounded-lg border cursor-pointer transition hover:bg-blue-50 group relative overflow-hidden"
-                                     :class="selectedCourier && selectedCourier.service === courier.service ? 'bg-blue-50 border-blue-500 ring-1 ring-blue-500' : 'bg-white border-slate-100 hover:border-blue-300'">
+                                     :class="selectedCourier && selectedCourier.service === courier.service && selectedCourier.cost === courier.cost ? 'bg-blue-50 border-blue-500 ring-1 ring-blue-500' : 'bg-white border-slate-100 hover:border-blue-300'">
                                     
                                     <div class="flex items-center gap-3 relative z-10">
-                                        <div class="h-8 w-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs shadow-sm">
-                                            <i class="fas fa-shipping-fast"></i>
+                                        <div class="h-10 w-10 flex items-center justify-center bg-white rounded-lg p-1 border border-slate-100 shadow-sm">
+                                            <template x-if="courier.logo">
+                                                <img :src="courier.logo" class="w-full h-full object-contain" alt="Logo">
+                                            </template>
+                                            <template x-if="!courier.logo">
+                                                <i class="fas fa-shipping-fast text-slate-400 text-lg"></i>
+                                            </template>
                                         </div>
+
                                         <div>
                                             <p class="text-[11px] font-bold text-slate-700 uppercase" x-text="courier.name"></p>
-                                            <p class="text-[9px] text-slate-500" x-text="courier.service + ' (' + courier.etd + ' Hari)'"></p>
+                                            <p class="text-[10px] text-slate-500" x-text="courier.service"></p>
+                                            <p class="text-[9px] text-slate-400" x-text="'Est: ' + courier.etd + ' Hari'"></p>
                                         </div>
                                     </div>
                                     
                                     <div class="text-right relative z-10">
-                                        <p class="text-xs font-black text-slate-800" x-text="rupiah(courier.cost)"></p>
-                                        <i x-show="selectedCourier && selectedCourier.service === courier.service" class="fas fa-check-circle text-blue-600 text-xs mt-1"></i>
+                                        <p class="text-sm font-black text-blue-600" x-text="rupiah(courier.cost)"></p>
+                                        <i x-show="selectedCourier && selectedCourier.service === courier.service && selectedCourier.cost === courier.cost" class="fas fa-check-circle text-blue-600 text-xs mt-1"></i>
                                     </div>
                                 </div>
                             </template>
