@@ -526,10 +526,12 @@ class OrderController extends Controller
                     }
                     
                     // Safety: Default ke 'jne' jika masih kosong agar tidak error
-                    if (empty($serviceCode)) {
-                        $serviceCode = 'jne'; 
-                    }
+                    if (empty($serviceCode)) $serviceCode = 'jne';
+
+                    if (empty($serviceType)) $serviceType = 'REG'; // <--- DEFAULT JIKA KOSONG
                     Log::info("TIPE KURIR FINAL: $serviceCode");
+
+                    Log::info("TIPE KURIR FINAL: $serviceCode | TYPE: $serviceType");
 
                     // 2. Tentukan Jadwal Pickup
                     $now = \Carbon\Carbon::now();
