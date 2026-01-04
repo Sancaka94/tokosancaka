@@ -139,7 +139,7 @@
         </div>
 
         <div class="story-footer">
-            <i class="fas fa-shopping-cart me-1"></i> Belanja Hemat Sekarang
+            <i class="fas fa-shopping-cart me-1"></i> Belanja Hemat Sekarang di TOKO SANCAKA!
         </div>
     </div>
     <div class="action-area">
