@@ -320,137 +320,128 @@
 
                 <div>
 
-                    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 mb-4">
+                    <div class="bg-blue-50 border-2 border-blue-100 rounded-2xl p-4 shadow-sm mb-6">
+                    <label class="block text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-2">Metode Penyerahan</label>
+                    
+                    <div class="flex p-1 bg-white border border-blue-100 rounded-xl mb-3 shadow-sm">
+                        <button @click="deliveryType = 'pickup'; shippingCost = 0; selectedCourier = null" 
+                                class="flex-1 py-2 text-xs font-bold rounded-lg transition-all"
+                                :class="deliveryType === 'pickup' ? 'bg-blue-600 text-white shadow' : 'text-slate-500 hover:bg-blue-50'">
+                            <i class="fas fa-store mr-1"></i> Ambil di Toko
+                        </button>
+                        <button @click="deliveryType = 'shipping'" 
+                                class="flex-1 py-2 text-xs font-bold rounded-lg transition-all"
+                                :class="deliveryType === 'shipping' ? 'bg-blue-600 text-white shadow' : 'text-slate-500 hover:bg-blue-50'">
+                            <i class="fas fa-truck mr-1"></i> Kirim (KiriminAja)
+                        </button>
+                    </div>
+
+                    <div x-show="deliveryType === 'shipping'" x-transition class="space-y-4">
     
-    <h3 class="text-sm font-bold text-slate-700 uppercase mb-3 tracking-wide">Metode Penyerahan</h3>
+    <div class="relative z-50"> 
+        <label class="text-[10px] font-bold text-slate-500 uppercase">Cari Tujuan (Kelurahan / Kecamatan / Kode Pos)</label>
+        
+        <div class="relative mt-1">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <i class="fas fa-search text-slate-400"></i>
+            </div>
 
-    <div class="flex w-full bg-slate-100 p-1 rounded-xl mb-5">
-        <button @click="deliveryType = 'pickup'; shippingCost = 0; courierList = [];"
-                class="flex-1 py-2.5 text-xs font-bold rounded-lg transition-all duration-200 flex items-center justify-center gap-2"
-                :class="deliveryType === 'pickup' 
-                    ? 'bg-white text-slate-800 shadow-sm ring-1 ring-black/5' 
-                    : 'text-slate-400 hover:text-slate-600'">
-            <i class="fas fa-store"></i> Ambil di Toko
-        </button>
-
-        <button @click="deliveryType = 'shipping'"
-                class="flex-1 py-2.5 text-xs font-bold rounded-lg transition-all duration-200 flex items-center justify-center gap-2"
-                :class="deliveryType === 'shipping' 
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-200' 
-                    : 'text-slate-400 hover:text-slate-600'">
-            <i class="fas fa-truck-fast"></i> Kirim (KiriminAja)
-        </button>
-    </div>
-
-    <div x-show="deliveryType === 'shipping'" x-transition class="space-y-4">
-
-        <div class="relative z-50">
-            <label class="text-[11px] font-bold text-slate-500 uppercase ml-1">Cari Kecamatan / Kelurahan</label>
+            <input type="text" 
+                   x-model="searchQuery" 
+                   @input.debounce.500ms="searchLocation()" 
+                   placeholder="Ketik Kelurahan, Kecamatan, atau Kode Pos (cth: 63122)..." 
+                   class="w-full pl-9 pr-10 py-3 text-xs rounded-xl border border-blue-200 focus:ring-2 focus:ring-blue-500 font-bold text-slate-700 shadow-sm transition-all"
+                   autocomplete="off">
             
-            <div class="relative mt-1.5 group">
-                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <i class="fas fa-search text-slate-400 group-focus-within:text-blue-500 transition-colors"></i>
-                </div>
-
-                <input type="text" 
-                       x-model="searchQuery" 
-                       @input.debounce.300ms="searchLocation()" 
-                       placeholder="Ketik min. 3 huruf (cth: Ketanggi)" 
-                       class="w-full pl-11 pr-10 py-3.5 text-sm font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:text-slate-400 placeholder:font-normal"
-                       autocomplete="off">
-                
-                <div x-show="isSearchingLocation" class="absolute inset-y-0 right-0 pr-4 flex items-center">
-                    <i class="fas fa-circle-notch fa-spin text-blue-500"></i>
-                </div>
-
-                <button x-show="!isSearchingLocation && searchQuery.length > 0" 
-                        @click="searchQuery = ''; searchResults = []; destinationDistrictId = ''; courierList = [];"
-                        class="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-300 hover:text-red-500 cursor-pointer transition-colors">
-                    <i class="fas fa-times-circle"></i>
-                </button>
+            <div x-show="isSearchingLocation" class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                <i class="fas fa-circle-notch fa-spin text-blue-500"></i>
             </div>
-
-            <div x-show="searchResults.length > 0" 
-                 x-transition.opacity.duration.200ms
-                 @click.outside="searchResults = []"
-                 class="absolute left-0 right-0 mt-2 bg-white border border-slate-100 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar z-50 divide-y divide-slate-50 ring-1 ring-black/5">
-                
-                <template x-for="loc in searchResults" :key="loc.id">
-                    <button @click="selectLocation(loc)" 
-                            class="w-full text-left px-4 py-3.5 hover:bg-blue-50 transition-colors flex items-start gap-3 group">
-                        
-                        <div class="mt-0.5 h-5 w-5 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center shrink-0 group-hover:bg-blue-100 group-hover:text-blue-600">
-                            <i class="fas fa-map-marker-alt text-[10px]"></i>
-                        </div>
-                        
-                        <div class="flex-1">
-                            <p class="text-xs font-bold text-slate-700 group-hover:text-blue-700" x-text="loc.text"></p>
-                            <p class="text-[10px] text-slate-400 mt-0.5" x-text="loc.zip_code ? 'Kode Pos: ' + loc.zip_code : 'Kecamatan'"></p>
-                        </div>
-                    </button>
-                </template>
-            </div>
+            
+            <button x-show="!isSearchingLocation && searchQuery.length > 0" 
+                    @click="searchQuery = ''; searchResults = []; destinationDistrictId = '';"
+                    class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-red-500">
+                <i class="fas fa-times-circle"></i>
+            </button>
         </div>
 
-        <div x-show="courierList.length > 0" x-transition class="pt-2">
-            <p class="text-[11px] font-bold text-slate-400 uppercase mb-2 ml-1">Pilih Kurir:</p>
+        <div x-show="searchResults.length > 0" 
+             x-transition.opacity.duration.200ms
+             @click.outside="searchResults = []"
+             class="absolute left-0 right-0 mt-1 bg-white border border-slate-100 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar z-50 ring-1 ring-black/5">
             
-            <div class="space-y-3 max-h-[350px] overflow-y-auto custom-scrollbar pr-1">
-                <template x-for="courier in courierList" :key="courier.service + courier.cost">
+            <template x-for="loc in searchResults" :key="loc.id">
+                <button @click="selectLocation(loc)" 
+                        class="w-full text-left px-4 py-3 hover:bg-blue-50 border-b border-slate-50 last:border-0 transition-colors group flex items-start gap-3">
                     
-                    <div @click="selectCourier(courier)" 
-                         class="relative flex items-center justify-between p-4 rounded-xl border cursor-pointer transition-all duration-200 group bg-white"
-                         :class="selectedCourier && selectedCourier.service === courier.service && selectedCourier.cost === courier.cost 
-                            ? 'border-blue-500 ring-1 ring-blue-500 bg-blue-50/30' 
-                            : 'border-slate-200 hover:border-blue-300 hover:shadow-md'">
-                        
-                        <div class="flex items-center gap-4">
-                            <div class="h-12 w-12 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center p-1 group-hover:scale-105 transition-transform">
-                                <template x-if="courier.logo">
-                                    <img :src="courier.logo" class="w-full h-full object-contain mix-blend-multiply" alt="Logo">
-                                </template>
-                                <template x-if="!courier.logo">
-                                    <i class="fas fa-box text-slate-300 text-lg"></i>
-                                </template>
-                            </div>
-
-                            <div>
-                                <h4 class="text-sm font-black text-slate-700 uppercase tracking-tight" x-text="courier.name"></h4>
-                                <div class="flex items-center gap-2 mt-0.5">
-                                    <span class="text-[11px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded" x-text="courier.service"></span>
-                                    <span class="text-[10px] text-slate-400" x-text="courier.etd + ' Hari'"></span>
-                                </div>
-                            </div>
+                    <div class="h-8 w-8 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center group-hover:bg-blue-200 group-hover:text-blue-600 transition shrink-0 mt-1">
+                        <i class="fas fa-map-marker-alt"></i>
+                    </div>
+                    
+                    <div class="flex-1 leading-tight">
+                        <p class="text-[11px] font-bold text-slate-700 group-hover:text-blue-700" x-text="loc.text"></p>
+                        <div class="flex flex-wrap gap-1 mt-1">
+                            <span class="text-[9px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-500 border border-slate-200" 
+                                  x-show="loc.type" x-text="loc.type"></span>
+                            <span class="text-[9px] bg-yellow-50 px-1.5 py-0.5 rounded text-yellow-700 border border-yellow-200 font-bold" 
+                                  x-show="loc.zip_code" x-text="'Kode Pos: ' + loc.zip_code"></span>
                         </div>
+                    </div>
+                </button>
+            </template>
+        </div>
 
-                        <div class="text-right">
-                            <p class="text-base font-black text-slate-800" x-text="rupiah(courier.cost)"></p>
-                            <div x-show="selectedCourier && selectedCourier.service === courier.service && selectedCourier.cost === courier.cost" 
-                                 class="absolute top-3 right-3 text-blue-600">
-                                <i class="fas fa-check-circle text-sm"></i>
-                            </div>
+        <div x-show="searchQuery.length > 3 && !isSearchingLocation && searchResults.length === 0 && !destinationDistrictId" 
+             class="absolute mt-1 w-full bg-white p-3 rounded-xl shadow-lg border border-red-100 text-center z-50">
+            <span class="text-xs text-red-500 font-medium">Lokasi tidak ditemukan. Coba Kode Pos atau nama Kecamatan.</span>
+        </div>
+    </div>
+
+    <div x-show="courierList.length > 0" x-transition class="space-y-2 max-h-56 overflow-y-auto custom-scrollbar pr-1 bg-white p-2 rounded-xl border border-blue-100">
+        <p class="text-[10px] font-bold text-slate-400 px-1 mb-1">PILIH KURIR (TERMURAH):</p>
+        
+        <template x-for="courier in courierList" :key="courier.service + courier.cost">
+            <div @click="selectCourier(courier)" 
+                 class="flex justify-between items-center p-3 rounded-lg border cursor-pointer transition hover:bg-blue-50 group relative overflow-hidden"
+                 :class="selectedCourier && selectedCourier.service === courier.service && selectedCourier.cost === courier.cost ? 'bg-blue-50 border-blue-500 ring-1 ring-blue-500' : 'bg-white border-slate-100 hover:border-blue-300'">
+                
+                <div class="flex items-center gap-3 relative z-10">
+                    <div class="h-10 w-10 flex items-center justify-center bg-white rounded-lg p-1 border border-slate-100 shadow-sm">
+                        <template x-if="courier.logo">
+                            <img :src="courier.logo" class="w-full h-full object-contain" alt="Logo">
+                        </template>
+                        <template x-if="!courier.logo">
+                            <i class="fas fa-shipping-fast text-slate-400 text-lg"></i>
+                        </template>
+                    </div>
+
+                    <div>
+                        <p class="text-[11px] font-bold text-slate-700 uppercase" x-text="courier.name"></p>
+                        <p class="text-[10px] text-slate-500" x-text="courier.service"></p>
+                        <p class="text-[9px] text-slate-400" x-text="'Est: ' + courier.etd + ' Hari'"></p>
+                    </div>
+                </div>
+                
+                <div class="text-right relative z-10">
+                    <p class="text-sm font-black text-blue-600" x-text="rupiah(courier.cost)"></p>
+                    <i x-show="selectedCourier && selectedCourier.service === courier.service && selectedCourier.cost === courier.cost" class="fas fa-check-circle text-blue-600 text-xs mt-1"></i>
+                </div>
+            </div>
+        </template>
+    </div>
+    
+    <div x-show="isLoadingShipping" class="flex flex-col items-center justify-center py-4 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+        <i class="fas fa-circle-notch fa-spin text-blue-500 text-xl mb-1"></i>
+        <span class="text-[10px] text-slate-400 font-medium">Menghitung Ongkir...</span>
+    </div>
+
+</div>
+                        
+                        <div x-show="isLoadingShipping" class="flex flex-col items-center justify-center py-4 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                            <i class="fas fa-circle-notch fa-spin text-blue-500 text-xl mb-1"></i>
+                            <span class="text-[10px] text-slate-400 font-medium">Menghitung Ongkir...</span>
                         </div>
 
                     </div>
-
-                </template>
-            </div>
-        </div>
-
-        <div x-show="isLoadingShipping" class="py-8 text-center bg-slate-50 rounded-xl border border-dashed border-slate-300">
-            <i class="fas fa-circle-notch fa-spin text-2xl text-blue-500 mb-2"></i>
-            <p class="text-xs font-bold text-slate-500 animate-pulse">Sedang mencari kurir terbaik...</p>
-        </div>
-
-        <div x-show="!destinationDistrictId && !isLoadingShipping" class="py-6 text-center">
-            <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-blue-50 text-blue-500 mb-2">
-                <i class="fas fa-map-marked-alt text-lg"></i>
-            </div>
-            <p class="text-xs text-slate-400">Silakan cari kecamatan tujuan untuk melihat ongkir.</p>
-        </div>
-
-    </div>
-</div>
                 </div>
 
                     <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Pilih Metode Bayar</label>
@@ -608,7 +599,7 @@
                  }
             },
             
-            // --- STATE UI & UMUM ---
+            // --- 1. STATE UI & UMUM ---
             mobileCartOpen: false,
             showPaymentModal: false,
             search: '',
@@ -617,64 +608,98 @@
             isProcessing: false,
             isValidatingCoupon: false,
             
-            // --- KUPON ---
+            // --- 2. KUPON ---
             couponCode: '{{ $autoCoupon ?? "" }}',
             couponMessage: '',
             discountAmount: 0,
             
-            // --- PELANGGAN ---
+            // --- 3. PELANGGAN (MEMBER/GUEST) ---
             customerType: 'guest',
             customerName: '',
             customerPhone: '',
             selectedCustomerId: '',
             
-            // --- PEMBAYARAN ---
+            // --- 4. PEMBAYARAN ---
             paymentMethod: 'cash',
-            paymentChannel: '',
-            tripayChannels: [],
+            paymentChannel: '',     // Untuk Tripay (BRIVA, QRIS, dll)
+            tripayChannels: [],     // List channel dari API
             isLoadingChannels: false,
-            cashAmount: '',
-            affiliatePin: '', 
+            cashAmount: '',         // Uang tunai
+            affiliatePin: '',       // PIN Member
 
-            // --- PENGIRIMAN (FITUR PENCARIAN) ---
-            deliveryType: 'pickup',
+            // --- 5. PENGIRIMAN (KIRIMINAJA) ---
+            deliveryType: 'pickup', // Default: Ambil di Toko
             
-            // Variabel Pencarian (Autocomplete)
-            searchQuery: '',        // Teks yang diketik user
-            searchResults: [],      // Array hasil pencarian
+            // Variabel Pencarian Lokasi
+            searchQuery: '',        // Input teks user
+            searchResults: [],      // Hasil dropdown API
             isSearchingLocation: false,
             
-            // Data Lokasi Terpilih
-            destinationDistrictId: '',    // ID Kecamatan
-            destinationSubdistrictId: '', // ID Kelurahan
+            // ID Lokasi (Penting untuk API Ongkir)
+            destinationDistrictId: '', 
+            destinationSubdistrictId: '', 
             
-            // Variabel Ongkir
+            // Hasil Ongkir
             courierList: [],
             selectedCourier: null,
             shippingCost: 0,
             isLoadingShipping: false,
 
-            // --- COMPUTED PROPERTIES ---
-            get subtotal() { return this.cart.reduce((sum, item) => sum + (item.price * item.qty), 0); },
+            // ============================================================
+            // COMPUTED PROPERTIES (PERHITUNGAN OTOMATIS)
+            // ============================================================
+            
+            get subtotal() { 
+                return this.cart.reduce((sum, item) => sum + (item.price * item.qty), 0); 
+            },
+            
+            get cartTotalQty() { 
+                return this.cart.reduce((sum, item) => sum + item.qty, 0); 
+            },
+            
+            // GRAND TOTAL: Subtotal - Diskon + Ongkir
             get grandTotal() { 
                 let total = this.subtotal - this.discountAmount + this.shippingCost;
                 return total < 0 ? 0 : total;
             },
+            
+            // KEMBALIAN: Uang Masuk - Grand Total
             get change() {
                 let received = parseInt(this.cashAmount) || 0;
                 return received - this.grandTotal;
             },
 
-            // --- FORMAT RUPIAH ---
+            // ============================================================
+            // HELPERS
+            // ============================================================
+            
             rupiah(val) { 
                 return new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(val); 
             },
+            
+            formatFileSize(bytes) {
+                if(bytes === 0) return '0 B';
+                const k = 1024; const sizes = ['B', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+            },
+            
+            itemMatchesSearch(name) { 
+                return name.toLowerCase().includes(this.search.toLowerCase()); 
+            },
+            
+            getItemQty(id) {
+                let item = this.cart.find(i => i.id === id);
+                return item ? item.qty : 0;
+            },
 
             // ============================================================
-            // 1. FUNGSI PENCARIAN LOKASI (SMART SEARCH)
+            // LOGIKA PENGIRIMAN (KIRIMINAJA - AUTOCOMPLETE)
             // ============================================================
+
+            // --- A. PENCARIAN LOKASI (Desa/Kecamatan/Kode Pos) ---
             async searchLocation() {
-                // Reset jika input dihapus
+                // Hapus jika input kurang dari 3 karakter
                 if (this.searchQuery.length < 3) {
                     this.searchResults = [];
                     return;
@@ -683,22 +708,13 @@
                 this.isSearchingLocation = true;
                 
                 try {
-                    // Panggil API Search Laravel
+                    // Pastikan route backend menangani parameter 'query' yang berisi kode pos atau nama daerah
                     const response = await fetch(`{{ route('orders.search-location') }}?query=${this.searchQuery}`);
                     const result = await response.json();
 
-                    if (result.status === 'success' || Array.isArray(result.data)) {
-                        // Mapping Data agar sesuai UI
-                        // API KiriminAja biasanya mereturn: text / full_address, zipcode, id
-                        this.searchResults = result.data.map(item => {
-                            return {
-                                id: item.id,                        // ID unik lokasi
-                                district_id: item.district_id,      // ID Kecamatan
-                                subdistrict_id: item.subdistrict_id,// ID Kelurahan (Penting!)
-                                text: item.text || item.full_address, // Nama Lengkap (Kelurahan, Kecamatan...)
-                                zip_code: item.zip_code || item.postal_code // Kode Pos
-                            };
-                        });
+                    if (result.status === 'success') {
+                        // Backend diharapkan mengembalikan: { id, text, type (Kecamatan/Kelurahan), zip_code, district_id }
+                        this.searchResults = result.data;
                     } else {
                         this.searchResults = [];
                     }
@@ -710,40 +726,38 @@
                 }
             },
 
-            // ============================================================
-            // 2. SAAT LOKASI DIKLIK (SELECT)
-            // ============================================================
+            // --- B. MEMILIH LOKASI ---
             selectLocation(location) {
                 // 1. Tampilkan teks lengkap di input agar user yakin
                 this.searchQuery = location.text; 
+                if(location.zip_code) {
+                     this.searchQuery += ` (${location.zip_code})`;
+                }
                 
-                // 2. Simpan ID (Ini yang dikirim ke API Ongkir)
-                this.destinationDistrictId = location.district_id;
-                this.destinationSubdistrictId = location.subdistrict_id || location.id;
+                // 2. Simpan ID Hirarki Wilayah
+                // Pastikan data location dari backend memiliki field ini
+                this.destinationDistrictId = location.district_id; // ID Kecamatan (Penting untuk Ongkir)
+                this.destinationSubdistrictId = location.id;       // ID Kelurahan/Subdistrict spesifik
+                this.destinationZipCode = location.zip_code || ''; // Simpan Kode Pos
 
-                // 3. Sembunyikan dropdown
+                // 3. Reset UI Dropdown
                 this.searchResults = [];
                 
                 // 4. OTOMATIS HITUNG ONGKIR
                 this.checkOngkir();
             },
 
-            // ============================================================
-            // 3. CEK ONGKIR (DENGAN LOGIKA BERAT CERDAS 5 GRAM)
-            // ============================================================
+            // --- C. CEK ONGKIR (Update Payload) ---
             async checkOngkir() {
                 if (!this.destinationDistrictId) return;
                 
-                // --- LOGIKA BERAT CERDAS ---
-                // Hitung total berat real (Qty * Berat per item)
-                let realTotalWeight = this.cart.reduce((w, item) => w + (item.qty * item.weight), 0);
-                
-                // Jika total masih di bawah 1000 gram, bulatkan ke 1000 gram (Syarat Min. Ekspedisi)
+                // Hitung Berat
+                let realTotalWeight = this.cart.reduce((w, item) => w + (item.qty * (item.weight > 0 ? item.weight : 100)), 0);
+                // Default minimal 1kg (1000g) jika total berat sangat kecil
                 let finalWeight = realTotalWeight < 1000 ? 1000 : realTotalWeight;
-                // ---------------------------
 
                 this.isLoadingShipping = true;
-                this.courierList = [];
+                this.courierList = []; 
                 this.selectedCourier = null;
                 this.shippingCost = 0;
 
@@ -755,11 +769,11 @@
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
                         },
                         body: JSON.stringify({
-                            destination_district_id: this.destinationDistrictId,
-                            destination_subdistrict_id: this.destinationSubdistrictId,
-                            // Kirim Nama Lokasi juga agar Backend bisa cari Koordinat Grab/Gojek
-                            destination_text: this.searchQuery, 
-                            weight: finalWeight
+                            // Kirim semua data lokasi agar Controller bisa memilih yang paling akurat
+                            destination_district_id: this.destinationDistrictId, // Kecamatan ID
+                            destination_subdistrict_id: this.destinationSubdistrictId, // Kelurahan ID
+                            postal_code: this.destinationZipCode, // Kode Pos
+                            weight: finalWeight 
                         })
                     });
                     
@@ -768,7 +782,7 @@
                     if (result.status === 'success') {
                         this.courierList = result.data; 
                     } else {
-                        alert('Gagal cek ongkir: ' + (result.message || 'Area tidak terjangkau'));
+                        alert('Gagal cek ongkir: ' + result.message);
                     }
                 } catch (e) {
                     console.error(e);
@@ -778,107 +792,262 @@
                 }
             },
 
+            // D. Saat Kurir Dipilih
             selectCourier(courier) {
                 this.selectedCourier = courier;
                 this.shippingCost = parseInt(courier.cost); 
             },
 
             // ============================================================
-            // 4. LOGIKA ADD TO CART (BERAT DEFAULT 5 GRAM)
+            // LOGIKA PEMBAYARAN & MEMBER
             // ============================================================
+
+            getSelectedMemberSaldo() {
+                if(!this.selectedCustomerId) return 0;
+                const select = document.querySelector(`select[x-model="selectedCustomerId"]`);
+                if (!select) return 0;
+                const option = select.querySelector(`option[value="${this.selectedCustomerId}"]`);
+                return option ? parseFloat(option.dataset.saldo) : 0;
+            },
+            
+            getSelectedAffiliateBalance() {
+                if(!this.selectedCustomerId) return 0;
+                const select = document.querySelector(`select[x-model="selectedCustomerId"]`);
+                if (!select) return 0;
+                const option = select.querySelector(`option[value="${this.selectedCustomerId}"]`);
+                return option ? parseFloat(option.dataset.affiliateBalance) : 0;
+            },
+
+            selectAffiliatePayment() {
+                if(!this.selectedCustomerId) { alert('❌ Pilih Member terlebih dahulu!'); return; }
+                if(this.getSelectedAffiliateBalance() < this.grandTotal) { alert('❌ Saldo Profit tidak cukup!'); return; }
+                this.paymentMethod = 'affiliate_balance';
+                this.affiliatePin = '';
+            },
+
+            // TRIPAY: Ambil Channel Pembayaran
+            async fetchTripayChannels() {
+                if (this.tripayChannels.length > 0) return;
+                this.isLoadingChannels = true;
+                try {
+                    const response = await fetch("{{ route('orders.tripay-channels') }}");
+                    const result = await response.json();
+                    if(result.status === 'success') { this.tripayChannels = result.data; }
+                } catch (error) { console.error('Fetch error:', error); } finally { this.isLoadingChannels = false; }
+            },
+            
+            getChannelsByGroup(groupName) {
+                if (!this.tripayChannels || this.tripayChannels.length === 0) return [];
+                return this.tripayChannels.filter(c => c.active === true && c.group.toLowerCase() === groupName.toLowerCase());
+            },
+
+            // KUPON: Validasi Kode
+            async checkCoupon() {
+                if (!this.couponCode.trim()) { this.discountAmount = 0; this.couponMessage = ''; return; }
+                if (this.cart.length === 0) { this.couponMessage = 'Isi keranjang dulu.'; return; }
+                this.isValidatingCoupon = true; this.couponMessage = '';
+                try {
+                    const response = await fetch("{{ route('orders.check-coupon') }}", {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content') },
+                        body: JSON.stringify({ coupon_code: this.couponCode, total_belanja: this.subtotal })
+                    });
+                    const data = await response.json();
+                    if (data.status === 'success') { this.discountAmount = data.data.discount_amount; this.couponMessage = `✅ Hemat Rp ${this.rupiah(data.data.discount_amount)}`; } 
+                    else { this.discountAmount = 0; this.couponMessage = data.message; }
+                } catch (error) { this.couponMessage = 'Gagal cek server.'; this.discountAmount = 0; } finally { this.isValidatingCoupon = false; }
+            },
+
+            // ============================================================
+            // LOGIKA KERANJANG (CART)
+            // ============================================================
+            
+            // Tambahkan parameter 'weight' di sini
             addToCart(id, name, price, maxStock, weight = 0) {
                 if (maxStock <= 0) { alert('Stok Habis!'); return; }
                 
-                // Jika berat kosong/0, anggap 5 gram (Kertas/Dokumen)
-                let itemWeight = (weight && parseInt(weight) > 0) ? parseInt(weight) : 5; 
+                // --- LOGIKA CERDAS: AUTO 5 GRAM ---
+                // Jika input weight 0 (dari Blade), ubah jadi 5 gram.
+                // Jika ada isinya (misal 200), pakai 200.
+                let realWeight = (parseInt(weight) > 0) ? parseInt(weight) : 5;
+                // ----------------------------------
 
                 let item = this.cart.find(i => i.id === id);
                 if (item) {
-                    if (item.qty < maxStock) item.qty++; else alert('Stok maksimal tercapai!');
+                    if (item.qty < maxStock) item.qty++;
+                    else alert('Stok maksimal tercapai!');
                 } else {
-                    this.cart.push({ id, name, price, qty: 1, maxStock, weight: itemWeight });
+                    this.cart.push({ 
+                        id, 
+                        name, 
+                        price, 
+                        qty: 1, 
+                        maxStock, 
+                        weight: realWeight // Simpan sebagai 5 gram
+                    });
                 }
                 
                 if(navigator.vibrate) navigator.vibrate(30);
                 if(this.couponCode) this.checkCoupon();
             },
-
-            // --- FUNGSI STANDAR LAINNYA ---
+            
             updateQty(id, amount) {
                 let item = this.cart.find(i => i.id === id);
                 if (item) {
+                    if (amount > 0 && item.qty >= item.maxStock) { alert('Stok maksimal tercapai'); return; }
                     item.qty += amount;
                     if (item.qty <= 0) this.removeFromCart(id);
                 }
-                // Jika lokasi sudah dipilih, update ongkir otomatis saat qty berubah
-                if(this.destinationDistrictId) {
-                    // Debounce sedikit agar tidak spam request
-                    clearTimeout(this.debounceTimer);
-                    this.debounceTimer = setTimeout(() => this.checkOngkir(), 800);
-                }
+                if(this.couponCode) setTimeout(() => this.checkCoupon(), 500); 
+            },
+            
+            validateManualQty(id) {
+                let item = this.cart.find(i => i.id === id);
+                if (!item) return;
+                let parsed = parseInt(item.qty);
+                if (isNaN(parsed) || parsed < 1) { item.qty = 1; } 
+                else if (parsed > item.maxStock) { alert('Stok tidak mencukupi!'); item.qty = item.maxStock; } 
+                else { item.qty = parsed; }
+                if(this.couponCode) this.checkCoupon();
             },
             
             removeFromCart(id) { 
                 this.cart = this.cart.filter(i => i.id !== id);
-                if(this.cart.length === 0) { 
-                    this.discountAmount = 0; 
-                    this.shippingCost = 0;
-                    this.courierList = [];
-                } 
-                else if(this.destinationDistrictId) this.checkOngkir();
+                if(this.cart.length === 0) { this.discountAmount = 0; this.couponMessage = ''; } 
+                else if(this.couponCode) { this.checkCoupon(); }
             },
-
-            // --- CHECKOUT ---
-            async checkout() {
-                // Validasi Delivery
-                if (this.deliveryType === 'shipping') {
-                    if (!this.destinationDistrictId) { alert('❌ Pilih lokasi tujuan!'); return; }
-                    if (!this.selectedCourier) { alert('❌ Pilih kurir pengiriman!'); return; }
+            
+            confirmClearCart() { 
+                if(confirm('Kosongkan keranjang?')) { 
+                    this.cart = []; this.uploadedFiles = []; this.discountAmount = 0; this.couponMessage = ''; 
+                    this.shippingCost = 0; this.deliveryType = 'pickup'; this.searchQuery = '';
+                } 
+            },
+            
+            openPaymentModal() {
+                if(this.cart.length === 0) { alert('Keranjang masih kosong!'); return; }
+                this.showPaymentModal = true;
+                // Reset input jika metode bukan cash
+                if(this.paymentMethod !== 'cash') this.cashAmount = '';
+                // Auto fetch channel jika tripay
+                if(this.paymentMethod === 'tripay') this.fetchTripayChannels();
+            },
+            
+            handleFileUpload(event) {
+                const files = event.target.files;
+                for (let i = 0; i < files.length; i++) {
+                    if(files[i].size > 10 * 1024 * 1024) { alert('File terlalu besar'); continue; }
+                    this.uploadedFiles.push(files[i]);
                 }
-                // Validasi Pembayaran
-                if (this.paymentMethod === 'cash' && this.change < 0) { alert('❌ Uang tunai kurang!'); return; }
+                event.target.value = '';
+            },
+            
+            removeFile(index) { this.uploadedFiles.splice(index, 1); },
+
+            // ============================================================
+            // FUNGSI CHECKOUT (KIRIM DATA KE LARAVEL)
+            // ============================================================
+            
+            async checkout() {
+                // 1. VALIDASI TUNAI
+                if (this.paymentMethod === 'cash') {
+                    if (!this.cashAmount || this.change < 0) { alert('❌ Uang tunai kurang!'); return; }
+                } 
+                // 2. VALIDASI TRIPAY
+                else if (this.paymentMethod === 'tripay') {
+                    if (!this.paymentChannel) { alert('❌ Silakan pilih Bank / Channel Pembayaran dulu!'); return; }
+                } 
+                // 3. VALIDASI SALDO MEMBER
+                else if (this.paymentMethod === 'saldo') {
+                    if (!this.selectedCustomerId) { alert('❌ Pilih Member!'); return; }
+                    if (this.getSelectedMemberSaldo() < this.grandTotal) { alert('❌ Saldo Topup kurang!'); return; }
+                } 
+                // 4. VALIDASI AFFILIATE
+                else if (this.paymentMethod === 'affiliate_balance') {
+                    if (!this.selectedCustomerId) { alert('❌ Pilih Member!'); return; }
+                    if (this.getSelectedAffiliateBalance() < this.grandTotal) { alert('❌ Saldo Profit kurang!'); return; }
+                    if (!this.affiliatePin || this.affiliatePin.length < 4) { alert('❌ Masukkan PIN Keamanan!'); return; }
+                }
+
+                // 5. VALIDASI PENGIRIMAN (KIRIMINAJA)
+                if (this.deliveryType === 'shipping') {
+                    if (!this.destinationDistrictId) {
+                        alert('❌ Harap pilih lokasi tujuan pengiriman!');
+                        return;
+                    }
+                    if (this.shippingCost === 0 || !this.selectedCourier) {
+                        alert('❌ Harap pilih kurir pengiriman (KiriminAja)!');
+                        return;
+                    }
+                }
 
                 this.isProcessing = true;
                 
+                // Susun Data Form
                 let formData = new FormData();
                 formData.append('items', JSON.stringify(this.cart));
                 formData.append('total', this.subtotal);
+                formData.append('coupon', this.couponCode);
                 formData.append('payment_method', this.paymentMethod);
-                
-                // Data Pengiriman Lengkap
+
+                // Data Pengiriman
                 formData.append('delivery_type', this.deliveryType);
                 if (this.deliveryType === 'shipping') {
                     formData.append('shipping_cost', this.shippingCost);
                     formData.append('courier_name', this.selectedCourier.name + ' - ' + this.selectedCourier.service);
+                    // Opsi: Kirim data detail lokasi jika perlu disimpan di DB
                     formData.append('destination_district_id', this.destinationDistrictId);
                     formData.append('destination_subdistrict_id', this.destinationSubdistrictId);
                     formData.append('destination_text', this.searchQuery);
                 }
 
-                // Data Customer
-                if(this.customerType === 'member') formData.append('customer_id', this.selectedCustomerId);
-                else {
+                // Data Pembayaran Tripay
+                if (this.paymentMethod === 'tripay') {
+                    formData.append('payment_channel', this.paymentChannel);
+                }
+                
+                // Data Member
+                if(this.customerType === 'member' && this.selectedCustomerId) {
+                    formData.append('customer_id', this.selectedCustomerId);
+                } else {
                     formData.append('customer_name', this.customerName || 'Guest');
                     formData.append('customer_phone', this.customerPhone || '');
                 }
+
                 if(this.paymentMethod === 'cash') formData.append('cash_amount', this.cashAmount);
+                if(this.paymentMethod === 'affiliate_balance') formData.append('affiliate_pin', this.affiliatePin); 
+
+                this.uploadedFiles.forEach(file => formData.append('attachments[]', file));
 
                 try {
                     const response = await fetch("{{ route('orders.store') }}", {
                         method: "POST",
-                        headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'), 'Accept': 'application/json' },
+                        headers: { 
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                            'Accept': 'application/json'
+                        },
                         body: formData
                     });
+                    
+                    const contentType = response.headers.get("content-type");
+                    if (!contentType || !contentType.includes("application/json")) {
+                        throw new Error("Terjadi kesalahan Server (Error 500).");
+                    }
+
                     const result = await response.json();
 
                     if (result.status === 'success') {
-                        alert(`✅ Transaksi Berhasil!\nInvoice: ${result.invoice}`);
+                        this.showPaymentModal = false;
+                        let msg = `✅ Transaksi Berhasil!\nInvoice: ${result.invoice}`;
+                        if(this.paymentMethod === 'cash') msg += `\n💰 KEMBALIAN: Rp ${this.rupiah(result.change_amount)}`;
+                        alert(msg);
                         if (result.payment_url) window.open(result.payment_url, '_blank');
                         window.location.reload();
                     } else {
                         throw new Error(result.message);
                     }
                 } catch (error) {
+                    console.error(error);
                     alert('❌ Gagal: ' + error.message);
                 } finally {
                     this.isProcessing = false;
