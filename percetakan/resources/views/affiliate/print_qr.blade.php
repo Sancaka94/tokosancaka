@@ -10,171 +10,185 @@
     
     <style>
         body {
-            background-color: #f3f4f6;
+            background-color: #f0f2f5;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-family: 'Segoe UI', sans-serif;
             padding: 20px;
         }
 
-        /* Area yang akan dijadikan Gambar (Desain Story WA/IG) */
-        #capture-area {
-            background: linear-gradient(135deg, #0d6efd 0%, #0dcaf0 100%); /* Background gradasi agar cantik di Story */
+        /* --- 1. Area yang akan MENJADI GAMBAR (Desain Story) --- */
+        #area-capture {
+            /* Background gradasi agar bagus di Story WA/IG */
+            background: linear-gradient(135deg, #0d6efd 0%, #0099ff 100%);
             width: 375px; /* Lebar standar HP */
-            min-height: 667px; /* Tinggi standar HP */
-            padding: 40px 30px;
+            min-height: 667px; /* Tinggi standar HP (16:9 vertical) */
+            padding: 40px 25px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            position: relative;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
             text-align: center;
-            color: white;
-            /* Agar tidak ada elemen yang kepotong */
+            position: relative;
+            /* Pastikan elemen ini tidak kena overflow hidden */
             overflow: visible; 
         }
 
-        /* Kartu Putih di tengah */
-        .card-glass {
-            background: rgba(255, 255, 255, 0.95);
+        /* Kartu Putih di dalam gambar */
+        .card-inner {
+            background: white;
             border-radius: 20px;
-            padding: 30px;
+            padding: 30px 20px;
             width: 100%;
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-            color: #333;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
         }
 
         .qr-container svg {
             width: 100%;
             height: auto;
-            max-width: 200px;
-            border: 4px solid white; /* Border putih di sekitar QR */
-            border-radius: 10px;
+            max-width: 220px;
+            margin-bottom: 15px;
         }
 
-        .coupon-badge {
+        .coupon-box {
             background-color: #ecfdf5;
             color: #059669;
             border: 2px dashed #059669;
-            padding: 15px;
-            border-radius: 12px;
+            padding: 12px;
+            border-radius: 10px;
             font-weight: 800;
-            font-size: 1.6rem;
-            margin: 20px 0;
-            letter-spacing: 1px;
-        }
-
-        .shop-link {
-            font-size: 0.8rem;
-            color: #555;
-            background: #f8f9fa;
-            padding: 10px;
-            border-radius: 8px;
-            word-break: break-all;
-            margin-top: 15px;
-            border: 1px solid #dee2e6;
-            font-family: monospace;
-        }
-        
-        .brand-title {
             font-size: 1.5rem;
-            font-weight: bold;
-            margin-bottom: 5px;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+            margin: 15px 0;
         }
 
-        .watermark {
+        .link-text {
+            font-size: 0.75rem;
+            color: #6c757d;
+            background: #f8f9fa;
+            padding: 8px;
+            border-radius: 6px;
+            word-break: break-all; /* Agar link panjang turun ke bawah */
+            border: 1px solid #dee2e6;
+        }
+
+        /* Hiasan Footer di dalam gambar */
+        .story-footer {
             margin-top: 30px;
-            font-size: 0.9rem;
-            opacity: 0.8;
+            color: white;
             font-weight: 500;
+            font-size: 0.9rem;
+            opacity: 0.9;
         }
 
-        /* Tombol Action (Tidak ikut didownload) */
-        .action-buttons {
+        /* --- 2. Tombol Action (Tidak ikut didownload) --- */
+        .action-area {
             margin-top: 25px;
-            width: 100%;
-            max-width: 375px;
+            width: 375px; /* Samakan lebar dengan area capture */
             display: flex;
             flex-direction: column;
             gap: 10px;
+        }
+
+        .btn-download {
+            background-color: #198754; /* Warna hijau WA */
+            color: white;
+            font-weight: bold;
+            padding: 12px;
+        }
+        
+        .btn-download:hover { background-color: #157347; color: white; }
+
+        /* Sembunyikan tombol saat mode Print (Ctrl+P) */
+        @media print {
+            body { background: white; align-items: flex-start; }
+            #area-capture { box-shadow: none; border: 1px solid #ddd; }
+            .action-area { display: none !important; }
         }
     </style>
 </head>
 <body>
 
-    <div id="capture-area">
+    <div id="area-capture">
+        
         <div class="mb-4 text-white">
-            <h2 class="fw-bold mb-0">PROMO SPESIAL</h2>
-            <p class="small opacity-75">Sancaka Express Partner</p>
+            <h3 class="fw-bold m-0">PROMO SPESIAL</h3>
+            <small>Scan & Dapatkan Diskon!</small>
         </div>
 
-        <div class="card-glass">
-            <h4 class="fw-bold text-dark mb-1">{{ $affiliate->name }}</h4>
-            <hr class="my-3 opacity-25">
+        <div class="card-inner">
+            <h5 class="fw-bold text-dark mb-1">{{ $affiliate->name }}</h5>
+            <p class="text-muted small mb-3">Partner Resmi Sancaka Express</p>
 
-            <p class="small text-secondary mb-2">Scan QR atau Klik Link di Bawah:</p>
-
-            <div class="qr-container mb-3">
+            <div class="qr-container">
                 {!! $qrCode !!}
             </div>
 
-            <p class="small text-secondary mb-0 fw-bold">Gunakan Kode Kupon:</p>
-            <div class="coupon-badge">
+            <p class="small text-dark mb-1 fw-bold">Kode Kupon:</p>
+            <div class="coupon-box">
                 {{ $affiliate->coupon_code }}
             </div>
 
-            <p class="small text-secondary mb-1">Link Belanja:</p>
-            <div class="shop-link">{{ $shopLinkWithCoupon }}</div>
+            <p class="small text-secondary mb-1">Link Order:</p>
+            <div class="link-text">
+                {{ $shopLinkWithCoupon }}
+            </div>
         </div>
 
-        <div class="watermark">
-            <i class="fas fa-shopping-bag me-1"></i> Belanja Hemat Sekarang!
+        <div class="story-footer">
+            <i class="fas fa-shopping-cart me-1"></i> Belanja Hemat Sekarang
         </div>
     </div>
-    <div class="action-buttons">
-        <button onclick="downloadImage()" class="btn btn-success btn-lg w-100 fw-bold shadow">
-            <i class="fas fa-download me-2"></i> Download Gambar (Story WA/IG)
+    <div class="action-area">
+        <button onclick="downloadImage()" class="btn btn-download w-100 shadow-sm">
+            <i class="fas fa-download me-2"></i> Download Gambar (Untuk WA/IG)
         </button>
-        
+
+        <button onclick="window.print()" class="btn btn-primary w-100 shadow-sm">
+            <i class="fas fa-print me-2"></i> Cetak / Simpan PDF
+        </button>
+
         <button onclick="window.close()" class="btn btn-outline-secondary w-100">
             Tutup
         </button>
     </div>
 
+
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 
     <script>
         function downloadImage() {
-            // Ambil elemen capture-area
-            const element = document.getElementById('capture-area');
-            
-            // Tampilkan loading (opsional, ganti text tombol)
-            const btn = document.querySelector('.btn-success');
+            // Ubah teks tombol biar user tahu sedang proses
+            const btn = document.querySelector('.btn-download');
             const originalText = btn.innerHTML;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sedang Memproses...';
 
-            // Konfigurasi html2canvas
+            // Ambil elemen #area-capture
+            const element = document.getElementById("area-capture");
+
+            // Proses convert ke gambar
             html2canvas(element, {
-                scale: 2, // Meningkatkan resolusi agar gambar tajam di HP (Retina display)
-                useCORS: true, // Penting jika ada gambar dari server lain
-                backgroundColor: null // Menggunakan background CSS
+                scale: 2, // Biar gambar tajam (HD)
+                useCORS: true, // Izinkan gambar cross-origin
+                backgroundColor: null // Pakai background CSS
             }).then(canvas => {
-                // Buat link download palsu
-                const link = document.createElement('a');
-                link.download = 'Promo-{{ $affiliate->coupon_code }}.jpg';
-                link.href = canvas.toDataURL('image/jpeg', 0.9); // Format JPG kualitas 90%
+                // Buat link download virtual
+                var link = document.createElement("a");
+                document.body.appendChild(link);
+                link.download = "Promo-{{ $affiliate->name }}.jpg"; // Nama file
+                link.href = canvas.toDataURL("image/jpeg", 0.9); // Format JPG quality 90%
+                link.target = '_blank';
                 link.click();
-                
-                // Kembalikan tombol ke semula
+                document.body.removeChild(link);
+
+                // Kembalikan teks tombol
                 btn.innerHTML = originalText;
             }).catch(err => {
-                console.error("Gagal membuat gambar:", err);
-                alert("Terjadi kesalahan saat membuat gambar.");
+                console.log(err);
+                alert("Gagal membuat gambar. Silakan coba lagi.");
                 btn.innerHTML = originalText;
             });
         }
