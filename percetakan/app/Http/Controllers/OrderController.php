@@ -297,6 +297,10 @@ class OrderController extends Controller
                 } else {
                     Log::warning("Ongkir INSTANT Gagal/Tidak Ada Driver", ['response' => $responseInstant]);
                 }
+                
+            } else {
+                Log::info("Ongkir INSTANT Skipped: Koordinat tidak lengkap.");
+            }
 
             // C. GABUNGKAN HASIL & SORTIR
             usort($formattedRates, function ($a, $b) {
