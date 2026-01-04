@@ -13,8 +13,8 @@
         <a href="{{ route('dashboard') }}" 
            class="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors duration-200
            {{ request()->routeIs('dashboard') 
-              ? 'bg-blue-600 text-white shadow-md' 
-              : 'text-slate-300 hover:bg-slate-700 hover:text-white' }}">
+             ? 'bg-blue-600 text-white shadow-md' 
+             : 'text-slate-300 hover:bg-slate-700 hover:text-white' }}">
             <i class="fas fa-tachometer-alt w-5 text-center {{ request()->routeIs('dashboard') ? 'text-white' : 'text-slate-400 group-hover:text-white' }}"></i>
             <span>Dashboard</span>
         </a>
@@ -26,8 +26,8 @@
         <a href="{{ route('orders.create') }}" 
            class="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors duration-200
            {{ request()->routeIs('orders.create') 
-              ? 'bg-emerald-600 text-white shadow-md' 
-              : 'text-slate-300 hover:bg-slate-700 hover:text-white' }}">
+             ? 'bg-emerald-600 text-white shadow-md' 
+             : 'text-slate-300 hover:bg-slate-700 hover:text-white' }}">
             <i class="fas fa-cash-register w-5 text-center {{ request()->routeIs('orders.create') ? 'text-white' : 'text-emerald-500' }}"></i>
             <span>Buat Pesanan Baru</span>
         </a>
@@ -35,8 +35,8 @@
         <a href="{{ route('reports.index') }}" 
            class="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors duration-200
            {{ request()->routeIs('reports.index') 
-              ? 'bg-blue-600 text-white shadow-md' 
-              : 'text-slate-300 hover:bg-slate-700 hover:text-white' }}">
+             ? 'bg-blue-600 text-white shadow-md' 
+             : 'text-slate-300 hover:bg-slate-700 hover:text-white' }}">
             <i class="fas fa-file-invoice w-5 text-center {{ request()->routeIs('reports.index') ? 'text-white' : 'text-slate-400' }}"></i>
             <span>Laporan Penjualan</span>
         </a>
@@ -48,8 +48,8 @@
         <a href="{{ route('affiliate.create') }}" 
            class="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors duration-200
            {{ request()->routeIs('affiliate.create') 
-              ? 'bg-blue-600 text-white shadow-md' 
-              : 'text-slate-300 hover:bg-slate-700 hover:text-white' }}">
+             ? 'bg-blue-600 text-white shadow-md' 
+             : 'text-slate-300 hover:bg-slate-700 hover:text-white' }}">
             <i class="fas fa-user-plus w-5 text-center {{ request()->routeIs('affiliate.create') ? 'text-white' : 'text-teal-400' }}"></i>
             <span>Registrasi Partner</span>
         </a>
@@ -57,8 +57,8 @@
         <a href="{{ route('affiliate.index') }}" 
            class="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors duration-200
            {{ request()->routeIs('affiliate.index') 
-              ? 'bg-blue-600 text-white shadow-md' 
-              : 'text-slate-300 hover:bg-slate-700 hover:text-white' }}">
+             ? 'bg-blue-600 text-white shadow-md' 
+             : 'text-slate-300 hover:bg-slate-700 hover:text-white' }}">
             <i class="fas fa-users w-5 text-center {{ request()->routeIs('affiliate.index') ? 'text-white' : 'text-indigo-400' }}"></i>
             <span>Partner Afiliasi</span>
         </a>
@@ -66,8 +66,8 @@
         <a href="{{ route('coupons.index') }}" 
            class="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors duration-200
            {{ request()->routeIs('coupons.index') 
-              ? 'bg-blue-600 text-white shadow-md' 
-              : 'text-slate-300 hover:bg-slate-700 hover:text-white' }}">
+             ? 'bg-blue-600 text-white shadow-md' 
+             : 'text-slate-300 hover:bg-slate-700 hover:text-white' }}">
             <i class="fas fa-ticket-alt w-5 text-center {{ request()->routeIs('coupons.index') ? 'text-white' : 'text-amber-400' }}"></i>
             <span>Manajemen Kupon</span>
         </a>
@@ -79,11 +79,52 @@
         <a href="{{ route('products.index') }}" 
            class="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors duration-200
            {{ request()->routeIs('products.index') 
-              ? 'bg-blue-600 text-white shadow-md' 
-              : 'text-slate-300 hover:bg-slate-700 hover:text-white' }}">
+             ? 'bg-blue-600 text-white shadow-md' 
+             : 'text-slate-300 hover:bg-slate-700 hover:text-white' }}">
             <i class="fas fa-box-open w-5 text-center {{ request()->routeIs('products.index') ? 'text-white' : 'text-slate-400' }}"></i>
             <span>Data Produk</span>
         </a>
+
+        <div class="mt-6 mb-2 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            Pengaturan
+        </div>
+
+        <div x-data="{ open: {{ request()->routeIs('profile.*') ? 'true' : 'false' }} }">
+            
+            <button @click="open = !open" type="button" 
+                class="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors duration-200
+                {{ request()->routeIs('profile.*') 
+                    ? 'text-white bg-slate-700' 
+                    : 'text-slate-300 hover:bg-slate-700 hover:text-white' }}">
+                
+                <div class="flex items-center gap-3">
+                    <i class="fas fa-cog w-5 text-center {{ request()->routeIs('profile.*') ? 'text-white' : 'text-slate-400' }}"></i>
+                    <span>Akun & Profile</span>
+                </div>
+                
+                <i class="fas fa-chevron-down text-xs transition-transform duration-200" 
+                   :class="open ? 'rotate-180' : ''"></i>
+            </button>
+
+            <div x-show="open" 
+                 x-collapse
+                 x-cloak
+                 class="mt-1 space-y-1 bg-slate-900/50 rounded-md overflow-hidden">
+                
+                <a href="{{ route('profile.edit') }}" 
+                   class="flex items-center gap-3 pl-11 pr-3 py-2 text-sm transition-colors duration-200
+                   {{ request()->routeIs('profile.edit') 
+                        ? 'text-blue-400 font-medium' 
+                        : 'text-slate-400 hover:text-white hover:bg-slate-700/50' }}">
+                    <span>Edit Profile</span>
+                </a>
+
+                <a href="{{-- route('profile.password') --}}" 
+                   class="flex items-center gap-3 pl-11 pr-3 py-2 text-sm transition-colors duration-200 text-slate-400 hover:text-white hover:bg-slate-700/50">
+                    <span>Ganti Password</span>
+                </a>
+            </div>
+        </div>
 
     </nav>
 
