@@ -101,34 +101,40 @@ class OrderController extends Controller
             $destDistrict    = $request->destination_district_id;
             $destSubDistrict = $request->destination_subdistrict_id ?? 0; 
 
-            // 3. PARAMETER TAMBAHAN (WAJIB ADA UNTUK MENGHINDARI ERROR ARGUMENT)
-            $length    = 10;      // Panjang (cm)
-            $width     = 10;      // Lebar (cm)
-            $height    = 10;      // Tinggi (cm)
-            $itemValue = 100000;  // Nilai Barang (Rp)
+            // 3. PARAMETER TAMBAHAN
+            $length    = 10;      
+            $width     = 10;      
+            $height    = 10;      
+            $itemValue = 100000;  
 
-            // 4. PANGGIL SERVICE DENGAN 9 ARGUMEN LENGKAP
+            // 4. PANGGIL SERVICE
             $response = $kiriminAja->getExpressPricing(
                 (int) $originDistrict,    
                 (int) $originSubDistrict, 
                 (int) $destDistrict,      
                 (int) $destSubDistrict,   
                 (int) $request->weight,
-                (int) $length,     // Argumen ke-6
-                (int) $width,      // Argumen ke-7
-                (int) $height,     // Argumen ke-8
-                (int) $itemValue   // Argumen ke-9
+                (int) $length,     
+                (int) $width,      
+                (int) $height,     
+                (int) $itemValue   
             );
+
+            // Log Response Mentah untuk Debugging (Bisa dihapus nanti)
+            // \Illuminate\Support\Facades\Log::info('KiriminAja Response:', $response);
 
             if (isset($response['status']) && $response['status'] == true) {
                 $formattedRates = [];
+                // Ambil array 'results' dari response
                 $results = $response['results'] ?? [];
 
                 foreach ($results as $rate) {
                     $formattedRates[] = [
                         'code'    => 'kiriminaja',
-                        'name'    => $rate['courier'], 
-                        'service' => $rate['service'], 
+                        // PERBAIKAN DI SINI: Gunakan 'service' sebagai nama kurir
+                        'name'    => strtoupper($rate['service'] ?? 'KURIR'), 
+                        // Gunakan 'service_name' sebagai detail layanan
+                        'service' => $rate['service_name'] ?? 'Layanan', 
                         'cost'    => $rate['cost'],
                         'etd'     => $rate['etd'] ?? '-',
                     ];
