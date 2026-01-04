@@ -360,105 +360,78 @@
                     </div>
                 </div>
 
-                <div x-show="paymentMethod === 'tripay'" x-transition class="bg-indigo-50 border-2 border-indigo-100 rounded-2xl p-4 shadow-sm mt-3">
-                    <label class="block text-[10px] font-bold text-indigo-600 uppercase tracking-widest mb-2">Pilih Bank / Channel</label>
+                <div x-show="paymentMethod === 'tripay'" x-transition 
+                     class="bg-indigo-50 border-2 border-indigo-100 rounded-2xl p-4 shadow-sm mt-3 min-h-[100px]">
                     
-                    <div class="space-y-3">
-                        <div>
-                            <p class="text-[9px] font-bold text-slate-400 mb-1">E-Wallet & QRIS</p>
+                    <label class="block text-[10px] font-bold text-indigo-600 uppercase tracking-widest mb-3">Pilih Bank / Channel</label>
+                    
+                    <div x-show="isLoadingChannels" class="flex flex-col items-center justify-center py-6 text-indigo-300">
+                        <i class="fas fa-circle-notch fa-spin text-2xl mb-2"></i>
+                        <span class="text-xs">Memuat Channel Pembayaran...</span>
+                    </div>
+
+                    <div x-show="!isLoadingChannels" class="space-y-4">
+                        
+                        <div x-show="getChannelsByGroup('E-Wallet').length > 0">
+                            <p class="text-[9px] font-bold text-slate-400 mb-2 uppercase">E-Wallet & QRIS</p>
                             <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                                <button @click="paymentChannel = 'QRIS'" 
-                                        class="px-2 py-3 rounded-xl border text-xs font-bold transition flex flex-col items-center gap-1"
-                                        :class="paymentChannel === 'QRIS' ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white text-slate-600 border-indigo-100 hover:border-indigo-300'">
-                                    <i class="fas fa-qrcode text-lg"></i> <span>QRIS (All)</span>
-                                </button>
-                                <button @click="paymentChannel = 'SHOPEEPAY'" 
-                                        class="px-2 py-3 rounded-xl border text-xs font-bold transition flex flex-col items-center gap-1"
-                                        :class="paymentChannel === 'SHOPEEPAY' ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white text-slate-600 border-indigo-100 hover:border-indigo-300'">
-                                    <i class="fas fa-wallet text-lg"></i> <span>ShopeePay</span>
-                                </button>
-                                <button @click="paymentChannel = 'OVO'" 
-                                        class="px-2 py-3 rounded-xl border text-xs font-bold transition flex flex-col items-center gap-1"
-                                        :class="paymentChannel === 'OVO' ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white text-slate-600 border-indigo-100 hover:border-indigo-300'">
-                                    <i class="fas fa-wallet text-lg"></i> <span>OVO</span>
-                                </button>
+                                <template x-for="channel in getChannelsByGroup('E-Wallet')" :key="channel.code">
+                                    <button @click="paymentChannel = channel.code" 
+                                            class="p-2 rounded-xl border transition flex flex-col items-center justify-center gap-2 h-20 bg-white hover:border-indigo-300 relative overflow-hidden"
+                                            :class="paymentChannel === channel.code ? 'border-indigo-600 ring-1 ring-indigo-600 bg-indigo-50' : 'border-indigo-100'">
+                                        
+                                        <img :src="channel.icon_url" :alt="channel.name" class="h-6 w-auto object-contain">
+                                        
+                                        <span class="text-[10px] font-bold text-slate-600 leading-none text-center" x-text="channel.name"></span>
+                                        
+                                        <div x-show="paymentChannel === channel.code" class="absolute top-1 right-1 text-indigo-600">
+                                            <i class="fas fa-check-circle text-xs"></i>
+                                        </div>
+                                    </button>
+                                </template>
                             </div>
                         </div>
 
-                        <div>
-                            <p class="text-[9px] font-bold text-slate-400 mb-1">Virtual Account</p>
+                        <div x-show="getChannelsByGroup('Virtual Account').length > 0">
+                            <p class="text-[9px] font-bold text-slate-400 mb-2 uppercase">Virtual Account</p>
                             <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                                <button @click="paymentChannel = 'BRIVA'" 
-                                        class="px-2 py-3 rounded-xl border text-xs font-bold transition flex flex-col items-center gap-1"
-                                        :class="paymentChannel === 'BRIVA' ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white text-slate-600 border-indigo-100 hover:border-indigo-300'">
-                                    <i class="fas fa-university text-lg"></i> <span>BRI</span>
-                                </button>
-                                <button @click="paymentChannel = 'MANDIRIVA'" 
-                                        class="px-2 py-3 rounded-xl border text-xs font-bold transition flex flex-col items-center gap-1"
-                                        :class="paymentChannel === 'MANDIRIVA' ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white text-slate-600 border-indigo-100 hover:border-indigo-300'">
-                                    <i class="fas fa-university text-lg"></i> <span>Mandiri</span>
-                                </button>
-                                <button @click="paymentChannel = 'BCAVA'" 
-                                        class="px-2 py-3 rounded-xl border text-xs font-bold transition flex flex-col items-center gap-1"
-                                        :class="paymentChannel === 'BCAVA' ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white text-slate-600 border-indigo-100 hover:border-indigo-300'">
-                                    <i class="fas fa-university text-lg"></i> <span>BCA</span>
-                                </button>
-                                <button @click="paymentChannel = 'BNIVA'" 
-                                        class="px-2 py-3 rounded-xl border text-xs font-bold transition flex flex-col items-center gap-1"
-                                        :class="paymentChannel === 'BNIVA' ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white text-slate-600 border-indigo-100 hover:border-indigo-300'">
-                                    <i class="fas fa-university text-lg"></i> <span>BNI</span>
-                                </button>
-                                <button @click="paymentChannel = 'BSIVA'" 
-                                        class="px-2 py-3 rounded-xl border text-xs font-bold transition flex flex-col items-center gap-1"
-                                        :class="paymentChannel === 'BSIVA' ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white text-slate-600 border-indigo-100 hover:border-indigo-300'">
-                                    <i class="fas fa-university text-lg"></i> <span>BSI Syariah</span>
-                                </button>
-                                <button @click="paymentChannel = 'MYBVA'" 
-                                        class="px-2 py-3 rounded-xl border text-xs font-bold transition flex flex-col items-center gap-1"
-                                        :class="paymentChannel === 'MYBVA' ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white text-slate-600 border-indigo-100 hover:border-indigo-300'">
-                                    <i class="fas fa-university text-lg"></i> <span>Maybank</span>
-                                </button>
-                                <button @click="paymentChannel = 'PERMATAVA'" 
-                                        class="px-2 py-3 rounded-xl border text-xs font-bold transition flex flex-col items-center gap-1"
-                                        :class="paymentChannel === 'PERMATAVA' ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white text-slate-600 border-indigo-100 hover:border-indigo-300'">
-                                    <i class="fas fa-university text-lg"></i> <span>Permata</span>
-                                </button>
-                                <button @click="paymentChannel = 'CIMBVA'" 
-                                        class="px-2 py-3 rounded-xl border text-xs font-bold transition flex flex-col items-center gap-1"
-                                        :class="paymentChannel === 'CIMBVA' ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white text-slate-600 border-indigo-100 hover:border-indigo-300'">
-                                    <i class="fas fa-university text-lg"></i> <span>CIMB Niaga</span>
-                                </button>
-                                <button @click="paymentChannel = 'MUAMALATVA'" 
-                                        class="px-2 py-3 rounded-xl border text-xs font-bold transition flex flex-col items-center gap-1"
-                                        :class="paymentChannel === 'MUAMALATVA' ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white text-slate-600 border-indigo-100 hover:border-indigo-300'">
-                                    <i class="fas fa-university text-lg"></i> <span>Muamalat</span>
-                                </button>
-                                <button @click="paymentChannel = 'SINARMASVA'" 
-                                        class="px-2 py-3 rounded-xl border text-xs font-bold transition flex flex-col items-center gap-1"
-                                        :class="paymentChannel === 'SINARMASVA' ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white text-slate-600 border-indigo-100 hover:border-indigo-300'">
-                                    <i class="fas fa-university text-lg"></i> <span>Sinarmas</span>
-                                </button>
+                                <template x-for="channel in getChannelsByGroup('Virtual Account')" :key="channel.code">
+                                    <button @click="paymentChannel = channel.code" 
+                                            class="p-2 rounded-xl border transition flex flex-col items-center justify-center gap-2 h-20 bg-white hover:border-indigo-300 relative"
+                                            :class="paymentChannel === channel.code ? 'border-indigo-600 ring-1 ring-indigo-600 bg-indigo-50' : 'border-indigo-100'">
+                                        
+                                        <img :src="channel.icon_url" :alt="channel.name" class="h-8 w-auto object-contain">
+                                        <span class="text-[9px] font-bold text-slate-600 leading-none text-center hidden" x-text="channel.name"></span>
+                                        
+                                        <div x-show="paymentChannel === channel.code" class="absolute top-1 right-1 text-indigo-600">
+                                            <i class="fas fa-check-circle text-xs"></i>
+                                        </div>
+                                    </button>
+                                </template>
                             </div>
                         </div>
 
-                        <div>
-                            <p class="text-[9px] font-bold text-slate-400 mb-1">Minimarket</p>
+                        <div x-show="getChannelsByGroup('Convenience Store').length > 0">
+                            <p class="text-[9px] font-bold text-slate-400 mb-2 uppercase">Minimarket</p>
                             <div class="grid grid-cols-2 gap-2">
-                                <button @click="paymentChannel = 'ALFAMART'" 
-                                        class="px-2 py-3 rounded-xl border text-xs font-bold transition flex flex-col items-center gap-1"
-                                        :class="paymentChannel === 'ALFAMART' ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white text-slate-600 border-indigo-100 hover:border-indigo-300'">
-                                    <i class="fas fa-store text-lg"></i> <span>Alfamart</span>
-                                </button>
-                                <button @click="paymentChannel = 'INDOMARET'" 
-                                        class="px-2 py-3 rounded-xl border text-xs font-bold transition flex flex-col items-center gap-1"
-                                        :class="paymentChannel === 'INDOMARET' ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white text-slate-600 border-indigo-100 hover:border-indigo-300'">
-                                    <i class="fas fa-store text-lg"></i> <span>Indomaret</span>
-                                </button>
+                                <template x-for="channel in getChannelsByGroup('Convenience Store')" :key="channel.code">
+                                    <button @click="paymentChannel = channel.code" 
+                                            class="p-2 rounded-xl border transition flex flex-col items-center justify-center gap-2 h-16 bg-white hover:border-indigo-300 relative"
+                                            :class="paymentChannel === channel.code ? 'border-indigo-600 ring-1 ring-indigo-600 bg-indigo-50' : 'border-indigo-100'">
+                                        
+                                        <img :src="channel.icon_url" :alt="channel.name" class="h-6 w-auto object-contain">
+                                        
+                                        <div x-show="paymentChannel === channel.code" class="absolute top-1 right-1 text-indigo-600">
+                                            <i class="fas fa-check-circle text-xs"></i>
+                                        </div>
+                                    </button>
+                                </template>
                             </div>
                         </div>
+
                     </div>
                     
-                    <p class="text-[9px] text-indigo-400 mt-3 text-center">*Pilih salah satu metode pembayaran.</p>
+                    <p class="text-[9px] text-indigo-400 mt-3 text-center" x-show="!isLoadingChannels">*Metode pembayaran otomatis disinkronkan dengan Tripay.</p>
                 </div>
 
                 <div x-show="paymentMethod === 'affiliate_balance'" x-transition class="bg-purple-50 border-2 border-purple-200 rounded-2xl p-4 shadow-sm text-center">
@@ -529,6 +502,10 @@
             selectedCustomerId: '',
             paymentMethod: 'cash',
             paymentChannel: '', // <--- TAMBAHKAN INI (Default Kosong)
+            // --- TAMBAHAN DATA BARU ---
+            tripayChannels: [],      // Menampung data dari API
+            isLoadingChannels: false, // Loading state
+            // --------------------------
             cashAmount: '',
             affiliatePin: '', 
 
@@ -587,6 +564,31 @@
                 this.paymentMethod = 'affiliate_balance';
                 this.affiliatePin = ''; // Reset input
             },
+
+            // --- TAMBAHKAN FUNGSI INI ---
+            async fetchTripayChannels() {
+                // Jika data sudah ada, tidak perlu fetch lagi (hemat kuota)
+                if (this.tripayChannels.length > 0) return;
+
+                this.isLoadingChannels = true;
+                try {
+                    const response = await fetch("{{ route('orders.tripay-channels') }}");
+                    const result = await response.json();
+                    if(result.status === 'success') {
+                        this.tripayChannels = result.data;
+                    }
+                } catch (error) {
+                    console.error('Gagal ambil channel:', error);
+                } finally {
+                    this.isLoadingChannels = false;
+                }
+            },
+            
+            // Helper untuk filter channel berdasarkan grup (Virtual Account, E-Wallet, Retail)
+            getChannelsByGroup(groupName) {
+                return this.tripayChannels.filter(c => c.group === groupName && c.active === true);
+            },
+            // -----------------------------
 
             // --- FUNGSI CEK KUPON ---
             async checkCoupon() {
