@@ -486,9 +486,8 @@ class OrderController extends Controller
                     ];
                     $kaResponse = $kiriminAja->createInstantOrder($instantPayload);
 
-                } 
-                // --- BLOK LOGIKA REGULER (JNE, SPX, SICEPAT, DLL) ---
-                else {
+                } else {
+                    // --- LOGIKA REGULER (JNE, SPX, SICEPAT, DLL) ---
                     
                     // 1. Tentukan Service Code & Type
                     $serviceCode = $request->courier_code; 
@@ -510,13 +509,14 @@ class OrderController extends Controller
                     if (empty($serviceCode)) $serviceCode = 'jne'; 
                     if (empty($serviceType)) $serviceType = 'REG';
 
+                    Log::info("TIPE KURIR FINAL: $serviceCode | TYPE: $serviceType");
+
                     // 2. LOGIKA JADWAL PINTAR (SMART SCHEDULE)
-                    // Agar tidak error "Jadwal tidak tersedia" di hari Minggu/Sore
                     $now = \Carbon\Carbon::now();
                     $isSunday = $now->isSunday();
                     $pickupSchedule = null;
 
-                    // Jika Minggu atau Sore (>14:00), LANGSUNG set Besok Jam 09:00
+                    // Jika HARI MINGGU atau SORE (>14:00), LANGSUNG set BESOK JAM 09:00
                     if ($isSunday || $now->hour >= 14) {
                         $pickupSchedule = $now->addDay()->setTime(9, 0, 0)->format('Y-m-d H:i:s');
                         Log::info("Jadwal (Minggu/Sore). Auto-set Pickup Besok: $pickupSchedule");
@@ -526,63 +526,64 @@ class OrderController extends Controller
                         Log::info("Jadwal Normal. Set Pickup Hari Ini: $pickupSchedule");
                     }
 
-                    // 3. Buat Payload (KEMBALI KE FORMAT ORIGIN_... AGAR LIBRARY AMAN)
+                    // 3. Buat Payload (KEMBALI KE FORMAT RAW API: kecamatan_id)
+                    // Karena error "Origin tidak ditemukan" muncul saat pakai origin_district_id
                     $kaPayload = [
-                        'origin_name'        => 'Toko Sancaka',
-                        'origin_phone'       => '085745808809',
-                        'origin_address'     => config('services.kiriminaja.origin_address'),
-                        'origin_district_id' => (int) config('services.kiriminaja.origin_district_id'), // Gunakan format ini!
-                        'origin_zip_code'    => '63211', 
-                        'schedule'           => $pickupSchedule, 
-                        'platform_name'      => 'Sancaka Store',
+                        // INFO PENGIRIM (ROOT LEVEL) - Sesuai Dokumentasi
+                        'address'      => config('services.kiriminaja.origin_address'),
+                        'phone'        => '085745808809', // Ganti dengan nomor HP Toko
+                        'name'         => 'Toko Sancaka',
+                        'kecamatan_id' => (int) config('services.kiriminaja.origin_district_id'), // WAJIB INT
+                        'kelurahan_id' => (int) config('services.kiriminaja.origin_subdistrict_id'), // WAJIB INT
+                        'zipcode'      => '63216', 
+                        'schedule'     => $pickupSchedule, 
+                        'platform_name'=> 'Sancaka POS',
                         
-                        // DETAIL PAKET LENGKAP (Solusi Error Packages...)
+                        // INFO PAKET
                         'packages' => [
                             [
                                 'order_id'                 => $orderNumber,
+                                
+                                // INFO PENERIMA (Gunakan destination_kecamatan_id)
                                 'destination_name'         => $customerName,
                                 'destination_phone'        => $customerPhone,
                                 'destination_address'      => $request->destination_text,
-                                'destination_district_id'  => (int) $request->destination_district_id,
-                                'destination_zip_code'     => $request->postal_code ?? '00000',
+                                'destination_kecamatan_id' => (int) $request->destination_district_id, // Sesuai Docs
+                                'destination_kelurahan_id' => (int) ($request->destination_subdistrict_id ?? 0), // Sesuai Docs
+                                'destination_zipcode'      => $request->postal_code ?? '00000',
                                 
                                 'weight'           => (int) $totalWeight,
                                 'width'            => 10, 'length' => 10, 'height' => 10, 'qty' => 1,
                                 
                                 'item_value'       => (int) $subtotal,
-                                'shipping_cost'    => (int) $request->shipping_cost, // Wajib
+                                'shipping_cost'    => (int) $request->shipping_cost,
                                 'insurance_amount' => 0,
                                 
-                                'service'          => $serviceCode, // Wajib
-                                'service_type'     => $serviceType, // Wajib
-                                
+                                'service'          => $serviceCode,
+                                'service_type'     => $serviceType,
                                 'package_type_id'  => 1, 
                                 'item_name'        => 'Paket Order ' . $orderNumber,
                                 'cod'              => 0,
-                                'note'             => 'Handle with care',
+                                'note'             => 'Hati-hati barang mudah pecah',
                             ]
                         ]
                     ];
-
-                    if ($destLat && $destLng) {
-                        $kaPayload['destination_latitude']  = $destLat;
-                        $kaPayload['destination_longitude'] = $destLng;
-                    }
 
                     Log::info("Mencoba Request Pickup...", ['schedule' => $pickupSchedule]);
                     $kaResponse = $kiriminAja->createExpressOrder($kaPayload);
 
                     // ========================================================
-                    // 4. LOGIKA RETRY OTOMATIS (JIKA JADWAL DITOLAK)
+                    // 4. LOGIKA RETRY (JIKA JADWAL DITOLAK)
                     // ========================================================
                     if (isset($kaResponse['status']) && $kaResponse['status'] == false) {
                         $errorMsg = strtolower($kaResponse['text'] ?? '');
                         
-                        // Jika error jadwal, coba geser ke hari berikutnya
+                        // Cek apakah errornya soal Jadwal/Waktu
                         if (str_contains($errorMsg, 'jadwal') || str_contains($errorMsg, 'schedule') || str_contains($errorMsg, 'time') || str_contains($errorMsg, 'pickup')) {
                             
                             $tomorrow = \Carbon\Carbon::now()->addDay()->setTime(9, 0, 0);
-                            // Jika tadi sudah dicoba besok tapi masih gagal, coba lusa
+                            
+                            // Jika tadi sudah diset besok tapi masih gagal, coba LUSA
                             if ($tomorrow->format('Y-m-d H:i:s') === $pickupSchedule) {
                                 $tomorrow = \Carbon\Carbon::now()->addDays(2)->setTime(9, 0, 0);
                             }
