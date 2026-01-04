@@ -119,9 +119,12 @@
                     <span>Edit Profile</span>
                 </a>
 
-                <a href="{{-- route('profile.password') --}}" 
-                   class="flex items-center gap-3 pl-11 pr-3 py-2 text-sm transition-colors duration-200 text-slate-400 hover:text-white hover:bg-slate-700/50">
-                    <span>Ganti Password</span>
+                <a href="{{ route('profile.index') }}" 
+                   class="flex items-center gap-3 pl-11 pr-3 py-2 text-sm transition-colors duration-200
+                   {{ request()->routeIs('profile.index') 
+                        ? 'text-blue-400 font-medium' 
+                        : 'text-slate-400 hover:text-white hover:bg-slate-700/50' }}">
+                    <span>Data Profile</span>
                 </a>
             </div>
         </div>
