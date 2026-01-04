@@ -194,13 +194,17 @@ class OrderController extends Controller
             ]);
 
             // ==========================================
-            // 7. INTEGRASI TRIPAY (MANUAL / TANPA SERVICE)
-            // ==========================================
-            if ($request->payment_method === 'tripay') {
-                
-                // Pastikan ada channel yang dipilih (misal BRIVA, QRIS)
-                // Jika user tidak memilih channel spesifik, default ke QRIS atau lempar error
-                $channel = $request->payment_channel ?? 'QRIS'; 
+// 7. INTEGRASI TRIPAY (MANUAL / TANPA SERVICE)
+// ==========================================
+if ($request->payment_method === 'tripay') {
+    
+    // UBAH BAGIAN INI:
+    // Jangan default ke QRIS jika user tidak memilih, tapi validasi agar user wajib memilih.
+    if (empty($request->payment_channel)) {
+        throw new \Exception("Harap pilih Bank/Channel Pembayaran (BRI, Mandiri, dll).");
+    }
+
+    $channel = $request->payment_channel; 
 
                 // Siapkan Item Payload Tripay (Optional tapi bagus untuk detail)
                 $orderItems = [];

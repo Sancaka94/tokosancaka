@@ -360,6 +360,107 @@
                     </div>
                 </div>
 
+                <div x-show="paymentMethod === 'tripay'" x-transition class="bg-indigo-50 border-2 border-indigo-100 rounded-2xl p-4 shadow-sm mt-3">
+                    <label class="block text-[10px] font-bold text-indigo-600 uppercase tracking-widest mb-2">Pilih Bank / Channel</label>
+                    
+                    <div class="space-y-3">
+                        <div>
+                            <p class="text-[9px] font-bold text-slate-400 mb-1">E-Wallet & QRIS</p>
+                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                <button @click="paymentChannel = 'QRIS'" 
+                                        class="px-2 py-3 rounded-xl border text-xs font-bold transition flex flex-col items-center gap-1"
+                                        :class="paymentChannel === 'QRIS' ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white text-slate-600 border-indigo-100 hover:border-indigo-300'">
+                                    <i class="fas fa-qrcode text-lg"></i> <span>QRIS (All)</span>
+                                </button>
+                                <button @click="paymentChannel = 'SHOPEEPAY'" 
+                                        class="px-2 py-3 rounded-xl border text-xs font-bold transition flex flex-col items-center gap-1"
+                                        :class="paymentChannel === 'SHOPEEPAY' ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white text-slate-600 border-indigo-100 hover:border-indigo-300'">
+                                    <i class="fas fa-wallet text-lg"></i> <span>ShopeePay</span>
+                                </button>
+                                <button @click="paymentChannel = 'OVO'" 
+                                        class="px-2 py-3 rounded-xl border text-xs font-bold transition flex flex-col items-center gap-1"
+                                        :class="paymentChannel === 'OVO' ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white text-slate-600 border-indigo-100 hover:border-indigo-300'">
+                                    <i class="fas fa-wallet text-lg"></i> <span>OVO</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <p class="text-[9px] font-bold text-slate-400 mb-1">Virtual Account</p>
+                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                <button @click="paymentChannel = 'BRIVA'" 
+                                        class="px-2 py-3 rounded-xl border text-xs font-bold transition flex flex-col items-center gap-1"
+                                        :class="paymentChannel === 'BRIVA' ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white text-slate-600 border-indigo-100 hover:border-indigo-300'">
+                                    <i class="fas fa-university text-lg"></i> <span>BRI</span>
+                                </button>
+                                <button @click="paymentChannel = 'MANDIRIVA'" 
+                                        class="px-2 py-3 rounded-xl border text-xs font-bold transition flex flex-col items-center gap-1"
+                                        :class="paymentChannel === 'MANDIRIVA' ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white text-slate-600 border-indigo-100 hover:border-indigo-300'">
+                                    <i class="fas fa-university text-lg"></i> <span>Mandiri</span>
+                                </button>
+                                <button @click="paymentChannel = 'BCAVA'" 
+                                        class="px-2 py-3 rounded-xl border text-xs font-bold transition flex flex-col items-center gap-1"
+                                        :class="paymentChannel === 'BCAVA' ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white text-slate-600 border-indigo-100 hover:border-indigo-300'">
+                                    <i class="fas fa-university text-lg"></i> <span>BCA</span>
+                                </button>
+                                <button @click="paymentChannel = 'BNIVA'" 
+                                        class="px-2 py-3 rounded-xl border text-xs font-bold transition flex flex-col items-center gap-1"
+                                        :class="paymentChannel === 'BNIVA' ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white text-slate-600 border-indigo-100 hover:border-indigo-300'">
+                                    <i class="fas fa-university text-lg"></i> <span>BNI</span>
+                                </button>
+                                <button @click="paymentChannel = 'BSIVA'" 
+                                        class="px-2 py-3 rounded-xl border text-xs font-bold transition flex flex-col items-center gap-1"
+                                        :class="paymentChannel === 'BSIVA' ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white text-slate-600 border-indigo-100 hover:border-indigo-300'">
+                                    <i class="fas fa-university text-lg"></i> <span>BSI Syariah</span>
+                                </button>
+                                <button @click="paymentChannel = 'MYBVA'" 
+                                        class="px-2 py-3 rounded-xl border text-xs font-bold transition flex flex-col items-center gap-1"
+                                        :class="paymentChannel === 'MYBVA' ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white text-slate-600 border-indigo-100 hover:border-indigo-300'">
+                                    <i class="fas fa-university text-lg"></i> <span>Maybank</span>
+                                </button>
+                                <button @click="paymentChannel = 'PERMATAVA'" 
+                                        class="px-2 py-3 rounded-xl border text-xs font-bold transition flex flex-col items-center gap-1"
+                                        :class="paymentChannel === 'PERMATAVA' ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white text-slate-600 border-indigo-100 hover:border-indigo-300'">
+                                    <i class="fas fa-university text-lg"></i> <span>Permata</span>
+                                </button>
+                                <button @click="paymentChannel = 'CIMBVA'" 
+                                        class="px-2 py-3 rounded-xl border text-xs font-bold transition flex flex-col items-center gap-1"
+                                        :class="paymentChannel === 'CIMBVA' ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white text-slate-600 border-indigo-100 hover:border-indigo-300'">
+                                    <i class="fas fa-university text-lg"></i> <span>CIMB Niaga</span>
+                                </button>
+                                <button @click="paymentChannel = 'MUAMALATVA'" 
+                                        class="px-2 py-3 rounded-xl border text-xs font-bold transition flex flex-col items-center gap-1"
+                                        :class="paymentChannel === 'MUAMALATVA' ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white text-slate-600 border-indigo-100 hover:border-indigo-300'">
+                                    <i class="fas fa-university text-lg"></i> <span>Muamalat</span>
+                                </button>
+                                <button @click="paymentChannel = 'SINARMASVA'" 
+                                        class="px-2 py-3 rounded-xl border text-xs font-bold transition flex flex-col items-center gap-1"
+                                        :class="paymentChannel === 'SINARMASVA' ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white text-slate-600 border-indigo-100 hover:border-indigo-300'">
+                                    <i class="fas fa-university text-lg"></i> <span>Sinarmas</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <p class="text-[9px] font-bold text-slate-400 mb-1">Minimarket</p>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button @click="paymentChannel = 'ALFAMART'" 
+                                        class="px-2 py-3 rounded-xl border text-xs font-bold transition flex flex-col items-center gap-1"
+                                        :class="paymentChannel === 'ALFAMART' ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white text-slate-600 border-indigo-100 hover:border-indigo-300'">
+                                    <i class="fas fa-store text-lg"></i> <span>Alfamart</span>
+                                </button>
+                                <button @click="paymentChannel = 'INDOMARET'" 
+                                        class="px-2 py-3 rounded-xl border text-xs font-bold transition flex flex-col items-center gap-1"
+                                        :class="paymentChannel === 'INDOMARET' ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white text-slate-600 border-indigo-100 hover:border-indigo-300'">
+                                    <i class="fas fa-store text-lg"></i> <span>Indomaret</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <p class="text-[9px] text-indigo-400 mt-3 text-center">*Pilih salah satu metode pembayaran.</p>
+                </div>
+
                 <div x-show="paymentMethod === 'affiliate_balance'" x-transition class="bg-purple-50 border-2 border-purple-200 rounded-2xl p-4 shadow-sm text-center">
                     <label class="block text-[10px] font-bold text-purple-600 uppercase mb-2">Masukkan PIN Keamanan</label>
                     <div class="relative max-w-[200px] mx-auto">
@@ -427,6 +528,7 @@
             customerPhone: '',
             selectedCustomerId: '',
             paymentMethod: 'cash',
+            paymentChannel: '', // <--- TAMBAHKAN INI (Default Kosong)
             cashAmount: '',
             affiliatePin: '', 
 
@@ -606,7 +708,13 @@
                 // Validasi Client Side
                 if (this.paymentMethod === 'cash') {
                     if (!this.cashAmount || this.change < 0) { alert('❌ Uang tunai kurang!'); return; }
-                } else if (this.paymentMethod === 'saldo') {
+                } 
+                // --- TAMBAHAN VALIDASI TRIPAY ---
+                else if (this.paymentMethod === 'tripay') {
+                    if (!this.paymentChannel) { alert('❌ Silakan pilih Bank / Channel Pembayaran dulu!'); return; }
+                } 
+                // --------------------------------
+                else if (this.paymentMethod === 'saldo') {
                     if (!this.selectedCustomerId) { alert('❌ Pilih Member!'); return; }
                     if (this.getSelectedMemberSaldo() < this.grandTotal) { alert('❌ Saldo Topup kurang!'); return; }
                 } else if (this.paymentMethod === 'affiliate_balance') {
@@ -622,6 +730,12 @@
                 formData.append('total', this.subtotal);
                 formData.append('coupon', this.couponCode);
                 formData.append('payment_method', this.paymentMethod);
+
+                // --- TAMBAHKAN INI ---
+                if (this.paymentMethod === 'tripay') {
+                    formData.append('payment_channel', this.paymentChannel);
+                }
+                // ---------------------
                 
                 if(this.customerType === 'member' && this.selectedCustomerId) {
                     formData.append('customer_id', this.selectedCustomerId);
