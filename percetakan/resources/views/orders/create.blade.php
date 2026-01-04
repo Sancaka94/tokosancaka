@@ -732,25 +732,18 @@
             async checkOngkir() {
                 if (!this.destinationDistrictId) return;
                 
-                // 1. HITUNG BERAT REAL (Berdasarkan Data Database)
-                // Pastikan input di database adalah berat per satuan (misal: 5 gram)
-                let realTotalWeight = this.cart.reduce((w, item) => {
-                    // Ambil berat per item, jika kosong anggap 0
-                    let itemWeight = parseInt(item.weight) || 0; 
-                    return w + (item.qty * itemWeight);
-                }, 0);
+                // 1. HITUNG TOTAL BERAT REAL
+                // Rumus: Qty * Berat per Item (yang tadi sudah diset 5 gram)
+                let realTotalWeight = this.cart.reduce((w, item) => w + (item.qty * item.weight), 0);
+                
+                // 2. LOGIKA PEMBULATAN KE 1 KG (RULE KURIR)
+                // Jika total masih enteng (misal 10 lembar = 50g), kirim data 1000g ke API
+                // Agar ongkir tetap keluar (tarif minimum)
+                let finalWeight = realTotalWeight < 1000 ? 1000 : realTotalWeight;
 
-                // 2. TERAPKAN ATURAN MINIMAL 1000 GRAM
-                let finalWeight = realTotalWeight;
-
-                if (finalWeight < 1000) {
-                    finalWeight = 1000; // Jika enteng (cth: 50g), set jadi 1000g (1kg)
-                } 
-                // Jika berat > 1000g (cth: 1500g), biarkan apa adanya.
-
-                // Debugging di Console (Opsional, biar Anda bisa cek hitungannya)
-                console.log('Berat Asli:', realTotalWeight, 'gram');
-                console.log('Berat Dikirim API:', finalWeight, 'gram');
+                // Debugging (Bisa dilihat di Console Browser: F12 -> Console)
+                console.log('Berat Real:', realTotalWeight + 'g');
+                console.log('Berat Dikirim ke API:', finalWeight + 'g');
 
                 this.isLoadingShipping = true;
                 this.courierList = []; 
@@ -780,7 +773,7 @@
                     }
                 } catch (e) {
                     console.error(e);
-                    alert('Error koneksi server saat cek ongkir');
+                    alert('Error koneksi server');
                 } finally {
                     this.isLoadingShipping = false;
                 }
@@ -857,22 +850,27 @@
             // ============================================================
             
             // Tambahkan parameter 'weight' di sini
-            addToCart(id, name, price, maxStock, weight = 100) { 
+            addToCart(id, name, price, maxStock, weight = 0) {
                 if (maxStock <= 0) { alert('Stok Habis!'); return; }
                 
+                // --- LOGIKA CERDAS: DEFAULT BERAT ---
+                // Jika weight dari DB kosong/0, kita paksa jadi 5 gram (seperti kertas)
+                // Jika di DB ada isinya (misal 500), tetap pakai data DB.
+                let itemWeight = (weight && parseInt(weight) > 0) ? parseInt(weight) : 5; 
+                // ------------------------------------
+
                 let item = this.cart.find(i => i.id === id);
                 if (item) {
                     if (item.qty < maxStock) item.qty++;
                     else alert('Stok maksimal tercapai!');
                 } else {
-                    // Simpan berat asli ke keranjang
                     this.cart.push({ 
                         id, 
                         name, 
                         price, 
                         qty: 1, 
                         maxStock, 
-                        weight: parseInt(weight) // Pastikan jadi angka
+                        weight: itemWeight // Simpan 5 gram
                     });
                 }
                 
