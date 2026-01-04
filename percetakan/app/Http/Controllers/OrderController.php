@@ -497,55 +497,38 @@ class OrderController extends Controller
                     Log::info("PAYLOAD INSTANT:", $instantPayload);
                     $kaResponse = $kiriminAja->createInstantOrder($instantPayload);
 
-                } 
-                // --- BLOK LOGIKA REGULER (JNE, SICEPAT, DLL) ---
-                else {
+                } else {
+                    // --- LOGIKA REGULER (JNE, SPX, SICEPAT, DLL) ---
                     
-                    // 1. Tentukan Service Code (Logika Robust/Kuat)
-                    $serviceCode = $request->courier_code; // Coba ambil dari request langsung
-                    $serviceType = $request->service_type; // <--- AMBIL SERVICE TYPE DARI REQUEST
+                    // 1. Tentukan Service Code & Type
+                    $serviceCode = $request->courier_code; 
+                    $serviceType = $request->service_type;
 
-                    // Fallback: Jika kosong, parse dari string nama kurir
+                    // Fallback: Parse nama kurir jika code kosong
                     if (empty($serviceCode) && $request->courier_name) {
                         $parts = explode('-', $request->courier_name); 
                         $namaKurir = strtolower(trim($parts[0])); 
-                        
                         $mapManual = [
                             'jne' => 'jne', 'j&t express' => 'jnt', 'sicepat' => 'sicepat',
                             'anteraja' => 'anteraja', 'pos indonesia' => 'posindonesia', 'tiki' => 'tiki',
                             'lion parcel' => 'lion', 'ninja express' => 'ninja', 'id express' => 'idx',
                             'spx express' => 'spx', 'sap express' => 'sap', 'j&t cargo' => 'jtcargo'
                         ];
-                        
                         foreach ($mapManual as $nameKey => $codeVal) {
-                            if (str_contains($namaKurir, $nameKey)) {
-                                $serviceCode = $codeVal;
-                                break;
-                            }
+                            if (str_contains($namaKurir, $nameKey)) { $serviceCode = $codeVal; break; }
                         }
                     }
-                    
-                    // Safety: Default ke 'jne' jika masih kosong agar tidak error
-                    if (empty($serviceCode)) $serviceCode = 'jne';
+                    if (empty($serviceCode)) $serviceCode = 'jne'; 
+                    if (empty($serviceType)) $serviceType = 'REG';
 
-                    if (empty($serviceType)) $serviceType = 'REG'; // <--- DEFAULT JIKA KOSONG
-                    Log::info("TIPE KURIR FINAL: $serviceCode");
-
-                    Log::info("TIPE KURIR FINAL: $serviceCode | TYPE: $serviceType");
-
-                    // 2. Tentukan Jadwal Pickup
+                    // 2. Setting Jadwal Awal (Coba Hari Ini + 60 menit)
                     $now = \Carbon\Carbon::now();
-                    $pickupSchedule = null;
-
-                    // Jika lewat jam 15:00, set jadwal besok jam 09:00
+                    $pickupSchedule = $now->addMinutes(60)->format('Y-m-d H:i:s');
+                    
+                    // Jika sudah sore (di atas jam 15), langsung set besok biar aman
                     if ($now->hour >= 15) {
                         $pickupSchedule = $now->addDay()->setTime(9, 0, 0)->format('Y-m-d H:i:s');
-                        Log::info("Jadwal Mepet/Sore. Set Pickup Besok: $pickupSchedule");
-                    } else {
-                        // Jika masih siang, set "NOW" + 30 menit
-                        $pickupSchedule = $now->addMinutes(30)->format('Y-m-d H:i:s');
-                        Log::info("Jadwal Siang. Set Pickup Sekarang (+30m): $pickupSchedule");
-                    }
+                    } 
 
                     // ... (Setelah logika jadwal pickup) ...
 
