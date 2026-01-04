@@ -117,8 +117,10 @@ class AffiliateController extends Controller
                 'is_active' => true
             ]);
 
-            // 4. SUSUN PESAN WHATSAPP (LENGKAP ID & PIN)
-            $targetUrl = route('orders.create', ['coupon' => $finalCouponCode]); // Ganti route sesuai sistem order Anda
+            // 3. SUSUN PESAN WHATSAPP (LENGKAP ID & PIN)
+            // Pastikan route 'orders.create' sudah didefinisikan di web.php
+            // Hasil link akan menjadi: https://tokosancaka.com/.../orders/create?coupon=SANCAKA-10-150
+            $targetUrl = route('orders.create', ['coupon' => $finalCouponCode]); 
             
             $msg  = "🎉 *SELAMAT! PENDAFTARAN BERHASIL* 🎉\n\n";
             $msg .= "Halo Kak *{$request->name}*,\n";
@@ -131,9 +133,20 @@ class AffiliateController extends Controller
             
             $msg .= "⚠️ *PENTING:* Simpan ID dan PIN ini. Jika Anda lupa nomor HP, Anda bisa login menggunakan ID Partner.\n\n";
 
-            $msg .= "🎫 *KODE KUPON:* *{$finalCouponCode}*\n";
-            $msg .= "🔗 *LINK JUALAN:* {$targetUrl}\n\n";
-            $msg .= "Semangat Cuan! 🚀";
+            // --- BAGIAN BARU: LINK UNTUK DISEBARKAN ---
+            $msg .= "➖➖➖➖➖➖➖➖➖➖\n";
+            $msg .= "📢 *TEMPLATE SEBAR LINK PROMO* 📢\n";
+            $msg .= "(Salin pesan di bawah ini & sebarkan ke Teman/Sosmed)\n";
+            $msg .= "➖➖➖➖➖➖➖➖➖➖\n\n";
+
+            $msg .= "Mau cetak kebutuhan apapun dengan harga *DISKON SPESIAL*? 🤩\n\n";
+            $msg .= "Pakai kode kupon diskon saya: *{$finalCouponCode}*\n";
+            $msg .= "Atau langsung klik link ini untuk order (Diskon Otomatis):\n";
+            $msg .= "👉 {$targetUrl}\n\n";
+            $msg .= "Buruan order sekarang sebelum antri! 🏃💨\n";
+            
+            $msg .= "➖➖➖➖➖➖➖➖➖➖\n\n";
+            $msg .= "Semangat Cari Cuan Ya Kak *{$request->name}* ! 🚀";
 
             // 5. Kirim WA (Gunakan fungsi CURL atau Service Anda)
             $this->sendFonnte($request->whatsapp, $msg);
