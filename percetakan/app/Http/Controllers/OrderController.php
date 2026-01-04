@@ -627,26 +627,37 @@ class OrderController extends Controller
                 }
             }
 
+           // =========================================================
+            // TARUH KODE BARU DI SINI (GANTIKAN KODE Order::create LAMA)
             // =========================================================
-            // 8. SIMPAN ORDER KE DATABASE
-            // =========================================================
-            $order = Order::create([
-                'order_number'    => $orderNumber,
-                'user_id'         => null,
-                'customer_name'   => $customerName,
-                'customer_phone'  => $customerPhone,
-                'coupon_id'       => $couponId,
-                'total_price'     => $subtotal,
-                'discount_amount' => $discount,
-                'final_price'     => $finalPrice,
-                'payment_method'  => $request->payment_method,
-                'status'          => ($paymentStatus === 'paid') ? 'processing' : 'pending', 
-                'payment_status'  => $paymentStatus,
-                'note'            => $note,
-                'shipping_cost'   => $request->delivery_type === 'shipping' ? $request->shipping_cost : 0,
-                'courier_service' => $request->delivery_type === 'shipping' ? $request->courier_name : null,
-                'shipping_ref'    => $shippingRef, 
-            ]);
+
+            // MULAI SIMPAN DATABASE
+            try {
+                $order = Order::create([
+                    'order_number'    => $orderNumber,
+                    'user_id'         => $request->customer_id ?? null, 
+                    'customer_name'   => $customerName,
+                    'customer_phone'  => $customerPhone,
+                    'coupon_id'       => $couponId,
+                    'total_price'     => $subtotal,
+                    'discount_amount' => $discount,
+                    'final_price'     => $finalPrice,
+                    'payment_method'  => $request->payment_method,
+                    'status'          => ($paymentStatus === 'paid') ? 'processing' : 'pending', 
+                    'payment_status'  => $paymentStatus,
+                    'note'            => $note,
+                    'shipping_cost'   => $request->delivery_type === 'shipping' ? $request->shipping_cost : 0,
+                    'courier_service' => $request->delivery_type === 'shipping' ? $request->courier_name : null,
+                    'shipping_ref'    => $shippingRef, 
+                ]);
+                
+                Log::info("DATABASE SUKSES. Order ID: " . $order->id);
+
+            } catch (\Exception $e) {
+                Log::error("DATABASE GAGAL: " . $e->getMessage());
+                // Throw exception lagi agar transaksi DB di-rollback oleh blok catch utama di paling bawah
+                throw new \Exception("Gagal menyimpan order ke database: " . $e->getMessage());
+            }
 
             // 9. PROSES BAYAR (Tripay / Doku)
             if ($request->payment_method === 'tripay') {
