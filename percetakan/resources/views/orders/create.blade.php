@@ -578,7 +578,7 @@
                  }
             },
             
-            // --- STATE UI & UMUM ---
+            // --- 1. STATE UI & UMUM ---
             mobileCartOpen: false,
             showPaymentModal: false,
             search: '',
@@ -587,59 +587,74 @@
             isProcessing: false,
             isValidatingCoupon: false,
             
-            // --- KUPON ---
+            // --- 2. KUPON ---
             couponCode: '{{ $autoCoupon ?? "" }}',
             couponMessage: '',
             discountAmount: 0,
             
-            // --- PELANGGAN ---
+            // --- 3. PELANGGAN (MEMBER/GUEST) ---
             customerType: 'guest',
             customerName: '',
             customerPhone: '',
             selectedCustomerId: '',
             
-            // --- PEMBAYARAN ---
+            // --- 4. PEMBAYARAN ---
             paymentMethod: 'cash',
-            paymentChannel: '',
-            tripayChannels: [],
+            paymentChannel: '',     // Untuk Tripay (BRIVA, QRIS, dll)
+            tripayChannels: [],     // List channel dari API
             isLoadingChannels: false,
-            cashAmount: '',
-            affiliatePin: '', 
+            cashAmount: '',         // Uang tunai
+            affiliatePin: '',       // PIN Member
 
-            // --- PENGIRIMAN (NEW: KIRIMINAJA) ---
+            // --- 5. PENGIRIMAN (KIRIMINAJA) ---
             deliveryType: 'pickup', // Default: Ambil di Toko
             
-            // State Pencarian Lokasi
-            searchQuery: '',        // Teks yang diketik (misal: "Ketanggi")
-            searchResults: [],      // Hasil dropdown dari API
+            // Variabel Pencarian Lokasi
+            searchQuery: '',        // Input teks user
+            searchResults: [],      // Hasil dropdown API
             isSearchingLocation: false,
             
-            // Data Terpilih untuk Ongkir
-            destinationDistrictId: '',    // ID Kecamatan
-            destinationSubdistrictId: '', // ID Kelurahan
+            // ID Lokasi (Penting untuk API Ongkir)
+            destinationDistrictId: '', 
+            destinationSubdistrictId: '', 
             
-            courierList: [],        // Daftar ongkir (JNE, J&T, dll)
-            selectedCourier: null,  // Kurir yang dipilih user
-            shippingCost: 0,        // Harga ongkir
+            // Hasil Ongkir
+            courierList: [],
+            selectedCourier: null,
+            shippingCost: 0,
             isLoadingShipping: false,
 
-            // --- COMPUTED PROPERTIES ---
-            get subtotal() { return this.cart.reduce((sum, item) => sum + (item.price * item.qty), 0); },
-            get cartTotalQty() { return this.cart.reduce((sum, item) => sum + item.qty, 0); },
+            // ============================================================
+            // COMPUTED PROPERTIES (PERHITUNGAN OTOMATIS)
+            // ============================================================
             
-            // UPDATE: Grand Total = Subtotal - Diskon + Ongkir
+            get subtotal() { 
+                return this.cart.reduce((sum, item) => sum + (item.price * item.qty), 0); 
+            },
+            
+            get cartTotalQty() { 
+                return this.cart.reduce((sum, item) => sum + item.qty, 0); 
+            },
+            
+            // GRAND TOTAL: Subtotal - Diskon + Ongkir
             get grandTotal() { 
                 let total = this.subtotal - this.discountAmount + this.shippingCost;
                 return total < 0 ? 0 : total;
             },
             
+            // KEMBALIAN: Uang Masuk - Grand Total
             get change() {
                 let received = parseInt(this.cashAmount) || 0;
                 return received - this.grandTotal;
             },
 
-            // --- HELPERS ---
-            rupiah(val) { return new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(val); },
+            // ============================================================
+            // HELPERS
+            // ============================================================
+            
+            rupiah(val) { 
+                return new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(val); 
+            },
             
             formatFileSize(bytes) {
                 if(bytes === 0) return '0 B';
@@ -648,22 +663,31 @@
                 return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
             },
             
-            itemMatchesSearch(name) { return name.toLowerCase().includes(this.search.toLowerCase()); },
+            itemMatchesSearch(name) { 
+                return name.toLowerCase().includes(this.search.toLowerCase()); 
+            },
             
             getItemQty(id) {
                 let item = this.cart.find(i => i.id === id);
                 return item ? item.qty : 0;
             },
 
-            // --- FUNGSI PENCARIAN LOKASI (BARU) ---
+            // ============================================================
+            // LOGIKA PENGIRIMAN (KIRIMINAJA - AUTOCOMPLETE)
+            // ============================================================
+
+            // A. Mencari Lokasi saat mengetik (Debounce di HTML)
             async searchLocation() {
-                // Minimal 3 karakter baru mencari agar tidak spam request
-                if (this.searchQuery.length < 3) return;
+                // Reset data jika input dihapus atau kurang dari 3 huruf
+                if (this.searchQuery.length < 3) {
+                    this.searchResults = [];
+                    return;
+                }
                 
                 this.isSearchingLocation = true;
                 
                 try {
-                    // Memanggil API search-location di Laravel
+                    // Panggil Route search-location di Laravel
                     const response = await fetch(`{{ route('orders.search-location') }}?query=${this.searchQuery}`);
                     const result = await response.json();
 
@@ -680,30 +704,27 @@
                 }
             },
 
-            // --- FUNGSI PILIH LOKASI DARI DROPDOWN ---
+            // B. Saat Lokasi dipilih dari Dropdown
             selectLocation(location) {
                 // 1. Tampilkan teks lengkap di input
                 this.searchQuery = location.text; 
                 
-                // 2. Simpan ID yang dibutuhkan untuk cek ongkir
+                // 2. Simpan ID yang dibutuhkan untuk hitung ongkir
                 this.destinationDistrictId = location.district_id;
-                this.destinationSubdistrictId = location.id; // Biasanya ID utama adalah subdistrict_id
+                this.destinationSubdistrictId = location.id; // ID Kelurahan
 
-                // 3. Reset pencarian
+                // 3. Sembunyikan dropdown
                 this.searchResults = [];
                 
-                // 4. Otomatis hitung ongkir
+                // 4. OTOMATIS Cek Ongkir (Tanpa tombol klik lagi)
                 this.checkOngkir();
             },
 
-            // --- FUNGSI CEK ONGKIR ---
+            // C. Hitung Ongkir ke Backend
             async checkOngkir() {
-                if (!this.destinationDistrictId) { 
-                    alert('Silakan cari dan pilih lokasi tujuan terlebih dahulu!'); 
-                    return; 
-                }
+                if (!this.destinationDistrictId) return;
                 
-                // Hitung berat total (Default 1000g / 1kg jika tidak diatur)
+                // Hitung berat total (Default 1000 gram jika data kosong)
                 let totalWeight = this.cart.reduce((w, item) => w + (item.qty * 1), 0) * 1000; 
                 if(totalWeight === 0) totalWeight = 1000;
 
@@ -741,13 +762,16 @@
                 }
             },
 
-            // Saat user klik salah satu kurir
+            // D. Saat Kurir Dipilih
             selectCourier(courier) {
                 this.selectedCourier = courier;
                 this.shippingCost = parseInt(courier.cost); 
             },
 
-            // --- LOGIKA LAINNYA (MEMBER, PAYMENT, DLL) ---
+            // ============================================================
+            // LOGIKA PEMBAYARAN & MEMBER
+            // ============================================================
+
             getSelectedMemberSaldo() {
                 if(!this.selectedCustomerId) return 0;
                 const select = document.querySelector(`select[x-model="selectedCustomerId"]`);
@@ -771,7 +795,7 @@
                 this.affiliatePin = '';
             },
 
-            // Tripay Logic
+            // TRIPAY: Ambil Channel Pembayaran
             async fetchTripayChannels() {
                 if (this.tripayChannels.length > 0) return;
                 this.isLoadingChannels = true;
@@ -787,7 +811,7 @@
                 return this.tripayChannels.filter(c => c.active === true && c.group.toLowerCase() === groupName.toLowerCase());
             },
 
-            // Coupon Logic
+            // KUPON: Validasi Kode
             async checkCoupon() {
                 if (!this.couponCode.trim()) { this.discountAmount = 0; this.couponMessage = ''; return; }
                 if (this.cart.length === 0) { this.couponMessage = 'Isi keranjang dulu.'; return; }
@@ -804,7 +828,10 @@
                 } catch (error) { this.couponMessage = 'Gagal cek server.'; this.discountAmount = 0; } finally { this.isValidatingCoupon = false; }
             },
 
-            // Cart Logic
+            // ============================================================
+            // LOGIKA KERANJANG (CART)
+            // ============================================================
+            
             addToCart(id, name, price, maxStock) {
                 if (maxStock <= 0) { alert('Stok Habis!'); return; }
                 let item = this.cart.find(i => i.id === id);
@@ -813,6 +840,7 @@
                 if(navigator.vibrate) navigator.vibrate(30);
                 if(this.couponCode) this.checkCoupon();
             },
+            
             updateQty(id, amount) {
                 let item = this.cart.find(i => i.id === id);
                 if (item) {
@@ -822,6 +850,7 @@
                 }
                 if(this.couponCode) setTimeout(() => this.checkCoupon(), 500); 
             },
+            
             validateManualQty(id) {
                 let item = this.cart.find(i => i.id === id);
                 if (!item) return;
@@ -831,23 +860,29 @@
                 else { item.qty = parsed; }
                 if(this.couponCode) this.checkCoupon();
             },
+            
             removeFromCart(id) { 
                 this.cart = this.cart.filter(i => i.id !== id);
                 if(this.cart.length === 0) { this.discountAmount = 0; this.couponMessage = ''; } 
                 else if(this.couponCode) { this.checkCoupon(); }
             },
+            
             confirmClearCart() { 
                 if(confirm('Kosongkan keranjang?')) { 
                     this.cart = []; this.uploadedFiles = []; this.discountAmount = 0; this.couponMessage = ''; 
                     this.shippingCost = 0; this.deliveryType = 'pickup'; this.searchQuery = '';
                 } 
             },
+            
             openPaymentModal() {
                 if(this.cart.length === 0) { alert('Keranjang masih kosong!'); return; }
                 this.showPaymentModal = true;
+                // Reset input jika metode bukan cash
                 if(this.paymentMethod !== 'cash') this.cashAmount = '';
+                // Auto fetch channel jika tripay
                 if(this.paymentMethod === 'tripay') this.fetchTripayChannels();
             },
+            
             handleFileUpload(event) {
                 const files = event.target.files;
                 for (let i = 0; i < files.length; i++) {
@@ -856,29 +891,35 @@
                 }
                 event.target.value = '';
             },
+            
             removeFile(index) { this.uploadedFiles.splice(index, 1); },
 
-            // --- FUNGSI CHECKOUT UTAMA ---
+            // ============================================================
+            // FUNGSI CHECKOUT (KIRIM DATA KE LARAVEL)
+            // ============================================================
+            
             async checkout() {
-                // 1. Validasi Tunai
+                // 1. VALIDASI TUNAI
                 if (this.paymentMethod === 'cash') {
                     if (!this.cashAmount || this.change < 0) { alert('❌ Uang tunai kurang!'); return; }
                 } 
-                // 2. Validasi Tripay
+                // 2. VALIDASI TRIPAY
                 else if (this.paymentMethod === 'tripay') {
                     if (!this.paymentChannel) { alert('❌ Silakan pilih Bank / Channel Pembayaran dulu!'); return; }
                 } 
-                // 3. Validasi Saldo & Affiliate
+                // 3. VALIDASI SALDO MEMBER
                 else if (this.paymentMethod === 'saldo') {
                     if (!this.selectedCustomerId) { alert('❌ Pilih Member!'); return; }
                     if (this.getSelectedMemberSaldo() < this.grandTotal) { alert('❌ Saldo Topup kurang!'); return; }
-                } else if (this.paymentMethod === 'affiliate_balance') {
+                } 
+                // 4. VALIDASI AFFILIATE
+                else if (this.paymentMethod === 'affiliate_balance') {
                     if (!this.selectedCustomerId) { alert('❌ Pilih Member!'); return; }
                     if (this.getSelectedAffiliateBalance() < this.grandTotal) { alert('❌ Saldo Profit kurang!'); return; }
                     if (!this.affiliatePin || this.affiliatePin.length < 4) { alert('❌ Masukkan PIN Keamanan!'); return; }
                 }
 
-                // 4. Validasi PENGIRIMAN (KIRIMINAJA)
+                // 5. VALIDASI PENGIRIMAN (KIRIMINAJA)
                 if (this.deliveryType === 'shipping') {
                     if (!this.destinationDistrictId) {
                         alert('❌ Harap pilih lokasi tujuan pengiriman!');
@@ -892,37 +933,39 @@
 
                 this.isProcessing = true;
                 
+                // Susun Data Form
                 let formData = new FormData();
                 formData.append('items', JSON.stringify(this.cart));
                 formData.append('total', this.subtotal);
                 formData.append('coupon', this.couponCode);
                 formData.append('payment_method', this.paymentMethod);
 
-                // --- DATA PENGIRIMAN ---
+                // Data Pengiriman
                 formData.append('delivery_type', this.deliveryType);
                 if (this.deliveryType === 'shipping') {
                     formData.append('shipping_cost', this.shippingCost);
                     formData.append('courier_name', this.selectedCourier.name + ' - ' + this.selectedCourier.service);
-                    // Opsi: Kirim data alamat juga jika backend butuh
+                    // Opsi: Kirim data detail lokasi jika perlu disimpan di DB
                     formData.append('destination_district_id', this.destinationDistrictId);
                     formData.append('destination_subdistrict_id', this.destinationSubdistrictId);
                     formData.append('destination_text', this.searchQuery);
                 }
 
-                // --- DATA PEMBAYARAN ---
+                // Data Pembayaran Tripay
                 if (this.paymentMethod === 'tripay') {
                     formData.append('payment_channel', this.paymentChannel);
                 }
-                if(this.paymentMethod === 'cash') formData.append('cash_amount', this.cashAmount);
-                if(this.paymentMethod === 'affiliate_balance') formData.append('affiliate_pin', this.affiliatePin); 
-
-                // --- DATA CUSTOMER ---
+                
+                // Data Member
                 if(this.customerType === 'member' && this.selectedCustomerId) {
                     formData.append('customer_id', this.selectedCustomerId);
                 } else {
                     formData.append('customer_name', this.customerName || 'Guest');
                     formData.append('customer_phone', this.customerPhone || '');
                 }
+
+                if(this.paymentMethod === 'cash') formData.append('cash_amount', this.cashAmount);
+                if(this.paymentMethod === 'affiliate_balance') formData.append('affiliate_pin', this.affiliatePin); 
 
                 this.uploadedFiles.forEach(file => formData.append('attachments[]', file));
 
