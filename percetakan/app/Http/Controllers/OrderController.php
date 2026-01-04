@@ -521,16 +521,20 @@ class OrderController extends Controller
                     if (empty($serviceCode)) $serviceCode = 'jne'; 
                     if (empty($serviceType)) $serviceType = 'REG';
 
-                    // 2. Setting Jadwal Awal (Coba Hari Ini + 60 menit)
+                    // 2. LOGIKA JADWAL PINTAR (SMART SCHEDULE)
                     $now = \Carbon\Carbon::now();
-                    $pickupSchedule = $now->addMinutes(60)->format('Y-m-d H:i:s');
-                    
-                    // Jika sudah sore (di atas jam 15), langsung set besok biar aman
-                    if ($now->hour >= 15) {
-                        $pickupSchedule = $now->addDay()->setTime(9, 0, 0)->format('Y-m-d H:i:s');
-                    } 
+                    $isSunday = $now->isSunday(); // Cek apakah hari Minggu
+                    $pickupSchedule = null;
 
-                    // ... (Setelah logika jadwal pickup) ...
+                    // ATURAN 1: Jika HARI MINGGU atau SUDAH SORE (> 14:00), LANGSUNG set BESOK
+                    if ($isSunday || $now->hour >= 14) {
+                        $pickupSchedule = $now->addDay()->setTime(9, 0, 0)->format('Y-m-d H:i:s');
+                        Log::info("Jadwal (Minggu/Sore). Auto-set Pickup Besok: $pickupSchedule");
+                    } else {
+                        // ATURAN 2: Jika hari biasa & masih pagi, set NOW + 60 menit
+                        $pickupSchedule = $now->addMinutes(60)->format('Y-m-d H:i:s');
+                        Log::info("Jadwal Normal. Set Pickup Hari Ini: $pickupSchedule");
+                    }
 
                     // 3. Buat Payload Reguler (UPDATE BAGIAN INI SECARA MENYELURUH)
                     $kaPayload = [
@@ -598,9 +602,40 @@ class OrderController extends Controller
                     $kaResponse = $kiriminAja->createExpressOrder($kaPayload);
                 }
 
-                // Cek Response KiriminAja (Untuk Instant & Reguler)
+                // ========================================================
+                    // 4. LOGIKA RETRY (JIKA JADWAL DITOLAK)
+                    // ========================================================
+                    if (isset($kaResponse['status']) && $kaResponse['status'] == false) {
+                        $errorMsg = strtolower($kaResponse['text'] ?? '');
+                        
+                        // Cek apakah errornya soal Jadwal/Waktu
+                        if (str_contains($errorMsg, 'jadwal') || str_contains($errorMsg, 'schedule') || str_contains($errorMsg, 'time') || str_contains($errorMsg, 'pickup')) {
+                            
+                            // Paksa Set Jadwal ke BESOK JAM 09:00 (Meskipun tadi sudah diset, kita coba force lagi)
+                            // Atau jika tadi sudah besok, kita coba lusa (addDays(2)) untuk jaga-jaga
+                            $tomorrow = \Carbon\Carbon::now()->addDay()->setTime(9, 0, 0);
+                            
+                            // Jika jadwal awal tadi SUDAH besok, berarti besok libur/penuh -> Coba LUSA
+                            if ($tomorrow->format('Y-m-d H:i:s') === $pickupSchedule) {
+                                $tomorrow = \Carbon\Carbon::now()->addDays(2)->setTime(9, 0, 0);
+                            }
+
+                            $newSchedule = $tomorrow->format('Y-m-d H:i:s');
+                            Log::warning("Jadwal Ditolak ($errorMsg). RETRY dengan jadwal: $newSchedule");
+                            
+                            // Update Payload
+                            $kaPayload['schedule'] = $newSchedule;
+                            
+                            // Request Ulang
+                            $kaResponse = $kiriminAja->createExpressOrder($kaPayload);
+                            Log::info("Retry Selesai. Status: " . ($kaResponse['status'] ? 'Sukses' : 'Gagal'));
+                        }
+                    }
+                }
+
+                // Cek Response Akhir
                 if (isset($kaResponse['status']) && $kaResponse['status'] == true) {
-                    $shippingRef = $kaResponse['data']['order_id'] ?? $kaResponse['data']['payment_ref'] ?? null;
+                    $shippingRef = $kaResponse['data']['order_id'] ?? $kaResponse['pickup_number'] ?? null;
                     Log::info("KIRIMINAJA SUKSES. Ref: $shippingRef");
                     $note .= "\n[INFO PENGIRIMAN]\nOrder ID KiriminAja: " . $shippingRef;
                 } else {
