@@ -314,21 +314,44 @@
                     </div>
 
                     <div x-show="customerType === 'guest'" x-transition>
-    <div class="grid grid-cols-2 gap-3">
-        <div>
-            <input type="text" x-model="customerName" placeholder="Nama..." 
-                   class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-red-500 transition"
-                   :class="{'border-red-500 ring-1 ring-red-500': deliveryType === 'shipping' && !customerName}">
-            <p x-show="deliveryType === 'shipping' && !customerName" class="text-[9px] text-red-500 mt-1 font-bold">*Wajib diisi</p>
+    
+    <div x-show="deliveryType === 'shipping'" class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-3 space-y-3">
+        <div class="flex items-center gap-2 mb-2 border-b border-blue-200 pb-2">
+            <i class="fas fa-shipping-fast text-blue-600"></i>
+            <span class="text-[10px] font-bold text-blue-700 uppercase tracking-widest">Data Penerima Paket</span>
         </div>
 
         <div>
-            <input type="number" x-model="customerPhone" placeholder="No. WA..." 
-                   class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-red-500 transition"
-                   :class="{'border-red-500 ring-1 ring-red-500': deliveryType === 'shipping' && !customerPhone}">
-            <p x-show="deliveryType === 'shipping' && !customerPhone" class="text-[9px] text-red-500 mt-1 font-bold">*Wajib diisi</p>
+            <label class="block text-[10px] font-bold text-slate-500 mb-1">Nama Penerima <span class="text-red-500">*</span></label>
+            <input type="text" x-model="customerName" placeholder="Nama Lengkap..." 
+                   class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+        </div>
+
+        <div>
+            <label class="block text-[10px] font-bold text-slate-500 mb-1">No. WhatsApp (Aktif) <span class="text-red-500">*</span></label>
+            <input type="number" x-model="customerPhone" placeholder="08..." 
+                   class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+        </div>
+
+        <div>
+            <label class="block text-[10px] font-bold text-slate-500 mb-1">Detail Alamat (Jalan, No. Rumah, RT/RW) <span class="text-red-500">*</span></label>
+            <textarea x-model="customerAddressDetail" rows="2" placeholder="Cth: Jl. Merpati No. 10, RT 01 RW 02, Pagar Hitam..." 
+                      class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition resize-none"></textarea>
+            <p class="text-[9px] text-slate-400 mt-1">*Kecamatan/Kelurahan dipilih di kolom "Cari Tujuan" di bawah.</p>
         </div>
     </div>
+
+    <div x-show="deliveryType === 'pickup'" class="grid grid-cols-2 gap-3 mb-3">
+        <div>
+            <input type="text" x-model="customerName" placeholder="Nama Pemesan..." 
+                   class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-red-500 transition">
+        </div>
+        <div>
+            <input type="number" x-model="customerPhone" placeholder="No. WA (Opsional)..." 
+                   class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-red-500 transition">
+        </div>
+    </div>
+
 </div>
 
                     <div x-show="customerType === 'member'" style="display: none;" x-transition>
@@ -647,6 +670,7 @@
             customerType: 'guest',
             customerName: '',
             customerPhone: '',
+            customerAddressDetail: '', // <--- TAMBAHKAN INI (Default Kosong)
             selectedCustomerId: '',
             
             // --- 4. PEMBAYARAN ---
@@ -986,6 +1010,12 @@
         
         if (!this.customerPhone || this.customerPhone.trim().length < 9) {
             alert('❌ Mohon isi NOMOR WA untuk keperluan pengiriman ekspedisi!');
+            return;
+        }
+
+        // VALIDASI ALAMAT DETAIL
+        if (!this.customerAddressDetail || this.customerAddressDetail.trim().length < 10) {
+            alert('❌ Mohon isi Detail Alamat (Jalan/No Rumah) agar kurir tidak bingung!');
             return;
         }
     }
