@@ -6,6 +6,11 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     
     <title>@yield('title', 'Sancaka POS') - Dashboard</title>
+
+    <link rel="icon" href="https://tokosancaka.com/storage/uploads/sancaka.png" type="image/png">
+    <link rel="shortcut icon" href="https://tokosancaka.com/storage/uploads/sancaka.png" type="image/png">
+
+    <link rel="apple-touch-icon" href="https://tokosancaka.com/storage/uploads/sancaka.png">
     
     <script src="https://cdn.tailwindcss.com"></script>
     

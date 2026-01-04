@@ -4,7 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Toko Sancaka - Percetakan & Ekspedisi Murah Ngawi</title>
-    <link rel="icon" type="image/png" href="https://tokosancaka.com/storage/uploads/sancaka.png">
+    <link rel="icon" href="https://tokosancaka.com/storage/uploads/sancaka.png" type="image/png">
+    <link rel="shortcut icon" href="https://tokosancaka.com/storage/uploads/sancaka.png" type="image/png">
+
+    <link rel="apple-touch-icon" href="https://tokosancaka.com/storage/uploads/sancaka.png">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
