@@ -535,7 +535,13 @@ class OrderController extends Controller
                 'quantity'    => 1,
                 'length'      => 10,
                 'width'       => 10,
-                'height'      => 10
+                'height'      => 10,
+                // TAMBAHAN WAJIB (Copy dari data destination di atas):
+                'destination_name'        => $customerName,
+                'destination_phone'       => $customerPhone,
+                'destination_address'     => $request->destination_text,
+                'destination_district_id' => $request->destination_district_id,
+                'destination_zip_code'    => $request->postal_code ?? '',
             ]
         ]
     ];
