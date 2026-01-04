@@ -8,7 +8,6 @@
 
     <link rel="icon" href="https://tokosancaka.com/storage/uploads/sancaka.png" type="image/png">
     <link rel="shortcut icon" href="https://tokosancaka.com/storage/uploads/sancaka.png" type="image/png">
-
     <link rel="apple-touch-icon" href="https://tokosancaka.com/storage/uploads/sancaka.png">
     
     <script src="https://cdn.tailwindcss.com"></script>
@@ -21,8 +20,6 @@
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-        
-        /* Hapus panah spinner di input number agar rapi */
         input[type=number]::-webkit-inner-spin-button, 
         input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         input[type=number] { -moz-appearance: textfield; }
@@ -171,8 +168,7 @@
                                 <input type="number" 
                                        x-model="item.qty" 
                                        @change="validateManualQty(item.id)" 
-                                       class="w-full text-center text-xs font-bold bg-transparent border-none p-0 focus:ring-0 text-slate-800 h-8"
-                                       >
+                                       class="w-full text-center text-xs font-bold bg-transparent border-none p-0 focus:ring-0 text-slate-800 h-8">
                                 
                                 <button @click="updateQty(item.id, -1)" class="w-full h-6 flex items-center justify-center text-slate-500 hover:text-white hover:bg-red-500 rounded-b-lg transition border-t border-slate-200">
                                     <i class="fas fa-minus text-[8px]"></i>
@@ -346,7 +342,8 @@
                             <div x-show="paymentMethod === 'saldo'" class="absolute top-2 right-2 text-blue-500"><i class="fas fa-check-circle"></i></div>
                         </div>
 
-                        <div @click="paymentMethod = 'tripay'" class="cursor-pointer border-2 rounded-2xl p-4 flex flex-col items-center gap-2 transition relative overflow-hidden group"
+                        <div @click="paymentMethod = 'tripay'; fetchTripayChannels()" 
+                             class="cursor-pointer border-2 rounded-2xl p-4 flex flex-col items-center gap-2 transition relative overflow-hidden group"
                              :class="paymentMethod === 'tripay' ? 'border-red-500 bg-red-50 text-red-700' : 'border-slate-100 bg-white hover:border-red-200'">
                             <i class="fas fa-qrcode text-2xl mb-1"></i> <span class="text-xs font-bold">QRIS / VA</span>
                             <div x-show="paymentMethod === 'tripay'" class="absolute top-2 right-2 text-red-500"><i class="fas fa-check-circle"></i></div>
@@ -354,7 +351,7 @@
 
                         <div @click="paymentMethod = 'doku'" class="cursor-pointer border-2 rounded-2xl p-4 flex flex-col items-center gap-2 transition relative overflow-hidden group"
                              :class="paymentMethod === 'doku' ? 'border-red-500 bg-red-50 text-red-700' : 'border-slate-100 bg-white hover:border-red-200'">
-                            <i class="fas fa-credit-card text-2xl mb-1"></i> <span class="text-xs font-bold">QRIS / VA</span>
+                            <i class="fas fa-credit-card text-2xl mb-1"></i> <span class="text-xs font-bold">Doku</span>
                             <div x-show="paymentMethod === 'doku'" class="absolute top-2 right-2 text-red-500"><i class="fas fa-check-circle"></i></div>
                         </div>
                     </div>
@@ -370,7 +367,13 @@
                         <span class="text-xs">Memuat Channel Pembayaran...</span>
                     </div>
 
-                    <div x-show="!isLoadingChannels" class="space-y-4">
+                    <div x-show="!isLoadingChannels && tripayChannels.length === 0" style="display: none;" class="p-4 text-center text-red-500 bg-red-50 rounded-xl border border-red-100">
+                        <i class="fas fa-exclamation-triangle text-2xl mb-2"></i>
+                        <p class="text-xs font-bold">Gagal memuat channel.</p>
+                        <button @click="fetchTripayChannels()" class="mt-2 px-3 py-1 bg-red-100 text-red-600 rounded text-[10px] font-bold">Coba Lagi</button>
+                    </div>
+
+                    <div x-show="!isLoadingChannels && tripayChannels.length > 0" class="space-y-4">
                         
                         <div x-show="getChannelsByGroup('E-Wallet').length > 0">
                             <p class="text-[9px] font-bold text-slate-400 mb-2 uppercase">E-Wallet & QRIS</p>
@@ -381,12 +384,8 @@
                                             :class="paymentChannel === channel.code ? 'border-indigo-600 ring-1 ring-indigo-600 bg-indigo-50' : 'border-indigo-100'">
                                         
                                         <img :src="channel.icon_url" :alt="channel.name" class="h-6 w-auto object-contain">
-                                        
                                         <span class="text-[10px] font-bold text-slate-600 leading-none text-center" x-text="channel.name"></span>
-                                        
-                                        <div x-show="paymentChannel === channel.code" class="absolute top-1 right-1 text-indigo-600">
-                                            <i class="fas fa-check-circle text-xs"></i>
-                                        </div>
+                                        <div x-show="paymentChannel === channel.code" class="absolute top-1 right-1 text-indigo-600"><i class="fas fa-check-circle text-xs"></i></div>
                                     </button>
                                 </template>
                             </div>
@@ -401,11 +400,7 @@
                                             :class="paymentChannel === channel.code ? 'border-indigo-600 ring-1 ring-indigo-600 bg-indigo-50' : 'border-indigo-100'">
                                         
                                         <img :src="channel.icon_url" :alt="channel.name" class="h-8 w-auto object-contain">
-                                        <span class="text-[9px] font-bold text-slate-600 leading-none text-center hidden" x-text="channel.name"></span>
-                                        
-                                        <div x-show="paymentChannel === channel.code" class="absolute top-1 right-1 text-indigo-600">
-                                            <i class="fas fa-check-circle text-xs"></i>
-                                        </div>
+                                        <div x-show="paymentChannel === channel.code" class="absolute top-1 right-1 text-indigo-600"><i class="fas fa-check-circle text-xs"></i></div>
                                     </button>
                                 </template>
                             </div>
@@ -420,18 +415,13 @@
                                             :class="paymentChannel === channel.code ? 'border-indigo-600 ring-1 ring-indigo-600 bg-indigo-50' : 'border-indigo-100'">
                                         
                                         <img :src="channel.icon_url" :alt="channel.name" class="h-6 w-auto object-contain">
-                                        
-                                        <div x-show="paymentChannel === channel.code" class="absolute top-1 right-1 text-indigo-600">
-                                            <i class="fas fa-check-circle text-xs"></i>
-                                        </div>
+                                        <div x-show="paymentChannel === channel.code" class="absolute top-1 right-1 text-indigo-600"><i class="fas fa-check-circle text-xs"></i></div>
                                     </button>
                                 </template>
                             </div>
                         </div>
-
                     </div>
-                    
-                    <p class="text-[9px] text-indigo-400 mt-3 text-center" x-show="!isLoadingChannels">*Metode pembayaran otomatis disinkronkan dengan Tripay.</p>
+                    <p class="text-[9px] text-indigo-400 mt-3 text-center" x-show="!isLoadingChannels">*Pilih metode pembayaran.</p>
                 </div>
 
                 <div x-show="paymentMethod === 'affiliate_balance'" x-transition class="bg-purple-50 border-2 border-purple-200 rounded-2xl p-4 shadow-sm text-center">
@@ -501,23 +491,23 @@
             customerPhone: '',
             selectedCustomerId: '',
             paymentMethod: 'cash',
-            paymentChannel: '', // <--- TAMBAHKAN INI (Default Kosong)
-            // --- TAMBAHAN DATA BARU ---
-            tripayChannels: [],      // Menampung data dari API
-            isLoadingChannels: false, // Loading state
-            // --------------------------
+            
+            // --- DATA TRIPAY ---
+            paymentChannel: '',
+            tripayChannels: [],
+            isLoadingChannels: false,
+            // -------------------
+
             cashAmount: '',
             affiliatePin: '', 
 
             // --- COMPUTED ---
             get subtotal() { return this.cart.reduce((sum, item) => sum + (item.price * item.qty), 0); },
             get cartTotalQty() { return this.cart.reduce((sum, item) => sum + item.qty, 0); },
-            
             get grandTotal() { 
                 let total = this.subtotal - this.discountAmount;
                 return total < 0 ? 0 : total;
             },
-            
             get change() {
                 let received = parseInt(this.cashAmount) || 0;
                 return received - this.grandTotal;
@@ -565,54 +555,38 @@
                 this.affiliatePin = ''; // Reset input
             },
 
+            // --- LOGIKA TRIPAY (FETCH API) ---
             async fetchTripayChannels() {
-                // Hapus baris ini sementara agar selalu fetch ulang saat diklik
-                // if (this.tripayChannels.length > 0) return;
+                // Jangan fetch ulang jika data sudah ada
+                if (this.tripayChannels.length > 0) return;
 
                 this.isLoadingChannels = true;
-                console.log('DEBUG: Mulai fetch channel...');
-
                 try {
                     const response = await fetch("{{ route('orders.tripay-channels') }}");
                     const result = await response.json();
                     
-                    console.log('DEBUG: Hasil dari Server:', result);
-
                     if(result.status === 'success') {
                         this.tripayChannels = result.data;
-                        
-                        // Cek isi Group untuk memastikan nama grup benar
-                        if (this.tripayChannels.length > 0) {
-                            const groups = [...new Set(this.tripayChannels.map(item => item.group))];
-                            console.log('DEBUG: Group yang tersedia:', groups);
-                        } else {
-                            console.warn('DEBUG: Data channel KOSONG dari Tripay.');
-                            alert('Data Channel Tripay Kosong. Cek Log Laravel.');
-                        }
                     } else {
-                        console.error('DEBUG: Error status:', result);
-                        alert('Gagal ambil data: ' + (result.message || 'Unknown error'));
+                        console.error('Tripay Error:', result);
                     }
                 } catch (error) {
-                    console.error('DEBUG: Fetch error:', error);
+                    console.error('Fetch error:', error);
                 } finally {
                     this.isLoadingChannels = false;
                 }
             },
             
-            // Helper Filter yang Lebih Aman (Case Insensitive)
             getChannelsByGroup(groupName) {
                 if (!this.tripayChannels || this.tripayChannels.length === 0) return [];
                 
                 return this.tripayChannels.filter(c => {
-                    // Pastikan channel aktif
                     if (c.active !== true) return false;
-
-                    // Bandingkan Group (Contoh: "Virtual Account" vs "Virtual Account")
-                    // Kita ubah ke lowercase biar aman
+                    // Filter case-insensitive (misal: "Virtual Account" cocok dengan "virtual account")
                     return c.group.toLowerCase() === groupName.toLowerCase();
                 });
             },
+            // ---------------------------------
 
             // --- FUNGSI CEK KUPON ---
             async checkCoupon() {
@@ -717,7 +691,10 @@
             openPaymentModal() {
                 if(this.cart.length === 0) { alert('Keranjang masih kosong!'); return; }
                 this.showPaymentModal = true;
+                // Reset input jika metode bukan cash
                 if(this.paymentMethod !== 'cash') this.cashAmount = '';
+                // Trigger fetch jika user sebelumnya menutup modal saat tripay terpilih
+                if(this.paymentMethod === 'tripay') this.fetchTripayChannels();
             },
 
             handleFileUpload(event) {
@@ -735,11 +712,11 @@
                 if (this.paymentMethod === 'cash') {
                     if (!this.cashAmount || this.change < 0) { alert('❌ Uang tunai kurang!'); return; }
                 } 
-                // --- TAMBAHAN VALIDASI TRIPAY ---
+                // --- VALIDASI TRIPAY ---
                 else if (this.paymentMethod === 'tripay') {
                     if (!this.paymentChannel) { alert('❌ Silakan pilih Bank / Channel Pembayaran dulu!'); return; }
                 } 
-                // --------------------------------
+                // -----------------------
                 else if (this.paymentMethod === 'saldo') {
                     if (!this.selectedCustomerId) { alert('❌ Pilih Member!'); return; }
                     if (this.getSelectedMemberSaldo() < this.grandTotal) { alert('❌ Saldo Topup kurang!'); return; }
@@ -757,11 +734,11 @@
                 formData.append('coupon', this.couponCode);
                 formData.append('payment_method', this.paymentMethod);
 
-                // --- TAMBAHKAN INI ---
+                // --- KIRIM CHANNEL KE BACKEND ---
                 if (this.paymentMethod === 'tripay') {
                     formData.append('payment_channel', this.paymentChannel);
                 }
-                // ---------------------
+                // --------------------------------
                 
                 if(this.customerType === 'member' && this.selectedCustomerId) {
                     formData.append('customer_id', this.selectedCustomerId);
