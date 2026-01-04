@@ -338,17 +338,44 @@
 
                     <div x-show="deliveryType === 'shipping'" x-transition class="space-y-3">
                         
-                        <div>
-                            <label class="text-[10px] font-bold text-slate-500 uppercase">Kecamatan Tujuan</label>
+                        <div class="relative">
+                            <label class="text-[10px] font-bold text-slate-500 uppercase">Cari Kecamatan / Kelurahan</label>
+                            
                             <div class="flex gap-2 mt-1">
-                                <input type="number" x-model="destinationDistrictId" placeholder="ID Kecamatan..." 
-                                       class="w-full px-3 py-2 text-xs rounded-lg border border-blue-200 focus:ring-blue-500 font-bold text-slate-700">
-                                <button @click="checkOngkir()" :disabled="isLoadingShipping" 
-                                        class="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 disabled:opacity-50 transition shadow-sm">
+                                <div class="relative w-full">
+                                    <input type="text" 
+                                           x-model="searchQuery" 
+                                           @input.debounce.500ms="searchLocation()" 
+                                           placeholder="Ketik nama desa / kecamatan..." 
+                                           class="w-full px-3 py-2 text-xs rounded-lg border border-blue-200 focus:ring-blue-500 font-bold text-slate-700"
+                                           :class="{'border-red-500': !destinationDistrictId && searchQuery.length > 3}">
+                                    
+                                    <div x-show="isSearchingLocation" class="absolute right-3 top-2.5 text-blue-400">
+                                        <i class="fas fa-circle-notch fa-spin text-xs"></i>
+                                    </div>
+                                </div>
+
+                                <button @click="checkOngkir()" :disabled="!destinationDistrictId || isLoadingShipping" 
+                                        class="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 disabled:opacity-50 transition shadow-sm shrink-0">
                                     <i class="fas" :class="isLoadingShipping ? 'fa-spinner fa-spin' : 'fa-search'"></i> Cek
                                 </button>
                             </div>
-                            <p class="text-[9px] text-blue-400 mt-1">*Masukkan ID Kecamatan (Contoh: 501)</p>
+
+                            <div x-show="searchResults.length > 0" 
+                                 @click.outside="searchResults = []"
+                                 class="absolute z-50 w-full mt-1 bg-white border border-blue-100 rounded-xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar">
+                                <template x-for="loc in searchResults" :key="loc.id">
+                                    <button @click="selectLocation(loc)" 
+                                            class="w-full text-left px-4 py-3 text-[11px] hover:bg-blue-50 border-b border-slate-50 last:border-0 transition flex flex-col">
+                                        <span class="font-bold text-slate-700" x-text="loc.text"></span>
+                                        <span class="text-[9px] text-slate-400" x-text="loc.zip_code ? 'Kode Pos: ' + loc.zip_code : 'Kecamatan'"></span>
+                                    </button>
+                                </template>
+                            </div>
+
+                            <div x-show="destinationDistrictId" class="mt-1 flex items-center gap-1 text-[10px] text-emerald-600 font-bold">
+                                <i class="fas fa-check-circle"></i> Lokasi terpilih. Klik tombol Cek.
+                            </div>
                         </div>
 
                         <div x-show="courierList.length > 0" class="space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-1 bg-white p-2 rounded-xl border border-blue-100">
@@ -376,7 +403,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                     <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Pilih Metode Bayar</label>
                     <div class="grid grid-cols-2 gap-3">
                         <div @click="paymentMethod = 'cash'" class="cursor-pointer border-2 rounded-2xl p-4 flex flex-col items-center gap-2 transition relative overflow-hidden group"
