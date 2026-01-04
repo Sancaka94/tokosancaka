@@ -963,7 +963,21 @@
             // ============================================================
             
             async checkout() {
-                // 1. VALIDASI TUNAI
+    // ============================================================
+    // 1. VALIDASI WAJIB: GUEST + SHIPPING
+    // ============================================================
+    if (this.customerType === 'guest' && this.deliveryType === 'shipping') {
+        if (!this.customerName || this.customerName.trim().length < 3) {
+            alert('❌ Mohon isi NAMA PENERIMA untuk keperluan pengiriman ekspedisi!');
+            // Fokuskan kursor ke input nama (opsional, jika ada ID)
+            return; 
+        }
+        
+        if (!this.customerPhone || this.customerPhone.trim().length < 9) {
+            alert('❌ Mohon isi NOMOR WA untuk keperluan pengiriman ekspedisi!');
+            return;
+        }
+    }
                 if (this.paymentMethod === 'cash') {
                     if (!this.cashAmount || this.change < 0) { alert('❌ Uang tunai kurang!'); return; }
                 } 

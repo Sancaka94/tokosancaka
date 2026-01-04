@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log; // Logging aktif
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Str;
 use Carbon\Carbon; // <--- Pastikan baris ini ada di paling atas file
 
@@ -338,8 +339,20 @@ class OrderController extends Controller
             'shipping_cost'   => 'required_if:delivery_type,shipping|numeric',
             'courier_name'    => 'required_if:delivery_type,shipping|string',
             'destination_text'=> 'nullable|string', 
-            'destination_district_id' => 'required_if:delivery_type,shipping',
-        ]);
+            'destination_district_id' => 'required_if:delivery_type,shipping','customer_name' => [
+            Rule::requiredIf(function () use ($request) {
+                return $request->delivery_type === 'shipping' && empty($request->customer_id);
+            }),
+        ],
+        'customer_phone' => [
+            Rule::requiredIf(function () use ($request) {
+                return $request->delivery_type === 'shipping' && empty($request->customer_id);
+            }),
+        ],
+    ], [
+        'customer_name.required_if' => 'Nama wajib diisi untuk pengiriman.',
+        'customer_phone.required_if' => 'No WA wajib diisi untuk pengiriman.',
+    ]);
 
         $cartItems = json_decode($request->items, true);
         if (!is_array($cartItems) || count($cartItems) < 1) {
