@@ -260,33 +260,43 @@ class OrderController extends Controller
                 // 2. BARU LOG HASILNYA DISINI (DI BAWAHNYA)
                 Log::info("RESPONSE MENTAH INSTANT:", ['body' => $responseInstant]);
 
-                if (isset($responseInstant['status']) && $responseInstant['status'] == true) {
-                    $instantPrices = $responseInstant['data']['price'] ?? []; 
-                    if (isset($instantPrices['price'])) { $instantPrices = [$instantPrices]; } 
+                // --- UPDATE PARSING JSON SESUAI LOG TERBARU ---
+                $bodyResponse = $responseInstant['body'] ?? [];
+                
+                if (isset($bodyResponse['status']) && $bodyResponse['status'] == true) {
+                    $instantResults = $bodyResponse['result'] ?? []; 
+                    
+                    Log::info("Ongkir INSTANT Raw Result Count: " . count($instantResults));
 
-                    Log::info("Ongkir INSTANT Sukses: " . count($instantPrices) . " opsi ditemukan.");
+                    foreach ($instantResults as $courierData) {
+                        $courierName = strtolower($courierData['name'] ?? 'instant'); // gosend / grab
+                        $costs = $courierData['costs'] ?? [];
 
-                    foreach ($instantPrices as $inst) {
-                         if (isset($inst['price']) && $inst['price'] > 0) {
-                             $serviceCode = strtolower($inst['service'] ?? 'gojek');
-                             $mapData = $courierMap[$serviceCode] ?? null;
+                        foreach ($costs as $costData) {
+                            $priceData = $costData['price'] ?? [];
+                            $totalPrice = $priceData['total_price'] ?? 0;
 
-                             $formattedRates[] = [
-                                'code'    => 'kiriminaja_instant',
-                                'name'    => $mapData ? $mapData['name'] : strtoupper($serviceCode),
-                                'logo'    => $mapData ? $mapData['logo_url'] : null,
-                                'service' => 'Instant (' . ($inst['name'] ?? 'Instant') . ')',
-                                'cost'    => (int) $inst['price'],
-                                'etd'     => 'Instant',
-                             ];
-                         }
+                            if ($totalPrice > 0) {
+                                // Mapping Logo Manual (karena API tidak kasih logo)
+                                $logoUrl = null;
+                                if(str_contains($courierName, 'go')) $logoUrl = 'https://tokosancaka.com/public/storage/logo-ekspedisi/gosend.png';
+                                if(str_contains($courierName, 'grab')) $logoUrl = 'https://tokosancaka.com/public/storage/logo-ekspedisi/grab.png';
+
+                                $formattedRates[] = [
+                                    'code'    => 'kiriminaja_instant',
+                                    'name'    => strtoupper($courierName), // GOSEND / GRAB
+                                    'logo'    => $logoUrl,
+                                    'service' => 'Instant (' . ($costData['service_type'] ?? 'Motor') . ')',
+                                    'cost'    => (int) $totalPrice,
+                                    'etd'     => $costData['estimation'] ?? 'Instant',
+                                ];
+                                Log::info("INSTANT ADDED: $courierName - Rp $totalPrice");
+                            }
+                        }
                     }
                 } else {
                     Log::warning("Ongkir INSTANT Gagal/Tidak Ada Driver", ['response' => $responseInstant]);
                 }
-            } else {
-                Log::info("Ongkir INSTANT Skipped: Koordinat tidak lengkap.");
-            }
 
             // C. GABUNGKAN HASIL & SORTIR
             usort($formattedRates, function ($a, $b) {
