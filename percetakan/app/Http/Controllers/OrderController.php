@@ -431,7 +431,8 @@ class OrderController extends Controller
             }
 
             // 6. BUAT ORDER KE DB
-            $orderNumber = 'INV-' . date('YmdHis') . rand(100, 999);
+            // UBAH 'Y' (4 digit tahun) menjadi 'y' (2 digit tahun) agar total karakter hanya 19
+            $orderNumber = 'INV-' . date('ymdHis') . rand(100, 999);
             $shippingRef = null;
 
             // =========================================================
