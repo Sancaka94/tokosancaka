@@ -336,55 +336,68 @@
                         </button>
                     </div>
 
-                    <div x-show="deliveryType === 'shipping'" x-transition class="space-y-3">
+                    <div x-show="deliveryType === 'shipping'" x-transition class="space-y-4">
                         
-                        <div class="relative">
-                            <label class="text-[10px] font-bold text-slate-500 uppercase">Cari Kecamatan / Kelurahan</label>
+                        <div class="relative z-50"> <label class="text-[10px] font-bold text-slate-500 uppercase">Cari Kecamatan / Kelurahan</label>
                             
-                            <div class="flex gap-2 mt-1">
-                                <div class="relative w-full">
-                                    <input type="text" 
-                                           x-model="searchQuery" 
-                                           @input.debounce.500ms="searchLocation()" 
-                                           placeholder="Ketik nama desa / kecamatan..." 
-                                           class="w-full px-3 py-2 text-xs rounded-lg border border-blue-200 focus:ring-blue-500 font-bold text-slate-700"
-                                           :class="{'border-red-500': !destinationDistrictId && searchQuery.length > 3}">
-                                    
-                                    <div x-show="isSearchingLocation" class="absolute right-3 top-2.5 text-blue-400">
-                                        <i class="fas fa-circle-notch fa-spin text-xs"></i>
-                                    </div>
+                            <div class="relative mt-1">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-search text-slate-400"></i>
                                 </div>
 
-                                <button @click="checkOngkir()" :disabled="!destinationDistrictId || isLoadingShipping" 
-                                        class="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 disabled:opacity-50 transition shadow-sm shrink-0">
-                                    <i class="fas" :class="isLoadingShipping ? 'fa-spinner fa-spin' : 'fa-search'"></i> Cek
+                                <input type="text" 
+                                       x-model="searchQuery" 
+                                       @input.debounce.300ms="searchLocation()" 
+                                       placeholder="Ketik min. 3 huruf (cth: Ketanggi)" 
+                                       class="w-full pl-9 pr-10 py-3 text-xs rounded-xl border border-blue-200 focus:ring-2 focus:ring-blue-500 font-bold text-slate-700 shadow-sm transition-all"
+                                       autocomplete="off">
+                                
+                                <div x-show="isSearchingLocation" class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                    <i class="fas fa-circle-notch fa-spin text-blue-500"></i>
+                                </div>
+                                
+                                <button x-show="!isSearchingLocation && searchQuery.length > 0" 
+                                        @click="searchQuery = ''; searchResults = []; destinationDistrictId = '';"
+                                        class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-red-500">
+                                    <i class="fas fa-times-circle"></i>
                                 </button>
                             </div>
 
                             <div x-show="searchResults.length > 0" 
+                                 x-transition.opacity.duration.200ms
                                  @click.outside="searchResults = []"
-                                 class="absolute z-50 w-full mt-1 bg-white border border-blue-100 rounded-xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar">
+                                 class="absolute left-0 right-0 mt-1 bg-white border border-slate-100 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar z-50 ring-1 ring-black/5">
+                                
                                 <template x-for="loc in searchResults" :key="loc.id">
                                     <button @click="selectLocation(loc)" 
-                                            class="w-full text-left px-4 py-3 text-[11px] hover:bg-blue-50 border-b border-slate-50 last:border-0 transition flex flex-col">
-                                        <span class="font-bold text-slate-700" x-text="loc.text"></span>
-                                        <span class="text-[9px] text-slate-400" x-text="loc.zip_code ? 'Kode Pos: ' + loc.zip_code : 'Kecamatan'"></span>
+                                            class="w-full text-left px-4 py-3 hover:bg-blue-50 border-b border-slate-50 last:border-0 transition-colors group flex items-center gap-3">
+                                        
+                                        <div class="h-8 w-8 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center group-hover:bg-blue-200 group-hover:text-blue-600 transition">
+                                            <i class="fas fa-map-marker-alt"></i>
+                                        </div>
+                                        
+                                        <div class="flex-1 leading-tight">
+                                            <p class="text-[11px] font-bold text-slate-700 group-hover:text-blue-700" x-text="loc.text"></p>
+                                            <p class="text-[9px] text-slate-400" x-text="loc.zip_code ? 'Kode Pos: ' + loc.zip_code : 'Kecamatan'"></p>
+                                        </div>
                                     </button>
                                 </template>
                             </div>
 
-                            <div x-show="destinationDistrictId" class="mt-1 flex items-center gap-1 text-[10px] text-emerald-600 font-bold">
-                                <i class="fas fa-check-circle"></i> Lokasi terpilih. Klik tombol Cek.
+                            <div x-show="searchQuery.length > 3 && !isSearchingLocation && searchResults.length === 0 && !destinationDistrictId" 
+                                 class="absolute mt-1 w-full bg-white p-3 rounded-xl shadow-lg border border-red-100 text-center z-50">
+                                <span class="text-xs text-red-500 font-medium">Lokasi tidak ditemukan. Coba kata kunci lain.</span>
                             </div>
                         </div>
 
-                        <div x-show="courierList.length > 0" class="space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-1 bg-white p-2 rounded-xl border border-blue-100">
+                        <div x-show="courierList.length > 0" x-transition class="space-y-2 max-h-56 overflow-y-auto custom-scrollbar pr-1 bg-white p-2 rounded-xl border border-blue-100">
+                            <p class="text-[10px] font-bold text-slate-400 px-1 mb-1">PILIH KURIR:</p>
                             <template x-for="courier in courierList" :key="courier.service">
                                 <div @click="selectCourier(courier)" 
-                                     class="flex justify-between items-center p-3 rounded-lg border cursor-pointer transition hover:bg-blue-50 group"
-                                     :class="selectedCourier && selectedCourier.service === courier.service ? 'bg-blue-50 border-blue-500 ring-1 ring-blue-500' : 'bg-white border-slate-100'">
+                                     class="flex justify-between items-center p-3 rounded-lg border cursor-pointer transition hover:bg-blue-50 group relative overflow-hidden"
+                                     :class="selectedCourier && selectedCourier.service === courier.service ? 'bg-blue-50 border-blue-500 ring-1 ring-blue-500' : 'bg-white border-slate-100 hover:border-blue-300'">
                                     
-                                    <div class="flex items-center gap-3">
+                                    <div class="flex items-center gap-3 relative z-10">
                                         <div class="h-8 w-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs shadow-sm">
                                             <i class="fas fa-shipping-fast"></i>
                                         </div>
@@ -394,13 +407,19 @@
                                         </div>
                                     </div>
                                     
-                                    <div class="text-right">
+                                    <div class="text-right relative z-10">
                                         <p class="text-xs font-black text-slate-800" x-text="rupiah(courier.cost)"></p>
                                         <i x-show="selectedCourier && selectedCourier.service === courier.service" class="fas fa-check-circle text-blue-600 text-xs mt-1"></i>
                                     </div>
                                 </div>
                             </template>
                         </div>
+                        
+                        <div x-show="isLoadingShipping" class="flex flex-col items-center justify-center py-4 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                            <i class="fas fa-circle-notch fa-spin text-blue-500 text-xl mb-1"></i>
+                            <span class="text-[10px] text-slate-400 font-medium">Menghitung Ongkir...</span>
+                        </div>
+
                     </div>
                 </div>
 
