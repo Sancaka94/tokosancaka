@@ -503,6 +503,7 @@ class OrderController extends Controller
                     
                     // 1. Tentukan Service Code (Logika Robust/Kuat)
                     $serviceCode = $request->courier_code; // Coba ambil dari request langsung
+                    $serviceType = $request->service_type; // <--- AMBIL SERVICE TYPE DARI REQUEST
 
                     // Fallback: Jika kosong, parse dari string nama kurir
                     if (empty($serviceCode) && $request->courier_name) {
