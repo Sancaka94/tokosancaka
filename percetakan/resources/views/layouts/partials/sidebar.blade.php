@@ -45,6 +45,15 @@
             Marketing & Relasi
         </div>
 
+        <a href="{{ route('affiliate.create') }}" 
+           class="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors duration-200
+           {{ request()->routeIs('affiliate.create') 
+              ? 'bg-blue-600 text-white shadow-md' 
+              : 'text-slate-300 hover:bg-slate-700 hover:text-white' }}">
+            <i class="fas fa-user-plus w-5 text-center {{ request()->routeIs('affiliate.create') ? 'text-white' : 'text-teal-400' }}"></i>
+            <span>Registrasi Partner</span>
+        </a>
+
         <a href="{{ route('affiliate.index') }}" 
            class="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors duration-200
            {{ request()->routeIs('affiliate.index') 

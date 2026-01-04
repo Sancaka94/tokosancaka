@@ -17,10 +17,6 @@ Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth'])
     ->name('dashboard');
 
-
-// Halaman POS
-Route::get('/orders/create', [OrderController::class, 'create'])->name('orders.create');
-
 // Halaman Admin (Posting Produk)
 Route::post('/products/store', [ProductController::class, 'store'])->name('products.store');
 
@@ -49,7 +45,9 @@ Route::middleware('auth')->group(function () {
     
 });
 
+// Halaman POS
 Route::get('/orders/create', [OrderController::class, 'create'])->name('orders.create');
+
 
 // Proses Simpan Pesanan (API Endpoint untuk AJAX)
 Route::post('/orders/store', [OrderController::class, 'store'])->name('orders.store');
