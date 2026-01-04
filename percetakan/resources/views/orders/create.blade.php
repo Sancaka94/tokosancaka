@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Kasir POS - Sancaka</title>
+
+    <link rel="icon" href="https://tokosancaka.com/storage/uploads/sancaka.png" type="image/png">
+    <link rel="shortcut icon" href="https://tokosancaka.com/storage/uploads/sancaka.png" type="image/png">
+
+    <link rel="apple-touch-icon" href="https://tokosancaka.com/storage/uploads/sancaka.png">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
