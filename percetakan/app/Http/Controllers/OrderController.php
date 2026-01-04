@@ -306,43 +306,63 @@ class OrderController extends Controller
         }
     }
 
-    /**
-     * PRIVATE: Logic Request ke API Tripay
+   /**
+     * PRIVATE: Logic Request ke API Tripay (Menggunakan Config)
      */
     private function _createTripayTransaction($order, $methodChannel, $amount, $custName, $custEmail, $custPhone, $items)
     {
-        // Ambil Config dari .env
-        $apiKey       = env('TRIPAY_API_KEY');
-        $privateKey   = env('TRIPAY_PRIVATE_KEY');
-        $merchantCode = env('TRIPAY_MERCHANT_CODE');
-        $mode         = env('TRIPAY_ENV', 'sandbox'); // sandbox atau production
-        
-        $baseUrl = ($mode == 'production') 
+        // 1. Ambil dari Config (bukan env langsung)
+        $apiKey       = config('tripay.api_key');
+        $privateKey   = config('tripay.private_key');
+        $merchantCode = config('tripay.merchant_code');
+        $mode         = config('tripay.mode');
+
+        // 2. Validasi Config (Mencegah error "Undefined Authorization token")
+        if (empty($apiKey) || empty($privateKey) || empty($merchantCode)) {
+            Log::error('TRIPAY CONFIG MISSING: Pastikan file .env sudah diisi dan php artisan config:clear sudah dijalankan.');
+            return [
+                'success' => false,
+                'message' => 'Gagal memproses pembayaran: Konfigurasi server belum lengkap.'
+            ];
+        }
+
+        // 3. Tentukan URL berdasarkan mode
+        $baseUrl = ($mode === 'production') 
             ? 'https://tripay.co.id/api/transaction/create' 
             : 'https://tripay.co.id/api-sandbox/transaction/create';
 
-        // Hitung Signature: merchant_code + merchant_ref + amount
+        // 4. Hitung Signature
+        // Rumus: merchant_code + merchant_ref + amount
         $signature = hash_hmac('sha256', $merchantCode . $order->order_number . $amount, $privateKey);
 
         $payload = [
-            'method'         => $methodChannel, // Contoh: BRIVA, QRIS, BNI
+            'method'         => $methodChannel,
             'merchant_ref'   => $order->order_number,
             'amount'         => $amount,
             'customer_name'  => $custName,
             'customer_email' => $custEmail,
             'customer_phone' => $custPhone,
             'order_items'    => $items,
-            'return_url'     => url('/'), // Redirect setelah bayar
-            'expired_time'   => (time() + (24 * 60 * 60)), // Expired 24 Jam
+            'return_url'     => url('/'), 
+            'expired_time'   => (time() + (24 * 60 * 60)), // 24 Jam
             'signature'      => $signature
         ];
 
         try {
+            // 5. Kirim Request
             $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $apiKey
+                'Authorization' => 'Bearer ' . $apiKey // Token diambil dari config
             ])->timeout(30)->post($baseUrl, $payload);
 
             $body = $response->json();
+
+            // Log Error jika HTTP Gagal (Misal 401 Unauthorized / 500 Server Error)
+            if (!$response->successful()) {
+                Log::error('Tripay API Error:', [
+                    'status' => $response->status(), 
+                    'body' => $body
+                ]);
+            }
 
             if ($response->successful() && ($body['success'] ?? false) === true) {
                 return [
@@ -353,12 +373,12 @@ class OrderController extends Controller
 
             return [
                 'success' => false,
-                'message' => $body['message'] ?? 'Tripay Error (Unknown)'
+                'message' => $body['message'] ?? 'Gagal membuat transaksi Tripay.'
             ];
 
         } catch (\Exception $e) {
-            Log::error("Tripay Connection Error: " . $e->getMessage());
-            return ['success' => false, 'message' => 'Gagal koneksi ke server pembayaran.'];
+            Log::error("Tripay Connection Exception: " . $e->getMessage());
+            return ['success' => false, 'message' => 'Gagal terhubung ke server pembayaran.'];
         }
     }
 
