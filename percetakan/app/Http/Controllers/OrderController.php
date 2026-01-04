@@ -51,32 +51,107 @@ class OrderController extends Controller
 
 
     /**
+     * API: Pencarian Lokasi (Kecamatan/Kelurahan)
+     * Digunakan agar customer bisa input nama desa/kecamatan
+     */
+    public function searchLocation(Request $request, KiriminAjaService $kiriminAja)
+    {
+        $keyword = $request->query('query'); // Inputan customer
+
+        if (empty($keyword) || strlen($keyword) < 3) {
+            return response()->json(['status' => 'error', 'data' => []]);
+        }
+
+        try {
+            // Memanggil service searchAddress yang ada di kode Service Anda
+            $response = $kiriminAja->searchAddress($keyword);
+
+            if (isset($response['status']) && $response['status'] == true) {
+                return response()->json([
+                    'status' => 'success',
+                    'data'   => $response['data'] // Berisi list alamat beserta ID-nya
+                ]);
+            }
+
+            return response()->json(['status' => 'error', 'data' => []]);
+
+        } catch (\Exception $e) {
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    }
+
+    /**
      * API: Cek Ongkir KiriminAja
+     * Asal: Ketanggi, Ngawi (Fixed dari ENV)
+     * Tujuan: Dinamis (Dari ID hasil search)
      */
     public function checkShippingRates(Request $request, KiriminAjaService $kiriminAja)
     {
         $request->validate([
             'weight' => 'required|numeric',
-            'destination_district_id' => 'required' // ID Kecamatan Tujuan
+            // Kita butuh ID kecamatan & kelurahan tujuan untuk akurasi harga
+            'destination_district_id' => 'required', 
+            'destination_subdistrict_id' => 'nullable', // Opsional tapi disarankan ada
         ]);
 
         try {
-            // Asumsi: Origin diambil dari config toko Anda
-            $origin = config('kiriminaja.origin_district_id'); 
-            
-            // Panggil Service KiriminAja (Sesuaikan nama method dengan Service Anda)
-            // Contoh: $kiriminAja->getPrice($origin, $destination, $weight)
-            $rates = $kiriminAja->getPrice(
-                $origin, 
-                $request->destination_district_id, 
-                $request->weight
+            // 1. SETTING KOTA ASAL (KETANGGI, NGAWI)
+            // Masukkan ID Kecamatan & Kelurahan Ketanggi di file .env Anda
+            $originDistrict    = env('KIRIMINAJA_ORIGIN_DISTRICT', 574);    // ID Kec. Ngawi (Contoh)
+            $originSubDistrict = env('KIRIMINAJA_ORIGIN_SUBDISTRICT', 0);   // ID Kel. Ketanggi (Opsional jika service mengizinkan 0)
+
+            // 2. SETTING KOTA TUJUAN (DARI INPUTAN)
+            $destDistrict    = $request->destination_district_id;
+            $destSubDistrict = $request->destination_subdistrict_id ?? 0;
+
+            // 3. PARAMETER BARANG
+            // KiriminAja v6.1 butuh dimensi
+            $length    = 10; 
+            $width     = 10;
+            $height    = 10;
+            $itemValue = 100000; // Estimasi harga barang (untuk asuransi)
+
+            // 4. PANGGIL API (Sesuai Service Anda: getExpressPricing)
+            $response = $kiriminAja->getExpressPricing(
+                $originDistrict,    // Origin Kecamatan
+                $originSubDistrict, // Origin Kelurahan (Ketanggi)
+                $destDistrict,      // Destination Kecamatan
+                $destSubDistrict,   // Destination Kelurahan
+                $request->weight,   // Berat
+                $length,            
+                $width,             
+                $height,            
+                $itemValue          
             );
 
+            // 5. FORMAT HASIL
+            if (isset($response['status']) && $response['status'] == true) {
+                $formattedRates = [];
+                $results = $response['results'] ?? [];
+
+                foreach ($results as $rate) {
+                    $formattedRates[] = [
+                        'code'    => 'kiriminaja',
+                        'name'    => $rate['courier'], // JNE, J&T, SiCepat
+                        'service' => $rate['service'], // REG, BEST
+                        'cost'    => $rate['cost'],
+                        'etd'     => $rate['etd'] ?? '-',
+                    ];
+                }
+
+                return response()->json([
+                    'status' => 'success',
+                    'data'   => $formattedRates
+                ]);
+            }
+
             return response()->json([
-                'status' => 'success',
-                'data' => $rates
+                'status' => 'error', 
+                'message' => $response['text'] ?? 'Kurir tidak tersedia untuk rute ini.'
             ]);
+
         } catch (\Exception $e) {
+            Log::error('Check Ongkir Error: ' . $e->getMessage());
             return response()->json(['status' => 'error', 'message' => $e->getMessage()]);
         }
     }

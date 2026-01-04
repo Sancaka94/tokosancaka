@@ -54,9 +54,11 @@ Route::get('/cara', function () {
     return view('cara');
 });
 
-// Cek Ongkir
-Route::post('/orders/check-ongkir', [App\Http\Controllers\OrderController::class, 'checkShippingRates'])->name('orders.check-ongkir');
+// Route untuk mencari alamat (Autocomplete)
+Route::get('/orders/search-location', [App\Http\Controllers\OrderController::class, 'searchLocation'])->name('orders.search-location');
 
+// Route Cek Ongkir (yang sudah ada)
+Route::post('/orders/check-ongkir', [App\Http\Controllers\OrderController::class, 'checkShippingRates'])->name('orders.check-ongkir');
 // Halaman POS
 Route::get('/orders/create', [OrderController::class, 'create'])->name('orders.create');
 
