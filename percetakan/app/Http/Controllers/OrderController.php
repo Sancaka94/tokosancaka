@@ -515,7 +515,7 @@ class OrderController extends Controller
                         'item_value'     => $subtotal,
                         'weight'         => $totalWeight,
                         'origin_name'    => 'Toko Sancaka',
-                        'origin_phone'   => '081234567890',
+                        'origin_phone'   => '085745808809',
                         'origin_address' => config('services.kiriminaja.origin_address'),
                         'origin_district_id' => config('services.kiriminaja.origin_district_id'),
                         'destination_name'    => $customerName,
