@@ -358,11 +358,11 @@
                 </div>
 
                 <div x-show="paymentMethod === 'tripay'" x-transition 
-                     class="bg-indigo-50 border-2 border-indigo-100 rounded-2xl p-4 shadow-sm mt-3 min-h-[100px]">
+                     class="bg-red-50 border-2 border-red-100 rounded-2xl p-4 shadow-sm mt-3 min-h-[100px]">
                     
-                    <label class="block text-[10px] font-bold text-indigo-600 uppercase tracking-widest mb-3">Pilih Bank / Channel</label>
+                    <label class="block text-[10px] font-bold text-red-600 uppercase tracking-widest mb-3">Pilih Bank / Channel</label>
                     
-                    <div x-show="isLoadingChannels" class="flex flex-col items-center justify-center py-6 text-indigo-300">
+                    <div x-show="isLoadingChannels" class="flex flex-col items-center justify-center py-6 text-red-300">
                         <i class="fas fa-circle-notch fa-spin text-2xl mb-2"></i>
                         <span class="text-xs">Memuat Channel Pembayaran...</span>
                     </div>
@@ -380,12 +380,11 @@
                             <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
                                 <template x-for="channel in getChannelsByGroup('E-Wallet')" :key="channel.code">
                                     <button @click="paymentChannel = channel.code" 
-                                            class="p-2 rounded-xl border transition flex flex-col items-center justify-center gap-2 h-20 bg-white hover:border-indigo-300 relative overflow-hidden"
-                                            :class="paymentChannel === channel.code ? 'border-indigo-600 ring-1 ring-indigo-600 bg-indigo-50' : 'border-indigo-100'">
-                                        
+                                            class="p-2 rounded-xl border transition flex flex-col items-center justify-center gap-2 h-20 bg-white hover:border-red-300 relative overflow-hidden"
+                                            :class="paymentChannel === channel.code ? 'border-red-600 ring-1 ring-red-600 bg-red-50' : 'border-red-100'">
                                         <img :src="channel.icon_url" :alt="channel.name" class="h-6 w-auto object-contain">
                                         <span class="text-[10px] font-bold text-slate-600 leading-none text-center" x-text="channel.name"></span>
-                                        <div x-show="paymentChannel === channel.code" class="absolute top-1 right-1 text-indigo-600"><i class="fas fa-check-circle text-xs"></i></div>
+                                        <div x-show="paymentChannel === channel.code" class="absolute top-1 right-1 text-red-600"><i class="fas fa-check-circle text-xs"></i></div>
                                     </button>
                                 </template>
                             </div>
@@ -396,11 +395,11 @@
                             <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
                                 <template x-for="channel in getChannelsByGroup('Virtual Account')" :key="channel.code">
                                     <button @click="paymentChannel = channel.code" 
-                                            class="p-2 rounded-xl border transition flex flex-col items-center justify-center gap-2 h-20 bg-white hover:border-indigo-300 relative"
-                                            :class="paymentChannel === channel.code ? 'border-indigo-600 ring-1 ring-indigo-600 bg-indigo-50' : 'border-indigo-100'">
+                                            class="p-2 rounded-xl border transition flex flex-col items-center justify-center gap-2 h-20 bg-white hover:border-red-300 relative"
+                                            :class="paymentChannel === channel.code ? 'border-red-600 ring-1 ring-red-600 bg-red-50' : 'border-red-100'">
                                         
                                         <img :src="channel.icon_url" :alt="channel.name" class="h-8 w-auto object-contain">
-                                        <div x-show="paymentChannel === channel.code" class="absolute top-1 right-1 text-indigo-600"><i class="fas fa-check-circle text-xs"></i></div>
+                                        <div x-show="paymentChannel === channel.code" class="absolute top-1 right-1 text-red-600"><i class="fas fa-check-circle text-xs"></i></div>
                                     </button>
                                 </template>
                             </div>
@@ -411,17 +410,17 @@
                             <div class="grid grid-cols-2 gap-2">
                                 <template x-for="channel in getChannelsByGroup('Convenience Store')" :key="channel.code">
                                     <button @click="paymentChannel = channel.code" 
-                                            class="p-2 rounded-xl border transition flex flex-col items-center justify-center gap-2 h-16 bg-white hover:border-indigo-300 relative"
-                                            :class="paymentChannel === channel.code ? 'border-indigo-600 ring-1 ring-indigo-600 bg-indigo-50' : 'border-indigo-100'">
+                                            class="p-2 rounded-xl border transition flex flex-col items-center justify-center gap-2 h-16 bg-white hover:border-red-300 relative"
+                                            :class="paymentChannel === channel.code ? 'border-red-600 ring-1 ring-red-600 bg-red-50' : 'border-red-100'">
                                         
                                         <img :src="channel.icon_url" :alt="channel.name" class="h-6 w-auto object-contain">
-                                        <div x-show="paymentChannel === channel.code" class="absolute top-1 right-1 text-indigo-600"><i class="fas fa-check-circle text-xs"></i></div>
+                                        <div x-show="paymentChannel === channel.code" class="absolute top-1 right-1 text-red-600"><i class="fas fa-check-circle text-xs"></i></div>
                                     </button>
                                 </template>
                             </div>
                         </div>
                     </div>
-                    <p class="text-[9px] text-indigo-400 mt-3 text-center" x-show="!isLoadingChannels">*Pilih metode pembayaran.</p>
+                    <p class="text-[9px] text-red-400 mt-3 text-center" x-show="!isLoadingChannels">*Pilih metode pembayaran.</p>
                 </div>
 
                 <div x-show="paymentMethod === 'affiliate_balance'" x-transition class="bg-purple-50 border-2 border-purple-200 rounded-2xl p-4 shadow-sm text-center">
