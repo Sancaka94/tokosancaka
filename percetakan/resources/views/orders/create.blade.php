@@ -57,7 +57,7 @@
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 xl:grid-cols-4 gap-3">
                     @forelse($products as $product)
                     <template x-if="itemMatchesSearch('{{ addslashes($product->name) }}')">
-                        <div @click="addToCart({{ $product->id }}, '{{ addslashes($product->name) }}', {{ $product->sell_price }}, {{ $product->stock }}, {{ $product->weight ?? 100 }})"
+                        <div @click="addToCart({{ $product->id }}, '{{ addslashes($product->name) }}', {{ $product->sell_price }}, {{ $product->stock }}, {{ $product->weight ?? 0 }})"
                              class="relative bg-white rounded-2xl p-3 shadow-sm border border-slate-100 flex flex-col h-full group
                              {{ $product->stock <= 0 ? 'opacity-60 grayscale cursor-not-allowed' : 'cursor-pointer active:scale-95 hover:border-red-300 hover:shadow-md' }} transition-all duration-200">
                             
@@ -853,11 +853,11 @@
             addToCart(id, name, price, maxStock, weight = 0) {
                 if (maxStock <= 0) { alert('Stok Habis!'); return; }
                 
-                // --- LOGIKA CERDAS: DEFAULT BERAT ---
-                // Jika weight dari DB kosong/0, kita paksa jadi 5 gram (seperti kertas)
-                // Jika di DB ada isinya (misal 500), tetap pakai data DB.
-                let itemWeight = (weight && parseInt(weight) > 0) ? parseInt(weight) : 5; 
-                // ------------------------------------
+                // --- LOGIKA CERDAS: AUTO 5 GRAM ---
+                // Jika input weight 0 (dari Blade), ubah jadi 5 gram.
+                // Jika ada isinya (misal 200), pakai 200.
+                let realWeight = (parseInt(weight) > 0) ? parseInt(weight) : 5;
+                // ----------------------------------
 
                 let item = this.cart.find(i => i.id === id);
                 if (item) {
@@ -870,7 +870,7 @@
                         price, 
                         qty: 1, 
                         maxStock, 
-                        weight: itemWeight // Simpan 5 gram
+                        weight: realWeight // Simpan sebagai 5 gram
                     });
                 }
                 
