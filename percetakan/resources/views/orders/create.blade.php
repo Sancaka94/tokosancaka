@@ -1071,6 +1071,7 @@
                     // TAMBAHKAN INI (Untuk API KiriminAja):
                     formData.append('courier_code', this.selectedCourier.courier_code); 
                     formData.append('service_type', this.selectedCourier.service_type);
+                    formData.append('customer_address_detail', this.customerAddressDetail);
                 }
 
                 // Data Pembayaran Tripay

@@ -541,6 +541,14 @@ class OrderController extends Controller
                         $declaredValue = 1000; // Paksa minimal 1000
                     }
 
+                    // 1. Gabungkan Alamat Detail + Alamat Kecamatan untuk kurir
+                    $fullAddress = $request->destination_text; // Default (Kecamatan/Kelurahan)
+
+                    if ($request->filled('customer_address_detail')) {
+                    // Format: "Jl. Merpati No 10 (Beran, Ngawi, ...)"
+                    $fullAddress = $request->customer_address_detail . " (" . $request->destination_text . ")";
+                    }
+
                     // 4. Buat Payload (RAW API Format)
                     $kaPayload = [
                         // INFO PENGIRIM
@@ -559,7 +567,7 @@ class OrderController extends Controller
                                 'order_id'                 => $orderNumber,
                                 'destination_name'         => $customerName,
                                 'destination_phone'        => $customerPhone,
-                                'destination_address'      => $request->destination_text,
+                                'destination_address'      => $fullAddress,
                                 'destination_kecamatan_id' => (int) $request->destination_district_id,
                                 'destination_kelurahan_id' => (int) ($request->destination_subdistrict_id ?? 0),
                                 'destination_zipcode'      => $request->postal_code ?? '00000',
