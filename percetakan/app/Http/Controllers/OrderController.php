@@ -204,18 +204,22 @@ class OrderController extends Controller
                 Log::info("Mencoba Ongkir INSTANT (Grab/Gojek)...");
                 Log::info("Route: $originLat,$originLng -> $destLat,$destLng");
 
-                // PERBAIKAN: Cast ke float agar API KiriminAja tidak menolak "must numeric data"
-$responseInstant = $kiriminAja->getInstantPricing(
-    // Tambahkan Log ini untuk melihat isi ASLI balasan KiriminAja Instant
-Log::info("RESPONSE MENTAH INSTANT:", ['body' => $responseInstant]);
+                // 1. PANGGIL FUNGSI DULU SAMPAI SELESAI (JANGAN DISELIPIN LOG DI DALAMNYA)
+                $responseInstant = $kiriminAja->getInstantPricing(
+                    (float) $originLat, 
+                    (float) $originLng, 
+                    $originAddr,
+                    (float) $destLat, 
+                    (float) $destLng, 
+                    $request->destination_text,
+                    (int) $request->weight,
+                    100000, 
+                    'motor',
+                    ['gosend', 'grab_express']
+                ); // <--- Tanda kurung tutup & titik koma ini WAJIB ada dulu
 
-    (float) $originLat, (float) $originLng, $originAddr,
-    (float) $destLat, (float) $destLng, $request->destination_text,
-    (int) $request->weight,
-    1000, 
-    'motor',
-    ['gosend', 'grab_express']
-);
+                // 2. BARU LOG HASILNYA DISINI (DI BAWAHNYA)
+                Log::info("RESPONSE MENTAH INSTANT:", ['body' => $responseInstant]);
 
                 if (isset($responseInstant['status']) && $responseInstant['status'] == true) {
                     $instantPrices = $responseInstant['data']['price'] ?? []; 
