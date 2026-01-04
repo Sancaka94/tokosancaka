@@ -57,6 +57,7 @@ Route::get('/cara', function () {
 // Halaman POS
 Route::get('/orders/create', [OrderController::class, 'create'])->name('orders.create');
 
+Route::get('/orders/tripay-channels', [App\Http\Controllers\OrderController::class, 'getPaymentChannels'])->name('orders.tripay-channels');
 
 // Proses Simpan Pesanan (API Endpoint untuk AJAX)
 Route::post('/orders/store', [OrderController::class, 'store'])->name('orders.store');

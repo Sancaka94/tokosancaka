@@ -531,4 +531,40 @@ if ($request->payment_method === 'tripay') {
                 'message' => $message,
             ]);
     }
+
+    /**
+     * API: Ambil Daftar Channel Pembayaran dari Tripay
+     */
+    public function getPaymentChannels()
+    {
+        // 1. Cek Cache dulu (biar cepat & hemat request ke Tripay)
+        // Cache disimpan selama 24 jam (60 * 24 menit)
+        $channels = \Illuminate\Support\Facades\Cache::remember('tripay_channels', 60 * 24, function () {
+            
+            $apiKey = config('tripay.api_key');
+            $mode   = config('tripay.mode');
+            
+            $baseUrl = ($mode === 'production') 
+                ? 'https://tripay.co.id/api/merchant/payment-channel' 
+                : 'https://tripay.co.id/api-sandbox/merchant/payment-channel';
+
+            try {
+                $response = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])->get($baseUrl);
+                
+                if ($response->successful()) {
+                    return $response->json()['data'] ?? [];
+                }
+            } catch (\Exception $e) {
+                Log::error("Gagal ambil channel Tripay: " . $e->getMessage());
+                return [];
+            }
+            return [];
+        });
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $channels
+        ]);
+    }
+    
 }
