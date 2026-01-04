@@ -307,32 +307,52 @@ class OrderController extends Controller
     }
 
    /**
-     * PRIVATE: Logic Request ke API Tripay (Menggunakan Config)
+     * PRIVATE: Logic Request ke API Tripay (Dengan Auto-Fix Item Calculation)
      */
     private function _createTripayTransaction($order, $methodChannel, $amount, $custName, $custEmail, $custPhone, $items)
     {
-        // 1. Ambil dari Config (bukan env langsung)
+        // 1. Ambil Config
         $apiKey       = config('tripay.api_key');
         $privateKey   = config('tripay.private_key');
         $merchantCode = config('tripay.merchant_code');
         $mode         = config('tripay.mode');
 
-        // 2. Validasi Config (Mencegah error "Undefined Authorization token")
+        // Validasi Config
         if (empty($apiKey) || empty($privateKey) || empty($merchantCode)) {
-            Log::error('TRIPAY CONFIG MISSING: Pastikan file .env sudah diisi dan php artisan config:clear sudah dijalankan.');
-            return [
-                'success' => false,
-                'message' => 'Gagal memproses pembayaran: Konfigurasi server belum lengkap.'
-            ];
+            Log::error('TRIPAY CONFIG MISSING');
+            return ['success' => false, 'message' => 'Konfigurasi Tripay belum lengkap.'];
         }
 
-        // 3. Tentukan URL berdasarkan mode
+        // ==========================================
+        // FIX: VALIDASI MATEMATIKA (Order Items vs Amount)
+        // ==========================================
+        // Hitung manual total harga dari list item
+        $calculatedTotalItems = 0;
+        foreach ($items as $item) {
+            $calculatedTotalItems += ($item['price'] * $item['quantity']);
+        }
+
+        // Pastikan Amount adalah Integer murni
+        $amount = (int) $amount;
+
+        // Jika Total Item TIDAK SAMA dengan Total Tagihan (Misal karena ada Diskon Kupon),
+        // Kita ganti list item dengan 1 item "Summary" agar diterima Tripay.
+        if ($calculatedTotalItems !== $amount) {
+            $items = [
+                [
+                    'sku'      => 'INV-' . $order->order_number,
+                    'name'     => 'Pembayaran Invoice #' . $order->order_number,
+                    'price'    => $amount, // Paksa harga item sama dengan total tagihan
+                    'quantity' => 1
+                ]
+            ];
+        }
+        // ==========================================
+
         $baseUrl = ($mode === 'production') 
             ? 'https://tripay.co.id/api/transaction/create' 
             : 'https://tripay.co.id/api-sandbox/transaction/create';
 
-        // 4. Hitung Signature
-        // Rumus: merchant_code + merchant_ref + amount
         $signature = hash_hmac('sha256', $merchantCode . $order->order_number . $amount, $privateKey);
 
         $payload = [
@@ -342,26 +362,21 @@ class OrderController extends Controller
             'customer_name'  => $custName,
             'customer_email' => $custEmail,
             'customer_phone' => $custPhone,
-            'order_items'    => $items,
+            'order_items'    => $items, // List item yang sudah diperbaiki
             'return_url'     => url('/'), 
-            'expired_time'   => (time() + (24 * 60 * 60)), // 24 Jam
+            'expired_time'   => (time() + (24 * 60 * 60)), 
             'signature'      => $signature
         ];
 
         try {
-            // 5. Kirim Request
             $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $apiKey // Token diambil dari config
+                'Authorization' => 'Bearer ' . $apiKey
             ])->timeout(30)->post($baseUrl, $payload);
 
             $body = $response->json();
 
-            // Log Error jika HTTP Gagal (Misal 401 Unauthorized / 500 Server Error)
             if (!$response->successful()) {
-                Log::error('Tripay API Error:', [
-                    'status' => $response->status(), 
-                    'body' => $body
-                ]);
+                Log::error('Tripay API Error:', ['status' => $response->status(), 'body' => $body]);
             }
 
             if ($response->successful() && ($body['success'] ?? false) === true) {
