@@ -369,7 +369,7 @@
              @click.outside="searchResults = []"
              class="absolute left-0 right-0 mt-1 bg-white border border-slate-100 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar z-50 ring-1 ring-black/5">
             
-            <template x-for="loc in searchResults" :key="loc.id">
+            <template x-for="(loc, index) in searchResults" :key="index">
                 <button @click="selectLocation(loc)" 
                         class="w-full text-left px-4 py-3 hover:bg-blue-50 border-b border-slate-50 last:border-0 transition-colors group flex items-start gap-3">
                     
