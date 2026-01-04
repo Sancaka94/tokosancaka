@@ -532,18 +532,20 @@ if ($request->payment_method === 'tripay') {
             ]);
     }
 
-    /**
-     * API: Ambil Daftar Channel Pembayaran dari Tripay
-     */
     public function getPaymentChannels()
     {
-        // 1. Cek Cache dulu (biar cepat & hemat request ke Tripay)
-        // Cache disimpan selama 24 jam (60 * 24 menit)
-        $channels = \Illuminate\Support\Facades\Cache::remember('tripay_channels', 60 * 24, function () {
+        // 1. Matikan Cache sementara untuk Debugging
+        // $channels = \Illuminate\Support\Facades\Cache::remember('tripay_channels', 60 * 24, function () {
             
             $apiKey = config('tripay.api_key');
             $mode   = config('tripay.mode');
             
+            // Log Konfigurasi (Cek apakah terbaca)
+            Log::info('TRIPAY DEBUG: Config Check', [
+                'mode' => $mode,
+                'has_api_key' => !empty($apiKey)
+            ]);
+
             $baseUrl = ($mode === 'production') 
                 ? 'https://tripay.co.id/api/merchant/payment-channel' 
                 : 'https://tripay.co.id/api-sandbox/merchant/payment-channel';
@@ -551,20 +553,31 @@ if ($request->payment_method === 'tripay') {
             try {
                 $response = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])->get($baseUrl);
                 
-                if ($response->successful()) {
-                    return $response->json()['data'] ?? [];
-                }
-            } catch (\Exception $e) {
-                Log::error("Gagal ambil channel Tripay: " . $e->getMessage());
-                return [];
-            }
-            return [];
-        });
+                // Log Response Mentah dari Tripay
+                Log::info('TRIPAY DEBUG: API Response', [
+                    'status' => $response->status(),
+                    'body' => $response->json()
+                ]);
 
-        return response()->json([
-            'status' => 'success',
-            'data' => $channels
-        ]);
+                if ($response->successful()) {
+                    return response()->json([
+                        'status' => 'success',
+                        'data' => $response->json()['data'] ?? []
+                    ]);
+                }
+                
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Gagal koneksi ke Tripay: ' . $response->status(),
+                    'debug' => $response->json()
+                ], 500);
+
+            } catch (\Exception $e) {
+                Log::error("TRIPAY DEBUG: Exception", ['msg' => $e->getMessage()]);
+                return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+            }
+            
+        // }); // Tutup Cache sementara
     }
-    
+
 }

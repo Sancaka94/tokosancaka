@@ -565,30 +565,54 @@
                 this.affiliatePin = ''; // Reset input
             },
 
-            // --- TAMBAHKAN FUNGSI INI ---
             async fetchTripayChannels() {
-                // Jika data sudah ada, tidak perlu fetch lagi (hemat kuota)
-                if (this.tripayChannels.length > 0) return;
+                // Hapus baris ini sementara agar selalu fetch ulang saat diklik
+                // if (this.tripayChannels.length > 0) return;
 
                 this.isLoadingChannels = true;
+                console.log('DEBUG: Mulai fetch channel...');
+
                 try {
                     const response = await fetch("{{ route('orders.tripay-channels') }}");
                     const result = await response.json();
+                    
+                    console.log('DEBUG: Hasil dari Server:', result);
+
                     if(result.status === 'success') {
                         this.tripayChannels = result.data;
+                        
+                        // Cek isi Group untuk memastikan nama grup benar
+                        if (this.tripayChannels.length > 0) {
+                            const groups = [...new Set(this.tripayChannels.map(item => item.group))];
+                            console.log('DEBUG: Group yang tersedia:', groups);
+                        } else {
+                            console.warn('DEBUG: Data channel KOSONG dari Tripay.');
+                            alert('Data Channel Tripay Kosong. Cek Log Laravel.');
+                        }
+                    } else {
+                        console.error('DEBUG: Error status:', result);
+                        alert('Gagal ambil data: ' + (result.message || 'Unknown error'));
                     }
                 } catch (error) {
-                    console.error('Gagal ambil channel:', error);
+                    console.error('DEBUG: Fetch error:', error);
                 } finally {
                     this.isLoadingChannels = false;
                 }
             },
             
-            // Helper untuk filter channel berdasarkan grup (Virtual Account, E-Wallet, Retail)
+            // Helper Filter yang Lebih Aman (Case Insensitive)
             getChannelsByGroup(groupName) {
-                return this.tripayChannels.filter(c => c.group === groupName && c.active === true);
+                if (!this.tripayChannels || this.tripayChannels.length === 0) return [];
+                
+                return this.tripayChannels.filter(c => {
+                    // Pastikan channel aktif
+                    if (c.active !== true) return false;
+
+                    // Bandingkan Group (Contoh: "Virtual Account" vs "Virtual Account")
+                    // Kita ubah ke lowercase biar aman
+                    return c.group.toLowerCase() === groupName.toLowerCase();
+                });
             },
-            // -----------------------------
 
             // --- FUNGSI CEK KUPON ---
             async checkCoupon() {
