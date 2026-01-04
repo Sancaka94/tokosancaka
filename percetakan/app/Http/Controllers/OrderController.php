@@ -582,6 +582,7 @@ class OrderController extends Controller
                                 'length'       => 10,
                                 'width'        => 10,
                                 'height'       => 10,
+                                'shipping_cost' => (int) $request->shipping_cost, // <--- TAMBAHKAN INI
                                 'destination_name'        => $customerName,
                                 'destination_phone'       => $customerPhone,
                                 'destination_address'     => $request->destination_text,
