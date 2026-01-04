@@ -50,7 +50,8 @@ return [
         'origin_subdistrict_id' => env('KIRIMINAJA_ORIGIN_SUBDISTRICT'), 
         // TAMBAHKAN INI:
         'origin_lat' => env('KIRIMINAJA_ORIGIN_LAT'),
-        'origin_lng' => env('KIRIMINAJA_ORIGIN_LNG'),
+        'origin_long' => env('KIRIMINAJA_ORIGIN_LONG'), // <-- Pastikan ini menarik env yang benar
+        'origin_address' => env('KIRIMINAJA_ORIGIN_ADDRESS'),
     ],
 
 ];
