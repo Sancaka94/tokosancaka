@@ -15,7 +15,6 @@
     
     <style>
         [x-cloak] { display: none !important; }
-        /* Scrollbar custom yang lebih rapi */
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
@@ -54,44 +53,37 @@
                 </button>
             </div>
 
-            
-
             <div class="flex-1 overflow-y-auto p-4 custom-scrollbar bg-slate-50">
 
-                <div x-data="{ showInfo: true }" 
-     x-show="showInfo" 
-     x-transition.opacity.duration.300ms
-     class="mb-4 bg-green-50 border border-green-200 rounded-xl p-3 flex items-start gap-3 shadow-sm relative group">
-    
-    <div class="bg-green-100 text-green-600 rounded-lg h-8 w-8 flex items-center justify-center shrink-0">
-        <i class="fas fa-bullhorn text-sm"></i>
-    </div>
+                <div x-data="{ showInfo: true }" x-show="showInfo" x-transition.opacity.duration.300ms
+                     class="mb-4 bg-green-50 border border-green-200 rounded-xl p-3 flex items-start gap-3 shadow-sm relative group">
+                    <div class="bg-green-100 text-green-600 rounded-lg h-8 w-8 flex items-center justify-center shrink-0">
+                        <i class="fas fa-bullhorn text-sm"></i>
+                    </div>
+                    <div class="flex-1 pr-6">
+                        <h4 class="text-xs font-bold text-green-800 uppercase tracking-wide mb-0.5">Info Promo & Affiliasi</h4>
+                        <p class="text-[11px] text-green-700 leading-relaxed">
+                            Ingin diskon <span class="font-bold">30%</span>? Masukan kode <span class="font-bold bg-white px-1 rounded border border-green-200">KUPON</span>. 
+                            Anda juga dapat menjadi <a href="https://tokosancaka.com/percetakan/public/join-partner" target="_blank" class="underline font-bold hover:text-green-900">Affiliator (Klik Disini)</a> untuk komisi besar.
+                        </p>
+                    </div>
+                    <button @click="showInfo = false" class="absolute top-2 right-2 text-green-400 hover:text-green-700 hover:bg-green-100 rounded-full h-6 w-6 flex items-center justify-center transition-all">
+                        <i class="fas fa-times text-xs"></i>
+                    </button>
+                </div>
 
-    <div class="flex-1 pr-6">
-        <h4 class="text-xs font-bold text-green-800 uppercase tracking-wide mb-0.5">Info Promo & Affiliasi</h4>
-        <p class="text-[11px] text-green-700 leading-relaxed">
-            Ingin diskon <span class="font-bold">30%</span>? Masukan kode <span class="font-bold bg-white px-1 rounded border border-green-200">KUPON</span>. 
-            Anda juga dapat menjadi <a href="https://tokosancaka.com/percetakan/public/join-partner" target="_blank" class="underline font-bold hover:text-green-900">Affiliator (Klik Disini)</a> untuk komisi besar.
-        </p>
-    </div>
-
-    <button @click="showInfo = false" class="absolute top-2 right-2 text-green-400 hover:text-green-700 hover:bg-green-100 rounded-full h-6 w-6 flex items-center justify-center transition-all">
-        <i class="fas fa-times text-xs"></i>
-    </button>
-</div>
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 xl:grid-cols-4 gap-3">
-                    
                     @forelse($products as $product)
                     <template x-if="itemMatchesSearch('{{ addslashes($product->name) }}')">
-                        <div @click="addToCart({{ $product->id }}, '{{ addslashes($product->name) }}', {{ $product->sell_price }}, {{ $product->stock }}, {{ $product->weight ?? 0 }})"
+                        <div @click="addToCart({{ $product->id }}, '{{ addslashes($product->name) }}', {{ $product->sell_price }}, {{ $product->stock }}, {{ $product->weight ?? 0 }}, '{{ $product->image ? asset('storage/'.$product->image) : '' }}')"
                              class="relative bg-white rounded-2xl p-3 shadow-sm border border-slate-100 flex flex-col h-full group
                              {{ $product->stock <= 0 ? 'opacity-60 grayscale cursor-not-allowed' : 'cursor-pointer active:scale-95 hover:border-red-300 hover:shadow-md' }} transition-all duration-200">
                             
                             <div class="absolute top-2 left-2 z-10">
                                 @if($product->stock <= 0) 
-                                    <span class="bg-slate-700 text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-md">Habis</span>
+                                    <span class="bg-slate-700 text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-md shadow-sm">Habis</span>
                                 @elseif($product->stock <= 5) 
-                                    <span class="bg-amber-500 text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-md animate-pulse">Sisa {{ $product->stock }}</span>
+                                    <span class="bg-amber-500 text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-md animate-pulse shadow-sm">Sisa {{ $product->stock }}</span>
                                 @endif
                             </div>
 
@@ -100,14 +92,12 @@
                                  x-text="getItemQty({{ $product->id }})" x-transition.scale>
                             </div>
 
-                            <div class="aspect-[4/3] bg-slate-50 rounded-xl flex items-center justify-center mb-3 text-3xl text-slate-300 group-hover:text-red-400 group-hover:bg-red-50 transition-colors">
+                            <div class="aspect-[4/3] bg-slate-50 rounded-xl flex items-center justify-center mb-3 overflow-hidden relative group-hover:bg-red-50 transition-colors">
                                 @if(!empty($product->image) && Storage::disk('public')->exists($product->image))
-                                    {{-- TAMPILKAN GAMBAR DARI DATABASE --}}
                                     <img src="{{ asset('storage/' . $product->image) }}" 
                                          alt="{{ $product->name }}" 
                                          class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110">
                                 @else
-                                    {{-- JIKA TIDAK ADA GAMBAR, TAMPILKAN IKON --}}
                                     <div class="text-3xl text-slate-300 group-hover:text-red-400 transition-colors">
                                         <i class="fas fa-box-open"></i>
                                     </div>
@@ -166,7 +156,6 @@
                     <div x-show="uploadedFiles.length > 0" class="space-y-3 mb-3" x-transition>
                         <template x-for="(item, index) in uploadedFiles" :key="index">
                             <div class="bg-white border border-slate-200 rounded-xl shadow-sm p-3 hover:border-blue-300 transition-all">
-                                
                                 <div class="flex items-center gap-2 mb-3 pb-2 border-b border-dashed border-slate-100">
                                     <div class="h-8 w-8 rounded bg-red-50 flex items-center justify-center text-red-500 text-xs shrink-0">
                                         <i class="fas fa-file-pdf" x-show="item.file.type.includes('pdf')"></i>
@@ -181,9 +170,7 @@
                                         <i class="fas fa-trash-alt"></i>
                                     </button>
                                 </div>
-
                                 <div class="grid grid-cols-3 gap-2">
-                                    
                                     <div class="col-span-1">
                                         <label class="flex items-center gap-2 cursor-pointer bg-slate-50 p-1.5 rounded-lg border border-slate-100 h-full">
                                             <input type="checkbox" x-model="item.isColor" class="rounded text-red-600 focus:ring-red-500 w-4 h-4 border-slate-300">
@@ -192,7 +179,6 @@
                                             </span>
                                         </label>
                                     </div>
-
                                     <div class="col-span-1">
                                         <select x-model="item.paperSize" class="w-full text-[10px] font-bold py-1.5 px-1 rounded-lg border-slate-200 bg-slate-50 focus:ring-red-500 focus:border-red-500">
                                             <option value="A4">Kertas A4</option>
@@ -200,14 +186,12 @@
                                             <option value="A3">Kertas A3</option>
                                         </select>
                                     </div>
-
                                     <div class="col-span-1 relative">
                                         <div class="flex items-center border border-slate-200 rounded-lg bg-slate-50 overflow-hidden h-full">
                                             <input type="number" x-model="item.qty" min="1" class="w-full text-center text-[10px] font-bold bg-transparent border-none p-0 focus:ring-0" placeholder="1">
                                             <span class="text-[9px] text-slate-400 pr-1.5">lbr/set</span>
                                         </div>
                                     </div>
-
                                 </div>
                             </div>
                         </template>
@@ -217,7 +201,6 @@
                         <div class="relative border-2 border-dashed border-red-300 rounded-xl bg-white hover:border-green-400 hover:bg-green-50 transition-all cursor-pointer group h-12 flex items-center justify-center">
                             <input type="file" multiple @change="handleFileUpload" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
                                    accept=".doc,.docx,.pdf,.xls,.xlsx,.jpg,.jpeg,.png">
-                            
                             <div class="flex items-center gap-2 pointer-events-none">
                                 <i class="fas" :class="uploadedFiles.length > 0 ? 'fa-plus text-green-500' : 'fa-cloud-upload-alt text-red-400'"></i>
                                 <p class="text-[10px] font-bold" :class="uploadedFiles.length > 0 ? 'text-green-600' : 'text-slate-500'">
@@ -225,11 +208,6 @@
                                 </p>
                             </div>
                         </div>
-                        <p x-show="uploadedFiles.length === 0" class="text-[9px] text-slate-400 mt-1 text-center">Format: PDF, JPG, Docx. Max 10MB.</p>
-                    </div>
-
-                    <div x-show="uploadedFiles.length >= 10" class="p-2 bg-amber-50 border border-amber-200 rounded-lg text-center mt-2">
-                        <p class="text-[10px] font-bold text-amber-600">Maksimal 10 file tercapai.</p>
                     </div>
                 </div>
 
@@ -248,12 +226,8 @@
                                 <button @click="updateQty(item.id, 1)" class="w-full h-6 flex items-center justify-center text-slate-500 hover:text-white hover:bg-green-500 rounded-t-lg transition border-b border-slate-200">
                                     <i class="fas fa-plus text-[8px]"></i>
                                 </button>
-                                
-                                <input type="number" 
-                                       x-model="item.qty" 
-                                       @change="validateManualQty(item.id)" 
+                                <input type="number" x-model="item.qty" @change="validateManualQty(item.id)" 
                                        class="w-full text-center text-xs font-bold bg-transparent border-none p-0 focus:ring-0 text-slate-800 h-8">
-                                
                                 <button @click="updateQty(item.id, -1)" class="w-full h-6 flex items-center justify-center text-slate-500 hover:text-white hover:bg-red-500 rounded-b-lg transition border-t border-slate-200">
                                     <i class="fas fa-minus text-[8px]"></i>
                                 </button>
@@ -287,10 +261,7 @@
             <div class="p-4 bg-slate-50 border-t border-slate-200 z-20 shrink-0 shadow-[0_-5px_15px_rgba(0,0,0,0.02)]">
                 <div class="mb-3">
                     <div class="relative">
-                        <input type="text" 
-                               x-model="couponCode" 
-                               @input.debounce.500ms="checkCoupon()" 
-                               placeholder="KODE PROMO..." 
+                        <input type="text" x-model="couponCode" @input.debounce.500ms="checkCoupon()" placeholder="KODE PROMO..." 
                                class="w-full pl-3 pr-10 py-2 text-sm rounded-lg border border-slate-200 focus:ring-red-500 uppercase font-bold text-slate-700"
                                :class="{'border-emerald-500 bg-emerald-50': discountAmount > 0, 'border-red-300 bg-red-50': couponMessage && discountAmount === 0}">
                         
@@ -309,12 +280,10 @@
                         <span>Subtotal</span>
                         <span x-text="'Rp ' + rupiah(subtotal)"></span>
                     </div>
-                    
                     <div x-show="discountAmount > 0" class="flex justify-between items-end text-xs text-emerald-600 font-bold" x-transition>
                         <span>Diskon</span>
                         <span x-text="'- Rp ' + rupiah(discountAmount)"></span>
                     </div>
-
                     <div class="flex justify-between items-end pt-2 border-t border-dashed border-slate-300">
                         <span class="text-sm font-bold text-slate-800">Total Tagihan</span>
                         <span class="text-2xl font-black text-slate-800 tracking-tight" x-text="'Rp ' + rupiah(grandTotal)"></span>
@@ -333,86 +302,55 @@
     </div>
 
     <div x-data="{ 
-        showPromo: false,
-        init() {
-            // Cek localStorage agar modal hanya muncul sekali seumur hidup browser
-            if (!localStorage.getItem('seenPromoSancaka_v1')) {
-                // Beri jeda 1.5 detik setelah load agar smooth
-                setTimeout(() => { this.showPromo = true }, 1500);
+            showPromo: false,
+            init() {
+                if (!localStorage.getItem('seenPromoSancaka_v1')) {
+                    setTimeout(() => { this.showPromo = true }, 1500);
+                }
+            },
+            closePromo() {
+                this.showPromo = false;
+                localStorage.setItem('seenPromoSancaka_v1', 'true');
             }
-        },
-        closePromo() {
-            this.showPromo = false;
-            // Simpan penanda bahwa user sudah melihat promo
-            localStorage.setItem('seenPromoSancaka_v1', 'true');
-        }
-    }"
-    x-show="showPromo" 
-    style="display: none;" 
-    class="fixed inset-0 z-[100] flex items-center justify-center px-4 sm:px-0 font-sans">
-    
-    <div x-show="showPromo" 
-         x-transition:enter="transition ease-out duration-300"
-         x-transition:enter-start="opacity-0"
-         x-transition:enter-end="opacity-100"
-         x-transition:leave="transition ease-in duration-200"
-         x-transition:leave-start="opacity-100"
-         x-transition:leave-end="opacity-0"
-         @click="closePromo()"
-         class="fixed inset-0 bg-slate-900/70 backdrop-blur-[2px]"></div>
-
-    <div x-show="showPromo" 
-         x-transition:enter="transition ease-out duration-300"
-         x-transition:enter-start="opacity-0 scale-90 translate-y-4"
-         x-transition:enter-end="opacity-100 scale-100 translate-y-0"
-         x-transition:leave="transition ease-in duration-200"
-         x-transition:leave-start="opacity-100 scale-100 translate-y-0"
-         x-transition:leave-end="opacity-0 scale-90 translate-y-4"
-         class="relative bg-white rounded-2xl shadow-2xl w-full max-w-[450px] overflow-hidden flex flex-col z-10 border border-slate-100">
+        }"
+        x-show="showPromo" style="display: none;" 
+        class="fixed inset-0 z-[100] flex items-center justify-center px-4 sm:px-0 font-sans">
         
-        <button @click="closePromo()" class="absolute top-3 right-3 z-20 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full h-8 w-8 flex items-center justify-center transition-all">
-            <i class="fas fa-times text-lg"></i>
-        </button>
+        <div x-show="showPromo" x-transition.opacity @click="closePromo()" class="fixed inset-0 bg-slate-900/70 backdrop-blur-[2px]"></div>
 
-        <div class="relative bg-slate-50 w-full h-40 flex items-center justify-center p-6 border-b border-slate-100">
-            <div class="absolute inset-0 opacity-10" style="background-image: radial-gradient(#cbd5e1 1px, transparent 1px); background-size: 10px 10px;"></div>
+        <div x-show="showPromo" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-90 translate-y-4" x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+             class="relative bg-white rounded-2xl shadow-2xl w-full max-w-[450px] overflow-hidden flex flex-col z-10 border border-slate-100">
             
-            <img src="https://tokosancaka.com/storage/uploads/sancaka.png" 
-                 alt="Sancaka Promo" 
-                 class="relative w-full h-full object-contain drop-shadow-md transform hover:scale-105 transition-transform duration-500">
-        </div>
+            <button @click="closePromo()" class="absolute top-3 right-3 z-20 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full h-8 w-8 flex items-center justify-center transition-all">
+                <i class="fas fa-times text-lg"></i>
+            </button>
 
-        <div class="p-6 text-center">
-            
-            <h2 class="text-xl font-black text-slate-800 mb-3 leading-tight">
-                Ingin mendapatkan <span class="text-red-600">Diskon 30%?</span>
-            </h2>
-            
-            <p class="text-slate-600 text-sm leading-relaxed mb-5">
-                Masukan kode <span class="font-bold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded border border-amber-200 text-xs">KUPON</span> dari teman atau saudara Anda.
-            </p>
-
-            <div class="bg-blue-50 border border-blue-100 rounded-xl p-3 mb-6">
-                <p class="text-xs text-blue-800 leading-relaxed">
-                    <i class="fas fa-info-circle mr-1"></i>
-                    Anda juga dapat menjadi <b>Affiliator</b> dan dapatkan <b>komisi besar</b> ketika menjadi member.
-                </p>
+            <div class="relative bg-slate-50 w-full h-40 flex items-center justify-center p-6 border-b border-slate-100">
+                <div class="absolute inset-0 opacity-10" style="background-image: radial-gradient(#cbd5e1 1px, transparent 1px); background-size: 10px 10px;"></div>
+                <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="Sancaka Promo" class="relative w-full h-full object-contain drop-shadow-md transform hover:scale-105 transition-transform duration-500">
             </div>
 
-            <div class="space-y-3">
-                <a href="https://tokosancaka.com/percetakan/public/join-partner" target="_blank" 
-                   class="flex items-center justify-center w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-red-200 hover:shadow-red-300 transform active:scale-95 transition-all group">
-                    <span>Gabung Sekarang</span>
-                    <i class="fas fa-arrow-right ml-2 group-hover:translate-x-1 transition-transform"></i>
-                </a>
-                
-                <button @click="closePromo()" class="text-slate-400 font-bold text-xs hover:text-slate-600 py-1">
-                    Tutup Informasi
-                </button>
+            <div class="p-6 text-center">
+                <h2 class="text-xl font-black text-slate-800 mb-3 leading-tight">Ingin mendapatkan <span class="text-red-600">Diskon 30%?</span></h2>
+                <p class="text-slate-600 text-sm leading-relaxed mb-5">
+                    Masukan kode <span class="font-bold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded border border-amber-200 text-xs">KUPON</span> dari teman atau saudara Anda.
+                </p>
+                <div class="bg-blue-50 border border-blue-100 rounded-xl p-3 mb-6">
+                    <p class="text-xs text-blue-800 leading-relaxed">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Anda juga dapat menjadi <b>Affiliator</b> dan dapatkan <b>komisi besar</b> ketika menjadi member.
+                    </p>
+                </div>
+                <div class="space-y-3">
+                    <a href="https://tokosancaka.com/percetakan/public/join-partner" target="_blank" class="flex items-center justify-center w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-red-200 hover:shadow-red-300 transform active:scale-95 transition-all group">
+                        <span>Gabung Sekarang</span>
+                        <i class="fas fa-arrow-right ml-2 group-hover:translate-x-1 transition-transform"></i>
+                    </a>
+                    <button @click="closePromo()" class="text-slate-400 font-bold text-xs hover:text-slate-600 py-1">Tutup Informasi</button>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
     @include('orders.partials.payment-modal')
 
