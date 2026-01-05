@@ -38,7 +38,7 @@
                             text-red-600
                             border border-red-600
                             rounded-md
-                            hover:text-white hover:bg-red-600
+                            hover:text-white hover:bg-red-700 bg-red-600
                             focus:ring-2 focus:ring-red-400
                             transition">
                     🚀 Order Sekarang!
