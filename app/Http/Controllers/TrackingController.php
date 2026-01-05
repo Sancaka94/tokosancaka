@@ -335,39 +335,6 @@ class TrackingController extends Controller
         return null;
     }
 
-    public function imageProxy(Request $request)
-    {
-        $url = $request->query('url');
-
-        // DEBUG 1: Cek apakah route masuk sini
-        if (!$url) {
-            return response("Error: Parameter URL tidak ditemukan.", 400);
-        }
-
-        // DEBUG 2: Cek validasi domain
-        if (!str_contains($url, 'myhuaweicloud.com')) {
-             return response("Error: Domain tidak diizinkan. URL: " . $url, 403);
-        }
-
-        try {
-            $response = \Illuminate\Support\Facades\Http::withHeaders([
-                'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-            ])->get($url);
-
-            if ($response->successful()) {
-                $contentType = $response->header('Content-Type') ?: 'image/jpeg';
-                return response($response->body())
-                    ->header('Content-Type', $contentType)
-                    ->header('Cache-Control', 'public, max-age=86400');
-            } else {
-                // DEBUG 3: Cek kenapa download gagal
-                return response("Error: Gagal download dari Huawei. Status: " . $response->status(), 500);
-            }
-        } catch (\Exception $e) {
-            return response("Error Exception: " . $e->getMessage(), 500);
-        }
-    }
-
     public function cetakThermal($resi)
     {
         Log::info("Cetak Thermal Request: {$resi}");
