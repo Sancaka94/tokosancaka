@@ -177,7 +177,7 @@
             <p class="text-slate-400 mb-8 max-w-sm mx-auto">Bisnis yang dikelola dengan dedikasi untuk melayani kebutuhan masyarakat Ngawi.</p>
             <div class="flex justify-center gap-6 mb-12">
                 <a href="https://wa.me/6285745808809" class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center hover:bg-red-600 hover:text-white transition">WA</a>
-                <a href="https://sancaka.bisnis.pro" class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center hover:bg-red-600 hover:text-white transition">WEB</a>
+                <a href="https://tokosancaka.com" class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center hover:bg-red-600 hover:text-white transition">WEB</a>
             </div>
             <div class="text-slate-300 text-[10px] font-bold tracking-[0.2em] uppercase">
                 &copy; 2026 Sancaka Group - Jasa Pengiriman & Percetakan Terpercaya
