@@ -29,6 +29,13 @@ use App\Services\KiriminAjaService;
 
 class OrderController extends Controller
 {
+    // --- TEMPEL KODE index() DI SINI ---
+    public function index()
+    {
+        $orders = Order::orderBy('created_at', 'desc')->paginate(10);
+        return view('orders.index', compact('orders'));
+    }
+    
     /**
      * Menampilkan Halaman Kasir (POS)
      */
