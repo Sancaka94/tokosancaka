@@ -65,26 +65,30 @@ Route::get('/cara', function () {
     return view('cara');
 });
 
-Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
 
-Route::get('/orders/{id}', [OrderController::class, 'show'])->name('orders.show');
+// Route untuk Halaman Riwayat Pesanan
 
-// Route untuk mencari alamat (Autocomplete)
-Route::get('/orders/search-location', [App\Http\Controllers\OrderController::class, 'searchLocation'])->name('orders.search-location');
+// --- TARUH ROUTE SPESIFIK DI ATAS ---
 
-
-// Route Cek Ongkir (yang sudah ada)
-Route::post('/orders/check-ongkir', [App\Http\Controllers\OrderController::class, 'checkShippingRates'])->name('orders.check-ongkir');
-// Halaman POS
+// 1. Halaman POS (Create) - HARUS DI ATAS {id}
 Route::get('/orders/create', [OrderController::class, 'create'])->name('orders.create');
 
-Route::get('/orders/tripay-channels', [App\Http\Controllers\OrderController::class, 'getPaymentChannels'])->name('orders.tripay-channels');
+// 2. Route Autocomplete & Helper - HARUS DI ATAS {id}
+Route::get('/orders/search-location', [OrderController::class, 'searchLocation'])->name('orders.search-location');
+Route::get('/orders/tripay-channels', [OrderController::class, 'getPaymentChannels'])->name('orders.tripay-channels');
 
-// Proses Simpan Pesanan (API Endpoint untuk AJAX)
+// 3. Halaman Index
+Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
+
+// 4. Route Wildcard {id} (Show) - TARUH PALING BAWAH
+// Agar tidak "memakan" route lain yang punya prefix /orders/
+Route::get('/orders/{id}', [OrderController::class, 'show'])->name('orders.show');
+
+// --- Route POST (Urutannya tidak terlalu berpengaruh karena methodnya beda, tapi dirapikan saja) ---
+Route::post('/orders/check-ongkir', [OrderController::class, 'checkShippingRates'])->name('orders.check-ongkir');
 Route::post('/orders/store', [OrderController::class, 'store'])->name('orders.store');
-
-// PENTING: Taruh di ATAS Route::resource 'orders'
 Route::post('/orders/check-coupon', [OrderController::class, 'checkCoupon'])->name('orders.check-coupon');
+
 
 Route::get('/reports/export', [ReportController::class, 'export'])->name('reports.export');
 
