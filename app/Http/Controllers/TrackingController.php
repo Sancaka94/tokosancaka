@@ -338,21 +338,19 @@ class TrackingController extends Controller
     public function imageProxy(Request $request)
     {
         $url = $request->query('url');
-
-        // DEBUG 1: Cek apakah route masuk sini
-        if (!$url) {
-            return response("Error: Parameter URL tidak ditemukan.", 400);
-        }
-
-        // DEBUG 2: Cek validasi domain
-        if (!str_contains($url, 'myhuaweicloud.com')) {
-             return response("Error: Domain tidak diizinkan. URL: " . $url, 403);
-        }
+        
+        if (empty($url)) return response("URL Kosong", 400);
 
         try {
-            $response = \Illuminate\Support\Facades\Http::withHeaders([
-                'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-            ])->get($url);
+            // TRIK PENYAMARAN:
+            // Kita berpura-pura bahwa request ini datang dari Dashboard Mitra KiriminAja
+            $response = \Illuminate\Support\Facades\Http::withoutVerifying()
+                ->withHeaders([
+                    'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                    'Referer'    => 'https://mitra.kiriminaja.com/', // Menyamar sebagai dashboard mitra
+                    'Origin'     => 'https://mitra.kiriminaja.com/'
+                ])
+                ->get($url);
 
             if ($response->successful()) {
                 $contentType = $response->header('Content-Type') ?: 'image/jpeg';
@@ -360,11 +358,13 @@ class TrackingController extends Controller
                     ->header('Content-Type', $contentType)
                     ->header('Cache-Control', 'public, max-age=86400');
             } else {
-                // DEBUG 3: Cek kenapa download gagal
-                return response("Error: Gagal download dari Huawei. Status: " . $response->status(), 500);
+                // Jika masih gagal, berarti file ini BENAR-BENAR DIKUNCI (Private Bucket)
+                // dan tidak bisa dibuka tanpa Signature Key dari API.
+                \Log::error("Proxy 403 Gagal. URL ini sepertinya Private: " . $url);
+                return response("Akses Ditolak Server Asal (403)", 403);
             }
         } catch (\Exception $e) {
-            return response("Error Exception: " . $e->getMessage(), 500);
+            return response("Error: " . $e->getMessage(), 500);
         }
     }
 
