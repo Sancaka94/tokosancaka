@@ -24,6 +24,7 @@ class Product extends Model
         'base_price',   // Harga Modal
         'sell_price',   // Harga Jual (Baru)
         'unit',
+        'image',
         'stock',        // Sisa Stok (Baru)
         'sold',         // Jumlah Terjual (Baru)
         'supplier',     // Nama Supplier (Baru)
