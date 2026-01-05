@@ -117,22 +117,75 @@
     <div class="page" id="label-resi">
 
         @php
+            // 1. Parsing Helper Asli
             $ship = \App\Helpers\ShippingHelper::parseShippingMethod($pesanan->expedition);
-
-            $expeditionName = $ship['courier_name'] ?? 'SANCAKA';
+            $expeditionName = $ship['courier_name'] ?? 'SANCAKA'; // Contoh: "J&T Express", "JNE", "SiCepat"
             $expeditionService = $ship['service_name'] ?? 'Regular';
-            $logoUrlFromHelper = $ship['logo_url'] ?? null;
 
-            $localLogoPath = strtolower(str_replace(' ', '', $expeditionName));
-            $localLogoAssetUrl = asset('public/storage/logo-ekspedisi/' . $localLogoPath . '.png'); 
+            // 2. Definisi Mapping Manual (DATABASE LINK GAMBAR)
+            $courierMap = [
+                'jne'           => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jne.png',
+                'tiki'          => 'https://tokosancaka.com/public/storage/logo-ekspedisi/tiki.png',
+                'pos'           => 'https://tokosancaka.com/public/storage/logo-ekspedisi/posindonesia.png',
+                'posindonesia'  => 'https://tokosancaka.com/public/storage/logo-ekspedisi/posindonesia.png',
+                'sicepat'       => 'https://tokosancaka.com/public/storage/logo-ekspedisi/sicepat.png',
+                'sap'           => 'https://tokosancaka.com/public/storage/logo-ekspedisi/sap.png',
+                'ncs'           => 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjxj3iyyZEjK2L4A4yCIr_E-4W3hF2lk_yb-t0Oj2oFPErCPCMHie5LHqps02xMb6sNa-Gqz5NSX_P_hzWlYpUpJUlCD4iN6_QxiSG9fzY4bsZ9XvLFDn7HCiORtNvIlPfuQbSSdW96p7x7uN8ek3FWyHW9c2bznrFBQkoLd5A9sVAFVKWLfUhT3Dxh/s320/GKL41_NCS%20Kurir%20-%20Koleksilogo.com.jpg',
+                'idx'           => 'https://tokosancaka.com/public/storage/logo-ekspedisi/idx.png',
+                'idexpress'     => 'https://tokosancaka.com/public/storage/logo-ekspedisi/idx.png',
+                'gojek'         => 'https://tokosancaka.com/public/storage/logo-ekspedisi/gosend.png',
+                'gosend'        => 'https://tokosancaka.com/public/storage/logo-ekspedisi/gosend.png',
+                'grab'          => 'https://tokosancaka.com/public/storage/logo-ekspedisi/grab.png',
+                'jnt'           => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jnt.png',
+                'j&t'           => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jnt.png',
+                'indah'         => 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEicOAaLoH2eElQ93_gbkzhvk4dRhWVlk5wQsGgilihIB58321aHchlJLdjyz1ToS25P_nWrHJ_E4QBiW_OVlI7tQt7cZ5I0HZqk6StS7jZltLVvDXp2d5ZDLB9yklhV4x6z2iXyURURDv_unhf-U6vyiD_8to9OC4PBwMwyU_5wAqOiCl6tKiaTA-ri1Q/s851/Logo%20Indah%20Logistik%20Cargo@0.5x.png',
+                'jtcargo'       => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jtcargo.png',
+                'lion'          => 'https://tokosancaka.com/public/storage/logo-ekspedisi/lion.png',
+                'spx'           => 'https://tokosancaka.com/public/storage/logo-ekspedisi/spx.png',
+                'shopee'        => 'https://tokosancaka.com/public/storage/logo-ekspedisi/spx.png',
+                'ninja'         => 'https://tokosancaka.com/public/storage/logo-ekspedisi/ninja.png',
+                'anteraja'      => 'https://tokosancaka.com/public/storage/logo-ekspedisi/anteraja.png',
+                'sentral'       => 'https://tokosancaka.com/public/storage/logo-ekspedisi/centralcargo.png',
+                'borzo'         => 'https://tokosancaka.com/public/storage/logo-ekspedisi/borzo.png',
+            ];
 
-            $finalLogoUrl = $logoUrlFromHelper ?: $localLogoAssetUrl;
+            // 3. Logika Pencocokan (Smart Matching)
+            // Kita ubah nama ekspedisi menjadi huruf kecil semua dan hapus spasi agar mudah dicocokkan
+            // Contoh: "J&T Express" -> "j&texpress", "SiCepat" -> "sicepat"
+            $normalizedName = strtolower(str_replace(' ', '', $expeditionName));
+            $finalLogoUrl = null;
+
+            // Cek Khusus untuk J&T Cargo vs J&T Express (karena mirip)
+            if (str_contains($normalizedName, 'cargo') && (str_contains($normalizedName, 'j&t') || str_contains($normalizedName, 'jt'))) {
+                $finalLogoUrl = $courierMap['jtcargo'];
+            } 
+            // Cek Loop Normal
+            else {
+                foreach ($courierMap as $key => $url) {
+                    // Jika nama ekspedisi mengandung kata kunci (misal 'sicepat' ada di 'sicepathalu')
+                    if (str_contains($normalizedName, $key)) {
+                        $finalLogoUrl = $url;
+                        break; // Ketemu, berhenti looping
+                    }
+                }
+            }
+
+            // 4. Fallback Terakhir (Jika tidak ada di list manual, pakai logika lama)
+            if (!$finalLogoUrl) {
+                $logoUrlFromHelper = $ship['logo_url'] ?? null;
+                $localLogoPath = strtolower(str_replace(' ', '', $expeditionName));
+                $localLogoAssetUrl = asset('public/storage/logo-ekspedisi/' . $localLogoPath . '.png');
+                $finalLogoUrl = $logoUrlFromHelper ?: $localLogoAssetUrl;
+            }
         @endphp
 
         <div class="flex justify-between items-center border-b border-dashed border-gray-500 pb-2">
             <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="Sancaka Express" class="h-10" onerror="this.style.display='none'">
 
-            <img src="{{ $finalLogoUrl }}" alt="{{ $expeditionName }} Logo" class="h-8" crossorigin="anonymous">
+            <img src="{{ $finalLogoUrl }}" 
+                 alt="{{ $expeditionName }}" 
+                 class="h-8 object-contain" 
+                 onerror="this.style.opacity='0'">
         </div>
 
         <div class="text-center mt-2"> 
