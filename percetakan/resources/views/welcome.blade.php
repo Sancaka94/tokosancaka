@@ -36,8 +36,8 @@
                 @auth
                     <a href="{{ url('/dashboard') }}" class="px-6 py-2 bg-indigo-600 text-white rounded-full font-bold text-sm shadow-lg shadow-indigo-200">Panel Admin</a>
                 @else
-                    <a href="{{ route('login') }}" class="text-sm font-bold text-slate-700">Login</a>
-                    <a href="{{ route('register') }}" class="px-6 py-2 border-2 border-indigo-600 text-indigo-600 rounded-full font-bold text-sm hover:bg-indigo-600 hover:text-white transition">Daftar</a>
+                    <a href="{{ route('/member/login') }}" class="text-sm font-bold text-slate-700">Login</a>
+                    <a href="{{ route('/join-partner') }}" class="px-6 py-2 border-2 border-indigo-600 text-indigo-600 rounded-full font-bold text-sm hover:bg-indigo-600 hover:text-white transition">Daftar</a>
                 @endauth
             </div>
         </nav>
