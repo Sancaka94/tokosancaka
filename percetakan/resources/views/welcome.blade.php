@@ -35,11 +35,11 @@
                     class="ml-4 inline-flex items-center
                             px-4 py-2
                             text-sm font-semibold
-                            text-red-600
+                            text-white
                             border border-red-600
                             rounded-md
-                            hover:text-white hover:bg-red-700 bg-red-600
-                            focus:ring-2 focus:ring-red-400
+                            hover:text-slate-100 hover:bg-red-700 bg-red-600
+                            focus:ring-2 focus:ring-green-600
                             transition">
                     🚀 Order Sekarang!
                 </a>
