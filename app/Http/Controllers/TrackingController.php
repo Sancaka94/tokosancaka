@@ -338,31 +338,34 @@ class TrackingController extends Controller
     public function imageProxy(Request $request)
     {
         $url = $request->query('url');
-        if (empty($url)) abort(404);
+
+        // DEBUG 1: Cek apakah route masuk sini
+        if (!$url) {
+            return response("Error: Parameter URL tidak ditemukan.", 400);
+        }
+
+        // DEBUG 2: Cek validasi domain
+        if (!str_contains($url, 'myhuaweicloud.com')) {
+             return response("Error: Domain tidak diizinkan. URL: " . $url, 403);
+        }
 
         try {
-            // PENYAMARAN TERAKHIR: Seolah-olah request dari Aplikasi Android
-            $response = \Illuminate\Support\Facades\Http::withoutVerifying()
-                ->withHeaders([
-                    // User Agent standar library Android (OkHttp)
-                    'User-Agent' => 'okhttp/3.12.1', 
-                    // Kadang server menolak jika ada Referer, jadi kita kosongkan
-                    'Referer'    => '',
-                ])
-                ->get($url);
+            $response = \Illuminate\Support\Facades\Http::withHeaders([
+                'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+            ])->get($url);
 
             if ($response->successful()) {
                 $contentType = $response->header('Content-Type') ?: 'image/jpeg';
                 return response($response->body())
                     ->header('Content-Type', $contentType)
                     ->header('Cache-Control', 'public, max-age=86400');
+            } else {
+                // DEBUG 3: Cek kenapa download gagal
+                return response("Error: Gagal download dari Huawei. Status: " . $response->status(), 500);
             }
         } catch (\Exception $e) {
-            // Silent fail
+            return response("Error Exception: " . $e->getMessage(), 500);
         }
-
-        // Jika gagal, return 404 agar 'onerror' di Blade bekerja dan menyembunyikan gambar
-        abort(404);
     }
 
     public function cetakThermal($resi)
