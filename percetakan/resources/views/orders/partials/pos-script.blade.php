@@ -1,4 +1,4 @@
-<script>
+
     function posSystem() {
         return {
             init() {
@@ -455,4 +455,3 @@
             }
         }
     }
-</script>
