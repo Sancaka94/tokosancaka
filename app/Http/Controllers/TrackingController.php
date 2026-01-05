@@ -10,7 +10,7 @@ use App\Models\ScannedPackage;
 use App\Models\ScanHistory;
 use App\Services\KiriminAjaService;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB; // <--- WAJIB ADA UNTUK KONEKSI DB2
+use Illuminate\Support\Facades\DB; // <--- WAJIB UTK DB KEDUA
 use Illuminate\Support\Facades\Log;
 
 class TrackingController extends Controller
@@ -27,8 +27,8 @@ class TrackingController extends Controller
     }
 
     /**
-     * TRACKING UTAMA (PUBLIC)
-     * Mencari dan menampilkan hasil pelacakan paket dari berbagai sumber.
+     * [TRACKING PUBLIC]
+     * Logika: DB1 -> DB2 (Percetakan) -> SPX -> ScannedPackage
      */
     public function trackPackage(Request $request)
     {
@@ -37,7 +37,7 @@ class TrackingController extends Controller
         $result = null;
 
         // ==========================================================
-        // LANGKAH 1: CARI DI TABEL PESANAN & ORDER (DB 1 - ORIGINAL)
+        // 1. CARI DI TABEL PESANAN & ORDER (DB UTAMA)
         // ==========================================================
         $pesanan = Pesanan::where('resi', $resi)
             ->orWhere('resi_aktual', $resi)
@@ -52,7 +52,7 @@ class TrackingController extends Controller
                 ->first();
             
             if ($orderModel) {
-                // Mapping Data Order ke Object Pesanan (Kode Asli Anda)
+                // Mapping Data Order (Kode Asli Anda)
                 $pesanan = (object)[
                     'resi' => $orderModel->shipping_reference,
                     'resi_aktual' => $orderModel->shipping_reference,
@@ -81,13 +81,12 @@ class TrackingController extends Controller
             }
         }
 
-        // JIKA KETEMU DI DB 1, PROSES API KIRIMINAJA
+        // PROSES API KIRIMINAJA (JIKA DB1 KETEMU)
         if ($pesanan) {
             $kiriminAja = new KiriminAjaService();
             $orderId = $pesanan->nomor_invoice ?? $pesanan->resi;
             $serviceType = $pesanan->service_type ?? 'regular';
 
-            // Bersihkan service type jika formatnya 'regular-jne-...'
             if (str_contains($serviceType, '-')) {
                 $serviceType = explode('-', $serviceType)[0];
             }
@@ -97,7 +96,6 @@ class TrackingController extends Controller
             if ($trackingData && ($trackingData['status'] ?? false)) {
                  $result = $this->normalizeKiriminAjaResponse($trackingData, $pesanan);
             } else {
-                 // Fallback Data Lokal
                  $result = [
                     'is_pesanan' => true,
                     'resi' => $pesanan->resi,
@@ -116,9 +114,9 @@ class TrackingController extends Controller
         }
 
         // ==========================================================
-        // LANGKAH 1.5: CARI DI DB 2 (PERCETAKAN) <--- TAMBAHAN BARU
+        // 2. CARI DI DB 2 (PERCETAKAN) <--- LOGIKA BARU
         // ==========================================================
-        // Hanya jalan jika DB 1 ZONK ($result masih null)
+        // Hanya jalan jika Result masih kosong
         if (!$result) {
             try {
                 $percetakan = DB::connection('mysql_second')
@@ -128,7 +126,6 @@ class TrackingController extends Controller
                     ->first();
 
                 if ($percetakan) {
-                    // Buat History Palsu Sederhana
                     $fakeHistory = collect([
                         (object)[
                             'status' => 'Pesanan Dibuat',
@@ -137,7 +134,7 @@ class TrackingController extends Controller
                             'created_at' => Carbon::parse($percetakan->created_at)
                         ],
                         (object)[
-                            'status' => $percetakan->status, // Status terakhir (misal: Selesai)
+                            'status' => $percetakan->status, 
                             'lokasi' => 'Percetakan Sancaka',
                             'keterangan' => 'Status terkini: ' . $percetakan->status,
                             'created_at' => Carbon::parse($percetakan->updated_at ?? $percetakan->created_at)
@@ -148,17 +145,12 @@ class TrackingController extends Controller
                         'is_pesanan' => true,
                         'resi' => $percetakan->shipping_ref ?? $percetakan->order_number,
                         'resi_aktual' => $percetakan->shipping_ref,
-                        
-                        // Pengirim = Kita Sendiri
                         'pengirim' => 'Sancaka Percetakan',
                         'alamat_pengirim' => 'Jl.Dr.Wahidin No.18 A, Ngawi',
                         'no_pengirim' => '08819435180',
-                        
-                        // Penerima
                         'penerima' => $percetakan->customer_name ?? 'Pelanggan',
                         'alamat_penerima' => $percetakan->destination_address ?? '-',
                         'no_penerima' => $percetakan->customer_phone ?? '-',
-                        
                         'status' => $percetakan->status,
                         'tanggal_dibuat' => $percetakan->created_at,
                         'histories' => $fakeHistory,
@@ -166,12 +158,12 @@ class TrackingController extends Controller
                     ];
                 }
             } catch (\Exception $e) {
-                // Silent Error: Jika DB2 error, lanjut ke langkah berikutnya
+                // Silent Error
             }
         }
 
         // ==========================================================
-        // LANGKAH 2: CARI DI SPX SCAN (ORIGINAL)
+        // 3. CARI DI SPX SCAN
         // ==========================================================
         if (!$result) {
             $spxScan = SpxScan::with('kontak')->where('resi', $resi)->first();
@@ -198,7 +190,7 @@ class TrackingController extends Controller
         }
         
         // ==========================================================
-        // LANGKAH 3: CARI DI SCANNED PACKAGES (ORIGINAL)
+        // 4. CARI DI SCANNED PACKAGES
         // ==========================================================
         if (!$result) {
             $scannedHistories = ScannedPackage::with(['user', 'kontak'])
@@ -209,7 +201,6 @@ class TrackingController extends Controller
             if ($scannedHistories->isNotEmpty()) {
                 $latestScan = $scannedHistories->first();
                 $firstScan = $scannedHistories->last(); 
-
                 $senderName = $firstScan->kontak->nama ?? ($firstScan->user->name ?? 'Mitra Sancaka Express');
                 $senderAddress = $firstScan->kontak->alamat ?? ($firstScan->user->address ?? 'N/A');
 
@@ -242,14 +233,12 @@ class TrackingController extends Controller
     }
 
     /**
-     * CETAK THERMAL
-     * Menggabungkan DB1 (Original) dan DB2 (Percetakan)
+     * [CETAK THERMAL ADMIN]
+     * Logika: DB1 -> DB2 (Percetakan)
      */
     public function cetakThermal($resi)
     {
-        // ==========================================================
-        // 1. CARI DI DB 1 (LOGIKA ORIGINAL - JANGAN DIGANGGU)
-        // ==========================================================
+        // 1. CARI DI DB 1 (KODE ASLI ANDA)
         $pesanan = Pesanan::where('resi', $resi)
             ->orWhere('nomor_invoice', $resi)
             ->first();
@@ -296,14 +285,16 @@ class TrackingController extends Controller
                     'resi_aktual' => null,
                     'created_at' => $orderModel->created_at,
                     'panjang' => 10, 'lebar' => 10, 'tinggi' => 10,
+                    
+                    // TAMBAHAN AGAR AMAN DI BLADE
+                    'expedition' => $orderModel->courier ?? 'JNE', 
                  ];
              }
         }
 
         // ==========================================================
-        // 2. CARI DI DB 2 (PERCETAKAN) <--- TAMBAHAN BARU
+        // 2. CARI DI DB 2 (PERCETAKAN) - JIKA DB1 ZONK
         // ==========================================================
-        // Hanya jalan jika DB1 ZONK ($pesanan masih null)
         if (!$pesanan) {
             try {
                 $orderPercetakan = DB::connection('mysql_second')
@@ -313,12 +304,13 @@ class TrackingController extends Controller
                     ->first();
 
                 if ($orderPercetakan) {
+                    // MAPPING SUPER LENGKAP AGAR TIDAK UNDEFINED PROPERTY
                     $pesanan = (object)[
                         'resi' => $orderPercetakan->shipping_ref ?? $orderPercetakan->order_number,
                         'nomor_invoice' => $orderPercetakan->order_number,
                         'status' => $orderPercetakan->status,
                         
-                        // Pengirim (Hardcode Sancaka)
+                        // PENGIRIM
                         'sender_name' => 'Sancaka Percetakan',
                         'sender_phone' => '08819435180',
                         'sender_address' => 'Jl.Dr.Wahidin No.18 A',
@@ -328,16 +320,17 @@ class TrackingController extends Controller
                         'sender_province' => 'Jawa Timur',
                         'sender_postal_code' => '63211',
 
-                        // Penerima
+                        // PENERIMA (WAJIB ADA DEFAULT KOSONG '')
                         'receiver_name' => $orderPercetakan->customer_name ?? 'Pelanggan',
                         'receiver_phone' => $orderPercetakan->customer_phone ?? '-',
                         'receiver_address' => $orderPercetakan->destination_address ?? '-',
-                        'receiver_village' => '',
+                        'receiver_village' => '', // <-- INI SOLUSI ERRORNYA
                         'receiver_district' => '',
                         'receiver_regency' => '',
                         'receiver_province' => '',
                         'receiver_postal_code' => '',
 
+                        // PAKET & BIAYA
                         'weight' => 1000,
                         'isi_paket' => 'Produk Percetakan',
                         'nilai_barang' => $orderPercetakan->total_amount ?? 0,
@@ -346,16 +339,20 @@ class TrackingController extends Controller
                         'total_cod' => $orderPercetakan->total_amount ?? 0,
                         'cod_amount' => 0,
                         'payment_method' => $orderPercetakan->payment_method ?? 'Manual',
+                        
+                        // EKSPEDISI (SOLUSI UNDEFINED PROPERTY $expedition)
+                        'expedition' => $orderPercetakan->courier_service ?? 'Express', 
                         'courier' => $orderPercetakan->courier_service ?? 'Express',
                         'service_type' => 'REG',
                         'jasa_ekspedisi_aktual' => $orderPercetakan->courier_service ?? 'Express',
+                        
                         'resi_aktual' => $orderPercetakan->shipping_ref,
                         'created_at' => $orderPercetakan->created_at,
                         'panjang' => 10, 'lebar' => 10, 'tinggi' => 10,
                     ];
                 }
             } catch (\Exception $e) {
-                // Silent Fail jika DB2 error
+                // Silent Fail
             }
         }
 
@@ -367,7 +364,7 @@ class TrackingController extends Controller
     }
 
     /**
-     * Helper Normalisasi API KiriminAja (Sama seperti sebelumnya)
+     * Helper Normalisasi
      */
     private function normalizeKiriminAjaResponse(array $rawResponse, $pesanan): array
     {
