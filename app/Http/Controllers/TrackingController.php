@@ -1,555 +1,543 @@
 <?php
 
+
+
 namespace App\Http\Controllers;
 
+
+
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log; // WAJIB
-use Illuminate\Support\Facades\Http;
-use Carbon\Carbon;
+
 use App\Models\Pesanan;
+
 use App\Models\SpxScan;
+
 use App\Models\Order;
-use App\Models\ScannedPackage;
+
+use App\Models\ScannedPackage; // Pastikan model ini ada
+
+use App\Models\ScanHistory;
+
 use App\Services\KiriminAjaService;
 
 class TrackingController extends Controller
+
 {
-    protected $kiriminAjaService;
-
-    public function __construct(KiriminAjaService $kiriminAjaService)
-    {
-        $this->kiriminAjaService = $kiriminAjaService;
-    }
-
-    public function showTrackingPage(Request $request)
-    {
-        if ($request->has('resi')) {
-            return $this->trackPackage($request);
-        }
-        return view('public.tracking.index');
-    }
 
     /**
-     * LOGIC UTAMA TRACKING
+
+     * Menampilkan halaman tracking utama.
+
      */
-    public function trackPackage(Request $request)
+
+    public function showTrackingPage(Request $request)
+
     {
-        $request->validate(['resi' => 'required|string|max:255']);
-        $resi = $request->input('resi');
+
+        if ($request->has('resi')) {
+
+            return $this->trackPackage($request);
+
+        }
+
         
-        // LOG START
-        Log::info("==========================================");
-        Log::info("TRACKING STARTED: Mencari Resi [{$resi}]");
+
+        return view('public.tracking.index');
+
+    }
+
+
+
+    /**
+
+     * Mencari dan menampilkan hasil pelacakan paket dari berbagai sumber.
+
+     */
+
+    public function trackPackage(Request $request)
+
+    {
+
+        $request->validate(['resi' => 'required|string|max:255']);
+
+        $resi = $request->input('resi');
 
         $result = null;
-        $pesanan = null;
 
-        // ==========================================
-        // TAHAP 1: CARI DI DATABASE UTAMA
-        // ==========================================
-        Log::info("STEP 1: Mencari di Database Utama (Tabel Pesanan)...");
-        
+
+
+        // Langkah 1: Cari di tabel pesanan
+
         $pesanan = Pesanan::where('resi', $resi)
+
                   ->orWhere('resi_aktual', $resi)
-                  ->orWhere('nomor_invoice', $resi)
+
+                   ->orWhere('nomor_invoice', $resi)
+
                   ->first();
 
-        if ($pesanan) {
-            Log::info("KETEMU: Data ditemukan di Model 'Pesanan' (DB1). ID: {$pesanan->id}");
+
+
+$orderModel = null;
+
+
+
+if (!$pesanan) {
+
+    $orderModel = Order::where('shipping_reference', $resi)->orWhere('invoice_number', $resi)->first();
+
+    
+
+    if ($orderModel) {
+
+       $pesanan = (object)[
+
+            'resi' => $orderModel->shipping_reference,
+
+            'resi_aktual' => $orderModel->shipping_reference,
+
+        
+
+            // Sender
+
+            'sender_name' => $orderModel->store->name ?? 'N/A',
+
+            'sender_address' => $orderModel->store->address_detail ?? 'N/A',
+
+            'sender_province' => $orderModel->store->province ?? 'N/A',
+
+            'sender_regency' => $orderModel->store->regency ?? 'N/A',
+
+            'sender_district' => $orderModel->store->district ?? 'N/A',
+
+            'sender_village' => $orderModel->store->village ?? 'N/A',
+
+            'sender_postal_code' => $orderModel->store->postal_code ?? 'N/A',
+
+            'sender_phone' => $orderModel->store->user->no_wa ?? 'N/A',
+
+        
+
+            // Receiver
+
+            'receiver_name' => $orderModel->user->nama_lengkap ?? 'N/A',
+
+            'receiver_address' => $orderModel->shipping_address ?? 'N/A',
+
+            'receiver_province' => $orderModel->user->province ?? 'N/A',
+
+            'receiver_regency' => $orderModel->user->regency ?? 'N/A',
+
+            'receiver_district' => $orderModel->user->district ?? 'N/A',
+
+            'receiver_village' => $orderModel->user->village ?? 'N/A',
+
+            'receiver_postal_code' => $orderModel->user->postal_code ?? 'N/A',
+
+              'receiver_phone' => $orderModel->user->no_wa ?? 'N/A',
+
+        
+
+            'status' => $orderModel->status ?? 'N/A',
+
+            'jasa_ekspedisi_aktual' => $orderModel->courier ?? null,
+
+            'service_type' => explode('-', $orderModel->service_type)[0] ?? null, // ambil kata pertama
+
+            'created_at' => $orderModel->created_at,
+
+        ];
+
+    }
+
+}
+
+
+
+if ($pesanan) {
+
+    $kiriminAja = new KiriminAjaService();
+
+
+
+    $orderId = $pesanan->nomor_invoice ?? $pesanan->resi;
+
+
+
+    $trackingData = null;
+
+    $trackingData = $kiriminAja->track($pesanan->service_type, $orderId);
+
+
+
+    // Mapping histories
+
+    $histories = collect();
+
+    if ($trackingData) {
+
+        if ($pesanan->service_type === 'instant') {
+
+            $result = $trackingData['result'] ?? [];
+
+            $histories->push((object)[
+
+                'status' => 'Pesanan dibuat',
+
+                'lokasi' => $result['origin']['address'] ?? '-',
+
+                'keterangan' => 'Pesanan telah diterima oleh driver',
+
+                'created_at' => $result['date']['created_at'] ?? null,
+
+            ]);
+
         } else {
-            Log::info("SKIP: Tidak ada di 'Pesanan'. Mencari di Model 'Order'...");
-            
-            $orderModel = Order::with(['store', 'user'])
-                        ->where('shipping_reference', $resi)
-                        ->orWhere('invoice_number', $resi)
-                        ->first();
-            
-            if ($orderModel) {
-                Log::info("KETEMU: Data ditemukan di Model 'Order' (DB1). ID: {$orderModel->id}");
-                // Standarisasi Objek
-                $pesanan = (object)[
-                    'resi' => $orderModel->shipping_reference,
-                    'resi_aktual' => $orderModel->shipping_reference,
-                    'nomor_invoice' => $orderModel->invoice_number,
-                    'status' => $orderModel->status,
-                    'sender_name' => $orderModel->store->name ?? 'N/A',
-                    'sender_address' => $orderModel->store->address_detail ?? 'N/A',
-                    'sender_phone' => $orderModel->store->user->no_wa ?? '-',
-                    'receiver_name' => $orderModel->user->nama_lengkap ?? 'N/A',
-                    'receiver_address' => $orderModel->shipping_address ?? 'N/A',
-                    'receiver_phone' => $orderModel->user->no_wa ?? '-',
-                    'jasa_ekspedisi_aktual' => $orderModel->courier ?? null,
-                    'service_type' => explode('-', $orderModel->service_type)[0] ?? 'regular',
-                    'created_at' => $orderModel->created_at,
-                ];
-            } else {
-                Log::warning("GAGAL: Resi tidak ditemukan sama sekali di Database Utama (DB1).");
+
+            foreach ($trackingData['histories'] ?? [] as $h) {
+
+                $histories->push((object)[
+
+                    'status' => $h['status'] ?? null,
+
+                    'lokasi' => $h['receiver'] ?? '-',
+
+                    'keterangan' => $h['status'] ?? null,
+
+                    'created_at' => $h['created_at'] ?? null,
+
+                ]);
+
             }
+
         }
 
-        // ==========================================
-        // TAHAP 2: JIKA KOSONG, CARI DI DATABASE KEDUA
-        // ==========================================
-        if (!$pesanan) {
-            Log::info("STEP 2: Beralih ke Database Kedua (mysql_second)...");
+    }
+
+
+
+   $result = [
+
+        'is_pesanan' => true,
+
+        'resi' => $pesanan->resi,
+
+        'pengirim' => $pesanan->sender_name ?? 'N/A',
+
+        'alamat_pengirim' => implode(', ', array_filter([
+
+            $pesanan->sender_address ?? null,
+
+            $pesanan->sender_village ?? null,
+
+            $pesanan->sender_district ?? null,
+
+            $pesanan->sender_regency ?? null,
+
+            $pesanan->sender_province ?? null,
+
+            $pesanan->sender_postal_code ?? null,
+
+        ])) ?: 'N/A',
+
+        'no_pengirim' => $pesanan->sender_phone,
+
+        'penerima' => $pesanan->receiver_name ?? 'N/A',
+
+        'alamat_penerima' => implode(', ', array_filter([
+
+            $pesanan->receiver_address ?? null,
+
+            $pesanan->receiver_village ?? null,
+
+            $pesanan->receiver_district ?? null,
+
+            $pesanan->receiver_regency ?? null,
+
+            $pesanan->receiver_province ?? null,
+
+            $pesanan->receiver_postal_code ?? null,
+
+        ])) ?: 'N/A',
+
+        'no_penerima' => $pesanan->receiver_phone,
+
+        'status' => $pesanan->status,
+
+        'tanggal_dibuat' => $pesanan->created_at,
+
+        'histories' => $histories,
+
+        'resi_aktual' => $pesanan->resi_aktual,
+
+        'jasa_ekspedisi_aktual' => $pesanan->jasa_ekspedisi_aktual,
+
+    ];
+
+
+
+}
+
+
+
+
+
+
+
+        // Langkah 2: Jika tidak ditemukan, cari di tabel spx_scans
+
+        if (!$result) {
+
+            $spxScan = SpxScan::with('kontak')->where('resi', $resi)->first();
+
+            if ($spxScan) {
+
+                $result = [
+
+                    'is_pesanan' => false,
+
+                    'resi' => $spxScan->resi,
+
+                    'pengirim' => $spxScan->kontak->nama ?? 'N/A',
+
+                    'alamat_pengirim' => $spxScan->kontak->alamat ?? 'N/A', // Tambahkan alamat pengirim
+
+                    'penerima' => 'Agen SPX Express (Sancaka Express)',
+
+                    'alamat_penerima' => 'Jl.Dr.Wahidin No.18 A RT.22 RW.05 Kel.Ketanggi',
+
+                    'status' => $spxScan->status,
+
+                    'tanggal_dibuat' => $spxScan->created_at,
+
+                    'histories' => collect([
+
+                        (object)[
+
+                            'status' => $spxScan->status,
+
+                            'lokasi' => 'SPX Ngawi',
+
+                            'keterangan' => 'Paket telah di-scan oleh pengirim.',
+
+                            'created_at' => $spxScan->created_at
+
+                        ]
+
+                    ]),
+
+                ];
+
+            }
+
+        }
+
+        
+
+        // Langkah 3: Jika masih tidak ditemukan, cari di tabel scanned_packages
+
+        if (!$result) {
+
+            $scannedHistories = ScannedPackage::with(['user', 'kontak'])
+
+                                                ->where('resi_number', $resi)
+
+                                                ->orderBy('created_at', 'desc')
+
+                                                ->get();
+
             
-            try {
-                // Cek koneksi dulu (opsional, tapi bagus untuk debug)
-                // DB::connection('mysql_second')->getPdo(); 
 
-                $orderPercetakan = DB::connection('mysql_second')
-                                ->table('orders')
-                                ->where('order_number', $resi)
-                                ->orWhere('shipping_ref', $resi)
-                                ->first();
+            if ($scannedHistories->isNotEmpty()) {
 
-                if ($orderPercetakan) {
-                    Log::info("KETEMU: Data ditemukan di Database Kedua (Percetakan). ID: {$orderPercetakan->id}");
-                    
-                    $pesanan = (object)[
-                        'resi' => $orderPercetakan->shipping_ref ?? $orderPercetakan->order_number,
-                        'resi_aktual' => $orderPercetakan->shipping_ref,
-                        'nomor_invoice' => $orderPercetakan->order_number,
-                        'status' => $orderPercetakan->status,
-                        'sender_name' => 'Sancaka Percetakan',
-                        'sender_address' => 'Jl.Dr.Wahidin No.18 A Ngawi',
-                        'sender_phone' => '08819435180',
-                        'receiver_name' => $orderPercetakan->customer_name ?? 'Pelanggan',
-                        'receiver_address' => $orderPercetakan->destination_address ?? '-',
-                        'receiver_phone' => $orderPercetakan->customer_phone ?? '-',
-                        'jasa_ekspedisi_aktual' => $orderPercetakan->courier_service ?? 'JNE/J&T',
-                        'service_type' => 'regular',
-                        'created_at' => $orderPercetakan->created_at,
-                    ];
-                } else {
-                    Log::warning("GAGAL: Resi juga tidak ditemukan di Database Kedua.");
+                $latestScan = $scannedHistories->first();
+
+                $firstScan = $scannedHistories->last(); 
+
+
+
+                $senderName = 'Mitra Sancaka Express';
+
+                $senderAddress = 'N/A'; // Default alamat pengirim
+
+
+
+                if ($firstScan->kontak) {
+
+                    $senderName = $firstScan->kontak->nama;
+
+                    $senderAddress = $firstScan->kontak->alamat; // Ambil alamat dari kontak
+
+                } elseif ($firstScan->user) {
+
+                    $senderName = $firstScan->user->name;
+
+                    // Asumsi user punya relasi ke kontak atau kolom alamat
+
+                    $senderAddress = $firstScan->user->address ?? 'Alamat tidak tersedia'; 
+
                 }
 
-            } catch (\Exception $e) {
-                Log::error("CRITICAL ERROR DB2: Gagal koneksi ke mysql_second. Pesan: " . $e->getMessage());
+
+
+                $result = [
+
+                    'is_pesanan' => false,
+
+                    'resi' => $latestScan->resi_number,
+
+                    'pengirim' => $senderName,
+
+                    'alamat_pengirim' => $senderAddress, // Tambahkan alamat pengirim
+
+                    'penerima' => 'Agen Drop Point SPX Sancaka Express',
+
+                    'alamat_penerima' => 'Jl.Dr.Wahidin No.18 A RT.22 RW.05 Kel.Ketanggi Kec.Ngawi Kab.Ngawi Jawa Timur 63211',
+
+                    'status' => $latestScan->status,
+
+                    'tanggal_dibuat' => $firstScan->created_at,
+
+                    'histories' => $scannedHistories->map(function ($item) {
+
+                        return (object)[
+
+                            'status' => $item->status,
+
+                            'lokasi' => 'Gudang Sancaka',
+
+                            'keterangan' => 'Paket telah diproses di gudang.',
+
+                            'created_at' => $item->created_at
+
+                        ];
+
+                    }),
+
+                ];
+
             }
+
         }
 
-        // ==========================================
-        // TAHAP 3: EKSEKUSI API KIRIMINAJA
-        // ==========================================
-        if ($pesanan) {
-            $nomorResiApi = $pesanan->resi_aktual ?? $pesanan->resi;
-            Log::info("STEP 3: Mengirim Request ke API KiriminAja untuk Resi: {$nomorResiApi}");
 
-            // Call Service
-            $trackingData = $this->kiriminAjaService->trackPackage($nomorResiApi);
-            
-            // Log raw response status (tanpa body lengkap agar tidak spam)
-            $statusApi = isset($trackingData['status']) && $trackingData['status'] ? 'SUCCESS' : 'FAILED';
-            Log::info("API RESPONSE STATUS: {$statusApi}");
-
-            // Normalisasi
-            $result = $this->normalizeKiriminAjaResponse($trackingData, $pesanan);
-        } else {
-            Log::info("SKIP API: Karena data pesanan tidak ditemukan di DB1 maupun DB2.");
-        }
-
-        // ==========================================
-        // TAHAP 4: FALLBACK LOKAL (SPX / SCAN MANUAL)
-        // ==========================================
-        if (!$result) {
-            Log::info("STEP 4: Mencari di Tabel Scan Lokal (Fallback)...");
-            $result = $this->checkLocalScans($resi);
-            
-            if($result) {
-                Log::info("KETEMU: Data ditemukan di Scan Lokal.");
-            } else {
-                Log::info("GAGAL: Data tidak ditemukan dimanapun (DB1, DB2, Local Scan).");
-            }
-        }
-
-        Log::info("TRACKING FINISHED.\n");
 
         if ($result) {
+
             return view('public.tracking.index', compact('result'));
+
         }
 
-        return redirect()->route('tracking.index')->with('error', "Nomor resi '{$resi}' tidak ditemukan di sistem kami.");
+
+
+        return redirect()->route('tracking.index')->with('error', "Nomor resi '{$resi}' tidak ditemukan. Pastikan nomor yang Anda masukkan sudah benar.");
+
     }
     
-    private function normalizeKiriminAjaResponse(array $rawResponse, $pesanan): array
-    {
-        // Debug Log
-        Log::info("NORMALISASI DATA (WITH IMAGES):", [
-            'has_data' => isset($rawResponse['data']),
-        ]);
-
-        // ============================================================
-        // 1. MAPPING DATA
-        // ============================================================
-        
-        $dataRoot = $rawResponse['data'] ?? [];
-        
-        // Ambil History & Summary
-        $histories = $dataRoot['histories'] ?? ($rawResponse['histories'] ?? []);
-        $details = $dataRoot['summary'] ?? ($rawResponse['details'] ?? []);
-        $apiTextStatus = $rawResponse['text'] ?? ($dataRoot['text'] ?? '-');
-
-        // ============================================================
-        // 2. NORMALISASI HISTORY (+ GAMBAR)
-        // ============================================================
-        $normalizedHistories = collect($histories)->map(function ($history) use ($details) {
-            
-            // A. Parsing Tanggal
-            try {
-                $timestampWIB = Carbon::parse($history['created_at'])->timezone('Asia/Jakarta');
-            } catch (\Exception $e) {
-                $timestampWIB = now();
-            }
-
-            // B. Bersihkan Teks Status
-            $statusText = $history['status'] ?? '-';
-            $statusText = preg_replace('/\s\d{2}-\d{2}-\d{4}\s\d{2}:\d{2}\s\|/i', '', $statusText);
-
-            // C. AMBIL GAMBAR (DARI LOG ANDA, LETAKNYA DI 'images')
-            // Pastikan formatnya array. Jika null, jadikan array kosong.
-            $evidenceImages = $history['images'] ?? [];
-            
-            // Opsional: Kadang ada juga di 'attachment'
-            if (empty($evidenceImages) && isset($history['attachment'])) {
-                $evidenceImages = [$history['attachment']];
-            }
-
-            return (object)[
-                'status' => $statusText,
-                'lokasi' => $history['city_name'] ?? ($details['destination']['city'] ?? 'Hub/Gudang'), 
-                'keterangan' => $history['note'] ?? ($history['status'] ?? ''),
-                'created_at' => $timestampWIB,
-                // --- TAMBAHAN PENTING: ARRAY GAMBAR ---
-                'images' => $evidenceImages, 
-            ];
-        })->toArray();
-
-        // ============================================================
-        // 3. GABUNG STATUS INTERNAL
-        // ============================================================
-        if ($pesanan->created_at) {
-            $createdHistory = (object)[
-                'status' => 'Pesanan Dibuat',
-                'lokasi' => 'Sistem Internal',
-                'keterangan' => 'Data pesanan masuk ke sistem.',
-                'created_at' => Carbon::parse($pesanan->created_at)->timezone('Asia/Jakarta'), 
-                'images' => [], // Internal biasanya tidak ada gambar
-            ];
-
-            $hasDuplicate = collect($normalizedHistories)->contains(function ($h) use ($createdHistory) {
-                return $h->created_at->diffInMinutes($createdHistory->created_at) < 2 || stripos($h->status, 'dibuat') !== false;
-            });
-
-            if (!$hasDuplicate) {
-                 $normalizedHistories[] = $createdHistory;
-            }
-        }
-
-        // Urutkan (Terbaru di atas)
-        $sortedHistories = collect($normalizedHistories)->sortByDesc('created_at')->values();
-
-        // ============================================================
-        // 4. RETURN DATA FINAL
-        // ============================================================
-        $get = function($arr, $key1, $key2) { return $arr[$key1][$key2] ?? null; };
-
+    /**
+ * Memproses dan menormalisasi respons dari KiriminAja API.
+ * * @param array $rawResponse Respons mentah dari KiriminAja
+ * @param object $pesanan Objek Pesanan/Order internal
+ * @return array Data tracking yang sudah dinormalisasi untuk View
+ */
+private function normalizeKiriminAjaResponse(array $rawResponse, $pesanan): array
+{
+    // 1. Cek jika API gagal
+    if (!isset($rawResponse['status']) || !$rawResponse['status'] || !isset($rawResponse['details'])) {
         return [
-            'is_pesanan' => true,
-            'resi' => $pesanan->resi,
-            'resi_aktual' => $details['awb'] ?? $pesanan->resi_aktual,
-            
-            'pengirim' => $get($details, 'origin', 'name') ?? $pesanan->sender_name ?? '-',
-            'alamat_pengirim' => $get($details, 'origin', 'address') ?? $pesanan->sender_address ?? '-',
-            'no_pengirim' => $get($details, 'origin', 'phone') ?? $pesanan->sender_phone ?? '-',
-            
-            'penerima' => $get($details, 'destination', 'name') ?? $pesanan->receiver_name ?? '-',
-            'alamat_penerima' => $get($details, 'destination', 'address') ?? $pesanan->receiver_address ?? '-',
-            'no_penerima' => $get($details, 'destination', 'phone') ?? $pesanan->receiver_phone ?? '-',
-            
-            'status' => $apiTextStatus, 
-            'tanggal_dibuat' => $pesanan->created_at,
-            'histories' => $sortedHistories,
-            'jasa_ekspedisi_aktual' => $pesanan->jasa_ekspedisi_aktual,
+            'error' => $rawResponse['text'] ?? 'Gagal mengambil data pelacakan dari KiriminAja atau API pihak ketiga.',
+            'is_external_error' => true
         ];
     }
 
-    private function checkLocalScans($resi)
-    {
-        // 1. Cek SPX Scan
-        $spxScan = SpxScan::with('kontak')->where('resi', $resi)->first();
-        if ($spxScan) {
-             Log::info("Found in SpxScan Table.");
-             return [
-                'is_pesanan' => false,
-                'resi' => $spxScan->resi,
-                'pengirim' => $spxScan->kontak->nama ?? 'N/A',
-                'alamat_pengirim' => $spxScan->kontak->alamat ?? 'N/A',
-                'penerima' => 'Agen SPX Express (Sancaka Express)',
-                'alamat_penerima' => 'Jl.Dr.Wahidin No.18 A Ngawi',
-                'status' => $spxScan->status,
-                'tanggal_dibuat' => $spxScan->created_at,
-                'histories' => collect([(object)[
-                    'status' => $spxScan->status,
-                    'lokasi' => 'SPX Ngawi',
-                    'keterangan' => 'Paket telah di-scan oleh pengirim.',
-                    'created_at' => $spxScan->created_at
-                ]]),
-            ];
-        }
+    $details = $rawResponse['details'];
+    $histories = $rawResponse['histories'] ?? [];
 
-        // 2. Cek Scanned Packages
-        $scannedHistories = ScannedPackage::with(['user', 'kontak'])
-                                ->where('resi_number', $resi)
-                                ->orderBy('created_at', 'desc')
-                                ->get();
+    // 2. Normalisasi dan Konversi Timezone untuk Riwayat
+    $normalizedHistories = collect($histories)->map(function ($history) use ($details) {
         
-        if ($scannedHistories->isNotEmpty()) {
-            Log::info("Found in ScannedPackages Table.");
-            $latest = $scannedHistories->first();
-            $first = $scannedHistories->last();
-            $senderName = $first->kontak->nama ?? ($first->user->name ?? 'Mitra Sancaka');
+        // VITAL FIX: Kita paksa Carbon menganggap string waktu API sudah dalam WIB (Asia/Jakarta)
+        $timestampWIB = Carbon::parse($history['created_at'], 'Asia/Jakarta');
 
-            return [
-                'is_pesanan' => false,
-                'resi' => $latest->resi_number,
-                'pengirim' => $senderName,
-                'alamat_pengirim' => '-',
-                'penerima' => 'Agen Drop Point',
-                'alamat_penerima' => 'Gudang Sancaka',
-                'status' => $latest->status,
-                'tanggal_dibuat' => $first->created_at,
-                'histories' => $scannedHistories->map(function ($item) {
-                    return (object)[
-                        'status' => $item->status,
-                        'lokasi' => 'Gudang Sancaka',
-                        'keterangan' => 'Paket diproses manual.',
-                        'created_at' => $item->created_at
-                    ];
-                }),
-            ];
+        // Membersihkan status: Menghilangkan tanggal/waktu yang mungkin terbawa di teks status
+        $statusText = $history['status'] ?? 'N/A';
+        $statusText = preg_replace('/\s\d{2}-\d{2}-\d{4}\s\d{2}:\d{2}\s\|/i', '', $statusText);
+
+        return (object)[
+            'status' => $statusText,
+            'lokasi' => $details['destination']['city'] ?? '-', // Lokasi yang lebih umum
+            'keterangan' => $history['status'] ?? null,
+            'created_at' => $timestampWIB, // Carbon Object dalam WIB
+        ];
+    })->toArray();
+
+    // 3. Tambahkan status "Pesanan Dibuat" dari created_at Pesanan (Internal)
+    if ($pesanan->created_at) {
+        $createdHistory = (object)[
+            'status' => 'Pesanan Dibuat',
+            'lokasi' => 'Data diterima sistem',
+            'keterangan' => 'Data diterima sistem Sancaka Express.',
+            // Tanggal buat Pesanan dari DB (UTC), konversi ke WIB
+            'created_at' => Carbon::parse($pesanan->created_at)->timezone('Asia/Jakarta'), 
+        ];
+        
+        // Cegah duplikasi jika status awal sudah ada
+        $isDuplicate = collect($normalizedHistories)->contains(function ($h) use ($createdHistory) {
+            // Membandingkan dalam jarak waktu 5 menit atau jika status mengandung kata 'dibuat'
+            return $h->created_at->diffInMinutes($createdHistory->created_at) < 5 || str_contains(strtolower($h->status), 'dibuat');
+        });
+        if (!$isDuplicate) {
+             $normalizedHistories[] = $createdHistory;
         }
-
-        return null;
     }
 
-    public function cetakThermal($resi)
+
+    // 4. Mengurutkan riwayat berdasarkan waktu terbaru (DESC)
+    // Semua item di $normalizedHistories sekarang adalah Carbon objects dalam WIB
+    $sortedHistories = collect($normalizedHistories)->sortByDesc('created_at')->values();
+
+    // 5. Final Mapping untuk View
+    return [
+        'is_pesanan' => true,
+        'resi' => $pesanan->resi,
+        'resi_aktual' => $details['awb'] ?? $pesanan->resi_aktual,
+        
+        // Info Pengirim/Penerima dari API, fallback ke Pesanan
+        'pengirim' => $details['origin']['name'] ?? $pesanan->sender_name ?? 'N/A',
+        'alamat_pengirim' => $details['origin']['address'] ?? $pesanan->sender_address ?? 'N/A',
+        'no_pengirim' => $details['origin']['phone'] ?? $pesanan->sender_phone ?? 'N/A',
+        
+        'penerima' => $details['destination']['name'] ?? $pesanan->receiver_name ?? 'N/A',
+        'alamat_penerima' => $details['destination']['address'] ?? $pesanan->receiver_address ?? 'N/A',
+        'no_penerima' => $details['destination']['phone'] ?? $pesanan->receiver_phone ?? 'N/A',
+        
+        // Ambil status terbaru dari response API
+        'status' => $rawResponse['text'] ?? ($details['delivered'] ? 'Telah Diterima' : $pesanan->status),
+        'tanggal_dibuat' => $pesanan->created_at,
+        'histories' => $sortedHistories,
+        'jasa_ekspedisi_aktual' => $pesanan->jasa_ekspedisi_aktual,
+    ];
+}
+
+  public function cetakThermal($resi)
     {
-        Log::info("=== CETAK THERMAL START: {$resi} ===");
-
-        $pesanan = null;
-
-        // =========================================================================
-        // 1. CEK DB 1 (MODEL: PESANAN)
-        // =========================================================================
-        $modelPesanan = Pesanan::where('resi', $resi)
-            ->orWhere('resi_aktual', $resi)
+        // Logika cetak thermal
+        $pesanan = Pesanan::where('resi', $resi)
             ->orWhere('nomor_invoice', $resi)
             ->first();
 
-        if ($modelPesanan) {
-            Log::info("KETEMU di DB1 (Table Pesanan). ID: {$modelPesanan->id}");
-
-            // --- LOGIKA BARU: PARSING STRING DATA (regular-jne-REG23-19000...) ---
-            // Kita coba ambil data dari kolom yang berisi string panjang itu
-            // Biasanya ada di kolom 'service_type', 'layanan', atau 'courier_service'
-            // Kita cek satu-satu mana yang berisi string panjang
-            $rawString = $modelPesanan->layanan ?? ($modelPesanan->service_type ?? '');
-            
-            // Default Values
-            $parsedOngkir = 0;
-            $parsedExpedition = 'JNE'; // Default JNE jika tidak terbaca
-            $parsedService = 'REG';
-
-            if (str_contains($rawString, '-')) {
-                // Format: type-courier-service-price-insurance-fee
-                // Contoh: regular-jne-REG23-19000-0-2500
-                $parts = explode('-', $rawString);
-                
-                if (count($parts) >= 4) {
-                    $parsedExpedition = strtoupper($parts[1]); // Index 1: jne
-                    $parsedService = strtoupper($parts[2]);    // Index 2: REG23
-                    $parsedOngkir = (int) $parts[3];           // Index 3: 19000 (Ongkir!)
-                }
-            }
-
-            // Tentukan Nilai Akhir (Prioritas: Kolom Asli -> Hasil Parsing)
-            $finalOngkir = $modelPesanan->ongkir > 0 ? $modelPesanan->ongkir : $parsedOngkir;
-            $finalExpedition = ($modelPesanan->courier && $modelPesanan->courier !== 'regular') ? $modelPesanan->courier : $parsedExpedition;
-            // ---------------------------------------------------------------------
-            
-            $pesanan = (object)[
-                'resi' => $modelPesanan->resi,
-                'nomor_invoice' => $modelPesanan->nomor_invoice,
-                'status' => $modelPesanan->status,
-                
-                // Pengirim
-                'sender_name' => $modelPesanan->sender_name,
-                'sender_phone' => $modelPesanan->sender_phone,
-                'sender_address' => $modelPesanan->sender_address,
-                'sender_village' => $modelPesanan->sender_village ?? '',
-                'sender_district' => $modelPesanan->sender_district ?? '',
-                'sender_regency' => $modelPesanan->sender_regency ?? '',
-                'sender_province' => $modelPesanan->sender_province ?? '',
-                'sender_postal_code' => $modelPesanan->sender_postal_code ?? '',
-                
-                // Penerima
-                'receiver_name' => $modelPesanan->receiver_name,
-                'receiver_phone' => $modelPesanan->receiver_phone,
-                'receiver_address' => $modelPesanan->receiver_address,
-                'receiver_village' => $modelPesanan->receiver_village ?? '', 
-                'receiver_district' => $modelPesanan->receiver_district ?? '',
-                'receiver_regency' => $modelPesanan->receiver_regency ?? '',
-                'receiver_province' => $modelPesanan->receiver_province ?? '',
-                'receiver_postal_code' => $modelPesanan->receiver_postal_code ?? '',
-                
-                // Paket
-                'weight' => $modelPesanan->weight ?? 1000,
-                'item_description' => $modelPesanan->isi_paket ?? 'Paket Ekspedisi',
-                'length' => $modelPesanan->panjang ?? 10,
-                'width' => $modelPesanan->lebar ?? 10,
-                'height' => $modelPesanan->tinggi ?? 10,
-                
-                // Biaya (Gunakan Final Ongkir hasil parsing tadi)
-                'item_price' => $modelPesanan->nilai_barang ?? 0, 
-                'price' => $modelPesanan->total_cod ?? ($modelPesanan->nilai_barang ?? 0), 
-                'shipping_cost' => $finalOngkir, // <--- SUDAH DIPERBAIKI (19000)
-                'insurance_cost' => $modelPesanan->biaya_asuransi ?? 0,
-                'cod_amount' => $modelPesanan->cod_amount ?? 0,
-                'payment_method' => $modelPesanan->payment_method ?? 'CASH',
-
-                // Ekspedisi (Gunakan Final Expedition hasil parsing tadi)
-                'expedition' => $finalExpedition, // <--- SUDAH DIPERBAIKI (JNE)
-                'service_type' => $parsedService,
-                'jasa_ekspedisi_aktual' => $finalExpedition,
-                'resi_aktual' => $modelPesanan->resi_aktual,
-                
-                'created_at' => $modelPesanan->created_at,
-            ];
-        } 
+        if (!$pesanan) {
+            abort(404, 'Pesanan tidak ditemukan untuk dicetak.');
+        }
         
-        // =========================================================================
-        // 2. CEK DB 1 (MODEL: ORDER)
-        // =========================================================================
-        if (!$pesanan) {
-            $orderModel = Order::with(['store', 'user'])
-                ->where('shipping_reference', $resi)
-                ->orWhere('invoice_number', $resi)
-                ->first();
-
-            if ($orderModel) {
-                Log::info("KETEMU di DB1 (Table Order)");
-                $pesanan = (object)[
-                    'resi' => $orderModel->shipping_reference,
-                    'nomor_invoice' => $orderModel->invoice_number,
-                    'status' => $orderModel->status,
-                    'sender_name' => $orderModel->store->name ?? 'N/A',
-                    'sender_phone' => $orderModel->store->user->no_wa ?? '-',
-                    'sender_address' => $orderModel->store->address_detail ?? '-',
-                    'sender_village' => $orderModel->store->village ?? '',
-                    'sender_district' => $orderModel->store->district ?? '',
-                    'sender_regency' => $orderModel->store->regency ?? '',
-                    'sender_province' => $orderModel->store->province ?? '',
-                    'sender_postal_code' => $orderModel->store->postal_code ?? '',
-                    'receiver_name' => $orderModel->user->nama_lengkap ?? 'N/A',
-                    'receiver_phone' => $orderModel->user->no_wa ?? '-',
-                    'receiver_address' => $orderModel->shipping_address ?? '-',
-                    'receiver_village' => $orderModel->user->village ?? '',
-                    'receiver_district' => $orderModel->user->district ?? '',
-                    'receiver_regency' => $orderModel->user->regency ?? '',
-                    'receiver_province' => $orderModel->user->province ?? '',
-                    'receiver_postal_code' => $orderModel->user->postal_code ?? '',
-                    'weight' => $orderModel->total_weight ?? 1000,
-                    'item_description' => 'Paket Toko Online (' . $orderModel->invoice_number . ')',
-                    'length' => 10, 'width' => 10, 'height' => 10,
-                    'item_price' => $orderModel->sub_total ?? 0,
-                    'price' => $orderModel->grand_total ?? 0,
-                    'shipping_cost' => $orderModel->shipping_cost ?? 0,
-                    'insurance_cost' => 0,
-                    'cod_amount' => 0, 
-                    'payment_method' => $orderModel->payment_method ?? 'Transfer',
-                    'expedition' => $orderModel->courier ?? 'JNE',
-                    'service_type' => $orderModel->service_type ?? 'REG',
-                    'jasa_ekspedisi_aktual' => $orderModel->courier ?? 'JNE',
-                    'resi_aktual' => null,
-                    'created_at' => $orderModel->created_at,
-                ];
-            }
-        }
-
-        // =========================================================================
-        // 3. CEK DB 2 (PERCETAKAN)
-        // =========================================================================
-        if (!$pesanan) {
-            try {
-                $orderPercetakan = DB::connection('mysql_second')
-                    ->table('orders') 
-                    ->where('order_number', $resi)
-                    ->orWhere('shipping_ref', $resi)
-                    ->first();
-
-                if ($orderPercetakan) {
-                    Log::info("KETEMU di DB2 (Percetakan)!");
-                    $pesanan = (object)[
-                        'resi' => $orderPercetakan->shipping_ref ?? $orderPercetakan->order_number,
-                        'nomor_invoice' => $orderPercetakan->order_number,
-                        'status' => $orderPercetakan->status,
-                        'sender_name' => 'Sancaka Percetakan',
-                        'sender_phone' => '08819435180',
-                        'sender_address' => 'Jl.Dr.Wahidin No.18 A',
-                        'sender_village' => 'Ketanggi',
-                        'sender_district' => 'Ngawi',
-                        'sender_regency' => 'Kab. Ngawi',
-                        'sender_province' => 'Jawa Timur',
-                        'sender_postal_code' => '63211',
-                        'receiver_name' => $orderPercetakan->customer_name ?? 'Pelanggan',
-                        'receiver_phone' => $orderPercetakan->customer_phone ?? '-',
-                        'receiver_address' => $orderPercetakan->destination_address ?? '-',
-                        'receiver_village' => '',  
-                        'receiver_district' => '', 
-                        'receiver_regency' => '', 
-                        'receiver_province' => '', 
-                        'receiver_postal_code' => '', 
-                        'weight' => 1000, 
-                        'item_description' => 'Produk Percetakan Sancaka',
-                        'length' => 20, 'width' => 10, 'height' => 5,
-                        'item_price' => $orderPercetakan->total_amount ?? 0,
-                        'price' => $orderPercetakan->total_amount ?? 0,
-                        'shipping_cost' => 0,
-                        'insurance_cost' => 0,
-                        'cod_amount' => 0,
-                        'payment_method' => $orderPercetakan->payment_method ?? 'Manual',
-                        'expedition' => $orderPercetakan->courier_service ?? 'Express',
-                        'service_type' => 'REG',
-                        'jasa_ekspedisi_aktual' => $orderPercetakan->courier_service ?? 'Express',
-                        'resi_aktual' => $orderPercetakan->shipping_ref,
-                        'created_at' => $orderPercetakan->created_at,
-                    ];
-                }
-            } catch (\Exception $e) {
-                Log::error("ERROR DB2: " . $e->getMessage());
-            }
-        }
-
-        // =========================================================================
-        // 4. RETURN VIEW
-        // =========================================================================
-        if (!$pesanan) {
-            abort(404, 'Data Resi tidak ditemukan.');
-        }
-
-        // Log hasil akhir untuk memastikan
-        Log::info("DATA THERMAL FINAL:", (array) $pesanan);
-
-        $expeditionService = $pesanan->expedition . ' - ' . $pesanan->service_type;
-
-        return view('admin.pesanan.cetak_thermal', compact('pesanan', 'expeditionService'));
+        return view('admin.pesanan.cetak_thermal', compact('pesanan'));
     }
     
     public function refreshTimeline()
     {
         return redirect()->back()->with('success', 'Timeline diperbarui');
     }
+
+
 }
+
