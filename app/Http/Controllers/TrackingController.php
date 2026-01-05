@@ -236,18 +236,17 @@ class TrackingController extends Controller
      * [CETAK THERMAL ADMIN]
      * Logika: DB1 -> DB2 (Percetakan)
      */
+    
     public function cetakThermal($resi)
     {
         // ====================================================================
         // BAGIAN 1: KODE ASLI ANDA (SAYA COPY PASTE 100% TANPA UBAH)
         // ====================================================================
         
-        // Logika cetak thermal sederhana sesuai kode awal Anda
         $pesanan = Pesanan::where('resi', $resi)
             ->orWhere('nomor_invoice', $resi)
             ->first();
 
-        // Tambahan kecil: Jika tidak ketemu di Pesanan, cari di Order agar tidak 404
         if (!$pesanan) {
             $orderModel = Order::with(['store', 'user'])
                 ->where('shipping_reference', $resi)
@@ -255,7 +254,6 @@ class TrackingController extends Controller
                 ->first();
             
             if ($orderModel) {
-                // Mapping Sederhana untuk Cetak Thermal (Mirip trackPackage)
                 $pesanan = (object)[
                     'resi' => $orderModel->shipping_reference,
                     'nomor_invoice' => $orderModel->invoice_number,
@@ -277,8 +275,8 @@ class TrackingController extends Controller
                     'receiver_province' => $orderModel->user->province ?? '',
                     'receiver_postal_code' => $orderModel->user->postal_code ?? '',
                     'weight' => $orderModel->total_weight ?? 1000,
-                    'item_price' => $orderModel->sub_total ?? 0, // Agar tidak undefined property
-                    'shipping_cost' => $orderModel->shipping_cost ?? 0, // Agar tidak undefined property
+                    'item_price' => $orderModel->sub_total ?? 0,
+                    'shipping_cost' => $orderModel->shipping_cost ?? 0,
                     'ongkir' => $orderModel->shipping_cost ?? 0,
                     'insurance_cost' => 0,
                     'total_cod' => $orderModel->grand_total ?? 0,
@@ -296,9 +294,8 @@ class TrackingController extends Controller
         }
 
         // ====================================================================
-        // BAGIAN 2: TAMBAHAN UNTUK DB 2 (PERCETAKAN)
+        // BAGIAN 2: MAPPING DB 2 (PERCETAKAN) - SESUAI NAMA KOLOM BARU
         // ====================================================================
-        // Hanya jalan jika $pesanan masih kosong (DB1 ZONK)
         if (!$pesanan) {
             try {
                 $orderPercetakan = \DB::connection('mysql_second')
@@ -308,14 +305,18 @@ class TrackingController extends Controller
                     ->first();
 
                 if ($orderPercetakan) {
-                    // MAPPING MANUAL AGAR SESUAI DENGAN FORMAT DI ATAS
-                    // DAN MENGHINDARI ERROR UNDEFINED PROPERTY
+                    
+                    // Logic Ekspedisi (ambil kata pertama dari 'TIKI - Tiki Reguler')
+                    $rawService = $orderPercetakan->courier_service ?? 'Internal';
+                    $expeditionName = explode(' - ', $rawService)[0];
+
                     $pesanan = (object)[
+                        // KOLOM UTAMA
                         'resi' => $orderPercetakan->shipping_ref ?? $orderPercetakan->order_number,
                         'nomor_invoice' => $orderPercetakan->order_number,
                         'status' => $orderPercetakan->status,
                         
-                        // Pengirim (Sancaka)
+                        // PENGIRIM (Tetap Sancaka)
                         'sender_name' => 'Sancaka Percetakan',
                         'sender_phone' => '08819435180',
                         'sender_address' => 'Jl.Dr.Wahidin No.18 A',
@@ -324,39 +325,40 @@ class TrackingController extends Controller
                         'sender_regency' => 'Ngawi',
                         'sender_province' => 'Jawa Timur',
                         'sender_postal_code' => '63211',
-                        
-                        // Penerima
+
+                        // PENERIMA (Sesuai Kolom DB: customer_name, destination_address)
                         'receiver_name' => $orderPercetakan->customer_name ?? 'Pelanggan',
                         'receiver_phone' => $orderPercetakan->customer_phone ?? '-',
                         'receiver_address' => $orderPercetakan->destination_address ?? '-',
-                        'receiver_village' => '', // Fix Undefined
+                        'receiver_village' => '', // Kosongkan agar tidak undefined
                         'receiver_district' => '',
                         'receiver_regency' => '',
                         'receiver_province' => '',
                         'receiver_postal_code' => '',
-                        
-                        // Data Paket & Biaya (KEY HARUS SAMA DENGAN BAGIAN 1)
+
+                        // PAKET & BIAYA (Sesuai Kolom DB: final_price, shipping_cost)
                         'weight' => 1000,
-                        'item_price' => $orderPercetakan->total_amount ?? 0, // Fix Undefined item_price
-                        'shipping_cost' => 0, // Fix Undefined shipping_cost
-                        'ongkir' => 0,
-                        'insurance_cost' => 0,
-                        'total_cod' => $orderPercetakan->total_amount ?? 0,
-                        'cod_amount' => 0,
                         'item_description' => 'Produk Percetakan',
-                        'length' => 10, 'width' => 10, 'height' => 10,
+                        'item_price' => $orderPercetakan->final_price ?? 0, // Harga setelah diskon
+                        'shipping_cost' => $orderPercetakan->shipping_cost ?? 0,
+                        'ongkir' => $orderPercetakan->shipping_cost ?? 0,
+                        'insurance_cost' => 0,
+                        // Total COD = Harga Akhir + Ongkir
+                        'total_cod' => ($orderPercetakan->final_price ?? 0) + ($orderPercetakan->shipping_cost ?? 0),
+                        'cod_amount' => 0,
                         
-                        // Ekspedisi
-                        'expedition' => $orderPercetakan->courier_service ?? 'Express', // Fix Undefined expedition
+                        // EKSPEDISI (Sesuai Kolom DB: courier_service)
+                        'expedition' => $expeditionName,
                         'service_type' => 'REG',
                         'payment_method' => $orderPercetakan->payment_method ?? 'Manual',
                         'created_at' => $orderPercetakan->created_at,
                         'resi_aktual' => $orderPercetakan->shipping_ref,
-                        'jasa_ekspedisi_aktual' => $orderPercetakan->courier_service ?? 'Express',
+                        'jasa_ekspedisi_aktual' => $orderPercetakan->courier_service ?? 'Internal',
+                        'panjang' => 10, 'lebar' => 10, 'tinggi' => 10,
                     ];
                 }
             } catch (\Exception $e) {
-                // Silent fail
+                // Silent Fail
             }
         }
 
