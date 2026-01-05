@@ -369,8 +369,8 @@ class TrackingController extends Controller
                         'service_type' => 'REG',
                         'payment_method' => $orderPercetakan->payment_method ?? 'Manual',
                         'created_at' => $orderPercetakan->created_at,
-                        'resi_aktual' => $orderPercetakan->shipping_ref,
-                        'jasa_ekspedisi_aktual' => $orderPercetakan->courier_service ?? 'Internal',
+                        'resi_aktual' => null,
+                        'jasa_ekspedisi_aktual' => null,
                         'panjang' => 10, 'lebar' => 10, 'tinggi' => 10,
                     ];
                 }
