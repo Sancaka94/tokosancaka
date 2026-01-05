@@ -173,116 +173,108 @@ class TrackingController extends Controller
         return redirect()->route('tracking.index')->with('error', "Nomor resi '{$resi}' tidak ditemukan di sistem kami.");
     }
     
-    /**
-     * LOGIKA "APA ADANYA" (DIRECT PASS-THROUGH)
-     * Tidak ada filter error. Apa yang API kasih, itu yang ditampilkan.
-     */
     private function normalizeKiriminAjaResponse(array $rawResponse, $pesanan): array
     {
-        // Debug: Lihat apa yang sebenarnya dikirim API
-        Log::info("RAW RESPONSE DARI API:", $rawResponse);
+        // Debugging di Log untuk memastikan isi datanya
+        Log::info("RAW RESPONSE DARI API (DEBUG):", $rawResponse);
 
-        // 1. CEK KONEKSI TOTAL (Hanya fallback jika API benar-benar NULL/KOSONG)
-        if (empty($rawResponse)) {
-            Log::error("API Kosong/Null. Mencoba ambil dari Database Kedua...");
-            
-            // --- BLOK FALLBACK DB2 ---
-            $cachedDb2 = null;
-            try {
-                $cachedDb2 = DB::connection('mysql_second')
-                                ->table('orders')
-                                ->where('shipping_ref', $pesanan->resi)
-                                ->first();
-            } catch (\Exception $e) {}
-
-            if ($cachedDb2) {
-                // Gunakan data DB2
-                return [
-                    'is_pesanan' => true,
-                    'resi' => $pesanan->resi,
-                    'resi_aktual' => $cachedDb2->shipping_ref,
-                    'pengirim' => 'Sancaka Percetakan', 
-                    'alamat_pengirim' => '-',
-                    'no_pengirim' => '-',
-                    'penerima' => $cachedDb2->customer_name ?? '-',
-                    'alamat_penerima' => $cachedDb2->destination_address ?? '-',
-                    'no_penerima' => $cachedDb2->customer_phone ?? '-',
-                    'status' => $cachedDb2->shipping_status ?? 'Data Offline', // Status dari DB2
-                    'tanggal_dibuat' => $cachedDb2->created_at,
-                    'histories' => !empty($cachedDb2->shipping_history) ? json_decode($cachedDb2->shipping_history, true) : [],
-                    'jasa_ekspedisi_aktual' => $pesanan->jasa_ekspedisi_aktual,
-                ];
-            } else {
-                // Jika DB2 juga kosong, baru nyerah
-                return [
-                    'error' => 'Data tidak ditemukan di API maupun Database.',
-                    'is_external_error' => true
-                ];
-            }
+        // -------------------------------------------------------------
+        // 1. CARI DATA HISTORY (AGRESIF)
+        // Kita cari array 'histories' dimanapun dia bersembunyi
+        // -------------------------------------------------------------
+        $histories = [];
+        
+        if (!empty($rawResponse['histories'])) {
+            // Jika ada di root (langsung dari API mentah)
+            $histories = $rawResponse['histories'];
+        } elseif (!empty($rawResponse['data']['histories'])) {
+            // Jika dibungkus oleh Service (umumnya struktur: ['data' => ['histories' => ...]])
+            $histories = $rawResponse['data']['histories'];
+        } elseif (!empty($rawResponse['details']['history'])) {
+            // Kadang ada API yang taruh di details
+            $histories = $rawResponse['details']['history'];
         }
 
-        // 2. AMBIL DATA APA ADANYA DARI API
-        // Kita tidak peduli statusnya true/false. Kita ambil isinya.
-        $apiTextStatus = $rawResponse['text'] ?? 'Status Tidak Diketahui';
-        $details = $rawResponse['details'] ?? [];
-        $histories = $rawResponse['histories'] ?? [];
+        // -------------------------------------------------------------
+        // 2. CARI DATA UTAMA (Text, Details)
+        // -------------------------------------------------------------
+        // Cek text di root, atau di dalam data, atau default '-'
+        $apiTextStatus = $rawResponse['text'] ?? ($rawResponse['data']['text'] ?? '-');
+        
+        // Cek details di root, atau di dalam data
+        $details = $rawResponse['details'] ?? ($rawResponse['data']['summary'] ?? []);
 
-        Log::info("Status Teks API: " . $apiTextStatus);
-
-        // 3. OLAH HISTORY (Hanya formatting tanggal)
+        // -------------------------------------------------------------
+        // 3. OLAH HISTORY MENJADI ARRAY RAPI
+        // -------------------------------------------------------------
         $normalizedHistories = collect($histories)->map(function ($history) use ($details) {
-            $timestampWIB = Carbon::parse($history['created_at'], 'Asia/Jakarta');
+            // Pastikan format tanggal aman
+            try {
+                $timestampWIB = Carbon::parse($history['created_at'])->timezone('Asia/Jakarta');
+            } catch (\Exception $e) {
+                $timestampWIB = now(); // Fallback jika tanggal error
+            }
             
-            // Bersihkan teks status sedikit agar rapi (hapus tanggal ganda di teks)
+            // Bersihkan teks status (hapus tanggal ganda yang menempel di teks)
             $statusText = $history['status'] ?? '-';
             $statusText = preg_replace('/\s\d{2}-\d{2}-\d{4}\s\d{2}:\d{2}\s\|/i', '', $statusText);
 
             return (object)[
                 'status' => $statusText,
-                'lokasi' => $details['destination']['city'] ?? '-', 
-                'keterangan' => $history['status'] ?? '',
+                'lokasi' => $history['city_name'] ?? ($details['destination']['city'] ?? '-'), // Coba cari kota di history
+                'keterangan' => $history['note'] ?? ($history['status'] ?? ''),
                 'created_at' => $timestampWIB, 
             ];
         })->toArray();
 
-        // 4. TAMBAHKAN HISTORY PEMBUATAN (Internal)
-        // Agar timeline tidak kosong melompong saat baru input resi
+        // -------------------------------------------------------------
+        // 4. GABUNGKAN DENGAN HISTORY INTERNAL (PESANAN DIBUAT)
+        // -------------------------------------------------------------
         if ($pesanan->created_at) {
             $createdHistory = (object)[
                 'status' => 'Pesanan Dibuat',
                 'lokasi' => 'Sistem Internal',
-                'keterangan' => 'Resi masuk sistem.',
+                'keterangan' => 'Resi masuk ke sistem Sancaka Express.',
                 'created_at' => Carbon::parse($pesanan->created_at)->timezone('Asia/Jakarta'), 
             ];
             
-            // Cek duplikat sederhana
-            $lastHistory = end($normalizedHistories);
-            if (!$lastHistory || $lastHistory->created_at->format('Y-m-d H:i') !== $createdHistory->created_at->format('Y-m-d H:i')) {
+            // Cek duplikat agar tidak muncul double jika API sudah mencatat "Picked Up" di jam yang sama
+            $hasCreated = collect($normalizedHistories)->contains(function ($h) {
+                return stripos($h->status, 'dibuat') !== false || stripos($h->status, 'created') !== false;
+            });
+
+            if (!$hasCreated) {
                  $normalizedHistories[] = $createdHistory;
             }
         }
 
-        // Urutkan History Terbaru diatas
+        // Urutkan dari yang paling BARU ke LAMA
         $sortedHistories = collect($normalizedHistories)->sortByDesc('created_at')->values();
 
-        // 5. RETURN FINAL (GABUNGAN API + DATA INTERNAL)
+        // -------------------------------------------------------------
+        // 5. SIAPKAN DATA PENGIRIM & PENERIMA (FALLBACK KE DB JIKA API KOSONG)
+        // -------------------------------------------------------------
+        // Helper kecil untuk mengambil data bersarang tanpa error
+        $getDetail = function($key1, $key2) use ($details) {
+            return $details[$key1][$key2] ?? null;
+        };
+
         return [
             'is_pesanan' => true,
             'resi' => $pesanan->resi,
             'resi_aktual' => $details['awb'] ?? $pesanan->resi_aktual,
             
-            // LOGIKA TAMPILAN:
-            // Jika API kasih data nama (details), pakai itu.
-            // Jika API kosong (misal status "Menunggu Pickup"), pakai data Database ($pesanan).
-            'pengirim' => $details['origin']['name'] ?? $pesanan->sender_name ?? '-',
-            'alamat_pengirim' => $details['origin']['address'] ?? $pesanan->sender_address ?? '-',
-            'no_pengirim' => $details['origin']['phone'] ?? $pesanan->sender_phone ?? '-',
+            // Pengirim: Prioritas API -> DB
+            'pengirim' => $getDetail('origin', 'name') ?? $pesanan->sender_name ?? '-',
+            'alamat_pengirim' => $getDetail('origin', 'address') ?? $pesanan->sender_address ?? '-',
+            'no_pengirim' => $getDetail('origin', 'phone') ?? $pesanan->sender_phone ?? '-',
             
-            'penerima' => $details['destination']['name'] ?? $pesanan->receiver_name ?? '-',
-            'alamat_penerima' => $details['destination']['address'] ?? $pesanan->receiver_address ?? '-',
-            'no_penerima' => $details['destination']['phone'] ?? $pesanan->receiver_phone ?? '-',
+            // Penerima: Prioritas API -> DB
+            'penerima' => $getDetail('destination', 'name') ?? $pesanan->receiver_name ?? '-',
+            'alamat_penerima' => $getDetail('destination', 'address') ?? $pesanan->receiver_address ?? '-',
+            'no_penerima' => $getDetail('destination', 'phone') ?? $pesanan->receiver_phone ?? '-',
             
-            // INI KUNCINYA: Pakai teks mentah dari API sebagai status utama
+            // Status Akhir
             'status' => $apiTextStatus, 
             
             'tanggal_dibuat' => $pesanan->created_at,
