@@ -116,11 +116,12 @@
                         <li>✅ Hasil Copy Tajam</li>
                         <li>✅ Grosir Lebih Murah</li>
                         <li>✅ Potensi Diskon 20-30%</li>
+                        <li>✅ Potensi Komisi 10%</li>
                     </ul>
                     <a href="https://wa.me/6285745808809" class="block py-3 text-center rounded-xl bg-slate-100 font-bold hover:bg-red-600 hover:text-white transition">Pesan</a>
                 </div>
                 <div id="ekspedisi" class="gradient-red rounded-[32px] p-8 text-white shadow-2xl shadow-red-200 transform md:-translate-y-6">
-                    <h3 class="text-xl font-bold mb-4">Jasa Pengiriman</h3>
+                    <h3 class="text-xl font-bold mb-4">Jasa Pengiriman Paket</h3>
                     <div class="flex items-baseline gap-1 mb-6">
                         <span class="text-4xl font-black italic text-cyan-300">Ekspedisi</span>
                     </div>
@@ -145,6 +146,7 @@
                         <li>✅ Jilid Mika / Buffalo</li>
                         <li>✅ Jilid Lakban Kilat</li>
                         <li>✅ Print Bolak Balik</li>
+                        <li>✅ Potensi Diskon 20-30%</li>
                     </ul>
                     <a href="https://wa.me/6285745808809" class="block py-3 text-center rounded-xl bg-slate-100 font-bold hover:bg-red-600 hover:text-white transition">Pesan</a>
                 </div>
@@ -179,7 +181,7 @@
                 </div>
             </div>
             <div class="h-96 bg-slate-200 rounded-[40px] overflow-hidden shadow-2xl border-4 border-white relative">
-                <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3958.46822838426!2d111.4429!3d-7.4048!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zN8KwMjQnMTcuMyJTIDExMcKwMjYnMzQuNCJF!5e0!3m2!1sid!2sid!4v1700000000000" width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy"></iframe>
+                <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3955.975440748102!2d111.4429948748921!3d-7.468200192510255!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e79e00023223a29%3A0xb353590595368a4!2sJl.%20Dokter%20Wahidin%20No.18a%2C%20Sidomakmur%2C%20Ketanggi%2C%20Kec.%20Ngawi%2C%20Kabupaten%20Ngawi%2C%20Jawa%20Timur%2063211!5e0!3m2!1sen!2sid!4v1720345535355!5m2!1sen!2sid" width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy"></iframe>
             </div>
         </div>
     </section>
