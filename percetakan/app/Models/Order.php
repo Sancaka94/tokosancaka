@@ -41,6 +41,16 @@ class Order extends Model
         return $this->hasMany(OrderDetail::class, 'order_id');
     }
 
+    /**
+     * Relasi ke Kupon (Jika ada)
+     */
+    public function coupon()
+    {
+        // Pastikan Anda punya model Coupon (App\Models\Coupon)
+        // 'coupon_id' adalah nama kolom foreign key di tabel orders
+        return $this->belongsTo(Coupon::class, 'coupon_id');
+    }
+
     public function details()
     {
         return $this->hasMany(OrderDetail::class);
