@@ -288,6 +288,88 @@
         </div>
     </div>
 
+    <div x-data="{ 
+        showPromo: false,
+        init() {
+            // Cek localStorage agar modal hanya muncul sekali seumur hidup browser
+            if (!localStorage.getItem('seenPromoSancaka_v1')) {
+                // Beri jeda 1.5 detik setelah load agar smooth
+                setTimeout(() => { this.showPromo = true }, 1500);
+            }
+        },
+        closePromo() {
+            this.showPromo = false;
+            // Simpan penanda bahwa user sudah melihat promo
+            localStorage.setItem('seenPromoSancaka_v1', 'true');
+        }
+    }"
+    x-show="showPromo" 
+    style="display: none;" 
+    class="fixed inset-0 z-[100] flex items-center justify-center px-4 sm:px-0 font-sans">
+    
+    <div x-show="showPromo" 
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         @click="closePromo()"
+         class="fixed inset-0 bg-slate-900/70 backdrop-blur-[2px]"></div>
+
+    <div x-show="showPromo" 
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 scale-90 translate-y-4"
+         x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100 scale-100 translate-y-0"
+         x-transition:leave-end="opacity-0 scale-90 translate-y-4"
+         class="relative bg-white rounded-2xl shadow-2xl w-full max-w-[450px] overflow-hidden flex flex-col z-10 border border-slate-100">
+        
+        <button @click="closePromo()" class="absolute top-3 right-3 z-20 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full h-8 w-8 flex items-center justify-center transition-all">
+            <i class="fas fa-times text-lg"></i>
+        </button>
+
+        <div class="relative bg-slate-50 w-full h-40 flex items-center justify-center p-6 border-b border-slate-100">
+            <div class="absolute inset-0 opacity-10" style="background-image: radial-gradient(#cbd5e1 1px, transparent 1px); background-size: 10px 10px;"></div>
+            
+            <img src="https://tokosancaka.com/storage/uploads/sancaka.png" 
+                 alt="Sancaka Promo" 
+                 class="relative w-full h-full object-contain drop-shadow-md transform hover:scale-105 transition-transform duration-500">
+        </div>
+
+        <div class="p-6 text-center">
+            
+            <h2 class="text-xl font-black text-slate-800 mb-3 leading-tight">
+                Ingin mendapatkan <span class="text-red-600">Diskon 30%?</span>
+            </h2>
+            
+            <p class="text-slate-600 text-sm leading-relaxed mb-5">
+                Masukan kode <span class="font-bold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded border border-amber-200 text-xs">KUPON</span> dari teman atau saudara Anda.
+            </p>
+
+            <div class="bg-blue-50 border border-blue-100 rounded-xl p-3 mb-6">
+                <p class="text-xs text-blue-800 leading-relaxed">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    Anda juga dapat menjadi <b>Affiliator</b> dan dapatkan <b>komisi besar</b> ketika menjadi member.
+                </p>
+            </div>
+
+            <div class="space-y-3">
+                <a href="https://tokosancaka.com/percetakan/public/join-partner" target="_blank" 
+                   class="flex items-center justify-center w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-red-200 hover:shadow-red-300 transform active:scale-95 transition-all group">
+                    <span>Gabung Sekarang</span>
+                    <i class="fas fa-arrow-right ml-2 group-hover:translate-x-1 transition-transform"></i>
+                </a>
+                
+                <button @click="closePromo()" class="text-slate-400 font-bold text-xs hover:text-slate-600 py-1">
+                    Tutup Informasi
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
     @include('orders.partials.payment-modal')
 
     <script>
