@@ -28,7 +28,7 @@
             
             <div class="hidden md:flex items-center gap-8 text-sm font-bold text-slate-500 uppercase tracking-widest">
                 <a href="#layanan" class="hover:text-red-600 transition">Layanan</a>
-                <a href="#https://tokosancaka.com/buat-pesanan" class="hover:text-red-600 transition">Ekspedisi</a>
+                <a href="https://tokosancaka.com/buat-pesanan" class="hover:text-red-600 transition">Ekspedisi</a>
                 <a href="#lokasi" class="hover:text-red-600 transition">Lokasi</a>
                 <a href="https://tokosancaka.com/percetakan/public/join-partner" class="hover:text-red-600 transition">Join</a>
                 <a href="https://tokosancaka.com/percetakan/public/orders/create" class="hover:text-red-600 transition">Order Sekarang!</a>
