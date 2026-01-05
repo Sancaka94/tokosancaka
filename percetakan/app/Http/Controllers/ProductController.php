@@ -52,7 +52,7 @@ class ProductController extends Controller
             'unit'       => 'required|string',
             'stock'      => 'required|integer|min:0',
             'supplier'   => 'nullable|string|max:255',
-            'image'      => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'image'      => 'nullable|file|max:2048',
         ], [
             'image.image' => 'File harus berupa gambar.',
             'image.mimes' => 'Format harus jpeg, png, jpg, gif.',
@@ -122,7 +122,7 @@ class ProductController extends Controller
             'unit'       => 'required|string',
             'stock'      => 'required|integer|min:0',
             'supplier'   => 'nullable|string|max:255',
-            'image'      => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'image'      => 'nullable|file|max:2048',
         ]);
 
         if ($validator->fails()) {
