@@ -31,7 +31,19 @@
                 <a href="https://tokosancaka.com/buat-pesanan" class="hover:text-red-600 transition">Ekspedisi</a>
                 <a href="#lokasi" class="hover:text-red-600 transition">Lokasi</a>
                 <a href="https://tokosancaka.com/percetakan/public/join-partner" class="hover:text-red-600 transition">Join</a>
-                <a href="https://tokosancaka.com/percetakan/public/orders/create" class="hover:text-red-600 transition">Order Sekarang!</a>
+                <a href="https://tokosancaka.com/percetakan/public/orders/create"
+                    class="ml-4 inline-flex items-center
+                            px-4 py-2
+                            text-sm font-semibold
+                            text-red-600
+                            border border-red-600
+                            rounded-md
+                            hover:text-white hover:bg-red-600
+                            focus:ring-2 focus:ring-red-400
+                            transition">
+                    🚀 Order Sekarang!
+                </a>
+
             </div>
 
             <div class="flex items-center gap-4">
