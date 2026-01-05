@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB; // Tambahan Wajib
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon; // Tambahan Wajib
 use App\Models\Pesanan;
 use App\Models\SpxScan;
@@ -220,7 +221,10 @@ class TrackingController extends Controller
                 // Pastikan koneksi 'mysql_second' sudah ada di config/database.php
                 $orderPercetakan = DB::connection('mysql_second')
                                 ->table('orders')
-                                ->where('order_number', 'shipping_ref', $resi) // Cari berdasarkan INV-...
+                                ->where(function($query) use ($resi) {
+                                    $query->where('order_number', $resi)
+                                          ->orWhere('shipping_ref', $resi);
+                                })
                                 ->first();
 
                 if ($orderPercetakan) {
@@ -261,7 +265,7 @@ class TrackingController extends Controller
                     $result = [
                         'is_pesanan' => false, // Set false karena struktur datanya custom
                         'resi' => $orderPercetakan->order_number,
-                        'resi_aktual' => $orderPercetakan->shipping_ref,
+                        'resi_aktual' => $orderPercetakan->shipping_ref, // Tampilkan jika ada
                         
                         // Pengirim Default Sancaka
                         'pengirim' => 'Toko Sancaka',
@@ -280,8 +284,8 @@ class TrackingController extends Controller
                     ];
                 }
             } catch (\Exception $e) {
-                // Opsional: Log error jika koneksi db kedua gagal, agar tidak error 500
-                // \Log::error("Gagal koneksi ke DB Kedua: " . $e->getMessage());
+                // Opsional: Log error
+                \Log::error("Gagal koneksi ke DB Kedua: " . $e->getMessage());
             }
         }
 
