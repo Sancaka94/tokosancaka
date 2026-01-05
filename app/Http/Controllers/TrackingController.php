@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Log; // WAJIB
 use Carbon\Carbon;
 use App\Models\Pesanan;
 use App\Models\SpxScan;
@@ -21,134 +21,151 @@ class TrackingController extends Controller
         $this->kiriminAjaService = $kiriminAjaService;
     }
 
-    /**
-     * Menampilkan halaman tracking utama.
-     */
     public function showTrackingPage(Request $request)
     {
         if ($request->has('resi')) {
             return $this->trackPackage($request);
         }
-        
         return view('public.tracking.index');
     }
 
     /**
-     * Mencari dan menampilkan hasil pelacakan.
-     * Alur: Cari DB1 -> Cari DB2 -> Kirim ke API -> Tampilkan
+     * LOGIC UTAMA TRACKING
      */
     public function trackPackage(Request $request)
     {
         $request->validate(['resi' => 'required|string|max:255']);
         $resi = $request->input('resi');
+        
+        // LOG START
+        Log::info("==========================================");
+        Log::info("TRACKING STARTED: Mencari Resi [{$resi}]");
+
         $result = null;
         $pesanan = null;
 
         // ==========================================
-        // TAHAP 1: CARI DI DATABASE UTAMA (Pesanan / Order)
+        // TAHAP 1: CARI DI DATABASE UTAMA
         // ==========================================
+        Log::info("STEP 1: Mencari di Database Utama (Tabel Pesanan)...");
+        
         $pesanan = Pesanan::where('resi', $resi)
                   ->orWhere('resi_aktual', $resi)
                   ->orWhere('nomor_invoice', $resi)
                   ->first();
 
-        // Jika tidak ketemu di model Pesanan, cari di model Order (Toko Online Internal)
-        if (!$pesanan) {
+        if ($pesanan) {
+            Log::info("KETEMU: Data ditemukan di Model 'Pesanan' (DB1). ID: {$pesanan->id}");
+        } else {
+            Log::info("SKIP: Tidak ada di 'Pesanan'. Mencari di Model 'Order'...");
+            
             $orderModel = Order::with(['store', 'user'])
                         ->where('shipping_reference', $resi)
                         ->orWhere('invoice_number', $resi)
                         ->first();
             
             if ($orderModel) {
-                // Standarisasi objek agar sama strukturnya
+                Log::info("KETEMU: Data ditemukan di Model 'Order' (DB1). ID: {$orderModel->id}");
+                // Standarisasi Objek
                 $pesanan = (object)[
                     'resi' => $orderModel->shipping_reference,
                     'resi_aktual' => $orderModel->shipping_reference,
                     'nomor_invoice' => $orderModel->invoice_number,
                     'status' => $orderModel->status,
-                    
-                    // Sender
                     'sender_name' => $orderModel->store->name ?? 'N/A',
                     'sender_address' => $orderModel->store->address_detail ?? 'N/A',
                     'sender_phone' => $orderModel->store->user->no_wa ?? '-',
-                    
-                    // Receiver
                     'receiver_name' => $orderModel->user->nama_lengkap ?? 'N/A',
                     'receiver_address' => $orderModel->shipping_address ?? 'N/A',
                     'receiver_phone' => $orderModel->user->no_wa ?? '-',
-                    
                     'jasa_ekspedisi_aktual' => $orderModel->courier ?? null,
                     'service_type' => explode('-', $orderModel->service_type)[0] ?? 'regular',
                     'created_at' => $orderModel->created_at,
                 ];
+            } else {
+                Log::warning("GAGAL: Resi tidak ditemukan sama sekali di Database Utama (DB1).");
             }
         }
 
         // ==========================================
-        // TAHAP 2: JIKA KOSONG, CARI DI DATABASE KEDUA (Percetakan)
+        // TAHAP 2: JIKA KOSONG, CARI DI DATABASE KEDUA
         // ==========================================
         if (!$pesanan) {
+            Log::info("STEP 2: Beralih ke Database Kedua (mysql_second)...");
+            
             try {
+                // Cek koneksi dulu (opsional, tapi bagus untuk debug)
+                // DB::connection('mysql_second')->getPdo(); 
+
                 $orderPercetakan = DB::connection('mysql_second')
-                                ->table('orders') // Pastikan nama tabel benar
+                                ->table('orders')
                                 ->where('order_number', $resi)
                                 ->orWhere('shipping_ref', $resi)
                                 ->first();
 
                 if ($orderPercetakan) {
-                    // Standarisasi objek dari DB2 agar bisa diproses API
+                    Log::info("KETEMU: Data ditemukan di Database Kedua (Percetakan). ID: {$orderPercetakan->id}");
+                    
                     $pesanan = (object)[
                         'resi' => $orderPercetakan->shipping_ref ?? $orderPercetakan->order_number,
                         'resi_aktual' => $orderPercetakan->shipping_ref,
                         'nomor_invoice' => $orderPercetakan->order_number,
-                        'status' => $orderPercetakan->status, // Status internal
-                        
-                        // Default data pengirim (Karena dari Percetakan Sancaka)
+                        'status' => $orderPercetakan->status,
                         'sender_name' => 'Sancaka Percetakan',
                         'sender_address' => 'Jl.Dr.Wahidin No.18 A Ngawi',
                         'sender_phone' => '08819435180',
-                        
-                        // Data Penerima dari DB2
                         'receiver_name' => $orderPercetakan->customer_name ?? 'Pelanggan',
                         'receiver_address' => $orderPercetakan->destination_address ?? '-',
                         'receiver_phone' => $orderPercetakan->customer_phone ?? '-',
-                        
                         'jasa_ekspedisi_aktual' => $orderPercetakan->courier_service ?? 'JNE/J&T',
                         'service_type' => 'regular',
                         'created_at' => $orderPercetakan->created_at,
                     ];
+                } else {
+                    Log::warning("GAGAL: Resi juga tidak ditemukan di Database Kedua.");
                 }
+
             } catch (\Exception $e) {
-                Log::error("Gagal koneksi ke DB Kedua saat tracking: " . $e->getMessage());
+                Log::error("CRITICAL ERROR DB2: Gagal koneksi ke mysql_second. Pesan: " . $e->getMessage());
             }
         }
 
         // ==========================================
-        // TAHAP 3: EKSEKUSI API KIRIMINAJA (Jika Pesanan Ditemukan)
+        // TAHAP 3: EKSEKUSI API KIRIMINAJA
         // ==========================================
         if ($pesanan) {
-            // Panggil Service yang sudah dimodifikasi (yang melakukan update ke DB2)
-            // Gunakan resi aktual jika ada, jika tidak gunakan resi invoice
             $nomorResiApi = $pesanan->resi_aktual ?? $pesanan->resi;
-            
-            // 3a. Request ke API
-            $trackingData = $this->kiriminAjaService->trackPackage($nomorResiApi);
+            Log::info("STEP 3: Mengirim Request ke API KiriminAja untuk Resi: {$nomorResiApi}");
 
-            // 3b. Normalisasi Data (Logika "Cerdas" ada di dalam fungsi ini)
+            // Call Service
+            $trackingData = $this->kiriminAjaService->trackPackage($nomorResiApi);
+            
+            // Log raw response status (tanpa body lengkap agar tidak spam)
+            $statusApi = isset($trackingData['status']) && $trackingData['status'] ? 'SUCCESS' : 'FAILED';
+            Log::info("API RESPONSE STATUS: {$statusApi}");
+
+            // Normalisasi
             $result = $this->normalizeKiriminAjaResponse($trackingData, $pesanan);
+        } else {
+            Log::info("SKIP API: Karena data pesanan tidak ditemukan di DB1 maupun DB2.");
         }
 
         // ==========================================
-        // TAHAP 4: FALLBACK (Jika Tidak ada di DB1, DB2, dan API)
-        // Cari di tabel scan manual lokal (SPX / ScannedPackage)
+        // TAHAP 4: FALLBACK LOKAL (SPX / SCAN MANUAL)
         // ==========================================
         if (!$result) {
+            Log::info("STEP 4: Mencari di Tabel Scan Lokal (Fallback)...");
             $result = $this->checkLocalScans($resi);
+            
+            if($result) {
+                Log::info("KETEMU: Data ditemukan di Scan Lokal.");
+            } else {
+                Log::info("GAGAL: Data tidak ditemukan dimanapun (DB1, DB2, Local Scan).");
+            }
         }
 
-        // ==========================================
-        // FINAL RETURN
-        // ==========================================
+        Log::info("TRACKING FINISHED.\n");
+
         if ($result) {
             return view('public.tracking.index', compact('result'));
         }
@@ -156,26 +173,30 @@ class TrackingController extends Controller
         return redirect()->route('tracking.index')->with('error', "Nomor resi '{$resi}' tidak ditemukan di sistem kami.");
     }
     
-    /**
-     * Memproses dan menormalisasi respons dari KiriminAja API.
-     * Termasuk logika Cerdas Fallback ke DB2 jika API Error.
-     */
     private function normalizeKiriminAjaResponse(array $rawResponse, $pesanan): array
     {
-        // 1. CEK ERROR API & FALLBACK CERDAS KE DB2
+        Log::info("--- Masuk Fungsi Normalisasi ---");
+
+        // 1. CEK ERROR API & FALLBACK CERDAS
         if (!isset($rawResponse['status']) || !$rawResponse['status'] || !isset($rawResponse['details'])) {
             
-            // Coba ambil history dari DATABASE KEDUA jika API Gagal
+            $errorMsg = $rawResponse['text'] ?? 'Unknown Error';
+            Log::error("API ERROR DETECTED: {$errorMsg}");
+            Log::info("Mencoba mengambil backup history dari Database Kedua...");
+
             $cachedDb2 = null;
             try {
                 $cachedDb2 = DB::connection('mysql_second')
-                                ->table('orders') // Sesuaikan nama tabel
+                                ->table('orders')
                                 ->where('shipping_ref', $pesanan->resi)
                                 ->first();
-            } catch (\Exception $e) {}
+            } catch (\Exception $e) {
+                Log::error("Gagal mengambil backup DB2: " . $e->getMessage());
+            }
 
-            // Jika di DB2 ada riwayat tersimpan, kita gunakan itu (Mocking API Response)
             if ($cachedDb2 && !empty($cachedDb2->shipping_history)) {
+                Log::info("BACKUP FOUND: Menggunakan history yang tersimpan di DB2.");
+                
                 $rawResponse = [
                     'status' => true,
                     'text' => $cachedDb2->shipping_status ?? 'Data Offline',
@@ -193,9 +214,9 @@ class TrackingController extends Controller
                     'histories' => json_decode($cachedDb2->shipping_history, true)
                 ];
             } else {
-                // Jika benar-benar tidak ada data
+                Log::error("BACKUP FAILED: Tidak ada history tersimpan di DB2.");
                 return [
-                    'error' => $rawResponse['text'] ?? 'Gagal mengambil data pelacakan dari server pusat.',
+                    'error' => $errorMsg,
                     'is_external_error' => true
                 ];
             }
@@ -203,13 +224,11 @@ class TrackingController extends Controller
 
         $details = $rawResponse['details'];
         $histories = $rawResponse['histories'] ?? [];
+        Log::info("Jumlah History didapat: " . count($histories));
 
-        // 2. Normalisasi dan Konversi Timezone untuk Riwayat
+        // 2. Normalisasi Data
         $normalizedHistories = collect($histories)->map(function ($history) use ($details) {
-            // FIX: Paksa Carbon menganggap string waktu API sudah dalam WIB
             $timestampWIB = Carbon::parse($history['created_at'], 'Asia/Jakarta');
-
-            // Bersihkan teks status
             $statusText = $history['status'] ?? 'N/A';
             $statusText = preg_replace('/\s\d{2}-\d{2}-\d{4}\s\d{2}:\d{2}\s\|/i', '', $statusText);
 
@@ -221,7 +240,7 @@ class TrackingController extends Controller
             ];
         })->toArray();
 
-        // 3. Tambahkan status "Pesanan Dibuat" dari Internal
+        // 3. Tambahkan status "Pesanan Dibuat"
         if ($pesanan->created_at) {
             $createdHistory = (object)[
                 'status' => 'Pesanan Dibuat',
@@ -230,7 +249,6 @@ class TrackingController extends Controller
                 'created_at' => Carbon::parse($pesanan->created_at)->timezone('Asia/Jakarta'), 
             ];
             
-            // Cegah duplikasi
             $isDuplicate = collect($normalizedHistories)->contains(function ($h) use ($createdHistory) {
                 return $h->created_at->diffInMinutes($createdHistory->created_at) < 5 || str_contains(strtolower($h->status), 'dibuat');
             });
@@ -239,23 +257,18 @@ class TrackingController extends Controller
             }
         }
 
-        // 4. Sorting & Final Mapping
         $sortedHistories = collect($normalizedHistories)->sortByDesc('created_at')->values();
 
         return [
             'is_pesanan' => true,
             'resi' => $pesanan->resi,
             'resi_aktual' => $details['awb'] ?? $pesanan->resi_aktual,
-            
-            // Gunakan data API jika ada, jika kosong gunakan data DB
             'pengirim' => $details['origin']['name'] ?? $pesanan->sender_name ?? '-',
             'alamat_pengirim' => $details['origin']['address'] ?? $pesanan->sender_address ?? '-',
             'no_pengirim' => $details['origin']['phone'] ?? $pesanan->sender_phone ?? '-',
-            
             'penerima' => $details['destination']['name'] ?? $pesanan->receiver_name ?? '-',
             'alamat_penerima' => $details['destination']['address'] ?? $pesanan->receiver_address ?? '-',
             'no_penerima' => $details['destination']['phone'] ?? $pesanan->receiver_phone ?? '-',
-            
             'status' => $rawResponse['text'] ?? ($details['delivered'] ? 'Telah Diterima' : $pesanan->status),
             'tanggal_dibuat' => $pesanan->created_at,
             'histories' => $sortedHistories,
@@ -263,14 +276,12 @@ class TrackingController extends Controller
         ];
     }
 
-    /**
-     * Helper: Cek scan lokal jika API tidak menemukan data
-     */
     private function checkLocalScans($resi)
     {
         // 1. Cek SPX Scan
         $spxScan = SpxScan::with('kontak')->where('resi', $resi)->first();
         if ($spxScan) {
+             Log::info("Found in SpxScan Table.");
              return [
                 'is_pesanan' => false,
                 'resi' => $spxScan->resi,
@@ -289,13 +300,14 @@ class TrackingController extends Controller
             ];
         }
 
-        // 2. Cek Scanned Packages (Manual Gudang)
+        // 2. Cek Scanned Packages
         $scannedHistories = ScannedPackage::with(['user', 'kontak'])
                                 ->where('resi_number', $resi)
                                 ->orderBy('created_at', 'desc')
                                 ->get();
         
         if ($scannedHistories->isNotEmpty()) {
+            Log::info("Found in ScannedPackages Table.");
             $latest = $scannedHistories->first();
             $first = $scannedHistories->last();
             $senderName = $first->kontak->nama ?? ($first->user->name ?? 'Mitra Sancaka');
@@ -325,8 +337,12 @@ class TrackingController extends Controller
 
     public function cetakThermal($resi)
     {
+        Log::info("Cetak Thermal Request: {$resi}");
         $pesanan = Pesanan::where('resi', $resi)->orWhere('nomor_invoice', $resi)->first();
-        if (!$pesanan) abort(404);
+        if (!$pesanan) {
+            Log::error("Cetak Thermal Gagal: Pesanan tidak ditemukan.");
+            abort(404);
+        }
         return view('admin.pesanan.cetak_thermal', compact('pesanan'));
     }
     
