@@ -40,6 +40,12 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+
+        // --- TAMBAHKAN INI ---
+        'member' => [
+            'driver' => 'session',
+            'provider' => 'affiliates', // Ini merujuk ke providers di bawah
+        ],
     ],
 
     /*
@@ -63,6 +69,12 @@ return [
         'users' => [
             'driver' => 'eloquent',
             'model' => env('AUTH_MODEL', App\Models\User::class),
+        ],
+
+        // --- TAMBAHKAN INI ---
+        'affiliates' => [
+            'driver' => 'eloquent',
+            'model' => App\Models\Affiliate::class, // Pastikan model ini benar
         ],
 
         // 'users' => [
