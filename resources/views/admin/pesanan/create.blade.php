@@ -134,7 +134,9 @@
                         <div class="md:col-span-2">
                             <label for="receiver_address" class="block mb-2 text-sm font-medium text-gray-700">Alamat Penerima Lengkap</label>
                             <textarea id="receiver_address" name="receiver_address" rows="3" 
-                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" placeholder="Contoh: Jl. Pahlawan No. 12, RT 01/RW 05, (Patokan: Sebelah Kantor Pos)" required></textarea>
+                            class="w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900
+                            focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md
+                            transition duration-150 ease-in-out" placeholder="Contoh: Jl. Pahlawan No. 12, RT 01/RW 05, (Patokan: Sebelah Kantor Pos)" required></textarea>
                         </div>
                           <div class="md:col-span-2">
                                 <label class="flex items-center text-sm text-gray-600"><input type="checkbox" name="save_receiver" value="1" class="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500 mr-2"> Simpan data penerima ini</label>
