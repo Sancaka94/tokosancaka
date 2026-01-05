@@ -79,8 +79,8 @@
 
                 {{-- PERUBAHAN 1: Tambahkan enctype="multipart/form-data" --}}
                 <form action="{{ route('products.store') }}" method="POST" enctype="multipart/form-data" class="space-y-4" 
-                      x-data="{ submitting: false, imgPreview: null }" 
-                      @submit="submitting = true">
+                    x-data="{ submitting: false, imgPreview: null }" 
+                        @submit="submitting = true">
                     @csrf
                     
                     {{-- PERUBAHAN 2: Input Upload Gambar dengan Preview --}}
