@@ -1106,4 +1106,15 @@ class OrderController extends Controller
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
+
+    /**
+     * Menampilkan Detail Order
+     */
+    public function show($id)
+    {
+        // Load order beserta item produk dan lampiran file
+        $order = Order::with(['items', 'attachments', 'coupon'])->findOrFail($id);
+
+        return view('orders.show', compact('order'));
+    }
 }
