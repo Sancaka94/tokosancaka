@@ -5,69 +5,87 @@ namespace App\Http\Controllers;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Log; // Wajib import Log
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator; // Penting untuk log error validasi
 
 class ProductController extends Controller
 {
-    /**
-     * Menampilkan daftar produk
-     */
     public function index(Request $request)
     {
-        // LOG: Memulai akses halaman index
-        Log::info('User mengakses halaman daftar produk.', ['ip' => $request->ip()]);
-
         $query = Product::orderBy('created_at', 'desc');
 
         if ($request->has('search') && $request->search != '') {
-            // LOG: Mencatat pencarian
-            Log::info('User melakukan pencarian produk.', ['keyword' => $request->search]);
-            
             $query->where('name', 'like', '%' . $request->search . '%')
                   ->orWhere('supplier', 'like', '%' . $request->search . '%');
         }
 
         $products = $query->paginate(10);
-
-        // LOG: Selesai mengambil data
-        Log::info('Data produk berhasil dimuat.', ['total_displayed' => $products->count()]);
-
         return view('products.index', compact('products'));
     }
 
-    /**
-     * Menyimpan produk baru
-     */
     public function store(Request $request)
     {
-        // dd($request->all(), $request->hasFile('image'), $request->file('image'));
-        // LOG: Percobaan simpan data baru
-        Log::info('Memulai proses penyimpanan produk baru.');
+        // 1. LOG AWAL: Cek apa yang dikirim browser (Headers & Inputs)
+        Log::info('----------------------------------------------------');
+        Log::info('[STORE START] Memulai proses tambah produk.');
+        Log::info('[STORE INPUT] Data text yang diterima:', $request->except(['image', '_token']));
+        
+        // 2. LOG FILE: Cek apakah file fisik benar-benar terbaca oleh server
+        if ($request->hasFile('image')) {
+            $file = $request->file('image');
+            Log::info('[STORE FILE] File ditemukan:', [
+                'Original Name' => $file->getClientOriginalName(),
+                'Mime Type (Asli)' => $file->getClientMimeType(),
+                'Size (Bytes)' => $file->getSize(),
+                'Error Code' => $file->getError(), // 0 artinya sukses
+                'Real Path' => $file->getRealPath()
+            ]);
+        } else {
+            Log::warning('[STORE FILE] Tidak ada file gambar yang terdeteksi di request. (Cek enctype form!)');
+        }
 
-        $request->validate([
-            'name'       => 'required|string|max:255|unique:products,name', 
+        // 3. VALIDASI MANUAL (Agar bisa log error-nya)
+        $validator = Validator::make($request->all(), [
+            'name'       => 'required|string|max:255|unique:products,name',
             'base_price' => 'required|numeric|min:0',
             'sell_price' => 'required|numeric|min:0|gte:base_price',
             'unit'       => 'required|string',
             'stock'      => 'required|integer|min:0',
             'supplier'   => 'nullable|string|max:255',
-            'image'      => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048', // Validasi gambar
+            'image'      => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+        ], [
+            'image.image' => 'File harus berupa gambar.',
+            'image.mimes' => 'Format harus jpeg, png, jpg, gif.',
+            'image.max'   => 'Maksimal ukuran 2MB.',
         ]);
+
+        // 4. JIKA VALIDASI GAGAL -> CATAT DI LOG
+        if ($validator->fails()) {
+            Log::error('[STORE VALIDATION FAIL] Validasi gagal:', $validator->errors()->toArray());
+            return back()->withErrors($validator)->withInput()->with('error', 'Gagal validasi data.');
+        }
 
         try {
             $imagePath = null;
 
-            // PROSES UPLOAD GAMBAR
+            // 5. PROSES UPLOAD
             if ($request->hasFile('image')) {
+                Log::info('[STORE UPLOAD] Mencoba memindahkan file...');
+                
                 $file = $request->file('image');
                 $filename = time() . '_' . $file->getClientOriginalName();
                 $imagePath = $file->storeAs('products', $filename, 'public');
 
-                // LOG: Gambar berhasil diupload
-                Log::info('Gambar produk berhasil diupload.', ['path' => $imagePath]);
+                if ($imagePath) {
+                    Log::info('[STORE UPLOAD SUCCESS] File tersimpan di: ' . $imagePath);
+                } else {
+                    Log::error('[STORE UPLOAD FAIL] Fungsi storeAs mengembalikan false.');
+                }
             }
 
-            // SIMPAN KE DATABASE
+            // 6. SIMPAN DB
+            Log::info('[STORE DB] Menyimpan data ke database...');
+            
             $product = Product::create([
                 'name'         => $request->name,
                 'base_price'   => $request->base_price,
@@ -77,30 +95,27 @@ class ProductController extends Controller
                 'sold'         => 0,
                 'supplier'     => $request->supplier ?? '-',
                 'stock_status' => $request->stock > 0 ? 'available' : 'unavailable',
-                'image'        => $imagePath // Simpan path gambar ke kolom database
+                'image'        => $imagePath
             ]);
 
-            // LOG: Sukses simpan database
-            Log::info('Produk berhasil ditambahkan ke database.', ['product_id' => $product->id, 'name' => $product->name]);
+            Log::info('[STORE SUCCESS] Produk berhasil dibuat ID: ' . $product->id);
+            Log::info('----------------------------------------------------');
 
             return redirect()->route('products.index')->with('success', 'Produk berhasil ditambahkan!');
 
         } catch (\Exception $e) {
-            // LOG: Jika terjadi error
-            Log::error('Gagal menyimpan produk baru.', ['error' => $e->getMessage()]);
-            return back()->withInput()->with('error', 'Terjadi kesalahan sistem saat menyimpan data.');
+            Log::error('[STORE EXCEPTION] Error sistem: ' . $e->getMessage());
+            Log::error($e->getTraceAsString()); // Log jejak error lengkap
+            return back()->withInput()->with('error', 'Terjadi kesalahan sistem: ' . $e->getMessage());
         }
     }
 
-    /**
-     * Update produk yang sudah ada
-     */
     public function update(Request $request, Product $product)
     {
-        // LOG: Percobaan update
-        Log::info('Memulai proses update produk.', ['product_id' => $product->id, 'old_name' => $product->name]);
+        Log::info('----------------------------------------------------');
+        Log::info('[UPDATE START] Update produk ID: ' . $product->id);
 
-        $request->validate([
+        $validator = Validator::make($request->all(), [
             'name'       => 'required|string|max:255',
             'base_price' => 'required|numeric|min:0',
             'sell_price' => 'required|numeric|min:0|gte:base_price',
@@ -109,6 +124,11 @@ class ProductController extends Controller
             'supplier'   => 'nullable|string|max:255',
             'image'      => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
+
+        if ($validator->fails()) {
+            Log::error('[UPDATE VALIDATION FAIL]', $validator->errors()->toArray());
+            return back()->withErrors($validator)->withInput();
+        }
 
         try {
             $data = [
@@ -121,71 +141,52 @@ class ProductController extends Controller
                 'stock_status' => $request->stock > 0 ? 'available' : 'unavailable'
             ];
 
-            // LOGIKA GANTI GAMBAR
             if ($request->hasFile('image')) {
-                // Hapus gambar lama jika ada
+                Log::info('[UPDATE IMAGE] User mengupload gambar baru.');
+
+                // Hapus lama
                 if ($product->image && Storage::disk('public')->exists($product->image)) {
                     Storage::disk('public')->delete($product->image);
-                    Log::info('Gambar lama dihapus.', ['old_path' => $product->image]);
+                    Log::info('[UPDATE IMAGE] Gambar lama dihapus: ' . $product->image);
                 }
                 
-                // Upload gambar baru
+                // Upload baru
                 $file = $request->file('image');
                 $filename = time() . '_' . $file->getClientOriginalName();
-                $path = $file->storeAs('products', $filename, 'public');
-                
-                $data['image'] = $path;
-                Log::info('Gambar baru diupload untuk update.', ['new_path' => $path]);
+                $data['image'] = $file->storeAs('products', $filename, 'public');
+                Log::info('[UPDATE IMAGE] Gambar baru disimpan: ' . $data['image']);
             }
 
-            // UPDATE DATABASE
             $product->update($data);
-
-            Log::info('Produk berhasil diperbarui.', ['product_id' => $product->id]);
+            Log::info('[UPDATE SUCCESS] Data DB diperbarui.');
 
             return redirect()->route('products.index')->with('success', 'Produk berhasil diperbarui!');
 
         } catch (\Exception $e) {
-            Log::error('Gagal mengupdate produk.', ['product_id' => $product->id, 'error' => $e->getMessage()]);
+            Log::error('[UPDATE ERROR] ' . $e->getMessage());
             return back()->with('error', 'Gagal update data.');
         }
     }
 
-    public function show(Product $product) 
-    { 
-        Log::info('Melihat detail produk.', ['product_id' => $product->id]);
-        return view('products.show', compact('product')); 
-    }
-    
-    public function edit(Product $product) 
-    { 
-        Log::info('Membuka form edit produk.', ['product_id' => $product->id]);
-        return view('products.edit', compact('product')); 
-    }
-
-    /**
-     * Hapus produk
-     */
     public function destroy(Product $product)
     {
-        Log::warning('Percobaan menghapus produk.', ['product_id' => $product->id, 'name' => $product->name]);
-
+        Log::warning('[DESTROY] Percobaan hapus ID: ' . $product->id);
         try {
-            // HAPUS GAMBAR FISIK DULU
             if ($product->image && Storage::disk('public')->exists($product->image)) {
                 Storage::disk('public')->delete($product->image);
-                Log::info('File gambar produk dihapus dari storage.', ['path' => $product->image]);
+                Log::info('[DESTROY] File gambar dihapus.');
             }
 
-            // HAPUS DATA DARI DB
             $product->delete();
-            
-            Log::info('Data produk berhasil dihapus permanen.', ['product_id' => $product->id]);
-
+            Log::info('[DESTROY] Sukses.');
             return redirect()->route('products.index')->with('success', 'Produk dihapus!');
         } catch (\Exception $e) {
-            Log::error('Gagal menghapus produk (mungkin relasi database).', ['product_id' => $product->id, 'error' => $e->getMessage()]);
-            return redirect()->route('products.index')->with('error', 'Gagal hapus, produk sedang digunakan.');
+            Log::error('[DESTROY ERROR] ' . $e->getMessage());
+            return redirect()->route('products.index')->with('error', 'Gagal hapus.');
         }
     }
+
+    // Method show & edit standar
+    public function show(Product $product) { return view('products.show', compact('product')); }
+    public function edit(Product $product) { return view('products.edit', compact('product')); }
 }
