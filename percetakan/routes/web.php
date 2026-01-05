@@ -41,6 +41,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/affiliate/sync-balance', [AffiliateController::class, 'syncBalance'])->name('affiliate.sync');
 
     // Rute tambahan untuk produk
+    Route::get('/orders/{id}', [OrderController::class, 'show'])->name('orders.show');
+    Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
 
     // Daftar Produk & Form Tambah
     Route::get('/products', [ProductController::class, 'index'])->name('products.index');
@@ -65,8 +67,10 @@ Route::get('/cara', function () {
     return view('cara');
 });
 
+
 // Route untuk mencari alamat (Autocomplete)
 Route::get('/orders/search-location', [App\Http\Controllers\OrderController::class, 'searchLocation'])->name('orders.search-location');
+
 
 // Route Cek Ongkir (yang sudah ada)
 Route::post('/orders/check-ongkir', [App\Http\Controllers\OrderController::class, 'checkShippingRates'])->name('orders.check-ongkir');
