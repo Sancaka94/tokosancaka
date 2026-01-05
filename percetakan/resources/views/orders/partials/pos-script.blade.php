@@ -235,7 +235,7 @@
                         body: JSON.stringify({ coupon_code: this.couponCode, total_belanja: this.subtotal })
                     });
                     const data = await response.json();
-                    if (data.status === 'success') { this.discountAmount = data.data.discount_amount; this.couponMessage = `✅ Hemat Rp ${this.rupiah(data.data.discount_amount)}`; } 
+                    if (data.status === 'success') { this.discountAmount = data.data.discount_amount; this.couponMessage = `✅ Kakak Hemat Rp ${this.rupiah(data.data.discount_amount)}`; } 
                     else { this.discountAmount = 0; this.couponMessage = data.message; }
                 } catch (error) { this.couponMessage = 'Gagal cek server.'; this.discountAmount = 0; } finally { this.isValidatingCoupon = false; }
             },
