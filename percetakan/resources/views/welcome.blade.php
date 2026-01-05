@@ -106,7 +106,7 @@
                     <a href="https://wa.me/6285745808809" class="block py-3 text-center rounded-xl bg-slate-100 font-bold hover:bg-red-600 hover:text-white transition">Pesan</a>
                 </div>
                 <div id="ekspedisi" class="gradient-red rounded-[32px] p-8 text-white shadow-2xl shadow-red-200 transform md:-translate-y-6">
-                    <h3 class="text-xl font-bold mb-4">Jasa Pengiriman Paket, Dokumen & Cargo</h3>
+                    <h3 class="text-xl font-bold mb-4">Jasa Pengiriman</h3>
                     <div class="flex items-baseline gap-1 mb-6">
                         <span class="text-4xl font-black italic text-cyan-300">Ekspedisi</span>
                     </div>
@@ -115,19 +115,22 @@
                         <li>✅ Tarif Termurah & Aman</li>
                         <li>✅ Pickup Paket ke Rumah</li>
                         <li>✅ Tracking Real-time</li>
+                        <li>✅ Paket Barang & Dokumen</li>
+                        <li>✅ Paket Motor & Pindahan</li>
                     </ul>
                     <a href="https://wa.me/628819435180" class="block py-4 text-center rounded-xl bg-white text-red-600 font-black shadow-lg">HUBUNGI EKSPEDISI</a>
                 </div>
                 <div class="border border-slate-100 rounded-[32px] p-8 hover:shadow-2xl transition">
                     <h3 class="text-xl font-bold mb-4">Jilid & Print</h3>
                     <div class="flex items-baseline gap-1 mb-6">
-                        <span class="text-4xl font-black italic">Harga Mulai Rp 300</span>
-                        <span class="text-slate-400">/print</span>
+                        <span class="text-4xl font-black italic">Mulai Rp 300</span>
+                        <span class="text-slate-400">/ Hal</span>
                     </div>
                     <ul class="space-y-4 mb-8 text-sm font-medium">
                         <li>✅ Print Warna High Res</li>
                         <li>✅ Jilid Mika / Buffalo</li>
                         <li>✅ Jilid Lakban Kilat</li>
+                        <li>✅ Print Bolak Balik</li>
                     </ul>
                     <a href="https://wa.me/6285745808809" class="block py-3 text-center rounded-xl bg-slate-100 font-bold hover:bg-red-600 hover:text-white transition">Pesan</a>
                 </div>
