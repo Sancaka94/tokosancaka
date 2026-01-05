@@ -130,61 +130,84 @@
 
     <div x-show="uploadedFiles.length > 0" class="space-y-3 mb-3" x-transition>
         <template x-for="(item, index) in uploadedFiles" :key="index">
-            <div class="bg-white border border-slate-200 rounded-xl shadow-sm p-3 hover:border-blue-300 transition-all group">
+            <div class="bg-white border border-slate-200 rounded-xl shadow-sm p-3 hover:border-blue-300 transition-all">
                 
-                <div class="flex items-center gap-2 mb-2 pb-2 border-b border-dashed border-slate-100">
-                    <div class="h-6 w-6 rounded bg-blue-50 flex items-center justify-center text-blue-500 text-[10px] shrink-0 font-bold" x-text="index + 1"></div>
+                <div class="p-4 border-b border-slate-100 bg-slate-50/50">
+    <div class="flex justify-between items-center mb-2">
+        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+            Berkas Cetak (<span x-text="uploadedFiles.length"></span>/10)
+        </span>
+        <button x-show="uploadedFiles.length > 0" @click="uploadedFiles = []" class="text-[10px] text-red-500 hover:underline">
+            Reset Semua
+        </button>
+    </div>
+
+    <div x-show="uploadedFiles.length > 0" class="space-y-3 mb-3" x-transition>
+        <template x-for="(item, index) in uploadedFiles" :key="index">
+            <div class="bg-white border border-slate-200 rounded-xl shadow-sm p-3 hover:border-blue-300 transition-all">
+                
+                <div class="flex items-center gap-2 mb-3 pb-2 border-b border-dashed border-slate-100">
+                    <div class="h-8 w-8 rounded bg-red-50 flex items-center justify-center text-red-500 text-xs shrink-0">
+                        <i class="fas fa-file-pdf" x-show="item.file.type.includes('pdf')"></i>
+                        <i class="fas fa-image" x-show="item.file.type.includes('image')"></i>
+                        <i class="fas fa-file" x-show="!item.file.type.includes('pdf') && !item.file.type.includes('image')"></i>
+                    </div>
                     <div class="flex-1 min-w-0">
                         <p class="text-[11px] font-bold text-slate-700 truncate" x-text="item.file.name"></p>
                         <p class="text-[9px] text-slate-400" x-text="formatFileSize(item.file.size)"></p>
                     </div>
-                    <button @click="removeFile(index)" class="text-slate-300 hover:text-red-500 transition px-1">
+                    <button @click="removeFile(index)" class="text-slate-300 hover:text-red-500 transition px-2">
                         <i class="fas fa-trash-alt"></i>
                     </button>
                 </div>
 
                 <div class="grid grid-cols-3 gap-2">
                     
-                    <label class="col-span-1 flex flex-col justify-center items-center cursor-pointer bg-slate-50 border border-slate-200 rounded-lg p-1.5 transition hover:bg-slate-100"
-                           :class="item.isColor ? 'border-red-300 bg-red-50' : ''">
-                        <input type="checkbox" x-model="item.isColor" class="hidden">
-                        <div class="flex items-center gap-1">
-                            <i class="fas fa-palette text-[10px]" :class="item.isColor ? 'text-red-500' : 'text-slate-400'"></i>
-                            <span class="text-[9px] font-bold" :class="item.isColor ? 'text-red-600' : 'text-slate-500'" x-text="item.isColor ? 'Warna' : 'B/W'"></span>
-                        </div>
-                    </label>
+                    <div class="col-span-1">
+                        <label class="flex items-center gap-2 cursor-pointer bg-slate-50 p-1.5 rounded-lg border border-slate-100 h-full">
+                            <input type="checkbox" x-model="item.isColor" class="rounded text-red-600 focus:ring-red-500 w-4 h-4 border-slate-300">
+                            <span class="text-[10px] font-bold leading-tight" :class="item.isColor ? 'text-slate-800' : 'text-slate-400'">
+                                <span x-text="item.isColor ? 'Berwarna' : 'Hitam Putih'"></span>
+                            </span>
+                        </label>
+                    </div>
 
                     <div class="col-span-1">
-                        <select x-model="item.size" class="w-full h-full text-[10px] font-bold text-center bg-slate-50 border border-slate-200 rounded-lg focus:ring-1 focus:ring-blue-500 py-0">
-                            <option value="A4">A4</option>
-                            <option value="F4">F4</option>
-                            <option value="A3">A3</option>
+                        <select x-model="item.paperSize" class="w-full text-[10px] font-bold py-1.5 px-1 rounded-lg border-slate-200 bg-slate-50 focus:ring-red-500 focus:border-red-500">
+                            <option value="A4">Kertas A4</option>
+                            <option value="F4">Kertas F4</option>
                         </select>
                     </div>
 
-                    <div class="col-span-1 flex items-center border border-slate-200 rounded-lg bg-white overflow-hidden">
-                        <input type="number" x-model="item.qty" min="1" class="w-full text-center text-[10px] font-bold border-none p-0 focus:ring-0" placeholder="1">
-                        <span class="text-[8px] text-slate-400 pr-1 bg-slate-50 h-full flex items-center">lbr</span>
+                    <div class="col-span-1 relative">
+                        <div class="flex items-center border border-slate-200 rounded-lg bg-slate-50 overflow-hidden h-full">
+                            <input type="number" x-model="item.qty" min="1" class="w-full text-center text-[10px] font-bold bg-transparent border-none p-0 focus:ring-0" placeholder="1">
+                            <span class="text-[9px] text-slate-400 pr-1.5">lbr/set</span>
+                        </div>
                     </div>
-                </div>
 
+                </div>
             </div>
         </template>
     </div>
 
     <div x-show="uploadedFiles.length < 10" x-transition>
-        <div class="relative border-2 border-dashed border-red-300 rounded-xl bg-white hover:border-green-400 hover:bg-green-50 transition-all cursor-pointer group h-14 flex items-center justify-center">
+        <div class="relative border-2 border-dashed border-red-300 rounded-xl bg-white hover:bg-red-50 hover:border-red-400 transition-all cursor-pointer group h-12 flex items-center justify-center">
             <input type="file" multiple @change="handleFileUpload" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
                    accept=".doc,.docx,.pdf,.xls,.xlsx,.jpg,.jpeg,.png">
             
             <div class="flex items-center gap-2 pointer-events-none">
-                <i class="fas" :class="uploadedFiles.length > 0 ? 'fa-plus text-green-500' : 'fa-cloud-upload-alt text-red-400'"></i>
-                <p class="text-[10px] font-bold" :class="uploadedFiles.length > 0 ? 'text-green-600' : 'text-slate-500'">
-                    <span x-text="uploadedFiles.length === 0 ? 'Upload Berkas' : 'Tambah File Lain'"></span>
+                <i class="fas" :class="uploadedFiles.length > 0 ? 'fa-plus text-red-500' : 'fa-cloud-upload-alt text-slate-400'"></i>
+                <p class="text-[10px] font-bold" :class="uploadedFiles.length > 0 ? 'text-red-600' : 'text-slate-500'">
+                    <span x-text="uploadedFiles.length === 0 ? 'Upload Berkas Pertama' : 'Tambah File Lain'"></span>
                 </p>
             </div>
         </div>
-        <p x-show="uploadedFiles.length === 0" class="text-[9px] text-slate-400 mt-1 text-center">Max 10 file (PDF, JPG, Docx).</p>
+        <p x-show="uploadedFiles.length === 0" class="text-[9px] text-slate-400 mt-1 text-center">Format: PDF, JPG, Docx. Max 10MB.</p>
+    </div>
+
+    <div x-show="uploadedFiles.length >= 10" class="p-2 bg-amber-50 border border-amber-200 rounded-lg text-center mt-2">
+        <p class="text-[10px] font-bold text-amber-600">Maksimal 10 file tercapai.</p>
     </div>
 </div>
 
