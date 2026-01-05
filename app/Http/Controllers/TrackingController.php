@@ -114,7 +114,7 @@ class TrackingController extends Controller
         }
 
         // ====================================================================
-        // BAGIAN 2: MAPPING DB 2 (PERCETAKAN) - LOGIKA DIPERBAIKI (CLEAN UP)
+        // BAGIAN 2: MAPPING DB 2 (PERCETAKAN)
         // ====================================================================
         if (!$pesanan) {
             try {
@@ -126,12 +126,11 @@ class TrackingController extends Controller
 
                 if ($orderPercetakan) {
                     
-                    // --- 1. PARSING DATA KURIR (Agar "TIKI - Tiki Reguler" jadi Rapi) ---
+                    // Parsing Data Kurir
                     $rawService = $orderPercetakan->courier_service ?? 'Internal';
                     $shipInfo = ShippingHelper::parseShippingMethod($rawService);
 
-                    // Bersihkan Nama Layanan jika mengandung Nama Kurir (Opsional)
-                    // Contoh: "Tiki Reguler" -> "Reguler"
+                    // Bersihkan Nama Layanan
                     $cleanService = str_replace($shipInfo['courier_name'], '', $shipInfo['service_name']);
                     $cleanService = trim($cleanService);
                     if (empty($cleanService)) $cleanService = 'Regular';
@@ -156,7 +155,6 @@ class TrackingController extends Controller
                         'receiver_name' => $orderPercetakan->customer_name ?? 'Pelanggan',
                         'receiver_phone' => $orderPercetakan->customer_phone ?? '-',
                         'receiver_address' => $orderPercetakan->destination_address ?? '-',
-                        // Data wilayah dikosongkan jika tidak ada di DB2 agar tidak error
                         'receiver_village' => '', 
                         'receiver_district' => '',
                         'receiver_regency' => '',
@@ -164,7 +162,7 @@ class TrackingController extends Controller
                         'receiver_postal_code' => '',
 
                         // PAKET & BIAYA
-                        'weight' => 1000, // Default 1kg jika DB2 tidak punya kolom berat
+                        'weight' => 1000, 
                         'item_description' => 'Produk Percetakan',
                         'item_price' => $orderPercetakan->final_price ?? 0, 
                         'shipping_cost' => $orderPercetakan->shipping_cost ?? 0,
@@ -173,20 +171,17 @@ class TrackingController extends Controller
                         'total_cod' => ($orderPercetakan->final_price ?? 0) + ($orderPercetakan->shipping_cost ?? 0),
                         'cod_amount' => 0,
                         
-                        // --- 2. PERBAIKAN TAMPILAN EKSPEDISI ---
-                        'expedition' => $shipInfo['courier_name'], // "TIKI" (Bersih)
-                        'service_type' => strtoupper($cleanService), // "REGULER" (Bersih & Kapital)
-                        
-                        // --- 3. PERBAIKAN PEMBAYARAN (Huruf Besar) ---
+                        // EKSPEDISI & PEMBAYARAN
+                        'expedition' => $shipInfo['courier_name'], 
+                        'service_type' => strtoupper($cleanService),
                         'payment_method' => strtoupper($orderPercetakan->payment_method ?? 'MANUAL'),
                         
                         'created_at' => $orderPercetakan->created_at,
-                        'resi_aktual' => $orderPercetakan->shipping_ref,
                         
-                        // --- 4. PERBAIKAN JUDUL RESI AKTUAL ---
-                        // Menggunakan courier_name saja agar tidak muncul "TIKI - Tiki Reguler"
-                        // Hasil: "RESI AKTUAL (TIKI)" atau "RESI AKTUAL (TIKI - REGULER)"
-                        'jasa_ekspedisi_aktual' => $shipInfo['courier_name'] . ' - ' . strtoupper($cleanService),
+                        // --- PERUBAHAN DI SINI ---
+                        // Set NULL agar barcode bawah (Resi Aktual) HILANG untuk DB 2
+                        'resi_aktual' => null, 
+                        'jasa_ekspedisi_aktual' => null, 
 
                         'panjang' => 10, 'lebar' => 10, 'tinggi' => 10,
                     ];
