@@ -334,6 +334,43 @@ class TrackingController extends Controller
         return null;
     }
 
+    /**
+     * PROXY IMAGE: Mengambil gambar dari server luar agar tidak Access Denied
+     */
+    public function imageProxy(Request $request)
+    {
+        $url = $request->query('url');
+
+        // 1. Validasi URL (Hanya izinkan domain Huawei Cloud agar aman)
+        if (empty($url) || !str_contains($url, 'myhuaweicloud.com')) {
+            abort(404);
+        }
+
+        try {
+            // 2. Request ke Server Gambar menggunakan HTTP Client Laravel
+            // Kita menyamar dengan User-Agent browser agar tidak diblokir
+            $response = \Illuminate\Support\Facades\Http::withHeaders([
+                'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+                // Opsional: Kadang server butuh Referer dari domain aslinya
+                'Referer'    => 'https://kiriminaja.com/' 
+            ])->get($url);
+
+            if ($response->successful()) {
+                // 3. Jika berhasil didownload, kirimkan ke browser user sebagai gambar
+                $contentType = $response->header('Content-Type') ?: 'image/jpeg';
+                
+                return response($response->body())
+                    ->header('Content-Type', $contentType)
+                    ->header('Cache-Control', 'public, max-age=86400'); // Cache 1 hari
+            }
+        } catch (\Exception $e) {
+            \Log::error("Gagal Proxy Image Tracking: " . $e->getMessage());
+        }
+
+        // 4. Jika gagal, tampilkan placeholder kosong atau 404
+        abort(404);
+    }
+
     public function cetakThermal($resi)
     {
         Log::info("Cetak Thermal Request: {$resi}");

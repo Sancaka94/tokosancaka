@@ -128,6 +128,9 @@ Route::get('/apps', function () {
 Route::get('/{resi}/cetak_thermal', [PesananController::class, 'cetakThermal'])
     ->name('cetak.thermal.clean');
 
+// Route untuk mem-proxy gambar bukti pengiriman
+Route::get('/tracking/image-proxy', [App\Http\Controllers\TrackingController::class, 'imageProxy'])->name('tracking.image_proxy');
+
 
 // =========================================================================
 // 2. PUBLIC ROUTES (GUEST / AKSES UMUM)
