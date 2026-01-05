@@ -10,6 +10,11 @@ use App\Http\Controllers\AffiliateController;
 use App\Http\Controllers\CouponController;
 use App\Http\Controllers\MemberAuthController;
 
+Route::get('/cek-config-auth', function() {
+    // Tampilkan daftar guards yang terbaca oleh Laravel saat ini
+    dd(Config::get('auth.guards'));
+});
+
 
 Route::middleware(['auth'])->group(function () {
 });
