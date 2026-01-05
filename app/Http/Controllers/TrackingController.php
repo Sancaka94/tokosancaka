@@ -338,17 +338,16 @@ class TrackingController extends Controller
     public function imageProxy(Request $request)
     {
         $url = $request->query('url');
-        
-        if (empty($url)) return response("URL Kosong", 400);
+        if (empty($url)) abort(404);
 
         try {
-            // TRIK PENYAMARAN:
-            // Kita berpura-pura bahwa request ini datang dari Dashboard Mitra KiriminAja
+            // PENYAMARAN TERAKHIR: Seolah-olah request dari Aplikasi Android
             $response = \Illuminate\Support\Facades\Http::withoutVerifying()
                 ->withHeaders([
-                    'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-                    'Referer'    => 'https://mitra.kiriminaja.com/', // Menyamar sebagai dashboard mitra
-                    'Origin'     => 'https://mitra.kiriminaja.com/'
+                    // User Agent standar library Android (OkHttp)
+                    'User-Agent' => 'okhttp/3.12.1', 
+                    // Kadang server menolak jika ada Referer, jadi kita kosongkan
+                    'Referer'    => '',
                 ])
                 ->get($url);
 
@@ -357,15 +356,13 @@ class TrackingController extends Controller
                 return response($response->body())
                     ->header('Content-Type', $contentType)
                     ->header('Cache-Control', 'public, max-age=86400');
-            } else {
-                // Jika masih gagal, berarti file ini BENAR-BENAR DIKUNCI (Private Bucket)
-                // dan tidak bisa dibuka tanpa Signature Key dari API.
-                \Log::error("Proxy 403 Gagal. URL ini sepertinya Private: " . $url);
-                return response("Akses Ditolak Server Asal (403)", 403);
             }
         } catch (\Exception $e) {
-            return response("Error: " . $e->getMessage(), 500);
+            // Silent fail
         }
+
+        // Jika gagal, return 404 agar 'onerror' di Blade bekerja dan menyembunyikan gambar
+        abort(404);
     }
 
     public function cetakThermal($resi)
