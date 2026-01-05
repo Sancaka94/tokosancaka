@@ -119,36 +119,51 @@
             <div class="flex-1 overflow-y-auto custom-scrollbar bg-white">
                 
                 <div class="p-4 border-b border-slate-100 bg-slate-50/50">
-                    <div class="relative border-2 border-dashed border-red-300 rounded-xl bg-red-50 hover:border-green-400 hover:bg-green-50 transition-all cursor-pointer group h-20 flex items-center justify-center">
-                        <input type="file" multiple @change="handleFileUpload" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
-                               accept=".doc,.docx,.pdf,.xls,.xlsx,.jpg,.jpeg,.png">
-                        <div class="text-center pointer-events-none flex flex-col items-center">
-                            <i class="fas fa-cloud-upload-alt text-slate-400 group-hover:text-red-500 text-xl mb-1 transition-colors"></i>
-                            <p class="text-[10px] font-bold text-slate-500 group-hover:text-red-600">Klik / Drag File, Dokumen atau Berkas</p>
-                        </div>
-                    </div>
+    <div class="flex justify-between items-center mb-2">
+        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+            Lampiran File (<span x-text="uploadedFiles.length"></span>/10)
+        </span>
+        <button x-show="uploadedFiles.length > 0" @click="uploadedFiles = []" class="text-[10px] text-red-500 hover:underline">
+            Reset Semua
+        </button>
+    </div>
 
-                    <div x-show="uploadedFiles.length > 0" class="mt-3 space-y-2" x-transition>
-                        <div class="flex justify-between items-center">
-                            <span class="text-[10px] font-bold text-slate-400 uppercase">Lampiran (<span x-text="uploadedFiles.length"></span>)</span>
-                            <button @click="uploadedFiles = []" class="text-[10px] text-red-500 hover:underline">Hapus Semua</button>
-                        </div>
-                        <template x-for="(file, index) in uploadedFiles" :key="index">
-                            <div class="flex items-center gap-2 p-2 bg-white border border-slate-200 rounded-lg shadow-sm">
-                                <div class="h-8 w-8 rounded bg-slate-100 flex items-center justify-center text-slate-500 text-xs shrink-0">
-                                    <i class="fas fa-file"></i>
-                                </div>
-                                <div class="flex-1 min-w-0">
-                                    <p class="text-[11px] font-bold text-slate-700 truncate" x-text="file.name"></p>
-                                    <p class="text-[9px] text-slate-400" x-text="formatFileSize(file.size)"></p>
-                                </div>
-                                <button @click="removeFile(index)" class="h-6 w-6 flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 rounded transition">
-                                    <i class="fas fa-times text-xs"></i>
-                                </button>
-                            </div>
-                        </template>
-                    </div>
+    <div x-show="uploadedFiles.length > 0" class="space-y-2 mb-3" x-transition>
+        <template x-for="(file, index) in uploadedFiles" :key="index">
+            <div class="flex items-center gap-2 p-2 bg-white border border-slate-200 rounded-lg shadow-sm">
+                <div class="h-8 w-8 rounded bg-slate-100 flex items-center justify-center text-slate-500 text-xs shrink-0">
+                    <i class="fas fa-file"></i>
                 </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-[11px] font-bold text-slate-700 truncate" x-text="file.name"></p>
+                    <p class="text-[9px] text-slate-400" x-text="formatFileSize(file.size)"></p>
+                </div>
+                <button @click="removeFile(index)" class="h-6 w-6 flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 rounded transition" title="Hapus">
+                    <i class="fas fa-times text-xs"></i>
+                </button>
+            </div>
+        </template>
+    </div>
+
+    <div x-show="uploadedFiles.length < 10" x-transition>
+        <div class="relative border-2 border-dashed border-red-300 rounded-xl bg-white hover:border-green-400 hover:bg-green-50 transition-all cursor-pointer group h-16 flex items-center justify-center">
+            <input type="file" multiple @change="handleFileUpload" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+                   accept=".doc,.docx,.pdf,.xls,.xlsx,.jpg,.jpeg,.png">
+            
+            <div class="text-center pointer-events-none flex items-center gap-2">
+                <i class="fas fa-cloud-upload-alt text-slate-400 group-hover:text-red-500 text-xl transition-colors"></i>
+                <p class="text-[10px] font-bold text-slate-500 group-hover:text-red-600">
+                    <span x-text="uploadedFiles.length === 0 ? 'Upload Berkas' : 'Tambah File Lain'"></span>
+                </p>
+            </div>
+        </div>
+        <p class="text-[9px] text-slate-400 mt-1 text-center">Max 10 file. Max 10MB/file.</p>
+    </div>
+
+    <div x-show="uploadedFiles.length >= 10" class="p-2 bg-amber-50 border border-amber-200 rounded-lg text-center mt-2">
+        <p class="text-[10px] font-bold text-amber-600">Batas maksimum 10 file tercapai.</p>
+    </div>
+</div>
 
                 <div class="p-4 space-y-3 min-h-[200px]">
                     <template x-if="cart.length === 0">
@@ -658,6 +673,7 @@
             search: '',
             cart: [],
             uploadedFiles: [],
+            filesToDelete: [],
             isProcessing: false,
             isValidatingCoupon: false,
             
@@ -982,16 +998,32 @@
                 if(this.paymentMethod === 'tripay') this.fetchTripayChannels();
             },
             
-            handleFileUpload(event) {
-                const files = event.target.files;
-                for (let i = 0; i < files.length; i++) {
-                    if(files[i].size > 10 * 1024 * 1024) { alert('File terlalu besar'); continue; }
-                    this.uploadedFiles.push(files[i]);
-                }
-                event.target.value = '';
-            },
-            
-            removeFile(index) { this.uploadedFiles.splice(index, 1); },
+            // --- GANTI FUNGSI LAMA DENGAN INI ---
+handleFileUpload(event) {
+    const files = event.target.files;
+    const remainingSlots = 10 - this.uploadedFiles.length; // Hitung sisa slot
+
+    if (files.length > remainingSlots) {
+        alert('Maksimal 10 file total! Slot tersisa: ' + remainingSlots);
+        event.target.value = ''; 
+        return;
+    }
+
+    for (let i = 0; i < files.length; i++) {
+        if(files[i].size > 10 * 1024 * 1024) { 
+            alert('File terlalu besar (Max 10MB): ' + files[i].name); 
+            continue; 
+        }
+        this.uploadedFiles.push(files[i]); // Masukkan ke array
+    }
+    
+    event.target.value = ''; // Reset input agar bisa pilih file lagi
+},
+
+// --- TAMBAHKAN FUNGSI HAPUS INI DI BAWAHNYA ---
+removeFile(index) { 
+    this.uploadedFiles.splice(index, 1); 
+},
 
             // ============================================================
             // FUNGSI CHECKOUT (KIRIM DATA KE LARAVEL)
@@ -1072,6 +1104,8 @@
                     formData.append('courier_code', this.selectedCourier.courier_code); 
                     formData.append('service_type', this.selectedCourier.service_type);
                     formData.append('customer_address_detail', this.customerAddressDetail);
+
+                    
                 }
 
                 // Data Pembayaran Tripay
@@ -1090,7 +1124,10 @@
                 if(this.paymentMethod === 'cash') formData.append('cash_amount', this.cashAmount);
                 if(this.paymentMethod === 'affiliate_balance') formData.append('affiliate_pin', this.affiliatePin); 
 
-                this.uploadedFiles.forEach(file => formData.append('attachments[]', file));
+                // --- GANTI DENGAN LOOPING INI ---
+                this.uploadedFiles.forEach(file => {
+                    formData.append('attachments[]', file); // Perhatikan ada [] agar dikirim sebagai array
+                });
 
                 try {
                     const response = await fetch("{{ route('orders.store') }}", {
