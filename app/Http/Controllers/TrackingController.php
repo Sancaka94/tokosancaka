@@ -337,12 +337,98 @@ class TrackingController extends Controller
 
     public function cetakThermal($resi)
     {
-        Log::info("Cetak Thermal Request: {$resi}");
-        $pesanan = Pesanan::where('resi', $resi)->orWhere('nomor_invoice', $resi)->first();
+        // 1. CARI DI DB1 (Tabel Pesanan)
+        $pesanan = Pesanan::where('resi', $resi)
+            ->orWhere('resi_aktual', $resi)
+            ->orWhere('nomor_invoice', $resi)
+            ->first();
+
+        // 2. JIKA KOSONG, CARI DI DB1 (Tabel Order - Toko Online)
         if (!$pesanan) {
-            Log::error("Cetak Thermal Gagal: Pesanan tidak ditemukan.");
-            abort(404);
+            $orderModel = Order::with(['store', 'user'])
+                ->where('shipping_reference', $resi)
+                ->orWhere('invoice_number', $resi)
+                ->first();
+
+            if ($orderModel) {
+                // Standarisasi Objek (Mapping Manual)
+                $pesanan = (object)[
+                    'resi' => $orderModel->shipping_reference,
+                    'nomor_invoice' => $orderModel->invoice_number,
+                    'status' => $orderModel->status,
+                    
+                    // Pengirim
+                    'sender_name' => $orderModel->store->name ?? 'N/A',
+                    'sender_phone' => $orderModel->store->user->no_wa ?? '-',
+                    'sender_address' => $orderModel->store->address_detail ?? '-',
+                    
+                    // Penerima
+                    'receiver_name' => $orderModel->user->nama_lengkap ?? 'N/A',
+                    'receiver_phone' => $orderModel->user->no_wa ?? '-',
+                    'receiver_address' => $orderModel->shipping_address ?? '-',
+                    'receiver_district' => $orderModel->user->district ?? '',
+                    'receiver_city' => $orderModel->user->regency ?? '',
+                    'receiver_province' => $orderModel->user->province ?? '',
+                    'receiver_postal_code' => $orderModel->user->postal_code ?? '',
+                    
+                    // Lainnya
+                    'jasa_ekspedisi_aktual' => $orderModel->courier ?? 'JNE',
+                    'service_type' => $orderModel->service_type ?? 'REG',
+                    'weight' => $orderModel->total_weight ?? 1,
+                    'created_at' => $orderModel->created_at,
+                    'cod_amount' => 0, // Sesuaikan jika ada
+                ];
+            }
         }
+
+        // 3. JIKA MASIH KOSONG, CARI DI DB2 (Tabel Orders - Percetakan)
+        if (!$pesanan) {
+            try {
+                $orderPercetakan = DB::connection('mysql_second')
+                    ->table('orders')
+                    ->where('order_number', $resi)
+                    ->orWhere('shipping_ref', $resi)
+                    ->first();
+
+                if ($orderPercetakan) {
+                    $pesanan = (object)[
+                        'resi' => $orderPercetakan->shipping_ref ?? $orderPercetakan->order_number,
+                        'nomor_invoice' => $orderPercetakan->order_number,
+                        'status' => $orderPercetakan->status,
+                        
+                        // Pengirim (Default Percetakan)
+                        'sender_name' => 'Sancaka Percetakan',
+                        'sender_phone' => '08819435180',
+                        'sender_address' => 'Jl.Dr.Wahidin No.18 A Ngawi',
+                        
+                        // Penerima
+                        'receiver_name' => $orderPercetakan->customer_name ?? 'Pelanggan',
+                        'receiver_phone' => $orderPercetakan->customer_phone ?? '-',
+                        'receiver_address' => $orderPercetakan->destination_address ?? '-',
+                        'receiver_district' => '', // Data DB2 mungkin tidak detail per kolom
+                        'receiver_city' => '',
+                        'receiver_province' => '',
+                        'receiver_postal_code' => '',
+                        
+                        // Lainnya
+                        'jasa_ekspedisi_aktual' => $orderPercetakan->courier_service ?? 'Express',
+                        'service_type' => 'REG',
+                        'weight' => 1, // Default
+                        'created_at' => $orderPercetakan->created_at,
+                        'cod_amount' => 0,
+                    ];
+                }
+            } catch (\Exception $e) {
+                // Log error koneksi DB2
+            }
+        }
+
+        // 4. FINAL CHECK
+        if (!$pesanan) {
+            abort(404, 'Data Resi tidak ditemukan untuk dicetak.');
+        }
+
+        // Pastikan view ini ada
         return view('admin.pesanan.cetak_thermal', compact('pesanan'));
     }
     
