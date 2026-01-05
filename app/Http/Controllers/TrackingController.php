@@ -220,7 +220,7 @@ class TrackingController extends Controller
                 // Pastikan koneksi 'mysql_second' sudah ada di config/database.php
                 $orderPercetakan = DB::connection('mysql_second')
                                 ->table('orders')
-                                ->where('order_number', $resi) // Cari berdasarkan INV-...
+                                ->where('order_number', 'shipping_ref', $resi) // Cari berdasarkan INV-...
                                 ->first();
 
                 if ($orderPercetakan) {
@@ -261,12 +261,12 @@ class TrackingController extends Controller
                     $result = [
                         'is_pesanan' => false, // Set false karena struktur datanya custom
                         'resi' => $orderPercetakan->order_number,
-                        'resi_aktual' => null,
+                        'resi_aktual' => $orderPercetakan->shipping_ref,
                         
                         // Pengirim Default Sancaka
-                        'pengirim' => 'Sancaka Percetakan (System)',
-                        'alamat_pengirim' => 'Sancaka Center',
-                        'no_pengirim' => '-',
+                        'pengirim' => 'Toko Sancaka',
+                        'alamat_pengirim' => 'Jl.Dr.Wahidin No.18 A RT.22 RW.05 Kel.Ketanggi Kec.Ngawi Kab.Ngawi Jawa Timur 63211',
+                        'no_pengirim' => '08819435180',
                         
                         // Penerima dari data order
                         'penerima' => $orderPercetakan->customer_name ?? 'Guest',
