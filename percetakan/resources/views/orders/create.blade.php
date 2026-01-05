@@ -47,10 +47,18 @@
                     </button>
                 </div>
 
-                <button @click="mobileCartOpen = !mobileCartOpen" class="lg:hidden relative p-2.5 bg-red-50 rounded-xl text-red-600 hover:bg-red-100 transition">
-                    <i class="fas fa-shopping-bag"></i>
-                    <span x-show="cartTotalQty > 0" class="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold h-5 w-5 flex items-center justify-center rounded-full border-2 border-white shadow-sm" x-text="cartTotalQty"></span>
-                </button>
+                <div class="flex items-center gap-2 shrink-0">
+                    <a href="https://tokosancaka.com/percetakan/public/member/login" 
+                       class="relative p-2.5 bg-white rounded-xl text-slate-600 border border-slate-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all shadow-sm flex items-center justify-center w-10 h-10"
+                       title="Login Member">
+                        <i class="fas fa-user"></i>
+                    </a>
+
+                    <button @click="mobileCartOpen = !mobileCartOpen" class="lg:hidden relative p-2.5 bg-red-50 rounded-xl text-red-600 hover:bg-red-100 transition w-10 h-10 flex items-center justify-center border border-transparent hover:border-red-200">
+                        <i class="fas fa-shopping-bag"></i>
+                        <span x-show="cartTotalQty > 0" class="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold h-5 w-5 flex items-center justify-center rounded-full border-2 border-white shadow-sm" x-text="cartTotalQty"></span>
+                    </button>
+                </div>
             </div>
 
             <div class="flex-1 overflow-y-auto p-4 custom-scrollbar bg-slate-50">
