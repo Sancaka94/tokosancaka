@@ -240,29 +240,33 @@
                 } catch (error) { this.couponMessage = 'Gagal cek server.'; this.discountAmount = 0; } finally { this.isValidatingCoupon = false; }
             },
             
-            addToCart(id, name, price, maxStock, weight = 0) {
-                if (maxStock <= 0) { alert('Stok Habis!'); return; }
-                
-                let realWeight = (parseInt(weight) > 0) ? parseInt(weight) : 5;
+            // PERHATIKAN URUTAN DALAM KURUNG:
+addToCart(id, name, price, maxStock, weight = 0, image = null) { 
+    
+    // Logika di bawah ini sudah BENAR, tidak perlu diubah
+    if (maxStock <= 0) { alert('Stok Habis!'); return; }
+    
+    let realWeight = (parseInt(weight) > 0) ? parseInt(weight) : 5;
 
-                let item = this.cart.find(i => i.id === id);
-                if (item) {
-                    if (item.qty < maxStock) item.qty++;
-                    else alert('Stok maksimal tercapai!');
-                } else {
-                    this.cart.push({ 
-                        id, 
-                        name, 
-                        price, 
-                        qty: 1, 
-                        maxStock, 
-                        weight: realWeight 
-                    });
-                }
-                
-                if(navigator.vibrate) navigator.vibrate(30);
-                if(this.couponCode) this.checkCoupon();
-            },
+    let item = this.cart.find(i => i.id === id);
+    if (item) {
+        if (item.qty < maxStock) item.qty++;
+        else alert('Stok maksimal tercapai!');
+    } else {
+        this.cart.push({ 
+            id, 
+            name, 
+            price, 
+            qty: 1, 
+            maxStock,
+            image, // Image sudah benar masuk sini
+            weight: realWeight 
+        });
+    }
+    
+    if(navigator.vibrate) navigator.vibrate(30);
+    if(this.couponCode) this.checkCoupon();
+},
             
             updateQty(id, amount) {
                 let item = this.cart.find(i => i.id === id);

@@ -259,6 +259,15 @@
                                 </button>
                             </div>
 
+                            <div class="h-10 w-10 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center">
+                                <template x-if="item.image">
+                                    <img :src="item.image" class="h-full w-full object-cover">
+                                </template>
+                                <template x-if="!item.image">
+                                    <i class="fas fa-box text-slate-300 text-xs"></i>
+                                </template>
+                            </div>
+
                             <div class="flex-1 min-w-0 py-0.5">
                                 <div class="font-bold text-slate-700 text-xs leading-tight mb-1" x-text="item.name"></div>
                                 <div class="flex justify-between items-center text-[10px] text-slate-400">
