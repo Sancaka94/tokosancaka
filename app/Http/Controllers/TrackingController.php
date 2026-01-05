@@ -371,7 +371,10 @@ class TrackingController extends Controller
                         'created_at' => $orderPercetakan->created_at,
                         'resi_aktual' => null,
                         'jasa_ekspedisi_aktual' => null,
-                        'panjang' => 10, 'lebar' => 10, 'tinggi' => 10,
+                        'length' => 10,
+                        'width'  => 10,
+                        'height' => 10,
+
                     ];
                 }
             } catch (\Exception $e) {
