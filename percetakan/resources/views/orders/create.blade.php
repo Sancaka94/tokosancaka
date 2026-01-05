@@ -88,15 +88,15 @@
                             </div>
 
                             <div x-show="getItemQty({{ $product->id }}) > 0" 
-                                 class="absolute top-2 right-2 bg-red-600 text-white text-[10px] font-bold h-6 w-6 rounded-full flex items-center justify-center shadow-md z-10 ring-2 ring-white"
+                                 class="absolute top-2 right-2 bg-green-600 text-white text-[10px] font-bold h-6 w-6 rounded-full flex items-center justify-center shadow-md z-10 ring-2 ring-green-50"
                                  x-text="getItemQty({{ $product->id }})" x-transition.scale>
                             </div>
 
-                            <div class="aspect-[4/3] bg-slate-50 rounded-xl flex items-center justify-center mb-3 overflow-hidden relative group-hover:bg-red-50 transition-colors">
+                            <div class="h-48 bg-slate-50 rounded-xl flex items-center justify-center mb-3 overflow-hidden relative group-hover:bg-red-50 transition-colors p-2">
                                 @if(!empty($product->image) && Storage::disk('public')->exists($product->image))
                                     <img src="{{ asset('storage/' . $product->image) }}" 
                                          alt="{{ $product->name }}" 
-                                         class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110">
+                                         class="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105">
                                 @else
                                     <div class="text-3xl text-slate-300 group-hover:text-red-400 transition-colors">
                                         <i class="fas fa-box-open"></i>
@@ -233,9 +233,9 @@
                                 </button>
                             </div>
 
-                            <div class="h-10 w-10 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center">
+                            <div class="h-10 w-10 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center p-0.5">
                                 <template x-if="item.image">
-                                    <img :src="item.image" class="h-full w-full object-cover">
+                                    <img :src="item.image" class="h-full w-full object-contain">
                                 </template>
                                 <template x-if="!item.image">
                                     <i class="fas fa-box text-slate-300 text-xs"></i>
