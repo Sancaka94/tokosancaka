@@ -724,17 +724,42 @@ class OrderController extends Controller
                 if ($prod->stock <= 0) $prod->update(['stock_status' => 'unavailable']);
             }
 
+            // --- PERBAIKAN LOGIKA SIMPAN LAMPIRAN + SETTING ---
             if ($request->hasFile('attachments')) {
-                foreach ($request->file('attachments') as $file) {
+                
+                // Ambil semua file
+                $files = $request->file('attachments');
+                
+                // Ambil data settingan (array)
+                // Karena dikirim sebagai attachment_details[0][color], dst.
+                $details = $request->input('attachment_details', []); 
+
+                foreach ($files as $index => $file) {
+                    // 1. Simpan File Fisik
                     $path = $file->store('orders', 'public');
+                    
+                    // 2. Ambil Settingan berdasarkan Index yang sama
+                    // Jika tidak ada data, pakai default
+                    $meta = $details[$index] ?? [];
+                    $colorMode = $meta['color'] ?? 'BW'; // 'Color' atau 'BW'
+                    $paperSize = $meta['size'] ?? 'A4';
+                    $qty       = $meta['qty'] ?? 1;
+
+                    // 3. Simpan ke Database
                     OrderAttachment::create([
-                        'order_id'  => $order->id,
-                        'file_path' => $path,
-                        'file_name' => $file->getClientOriginalName(),
-                        'file_type' => $file->getClientMimeType(),
+                        'order_id'   => $order->id,
+                        'file_path'  => $path,
+                        'file_name'  => $file->getClientOriginalName(),
+                        'file_type'  => $file->getClientMimeType(),
+                        
+                        // Kolom Baru (Pastikan sudah dibuat di Database!)
+                        'color_mode' => $colorMode,
+                        'paper_size' => $paperSize,
+                        'quantity'   => $qty
                     ]);
                 }
             }
+            // ---------------------------------------------------
 
             DB::commit();
 
