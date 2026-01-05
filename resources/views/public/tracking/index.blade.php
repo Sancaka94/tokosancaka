@@ -131,7 +131,7 @@ if (!function_exists('getTrackingStatusIcon')) {
 @endphp
 
 @section('content')
-@include('layouts.partials.notifications')
+
 
 <div class="container main-content-padding">
     <div class="row justify-content-center">
