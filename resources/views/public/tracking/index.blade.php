@@ -341,13 +341,46 @@ if (!function_exists('getTrackingStatusIcon')) {
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="errorModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-body text-center p-5">
+                <div class="mb-4">
+                    {{-- Ikon Animasi --}}
+                    <div class="mx-auto d-flex align-items-center justify-content-center bg-danger bg-opacity-10 rounded-circle" style="width: 80px; height: 80px;">
+                        <i class="fas fa-search-minus text-danger fa-3x"></i>
+                    </div>
+                </div>
+                <h4 class="fw-bold mb-3 text-dark">Data Tidak Ditemukan</h4>
+                <p class="text-muted mb-4">
+                    {{ session('error') }}
+                </p>
+                <button type="button" class="btn btn-danger px-4 py-2 rounded-pill" data-bs-dismiss="modal">
+                    Coba Lagi
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Animasi Timeline
         const items = document.querySelectorAll('.timeline-item');
         items.forEach((item, index) => { item.style.animationDelay = `${index * 0.1}s`; });
+
+        // Logic Trigger Modal Error
+        @if (session('error'))
+            var errorModalEl = document.getElementById('errorModal');
+            if (errorModalEl) {
+                var modal = new bootstrap.Modal(errorModalEl);
+                modal.show();
+            }
+        @endif
     });
 </script>
 @endpush
