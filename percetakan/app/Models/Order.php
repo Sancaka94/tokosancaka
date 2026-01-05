@@ -30,6 +30,17 @@ class Order extends Model
         'shipping_ref'
     ];
 
+    // --- TAMBAHKAN RELASI INI ---
+
+    /**
+     * Relasi ke Detail Barang (Order Items)
+     */
+    public function items()
+    {
+        // Pastikan Anda punya model OrderDetail
+        return $this->hasMany(OrderDetail::class, 'order_id');
+    }
+
     public function details()
     {
         return $this->hasMany(OrderDetail::class);
