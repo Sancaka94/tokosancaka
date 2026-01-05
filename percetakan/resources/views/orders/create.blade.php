@@ -54,7 +54,11 @@
                 </button>
             </div>
 
-            <div x-data="{ showInfo: true }" 
+            
+
+            <div class="flex-1 overflow-y-auto p-4 custom-scrollbar bg-slate-50">
+
+                <div x-data="{ showInfo: true }" 
      x-show="showInfo" 
      x-transition.opacity.duration.300ms
      class="mb-4 bg-green-50 border border-green-200 rounded-xl p-3 flex items-start gap-3 shadow-sm relative group">
@@ -74,9 +78,7 @@
     <button @click="showInfo = false" class="absolute top-2 right-2 text-green-400 hover:text-green-700 hover:bg-green-100 rounded-full h-6 w-6 flex items-center justify-center transition-all">
         <i class="fas fa-times text-xs"></i>
     </button>
-    </div>
-
-            <div class="flex-1 overflow-y-auto p-4 custom-scrollbar bg-slate-50">
+</div>
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 xl:grid-cols-4 gap-3">
                     
                     @forelse($products as $product)
