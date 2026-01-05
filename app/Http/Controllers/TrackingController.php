@@ -177,11 +177,29 @@ class TrackingController extends Controller
     {
         Log::info("--- Masuk Fungsi Normalisasi ---");
 
+        // Ambil pesan status/error dari API
+        $apiMessage = $rawResponse['text'] ?? '';
+
+        // ============================================================
+        // FIX: PENANGANAN STATUS "MENUNGGU PICKUP" (Bukan Error)
+        // ============================================================
+        // Jika statusnya false TAPI pesannya "Menunggu Pickup" atau "Data received", 
+        // itu artinya resi VALID tapi belum jalan. Jangan lempar ke Error/DB2.
+        $validStatuses = ['Menunggu Pickup', 'Pickup', 'Data received', 'Manifested'];
+        $isPendingPickup = false;
+        
+        foreach ($validStatuses as $status) {
+            if (stripos($apiMessage, $status) !== false) {
+                $isPendingPickup = true;
+                break;
+            }
+        }
+
         // 1. CEK ERROR API & FALLBACK CERDAS
-        if (!isset($rawResponse['status']) || !$rawResponse['status'] || !isset($rawResponse['details'])) {
+        // Syarat Error: Status False/Kosong DAN Bukan status "Menunggu Pickup"
+        if ((!isset($rawResponse['status']) || !$rawResponse['status'] || !isset($rawResponse['details'])) && !$isPendingPickup) {
             
-            $errorMsg = $rawResponse['text'] ?? 'Unknown Error';
-            Log::error("API ERROR DETECTED: {$errorMsg}");
+            Log::error("API ERROR DETECTED: {$apiMessage}");
             Log::info("Mencoba mengambil backup history dari Database Kedua...");
 
             $cachedDb2 = null;
@@ -197,6 +215,7 @@ class TrackingController extends Controller
             if ($cachedDb2 && !empty($cachedDb2->shipping_history)) {
                 Log::info("BACKUP FOUND: Menggunakan history yang tersimpan di DB2.");
                 
+                // REKAYASA RESPONSE DARI DB2
                 $rawResponse = [
                     'status' => true,
                     'text' => $cachedDb2->shipping_status ?? 'Data Offline',
@@ -213,20 +232,32 @@ class TrackingController extends Controller
                     ],
                     'histories' => json_decode($cachedDb2->shipping_history, true)
                 ];
+                
+                // Update variable detail agar kode di bawah tidak error
+                $details = $rawResponse['details'];
+                $histories = $rawResponse['histories'] ?? [];
+                
             } else {
                 Log::error("BACKUP FAILED: Tidak ada history tersimpan di DB2.");
+                
+                // JIKA ERRORNYA BENAR-BENAR FATAL (Bukan pending pickup)
                 return [
-                    'error' => $errorMsg,
+                    'error' => $apiMessage,
                     'is_external_error' => true
                 ];
             }
+        } else {
+            // Jika masuk sini, berarti:
+            // 1. Sukses (Status True)
+            // 2. ATAU Status False tapi "Menunggu Pickup" ($isPendingPickup = true)
+            
+            $details = $rawResponse['details'] ?? []; // Bisa kosong jika pending pickup
+            $histories = $rawResponse['histories'] ?? [];
         }
 
-        $details = $rawResponse['details'];
-        $histories = $rawResponse['histories'] ?? [];
         Log::info("Jumlah History didapat: " . count($histories));
 
-        // 2. Normalisasi Data
+        // 2. Normalisasi Data History
         $normalizedHistories = collect($histories)->map(function ($history) use ($details) {
             $timestampWIB = Carbon::parse($history['created_at'], 'Asia/Jakarta');
             $statusText = $history['status'] ?? 'N/A';
@@ -240,36 +271,43 @@ class TrackingController extends Controller
             ];
         })->toArray();
 
-        // 3. Tambahkan status "Pesanan Dibuat"
+        // 3. Tambahkan status "Pesanan Dibuat" (PENTING untuk status Menunggu Pickup)
         if ($pesanan->created_at) {
             $createdHistory = (object)[
-                'status' => 'Pesanan Dibuat',
+                'status' => 'Pesanan Dibuat / Menunggu Pickup',
                 'lokasi' => 'Sistem Internal',
-                'keterangan' => 'Pesanan telah masuk ke sistem Sancaka.',
+                'keterangan' => 'Resi telah dibuat. Menunggu kurir melakukan pickup.',
                 'created_at' => Carbon::parse($pesanan->created_at)->timezone('Asia/Jakarta'), 
             ];
             
-            $isDuplicate = collect($normalizedHistories)->contains(function ($h) use ($createdHistory) {
-                return $h->created_at->diffInMinutes($createdHistory->created_at) < 5 || str_contains(strtolower($h->status), 'dibuat');
-            });
-            if (!$isDuplicate) {
-                 $normalizedHistories[] = $createdHistory;
-            }
+            // Masukkan ke history
+            $normalizedHistories[] = $createdHistory;
         }
 
         $sortedHistories = collect($normalizedHistories)->sortByDesc('created_at')->values();
+
+        // Tentukan Status Tampilan Akhir
+        // Jika API error text adalah "Menunggu Pickup", gunakan itu sebagai status utama
+        $finalStatus = $rawResponse['text'] ?? ($details['delivered'] ?? false ? 'Telah Diterima' : $pesanan->status);
+        if ($isPendingPickup) {
+            $finalStatus = 'Menunggu Pickup';
+        }
 
         return [
             'is_pesanan' => true,
             'resi' => $pesanan->resi,
             'resi_aktual' => $details['awb'] ?? $pesanan->resi_aktual,
+            
+            // Gunakan data Internal ($pesanan) jika data API ($details) kosong karena pending pickup
             'pengirim' => $details['origin']['name'] ?? $pesanan->sender_name ?? '-',
             'alamat_pengirim' => $details['origin']['address'] ?? $pesanan->sender_address ?? '-',
             'no_pengirim' => $details['origin']['phone'] ?? $pesanan->sender_phone ?? '-',
+            
             'penerima' => $details['destination']['name'] ?? $pesanan->receiver_name ?? '-',
             'alamat_penerima' => $details['destination']['address'] ?? $pesanan->receiver_address ?? '-',
             'no_penerima' => $details['destination']['phone'] ?? $pesanan->receiver_phone ?? '-',
-            'status' => $rawResponse['text'] ?? ($details['delivered'] ? 'Telah Diterima' : $pesanan->status),
+            
+            'status' => $finalStatus,
             'tanggal_dibuat' => $pesanan->created_at,
             'histories' => $sortedHistories,
             'jasa_ekspedisi_aktual' => $pesanan->jasa_ekspedisi_aktual,
