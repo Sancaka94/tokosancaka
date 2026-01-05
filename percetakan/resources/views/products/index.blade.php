@@ -42,11 +42,34 @@
                     </div>
                 </div>
 
-                <form action="{{ route('products.store') }}" method="POST" class="space-y-4" 
-                      x-data="{ submitting: false }" 
+                {{-- PERUBAHAN 1: Tambahkan enctype="multipart/form-data" --}}
+                <form action="{{ route('products.store') }}" method="POST" enctype="multipart/form-data" class="space-y-4" 
+                      x-data="{ submitting: false, imgPreview: null }" 
                       @submit="submitting = true">
                     @csrf
                     
+                    {{-- PERUBAHAN 2: Input Upload Gambar dengan Preview --}}
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Foto Produk</label>
+                        <div class="flex items-center gap-4">
+                            <div class="h-16 w-16 rounded-lg border-2 border-dashed border-slate-300 flex items-center justify-center bg-slate-50 overflow-hidden shrink-0">
+                                <template x-if="!imgPreview">
+                                    <i class="fas fa-image text-slate-300 text-xl"></i>
+                                </template>
+                                <template x-if="imgPreview">
+                                    <img :src="imgPreview" class="h-full w-full object-cover">
+                                </template>
+                            </div>
+                            
+                            <div class="flex-1">
+                                <input type="file" name="image" accept="image/*"
+                                       @change="imgPreview = URL.createObjectURL($event.target.files[0])"
+                                       class="block w-full text-xs text-slate-500 file:mr-2 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer">
+                                <p class="text-[10px] text-slate-400 mt-1">*Opsional. Format: JPG, PNG.</p>
+                            </div>
+                        </div>
+                    </div>
+
                     <div>
                         <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Nama Produk <span class="text-red-500">*</span></label>
                         <input type="text" name="name" required placeholder="Contoh: Kertas A4 70gsm" 
@@ -119,6 +142,8 @@
                     <table class="w-full text-sm text-left">
                         <thead class="bg-slate-50 text-slate-500 uppercase text-[10px] font-bold tracking-wider border-b border-slate-200">
                             <tr>
+                                {{-- PERUBAHAN 3: Tambah Header Kolom Gambar --}}
+                                <th class="px-6 py-3 w-16">Img</th>
                                 <th class="px-6 py-3">Produk / Supplier</th>
                                 <th class="px-6 py-3 text-center">Stok</th>
                                 <th class="px-6 py-3 text-right">Harga (Modal / Jual)</th>
@@ -128,6 +153,19 @@
                         <tbody class="divide-y divide-slate-100">
                             @forelse($products as $product)
                             <tr class="hover:bg-slate-50 transition group">
+                                
+                                {{-- PERUBAHAN 4: Menampilkan Thumbnail Gambar --}}
+                                <td class="px-6 py-4">
+                                    <div class="h-10 w-10 rounded bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden">
+                                        @if($product->image)
+                                            {{-- Asumsi Anda menyimpan gambar di folder public/storage --}}
+                                            <img src="{{ asset('storage/' . $product->image) }}" alt="{{ $product->name }}" class="h-full w-full object-cover">
+                                        @else
+                                            <i class="fas fa-box text-slate-300 text-lg"></i>
+                                        @endif
+                                    </div>
+                                </td>
+
                                 <td class="px-6 py-4">
                                     <div class="font-bold text-slate-700 group-hover:text-indigo-600 transition-colors">
                                         {{ $product->name }}
@@ -192,7 +230,7 @@
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="4" class="px-6 py-12 text-center">
+                                <td colspan="5" class="px-6 py-12 text-center">
                                     <div class="flex flex-col items-center justify-center text-slate-400">
                                         <i class="fas fa-search text-4xl mb-3 opacity-20"></i>
                                         <p class="font-medium">Data produk tidak ditemukan.</p>
