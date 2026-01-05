@@ -320,24 +320,6 @@ if (!function_exists('getTrackingStatusIcon')) {
                                     <p class="fw-bold mb-0">{{ $history->status ?? '-' }}</p>
                                     <p class="mb-1 small text-muted">{{ $history->lokasi ?? '' }} {{ isset($history->keterangan) ? '- '.$history->keterangan : '' }}</p>
                                     
-                                    @if(!empty($history->images))
-    <div class="mt-2 flex gap-2 flex-wrap">
-        @foreach($history->images as $imgUrl)
-            <a href="{{ route('tracking.image_proxy', ['url' => $imgUrl]) }}" 
-               target="_blank" 
-               class="block group"
-               id="img-container-{{ $loop->parent->index }}-{{ $loop->index }}">
-               
-                <img src="{{ route('tracking.image_proxy', ['url' => $imgUrl]) }}" 
-                     class="w-20 h-20 object-cover rounded-lg border border-gray-200 shadow-sm group-hover:opacity-90 transition" 
-                     alt="Bukti Foto"
-                     {{-- JIKA ERROR (403/404): HAPUS CONTAINER GAMBAR INI --}}
-                     onerror="document.getElementById('img-container-{{ $loop->parent->index }}-{{ $loop->index }}').style.display = 'none';">
-            </a>
-        @endforeach
-    </div>
-@endif
-                                    
                                     <small class="text-muted">
                                         {{ is_a($history->created_at, 'Carbon\Carbon') ? $history->created_at->format('d M Y, H:i') . ' WIB' : $history->created_at }}
                                     </small>
