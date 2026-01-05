@@ -40,6 +40,7 @@ class ProductController extends Controller
      */
     public function store(Request $request)
     {
+        dd($request->all(), $request->hasFile('image'), $request->file('image'));
         // LOG: Percobaan simpan data baru
         Log::info('Memulai proses penyimpanan produk baru.');
 
