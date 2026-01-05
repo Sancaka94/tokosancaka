@@ -119,97 +119,84 @@
             <div class="flex-1 overflow-y-auto custom-scrollbar bg-white">
                 
                 <div class="p-4 border-b border-slate-100 bg-slate-50/50">
-    <div class="flex justify-between items-center mb-2">
-        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-            Berkas Cetak (<span x-text="uploadedFiles.length"></span>/10)
-        </span>
-        <button x-show="uploadedFiles.length > 0" @click="uploadedFiles = []" class="text-[10px] text-red-500 hover:underline">
-            Reset Semua
-        </button>
-    </div>
-
-    <div x-show="uploadedFiles.length > 0" class="space-y-3 mb-3" x-transition>
-        <template x-for="(item, index) in uploadedFiles" :key="index">
-            <div class="bg-white border border-slate-200 rounded-xl shadow-sm p-3 hover:border-blue-300 transition-all">
-                
-                <div class="p-4 border-b border-slate-100 bg-slate-50/50">
-    <div class="flex justify-between items-center mb-2">
-        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-            Berkas Cetak (<span x-text="uploadedFiles.length"></span>/10)
-        </span>
-        <button x-show="uploadedFiles.length > 0" @click="uploadedFiles = []" class="text-[10px] text-red-500 hover:underline">
-            Reset Semua
-        </button>
-    </div>
-
-    <div x-show="uploadedFiles.length > 0" class="space-y-3 mb-3" x-transition>
-        <template x-for="(item, index) in uploadedFiles" :key="index">
-            <div class="bg-white border border-slate-200 rounded-xl shadow-sm p-3 hover:border-blue-300 transition-all">
-                
-                <div class="flex items-center gap-2 mb-3 pb-2 border-b border-dashed border-slate-100">
-                    <div class="h-8 w-8 rounded bg-red-50 flex items-center justify-center text-red-500 text-xs shrink-0">
-                        <i class="fas fa-file-pdf" x-show="item.file.type.includes('pdf')"></i>
-                        <i class="fas fa-image" x-show="item.file.type.includes('image')"></i>
-                        <i class="fas fa-file" x-show="!item.file.type.includes('pdf') && !item.file.type.includes('image')"></i>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <p class="text-[11px] font-bold text-slate-700 truncate" x-text="item.file.name"></p>
-                        <p class="text-[9px] text-slate-400" x-text="formatFileSize(item.file.size)"></p>
-                    </div>
-                    <button @click="removeFile(index)" class="text-slate-300 hover:text-red-500 transition px-2">
-                        <i class="fas fa-trash-alt"></i>
-                    </button>
-                </div>
-
-                <div class="grid grid-cols-3 gap-2">
-                    
-                    <div class="col-span-1">
-                        <label class="flex items-center gap-2 cursor-pointer bg-slate-50 p-1.5 rounded-lg border border-slate-100 h-full">
-                            <input type="checkbox" x-model="item.isColor" class="rounded text-red-600 focus:ring-red-500 w-4 h-4 border-slate-300">
-                            <span class="text-[10px] font-bold leading-tight" :class="item.isColor ? 'text-slate-800' : 'text-slate-400'">
-                                <span x-text="item.isColor ? 'Berwarna' : 'Hitam Putih'"></span>
-                            </span>
-                        </label>
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                            Berkas Cetak (<span x-text="uploadedFiles.length"></span>/10)
+                        </span>
+                        <button x-show="uploadedFiles.length > 0" @click="uploadedFiles = []" class="text-[10px] text-red-500 hover:underline">
+                            Reset Semua
+                        </button>
                     </div>
 
-                    <div class="col-span-1">
-                        <select x-model="item.paperSize" class="w-full text-[10px] font-bold py-1.5 px-1 rounded-lg border-slate-200 bg-slate-50 focus:ring-red-500 focus:border-red-500">
-                            <option value="A4">Kertas A4</option>
-                            <option value="F4">Kertas F4</option>
-                        </select>
+                    <div x-show="uploadedFiles.length > 0" class="space-y-3 mb-3" x-transition>
+                        <template x-for="(item, index) in uploadedFiles" :key="index">
+                            <div class="bg-white border border-slate-200 rounded-xl shadow-sm p-3 hover:border-blue-300 transition-all">
+                                
+                                <div class="flex items-center gap-2 mb-3 pb-2 border-b border-dashed border-slate-100">
+                                    <div class="h-8 w-8 rounded bg-red-50 flex items-center justify-center text-red-500 text-xs shrink-0">
+                                        <i class="fas fa-file-pdf" x-show="item.file.type.includes('pdf')"></i>
+                                        <i class="fas fa-image" x-show="item.file.type.includes('image')"></i>
+                                        <i class="fas fa-file" x-show="!item.file.type.includes('pdf') && !item.file.type.includes('image')"></i>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-[11px] font-bold text-slate-700 truncate" x-text="item.file.name"></p>
+                                        <p class="text-[9px] text-slate-400" x-text="formatFileSize(item.file.size)"></p>
+                                    </div>
+                                    <button @click="removeFile(index)" class="text-slate-300 hover:text-red-500 transition px-2">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </div>
+
+                                <div class="grid grid-cols-3 gap-2">
+                                    
+                                    <div class="col-span-1">
+                                        <label class="flex items-center gap-2 cursor-pointer bg-slate-50 p-1.5 rounded-lg border border-slate-100 h-full">
+                                            <input type="checkbox" x-model="item.isColor" class="rounded text-red-600 focus:ring-red-500 w-4 h-4 border-slate-300">
+                                            <span class="text-[10px] font-bold leading-tight" :class="item.isColor ? 'text-slate-800' : 'text-slate-400'">
+                                                <span x-text="item.isColor ? 'Berwarna' : 'Hitam Putih'"></span>
+                                            </span>
+                                        </label>
+                                    </div>
+
+                                    <div class="col-span-1">
+                                        <select x-model="item.paperSize" class="w-full text-[10px] font-bold py-1.5 px-1 rounded-lg border-slate-200 bg-slate-50 focus:ring-red-500 focus:border-red-500">
+                                            <option value="A4">Kertas A4</option>
+                                            <option value="F4">Kertas F4</option>
+                                            <option value="A3">Kertas A3</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="col-span-1 relative">
+                                        <div class="flex items-center border border-slate-200 rounded-lg bg-slate-50 overflow-hidden h-full">
+                                            <input type="number" x-model="item.qty" min="1" class="w-full text-center text-[10px] font-bold bg-transparent border-none p-0 focus:ring-0" placeholder="1">
+                                            <span class="text-[9px] text-slate-400 pr-1.5">lbr/set</span>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </template>
                     </div>
 
-                    <div class="col-span-1 relative">
-                        <div class="flex items-center border border-slate-200 rounded-lg bg-slate-50 overflow-hidden h-full">
-                            <input type="number" x-model="item.qty" min="1" class="w-full text-center text-[10px] font-bold bg-transparent border-none p-0 focus:ring-0" placeholder="1">
-                            <span class="text-[9px] text-slate-400 pr-1.5">lbr/set</span>
+                    <div x-show="uploadedFiles.length < 10" x-transition>
+                        <div class="relative border-2 border-dashed border-red-300 rounded-xl bg-white hover:border-green-400 hover:bg-green-50 transition-all cursor-pointer group h-12 flex items-center justify-center">
+                            <input type="file" multiple @change="handleFileUpload" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+                                   accept=".doc,.docx,.pdf,.xls,.xlsx,.jpg,.jpeg,.png">
+                            
+                            <div class="flex items-center gap-2 pointer-events-none">
+                                <i class="fas" :class="uploadedFiles.length > 0 ? 'fa-plus text-green-500' : 'fa-cloud-upload-alt text-red-400'"></i>
+                                <p class="text-[10px] font-bold" :class="uploadedFiles.length > 0 ? 'text-green-600' : 'text-slate-500'">
+                                    <span x-text="uploadedFiles.length === 0 ? 'Upload Berkas Pertama' : 'Tambah File Lain'"></span>
+                                </p>
+                            </div>
                         </div>
+                        <p x-show="uploadedFiles.length === 0" class="text-[9px] text-slate-400 mt-1 text-center">Format: PDF, JPG, Docx. Max 10MB.</p>
                     </div>
 
+                    <div x-show="uploadedFiles.length >= 10" class="p-2 bg-amber-50 border border-amber-200 rounded-lg text-center mt-2">
+                        <p class="text-[10px] font-bold text-amber-600">Maksimal 10 file tercapai.</p>
+                    </div>
                 </div>
-            </div>
-        </template>
-    </div>
-
-    <div x-show="uploadedFiles.length < 10" x-transition>
-        <div class="relative border-2 border-dashed border-red-300 rounded-xl bg-white hover:bg-red-50 hover:border-red-400 transition-all cursor-pointer group h-12 flex items-center justify-center">
-            <input type="file" multiple @change="handleFileUpload" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
-                   accept=".doc,.docx,.pdf,.xls,.xlsx,.jpg,.jpeg,.png">
-            
-            <div class="flex items-center gap-2 pointer-events-none">
-                <i class="fas" :class="uploadedFiles.length > 0 ? 'fa-plus text-red-500' : 'fa-cloud-upload-alt text-slate-400'"></i>
-                <p class="text-[10px] font-bold" :class="uploadedFiles.length > 0 ? 'text-red-600' : 'text-slate-500'">
-                    <span x-text="uploadedFiles.length === 0 ? 'Upload Berkas Pertama' : 'Tambah File Lain'"></span>
-                </p>
-            </div>
-        </div>
-        <p x-show="uploadedFiles.length === 0" class="text-[9px] text-slate-400 mt-1 text-center">Format: PDF, JPG, Docx. Max 10MB.</p>
-    </div>
-
-    <div x-show="uploadedFiles.length >= 10" class="p-2 bg-amber-50 border border-amber-200 rounded-lg text-center mt-2">
-        <p class="text-[10px] font-bold text-amber-600">Maksimal 10 file tercapai.</p>
-    </div>
-</div>
 
                 <div class="p-4 space-y-3 min-h-[200px]">
                     <template x-if="cart.length === 0">
@@ -331,32 +318,32 @@
                 </div>
 
                 <div class="mt-4 mb-6 bg-slate-50 border border-slate-200 rounded-xl p-4">
-    <div class="space-y-2">
-        <div class="flex justify-between items-center text-xs">
-            <span class="text-slate-600 font-medium">
-                Total Harga (<span x-text="cartTotalQty"></span> Pcs)
-            </span>
-            <span class="font-bold text-slate-800" x-text="'Rp ' + rupiah(subtotal)"></span>
-        </div>
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center text-xs">
+                            <span class="text-slate-600 font-medium">
+                                Total Harga (<span x-text="cartTotalQty"></span> Pcs)
+                            </span>
+                            <span class="font-bold text-slate-800" x-text="'Rp ' + rupiah(subtotal)"></span>
+                        </div>
 
-        <div x-show="discountAmount > 0" class="flex justify-between items-center text-xs text-emerald-600">
-            <span class="font-medium">Potongan Diskon</span>
-            <span class="font-bold" x-text="'- Rp ' + rupiah(discountAmount)"></span>
-        </div>
+                        <div x-show="discountAmount > 0" class="flex justify-between items-center text-xs text-emerald-600">
+                            <span class="font-medium">Potongan Diskon</span>
+                            <span class="font-bold" x-text="'- Rp ' + rupiah(discountAmount)"></span>
+                        </div>
 
-        <div x-show="deliveryType === 'shipping'" class="flex justify-between items-center text-xs text-blue-600">
-            <span class="font-medium">Ongkos Kirim</span>
-            <span class="font-bold" x-text="shippingCost > 0 ? '+ Rp ' + rupiah(shippingCost) : 'Rp 0'"></span>
-        </div>
+                        <div x-show="deliveryType === 'shipping'" class="flex justify-between items-center text-xs text-blue-600">
+                            <span class="font-medium">Ongkos Kirim</span>
+                            <span class="font-bold" x-text="shippingCost > 0 ? '+ Rp ' + rupiah(shippingCost) : 'Rp 0'"></span>
+                        </div>
 
-        <div class="border-t border-dashed border-slate-300 my-2"></div>
+                        <div class="border-t border-dashed border-slate-300 my-2"></div>
 
-        <div class="flex justify-between items-center">
-            <span class="font-bold text-slate-800 text-sm">Total Tagihan</span>
-            <span class="font-black text-red-600 text-base" x-text="'Rp ' + rupiah(grandTotal)"></span>
-        </div>
-    </div>
-</div>
+                        <div class="flex justify-between items-center">
+                            <span class="font-bold text-slate-800 text-sm">Total Tagihan</span>
+                            <span class="font-black text-red-600 text-base" x-text="'Rp ' + rupiah(grandTotal)"></span>
+                        </div>
+                    </div>
+                </div>
 
                 <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
                     <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Pelanggan</label>
@@ -375,45 +362,45 @@
                     </div>
 
                     <div x-show="customerType === 'guest'" x-transition>
-    
-    <div x-show="deliveryType === 'shipping'" class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-3 space-y-3">
-        <div class="flex items-center gap-2 mb-2 border-b border-blue-200 pb-2">
-            <i class="fas fa-shipping-fast text-blue-600"></i>
-            <span class="text-[10px] font-bold text-blue-700 uppercase tracking-widest">Data Penerima Paket</span>
-        </div>
+                        
+                        <div x-show="deliveryType === 'shipping'" class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-3 space-y-3">
+                            <div class="flex items-center gap-2 mb-2 border-b border-blue-200 pb-2">
+                                <i class="fas fa-shipping-fast text-blue-600"></i>
+                                <span class="text-[10px] font-bold text-blue-700 uppercase tracking-widest">Data Penerima Paket</span>
+                            </div>
 
-        <div>
-            <label class="block text-[10px] font-bold text-slate-500 mb-1">Nama Penerima <span class="text-red-500">*</span></label>
-            <input type="text" x-model="customerName" placeholder="Nama Lengkap..." 
-                   class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
-        </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-500 mb-1">Nama Penerima <span class="text-red-500">*</span></label>
+                                <input type="text" x-model="customerName" placeholder="Nama Lengkap..." 
+                                       class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+                            </div>
 
-        <div>
-            <label class="block text-[10px] font-bold text-slate-500 mb-1">No. WhatsApp (Aktif) <span class="text-red-500">*</span></label>
-            <input type="number" x-model="customerPhone" placeholder="08..." 
-                   class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
-        </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-500 mb-1">No. WhatsApp (Aktif) <span class="text-red-500">*</span></label>
+                                <input type="number" x-model="customerPhone" placeholder="08..." 
+                                       class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+                            </div>
 
-        <div>
-            <label class="block text-[10px] font-bold text-slate-500 mb-1">Detail Alamat (Jalan, No. Rumah, RT/RW) <span class="text-red-500">*</span></label>
-            <textarea x-model="customerAddressDetail" rows="2" placeholder="Cth: Jl. Merpati No. 10, RT 01 RW 02, Pagar Hitam..." 
-                      class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition resize-none"></textarea>
-            <p class="text-[9px] text-slate-400 mt-1">*Kecamatan/Kelurahan dipilih di kolom "Cari Tujuan" di bawah.</p>
-        </div>
-    </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-500 mb-1">Detail Alamat (Jalan, No. Rumah, RT/RW) <span class="text-red-500">*</span></label>
+                                <textarea x-model="customerAddressDetail" rows="2" placeholder="Cth: Jl. Merpati No. 10, RT 01 RW 02, Pagar Hitam..." 
+                                          class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition resize-none"></textarea>
+                                <p class="text-[9px] text-slate-400 mt-1">*Kecamatan/Kelurahan dipilih di kolom "Cari Tujuan" di bawah.</p>
+                            </div>
+                        </div>
 
-    <div x-show="deliveryType === 'pickup'" class="grid grid-cols-2 gap-3 mb-3">
-        <div>
-            <input type="text" x-model="customerName" placeholder="Nama Pemesan..." 
-                   class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-red-500 transition">
-        </div>
-        <div>
-            <input type="number" x-model="customerPhone" placeholder="No. WA (Opsional)..." 
-                   class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-red-500 transition">
-        </div>
-    </div>
+                        <div x-show="deliveryType === 'pickup'" class="grid grid-cols-2 gap-3 mb-3">
+                            <div>
+                                <input type="text" x-model="customerName" placeholder="Nama Pemesan..." 
+                                       class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-red-500 transition">
+                            </div>
+                            <div>
+                                <input type="number" x-model="customerPhone" placeholder="No. WA (Opsional)..." 
+                                       class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-red-500 transition">
+                            </div>
+                        </div>
 
-</div>
+                    </div>
 
                     <div x-show="customerType === 'member'" style="display: none;" x-transition>
                         <select x-model="selectedCustomerId" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm bg-white font-bold text-slate-700 focus:ring-2 focus:ring-red-500">
@@ -614,7 +601,6 @@
                     </div>
 
                     <div x-show="!isLoadingChannels && tripayChannels.length > 0" class="space-y-4 pb-4">
-                        
                         <div x-show="getChannelsByGroup('E-Wallet').length > 0">
                             <p class="text-[9px] font-bold text-slate-400 mb-2 uppercase">E-Wallet & QRIS</p>
                             <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -637,7 +623,6 @@
                                     <button @click="paymentChannel = channel.code" 
                                             class="p-2 rounded-xl border transition flex flex-col items-center justify-center gap-2 h-20 bg-white hover:border-red-300 relative"
                                             :class="paymentChannel === channel.code ? 'border-red-600 ring-1 ring-red-600 bg-red-50' : 'border-red-100'">
-                                        
                                         <img :src="channel.icon_url" :alt="channel.name" class="h-8 w-auto object-contain">
                                         <div x-show="paymentChannel === channel.code" class="absolute top-1 right-1 text-red-600"><i class="fas fa-check-circle text-xs"></i></div>
                                     </button>
@@ -652,7 +637,6 @@
                                     <button @click="paymentChannel = channel.code" 
                                             class="p-2 rounded-xl border transition flex flex-col items-center justify-center gap-2 h-16 bg-white hover:border-red-300 relative"
                                             :class="paymentChannel === channel.code ? 'border-red-600 ring-1 ring-red-600 bg-red-50' : 'border-red-100'">
-                                        
                                         <img :src="channel.icon_url" :alt="channel.name" class="h-6 w-auto object-contain">
                                         <div x-show="paymentChannel === channel.code" class="absolute top-1 right-1 text-red-600"><i class="fas fa-check-circle text-xs"></i></div>
                                     </button>
@@ -709,7 +693,7 @@
         return {
             init() {
                  if(this.couponCode) { 
-                     this.couponMessage = 'Kupon terdeteksi! Masukkan barang untuk cek diskon.';
+                      this.couponMessage = 'Kupon terdeteksi! Masukkan barang untuk cek diskon.';
                  }
             },
             
@@ -732,26 +716,26 @@
             customerType: 'guest',
             customerName: '',
             customerPhone: '',
-            customerAddressDetail: '', // <--- TAMBAHKAN INI (Default Kosong)
+            customerAddressDetail: '', 
             selectedCustomerId: '',
             
             // --- 4. PEMBAYARAN ---
             paymentMethod: 'cash',
-            paymentChannel: '',     // Untuk Tripay (BRIVA, QRIS, dll)
-            tripayChannels: [],     // List channel dari API
+            paymentChannel: '',     
+            tripayChannels: [],     
             isLoadingChannels: false,
-            cashAmount: '',         // Uang tunai
-            affiliatePin: '',       // PIN Member
+            cashAmount: '',         
+            affiliatePin: '',       
 
             // --- 5. PENGIRIMAN (KIRIMINAJA) ---
-            deliveryType: 'pickup', // Default: Ambil di Toko
+            deliveryType: 'pickup', 
             
             // Variabel Pencarian Lokasi
-            searchQuery: '',        // Input teks user
-            searchResults: [],      // Hasil dropdown API
+            searchQuery: '',        
+            searchResults: [],      
             isSearchingLocation: false,
             
-            // ID Lokasi (Penting untuk API Ongkir)
+            // ID Lokasi
             destinationDistrictId: '', 
             destinationSubdistrictId: '', 
             
@@ -762,7 +746,7 @@
             isLoadingShipping: false,
 
             // ============================================================
-            // COMPUTED PROPERTIES (PERHITUNGAN OTOMATIS)
+            // COMPUTED PROPERTIES
             // ============================================================
             
             get subtotal() { 
@@ -773,13 +757,11 @@
                 return this.cart.reduce((sum, item) => sum + item.qty, 0); 
             },
             
-            // GRAND TOTAL: Subtotal - Diskon + Ongkir
             get grandTotal() { 
                 let total = this.subtotal - this.discountAmount + this.shippingCost;
                 return total < 0 ? 0 : total;
             },
             
-            // KEMBALIAN: Uang Masuk - Grand Total
             get change() {
                 let received = parseInt(this.cashAmount) || 0;
                 return received - this.grandTotal;
@@ -810,26 +792,19 @@
             },
 
             // ============================================================
-            // LOGIKA PENGIRIMAN (KIRIMINAJA - AUTOCOMPLETE)
+            // LOGIKA PENGIRIMAN
             // ============================================================
 
-            // --- A. PENCARIAN LOKASI (Desa/Kecamatan/Kode Pos) ---
             async searchLocation() {
-                // Hapus jika input kurang dari 3 karakter
                 if (this.searchQuery.length < 3) {
                     this.searchResults = [];
                     return;
                 }
-                
                 this.isSearchingLocation = true;
-                
                 try {
-                    // Pastikan route backend menangani parameter 'query' yang berisi kode pos atau nama daerah
                     const response = await fetch(`{{ route('orders.search-location') }}?query=${this.searchQuery}`);
                     const result = await response.json();
-
                     if (result.status === 'success') {
-                        // Backend diharapkan mengembalikan: { id, text, type (Kecamatan/Kelurahan), zip_code, district_id }
                         this.searchResults = result.data;
                     } else {
                         this.searchResults = [];
@@ -842,29 +817,18 @@
                 }
             },
 
-            // --- B. MEMILIH LOKASI ---
             selectLocation(location) {
-                // 1. Ganti 'text' jadi 'full_address'
                 this.searchQuery = location.full_address; 
-                
-                // 2. Simpan ID Hirarki Wilayah (Sesuaikan dengan JSON di gambar)
                 this.destinationDistrictId = location.district_id; 
-                
-                // PERHATIKAN INI: JSON Anda pakai 'subdistrict_id', bukan 'id'
                 this.destinationSubdistrictId = location.subdistrict_id; 
-
-                // Reset dropdown & hitung ongkir
                 this.searchResults = [];
                 this.checkOngkir();
             },
 
-            // --- C. CEK ONGKIR (Update Payload) ---
             async checkOngkir() {
                 if (!this.destinationDistrictId) return;
                 
-                // Hitung Berat
                 let realTotalWeight = this.cart.reduce((w, item) => w + (item.qty * (item.weight > 0 ? item.weight : 100)), 0);
-                // Default minimal 1kg (1000g) jika total berat sangat kecil
                 let finalWeight = realTotalWeight < 1000 ? 1000 : realTotalWeight;
 
                 this.isLoadingShipping = true;
@@ -883,7 +847,7 @@
                             destination_district_id: this.destinationDistrictId,
                             destination_subdistrict_id: this.destinationSubdistrictId,
                             postal_code: this.destinationZipCode, 
-                            destination_text: this.searchQuery, // <-- WAJIB DITAMBAHKAN!
+                            destination_text: this.searchQuery, 
                             weight: finalWeight 
                         })
                     });
@@ -903,7 +867,6 @@
                 }
             },
 
-            // D. Saat Kurir Dipilih
             selectCourier(courier) {
                 this.selectedCourier = courier;
                 this.shippingCost = parseInt(courier.cost); 
@@ -936,7 +899,6 @@
                 this.affiliatePin = '';
             },
 
-            // TRIPAY: Ambil Channel Pembayaran
             async fetchTripayChannels() {
                 if (this.tripayChannels.length > 0) return;
                 this.isLoadingChannels = true;
@@ -952,7 +914,6 @@
                 return this.tripayChannels.filter(c => c.active === true && c.group.toLowerCase() === groupName.toLowerCase());
             },
 
-            // KUPON: Validasi Kode
             async checkCoupon() {
                 if (!this.couponCode.trim()) { this.discountAmount = 0; this.couponMessage = ''; return; }
                 if (this.cart.length === 0) { this.couponMessage = 'Isi keranjang dulu.'; return; }
@@ -968,20 +929,11 @@
                     else { this.discountAmount = 0; this.couponMessage = data.message; }
                 } catch (error) { this.couponMessage = 'Gagal cek server.'; this.discountAmount = 0; } finally { this.isValidatingCoupon = false; }
             },
-
-            // ============================================================
-            // LOGIKA KERANJANG (CART)
-            // ============================================================
             
-            // Tambahkan parameter 'weight' di sini
             addToCart(id, name, price, maxStock, weight = 0) {
                 if (maxStock <= 0) { alert('Stok Habis!'); return; }
                 
-                // --- LOGIKA CERDAS: AUTO 5 GRAM ---
-                // Jika input weight 0 (dari Blade), ubah jadi 5 gram.
-                // Jika ada isinya (misal 200), pakai 200.
                 let realWeight = (parseInt(weight) > 0) ? parseInt(weight) : 5;
-                // ----------------------------------
 
                 let item = this.cart.find(i => i.id === id);
                 if (item) {
@@ -994,7 +946,7 @@
                         price, 
                         qty: 1, 
                         maxStock, 
-                        weight: realWeight // Simpan sebagai 5 gram
+                        weight: realWeight 
                     });
                 }
                 
@@ -1038,92 +990,72 @@
             openPaymentModal() {
                 if(this.cart.length === 0) { alert('Keranjang masih kosong!'); return; }
                 this.showPaymentModal = true;
-                // Reset input jika metode bukan cash
                 if(this.paymentMethod !== 'cash') this.cashAmount = '';
-                // Auto fetch channel jika tripay
                 if(this.paymentMethod === 'tripay') this.fetchTripayChannels();
             },
             
-            // --- GANTI FUNGSI LAMA DENGAN INI ---
-handleFileUpload(event) {
-    const files = event.target.files;
-    const remainingSlots = 10 - this.uploadedFiles.length;
+            handleFileUpload(event) {
+                const files = event.target.files;
+                const remainingSlots = 10 - this.uploadedFiles.length;
 
-    if (files.length > remainingSlots) {
-        alert('Maksimal 10 file total! Slot tersisa: ' + remainingSlots);
-        event.target.value = ''; 
-        return;
-    }
+                if (files.length > remainingSlots) {
+                    alert('Maksimal 10 file total! Slot tersisa: ' + remainingSlots);
+                    event.target.value = ''; 
+                    return;
+                }
 
-    for (let i = 0; i < files.length; i++) {
-        if(files[i].size > 10 * 1024 * 1024) { 
-            alert('File terlalu besar (Max 10MB): ' + files[i].name); 
-            continue; 
-        }
-        
-        // PERUBAHAN DISINI: Kita push OBJEK, bukan cuma file mentah
-        this.uploadedFiles.push({
-            file: files[i],      // File aslinya
-            isColor: false,      // Default: Hitam Putih (false)
-            paperSize: 'A4',     // Default: A4
-            qty: 1               // Default: 1 lembar/copy
-        });
-    }
-    
-    event.target.value = ''; 
-},
+                for (let i = 0; i < files.length; i++) {
+                    if(files[i].size > 10 * 1024 * 1024) { 
+                        alert('File terlalu besar (Max 10MB): ' + files[i].name); 
+                        continue; 
+                    }
+                    
+                    this.uploadedFiles.push({
+                        file: files[i],      
+                        isColor: false,      
+                        paperSize: 'A4',     
+                        qty: 1               
+                    });
+                }
+                
+                event.target.value = ''; 
+            },
 
-// --- TAMBAHKAN FUNGSI HAPUS INI DI BAWAHNYA ---
-removeFile(index) { 
-    this.uploadedFiles.splice(index, 1); 
-},
-
-            // ============================================================
-            // FUNGSI CHECKOUT (KIRIM DATA KE LARAVEL)
-            // ============================================================
+            removeFile(index) { 
+                this.uploadedFiles.splice(index, 1); 
+            },
             
             async checkout() {
-    // ============================================================
-    // 1. VALIDASI WAJIB: GUEST + SHIPPING
-    // ============================================================
-    if (this.customerType === 'guest' && this.deliveryType === 'shipping') {
-        if (!this.customerName || this.customerName.trim().length < 3) {
-            alert('❌ Mohon isi NAMA PENERIMA untuk keperluan pengiriman ekspedisi!');
-            // Fokuskan kursor ke input nama (opsional, jika ada ID)
-            return; 
-        }
-        
-        if (!this.customerPhone || this.customerPhone.trim().length < 9) {
-            alert('❌ Mohon isi NOMOR WA untuk keperluan pengiriman ekspedisi!');
-            return;
-        }
-
-        // VALIDASI ALAMAT DETAIL
-        if (!this.customerAddressDetail || this.customerAddressDetail.trim().length < 10) {
-            alert('❌ Mohon isi Detail Alamat (Jalan/No Rumah) agar kurir tidak bingung!');
-            return;
-        }
-    }
+                if (this.customerType === 'guest' && this.deliveryType === 'shipping') {
+                    if (!this.customerName || this.customerName.trim().length < 3) {
+                        alert('❌ Mohon isi NAMA PENERIMA untuk keperluan pengiriman ekspedisi!');
+                        return; 
+                    }
+                    if (!this.customerPhone || this.customerPhone.trim().length < 9) {
+                        alert('❌ Mohon isi NOMOR WA untuk keperluan pengiriman ekspedisi!');
+                        return;
+                    }
+                    if (!this.customerAddressDetail || this.customerAddressDetail.trim().length < 10) {
+                        alert('❌ Mohon isi Detail Alamat (Jalan/No Rumah) agar kurir tidak bingung!');
+                        return;
+                    }
+                }
                 if (this.paymentMethod === 'cash') {
                     if (!this.cashAmount || this.change < 0) { alert('❌ Uang tunai kurang!'); return; }
                 } 
-                // 2. VALIDASI TRIPAY
                 else if (this.paymentMethod === 'tripay') {
                     if (!this.paymentChannel) { alert('❌ Silakan pilih Bank / Channel Pembayaran dulu!'); return; }
                 } 
-                // 3. VALIDASI SALDO MEMBER
                 else if (this.paymentMethod === 'saldo') {
                     if (!this.selectedCustomerId) { alert('❌ Pilih Member!'); return; }
                     if (this.getSelectedMemberSaldo() < this.grandTotal) { alert('❌ Saldo Topup kurang!'); return; }
                 } 
-                // 4. VALIDASI AFFILIATE
                 else if (this.paymentMethod === 'affiliate_balance') {
                     if (!this.selectedCustomerId) { alert('❌ Pilih Member!'); return; }
                     if (this.getSelectedAffiliateBalance() < this.grandTotal) { alert('❌ Saldo Profit kurang!'); return; }
                     if (!this.affiliatePin || this.affiliatePin.length < 4) { alert('❌ Masukkan PIN Keamanan!'); return; }
                 }
 
-                // 5. VALIDASI PENGIRIMAN (KIRIMINAJA)
                 if (this.deliveryType === 'shipping') {
                     if (!this.destinationDistrictId) {
                         alert('❌ Harap pilih lokasi tujuan pengiriman!');
@@ -1137,36 +1069,28 @@ removeFile(index) {
 
                 this.isProcessing = true;
                 
-                // Susun Data Form
                 let formData = new FormData();
                 formData.append('items', JSON.stringify(this.cart));
                 formData.append('total', this.subtotal);
                 formData.append('coupon', this.couponCode);
                 formData.append('payment_method', this.paymentMethod);
 
-                // Data Pengiriman
                 formData.append('delivery_type', this.deliveryType);
                 if (this.deliveryType === 'shipping') {
                     formData.append('shipping_cost', this.shippingCost);
                     formData.append('courier_name', this.selectedCourier.name + ' - ' + this.selectedCourier.service);
-                    // Opsi: Kirim data detail lokasi jika perlu disimpan di DB
                     formData.append('destination_district_id', this.destinationDistrictId);
                     formData.append('destination_subdistrict_id', this.destinationSubdistrictId);
                     formData.append('destination_text', this.searchQuery);
-                    // TAMBAHKAN INI (Untuk API KiriminAja):
                     formData.append('courier_code', this.selectedCourier.courier_code); 
                     formData.append('service_type', this.selectedCourier.service_type);
                     formData.append('customer_address_detail', this.customerAddressDetail);
-
-                    
                 }
 
-                // Data Pembayaran Tripay
                 if (this.paymentMethod === 'tripay') {
                     formData.append('payment_channel', this.paymentChannel);
                 }
                 
-                // Data Member
                 if(this.customerType === 'member' && this.selectedCustomerId) {
                     formData.append('customer_id', this.selectedCustomerId);
                 } else {
@@ -1177,18 +1101,13 @@ removeFile(index) {
                 if(this.paymentMethod === 'cash') formData.append('cash_amount', this.cashAmount);
                 if(this.paymentMethod === 'affiliate_balance') formData.append('affiliate_pin', this.affiliatePin); 
 
-                // --- UPDATE LOGIKA KIRIM FILE + OPSI KE BACKEND ---
-this.uploadedFiles.forEach((item, index) => {
-    // 1. Kirim File Fisik (Array Index)
-    formData.append(`attachments[${index}]`, item.file);
-    
-    // 2. Kirim Opsi (Metadata) sesuai index filenya
-    // Backend Laravel bisa akses: $request->attachment_details[0]['color']
-    formData.append(`attachment_details[${index}][color]`, item.isColor ? 'Color' : 'BW');
-    formData.append(`attachment_details[${index}][size]`, item.paperSize);
-    formData.append(`attachment_details[${index}][qty]`, item.qty);
-});
-// -------------------------------------------------
+                this.uploadedFiles.forEach((item, index) => {
+                    formData.append(`attachments[${index}]`, item.file);
+                    
+                    formData.append(`attachment_details[${index}][color]`, item.isColor ? 'Color' : 'BW');
+                    formData.append(`attachment_details[${index}][size]`, item.paperSize);
+                    formData.append(`attachment_details[${index}][qty]`, item.qty);
+                });
 
                 try {
                     const response = await fetch("{{ route('orders.store') }}", {
