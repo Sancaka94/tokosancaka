@@ -92,7 +92,7 @@
         placeholder="Contoh: Jl. Pahlawan No. 12, RT 01/RW 05, (Patokan: Sebelah Kantor Pos)"
         required
         class="w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900
-               focus:border-red-500 focus:ring-2 focus:ring-red-500 focus:outline-none
+               focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md
                transition duration-150 ease-in-out"
     ></textarea>
     </div>
