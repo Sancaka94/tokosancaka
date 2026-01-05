@@ -75,6 +75,19 @@ Route::prefix('member')->name('member.')->group(function () {
     Route::middleware('auth:member')->group(function () {
         Route::get('/dashboard', [MemberAuthController::class, 'dashboard'])->name('dashboard');
         Route::post('/logout', [MemberAuthController::class, 'logout'])->name('logout');
+    
+    
+        // --- TAMBAHAN BARU: RIWAYAT PESANAN ---
+        // Kita pakai controller baru biar rapi
+        Route::get('/orders', [\App\Http\Controllers\MemberOrderController::class, 'index'])->name('orders.index');
+        Route::get('/orders/{id}', [\App\Http\Controllers\MemberOrderController::class, 'show'])->name('orders.show'); // Detail
+
+        // --- TAMBAHAN BARU: PENGATURAN AKUN ---
+        Route::get('/settings', [\App\Http\Controllers\MemberProfileController::class, 'index'])->name('settings.index');
+        Route::put('/settings/update', [\App\Http\Controllers\MemberProfileController::class, 'update'])->name('settings.update');
+        Route::put('/settings/pin', [\App\Http\Controllers\MemberProfileController::class, 'updatePin'])->name('settings.update-pin');
+    
+    
     });
 });
 
