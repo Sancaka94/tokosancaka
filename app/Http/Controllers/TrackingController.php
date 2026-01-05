@@ -337,66 +337,84 @@ class TrackingController extends Controller
 
     public function cetakThermal($resi)
     {
-        // 1. CARI DI DB1 (Tabel Pesanan)
+        Log::info("=== CETAK THERMAL START: {$resi} ===");
+
+        $pesanan = null;
+
+        // -----------------------------------------------------------
+        // 1. CEK DB 1 (MODEL: PESANAN)
+        // -----------------------------------------------------------
         $pesanan = Pesanan::where('resi', $resi)
             ->orWhere('resi_aktual', $resi)
             ->orWhere('nomor_invoice', $resi)
             ->first();
 
-        // 2. JIKA KOSONG, CARI DI DB1 (Tabel Order - Toko Online)
-        if (!$pesanan) {
+        if ($pesanan) {
+            Log::info("KETEMU di DB1 (Table Pesanan)");
+        } else {
+            // -----------------------------------------------------------
+            // 2. CEK DB 1 (MODEL: ORDER - TOKO ONLINE)
+            // -----------------------------------------------------------
+            Log::info("Tidak ada di Table Pesanan, Cek Model Order...");
+            
             $orderModel = Order::with(['store', 'user'])
                 ->where('shipping_reference', $resi)
                 ->orWhere('invoice_number', $resi)
                 ->first();
 
             if ($orderModel) {
-                // Standarisasi Objek (Mapping Manual)
+                Log::info("KETEMU di DB1 (Table Order)");
+                
+                // Mapping Data Order ke Standard Object
                 $pesanan = (object)[
                     'resi' => $orderModel->shipping_reference,
                     'nomor_invoice' => $orderModel->invoice_number,
                     'status' => $orderModel->status,
-                    
-                    // Pengirim
                     'sender_name' => $orderModel->store->name ?? 'N/A',
                     'sender_phone' => $orderModel->store->user->no_wa ?? '-',
                     'sender_address' => $orderModel->store->address_detail ?? '-',
-                    
-                    // Penerima
                     'receiver_name' => $orderModel->user->nama_lengkap ?? 'N/A',
                     'receiver_phone' => $orderModel->user->no_wa ?? '-',
                     'receiver_address' => $orderModel->shipping_address ?? '-',
+                    // Tambahan detail alamat penerima
                     'receiver_district' => $orderModel->user->district ?? '',
                     'receiver_city' => $orderModel->user->regency ?? '',
                     'receiver_province' => $orderModel->user->province ?? '',
                     'receiver_postal_code' => $orderModel->user->postal_code ?? '',
                     
-                    // Lainnya
                     'jasa_ekspedisi_aktual' => $orderModel->courier ?? 'JNE',
                     'service_type' => $orderModel->service_type ?? 'REG',
                     'weight' => $orderModel->total_weight ?? 1,
                     'created_at' => $orderModel->created_at,
-                    'cod_amount' => 0, // Sesuaikan jika ada
+                    'cod_amount' => 0, 
                 ];
             }
         }
 
-        // 3. JIKA MASIH KOSONG, CARI DI DB2 (Tabel Orders - Percetakan)
+        // -----------------------------------------------------------
+        // 3. CEK DB 2 (PERCETAKAN) - INI YANG KEMUNGKINAN BESAR "MOCK-SCK"
+        // -----------------------------------------------------------
         if (!$pesanan) {
+            Log::info("Tidak ada di DB1, Cek DB2 (Percetakan)...");
+            
             try {
+                // Pastikan nama tabel benar (biasanya 'orders' atau 'order')
+                // Kita coba cari berdasarkan order_number ATAU shipping_ref
                 $orderPercetakan = DB::connection('mysql_second')
-                    ->table('orders')
+                    ->table('orders') 
                     ->where('order_number', $resi)
                     ->orWhere('shipping_ref', $resi)
                     ->first();
 
                 if ($orderPercetakan) {
+                    Log::info("KETEMU di DB2 (Percetakan)! ID: " . $orderPercetakan->id);
+
                     $pesanan = (object)[
                         'resi' => $orderPercetakan->shipping_ref ?? $orderPercetakan->order_number,
                         'nomor_invoice' => $orderPercetakan->order_number,
                         'status' => $orderPercetakan->status,
                         
-                        // Pengirim (Default Percetakan)
+                        // Pengirim Default Sancaka
                         'sender_name' => 'Sancaka Percetakan',
                         'sender_phone' => '08819435180',
                         'sender_address' => 'Jl.Dr.Wahidin No.18 A Ngawi',
@@ -405,30 +423,36 @@ class TrackingController extends Controller
                         'receiver_name' => $orderPercetakan->customer_name ?? 'Pelanggan',
                         'receiver_phone' => $orderPercetakan->customer_phone ?? '-',
                         'receiver_address' => $orderPercetakan->destination_address ?? '-',
-                        'receiver_district' => '', // Data DB2 mungkin tidak detail per kolom
+                        
+                        // Kosongkan detail wilayah jika tidak ada kolomnya di DB2
+                        'receiver_district' => '', 
                         'receiver_city' => '',
                         'receiver_province' => '',
                         'receiver_postal_code' => '',
                         
-                        // Lainnya
                         'jasa_ekspedisi_aktual' => $orderPercetakan->courier_service ?? 'Express',
                         'service_type' => 'REG',
-                        'weight' => 1, // Default
+                        'weight' => 1,
                         'created_at' => $orderPercetakan->created_at,
                         'cod_amount' => 0,
                     ];
+                } else {
+                    Log::warning("GAGAL: Tidak ditemukan juga di DB2.");
                 }
             } catch (\Exception $e) {
-                // Log error koneksi DB2
+                Log::error("ERROR KONEKSI DB2: " . $e->getMessage());
             }
         }
 
-        // 4. FINAL CHECK
+        // -----------------------------------------------------------
+        // 4. HASIL AKHIR
+        // -----------------------------------------------------------
         if (!$pesanan) {
-            abort(404, 'Data Resi tidak ditemukan untuk dicetak.');
+            Log::error("CETAK THERMAL GAGAL TOTAL: Data tidak ditemukan dimanapun.");
+            abort(404, 'Data Resi tidak ditemukan.');
         }
 
-        // Pastikan view ini ada
+        Log::info("Load View Cetak Thermal...");
         return view('admin.pesanan.cetak_thermal', compact('pesanan'));
     }
     
