@@ -238,24 +238,86 @@ class TrackingController extends Controller
      */
     public function cetakThermal($resi)
     {
-        // 1. CARI DI DB 1 (KODE ASLI ANDA)
-        $pesanan = Pesanan::where('resi', $resi)
+        // ==========================================================
+        // 1. CARI DI TABEL PESANAN (DB1 - ORIGINAL)
+        // ==========================================================
+        $modelPesanan = Pesanan::where('resi', $resi)
             ->orWhere('nomor_invoice', $resi)
             ->first();
 
+        // Jika ketemu di tabel Pesanan (Raw Model), kita konversi juga ke Object Standar
+        // Supaya 'item_price' dan 'expedition' PASTI ADA dan tidak error di Blade
+        if ($modelPesanan) {
+            $pesanan = (object)[
+                'resi' => $modelPesanan->resi,
+                'nomor_invoice' => $modelPesanan->nomor_invoice,
+                'status' => $modelPesanan->status,
+                
+                // PENGIRIM
+                'sender_name' => $modelPesanan->sender_name,
+                'sender_phone' => $modelPesanan->sender_phone,
+                'sender_address' => $modelPesanan->sender_address,
+                'sender_village' => $modelPesanan->sender_village ?? '',
+                'sender_district' => $modelPesanan->sender_district ?? '',
+                'sender_regency' => $modelPesanan->sender_regency ?? '',
+                'sender_province' => $modelPesanan->sender_province ?? '',
+                'sender_postal_code' => $modelPesanan->sender_postal_code ?? '',
+                
+                // PENERIMA
+                'receiver_name' => $modelPesanan->receiver_name,
+                'receiver_phone' => $modelPesanan->receiver_phone,
+                'receiver_address' => $modelPesanan->receiver_address,
+                'receiver_village' => $modelPesanan->receiver_village ?? '',
+                'receiver_district' => $modelPesanan->receiver_district ?? '',
+                'receiver_regency' => $modelPesanan->receiver_regency ?? '',
+                'receiver_province' => $modelPesanan->receiver_province ?? '',
+                'receiver_postal_code' => $modelPesanan->receiver_postal_code ?? '',
+                
+                // PAKET
+                'weight' => $modelPesanan->weight ?? 1000,
+                'isi_paket' => $modelPesanan->isi_paket ?? 'Paket Ekspedisi',
+                'length' => $modelPesanan->panjang ?? 10,
+                'width' => $modelPesanan->lebar ?? 10,
+                'height' => $modelPesanan->tinggi ?? 10,
+                
+                // BIAYA (MAPPING AGAR TIDAK ERROR UNDEFINED)
+                'item_price' => $modelPesanan->nilai_barang ?? 0, // <--- INI SOLUSINYA
+                'nilai_barang' => $modelPesanan->nilai_barang ?? 0,
+                'shipping_cost' => $modelPesanan->ongkir ?? 0,
+                'ongkir' => $modelPesanan->ongkir ?? 0,
+                'biaya_asuransi' => $modelPesanan->biaya_asuransi ?? 0,
+                'insurance_cost' => $modelPesanan->biaya_asuransi ?? 0,
+                'total_cod' => $modelPesanan->total_cod ?? 0,
+                'cod_amount' => $modelPesanan->cod_amount ?? 0,
+                'payment_method' => $modelPesanan->payment_method ?? 'CASH',
+                
+                // EKSPEDISI
+                'expedition' => $modelPesanan->courier ?? 'JNE', // <--- INI SOLUSINYA
+                'courier' => $modelPesanan->courier ?? 'JNE',
+                'service_type' => $modelPesanan->service_type ?? 'REG',
+                'jasa_ekspedisi_aktual' => $modelPesanan->courier ?? 'JNE',
+                'resi_aktual' => $modelPesanan->resi_aktual,
+                'created_at' => $modelPesanan->created_at,
+            ];
+        } else {
+            $pesanan = null;
+        }
+
+        // ==========================================================
+        // 2. JIKA TIDAK KETEMU, CARI DI ORDER (TOKO ONLINE)
+        // ==========================================================
         if (!$pesanan) {
-             $orderModel = Order::with(['store', 'user'])
+            $orderModel = Order::with(['store', 'user'])
                 ->where('shipping_reference', $resi)
                 ->orWhere('invoice_number', $resi)
                 ->first();
-                
-             if ($orderModel) {
-                 // Mapping Original Anda
-                 $pesanan = (object)[
+            
+            if ($orderModel) {
+                $pesanan = (object)[
                     'resi' => $orderModel->shipping_reference,
                     'nomor_invoice' => $orderModel->invoice_number,
                     'status' => $orderModel->status,
-                    'sender_name' => $orderModel->store->name ?? '-',
+                    'sender_name' => $orderModel->store->name ?? 'N/A',
                     'sender_phone' => $orderModel->store->user->no_wa ?? '-',
                     'sender_address' => $orderModel->store->address_detail ?? '-',
                     'sender_village' => $orderModel->store->village ?? '',
@@ -263,7 +325,7 @@ class TrackingController extends Controller
                     'sender_regency' => $orderModel->store->regency ?? '',
                     'sender_province' => $orderModel->store->province ?? '',
                     'sender_postal_code' => $orderModel->store->postal_code ?? '',
-                    'receiver_name' => $orderModel->user->nama_lengkap ?? '-',
+                    'receiver_name' => $orderModel->user->nama_lengkap ?? 'N/A',
                     'receiver_phone' => $orderModel->user->no_wa ?? '-',
                     'receiver_address' => $orderModel->shipping_address ?? '-',
                     'receiver_village' => $orderModel->user->village ?? '',
@@ -273,38 +335,41 @@ class TrackingController extends Controller
                     'receiver_postal_code' => $orderModel->user->postal_code ?? '',
                     'weight' => $orderModel->total_weight ?? 1000,
                     'isi_paket' => 'Paket Toko Online',
+                    
+                    // BIAYA (LENGKAP)
+                    'item_price' => $orderModel->sub_total ?? 0, // <--- Fix Error
                     'nilai_barang' => $orderModel->sub_total ?? 0,
+                    'shipping_cost' => $orderModel->shipping_cost ?? 0,
                     'ongkir' => $orderModel->shipping_cost ?? 0,
                     'biaya_asuransi' => 0,
-                    'cod_amount' => 0,
+                    'insurance_cost' => 0,
                     'total_cod' => $orderModel->grand_total ?? 0,
+                    'cod_amount' => 0,
+                    
                     'payment_method' => $orderModel->payment_method ?? 'Transfer',
+                    'expedition' => $orderModel->courier ?? 'JNE',
                     'courier' => $orderModel->courier ?? 'JNE',
                     'service_type' => 'REG',
                     'jasa_ekspedisi_aktual' => $orderModel->courier ?? 'JNE',
                     'resi_aktual' => null,
                     'created_at' => $orderModel->created_at,
                     'panjang' => 10, 'lebar' => 10, 'tinggi' => 10,
-                    
-                    // TAMBAHAN AGAR AMAN DI BLADE
-                    'expedition' => $orderModel->courier ?? 'JNE', 
-                 ];
-             }
+                ];
+            }
         }
 
         // ==========================================================
-        // 2. CARI DI DB 2 (PERCETAKAN) - JIKA DB1 ZONK
+        // 3. JIKA MASIH KOSONG, CARI DI DB 2 (PERCETAKAN)
         // ==========================================================
         if (!$pesanan) {
             try {
-                $orderPercetakan = DB::connection('mysql_second')
+                $orderPercetakan = \DB::connection('mysql_second')
                     ->table('orders')
                     ->where('order_number', $resi)
                     ->orWhere('shipping_ref', $resi)
                     ->first();
 
                 if ($orderPercetakan) {
-                    // MAPPING SUPER LENGKAP AGAR TIDAK UNDEFINED PROPERTY
                     $pesanan = (object)[
                         'resi' => $orderPercetakan->shipping_ref ?? $orderPercetakan->order_number,
                         'nomor_invoice' => $orderPercetakan->order_number,
@@ -320,46 +385,54 @@ class TrackingController extends Controller
                         'sender_province' => 'Jawa Timur',
                         'sender_postal_code' => '63211',
 
-                        // PENERIMA (WAJIB ADA DEFAULT KOSONG '')
+                        // PENERIMA (WAJIB LENGKAP)
                         'receiver_name' => $orderPercetakan->customer_name ?? 'Pelanggan',
                         'receiver_phone' => $orderPercetakan->customer_phone ?? '-',
                         'receiver_address' => $orderPercetakan->destination_address ?? '-',
-                        'receiver_village' => '', // <-- INI SOLUSI ERRORNYA
+                        'receiver_village' => '', // <--- Fix Error receiver_village
                         'receiver_district' => '',
                         'receiver_regency' => '',
                         'receiver_province' => '',
                         'receiver_postal_code' => '',
 
-                        // PAKET & BIAYA
+                        // PAKET
                         'weight' => 1000,
                         'isi_paket' => 'Produk Percetakan',
+                        
+                        // BIAYA (LENGKAP)
+                        'item_price' => $orderPercetakan->total_amount ?? 0, // <--- Fix Error item_price
                         'nilai_barang' => $orderPercetakan->total_amount ?? 0,
+                        'shipping_cost' => 0,
                         'ongkir' => 0,
                         'biaya_asuransi' => 0,
+                        'insurance_cost' => 0,
                         'total_cod' => $orderPercetakan->total_amount ?? 0,
                         'cod_amount' => 0,
+                        
                         'payment_method' => $orderPercetakan->payment_method ?? 'Manual',
                         
-                        // EKSPEDISI (SOLUSI UNDEFINED PROPERTY $expedition)
-                        'expedition' => $orderPercetakan->courier_service ?? 'Express', 
+                        // EKSPEDISI
+                        'expedition' => $orderPercetakan->courier_service ?? 'Express', // <--- Fix Error expedition
                         'courier' => $orderPercetakan->courier_service ?? 'Express',
                         'service_type' => 'REG',
                         'jasa_ekspedisi_aktual' => $orderPercetakan->courier_service ?? 'Express',
-                        
                         'resi_aktual' => $orderPercetakan->shipping_ref,
                         'created_at' => $orderPercetakan->created_at,
                         'panjang' => 10, 'lebar' => 10, 'tinggi' => 10,
                     ];
                 }
             } catch (\Exception $e) {
-                // Silent Fail
+                // Silent Error
             }
         }
 
+        // ==========================================================
+        // 4. FINAL CHECK
+        // ==========================================================
         if (!$pesanan) {
-            abort(404, 'Pesanan tidak ditemukan untuk dicetak.');
+            abort(404, 'Data Resi tidak ditemukan untuk dicetak.');
         }
-        
+
         return view('admin.pesanan.cetak_thermal', compact('pesanan'));
     }
 
