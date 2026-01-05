@@ -256,11 +256,17 @@
                                 <input type="number" x-model="cashAmount" placeholder="0" 
                                        class="w-full pl-12 pr-4 py-3 text-2xl font-black text-slate-800 bg-slate-50 rounded-xl border border-slate-200 focus:ring-2 focus:ring-red-500 transition">
                             </div>
-                            <div class="flex gap-2 mt-3 overflow-x-auto pb-1 no-scrollbar">
-                                 <button @click="cashAmount = 50000" class="text-xs px-4 py-2 bg-white border border-slate-200 rounded-lg font-bold hover:border-slate-400 whitespace-nowrap">Rp 50.000</button>
-                                 <button @click="cashAmount = 100000" class="text-xs px-4 py-2 bg-white border border-slate-200 rounded-lg font-bold hover:border-slate-400 whitespace-nowrap">Rp 100.000</button>
-                                 <button @click="cashAmount = grandTotal" class="text-xs px-4 py-2 bg-slate-800 text-white border border-slate-800 rounded-lg font-bold hover:bg-black whitespace-nowrap">Uang Pas</button>
+                            
+                            <div class="grid grid-cols-4 sm:grid-cols-7 gap-2 mt-3">
+                                 <button @click="cashAmount = 10000" class="text-[10px] px-2 py-2 bg-white border border-slate-200 rounded-lg font-bold hover:border-slate-400 text-center">10k</button>
+                                 <button @click="cashAmount = 20000" class="text-[10px] px-2 py-2 bg-white border border-slate-200 rounded-lg font-bold hover:border-slate-400 text-center">20k</button>
+                                 <button @click="cashAmount = 30000" class="text-[10px] px-2 py-2 bg-white border border-slate-200 rounded-lg font-bold hover:border-slate-400 text-center">30k</button>
+                                 <button @click="cashAmount = 40000" class="text-[10px] px-2 py-2 bg-white border border-slate-200 rounded-lg font-bold hover:border-slate-400 text-center">40k</button>
+                                 <button @click="cashAmount = 50000" class="text-[10px] px-2 py-2 bg-white border border-slate-200 rounded-lg font-bold hover:border-slate-400 text-center">50k</button>
+                                 <button @click="cashAmount = 100000" class="text-[10px] px-2 py-2 bg-white border border-slate-200 rounded-lg font-bold hover:border-slate-400 text-center">100k</button>
+                                 <button @click="cashAmount = grandTotal" class="col-span-2 sm:col-span-1 text-[10px] px-2 py-2 bg-slate-800 text-white border border-slate-800 rounded-lg font-bold hover:bg-black text-center">Uang Pas</button>
                             </div>
+
                             <div class="mt-4 p-4 rounded-xl flex justify-between items-center transition-colors"
                                  :class="change < 0 ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'">
                                 <span class="font-bold text-sm">Kembalian</span>
@@ -276,17 +282,14 @@
                             </div>
                         </div>
 
-                        <div x-show="paymentMethod === 'tripay'" x-transition>
-                            <div x-show="isLoadingChannels" class="text-center py-4 text-slate-400">
-                                <i class="fas fa-circle-notch fa-spin text-2xl"></i>
-                            </div>
+                        <div x-show="paymentMethod === 'tripay'" x-transition class="mt-4">
+                            <div x-show="isLoadingChannels" class="text-center py-4 text-slate-400"><i class="fas fa-circle-notch fa-spin"></i></div>
                             <div x-show="!isLoadingChannels && tripayChannels.length > 0" class="grid grid-cols-2 sm:grid-cols-4 gap-2 max-h-60 overflow-y-auto custom-scrollbar p-1">
                                 <template x-for="channel in tripayChannels" :key="channel.code">
-                                    <button @click="paymentChannel = channel.code" 
-                                            x-show="channel.active"
-                                            class="p-2 rounded-lg border transition flex flex-col items-center justify-center gap-1 h-20 bg-white hover:border-red-300 relative"
+                                    <button @click="paymentChannel = channel.code" x-show="channel.active"
+                                            class="p-2 rounded-lg border transition flex flex-col items-center justify-center gap-1 h-16 bg-white hover:border-red-300 relative"
                                             :class="paymentChannel === channel.code ? 'border-red-600 bg-red-50 ring-1 ring-red-600' : 'border-slate-200'">
-                                        <img :src="channel.icon_url" class="h-6 object-contain">
+                                        <img :src="channel.icon_url" class="h-5 object-contain">
                                         <span class="text-[9px] font-bold text-slate-600 text-center leading-none" x-text="channel.name"></span>
                                     </button>
                                 </template>
