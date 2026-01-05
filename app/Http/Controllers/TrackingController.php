@@ -113,52 +113,86 @@ class TrackingController extends Controller
             }
         }
 
-        // ==========================================================
-        // 2. CARI DI DB 2 (PERCETAKAN) <--- LOGIKA BARU
-        // ==========================================================
-        // Hanya jalan jika Result masih kosong
-        if (!$result) {
+        // ====================================================================
+        // BAGIAN 2: MAPPING DB 2 (PERCETAKAN) - LOGIKA DIPERBAIKI (CLEAN UP)
+        // ====================================================================
+        if (!$pesanan) {
             try {
-                $percetakan = DB::connection('mysql_second')
+                $orderPercetakan = \DB::connection('mysql_second')
                     ->table('orders')
                     ->where('order_number', $resi)
                     ->orWhere('shipping_ref', $resi)
                     ->first();
 
-                if ($percetakan) {
-                    $fakeHistory = collect([
-                        (object)[
-                            'status' => 'Pesanan Dibuat',
-                            'lokasi' => 'Percetakan Sancaka',
-                            'keterangan' => 'Pesanan masuk ke sistem percetakan.',
-                            'created_at' => Carbon::parse($percetakan->created_at)
-                        ],
-                        (object)[
-                            'status' => $percetakan->status, 
-                            'lokasi' => 'Percetakan Sancaka',
-                            'keterangan' => 'Status terkini: ' . $percetakan->status,
-                            'created_at' => Carbon::parse($percetakan->updated_at ?? $percetakan->created_at)
-                        ]
-                    ])->sortByDesc('created_at')->values();
+                if ($orderPercetakan) {
+                    
+                    // --- 1. PARSING DATA KURIR (Agar "TIKI - Tiki Reguler" jadi Rapi) ---
+                    $rawService = $orderPercetakan->courier_service ?? 'Internal';
+                    $shipInfo = ShippingHelper::parseShippingMethod($rawService);
 
-                    $result = [
-                        'is_pesanan' => true,
-                        'resi' => $percetakan->shipping_ref ?? $percetakan->order_number,
-                        'resi_aktual' => $percetakan->shipping_ref,
-                        'pengirim' => 'Sancaka Percetakan',
-                        'alamat_pengirim' => 'Jl.Dr.Wahidin No.18 A, Ngawi',
-                        'no_pengirim' => '08819435180',
-                        'penerima' => $percetakan->customer_name ?? 'Pelanggan',
-                        'alamat_penerima' => $percetakan->destination_address ?? '-',
-                        'no_penerima' => $percetakan->customer_phone ?? '-',
-                        'status' => $percetakan->status,
-                        'tanggal_dibuat' => $percetakan->created_at,
-                        'histories' => $fakeHistory,
-                        'jasa_ekspedisi_aktual' => $percetakan->courier_service ?? 'Internal',
+                    // Bersihkan Nama Layanan jika mengandung Nama Kurir (Opsional)
+                    // Contoh: "Tiki Reguler" -> "Reguler"
+                    $cleanService = str_replace($shipInfo['courier_name'], '', $shipInfo['service_name']);
+                    $cleanService = trim($cleanService);
+                    if (empty($cleanService)) $cleanService = 'Regular';
+
+                    $pesanan = (object)[
+                        // KOLOM UTAMA
+                        'resi' => $orderPercetakan->shipping_ref ?? $orderPercetakan->order_number,
+                        'nomor_invoice' => $orderPercetakan->order_number,
+                        'status' => $orderPercetakan->status,
+                        
+                        // PENGIRIM
+                        'sender_name' => 'Sancaka Percetakan',
+                        'sender_phone' => '08819435180',
+                        'sender_address' => 'Jl.Dr.Wahidin No.18 A',
+                        'sender_village' => 'Ketanggi',
+                        'sender_district' => 'Ngawi',
+                        'sender_regency' => 'Ngawi',
+                        'sender_province' => 'Jawa Timur',
+                        'sender_postal_code' => '63211',
+
+                        // PENERIMA
+                        'receiver_name' => $orderPercetakan->customer_name ?? 'Pelanggan',
+                        'receiver_phone' => $orderPercetakan->customer_phone ?? '-',
+                        'receiver_address' => $orderPercetakan->destination_address ?? '-',
+                        // Data wilayah dikosongkan jika tidak ada di DB2 agar tidak error
+                        'receiver_village' => '', 
+                        'receiver_district' => '',
+                        'receiver_regency' => '',
+                        'receiver_province' => '',
+                        'receiver_postal_code' => '',
+
+                        // PAKET & BIAYA
+                        'weight' => 1000, // Default 1kg jika DB2 tidak punya kolom berat
+                        'item_description' => 'Produk Percetakan',
+                        'item_price' => $orderPercetakan->final_price ?? 0, 
+                        'shipping_cost' => $orderPercetakan->shipping_cost ?? 0,
+                        'ongkir' => $orderPercetakan->shipping_cost ?? 0,
+                        'insurance_cost' => 0,
+                        'total_cod' => ($orderPercetakan->final_price ?? 0) + ($orderPercetakan->shipping_cost ?? 0),
+                        'cod_amount' => 0,
+                        
+                        // --- 2. PERBAIKAN TAMPILAN EKSPEDISI ---
+                        'expedition' => $shipInfo['courier_name'], // "TIKI" (Bersih)
+                        'service_type' => strtoupper($cleanService), // "REGULER" (Bersih & Kapital)
+                        
+                        // --- 3. PERBAIKAN PEMBAYARAN (Huruf Besar) ---
+                        'payment_method' => strtoupper($orderPercetakan->payment_method ?? 'MANUAL'),
+                        
+                        'created_at' => $orderPercetakan->created_at,
+                        'resi_aktual' => $orderPercetakan->shipping_ref,
+                        
+                        // --- 4. PERBAIKAN JUDUL RESI AKTUAL ---
+                        // Menggunakan courier_name saja agar tidak muncul "TIKI - Tiki Reguler"
+                        // Hasil: "RESI AKTUAL (TIKI)" atau "RESI AKTUAL (TIKI - REGULER)"
+                        'jasa_ekspedisi_aktual' => $shipInfo['courier_name'] . ' - ' . strtoupper($cleanService),
+
+                        'panjang' => 10, 'lebar' => 10, 'tinggi' => 10,
                     ];
                 }
             } catch (\Exception $e) {
-                // Silent Error
+                // Silent Fail
             }
         }
 
