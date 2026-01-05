@@ -128,8 +128,6 @@ Route::get('/apps', function () {
 Route::get('/{resi}/cetak_thermal', [PesananController::class, 'cetakThermal'])
     ->name('cetak.thermal.clean');
 
-// Route untuk mem-proxy gambar bukti pengiriman
-Route::get('/tracking/image-proxy', [App\Http\Controllers\TrackingController::class, 'imageProxy'])->name('tracking.image_proxy');
 
 
 // =========================================================================
@@ -170,6 +168,9 @@ Route::get('/tracking/search', [TrackingController::class, 'showTrackingPage'])-
 Route::get('/tracking/refresh', [TrackingController::class, 'refresh'])->name('tracking.refresh');
 Route::get('/tracking/cetak-thermal/{resi}', [TrackingController::class, 'cetakThermal'])->name('tracking.cetak_thermal');
 Route::get('/tracking/cetak-resi/{resi}', [TrackingController::class, 'cetakThermal'])->name('cetak_thermal');
+// Route untuk mem-proxy gambar bukti pengiriman
+Route::get('/tracking/image-proxy', [App\Http\Controllers\TrackingController::class, 'imageProxy'])->name('tracking.image_proxy');
+
 
 Route::get('/kirimaja/cek-ongkir', [CustomerOrderController::class, 'cek_Ongkir'])->name('kirimaja.cekongkir');
 Route::get('/koli/cek-ongkir', [KoliController::class, 'cekOngkirMulti'])->name('public.koli.cekOngkirMulti'); // Akses publik
