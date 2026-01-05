@@ -342,7 +342,7 @@ class TrackingController extends Controller
         $pesanan = null;
 
         // -----------------------------------------------------------
-        // 1. CEK DB 1 (MODEL: PESANAN - LOGISTIK MANUAL)
+        // 1. CEK DB 1 (MODEL: PESANAN - MANUAL INPUT)
         // -----------------------------------------------------------
         $modelPesanan = Pesanan::where('resi', $resi)
             ->orWhere('resi_aktual', $resi)
@@ -352,7 +352,7 @@ class TrackingController extends Controller
         if ($modelPesanan) {
             Log::info("KETEMU di DB1 (Table Pesanan). ID: {$modelPesanan->id}");
             
-            // Kita mapping ulang juga biar konsisten nama variabelnya
+            // Mapping Manual agar sesuai Blade
             $pesanan = (object)[
                 'resi' => $modelPesanan->resi,
                 'nomor_invoice' => $modelPesanan->nomor_invoice,
@@ -377,20 +377,29 @@ class TrackingController extends Controller
                 'receiver_province' => $modelPesanan->receiver_province,
                 'receiver_postal_code' => $modelPesanan->receiver_postal_code,
                 
-                // DATA PAKET (YANG ANDA MINTA)
+                // DATA PAKET & BIAYA (SESUAI BLADE)
                 'weight' => $modelPesanan->weight ?? 1000,
-                'item_price' => $modelPesanan->nilai_barang ?? 0, // Mapping nilai_barang ke item_price
-                'item_description' => $modelPesanan->isi_paket ?? 'Paket Ekspedisi', // Mapping isi_paket
+                'item_description' => $modelPesanan->isi_paket ?? 'Paket Ekspedisi',
                 'length' => $modelPesanan->panjang ?? 10,
                 'width' => $modelPesanan->lebar ?? 10,
                 'height' => $modelPesanan->tinggi ?? 10,
                 
+                // --- VARIABEL KRUSIAL UTK BLADE ---
+                'item_price' => $modelPesanan->nilai_barang ?? 0,    // Untuk tampilan "Harga Barang"
+                'price' => $modelPesanan->total_cod ?? ($modelPesanan->nilai_barang ?? 0), // Untuk hitungan "COD Barang"
+                'shipping_cost' => $modelPesanan->ongkir ?? 0,       // Untuk tampilan "Total Ongkir" & hitung COD
+                'insurance_cost' => $modelPesanan->biaya_asuransi ?? 0, // Untuk hitungan COD Ongkir
+                // ----------------------------------
+
                 // Ekspedisi
                 'expedition' => $modelPesanan->courier ?? 'JNE',
                 'service_type' => $modelPesanan->service_type ?? 'REG',
+                'jasa_ekspedisi_aktual' => $modelPesanan->courier ?? 'JNE',
                 
                 'created_at' => $modelPesanan->created_at,
+                'payment_method' => $modelPesanan->payment_method ?? 'CASH',
                 'cod_amount' => $modelPesanan->cod_amount ?? 0,
+                'resi_aktual' => $modelPesanan->resi_aktual,
             ];
         } 
         
@@ -398,7 +407,6 @@ class TrackingController extends Controller
         // 2. CEK DB 1 (MODEL: ORDER - TOKO ONLINE)
         // -----------------------------------------------------------
         if (!$pesanan) {
-            Log::info("Cek DB1 Model Order...");
             $orderModel = Order::with(['store', 'user'])
                 ->where('shipping_reference', $resi)
                 ->orWhere('invoice_number', $resi)
@@ -431,20 +439,29 @@ class TrackingController extends Controller
                     'receiver_province' => $orderModel->user->province ?? '',
                     'receiver_postal_code' => $orderModel->user->postal_code ?? '',
                     
-                    // DATA PAKET (LENGKAP)
+                    // DATA PAKET & BIAYA (SESUAI BLADE)
                     'weight' => $orderModel->total_weight ?? 1000,
-                    'item_price' => $orderModel->grand_total ?? 0, // Harga Barang
                     'item_description' => 'Paket Toko Online (' . $orderModel->invoice_number . ')',
-                    'length' => 10, // Default dimensi jika tidak ada di DB
+                    'length' => 10, 
                     'width' => 10,
                     'height' => 10,
                     
+                    // --- VARIABEL KRUSIAL UTK BLADE ---
+                    'item_price' => $orderModel->sub_total ?? 0,    // Harga Barang
+                    'price' => $orderModel->grand_total ?? 0,       // Total Tagihan (untuk COD)
+                    'shipping_cost' => $orderModel->shipping_cost ?? 0, // Ongkir
+                    'insurance_cost' => 0,                          // Asumsi 0
+                    // ----------------------------------
+
                     // Ekspedisi
                     'expedition' => $orderModel->courier ?? 'JNE',
                     'service_type' => $orderModel->service_type ?? 'REG',
+                    'jasa_ekspedisi_aktual' => $orderModel->courier ?? 'JNE',
                     
                     'created_at' => $orderModel->created_at,
+                    'payment_method' => $orderModel->payment_method ?? 'Transfer',
                     'cod_amount' => 0, 
+                    'resi_aktual' => null,
                 ];
             }
         }
@@ -453,7 +470,6 @@ class TrackingController extends Controller
         // 3. CEK DB 2 (DATABASE PERCETAKAN)
         // -----------------------------------------------------------
         if (!$pesanan) {
-            Log::info("Cek DB2 (Percetakan)...");
             try {
                 $orderPercetakan = DB::connection('mysql_second')
                     ->table('orders') 
@@ -469,7 +485,7 @@ class TrackingController extends Controller
                         'nomor_invoice' => $orderPercetakan->order_number,
                         'status' => $orderPercetakan->status,
                         
-                        // Pengirim (Hardcode Percetakan)
+                        // Pengirim
                         'sender_name' => 'Sancaka Percetakan',
                         'sender_phone' => '08819435180',
                         'sender_address' => 'Jl.Dr.Wahidin No.18 A',
@@ -488,20 +504,29 @@ class TrackingController extends Controller
                         'receiver_province' => '',
                         'receiver_postal_code' => '',
                         
-                        // DATA PAKET (LENGKAP)
-                        'weight' => 1000, // Default 1KG untuk percetakan
-                        'item_price' => $orderPercetakan->total_amount ?? 0,
+                        // DATA PAKET & BIAYA (SESUAI BLADE)
+                        'weight' => 1000, 
                         'item_description' => 'Produk Percetakan Sancaka',
                         'length' => 20, 
                         'width' => 10,
                         'height' => 5,
                         
+                        // --- VARIABEL KRUSIAL UTK BLADE ---
+                        'item_price' => $orderPercetakan->total_amount ?? 0, // Harga Barang
+                        'price' => $orderPercetakan->total_amount ?? 0,      // Total Tagihan
+                        'shipping_cost' => 0,                                // Asumsi Ongkir 0 atau ambil kolom ongkir DB2
+                        'insurance_cost' => 0,
+                        // ----------------------------------
+                        
                         // Ekspedisi
                         'expedition' => $orderPercetakan->courier_service ?? 'Express',
                         'service_type' => 'REG',
+                        'jasa_ekspedisi_aktual' => $orderPercetakan->courier_service ?? 'Express',
                         
                         'created_at' => $orderPercetakan->created_at,
+                        'payment_method' => $orderPercetakan->payment_method ?? 'Manual',
                         'cod_amount' => 0,
+                        'resi_aktual' => $orderPercetakan->shipping_ref,
                     ];
                 }
             } catch (\Exception $e) {
@@ -509,15 +534,12 @@ class TrackingController extends Controller
             }
         }
 
-        // -----------------------------------------------------------
-        // 4. FINAL
-        // -----------------------------------------------------------
+        // 4. FINAL CHECK
         if (!$pesanan) {
             abort(404, 'Data Resi tidak ditemukan.');
         }
 
-        // Siapkan Variable untuk View sesuai request Anda
-        // Supaya {{ strtoupper($expeditionService) }} tidak error
+        // Siapkan Variable Tambahan agar Blade tidak Error
         $expeditionService = $pesanan->expedition . ' - ' . $pesanan->service_type;
 
         return view('admin.pesanan.cetak_thermal', compact('pesanan', 'expeditionService'));
