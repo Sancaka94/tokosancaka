@@ -319,6 +319,17 @@ if (!function_exists('getTrackingStatusIcon')) {
                                     </div>
                                     <p class="fw-bold mb-0">{{ $history->status ?? '-' }}</p>
                                     <p class="mb-1 small text-muted">{{ $history->lokasi ?? '' }} {{ isset($history->keterangan) ? '- '.$history->keterangan : '' }}</p>
+                                    
+                                    @if(!empty($history->images))
+            <div class="mt-2 flex gap-2">
+                @foreach($history->images as $imgUrl)
+                    <a href="{{ $imgUrl }}" target="_blank">
+                        <img src="{{ $imgUrl }}" class="w-16 h-16 object-cover rounded border" alt="Bukti Foto">
+                    </a>
+                @endforeach
+            </div>
+        @endif
+                                    
                                     <small class="text-muted">
                                         {{ is_a($history->created_at, 'Carbon\Carbon') ? $history->created_at->format('d M Y, H:i') . ' WIB' : $history->created_at }}
                                     </small>
