@@ -28,17 +28,15 @@
             <span class="text-sm font-bold">Dashboard</span>
         </a>
 
-        <a href="#" 
-           class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group {{ request()->routeIs('member.orders.*') ? 'bg-blue-600 text-white shadow-lg shadow-blue-900' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
-            <i class="fas fa-history w-5 text-center"></i>
-            <span class="text-sm font-bold">Riwayat Pesanan</span>
-        </a>
+        <a href="{{ route('member.orders.index') }}" 
+   class="flex items-center gap-3 px-4 py-3 ... {{ request()->routeIs('member.orders.*') ? '...' : '...' }}">
+    <span class="text-sm font-bold">Riwayat Pesanan</span>
+</a>
 
-        <a href="#" 
-           class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group {{ request()->routeIs('member.profile.*') ? 'bg-blue-600 text-white shadow-lg shadow-blue-900' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
-            <i class="fas fa-user-cog w-5 text-center"></i>
-            <span class="text-sm font-bold">Pengaturan Akun</span>
-        </a>
+<a href="{{ route('member.settings.index') }}" 
+   class="flex items-center gap-3 px-4 py-3 ... {{ request()->routeIs('member.settings.*') ? '...' : '...' }}">
+    <span class="text-sm font-bold">Pengaturan Akun</span>
+</a>
 
         <div class="border-t border-slate-800 my-4"></div>
 
