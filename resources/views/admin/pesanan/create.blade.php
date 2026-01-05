@@ -162,9 +162,24 @@
                         </div>
 
                         <div class="grid grid-cols-3 gap-4">
-                            <div><label for="length" class="block mb-2 text-sm font-medium text-gray-700">P (cm)</label><input type="number" id="length" name="length" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5"></div>
-                            <div><label for="width" class="block mb-2 text-sm font-medium text-gray-700">L (cm)</label><input type="number" id="width" name="width" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5"></div>
-                            <div><label for="height" class="block mb-2 text-sm font-medium text-gray-700">T (cm)</label><input type="number" id="height" name="height" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5"></div>
+                            <div>
+                                <label for="length" class="block mb-2 text-sm font-medium text-gray-700">P (cm)</label>
+                                <input type="number" id="length" name="length" 
+                                       value="1" 
+                                       class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5">
+                            </div>
+                            <div>
+                                <label for="width" class="block mb-2 text-sm font-medium text-gray-700">L (cm)</label>
+                                <input type="number" id="width" name="width" 
+                                       value="1" 
+                                       class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5">
+                            </div>
+                            <div>
+                                <label for="height" class="block mb-2 text-sm font-medium text-gray-700">T (cm)</label>
+                                <input type="number" id="height" name="height" 
+                                       value="1" 
+                                       class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5">
+                            </div>
                         </div>
 
                         <div>
