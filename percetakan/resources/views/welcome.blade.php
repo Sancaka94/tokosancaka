@@ -101,11 +101,12 @@
                         <li>✅ Kertas 70-80gr</li>
                         <li>✅ Hasil Copy Tajam</li>
                         <li>✅ Grosir Lebih Murah</li>
+                        <li>✅ Potensi Diskon 20-30%</li>
                     </ul>
                     <a href="https://wa.me/6285745808809" class="block py-3 text-center rounded-xl bg-slate-100 font-bold hover:bg-red-600 hover:text-white transition">Pesan</a>
                 </div>
                 <div id="ekspedisi" class="gradient-red rounded-[32px] p-8 text-white shadow-2xl shadow-red-200 transform md:-translate-y-6">
-                    <h3 class="text-xl font-bold mb-4">Jasa Pengiriman</h3>
+                    <h3 class="text-xl font-bold mb-4">Jasa Pengiriman Paket, Dokumen & Cargo</h3>
                     <div class="flex items-baseline gap-1 mb-6">
                         <span class="text-4xl font-black italic text-cyan-300">Ekspedisi</span>
                     </div>
@@ -120,7 +121,7 @@
                 <div class="border border-slate-100 rounded-[32px] p-8 hover:shadow-2xl transition">
                     <h3 class="text-xl font-bold mb-4">Jilid & Print</h3>
                     <div class="flex items-baseline gap-1 mb-6">
-                        <span class="text-4xl font-black italic">Rp 1.000</span>
+                        <span class="text-4xl font-black italic">Harga Mulai Rp 300</span>
                         <span class="text-slate-400">/print</span>
                     </div>
                     <ul class="space-y-4 mb-8 text-sm font-medium">
