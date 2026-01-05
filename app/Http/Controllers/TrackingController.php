@@ -232,17 +232,14 @@ class TrackingController extends Controller
         return redirect()->route('tracking.index')->with('error', "Nomor resi '{$resi}' tidak ditemukan.");
     }
 
-    /**
-     * [CETAK THERMAL ADMIN]
-     * Logika: DB1 -> DB2 (Percetakan)
-     */
-    
+    // =========================================================================
+    // FUNGSI CETAK THERMAL (FIXED & COMPLETE)
+    // =========================================================================
     public function cetakThermal($resi)
     {
-        // ====================================================================
-        // BAGIAN 1: KODE ASLI ANDA (SAYA COPY PASTE 100% TANPA UBAH)
-        // ====================================================================
-        
+        // ---------------------------------------------------------------------
+        // 1. CARI DI DB 1 (KODE ASLI ANDA - 100% COPY PASTE)
+        // ---------------------------------------------------------------------
         $pesanan = Pesanan::where('resi', $resi)
             ->orWhere('nomor_invoice', $resi)
             ->first();
@@ -254,6 +251,7 @@ class TrackingController extends Controller
                 ->first();
             
             if ($orderModel) {
+                // Mapping Original dari Kode Anda
                 $pesanan = (object)[
                     'resi' => $orderModel->shipping_reference,
                     'nomor_invoice' => $orderModel->invoice_number,
@@ -293,30 +291,26 @@ class TrackingController extends Controller
             }
         }
 
-        // ====================================================================
-        // BAGIAN 2: MAPPING DB 2 (PERCETAKAN) - SESUAI NAMA KOLOM BARU
-        // ====================================================================
+        // ---------------------------------------------------------------------
+        // 2. CARI DI DB 2 (PERCETAKAN) - JIKA DB1 KOSONG
+        // ---------------------------------------------------------------------
         if (!$pesanan) {
             try {
-                $orderPercetakan = \DB::connection('mysql_second')
+                $orderPercetakan = DB::connection('mysql_second')
                     ->table('orders')
                     ->where('order_number', $resi)
                     ->orWhere('shipping_ref', $resi)
                     ->first();
 
                 if ($orderPercetakan) {
-                    
-                    // Logic Ekspedisi (ambil kata pertama dari 'TIKI - Tiki Reguler')
+                    // Logic Nama Ekspedisi
                     $rawService = $orderPercetakan->courier_service ?? 'Internal';
-                    $expeditionName = explode(' - ', $rawService)[0];
+                    $expName = explode(' - ', $rawService)[0];
 
                     $pesanan = (object)[
-                        // KOLOM UTAMA
                         'resi' => $orderPercetakan->shipping_ref ?? $orderPercetakan->order_number,
                         'nomor_invoice' => $orderPercetakan->order_number,
                         'status' => $orderPercetakan->status,
-                        
-                        // PENGIRIM (Tetap Sancaka)
                         'sender_name' => 'Sancaka Percetakan',
                         'sender_phone' => '08819435180',
                         'sender_address' => 'Jl.Dr.Wahidin No.18 A',
@@ -325,35 +319,31 @@ class TrackingController extends Controller
                         'sender_regency' => 'Ngawi',
                         'sender_province' => 'Jawa Timur',
                         'sender_postal_code' => '63211',
-
-                        // PENERIMA (Sesuai Kolom DB: customer_name, destination_address)
                         'receiver_name' => $orderPercetakan->customer_name ?? 'Pelanggan',
                         'receiver_phone' => $orderPercetakan->customer_phone ?? '-',
                         'receiver_address' => $orderPercetakan->destination_address ?? '-',
-                        'receiver_village' => '', // Kosongkan agar tidak undefined
+                        'receiver_village' => '', // Default Kosong
                         'receiver_district' => '',
                         'receiver_regency' => '',
                         'receiver_province' => '',
                         'receiver_postal_code' => '',
-
-                        // PAKET & BIAYA (Sesuai Kolom DB: final_price, shipping_cost)
                         'weight' => 1000,
+                        'isi_paket' => 'Produk Percetakan',
                         'item_description' => 'Produk Percetakan',
-                        'item_price' => $orderPercetakan->final_price ?? 0, // Harga setelah diskon
+                        'item_price' => $orderPercetakan->final_price ?? 0,
                         'shipping_cost' => $orderPercetakan->shipping_cost ?? 0,
                         'ongkir' => $orderPercetakan->shipping_cost ?? 0,
                         'insurance_cost' => 0,
-                        // Total COD = Harga Akhir + Ongkir
+                        'biaya_asuransi' => 0,
                         'total_cod' => ($orderPercetakan->final_price ?? 0) + ($orderPercetakan->shipping_cost ?? 0),
                         'cod_amount' => 0,
-                        
-                        // EKSPEDISI (Sesuai Kolom DB: courier_service)
-                        'expedition' => $expeditionName,
-                        'service_type' => 'REG',
                         'payment_method' => $orderPercetakan->payment_method ?? 'Manual',
-                        'created_at' => $orderPercetakan->created_at,
-                        'resi_aktual' => $orderPercetakan->shipping_ref,
+                        'expedition' => $expName,
+                        'courier' => $expName,
+                        'service_type' => 'REG',
                         'jasa_ekspedisi_aktual' => $orderPercetakan->courier_service ?? 'Internal',
+                        'resi_aktual' => $orderPercetakan->shipping_ref,
+                        'created_at' => $orderPercetakan->created_at,
                         'panjang' => 10, 'lebar' => 10, 'tinggi' => 10,
                     ];
                 }
@@ -366,8 +356,39 @@ class TrackingController extends Controller
             abort(404, 'Pesanan tidak ditemukan untuk dicetak.');
         }
 
-        return view('admin.pesanan.cetak_thermal', compact('pesanan'));
+        // ---------------------------------------------------------------------
+        // 3. NORMALISASI AKHIR (SOLUSI ERROR UNDEFINED VARIABLE / PROPERTY)
+        // ---------------------------------------------------------------------
+        // Langkah ini penting! Kita pastikan variabel yang dibutuhkan Blade TERSEDIA
+        // tanpa mengubah data asli dari DB1.
+        
+        // A. Siapkan $expeditionService (Solusi Error Undefined variable)
+        $ekspedisi = $pesanan->expedition ?? ($pesanan->courier ?? 'JNE');
+        $layanan   = $pesanan->service_type ?? 'REG';
+        $expeditionService = $ekspedisi . ' - ' . $layanan;
+
+        // B. Pastikan Properti Objek Lengkap (Solusi Error Undefined Property)
+        // Kita "Inject" properti yang hilang ke objek $pesanan secara dinamis
+        if (!isset($pesanan->item_price)) {
+            $pesanan->item_price = $pesanan->nilai_barang ?? 0;
+        }
+        if (!isset($pesanan->shipping_cost)) {
+            $pesanan->shipping_cost = $pesanan->ongkir ?? 0;
+        }
+        if (!isset($pesanan->expedition)) {
+            $pesanan->expedition = $pesanan->courier ?? 'JNE';
+        }
+        // Pastikan village ada (untuk DB1 Raw Model)
+        if (!isset($pesanan->receiver_village)) { $pesanan->receiver_village = ''; }
+        if (!isset($pesanan->receiver_district)) { $pesanan->receiver_district = ''; }
+        if (!isset($pesanan->receiver_regency)) { $pesanan->receiver_regency = ''; }
+        if (!isset($pesanan->receiver_province)) { $pesanan->receiver_province = ''; }
+        if (!isset($pesanan->receiver_postal_code)) { $pesanan->receiver_postal_code = ''; }
+
+        // Kirim $expeditionService ke view menggunakan compact
+        return view('admin.pesanan.cetak_thermal', compact('pesanan', 'expeditionService'));
     }
+
 
     /**
      * Helper Normalisasi
