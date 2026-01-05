@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log; // WAJIB
+use Illuminate\Support\Facades\Http;
 use Carbon\Carbon;
 use App\Models\Pesanan;
 use App\Models\SpxScan;
