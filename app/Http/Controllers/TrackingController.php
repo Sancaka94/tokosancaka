@@ -175,108 +175,100 @@ class TrackingController extends Controller
     
     private function normalizeKiriminAjaResponse(array $rawResponse, $pesanan): array
     {
-        // Debugging di Log untuk memastikan isi datanya
-        Log::info("RAW RESPONSE DARI API (DEBUG):", $rawResponse);
+        // Debug Log
+        Log::info("NORMALISASI DATA (WITH IMAGES):", [
+            'has_data' => isset($rawResponse['data']),
+        ]);
 
-        // -------------------------------------------------------------
-        // 1. CARI DATA HISTORY (AGRESIF)
-        // Kita cari array 'histories' dimanapun dia bersembunyi
-        // -------------------------------------------------------------
-        $histories = [];
+        // ============================================================
+        // 1. MAPPING DATA
+        // ============================================================
         
-        if (!empty($rawResponse['histories'])) {
-            // Jika ada di root (langsung dari API mentah)
-            $histories = $rawResponse['histories'];
-        } elseif (!empty($rawResponse['data']['histories'])) {
-            // Jika dibungkus oleh Service (umumnya struktur: ['data' => ['histories' => ...]])
-            $histories = $rawResponse['data']['histories'];
-        } elseif (!empty($rawResponse['details']['history'])) {
-            // Kadang ada API yang taruh di details
-            $histories = $rawResponse['details']['history'];
-        }
-
-        // -------------------------------------------------------------
-        // 2. CARI DATA UTAMA (Text, Details)
-        // -------------------------------------------------------------
-        // Cek text di root, atau di dalam data, atau default '-'
-        $apiTextStatus = $rawResponse['text'] ?? ($rawResponse['data']['text'] ?? '-');
+        $dataRoot = $rawResponse['data'] ?? [];
         
-        // Cek details di root, atau di dalam data
-        $details = $rawResponse['details'] ?? ($rawResponse['data']['summary'] ?? []);
+        // Ambil History & Summary
+        $histories = $dataRoot['histories'] ?? ($rawResponse['histories'] ?? []);
+        $details = $dataRoot['summary'] ?? ($rawResponse['details'] ?? []);
+        $apiTextStatus = $rawResponse['text'] ?? ($dataRoot['text'] ?? '-');
 
-        // -------------------------------------------------------------
-        // 3. OLAH HISTORY MENJADI ARRAY RAPI
-        // -------------------------------------------------------------
+        // ============================================================
+        // 2. NORMALISASI HISTORY (+ GAMBAR)
+        // ============================================================
         $normalizedHistories = collect($histories)->map(function ($history) use ($details) {
-            // Pastikan format tanggal aman
+            
+            // A. Parsing Tanggal
             try {
                 $timestampWIB = Carbon::parse($history['created_at'])->timezone('Asia/Jakarta');
             } catch (\Exception $e) {
-                $timestampWIB = now(); // Fallback jika tanggal error
+                $timestampWIB = now();
             }
-            
-            // Bersihkan teks status (hapus tanggal ganda yang menempel di teks)
+
+            // B. Bersihkan Teks Status
             $statusText = $history['status'] ?? '-';
             $statusText = preg_replace('/\s\d{2}-\d{2}-\d{4}\s\d{2}:\d{2}\s\|/i', '', $statusText);
 
+            // C. AMBIL GAMBAR (DARI LOG ANDA, LETAKNYA DI 'images')
+            // Pastikan formatnya array. Jika null, jadikan array kosong.
+            $evidenceImages = $history['images'] ?? [];
+            
+            // Opsional: Kadang ada juga di 'attachment'
+            if (empty($evidenceImages) && isset($history['attachment'])) {
+                $evidenceImages = [$history['attachment']];
+            }
+
             return (object)[
                 'status' => $statusText,
-                'lokasi' => $history['city_name'] ?? ($details['destination']['city'] ?? '-'), // Coba cari kota di history
+                'lokasi' => $history['city_name'] ?? ($details['destination']['city'] ?? 'Hub/Gudang'), 
                 'keterangan' => $history['note'] ?? ($history['status'] ?? ''),
-                'created_at' => $timestampWIB, 
+                'created_at' => $timestampWIB,
+                // --- TAMBAHAN PENTING: ARRAY GAMBAR ---
+                'images' => $evidenceImages, 
             ];
         })->toArray();
 
-        // -------------------------------------------------------------
-        // 4. GABUNGKAN DENGAN HISTORY INTERNAL (PESANAN DIBUAT)
-        // -------------------------------------------------------------
+        // ============================================================
+        // 3. GABUNG STATUS INTERNAL
+        // ============================================================
         if ($pesanan->created_at) {
             $createdHistory = (object)[
                 'status' => 'Pesanan Dibuat',
                 'lokasi' => 'Sistem Internal',
-                'keterangan' => 'Resi masuk ke sistem Sancaka Express.',
+                'keterangan' => 'Data pesanan masuk ke sistem.',
                 'created_at' => Carbon::parse($pesanan->created_at)->timezone('Asia/Jakarta'), 
+                'images' => [], // Internal biasanya tidak ada gambar
             ];
-            
-            // Cek duplikat agar tidak muncul double jika API sudah mencatat "Picked Up" di jam yang sama
-            $hasCreated = collect($normalizedHistories)->contains(function ($h) {
-                return stripos($h->status, 'dibuat') !== false || stripos($h->status, 'created') !== false;
+
+            $hasDuplicate = collect($normalizedHistories)->contains(function ($h) use ($createdHistory) {
+                return $h->created_at->diffInMinutes($createdHistory->created_at) < 2 || stripos($h->status, 'dibuat') !== false;
             });
 
-            if (!$hasCreated) {
+            if (!$hasDuplicate) {
                  $normalizedHistories[] = $createdHistory;
             }
         }
 
-        // Urutkan dari yang paling BARU ke LAMA
+        // Urutkan (Terbaru di atas)
         $sortedHistories = collect($normalizedHistories)->sortByDesc('created_at')->values();
 
-        // -------------------------------------------------------------
-        // 5. SIAPKAN DATA PENGIRIM & PENERIMA (FALLBACK KE DB JIKA API KOSONG)
-        // -------------------------------------------------------------
-        // Helper kecil untuk mengambil data bersarang tanpa error
-        $getDetail = function($key1, $key2) use ($details) {
-            return $details[$key1][$key2] ?? null;
-        };
+        // ============================================================
+        // 4. RETURN DATA FINAL
+        // ============================================================
+        $get = function($arr, $key1, $key2) { return $arr[$key1][$key2] ?? null; };
 
         return [
             'is_pesanan' => true,
             'resi' => $pesanan->resi,
             'resi_aktual' => $details['awb'] ?? $pesanan->resi_aktual,
             
-            // Pengirim: Prioritas API -> DB
-            'pengirim' => $getDetail('origin', 'name') ?? $pesanan->sender_name ?? '-',
-            'alamat_pengirim' => $getDetail('origin', 'address') ?? $pesanan->sender_address ?? '-',
-            'no_pengirim' => $getDetail('origin', 'phone') ?? $pesanan->sender_phone ?? '-',
+            'pengirim' => $get($details, 'origin', 'name') ?? $pesanan->sender_name ?? '-',
+            'alamat_pengirim' => $get($details, 'origin', 'address') ?? $pesanan->sender_address ?? '-',
+            'no_pengirim' => $get($details, 'origin', 'phone') ?? $pesanan->sender_phone ?? '-',
             
-            // Penerima: Prioritas API -> DB
-            'penerima' => $getDetail('destination', 'name') ?? $pesanan->receiver_name ?? '-',
-            'alamat_penerima' => $getDetail('destination', 'address') ?? $pesanan->receiver_address ?? '-',
-            'no_penerima' => $getDetail('destination', 'phone') ?? $pesanan->receiver_phone ?? '-',
+            'penerima' => $get($details, 'destination', 'name') ?? $pesanan->receiver_name ?? '-',
+            'alamat_penerima' => $get($details, 'destination', 'address') ?? $pesanan->receiver_address ?? '-',
+            'no_penerima' => $get($details, 'destination', 'phone') ?? $pesanan->receiver_phone ?? '-',
             
-            // Status Akhir
             'status' => $apiTextStatus, 
-            
             'tanggal_dibuat' => $pesanan->created_at,
             'histories' => $sortedHistories,
             'jasa_ekspedisi_aktual' => $pesanan->jasa_ekspedisi_aktual,
