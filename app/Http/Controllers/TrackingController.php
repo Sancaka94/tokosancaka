@@ -356,8 +356,6 @@ class TrackingController extends Controller
                 'resi' => $modelPesanan->resi,
                 'nomor_invoice' => $modelPesanan->nomor_invoice,
                 'status' => $modelPesanan->status,
-                
-                // --- PENGIRIM (Wajib ada properti village dll meski kosong) ---
                 'sender_name' => $modelPesanan->sender_name,
                 'sender_phone' => $modelPesanan->sender_phone,
                 'sender_address' => $modelPesanan->sender_address,
@@ -366,8 +364,6 @@ class TrackingController extends Controller
                 'sender_regency' => $modelPesanan->sender_regency ?? '',
                 'sender_province' => $modelPesanan->sender_province ?? '',
                 'sender_postal_code' => $modelPesanan->sender_postal_code ?? '',
-                
-                // --- PENERIMA (Wajib ada properti village dll meski kosong) ---
                 'receiver_name' => $modelPesanan->receiver_name,
                 'receiver_phone' => $modelPesanan->receiver_phone,
                 'receiver_address' => $modelPesanan->receiver_address,
@@ -376,28 +372,21 @@ class TrackingController extends Controller
                 'receiver_regency' => $modelPesanan->receiver_regency ?? '',
                 'receiver_province' => $modelPesanan->receiver_province ?? '',
                 'receiver_postal_code' => $modelPesanan->receiver_postal_code ?? '',
-                
-                // --- DATA PAKET (Sesuai Blade) ---
                 'weight' => $modelPesanan->weight ?? 1000,
                 'item_description' => $modelPesanan->isi_paket ?? 'Paket Ekspedisi',
                 'length' => $modelPesanan->panjang ?? 10,
                 'width' => $modelPesanan->lebar ?? 10,
                 'height' => $modelPesanan->tinggi ?? 10,
-                
-                // --- HARGA & COD (Sesuai Blade) ---
                 'item_price' => $modelPesanan->nilai_barang ?? 0, 
                 'price' => $modelPesanan->total_cod ?? ($modelPesanan->nilai_barang ?? 0), 
                 'shipping_cost' => $modelPesanan->ongkir ?? 0,
                 'insurance_cost' => $modelPesanan->biaya_asuransi ?? 0,
                 'cod_amount' => $modelPesanan->cod_amount ?? 0,
                 'payment_method' => $modelPesanan->payment_method ?? 'CASH',
-
-                // --- EKSPEDISI ---
                 'expedition' => $modelPesanan->courier ?? 'JNE',
                 'service_type' => $modelPesanan->service_type ?? 'REG',
                 'jasa_ekspedisi_aktual' => $modelPesanan->courier ?? 'JNE',
                 'resi_aktual' => $modelPesanan->resi_aktual,
-                
                 'created_at' => $modelPesanan->created_at,
             ];
         } 
@@ -418,8 +407,6 @@ class TrackingController extends Controller
                     'resi' => $orderModel->shipping_reference,
                     'nomor_invoice' => $orderModel->invoice_number,
                     'status' => $orderModel->status,
-                    
-                    // --- PENGIRIM ---
                     'sender_name' => $orderModel->store->name ?? 'N/A',
                     'sender_phone' => $orderModel->store->user->no_wa ?? '-',
                     'sender_address' => $orderModel->store->address_detail ?? '-',
@@ -428,8 +415,6 @@ class TrackingController extends Controller
                     'sender_regency' => $orderModel->store->regency ?? '',
                     'sender_province' => $orderModel->store->province ?? '',
                     'sender_postal_code' => $orderModel->store->postal_code ?? '',
-                    
-                    // --- PENERIMA ---
                     'receiver_name' => $orderModel->user->nama_lengkap ?? 'N/A',
                     'receiver_phone' => $orderModel->user->no_wa ?? '-',
                     'receiver_address' => $orderModel->shipping_address ?? '-',
@@ -438,33 +423,26 @@ class TrackingController extends Controller
                     'receiver_regency' => $orderModel->user->regency ?? '',
                     'receiver_province' => $orderModel->user->province ?? '',
                     'receiver_postal_code' => $orderModel->user->postal_code ?? '',
-                    
-                    // --- DATA PAKET ---
                     'weight' => $orderModel->total_weight ?? 1000,
                     'item_description' => 'Paket Toko Online (' . $orderModel->invoice_number . ')',
                     'length' => 10, 'width' => 10, 'height' => 10,
-                    
-                    // --- HARGA & COD ---
                     'item_price' => $orderModel->sub_total ?? 0,
                     'price' => $orderModel->grand_total ?? 0,
                     'shipping_cost' => $orderModel->shipping_cost ?? 0,
                     'insurance_cost' => 0,
                     'cod_amount' => 0, 
                     'payment_method' => $orderModel->payment_method ?? 'Transfer',
-
-                    // --- EKSPEDISI ---
                     'expedition' => $orderModel->courier ?? 'JNE',
                     'service_type' => $orderModel->service_type ?? 'REG',
                     'jasa_ekspedisi_aktual' => $orderModel->courier ?? 'JNE',
                     'resi_aktual' => null,
-                    
                     'created_at' => $orderModel->created_at,
                 ];
             }
         }
 
         // =========================================================================
-        // 3. CEK DB 2 (DATABASE PERCETAKAN) -> INI YANG SERING ERROR
+        // 3. CEK DB 2 (DATABASE PERCETAKAN)
         // =========================================================================
         if (!$pesanan) {
             try {
@@ -481,8 +459,6 @@ class TrackingController extends Controller
                         'resi' => $orderPercetakan->shipping_ref ?? $orderPercetakan->order_number,
                         'nomor_invoice' => $orderPercetakan->order_number,
                         'status' => $orderPercetakan->status,
-                        
-                        // --- PENGIRIM (Default Sancaka) ---
                         'sender_name' => 'Sancaka Percetakan',
                         'sender_phone' => '08819435180',
                         'sender_address' => 'Jl.Dr.Wahidin No.18 A',
@@ -491,36 +467,27 @@ class TrackingController extends Controller
                         'sender_regency' => 'Kab. Ngawi',
                         'sender_province' => 'Jawa Timur',
                         'sender_postal_code' => '63211',
-                        
-                        // --- PENERIMA (WAJIB ADA DEFAULT KOSONG AGAR TIDAK ERROR) ---
                         'receiver_name' => $orderPercetakan->customer_name ?? 'Pelanggan',
                         'receiver_phone' => $orderPercetakan->customer_phone ?? '-',
                         'receiver_address' => $orderPercetakan->destination_address ?? '-',
-                        'receiver_village' => '',  // <-- WAJIB ADA
-                        'receiver_district' => '', // <-- WAJIB ADA
-                        'receiver_regency' => '',  // <-- WAJIB ADA
-                        'receiver_province' => '', // <-- WAJIB ADA
-                        'receiver_postal_code' => '', // <-- WAJIB ADA
-                        
-                        // --- DATA PAKET ---
+                        'receiver_village' => '',  
+                        'receiver_district' => '', 
+                        'receiver_regency' => '', 
+                        'receiver_province' => '', 
+                        'receiver_postal_code' => '', 
                         'weight' => 1000, 
                         'item_description' => 'Produk Percetakan Sancaka',
                         'length' => 20, 'width' => 10, 'height' => 5,
-                        
-                        // --- HARGA & COD ---
                         'item_price' => $orderPercetakan->total_amount ?? 0,
                         'price' => $orderPercetakan->total_amount ?? 0,
                         'shipping_cost' => 0,
                         'insurance_cost' => 0,
                         'cod_amount' => 0,
                         'payment_method' => $orderPercetakan->payment_method ?? 'Manual',
-                        
-                        // --- EKSPEDISI ---
                         'expedition' => $orderPercetakan->courier_service ?? 'Express',
                         'service_type' => 'REG',
                         'jasa_ekspedisi_aktual' => $orderPercetakan->courier_service ?? 'Express',
                         'resi_aktual' => $orderPercetakan->shipping_ref,
-                        
                         'created_at' => $orderPercetakan->created_at,
                     ];
                 }
@@ -530,13 +497,16 @@ class TrackingController extends Controller
         }
 
         // =========================================================================
-        // 4. FINAL CHECK & VIEW
+        // 4. LOGGING & RETURN
         // =========================================================================
         if (!$pesanan) {
             abort(404, 'Data Resi tidak ditemukan.');
         }
 
-        // Variable extra untuk Blade agar tidak error saat strtoupper()
+        // --- INI PERINTAH UNTUK KIRIM DATA ARRAY KE LOG ---
+        Log::info(">>> DEBUG DATA ARRAY FINAL KE BLADE:", (array) $pesanan);
+        // --------------------------------------------------
+
         $expeditionService = $pesanan->expedition . ' - ' . $pesanan->service_type;
 
         return view('admin.pesanan.cetak_thermal', compact('pesanan', 'expeditionService'));
