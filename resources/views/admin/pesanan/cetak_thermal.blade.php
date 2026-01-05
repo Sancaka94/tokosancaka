@@ -116,24 +116,65 @@
 
     <div class="page" id="label-resi">
 
-        @php
+    @php
+        // 1. AMBIL DATA DARI CONTROLLER
+        // Kita ambil data mentah. Jika kosong, default ke 'SANCAKA'
+        $rawExpedition = strtoupper($pesanan->expedition ?? 'SANCAKA');
+        $serviceName   = strtoupper($pesanan->service_type ?? 'REG');
+
+        // 2. DETEKSI LOGO MANUAL (BYPASS HELPER)
+        // Ini solusi agar TIKI, JNE, POS dari DB2 bisa muncul logonya
+        $logoFilename = 'sancaka.png'; // Default
+        $expeditionDisplay = $rawExpedition;
+
+        if (str_contains($rawExpedition, 'JNE')) {
+            $expeditionDisplay = 'JNE';
+            $logoFilename = 'jne.png';
+        } 
+        elseif (str_contains($rawExpedition, 'J&T') || str_contains($rawExpedition, 'JNT')) {
+            $expeditionDisplay = 'J&T';
+            $logoFilename = 'jnt.png';
+        }
+        elseif (str_contains($rawExpedition, 'SICEPAT')) {
+            $expeditionDisplay = 'SICEPAT';
+            $logoFilename = 'sicepat.png';
+        }
+        elseif (str_contains($rawExpedition, 'TIKI')) { // <--- INI YG MEMPERBAIKI RESI TIKI ANDA
+            $expeditionDisplay = 'TIKI';
+            $logoFilename = 'tiki.png';
+        }
+        elseif (str_contains($rawExpedition, 'POS')) {
+            $expeditionDisplay = 'POS INDONESIA';
+            $logoFilename = 'pos.png';
+        }
+        elseif (str_contains($rawExpedition, 'SHOPEE') || str_contains($rawExpedition, 'SPX')) {
+            $expeditionDisplay = 'SHOPEE XPRESS';
+            $logoFilename = 'spx.png';
+        }
+        else {
+            // Jika tidak ada di daftar atas, baru coba tanya Helper
             $ship = \App\Helpers\ShippingHelper::parseShippingMethod($pesanan->expedition);
+            $expeditionDisplay = $ship['courier_name'] ?? $rawExpedition;
+            // Coba cari file png dengan nama yang sama (misal: lion.png)
+            $logoFilename = strtolower(str_replace(' ', '', $expeditionDisplay)) . '.png';
+        }
 
-            $expeditionName = $ship['courier_name'] ?? 'SANCAKA';
-            $expeditionService = $ship['service_name'] ?? 'Regular';
-            $logoUrlFromHelper = $ship['logo_url'] ?? null;
+        // 3. GENERATE URL LOGO FINAL
+        // Pastikan Anda punya file tiki.png, jne.png dll di folder public/storage/logo-ekspedisi/
+        $finalLogoUrl = asset('storage/logo-ekspedisi/' . $logoFilename);
+    @endphp
 
-            $localLogoPath = strtolower(str_replace(' ', '', $expeditionName));
-            $localLogoAssetUrl = asset('public/storage/logo-ekspedisi/' . $localLogoPath . '.png'); 
+    <div class="flex justify-between items-center border-b border-dashed border-gray-500 pb-2">
+        {{-- Logo Kiri (Sancaka) --}}
+        <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="Sancaka Express" class="h-10">
 
-            $finalLogoUrl = $logoUrlFromHelper ?: $localLogoAssetUrl;
-        @endphp
-
-        <div class="flex justify-between items-center border-b border-dashed border-gray-500 pb-2">
-            <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="Sancaka Express" class="h-10" onerror="this.style.display='none'">
-
-            <img src="{{ $finalLogoUrl }}" alt="{{ $expeditionName }} Logo" class="h-8" crossorigin="anonymous">
-        </div>
+        {{-- Logo Kanan (Ekspedisi) - SUDAH DIPERBAIKI --}}
+        <img src="{{ $finalLogoUrl }}" 
+             alt="{{ $expeditionDisplay }}" 
+             class="h-8" 
+             onerror="this.style.display='none';"> 
+             {{-- Jika gambar tidak ada, sembunyikan saja biar rapi --}}
+    </div>
 
         <div class="text-center mt-2"> 
             <p class="font-bold text-sm tracking-wide"><strong>NOMOR RESI TOKOSANCAKA.COM</strong></p>
