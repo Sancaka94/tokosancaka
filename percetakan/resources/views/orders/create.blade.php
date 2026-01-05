@@ -101,7 +101,17 @@
                             </div>
 
                             <div class="aspect-[4/3] bg-slate-50 rounded-xl flex items-center justify-center mb-3 text-3xl text-slate-300 group-hover:text-red-400 group-hover:bg-red-50 transition-colors">
-                                <i class="fas fa-box-open"></i>
+                                @if(!empty($product->image) && Storage::disk('public')->exists($product->image))
+                                    {{-- TAMPILKAN GAMBAR DARI DATABASE --}}
+                                    <img src="{{ asset('storage/' . $product->image) }}" 
+                                         alt="{{ $product->name }}" 
+                                         class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110">
+                                @else
+                                    {{-- JIKA TIDAK ADA GAMBAR, TAMPILKAN IKON --}}
+                                    <div class="text-3xl text-slate-300 group-hover:text-red-400 transition-colors">
+                                        <i class="fas fa-box-open"></i>
+                                    </div>
+                                @endif
                             </div>
                             
                             <div class="flex-1 flex flex-col">
