@@ -13,7 +13,7 @@
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
     
     <style>
-        .gradient-indigo { background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%); }
+        .gradient-red { background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%); }
         .text-gradient { background: linear-gradient(90deg, #4F46E5, #06B6D4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
     </style>
 </head>
@@ -23,21 +23,21 @@
         <nav class="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
             <div class="flex items-center gap-3">
                 <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="Logo" class="h-10 w-10">
-                <span class="text-xl font-black tracking-tighter uppercase">Sancaka<span class="text-indigo-600">Group</span></span>
+                <span class="text-xl font-black tracking-tighter uppercase">Sancaka<span class="text-red-600">Group</span></span>
             </div>
             
             <div class="hidden md:flex items-center gap-8 text-sm font-bold text-slate-500 uppercase tracking-widest">
-                <a href="#layanan" class="hover:text-indigo-600 transition">Layanan</a>
-                <a href="#ekspedisi" class="hover:text-indigo-600 transition">Ekspedisi</a>
-                <a href="#lokasi" class="hover:text-indigo-600 transition">Lokasi</a>
+                <a href="#layanan" class="hover:text-red-600 transition">Layanan</a>
+                <a href="#ekspedisi" class="hover:text-red-600 transition">Ekspedisi</a>
+                <a href="#lokasi" class="hover:text-red-600 transition">Lokasi</a>
             </div>
 
             <div class="flex items-center gap-4">
                 @auth
-                    <a href="{{ url('/dashboard') }}" class="px-6 py-2 bg-indigo-600 text-white rounded-full font-bold text-sm shadow-lg shadow-indigo-200">Panel Admin</a>
+                    <a href="{{ url('/dashboard') }}" class="px-6 py-2 bg-red-600 text-white rounded-full font-bold text-sm shadow-lg shadow-red-200">Panel Admin</a>
                 @else
                     <a href="{{ route('member.login') }}" class="text-sm font-bold text-slate-700">Login</a>
-                    <a href="{{ url('/join-partner') }}" class="px-6 py-2 border-2 border-indigo-600 text-indigo-600 rounded-full font-bold text-sm hover:bg-indigo-600 hover:text-white transition">Daftar</a>
+                    <a href="{{ url('/join-partner') }}" class="px-6 py-2 border-2 border-red-600 text-red-600 rounded-full font-bold text-sm hover:bg-red-600 hover:text-white transition">Daftar</a>
                 @endauth
             </div>
         </nav>
@@ -46,10 +46,10 @@
     <section class="pt-40 pb-20 bg-slate-50">
         <div class="max-w-7xl mx-auto px-4 flex flex-col lg:flex-row items-center gap-12">
             <div class="lg:w-1/2 text-left">
-                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold mb-6">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-100 text-red-700 text-xs font-bold mb-6">
                     <span class="relative flex h-2 w-2">
-                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                        <span class="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
                     </span>
                     Buka Sampai 21:00 WIB
                 </div>
@@ -60,7 +60,7 @@
                     Layanan terpadu cetak dokumen, fotocopy kilat, hingga pengiriman paket ke seluruh Indonesia dengan tarif termurah.
                 </p>
                 <div class="flex flex-wrap gap-4">
-                    <a href="https://wa.me/6285745808809" class="px-8 py-4 gradient-indigo text-white font-bold rounded-2xl shadow-xl shadow-indigo-200 flex items-center gap-3">
+                    <a href="https://wa.me/6285745808809" class="px-8 py-4 gradient-red text-white font-bold rounded-2xl shadow-xl shadow-red-200 flex items-center gap-3">
                         Order via WhatsApp
                     </a>
                     <div class="flex items-center gap-3 px-6 py-4 bg-white rounded-2xl border border-slate-200 shadow-sm">
@@ -72,7 +72,7 @@
             <div class="lg:w-1/2 relative">
                 <img src="https://tokosancaka.com/storage/uploads/sancaka.png" class="w-64 h-64 mx-auto animate-bounce duration-[3000ms] opacity-20 absolute top-0 left-0 right-0" alt="">
                 <div class="relative bg-white p-8 rounded-[40px] shadow-2xl border border-slate-100">
-                    <h3 class="font-bold text-indigo-600 uppercase tracking-widest text-xs mb-4">Layanan Ekspedisi Kami</h3>
+                    <h3 class="font-bold text-red-600 uppercase tracking-widest text-xs mb-4">Layanan Ekspedisi Kami</h3>
                     <div class="grid grid-cols-2 gap-4">
                         <div class="p-4 bg-slate-50 rounded-2xl text-center">
                             <span class="block text-2xl mb-2">📦</span>
@@ -102,20 +102,20 @@
                         <li>✅ Hasil Copy Tajam</li>
                         <li>✅ Grosir Lebih Murah</li>
                     </ul>
-                    <a href="https://wa.me/6285745808809" class="block py-3 text-center rounded-xl bg-slate-100 font-bold hover:bg-indigo-600 hover:text-white transition">Pesan</a>
+                    <a href="https://wa.me/6285745808809" class="block py-3 text-center rounded-xl bg-slate-100 font-bold hover:bg-red-600 hover:text-white transition">Pesan</a>
                 </div>
-                <div id="ekspedisi" class="gradient-indigo rounded-[32px] p-8 text-white shadow-2xl shadow-indigo-200 transform md:-translate-y-6">
+                <div id="ekspedisi" class="gradient-red rounded-[32px] p-8 text-white shadow-2xl shadow-red-200 transform md:-translate-y-6">
                     <h3 class="text-xl font-bold mb-4">Jasa Pengiriman</h3>
                     <div class="flex items-baseline gap-1 mb-6">
                         <span class="text-4xl font-black italic text-cyan-300">Ekspedisi</span>
                     </div>
-                    <ul class="space-y-4 mb-8 text-sm font-medium text-indigo-100">
+                    <ul class="space-y-4 mb-8 text-sm font-medium text-red-100">
                         <li>✅ Ekspedisi Terdekat Ngawi</li>
                         <li>✅ Tarif Termurah & Aman</li>
                         <li>✅ Pickup Paket ke Rumah</li>
                         <li>✅ Tracking Real-time</li>
                     </ul>
-                    <a href="https://wa.me/628819435180" class="block py-4 text-center rounded-xl bg-white text-indigo-600 font-black shadow-lg">HUBUNGI EKSPEDISI</a>
+                    <a href="https://wa.me/628819435180" class="block py-4 text-center rounded-xl bg-white text-red-600 font-black shadow-lg">HUBUNGI EKSPEDISI</a>
                 </div>
                 <div class="border border-slate-100 rounded-[32px] p-8 hover:shadow-2xl transition">
                     <h3 class="text-xl font-bold mb-4">Jilid & Print</h3>
@@ -128,7 +128,7 @@
                         <li>✅ Jilid Mika / Buffalo</li>
                         <li>✅ Jilid Lakban Kilat</li>
                     </ul>
-                    <a href="https://wa.me/6285745808809" class="block py-3 text-center rounded-xl bg-slate-100 font-bold hover:bg-indigo-600 hover:text-white transition">Pesan</a>
+                    <a href="https://wa.me/6285745808809" class="block py-3 text-center rounded-xl bg-slate-100 font-bold hover:bg-red-600 hover:text-white transition">Pesan</a>
                 </div>
             </div>
         </div>
@@ -172,8 +172,8 @@
             <h3 class="text-2xl font-black italic mb-2 uppercase">Sancaka Group Ngawi</h3>
             <p class="text-slate-400 mb-8 max-w-sm mx-auto">Bisnis yang dikelola dengan dedikasi untuk melayani kebutuhan masyarakat Ngawi.</p>
             <div class="flex justify-center gap-6 mb-12">
-                <a href="https://wa.me/6285745808809" class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center hover:bg-indigo-600 hover:text-white transition">WA</a>
-                <a href="https://sancaka.bisnis.pro" class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center hover:bg-indigo-600 hover:text-white transition">WEB</a>
+                <a href="https://wa.me/6285745808809" class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center hover:bg-red-600 hover:text-white transition">WA</a>
+                <a href="https://sancaka.bisnis.pro" class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center hover:bg-red-600 hover:text-white transition">WEB</a>
             </div>
             <div class="text-slate-300 text-[10px] font-bold tracking-[0.2em] uppercase">
                 &copy; 2026 Sancaka Group - Jasa Pengiriman & Percetakan Terpercaya
