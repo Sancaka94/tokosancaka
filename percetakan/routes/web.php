@@ -8,6 +8,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\AffiliateController;
 use App\Http\Controllers\CouponController;
+use App\Http\Controllers\MemberAuthController;
 
 
 Route::middleware(['auth'])->group(function () {
@@ -58,6 +59,18 @@ Route::resource('reports', ReportController::class)->except(['create', 'store'])
 // Kembalikan jadi resource biasa (tanpa except)
 Route::resource('coupons', CouponController::class);
     
+});
+
+Route::prefix('member')->name('member.')->group(function () {
+    Route::middleware('guest:member')->group(function () {
+        Route::get('/login', [MemberAuthController::class, 'showLoginForm'])->name('login');
+        Route::post('/login', [MemberAuthController::class, 'login'])->name('login.post');
+    });
+
+    Route::middleware('auth:member')->group(function () {
+        Route::get('/dashboard', [MemberAuthController::class, 'dashboard'])->name('dashboard');
+        Route::post('/logout', [MemberAuthController::class, 'logout'])->name('logout');
+    });
 });
 
 // Route untuk halaman Cara / Panduan
