@@ -42,6 +42,41 @@
                     </div>
                 </div>
 
+                @if ($errors->any())
+    <div class="mb-4 bg-red-50 border-l-4 border-red-500 p-4 rounded-r shadow-sm">
+        <div class="flex">
+            <div class="flex-shrink-0">
+                <i class="fas fa-exclamation-circle text-red-500"></i>
+            </div>
+            <div class="ml-3">
+                <h3 class="text-sm font-bold text-red-800">Gagal Menyimpan Data</h3>
+                <div class="mt-2 text-xs text-red-700">
+                    <ul class="list-disc list-inside">
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+@endif
+
+@if (session('success'))
+    <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 3000)" 
+         class="mb-4 bg-green-50 border-l-4 border-green-500 p-4 rounded-r shadow-sm flex items-center gap-3">
+        <i class="fas fa-check-circle text-green-500"></i>
+        <p class="text-sm text-green-700 font-bold">{{ session('success') }}</p>
+    </div>
+@endif
+
+@if (session('error'))
+    <div class="mb-4 bg-red-50 border-l-4 border-red-500 p-4 rounded-r shadow-sm flex items-center gap-3">
+        <i class="fas fa-times-circle text-red-500"></i>
+        <p class="text-sm text-red-700 font-bold">{{ session('error') }}</p>
+    </div>
+@endif
+
                 {{-- PERUBAHAN 1: Tambahkan enctype="multipart/form-data" --}}
                 <form action="{{ route('products.store') }}" method="POST" enctype="multipart/form-data" class="space-y-4" 
                       x-data="{ submitting: false, imgPreview: null }" 
