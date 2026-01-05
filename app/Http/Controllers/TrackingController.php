@@ -47,7 +47,6 @@ class TrackingController extends Controller
             ->orWhere('nomor_invoice', $resi)
             ->first();
 
-        // Jika tidak ketemu di Pesanan, cari di Order
         if (!$pesanan) {
             $orderModel = Order::with(['store', 'user'])
                 ->where('shipping_reference', $resi)
@@ -55,7 +54,9 @@ class TrackingController extends Controller
                 ->first();
             
             if ($orderModel) {
-                // Mapping Data Order (Kode Asli Anda)
+                // Gunakan Helper untuk parsing layanan Order DB1
+                $shipInfo = ShippingHelper::parseShippingMethod($orderModel->courier . ' ' . ($orderModel->service_type ?? 'REG'));
+
                 $pesanan = (object)[
                     'resi' => $orderModel->shipping_reference,
                     'resi_aktual' => $orderModel->shipping_reference,
@@ -77,8 +78,8 @@ class TrackingController extends Controller
                     'receiver_postal_code' => $orderModel->user->postal_code ?? 'N/A',
                     'receiver_phone' => $orderModel->user->no_wa ?? 'N/A',
                     'status' => $orderModel->status ?? 'N/A',
-                    'jasa_ekspedisi_aktual' => $orderModel->courier ?? null,
-                    'service_type' => explode('-', $orderModel->service_type ?? '')[0] ?? 'regular', 
+                    'jasa_ekspedisi_aktual' => $shipInfo['name'],
+                    'service_type' => $shipInfo['service_name'],
                     'created_at' => $orderModel->created_at,
                 ];
             }
@@ -116,81 +117,66 @@ class TrackingController extends Controller
             }
         }
 
-        // ====================================================================
-        // BAGIAN 2: MAPPING DB 2 (PERCETAKAN)
-        // ====================================================================
-        if (!$pesanan) {
+        // ==========================================================
+        // 2. CARI DI DB 2 (PERCETAKAN) - UPDATE LOGIKA BARU
+        // ==========================================================
+        if (!$result) {
             try {
-                $orderPercetakan = \DB::connection('mysql_second')
+                // Debugging: Cek apakah koneksi berhasil (Lihat di storage/logs/laravel.log jika error)
+                $percetakan = DB::connection('mysql_second')
                     ->table('orders')
                     ->where('order_number', $resi)
                     ->orWhere('shipping_ref', $resi)
                     ->first();
 
-                if ($orderPercetakan) {
-                    
-                    // Parsing Data Kurir
-                    $rawService = $orderPercetakan->courier_service ?? 'Internal';
+                if ($percetakan) {
+                    // --- 1. PARSING & CLEANING ---
+                    $rawService = $percetakan->courier_service ?? 'Internal';
                     $shipInfo = ShippingHelper::parseShippingMethod($rawService);
 
-                    // Bersihkan Nama Layanan
+                    // Bersihkan nama layanan (Hapus nama kurir ganda)
                     $cleanService = str_replace($shipInfo['courier_name'], '', $shipInfo['service_name']);
                     $cleanService = trim($cleanService);
                     if (empty($cleanService)) $cleanService = 'Regular';
+                    
+                    // Format tampilan yang rapi (TIKI - REGULER)
+                    $displayEkspedisi = $shipInfo['courier_name'] . ' - ' . strtoupper($cleanService);
 
-                    $pesanan = (object)[
-                        // KOLOM UTAMA
-                        'resi' => $orderPercetakan->shipping_ref ?? $orderPercetakan->order_number,
-                        'nomor_invoice' => $orderPercetakan->order_number,
-                        'status' => $orderPercetakan->status,
-                        
-                        // PENGIRIM
-                        'sender_name' => 'Sancaka Percetakan',
-                        'sender_phone' => '08819435180',
-                        'sender_address' => 'Jl.Dr.Wahidin No.18 A',
-                        'sender_village' => 'Ketanggi',
-                        'sender_district' => 'Ngawi',
-                        'sender_regency' => 'Ngawi',
-                        'sender_province' => 'Jawa Timur',
-                        'sender_postal_code' => '63211',
+                    $fakeHistory = collect([
+                        (object)[
+                            'status' => 'Pesanan Dibuat',
+                            'lokasi' => 'Percetakan Sancaka',
+                            'keterangan' => 'Pesanan masuk ke sistem percetakan.',
+                            'created_at' => Carbon::parse($percetakan->created_at)
+                        ],
+                        (object)[
+                            'status' => $percetakan->status, 
+                            'lokasi' => 'Percetakan Sancaka',
+                            'keterangan' => 'Status terkini: ' . $percetakan->status,
+                            'created_at' => Carbon::parse($percetakan->updated_at ?? $percetakan->created_at)
+                        ]
+                    ])->sortByDesc('created_at')->values();
 
-                        // PENERIMA
-                        'receiver_name' => $orderPercetakan->customer_name ?? 'Pelanggan',
-                        'receiver_phone' => $orderPercetakan->customer_phone ?? '-',
-                        'receiver_address' => $orderPercetakan->destination_address ?? '-',
-                        'receiver_village' => '', 
-                        'receiver_district' => '',
-                        'receiver_regency' => '',
-                        'receiver_province' => '',
-                        'receiver_postal_code' => '',
-
-                        // PAKET & BIAYA
-                        'weight' => 1000, 
-                        'item_description' => 'Produk Percetakan',
-                        'item_price' => $orderPercetakan->final_price ?? 0, 
-                        'shipping_cost' => $orderPercetakan->shipping_cost ?? 0,
-                        'ongkir' => $orderPercetakan->shipping_cost ?? 0,
-                        'insurance_cost' => 0,
-                        'total_cod' => ($orderPercetakan->final_price ?? 0) + ($orderPercetakan->shipping_cost ?? 0),
-                        'cod_amount' => 0,
-                        
-                        // EKSPEDISI & PEMBAYARAN
-                        'expedition' => $shipInfo['courier_name'], 
-                        'service_type' => strtoupper($cleanService),
-                        'payment_method' => strtoupper($orderPercetakan->payment_method ?? 'MANUAL'),
-                        
-                        'created_at' => $orderPercetakan->created_at,
-                        
-                        // --- PERUBAHAN DI SINI ---
-                        // Set NULL agar barcode bawah (Resi Aktual) HILANG untuk DB 2
-                        'resi_aktual' => null, 
-                        'jasa_ekspedisi_aktual' => null, 
-
-                        'panjang' => 10, 'lebar' => 10, 'tinggi' => 10,
+                    $result = [
+                        'is_pesanan' => true,
+                        'resi' => $percetakan->shipping_ref ?? $percetakan->order_number,
+                        'resi_aktual' => $percetakan->shipping_ref,
+                        'pengirim' => 'Sancaka Percetakan',
+                        'alamat_pengirim' => 'Jl.Dr.Wahidin No.18 A, Ngawi',
+                        'no_pengirim' => '08819435180',
+                        'penerima' => $percetakan->customer_name ?? 'Pelanggan',
+                        'alamat_penerima' => $percetakan->destination_address ?? '-',
+                        'no_penerima' => $percetakan->customer_phone ?? '-',
+                        'status' => $percetakan->status,
+                        'tanggal_dibuat' => $percetakan->created_at,
+                        'histories' => $fakeHistory,
+                        // Gunakan format yang sudah dibersihkan
+                        'jasa_ekspedisi_aktual' => $displayEkspedisi, 
                     ];
                 }
             } catch (\Exception $e) {
-                // Silent Fail
+                // PENTING: Log error agar ketahuan kenapa "Tidak Ditemukan"
+                Log::error("Error Tracking DB2 (Percetakan): " . $e->getMessage());
             }
         }
 
@@ -263,7 +249,6 @@ class TrackingController extends Controller
 
         return redirect()->route('tracking.index')->with('error', "Nomor resi '{$resi}' tidak ditemukan.");
     }
-
     /**
      * [CETAK THERMAL ADMIN]
      * Logika: DB1 -> DB2 (Percetakan)
