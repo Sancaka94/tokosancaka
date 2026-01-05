@@ -42,7 +42,6 @@ Route::middleware('auth')->group(function () {
 
     // Rute tambahan untuk produk
     Route::get('/orders/{id}', [OrderController::class, 'show'])->name('orders.show');
-    Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
 
     // Daftar Produk & Form Tambah
     Route::get('/products', [ProductController::class, 'index'])->name('products.index');
@@ -66,6 +65,8 @@ Route::resource('coupons', CouponController::class);
 Route::get('/cara', function () {
     return view('cara');
 });
+
+Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
 
 
 // Route untuk mencari alamat (Autocomplete)
