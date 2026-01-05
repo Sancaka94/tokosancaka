@@ -63,7 +63,7 @@
                     <div class="flex-1 pr-6">
                         <h4 class="text-xs font-bold text-red-800 uppercase tracking-wide mb-0.5">Info Promo & Affiliasi</h4>
                         <p class="text-[11px] text-red-700 leading-relaxed">
-                            Ingin diskon <span class="font-bold">30%</span>? Masukan kode <span class="font-bold bg-white px-1 rounded border border-red-200">KUPON</span>. 
+                            Ingin diskon <span class="font-bold">30%</span>? Masukan kode <span class="font-bold bg-white px-1 rounded border border-red-200">KUPON</span> Pada kolom KODE PROMO. 
                             Anda juga dapat menjadi <a href="https://tokosancaka.com/percetakan/public/join-partner" target="_blank" class="underline font-bold hover:text-red-900"><strong>Affiliator (Klik Disini)</strong></a> untuk komisi besar.
                         </p>
                     </div>
