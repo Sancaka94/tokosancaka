@@ -342,7 +342,7 @@ class TrackingController extends Controller
         $pesanan = null;
 
         // =========================================================================
-        // 1. CEK DB 1 (MODEL: PESANAN - INPUT MANUAL)
+        // 1. CEK DB 1 (MODEL: PESANAN)
         // =========================================================================
         $modelPesanan = Pesanan::where('resi', $resi)
             ->orWhere('resi_aktual', $resi)
@@ -351,11 +351,41 @@ class TrackingController extends Controller
 
         if ($modelPesanan) {
             Log::info("KETEMU di DB1 (Table Pesanan). ID: {$modelPesanan->id}");
+
+            // --- LOGIKA BARU: PARSING STRING DATA (regular-jne-REG23-19000...) ---
+            // Kita coba ambil data dari kolom yang berisi string panjang itu
+            // Biasanya ada di kolom 'service_type', 'layanan', atau 'courier_service'
+            // Kita cek satu-satu mana yang berisi string panjang
+            $rawString = $modelPesanan->layanan ?? ($modelPesanan->service_type ?? '');
+            
+            // Default Values
+            $parsedOngkir = 0;
+            $parsedExpedition = 'JNE'; // Default JNE jika tidak terbaca
+            $parsedService = 'REG';
+
+            if (str_contains($rawString, '-')) {
+                // Format: type-courier-service-price-insurance-fee
+                // Contoh: regular-jne-REG23-19000-0-2500
+                $parts = explode('-', $rawString);
+                
+                if (count($parts) >= 4) {
+                    $parsedExpedition = strtoupper($parts[1]); // Index 1: jne
+                    $parsedService = strtoupper($parts[2]);    // Index 2: REG23
+                    $parsedOngkir = (int) $parts[3];           // Index 3: 19000 (Ongkir!)
+                }
+            }
+
+            // Tentukan Nilai Akhir (Prioritas: Kolom Asli -> Hasil Parsing)
+            $finalOngkir = $modelPesanan->ongkir > 0 ? $modelPesanan->ongkir : $parsedOngkir;
+            $finalExpedition = ($modelPesanan->courier && $modelPesanan->courier !== 'regular') ? $modelPesanan->courier : $parsedExpedition;
+            // ---------------------------------------------------------------------
             
             $pesanan = (object)[
                 'resi' => $modelPesanan->resi,
                 'nomor_invoice' => $modelPesanan->nomor_invoice,
                 'status' => $modelPesanan->status,
+                
+                // Pengirim
                 'sender_name' => $modelPesanan->sender_name,
                 'sender_phone' => $modelPesanan->sender_phone,
                 'sender_address' => $modelPesanan->sender_address,
@@ -364,6 +394,8 @@ class TrackingController extends Controller
                 'sender_regency' => $modelPesanan->sender_regency ?? '',
                 'sender_province' => $modelPesanan->sender_province ?? '',
                 'sender_postal_code' => $modelPesanan->sender_postal_code ?? '',
+                
+                // Penerima
                 'receiver_name' => $modelPesanan->receiver_name,
                 'receiver_phone' => $modelPesanan->receiver_phone,
                 'receiver_address' => $modelPesanan->receiver_address,
@@ -372,27 +404,34 @@ class TrackingController extends Controller
                 'receiver_regency' => $modelPesanan->receiver_regency ?? '',
                 'receiver_province' => $modelPesanan->receiver_province ?? '',
                 'receiver_postal_code' => $modelPesanan->receiver_postal_code ?? '',
+                
+                // Paket
                 'weight' => $modelPesanan->weight ?? 1000,
                 'item_description' => $modelPesanan->isi_paket ?? 'Paket Ekspedisi',
                 'length' => $modelPesanan->panjang ?? 10,
                 'width' => $modelPesanan->lebar ?? 10,
                 'height' => $modelPesanan->tinggi ?? 10,
+                
+                // Biaya (Gunakan Final Ongkir hasil parsing tadi)
                 'item_price' => $modelPesanan->nilai_barang ?? 0, 
                 'price' => $modelPesanan->total_cod ?? ($modelPesanan->nilai_barang ?? 0), 
-                'shipping_cost' => $modelPesanan->ongkir ?? 0,
+                'shipping_cost' => $finalOngkir, // <--- SUDAH DIPERBAIKI (19000)
                 'insurance_cost' => $modelPesanan->biaya_asuransi ?? 0,
                 'cod_amount' => $modelPesanan->cod_amount ?? 0,
                 'payment_method' => $modelPesanan->payment_method ?? 'CASH',
-                'expedition' => $modelPesanan->courier ?? 'JNE',
-                'service_type' => $modelPesanan->service_type ?? 'REG',
-                'jasa_ekspedisi_aktual' => $modelPesanan->courier ?? 'JNE',
+
+                // Ekspedisi (Gunakan Final Expedition hasil parsing tadi)
+                'expedition' => $finalExpedition, // <--- SUDAH DIPERBAIKI (JNE)
+                'service_type' => $parsedService,
+                'jasa_ekspedisi_aktual' => $finalExpedition,
                 'resi_aktual' => $modelPesanan->resi_aktual,
+                
                 'created_at' => $modelPesanan->created_at,
             ];
         } 
         
         // =========================================================================
-        // 2. CEK DB 1 (MODEL: ORDER - TOKO ONLINE)
+        // 2. CEK DB 1 (MODEL: ORDER)
         // =========================================================================
         if (!$pesanan) {
             $orderModel = Order::with(['store', 'user'])
@@ -402,7 +441,6 @@ class TrackingController extends Controller
 
             if ($orderModel) {
                 Log::info("KETEMU di DB1 (Table Order)");
-                
                 $pesanan = (object)[
                     'resi' => $orderModel->shipping_reference,
                     'nomor_invoice' => $orderModel->invoice_number,
@@ -442,7 +480,7 @@ class TrackingController extends Controller
         }
 
         // =========================================================================
-        // 3. CEK DB 2 (DATABASE PERCETAKAN)
+        // 3. CEK DB 2 (PERCETAKAN)
         // =========================================================================
         if (!$pesanan) {
             try {
@@ -454,7 +492,6 @@ class TrackingController extends Controller
 
                 if ($orderPercetakan) {
                     Log::info("KETEMU di DB2 (Percetakan)!");
-
                     $pesanan = (object)[
                         'resi' => $orderPercetakan->shipping_ref ?? $orderPercetakan->order_number,
                         'nomor_invoice' => $orderPercetakan->order_number,
@@ -497,15 +534,14 @@ class TrackingController extends Controller
         }
 
         // =========================================================================
-        // 4. LOGGING & RETURN
+        // 4. RETURN VIEW
         // =========================================================================
         if (!$pesanan) {
             abort(404, 'Data Resi tidak ditemukan.');
         }
 
-        // --- INI PERINTAH UNTUK KIRIM DATA ARRAY KE LOG ---
-        Log::info(">>> DEBUG DATA ARRAY FINAL KE BLADE:", (array) $pesanan);
-        // --------------------------------------------------
+        // Log hasil akhir untuk memastikan
+        Log::info("DATA THERMAL FINAL:", (array) $pesanan);
 
         $expeditionService = $pesanan->expedition . ' - ' . $pesanan->service_type;
 
