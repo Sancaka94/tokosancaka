@@ -71,7 +71,7 @@
         <div class="p-4 transition-all duration-300" :class="(isExpanded || isHovered) ? '' : 'lg:hidden'">
             <form action="#" method="get">
                 <div class="relative">
-                    <input type="text" name="q" class="w-full bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block pl-10 p-2.5" placeholder="Cari...">
+                    <input type="text" name="q" class="w-full bg-gray-300 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block pl-10 p-2.5" placeholder="Cari...">
                     <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                         <i class="fa-solid fa-search text-gray-400"></i>
                     </div>
