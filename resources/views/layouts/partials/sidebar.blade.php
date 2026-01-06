@@ -27,7 +27,7 @@
        ZOOM 75% applied here
     --}}
     <aside id="main-sidebar" 
-        style="zoom: 80%;"
+        style="zoom: 90%;"
         {{-- Hover hanya aktif di layar besar (Desktop) --}}
         @mouseenter="if(window.innerWidth >= 1024) isHovered = true"
         @mouseleave="isHovered = false"
