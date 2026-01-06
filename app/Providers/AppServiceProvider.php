@@ -47,7 +47,7 @@ class AppServiceProvider extends ServiceProvider
     try {
         if (auth()->check()) {
             // Cache data global (Monitor & Aktivitas)
-            $stats = Cache::remember('global_sidebar_data_v4', 5, function () { // Cache 30 detik
+            $stats = Cache::remember('global_sidebar_data_v5', 5, function () { // Cache 30 detik
                 return [
                     // --- DATA MONITOR (8 KARTU) ---
                     'totalPendapatan' => \App\Models\TopUp::where('status', 'success')->sum('amount') 
@@ -66,11 +66,8 @@ class AppServiceProvider extends ServiceProvider
                     // --- DATA AKTIVITAS (Baru Ditambahkan) ---
                     'pesananTerbaru' => Pesanan::with('pembeli')
                                         ->latest('created_at')
-                                        // --- DATA AKTIVITAS (DIBUAT UNLIMITED) ---
-                    'pesananTerbaru' => Pesanan::with('pembeli')
-                                        ->latest('created_at')
-                                        // ->take(10)  <-- HAPUS BARIS INI
-                                        ->limit(100) // OPSIONAL: Saya sarankan tetap beri limit (misal 50/100) agar website tidak berat jika ada ribuan data
+                                        //->take(10)
+                                        ->limit(100) // Ambil 10 terakhir
                                         ->get()
                 ];
             });
