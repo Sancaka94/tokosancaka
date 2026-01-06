@@ -166,17 +166,44 @@
                         <td class="px-4 py-4 align-top">
                             @if(!empty($order->courier_service))
                                 <div class="flex flex-col gap-2">
-                                    <div class="flex items-start gap-2">
-                                        <div class="bg-slate-100 p-1.5 rounded text-slate-500">
-                                            <i class="fas fa-truck text-xs"></i>
-                                        </div>
-                                        <div>
-                                            <div class="font-bold text-slate-700 text-xs uppercase">{{ $order->courier_service }}</div>
-                                            <div class="text-[11px] font-bold text-emerald-600">
-                                                Rp {{ number_format($order->shipping_cost, 0, ',', '.') }}
-                                            </div>
-                                        </div>
-                                    </div>
+                                    {{-- LOGIKA DETEKSI LOGO --}}
+@php
+    $kurir = strtolower($order->courier_service);
+    $logo = null;
+
+    if (str_contains($kurir, 'jne')) $logo = 'jne.png';
+    elseif (str_contains($kurir, 'sicepat')) $logo = 'sicepat.png';
+    elseif (str_contains($kurir, 'j&t') || str_contains($kurir, 'jnt')) $logo = 'jnt.png';
+    elseif (str_contains($kurir, 'pos')) $logo = 'posindonesia.png';
+    elseif (str_contains($kurir, 'anteraja')) $logo = 'anteraja.png';
+    elseif (str_contains($kurir, 'ninja')) $logo = 'ninja.png';
+    elseif (str_contains($kurir, 'id express') || str_contains($kurir, 'idx')) $logo = 'idx.png';
+    elseif (str_contains($kurir, 'tiki')) $logo = 'tiki.png';
+    elseif (str_contains($kurir, 'spx') || str_contains($kurir, 'shopee')) $logo = 'spx.png';
+    elseif (str_contains($kurir, 'lion')) $logo = 'lion.png';
+    elseif (str_contains($kurir, 'gojek') || str_contains($kurir, 'gosend')) $logo = 'gosend.png';
+    elseif (str_contains($kurir, 'grab')) $logo = 'grab.png';
+@endphp
+
+<div class="flex items-start gap-2">
+    {{-- TAMPILKAN LOGO JIKA ADA, JIKA TIDAK PAKAI IKON TRUK --}}
+    <div class="bg-white border border-slate-200 p-1 rounded h-10 w-12 flex items-center justify-center overflow-hidden">
+        @if($logo)
+            <img src="{{ asset('storage/logo-ekspedisi/' . $logo) }}" alt="{{ $order->courier_service }}" class="w-full h-full object-contain">
+        @else
+            <i class="fas fa-truck text-slate-400"></i>
+        @endif
+    </div>
+    
+    <div>
+        <div class="font-bold text-slate-700 text-xs uppercase max-w-[120px] leading-tight">
+            {{ $order->courier_service }}
+        </div>
+        <div class="text-[11px] font-bold text-emerald-600 mt-0.5">
+            Rp {{ number_format($order->shipping_cost, 0, ',', '.') }}
+        </div>
+    </div>
+</div>
 
                                     <div class="bg-slate-50 border border-slate-200 rounded p-1.5">
                                         <div class="text-[9px] text-slate-400 uppercase tracking-wider mb-0.5">Nomor Resi</div>
