@@ -1,4 +1,4 @@
-<script>
+
     // Menambahkan style untuk transisi submenu
     const style = document.createElement('style');
     style.textContent = `.submenu { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; } .rotate-180 { transform: rotate(180deg); }`;
@@ -25,10 +25,7 @@
             }
         }
     }
-</script>
 
-{{-- 2. Script untuk mengambil jumlah notifikasi (badge) --}}
-<script>
     document.addEventListener('DOMContentLoaded', function() {
         const badges = {
             persetujuan: document.getElementById('persetujuan-badge'),
@@ -90,4 +87,3 @@
         fetchAllCounts();
         setInterval(fetchAllCounts, 15000);
     });
-</script>

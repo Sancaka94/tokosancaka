@@ -456,6 +456,8 @@
 </div>
 
 @push('scripts')
+<script>
     @include('layouts.partials.sidebar-scripts')
+</script>
 @endpush
 
