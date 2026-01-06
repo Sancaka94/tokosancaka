@@ -20,7 +20,7 @@
                      @mouseleave="monitorOpen = false">
                     
                     {{-- Header Panel --}}
-                    <div class="p-4 bg-gradient-to-r from-gray-800 to-gray-900 text-white flex justify-between items-center sticky top-0 z-10 shadow-md">
+                    <div class="p-4 bg-gradient-to-r from-gray-800 to-gray-900 text-white flex justify-between items-center sticky top-0 z-40 shadow-md">
                         <h3 class="font-bold text-sm tracking-wider uppercase"><i class="fas fa-desktop mr-2"></i>Live Monitor</h3>
                         <button @click="monitorOpen = false" class="text-gray-400 hover:text-white transition">
                             <i class="fas fa-times"></i>
