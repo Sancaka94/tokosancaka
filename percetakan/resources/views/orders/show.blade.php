@@ -146,12 +146,14 @@
             </div>
             @endif
 
-            @if($order->note)
-            <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
-                <h4 class="font-bold text-yellow-800 text-sm mb-1"><i class="fas fa-sticky-note mr-1"></i> Catatan Pesanan:</h4>
-                <p class="text-sm text-yellow-700">{{ $order->note }}</p>
-            </div>
-            @endif
+            {{-- TAMPILAN UNTUK LOG SYSTEM (NOTE) --}}
+@if($order->note)
+<div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mt-4">
+    <h4 class="font-bold text-yellow-800 text-sm mb-1"><i class="fas fa-info-circle mr-1"></i> Info Sistem:</h4>
+    {{-- Pastikan ini memanggil note --}}
+    <p class="text-sm text-yellow-700 whitespace-pre-line">{{ $order->note }}</p>
+</div>
+@endif
 
         </div>
 
@@ -189,21 +191,18 @@
                     </div>
                     @endif
 
-                    {{-- [TAMBAHAN] CATATAN PELANGGAN DI SINI --}}
-                    @if($order->customer_note)
-                    <div class="mt-4 pt-4 border-t border-slate-100">
-                        <div class="flex items-start gap-3">
-                            <div class="mt-1"><i class="fas fa-sticky-note text-amber-500"></i></div>
-                            <div>
-                                <p class="text-xs text-slate-400 uppercase font-bold">Catatan Pelanggan</p>
-                                <div class="bg-amber-50 p-2.5 rounded-lg border border-amber-100 mt-1">
-                                    <p class="text-xs text-slate-700 italic">"{{ $order->customer_note }}"</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    @endif
-                    {{-- [SELESAI TAMBAHAN] --}}
+                    {{-- TAMPILAN UNTUK INPUT MANUAL (CUSTOMER NOTE) --}}
+@if($order->customer_note)
+<div class="mt-6">
+    <h3 class="text-xs font-black text-amber-500 uppercase tracking-widest mb-2 flex items-center gap-2">
+        <i class="fas fa-comment-dots"></i> Catatan Pelanggan
+    </h3>
+    <div class="bg-amber-50 border border-amber-100 p-4 rounded-xl relative">
+        {{-- Pastikan ini memanggil customer_note --}}
+        <p class="text-sm text-slate-700 italic">"{{ $order->customer_note }}"</p> 
+    </div>
+</div>
+@endif
                 </div>
             </div>
 
