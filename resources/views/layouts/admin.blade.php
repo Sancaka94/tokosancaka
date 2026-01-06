@@ -47,7 +47,8 @@
     2. Tambahkan class 'text-sm' agar UI tetap terlihat 'kecil/compact'.
     3. Gunakan 'h-screen' dan 'overflow-hidden' pada body.
 --}}
-<body class="bg-gray-100 text-gray-800 font-sans antialiased text-sm h-screen overflow-hidden">
+{{-- Tambahkan style="zoom: 80%" --}}
+<body class="bg-gray-100 text-gray-800 font-sans antialiased text-sm h-screen overflow-hidden" style="zoom: 80%;">
 
     @if(isset($error_message))
         <div class="bg-red-500 text-white text-center p-2 absolute top-0 w-full z-[60]">
@@ -73,7 +74,10 @@
             {{-- Main Content Area (Scrollable) --}}
             {{-- 'flex-1' agar mengisi sisa ruang, 'overflow-y-auto' agar bisa discroll --}}
             <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 custom-scrollbar p-4 sm:p-6 lg:p-8">
-                @yield('content')
+                {{-- MODIFIKASI: Membungkus konten agar lebarnya 80% dan rata tengah --}}
+                <div class="w-[90%] md:w-[80%] mx-auto">
+                    @yield('content')
+                </div>
             </main>
 
         </div>
