@@ -2,10 +2,10 @@
     File: resources/views/layouts/partials/sidebar.blade.php
     Deskripsi: Sidebar Fixed & Responsive.
     
-    PERBAIKAN LOGOUT HILANG:
-    1. Sidebar Container: 'min-h-[133.33vh]' diubah jadi 'h-[133.33vh] relative'.
-    2. Nav Menu: Ditambah 'pb-28' untuk memberi ruang scroll agar tidak ketutup tombol logout.
-    3. Tombol Logout: Posisi diubah jadi 'absolute bottom-[25%]' agar pas di layar visual (kompensasi zoom 75%).
+    PERBAIKAN TERBARU:
+    1. Tombol Logout: Posisi dikembalikan ke 'bottom-0' agar menempel di paling bawah (Fixed posisi naik).
+    2. Warna Active Menu: 'bg-gray-700' diubah menjadi 'bg-red-600'.
+    3. Zoom & Scrollbar: Tetap dipertahankan.
 --}}
 
 <div x-data="{ sidebarOpen: false, isExpanded: false, isHovered: false }" class="h-full flex flex-col">
@@ -24,8 +24,8 @@
     </div>
 
     {{-- 
-       ZOOM 75% applied here
-       Height diset fix 133.33vh agar kalkulasi posisi tombol logout akurat
+       ZOOM 75% applied here.
+       Height diset 133.33vh untuk kompensasi zoom.
     --}}
     <aside id="main-sidebar" 
         style="zoom: 80%;"
@@ -81,34 +81,34 @@
 
         {{-- 
             SIDEBAR MENU
-            PERBAIKAN: pb-28 ditambahkan agar item terakhir bisa discroll ke atas tombol logout
+            - pb-28: Memberi ruang di bawah agar scroll tidak tertutup tombol logout.
         --}}
         <nav id="sidebar-nav" 
              class="flex-1 px-4 pb-28 space-y-1 overflow-x-hidden transition-all duration-300 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent"
              :class="(isExpanded || isHovered) ? '' : 'lg:overflow-hidden'">
 
             {{-- Dashboard --}}
-            <a href="{{ route('admin.dashboard') }}" class="sidebar-link flex items-center px-4 py-2.5 text-sm font-medium rounded-lg hover:bg-red-600 hover:text-white transition-colors duration-200 {{ request()->routeIs('admin.dashboard') ? 'bg-gray-700 text-white' : '' }}">
+            <a href="{{ route('admin.dashboard') }}" class="sidebar-link flex items-center px-4 py-2.5 text-sm font-medium rounded-lg hover:bg-red-600 hover:text-white transition-colors duration-200 {{ request()->routeIs('admin.dashboard') ? 'bg-red-600 text-white' : '' }}">
                 <i class="fa-solid fa-house-chimney fa-fw w-5 h-5 mr-3 flex-shrink-0"></i>
                 <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap transition-opacity duration-200">Dashboard</span>
             </a>
 
-            <a href="{{ url('admin/email') }}" class="sidebar-link flex items-center px-4 py-2.5 text-sm font-medium rounded-lg hover:bg-red-600 hover:text-white transition-colors duration-200 {{ request()->routeIs('admin.index*') ? 'bg-gray-700 text-white' : '' }}">
+            <a href="{{ url('admin/email') }}" class="sidebar-link flex items-center px-4 py-2.5 text-sm font-medium rounded-lg hover:bg-red-600 hover:text-white transition-colors duration-200 {{ request()->routeIs('admin.index*') ? 'bg-red-600 text-white' : '' }}">
                 <i class="fa-solid fa-inbox fa-fw w-5 h-5 mr-3 flex-shrink-0"></i>
                 <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap transition-opacity duration-200">Email Sancaka</span>
             </a>
         
-            <a href="https://tokosancaka.com/admin/chat" class="sidebar-link flex items-center px-4 py-2.5 text-sm font-medium rounded-lg hover:bg-red-600 hover:text-white transition-colors duration-200 {{ request()->is('admin/chat*') ? 'bg-gray-700 text-white' : '' }}">
+            <a href="https://tokosancaka.com/admin/chat" class="sidebar-link flex items-center px-4 py-2.5 text-sm font-medium rounded-lg hover:bg-red-600 hover:text-white transition-colors duration-200 {{ request()->is('admin/chat*') ? 'bg-red-600 text-white' : '' }}">
                 <i class="fa-solid fa-comment-dots fa-fw w-5 h-5 mr-3 flex-shrink-0"></i>
                 <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap transition-opacity duration-200">Chat Customer</span>
             </a>
 
-            <a href="{{ route('admin.pelanggan.index') }}" class="sidebar-link flex items-center px-4 py-2.5 text-sm font-medium rounded-lg hover:bg-red-600 hover:text-white transition-colors duration-200 {{ request()->routeIs('admin.pelanggan.*') ? 'bg-gray-700 text-white' : '' }}">
+            <a href="{{ route('admin.pelanggan.index') }}" class="sidebar-link flex items-center px-4 py-2.5 text-sm font-medium rounded-lg hover:bg-red-600 hover:text-white transition-colors duration-200 {{ request()->routeIs('admin.pelanggan.*') ? 'bg-red-600 text-white' : '' }}">
                 <i class="fa-solid fa-users fa-fw w-5 h-5 mr-3 flex-shrink-0"></i>
                 <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap transition-opacity duration-200">Data Pelanggan</span>
             </a>
 
-            <a href="{{ route('admin.spx_scans.monitor.index') }}" class="sidebar-link flex items-center px-4 py-2.5 text-sm font-medium rounded-lg hover:bg-red-600 hover:text-white transition-colors duration-200 {{ request()->routeIs('admin.spx_scans.monitor.index') ? 'bg-gray-700 text-white' : '' }}">
+            <a href="{{ route('admin.spx_scans.monitor.index') }}" class="sidebar-link flex items-center px-4 py-2.5 text-sm font-medium rounded-lg hover:bg-red-600 hover:text-white transition-colors duration-200 {{ request()->routeIs('admin.spx_scans.monitor.index') ? 'bg-red-600 text-white' : '' }}">
                 <i class="fa-solid fa-truck fa-fw w-5 h-5 mr-3 flex-shrink-0"></i>
                 <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap transition-opacity duration-200">Monitor Surat Jalan</span>
             </a>
@@ -117,7 +117,7 @@
             <div>
                 <button onclick="toggleMenu('menuPengguna')" 
                         @click="if(window.innerWidth >= 1024 && !(isExpanded || isHovered)) { isExpanded = true; }"
-                        class="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium text-left rounded-lg hover:bg-red-600 hover:text-white focus:outline-none transition-colors duration-200 {{ request()->routeIs(['admin.registrations.*', 'admin.customers.*', 'admin.roles.*']) ? 'bg-gray-700 text-white' : '' }}">
+                        class="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium text-left rounded-lg hover:bg-red-600 hover:text-white focus:outline-none transition-colors duration-200 {{ request()->routeIs(['admin.registrations.*', 'admin.customers.*', 'admin.roles.*']) ? 'bg-red-600 text-white' : '' }}">
                     <span class="flex items-center">
                         <i class="fa-solid fa-users-gear fa-fw w-5 h-5 mr-3 flex-shrink-0"></i>
                         <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap transition-opacity duration-200">Pengguna & Role</span>
@@ -142,12 +142,12 @@
                 </div>
             </div>
 
-            <a href="{{ route('admin.wilayah.index') }}" class="sidebar-link flex items-center px-4 py-2.5 text-sm font-medium rounded-lg hover:bg-red-600 hover:text-white transition-colors duration-200 {{ request()->routeIs('admin.wilayah.*') ? 'bg-gray-700 text-white' : '' }}">
+            <a href="{{ route('admin.wilayah.index') }}" class="sidebar-link flex items-center px-4 py-2.5 text-sm font-medium rounded-lg hover:bg-red-600 hover:text-white transition-colors duration-200 {{ request()->routeIs('admin.wilayah.*') ? 'bg-red-600 text-white' : '' }}">
                 <i class="fa-solid fa-map-marked-alt fa-fw w-5 h-5 mr-3 flex-shrink-0"></i>
                 <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap transition-opacity duration-200">Wilayah</span>
             </a>
 
-            <a href="{{ route('admin.kodepos.index') }}" class="sidebar-link flex items-center px-4 py-2.5 text-sm font-medium rounded-lg hover:bg-red-600 hover:text-white transition-colors duration-200 {{ request()->routeIs('admin.kodepos.*') ? 'bg-gray-700 text-white' : '' }}">
+            <a href="{{ route('admin.kodepos.index') }}" class="sidebar-link flex items-center px-4 py-2.5 text-sm font-medium rounded-lg hover:bg-red-600 hover:text-white transition-colors duration-200 {{ request()->routeIs('admin.kodepos.*') ? 'bg-red-600 text-white' : '' }}">
                 <i class="fa-solid fa-magnifying-glass-location fa-fw w-5 h-5 mr-3 flex-shrink-0"></i>
                 <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap transition-opacity duration-200">Pencarian Kode Pos</span>
             </a>
@@ -156,7 +156,7 @@
             <div>
                 <button onclick="toggleMenu('marketplaceMenu')" 
                         @click="if(window.innerWidth >= 1024 && !(isExpanded || isHovered)) { isExpanded = true; }"
-                        class="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium text-left rounded-lg hover:bg-red-600 hover:text-white focus:outline-none transition-colors duration-200 {{ request()->is('admin/products*') || request()->is('admin/spx-scans*') ? 'bg-gray-700 text-white' : '' }}">
+                        class="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium text-left rounded-lg hover:bg-red-600 hover:text-white focus:outline-none transition-colors duration-200 {{ request()->is('admin/products*') || request()->is('admin/spx-scans*') ? 'bg-red-600 text-white' : '' }}">
                     <span class="flex items-center">
                         <i class="fa-solid fa-store fa-fw w-5 h-5 mr-3 flex-shrink-0"></i>
                         <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap transition-opacity duration-200">Marketplace</span>
@@ -191,7 +191,7 @@
             <div>
                 <button onclick="toggleMenu('menuPesanan')" 
                         @click="if(window.innerWidth >= 1024 && !(isExpanded || isHovered)) { isExpanded = true; }"
-                        class="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium text-left rounded-lg hover:bg-red-600 hover:text-white focus:outline-none transition-colors duration-200 {{ request()->is('admin/pesanan*') ? 'bg-gray-700 text-white' : '' }}">
+                        class="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium text-left rounded-lg hover:bg-red-600 hover:text-white focus:outline-none transition-colors duration-200 {{ request()->is('admin/pesanan*') ? 'bg-red-600 text-white' : '' }}">
                     <span class="flex items-center">
                         <i class="fa-solid fa-cart-shopping fa-fw w-5 h-5 mr-3 flex-shrink-0"></i>
                         <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap transition-opacity duration-200">Pesanan</span>
@@ -221,7 +221,7 @@
                 </div>
             </div>
 
-            <a href="{{ route('admin.kontak.index') }}" class="sidebar-link flex items-center px-4 py-2.5 text-sm font-medium rounded-lg hover:bg-red-600 hover:text-white transition-colors duration-200 {{ request()->routeIs('admin.kontak.*') ? 'bg-gray-700 text-white' : '' }}">
+            <a href="{{ route('admin.kontak.index') }}" class="sidebar-link flex items-center px-4 py-2.5 text-sm font-medium rounded-lg hover:bg-red-600 hover:text-white transition-colors duration-200 {{ request()->routeIs('admin.kontak.*') ? 'bg-red-600 text-white' : '' }}">
                 <i class="fa-solid fa-address-book fa-fw w-5 h-5 mr-3 flex-shrink-0"></i>
                 <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap transition-opacity duration-200">Buku Alamat</span>
             </a>
@@ -230,7 +230,7 @@
             <div>
                 <button onclick="toggleMenu('menuWhatsapp')" 
                         @click="if(window.innerWidth >= 1024 && !(isExpanded || isHovered)) { isExpanded = true; }"
-                        class="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium text-left rounded-lg hover:bg-red-600 hover:text-white focus:outline-none transition-colors duration-200 {{ request()->routeIs('broadcast.*') || request()->is('whatsapp*') ? 'bg-gray-700 text-white' : '' }}">
+                        class="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium text-left rounded-lg hover:bg-red-600 hover:text-white focus:outline-none transition-colors duration-200 {{ request()->routeIs('broadcast.*') || request()->is('whatsapp*') ? 'bg-red-600 text-white' : '' }}">
                     <span class="flex items-center">
                         <i class="fa-brands fa-whatsapp fa-fw w-5 h-5 mr-3 flex-shrink-0"></i>
                         <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap transition-opacity duration-200">Chat Whatsapp</span>
@@ -245,7 +245,7 @@
                 </div>
             </div>
 
-            <a href="{{ route('admin.marketplace.index') }}" class="sidebar-link flex items-center px-4 py-2.5 text-sm font-medium rounded-lg hover:bg-red-600 hover:text-white transition-colors duration-200 {{ request()->routeIs('admin.marketplace.*') ? 'bg-gray-700 text-white' : '' }}">
+            <a href="{{ route('admin.marketplace.index') }}" class="sidebar-link flex items-center px-4 py-2.5 text-sm font-medium rounded-lg hover:bg-red-600 hover:text-white transition-colors duration-200 {{ request()->routeIs('admin.marketplace.*') ? 'bg-red-600 text-white' : '' }}">
                 <i class="fa-solid fa-store fa-fw w-5 h-5 mr-3 flex-shrink-0"></i>
                 <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap transition-opacity duration-200">Produk Katalog</span>
             </a>
@@ -254,7 +254,7 @@
             <div>
                 <button onclick="toggleMenu('menuBlog')" 
                         @click="if(window.innerWidth >= 1024 && !(isExpanded || isHovered)) { isExpanded = true; }"
-                        class="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium text-left rounded-lg hover:bg-red-600 hover:text-white focus:outline-none transition-colors duration-200 {{ request()->is('admin/posts*') || request()->is('admin/categories*') || request()->is('admin/tags*') ? 'bg-gray-700 text-white' : '' }}">
+                        class="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium text-left rounded-lg hover:bg-red-600 hover:text-white focus:outline-none transition-colors duration-200 {{ request()->is('admin/posts*') || request()->is('admin/categories*') || request()->is('admin/tags*') ? 'bg-red-600 text-white' : '' }}">
                     <span class="flex items-center">
                         <i class="fa-solid fa-newspaper fa-fw w-5 h-5 mr-3 flex-shrink-0"></i>
                         <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap transition-opacity duration-200">Blog</span>
@@ -294,7 +294,7 @@
             <div>
                 <button onclick="toggleMenu('menuPpob')" 
                         @click="if(window.innerWidth >= 1024 && !(isExpanded || isHovered)) { isExpanded = true; }"
-                        class="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium text-left rounded-lg hover:bg-red-600 hover:text-white focus:outline-none transition-colors duration-200 {{ request()->routeIs('admin.ppob.*') ? 'bg-gray-700 text-white' : '' }}">
+                        class="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium text-left rounded-lg hover:bg-red-600 hover:text-white focus:outline-none transition-colors duration-200 {{ request()->routeIs('admin.ppob.*') ? 'bg-red-600 text-white' : '' }}">
                     <span class="flex items-center">
                         <i class="fa-solid fa-mobile-screen-button fa-fw w-5 h-5 mr-3 flex-shrink-0"></i>
                         <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap transition-opacity duration-200">PPOB</span>
@@ -313,7 +313,7 @@
             <div>
                 <button onclick="toggleMenu('menuKeuangan')" 
                         @click="if(window.innerWidth >= 1024 && !(isExpanded || isHovered)) { isExpanded = true; }"
-                        class="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium text-left rounded-lg hover:bg-red-600 hover:text-white focus:outline-none transition-colors duration-200 {{ request()->routeIs('admin.saldo.requests.*') ? 'bg-gray-700 text-white' : '' }}">
+                        class="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium text-left rounded-lg hover:bg-red-600 hover:text-white focus:outline-none transition-colors duration-200 {{ request()->routeIs('admin.saldo.requests.*') ? 'bg-red-600 text-white' : '' }}">
                     <span class="flex items-center">
                         <i class="fa-solid fa-chart-pie fa-fw w-5 h-5 mr-3 flex-shrink-0"></i>
                         <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap transition-opacity duration-200">Laporan Keuangan</span>
@@ -372,9 +372,10 @@
 
         {{-- 
             PERBAIKAN LOGOUT:
-            Absolute positioning di bottom 25% (karena zoom 75%, sisa 25% adalah bagian yang terpotong jika pakai bottom:0)
+            'bottom-0' menempatkan elemen di dasar container 133vh. 
+            Karena zoom 75%, posisi ini akan terlihat sebagai dasar layar (100vh).
         --}}
-        <div class="absolute bottom-[25%] left-0 w-full p-4 border-t border-gray-700 bg-blue-900 transition-all duration-300">
+        <div class="absolute bottom-0 left-0 w-full p-4 border-t border-gray-700 bg-blue-900 transition-all duration-300">
             <a href="{{ route('logout') }}" onclick="event.preventDefault(); document.getElementById('logout-form').submit();" class="flex items-center w-full px-4 py-2.5 text-sm font-medium text-red-400 rounded-lg hover:bg-red-600 hover:text-white transition-colors duration-200">
                 <i class="fa-solid fa-arrow-right-from-bracket fa-fw w-5 h-5 mr-3 flex-shrink-0"></i>
                 <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap transition-opacity duration-200">Keluar</span>
