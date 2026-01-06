@@ -86,7 +86,7 @@ body {
     
     @stack('styles')
 </head>
-<body class="bg-gray-100 text-gray-800">
+<body class="bg-gray-100 text-gray-800 font-sans antialiased text-sm">
 
 @if(isset($error_message))
     <div class="alert alert-danger text-center">
