@@ -364,6 +364,12 @@ class OrderController extends Controller
         'customer_phone.required_if' => 'No WA wajib diisi untuk pengiriman.',
     ]);
 
+        // --- [PERBAIKAN DIMULAI DISINI] ---
+        // Kita pisahkan catatan dari user dan catatan dari sistem
+        $customerNote = $request->input('note'); // Ambil input dari form frontend
+        $systemNote   = '';                      // Siapkan wadah untuk catatan sistem (Resi/Bayar)
+        // ----------------------------------
+
         $cartItems = json_decode($request->items, true);
         if (!is_array($cartItems) || count($cartItems) < 1) {
             return response()->json(['status' => 'error', 'message' => 'Keranjang kosong.'], 400);
@@ -446,16 +452,17 @@ class OrderController extends Controller
                      $cashReceived = (int) $request->cash_amount;
                     if ($cashReceived < $finalPrice) throw new \Exception("Uang tunai kurang!");
                     $changeAmount = $cashReceived - $finalPrice;
-                    $paymentStatus = 'paid'; 
-                    $note .= "\n[INFO PEMBAYARAN]\nMetode: Tunai\nDiterima: Rp " . number_format($cashReceived,0,',','.') . "\nKembali: Rp " . number_format($changeAmount,0,',','.');
-                    break;
+                    $paymentStatus = 'paid';
+                    $customerNote .= "\n\n[INFO KASIR] Tunai..."; // Opsi penggabungan
+                    $systemNote .= "[INFO KASIR] Tunai. Terima: Rp " . number_format($cashReceived,0,',','.') . "\nKembali: Rp " . number_format($changeAmount,0,',','.');                    break;
                 case 'affiliate_balance':
                      if (!$request->customer_id) throw new \Exception("Wajib pilih Member Afiliasi.");
                     $affiliatePayor = Affiliate::lockForUpdate()->find($request->customer_id);
                     if (!$affiliatePayor || !Hash::check($request->affiliate_pin, $affiliatePayor->pin)) throw new \Exception("PIN Salah!");
                     if ($affiliatePayor->balance < $finalPrice) throw new \Exception("Saldo Kurang.");
                     $affiliatePayor->decrement('balance', $finalPrice);
-                    $paymentStatus = 'paid'; 
+                    $paymentStatus = 'paid';
+                    $systemNote .= "[INFO BAYAR] Potong Saldo Member";
                     break;
                 case 'tripay':
                 case 'doku':
@@ -639,7 +646,7 @@ class OrderController extends Controller
                 if (isset($kaResponse['status']) && $kaResponse['status'] == true) {
                     $shippingRef = $kaResponse['data']['order_id'] ?? $kaResponse['pickup_number'] ?? null;
                     Log::info("KIRIMINAJA SUKSES. Ref: $shippingRef");
-                    $note .= "\n[INFO PENGIRIMAN]\nOrder ID KiriminAja: " . $shippingRef;
+                    $systemNote .= "\n[RESI OTOMATIS] Ref: " . $shippingRef;
                 } else {
                     $errMsg = $kaResponse['text'] ?? 'Gagal koneksi ke kurir.';
                     Log::error("KIRIMINAJA GAGAL: " . json_encode($kaResponse));
@@ -674,12 +681,17 @@ class OrderController extends Controller
                     'payment_method'  => $request->payment_method,
                     'status'          => ($paymentStatus === 'paid') ? 'processing' : 'pending', 
                     'payment_status'  => $paymentStatus,
-                    'note'            => $note,
+                    // --- [PERBAIKAN UTAMA] ---
+                    // Pisahkan kolom note dan customer_note
+                    'note'            => $systemNote,   // Info resi & pembayaran
+                    'customer_note'   => $customerNote, // Pesan manual dari pembeli
+                    // --------------------------
                     'shipping_cost'   => $request->delivery_type === 'shipping' ? $request->shipping_cost : 0,
                     'courier_service' => $request->delivery_type === 'shipping' ? $request->courier_name : null,
                     'shipping_ref'    => $shippingRef,
                     // --- UPDATE BAGIAN INI (SIMPAN ALAMAT) ---
                     'destination_address' => $fullAddressSaved,
+                    'customer_note'   => $customerNote,
                 ]);
                 
                 Log::info("DATABASE SUKSES. Order ID: " . $order->id);

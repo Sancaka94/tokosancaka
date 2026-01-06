@@ -288,6 +288,20 @@
                         <span>Subtotal</span>
                         <span x-text="'Rp ' + rupiah(subtotal)"></span>
                     </div>
+
+                    {{-- ----------------------------------- --}}
+                    {{-- TOMBOL TAMBAH CATATAN (MODAL TRIGGER) --}}
+                    {{-- ----------------------------------- --}}
+                    <div class="flex justify-between items-center py-2 border-b border-dashed border-slate-200">
+                        <button @click="noteModalOpen = true" class="text-[11px] font-bold flex items-center gap-1 transition-colors focus:outline-none"
+                                :class="orderNote ? 'text-blue-600' : 'text-slate-400 hover:text-blue-500'">
+                            <i class="fas" :class="orderNote ? 'fa-edit' : 'fa-plus-circle'"></i> 
+                            <span x-text="orderNote ? 'Edit Catatan Pesanan' : 'Tambah Catatan Pesanan'"></span>
+                        </button>
+                        <span x-show="orderNote" class="text-[10px] text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full font-bold">Ada Catatan</span>
+                    </div>
+                    {{-- ----------------------------------- --}}
+
                     <div x-show="discountAmount > 0" class="flex justify-between items-end text-xs text-emerald-600 font-bold" x-transition>
                         <span>Diskon</span>
                         <span x-text="'- Rp ' + rupiah(discountAmount)"></span>
@@ -359,6 +373,8 @@
             </div>
         </div>
     </div>
+
+    @include('orders.partials.noteModal')
 
     @include('orders.partials.payment-modal')
 

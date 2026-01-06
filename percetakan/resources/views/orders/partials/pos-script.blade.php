@@ -55,6 +55,9 @@
             shippingCost: 0,
             isLoadingShipping: false,
 
+            noteModalOpen: false,
+            customerNote: '', // <--- NAMA VARIABLE BARU (Default kosong)
+
             // ============================================================
             // COMPUTED PROPERTIES
             // ============================================================
@@ -388,6 +391,7 @@ addToCart(id, name, price, maxStock, weight = 0, image = null) {
                 formData.append('total', this.subtotal);
                 formData.append('coupon', this.couponCode);
                 formData.append('payment_method', this.paymentMethod);
+                formData.append('customer_note', this.customerNote);
 
                 formData.append('delivery_type', this.deliveryType);
                 if (this.deliveryType === 'shipping') {
