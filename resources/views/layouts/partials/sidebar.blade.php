@@ -2,10 +2,10 @@
     File: resources/views/layouts/partials/sidebar.blade.php
     Deskripsi: Sidebar Fixed & Responsive.
     
-    PERBAIKAN TERBARU:
-    1. Tombol Logout: Posisi dikembalikan ke 'bottom-0' agar menempel di paling bawah (Fixed posisi naik).
-    2. Warna Active Menu: 'bg-gray-700' diubah menjadi 'bg-red-600'.
-    3. Zoom & Scrollbar: Tetap dipertahankan.
+    PERBAIKAN FINAL:
+    1. Tombol Logout: Posisi 'absolute bottom-0' (Terkunci di paling bawah layar).
+    2. Container Sidebar: Tinggi 'h-[133.33vh]' (Agar pas 100% layar setelah di-Zoom 75%).
+    3. Warna: Semua Hover & Active Menu jadi MERAH (bg-red-600).
 --}}
 
 <div x-data="{ sidebarOpen: false, isExpanded: false, isHovered: false }" class="h-full flex flex-col">
@@ -24,11 +24,11 @@
     </div>
 
     {{-- 
-       ZOOM 75% applied here.
-       Height diset 133.33vh untuk kompensasi zoom.
+       ZOOM 75%
+       Height 133.33vh = Kompensasi agar background full sampai bawah (100 / 0.75 = 133.33).
     --}}
     <aside id="main-sidebar" 
-        style="zoom: 80%;"
+        style="zoom: 75%;"
         {{-- Hover hanya aktif di layar besar (Desktop) --}}
         @mouseenter="if(window.innerWidth >= 1024) isHovered = true"
         @mouseleave="isHovered = false"
@@ -71,7 +71,7 @@
         <div class="p-4 transition-all duration-300" :class="(isExpanded || isHovered) ? '' : 'lg:hidden'">
             <form action="#" method="get">
                 <div class="relative">
-                    <input type="text" name="q" class="w-full bg-gray-300 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block pl-10 p-2.5" placeholder="Cari...">
+                    <input type="text" name="q" class="w-full bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block pl-10 p-2.5" placeholder="Cari...">
                     <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                         <i class="fa-solid fa-search text-gray-400"></i>
                     </div>
@@ -81,7 +81,8 @@
 
         {{-- 
             SIDEBAR MENU
-            - pb-28: Memberi ruang di bawah agar scroll tidak tertutup tombol logout.
+            - pb-28: Memberi ruang kosong di bawah list menu agar menu terakhir
+                     tidak tertutup oleh tombol logout yang posisinya absolute.
         --}}
         <nav id="sidebar-nav" 
              class="flex-1 px-4 pb-28 space-y-1 overflow-x-hidden transition-all duration-300 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent"
@@ -371,9 +372,9 @@
         </nav>
 
         {{-- 
-            PERBAIKAN LOGOUT:
-            'bottom-0' menempatkan elemen di dasar container 133vh. 
-            Karena zoom 75%, posisi ini akan terlihat sebagai dasar layar (100vh).
+           PERBAIKAN POSISI LOGOUT:
+           Gunakan 'bottom-0' mutlak karena container sudah di-set 133.33vh.
+           Posisi ini akan pas di dasar layar visual (100vh).
         --}}
         <div class="absolute bottom-0 left-0 w-full p-4 border-t border-gray-700 bg-blue-900 transition-all duration-300">
             <a href="{{ route('logout') }}" onclick="event.preventDefault(); document.getElementById('logout-form').submit();" class="flex items-center w-full px-4 py-2.5 text-sm font-medium text-red-400 rounded-lg hover:bg-red-600 hover:text-white transition-colors duration-200">
