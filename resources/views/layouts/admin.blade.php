@@ -47,32 +47,22 @@
     2. Tambahkan class 'text-sm' agar UI tetap terlihat 'kecil/compact'.
     3. Gunakan 'h-screen' dan 'overflow-hidden' pada body.
 --}}
-<body class="bg-gray-100 text-gray-800 font-sans antialiased text-sm h-screen overflow-hidden">
+<body class="bg-gray-100 min-h-screen text-sm">
 
-    @if(isset($error_message))
-        <div class="bg-red-500 text-white text-center p-2 absolute top-0 w-full z-[60]">
-            {{ $error_message }}
-        </div>
-    @endif
+<div class="min-h-screen flex justify-center">
 
-    {{-- WRAPPER UTAMA: Menggunakan Flexbox untuk membagi Sidebar (Kiri) dan Konten (Kanan) --}}
-    <div x-data="{ sidebarOpen: window.innerWidth > 1024 }" 
-         @resize.window="sidebarOpen = window.innerWidth > 1024" 
-         class="flex h-screen w-full bg-gray-100">
-         
-        {{-- 1. SIDEBAR (Include file sidebar Anda) --}}
-        {{-- Pastikan di file sidebar.blade.php class utamanya tidak ada 'fixed' atau 'absolute' untuk Desktop --}}
+    <!-- BOXED 80% -->
+    <div class="flex w-full lg:w-[80%] min-h-screen bg-white shadow-xl">
+
+        {{-- SIDEBAR --}}
         @include('layouts.partials.sidebar')
 
-        {{-- 2. AREA KANAN (Header + Konten) --}}
-        <div class="flex-1 flex flex-col h-screen overflow-hidden relative">
-            
-            {{-- Header --}}
+        {{-- KONTEN --}}
+        <div class="flex-1 flex flex-col min-h-screen">
+
             @include('layouts.partials.header')
 
-            {{-- Main Content Area (Scrollable) --}}
-            {{-- 'flex-1' agar mengisi sisa ruang, 'overflow-y-auto' agar bisa discroll --}}
-            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 custom-scrollbar p-4 sm:p-6 lg:p-8">
+            <main class="flex-1 overflow-y-auto p-6 bg-gray-100">
                 @yield('content')
             </main>
 
