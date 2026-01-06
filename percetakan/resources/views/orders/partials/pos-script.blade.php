@@ -409,12 +409,13 @@ addToCart(id, name, price, maxStock, weight = 0, image = null) {
                     formData.append('payment_channel', this.paymentChannel);
                 }
                 
-                if(this.customerType === 'member' && this.selectedCustomerId) {
-                    formData.append('customer_id', this.selectedCustomerId);
-                } else {
-                    formData.append('customer_name', this.customerName || 'Guest');
-                    formData.append('customer_phone', this.customerPhone || '');
-                }
+                // Logic Customer ID lebih aman
+            if(this.selectedCustomerId) {
+                formData.append('customer_id', this.selectedCustomerId);
+            }
+            // Tetap kirim nama/phone manual sebagai fallback/guest
+            formData.append('customer_name', this.customerName || 'Guest');
+            formData.append('customer_phone', this.customerPhone || '');
 
                 if(this.paymentMethod === 'cash') formData.append('cash_amount', this.cashAmount);
                 if(this.paymentMethod === 'affiliate_balance') formData.append('affiliate_pin', this.affiliatePin); 
@@ -446,6 +447,7 @@ addToCart(id, name, price, maxStock, weight = 0, image = null) {
 
                     if (result.status === 'success') {
                         this.showPaymentModal = false;
+                        this.customerNote = ''; 
                         let msg = `✅ Transaksi Berhasil!\nInvoice: ${result.invoice}`;
                         if(this.paymentMethod === 'cash') msg += `\n💰 KEMBALIAN: Rp ${this.rupiah(result.change_amount)}`;
                         alert(msg);

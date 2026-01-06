@@ -340,6 +340,18 @@ class OrderController extends Controller
     {
         Log::info("STORE ORDER: Memulai proses checkout...");
 
+        // 1. DEFINISI VARIABEL (WAJIB)
+        $customerNote = $request->input('note'); 
+        $catatanSistem = '';                     
+
+        // --- [TAMBAHKAN INI AGAR TIDAK WAJIB MEMBER JIKA SALAH PILIH] ---
+        // Jika user memilih 'Saldo Member' tapi LUPA memilih orangnya (customer_id kosong)
+        // Maka paksa ubah metode pembayaran jadi 'cash' (Tunai)
+        if ($request->payment_method === 'affiliate_balance' && empty($request->customer_id)) {
+            $request->merge(['payment_method' => 'cash']);
+        }
+        // ---------------------------------------------------------------
+
         // 1. VALIDASI
         $request->validate([
             'items'           => 'required', 
@@ -364,13 +376,6 @@ class OrderController extends Controller
         'customer_phone.required_if' => 'No WA wajib diisi untuk pengiriman.',
     ]);
 
-        // 1. PISAHKAN VARIABEL DENGAN TEGAS
-    // $request->note dikirim dari frontend sebagai input manual user
-    $pesanDariPembeli = $request->input('note'); 
-    
-    // Variabel baru khusus untuk menampung log sistem (kosongkan dulu)
-    $catatanSistem = '';                     // Siapkan wadah untuk catatan sistem (Resi/Bayar)
-        // ----------------------------------
 
         $cartItems = json_decode($request->items, true);
         if (!is_array($cartItems) || count($cartItems) < 1) {
