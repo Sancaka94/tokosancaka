@@ -28,7 +28,7 @@
     - width: 125% untuk memastikan background tetap full layar (100/0.8 = 125).
 --}}
 <header class="flex justify-between items-center p-4 bg-gray-700 border-b shadow-sm sticky top-0 z-40" 
-        style="zoom: 80%; width: 125%;">
+        style="zoom: 80%; width: 100%;">
     
     <div class="flex items-center">
         {{-- Tombol toggle sidebar --}}
