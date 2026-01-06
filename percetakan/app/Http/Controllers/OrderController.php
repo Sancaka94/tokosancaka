@@ -340,7 +340,7 @@ class OrderController extends Controller
         Log::info('RAW REQUEST:', $request->all());
 
         // 1. SETUP VARIABEL
-        $customerNote  = $request->input('note'); 
+        $customerNote = $request->input('customer_note'); 
         $catatanSistem = '';                      
         
         Log::info('Customer Note (Input Manual): ' . $customerNote);
@@ -564,23 +564,59 @@ class OrderController extends Controller
                     $kaResponse = $kiriminAja->createInstantOrder($instantPayload);
 
                 } else { 
-                    Log::info("Requesting REGULAR Courier...");
+                    // [B] REGULER & KARGO
+                    Log::info("Requesting REGULAR/CARGO Courier...");
+                    
                     $serviceCode = $request->courier_code; 
                     $serviceType = $request->service_type;
 
+                    // JIKA KODE KURIR KOSONG, KITA CARI DARI NAMANYA
                     if (empty($serviceCode) && $request->courier_name) {
                         $parts = explode('-', $request->courier_name); 
-                        $namaKurir = strtolower(trim($parts[0])); 
+                        $namaKurir = strtolower(trim($parts[0])); // misal: "pos indonesia " -> "pos indonesia"
+                        
+                        // DAFTAR LENGKAP EKSPEDISI (URUTAN PENTING!)
+                        // Taruh yang nama panjang/spesifik di atas
                         $mapManual = [
-                            'jne' => 'jne', 'j&t' => 'jnt', 'sicepat' => 'sicepat',
-                            'anteraja' => 'anteraja', 'pos' => 'posindonesia', 'tiki' => 'tiki',
-                            'lion' => 'lion', 'ninja' => 'ninja', 'id' => 'idx', 'spx' => 'spx', 'sap' => 'sap', 'cargo' => 'jtcargo'
+                            'j&t cargo'   => 'jtcargo',      // Cek ini dulu sebelum J&T biasa
+                            'j&t'         => 'jnt',
+                            'jne'         => 'jne',
+                            'sicepat'     => 'sicepat',
+                            'anteraja'    => 'anteraja',
+                            'pos'         => 'posindonesia', // Menangkap "pos indonesia", "pos kilat"
+                            'tiki'        => 'tiki',
+                            'lion'        => 'lion',
+                            'ninja'       => 'ninja',
+                            'id express'  => 'idx',
+                            'idx'         => 'idx',
+                            'spx'         => 'spx',
+                            'shopee'      => 'spx',
+                            'sap'         => 'sap',
+                            'ncs'         => 'ncs',          // NCS ada di log Anda
+                            'paxel'       => 'paxel',
+                            'rpx'         => 'rpx',
+                            'sentral'     => 'sentral',
+                            'star'        => 'star',         // Star Cargo
+                            'borzo'       => 'borzo',
+                            'gojek'       => 'gosend',
+                            'grab'        => 'grab_express'
                         ];
+
                         foreach ($mapManual as $nameKey => $codeVal) {
-                            if (str_contains($namaKurir, $nameKey)) { $serviceCode = $codeVal; break; }
+                            if (str_contains($namaKurir, $nameKey)) { 
+                                $serviceCode = $codeVal; 
+                                Log::info("Mapping Manual Berhasil: '{$namaKurir}' -> '{$serviceCode}'");
+                                break; 
+                            }
                         }
                     }
-                    if (empty($serviceCode)) $serviceCode = 'jne'; 
+
+                    // Fallback jika tidak ketemu juga
+                    if (empty($serviceCode)) {
+                        Log::warning("Kurir tidak dikenali: " . $request->courier_name . ". Default ke JNE.");
+                        $serviceCode = 'jne'; 
+                    }
+                    
                     if (empty($serviceType)) $serviceType = 'REG';
 
                     $now = \Carbon\Carbon::now();
