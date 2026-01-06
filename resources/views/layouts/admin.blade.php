@@ -69,7 +69,9 @@
          
         {{-- 1. SIDEBAR --}}
         {{-- Agar Sidebar tetap nempel di kiri saat discroll, kita bungkus div sticky --}}
-        <div class="sticky top-0 h-screen shrink-0">
+        {{-- WRAPPER SIDEBAR --}}
+        {{-- Tambahkan bg-WARNA-SIDEBAR di sini agar tidak ada celah putih saat scroll --}}
+        <div class="sticky top-0 h-screen shrink-0 bg-[#1e1e2d]"> 
              @include('layouts.partials.sidebar')
         </div>
 
