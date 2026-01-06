@@ -1,11 +1,10 @@
 {{--
     File: resources/views/layouts/partials/sidebar.blade.php
-    Deskripsi: Sidebar navigasi LENGKAP dengan fitur Mini Sidebar (Icon Only) pada Desktop.
+    Deskripsi: Sidebar navigasi LENGKAP.
     
     PERBAIKAN:
-    1. Menambahkan 'lg:translate-x-0' agar sidebar tidak hilang di Desktop.
-    2. Menambahkan 'lg:static' dan 'lg:inset-auto' agar layout tidak berantakan.
-    3. Logika Hover dan Klik Toggle sudah sinkron.
+    1. Fitur Hover Mouse hanya aktif jika layar Desktop (>= 1024px).
+    2. Di HP, hover mouse dimatikan total agar tidak mengganggu fungsi scroll/tap.
 --}}
 
 {{-- Wrapper Utama dengan Alpine.js Data --}}
@@ -25,14 +24,15 @@
     </div>
 
     <aside id="main-sidebar" 
-        {{-- Event Mouse Enter/Leave untuk Desktop Hover --}}
-        @mouseenter="isHovered = true"
-        @mouseleave="isHovered = false"
         {{-- 
-            LOGIKA CLASS (PERBAIKAN UTAMA):
-            1. translate: Di Mobile ikut sidebarOpen. Di Desktop (lg) DIPAKSA 'lg:translate-x-0' agar selalu muncul.
-            2. width: Di Mobile selalu 280px. Di Desktop cek expanded/hover (280px) atau mini (w-20).
+            PERBAIKAN DI SINI:
+            Tambahkan 'if(window.innerWidth >= 1024)'
+            Ini mencegah HP (Mobile) memicu event Hover.
         --}}
+        @mouseenter="if(window.innerWidth >= 1024) isHovered = true"
+        @mouseleave="isHovered = false"
+        
+        {{-- Logika Lebar & Posisi --}}
         :class="[
             sidebarOpen ? 'translate-x-0 ease-out' : '-translate-x-full ease-in lg:translate-x-0',
             (isExpanded || isHovered) ? 'w-[280px]' : 'w-[280px] lg:w-20'
