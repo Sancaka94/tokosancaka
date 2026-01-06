@@ -34,19 +34,69 @@
                     <i class="fas fa-phone mr-1"></i> {{ $order->customer_phone ?? '-' }}
                 </p>
 
-                {{-- [BARU] CUSTOMER NOTE (CATATAN PELANGGAN) --}}
-                @if(!empty($order->customer_note))
-                <div class="mt-6">
-                    <h3 class="text-xs font-black text-amber-500 uppercase tracking-widest mb-2 flex items-center gap-2">
-                        <i class="fas fa-comment-dots"></i> Catatan Pelanggan
-                    </h3>
-                    <div class="bg-amber-50 border border-amber-100 p-4 rounded-xl relative">
-                        <i class="fas fa-quote-left text-amber-200 absolute top-2 left-2 text-2xl"></i>
-                        <p class="text-sm text-slate-700 italic relative z-10 pl-6">"{{ $order->customer_note }}"</p>
-                    </div>
+                {{-- TAMPILAN UNTUK INPUT MANUAL (CATATAN PELANGGAN) --}}
+@if(!empty($order->customer_note))
+<div class="mt-6" x-data="{ openNoteModal: false }">
+    <h3 class="text-xs font-black text-amber-500 uppercase tracking-widest mb-2 flex items-center gap-2">
+        <i class="fas fa-comment-dots"></i> Catatan Pelanggan
+    </h3>
+    
+    <div class="bg-amber-50 border border-amber-100 p-4 rounded-xl relative">
+        <i class="fas fa-quote-left text-amber-200 absolute top-2 left-2 text-2xl"></i>
+        
+        <p class="text-sm text-slate-700 italic relative z-10 pl-6 line-clamp-3 break-all">
+            "{{ $order->customer_note }}"
+        </p>
+
+        <div class="mt-2 pl-6">
+            <button @click="openNoteModal = true" 
+                    class="text-xs font-bold text-amber-600 hover:text-amber-800 hover:underline flex items-center gap-1 transition">
+                <span>Baca Selengkapnya</span>
+                <i class="fas fa-external-link-alt"></i>
+            </button>
+        </div>
+    </div>
+
+    <div x-show="openNoteModal" 
+         style="display: none;"
+         class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm p-4"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0">
+         
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden transform transition-all border border-slate-200"
+             @click.away="openNoteModal = false">
+            
+            <div class="bg-amber-100 px-6 py-4 flex justify-between items-center border-b border-amber-200">
+                <h3 class="text-lg font-bold text-amber-900 flex items-center gap-2">
+                    <i class="fas fa-comment-alt"></i> Isi Catatan Lengkap
+                </h3>
+                <button @click="openNoteModal = false" class="text-amber-800 hover:text-red-600 transition p-1">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <div class="p-6 max-h-[70vh] overflow-y-auto bg-white">
+                <div class="bg-slate-50 p-5 rounded-xl border border-slate-200 shadow-inner">
+                    <p class="text-slate-700 text-sm leading-relaxed whitespace-pre-line break-words text-justify">
+                        {{ $order->customer_note }}
+                    </p>
                 </div>
-                @endif
-                {{-- [SELESAI BARU] --}}
+            </div>
+
+            <div class="bg-slate-50 px-6 py-3 flex justify-end border-t border-slate-100">
+                <button @click="openNoteModal = false" 
+                        class="px-5 py-2 bg-slate-800 text-white text-sm font-bold rounded-lg hover:bg-black transition shadow-lg">
+                    Tutup
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
                 
                 <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mt-6 mb-3 border-b pb-2">Catatan</h3>
                 <p class="text-sm text-slate-600 italic bg-slate-50 p-3 rounded-xl border border-slate-100">
