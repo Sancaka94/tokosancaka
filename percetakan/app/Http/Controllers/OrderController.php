@@ -448,8 +448,16 @@ class OrderController extends Controller
                 }
             }
 
-            $finalPrice = max(0, $subtotal - $discount);
-            Log::info("Final Price: {$finalPrice}");
+            // 1. Hitung Harga Barang setelah Diskon
+            $hargaSetelahDiskon = max(0, $subtotal - $discount);
+
+            // 2. Ambil Biaya Ongkir dari Input
+            $biayaOngkir = ($request->delivery_type === 'shipping') ? (int)$request->shipping_cost : 0;
+
+            // 3. [FIX] TOTAL FINAL = (Barang - Diskon) + ONGKIR
+            $finalPrice = $hargaSetelahDiskon + $biayaOngkir; 
+            
+            Log::info("Final Price Calculation: ($subtotal - $discount) + $biayaOngkir = $finalPrice");
 
             // 5. DATA CUSTOMER
             $paymentStatus = 'unpaid';
