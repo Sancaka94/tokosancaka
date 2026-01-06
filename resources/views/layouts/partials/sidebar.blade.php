@@ -31,7 +31,7 @@
             sidebarOpen ? 'translate-x-0 ease-out' : '-translate-x-full ease-in lg:translate-x-0',
             (isExpanded || isHovered) ? 'w-[280px]' : 'w-[280px] lg:w-20'
         ]"
-        class="bg-blue-900 text-gray-300 flex-shrink-0 flex flex-col h-screen fixed inset-y-0 left-0 z-50 transform transition-all duration-300 lg:static lg:inset-auto shadow-xl overflow-hidden">
+        class="bg-blue-900 text-gray-300 flex-shrink-0 flex flex-col min-h-screen fixed inset-y-0 left-0 z-50 transform transition-all duration-300 lg:static lg:inset-auto shadow-xl overflow-hidden">
 
         {{-- Tombol Close untuk Mobile --}}
         <div class="flex justify-end p-4 lg:hidden">
