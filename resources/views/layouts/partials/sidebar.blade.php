@@ -28,7 +28,7 @@
        Height 133.33vh = Kompensasi agar background full sampai bawah (100 / 0.75 = 133.33).
     --}}
     <aside id="main-sidebar" 
-        style="zoom: 75%;"
+        style="zoom: 80%;"
         {{-- Hover hanya aktif di layar besar (Desktop) --}}
         @mouseenter="if(window.innerWidth >= 1024) isHovered = true"
         @mouseleave="isHovered = false"
