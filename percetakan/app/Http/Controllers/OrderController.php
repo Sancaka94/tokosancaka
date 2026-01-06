@@ -455,7 +455,7 @@ class OrderController extends Controller
                     if ($cashReceived < $finalPrice) throw new \Exception("Uang tunai kurang!");
                     $changeAmount = $cashReceived - $finalPrice;
                     $paymentStatus = 'paid';
-                    $catatanSistem .= "[INFO KASIR] Tunai. Terima: Rp " . number_format($cashReceived,0,',','.') . "\nKembali: Rp " . number_format($changeAmount,0,',','.');
+                    $catatanSistem = "[INFO KASIR] Tunai. Terima: Rp " . number_format($cashReceived,0,',','.') . "\nKembali: Rp " . number_format($changeAmount,0,',','.');
                  case 'affiliate_balance':
                      if (!$request->customer_id) throw new \Exception("Wajib pilih Member Afiliasi.");
                     $affiliatePayor = Affiliate::lockForUpdate()->find($request->customer_id);
