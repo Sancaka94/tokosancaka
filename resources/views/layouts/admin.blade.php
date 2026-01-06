@@ -48,13 +48,7 @@
     3. Gunakan 'h-screen' dan 'overflow-hidden' pada body.
 --}}
 {{-- Tambahkan style="zoom: 80%" --}}
-{{-- 
-    PERBAIKAN:
-    1. style="zoom: 80%": Mengecilkan tampilan.
-    2. min-h-screen: Memastikan tinggi minimal setinggi layar, tapi BISA MEMANJANG ke bawah (tidak dikunci).
-    3. Hapus 'overflow-hidden' di body: Agar scrollbar browser muncul dan Anda bisa melihat konten paling bawah.
---}}
-<body class="bg-gray-100 text-gray-800 font-sans antialiased text-sm min-h-screen" style="zoom: 80%;">
+<body class="bg-gray-100 text-gray-800 font-sans antialiased text-sm h-screen overflow-hidden" style="zoom: 80%;">
 
     @if(isset($error_message))
         <div class="bg-red-500 text-white text-center p-2 absolute top-0 w-full z-[60]">
@@ -62,35 +56,28 @@
         </div>
     @endif
 
-    {{-- WRAPPER UTAMA: Menggunakan min-h-screen agar background full --}}
+    {{-- WRAPPER UTAMA: Menggunakan Flexbox untuk membagi Sidebar (Kiri) dan Konten (Kanan) --}}
     <div x-data="{ sidebarOpen: window.innerWidth > 1024 }" 
          @resize.window="sidebarOpen = window.innerWidth > 1024" 
-         class="flex min-h-screen w-full bg-gray-100">
+         class="flex h-screen w-full bg-gray-100">
          
-        {{-- 1. SIDEBAR --}}
-        {{-- Agar Sidebar tetap nempel di kiri saat discroll, kita bungkus div sticky --}}
-        <div class="sticky top-0 h-screen shrink-0">
-             @include('layouts.partials.sidebar')
-        </div>
+        {{-- 1. SIDEBAR (Include file sidebar Anda) --}}
+        {{-- Pastikan di file sidebar.blade.php class utamanya tidak ada 'fixed' atau 'absolute' untuk Desktop --}}
+        @include('layouts.partials.sidebar')
 
         {{-- 2. AREA KANAN (Header + Konten) --}}
-        <div class="flex-1 flex flex-col min-h-screen relative">
+        <div class="flex-1 flex flex-col h-screen overflow-hidden relative">
             
-            {{-- Header (Sticky di atas agar ikut turun saat scroll, opsional) --}}
-            <div class="sticky top-0 z-30">
-                @include('layouts.partials.header')
-            </div>
+            {{-- Header --}}
+            @include('layouts.partials.header')
 
-            {{-- Main Content Area --}}
-            {{-- HAPUS overflow-y-auto di sini, biarkan body yang mengurus scroll --}}
-            <main class="flex-1 bg-gray-100 p-4 sm:p-6 lg:p-8">
-                
-                {{-- Konten Utama --}}
-                @yield('content')
-                
-                {{-- Spacer Tambahan di Bawah agar tidak mepet layar --}}
-                <div class="h-20 w-full"></div>
-
+            {{-- Main Content Area (Scrollable) --}}
+            {{-- 'flex-1' agar mengisi sisa ruang, 'overflow-y-auto' agar bisa discroll --}}
+            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 custom-scrollbar p-4 sm:p-6 lg:p-8">
+                {{-- MODIFIKASI: Membungkus konten agar lebarnya 80% dan rata tengah --}}
+                <div class="w-[90%] md:w-[80%] mx-auto">
+                    @yield('content')
+                </div>
             </main>
 
         </div>
