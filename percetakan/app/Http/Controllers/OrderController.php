@@ -333,76 +333,86 @@ class OrderController extends Controller
         }
     }
 
-    /**
-     * PROSES ORDER (KIRIM PESANAN)
-     */
     public function store(Request $request, DokuJokulService $dokuService, KiriminAjaService $kiriminAja)
     {
-        Log::info("STORE ORDER: Memulai proses checkout...");
+        // [LOG 1] Cek Input Mentah dari Frontend
+        Log::info('================ START ORDER STORE ================');
+        Log::info('RAW REQUEST:', $request->all());
 
-        // 1. DEFINISI VARIABEL (WAJIB)
-        $customerNote = $request->input('note'); 
-        $catatanSistem = '';                     
+        // 1. SETUP VARIABEL
+        $customerNote  = $request->input('note'); 
+        $catatanSistem = '';                      
+        
+        Log::info('Customer Note (Input Manual): ' . $customerNote);
 
-        // --- [TAMBAHKAN INI AGAR TIDAK WAJIB MEMBER JIKA SALAH PILIH] ---
-        // Jika user memilih 'Saldo Member' tapi LUPA memilih orangnya (customer_id kosong)
-        // Maka paksa ubah metode pembayaran jadi 'cash' (Tunai)
-        if ($request->payment_method === 'affiliate_balance' && empty($request->customer_id)) {
-            $request->merge(['payment_method' => 'cash']);
+        // Ambil input asli
+        $inputMethod = $request->payment_method;
+        $custId      = $request->customer_id;
+
+        Log::info("Cek Metode Bayar Awal: {$inputMethod} | Customer ID: {$custId}");
+
+        // [LOGIKA PENYELAMAT]
+        if ($inputMethod === 'affiliate_balance' && empty($custId)) {
+            Log::warning('⚠️ AUTO-FIX TRIGGERED: Metode Saldo Member tapi ID Kosong -> Ubah ke CASH');
+            $metodeBayarFix = 'cash';
+        } else {
+            $metodeBayarFix = $inputMethod;
+            Log::info("Metode Bayar Valid (Tidak berubah): {$metodeBayarFix}");
         }
-        // ---------------------------------------------------------------
 
-        // 1. VALIDASI
+        // 2. VALIDASI
+        Log::info('Start Validasi Laravel...');
         $request->validate([
-            'items'           => 'required', 
-            'total'           => 'required|numeric',
-            'payment_method'  => 'required',
-            'delivery_type'   => 'required|in:pickup,shipping',
-            'shipping_cost'   => 'required_if:delivery_type,shipping|numeric',
-            'courier_name'    => 'required_if:delivery_type,shipping|string',
-            'destination_text'=> 'nullable|string', 
-            'destination_district_id' => 'required_if:delivery_type,shipping','customer_name' => [
-            Rule::requiredIf(function () use ($request) {
-                return $request->delivery_type === 'shipping' && empty($request->customer_id);
-            }),
-        ],
-        'customer_phone' => [
-            Rule::requiredIf(function () use ($request) {
-                return $request->delivery_type === 'shipping' && empty($request->customer_id);
-            }),
-        ],
-    ], [
-        'customer_name.required_if' => 'Nama wajib diisi untuk pengiriman.',
-        'customer_phone.required_if' => 'No WA wajib diisi untuk pengiriman.',
-    ]);
-
+            'items'                   => 'required', 
+            'total'                   => 'required|numeric',
+            'delivery_type'           => 'required|in:pickup,shipping',
+            'shipping_cost'           => 'required_if:delivery_type,shipping|numeric',
+            'courier_name'            => 'nullable|string|required_if:delivery_type,shipping',
+            'destination_text'        => 'nullable|string', 
+            'destination_district_id' => 'nullable|required_if:delivery_type,shipping',
+            // Validasi nama/phone jika shipping guest
+            'customer_name' => [
+                Rule::requiredIf(fn() => $request->delivery_type === 'shipping' && empty($request->customer_id)),
+            ],
+            'customer_phone' => [
+                Rule::requiredIf(fn() => $request->delivery_type === 'shipping' && empty($request->customer_id)),
+            ],
+        ]);
+        Log::info('Validasi Laravel Lolos.');
 
         $cartItems = json_decode($request->items, true);
         if (!is_array($cartItems) || count($cartItems) < 1) {
+            Log::error('Keranjang Kosong / Invalid JSON');
             return response()->json(['status' => 'error', 'message' => 'Keranjang kosong.'], 400);
         }
 
         DB::beginTransaction();
+        Log::info('Database Transaction Started.');
 
         try {
             $subtotal = 0;
             $finalCart = []; 
             $totalWeight = 0;
 
-            // 2. STOK & HARGA
+            // 3. CEK STOK & HITUNG TOTAL
+            Log::info('Start Loop Produk...');
             foreach ($cartItems as $item) {
                 $product = Product::lockForUpdate()->find($item['id']);
-                if (!$product) throw new \Exception("Produk ID {$item['id']} tidak ditemukan.");
+                
+                if (!$product) {
+                    Log::error("Produk ID {$item['id']} tidak ditemukan di DB.");
+                    throw new \Exception("Produk ID {$item['id']} tidak ditemukan.");
+                }
+                
+                Log::info("Cek Produk: {$product->name} | Stok DB: {$product->stock} | Request Qty: {$item['qty']}");
+
                 if ($product->stock < $item['qty']) throw new \Exception("Stok '{$product->name}' kurang.");
 
                 $lineTotal = $product->sell_price * $item['qty'];
                 $subtotal += $lineTotal;
                 
-                // --- PERBAIKAN LOGIKA BERAT DI SINI ---
-                // Jika berat di DB kosong/0, anggap 5 gram (kertas), JANGAN 1000.
                 $weightPerItem = ($product->weight > 0) ? $product->weight : 5; 
                 $totalWeight += ($weightPerItem * $item['qty']);
-                // --------------------------------------
 
                 $finalCart[] = [
                     'product'  => $product,
@@ -411,38 +421,33 @@ class OrderController extends Controller
                 ];
             }
 
-            // --- TAMBAHAN: SAFETY NET (SETELAH LOOP SELESAI) ---
-            // Jika total berat kurang dari 1kg (1000g), bulatkan jadi 1kg agar API menerima
-            if ($totalWeight < 1000) {
-                $totalWeight = 1000;
-            }
-            Log::info("BERAT FIX DIKIRIM KE API: " . $totalWeight);
+            if ($totalWeight < 1000) $totalWeight = 1000;
+            Log::info("Total Berat Final: {$totalWeight} gram | Subtotal: {$subtotal}");
 
-            // 3. DISKON KUPON
+            // 4. DISKON KUPON
             $discount = 0;
             $couponId = null;
             if ($request->coupon) {
+                Log::info("Cek Kupon: " . $request->coupon);
                 $couponDB = Coupon::where('code', $request->coupon)->first();
                 if ($couponDB && $couponDB->is_active) {
-                    $isValid = true; 
-                    if ($isValid) {
-                        $couponId = $couponDB->id;
-                        $discount = ($couponDB->type == 'percent') ? $subtotal * ($couponDB->value / 100) : $couponDB->value;
-                        $couponDB->increment('used_count');
-                    }
+                    $couponId = $couponDB->id;
+                    $discount = ($couponDB->type == 'percent') ? $subtotal * ($couponDB->value / 100) : $couponDB->value;
+                    $couponDB->increment('used_count');
+                    Log::info("Kupon Valid. Diskon: {$discount}");
                 }
             }
 
             $finalPrice = max(0, $subtotal - $discount);
+            Log::info("Final Price: {$finalPrice}");
 
-            // 4. DATA CUSTOMER
+            // 5. DATA CUSTOMER
             $paymentStatus = 'unpaid';
             $paymentUrl    = null;    
             $changeAmount  = 0;     
-            $customerName  = $request->customer_name ?? 'Customer';
+            $customerName  = $request->customer_name ?? 'Customer Umum';
             $customerPhone = $request->customer_phone ?? '08819435180';
             $customerEmail = 'tokosancaka@gmail.com'; 
-            $note          = $request->note;
             
              if ($request->customer_id) {
                 $affiliateMember = Affiliate::find($request->customer_id);
@@ -450,69 +455,95 @@ class OrderController extends Controller
                     $customerName  = $affiliateMember->name; 
                     $customerPhone = $affiliateMember->whatsapp;
                     if (!empty($affiliateMember->email)) $customerEmail = $affiliateMember->email;
+                    Log::info("Data Member Ditemukan: {$customerName}");
+                } else {
+                    Log::warning("Customer ID {$request->customer_id} dikirim tapi tidak ditemukan di DB.");
                 }
             }
 
-            // 5. LOGIK BAYAR
-             switch ($request->payment_method) {
+            // 6. PROSES PEMBAYARAN
+            Log::info("Masuk Switch Case Pembayaran. Metode: {$metodeBayarFix}");
+            
+             switch ($metodeBayarFix) {
                 case 'cash':
-                     $cashReceived = (int) $request->cash_amount;
+                    $cashReceived = (int) $request->cash_amount;
+                    Log::info("Bayar Tunai. Uang Masuk: {$cashReceived}");
+                    
                     if ($cashReceived < $finalPrice) throw new \Exception("Uang tunai kurang!");
+                    
                     $changeAmount = $cashReceived - $finalPrice;
-                    $paymentStatus = 'paid';
+                    $paymentStatus = 'paid'; 
                     $catatanSistem = "[INFO KASIR] Tunai. Terima: Rp " . number_format($cashReceived,0,',','.') . "\nKembali: Rp " . number_format($changeAmount,0,',','.');
-                 case 'affiliate_balance':
-                     if (!$request->customer_id) throw new \Exception("Wajib pilih Member Afiliasi.");
-                    $affiliatePayor = Affiliate::lockForUpdate()->find($request->customer_id);
-                    if (!$affiliatePayor || !Hash::check($request->affiliate_pin, $affiliatePayor->pin)) throw new \Exception("PIN Salah!");
-                    if ($affiliatePayor->balance < $finalPrice) throw new \Exception("Saldo Kurang.");
-                    $affiliatePayor->decrement('balance', $finalPrice);
-                    $paymentStatus = 'paid';
-                    $catatanSistem = "[INFO BAYAR] Potong Saldo Member";
                     break;
+
+                case 'affiliate_balance':
+                    Log::info("Bayar Saldo Member. ID Member: " . $request->customer_id);
+                    
+                    if (!$request->customer_id) {
+                        Log::error("FATAL: Masuk case affiliate_balance tapi customer_id kosong!");
+                        throw new \Exception("Sistem Error: Member tidak terdeteksi.");
+                    }
+                    
+                    $affiliatePayor = Affiliate::lockForUpdate()->find($request->customer_id);
+                    
+                    // Cek PIN
+                    if (!$affiliatePayor || !Hash::check($request->affiliate_pin, $affiliatePayor->pin)) {
+                        Log::error("PIN Salah untuk member ID: " . $request->customer_id);
+                        throw new \Exception("PIN Salah!");
+                    }
+                    
+                    // Cek Saldo
+                    if ($affiliatePayor->balance < $finalPrice) {
+                        Log::error("Saldo Kurang. Saldo: {$affiliatePayor->balance}, Tagihan: {$finalPrice}");
+                        throw new \Exception("Saldo Kurang.");
+                    }
+                    
+                    $affiliatePayor->decrement('balance', $finalPrice);
+                    $paymentStatus = 'paid'; 
+                    $catatanSistem = "[INFO BAYAR] Potong Saldo Member";
+                    Log::info("Potong Saldo Berhasil. Sisa Saldo: " . $affiliatePayor->balance);
+                    break;
+
                 case 'tripay':
                 case 'doku':
+                    Log::info("Bayar Payment Gateway: {$metodeBayarFix}");
                     $paymentStatus = 'unpaid';
                     break;
             }
 
-            // 6. BUAT ORDER KE DB
-            // UBAH 'Y' (4 digit tahun) menjadi 'y' (2 digit tahun) agar total karakter hanya 19
+            // 7. GENERATE ORDER NUMBER
             $orderNumber = 'SCK-' . date('ymdHis') . rand(100, 999);
             $shippingRef = null;
+            Log::info("Generated Order Number: {$orderNumber}");
 
-            // =========================================================
-            // 7. PROSES KIRIM KE KIRIMINAJA (REGULER & INSTANT)
-            // =========================================================
-            $shippingRef = null; 
-
+            // 8. INTEGRASI KIRIMINAJA
             if ($request->delivery_type === 'shipping') {
-                Log::info("DELIVERY: Memulai Request KiriminAja...");
+                Log::info("Delivery Type: Shipping. Preparing API...");
                 
-                // A. Cari Koordinat Tujuan
                 $destLat = null; $destLng = null;
                 if ($request->filled('destination_text')) {
                     $geo = $this->geocode($request->destination_text);
                     if ($geo) {
                         $destLat = (string)$geo['lat'];
                         $destLng = (string)$geo['lng'];
+                        Log::info("Geocoding Success: {$destLat}, {$destLng}");
+                    } else {
+                        Log::warning("Geocoding Failed for: " . $request->destination_text);
                     }
                 }
 
-                // Cek Tipe Kurir
-                $serviceCodeCheck = strtolower($request->courier_service ?? ''); 
+                $serviceCodeCheck = strtolower($request->courier_service ?? $request->courier_name ?? ''); 
                 $isInstant = (str_contains($serviceCodeCheck, 'gosend') || str_contains($serviceCodeCheck, 'grab'));
                 $kaResponse = null;
 
-                // --- BLOK LOGIKA INSTANT ---
                 if ($isInstant) {
-                    Log::info("TIPE KURIR: INSTANT ($serviceCodeCheck)");
-                    if (!$destLat || !$destLng) throw new \Exception("Pengiriman Instan GAGAL: Koordinat alamat tujuan tidak ditemukan.");
+                    Log::info("Requesting INSTANT Courier...");
+                    if (!$destLat || !$destLng) throw new \Exception("Gagal Instant: Koordinat tujuan tidak ditemukan.");
 
                     $instantPayload = [
                         'order_id'   => $orderNumber,
                         'service'    => $serviceCodeCheck,
-                        'item_price' => $subtotal,
+                        'item_price' => (int) $subtotal,
                         'origin'     => [
                             'lat'     => config('services.kiriminaja.origin_lat'),
                             'long'    => config('services.kiriminaja.origin_long'),
@@ -527,15 +558,13 @@ class OrderController extends Controller
                             'phone'   => $customerPhone,
                             'name'    => $customerName
                         ],
-                        'weight'  => $totalWeight,
+                        'weight'  => (int) $totalWeight,
                         'vehicle' => 'motor',
                     ];
                     $kaResponse = $kiriminAja->createInstantOrder($instantPayload);
 
-               } else {
-                    // --- LOGIKA REGULER (JNE, SPX, SICEPAT, DLL) ---
-                    
-                    // 1. Tentukan Service Code & Type
+                } else { 
+                    Log::info("Requesting REGULAR Courier...");
                     $serviceCode = $request->courier_code; 
                     $serviceType = $request->service_type;
 
@@ -543,10 +572,9 @@ class OrderController extends Controller
                         $parts = explode('-', $request->courier_name); 
                         $namaKurir = strtolower(trim($parts[0])); 
                         $mapManual = [
-                            'jne' => 'jne', 'j&t express' => 'jnt', 'sicepat' => 'sicepat',
-                            'anteraja' => 'anteraja', 'pos indonesia' => 'posindonesia', 'tiki' => 'tiki',
-                            'lion parcel' => 'lion', 'ninja express' => 'ninja', 'id express' => 'idx',
-                            'spx express' => 'spx', 'sap express' => 'sap', 'j&t cargo' => 'jtcargo'
+                            'jne' => 'jne', 'j&t' => 'jnt', 'sicepat' => 'sicepat',
+                            'anteraja' => 'anteraja', 'pos' => 'posindonesia', 'tiki' => 'tiki',
+                            'lion' => 'lion', 'ninja' => 'ninja', 'id' => 'idx', 'spx' => 'spx', 'sap' => 'sap', 'cargo' => 'jtcargo'
                         ];
                         foreach ($mapManual as $nameKey => $codeVal) {
                             if (str_contains($namaKurir, $nameKey)) { $serviceCode = $codeVal; break; }
@@ -555,36 +583,19 @@ class OrderController extends Controller
                     if (empty($serviceCode)) $serviceCode = 'jne'; 
                     if (empty($serviceType)) $serviceType = 'REG';
 
-                    // 2. LOGIKA JADWAL PINTAR
                     $now = \Carbon\Carbon::now();
-                    $isSunday = $now->isSunday();
-                    $pickupSchedule = null;
-
-                    if ($isSunday || $now->hour >= 14) {
+                    $pickupSchedule = $now->addMinutes(60)->format('Y-m-d H:i:s');
+                    if ($now->isSunday() || $now->hour >= 14) {
                         $pickupSchedule = $now->addDay()->setTime(9, 0, 0)->format('Y-m-d H:i:s');
-                        Log::info("Jadwal (Minggu/Sore). Auto-set Pickup Besok: $pickupSchedule");
-                    } else {
-                        $pickupSchedule = $now->addMinutes(60)->format('Y-m-d H:i:s');
-                        Log::info("Jadwal Normal. Set Pickup Hari Ini: $pickupSchedule");
                     }
 
-                    // 3. LOGIKA NILAI BARANG (FIX ERROR MINIMAL 1000)
-                    $declaredValue = (int) $subtotal;
-                    if ($declaredValue < 1000) {
-                        $declaredValue = 1000; // Paksa minimal 1000
-                    }
-
-                    // 1. Gabungkan Alamat Detail + Alamat Kecamatan untuk kurir
-                    $fullAddress = $request->destination_text; // Default (Kecamatan/Kelurahan)
-
+                    $declaredValue = max(1000, (int)$subtotal);
+                    $fullAddress = $request->destination_text;
                     if ($request->filled('customer_address_detail')) {
-                    // Format: "Jl. Merpati No 10 (Beran, Ngawi, ...)"
-                    $fullAddress = $request->customer_address_detail . " (" . $request->destination_text . ")";
+                        $fullAddress = $request->customer_address_detail . " (" . $request->destination_text . ")";
                     }
 
-                    // 4. Buat Payload (RAW API Format)
                     $kaPayload = [
-                        // INFO PENGIRIM
                         'address'      => config('services.kiriminaja.origin_address'),
                         'phone'        => '085745808809',
                         'name'         => 'Toko Sancaka',
@@ -593,8 +604,6 @@ class OrderController extends Controller
                         'zipcode'      => '63211', 
                         'schedule'     => $pickupSchedule, 
                         'platform_name'=> 'Sancaka Store',
-                        
-                        // INFO PAKET
                         'packages' => [
                             [
                                 'order_id'                 => $orderNumber,
@@ -604,15 +613,11 @@ class OrderController extends Controller
                                 'destination_kecamatan_id' => (int) $request->destination_district_id,
                                 'destination_kelurahan_id' => (int) ($request->destination_subdistrict_id ?? 0),
                                 'destination_zipcode'      => $request->postal_code ?? '00000',
-                                
                                 'weight'           => (int) $totalWeight,
                                 'width'            => 10, 'length' => 10, 'height' => 10, 'qty' => 1,
-                                
-                                // GUNAKAN DECLARED VALUE (MIN 1000)
                                 'item_value'       => $declaredValue, 
                                 'shipping_cost'    => (int) $request->shipping_cost,
                                 'insurance_amount' => 0,
-                                
                                 'service'          => $serviceCode,
                                 'service_type'     => $serviceType,
                                 'package_type_id'  => 1, 
@@ -623,96 +628,114 @@ class OrderController extends Controller
                         ]
                     ];
 
-                    Log::info("Mencoba Request Pickup...", ['schedule' => $pickupSchedule, 'value' => $declaredValue]);
                     $kaResponse = $kiriminAja->createExpressOrder($kaPayload);
 
-                    // ========================================================
-                    // 5. LOGIKA RETRY (JADWAL)
-                    // ========================================================
                     if (isset($kaResponse['status']) && $kaResponse['status'] == false) {
                         $errorMsg = strtolower($kaResponse['text'] ?? '');
-                        
-                        if (str_contains($errorMsg, 'jadwal') || str_contains($errorMsg, 'schedule') || str_contains($errorMsg, 'time') || str_contains($errorMsg, 'pickup')) {
-                            
-                            $tomorrow = \Carbon\Carbon::now()->addDay()->setTime(9, 0, 0);
-                            if ($tomorrow->format('Y-m-d H:i:s') === $pickupSchedule) {
-                                $tomorrow = \Carbon\Carbon::now()->addDays(2)->setTime(9, 0, 0);
-                            }
-
-                            $newSchedule = $tomorrow->format('Y-m-d H:i:s');
-                            Log::warning("Jadwal Ditolak. RETRY: $newSchedule");
-                            
+                        if (str_contains($errorMsg, 'jadwal') || str_contains($errorMsg, 'schedule')) {
+                            $newSchedule = \Carbon\Carbon::now()->addDay()->setTime(9, 0, 0)->format('Y-m-d H:i:s');
+                            Log::warning("Jadwal Ditolak. Retry: {$newSchedule}");
                             $kaPayload['schedule'] = $newSchedule;
                             $kaResponse = $kiriminAja->createExpressOrder($kaPayload);
                         }
                     }
-                }
+                } 
 
-                // Cek Response Akhir
+                Log::info("KiriminAja Response:", (array) $kaResponse);
+
                 if (isset($kaResponse['status']) && $kaResponse['status'] == true) {
                     $shippingRef = $kaResponse['data']['order_id'] ?? $kaResponse['pickup_number'] ?? null;
-                    Log::info("KIRIMINAJA SUKSES. Ref: $shippingRef");
-                    // JANGAN pakai $pesanDariPembeli, pakai $catatanSistem
-                    $catatanSistem = "\n[RESI OTOMATIS] Ref: " . $shippingRef;
+                    $catatanSistem .= "\n[RESI OTOMATIS] Ref: " . $shippingRef;
                 } else {
-                    $errMsg = $kaResponse['text'] ?? 'Gagal koneksi ke kurir.';
-                    Log::error("KIRIMINAJA GAGAL: " . json_encode($kaResponse));
-                    throw new \Exception("Gagal Membuat Order Kurir: " . $errMsg);
+                    $errMsg = $kaResponse['text'] ?? json_encode($kaResponse);
+                    throw new \Exception("Gagal Order Kurir: " . $errMsg);
                 }
             }
 
-            // SIAPKAN STRING ALAMAT LENGKAP
             $fullAddressSaved = null;
             if ($request->delivery_type === 'shipping') {
-                // Gabungkan: "Jalan Merpati No 1 (Kecamatan Wiyung, Surabaya...)"
                 $detail = $request->customer_address_detail ?? '';
                 $district = $request->destination_text ?? '';
                 $fullAddressSaved = $detail . ' (' . $district . ')';
             }
 
-           // =========================================================
-            // TARUH KODE BARU DI SINI (GANTIKAN KODE Order::create LAMA)
-            // =========================================================
+            // 9. SIMPAN ORDER KE DATABASE
+            Log::info("Mulai Insert Order ke DB...");
+            
+            // Susun data dulu biar bisa di-log
+            $orderData = [
+                'order_number'    => $orderNumber,
+                'user_id'         => $request->customer_id ?? null, 
+                'customer_name'   => $customerName,
+                'customer_phone'  => $customerPhone,
+                'coupon_id'       => $couponId,
+                'total_price'     => $subtotal,
+                'discount_amount' => $discount,
+                'final_price'     => $finalPrice,
+                'payment_method'  => $metodeBayarFix, 
+                'status'          => ($paymentStatus === 'paid') ? 'processing' : 'pending', 
+                'payment_status'  => $paymentStatus,
+                'note'            => $catatanSistem,
+                'customer_note'   => $customerNote,
+                'shipping_cost'   => $request->delivery_type === 'shipping' ? $request->shipping_cost : 0,
+                'courier_service' => $request->delivery_type === 'shipping' ? $request->courier_name : null,
+                'shipping_ref'    => $shippingRef,
+                'destination_address' => $fullAddressSaved,
+            ];
 
-            // MULAI SIMPAN DATABASE
+            Log::info("Data yang akan diinsert:", $orderData);
+
             try {
-                $order = Order::create([
-                    'order_number'    => $orderNumber,
-                    'user_id'         => $request->customer_id ?? null, 
-                    'customer_name'   => $customerName,
-                    'customer_phone'  => $customerPhone,
-                    'coupon_id'       => $couponId,
-                    'total_price'     => $subtotal,
-                    'discount_amount' => $discount,
-                    'final_price'     => $finalPrice,
-                    'payment_method'  => $request->payment_method,
-                    'status'          => ($paymentStatus === 'paid') ? 'processing' : 'pending', 
-                    'payment_status'  => $paymentStatus,
-                    // --- [PERBAIKAN UTAMA] ---
-                    // Pisahkan kolom note dan customer_note
-                    // --- [KUNCI PERBAIKANNYA DISINI] ---
-                'customer_note'   => $pesanDariPembeli, // Murni tulisan user (Input Manual)
-                'note'            => $catatanSistem,    // Murni log sistem (Resi/Bayar)
-                // -----------------------------------// Pesan manual dari pembeli
-                    // --------------------------
-                    'shipping_cost'   => $request->delivery_type === 'shipping' ? $request->shipping_cost : 0,
-                    'courier_service' => $request->delivery_type === 'shipping' ? $request->courier_name : null,
-                    'shipping_ref'    => $shippingRef,
-                    // --- UPDATE BAGIAN INI (SIMPAN ALAMAT) ---
-                    'destination_address' => $fullAddressSaved,
-                  
-                ]);
-                
+                $order = Order::create($orderData);
                 Log::info("DATABASE SUKSES. Order ID: " . $order->id);
-
             } catch (\Exception $e) {
-                Log::error("DATABASE GAGAL: " . $e->getMessage());
-                // Throw exception lagi agar transaksi DB di-rollback oleh blok catch utama di paling bawah
+                Log::error("DATABASE SAVE GAGAL: " . $e->getMessage());
                 throw new \Exception("Gagal menyimpan order ke database: " . $e->getMessage());
             }
 
-            // 9. PROSES BAYAR (Tripay / Doku)
-            if ($request->payment_method === 'tripay') {
+            // 10. DETAIL ITEM
+            foreach ($finalCart as $data) {
+                $prod = $data['product'];
+                OrderDetail::create([
+                    'order_id'          => $order->id,
+                    'product_id'        => $prod->id,
+                    'product_name'      => $prod->name,    
+                    'base_price_at_order' => $prod->base_price, 
+                    'price_at_order'    => $prod->sell_price, 
+                    'quantity'          => $data['qty'],
+                    'subtotal'          => $data['subtotal'],
+                ]);
+                $prod->decrement('stock', $data['qty']);
+                $prod->increment('sold', $data['qty']);
+                if ($prod->stock <= 0) $prod->update(['stock_status' => 'unavailable']);
+            }
+
+            // 11. UPLOAD LAMPIRAN
+            if ($request->hasFile('attachments')) {
+                $files = $request->file('attachments');
+                $details = $request->input('attachment_details', []); 
+
+                Log::info("Mengupload " . count($files) . " lampiran...");
+
+                foreach ($files as $index => $file) {
+                    $path = $file->store('orders', 'public');
+                    $meta = $details[$index] ?? [];
+                    
+                    OrderAttachment::create([
+                        'order_id'   => $order->id,
+                        'file_path'  => $path,
+                        'file_name'  => $file->getClientOriginalName(),
+                        'file_type'  => $file->getClientMimeType(),
+                        'color_mode' => $meta['color'] ?? 'BW',
+                        'paper_size' => $meta['size'] ?? 'A4',
+                        'quantity'   => $meta['qty'] ?? 1
+                    ]);
+                }
+            }
+
+            // 12. LINK PEMBAYARAN
+            if ($metodeBayarFix === 'tripay') {
+                Log::info("Membuat Tripay Transaction...");
                 if (empty($request->payment_channel)) throw new \Exception("Harap pilih Channel Pembayaran.");
                 $orderItems = [];
                 foreach ($finalCart as $item) {
@@ -727,70 +750,19 @@ class OrderController extends Controller
                 if (!$tripayRes['success']) throw new \Exception("Tripay Gagal: " . ($tripayRes['message'] ?? 'Unknown Error'));
                 $paymentUrl = $tripayRes['data']['checkout_url'];
                 $order->update(['payment_url' => $paymentUrl]);
-            }
-            elseif ($request->payment_method === 'doku') {
+            } 
+            elseif ($metodeBayarFix === 'doku') {
+                Log::info("Membuat DOKU Payment...");
                 $dokuData = ['name' => $customerName, 'email' => $customerEmail, 'phone' => $customerPhone];
                 $paymentUrl = $dokuService->createPayment($order->order_number, $order->final_price, $dokuData);
                 if (empty($paymentUrl)) throw new \Exception("Gagal DOKU.");
                 $order->update(['payment_url' => $paymentUrl]);
             }
 
-            // 10. SIMPAN DETAIL & UPLOAD
-             foreach ($finalCart as $data) {
-                $prod = $data['product'];
-                OrderDetail::create([
-                    'order_id'            => $order->id,
-                    'product_id'          => $prod->id,
-                    'product_name'        => $prod->name,    
-                    'base_price_at_order' => $prod->base_price, 
-                    'price_at_order'      => $prod->sell_price, 
-                    'quantity'            => $data['qty'],
-                    'subtotal'            => $data['subtotal'],
-                ]);
-                $prod->decrement('stock', $data['qty']);
-                $prod->increment('sold', $data['qty']);
-                if ($prod->stock <= 0) $prod->update(['stock_status' => 'unavailable']);
-            }
-
-            // --- PERBAIKAN LOGIKA SIMPAN LAMPIRAN + SETTING ---
-            if ($request->hasFile('attachments')) {
-                
-                // Ambil semua file
-                $files = $request->file('attachments');
-                
-                // Ambil data settingan (array)
-                // Karena dikirim sebagai attachment_details[0][color], dst.
-                $details = $request->input('attachment_details', []); 
-
-                foreach ($files as $index => $file) {
-                    // 1. Simpan File Fisik
-                    $path = $file->store('orders', 'public');
-                    
-                    // 2. Ambil Settingan berdasarkan Index yang sama
-                    // Jika tidak ada data, pakai default
-                    $meta = $details[$index] ?? [];
-                    $colorMode = $meta['color'] ?? 'BW'; // 'Color' atau 'BW'
-                    $paperSize = $meta['size'] ?? 'A4';
-                    $qty       = $meta['qty'] ?? 1;
-
-                    // 3. Simpan ke Database
-                    OrderAttachment::create([
-                        'order_id'   => $order->id,
-                        'file_path'  => $path,
-                        'file_name'  => $file->getClientOriginalName(),
-                        'file_type'  => $file->getClientMimeType(),
-                        
-                        // Kolom Baru (Pastikan sudah dibuat di Database!)
-                        'color_mode' => $colorMode,
-                        'paper_size' => $paperSize,
-                        'quantity'   => $qty
-                    ]);
-                }
-            }
-            // ---------------------------------------------------
-
             DB::commit();
+            Log::info("TRANSAKSI SELESAI & COMMIT DB.");
 
+            // 13. NOTIFIKASI
             if ($request->coupon && $paymentStatus == 'paid') {
                 $this->_processAffiliateCommission($request->coupon, $finalPrice);
             }
@@ -803,7 +775,7 @@ class OrderController extends Controller
                 'order_id'       => $order->id,
                 'payment_url'    => $order->payment_url,
                 'change_amount'  => $changeAmount,
-                'payment_method' => $request->payment_method
+                'payment_method' => $metodeBayarFix 
             ]);
 
         } catch (\Exception $e) {
