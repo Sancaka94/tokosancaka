@@ -1,349 +1,230 @@
 {{--
     File: resources/views/layouts/partials/customer/sidebar.blade.php
-    Deskripsi: Sidebar navigasi interaktif lengkap untuk dashboard pelanggan, seller, dan agen.
+    Deskripsi: Sidebar navigasi interaktif dengan fitur Mini Sidebar (Icon Only).
 --}}
 
-<div x-show="sidebarOpen" @click="sidebarOpen = false" class="fixed inset-0 z-[90] bg-blue-900 bg-opacity-50 transition-opacity lg:hidden" x-cloak></div>
+{{-- Inisialisasi Alpine Data untuk Sidebar --}}
+<div x-data="{ isExpanded: false }" class="h-full">
 
-<aside
-    :class="sidebarOpen ? 'translate-x-0 ease-out' : '-translate-x-full ease-in'"
-    class="fixed inset-y-0 left-0 z-[100] w-64 overflow-y-auto bg-blue-900 text-white transition duration-300 transform lg:translate-x-0 lg:static lg:inset-0"
-    x-cloak>
+    {{-- Overlay untuk Mobile --}}
+    <div x-show="sidebarOpen" @click="sidebarOpen = false" class="fixed inset-0 z-[90] bg-blue-900 bg-opacity-50 transition-opacity lg:hidden" x-cloak></div>
 
-   {{-- Header Sidebar (Logo & Nama Toko) --}}
-<div class="flex items-center justify-center py-6">
-    <a href="{{ route('customer.profile.show') }}" class="flex flex-col items-center text-lg font-bold text-white text-center">
-        @php
-            // Ambil objek pengguna yang sedang login, jika ada.
-            $user = Auth::user();
+    <aside
+        {{-- Logika Lebar: Jika expanded w-64, jika tidak (default desktop) w-20. Mobile tetap w-64 saat dibuka. --}}
+        :class="[
+            sidebarOpen ? 'translate-x-0 ease-out' : '-translate-x-full ease-in',
+            isExpanded ? 'w-64' : 'w-64 lg:w-20'
+        ]"
+        class="fixed inset-y-0 left-0 z-[100] overflow-y-auto bg-blue-900 text-white transition-all duration-300 transform lg:translate-x-0 lg:static lg:inset-0 shadow-xl scrollbar-hide"
+        x-cloak>
 
-            // Tentukan path logo
-            $logoPath = $user?->store_logo_path;
-
-            // Tentukan nama toko untuk avatar default
-            $storeName = $user?->store_name ?? 'Pelanggan';
-
-            // Logika SRC: Jika logoPath ada, gunakan asset; jika tidak, gunakan UI Avatar
-            $logoSrc = $logoPath
-                ? asset('public/storage/' . $logoPath) 
-                : 'https://ui-avatars.com/api/?name=' . urlencode($storeName) . '&background=4f46e5&color=fff';
-        @endphp
-
-        {{-- Logo --}}
-        <img class="object-cover w-16 h-16 rounded-full mb-3 border-4 border-gray-700 shadow-md" 
-             src="{{ $logoSrc }}" 
-             alt="Logo Toko" />
-        
-        {{-- Nama Toko --}}
-        <span class="truncate w-40 block">{{ $storeName }}</span>
-    </a>
-</div>
-
-    <nav class="mt-4 px-4 space-y-2 pb-20">
-
-        {{-- 1. DASHBOARD MONITOR (UMUM) --}}
-        <a href="{{ route('customer.dashboard') }}" class="flex items-center px-4 py-2.5 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors duration-200 {{ request()->routeIs('customer.dashboard') ? 'bg-gray-900 text-white' : '' }}">
-            <i class="fas fa-tachometer-alt fa-fw w-6"></i>
-            <span class="ml-3">Dashboard Monitor</span>
-        </a>
-
-        @php
-            $user = auth()->user();
-            // Logika sembunyikan menu jika user belum setup profile (optional)
-            $hideMenus = $user->setup_token !== null && $user->profile_setup_at === null && $user->status === 'Tidak Aktif';
-        @endphp
-        
-        @if(!$hideMenus)
-
-            {{-- ========================================================== --}}
-            {{-- BAGIAN 2: MENU KHUSUS AGEN / UPGRADE                       --}}
-            {{-- ========================================================== --}}
+        {{-- Header Sidebar (Logo & Toggle) --}}
+        <div class="flex flex-col items-center justify-center py-6 border-b border-blue-800/50 sticky top-0 bg-blue-900 z-10 transition-all duration-300">
             
-            @if($user->role === 'agent' || $user->role === 'admin')
-                {{-- TAMPILAN UNTUK AGEN RESMI --}}
-                <div class="pt-4 pb-2">
-                    <p class="px-2 text-xs text-yellow-400 uppercase tracking-wider font-bold">Menu Agen Resmi</p>
-                </div>
+            {{-- Tombol Toggle (Hamburger) --}}
+            <button @click="isExpanded = !isExpanded" 
+                    class="absolute top-2 right-2 p-1 rounded-md hover:bg-blue-800 text-blue-200 focus:outline-none hidden lg:block"
+                    title="Toggle Sidebar">
+                <i :class="isExpanded ? 'fas fa-chevron-left' : 'fas fa-bars'" class="fa-fw"></i>
+            </button>
 
-                <a href="{{ route('agent.products.index') }}" 
-                   class="flex items-center px-4 py-2.5 mb-1 bg-gradient-to-r from-blue-700 to-blue-800 text-white rounded-md shadow-md border border-blue-600 hover:from-blue-600 hover:to-blue-700 transition">
-                    <i class="fas fa-store fa-fw w-6 text-yellow-400"></i>
-                    <div>
-                        <span class="block font-bold text-sm">Kelola Agen Sancaka</span>
-                        <span class="block text-[10px] text-blue-200 font-normal">Atur Harga Jual</span>
+            <a href="{{ route('customer.profile.show') }}" class="flex flex-col items-center text-center group">
+                @php
+                    $user = Auth::user();
+                    $logoPath = $user?->store_logo_path;
+                    $storeName = $user?->store_name ?? 'Pelanggan';
+                    $logoSrc = $logoPath ? asset('public/storage/' . $logoPath) : 'https://ui-avatars.com/api/?name=' . urlencode($storeName) . '&background=4f46e5&color=fff';
+                @endphp
+
+                {{-- Logo: Ukuran berubah saat collapse --}}
+                <img :class="isExpanded ? 'w-16 h-16' : 'w-10 h-10 lg:mt-6'" 
+                     class="object-cover rounded-full border-4 border-gray-700 shadow-md transition-all duration-300" 
+                     src="{{ $logoSrc }}" 
+                     alt="Logo Toko" />
+                
+                {{-- Nama Toko: Hilang saat collapse --}}
+                <div x-show="isExpanded" x-transition class="mt-3">
+                    <span class="truncate w-40 block text-lg font-bold">{{ $storeName }}</span>
+                </div>
+            </a>
+        </div>
+
+        <nav class="mt-4 space-y-2 pb-20 px-2">
+
+            {{-- 1. DASHBOARD MONITOR --}}
+            <a href="{{ route('customer.dashboard') }}" 
+               :class="isExpanded ? 'justify-start px-4' : 'lg:justify-center lg:px-0 justify-start px-4'"
+               class="flex items-center py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors duration-200 {{ request()->routeIs('customer.dashboard') ? 'bg-gray-900 text-white' : '' }}">
+                <i class="fas fa-tachometer-alt fa-fw text-xl"></i>
+                <span x-show="isExpanded" class="ml-3 whitespace-nowrap transition-all duration-200">Dashboard Monitor</span>
+            </a>
+
+            @php
+                $user = auth()->user();
+                $hideMenus = $user->setup_token !== null && $user->profile_setup_at === null && $user->status === 'Tidak Aktif';
+            @endphp
+            
+            @if(!$hideMenus)
+
+                {{-- MENU AGEN --}}
+                @if($user->role === 'agent' || $user->role === 'admin')
+                    <div x-show="isExpanded" class="pt-4 pb-2 transition-opacity duration-200">
+                        <p class="px-2 text-xs text-yellow-400 uppercase tracking-wider font-bold">Menu Agen</p>
                     </div>
+
+                    <a href="{{ route('agent.products.index') }}" 
+                       :class="isExpanded ? 'justify-start px-4' : 'lg:justify-center lg:px-0 justify-start px-4'"
+                       class="flex items-center py-2.5 mb-1 bg-gradient-to-r from-blue-700 to-blue-800 text-white rounded-md shadow-md border border-blue-600 hover:from-blue-600 hover:to-blue-700 transition">
+                        <i class="fas fa-store fa-fw text-xl text-yellow-400"></i>
+                        <div x-show="isExpanded" class="ml-3">
+                            <span class="block font-bold text-sm">Kelola Agen</span>
+                            <span class="block text-[10px] text-blue-200 font-normal">Atur Harga</span>
+                        </div>
+                    </a>
+                @else
+                    {{-- Upgrade Button (Hanya muncul full jika expanded, atau icon roket jika collapsed) --}}
+                    <div class="py-4">
+                        <a href="{{ route('agent.register.index') }}" 
+                           :class="isExpanded ? 'px-4' : 'justify-center px-0'"
+                           class="flex items-center py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl shadow-lg hover:shadow-xl transition transform hover:-translate-y-1 group border border-purple-400/30">
+                            <div class="p-1.5 bg-white/20 rounded-full group-hover:bg-white/30 transition">
+                                <i class="fas fa-rocket fa-fw"></i>
+                            </div>
+                            <div x-show="isExpanded" class="ml-3">
+                                <span class="block text-[10px] uppercase font-bold text-indigo-100 tracking-wider">Upgrade</span>
+                                <span class="block font-bold text-white leading-tight">Jadi Agen</span>
+                            </div>
+                        </a>
+                    </div>
+                @endif
+
+                {{-- BAGIAN 3: PRODUK DIGITAL --}}
+                <div x-show="isExpanded" class="pt-4 pb-2 px-2 transition-opacity">
+                    <p class="text-xs text-gray-400 uppercase tracking-wider">Produk Digital</p>
+                </div>
+                {{-- Garis pemisah saat collapsed --}}
+                <hr x-show="!isExpanded" class="border-gray-700 my-4 lg:block hidden">
+
+                <div x-data="{ open: {{ request()->routeIs('customer.ppob.*') ? 'true' : 'false' }} }" class="space-y-1">
+                    <button @click="if(!isExpanded) { isExpanded = true; open = true; } else { open = !open; }" 
+                            :class="isExpanded ? 'justify-start px-4' : 'lg:justify-center lg:px-0 justify-start px-4'"
+                            class="flex items-center w-full py-2.5 text-white hover:bg-red-700 bg-red-600 hover:text-white rounded-md transition-colors duration-200 shadow-sm">
+                        <i class="fas fa-mobile-alt fa-fw text-xl"></i>
+                        <span x-show="isExpanded" class="ml-3 flex-1 text-left whitespace-nowrap">LOKET PPOB</span>
+                        <i x-show="isExpanded" :class="open ? 'fas fa-chevron-up' : 'fas fa-chevron-down'" class="ml-auto text-xs"></i>
+                    </button>
+
+                    <div x-show="open && isExpanded" x-cloak class="ml-4 pl-4 border-l border-gray-700 space-y-1 mt-1">
+                        <a href="{{ route('public.pricelist') }}" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded-md">
+                            <i class="fas fa-sim-card fa-fw w-4 mr-2"></i> Isi Pulsa
+                        </a>
+                        <a href="https://tokosancaka.com/etalase/ppob/digital/pln-pascabayar" target="_blank" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded-md">
+                            <i class="fas fa-file-invoice-dollar fa-fw w-4 mr-2"></i> Bayar Tagihan
+                        </a>
+                        <a href="{{ route('customer.ppob.history') }}" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded-md {{ request()->routeIs('customer.ppob.history') ? 'bg-gray-800 text-white' : '' }}">
+                            <i class="fas fa-history fa-fw w-4 mr-2"></i> Riwayat
+                        </a>
+                    </div>
+                </div>
+
+                {{-- BAGIAN 4: MANAJEMEN PENGIRIMAN --}}
+                <div x-show="isExpanded" class="pt-4 pb-2 px-2 transition-opacity">
+                    <p class="text-xs text-gray-400 uppercase tracking-wider">Pengiriman</p>
+                </div>
+                <hr x-show="!isExpanded" class="border-gray-700 my-4 lg:block hidden">
+
+                {{-- Item Menu Pengiriman (Looping style for consistency) --}}
+                @foreach([
+                    ['route' => 'customer.pesanan.create', 'icon' => 'fas fa-plus-circle', 'label' => 'Kirim Satuan'],
+                    ['route' => 'customer.koli.create', 'icon' => 'fas fa-boxes', 'label' => 'Kirim Massal', 'hot' => true],
+                    ['route' => 'customer.pesanan.index', 'icon' => 'fas fa-table', 'label' => 'Data Pengiriman'],
+                    ['route' => 'customer.kontak.index', 'icon' => 'fas fa-address-book', 'label' => 'Data Kontak'],
+                    ['route' => 'customer.lacak.index', 'icon' => 'fas fa-search-location', 'label' => 'Lacak Paket'],
+                    ['route' => 'customer.ongkir.index', 'icon' => 'fas fa-truck', 'label' => 'Cek Ongkir'],
+                ] as $menu)
+                    <a href="{{ route($menu['route']) }}" 
+                       :class="isExpanded ? 'justify-start px-4' : 'lg:justify-center lg:px-0 justify-start px-4'"
+                       class="flex items-center py-2.5 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors duration-200 {{ request()->routeIs($menu['route']) ? 'bg-gray-900 text-white' : '' }}">
+                        <i class="{{ $menu['icon'] }} fa-fw text-xl"></i>
+                        <span x-show="isExpanded" class="ml-3 flex items-center w-full whitespace-nowrap">
+                            {{ $menu['label'] }}
+                            @if(isset($menu['hot'])) <span class="ml-auto bg-red-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">HOT</span> @endif
+                        </span>
+                    </a>
+                @endforeach
+
+                {{-- BAGIAN 5: OPERASIONAL --}}
+                <div x-show="isExpanded" class="pt-4 pb-2 px-2 transition-opacity">
+                    <p class="text-xs text-gray-400 uppercase tracking-wider">Operasional</p>
+                </div>
+                <hr x-show="!isExpanded" class="border-gray-700 my-4 lg:block hidden">
+
+                <a href="{{ route('customer.scan.spx') }}" 
+                   :class="isExpanded ? 'justify-start px-4' : 'lg:justify-center lg:px-0 justify-start px-4'"
+                   class="flex items-center py-2.5 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors duration-200 {{ request()->routeIs('customer.scan.spx') ? 'bg-gray-900 text-white' : '' }}">
+                    <i class="fas fa-qrcode fa-fw text-xl"></i>
+                    <span x-show="isExpanded" class="ml-3 whitespace-nowrap">Scan SPX</span>
                 </a>
-            @else
-                {{-- TAMPILAN UNTUK MEMBER BIASA (TOMBOL UPGRADE) --}}
-                <div class="py-4">
-                    <a href="{{ route('agent.register.index') }}" 
-                       class="flex items-center px-4 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl shadow-lg hover:shadow-xl transition transform hover:-translate-y-1 group border border-purple-400/30">
-                        <div class="p-1.5 bg-white/20 rounded-full mr-3 group-hover:bg-white/30 transition">
-                            <i class="fas fa-rocket fa-fw"></i>
-                        </div>
-                        <div>
-                            <span class="block text-[10px] uppercase font-bold text-indigo-100 tracking-wider">Upgrade Akun</span>
-                            <span class="block font-bold text-white leading-tight">Jadi Agen Resmi</span>
-                        </div>
+                
+                {{-- BAGIAN 6: KEUANGAN --}}
+                <div x-show="isExpanded" class="pt-4 pb-2 px-2 transition-opacity">
+                    <p class="text-xs text-gray-400 uppercase tracking-wider">Keuangan</p>
+                </div>
+                <hr x-show="!isExpanded" class="border-gray-700 my-4 lg:block hidden">
+
+                <a href="{{ route('customer.topup.index') }}" 
+                   :class="isExpanded ? 'justify-start px-4' : 'lg:justify-center lg:px-0 justify-start px-4'"
+                   class="flex items-center py-2.5 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors duration-200 {{ request()->routeIs('customer.topup.*') ? 'bg-gray-900 text-white' : '' }}">
+                    <i class="fas fa-wallet fa-fw text-xl"></i>
+                    <span x-show="isExpanded" class="ml-3 whitespace-nowrap">Top Up</span>
+                </a>
+
+                <a href="{{ route('customer.laporan.index') }}" 
+                   :class="isExpanded ? 'justify-start px-4' : 'lg:justify-center lg:px-0 justify-start px-4'"
+                   class="flex items-center py-2.5 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors duration-200 {{ request()->routeIs('customer.laporan.index') ? 'bg-gray-900 text-white' : '' }}">
+                    <i class="fas fa-chart-area fa-fw text-xl"></i>
+                    <span x-show="isExpanded" class="ml-3 whitespace-nowrap">Laporan</span>
+                </a>
+
+                {{-- PENGATURAN USER --}}
+                <div class="mt-auto pt-10">
+                    <a href="{{ route('customer.profile.edit') }}" 
+                       :class="isExpanded ? 'justify-start px-4' : 'lg:justify-center lg:px-0 justify-start px-4'"
+                       class="flex items-center py-2.5 mt-4 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors duration-200 {{ request()->routeIs('customer.profile.edit') ? 'bg-gray-900 text-white' : '' }}">
+                        <i class="fas fa-cog fa-fw text-xl"></i>
+                        <span x-show="isExpanded" class="ml-3 whitespace-nowrap">Pengaturan</span>
                     </a>
                 </div>
+
             @endif
 
-
-            {{-- ========================================================== --}}
-            {{-- BAGIAN 3: PRODUK DIGITAL (PPOB)                            --}}
-            {{-- ========================================================== --}}
-            <p class="px-4 pt-4 pb-2 text-xs text-gray-400 uppercase tracking-wider">Produk Digital</p>
-
-            <div x-data="{ open: {{ request()->routeIs('customer.ppob.*') ? 'true' : 'false' }} }" class="space-y-1">
-                <button @click="open = !open" 
-                    class="flex items-center w-full px-4 py-2.5 text-white hover:bg-red-700 bg-red-600 hover:text-white rounded-md transition-colors duration-200 shadow-sm">
-                    <i class="fas fa-mobile-alt fa-fw w-6"></i>
-                    <span class="ml-3 flex-1 text-left">LOKET PPOB</span>
-                    <i :class="open ? 'fas fa-chevron-up' : 'fas fa-chevron-down'" class="ml-auto text-xs"></i>
-                </button>
-
-                <div x-show="open" x-cloak class="ml-4 pl-4 border-l border-gray-700 space-y-1 mt-1">
-                    {{-- Link Jualan Pulsa (Pricelist) --}}
-                    <a href="{{ route('public.pricelist') }}" 
-                       class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded-md transition-colors duration-200">
-                        <i class="fas fa-sim-card fa-fw w-4 mr-2"></i>
-                        Isi Pulsa / Data
-                    </a>
-                    
-                    {{-- Link Bayar Tagihan --}}
-                    <a href="https://tokosancaka.com/etalase/ppob/digital/pln-pascabayar" target="_blank"
-                       class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded-md transition-colors duration-200">
-                        <i class="fas fa-file-invoice-dollar fa-fw w-4 mr-2"></i>
-                        Bayar Tagihan
-                    </a>
-
-                    {{-- Link Riwayat PPOB --}}
-                    <a href="{{ route('customer.ppob.history') }}"
-                       class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded-md transition-colors duration-200 {{ request()->routeIs('customer.ppob.history') ? 'bg-gray-800 text-white' : '' }}">
-                        <i class="fas fa-history fa-fw w-4 mr-2"></i>
-                        Riwayat Transaksi
-                    </a>
-                </div>
-            </div> 
-
-
-            {{-- ========================================================== --}}
-            {{-- BAGIAN 4: MANAJEMEN PENGIRIMAN (FITUR PELANGGAN)           --}}
-            {{-- ========================================================== --}}
-            <p class="px-4 pt-4 pb-2 text-xs text-gray-400 uppercase tracking-wider">Manajemen Pengiriman</p>
-            
-            {{-- Chat CS --}}
-            <a href="https://tokosancaka.com/customer/chat" class="flex items-center px-4 py-2.5 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors duration-200 {{ request()->is('customer/chat*') ? 'bg-gray-900 text-white' : '' }}">
-                <i class="fas fa-comment-dots fa-fw w-6"></i>
-                <span class="ml-3">Chat CS ADMIN</span>
+            {{-- LOGOUT --}}
+            <a href="{{ route('logout') }}"
+               onclick="event.preventDefault(); document.getElementById('logout-form-customer').submit();"
+               :class="isExpanded ? 'justify-start px-4' : 'lg:justify-center lg:px-0 justify-start px-4'"
+               class="flex items-center py-2.5 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors duration-200">
+                <i class="fas fa-sign-out-alt fa-fw text-xl text-red-400"></i>
+                <span x-show="isExpanded" class="ml-3 whitespace-nowrap">Logout</span>
             </a>
+            <form id="logout-form-customer" action="{{ route('logout') }}" method="POST" class="hidden">
+                @csrf
+            </form>
 
-            {{-- Kirim Satuan --}}
-            <a href="{{ route('customer.pesanan.create') }}" class="flex items-center px-4 py-2.5 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors duration-200 {{ request()->routeIs('customer.pesanan.create') ? 'bg-gray-900 text-white' : '' }}">
-                <i class="fas fa-plus-circle fa-fw w-6"></i>
-                <span class="ml-3">Kirim Paket (Satuan)</span>
-            </a>
-            
-            {{-- Kirim Massal --}}
-            <a href="{{ route('customer.koli.create') }}"
-               class="flex items-center px-4 py-2.5 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors duration-200
-                      {{ request()->routeIs('customer.koli.create') ? 'bg-gray-900 text-white' : '' }}">
-                <i class="fas fa-boxes fa-fw w-6"></i>
-                <span class="ml-3 flex items-center w-full">
-                    Kirim Massal
-                    <span class="ml-auto bg-red-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">HOT</span>
-                </span>
-            </a>
+        </nav>
+    </aside>
 
-            {{-- Data Pengiriman --}}
-            <a href="{{ route('customer.pesanan.index') }}" class="flex items-center px-4 py-2.5 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors duration-200 {{ request()->routeIs('customer.pesanan.index') ? 'bg-gray-900 text-white' : '' }}">
-                <i class="fas fa-table fa-fw w-6"></i>
-                <span class="ml-3">Data Pengiriman</span>
-            </a>
-            
-            {{-- Data Penerima --}}
-            <a href="{{ route('customer.kontak.index') }}" class="flex items-center px-4 py-2.5 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors duration-200 {{ request()->routeIs('customer.kontak.*') ? 'bg-gray-900 text-white' : '' }}">
-                <i class="fas fa-address-book fa-fw w-6"></i>
-                <span class="ml-3">Data Kontak</span>
-            </a>
+    {{-- Tombol Close Floating (Hanya untuk Mobile) --}}
+    <div x-show="sidebarOpen" 
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 -translate-x-10"
+         x-transition:enter-end="opacity-100 translate-x-0"
+         class="fixed top-4 left-64 z-[110] ml-2 lg:hidden" 
+         x-cloak>
+        <button @click="sidebarOpen = false" class="flex items-center justify-center w-10 h-10 bg-blue-900 text-white rounded-full shadow-lg border-2 border-white/20 hover:bg-red-600 transition-all focus:outline-none">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+        </button>
+    </div>
 
-            {{-- Lacak Paket --}}
-            <a href="{{ route('customer.lacak.index') }}" class="flex items-center px-4 py-2.5 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors duration-200 {{ request()->routeIs('customer.lacak.index') ? 'bg-gray-900 text-white' : '' }}">
-                <i class="fas fa-search-location fa-fw w-6"></i>
-                <span class="ml-3">Lacak Paket</span>
-            </a>
-
-            {{-- Cek Ongkir --}}
-            <a href="{{ route('customer.ongkir.index') }}" class="flex items-center px-4 py-2.5 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors duration-200 {{ request()->routeIs('customer.ongkir.index') ? 'bg-gray-900 text-white' : '' }}">
-                <i class="fas fa-truck fa-fw w-6"></i>
-                <span class="ml-3">Cek Ongkir</span>
-            </a>
-
-
-            {{-- ========================================================== --}}
-            {{-- BAGIAN 5: OPERASIONAL                                      --}}
-            {{-- ========================================================== --}}
-            <p class="px-4 pt-4 pb-2 text-xs text-gray-400 uppercase tracking-wider">Operasional</p>
-
-            <a href="{{ route('customer.scan.spx') }}" class="flex items-center px-4 py-2.5 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors duration-200 {{ request()->routeIs('customer.scan.spx') ? 'bg-gray-900 text-white' : '' }}">
-                <i class="fas fa-qrcode fa-fw w-6"></i>
-                <span class="ml-3">Scan Paket SPX</span>
-            </a>
-
-            <a href="{{ route('customer.scan.index') }}" class="flex items-center px-4 py-2.5 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors duration-200 {{ request()->routeIs('customer.scan.index') ? 'bg-gray-900 text-white' : '' }}">
-                <i class="fas fa-database fa-fw w-6"></i>
-                <span class="ml-3">Riwayat Scan</span>
-            </a>
-
-
-            {{-- ========================================================== --}}
-            {{-- BAGIAN 6: KEUANGAN                                         --}}
-            {{-- ========================================================== --}}
-            <p class="px-4 pt-4 pb-2 text-xs text-gray-400 uppercase tracking-wider">Keuangan</p>
-
-            <a href="{{ route('customer.topup.index') }}" class="flex items-center px-4 py-2.5 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors duration-200 {{ request()->routeIs('customer.topup.*') ? 'bg-gray-900 text-white' : '' }}">
-                <i class="fas fa-wallet fa-fw w-6"></i>
-                <span class="ml-3">Top Up Saldo</span>
-            </a>
-
-            <a href="{{ route('customer.laporan.index') }}" class="flex items-center px-4 py-2.5 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors duration-200 {{ request()->routeIs('customer.laporan.index') ? 'bg-gray-900 text-white' : '' }}">
-                <i class="fas fa-chart-area fa-fw w-6"></i>
-                <span class="ml-3">Laporan Keuangan</span>
-            </a>
-
-
-            {{-- ========================================================== --}}
-            {{-- BAGIAN 7: BELANJA (MARKETPLACE)                            --}}
-            {{-- ========================================================== --}}
-            <p class="px-4 pt-4 pb-2 text-xs text-gray-400 uppercase tracking-wider">Lainnya</p>
-
-            <div x-data="{ open: false }" class="space-y-1">
-                <button @click="open = !open" 
-                    class="flex items-center w-full px-4 py-2.5 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors duration-200">
-                    <i class="fas fa-store fa-fw w-6"></i>
-                    <span class="ml-3 flex-1 text-left">Belanja Disini</span>
-                    <i :class="open ? 'fas fa-chevron-up' : 'fas fa-chevron-down'" class="ml-auto text-xs"></i>
-                </button>
-
-                <div x-show="open" x-cloak class="ml-4 pl-4 border-l border-gray-700 space-y-1 mt-1">
-                    <a href="{{ route('katalog.index') }}" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded-md transition-colors duration-200">
-                        <i class="fas fa-book-open fa-fw w-4 mr-2"></i>
-                        Katalog
-                    </a>
-                    <a href="{{ route('etalase.index') }}" target="_blank" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded-md transition-colors duration-200">
-                        <i class="fas fa-store fa-fw w-4 mr-2"></i>
-                        Etalase
-                    </a>
-                    <a href="/customer/pesanan/riwayat" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded-md transition-colors duration-200">
-                        <i class="fas fa-history fa-fw w-4 mr-2"></i>
-                        Riwayat Belanja
-                    </a>
-                </div>
-            </div>
-
-
-            {{-- ========================================================== --}}
-            {{-- BAGIAN 8: KHUSUS SELLER (TOKO SAYA)                        --}}
-            {{-- ========================================================== --}}
-            {{-- LOGIKA: Seller & Agent & Admin bisa lihat ini --}}
-            @if (auth()->user()->role === 'Seller' || auth()->user()->role === 'agent' || auth()->user()->role === 'admin')
-
-            <p class="px-4 pt-4 pb-2 text-xs text-gray-400 uppercase tracking-wider">Toko Saya</p>
-
-            <div x-data="{ open: {{ request()->routeIs('seller.*') ? 'true' : 'false' }} }" class="space-y-1">
-                <button @click="open = !open"
-                    class="flex items-center w-full px-4 py-2.5 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors duration-200">
-                    <i class="fas fa-store-alt fa-fw w-6"></i>
-                    <span class="ml-3 flex-1 text-left">Kelola Toko</span>
-                    <i :class="open ? 'fas fa-chevron-up' : 'fas fa-chevron-down'" class="ml-auto text-xs"></i>
-                </button>
-
-                <div x-show="open" x-cloak class="ml-4 pl-4 border-l border-gray-700 space-y-1 mt-1">
-                    
-                    {{-- Dashboard Toko --}}
-                    <a href="{{ route('seller.dashboard') }}" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded-md transition-colors duration-200 {{ request()->routeIs('seller.dashboard') ? 'bg-gray-800 text-white' : '' }}">
-                        <i class="fas fa-tachometer-alt fa-fw w-4 mr-2"></i>
-                        Dashboard Toko
-                    </a>
-
-                    {{-- Dompet Sancaka --}}
-                    <a href="{{ route('seller.doku.index') }}" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded-md transition-colors duration-200 {{ request()->routeIs('seller.doku.*') ? 'bg-gray-800 text-white' : '' }}">
-                        <i class="fas fa-wallet fa-fw w-4 mr-2"></i>
-                        Dompet Sancaka
-                    </a>
-
-                    {{-- Kelola Produk --}}
-                    <a href="{{ route('seller.produk.index') }}" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded-md transition-colors duration-200 {{ request()->routeIs('seller.produk.*') ? 'bg-gray-800 text-white' : '' }}">
-                        <i class="fas fa-boxes fa-fw w-4 mr-2"></i>
-                        Kelola Produk
-                    </a>
-
-                    {{-- Ulasan Produk --}}
-                    <a href="{{ route('seller.reviews.index') }}" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded-md transition-colors duration-200 {{ request()->routeIs('seller.reviews.*') ? 'bg-gray-800 text-white' : '' }}">
-                        <i class="fas fa-star fa-fw w-4 mr-2"></i>
-                        Ulasan Produk
-                    </a>
-
-                    {{-- Pesanan Marketplace --}}
-                    <a href="{{ route('seller.pesanan.marketplace.index') }}" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded-md transition-colors duration-200 {{ request()->routeIs('seller.pesanan.marketplace.*') ? 'bg-gray-800 text-white' : '' }}">
-                        <i class="fas fa-shopping-basket fa-fw w-4 mr-2"></i>
-                        Pesanan Marketplace
-                    </a>
-
-                    {{-- Profil Toko --}}
-                    <a href="{{ route('seller.profile.edit') }}" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded-md transition-colors duration-200 {{ request()->routeIs('seller.profile.edit') ? 'bg-gray-800 text-white' : '' }}">
-                        <i class="fas fa-user-edit fa-fw w-4 mr-2"></i>
-                        Profil Toko
-                    </a>
-                </div>
-            </div>
-            @endif
-
-            {{-- ========================================================== --}}
-            {{-- BAGIAN 9: PENGATURAN USER                                  --}}
-            {{-- ========================================================== --}}
-            <a href="{{ route('customer.profile.edit') }}" class="flex items-center px-4 py-2.5 mt-4 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors duration-200 {{ request()->routeIs('customer.profile.edit') ? 'bg-gray-900 text-white' : '' }}">
-                <i class="fas fa-cog fa-fw w-6"></i>
-                <span class="ml-3">Pengaturan Akun</span>
-            </a>
-
-        @endif
-
-        {{-- LOGOUT --}}
-        <a href="{{ route('logout') }}"
-           onclick="event.preventDefault(); document.getElementById('logout-form-customer').submit();"
-           class="flex items-center px-4 py-2.5 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors duration-200">
-            <i class="fas fa-sign-out-alt fa-fw w-6 text-red-400"></i>
-            <span class="ml-3">Logout</span>
-        </a>
-        <form id="logout-form-customer" action="{{ route('logout') }}" method="POST" class="hidden">
-            @csrf
-        </form>
-
-    </nav>
-</aside>
-
-{{-- ========================================================== --}}
-{{-- TOMBOL CLOSE FLOATING (PANAH KIRI) --}}
-{{-- ========================================================== --}}
-<div x-show="sidebarOpen" 
-     x-transition:enter="transition ease-out duration-300"
-     x-transition:enter-start="opacity-0 -translate-x-10"
-     x-transition:enter-end="opacity-100 translate-x-0"
-     x-transition:leave="transition ease-in duration-200"
-     x-transition:leave-start="opacity-100 translate-x-0"
-     x-transition:leave-end="opacity-0 -translate-x-10"
-     class="fixed top-4 left-64 z-[110] ml-2 lg:hidden" 
-     x-cloak>
-    
-    <button @click="sidebarOpen = false"
-            class="flex items-center justify-center w-10 h-10 bg-blue-900 text-white rounded-full shadow-lg border-2 border-white/20 hover:bg-red-600 hover:scale-110 transition-all duration-300 focus:outline-none ring-2 ring-black/10">
-        
-        {{-- Ikon Panah Kiri --}}
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-        </svg>
-
-    </button>
 </div>
