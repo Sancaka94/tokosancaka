@@ -294,11 +294,11 @@
                     {{-- ----------------------------------- --}}
                     <div class="flex justify-between items-center py-2 border-b border-dashed border-slate-200">
                         <button @click="noteModalOpen = true" class="text-[11px] font-bold flex items-center gap-1 transition-colors focus:outline-none"
-                                :class="orderNote ? 'text-blue-600' : 'text-slate-400 hover:text-blue-500'">
-                            <i class="fas" :class="orderNote ? 'fa-edit' : 'fa-plus-circle'"></i> 
-                            <span x-text="orderNote ? 'Edit Catatan Pesanan' : 'Tambah Catatan Pesanan'"></span>
+                                :class="customerNote ? 'text-blue-600' : 'text-slate-400 hover:text-blue-500'">
+                            <i class="fas" :class="customerNote ? 'fa-edit' : 'fa-plus-circle'"></i> 
+                            <span x-text="customerNote ? 'Edit Catatan Pesanan' : 'Tambah Catatan Pesanan'"></span>
                         </button>
-                        <span x-show="orderNote" class="text-[10px] text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full font-bold">Ada Catatan</span>
+                        <span x-show="customerNote" class="text-[10px] text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full font-bold">Ada Catatan</span>
                     </div>
                     {{-- ----------------------------------- --}}
 
