@@ -148,8 +148,8 @@
                                         <div class="text-[10px] text-slate-500 font-mono">{{ $order->customer_phone }}</div>
                                         
                                         @if(!empty($order->courier_service))
-                                            <div class="text-[10px] text-slate-600 mt-1 leading-snug">
-                                                {{ Str::limit($order->destination_address ?? '-', 60) }}
+                                            <div class="text-[10px] text-slate-600 mt-1 leading-snug break-words">
+                                                {{ $order->destination_address ?? '-' }}
                                             </div>
                                         @else
                                             <div class="mt-1">
@@ -204,30 +204,38 @@
                         </td>
 
                         <td class="px-4 py-4 align-top text-right">
-                            <div class="flex flex-col items-end gap-1">
-                                <div class="font-black text-slate-800 text-sm">
-                                    Rp {{ number_format($order->final_price, 0, ',', '.') }}
-                                </div>
-                                <div class="text-[10px] text-slate-400">
-                                    Produk: {{ number_format($order->final_price - $order->shipping_cost, 0, ',', '.') }}
-                                </div>
+    <div class="flex flex-col items-end gap-1">
+        <div class="font-black text-slate-800 text-sm">
+            {{-- Hitung Ulang di Table juga --}}
+            @php $totalReal = $order->total_price - $order->discount_amount + $order->shipping_cost; @endphp
+            Rp {{ number_format($totalReal, 0, ',', '.') }}
+        </div>
+        
+        {{-- Tampilkan rincian kecil jika ada ongkir/diskon --}}
+        @if($order->shipping_cost > 0)
+            <div class="text-[9px] text-slate-400">+Ongkir {{ number_format($order->shipping_cost/1000, 0) }}k</div>
+        @endif
+        @if($order->discount_amount > 0)
+            <div class="text-[9px] text-emerald-500">-Disc {{ number_format($order->discount_amount/1000, 0) }}k</div>
+        @endif
 
-                                <div class="mt-2">
-                                    @php
-                                        $statusClass = 'bg-slate-100 text-slate-500 border-slate-200';
-                                        $icon = 'fa-clock';
-                                        
-                                        if($order->status == 'processing') { $statusClass = 'bg-amber-50 text-amber-600 border-amber-200'; $icon = 'fa-spinner fa-spin'; }
-                                        elseif($order->status == 'shipped') { $statusClass = 'bg-indigo-50 text-indigo-600 border-indigo-200'; $icon = 'fa-shipping-fast'; }
-                                        elseif($order->status == 'completed') { $statusClass = 'bg-emerald-50 text-emerald-600 border-emerald-200'; $icon = 'fa-check-double'; }
-                                        elseif($order->status == 'cancelled') { $statusClass = 'bg-rose-50 text-rose-600 border-rose-200'; $icon = 'fa-times-circle'; }
-                                    @endphp
-                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase border {{ $statusClass }}">
-                                        <i class="fas {{ $icon }}"></i> {{ $order->status }}
-                                    </span>
-                                </div>
-                            </div>
-                        </td>
+        <div class="mt-2">
+            {{-- Status Badge --}}
+            @php
+                $statusClass = 'bg-slate-100 text-slate-500 border-slate-200';
+                $icon = 'fa-clock';
+                
+                if($order->status == 'processing') { $statusClass = 'bg-amber-50 text-amber-600 border-amber-200'; $icon = 'fa-spinner fa-spin'; }
+                elseif($order->status == 'shipped') { $statusClass = 'bg-indigo-50 text-indigo-600 border-indigo-200'; $icon = 'fa-shipping-fast'; }
+                elseif($order->status == 'completed') { $statusClass = 'bg-emerald-50 text-emerald-600 border-emerald-200'; $icon = 'fa-check-double'; }
+                elseif($order->status == 'cancelled') { $statusClass = 'bg-rose-50 text-rose-600 border-rose-200'; $icon = 'fa-times-circle'; }
+            @endphp
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase border {{ $statusClass }}">
+                <i class="fas {{ $icon }}"></i> {{ $order->status }}
+            </span>
+        </div>
+    </div>
+</td>
 
                         <td class="px-4 py-4 align-top text-center">
                             <div class="flex justify-center gap-1">

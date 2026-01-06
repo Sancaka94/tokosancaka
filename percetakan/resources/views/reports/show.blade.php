@@ -30,8 +30,8 @@
             <div>
                 <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-3 border-b pb-2">Informasi Pelanggan</h3>
                 <p class="font-bold text-lg text-slate-800">{{ $order->customer_name }}</p>
-                <p class="text-slate-500 text-sm mt-1">
-                    <i class="fas fa-phone mr-1"></i> {{ $order->customer_phone ?? '-' }}
+                <p class="text-slate-500 text-sm mt-1 leading-relaxed">
+                    <i class="fas fa-map-marker-alt mr-1"></i> {{ $order->destination_address }}
                 </p>
 
                 {{-- TAMPILAN UNTUK INPUT MANUAL (CATATAN PELANGGAN) --}}
