@@ -33,6 +33,20 @@
                 <p class="text-slate-500 text-sm mt-1">
                     <i class="fas fa-phone mr-1"></i> {{ $order->customer_phone ?? '-' }}
                 </p>
+
+                {{-- [BARU] CUSTOMER NOTE (CATATAN PELANGGAN) --}}
+                @if(!empty($order->customer_note))
+                <div class="mt-6">
+                    <h3 class="text-xs font-black text-amber-500 uppercase tracking-widest mb-2 flex items-center gap-2">
+                        <i class="fas fa-comment-dots"></i> Catatan Pelanggan
+                    </h3>
+                    <div class="bg-amber-50 border border-amber-100 p-4 rounded-xl relative">
+                        <i class="fas fa-quote-left text-amber-200 absolute top-2 left-2 text-2xl"></i>
+                        <p class="text-sm text-slate-700 italic relative z-10 pl-6">"{{ $order->customer_note }}"</p>
+                    </div>
+                </div>
+                @endif
+                {{-- [SELESAI BARU] --}}
                 
                 <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mt-6 mb-3 border-b pb-2">Catatan</h3>
                 <p class="text-sm text-slate-600 italic bg-slate-50 p-3 rounded-xl border border-slate-100">
