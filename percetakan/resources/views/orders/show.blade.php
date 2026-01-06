@@ -192,14 +192,62 @@
                     @endif
 
                     {{-- TAMPILAN UNTUK INPUT MANUAL (CUSTOMER NOTE) --}}
+{{-- TAMPILAN UNTUK INPUT MANUAL (CUSTOMER NOTE) --}}
 @if($order->customer_note)
-<div class="mt-6">
+<div class="mt-6" x-data="{ openNoteModal: false }">
     <h3 class="text-xs font-black text-amber-500 uppercase tracking-widest mb-2 flex items-center gap-2">
         <i class="fas fa-comment-dots"></i> Catatan Pelanggan
     </h3>
+    
     <div class="bg-amber-50 border border-amber-100 p-4 rounded-xl relative">
-        {{-- Pastikan ini memanggil customer_note --}}
-        <p class="text-sm text-slate-700 italic">"{{ $order->customer_note }}"</p> 
+        <p class="text-sm text-slate-700 italic line-clamp-3 break-all">
+            "{{ $order->customer_note }}"
+        </p>
+        
+        <button @click="openNoteModal = true" 
+                class="mt-2 text-xs font-bold text-amber-600 hover:text-amber-800 hover:underline flex items-center gap-1">
+            <span>Baca Selengkapnya</span>
+            <i class="fas fa-external-link-alt"></i>
+        </button>
+    </div>
+
+    <div x-show="openNoteModal" 
+         style="display: none;"
+         class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm p-4"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0">
+         
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden transform transition-all"
+             @click.away="openNoteModal = false">
+            
+            <div class="bg-amber-100 px-6 py-4 flex justify-between items-center border-b border-amber-200">
+                <h3 class="text-lg font-bold text-amber-800 flex items-center gap-2">
+                    <i class="fas fa-comment-alt"></i> Catatan Lengkap
+                </h3>
+                <button @click="openNoteModal = false" class="text-amber-800 hover:text-red-600 transition">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <div class="p-6 max-h-[70vh] overflow-y-auto">
+                <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                    <p class="text-slate-700 text-sm leading-relaxed whitespace-pre-line break-words">
+                        {{ $order->customer_note }}
+                    </p>
+                </div>
+            </div>
+
+            <div class="bg-gray-50 px-6 py-3 flex justify-end border-t">
+                <button @click="openNoteModal = false" 
+                        class="px-4 py-2 bg-slate-200 text-slate-700 text-sm font-bold rounded-lg hover:bg-slate-300 transition">
+                    Tutup
+                </button>
+            </div>
+        </div>
     </div>
 </div>
 @endif
