@@ -1,3 +1,6 @@
+{{-- Halaman ini menampilkan data gabungan dari tabel 'orders' dan 'Pesanan' --}}
+@extends('layouts.admin')
+
 @push('styles')
 <style>
     /* ✅ PERBAIKAN: Hapus width paksa, ganti dengan ini */
