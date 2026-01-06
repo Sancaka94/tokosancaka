@@ -40,22 +40,36 @@ class AppServiceProvider extends ServiceProvider
         // ----------------------------------------
         View::composer('layouts.partials.header', HeaderComposer::class);
         
-        View::composer('*', function ($view) {
-        if (auth()->check()) {
-            // 4 KARTU ATAS
-            $view->with('totalPendapatan', DB::table('transactions')->where('status', 'success')->sum('amount') ?? 0);
-            $view->with('totalPesanan', DB::table('Pesanan')->count() ?? 0);
-            $view->with('jumlahToko', DB::table('stores')->count() ?? 0);
-            $view->with('penggunaBaru', User::where('created_at', '>=', now()->subDays(30))->count() ?? 0);
+        // In boot()
+View::composer('*', function ($view) {
+    if (auth()->check()) {
+         // Logic similar to DashboardController but without date filters (Global Stats)
+         
+         // 1. Total Pendapatan
+         $pendapatan = \App\Models\TopUp::where('status', 'success')->sum('amount') 
+                     + \App\Models\Pesanan::sum('shipping_cost');
+         
+         // 2. Total Pesanan
+         $pesanan = \App\Models\Pesanan::count();
+         
+         // 3. Jumlah Toko (Seller)
+         $toko = \App\Models\User::where('role', 'Seller')->count();
+         
+         // 4. Pengguna Baru (Pelanggan, < 30 days)
+         $userBaru = \App\Models\User::where('role', 'Pelanggan')
+                        ->where('created_at', '>=', now()->subDays(30))
+                        ->count();
+                        
+         // Statuses
+         $terkirim = \App\Models\Pesanan::where('status_pesanan', 'Selesai')->count();
+         $dikirim = \App\Models\Pesanan::whereIn('status_pesanan', ['Sedang Dikirim', 'Dikirim', 'Diproses'])->count();
+         $pickup = \App\Models\Pesanan::where('status_pesanan', 'Menunggu Pickup')->count();
+         $gagal = \App\Models\Pesanan::whereIn('status_pesanan', ['Batal', 'Gagal', 'Retur', 'Kadaluarsa', 'Dibatalkan'])->count();
 
-            // 4 KARTU BAWAH (TAMBAHAN BARU)
-            // Sesuaikan 'status' dengan value database Anda (misal: 'delivered', 'processing', 'pickup', 'failed')
-            $view->with('totalTerkirim', DB::table('Pesanan')->where('status', 'delivered')->count() ?? 0);
-            $view->with('totalSedangDikirim', DB::table('Pesanan')->where('status', 'processing')->count() ?? 0);
-            $view->with('totalMenungguPickup', DB::table('Pesanan')->where('status', 'pickup')->count() ?? 0);
-            $view->with('totalGagal', DB::table('Pesanan')->whereIn('status', ['failed', 'canceled'])->count() ?? 0);
-        }
-        }); // <--- PERBAIKAN: Menambahkan penutup kurung kurawal dan kurung biasa
+         $view->with('totalPendapatan', $pendapatan);
+         // ... bind others
+    }
+}); // <--- PERBAIKAN: Menambahkan penutup kurung kurawal dan kurung biasa
         // ----------------------------------------
         // 2. INJECT CONFIG API DARI DATABASE
         // ----------------------------------------
