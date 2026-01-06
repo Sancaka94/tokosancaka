@@ -28,7 +28,7 @@
        Height diset fix 133.33vh agar kalkulasi posisi tombol logout akurat
     --}}
     <aside id="main-sidebar" 
-        style="zoom: 75%;"
+        style="zoom: 80%;"
         {{-- Hover hanya aktif di layar besar (Desktop) --}}
         @mouseenter="if(window.innerWidth >= 1024) isHovered = true"
         @mouseleave="isHovered = false"
