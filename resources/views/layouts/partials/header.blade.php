@@ -1,6 +1,10 @@
 {{--
     File: resources/views/layouts/partials/header.blade.php
     Deskripsi: Header admin panel dengan dropdown notifikasi dinamis dan Toggle API Mode Robust.
+    
+    MODIFIKASI:
+    1. Desain Header di-set ZOOM 80%.
+    2. Lebar (Width) di-set 125% agar tetap full-screen saat di-zoom out.
 --}}
 <style>
     [x-cloak] { display: none !important; }
@@ -17,8 +21,15 @@
     }
 </style>
 
-<header class="flex justify-between items-center p-4 bg-gray-700 border-b shadow-sm sticky top-0 z-40">
-    <!-- Kiri: Toggle sidebar + judul halaman -->
+{{-- 
+    PERUBAHAN DISINI:
+    style="zoom: 80%; width: 125%;" 
+    - zoom: 80% untuk mengecilkan ukuran.
+    - width: 125% untuk memastikan background tetap full layar (100/0.8 = 125).
+--}}
+<header class="flex justify-between items-center p-4 bg-gray-700 border-b shadow-sm sticky top-0 z-40" 
+        style="zoom: 80%; width: 125%;">
+    
     <div class="flex items-center">
         {{-- Tombol toggle sidebar --}}
         <button type="button" id="btn-toggle-sidebar" 
@@ -35,7 +46,6 @@
         </h1>
     </div>
 
-    <!-- Kanan: Aksi -->
     <div class="ml-auto flex items-center space-x-2 sm:space-x-4 mr-6">
         
         {{-- =================================================================== --}}
@@ -148,9 +158,6 @@
             </a>
         </div>
         
-        <!-- =================================================================== -->
-        <!-- == BLOK NOTIFIKASI == -->
-        <!-- =================================================================== -->
         <div x-data="{ open: false }" class="relative">
             <button @click="open = !open; if(open) loadInitialNotifications();"
                     class="p-2 rounded-full text-gray-500 hover:bg-red-700 focus:outline-none relative">
