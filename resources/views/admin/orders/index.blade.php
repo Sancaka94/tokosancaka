@@ -3,9 +3,10 @@
 
 @push('styles')
 <style>
-/* 1. Paksa kontainer utama mengambil lebar penuh */
+/* 1. Paksa kontainer utama mengambil lebar penuh 
 .main-layout-container { width: 133.33vw; }
 .content-wrapper-fixed { width: 100%; }
+*/
 
 /* CSS untuk efek Zoom Barcode */
 .barcode-zoomed {
