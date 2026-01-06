@@ -204,13 +204,17 @@
         </td>
     </tr>
 
-    {{-- 5. TOTAL AKHIR --}}
+    {{-- 5. TOTAL AKHIR (Dihitung Ulang agar Sinkron) --}}
     <tr>
         <td colspan="3" class="px-4 pb-4 pt-2 text-right font-black text-slate-800 uppercase tracking-widest text-sm">
             Total Bayar
         </td>
         <td class="px-4 pb-4 pt-2 text-right font-black text-xl text-red-600">
-            Rp {{ number_format($order->final_price, 0, ',', '.') }}
+            {{-- KITA HITUNG MANUAL DISINI AGAR TAMPILANNYA KONSISTEN --}}
+            @php
+                $hitungUlang = $order->total_price - $order->discount_amount + $order->shipping_cost;
+            @endphp
+            Rp {{ number_format($hitungUlang, 0, ',', '.') }}
         </td>
     </tr>
 </tfoot>
