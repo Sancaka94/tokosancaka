@@ -1,36 +1,28 @@
-{{-- Halaman ini menampilkan data gabungan dari tabel 'orders' dan 'Pesanan' --}}
-@extends('layouts.admin')
-
 @push('styles')
 <style>
-/* HAPUS BAGIAN INI:
-   .main-layout-container { width: 133.33vw; } 
-   .content-wrapper-fixed { width: 100%; }
-   
-   Alasannya: Layout induk (admin.blade.php) sudah mengatur lebar 100% (w-full).
-   Memaksa 133vw akan membuat horizontal scrollbar atau ruang kosong di kanan.
-*/
+    /* ✅ PERBAIKAN: Hapus width paksa, ganti dengan ini */
+    
+    /* CSS untuk efek Zoom Barcode */
+    .barcode-zoomed {
+        position: fixed !important; 
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) scale(2) !important; 
+        z-index: 1000 !important;
+        background-color: white; 
+        padding: 10px;
+        border: 2px solid #3b82f6; 
+        box-shadow: 0 10px 15px rgba(0, 0, 0, 0.5);
+        border-radius: 8px;
+    }
 
-/* CSS untuk efek Zoom Barcode */
-.barcode-zoomed {
-    position: fixed !important; 
-    top: 50% !important;
-    left: 50% !important;
-    transform: translate(-50%, -50%) scale(2) !important; 
-    z-index: 1000 !important;
-    background-color: white; 
-    padding: 10px;
-    border: 2px solid #3b82f6; 
-    box-shadow: 0 10px 15px rgba(0, 0, 0, 0.5);
-    border-radius: 8px;
-}
-
-/* Pastikan tabel responsif */
-#tableWrapper {
-    width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-}
+    /* Pastikan tabel responsif */
+    #tableWrapper {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 10px; /* Sedikit ruang untuk scrollbar bawah */
+    }
 </style>
 @endpush
 
