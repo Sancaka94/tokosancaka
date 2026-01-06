@@ -60,14 +60,6 @@
             </div>
         </div>
 
-        {{-- Tombol Toggle Desktop (Lock/Unlock Sidebar) --}}
-        <div class="hidden lg:flex justify-end px-2 pt-2 absolute top-0 right-0 z-20">
-            <button @click="isExpanded = !isExpanded" class="text-gray-400 hover:text-white focus:outline-none p-1" title="Kunci Sidebar">
-                {{-- Icon berubah sesuai status lock --}}
-                <i :class="isExpanded ? 'fa-solid fa-circle-dot text-green-400' : 'fa-regular fa-circle'" class="text-xs transition-colors"></i>
-            </button>
-        </div>
-
         {{-- USER PANEL --}}
         <div class="flex flex-col items-center p-6 border-b border-gray-700 relative z-10 transition-all duration-300">
             
