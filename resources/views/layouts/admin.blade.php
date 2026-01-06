@@ -1,5 +1,8 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" x-data="{ darkMode: localStorage.getItem('darkMode') === 'true' }" x-init="$watch('darkMode', val => localStorage.setItem('darkMode', val))" :class="{ 'dark': darkMode }">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" 
+      x-data="{ darkMode: localStorage.getItem('darkMode') === 'true' }" 
+      x-init="$watch('darkMode', val => localStorage.setItem('darkMode', val))" 
+      :class="{ 'dark': darkMode }">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -7,111 +10,72 @@
     
     <title>@yield('title', 'Admin Panel') - {{ config('app.name', 'Sancaka Express') }}</title>
 
-    <!-- Favicon -->
     <link rel="icon" href="https://tokosancaka.com/storage/uploads/sancaka.png" type="image/png">
     
-    <!-- TailwindCSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- Google Fonts - Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
 
-    <!-- AlpineJS -->
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
-    
-    <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-<style>
-
-html, body {
-    margin: 0;
-    padding: 0;
-}
-
-html {
-    /* Wajib untuk referensi tinggi root */
-    height: 100%; 
-}
-
-body {
-    font-family: 'Inter', sans-serif;
-    
-    /* 🔑 KUNCI: Untuk melebar KANAN (100% / 0.75) */
-    width: 133.33vw; 
-    
-    /* Wajib untuk menjaga konsistensi TINGGI, atasi efek "mengecil" */
-    min-height: 133.33vh; 
-    
-    /* Terapkan Scale dari sudut kiri atas */
-    transform: scale(0.75);
-    transform-origin: 0 0;
-    
-    overflow-x: hidden;
-}
-
-/* Kunci: Pastikan kontainer utama ikut memanjang setidaknya setinggi layar */
-.main-layout-container {
-    min-height: 133.33vh; 
-}
-
-/* ========================================================= */
-/* END: PERBAIKAN TINGGI PENUH + ZOOM OUT 75% */
-/* ========================================================= */
+    <style>
+        [x-cloak] { display: none !important; }
         
-[x-cloak] { display: none !important; }
-        /* ... (style Anda yang lain) ... */
-        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #64748b; }
-        .dark .custom-scrollbar::-webkit-scrollbar-track { background: #1e293b; }
-        .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; }
-        .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        /* Custom Scrollbar yang rapi */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        /* Utility */
         .modal-transition { transition: opacity 0.3s ease, transform 0.3s ease; }
         .modal-hidden { opacity: 0; transform: scale(0.95); pointer-events: none; }
         .modal-visible { opacity: 1; transform: scale(1); pointer-events: auto; }
-        
-          
-        
-  
-
-        
     </style>
     
     @stack('styles')
 </head>
-<body class="bg-gray-100 text-gray-800 font-sans antialiased text-sm">
 
-    {{-- Layout Container --}}
-    {{-- 'h-screen' di sini memaksa layout setinggi layar --}}
-    <div x-data="{ sidebarOpen: window.innerWidth > 1024 ? true : false }" 
-         @resize.window="sidebarOpen = window.innerWidth > 1024 ? true : false" 
-         class="flex h-screen overflow-hidden bg-gray-100">
+{{-- 
+    PERUBAHAN PENTING DI SINI:
+    1. Hapus style transform: scale().
+    2. Tambahkan class 'text-sm' agar UI tetap terlihat 'kecil/compact'.
+    3. Gunakan 'h-screen' dan 'overflow-hidden' pada body.
+--}}
+<body class="bg-gray-100 text-gray-800 font-sans antialiased text-sm h-screen overflow-hidden">
+
+    @if(isset($error_message))
+        <div class="bg-red-500 text-white text-center p-2 absolute top-0 w-full z-[60]">
+            {{ $error_message }}
+        </div>
+    @endif
+
+    {{-- WRAPPER UTAMA: Menggunakan Flexbox untuk membagi Sidebar (Kiri) dan Konten (Kanan) --}}
+    <div x-data="{ sidebarOpen: window.innerWidth > 1024 }" 
+         @resize.window="sidebarOpen = window.innerWidth > 1024" 
+         class="flex h-screen w-full bg-gray-100">
          
+        {{-- 1. SIDEBAR (Include file sidebar Anda) --}}
+        {{-- Pastikan di file sidebar.blade.php class utamanya tidak ada 'fixed' atau 'absolute' untuk Desktop --}}
         @include('layouts.partials.sidebar')
 
-        {{-- Konten Utama --}}
-        <div class="flex-1 flex flex-col h-full overflow-hidden relative">
+        {{-- 2. AREA KANAN (Header + Konten) --}}
+        <div class="flex-1 flex flex-col h-screen overflow-hidden relative">
             
+            {{-- Header --}}
             @include('layouts.partials.header')
 
-            {{-- 
-                PERBAIKAN UTAMA:
-                1. 'overflow-y-auto': Membolehkan scroll vertikal DI DALAM area konten ini saja.
-                2. 'h-full': Memaksa main mengisi sisa tinggi.
-            --}}
-            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 custom-scrollbar relative">
-                {{-- Tambahkan 'min-h-full' agar background abu-abu selalu full --}}
-                <div class="w-full px-4 sm:px-6 lg:px-8 py-8 min-h-full">
-                    @yield('content')
-                </div>
+            {{-- Main Content Area (Scrollable) --}}
+            {{-- 'flex-1' agar mengisi sisa ruang, 'overflow-y-auto' agar bisa discroll --}}
+            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 custom-scrollbar p-4 sm:p-6 lg:p-8">
+                @yield('content')
             </main>
+
         </div>
     </div>
     
