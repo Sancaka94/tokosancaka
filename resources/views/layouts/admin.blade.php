@@ -36,17 +36,14 @@
         .modal-transition { transition: opacity 0.3s ease, transform 0.3s ease; }
         .modal-hidden { opacity: 0; transform: scale(0.95); pointer-events: none; }
         .modal-visible { opacity: 1; transform: scale(1); pointer-events: auto; }
+
+        /* Teks Vertikal untuk tombol Monitor */
+        .writing-vertical { writing-mode: vertical-rl; text-orientation: mixed; }
     </style>
     
     @stack('styles')
 </head>
 
-{{-- 
-    PERUBAHAN PENTING DI SINI:
-    1. Hapus style transform: scale().
-    2. Tambahkan class 'text-sm' agar UI tetap terlihat 'kecil/compact'.
-    3. Gunakan 'h-screen' dan 'overflow-hidden' pada body.
---}}
 <body class="bg-gray-100 text-gray-800 font-sans antialiased text-sm h-screen overflow-hidden">
 
     @if(isset($error_message))
@@ -55,23 +52,125 @@
         </div>
     @endif
 
-    {{-- WRAPPER UTAMA: Menggunakan Flexbox untuk membagi Sidebar (Kiri) dan Konten (Kanan) --}}
+    {{-- WRAPPER UTAMA --}}
     <div x-data="{ sidebarOpen: window.innerWidth > 1024 }" 
          @resize.window="sidebarOpen = window.innerWidth > 1024" 
          class="flex h-screen w-full bg-gray-100">
          
-        {{-- 1. SIDEBAR (Include file sidebar Anda) --}}
-        {{-- Pastikan di file sidebar.blade.php class utamanya tidak ada 'fixed' atau 'absolute' untuk Desktop --}}
+        {{-- 1. SIDEBAR KIRI --}}
         @include('layouts.partials.sidebar')
 
-        {{-- 2. AREA KANAN (Header + Konten) --}}
+        {{-- 2. AREA KANAN (Header + Konten + Sidebar Monitor) --}}
         <div class="flex-1 flex flex-col h-screen overflow-hidden relative">
             
             {{-- Header --}}
             @include('layouts.partials.header')
 
-            {{-- Main Content Area (Scrollable) --}}
-            {{-- 'flex-1' agar mengisi sisa ruang, 'overflow-y-auto' agar bisa discroll --}}
+            {{-- ========================================================= --}}
+            {{-- MULAI: SIDEBAR KANAN (MONITOR) --}}
+            {{-- ========================================================= --}}
+            <div x-data="{ monitorOpen: false }" 
+                 class="fixed inset-y-0 right-0 z-[70] flex items-center justify-end h-screen pointer-events-none">
+                 
+                {{-- A. Tombol Trigger (Muncul di kanan) --}}
+                <div @mouseenter="monitorOpen = true"
+                     class="absolute right-0 top-1/2 transform -translate-y-1/2 pointer-events-auto bg-red-600 text-white py-4 px-1 rounded-l-xl shadow-lg cursor-pointer transition-all duration-300 hover:bg-red-700 hover:pr-3 z-[71]"
+                     :class="monitorOpen ? 'translate-x-full opacity-0' : 'translate-x-0 opacity-100'">
+                    <div class="flex flex-col items-center gap-2">
+                        <i class="fas fa-chevron-left animate-pulse text-[10px]"></i>
+                        <span class="text-[10px] font-bold writing-vertical tracking-widest">MONITOR</span>
+                    </div>
+                </div>
+
+                {{-- B. Panel Sidebar Kanan --}}
+                <div class="h-full bg-white/95 backdrop-blur-md shadow-2xl border-l border-gray-200 w-80 transform transition-transform duration-300 ease-in-out overflow-y-auto custom-scrollbar relative pointer-events-auto"
+                     :class="monitorOpen ? 'translate-x-0' : 'translate-x-full'"
+                     @mouseleave="monitorOpen = false">
+                    
+                    {{-- Header Panel --}}
+                    <div class="p-4 bg-gradient-to-r from-gray-800 to-gray-900 text-white flex justify-between items-center sticky top-0 z-10 shadow-md">
+                        <h3 class="font-bold text-sm tracking-wider uppercase"><i class="fas fa-desktop mr-2"></i>Live Monitor</h3>
+                        <button @click="monitorOpen = false" class="text-gray-400 hover:text-white transition">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+
+                    {{-- Konten Kartu Monitor --}}
+                    <div class="p-4 space-y-4">
+                        {{-- Card 1: Pendapatan --}}
+                        <div class="relative group bg-white border border-gray-200 p-4 rounded-xl shadow-sm hover:shadow-md transition-all">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="bg-emerald-100 p-2 rounded-lg text-emerald-600"><i class="fas fa-coins"></i></div>
+                                <span class="text-[10px] font-bold text-gray-400 uppercase">Pendapatan</span>
+                            </div>
+                            <h3 class="text-xl font-extrabold text-gray-800 leading-none sidebar-val-pendapatan">
+                                Rp {{ number_format($totalPendapatan ?? 0, 0, ',', '.') }}
+                            </h3>
+                            <div class="mt-2 h-1 w-full bg-gray-100 rounded-full overflow-hidden">
+                                <div class="h-full bg-emerald-500 w-full animate-pulse"></div>
+                            </div>
+                        </div>
+
+                        {{-- Card 2: Pesanan --}}
+                        <div class="relative group bg-white border border-gray-200 p-4 rounded-xl shadow-sm hover:shadow-md transition-all">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="bg-blue-100 p-2 rounded-lg text-blue-600"><i class="fas fa-box-open"></i></div>
+                                <span class="text-[10px] font-bold text-gray-400 uppercase">Total Pesanan</span>
+                            </div>
+                            <h3 class="text-xl font-extrabold text-gray-800 leading-none sidebar-val-pesanan">
+                                {{ number_format($totalPesanan ?? 0, 0, ',', '.') }}
+                            </h3>
+                            <div class="mt-2 h-1 w-full bg-gray-100 rounded-full overflow-hidden">
+                                <div class="h-full bg-blue-500 w-full" style="width: 80%"></div>
+                            </div>
+                        </div>
+
+                        {{-- Card 3: Toko --}}
+                        <div class="relative group bg-white border border-gray-200 p-4 rounded-xl shadow-sm hover:shadow-md transition-all">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="bg-purple-100 p-2 rounded-lg text-purple-600"><i class="fas fa-store-alt"></i></div>
+                                <span class="text-[10px] font-bold text-gray-400 uppercase">Jumlah Toko</span>
+                            </div>
+                            <h3 class="text-xl font-extrabold text-gray-800 leading-none sidebar-val-toko">
+                                {{ number_format($jumlahToko ?? 0, 0, ',', '.') }}
+                            </h3>
+                            <div class="mt-2 h-1 w-full bg-gray-100 rounded-full overflow-hidden">
+                                <div class="h-full bg-purple-500 w-full" style="width: 60%"></div>
+                            </div>
+                        </div>
+
+                        {{-- Card 4: Pengguna Baru --}}
+                        <div class="relative group bg-white border border-gray-200 p-4 rounded-xl shadow-sm hover:shadow-md transition-all">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="bg-orange-100 p-2 rounded-lg text-orange-600"><i class="fas fa-user-check"></i></div>
+                                <span class="text-[10px] font-bold text-gray-400 uppercase">User Baru</span>
+                            </div>
+                            <h3 class="text-xl font-extrabold text-gray-800 leading-none sidebar-val-pengguna">
+                                {{ number_format($penggunaBaru ?? 0, 0, ',', '.') }}
+                            </h3>
+                            <div class="mt-2 h-1 w-full bg-gray-100 rounded-full overflow-hidden">
+                                <div class="h-full bg-orange-500 w-full" style="width: 40%"></div>
+                            </div>
+                        </div>
+                        
+                        {{-- Status Realtime --}}
+                        <div class="mt-6 pt-4 border-t border-gray-100 text-center">
+                            <div class="flex justify-center gap-2 mt-2 items-center">
+                                <span class="relative flex h-3 w-3">
+                                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                  <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                                </span>
+                                <span class="text-[10px] font-bold text-green-600">Live Connection</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {{-- ========================================================= --}}
+            {{-- SELESAI: SIDEBAR KANAN --}}
+            {{-- ========================================================= --}}
+
+            {{-- Main Content Area --}}
             <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 custom-scrollbar p-4 sm:p-6 lg:p-8">
                 @yield('content')
             </main>
