@@ -44,16 +44,16 @@ class AppServiceProvider extends ServiceProvider
         if (auth()->check()) {
             // 4 KARTU ATAS
             $view->with('totalPendapatan', DB::table('transactions')->where('status', 'success')->sum('amount') ?? 0);
-            $view->with('totalPesanan', DB::table('orders')->count() ?? 0);
+            $view->with('totalPesanan', DB::table('Pesanan')->count() ?? 0);
             $view->with('jumlahToko', DB::table('stores')->count() ?? 0);
             $view->with('penggunaBaru', User::where('created_at', '>=', now()->subDays(30))->count() ?? 0);
 
             // 4 KARTU BAWAH (TAMBAHAN BARU)
             // Sesuaikan 'status' dengan value database Anda (misal: 'delivered', 'processing', 'pickup', 'failed')
-            $view->with('totalTerkirim', DB::table('orders')->where('status', 'delivered')->count() ?? 0);
-            $view->with('totalSedangDikirim', DB::table('orders')->where('status', 'processing')->count() ?? 0);
-            $view->with('totalMenungguPickup', DB::table('orders')->where('status', 'pickup')->count() ?? 0);
-            $view->with('totalGagal', DB::table('orders')->whereIn('status', ['failed', 'canceled'])->count() ?? 0);
+            $view->with('totalTerkirim', DB::table('Pesanan')->where('status', 'delivered')->count() ?? 0);
+            $view->with('totalSedangDikirim', DB::table('Pesanan')->where('status', 'processing')->count() ?? 0);
+            $view->with('totalMenungguPickup', DB::table('Pesanan')->where('status', 'pickup')->count() ?? 0);
+            $view->with('totalGagal', DB::table('Pesanan')->whereIn('status', ['failed', 'canceled'])->count() ?? 0);
         }
         }); // <--- PERBAIKAN: Menambahkan penutup kurung kurawal dan kurung biasa
         // ----------------------------------------
