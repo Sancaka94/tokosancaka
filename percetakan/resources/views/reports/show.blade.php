@@ -142,15 +142,26 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
-                    @foreach($order->details as $item)
-                    <tr>
-                        <td class="px-4 py-3 font-bold text-slate-700">{{ $item->product_name }}</td>
-                        <td class="px-4 py-3 text-center">{{ $item->qty }}</td>
-                        <td class="px-4 py-3 text-right text-slate-500">Rp {{ number_format($item->price, 0, ',', '.') }}</td>
-                        <td class="px-4 py-3 text-right font-bold text-slate-800">Rp {{ number_format($item->subtotal, 0, ',', '.') }}</td>
-                    </tr>
-                    @endforeach
-                </tbody>
+                 
+    @foreach($order->details as $item)
+    <tr>
+        <td class="px-4 py-3 font-bold text-slate-700">{{ $item->product_name }}</td>
+        
+        {{-- PERBAIKAN: Gunakan 'quantity' bukan 'qty' --}}
+        <td class="px-4 py-3 text-center">{{ $item->quantity }}</td>
+        
+        {{-- PERBAIKAN: Gunakan 'price_at_order' bukan 'price' --}}
+        <td class="px-4 py-3 text-right text-slate-500">
+            Rp {{ number_format($item->price_at_order, 0, ',', '.') }}
+        </td>
+        
+        <td class="px-4 py-3 text-right font-bold text-slate-800">
+            Rp {{ number_format($item->subtotal, 0, ',', '.') }}
+        </td>
+    </tr>
+    @endforeach
+</tbody>
+                
                 <tfoot class="border-t border-slate-200">
                     <tr>
                         <td colspan="3" class="px-4 py-4 text-right font-black text-slate-500 uppercase tracking-widest text-xs">Total Akhir</td>
