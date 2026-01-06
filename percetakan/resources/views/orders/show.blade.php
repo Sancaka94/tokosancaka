@@ -188,6 +188,22 @@
                         </div>
                     </div>
                     @endif
+
+                    {{-- [TAMBAHAN] CATATAN PELANGGAN DI SINI --}}
+                    @if($order->customer_note)
+                    <div class="mt-4 pt-4 border-t border-slate-100">
+                        <div class="flex items-start gap-3">
+                            <div class="mt-1"><i class="fas fa-sticky-note text-amber-500"></i></div>
+                            <div>
+                                <p class="text-xs text-slate-400 uppercase font-bold">Catatan Pelanggan</p>
+                                <div class="bg-amber-50 p-2.5 rounded-lg border border-amber-100 mt-1">
+                                    <p class="text-xs text-slate-700 italic">"{{ $order->customer_note }}"</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    @endif
+                    {{-- [SELESAI TAMBAHAN] --}}
                 </div>
             </div>
 
