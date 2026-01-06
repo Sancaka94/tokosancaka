@@ -446,7 +446,7 @@
             </div>
         </div>
     @endif
-</div>
+{{-- === AKHIR TABEL DATA === --}}
 
 @include('layouts.partials.modals.export', [
 'excel_route' => route('admin.pesanan.export.excel'),
