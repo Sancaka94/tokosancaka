@@ -169,6 +169,7 @@ class OrderController extends Controller
         $request->validate([
             'weight' => 'required|numeric',
             'destination_district_id' => 'required',
+            'destination_subdistrict_id' => 'nullable',
         ]);
 
         try {
@@ -204,8 +205,10 @@ class OrderController extends Controller
 
             // 3. DATA TUJUAN
             $destDistrict    = $request->destination_district_id;
-            $destSubDistrict = $request->destination_subdistrict_id ?? 0; 
+            // [PENTING] Ambil Kelurahan. Jika tidak ada, set 0 (tapi sebaiknya ada untuk POS)
+            $destSubDistrict = $request->destination_subdistrict_id ? (int)$request->destination_subdistrict_id : 0; 
             
+            Log::info("CEK ONGKIR: District: $destDistrict, SubDistrict (Kelurahan): $destSubDistrict");
             // --- LOGIKA GEOCODING TUJUAN UNTUK INSTANT ---
             $destLat = null;
             $destLng = null;
@@ -219,6 +222,8 @@ class OrderController extends Controller
             }
 
             $formattedRates = [];
+            // 3. REQUEST API REGULER (Kirim parameter subdistrict)
+            Log::info("Mengambil Ongkir REGULER (Include Kelurahan)...");
 
             // A. API REGULER (JNE, SICEPAT, DLL)
             Log::info("Mengambil Ongkir REGULER...");
@@ -283,6 +288,11 @@ class OrderController extends Controller
                     $instantResults = $bodyResponse['result'] ?? []; 
                     
                     Log::info("Ongkir INSTANT Raw Result Count: " . count($instantResults));
+
+                    // Filter: Jika POS Indonesia muncul, pastikan logonya ada
+                    if ($serviceCode === 'pos' || $serviceCode === 'posindonesia') {
+                        $mapData = ['name' => 'POS Indonesia', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/posindonesia.png'];
+                    }
 
                     foreach ($instantResults as $courierData) {
                         $courierName = strtolower($courierData['name'] ?? 'instant'); // gosend / grab
@@ -631,6 +641,9 @@ class OrderController extends Controller
                         $fullAddress = $request->customer_address_detail . " (" . $request->destination_text . ")";
                     }
 
+                    // [UPDATE] Pastikan ID Kelurahan diambil
+                    $destSubDistrictId = $request->destination_subdistrict_id ? (int)$request->destination_subdistrict_id : 0;
+
                     $kaPayload = [
                         'address'      => config('services.kiriminaja.origin_address'),
                         'phone'        => '085745808809',
@@ -664,6 +677,7 @@ class OrderController extends Controller
                         ]
                     ];
 
+                    Log::info("Mencoba Request Pickup (SubDistrict: $destSubDistrictId)...", ['schedule' => $pickupSchedule]);
                     $kaResponse = $kiriminAja->createExpressOrder($kaPayload);
 
                     if (isset($kaResponse['status']) && $kaResponse['status'] == false) {
