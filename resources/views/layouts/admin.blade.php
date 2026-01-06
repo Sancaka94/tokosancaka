@@ -88,23 +88,27 @@ body {
 </head>
 <body class="bg-gray-100 text-gray-800 font-sans antialiased text-sm">
 
-@if(isset($error_message))
-    <div class="alert alert-danger text-center">
-        {{ $error_message }}
-    </div>
-@endif
-
-<div x-data="{ sidebarOpen: window.innerWidth > 1024 ? true : false }" @resize.window="sidebarOpen = window.innerWidth > 1024 ? true : false" class="flex main-layout-container bg-gray-100">
+    {{-- Layout Container --}}
+    {{-- 'h-screen' di sini memaksa layout setinggi layar --}}
+    <div x-data="{ sidebarOpen: window.innerWidth > 1024 ? true : false }" 
+         @resize.window="sidebarOpen = window.innerWidth > 1024 ? true : false" 
+         class="flex h-screen overflow-hidden bg-gray-100">
+         
         @include('layouts.partials.sidebar')
 
-        <div class="flex-1 flex flex-col overflow-hidden">
+        {{-- Konten Utama --}}
+        <div class="flex-1 flex flex-col h-full overflow-hidden relative">
             
-            {{-- PENTING: File header.blade.php Anda harus memiliki ID: --}}
-            {{-- 'notification-list-body', 'notification-empty-state', 'notification-count-badge' --}}
             @include('layouts.partials.header')
 
-            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 custom-scrollbar">
-                <div class="w-full px-4 sm:px-6 lg:px-8 py-8">
+            {{-- 
+                PERBAIKAN UTAMA:
+                1. 'overflow-y-auto': Membolehkan scroll vertikal DI DALAM area konten ini saja.
+                2. 'h-full': Memaksa main mengisi sisa tinggi.
+            --}}
+            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 custom-scrollbar relative">
+                {{-- Tambahkan 'min-h-full' agar background abu-abu selalu full --}}
+                <div class="w-full px-4 sm:px-6 lg:px-8 py-8 min-h-full">
                     @yield('content')
                 </div>
             </main>
@@ -146,7 +150,7 @@ body {
                                 console.log('Izin notifikasi browser diberikan.');
                                 new Notification('Terima Kasih!', {
                                     body: 'Anda akan menerima notifikasi di sini.',
-                                    icon: 'https://tokosancaka.biz.id/storage/uploads/sancaka.png'
+                                    icon: 'https://tokosancaka.com/storage/uploads/sancaka.png'
                                 });
                             }
                         });
