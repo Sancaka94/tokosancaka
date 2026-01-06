@@ -1,10 +1,11 @@
 {{--
     File: resources/views/layouts/partials/sidebar.blade.php
     Deskripsi: Sidebar navigasi LENGKAP dengan fitur Mini Sidebar (Icon Only) pada Desktop.
-    Fitur:
-    1. Desktop: Default Mini (w-20). Hover/Klik untuk Expand (w-[280px]).
-    2. Mobile: Drawer (Hidden default, Slide in).
-    3. Semua Menu & Route: 100% Utuh.
+    
+    PERBAIKAN:
+    1. Menambahkan 'lg:translate-x-0' agar sidebar tidak hilang di Desktop.
+    2. Menambahkan 'lg:static' dan 'lg:inset-auto' agar layout tidak berantakan.
+    3. Logika Hover dan Klik Toggle sudah sinkron.
 --}}
 
 {{-- Wrapper Utama dengan Alpine.js Data --}}
@@ -27,9 +28,13 @@
         {{-- Event Mouse Enter/Leave untuk Desktop Hover --}}
         @mouseenter="isHovered = true"
         @mouseleave="isHovered = false"
-        {{-- Logika Lebar Sidebar --}}
+        {{-- 
+            LOGIKA CLASS (PERBAIKAN UTAMA):
+            1. translate: Di Mobile ikut sidebarOpen. Di Desktop (lg) DIPAKSA 'lg:translate-x-0' agar selalu muncul.
+            2. width: Di Mobile selalu 280px. Di Desktop cek expanded/hover (280px) atau mini (w-20).
+        --}}
         :class="[
-            sidebarOpen ? 'translate-x-0 ease-out' : '-translate-x-full ease-in',
+            sidebarOpen ? 'translate-x-0 ease-out' : '-translate-x-full ease-in lg:translate-x-0',
             (isExpanded || isHovered) ? 'w-[280px]' : 'w-[280px] lg:w-20'
         ]"
         class="bg-blue-900 text-gray-300 flex-shrink-0 flex flex-col min-h-screen fixed inset-y-0 left-0 z-50 transform transition-all duration-300 lg:static lg:inset-auto shadow-xl overflow-hidden">
@@ -57,11 +62,13 @@
 
         {{-- Tombol Toggle Desktop (Lock/Unlock Sidebar) --}}
         <div class="hidden lg:flex justify-end px-2 pt-2 absolute top-0 right-0 z-20">
-            <button @click="isExpanded = !isExpanded" class="text-gray-400 hover:text-white focus:outline-none p-1">
-                <i :class="isExpanded ? 'fa-solid fa-circle-dot' : 'fa-regular fa-circle'" class="text-xs"></i>
+            <button @click="isExpanded = !isExpanded" class="text-gray-400 hover:text-white focus:outline-none p-1" title="Kunci Sidebar">
+                {{-- Icon berubah sesuai status lock --}}
+                <i :class="isExpanded ? 'fa-solid fa-circle-dot text-green-400' : 'fa-regular fa-circle'" class="text-xs transition-colors"></i>
             </button>
         </div>
 
+        {{-- USER PANEL --}}
         <div class="flex flex-col items-center p-6 border-b border-gray-700 relative z-10 transition-all duration-300">
             
             {{-- Gambar User: Mengecil saat Mini Sidebar --}}
@@ -72,16 +79,17 @@
                  onerror="this.onerror=null;this.src='https://placehold.co/80x80/1f2937/ffffff?text=Logo';">
 
             {{-- Nama User: Hidden saat Mini Sidebar --}}
-            <div :class="(isExpanded || isHovered) ? 'opacity-100 max-h-20' : 'opacity-0 max-h-0 lg:hidden'" class="font-bold text-lg text-white transition-all duration-300 text-center overflow-hidden">
+            <div :class="(isExpanded || isHovered) ? 'opacity-100 max-h-20' : 'opacity-0 max-h-0 lg:hidden'" class="font-bold text-lg text-white transition-all duration-300 text-center overflow-hidden whitespace-nowrap">
                 {{ Auth::user()->nama_lengkap ?? 'Sancaka Express' }}
             </div>
 
-            <div :class="(isExpanded || isHovered) ? 'opacity-100 max-h-10' : 'opacity-0 max-h-0 lg:hidden'" class="flex items-center text-sm mt-1 transition-all duration-300 overflow-hidden">
+            <div :class="(isExpanded || isHovered) ? 'opacity-100 max-h-10' : 'opacity-0 max-h-0 lg:hidden'" class="flex items-center text-sm mt-1 transition-all duration-300 overflow-hidden whitespace-nowrap">
                 <span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
                 <span class="text-green-400">Online</span>
             </div>
         </div>
 
+        {{-- SEARCH FORM --}}
         <div class="p-4 transition-all duration-300" :class="(isExpanded || isHovered) ? '' : 'lg:hidden'">
             <form action="#" method="get">
                 <div class="relative">
@@ -93,6 +101,7 @@
             </form>
         </div>
 
+        {{-- SIDEBAR MENU --}}
         <nav id="sidebar-nav" class="flex-1 px-4 pb-4 space-y-1 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent">
 
             {{-- Dashboard --}}
