@@ -18,7 +18,7 @@
             </div>
         </div>
         
-        <button @click="showPaymentModal = false" class="group flex items-center gap-2 px-4 py-2 rounded-full bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-600 transition border border-transparent hover:border-red-100">
+        <button @click="showPaymentModal = false" class="group flex items-center gap-2 px-4 py-2 rounded-full bg-red-500 hover:bg-red-600 text-slate-500 hover:text-red-100 transition border border-transparent hover:border-red-100">
             <span class="text-xs font-bold hidden sm:block">BATAL / TUTUP</span>
             <i class="fas fa-times text-lg"></i>
         </button>
