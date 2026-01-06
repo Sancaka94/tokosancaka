@@ -6,6 +6,8 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\View; // Import untuk View Composer
 use Illuminate\Support\Facades\Config; // Import untuk Config Injection
 use Illuminate\Support\Facades\Schema; // Import untuk Cek Tabel DB
+use Illuminate\Support\Facades\DB;     // <--- TAMBAHKAN INI (Wajib)
+use App\Models\User;                   // <--- TAMBAHKAN INI (Wajib)
 use App\Http\View\Composers\HeaderComposer;
 use App\Models\Api; // Import Model API
 
@@ -38,6 +40,22 @@ class AppServiceProvider extends ServiceProvider
         // ----------------------------------------
         View::composer('layouts.partials.header', HeaderComposer::class);
         
+        View::composer('*', function ($view) {
+        if (auth()->check()) {
+            // 4 KARTU ATAS
+            $view->with('totalPendapatan', DB::table('transactions')->where('status', 'success')->sum('amount') ?? 0);
+            $view->with('totalPesanan', DB::table('orders')->count() ?? 0);
+            $view->with('jumlahToko', DB::table('stores')->count() ?? 0);
+            $view->with('penggunaBaru', User::where('created_at', '>=', now()->subDays(30))->count() ?? 0);
+
+            // 4 KARTU BAWAH (TAMBAHAN BARU)
+            // Sesuaikan 'status' dengan value database Anda (misal: 'delivered', 'processing', 'pickup', 'failed')
+            $view->with('totalTerkirim', DB::table('orders')->where('status', 'delivered')->count() ?? 0);
+            $view->with('totalSedangDikirim', DB::table('orders')->where('status', 'processing')->count() ?? 0);
+            $view->with('totalMenungguPickup', DB::table('orders')->where('status', 'pickup')->count() ?? 0);
+            $view->with('totalGagal', DB::table('orders')->whereIn('status', ['failed', 'canceled'])->count() ?? 0);
+        }
+        }); // <--- PERBAIKAN: Menambahkan penutup kurung kurawal dan kurung biasa
         // ----------------------------------------
         // 2. INJECT CONFIG API DARI DATABASE
         // ----------------------------------------
