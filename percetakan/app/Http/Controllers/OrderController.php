@@ -463,7 +463,7 @@ class OrderController extends Controller
                     if ($affiliatePayor->balance < $finalPrice) throw new \Exception("Saldo Kurang.");
                     $affiliatePayor->decrement('balance', $finalPrice);
                     $paymentStatus = 'paid';
-                    $catatanSistem .= "[INFO BAYAR] Potong Saldo Member";
+                    $catatanSistem = "[INFO BAYAR] Potong Saldo Member";
                     break;
                 case 'tripay':
                 case 'doku':
@@ -648,7 +648,7 @@ class OrderController extends Controller
                     $shippingRef = $kaResponse['data']['order_id'] ?? $kaResponse['pickup_number'] ?? null;
                     Log::info("KIRIMINAJA SUKSES. Ref: $shippingRef");
                     // JANGAN pakai $pesanDariPembeli, pakai $catatanSistem
-                    $catatanSistem .= "\n[RESI OTOMATIS] Ref: " . $shippingRef;
+                    $catatanSistem = "\n[RESI OTOMATIS] Ref: " . $shippingRef;
                 } else {
                     $errMsg = $kaResponse['text'] ?? 'Gagal koneksi ke kurir.';
                     Log::error("KIRIMINAJA GAGAL: " . json_encode($kaResponse));
