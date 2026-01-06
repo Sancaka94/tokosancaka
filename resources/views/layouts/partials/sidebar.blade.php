@@ -396,6 +396,7 @@
     </aside>
 </div>
 
+
 @push('scripts')
 <script>
     @include('layouts.partials.sidebar-scripts')
