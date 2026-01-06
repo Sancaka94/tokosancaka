@@ -44,57 +44,42 @@ class AppServiceProvider extends ServiceProvider
         View::composer('layouts.partials.header', HeaderComposer::class);
         
         View::composer('*', function ($view) {
-            try {
-                if (auth()->check()) {
-                    // Gunakan CACHE selama 60 detik agar tidak memberatkan database
-                    // karena query ini akan dijalankan setiap kali pindah halaman.
-                    $stats = Cache::remember('global_sidebar_stats_v2', 60, function () {
-                        
-                        // A. LOGIKA PENDAPATAN (Sesuai DashboardController)
-                        // TopUp sukses + Ongkir Pesanan
-                        $pendapatan = TopUp::where('status', 'success')->sum('amount') 
-                                    + Pesanan::sum('shipping_cost');
+    try {
+        if (auth()->check()) {
+            // Cache data global (Monitor & Aktivitas)
+            $stats = Cache::remember('global_sidebar_data_v3', 30, function () { // Cache 30 detik
+                return [
+                    // --- DATA MONITOR (8 KARTU) ---
+                    'totalPendapatan' => \App\Models\TopUp::where('status', 'success')->sum('amount') 
+                                       + Pesanan::sum('shipping_cost'),
+                    'totalPesanan' => Pesanan::count(),
+                    'jumlahToko' => \App\Models\User::where('role', 'Seller')->count(),
+                    'penggunaBaru' => \App\Models\User::where('role', 'Pelanggan')
+                                         ->where('created_at', '>=', now()->subDays(30))->count(),
+                    'totalTerkirim' => Pesanan::where('status_pesanan', 'Selesai')->count(),
+                    'totalSedangDikirim' => Pesanan::whereIn('status_pesanan', 
+                        ['Sedang Dikirim', 'Dikirim', 'Diproses', 'Sedang Diantar'])->count(),
+                    'totalMenungguPickup' => Pesanan::where('status_pesanan', 'Menunggu Pickup')->count(),
+                    'totalGagal' => Pesanan::whereIn('status_pesanan', 
+                        ['Batal', 'Gagal', 'Retur', 'Kadaluarsa', 'Dibatalkan', 'Gagal Resi'])->count(),
 
-                        // B. LOGIKA USER & PESANAN
-                        $pesananCount = Pesanan::count();
-                        $tokoCount = User::where('role', 'Seller')->count();
-                        // Pengguna baru (Pelanggan, < 30 hari)
-                        $userBaru = User::where('role', 'Pelanggan')
-                                        ->where('created_at', '>=', now()->subDays(30))
-                                        ->count();
+                    // --- DATA AKTIVITAS (Baru Ditambahkan) ---
+                    'pesananTerbaru' => Pesanan::with('pembeli')
+                                        ->latest('created_at')
+                                        ->take(10) // Ambil 10 terakhir
+                                        ->get()
+                ];
+            });
 
-                        // C. LOGIKA STATUS (Sesuai String di DashboardController)
-                        $terkirim = Pesanan::where('status_pesanan', 'Selesai')->count();
-                        
-                        $sedangDikirim = Pesanan::whereIn('status_pesanan', 
-                            ['Sedang Dikirim', 'Dikirim', 'Diproses', 'Sedang Diantar'])->count();
-                        
-                        $menungguPickup = Pesanan::where('status_pesanan', 'Menunggu Pickup')->count();
-                        
-                        $gagal = Pesanan::whereIn('status_pesanan', 
-                            ['Batal', 'Gagal', 'Retur', 'Kadaluarsa', 'Dibatalkan', 'Gagal Resi'])->count();
-
-                        return [
-                            'totalPendapatan'     => $pendapatan,
-                            'totalPesanan'        => $pesananCount,
-                            'jumlahToko'          => $tokoCount,
-                            'penggunaBaru'        => $userBaru,
-                            'totalTerkirim'       => $terkirim,
-                            'totalSedangDikirim'  => $sedangDikirim,
-                            'totalMenungguPickup' => $menungguPickup,
-                            'totalGagal'          => $gagal,
-                        ];
-                    });
-
-                    // Bagikan variabel ke semua view
-                    foreach ($stats as $key => $val) {
-                        $view->with($key, $val);
-                    }
-                }
-            } catch (\Throwable $e) {
-                // Silent error (biarkan kosong jika terjadi error db saat migrate)
+            foreach ($stats as $key => $val) {
+                $view->with($key, $val);
             }
-        });
+        }
+    } catch (\Throwable $e) {
+        // Silent fail
+    }
+});
+
         // ----------------------------------------
         // 2. INJECT CONFIG API DARI DATABASE
         // ----------------------------------------

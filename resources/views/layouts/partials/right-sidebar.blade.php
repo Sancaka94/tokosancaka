@@ -1,35 +1,139 @@
+{{-- ========================================================= --}}
+            {{-- GROUP SIDEBAR KANAN (AKTIVITAS & MONITOR) --}}
             {{-- ========================================================= --}}
-            {{-- MULAI: SIDEBAR KANAN (MONITOR 8 CARD) --}}
-            {{-- ========================================================= --}}
+            
+            {{-- 1. SIDEBAR AKTIVITAS (POSISI ATAS - BIRU) --}}
+            <div x-data="{ activityOpen: false }" 
+                 class="fixed inset-y-0 right-0 z-[80] flex items-center justify-end h-screen pointer-events-none">
+                
+                {{-- TRIGGER TOMBOL (Posisi agak ke atas: top-[40%]) --}}
+                <div @mouseenter="activityOpen = true"
+                     class="absolute right-0 top-[40%] transform -translate-y-1/2 pointer-events-auto bg-blue-600 text-white py-4 px-1 rounded-l-xl shadow-lg cursor-pointer transition-all duration-300 hover:bg-blue-700 hover:pr-3 z-[81]"
+                     :class="activityOpen ? 'translate-x-full opacity-0' : 'translate-x-0 opacity-100'">
+                    <div class="flex flex-col items-center gap-2">
+                        <i class="fas fa-history animate-pulse text-[10px]"></i>
+                        <span class="text-[10px] font-bold writing-vertical tracking-widest" style="writing-mode: vertical-rl; text-orientation: mixed;">AKTIVITAS</span>
+                    </div>
+                </div>
+
+                {{-- PANEL ISI --}}
+                <div class="h-full bg-white/95 backdrop-blur-md shadow-2xl border-l border-gray-200 w-96 transform transition-transform duration-300 ease-in-out overflow-y-auto custom-scrollbar relative pointer-events-auto"
+                     :class="activityOpen ? 'translate-x-0' : 'translate-x-full'"
+                     @mouseleave="activityOpen = false">
+                    
+                    {{-- Header --}}
+                    <div class="h-15 px-6 bg-blue-900 text-white flex justify-between items-center sticky top-0 z-10 shadow-md border-b border-blue-800">
+                        <h3 class="font-bold text-sm tracking-wider uppercase flex items-center gap-2">
+                            <i class="fas fa-history text-blue-300"></i> Aktivitas Terbaru
+                        </h3>
+                        <button @click="activityOpen = false" class="text-blue-200 hover:text-white transition focus:outline-none">
+                            <i class="fas fa-times text-lg"></i>
+                        </button>
+                    </div>
+
+                    {{-- List Aktivitas --}}
+                    <div class="p-4 space-y-4 pb-20">
+                        @forelse ($pesananTerbaru as $pesanan)
+                        <div class="flex items-start py-3 border-b border-gray-100 last:border-0 hover:bg-blue-50/50 transition-colors rounded-lg px-2 group">
+                            
+                            {{-- LOGO EKSPEDISI --}}
+                            <div class="mt-1 flex-shrink-0">
+                                @php
+                                    $parts = explode('-', $pesanan->expedition);
+                                    $kodeEks = isset($parts[1]) ? strtolower($parts[1]) : 'default';
+                                    $logoPath = "public/storage/logo-ekspedisi/{$kodeEks}.png";
+                                    $fullPath = asset($logoPath);
+                                @endphp
+                                <div class="w-10 h-10 rounded-full bg-white border border-gray-100 flex items-center justify-center overflow-hidden shadow-sm group-hover:shadow-md transition-shadow">
+                                    <img src="{{ $fullPath }}" 
+                                         alt="{{ $kodeEks }}" 
+                                         class="w-8 h-8 object-contain"
+                                         onerror="this.onerror=null; this.src='https://tokosancaka.com/storage/uploads/sancaka.png';">
+                                </div>
+                            </div>
+
+                            <div class="ml-3 flex-1 min-w-0">
+                                <div class="flex justify-between items-start">
+                                    <div class="flex flex-col">
+                                        <p class="text-xs font-bold text-gray-800 tracking-tight flex items-center gap-1">
+                                            Resi: {{ $pesanan->resi ?? $pesanan->nomor_invoice }}
+                                            <button class="text-gray-400 hover:text-blue-600 transition" title="Salin" onclick="navigator.clipboard.writeText('{{ $pesanan->resi ?? $pesanan->nomor_invoice }}')">
+                                                <i class="far fa-copy text-[10px]"></i>
+                                            </button>
+                                        </p>
+                                        @if($pesanan->resi)
+                                        <a href="https://tokosancaka.com/tracking?resi={{ $pesanan->resi }}" target="_blank" class="mt-0.5 inline-flex items-center text-[9px] font-bold text-red-600 hover:text-red-800 uppercase">
+                                            <i class="fas fa-search-location mr-1"></i> Lacak
+                                        </a>
+                                        @endif
+                                    </div>
+                                    <span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded ml-2 whitespace-nowrap">
+                                        Rp {{ number_format($pesanan->shipping_cost, 0, ',', '.') }}
+                                    </span>
+                                </div>
+
+                                <div class="mt-1.5 space-y-0.5">
+                                    <div class="flex items-center text-[10px] text-green-700 font-bold truncate">
+                                        <i class="fas fa-store w-3 mr-0.5 opacity-60"></i>
+                                        <span class="truncate">{{ $pesanan->pembeli->store_name ?? 'Tanpa Nama Toko' }}</span>
+                                    </div>
+                                    <div class="flex items-center text-[10px] text-blue-600 truncate">
+                                        <i class="fas fa-user w-3 mr-0.5 opacity-60"></i>
+                                        <span>{{ $pesanan->pembeli->nama_lengkap ?? 'User Tidak Dikenal' }}</span>
+                                    </div>
+                                    <div class="flex items-center text-[9px] text-gray-400 mt-1">
+                                        <i class="far fa-clock w-3 mr-0.5"></i>
+                                        <span>{{ $pesanan->created_at->diffForHumans() }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        @empty
+                            <div class="flex flex-col items-center justify-center py-10 text-gray-400">
+                                <i class="fas fa-box-open text-3xl mb-2 opacity-50"></i>
+                                <p class="text-xs">Belum ada aktivitas.</p>
+                            </div>
+                        @endforelse
+
+                        <div class="pt-4 text-center">
+                            <a href="#" class="text-[10px] font-bold uppercase text-blue-500 hover:text-blue-700 hover:underline">Lihat Semua Aktivitas</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            {{-- 2. SIDEBAR MONITOR (POSISI BAWAH - MERAH) --}}
             <div x-data="{ monitorOpen: false }" 
                  class="fixed inset-y-0 right-0 z-[70] flex items-center justify-end h-screen pointer-events-none">
                  
-                {{-- A. Tombol Trigger (Muncul di kanan) --}}
+                {{-- TRIGGER TOMBOL (Posisi Tengah: top-1/2) --}}
                 <div @mouseenter="monitorOpen = true"
                      class="absolute right-0 top-1/2 transform -translate-y-1/2 pointer-events-auto bg-red-600 text-white py-4 px-1 rounded-l-xl shadow-lg cursor-pointer transition-all duration-300 hover:bg-red-700 hover:pr-3 z-[71]"
                      :class="monitorOpen ? 'translate-x-full opacity-0' : 'translate-x-0 opacity-100'">
                     <div class="flex flex-col items-center gap-2">
-                        <i class="fas fa-chevron-left animate-pulse text-[10px]"></i>
+                        <i class="fas fa-desktop animate-pulse text-[10px]"></i>
                         <span class="text-[10px] font-bold writing-vertical tracking-widest" style="writing-mode: vertical-rl; text-orientation: mixed;">MONITOR</span>
                     </div>
                 </div>
 
-                {{-- B. Panel Sidebar Kanan --}}
+                {{-- PANEL ISI --}}
                 <div class="h-full bg-white/95 backdrop-blur-md shadow-2xl border-l border-gray-200 w-80 transform transition-transform duration-300 ease-in-out overflow-y-auto custom-scrollbar relative pointer-events-auto"
                      :class="monitorOpen ? 'translate-x-0' : 'translate-x-full'"
                      @mouseleave="monitorOpen = false">
                     
-                    {{-- Header Panel --}}
-                    <div class="h-15 px-6 bg-red-700 text-white flex justify-between items-center sticky top-0 z-10 shadow-md border-b border-gray-700">
-                        <h3 class="font-bold text-sm tracking-wider uppercase"><i class="fas fa-desktop mr-2"></i>Live Monitor</h3>
-                        <button @click="monitorOpen = false" class="text-gray-400 hover:text-white transition">
-                            <i class="fas fa-times"></i>
+                    {{-- Header --}}
+                    <div class="h-15 px-6 bg-red-900 text-white flex justify-between items-center sticky top-0 z-10 shadow-md border-b border-gray-700">
+                        <h3 class="font-bold text-sm tracking-wider uppercase flex items-center gap-2">
+                            <i class="fas fa-chart-line text-red-500 animate-pulse"></i> Live Monitor
+                        </h3>
+                        <button @click="monitorOpen = false" class="text-gray-400 hover:text-white transition focus:outline-none">
+                            <i class="fas fa-times text-lg"></i>
                         </button>
                     </div>
 
-                    {{-- KONTEN KARTU --}}
+                    {{-- Konten Kartu Monitor (KODE LAMA ANDA, TETAP SAMA) --}}
                     <div class="p-4 space-y-4 pb-20">
-                        
                         {{-- GROUP 1: STATISTIK UTAMA (PUTIH) --}}
                         <div class="space-y-3">
                             <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Keuangan & User</p>
@@ -109,7 +213,6 @@
                                         <i class="fas fa-shipping-fast text-xl"></i>
                                     </div>
                                 </div>
-                                {{-- Background Icon --}}
                                 <div class="absolute -right-2 -bottom-2 text-white/10 text-6xl rotate-12 group-hover:scale-110 transition-transform">
                                     <i class="fas fa-box-check"></i>
                                 </div>
@@ -171,7 +274,6 @@
                                     <i class="fas fa-times-circle"></i>
                                 </div>
                             </div>
-
                         </div>
 
                         {{-- Status Realtime --}}
@@ -184,10 +286,9 @@
                                 <span class="text-[10px] font-bold text-green-600">Live Connection</span>
                             </div>
                         </div>
-
                     </div>
                 </div>
             </div>
             {{-- ========================================================= --}}
-            {{-- SELESAI: SIDEBAR KANAN --}}
+            {{-- SELESAI: GROUP SIDEBAR KANAN --}}
             {{-- ========================================================= --}}
