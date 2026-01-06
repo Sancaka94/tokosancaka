@@ -73,9 +73,12 @@
             </form>
         </div>
 
-        {{-- SIDEBAR MENU --}}
-        <nav id="sidebar-nav" class="flex-1 px-4 pb-4 space-y-1 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent">
-
+        <nav id="sidebar-nav" 
+             class="flex-1 px-4 pb-4 space-y-1 overflow-x-hidden transition-all duration-300"
+             :class="(isExpanded || isHovered) 
+                ? 'overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent' 
+                : 'overflow-hidden'">
+                
             {{-- Dashboard --}}
             <a href="{{ route('admin.dashboard') }}" class="sidebar-link flex items-center px-4 py-2.5 text-sm font-medium rounded-lg hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('admin.dashboard') ? 'bg-gray-700 text-white' : '' }}">
                 <i class="fa-solid fa-house-chimney fa-fw w-5 h-5 mr-3 flex-shrink-0"></i>
