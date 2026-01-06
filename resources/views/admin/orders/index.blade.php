@@ -169,7 +169,7 @@
                     <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider min-w-[200px] whitespace-nowrap"><strong>Isi Paket</strong></th>
                     <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider min-w-[200px] whitespace-nowrap">Tanggal</th>
                     <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider min-w-[150px] whitespace-nowrap"><strong>Status</strong></th>
-                    <th scope="col" class="sticky right-0 z-10 bg-red-100 px-4 py-3 text-right text-xs font-medium text-gray-600 uppercase tracking-wider min-w-[170px] whitespace-nowrap border-l border-gray-300"><strong>Aksi</strong></th>
+                    <th scope="col" class="sticky right-0 z-10 bg-red-100 px-4 py-3 text-center text-xs font-medium text-gray-600 uppercase tracking-wider min-w-[170px] whitespace-nowrap border-l border-gray-300"><strong>Aksi</strong></th>
                 </tr>
             </thead>
             
