@@ -162,12 +162,58 @@
     @endforeach
 </tbody>
                 
-                <tfoot class="border-t border-slate-200">
-                    <tr>
-                        <td colspan="3" class="px-4 py-4 text-right font-black text-slate-500 uppercase tracking-widest text-xs">Total Akhir</td>
-                        <td class="px-4 py-4 text-right font-black text-xl text-red-600">Rp {{ number_format($order->final_price, 0, ',', '.') }}</td>
-                    </tr>
-                </tfoot>
+                <tfoot class="border-t border-slate-200 bg-slate-50/50">
+    {{-- 1. SUBTOTAL (Total Harga Barang) --}}
+    <tr>
+        <td colspan="3" class="px-4 pt-4 pb-1 text-right text-xs font-bold text-slate-500 uppercase tracking-wide">
+            Subtotal
+        </td>
+        <td class="px-4 pt-4 pb-1 text-right text-sm font-bold text-slate-700">
+            Rp {{ number_format($order->total_price, 0, ',', '.') }}
+        </td>
+    </tr>
+
+    {{-- 2. DISKON (Hanya muncul jika ada diskon) --}}
+    @if($order->discount_amount > 0)
+    <tr>
+        <td colspan="3" class="px-4 py-1 text-right text-xs font-bold text-green-600 uppercase tracking-wide">
+            Diskon Kupon
+        </td>
+        <td class="px-4 py-1 text-right text-sm font-bold text-green-600">
+            - Rp {{ number_format($order->discount_amount, 0, ',', '.') }}
+        </td>
+    </tr>
+    @endif
+
+    {{-- 3. ONGKIR (Hanya muncul jika ada ongkir) --}}
+    @if($order->shipping_cost > 0)
+    <tr>
+        <td colspan="3" class="px-4 py-1 text-right text-xs font-bold text-slate-500 uppercase tracking-wide">
+            Ongkos Kirim ({{ strtoupper($order->courier_service ?? 'Ekspedisi') }})
+        </td>
+        <td class="px-4 py-1 text-right text-sm font-bold text-slate-700">
+            + Rp {{ number_format($order->shipping_cost, 0, ',', '.') }}
+        </td>
+    </tr>
+    @endif
+
+    {{-- 4. GARIS PEMISAH TIPIS --}}
+    <tr>
+        <td colspan="4" class="px-4 py-2">
+            <div class="border-b border-slate-200 border-dashed"></div>
+        </td>
+    </tr>
+
+    {{-- 5. TOTAL AKHIR --}}
+    <tr>
+        <td colspan="3" class="px-4 pb-4 pt-2 text-right font-black text-slate-800 uppercase tracking-widest text-sm">
+            Total Bayar
+        </td>
+        <td class="px-4 pb-4 pt-2 text-right font-black text-xl text-red-600">
+            Rp {{ number_format($order->final_price, 0, ',', '.') }}
+        </td>
+    </tr>
+</tfoot>
             </table>
         </div>
 
