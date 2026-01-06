@@ -3,9 +3,12 @@
 
 @push('styles')
 <style>
-/* 1. Paksa kontainer utama mengambil lebar penuh 
-.main-layout-container { width: 133.33vw; }
-.content-wrapper-fixed { width: 100%; }
+/* HAPUS BAGIAN INI:
+   .main-layout-container { width: 133.33vw; } 
+   .content-wrapper-fixed { width: 100%; }
+   
+   Alasannya: Layout induk (admin.blade.php) sudah mengatur lebar 100% (w-full).
+   Memaksa 133vw akan membuat horizontal scrollbar atau ruang kosong di kanan.
 */
 
 /* CSS untuk efek Zoom Barcode */
@@ -20,6 +23,13 @@
     border: 2px solid #3b82f6; 
     box-shadow: 0 10px 15px rgba(0, 0, 0, 0.5);
     border-radius: 8px;
+}
+
+/* Pastikan tabel responsif */
+#tableWrapper {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 </style>
 @endpush
