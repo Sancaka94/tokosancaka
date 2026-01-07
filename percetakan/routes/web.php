@@ -15,7 +15,8 @@ use App\Http\Controllers\DanaWidgetController;
 
 
 // 1. Buat Pembayaran
-Route::get('/dana/pay', [DanaWidgetController::class, 'createPayment'])->name('dana.pay');
+//Route::get('/dana/pay', [DanaWidgetController::class, 'createPayment'])->name('dana.pay');
+Route::any('/dana/pay', [DanaWidgetController::class, 'createPayment'])->name('dana.pay');
 
 // 2. Halaman Balik (Return)
 Route::get('/dana/return', [DanaWidgetController::class, 'returnPage'])->name('dana.return');

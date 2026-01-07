@@ -25,15 +25,13 @@ class DanaWidgetController extends Controller
      */
     public function createPayment(Request $request)
     {
-        // 1. Ambil data dari Postman (atau pakai default)
-        $amountInput = $request->input('amount', '10000.00'); // Default 10.000
+        // Default nominal jika tidak ada input
+        $amountInput = $request->input('amount', '10000.00');
         $orderId     = 'INV-' . time();
         $returnUrl   = route('dana.return');
-        
-        // Waktu Expired: 1 Jam
-        $expiryTime = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP');
+        $expiryTime  = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP');
 
-        // 2. Susun Body JSON (Strict Gapura Hosted Checkout)
+        // Body Sesuai Sample Request Gapura Hosted Checkout
         $bodyArray = [
             "partnerReferenceNo" => $orderId,
             "merchantId" => config('services.dana.merchant_id'),
@@ -41,7 +39,7 @@ class DanaWidgetController extends Controller
                 "value" => $amountInput,
                 "currency" => "IDR"
             ],
-            "validUpTo" => $expiryTime, 
+            "validUpTo" => $expiryTime,
             "urlParams" => [
                 [
                     "url" => $returnUrl,
@@ -55,6 +53,9 @@ class DanaWidgetController extends Controller
                 ]
             ],
             "additionalInfo" => [
+                // [FIX 1] Tambahkan MCC (Wajib ada di Sample)
+                "mcc" => "5732", 
+                
                 "order" => [
                     "orderTitle" => "Invoice " . $orderId,
                     "merchantTransType" => "01",
@@ -77,14 +78,15 @@ class DanaWidgetController extends Controller
                     "sourcePlatform" => "IPG",
                     "terminalType" => "SYSTEM",
                     "orderTerminalType" => "WEB",
-                    "clientIp" => "127.0.0.1" // Dummy IP, aman untuk Sandbox
+                    "websiteLanguage" => "id_ID",
+                    // [FIX 2] Tambahkan Client IP (Sesuai Sample)
+                    "clientIp" => "127.0.0.1", 
                 ]
             ]
         ];
 
         $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         
-        // Setup Signature & URL
         $method = 'POST';
         $relativePath = '/payment-gateway/v1.0/debit/payment-host-to-host.htm'; 
         $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String();
@@ -92,27 +94,28 @@ class DanaWidgetController extends Controller
         try {
             $signature = $this->danaSignature->generateSignature($method, $relativePath, $jsonBody, $timestamp);
         } catch (\Exception $e) {
-            return response()->json(['error' => 'Signature Error: ' . $e->getMessage()], 500);
+            return response()->json(['error' => 'Signature Error'], 500);
         }
 
         $fullUrl = 'https://api.sandbox.dana.id' . $relativePath;
         $externalId = \Illuminate\Support\Str::random(32);
 
         try {
-            // Kirim ke DANA
             $response = \Illuminate\Support\Facades\Http::withHeaders([
                 'X-PARTNER-ID' => config('services.dana.client_id'),
                 'X-EXTERNAL-ID' => $externalId,
                 'X-TIMESTAMP'  => $timestamp,
                 'X-SIGNATURE'  => $signature,
                 'Content-Type' => 'application/json',
-                // [PENTING] Menggunakan 'WEB' agar lolos validasi (Max 5 chars)
-                'CHANNEL-ID'   => 'WEB', 
+                
+                // [FIX 3] Gunakan Angka sesuai Sample (Max 5 digit)
+                // "WEB" mungkin ditolak validator karena bukan numeric ID
+                'CHANNEL-ID'   => '95221', 
             ])
             ->withBody($jsonBody, 'application/json')
             ->post($fullUrl);
 
-            // [PENTING] Return JSON Mentah ke Postman untuk dicek
+            // Return JSON Mentah ke Postman
             return response()->json($response->json());
 
         } catch (\Exception $e) {
