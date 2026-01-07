@@ -61,15 +61,14 @@ class DanaDashboardController extends Controller
     }
 
     // =========================================================================
-    // 3. HANDLE CALLBACK (TERIMA AUTH CODE)
-    // =========================================================================
-    // =========================================================================
-    // 3. HANDLE CALLBACK (OTOMATIS TUKAR AUTH CODE JADI TOKEN)
+    // 3. HANDLE CALLBACK (VERSI FINAL DENGAN REDIRECT)
     // =========================================================================
     public function handleCallback(Request $request)
     {
         Log::info('=========================================');
-        Log::info('[CALLBACK] DANA Redirect Received');
+        // Perhatikan Log ini beda dengan yang lama, untuk memastikan kode ini yang jalan
+        Log::info('[CALLBACK] DANA Redirect Back Received (NEW CONTROLLER)'); 
+        Log::info('[CALLBACK] Params:', $request->all());
 
         // 1. Ambil Auth Code
         $authCode = $request->authCode ?? $request->auth_code ?? null;
@@ -81,47 +80,43 @@ class DanaDashboardController extends Controller
 
         Log::info("[CALLBACK] Auth Code: $authCode");
 
-        // 2. PROSES TUKAR AUTH CODE -> ACCESS TOKEN (Apply Token)
-        // Kita panggil fungsi internal untuk menukar token ke API DANA
-        $tokenResult = $this->exchangeAuthCodeForToken($authCode);
+        // 2. TUKAR JADI TOKEN (LOGIKA APPLY TOKEN)
+        // Kita langsung tembak API Apply Token disini
+        $tokenResponse = $this->exchangeAuthCodeForToken($authCode);
 
-        if(isset($tokenResult['accessToken'])) {
-            // SUKSES! Simpan Token ke Session
-            $accessToken = $tokenResult['accessToken'];
-            session(['dana_access_token' => $accessToken]);
-            session(['dana_auth_code'  => $authCode]); // Simpan buat cadangan
-
-            Log::info("[CALLBACK] TOKEN EXCHANGE SUCCESS! Token: " . substr($accessToken, 0, 10) . "...");
+        // Jika Sukses dapat Token
+        if(isset($tokenResponse['accessToken'])) {
+            $accessToken = $tokenResponse['accessToken'];
             
-            return redirect()->route('dana.dashboard')->with('success', 'Binding Sukses! Access Token berhasil disimpan. Silakan Cek Saldo.');
-        } else {
-            // Gagal Tukar Token
-            Log::error("[CALLBACK] Gagal Tukar Token. Response:", $tokenResult);
-            return redirect()->route('dana.dashboard')->with('error', 'Binding berhasil tapi Gagal ambil Token. Cek Log.');
-        }
+            // Simpan ke Session
+            session(['dana_access_token' => $accessToken]);
+            session(['dana_auth_code'  => $authCode]);
+
+            Log::info("[CALLBACK] SUKSES! Token tersimpan. Redirecting to Dashboard...");
+            
+            // [KUNCI REDIRECT] Ini yang membuat browser pindah halaman
+            return redirect()->route('dana.dashboard')->with('success', 'Binding Sukses! Saldo Siap Dicek.');
+        } 
+        
+        // Jika Gagal
+        Log::error("[CALLBACK] Gagal Tukar Token.", $tokenResponse);
+        return redirect()->route('dana.dashboard')->with('error', 'Binding Gagal saat menukar Token.');
     }
 
-    // =========================================================================
-    // HELPER: APPLY TOKEN (TUKAR CODE JADI TOKEN)
-    // =========================================================================
+    // HELPER APPLY TOKEN (Wajib Ada)
     private function exchangeAuthCodeForToken($authCode)
     {
-        Log::info('[APPLY TOKEN] Menukar Auth Code dengan Access Token...');
-
+        Log::info('[APPLY TOKEN] Menukar Auth Code...');
+        
         $body = [
             "grantType" => "authorization_code",
             "authCode"  => $authCode,
             "partnerId" => config('services.dana.client_id'),
         ];
 
-        // Endpoint Apply Token DANA
-        // Biasanya /v1.0/oauth/token.htm atau /v1.0/oauth/token
-        // Kita coba endpoint standar Sandbox
-        $response = $this->sendRequest('POST', '/v1.0/oauth/token.htm', $body);
-        
-        return $response;
+        // Endpoint Apply Token (Sandbox)
+        return $this->sendRequest('POST', '/v1.0/oauth/token.htm', $body);
     }
-
     // =========================================================================
     // 4. CEK SALDO (BALANCE INQUIRY)
     // =========================================================================
