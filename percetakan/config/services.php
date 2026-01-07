@@ -44,6 +44,7 @@ return [
         'client_id' => env('DANA_CLIENT_ID'),
         'client_secret' => env('DANA_CLIENT_SECRET'),
         'base_url' => env('DANA_URL', 'https://api.sandbox.dana.id'),
+        'private_key' => env('DANA_PRIVATE_KEY'),
         
         // Path ke file kunci privat Anda (untuk tanda tangan request)
         'private_key_path' => env('DANA_PRIVATE_KEY_PATH', 'keys/dana_private_key.pem'),

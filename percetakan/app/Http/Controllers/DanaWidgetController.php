@@ -406,25 +406,49 @@ class DanaWidgetController extends Controller
         ]);
     }
 
-    // HELPER KHUSUS SEAMLESS SIGN
     private function generateSeamlessSign($dataString)
     {
-        // Ambil Private Key dari config
-        $privateKeyStr = config('services.dana.private_key');
-        
-        // Format Private Key agar valid dibaca OpenSSL
-        if (!str_contains($privateKeyStr, 'BEGIN PRIVATE KEY')) {
-            $privateKeyStr = "-----BEGIN PRIVATE KEY-----\n" . 
-                             wordwrap($privateKeyStr, 64, "\n", true) . 
-                             "\n-----END PRIVATE KEY-----";
+        // 1. Ambil Key Mentah
+        $rawKey = config('services.dana.private_key');
+
+        if (empty($rawKey)) {
+            throw new \Exception("DANA Private Key belum diset di .env atau config/services.php");
         }
 
-        $binarySignature = '';
-        
-        // Sign menggunakan SHA256withRSA
-        openssl_sign($dataString, $binarySignature, $privateKeyStr, OPENSSL_ALGO_SHA256);
+        // 2. BERSIHKAN KEY (Hapus Header, Footer, Spasi, Newline jika ada)
+        // Kita buat jadi satu baris string murni dulu biar gampang diformat ulang
+        $cleanKey = str_replace(
+            ["-----BEGIN PRIVATE KEY-----", "-----END PRIVATE KEY-----", "-----BEGIN RSA PRIVATE KEY-----", "-----END RSA PRIVATE KEY-----", "\r", "\n", " "],
+            "",
+            $rawKey
+        );
 
-        // Encode Base64
+        // 3. FORMAT ULANG JADI PEM STANDARD (Wajib 64 karakter per baris)
+        $formattedKey = "-----BEGIN PRIVATE KEY-----\n" . 
+                        wordwrap($cleanKey, 64, "\n", true) . 
+                        "\n-----END PRIVATE KEY-----";
+
+        // 4. VALIDASI KEY SEBELUM DIPAKAI
+        // Ini akan mengecek apakah key valid. Jika error, kita tahu masalahnya di key.
+        $privateKeyResource = openssl_pkey_get_private($formattedKey);
+
+        if (!$privateKeyResource) {
+            // Ambil detail error OpenSSL untuk debugging
+            $errors = "";
+            while ($msg = openssl_error_string()) {
+                $errors .= $msg . "; ";
+            }
+            Log::error("OpenSSL Key Error: " . $errors);
+            throw new \Exception("Format Private Key Salah! Cek Log untuk detail.");
+        }
+
+        // 5. SIGNING
+        $binarySignature = '';
+        if (!openssl_sign($dataString, $binarySignature, $privateKeyResource, OPENSSL_ALGO_SHA256)) {
+            throw new \Exception("Gagal melakukan signing data.");
+        }
+
+        // 6. Encode Base64
         return base64_encode($binarySignature);
     }
 }
