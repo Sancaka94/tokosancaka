@@ -25,56 +25,65 @@ class DanaWidgetController extends Controller
      */
     public function createPayment(Request $request)
     {
-        Log::info('========== DANA WIDGET PAYMENT START (FINAL FIX) ==========');
+        Log::info('========== DANA PAYMENT GATEWAY START ==========');
 
         $orderId = 'INV-' . time();
         $amount  = '10000.00'; 
         $returnUrl = route('dana.return');
 
-        // 1. Setup Body: GABUNGAN Endpoint Widget + MerchantID + OptionDetails
+        // 1. Setup Body Sesuai Spesifikasi createOrder()
         $bodyArray = [
-            // WAJIB ADA: Merchant ID (Dari Dashboard: 2166...)
-            "merchantId" => config('services.dana.merchant_id'), 
+            // WAJIB: Identitas Merchant
+            "merchantId" => config('services.dana.merchant_id'),
             
             "partnerReferenceNo" => $orderId,
+            
             "amount" => [
                 "value" => $amount,
                 "currency" => "IDR"
             ],
-            // WAJIB ADA untuk Widget: Memberi tahu DANA untuk menampilkan halaman bayar
+            
+            // WAJIB: Menentukan jenis perangkat (WEB/APP/WAP)
+            // Sumber: Enum Types - OrderTerminalType
+            "orderTerminalType" => "WEB", 
+            
             "payOptionDetails" => [
-                "payMethod" => "DANA_WALLET",
+                "payMethod" => "DANA_WALLET", // Sumber: Enum PayMethod
                 "transType" => "PAGE",
             ],
+            
             "additionalInfo" => [
                 "origin" => "IS_WIDGET"
             ],
+            
             "urlParams" => [
                 "url" => $returnUrl,
-                "type" => "NOTIFICATION"
+                "type" => "NOTIFICATION" // Sumber: Enum Type
             ]
         ];
 
-        // Encode JSON (Anti-Slash Escape)
+        // Encode JSON (Pastikan Slash tidak di-escape)
         $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         Log::info('Request Body: ' . $jsonBody);
 
         $method = 'POST';
         
-        // --- KEMBALI KE ENDPOINT WIDGET (Sesuai Dokumen image_985920.png) ---
-        // Endpoint ini yang paling cocok untuk "IS_WIDGET"
-        $relativePath = '/rest/redirection/v1.0/debit/payment-host-to-host'; 
-        // ---------------------------------------------------------------------
-
+        // SUMBER: Dokumentasi createOrder()
+        $relativePath = '/payment-gateway/v1.0/debit/payment-host-to-host.htm'; 
+        
         $timestamp = Carbon::now()->toIso8601String();
 
         try {
             $signature = $this->danaSignature->generateSignature($method, $relativePath, $jsonBody, $timestamp);
         } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+            return response()->json(['error' => 'Signature Error: ' . $e->getMessage()], 500);
         }
 
-        $fullUrl = config('services.dana.base_url') . $relativePath;
+        // SUMBER: "All URIs are relative to http://api.sandbox.dana.id"
+        // Kita paksa pakai HTTP dulu sesuai dokumen, jika gagal baru HTTPS
+        $baseUrl = 'http://api.sandbox.dana.id'; 
+        $fullUrl = $baseUrl . $relativePath;
+        
         $externalId = Str::random(32);
 
         try {
@@ -95,11 +104,12 @@ class DanaWidgetController extends Controller
             
             $result = $response->json();
 
-            // Cek Response Code: 200xxxx (Biasanya 2000000 atau 2005300)
+            // Cek Response Code 200 (Success)
+            // Bisa 2000000 atau format lain tergantung versi
             if (isset($result['responseCode']) && substr($result['responseCode'], 0, 3) == '200') {
                  Log::info('Success! Redirecting user...');
                  
-                 // Ambil URL Redirect (Prioritas webRedirectUrl, fallback ke redirectUrl)
+                 // Ambil URL untuk redirect user
                  $redirectUrl = $result['webRedirectUrl'] ?? $result['redirectUrl'] ?? null;
                  
                  if($redirectUrl) {
