@@ -27,6 +27,8 @@
         <div class="alert alert-danger">{{ session('error') }}</div>
     @endif
 
+
+
     <div class="row">
         {{-- KOLOM 1: ACCOUNT BINDING --}}
         <div class="col-md-4">
@@ -51,6 +53,31 @@
                 </div>
             </div>
         </div>
+
+        {{-- Notifikasi Error/Sukses Biasa --}}
+    @if(session('success'))
+        <div class="alert alert-success">{{ session('success') }}</div>
+    @endif
+    @if(session('error'))
+        <div class="alert alert-danger">{{ session('error') }}</div>
+    @endif
+
+    {{-- [BARU] LAYAR MONITOR SALDO --}}
+    @if(session('saldo_terbaru') !== null)
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card bg-success text-white text-center">
+                <div class="card-body">
+                    <h3 class="card-title">Saldo DANA User Saat Ini</h3>
+                    <h1 class="display-4 fw-bold">
+                        Rp {{ number_format((float) session('saldo_terbaru'), 0, ',', '.') }}
+                    </h1>
+                    <p>Update Terakhir: {{ now()->format('H:i:s') }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
 
         {{-- KOLOM 2: CEK SALDO --}}
         <div class="col-md-4">

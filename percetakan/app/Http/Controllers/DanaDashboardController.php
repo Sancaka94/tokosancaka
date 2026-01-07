@@ -174,76 +174,57 @@ class DanaDashboardController extends Controller
         }
     }
     // =========================================================================
-    // 4. CEK SALDO (BALANCE INQUIRY - SNAP API SERVICE CODE 11)
+    // 4. CEK SALDO (FIXED SIGNATURE & PASS DATA TO VIEW)
     // =========================================================================
     public function checkBalance(Request $request)
     {
         Log::info('=========================================');
-        Log::info('[CEK SALDO] Request Initiated (SNAP API)');
+        Log::info('[CEK SALDO] Request Initiated');
 
         $accessToken = $request->access_token; 
+        if(!$accessToken) return back()->with('error', 'Access Token Wajib Diisi!');
 
-        if(!$accessToken) {
-            return back()->with('error', 'Access Token Wajib Diisi!');
-        }
-
-        Log::info("[CEK SALDO] Menggunakan Token: " . substr($accessToken, 0, 10) . "...");
-
-        // [SESUAI DOKUMENTASI]
-        // Access Token Wajib ada di dalam additionalInfo
-        // [SESUAI REQUEST SAMPLE]
+        // [PENTING] Access Token wajib ada di dalam additionalInfo body
         $body = [
-            "partnerReferenceNo" => 'BAL-' . time(), //
-            "balanceTypes"       => ["BALANCE"],     //
-            "additionalInfo"     => [
-                "accessToken" => $accessToken        //
-            ]
+            "partnerReferenceNo" => 'BAL-' . time(),
+            "balanceTypes"       => ["BALANCE"],
+            "additionalInfo"     => ["accessToken" => $accessToken]
         ];
 
-        // Kirim Request
         $response = $this->sendRequest('POST', '/v1.0/balance-inquiry.htm', $body, $accessToken);
         
-        // Cek Response Code
+        // Cek Sukses (Kode 2001100)
         if(isset($response['responseCode']) && $response['responseCode'] == '2001100') {
             $saldo = $response['accountInfos'][0]['availableBalance']['value'] ?? '0';
+            
             Log::info("[CEK SALDO] SUKSES! Saldo: $saldo");
-            return back()->with('success', "Cek Saldo Berhasil! Saldo: Rp " . number_format($saldo));
+            
+            // [KUNCI UI] Kirim variabel 'saldo_terbaru' ke View agar muncul di Layar Monitor
+            return back()
+                ->with('success', "Cek Saldo Berhasil!")
+                ->with('saldo_terbaru', $saldo); 
         }
 
-        return back()->with('error', 'Gagal Cek Saldo: ' . json_encode($response));
+        // Jika Gagal
+        return back()->with('error', 'Gagal Cek Saldo: ' . ($response['responseMessage'] ?? 'Unknown Error'));
     }
 
     // =========================================================================
-    // HELPER: SEND REQUEST (STRICT COMPLIANCE WITH DOCS)
+    // HELPER: SEND REQUEST (HYBRID SNAP-LEGACY)
     // =========================================================================
     private function sendRequest($method, $relativePath, $bodyArray, $accessToken = null)
     {
         Log::info("--- START REQUEST [$method] $relativePath ---");
         
-        // 1. URUTKAN & ENCODE JSON (Strict Mode)
-        // DANA V1.0 sangat sensitif terhadap urutan key JSON
-        ksort($bodyArray); 
-        if(isset($bodyArray['additionalInfo']) && is_array($bodyArray['additionalInfo'])) {
-            ksort($bodyArray['additionalInfo']);
-        }
-        
-        // Pastikan tidak ada spasi (minified)
+        // 1. JSON ENCODE
         $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-        
         $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String();
         $clientId  = config('services.dana.client_id');
         
-        // 2. TENTUKAN RUMUS SIGNATURE
-        if ($accessToken) {
-            // [TRANSAKSI - BALANCE INQUIRY]
-            // Sesuai dokumentasi endpoint .htm dengan X-PARTNER-ID
-            // Rumus: Method + ":" + Path + ":" + Timestamp + ":" + Body
-            $stringToSign = $method . ":" . $relativePath . ":" . $timestamp . ":" . $jsonBody;
-        } else {
-            // [APPLY TOKEN - SNAP]
-            // Khusus Apply Token yang sukses sebelumnya
-            $stringToSign = $clientId . "|" . $timestamp;
-        }
+        // 2. RUMUS SIGNATURE (Sesuai Request Sample Dokumen Anda)
+        // Dokumen bilang: stringToSign = client_ID + "|" + X-TIMESTAMP
+        // Berlaku untuk Apply Token MAUPUN Balance Inquiry di Sandbox ini.
+        $stringToSign = $clientId . "|" . $timestamp; 
 
         Log::info("StringToSign: " . $stringToSign);
 
@@ -255,50 +236,37 @@ class DanaDashboardController extends Controller
             $formattedKey = "-----BEGIN PRIVATE KEY-----\n" . wordwrap($cleanKey, 64, "\n", true) . "\n-----END PRIVATE KEY-----";
             
             $binarySignature = '';
-            // Algoritma wajib SHA256withRSA
-            if(!openssl_sign($stringToSign, $binarySignature, $formattedKey, OPENSSL_ALGO_SHA256)) {
-                throw new \Exception("OpenSSL Sign Failed");
-            }
+            openssl_sign($stringToSign, $binarySignature, $formattedKey, OPENSSL_ALGO_SHA256);
             $signature = base64_encode($binarySignature);
         } catch (\Exception $e) {
-            return ['error' => 'Signature Error: ' . $e->getMessage()];
+            return ['error' => 'Signature Error'];
         }
 
-        // 4. SUSUN HEADERS (Sesuai Dokumentasi Persis)
+        // 4. HEADERS (KOMBINASI LEGACY & SNAP)
         $headers = [
-            'Content-Type'  => 'application/json', //
-            'X-TIMESTAMP'   => $timestamp,         //
-            'X-SIGNATURE'   => $signature,         //
-            'CHANNEL-ID'    => '95221',            //
-            // [PENTING] Header ORIGIN wajib ada sesuai Request Sample
-            'ORIGIN'        => 'https://tokosancaka.com', //
+            'Content-Type'  => 'application/json',
+            'X-TIMESTAMP'   => $timestamp,
+            'X-SIGNATURE'   => $signature,
+            'CHANNEL-ID'    => '95221',
+            'ORIGIN'        => 'https://tokosancaka.com', // [Wajib ada sesuai Sample]
         ];
 
         if($accessToken) {
-            // Header untuk Balance Inquiry / Topup
-            $headers['X-PARTNER-ID']  = $clientId; //
-            $headers['X-EXTERNAL-ID'] = \Illuminate\Support\Str::random(32); //
-            $headers['X-DEVICE-ID']   = 'DEVICE-' . time(); //
-            
-            // Authorization-Customer berisi Access Token
+            // Header Transaksi
+            $headers['X-PARTNER-ID'] = $clientId; 
+            $headers['X-EXTERNAL-ID'] = \Illuminate\Support\Str::random(32);
+            $headers['X-DEVICE-ID'] = 'DEVICE-' . time();
             $headers['Authorization-Customer'] = 'Bearer ' . $accessToken;
         } else {
-            // Header khusus Apply Token (SNAP Style)
+            // Header Apply Token
             $headers['X-CLIENT-KEY'] = $clientId;
         }
 
         $fullUrl = 'https://api.sandbox.dana.id' . $relativePath;
         
-        Log::info("Hitting URL: $fullUrl");
-        Log::info("Headers:", $headers);
-
         try {
             $response = Http::withHeaders($headers)->withBody($jsonBody, 'application/json')->post($fullUrl);
-            
-            Log::info("--- RESPONSE RECEIVED ---");
-            Log::info("Status: " . $response->status());
-            Log::info("Body: " . $response->body());
-
+            Log::info("Response: " . $response->body());
             return $response->json();
         } catch (\Exception $e) {
             return ['error' => $e->getMessage()];
