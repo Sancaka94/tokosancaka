@@ -458,5 +458,31 @@ class DanaDashboardController extends Controller
     }
 }
 
+public function accountInquiry()
+{
+    Log::info('[TEST INQUIRY] Memulai pengetesan Account Inquiry...');
+
+    // Data sesuai dokumentasi SNAP Service Code 37
+    $body = [
+        "partnerReferenceNo" => 'REQ-' . time(),
+        "customerNumber"     => "62810987654321", // Contoh nomor tujuan
+        "amount"             => [
+            "value"    => "10000.00",
+            "currency" => "IDR"
+        ],
+        "transactionDate"    => \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String(),
+        "additionalInfo"     => [
+            "fundType" => "AGENT_TOPUP_FOR_USER_SETTLE" // Parameter wajib
+        ]
+    ];
+
+    // Menggunakan helper sendRequest Mas yang sudah ada
+    // Path: /v1.0/emoney/account-inquiry.htm
+    $response = $this->sendRequest('POST', '/v1.0/emoney/account-inquiry.htm', $body, null);
+
+    // Tampilkan hasil mentah ke layar untuk diagnosa
+    return response()->json($response);
+}
+
     
 }
