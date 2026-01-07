@@ -218,7 +218,7 @@ class DanaWidgetController extends Controller
 
         // REVISI: Coba hapus '0' atau '62' di depan. Langsung angka 8.
         // Asumsi nomor asli: 085745808809 -> Jadi: 85745808809
-        $phoneNumber = '+6285745808809'; 
+        $phoneNumber = '85745808809'; 
         
         $bodyArray = [
             "partnerReferenceNo" => 'INQ-' . time(),
