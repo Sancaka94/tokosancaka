@@ -25,21 +25,21 @@ class DanaWidgetController extends Controller
      */
     public function createPayment(Request $request)
     {
-        // 1. Setup Data
-        $amountInput = "10000.00"; // String biar aman
+        Log::info('========== DANA FINAL SAFE MODE ==========');
+
         $orderId     = 'FIX-' . time();
         $returnUrl   = route('dana.return');
         $expiryTime  = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP');
 
-        // 2. BODY "SAFE MODE"
-        // Kita buang 'mcc' (biar pakai default merchant)
-        // Kita buang 'goods' (biar tidak ada validasi item)
-        // Kita buang 'clientIp' (opsional)
+        // BODY "ULTRA SAFE"
+        // 1. Tidak ada 'mcc' (Biar pakai default merchant)
+        // 2. Tidak ada 'goods' (Biar tidak ada validasi harga item)
+        // 3. merchantTransType = "type" (Sesuai Sample Dokumen, jangan diubah "01")
         $bodyArray = [
             "partnerReferenceNo" => $orderId,
             "merchantId" => config('services.dana.merchant_id'),
             "amount" => [
-                "value" => $amountInput,
+                "value" => "10000.00",
                 "currency" => "IDR"
             ],
             "validUpTo" => $expiryTime,
@@ -56,19 +56,15 @@ class DanaWidgetController extends Controller
                 ]
             ],
             "additionalInfo" => [
-                // HAPUS MCC: Biarkan DANA mendeteksi kategori otomatis dari akun Anda
-                
                 "order" => [
                     "orderTitle" => "Invoice " . $orderId,
-                    "merchantTransType" => "01", // Gunakan 01 (Sales) yang paling umum
-                    "scenario" => "REDIRECT",
-                    // HAPUS GOODS: Biar tidak ada validasi matematika harga
+                    "merchantTransType" => "type", // [KUNCI] Sesuai Sample Dokumen
+                    "scenario" => "REDIRECT"
                 ],
                 "envInfo" => [
                     "sourcePlatform" => "IPG",
                     "terminalType" => "SYSTEM",
-                    "orderTerminalType" => "WEB",
-                    // Hapus extendInfo dan versi app yang tidak perlu
+                    "orderTerminalType" => "WEB"
                 ]
             ]
         ];
@@ -95,13 +91,13 @@ class DanaWidgetController extends Controller
                 'X-TIMESTAMP'  => $timestamp,
                 'X-SIGNATURE'  => $signature,
                 'Content-Type' => 'application/json',
-                // Tetap gunakan ini karena terbukti Lolos Validasi Header
+                // [KUNCI] Gunakan Angka ini agar lolos validasi header
                 'CHANNEL-ID'   => '95221', 
             ])
             ->withBody($jsonBody, 'application/json')
             ->post($fullUrl);
 
-            // Return Raw JSON ke Postman
+            // Return JSON Asli ke Postman
             return response()->json($response->json());
 
         } catch (\Exception $e) {
