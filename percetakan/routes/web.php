@@ -13,11 +13,15 @@ use App\Http\Controllers\MemberAuthController;
 use Illuminate\Support\Facades\Artisan;
 use App\Http\Controllers\DanaWidgetController;
 
-// Route untuk memicu pembayaran (tombol "Bayar Sekarang")
+
+// 1. Buat Pembayaran
 Route::get('/dana/pay', [DanaWidgetController::class, 'createPayment'])->name('dana.pay');
 
-// Route untuk halaman Return (Settingan urlParams.url)
+// 2. Halaman Balik (Return)
 Route::get('/dana/return', [DanaWidgetController::class, 'returnPage'])->name('dana.return');
+
+// 3. Cek Status Manual (Baru)
+Route::get('/dana/status/{orderId}', [DanaWidgetController::class, 'checkStatus'])->name('dana.status');
 
 Route::get('/test-dana-keys', function () {
     // 1. Bersihkan Cache Config (Penting)
