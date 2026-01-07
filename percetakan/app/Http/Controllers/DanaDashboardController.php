@@ -209,15 +209,26 @@ class DanaDashboardController extends Controller
 
     private function sendRequest($method, $relativePath, $bodyArray, $accessToken = null)
 {
+    // 1. Minify Body (Tanpa spasi, urutan key konsisten)
     $jsonPayload = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-    $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String();
-    $clientId = config('services.dana.client_id');
-
-    // [KUNCI PERBAIKAN] Pakai rumus sederhana sesuai sample yang SUKSES
-    $stringToSign = $clientId . "|" . $timestamp; 
     
+    $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String();
+    $clientId  = config('services.dana.client_id');
+
+    // 2. Susun StringToSign sesuai standar SNAP Asymmetric
+    // Jika ada AccessToken (untuk OTT/Inquiry), ia masuk ke rumus.
+    if ($accessToken) {
+        $stringToSign = $method . ":" . $relativePath . ":" . $accessToken . ":" . $timestamp . ":" . $jsonPayload;
+    } else {
+        // Untuk Apply Token (B2B) biasanya hanya ClientID|Timestamp
+        $stringToSign = $clientId . "|" . $timestamp;
+    }
+
+    Log::info("StringToSign Fix: " . $stringToSign);
+
     $signature = $this->genSig($stringToSign);
 
+    // 3. Susun Headers
     $headers = [
         'Content-Type'  => 'application/json',
         'X-TIMESTAMP'   => $timestamp,
@@ -226,18 +237,22 @@ class DanaDashboardController extends Controller
         'X-EXTERNAL-ID' => (string) time() . rand(100, 999),
         'CHANNEL-ID'    => '95221',
         'X-DEVICE-ID'   => 'DEVICE-' . md5($clientId),
+        'ORIGIN'        => 'tokosancaka.com',
     ];
 
+    // Gunakan header yang tepat sesuai dokumentasi
     if ($accessToken) {
         $headers['Authorization-Customer'] = 'Bearer ' . $accessToken;
     }
 
-    $fullUrl = 'https://api.sandbox.dana.id' . $relativePath;
+    $fullUrl = config('services.dana.base_url') . $relativePath;
 
     try {
         $response = Http::withHeaders($headers)
                         ->withBody($jsonPayload, 'application/json')
                         ->post($fullUrl);
+        
+        Log::info("Response: " . $response->body());
         return $response->json();
     } catch (\Exception $e) {
         return ['responseMessage' => $e->getMessage()];
