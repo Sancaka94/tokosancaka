@@ -25,21 +25,22 @@ class DanaWidgetController extends Controller
      */
     public function createPayment(Request $request)
     {
-        Log::info('========== DANA FINAL SAFE MODE ==========');
-
-        $orderId     = 'FIX-' . time();
+        // Setup Data
+        // Kita pakai prefix baru 'TRY-' biar fresh
+        $orderId     = 'TRY-' . time();
         $returnUrl   = route('dana.return');
+        
+        // Waktu: Format ISO8601 Wajib ada Timezone (+07:00)
         $expiryTime  = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP');
 
-        // BODY "ULTRA SAFE"
-        // 1. Tidak ada 'mcc' (Biar pakai default merchant)
-        // 2. Tidak ada 'goods' (Biar tidak ada validasi harga item)
-        // 3. merchantTransType = "type" (Sesuai Sample Dokumen, jangan diubah "01")
+        // BODY "JALAN TENGAH"
+        // 1. Ada MCC (Wajib biar ga error 400)
+        // 2. Tidak ada Goods (Biar ga error 500 karena salah hitung harga)
         $bodyArray = [
             "partnerReferenceNo" => $orderId,
             "merchantId" => config('services.dana.merchant_id'),
             "amount" => [
-                "value" => "10000.00",
+                "value" => "10000.00", // String, 2 desimal
                 "currency" => "IDR"
             ],
             "validUpTo" => $expiryTime,
@@ -56,15 +57,20 @@ class DanaWidgetController extends Controller
                 ]
             ],
             "additionalInfo" => [
+                // [PENTING] Kembalikan MCC ini. 
+                // Tanpa ini, kena 400 Invalid Field.
+                "mcc" => "5732", 
+                
                 "order" => [
                     "orderTitle" => "Invoice " . $orderId,
-                    "merchantTransType" => "type", // [KUNCI] Sesuai Sample Dokumen
-                    "scenario" => "REDIRECT"
+                    "merchantTransType" => "01", // Kita coba "01" (Sales)
+                    "scenario" => "REDIRECT",
+                    // Goods kita kosongkan dulu untuk menghindari Error 500
                 ],
                 "envInfo" => [
                     "sourcePlatform" => "IPG",
                     "terminalType" => "SYSTEM",
-                    "orderTerminalType" => "WEB"
+                    "orderTerminalType" => "WEB",
                 ]
             ]
         ];
@@ -91,13 +97,12 @@ class DanaWidgetController extends Controller
                 'X-TIMESTAMP'  => $timestamp,
                 'X-SIGNATURE'  => $signature,
                 'Content-Type' => 'application/json',
-                // [KUNCI] Gunakan Angka ini agar lolos validasi header
+                // Tetap gunakan 95221 karena ini sudah terbukti lolos validasi header
                 'CHANNEL-ID'   => '95221', 
             ])
             ->withBody($jsonBody, 'application/json')
             ->post($fullUrl);
 
-            // Return JSON Asli ke Postman
             return response()->json($response->json());
 
         } catch (\Exception $e) {
