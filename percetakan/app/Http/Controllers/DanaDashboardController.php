@@ -173,8 +173,9 @@ class DanaDashboardController extends Controller
             return ['error' => $e->getMessage()];
         }
     }
+    
     // =========================================================================
-    // 4. CEK SALDO (FIXED SIGNATURE & PASS DATA TO VIEW)
+    // 4. CEK SALDO (FIXED LOGIC)
     // =========================================================================
     public function checkBalance(Request $request)
     {
@@ -184,47 +185,61 @@ class DanaDashboardController extends Controller
         $accessToken = $request->access_token; 
         if(!$accessToken) return back()->with('error', 'Access Token Wajib Diisi!');
 
-        // [PENTING] Access Token wajib ada di dalam additionalInfo body
+        // Struktur Body Wajib V1.0
         $body = [
             "partnerReferenceNo" => 'BAL-' . time(),
             "balanceTypes"       => ["BALANCE"],
             "additionalInfo"     => ["accessToken" => $accessToken]
         ];
 
+        // Kirim Request
         $response = $this->sendRequest('POST', '/v1.0/balance-inquiry.htm', $body, $accessToken);
         
-        // Cek Sukses (Kode 2001100)
+        // Cek Response Code
         if(isset($response['responseCode']) && $response['responseCode'] == '2001100') {
+            // Ambil nominal saldo
             $saldo = $response['accountInfos'][0]['availableBalance']['value'] ?? '0';
             
             Log::info("[CEK SALDO] SUKSES! Saldo: $saldo");
             
-            // [KUNCI UI] Kirim variabel 'saldo_terbaru' ke View agar muncul di Layar Monitor
+            // Kirim ke Blade session 'saldo_terbaru'
             return back()
                 ->with('success', "Cek Saldo Berhasil!")
                 ->with('saldo_terbaru', $saldo); 
         }
 
-        // Jika Gagal
-        return back()->with('error', 'Gagal Cek Saldo: ' . ($response['responseMessage'] ?? 'Unknown Error'));
+        $msg = $response['responseMessage'] ?? 'Unknown Error';
+        return back()->with('error', 'Gagal Cek Saldo: ' . $msg);
     }
 
     // =========================================================================
-    // HELPER: SEND REQUEST (HYBRID SNAP-LEGACY)
+    // HELPER: SEND REQUEST (HYBRID SIGNATURE SWITCHER)
     // =========================================================================
     private function sendRequest($method, $relativePath, $bodyArray, $accessToken = null)
     {
         Log::info("--- START REQUEST [$method] $relativePath ---");
         
-        // 1. JSON ENCODE
+        // 1. JSON ENCODE (Minified, tanpa spasi)
+        // Kita sort dulu key-nya biar aman (A-Z)
+        ksort($bodyArray);
+        if(isset($bodyArray['additionalInfo']) && is_array($bodyArray['additionalInfo'])) {
+            ksort($bodyArray['additionalInfo']);
+        }
         $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        
         $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String();
         $clientId  = config('services.dana.client_id');
         
-        // 2. RUMUS SIGNATURE (Sesuai Request Sample Dokumen Anda)
-        // Dokumen bilang: stringToSign = client_ID + "|" + X-TIMESTAMP
-        // Berlaku untuk Apply Token MAUPUN Balance Inquiry di Sandbox ini.
-        $stringToSign = $clientId . "|" . $timestamp; 
+        // 2. LOGIKA TANDA TANGAN (SIGNATURE SWITCHING)
+        if ($accessToken) {
+            // [JIKA CEK SALDO / TRANSAKSI] -> Pakai Format V1.0
+            // Rumus: Method + ":" + Path + ":" + Timestamp + ":" + Body
+            $stringToSign = $method . ":" . $relativePath . ":" . $timestamp . ":" . $jsonBody;
+        } else {
+            // [JIKA APPLY TOKEN] -> Pakai Format SNAP (Terbukti Sukses)
+            // Rumus: ClientID + "|" + Timestamp
+            $stringToSign = $clientId . "|" . $timestamp;
+        }
 
         Log::info("StringToSign: " . $stringToSign);
 
@@ -242,23 +257,24 @@ class DanaDashboardController extends Controller
             return ['error' => 'Signature Error'];
         }
 
-        // 4. HEADERS (KOMBINASI LEGACY & SNAP)
+        // 4. HEADERS
         $headers = [
             'Content-Type'  => 'application/json',
             'X-TIMESTAMP'   => $timestamp,
             'X-SIGNATURE'   => $signature,
             'CHANNEL-ID'    => '95221',
-            'ORIGIN'        => 'https://tokosancaka.com', // [Wajib ada sesuai Sample]
+            'ORIGIN'        => 'https://tokosancaka.com',
         ];
 
+        // 5. HEADER SWITCHING
         if($accessToken) {
-            // Header Transaksi
+            // Transaksi V1.0 butuh X-PARTNER-ID
             $headers['X-PARTNER-ID'] = $clientId; 
             $headers['X-EXTERNAL-ID'] = \Illuminate\Support\Str::random(32);
             $headers['X-DEVICE-ID'] = 'DEVICE-' . time();
             $headers['Authorization-Customer'] = 'Bearer ' . $accessToken;
         } else {
-            // Header Apply Token
+            // Apply Token SNAP butuh X-CLIENT-KEY
             $headers['X-CLIENT-KEY'] = $clientId;
         }
 
