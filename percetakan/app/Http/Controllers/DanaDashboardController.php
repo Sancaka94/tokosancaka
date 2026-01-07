@@ -112,6 +112,7 @@ class DanaDashboardController extends Controller
             "grantType" => "authorization_code",
             "authCode"  => $authCode,
             "partnerId" => config('services.dana.client_id'),
+            "clientSecret" => config('services.dana.client_secret'),
         ];
 
         // Endpoint Apply Token (Sandbox)
