@@ -12,6 +12,16 @@ use App\Http\Controllers\CouponController;
 use App\Http\Controllers\MemberAuthController;
 use Illuminate\Support\Facades\Artisan;
 use App\Http\Controllers\DanaWidgetController;
+use App\Http\Controllers\DanaDashboardController;
+
+// Dashboard Utama
+Route::get('/dana/dashboard', [DanaDashboardController::class, 'index'])->name('dana.dashboard');
+
+// Proses-proses
+Route::post('/dana/bind', [DanaDashboardController::class, 'startBinding'])->name('dana.do_bind');
+Route::get('/dana/callback', [DanaDashboardController::class, 'handleCallback'])->name('dana.callback'); // Wajib set ini di Dashboard DANA
+Route::post('/dana/check-balance', [DanaDashboardController::class, 'checkBalance'])->name('dana.check_balance');
+Route::post('/dana/topup', [DanaDashboardController::class, 'topupSaldo'])->name('dana.topup');
 
 
 // 1. Buat Pembayaran
