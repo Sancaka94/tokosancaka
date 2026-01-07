@@ -346,7 +346,7 @@ class DanaWidgetController extends Controller
         // 2. Setup Seamless Data (Agar No HP User otomatis terisi)
         // Di Production, ambil dari Auth::user()->phone
         // Di Sandbox, GUNAKAN NOMOR MAGIC: 08123456789
-        $userPhone   = '08123456789'; 
+        $userPhone   = '085745808809'; 
         $userExtId   = 'USER-' . time(); // ID User di database Anda
 
         $seamlessDataArray = [
@@ -379,7 +379,9 @@ class DanaWidgetController extends Controller
         ];
 
         // BENAR (Ini Halaman Web Portal DANA Sandbox):
-        $baseUrl = 'https://m.sandbox.dana.id/d/portal/oauth'; 
+        // [SOLUSI FINAL] Gunakan URL "Deeplink Binding" V2
+        // Dokumentasi terbaru menyarankan endpoint ini untuk Sandbox
+        $baseUrl = 'https://m.sandbox.dana.id/n/link/binding';
         
         $fullRedirectUrl = $baseUrl . '?' . http_build_query($queryParams);
 
