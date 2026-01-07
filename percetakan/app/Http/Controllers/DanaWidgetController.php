@@ -25,32 +25,24 @@ class DanaWidgetController extends Controller
      */
     public function createPayment(Request $request)
     {
-        Log::info('========== DANA GAPURA PAYMENT (STRICT SAMPLE MATCH) ==========');
+        Log::info('========== DANA GAPURA PAYMENT (HEADER FIX) ==========');
 
         $orderId = 'INV-' . time();
-        // Use a realistic amount
         $amount  = '10000.00'; 
-        
         $returnUrl = route('dana.return');
-
-        // 1. Calculate Expiry Time (Required by ValidUpTo)
-        // Format: YYYY-MM-DDTHH:mm:ss+07:00
+        
+        // Waktu Expired: 1 Jam dari sekarang
         $expiryTime = Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP');
 
-        // 2. Construct Body EXACTLY like the "Request Sample Gapura Hosted Checkout"
+        // Setup Body
         $bodyArray = [
             "partnerReferenceNo" => $orderId,
             "merchantId" => config('services.dana.merchant_id'),
-            
             "amount" => [
                 "value" => $amount,
                 "currency" => "IDR"
             ],
-            
-            // [REQUIRED] From documentation
-            "validUpTo" => $expiryTime,
-            
-            // [REQUIRED] URL Parameters
+            "validUpTo" => $expiryTime, 
             "urlParams" => [
                 [
                     "url" => $returnUrl,
@@ -63,13 +55,11 @@ class DanaWidgetController extends Controller
                     "isDeeplink" => "Y"
                 ]
             ],
-            
-            // [CRITICAL FIX] Structure MUST match the Sample JSON
             "additionalInfo" => [
                 "order" => [
-                    "merchantTransType" => "type", // From sample
-                    "orderTitle" => "Payment for " . $orderId, // Required field
-                    "scenario" => "REDIRECT", // Important for Hosted Checkout
+                    "orderTitle" => "Invoice " . $orderId,
+                    "merchantTransType" => "01", // "01" biasanya kode standar untuk Sales/Transaksi
+                    "scenario" => "REDIRECT",
                     "goods" => [
                         [
                             "description" => "Item Digital",
@@ -85,9 +75,9 @@ class DanaWidgetController extends Controller
                     ]
                 ],
                 "envInfo" => [
-                    "sourcePlatform" => "IPG", // From sample
-                    "terminalType" => "SYSTEM", // From sample (Was missing before)
-                    "orderTerminalType" => "WEB", // From sample
+                    "sourcePlatform" => "IPG",
+                    "terminalType" => "SYSTEM",
+                    "orderTerminalType" => "WEB",
                     "websiteLanguage" => "id_ID"
                 ]
             ]
@@ -97,9 +87,7 @@ class DanaWidgetController extends Controller
         Log::info('Request Body: ' . $jsonBody);
 
         $method = 'POST';
-        // Endpoint from your documentation
         $relativePath = '/payment-gateway/v1.0/debit/payment-host-to-host.htm'; 
-        
         $timestamp = Carbon::now('Asia/Jakarta')->toIso8601String();
 
         try {
@@ -120,7 +108,11 @@ class DanaWidgetController extends Controller
                 'X-TIMESTAMP'  => $timestamp,
                 'X-SIGNATURE'  => $signature,
                 'Content-Type' => 'application/json',
-                'CHANNEL-ID'   => 'MOBILE_WEB', // Standard for Web
+                
+                // [PERBAIKAN UTAMA]
+                // Sebelumnya 'MOBILE_WEB' (10 chars) -> Ditolak (Max 5 chars)
+                // Sekarang 'WEB' (3 chars) -> Diterima
+                'CHANNEL-ID'   => 'WEB', 
             ])
             ->withBody($jsonBody, 'application/json')
             ->post($fullUrl);
@@ -129,22 +121,16 @@ class DanaWidgetController extends Controller
             
             $result = $response->json();
 
-            // Check for Success (2005400)
+            // Cek Response Code 2005400
             if (isset($result['responseCode']) && $result['responseCode'] == '2005400') {
                  Log::info('Success! Redirecting user...');
-                 
-                 // Get Redirect URL
                  $redirectUrl = $result['webRedirectUrl'] ?? null;
-                 
-                 if($redirectUrl) {
-                    return redirect($redirectUrl);
-                 }
+                 if($redirectUrl) return redirect($redirectUrl);
             }
 
             return response()->json($result);
 
         } catch (\Exception $e) {
-            Log::error('HTTP Failed: ' . $e->getMessage());
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
