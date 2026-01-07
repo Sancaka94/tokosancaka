@@ -25,50 +25,47 @@ class DanaWidgetController extends Controller
      */
     public function createPayment(Request $request)
     {
-        Log::info('========== DANA PAYMENT GATEWAY START ==========');
+        Log::info('========== DANA PAYMENT GATEWAY START (MINIMALIST) ==========');
 
         $orderId = 'INV-' . time();
         $amount  = '10000.00'; 
         $returnUrl = route('dana.return');
 
-        // 1. Setup Body Sesuai Spesifikasi createOrder()
+        // BODY REQUEST MINIMALIS (Hanya yang Wajib Saja)
+        // Tujuannya untuk menghindari Error 500 karena salah konfigurasi parameter tambahan
         $bodyArray = [
-            // WAJIB: Identitas Merchant
+            // 1. Identitas Merchant
             "merchantId" => config('services.dana.merchant_id'),
             
+            // 2. Detail Order
             "partnerReferenceNo" => $orderId,
-            
             "amount" => [
                 "value" => $amount,
                 "currency" => "IDR"
             ],
             
-            // WAJIB: Menentukan jenis perangkat (WEB/APP/WAP)
-            // Sumber: Enum Types - OrderTerminalType
+            // 3. Tipe Terminal (Wajib sesuai Enum: WEB/APP/WAP)
+            // Sumber: Enum Types
             "orderTerminalType" => "WEB", 
             
-            "payOptionDetails" => [
-                "payMethod" => "DANA_WALLET", // Sumber: Enum PayMethod
-                "transType" => "PAGE",
-            ],
-            
-            "additionalInfo" => [
-                "origin" => "IS_WIDGET"
-            ],
-            
+            // 4. URL Return
             "urlParams" => [
                 "url" => $returnUrl,
-                "type" => "NOTIFICATION" // Sumber: Enum Type
+                "type" => "NOTIFICATION"
             ]
+            
+            // DIBUANG SEMENTARA AGAR TIDAK ERROR 500:
+            // - payOptionDetails (Biarkan default)
+            // - additionalInfo
         ];
 
-        // Encode JSON (Pastikan Slash tidak di-escape)
+        // Encode JSON
         $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         Log::info('Request Body: ' . $jsonBody);
 
         $method = 'POST';
         
-        // SUMBER: Dokumentasi createOrder()
+        // Endpoint sesuai dokumentasi Swagger Anda
         $relativePath = '/payment-gateway/v1.0/debit/payment-host-to-host.htm'; 
         
         $timestamp = Carbon::now()->toIso8601String();
@@ -79,9 +76,9 @@ class DanaWidgetController extends Controller
             return response()->json(['error' => 'Signature Error: ' . $e->getMessage()], 500);
         }
 
-        // SUMBER: "All URIs are relative to http://api.sandbox.dana.id"
-        // Kita paksa pakai HTTP dulu sesuai dokumen, jika gagal baru HTTPS
-        $baseUrl = 'http://api.sandbox.dana.id'; 
+        // [PENTING] Ganti ke HTTPS
+        // Dokumentasi bilang "relative to http", tapi HTTPS jauh lebih stabil untuk API Payment
+        $baseUrl = 'https://api.sandbox.dana.id'; 
         $fullUrl = $baseUrl . $relativePath;
         
         $externalId = Str::random(32);
@@ -105,11 +102,9 @@ class DanaWidgetController extends Controller
             $result = $response->json();
 
             // Cek Response Code 200 (Success)
-            // Bisa 2000000 atau format lain tergantung versi
             if (isset($result['responseCode']) && substr($result['responseCode'], 0, 3) == '200') {
                  Log::info('Success! Redirecting user...');
                  
-                 // Ambil URL untuk redirect user
                  $redirectUrl = $result['webRedirectUrl'] ?? $result['redirectUrl'] ?? null;
                  
                  if($redirectUrl) {
@@ -125,7 +120,7 @@ class DanaWidgetController extends Controller
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
-    
+
 
     /**
      * FUNGSI 2: CEK STATUS PEMBAYARAN (QUERY PAYMENT)
