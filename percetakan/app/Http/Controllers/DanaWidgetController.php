@@ -218,12 +218,14 @@ class DanaWidgetController extends Controller
     // [SCENARIO 1] CHECK ACCOUNT VALIDITY (Wajib untuk Checklist Dashboard)
     // Route: /dana/test-inquiry
     // [SCENARIO 1] CHECK ACCOUNT VALIDITY (REVISI)
+    // [SCENARIO 1] CHECK ACCOUNT VALIDITY (FORMAT FIX)
     public function disburseAccountInquiry()
     {
-        Log::info('========== DANA ACCOUNT INQUIRY TEST (NO FUND TYPE) ==========');
+        Log::info('========== DANA ACCOUNT INQUIRY TEST (FORMAT 8...) ==========');
 
-        // REVISI 1: Gunakan format 08... kembali
-        $phoneNumber = '085745808809'; 
+        // REVISI: Coba hapus '0' atau '62' di depan. Langsung angka 8.
+        // Asumsi nomor asli: 085745808809 -> Jadi: 85745808809
+        $phoneNumber = '85745808809'; 
         
         $bodyArray = [
             "partnerReferenceNo" => 'INQ-' . time(),
@@ -233,10 +235,10 @@ class DanaWidgetController extends Controller
             ],
             "customerNumber" => $phoneNumber,
             
-            // REVISI 2: Hapus additionalInfo/fundType dulu
-            // "additionalInfo" => [
-            //    "fundType" => "TRANS_TO_USER"
-            // ]
+            // WAJIB DIKEMBALIKAN (Biar ga error 500)
+            "additionalInfo" => [
+                "fundType" => "TRANS_TO_USER"
+            ]
         ];
 
         return $this->sendDanaRequest('POST', '/v1.0/emoney/account-inquiry.htm', $bodyArray);
