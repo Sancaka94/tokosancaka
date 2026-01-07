@@ -25,114 +25,87 @@ class DanaWidgetController extends Controller
      */
     public function createPayment(Request $request)
     {
-        // KITA "FORCE" LOG AGAR KELIHATAN SEMUA DI POSTMAN
-        try {
-            // 1. Generate ID Unik (Biar tidak kena error duplikat transaksi)
-            $orderId     = 'TEST-' . time(); // Pake prefix TEST biar jelas
-            $returnUrl   = route('dana.return');
-            $expiryTime  = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP');
+        // 1. Setup Data
+        $amountInput = "10000.00"; // String biar aman
+        $orderId     = 'FIX-' . time();
+        $returnUrl   = route('dana.return');
+        $expiryTime  = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP');
 
-            // 2. BODY INI 100% COPY-PASTE DARI DOKUMEN GAPURA (REQUEST SAMPLE)
-            // Hanya kita ganti ID Merchant & Nominal agar valid di akun Anda.
-            $bodyArray = [
-                "partnerReferenceNo" => $orderId,
-                "merchantId" => config('services.dana.merchant_id'), // Pakai ID asli Anda
-                "amount" => [
-                    "value" => "10000.00", // Hardcode string biar aman
-                    "currency" => "IDR"
+        // 2. BODY "SAFE MODE"
+        // Kita buang 'mcc' (biar pakai default merchant)
+        // Kita buang 'goods' (biar tidak ada validasi item)
+        // Kita buang 'clientIp' (opsional)
+        $bodyArray = [
+            "partnerReferenceNo" => $orderId,
+            "merchantId" => config('services.dana.merchant_id'),
+            "amount" => [
+                "value" => $amountInput,
+                "currency" => "IDR"
+            ],
+            "validUpTo" => $expiryTime,
+            "urlParams" => [
+                [
+                    "url" => $returnUrl,
+                    "type" => "PAY_RETURN",
+                    "isDeeplink" => "Y"
                 ],
-                "validUpTo" => $expiryTime,
-                "urlParams" => [
-                    [
-                        "url" => $returnUrl,
-                        "type" => "PAY_RETURN",
-                        "isDeeplink" => "Y"
-                    ],
-                    [
-                        "url" => $returnUrl,
-                        "type" => "NOTIFICATION",
-                        "isDeeplink" => "Y"
-                    ]
-                ],
-                // BAGIAN INI SANGAT KRUSIAL MENURUT DOKUMEN
-                "additionalInfo" => [
-                    "mcc" => "5732", // Kode Toko Elektronik (Default Sample)
-                    "order" => [
-                        "merchantTransType" => "type", // JANGAN UBAH (Sesuai Sample)
-                        "orderTitle" => "Payment Gateway Order",
-                        "scenario" => "REDIRECT",
-                        "goods" => [
-                            [
-                                "unit" => "Kg",
-                                "category" => "travelling/subway",
-                                "price" => [
-                                    "value" => "10000.00",
-                                    "currency" => "IDR"
-                                ],
-                                "merchantShippingId" => "SHIP-001",
-                                "merchantGoodsId" => "GOODS-001",
-                                "description" => "Test Item Description",
-                                "snapshotUrl" => "http://snap.url.com",
-                                "quantity" => "1",
-                                "extendInfo" => ""
-                            ]
-                        ]
-                    ],
-                    "envInfo" => [
-                        "sourcePlatform" => "IPG",
-                        "orderOsType" => "IOS", // Ikuti sample
-                        "merchantAppVersion" => "1.0",
-                        "terminalType" => "SYSTEM",
-                        "orderTerminalType" => "WEB",
-                        // Kita coba inject parameter debug jika didukung
-                        "extendInfo" => "{\"deviceId\":\"test-device-id\"}"
-                    ]
+                [
+                    "url" => $returnUrl,
+                    "type" => "NOTIFICATION",
+                    "isDeeplink" => "Y"
                 ]
-            ];
+            ],
+            "additionalInfo" => [
+                // HAPUS MCC: Biarkan DANA mendeteksi kategori otomatis dari akun Anda
+                
+                "order" => [
+                    "orderTitle" => "Invoice " . $orderId,
+                    "merchantTransType" => "01", // Gunakan 01 (Sales) yang paling umum
+                    "scenario" => "REDIRECT",
+                    // HAPUS GOODS: Biar tidak ada validasi matematika harga
+                ],
+                "envInfo" => [
+                    "sourcePlatform" => "IPG",
+                    "terminalType" => "SYSTEM",
+                    "orderTerminalType" => "WEB",
+                    // Hapus extendInfo dan versi app yang tidak perlu
+                ]
+            ]
+        ];
 
-            $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-            
-            // Endpoint Wajib Gapura
-            $method = 'POST';
-            $relativePath = '/payment-gateway/v1.0/debit/payment-host-to-host.htm'; 
-            $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String();
+        $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        
+        $method = 'POST';
+        $relativePath = '/payment-gateway/v1.0/debit/payment-host-to-host.htm'; 
+        $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String();
 
-            // Signature
+        try {
             $signature = $this->danaSignature->generateSignature($method, $relativePath, $jsonBody, $timestamp);
-            
-            $fullUrl = 'https://api.sandbox.dana.id' . $relativePath;
-            $externalId = \Illuminate\Support\Str::random(32);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Signature Error'], 500);
+        }
 
-            // 3. KIRIM REQUEST (HEADER SESUAI DOKUMEN)
+        $fullUrl = 'https://api.sandbox.dana.id' . $relativePath;
+        $externalId = \Illuminate\Support\Str::random(32);
+
+        try {
             $response = \Illuminate\Support\Facades\Http::withHeaders([
                 'X-PARTNER-ID' => config('services.dana.client_id'),
                 'X-EXTERNAL-ID' => $externalId,
                 'X-TIMESTAMP'  => $timestamp,
                 'X-SIGNATURE'  => $signature,
                 'Content-Type' => 'application/json',
-                // PENTING: Dokumen minta '95221' (Angka), bukan text.
+                // Tetap gunakan ini karena terbukti Lolos Validasi Header
                 'CHANNEL-ID'   => '95221', 
             ])
             ->withBody($jsonBody, 'application/json')
             ->post($fullUrl);
 
-            // 4. BALIKAN APA ADANYA KE ANDA (RAW JSON)
-            // Biar kita lihat error message aslinya.
-            return response()->json([
-                'status_sent' => $response->status(),
-                'headers_sent' => [
-                    'channel_id' => '95221',
-                    'timestamp' => $timestamp
-                ],
-                'body_sent' => $bodyArray,
-                'dana_response' => $response->json()
-            ], $response->status());
+            // Return Raw JSON ke Postman
+            return response()->json($response->json());
 
         } catch (\Exception $e) {
-            return response()->json([
-                'CRITICAL_ERROR' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ], 500);
+            return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 
