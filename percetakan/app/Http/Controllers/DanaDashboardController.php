@@ -213,10 +213,7 @@ class DanaDashboardController extends Controller
     }
 
     // =========================================================================
-    // HELPER: SEND REQUEST (SNAP TRANSACTIONAL)
-    // =========================================================================
-    // =========================================================================
-    // HELPER: SEND REQUEST (FIXED SIGNATURE FORMULA)
+    // HELPER: SEND REQUEST (STANDARD V1.0 SIGNATURE)
     // =========================================================================
     private function sendRequest($method, $relativePath, $bodyArray, $accessToken = null)
     {
@@ -226,15 +223,22 @@ class DanaDashboardController extends Controller
         $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String();
         $clientId  = config('services.dana.client_id');
         
-        // [FIX UTAMA: RUMUS SIGNATURE]
-        // Berdasarkan dokumentasi "Request Sample", rumus StringToSign cukup:
-        // ClientID + "|" + Timestamp
-        // Tidak perlu memasukkan Method/Path/Body ke dalam signature untuk endpoint ini.
-        $stringToSign = $clientId . "|" . $timestamp; //
+        // 1. TENTUKAN LOGIKA SIGNATURE
+        if ($accessToken) {
+            // [LOGIKA TRANSAKSI (Cek Saldo / Topup)]
+            // Endpoint .htm biasanya pakai format ini:
+            // Method + ":" + Path + ":" + Timestamp + ":" + Body
+            $stringToSign = $method . ":" . $relativePath . ":" . $timestamp . ":" . $jsonBody;
+        } else {
+            // [LOGIKA APPLY TOKEN]
+            // Khusus Apply Token SNAP, formatnya beda (Pemisah | dan cuma ID+Time)
+            // ClientID + "|" + Timestamp
+            $stringToSign = $clientId . "|" . $timestamp;
+        }
 
         Log::info("StringToSign: " . $stringToSign);
 
-        // Generate Signature (SHA256withRSA)
+        // 2. GENERATE SIGNATURE
         $signature = '';
         try {
             $rawKey = config('services.dana.private_key');
@@ -242,30 +246,31 @@ class DanaDashboardController extends Controller
             $formattedKey = "-----BEGIN PRIVATE KEY-----\n" . wordwrap($cleanKey, 64, "\n", true) . "\n-----END PRIVATE KEY-----";
             
             $binarySignature = '';
-            openssl_sign($stringToSign, $binarySignature, $formattedKey, OPENSSL_ALGO_SHA256);
+            if(!openssl_sign($stringToSign, $binarySignature, $formattedKey, OPENSSL_ALGO_SHA256)) {
+                throw new \Exception("OpenSSL Sign Failed");
+            }
             $signature = base64_encode($binarySignature);
         } catch (\Exception $e) {
-            return ['error' => 'Signature Error'];
+            return ['error' => 'Signature Error: ' . $e->getMessage()];
         }
 
-        // HEADERS
+        // 3. HEADERS
         $headers = [
             'Content-Type'  => 'application/json',
             'X-TIMESTAMP'   => $timestamp,
             'X-SIGNATURE'   => $signature,
-            'X-EXTERNAL-ID' => \Illuminate\Support\Str::random(32),
-            'CHANNEL-ID'    => '95221',
-            'X-DEVICE-ID'   => 'DEVICE-' . time(),
+            'CHANNEL-ID'    => '95221', 
         ];
 
-        // LOGIKA HEADER SPESIFIK
-        // Apply Token butuh X-CLIENT-KEY, Balance Inquiry butuh X-PARTNER-ID
+        // LOGIKA HEADER PENTING
         if($accessToken) {
-            // Ini Transaksi (Cek Saldo/Topup)
-            $headers['X-PARTNER-ID'] = $clientId; //
+            // Header Transaksi V1.0
+            $headers['X-PARTNER-ID'] = $clientId; 
+            $headers['X-EXTERNAL-ID'] = \Illuminate\Support\Str::random(32);
+            $headers['X-DEVICE-ID'] = 'DEVICE-' . time();
             $headers['Authorization-Customer'] = 'Bearer ' . $accessToken;
         } else {
-            // Ini Apply Token
+            // Header Apply Token SNAP
             $headers['X-CLIENT-KEY'] = $clientId;
         }
 
