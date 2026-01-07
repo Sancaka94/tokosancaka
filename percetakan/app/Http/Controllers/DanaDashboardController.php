@@ -447,6 +447,10 @@ class DanaDashboardController extends Controller
         $formattedKey = $rawKey;
     }
 
+        $res = openssl_get_privatekey($formattedKey);
+    $details = openssl_pkey_get_details($res);
+    echo "<textarea style='width:100%; height:200px;'>" . $details['key'] . "</textarea>";
+
     // 3. Test Loading Key ke OpenSSL
     $res = openssl_get_privatekey($formattedKey);
     if ($res === false) {
