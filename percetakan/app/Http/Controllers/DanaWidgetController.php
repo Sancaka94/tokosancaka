@@ -333,62 +333,110 @@ class DanaWidgetController extends Controller
     // ACCOUNT BINDING (OAUTH 2.0)
     // =========================================================================
 
+    // =========================================================================
+    // ACCOUNT BINDING (FINAL VERSION - V2 DEEPLINK)
+    // =========================================================================
+
     public function initiateBinding(Request $request)
     {
-        Log::info('========== DANA BINDING INITIATED ==========');
+        Log::info('========== DANA BINDING INITIATED (V2 SEAMLESS) ==========');
 
-        // 1. Setup Data Dasar
         $clientId    = config('services.dana.client_id');
-        $redirectUrl = route('dana.callback'); // URL Callback kita
-        $state       = \Illuminate\Support\Str::random(16); // CSRF Protection
+        $redirectUrl = route('dana.callback'); 
+        $state       = \Illuminate\Support\Str::random(16); 
         $timestamp   = \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String();
 
-        // 2. Setup Seamless Data (Agar No HP User otomatis terisi)
-        // Di Production, ambil dari Auth::user()->phone
-        // Di Sandbox, GUNAKAN NOMOR MAGIC: 08123456789
-        $userPhone   = '085745808809'; 
-        $userExtId   = 'USER-' . time(); // ID User di database Anda
+        // 1. DATA USER UNTUK SEAMLESS (AUTO-FILL)
+        // Gunakan nomor akun Sandbox Anda dengan format 62
+        // Contoh: 085745808809 -> 6285745808809
+        $userPhone   = '6285745808809'; 
+        $userExtId   = 'USER-' . time();
 
+        // Struktur Seamless Data sesuai contoh Anda
         $seamlessDataArray = [
-            "mobileNumber" => $userPhone,
-            "bizScenario"  => "PAYMENT", // Sesuai sample
+            "mobileNumber" => $userPhone, // Perhatikan: mobileNumber (bukan mobile)
+            "bizScenario"  => "PAYMENT",
+            "verifiedTime" => $timestamp,
             "externalUid"  => $userExtId,
-            "verifiedTime" => $timestamp
+            // "deviceId"     => "1234567890" // Opsional, boleh dikosongkan jika tidak ada
         ];
         
-        // Convert ke JSON String
+        // Encode JSON (Pastikan urutan tidak berubah, JSON mentah yang disign)
         $seamlessDataStr = json_encode($seamlessDataArray);
 
-        // 3. Generate Seamless Signature
-        // Proses: Sign(SHA256withRSA) -> Base64
-        $seamlessSign = $this->generateSeamlessSign($seamlessDataStr);
+        // 2. GENERATE TANDA TANGAN (SIGNATURE)
+        // PENTING: DANA memvalidasi ini. Jika key/algoritma salah = Error "Terjadi Kesalahan"
+        try {
+            $seamlessSign = $this->generateSeamlessSign($seamlessDataStr);
+        } catch (\Exception $e) {
+            Log::error("Signing Error: " . $e->getMessage());
+            return response()->json(['error' => 'Gagal membuat tanda tangan: ' . $e->getMessage()], 500);
+        }
 
-        // 4. Susun Query Parameters
+        // 3. PARAMETER URL (Sesuai contoh URL Anda)
         $queryParams = [
-            'partnerId'     => $clientId,
             'timestamp'     => $timestamp,
+            'partnerId'     => $clientId,
             'externalId'    => $userExtId,
-            'channelId'     => '95221', // Channel ID Web
-            'merchantId'    => config('services.dana.merchant_id'),
-            'redirectUrl'   => $redirectUrl,
+            'channelId'     => '95221', // ID untuk Web/Wap
             'state'         => $state,
-            'scopes'        => 'DEFAULT_BASIC_PROFILE,QUERY_BALANCE,MINI_DANA,AGREEMENT_PAY', // Scopes lengkap
+            'scopes'        => 'AGREEMENT_PAY,MINI_DANA,QUERY_BALANCE,DEFAULT_BASIC_PROFILE', // Scope lengkap
+            'redirectUrl'   => $redirectUrl,
             'seamlessData'  => $seamlessDataStr,
             'seamlessSign'  => $seamlessSign,
+            'merchantId'    => config('services.dana.merchant_id'),
+            'lang'          => 'id',
             'allowRegistration' => 'true'
         ];
 
-        // BENAR (Ini Halaman Web Portal DANA Sandbox):
-        // [SOLUSI FINAL] Gunakan URL "Deeplink Binding" V2
-        // Dokumentasi terbaru menyarankan endpoint ini untuk Sandbox
-        $baseUrl = 'https://m.sandbox.dana.id/n/link/binding';
+        // 4. ENDPOINT V2 (SANDBOX)
+        // Menggunakan /n/link/binding sesuai referensi Anda
+        $baseUrl = 'https://m.sandbox.dana.id/n/link/binding'; 
         
         $fullRedirectUrl = $baseUrl . '?' . http_build_query($queryParams);
 
-        Log::info("Generated Binding URL: " . $fullRedirectUrl);
+        Log::info("Generated Binding URL V2: " . $fullRedirectUrl);
 
-        // Redirect User ke DANA
         return redirect($fullRedirectUrl);
+    }
+
+    // HELPER: GENERATE SIGNATURE (SHA256withRSA)
+    // Fungsi ini sudah dilengkapi pembersih format Key agar tidak error "cannot be coerced"
+    private function generateSeamlessSign($dataString)
+    {
+        // 1. Ambil Key dari Config
+        $rawKey = config('services.dana.private_key');
+        
+        if (!$rawKey) {
+            throw new \Exception("Private Key kosong. Cek .env Anda.");
+        }
+
+        // 2. Bersihkan Key dari header/footer/spasi/newline yang berantakan
+        $cleanKey = str_replace(
+            ["-----BEGIN PRIVATE KEY-----", "-----END PRIVATE KEY-----", "\r", "\n", " "],
+            "",
+            $rawKey
+        );
+
+        // 3. Format ulang menjadi PEM standar (64 karakter per baris)
+        $formattedKey = "-----BEGIN PRIVATE KEY-----\n" . 
+                        wordwrap($cleanKey, 64, "\n", true) . 
+                        "\n-----END PRIVATE KEY-----";
+
+        // 4. Validasi Key
+        $privateKeyResource = openssl_pkey_get_private($formattedKey);
+        if (!$privateKeyResource) {
+            throw new \Exception("Format Private Key Salah. Pastikan key di .env benar.");
+        }
+
+        // 5. Sign Data (SHA256)
+        $binarySignature = '';
+        if (!openssl_sign($dataString, $binarySignature, $privateKeyResource, OPENSSL_ALGO_SHA256)) {
+            throw new \Exception("OpenSSL Sign Failed.");
+        }
+
+        // 6. Encode Base64 (Tanpa URL Encode di sini, karena http_build_query akan melakukannya otomatis)
+        return base64_encode($binarySignature);
     }
 
     // Callback Sementara (Hanya untuk dump hasil)
@@ -403,49 +451,5 @@ class DanaWidgetController extends Controller
         ]);
     }
 
-    private function generateSeamlessSign($dataString)
-    {
-        // 1. Ambil Key Mentah
-        $rawKey = config('services.dana.private_key');
-
-        if (empty($rawKey)) {
-            throw new \Exception("DANA Private Key belum diset di .env atau config/services.php");
-        }
-
-        // 2. BERSIHKAN KEY (Hapus Header, Footer, Spasi, Newline jika ada)
-        // Kita buat jadi satu baris string murni dulu biar gampang diformat ulang
-        $cleanKey = str_replace(
-            ["-----BEGIN PRIVATE KEY-----", "-----END PRIVATE KEY-----", "-----BEGIN RSA PRIVATE KEY-----", "-----END RSA PRIVATE KEY-----", "\r", "\n", " "],
-            "",
-            $rawKey
-        );
-
-        // 3. FORMAT ULANG JADI PEM STANDARD (Wajib 64 karakter per baris)
-        $formattedKey = "-----BEGIN PRIVATE KEY-----\n" . 
-                        wordwrap($cleanKey, 64, "\n", true) . 
-                        "\n-----END PRIVATE KEY-----";
-
-        // 4. VALIDASI KEY SEBELUM DIPAKAI
-        // Ini akan mengecek apakah key valid. Jika error, kita tahu masalahnya di key.
-        $privateKeyResource = openssl_pkey_get_private($formattedKey);
-
-        if (!$privateKeyResource) {
-            // Ambil detail error OpenSSL untuk debugging
-            $errors = "";
-            while ($msg = openssl_error_string()) {
-                $errors .= $msg . "; ";
-            }
-            Log::error("OpenSSL Key Error: " . $errors);
-            throw new \Exception("Format Private Key Salah! Cek Log untuk detail.");
-        }
-
-        // 5. SIGNING
-        $binarySignature = '';
-        if (!openssl_sign($dataString, $binarySignature, $privateKeyResource, OPENSSL_ALGO_SHA256)) {
-            throw new \Exception("Gagal melakukan signing data.");
-        }
-
-        // 6. Encode Base64
-        return base64_encode($binarySignature);
-    }
+    
 }
