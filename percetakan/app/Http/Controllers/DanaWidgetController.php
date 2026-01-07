@@ -25,24 +25,25 @@ class DanaWidgetController extends Controller
      */
     public function createPayment(Request $request)
     {
-        Log::info('========== DANA WIDGET PAYMENT START ==========');
+        Log::info('========== DANA WIDGET PAYMENT START (TRYING ALTERNATIVE ENDPOINT) ==========');
 
         $orderId = 'INV-' . time();
-        $amount  = '1000.00'; 
+        $amount  = '10000.00'; 
         $returnUrl = route('dana.return');
 
-        // 1. Setup Array Body
+        // Setup Array Body (Tetap pertahankan merchantId)
         $bodyArray = [
-            "merchantId" => config('services.dana.merchant_id'),
+            "merchantId" => config('services.dana.merchant_id'), // Wajib
             "partnerReferenceNo" => $orderId,
             "amount" => [
                 "value" => $amount,
                 "currency" => "IDR"
             ],
-            "payOptionDetails" => [
-                "payMethod" => "DANA_WALLET",
-                "transType" => "PAGE",
-            ],
+            // [OPSIONAL] Coba kita hapus payOptionDetails agar DANA yang menentukan defaultnya
+            // "payOptionDetails" => [
+            //    "payMethod" => "DANA_WALLET",
+            //    "transType" => "PAGE",
+            // ],
             "additionalInfo" => [
                 "origin" => "IS_WIDGET"
             ],
@@ -52,24 +53,22 @@ class DanaWidgetController extends Controller
             ]
         ];
 
-        // [FIX PENTING] 
-        // Encode manual agar URL tidak berubah jadi https:\/\/
-        // Kita gunakan string hasil encode ini untuk SIGN dan KIRIM. Harus konsisten 100%.
         $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-
-        Log::info('Request Body (Raw String): ' . $jsonBody);
+        Log::info('Request Body: ' . $jsonBody);
 
         $method = 'POST';
-        // Path sesuai dokumentasi image_985920.png
-        $relativePath = '/rest/redirection/v1.0/debit/payment-host-to-host'; 
         
+        // --- [UBAH BAGIAN INI] ---
+        // SUMBER: Screenshot image_985be7.png (Swagger)
+        $relativePath = '/payment-gateway/v1.0/debit/payment-host-to-host.htm'; 
+        // -------------------------
+
         $timestamp = Carbon::now()->toIso8601String();
 
         try {
-            // Generate Signature pakai string JSON yang sudah dipastikan formatnya
             $signature = $this->danaSignature->generateSignature($method, $relativePath, $jsonBody, $timestamp);
         } catch (\Exception $e) {
-            return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+            return response()->json(['error' => $e->getMessage()], 500);
         }
 
         $fullUrl = config('services.dana.base_url') . $relativePath;
