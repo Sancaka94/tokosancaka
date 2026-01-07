@@ -29,12 +29,10 @@ class DanaWidgetController extends Controller
 
         $orderId = 'INV-' . time();
         $amount  = '1000.00'; 
-        
-        // Setup URL Return
         $returnUrl = route('dana.return');
 
-        // Body Request (Sesuai Standar Widget)
-        $body = [
+        // 1. Setup Array Body
+        $bodyArray = [
             "partnerReferenceNo" => $orderId,
             "amount" => [
                 "value" => $amount,
@@ -53,28 +51,33 @@ class DanaWidgetController extends Controller
             ]
         ];
 
-        Log::info('Request Body:', $body);
+        // [FIX PENTING] 
+        // Encode manual agar URL tidak berubah jadi https:\/\/
+        // Kita gunakan string hasil encode ini untuk SIGN dan KIRIM. Harus konsisten 100%.
+        $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
-        // --- UPDATE URL BERDASARKAN GAMBAR ANDA ---
+        Log::info('Request Body (Raw String): ' . $jsonBody);
+
         $method = 'POST';
-        // Menggunakan endpoint dari image_985920.png (Widget Payment)
+        // Path sesuai dokumentasi image_985920.png
         $relativePath = '/rest/redirection/v1.0/debit/payment-host-to-host'; 
         
         $timestamp = Carbon::now()->toIso8601String();
 
         try {
-            $signature = $this->danaSignature->generateSignature($method, $relativePath, $body, $timestamp);
+            // Generate Signature pakai string JSON yang sudah dipastikan formatnya
+            $signature = $this->danaSignature->generateSignature($method, $relativePath, $jsonBody, $timestamp);
         } catch (\Exception $e) {
             return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
         }
 
-        // Kirim Request
         $fullUrl = config('services.dana.base_url') . $relativePath;
         $externalId = Str::random(32);
 
         Log::info('Hitting Endpoint: ' . $fullUrl);
 
         try {
+            // [FIX PENTING] Kirim sebagai "Body Raw" (String), jangan biarkan Http Client meng-encode ulang
             $response = Http::withHeaders([
                 'X-PARTNER-ID' => config('services.dana.client_id'),
                 'X-EXTERNAL-ID' => $externalId,
@@ -82,16 +85,17 @@ class DanaWidgetController extends Controller
                 'X-SIGNATURE'  => $signature,
                 'Content-Type' => 'application/json',
                 'CHANNEL-ID'   => 'MOBILE_WEB', 
-            ])->post($fullUrl, $body);
+            ])
+            ->withBody($jsonBody, 'application/json') // Kirim string yang sama persis
+            ->post($fullUrl);
 
             Log::info('DANA Response Code: ' . $response->status());
             
             $result = $response->json();
 
-            // Cek sukses (Biasanya 2000000 atau 2005300 tergantung versi)
+            // Cek sukses (Biasanya 2000000 atau 2005300)
             if (isset($result['responseCode']) && substr($result['responseCode'], 0, 3) == '200') {
                  Log::info('Success! Redirecting user...');
-                 // Ambil URL Redirect
                  $redirectUrl = $result['webRedirectUrl'] ?? $result['redirectUrl'];
                  return redirect($redirectUrl);
             }
