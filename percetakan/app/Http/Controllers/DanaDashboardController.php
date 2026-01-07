@@ -215,28 +215,26 @@ class DanaDashboardController extends Controller
     // =========================================================================
     // HELPER: SEND REQUEST (SNAP TRANSACTIONAL)
     // =========================================================================
+    // =========================================================================
+    // HELPER: SEND REQUEST (FIXED SIGNATURE FORMULA)
+    // =========================================================================
     private function sendRequest($method, $relativePath, $bodyArray, $accessToken = null)
     {
-        Log::info("--- START SNAP REQUEST [$method] $relativePath ---");
+        Log::info("--- START REQUEST [$method] $relativePath ---");
         
         $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String();
         $clientId  = config('services.dana.client_id');
         
-        // 1. TENTUKAN STRING TO SIGN (RUMUS SNAP)
-        if ($accessToken) {
-            // [RUMUS UNTUK TRANSACTION/BALANCE]
-            // Method + "|" + Path + "|" + AccessToken + "|" + Timestamp + "|" + Body
-            $stringToSign = $method . "|" . $relativePath . "|" . $accessToken . "|" . $timestamp . "|" . $jsonBody;
-        } else {
-            // [RUMUS UNTUK APPLY TOKEN]
-            // ClientID + "|" + Timestamp
-            $stringToSign = $clientId . "|" . $timestamp;
-        }
+        // [FIX UTAMA: RUMUS SIGNATURE]
+        // Berdasarkan dokumentasi "Request Sample", rumus StringToSign cukup:
+        // ClientID + "|" + Timestamp
+        // Tidak perlu memasukkan Method/Path/Body ke dalam signature untuk endpoint ini.
+        $stringToSign = $clientId . "|" . $timestamp; //
 
         Log::info("StringToSign: " . $stringToSign);
 
-        // 2. GENERATE SIGNATURE (SHA256withRSA)
+        // Generate Signature (SHA256withRSA)
         $signature = '';
         try {
             $rawKey = config('services.dana.private_key');
@@ -247,28 +245,28 @@ class DanaDashboardController extends Controller
             openssl_sign($stringToSign, $binarySignature, $formattedKey, OPENSSL_ALGO_SHA256);
             $signature = base64_encode($binarySignature);
         } catch (\Exception $e) {
-            Log::error("SIGNATURE ERROR: " . $e->getMessage());
             return ['error' => 'Signature Error'];
         }
 
-        // 3. SUSUN HEADERS (SESUAI DOKUMENTASI BALANCE INQUIRY)
+        // HEADERS
         $headers = [
-            'Content-Type'  => 'application/json', //
-            'X-TIMESTAMP'   => $timestamp,         //
-            'X-SIGNATURE'   => $signature,         //
-            'X-PARTNER-ID'  => $clientId,          //
-            'X-EXTERNAL-ID' => \Illuminate\Support\Str::random(32), //
-            'X-DEVICE-ID'   => 'DEVICE-' . time(), //
-            'CHANNEL-ID'    => '95221',            //
+            'Content-Type'  => 'application/json',
+            'X-TIMESTAMP'   => $timestamp,
+            'X-SIGNATURE'   => $signature,
+            'X-EXTERNAL-ID' => \Illuminate\Support\Str::random(32),
+            'CHANNEL-ID'    => '95221',
+            'X-DEVICE-ID'   => 'DEVICE-' . time(),
         ];
 
-        // Tambahkan Authorization jika ada Token
+        // LOGIKA HEADER SPESIFIK
+        // Apply Token butuh X-CLIENT-KEY, Balance Inquiry butuh X-PARTNER-ID
         if($accessToken) {
-            $headers['Authorization-Customer'] = 'Bearer ' . $accessToken; //
-        } 
-        // Khusus Apply Token (yang tidak punya accessToken tapi pakai header SNAP lain)
-        else {
-             $headers['X-CLIENT-KEY'] = $clientId; // Apply Token butuh ini, Balance Inquiry butuh X-PARTNER-ID
+            // Ini Transaksi (Cek Saldo/Topup)
+            $headers['X-PARTNER-ID'] = $clientId; //
+            $headers['Authorization-Customer'] = 'Bearer ' . $accessToken;
+        } else {
+            // Ini Apply Token
+            $headers['X-CLIENT-KEY'] = $clientId;
         }
 
         $fullUrl = 'https://api.sandbox.dana.id' . $relativePath;
