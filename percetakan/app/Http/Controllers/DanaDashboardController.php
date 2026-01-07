@@ -27,36 +27,36 @@ class DanaDashboardController extends Controller
     // =========================================================================
     public function startBinding()
     {
-        Log::info('[BINDING] Proses Memulai Binding Dimulai...');
+        Log::info('[BINDING] Proses Memulai Binding Dimulai (WEB PORTAL MODE)...');
 
         $clientId    = config('services.dana.client_id');
         $redirectUrl = route('dana.callback'); 
-        $state       = Str::random(16); 
+        $state       = Str::random(16); //
         $timestamp   = Carbon::now('Asia/Jakarta')->toIso8601String();
-
-        Log::info("[BINDING] Client ID: $clientId");
-        Log::info("[BINDING] Redirect URL: $redirectUrl");
 
         // Parameter Binding
         $queryParams = [
-            'partnerId'     => $clientId,
-            'timestamp'     => $timestamp,
-            'externalId'    => 'USER-' . time(),
-            'channelId'     => '95221', 
-            'merchantId'    => config('services.dana.merchant_id'),
-            'redirectUrl'   => $redirectUrl,
-            'state'         => $state,
-            'scopes'        => 'DEFAULT_BASIC_PROFILE,QUERY_BALANCE,MINI_DANA',
+            'partnerId'     => $clientId, //
+            'timestamp'     => $timestamp, //
+            'externalId'    => 'USER-' . time(), //
+            'channelId'     => '95221', //
+            'merchantId'    => config('services.dana.merchant_id'), //
+            'redirectUrl'   => $redirectUrl, //
+            'state'         => $state, //
+            // Sederhanakan Scope dulu agar tidak error permission
+            'scopes'        => 'DEFAULT_BASIC_PROFILE,QUERY_BALANCE,MINI_DANA', 
             'allowRegistration' => 'true'
         ];
 
-        // URL Portal Sandbox
+        // [SOLUSI UTAMA]
+        // Jangan pakai /n/link/binding (Itu untuk Mobile App Deep Link)
+        // Gunakan /d/portal/oauth (Ini untuk Web Portal)
         $baseUrl = 'https://m.sandbox.dana.id/d/portal/oauth'; 
+        
         $fullUrl = $baseUrl . '?' . http_build_query($queryParams);
 
-        Log::info("[BINDING] Generated Full URL: " . $fullUrl);
-        Log::info('[BINDING] Redirecting User ke DANA...');
-
+        Log::info("[BINDING] Generated WEB URL: " . $fullUrl);
+        
         return redirect($fullUrl);
     }
 

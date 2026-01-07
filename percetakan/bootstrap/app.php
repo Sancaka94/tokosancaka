@@ -20,6 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'dana/notify', // Whitelist route ini
             'dana/pay',
             'dana/return',
+            'dana/*', // Tambahkan ini
             //'tripay/callback',        // Callback Tripay (Jika ada)
             //'doku/notify',            // Callback Doku (Jika ada)
             //'api/*',                  // Opsional: Membuka semua route API dari CSRF

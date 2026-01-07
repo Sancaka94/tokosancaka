@@ -19,7 +19,8 @@ Route::get('/dana/dashboard', [DanaDashboardController::class, 'index'])->name('
 
 // Proses-proses
 Route::post('/dana/bind', [DanaDashboardController::class, 'startBinding'])->name('dana.do_bind');
-Route::get('/dana/callback', [DanaDashboardController::class, 'handleCallback'])->name('dana.callback'); // Wajib set ini di Dashboard DANA
+// Ganti baris callback yang lama dengan ini:
+Route::match(['get', 'post'], '/dana/callback', [App\Http\Controllers\DanaDashboardController::class, 'handleCallback'])->name('dana.callback');
 Route::post('/dana/check-balance', [DanaDashboardController::class, 'checkBalance'])->name('dana.check_balance');
 Route::post('/dana/topup', [DanaDashboardController::class, 'topupSaldo'])->name('dana.topup');
 
