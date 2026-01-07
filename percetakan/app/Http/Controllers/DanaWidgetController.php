@@ -25,103 +25,114 @@ class DanaWidgetController extends Controller
      */
     public function createPayment(Request $request)
     {
-        // 1. Setup Data
-        $amountInput = $request->input('amount', '10000.00');
-        $orderId     = 'INV-' . time();
-        $returnUrl   = route('dana.return');
-        // Format Waktu Wajib: +07:00
-        $expiryTime  = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP');
+        // KITA "FORCE" LOG AGAR KELIHATAN SEMUA DI POSTMAN
+        try {
+            // 1. Generate ID Unik (Biar tidak kena error duplikat transaksi)
+            $orderId     = 'TEST-' . time(); // Pake prefix TEST biar jelas
+            $returnUrl   = route('dana.return');
+            $expiryTime  = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP');
 
-        // 2. Body Sesuai SAMPLE REQUEST (Agar tidak 400 Invalid Format)
-        $bodyArray = [
-            "partnerReferenceNo" => $orderId,
-            "merchantId" => config('services.dana.merchant_id'),
-            "amount" => [
-                "value" => $amountInput,
-                "currency" => "IDR"
-            ],
-            "validUpTo" => $expiryTime,
-            "urlParams" => [
-                [
-                    "url" => $returnUrl,
-                    "type" => "PAY_RETURN",
-                    "isDeeplink" => "Y" // Wajib Y sesuai sample
+            // 2. BODY INI 100% COPY-PASTE DARI DOKUMEN GAPURA (REQUEST SAMPLE)
+            // Hanya kita ganti ID Merchant & Nominal agar valid di akun Anda.
+            $bodyArray = [
+                "partnerReferenceNo" => $orderId,
+                "merchantId" => config('services.dana.merchant_id'), // Pakai ID asli Anda
+                "amount" => [
+                    "value" => "10000.00", // Hardcode string biar aman
+                    "currency" => "IDR"
                 ],
-                [
-                    "url" => $returnUrl,
-                    "type" => "NOTIFICATION",
-                    "isDeeplink" => "Y"
-                ]
-            ],
-            "additionalInfo" => [
-                // Wajib ada MCC agar tidak 400
-                "mcc" => "5732", 
-                
-                "order" => [
-                    "orderTitle" => "Invoice " . $orderId,
-                    // [SOLUSI 500] Kembalikan ke "type" sesuai sample, jangan "01"
-                    "merchantTransType" => "type", 
-                    "scenario" => "REDIRECT",
-                    "goods" => [
-                        [
-                            "description" => "Item Digital",
-                            "price" => [
-                                "value" => $amountInput,
-                                "currency" => "IDR"
-                            ],
-                            "quantity" => "1",
-                            "unit" => "pcs",
-                            "merchantGoodsId" => "ITEM-001",
-                            "category" => "digital"
-                        ]
+                "validUpTo" => $expiryTime,
+                "urlParams" => [
+                    [
+                        "url" => $returnUrl,
+                        "type" => "PAY_RETURN",
+                        "isDeeplink" => "Y"
+                    ],
+                    [
+                        "url" => $returnUrl,
+                        "type" => "NOTIFICATION",
+                        "isDeeplink" => "Y"
                     ]
                 ],
-                "envInfo" => [
-                    "sourcePlatform" => "IPG",
-                    "terminalType" => "SYSTEM",
-                    "orderTerminalType" => "WEB",
-                    "websiteLanguage" => "id_ID",
-                    // Gunakan IP dummy yang aman
-                    "clientIp" => "127.0.0.1", 
+                // BAGIAN INI SANGAT KRUSIAL MENURUT DOKUMEN
+                "additionalInfo" => [
+                    "mcc" => "5732", // Kode Toko Elektronik (Default Sample)
+                    "order" => [
+                        "merchantTransType" => "type", // JANGAN UBAH (Sesuai Sample)
+                        "orderTitle" => "Payment Gateway Order",
+                        "scenario" => "REDIRECT",
+                        "goods" => [
+                            [
+                                "unit" => "Kg",
+                                "category" => "travelling/subway",
+                                "price" => [
+                                    "value" => "10000.00",
+                                    "currency" => "IDR"
+                                ],
+                                "merchantShippingId" => "SHIP-001",
+                                "merchantGoodsId" => "GOODS-001",
+                                "description" => "Test Item Description",
+                                "snapshotUrl" => "http://snap.url.com",
+                                "quantity" => "1",
+                                "extendInfo" => ""
+                            ]
+                        ]
+                    ],
+                    "envInfo" => [
+                        "sourcePlatform" => "IPG",
+                        "orderOsType" => "IOS", // Ikuti sample
+                        "merchantAppVersion" => "1.0",
+                        "terminalType" => "SYSTEM",
+                        "orderTerminalType" => "WEB",
+                        // Kita coba inject parameter debug jika didukung
+                        "extendInfo" => "{\"deviceId\":\"test-device-id\"}"
+                    ]
                 ]
-            ]
-        ];
+            ];
 
-        $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-        
-        // 3. Setup Request
-        $method = 'POST';
-        $relativePath = '/payment-gateway/v1.0/debit/payment-host-to-host.htm'; 
-        $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String();
+            $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            
+            // Endpoint Wajib Gapura
+            $method = 'POST';
+            $relativePath = '/payment-gateway/v1.0/debit/payment-host-to-host.htm'; 
+            $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String();
 
-        try {
+            // Signature
             $signature = $this->danaSignature->generateSignature($method, $relativePath, $jsonBody, $timestamp);
-        } catch (\Exception $e) {
-            return response()->json(['error' => 'Signature Error'], 500);
-        }
+            
+            $fullUrl = 'https://api.sandbox.dana.id' . $relativePath;
+            $externalId = \Illuminate\Support\Str::random(32);
 
-        $fullUrl = 'https://api.sandbox.dana.id' . $relativePath;
-        $externalId = \Illuminate\Support\Str::random(32);
-
-        try {
+            // 3. KIRIM REQUEST (HEADER SESUAI DOKUMEN)
             $response = \Illuminate\Support\Facades\Http::withHeaders([
                 'X-PARTNER-ID' => config('services.dana.client_id'),
                 'X-EXTERNAL-ID' => $externalId,
                 'X-TIMESTAMP'  => $timestamp,
                 'X-SIGNATURE'  => $signature,
                 'Content-Type' => 'application/json',
-                
-                // Gunakan ID 5 digit (Lolos Validasi)
+                // PENTING: Dokumen minta '95221' (Angka), bukan text.
                 'CHANNEL-ID'   => '95221', 
             ])
             ->withBody($jsonBody, 'application/json')
             ->post($fullUrl);
 
-            // Return hasil JSON ke Postman
-            return response()->json($response->json());
+            // 4. BALIKAN APA ADANYA KE ANDA (RAW JSON)
+            // Biar kita lihat error message aslinya.
+            return response()->json([
+                'status_sent' => $response->status(),
+                'headers_sent' => [
+                    'channel_id' => '95221',
+                    'timestamp' => $timestamp
+                ],
+                'body_sent' => $bodyArray,
+                'dana_response' => $response->json()
+            ], $response->status());
 
         } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+            return response()->json([
+                'CRITICAL_ERROR' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ], 500);
         }
     }
 
