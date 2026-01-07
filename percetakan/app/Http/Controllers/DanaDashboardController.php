@@ -226,14 +226,16 @@ class DanaDashboardController extends Controller
         'X-SIGNATURE'   => $signature,
         'X-PARTNER-ID'  => (string) $clientId,
         'X-EXTERNAL-ID' => (string) time() . rand(100, 999),
-        'CHANNEL-ID'    => '95221',
+        'CHANNEL-ID'    => '95221', //
         'ORIGIN'        => 'tokosancaka.com',
+        
+        // [TAMBAHKAN INI] Sesuai permintaan error dan dokumentasi
+        'X-DEVICE-ID'   => 'DEVICE-' . md5($clientId), // ID Perangkat unik
+        'X-IP-ADDRESS'  => request()->ip() ?? '127.0.0.1', // IP pengirim
     ];
 
-    // [KUNCI PERBAIKAN]
-    // Dokumentasi .htm mewajibkan "Authorization-Customer" (dengan tanda hubung)
-    // bukan "Authorization" biasa.
     if ($accessToken) {
+        // Gunakan header khusus untuk endpoint .htm
         $headers['Authorization-Customer'] = 'Bearer ' . $accessToken;
     }
 
