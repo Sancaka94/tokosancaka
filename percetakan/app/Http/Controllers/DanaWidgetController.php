@@ -25,25 +25,27 @@ class DanaWidgetController extends Controller
      */
     public function createPayment(Request $request)
     {
-        Log::info('========== DANA WIDGET PAYMENT START (TRYING ALTERNATIVE ENDPOINT) ==========');
+        Log::info('========== DANA WIDGET PAYMENT START (FINAL FIX) ==========');
 
         $orderId = 'INV-' . time();
         $amount  = '10000.00'; 
         $returnUrl = route('dana.return');
 
-        // Setup Array Body (Tetap pertahankan merchantId)
+        // 1. Setup Body: GABUNGAN Endpoint Widget + MerchantID + OptionDetails
         $bodyArray = [
-            "merchantId" => config('services.dana.merchant_id'), // Wajib
+            // WAJIB ADA: Merchant ID (Dari Dashboard: 2166...)
+            "merchantId" => config('services.dana.merchant_id'), 
+            
             "partnerReferenceNo" => $orderId,
             "amount" => [
                 "value" => $amount,
                 "currency" => "IDR"
             ],
-            // [OPSIONAL] Coba kita hapus payOptionDetails agar DANA yang menentukan defaultnya
-            // "payOptionDetails" => [
-            //    "payMethod" => "DANA_WALLET",
-            //    "transType" => "PAGE",
-            // ],
+            // WAJIB ADA untuk Widget: Memberi tahu DANA untuk menampilkan halaman bayar
+            "payOptionDetails" => [
+                "payMethod" => "DANA_WALLET",
+                "transType" => "PAGE",
+            ],
             "additionalInfo" => [
                 "origin" => "IS_WIDGET"
             ],
@@ -53,15 +55,16 @@ class DanaWidgetController extends Controller
             ]
         ];
 
+        // Encode JSON (Anti-Slash Escape)
         $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         Log::info('Request Body: ' . $jsonBody);
 
         $method = 'POST';
         
-        // --- [UBAH BAGIAN INI] ---
-        // SUMBER: Screenshot image_985be7.png (Swagger)
-        $relativePath = '/payment-gateway/v1.0/debit/payment-host-to-host.htm'; 
-        // -------------------------
+        // --- KEMBALI KE ENDPOINT WIDGET (Sesuai Dokumen image_985920.png) ---
+        // Endpoint ini yang paling cocok untuk "IS_WIDGET"
+        $relativePath = '/rest/redirection/v1.0/debit/payment-host-to-host'; 
+        // ---------------------------------------------------------------------
 
         $timestamp = Carbon::now()->toIso8601String();
 
@@ -74,10 +77,9 @@ class DanaWidgetController extends Controller
         $fullUrl = config('services.dana.base_url') . $relativePath;
         $externalId = Str::random(32);
 
-        Log::info('Hitting Endpoint: ' . $fullUrl);
-
         try {
-            // [FIX PENTING] Kirim sebagai "Body Raw" (String), jangan biarkan Http Client meng-encode ulang
+            Log::info('Hitting Endpoint: ' . $fullUrl);
+            
             $response = Http::withHeaders([
                 'X-PARTNER-ID' => config('services.dana.client_id'),
                 'X-EXTERNAL-ID' => $externalId,
@@ -86,18 +88,23 @@ class DanaWidgetController extends Controller
                 'Content-Type' => 'application/json',
                 'CHANNEL-ID'   => 'MOBILE_WEB', 
             ])
-            ->withBody($jsonBody, 'application/json') // Kirim string yang sama persis
+            ->withBody($jsonBody, 'application/json')
             ->post($fullUrl);
 
             Log::info('DANA Response Code: ' . $response->status());
             
             $result = $response->json();
 
-            // Cek sukses (Biasanya 2000000 atau 2005300)
+            // Cek Response Code: 200xxxx (Biasanya 2000000 atau 2005300)
             if (isset($result['responseCode']) && substr($result['responseCode'], 0, 3) == '200') {
                  Log::info('Success! Redirecting user...');
-                 $redirectUrl = $result['webRedirectUrl'] ?? $result['redirectUrl'];
-                 return redirect($redirectUrl);
+                 
+                 // Ambil URL Redirect (Prioritas webRedirectUrl, fallback ke redirectUrl)
+                 $redirectUrl = $result['webRedirectUrl'] ?? $result['redirectUrl'] ?? null;
+                 
+                 if($redirectUrl) {
+                    return redirect($redirectUrl);
+                 }
             }
 
             Log::warning('DANA Failed:', $result);
