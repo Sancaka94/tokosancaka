@@ -62,6 +62,8 @@ Route::get('/dana/test-balance', [DanaWidgetController::class, 'balanceInquiry']
 
 Route::get('/dana/debug-force', [App\Http\Controllers\DanaDashboardController::class, 'debugForce']);
 
+Route::get('/dana/test-key', [App\Http\Controllers\DanaDashboardController.php, 'testKeyData']);
+
 Route::middleware(['auth'])->group(function () {
 });
 
