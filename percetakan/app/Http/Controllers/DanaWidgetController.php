@@ -217,11 +217,13 @@ class DanaWidgetController extends Controller
 
     // [SCENARIO 1] CHECK ACCOUNT VALIDITY (Wajib untuk Checklist Dashboard)
     // Route: /dana/test-inquiry
+    // [SCENARIO 1] CHECK ACCOUNT VALIDITY (REVISI)
     public function disburseAccountInquiry()
     {
-        Log::info('========== DANA ACCOUNT INQUIRY TEST ==========');
+        Log::info('========== DANA ACCOUNT INQUIRY TEST (NO FUND TYPE) ==========');
 
-        $phoneNumber = '6285745808809'; // Ganti dengan No HP Sandbox Anda
+        // REVISI 1: Gunakan format 08... kembali
+        $phoneNumber = '085745808809'; 
         
         $bodyArray = [
             "partnerReferenceNo" => 'INQ-' . time(),
@@ -230,9 +232,11 @@ class DanaWidgetController extends Controller
                 "currency" => "IDR"
             ],
             "customerNumber" => $phoneNumber,
-            "additionalInfo" => [
-                "fundType" => "TRANS_TO_USER"
-            ]
+            
+            // REVISI 2: Hapus additionalInfo/fundType dulu
+            // "additionalInfo" => [
+            //    "fundType" => "TRANS_TO_USER"
+            // ]
         ];
 
         return $this->sendDanaRequest('POST', '/v1.0/emoney/account-inquiry.htm', $bodyArray);
