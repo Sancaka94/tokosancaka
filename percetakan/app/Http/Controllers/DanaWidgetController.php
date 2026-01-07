@@ -25,13 +25,17 @@ class DanaWidgetController extends Controller
      */
     public function createPayment(Request $request)
     {
-        // Default nominal jika tidak ada input
-        $amountInput = $request->input('amount', '10000.00');
+        // 1. Setup Data Dasar
+        // Gunakan input dari Postman jika ada, default 10000
+        $amountInput = $request->input('amount', '10000.00'); 
         $orderId     = 'INV-' . time();
         $returnUrl   = route('dana.return');
+        
+        // Expired 1 Jam
         $expiryTime  = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP');
 
-        // Body Sesuai Sample Request Gapura Hosted Checkout
+        // 2. Body Request "MINIMALIS" (Hanya field Wajib)
+        // Kita buang 'mcc', 'goods', 'clientIp' untuk menghindari Error 500
         $bodyArray = [
             "partnerReferenceNo" => $orderId,
             "merchantId" => config('services.dana.merchant_id'),
@@ -44,49 +48,31 @@ class DanaWidgetController extends Controller
                 [
                     "url" => $returnUrl,
                     "type" => "PAY_RETURN",
-                    "isDeeplink" => "Y"
+                    "isDeeplink" => "N" // Ubah ke N untuk Web biasa (bukan App)
                 ],
                 [
                     "url" => $returnUrl,
                     "type" => "NOTIFICATION",
-                    "isDeeplink" => "Y"
+                    "isDeeplink" => "N"
                 ]
             ],
             "additionalInfo" => [
-                // [FIX 1] Tambahkan MCC (Wajib ada di Sample)
-                "mcc" => "5732", 
-                
                 "order" => [
                     "orderTitle" => "Invoice " . $orderId,
-                    "merchantTransType" => "01",
-                    "scenario" => "REDIRECT",
-                    "goods" => [
-                        [
-                            "description" => "Item Digital",
-                            "price" => [
-                                "value" => $amountInput,
-                                "currency" => "IDR"
-                            ],
-                            "quantity" => "1",
-                            "unit" => "pcs",
-                            "merchantGoodsId" => "ITEM-001",
-                            "category" => "digital"
-                        ]
-                    ]
+                    "merchantTransType" => "01", // Kode standar
+                    "scenario" => "REDIRECT"     // Wajib untuk Hosted Checkout
                 ],
                 "envInfo" => [
                     "sourcePlatform" => "IPG",
                     "terminalType" => "SYSTEM",
-                    "orderTerminalType" => "WEB",
-                    "websiteLanguage" => "id_ID",
-                    // [FIX 2] Tambahkan Client IP (Sesuai Sample)
-                    "clientIp" => "127.0.0.1", 
+                    "orderTerminalType" => "WEB"
                 ]
             ]
         ];
 
         $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         
+        // 3. Setup Request
         $method = 'POST';
         $relativePath = '/payment-gateway/v1.0/debit/payment-host-to-host.htm'; 
         $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String();
@@ -101,6 +87,7 @@ class DanaWidgetController extends Controller
         $externalId = \Illuminate\Support\Str::random(32);
 
         try {
+            // 4. Kirim ke DANA
             $response = \Illuminate\Support\Facades\Http::withHeaders([
                 'X-PARTNER-ID' => config('services.dana.client_id'),
                 'X-EXTERNAL-ID' => $externalId,
@@ -108,14 +95,13 @@ class DanaWidgetController extends Controller
                 'X-SIGNATURE'  => $signature,
                 'Content-Type' => 'application/json',
                 
-                // [FIX 3] Gunakan Angka sesuai Sample (Max 5 digit)
-                // "WEB" mungkin ditolak validator karena bukan numeric ID
+                // Gunakan ID Numeric ini karena terbukti lolos validasi header (bukan 400)
                 'CHANNEL-ID'   => '95221', 
             ])
             ->withBody($jsonBody, 'application/json')
             ->post($fullUrl);
 
-            // Return JSON Mentah ke Postman
+            // Return JSON Asli
             return response()->json($response->json());
 
         } catch (\Exception $e) {
