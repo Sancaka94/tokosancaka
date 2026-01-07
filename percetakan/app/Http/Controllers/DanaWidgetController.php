@@ -25,65 +25,74 @@ class DanaWidgetController extends Controller
      */
     public function createPayment(Request $request)
     {
-        Log::info('========== DANA PAYMENT GATEWAY FIX ==========');
+        Log::info('========== DANA GAPURA PAYMENT START ==========');
 
         $orderId = 'INV-' . time();
         $amount  = '10000.00'; 
         
-        // Pastikan URL return benar (mengarah ke /public jika di hosting)
+        // Pastikan URL return benar (mengarah ke /public jika di hosting cPanel)
         $returnUrl = route('dana.return');
 
-        // 1. Setup Body Sesuai Spesifikasi Swagger Payment Gateway
+        // Waktu Wajib: Jakarta Time (GMT+7)
+        // Dokumen mewajibkan format: YYYY-MM-DDTHH:mm:ss+07:00
+        $expiryTime = Carbon::now('Asia/Jakarta')->addMinutes(60)->toIso8601String();
+
+        // 1. Setup Body Sesuai Dokumen Gapura
         $bodyArray = [
             // Identitas
             "merchantId" => config('services.dana.merchant_id'),
             "partnerReferenceNo" => $orderId,
             
-            // Nominal
             "amount" => [
                 "value" => $amount,
                 "currency" => "IDR"
             ],
             
-            // [WAJIB] Spesifikasi Payment Gateway
-            // Tanpa ini, endpoint /payment-gateway/... akan error 500
-            "orderTerminalType" => "WEB", 
-            
-            // Info Tambahan
-            "additionalInfo" => [
-                "origin" => "IS_WIDGET"
-            ],
+            // [WAJIB BARU] Parameter ini sebelumnya tidak ada, makanya Error 500
+            "validUpTo" => $expiryTime, 
             
             // URL Redirect
             "urlParams" => [
-                "url" => $returnUrl,
-                "type" => "NOTIFICATION"
-            ]
+                [
+                    "url" => $returnUrl,
+                    "type" => "PAY_RETURN", // Sesuai Sample Gapura
+                    "isDeeplink" => "Y"
+                ],
+                [
+                    "url" => $returnUrl,
+                    "type" => "NOTIFICATION",
+                    "isDeeplink" => "Y"
+                ]
+            ],
             
-            // [CATATAN PENTING]
-            // Jangan sertakan "payOptionDetails" dulu.
-            // Memasukkan value yang salah (misal: DANA_WALLET) akan bikin Crash 500.
-            // Biarkan kosong agar DANA menampilkan halaman kasir standar.
+            // Info Tambahan (Sesuai Sample Gapura Hosted Checkout)
+            "additionalInfo" => [
+                "envInfo" => [
+                    "sourcePlatform" => "IPG",
+                    "orderTerminalType" => "WEB" // Wajib ada di sini
+                ]
+            ]
         ];
 
-        // Encode JSON
         $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         Log::info('Request Body: ' . $jsonBody);
 
         $method = 'POST';
         
-        // Endpoint Swagger
+        // ENDPOINT GAPURA
+        // Perhatikan ada .htm di belakangnya
         $relativePath = '/payment-gateway/v1.0/debit/payment-host-to-host.htm'; 
         
-        $timestamp = Carbon::now()->toIso8601String();
+        $timestamp = Carbon::now('Asia/Jakarta')->toIso8601String();
 
         try {
+            // Generate Signature
             $signature = $this->danaSignature->generateSignature($method, $relativePath, $jsonBody, $timestamp);
         } catch (\Exception $e) {
             return response()->json(['error' => 'Signature Error: ' . $e->getMessage()], 500);
         }
 
-        // Gunakan HTTPS
+        // URL Sandbox
         $fullUrl = 'https://api.sandbox.dana.id' . $relativePath;
         $externalId = Str::random(32);
 
@@ -96,7 +105,7 @@ class DanaWidgetController extends Controller
                 'X-TIMESTAMP'  => $timestamp,
                 'X-SIGNATURE'  => $signature,
                 'Content-Type' => 'application/json',
-                'CHANNEL-ID'   => 'MOBILE_WEB', 
+                'CHANNEL-ID'   => 'MOBILE_WEB', //
             ])
             ->withBody($jsonBody, 'application/json')
             ->post($fullUrl);
@@ -105,19 +114,20 @@ class DanaWidgetController extends Controller
             
             $result = $response->json();
 
-            // Cek Response Code (Bisa 2000000 atau 200xxxx)
-            if (isset($result['responseCode']) && substr($result['responseCode'], 0, 3) == '200') {
+            // Cek Response Code
+            // Sukses = 2005400
+            if (isset($result['responseCode']) && $result['responseCode'] == '2005400') {
                  Log::info('Success! Redirecting user...');
                  
                  // Ambil URL Redirect
-                 $redirectUrl = $result['webRedirectUrl'] ?? $result['redirectUrl'] ?? null;
+                 $redirectUrl = $result['webRedirectUrl'] ?? null;
                  
                  if($redirectUrl) {
                     return redirect($redirectUrl);
                  }
             }
 
-            // Jika gagal, return JSON agar terbaca di browser
+            // Jika gagal, log dan tampilkan
             Log::warning('DANA Failed:', $result);
             return response()->json($result);
 
