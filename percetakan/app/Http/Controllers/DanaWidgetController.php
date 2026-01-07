@@ -25,21 +25,20 @@ class DanaWidgetController extends Controller
      */
     public function createPayment(Request $request)
     {
-        Log::info('========== DANA GAPURA PAYMENT (HEADER FIX) ==========');
-
-        $orderId = 'INV-' . time();
-        $amount  = '10000.00'; 
-        $returnUrl = route('dana.return');
+        // 1. Ambil data dari Postman (atau pakai default)
+        $amountInput = $request->input('amount', '10000.00'); // Default 10.000
+        $orderId     = 'INV-' . time();
+        $returnUrl   = route('dana.return');
         
-        // Waktu Expired: 1 Jam dari sekarang
-        $expiryTime = Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP');
+        // Waktu Expired: 1 Jam
+        $expiryTime = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP');
 
-        // Setup Body
+        // 2. Susun Body JSON (Strict Gapura Hosted Checkout)
         $bodyArray = [
             "partnerReferenceNo" => $orderId,
             "merchantId" => config('services.dana.merchant_id'),
             "amount" => [
-                "value" => $amount,
+                "value" => $amountInput,
                 "currency" => "IDR"
             ],
             "validUpTo" => $expiryTime, 
@@ -58,13 +57,13 @@ class DanaWidgetController extends Controller
             "additionalInfo" => [
                 "order" => [
                     "orderTitle" => "Invoice " . $orderId,
-                    "merchantTransType" => "01", // "01" biasanya kode standar untuk Sales/Transaksi
+                    "merchantTransType" => "01",
                     "scenario" => "REDIRECT",
                     "goods" => [
                         [
                             "description" => "Item Digital",
                             "price" => [
-                                "value" => $amount,
+                                "value" => $amountInput,
                                 "currency" => "IDR"
                             ],
                             "quantity" => "1",
@@ -78,57 +77,43 @@ class DanaWidgetController extends Controller
                     "sourcePlatform" => "IPG",
                     "terminalType" => "SYSTEM",
                     "orderTerminalType" => "WEB",
-                    "websiteLanguage" => "id_ID"
+                    "clientIp" => "127.0.0.1" // Dummy IP, aman untuk Sandbox
                 ]
             ]
         ];
 
         $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-        Log::info('Request Body: ' . $jsonBody);
-
+        
+        // Setup Signature & URL
         $method = 'POST';
         $relativePath = '/payment-gateway/v1.0/debit/payment-host-to-host.htm'; 
-        $timestamp = Carbon::now('Asia/Jakarta')->toIso8601String();
+        $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String();
 
         try {
             $signature = $this->danaSignature->generateSignature($method, $relativePath, $jsonBody, $timestamp);
         } catch (\Exception $e) {
-            return response()->json(['error' => 'Signature Error'], 500);
+            return response()->json(['error' => 'Signature Error: ' . $e->getMessage()], 500);
         }
 
         $fullUrl = 'https://api.sandbox.dana.id' . $relativePath;
-        $externalId = Str::random(32);
+        $externalId = \Illuminate\Support\Str::random(32);
 
         try {
-            Log::info('Hitting Endpoint: ' . $fullUrl);
-            
-            $response = Http::withHeaders([
+            // Kirim ke DANA
+            $response = \Illuminate\Support\Facades\Http::withHeaders([
                 'X-PARTNER-ID' => config('services.dana.client_id'),
                 'X-EXTERNAL-ID' => $externalId,
                 'X-TIMESTAMP'  => $timestamp,
                 'X-SIGNATURE'  => $signature,
                 'Content-Type' => 'application/json',
-                
-                // [PERBAIKAN UTAMA]
-                // Sebelumnya 'MOBILE_WEB' (10 chars) -> Ditolak (Max 5 chars)
-                // Sekarang 'WEB' (3 chars) -> Diterima
+                // [PENTING] Menggunakan 'WEB' agar lolos validasi (Max 5 chars)
                 'CHANNEL-ID'   => 'WEB', 
             ])
             ->withBody($jsonBody, 'application/json')
             ->post($fullUrl);
 
-            Log::info('DANA Response:', $response->json());
-            
-            $result = $response->json();
-
-            // Cek Response Code 2005400
-            if (isset($result['responseCode']) && $result['responseCode'] == '2005400') {
-                 Log::info('Success! Redirecting user...');
-                 $redirectUrl = $result['webRedirectUrl'] ?? null;
-                 if($redirectUrl) return redirect($redirectUrl);
-            }
-
-            return response()->json($result);
+            // [PENTING] Return JSON Mentah ke Postman untuk dicek
+            return response()->json($response->json());
 
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
