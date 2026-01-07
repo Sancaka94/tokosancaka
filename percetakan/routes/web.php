@@ -10,47 +10,68 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\AffiliateController;
 use App\Http\Controllers\CouponController;
 use App\Http\Controllers\MemberAuthController;
+use Illuminate\Support\Facades\Artisan;
 
 Route::get('/test-dana-keys', function () {
-    // Ambil path dari config
-    $privateKeyPath = config('services.dana.private_key_path'); // sesuaikan dengan config services.php Anda
-    $publicKeyPath  = config('services.dana.public_key_path');  // sesuaikan dengan config services.php Anda
-
-    echo "<h1>DANA Key Check</h1>";
-
-    // 1. Cek Private Key (Milik Anda)
-    echo "Checking Private Key at: <code>storage/app/$privateKeyPath</code>... <br>";
-    if (Storage::exists($privateKeyPath)) {
-        $privContent = Storage::get($privateKeyPath);
-        $privResource = openssl_pkey_get_private($privContent);
-        
-        if ($privResource) {
-            echo "<span style='color:green'><strong>[OK]</strong> Private Key valid dan bisa dibaca OpenSSL.</span><br>";
-        } else {
-            echo "<span style='color:red'><strong>[ERROR]</strong> File ada, tapi format Key INVALID. Cek copy-paste Anda.</span><br>";
-            echo "OpenSSL Error: " . openssl_error_string() . "<br>";
-        }
-    } else {
-        echo "<span style='color:red'><strong>[ERROR]</strong> File Private Key TIDAK DITEMUKAN.</span><br>";
+    // 1. Bersihkan Cache Config (Penting)
+    try {
+        Artisan::call('config:clear');
+        echo "✅ Config Cache Cleared.<br><hr>";
+    } catch (\Exception $e) {
+        echo "⚠️ Gagal clear config: " . $e->getMessage() . "<br><hr>";
     }
 
-    echo "<hr>";
+    echo "<h1>🔍 DANA Key Debugger (Absolute Path Mode)</h1>";
 
-    // 2. Cek Public Key (Milik DANA)
-    echo "Checking DANA Public Key at: <code>storage/app/$publicKeyPath</code>... <br>";
-    if (Storage::exists($publicKeyPath)) {
-        $pubContent = Storage::get($publicKeyPath);
-        $pubResource = openssl_pkey_get_public($pubContent);
-        
-        if ($pubResource) {
-            echo "<span style='color:green'><strong>[OK]</strong> Public Key DANA valid dan bisa dibaca OpenSSL.</span><br>";
-        } else {
-            echo "<span style='color:red'><strong>[ERROR]</strong> File ada, tapi format Key INVALID. Pastikan header -----BEGIN PUBLIC KEY----- ada.</span><br>";
-            echo "OpenSSL Error: " . openssl_error_string() . "<br>";
+    // Ambil path langsung dari config
+    $privateKeyPath = config('services.dana.private_key_path'); 
+    $publicKeyPath  = config('services.dana.public_key_path');
+
+    // Fungsi Pengecekan Native PHP (Tanpa Storage Facade)
+    $checkFile = function($label, $fullPath) {
+        echo "<h3>Checking $label</h3>";
+        echo "🔹 Target Path: <code>$fullPath</code><br>";
+
+        // Cek apakah string path kosong
+        if (empty($fullPath)) {
+            echo "❌ <span style='color:red'><strong>ERROR:</strong> Path kosong di .env atau config.</span><br><hr>";
+            return;
         }
-    } else {
-        echo "<span style='color:red'><strong>[ERROR]</strong> File Public Key TIDAK DITEMUKAN.</span><br>";
-    }
+
+        // Cek keberadaan file menggunakan native PHP
+        if (file_exists($fullPath)) {
+            echo "✅ <strong>File Ditemukan!</strong><br>";
+            
+            // Cek izin baca
+            if (is_readable($fullPath)) {
+                $content = file_get_contents($fullPath);
+                
+                // Cek validitas Key dengan OpenSSL
+                if (strpos($label, 'Private') !== false) {
+                    $res = openssl_pkey_get_private($content);
+                } else {
+                    $res = openssl_pkey_get_public($content);
+                }
+
+                if ($res) {
+                    echo "✅ <span style='color:green; font-weight:bold'>[VALID] Format Key Benar & Bisa Dibaca.</span><br>";
+                } else {
+                    echo "❌ <span style='color:red'><strong>INVALID:</strong> File ada, tapi format isinya salah (bukan Key yang valid).</span><br>";
+                    echo "OpenSSL Error: " . openssl_error_string() . "<br>";
+                }
+            } else {
+                echo "❌ <span style='color:red'><strong>PERMISSION DENIED:</strong> File ada, tapi PHP tidak boleh membacanya.</span><br>";
+                echo "Solusi: Jalankan <code>chmod 644 $fullPath</code><br>";
+            }
+        } else {
+            echo "❌ <span style='color:red'><strong>FILE NOT FOUND:</strong> File tidak ditemukan di lokasi tersebut.</span><br>";
+            echo "Pastikan path di .env benar-benar akurat.<br>";
+        }
+        echo "<hr>";
+    };
+
+    $checkFile("Private Key (Milik Toko)", $privateKeyPath);
+    $checkFile("Public Key (Milik DANA)", $publicKeyPath);
 });
 
 
