@@ -191,11 +191,12 @@ class DanaDashboardController extends Controller
 
         // [SESUAI DOKUMENTASI]
         // Access Token Wajib ada di dalam additionalInfo
+        // [SESUAI REQUEST SAMPLE]
         $body = [
-            "partnerReferenceNo" => 'BAL-' . time(),
-            "balanceTypes"       => ["BALANCE"],
+            "partnerReferenceNo" => 'BAL-' . time(), //
+            "balanceTypes"       => ["BALANCE"],     //
             "additionalInfo"     => [
-                "accessToken" => $accessToken 
+                "accessToken" => $accessToken        //
             ]
         ];
 
@@ -213,7 +214,7 @@ class DanaDashboardController extends Controller
     }
 
     // =========================================================================
-    // HELPER: SEND REQUEST (STANDARD V1.0 SIGNATURE)
+    // HELPER: SEND REQUEST (SMART SIGNATURE SWITCHING)
     // =========================================================================
     private function sendRequest($method, $relativePath, $bodyArray, $accessToken = null)
     {
@@ -223,16 +224,16 @@ class DanaDashboardController extends Controller
         $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String();
         $clientId  = config('services.dana.client_id');
         
-        // 1. TENTUKAN LOGIKA SIGNATURE
+        // 1. TENTUKAN RUMUS SIGNATURE
         if ($accessToken) {
-            // [LOGIKA TRANSAKSI (Cek Saldo / Topup)]
-            // Endpoint .htm biasanya pakai format ini:
-            // Method + ":" + Path + ":" + Timestamp + ":" + Body
+            // [RUMUS TRANSAKSI - BALANCE INQUIRY/TOPUP]
+            // Format: Method + ":" + Path + ":" + Timestamp + ":" + Body
+            // Ini standar untuk endpoint .htm yang butuh Authorization
             $stringToSign = $method . ":" . $relativePath . ":" . $timestamp . ":" . $jsonBody;
         } else {
-            // [LOGIKA APPLY TOKEN]
-            // Khusus Apply Token SNAP, formatnya beda (Pemisah | dan cuma ID+Time)
-            // ClientID + "|" + Timestamp
+            // [RUMUS APPLY TOKEN - SNAP]
+            // Format: ClientID + "|" + Timestamp
+            // Ini khusus saat menukar Auth Code (belum punya token)
             $stringToSign = $clientId . "|" . $timestamp;
         }
 
@@ -242,36 +243,39 @@ class DanaDashboardController extends Controller
         $signature = '';
         try {
             $rawKey = config('services.dana.private_key');
+            // Bersihkan key
             $cleanKey = str_replace(["-----BEGIN PRIVATE KEY-----", "-----END PRIVATE KEY-----", "\r", "\n", " "], "", $rawKey);
             $formattedKey = "-----BEGIN PRIVATE KEY-----\n" . wordwrap($cleanKey, 64, "\n", true) . "\n-----END PRIVATE KEY-----";
             
             $binarySignature = '';
+            // Selalu SHA256withRSA
             if(!openssl_sign($stringToSign, $binarySignature, $formattedKey, OPENSSL_ALGO_SHA256)) {
                 throw new \Exception("OpenSSL Sign Failed");
             }
             $signature = base64_encode($binarySignature);
         } catch (\Exception $e) {
-            return ['error' => 'Signature Error: ' . $e->getMessage()];
+            Log::error("SIGNATURE ERROR: " . $e->getMessage());
+            return ['error' => 'Signature Error'];
         }
 
-        // 3. HEADERS
+        // 3. SIAPKAN HEADERS DASAR
         $headers = [
-            'Content-Type'  => 'application/json',
-            'X-TIMESTAMP'   => $timestamp,
-            'X-SIGNATURE'   => $signature,
-            'CHANNEL-ID'    => '95221', 
+            'Content-Type'  => 'application/json', //
+            'X-TIMESTAMP'   => $timestamp,         //
+            'X-SIGNATURE'   => $signature,         //
+            'CHANNEL-ID'    => '95221',            //
         ];
 
-        // LOGIKA HEADER PENTING
+        // 4. LOGIKA HEADER KHUSUS
         if($accessToken) {
-            // Header Transaksi V1.0
-            $headers['X-PARTNER-ID'] = $clientId; 
-            $headers['X-EXTERNAL-ID'] = \Illuminate\Support\Str::random(32);
-            $headers['X-DEVICE-ID'] = 'DEVICE-' . time();
-            $headers['Authorization-Customer'] = 'Bearer ' . $accessToken;
+            // Jika Balance Inquiry / Topup (Punya Token)
+            $headers['X-PARTNER-ID'] = $clientId; //
+            $headers['X-EXTERNAL-ID'] = \Illuminate\Support\Str::random(32); //
+            $headers['X-DEVICE-ID'] = 'DEVICE-' . time(); //
+            $headers['Authorization-Customer'] = 'Bearer ' . $accessToken; //
         } else {
-            // Header Apply Token SNAP
-            $headers['X-CLIENT-KEY'] = $clientId;
+            // Jika Apply Token (Belum Punya Token)
+            $headers['X-CLIENT-KEY'] = $clientId; // Apply Token pakai X-CLIENT-KEY
         }
 
         $fullUrl = 'https://api.sandbox.dana.id' . $relativePath;
@@ -288,6 +292,7 @@ class DanaDashboardController extends Controller
 
             return $response->json();
         } catch (\Exception $e) {
+            Log::error("HTTP ERROR: " . $e->getMessage());
             return ['error' => $e->getMessage()];
         }
     }
