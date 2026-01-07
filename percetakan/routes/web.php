@@ -11,6 +11,13 @@ use App\Http\Controllers\AffiliateController;
 use App\Http\Controllers\CouponController;
 use App\Http\Controllers\MemberAuthController;
 use Illuminate\Support\Facades\Artisan;
+use App\Http\Controllers\DanaWidgetController;
+
+// Route untuk memicu pembayaran (tombol "Bayar Sekarang")
+Route::get('/dana/pay', [DanaWidgetController::class, 'createPayment'])->name('dana.pay');
+
+// Route untuk halaman Return (Settingan urlParams.url)
+Route::get('/dana/return', [DanaWidgetController::class, 'returnPage'])->name('dana.return');
 
 Route::get('/test-dana-keys', function () {
     // 1. Bersihkan Cache Config (Penting)
