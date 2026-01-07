@@ -252,7 +252,7 @@ class DanaWidgetController extends Controller
         $scenario = 'SUCCESS'; 
 
         // 1. SET NOMOR HP (Gunakan Magic Number Sandbox)
-        $phoneNumber = '085745808809'; 
+        $phoneNumber = '08123456789'; 
 
         // 2. SET ORDER ID & AMOUNT SESUAI SKENARIO
         if ($scenario == 'SUCCESS') {
