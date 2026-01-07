@@ -162,4 +162,52 @@ class DanaWidgetController extends Controller
         return "<h1>Status Pembayaran: $status</h1><p>Order ID: $orderId</p>
                 <br><a href='".route('dana.status', $orderId)."'>Cek Status Detail via API</a>";
     }
+
+    public function handleNotify(Request $request)
+    {
+        Log::info('========== DANA WEBHOOK INCOMING ==========');
+        Log::info('Headers:', $request->headers->all());
+        Log::info('Body:', $request->all());
+
+        // 1. Ambil Data Penting dari Body
+        $orderId = $request->input('originalPartnerReferenceNo'); // Order ID kita (misal: INV-1767...)
+        $status  = $request->input('latestTransactionStatus');    // 00 = Success, 05 = Cancel
+        $amount  = $request->input('amount.value');               // Nominal
+
+        // 2. Cek Signature (Opsional tapi disarankan untuk Production)
+        // Di Sandbox, kita bisa skip dulu atau log saja.
+        $incomingSignature = $request->header('X-SIGNATURE');
+        
+        // 3. Update Status di Database Anda
+        // Logika sederhana:
+        if ($status == '00') {
+            Log::info("Order $orderId BERHASIL dibayar (Rp $amount).");
+            
+            // TODO: Update database Anda di sini
+            // $order = Order::where('invoice_number', $orderId)->first();
+            // if ($order) {
+            //     $order->status = 'PAID';
+            //     $order->save();
+            // }
+
+        } elseif ($status == '05') {
+            Log::warning("Order $orderId DIBATALKAN/EXPIRED.");
+            
+            // TODO: Update database jadi Cancelled
+            // $order->status = 'CANCELLED';
+            // $order->save();
+        } else {
+            Log::warning("Status Transaksi Lainnya: $status");
+        }
+
+        // 4. Return Response Wajib DANA
+        // Kode 2005600 artinya kita sukses menerima notifikasi
+        return response()->json([
+            'responseCode' => '2005600',
+            'responseMessage' => 'Successful'
+        ])->withHeaders([
+            // DANA kadang mewajibkan timestamp di header response
+            'X-TIMESTAMP' => \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String()
+        ]);
+    }
 }

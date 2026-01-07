@@ -24,67 +24,7 @@ Route::get('/dana/return', [DanaWidgetController::class, 'returnPage'])->name('d
 // 3. Cek Status Manual (Baru)
 Route::get('/dana/status/{orderId}', [DanaWidgetController::class, 'checkStatus'])->name('dana.status');
 
-Route::get('/test-dana-keys', function () {
-    // 1. Bersihkan Cache Config (Penting)
-    try {
-        Artisan::call('config:clear');
-        echo "✅ Config Cache Cleared.<br><hr>";
-    } catch (\Exception $e) {
-        echo "⚠️ Gagal clear config: " . $e->getMessage() . "<br><hr>";
-    }
-
-    echo "<h1>🔍 DANA Key Debugger (Absolute Path Mode)</h1>";
-
-    // Ambil path langsung dari config
-    $privateKeyPath = config('services.dana.private_key_path'); 
-    $publicKeyPath  = config('services.dana.public_key_path');
-
-    // Fungsi Pengecekan Native PHP (Tanpa Storage Facade)
-    $checkFile = function($label, $fullPath) {
-        echo "<h3>Checking $label</h3>";
-        echo "🔹 Target Path: <code>$fullPath</code><br>";
-
-        // Cek apakah string path kosong
-        if (empty($fullPath)) {
-            echo "❌ <span style='color:red'><strong>ERROR:</strong> Path kosong di .env atau config.</span><br><hr>";
-            return;
-        }
-
-        // Cek keberadaan file menggunakan native PHP
-        if (file_exists($fullPath)) {
-            echo "✅ <strong>File Ditemukan!</strong><br>";
-            
-            // Cek izin baca
-            if (is_readable($fullPath)) {
-                $content = file_get_contents($fullPath);
-                
-                // Cek validitas Key dengan OpenSSL
-                if (strpos($label, 'Private') !== false) {
-                    $res = openssl_pkey_get_private($content);
-                } else {
-                    $res = openssl_pkey_get_public($content);
-                }
-
-                if ($res) {
-                    echo "✅ <span style='color:green; font-weight:bold'>[VALID] Format Key Benar & Bisa Dibaca.</span><br>";
-                } else {
-                    echo "❌ <span style='color:red'><strong>INVALID:</strong> File ada, tapi format isinya salah (bukan Key yang valid).</span><br>";
-                    echo "OpenSSL Error: " . openssl_error_string() . "<br>";
-                }
-            } else {
-                echo "❌ <span style='color:red'><strong>PERMISSION DENIED:</strong> File ada, tapi PHP tidak boleh membacanya.</span><br>";
-                echo "Solusi: Jalankan <code>chmod 644 $fullPath</code><br>";
-            }
-        } else {
-            echo "❌ <span style='color:red'><strong>FILE NOT FOUND:</strong> File tidak ditemukan di lokasi tersebut.</span><br>";
-            echo "Pastikan path di .env benar-benar akurat.<br>";
-        }
-        echo "<hr>";
-    };
-
-    $checkFile("Private Key (Milik Toko)", $privateKeyPath);
-    $checkFile("Public Key (Milik DANA)", $publicKeyPath);
-});
+Route::post('/dana/notify', [App\Http\Controllers\DanaWidgetController::class, 'handleNotify'])->name('dana.notify');
 
 
 Route::middleware(['auth'])->group(function () {
