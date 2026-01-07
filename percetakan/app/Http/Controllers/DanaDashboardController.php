@@ -174,41 +174,119 @@ class DanaDashboardController extends Controller
         }
     }
     // =========================================================================
-    // 4. CEK SALDO (BALANCE INQUIRY)
+    // 4. CEK SALDO (BALANCE INQUIRY - SNAP API SERVICE CODE 11)
     // =========================================================================
     public function checkBalance(Request $request)
     {
         Log::info('=========================================');
-        Log::info('[CEK SALDO] Request Initiated');
+        Log::info('[CEK SALDO] Request Initiated (SNAP API)');
 
         $accessToken = $request->access_token; 
 
         if(!$accessToken) {
-            Log::warning('[CEK SALDO] Access Token Kosong!');
             return back()->with('error', 'Access Token Wajib Diisi!');
         }
 
         Log::info("[CEK SALDO] Menggunakan Token: " . substr($accessToken, 0, 10) . "...");
 
+        // [SESUAI DOKUMENTASI]
+        // Access Token Wajib ada di dalam additionalInfo
         $body = [
             "partnerReferenceNo" => 'BAL-' . time(),
             "balanceTypes"       => ["BALANCE"],
-            "additionalInfo"     => ["accessToken" => $accessToken]
+            "additionalInfo"     => [
+                "accessToken" => $accessToken 
+            ]
         ];
 
-        // Kirim Request via Helper
-        Log::info('[CEK SALDO] Mengirim Request ke Helper...');
+        // Kirim Request
         $response = $this->sendRequest('POST', '/v1.0/balance-inquiry.htm', $body, $accessToken);
         
-        // Log Hasil Akhir
+        // Cek Response Code
         if(isset($response['responseCode']) && $response['responseCode'] == '2001100') {
             $saldo = $response['accountInfos'][0]['availableBalance']['value'] ?? '0';
             Log::info("[CEK SALDO] SUKSES! Saldo: $saldo");
             return back()->with('success', "Cek Saldo Berhasil! Saldo: Rp " . number_format($saldo));
         }
 
-        Log::error('[CEK SALDO] GAGAL. Response DANA:', $response);
         return back()->with('error', 'Gagal Cek Saldo: ' . json_encode($response));
+    }
+
+    // =========================================================================
+    // HELPER: SEND REQUEST (SNAP TRANSACTIONAL)
+    // =========================================================================
+    private function sendRequest($method, $relativePath, $bodyArray, $accessToken = null)
+    {
+        Log::info("--- START SNAP REQUEST [$method] $relativePath ---");
+        
+        $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String();
+        $clientId  = config('services.dana.client_id');
+        
+        // 1. TENTUKAN STRING TO SIGN (RUMUS SNAP)
+        if ($accessToken) {
+            // [RUMUS UNTUK TRANSACTION/BALANCE]
+            // Method + "|" + Path + "|" + AccessToken + "|" + Timestamp + "|" + Body
+            $stringToSign = $method . "|" . $relativePath . "|" . $accessToken . "|" . $timestamp . "|" . $jsonBody;
+        } else {
+            // [RUMUS UNTUK APPLY TOKEN]
+            // ClientID + "|" + Timestamp
+            $stringToSign = $clientId . "|" . $timestamp;
+        }
+
+        Log::info("StringToSign: " . $stringToSign);
+
+        // 2. GENERATE SIGNATURE (SHA256withRSA)
+        $signature = '';
+        try {
+            $rawKey = config('services.dana.private_key');
+            $cleanKey = str_replace(["-----BEGIN PRIVATE KEY-----", "-----END PRIVATE KEY-----", "\r", "\n", " "], "", $rawKey);
+            $formattedKey = "-----BEGIN PRIVATE KEY-----\n" . wordwrap($cleanKey, 64, "\n", true) . "\n-----END PRIVATE KEY-----";
+            
+            $binarySignature = '';
+            openssl_sign($stringToSign, $binarySignature, $formattedKey, OPENSSL_ALGO_SHA256);
+            $signature = base64_encode($binarySignature);
+        } catch (\Exception $e) {
+            Log::error("SIGNATURE ERROR: " . $e->getMessage());
+            return ['error' => 'Signature Error'];
+        }
+
+        // 3. SUSUN HEADERS (SESUAI DOKUMENTASI BALANCE INQUIRY)
+        $headers = [
+            'Content-Type'  => 'application/json', //
+            'X-TIMESTAMP'   => $timestamp,         //
+            'X-SIGNATURE'   => $signature,         //
+            'X-PARTNER-ID'  => $clientId,          //
+            'X-EXTERNAL-ID' => \Illuminate\Support\Str::random(32), //
+            'X-DEVICE-ID'   => 'DEVICE-' . time(), //
+            'CHANNEL-ID'    => '95221',            //
+        ];
+
+        // Tambahkan Authorization jika ada Token
+        if($accessToken) {
+            $headers['Authorization-Customer'] = 'Bearer ' . $accessToken; //
+        } 
+        // Khusus Apply Token (yang tidak punya accessToken tapi pakai header SNAP lain)
+        else {
+             $headers['X-CLIENT-KEY'] = $clientId; // Apply Token butuh ini, Balance Inquiry butuh X-PARTNER-ID
+        }
+
+        $fullUrl = 'https://api.sandbox.dana.id' . $relativePath;
+        
+        Log::info("Hitting URL: $fullUrl");
+        Log::info("Headers:", $headers);
+
+        try {
+            $response = Http::withHeaders($headers)->withBody($jsonBody, 'application/json')->post($fullUrl);
+            
+            Log::info("--- RESPONSE RECEIVED ---");
+            Log::info("Status: " . $response->status());
+            Log::info("Body: " . $response->body());
+
+            return $response->json();
+        } catch (\Exception $e) {
+            return ['error' => $e->getMessage()];
+        }
     }
 
     // =========================================================================
@@ -262,83 +340,5 @@ class DanaDashboardController extends Controller
         return back()->with('error', 'Topup Gagal: ' . json_encode($response));
     }
 
-    // =========================================================================
-    // HELPER: SEND REQUEST (CORE SYSTEM DENGAN FULL LOG)
-    // =========================================================================
-    private function sendRequest($method, $relativePath, $bodyArray, $accessToken = null)
-    {
-        Log::info("--- START HTTP REQUEST [$method] $relativePath ---");
-        
-        // 1. Siapkan Body JSON
-        $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-        $timestamp = Carbon::now('Asia/Jakarta')->toIso8601String();
-        
-        Log::info("Payload Body:", $bodyArray);
-        Log::info("Timestamp: $timestamp");
-
-        // 2. Generate Signature
-        try {
-            $rawKey = config('services.dana.private_key');
-            
-            // Log Key Check (Jangan log key asli, cuma cek ada/tidak)
-            if(empty($rawKey)) Log::error("CRITICAL: Private Key Kosong di Config!");
-
-            $cleanKey = str_replace(["-----BEGIN PRIVATE KEY-----", "-----END PRIVATE KEY-----", "\r", "\n", " "], "", $rawKey);
-            $formattedKey = "-----BEGIN PRIVATE KEY-----\n" . wordwrap($cleanKey, 64, "\n", true) . "\n-----END PRIVATE KEY-----";
-            
-            $signatureData = $method . ":" . $relativePath . ":" . $timestamp . ":" . $jsonBody;
-            
-            Log::info("Signature String Data: " . $signatureData);
-
-            $binarySignature = '';
-            if(!openssl_sign($signatureData, $binarySignature, $formattedKey, OPENSSL_ALGO_SHA256)) {
-                 throw new \Exception("OpenSSL Sign Failed: " . openssl_error_string());
-            }
-            $signature = base64_encode($binarySignature);
-            
-            Log::info("Signature Generated: " . substr($signature, 0, 20) . "...");
-
-        } catch (\Exception $e) {
-            Log::error("SIGNATURE ERROR: " . $e->getMessage());
-            return ['error' => 'Signature Error: ' . $e->getMessage()];
-        }
-
-        // 3. Susun Headers
-        $headers = [
-            'X-PARTNER-ID'  => config('services.dana.client_id'),
-            'X-EXTERNAL-ID' => Str::random(32),
-            'X-TIMESTAMP'   => $timestamp,
-            'X-SIGNATURE'   => $signature,
-            'Content-Type'  => 'application/json',
-            'CHANNEL-ID'    => '95221',
-        ];
-
-        // Tambah Token & Device ID jika ada (untuk Cek Saldo)
-        if($accessToken) {
-            $headers['Authorization-Customer'] = 'Bearer ' . $accessToken;
-            $headers['X-DEVICE-ID'] = 'DEVICE-' . time();
-            Log::info("Header Authorization-Customer ditambahkan.");
-        }
-
-        Log::info("Request Headers:", $headers);
-
-        $fullUrl = 'https://api.sandbox.dana.id' . $relativePath;
-        Log::info("Hitting URL: $fullUrl");
-
-        // 4. Eksekusi Request
-        try {
-            $response = Http::withHeaders($headers)->withBody($jsonBody, 'application/json')->post($fullUrl);
-            
-            // LOG RESPONSE BALASAN DARI DANA
-            Log::info("--- DANA RESPONSE RECEIVED ---");
-            Log::info("Status Code: " . $response->status());
-            Log::info("Response Body: " . $response->body());
-
-            return $response->json();
-
-        } catch (\Exception $e) {
-            Log::error("HTTP CONNECTION ERROR: " . $e->getMessage());
-            return ['error' => 'Connection Error: ' . $e->getMessage()];
-        }
-    }
+    
 }
