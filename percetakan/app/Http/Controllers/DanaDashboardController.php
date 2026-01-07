@@ -175,18 +175,17 @@ class DanaDashboardController extends Controller
     }
     
     // =========================================================================
-    // 4. CEK SALDO (FIXED LEGACY .HTM - RAW JSON MODE)
+    // 4. CEK SALDO (HYBRID: URL LEGACY + SIGNATURE SNAP)
     // =========================================================================
     public function checkBalance(Request $request)
     {
         Log::info('=========================================');
-        Log::info('[CEK SALDO] Request Initiated (.HTM RAW MODE)');
+        Log::info('[CEK SALDO] Request Initiated (HYBRID FIX)');
 
         $accessToken = $request->access_token; 
         if(!$accessToken) return back()->with('error', 'Access Token Wajib Diisi!');
 
-        // 1. DATA SESUAI SCREENSHOT
-        //
+        // Body sesuai Screenshot Legacy
         $data = [
             "partnerReferenceNo" => 'BAL-' . time(),
             "balanceTypes"       => ["BALANCE"],
@@ -195,7 +194,7 @@ class DanaDashboardController extends Controller
             ]
         ];
 
-        // URL PAKAI .htm SESUAI SCREENSHOT
+        // URL TETAP .HTM (Sesuai Screenshot)
         $response = $this->sendRequest('POST', '/v1.0/balance-inquiry.htm', $data, $accessToken);
         
         if(isset($response['responseCode']) && $response['responseCode'] == '2001100') {
@@ -205,35 +204,30 @@ class DanaDashboardController extends Controller
         }
 
         $msg = $response['responseMessage'] ?? 'Unknown Error';
-        return back()->with('error', 'Gagal: ' . $msg . ' (Code: ' . ($response['responseCode']??'-') . ')');
+        return back()->with('error', 'Gagal: ' . $msg);
     }
 
     // =========================================================================
-    // HELPER: SEND REQUEST (RAW PAYLOAD CONSISTENCY)
+    // HELPER: SEND REQUEST (FORCED SNAP SIGNATURE ON LEGACY ENDPOINT)
     // =========================================================================
     private function sendRequest($method, $relativePath, $bodyArray, $accessToken = null)
     {
         Log::info("--- START REQUEST [$method] $relativePath ---");
         
-        // [KUNCI]: Encode manual di awal agar StringToSign dan Body HTTP sama persis 100%
         $jsonPayload = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-        
         $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String();
         $clientId  = config('services.dana.client_id');
         
-        // 1. TENTUKAN STRING TO SIGN
-        // Karena endpoint .htm, kita pakai format Legacy (Titik Dua)
-        // Format: Method + ":" + Path + ":" + Timestamp + ":" + Body
-        if ($accessToken) {
-            $stringToSign = $method . ":" . $relativePath . ":" . $timestamp . ":" . $jsonPayload;
-        } else {
-            // Khusus Apply Token (SNAP) yang sudah sukses duluan
-            $stringToSign = $clientId . "|" . $timestamp;
-        }
+        // [SOLUSI PAMUNGKAS]
+        // Walaupun endpoint .htm biasanya minta signature panjang (Method:Path...),
+        // Akun Anda terbukti HANYA menerima signature pendek (ClientID|Timestamp) saat Apply Token.
+        // Kita paksa pakai signature pendek ini untuk Cek Saldo juga.
+        
+        $stringToSign = $clientId . "|" . $timestamp;  // <--- RUMUS SNAP
 
         Log::info("StringToSign: " . $stringToSign);
 
-        // 2. GENERATE SIGNATURE
+        // GENERATE SIGNATURE
         $signature = '';
         try {
             $rawKey = config('services.dana.private_key');
@@ -247,21 +241,21 @@ class DanaDashboardController extends Controller
             return ['error' => 'Signature Error'];
         }
 
-        // 3. HEADERS SESUAI SCREENSHOT
+        // HEADERS (Format Legacy sesuai Screenshot)
         $headers = [
             'Content-Type'  => 'application/json',
             'X-TIMESTAMP'   => $timestamp,
             'X-SIGNATURE'   => $signature,
             'CHANNEL-ID'    => '95221',
-            'ORIGIN'        => 'https://tokosancaka.com', // Wajib ada
+            'ORIGIN'        => 'https://tokosancaka.com',
         ];
 
         if($accessToken) {
-            // Header Transaksi Legacy
-            $headers['X-PARTNER-ID'] = $clientId; //
+            // Header V1.0 (X-PARTNER-ID) tapi Signaturenya SNAP
+            $headers['X-PARTNER-ID'] = $clientId; 
             $headers['X-EXTERNAL-ID'] = \Illuminate\Support\Str::random(32);
             $headers['X-DEVICE-ID'] = 'DEVICE-' . time();
-            $headers['Authorization-Customer'] = 'Bearer ' . $accessToken; //
+            $headers['Authorization-Customer'] = 'Bearer ' . $accessToken;
         } else {
             $headers['X-CLIENT-KEY'] = $clientId;
         }
@@ -271,7 +265,6 @@ class DanaDashboardController extends Controller
         Log::info("Hitting URL: $fullUrl");
 
         try {
-            // [PENTING] Kirim RAW BODY agar tidak diubah-ubah lagi oleh Laravel
             $response = Http::withHeaders($headers)
                             ->withBody($jsonPayload, 'application/json')
                             ->post($fullUrl);
