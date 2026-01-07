@@ -211,70 +211,45 @@ class DanaDashboardController extends Controller
     // HELPER: SEND REQUEST (FORCED SNAP SIGNATURE ON LEGACY ENDPOINT)
     // =========================================================================
     private function sendRequest($method, $relativePath, $bodyArray, $accessToken = null)
-    {
-        Log::info("--- START REQUEST [$method] $relativePath ---");
-        
-        $jsonPayload = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-        $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String();
-        $clientId  = config('services.dana.client_id');
-        
-        // [SOLUSI PAMUNGKAS]
-        // Walaupun endpoint .htm biasanya minta signature panjang (Method:Path...),
-        // Akun Anda terbukti HANYA menerima signature pendek (ClientID|Timestamp) saat Apply Token.
-        // Kita paksa pakai signature pendek ini untuk Cek Saldo juga.
-        
-        $stringToSign = $clientId . "|" . $timestamp;  // <--- RUMUS SNAP
+{
+    $jsonPayload = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String();
+    $clientId  = config('services.dana.client_id'); // Pastikan DANA_CLIENT_ID di .env ada isinya!
 
-        Log::info("StringToSign: " . $stringToSign);
+    // Format Signature V1.0
+    $stringToSign = $method . ":" . $relativePath . ":" . $timestamp . ":" . $jsonPayload;
+    $signature = $this->genSig($stringToSign);
 
-        // GENERATE SIGNATURE
-        $signature = '';
-        try {
-            $rawKey = config('services.dana.private_key');
-            $cleanKey = str_replace(["-----BEGIN PRIVATE KEY-----", "-----END PRIVATE KEY-----", "\r", "\n", " "], "", $rawKey);
-            $formattedKey = "-----BEGIN PRIVATE KEY-----\n" . wordwrap($cleanKey, 64, "\n", true) . "\n-----END PRIVATE KEY-----";
-            
-            $binarySignature = '';
-            openssl_sign($stringToSign, $binarySignature, $formattedKey, OPENSSL_ALGO_SHA256);
-            $signature = base64_encode($binarySignature);
-        } catch (\Exception $e) {
-            return ['error' => 'Signature Error'];
-        }
+    // HEADERS - Sesuaikan persis dengan dokumentasi
+    $headers = [
+        'Content-Type'   => 'application/json',
+        'X-TIMESTAMP'    => $timestamp,
+        'X-SIGNATURE'    => $signature,
+        'X-PARTNER-ID'   => (string) $clientId, // Dipaksa string agar tidak hilang
+        'X-EXTERNAL-ID'  => (string) time() . rand(100, 999), // Harus unik per hari
+        'CHANNEL-ID'     => '95221', // Sesuai dokumentasi Mas
+        'ORIGIN'         => 'tokosancaka.com',
+    ];
 
-        // HEADERS (Format Legacy sesuai Screenshot)
-        $headers = [
-            'Content-Type'  => 'application/json',
-            'X-TIMESTAMP'   => $timestamp,
-            'X-SIGNATURE'   => $signature,
-            'CHANNEL-ID'    => '95221',
-            'ORIGIN'        => 'https://tokosancaka.com',
-        ];
-
-        if($accessToken) {
-            // Header V1.0 (X-PARTNER-ID) tapi Signaturenya SNAP
-            $headers['X-PARTNER-ID'] = $clientId; 
-            $headers['X-EXTERNAL-ID'] = \Illuminate\Support\Str::random(32);
-            $headers['X-DEVICE-ID'] = 'DEVICE-' . time();
-            $headers['Authorization-Customer'] = 'Bearer ' . $accessToken;
-        } else {
-            $headers['X-CLIENT-KEY'] = $clientId;
-        }
-
-        $fullUrl = 'https://api.sandbox.dana.id' . $relativePath;
-        
-        Log::info("Hitting URL: $fullUrl");
-
-        try {
-            $response = Http::withHeaders($headers)
-                            ->withBody($jsonPayload, 'application/json')
-                            ->post($fullUrl);
-                            
-            Log::info("Response: " . $response->body());
-            return $response->json();
-        } catch (\Exception $e) {
-            return ['error' => $e->getMessage()];
-        }
+    // Disbursement butuh Authorization Bearer jika pakai Token B2B
+    // Tapi untuk pengetesan awal, kita coba kirim tanpa ini dulu atau pastikan Token valid.
+    if ($accessToken) {
+        $headers['Authorization'] = 'Bearer ' . $accessToken;
     }
+
+    $fullUrl = 'https://api.sandbox.dana.id' . $relativePath;
+
+    Log::info("DEBUG HEADERS: ", $headers); // Cek log untuk memastikan X-PARTNER-ID muncul
+
+    try {
+        $response = Http::withHeaders($headers)
+                        ->withBody($jsonPayload, 'application/json')
+                        ->post($fullUrl);
+        return $response->json();
+    } catch (\Exception $e) {
+        return ['responseMessage' => $e->getMessage()];
+    }
+}
 
     // =========================================================================
     // 5. TOPUP / TRANSFER SALDO
