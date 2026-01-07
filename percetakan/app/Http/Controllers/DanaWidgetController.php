@@ -328,4 +328,103 @@ class DanaWidgetController extends Controller
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
+
+    // =========================================================================
+    // ACCOUNT BINDING (OAUTH 2.0)
+    // =========================================================================
+
+    public function initiateBinding(Request $request)
+    {
+        Log::info('========== DANA BINDING INITIATED ==========');
+
+        // 1. Setup Data Dasar
+        $clientId    = config('services.dana.client_id');
+        $redirectUrl = route('dana.callback'); // URL Callback kita
+        $state       = \Illuminate\Support\Str::random(16); // CSRF Protection
+        $timestamp   = \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String();
+
+        // 2. Setup Seamless Data (Agar No HP User otomatis terisi)
+        // Di Production, ambil dari Auth::user()->phone
+        // Di Sandbox, GUNAKAN NOMOR MAGIC: 08123456789
+        $userPhone   = '08123456789'; 
+        $userExtId   = 'USER-' . time(); // ID User di database Anda
+
+        $seamlessDataArray = [
+            "mobileNumber" => $userPhone,
+            "bizScenario"  => "PAYMENT", // Sesuai sample
+            "externalUid"  => $userExtId,
+            "verifiedTime" => $timestamp
+        ];
+        
+        // Convert ke JSON String
+        $seamlessDataStr = json_encode($seamlessDataArray);
+
+        // 3. Generate Seamless Signature
+        // Proses: Sign(SHA256withRSA) -> Base64
+        $seamlessSign = $this->generateSeamlessSign($seamlessDataStr);
+
+        // 4. Susun Query Parameters
+        $queryParams = [
+            'partnerId'     => $clientId,
+            'timestamp'     => $timestamp,
+            'externalId'    => $userExtId,
+            'channelId'     => '95221', // Channel ID Web
+            'merchantId'    => config('services.dana.merchant_id'),
+            'redirectUrl'   => $redirectUrl,
+            'state'         => $state,
+            'scopes'        => 'DEFAULT_BASIC_PROFILE,QUERY_BALANCE,MINI_DANA,AGREEMENT_PAY', // Scopes lengkap
+            'seamlessData'  => $seamlessDataStr,
+            'seamlessSign'  => $seamlessSign,
+            'allowRegistration' => 'true'
+        ];
+
+        // 5. Build Full URL
+        // Sandbox Base URL untuk Web Redirect biasanya berbeda dengan API
+        // Tapi untuk Widget API biasanya: https://m.sandbox.dana.id/d/portal/oauth
+        // ATAU cek dokumentasi spesifik URL entry pointnya. 
+        // Berdasarkan endpoint docs: GET /v1.0/get-auth-code
+        // Kita tembak ke API Gateway dulu, nanti dia yang kasih redirect.
+        
+        $baseUrl = 'https://api.sandbox.dana.id/v1.0/get-auth-code';
+        $fullRedirectUrl = $baseUrl . '?' . http_build_query($queryParams);
+
+        Log::info("Generated Binding URL: " . $fullRedirectUrl);
+
+        // Redirect User ke DANA
+        return redirect($fullRedirectUrl);
+    }
+
+    // Callback Sementara (Hanya untuk dump hasil)
+    public function handleCallback(Request $request)
+    {
+        Log::info('========== DANA BINDING CALLBACK ==========');
+        Log::info($request->all());
+
+        return response()->json([
+            'message' => 'Callback received',
+            'data' => $request->all()
+        ]);
+    }
+
+    // HELPER KHUSUS SEAMLESS SIGN
+    private function generateSeamlessSign($dataString)
+    {
+        // Ambil Private Key dari config
+        $privateKeyStr = config('services.dana.private_key');
+        
+        // Format Private Key agar valid dibaca OpenSSL
+        if (!str_contains($privateKeyStr, 'BEGIN PRIVATE KEY')) {
+            $privateKeyStr = "-----BEGIN PRIVATE KEY-----\n" . 
+                             wordwrap($privateKeyStr, 64, "\n", true) . 
+                             "\n-----END PRIVATE KEY-----";
+        }
+
+        $binarySignature = '';
+        
+        // Sign menggunakan SHA256withRSA
+        openssl_sign($dataString, $binarySignature, $privateKeyStr, OPENSSL_ALGO_SHA256);
+
+        // Encode Base64
+        return base64_encode($binarySignature);
+    }
 }

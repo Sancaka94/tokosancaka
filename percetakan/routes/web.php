@@ -41,6 +41,11 @@ Route::get('/dana/test-status', [App\Http\Controllers\DanaWidgetController::clas
 
 Route::post('/dana/notify', [App\Http\Controllers\DanaWidgetController::class, 'handleNotify'])->name('dana.notify');
 
+// 1. Trigger Binding (User klik "Sambungkan DANA")
+Route::get('/dana/bind', [App\Http\Controllers\DanaWidgetController::class, 'initiateBinding'])->name('dana.bind');
+
+// 2. Callback (Tempat DANA melempar balik user + Auth Code)
+Route::get('/dana/callback', [App\Http\Controllers\DanaWidgetController::class, 'handleCallback'])->name('dana.callback');
 
 Route::middleware(['auth'])->group(function () {
 });
