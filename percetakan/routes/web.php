@@ -19,7 +19,9 @@ use App\Http\Controllers\DanaWidgetController;
 Route::any('/dana/pay', [DanaWidgetController::class, 'createPayment'])->name('dana.pay');
 
 // 2. Halaman Balik (Return)
-Route::get('/dana/return', [DanaWidgetController::class, 'returnPage'])->name('dana.return');
+Route::get('/dana/return', function () {
+    return view('dana_success');
+})->name('dana.return');
 
 // 3. Cek Status Manual (Baru)
 Route::get('/dana/status/{orderId}', [DanaWidgetController::class, 'checkStatus'])->name('dana.status');
