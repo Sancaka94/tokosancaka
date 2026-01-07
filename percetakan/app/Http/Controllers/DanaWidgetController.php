@@ -54,7 +54,9 @@ class DanaWidgetController extends Controller
         $method = 'POST';
         // Pastikan path ini sesuai dokumentasi DANA Anda. 
         // Jika SNAP, biasanya: /v1.0/debit/payment.host
-        $relativePath = '/v1.0/debit/payment.host'; 
+        // $relativePath = '/v1.0/debit/payment.host';
+
+        $relativePath = '/v1.0/order/create';
         
         $timestamp = Carbon::now()->toIso8601String();
 
