@@ -486,5 +486,69 @@ class DanaWidgetController extends Controller
         ]);
     }
 
+    // =========================================================================
+    // BALANCE INQUIRY (CEK SALDO USER)
+    // =========================================================================
+    public function balanceInquiry()
+    {
+        Log::info('========== DANA BALANCE INQUIRY TEST ==========');
+
+        // [WAJIB] Masukkan ACCESS TOKEN user yang valid di sini
+        // Token ini didapat setelah menukar Auth Code (dari proses Binding).
+        // Jika belum punya, kode ini akan return error 401/400.
+        $accessToken = 'MASUKKAN_ACCESS_TOKEN_DISINI'; 
+
+        $partnerRef = 'BAL-' . time();
+
+        // BODY REQUEST (Sesuai contoh Anda)
+        $bodyArray = [
+            "partnerReferenceNo" => $partnerRef,
+            "balanceTypes"       => ["BALANCE"],
+            "additionalInfo"     => [
+                "accessToken" => $accessToken
+            ]
+        ];
+
+        $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        
+        $method = 'POST';
+        $relativePath = '/v1.0/balance-inquiry.htm'; 
+        $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String();
+
+        try {
+            // Generate Signature
+            $signature = $this->danaSignature->generateSignature($method, $relativePath, $jsonBody, $timestamp);
+            
+            $fullUrl = 'https://api.sandbox.dana.id' . $relativePath;
+            $externalId = \Illuminate\Support\Str::random(32);
+
+            Log::info("Hitting Endpoint: $relativePath");
+            Log::info("Using Access Token: " . substr($accessToken, 0, 10) . "...");
+
+            // KIRIM REQUEST DENGAN HEADER KHUSUS
+            $response = \Illuminate\Support\Facades\Http::withHeaders([
+                'X-PARTNER-ID'  => config('services.dana.client_id'),
+                'X-EXTERNAL-ID' => $externalId,
+                'X-TIMESTAMP'   => $timestamp,
+                'X-SIGNATURE'   => $signature,
+                'Content-Type'  => 'application/json',
+                'CHANNEL-ID'    => '95221',
+                
+                // [HEADER WAJIB UNTUK CEK SALDO]
+                'Authorization-Customer' => 'Bearer ' . $accessToken,
+                'X-DEVICE-ID'   => 'DEVICE-' . time(), // ID Unik Device
+            ])
+            ->withBody($jsonBody, 'application/json')
+            ->post($fullUrl);
+
+            Log::info("Response Code: " . $response->status());
+            Log::info("Response Body: " . $response->body());
+
+            return response()->json($response->json());
+
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
     
 }
