@@ -237,22 +237,59 @@ class DanaWidgetController extends Controller
         return $this->sendDanaRequest('POST', '/v1.0/emoney/account-inquiry.htm', $bodyArray);
     }
 
-    // [SCENARIO 2] EXECUTE TOP UP (Wajib untuk Checklist Dashboard)
-    // Route: /dana/test-topup
+    // =========================================================================
+    // DISBURSEMENT TOP UP - SCENARIO TESTING MACHINE
+    // =========================================================================
     public function disburseTopUp()
     {
-        Log::info('========== DANA TOPUP TEST ==========');
+        Log::info('========== DANA TOPUP SCENARIO TEST ==========');
 
-        $phoneNumber = '6285745808809'; // Ganti dengan No HP Sandbox Anda
-        $orderId     = 'TOPUP-' . time();
+        // =====================================================================
+        // [AREA EDIT DISINI] - GANTI NILAI INI UNTUK SETIAP CHECKLIST
+        // =====================================================================
+        
+        // PILIH SKENARIO: 'SUCCESS', 'NO_SALDO', 'REPEAT_FAIL', 'ERROR_GENERAL'
+        $scenario = 'SUCCESS'; 
+
+        // 1. SET NOMOR HP (Gunakan Magic Number Sandbox)
+        $phoneNumber = '085745808809'; 
+
+        // 2. SET ORDER ID & AMOUNT SESUAI SKENARIO
+        if ($scenario == 'SUCCESS') {
+            // Skenario 1: Sukses Normal
+            $orderId = 'TOPUP-' . time(); 
+            $amount  = '1000.00'; 
+
+        } elseif ($scenario == 'NO_SALDO') {
+            // Skenario 2: Error Insufficient Fund (Saldo Kurang)
+            $orderId = 'FAIL-SALDO-' . time();
+            $amount  = '999999999999.00'; // Nominal Raksasa (Biar saldo merchant kurang)
+
+        } elseif ($scenario == 'REPEAT_FAIL') {
+            // Skenario 3: Error Inconsistent Request (Order ID Sama, Data Beda)
+            // CARA PAKAI: Jalankan sekali, lalu ubah amount, jalankan lagi tanpa ubah ID
+            $orderId = 'FIXED-ID-TEST-123'; // <--- ID INI JANGAN UBAH
+            $amount  = '2000.00'; // Ubah jadi 3000.00 pada request kedua
+
+        } elseif ($scenario == 'ERROR_GENERAL') {
+            // Skenario 4: General Error / Internal Server Error
+            $orderId = 'ERR-' . time();
+            $amount  = '1000.00';
+            $phoneNumber = '000000'; // Nomor Ngawur
+        }
+        
+        // =====================================================================
+        // JANGAN UBAH KODE DI BAWAH INI
+        // =====================================================================
+
+        Log::info("TESTING SCENARIO: $scenario | OrderID: $orderId | Amount: $amount");
 
         $bodyArray = [
             "partnerReferenceNo" => $orderId,
             "amount" => [
-                "value" => "1000.00",
+                "value" => $amount,
                 "currency" => "IDR"
             ],
-            // Fee Amount Wajib Ada
             "feeAmount" => [
                 "value" => "0.00",
                 "currency" => "IDR"
@@ -262,8 +299,6 @@ class DanaWidgetController extends Controller
                 "fundType" => "TRANS_TO_USER"
             ]
         ];
-
-        Log::info("CREATED ORDER ID: " . $orderId);
 
         return $this->sendDanaRequest('POST', '/v1.0/emoney/topup.htm', $bodyArray);
     }
