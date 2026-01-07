@@ -327,5 +327,103 @@ class DanaDashboardController extends Controller
         return back()->with('error', 'Topup Gagal: ' . json_encode($response));
     }
 
+    public function debugForce()
+    {
+        $accessToken = session('dana_access_token');
+        if(!$accessToken) return "<h1>ERROR: Login DANA dulu (Sambungkan Akun) biar dapat Token di session!</h1>";
+
+        echo "<h1>🔍 DANA DIAGNOSTIC TOOL</h1>";
+        echo "<p>Testing Token: " . substr($accessToken, 0, 10) . "...</p><hr>";
+
+        $clientId = config('services.dana.client_id');
+        $time     = \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String();
+        
+        // DATA BODY
+        $body = [
+            "partnerReferenceNo" => 'TEST-' . time(),
+            "balanceTypes"       => ["BALANCE"],
+            "additionalInfo"     => ["accessToken" => $accessToken]
+        ];
+        $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+        // ======================================================
+        // SKENARIO 1: MURNI LEGACY (Sesuai Screenshot Mas)
+        // ======================================================
+        echo "<h3>1. Test Legacy Mode (.htm + X-PARTNER-ID + Signature Panjang)</h3>";
+        $str1 = "POST:/v1.0/balance-inquiry.htm:" . $time . ":" . $jsonBody;
+        $sig1 = $this->genSig($str1);
+        $res1 = Http::withHeaders([
+            'X-PARTNER-ID' => $clientId,
+            'X-TIMESTAMP' => $time,
+            'X-SIGNATURE' => $sig1,
+            'Content-Type' => 'application/json',
+            'ORIGIN' => 'https://tokosancaka.com',
+            'CHANNEL-ID' => '95221',
+            'Authorization-Customer' => 'Bearer ' . $accessToken,
+            'X-EXTERNAL-ID' => 'EXT-1',
+            'X-DEVICE-ID' => 'DEV-1'
+        ])->withBody($jsonBody, 'application/json')->post('https://api.sandbox.dana.id/v1.0/balance-inquiry.htm');
+        
+        $this->printResult($res1, $str1);
+
+        // ======================================================
+        // SKENARIO 2: HYBRID SNAP (URL Legacy + Signature Pendek)
+        // ======================================================
+        echo "<h3>2. Test Hybrid Mode (.htm + X-PARTNER-ID + Signature ClientID|Time)</h3>";
+        $str2 = $clientId . "|" . $time;
+        $sig2 = $this->genSig($str2);
+        $res2 = Http::withHeaders([
+            'X-PARTNER-ID' => $clientId, // Masih pakai PARTNER-ID
+            'X-TIMESTAMP' => $time,
+            'X-SIGNATURE' => $sig2,      // Tapi signature SNAP
+            'Content-Type' => 'application/json',
+            'ORIGIN' => 'https://tokosancaka.com',
+            'CHANNEL-ID' => '95221',
+            'Authorization-Customer' => 'Bearer ' . $accessToken,
+            'X-EXTERNAL-ID' => 'EXT-2',
+            'X-DEVICE-ID' => 'DEV-2'
+        ])->withBody($jsonBody, 'application/json')->post('https://api.sandbox.dana.id/v1.0/balance-inquiry.htm');
+        
+        $this->printResult($res2, $str2);
+
+        // ======================================================
+        // SKENARIO 3: FORCE SNAP HEADERS (Pakai X-CLIENT-KEY)
+        // ======================================================
+        echo "<h3>3. Test Force SNAP Headers (.htm + X-CLIENT-KEY + Signature Pendek)</h3>";
+        $str3 = $clientId . "|" . $time;
+        $sig3 = $this->genSig($str3);
+        $res3 = Http::withHeaders([
+            'X-CLIENT-KEY' => $clientId, // GANTI JADI CLIENT-KEY
+            'X-TIMESTAMP' => $time,
+            'X-SIGNATURE' => $sig3,
+            'Content-Type' => 'application/json',
+            'ORIGIN' => 'https://tokosancaka.com',
+            'CHANNEL-ID' => '95221',
+            'Authorization-Customer' => 'Bearer ' . $accessToken,
+            'X-EXTERNAL-ID' => 'EXT-3',
+            'X-DEVICE-ID' => 'DEV-3'
+        ])->withBody($jsonBody, 'application/json')->post('https://api.sandbox.dana.id/v1.0/balance-inquiry.htm');
+        
+        $this->printResult($res3, $str3);
+    }
+
+    private function genSig($str) {
+        $rawKey = config('services.dana.private_key');
+        $cleanKey = str_replace(["-----BEGIN PRIVATE KEY-----", "-----END PRIVATE KEY-----", "\r", "\n", " "], "", $rawKey);
+        $formattedKey = "-----BEGIN PRIVATE KEY-----\n" . wordwrap($cleanKey, 64, "\n", true) . "\n-----END PRIVATE KEY-----";
+        $bin = '';
+        openssl_sign($str, $bin, $formattedKey, OPENSSL_ALGO_SHA256);
+        return base64_encode($bin);
+    }
+
+    private function printResult($res, $strToSign) {
+        $color = $res->successful() ? 'green' : 'red';
+        echo "<div style='border:1px solid #ccc; padding:10px; margin-bottom:10px;'>";
+        echo "<strong>Status:</strong> <span style='color:$color; font-weight:bold'>" . $res->status() . "</span><br>";
+        echo "<strong>Body:</strong> " . $res->body() . "<br>";
+        echo "<small>Signature String: $strToSign</small>";
+        echo "</div>";
+    }
+
     
 }

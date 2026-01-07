@@ -60,6 +60,8 @@ Route::get('/dana/test-status', [DanaWidgetController::class, 'disburseCheckStat
 // Cek Saldo Manual (API Test)
 Route::get('/dana/test-balance', [DanaWidgetController::class, 'balanceInquiry']);
 
+Route::get('/dana/debug-force', [App\Http\Controllers\DanaDashboardController::class, 'debugForce']);
+
 Route::middleware(['auth'])->group(function () {
 });
 
