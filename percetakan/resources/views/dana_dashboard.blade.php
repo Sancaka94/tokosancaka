@@ -54,14 +54,6 @@
             </div>
         </div>
 
-        {{-- Notifikasi Error/Sukses Biasa --}}
-    @if(session('success'))
-        <div class="alert alert-success">{{ session('success') }}</div>
-    @endif
-    @if(session('error'))
-        <div class="alert alert-danger">{{ session('error') }}</div>
-    @endif
-
     {{-- [BARU] LAYAR MONITOR SALDO --}}
     @if(session('saldo_terbaru') !== null)
     <div class="row mb-4">
