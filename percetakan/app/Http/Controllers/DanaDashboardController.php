@@ -214,68 +214,70 @@ class DanaDashboardController extends Controller
     }
 
     // =========================================================================
-    // HELPER: SEND REQUEST (SMART SIGNATURE SWITCHING)
+    // HELPER: SEND REQUEST (STRICT ORDER & LEGACY SIGNATURE)
     // =========================================================================
     private function sendRequest($method, $relativePath, $bodyArray, $accessToken = null)
     {
         Log::info("--- START REQUEST [$method] $relativePath ---");
         
+        // 1. URUTKAN KEY JSON (SORTING A-Z)
+        // Penting: DANA kadang menolak jika urutan di Body beda dengan Signature
+        ksort($bodyArray); 
+        if(isset($bodyArray['additionalInfo']) && is_array($bodyArray['additionalInfo'])) {
+            ksort($bodyArray['additionalInfo']);
+        }
+
+        // 2. ENCODE JSON (Pastikan tanpa spasi/pretty print)
         $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        
         $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String();
         $clientId  = config('services.dana.client_id');
         
-        // 1. TENTUKAN RUMUS SIGNATURE
+        // 3. TENTUKAN RUMUS SIGNATURE
         if ($accessToken) {
-            // [RUMUS TRANSAKSI - BALANCE INQUIRY/TOPUP]
-            // Format: Method + ":" + Path + ":" + Timestamp + ":" + Body
-            // Ini standar untuk endpoint .htm yang butuh Authorization
+            // [TRANSAKSI - BALANCE INQUIRY/TOPUP] -> Format V1.0 Legacy
+            // Rumus: Method + ":" + Path + ":" + Timestamp + ":" + Body
             $stringToSign = $method . ":" . $relativePath . ":" . $timestamp . ":" . $jsonBody;
         } else {
-            // [RUMUS APPLY TOKEN - SNAP]
-            // Format: ClientID + "|" + Timestamp
-            // Ini khusus saat menukar Auth Code (belum punya token)
+            // [APPLY TOKEN] -> Format SNAP B2B2C
+            // Rumus: ClientID + "|" + Timestamp
             $stringToSign = $clientId . "|" . $timestamp;
         }
 
         Log::info("StringToSign: " . $stringToSign);
 
-        // 2. GENERATE SIGNATURE
+        // 4. GENERATE SIGNATURE
         $signature = '';
         try {
             $rawKey = config('services.dana.private_key');
-            // Bersihkan key
             $cleanKey = str_replace(["-----BEGIN PRIVATE KEY-----", "-----END PRIVATE KEY-----", "\r", "\n", " "], "", $rawKey);
             $formattedKey = "-----BEGIN PRIVATE KEY-----\n" . wordwrap($cleanKey, 64, "\n", true) . "\n-----END PRIVATE KEY-----";
             
             $binarySignature = '';
-            // Selalu SHA256withRSA
-            if(!openssl_sign($stringToSign, $binarySignature, $formattedKey, OPENSSL_ALGO_SHA256)) {
-                throw new \Exception("OpenSSL Sign Failed");
-            }
+            openssl_sign($stringToSign, $binarySignature, $formattedKey, OPENSSL_ALGO_SHA256);
             $signature = base64_encode($binarySignature);
         } catch (\Exception $e) {
-            Log::error("SIGNATURE ERROR: " . $e->getMessage());
             return ['error' => 'Signature Error'];
         }
 
-        // 3. SIAPKAN HEADERS DASAR
+        // 5. HEADERS
         $headers = [
-            'Content-Type'  => 'application/json', //
-            'X-TIMESTAMP'   => $timestamp,         //
-            'X-SIGNATURE'   => $signature,         //
-            'CHANNEL-ID'    => '95221',            //
+            'Content-Type'  => 'application/json',
+            'X-TIMESTAMP'   => $timestamp,
+            'X-SIGNATURE'   => $signature,
+            'CHANNEL-ID'    => '95221', 
         ];
 
-        // 4. LOGIKA HEADER KHUSUS
+        // LOGIKA HEADER SPESIFIK
         if($accessToken) {
-            // Jika Balance Inquiry / Topup (Punya Token)
-            $headers['X-PARTNER-ID'] = $clientId; //
-            $headers['X-EXTERNAL-ID'] = \Illuminate\Support\Str::random(32); //
-            $headers['X-DEVICE-ID'] = 'DEVICE-' . time(); //
-            $headers['Authorization-Customer'] = 'Bearer ' . $accessToken; //
+            // Header Transaksi (V1.0)
+            $headers['X-PARTNER-ID'] = $clientId; 
+            $headers['X-EXTERNAL-ID'] = \Illuminate\Support\Str::random(32);
+            $headers['X-DEVICE-ID'] = 'DEVICE-' . time();
+            $headers['Authorization-Customer'] = 'Bearer ' . $accessToken;
         } else {
-            // Jika Apply Token (Belum Punya Token)
-            $headers['X-CLIENT-KEY'] = $clientId; // Apply Token pakai X-CLIENT-KEY
+            // Header Apply Token (SNAP)
+            $headers['X-CLIENT-KEY'] = $clientId;
         }
 
         $fullUrl = 'https://api.sandbox.dana.id' . $relativePath;
@@ -292,7 +294,6 @@ class DanaDashboardController extends Controller
 
             return $response->json();
         } catch (\Exception $e) {
-            Log::error("HTTP ERROR: " . $e->getMessage());
             return ['error' => $e->getMessage()];
         }
     }
