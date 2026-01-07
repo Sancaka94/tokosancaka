@@ -408,13 +408,17 @@ class DanaDashboardController extends Controller
     }
 
     private function genSig($str) {
-        $rawKey = config('services.dana.private_key');
-        $cleanKey = str_replace(["-----BEGIN PRIVATE KEY-----", "-----END PRIVATE KEY-----", "\r", "\n", " "], "", $rawKey);
-        $formattedKey = "-----BEGIN PRIVATE KEY-----\n" . wordwrap($cleanKey, 64, "\n", true) . "\n-----END PRIVATE KEY-----";
-        $bin = '';
-        openssl_sign($str, $bin, $formattedKey, OPENSSL_ALGO_SHA256);
-        return base64_encode($bin);
+    // Ambil langsung dari config (env)
+    $formattedKey = config('services.dana.private_key');
+    
+    $binarySignature = '';
+    // Gunakan algoritma yang diminta DANA: SHA256withRSA
+    if(!openssl_sign($str, $binarySignature, $formattedKey, OPENSSL_ALGO_SHA256)) {
+        Log::error("Gagal melakukan tanda tangan. Periksa format PRIVATE KEY di .env");
+        return null;
     }
+    return base64_encode($binarySignature);
+}
 
     private function printResult($res, $strToSign) {
         $color = $res->successful() ? 'green' : 'red';
