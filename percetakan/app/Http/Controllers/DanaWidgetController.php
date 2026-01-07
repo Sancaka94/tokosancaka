@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Http;
 use App\Services\DanaSignatureService;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Log; // Wajib import Log
 
 class DanaWidgetController extends Controller
 {
@@ -18,22 +18,16 @@ class DanaWidgetController extends Controller
         $this->danaSignature = $danaSignature;
     }
 
-    /**
-     * Step 1: Merchant membuat Request Pembayaran
-     */
     public function createPayment(Request $request)
     {
-        // 1. Persiapan Data (Hardcode dulu untuk testing, nanti bisa ambil dari database)
-        $orderId = 'INV-' . time(); // ID Unik Order
-        $amount  = '1000.00';       // Nominal (String, 2 desimal)
-        
-        // Setup URL Return (Tempat user kembali setelah bayar)
-        // DANA akan menambahkan ?status=SUCCESS&originalReferenceNo=... di belakang url ini
-        $returnUrl = route('dana.return'); 
+        // 1. Log Awal - Menandakan proses dimulai
+        Log::info('========== DANA CREATE PAYMENT START ==========');
 
-        // 2. Setup Payload (Body Request)
-        // Sesuaikan struktur ini dengan dokumen PDF "Direct Debit Payment" Anda
-        // Biasanya untuk Widget Non-Binding strukturnya seperti ini:
+        $orderId = 'INV-' . time();
+        $amount  = '1000.00'; 
+        $returnUrl = route('dana.return');
+
+        // 2. Setup Body
         $body = [
             "partnerReferenceNo" => $orderId,
             "amount" => [
@@ -41,84 +35,116 @@ class DanaWidgetController extends Controller
                 "currency" => "IDR"
             ],
             "payOptionDetails" => [
-                "payMethod" => "DANA_WALLET", // Atau kosongkan jika ingin user pilih di DANA
+                "payMethod" => "DANA_WALLET",
                 "transType" => "PAGE",
             ],
             "additionalInfo" => [
-                "origin" => "IS_WIDGET" // Penanda transaksi Widget
+                "origin" => "IS_WIDGET"
             ],
             "urlParams" => [
-                "url" => $returnUrl,     // URL Redirect balik ke toko
-                "type" => "NOTIFICATION" // Agar DANA juga mengirim notifikasi background
+                "url" => $returnUrl,
+                "type" => "NOTIFICATION"
             ]
         ];
 
-        // 3. Setup Header & Signature
+        // LOG BODY
+        Log::info('DANA Request Body:', $body);
+
+        // 3. Setup Signature
         $method = 'POST';
-        
-        // PENTING: Cek PDF Anda untuk "Relative URL" yang pasti. 
-        // Untuk Direct Debit Payment SNAP biasanya: /v1.0/debit/payment.host 
-        // Atau kadang: /v1.0/order/create (tergantung versi)
+        // Pastikan path ini sesuai dokumentasi DANA Anda. 
+        // Jika SNAP, biasanya: /v1.0/debit/payment.host
         $relativePath = '/v1.0/debit/payment.host'; 
         
         $timestamp = Carbon::now()->toIso8601String();
 
         try {
-            // Generate Signature menggunakan Service yang sudah FIX tadi
             $signature = $this->danaSignature->generateSignature(
                 $method, 
                 $relativePath, 
                 $body, 
                 $timestamp
             );
+            
+            // LOG SIGNATURE BERHASIL
+            Log::info('Signature Generated:', ['signature' => $signature]);
+
         } catch (\Exception $e) {
-            return response()->json(['error' => 'Signature Error: ' . $e->getMessage()], 500);
+            // LOG ERROR SIGNATURE
+            Log::error('Signature Generation Failed: ' . $e->getMessage());
+            return response()->json(['status' => 'error', 'message' => 'Gagal membuat signature: ' . $e->getMessage()], 500);
         }
 
-        // 4. Kirim Request ke DANA
+        // 4. Kirim Request
         $fullUrl = config('services.dana.base_url') . $relativePath;
-        
-        // Generate Unique External ID
+        $clientId = config('services.dana.client_id');
         $externalId = Str::random(32);
 
-        $response = Http::withHeaders([
-            'X-PARTNER-ID' => config('services.dana.client_id'),
-            'X-EXTERNAL-ID' => $externalId,
-            'X-TIMESTAMP'  => $timestamp,
-            'X-SIGNATURE'  => $signature,
-            'Content-Type' => 'application/json',
-            'CHANNEL-ID'   => 'MOBILE_WEB', // Sesuaikan jika Web Desktop
-        ])->post($fullUrl, $body);
+        // LOG HEADER & URL SEBELUM KIRIM
+        Log::info('Sending Request to DANA:', [
+            'url' => $fullUrl,
+            'client_id' => $clientId,
+            'external_id' => $externalId,
+            'timestamp' => $timestamp
+        ]);
 
-        $result = $response->json();
+        try {
+            $response = Http::withHeaders([
+                'X-PARTNER-ID' => $clientId,
+                'X-EXTERNAL-ID' => $externalId,
+                'X-TIMESTAMP'  => $timestamp,
+                'X-SIGNATURE'  => $signature,
+                'Content-Type' => 'application/json',
+                'CHANNEL-ID'   => 'MOBILE_WEB', 
+            ])->post($fullUrl, $body);
 
-        // 5. Cek Response & Redirect User
-        // Jika sukses, DANA memberikan "webRedirectUrl"
-        if (isset($result['responseCode']) && $result['responseCode'] == '2005300') { // 2005300 adalah kode Sukses SNAP
-             
-             $redirectUrl = $result['webRedirectUrl'];
-             
-             // Simpan data order ke database di sini (Status: Pending)
-             // ...
-             
-             // Arahkan user ke halaman pembayaran DANA
-             return redirect($redirectUrl);
+            // 5. DEBUG RESPONSE MENTAH (RAW)
+            // Ini akan mencatat apapun balasan dari DANA, baik sukses maupun error
+            Log::info('DANA Raw Response Code: ' . $response->status());
+            Log::info('DANA Raw Response Body: ' . $response->body());
+
+            // Coba parsing ke JSON
+            $result = $response->json();
+
+            // Jika JSON kosong/null, berarti respon bukan JSON (mungkin HTML error 404/500)
+            if (is_null($result)) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Respon dari DANA bukan JSON yang valid.',
+                    'raw_body' => $response->body(),
+                    'http_code' => $response->status()
+                ], 500);
+            }
+
+            // Cek Logic Sukses SNAP (Code: 2005300)
+            if (isset($result['responseCode']) && $result['responseCode'] == '2005300') {
+                 Log::info('DANA Success Redirecting user...');
+                 $redirectUrl = $result['webRedirectUrl'];
+                 return redirect($redirectUrl);
+            }
+
+            // Jika DANA merespon tapi kode bukan sukses
+            Log::warning('DANA Transaction Failed/Rejected:', $result);
+            return response()->json($result);
+
+        } catch (\Exception $e) {
+            // LOG ERROR KONEKSI (Misal: DNS error, Timeout, SSL error)
+            Log::error('HTTP Request Failed: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'FATAL_ERROR', 
+                'message' => $e->getMessage(),
+                'hint' => 'Cek koneksi internet server atau URL endpoint DANA.'
+            ], 500);
         }
-
-        // Jika gagal, tampilkan error
-        return response()->json($result);
     }
 
-    /**
-     * Step 2: Halaman Return (User kembali setelah bayar)
-     */
     public function returnPage(Request $request)
     {
-        // Tangkap parameter dari URL
-        // Format: ?originalReferenceNo=xxx&merchantId=xxx&status=SUCCESS
+        Log::info('User Returned from DANA:', $request->all());
+        
         $status = $request->query('status');
-        $orderId = $request->query('originalPartnerReferenceNo'); // Order ID kita
-        $danaRef = $request->query('originalReferenceNo'); // Order ID DANA
+        $orderId = $request->query('originalPartnerReferenceNo');
+        $danaRef = $request->query('originalReferenceNo');
 
         if ($status == 'SUCCESS') {
             return "<h1>Pembayaran Berhasil!</h1><p>Order ID: $orderId</p><p>DANA Ref: $danaRef</p>";
