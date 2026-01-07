@@ -116,7 +116,7 @@ class DanaDashboardController extends Controller
         ];
 
         // Endpoint Apply Token (Sandbox)
-        return $this->sendRequest('POST', '/v1.0/oauth/token.htm', $body);
+        return $this->sendRequest('POST', '/oauth/as/token.htm', $body);
     }
     // =========================================================================
     // 4. CEK SALDO (BALANCE INQUIRY)
