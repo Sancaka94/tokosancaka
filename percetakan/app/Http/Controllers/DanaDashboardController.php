@@ -446,16 +446,16 @@ class DanaDashboardController extends Controller
         echo "<p style='color:green;'>✅ Header ditemukan.</p>";
         $formattedKey = $rawKey;
     }
-
-        $res = openssl_get_privatekey($formattedKey);
-    $details = openssl_pkey_get_details($res);
-    echo "<textarea style='width:100%; height:200px;'>" . $details['key'] . "</textarea>";
+    
+    
 
     // 3. Test Loading Key ke OpenSSL
     $res = openssl_get_privatekey($formattedKey);
+    $details = openssl_pkey_get_details($res);
     if ($res === false) {
         echo "<p style='color:red;'>❌ ERROR FATAL: OpenSSL tidak bisa membaca Key ini. Format rusak atau isi bukan RSA Private Key!</p>";
         echo "<i>Saran: Generate ulang key menggunakan OpenSSL atau RSA Generator online.</i>";
+        echo "<textarea style='width:100%; height:200px;'>" . $details['key'] . "</textarea>";
     } else {
         echo "<p style='color:green;'>✅ SUKSES: OpenSSL berhasil membaca Private Key Anda.</p>";
         
