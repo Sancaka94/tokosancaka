@@ -2,8 +2,6 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Storage;
-
 class DanaSignatureService
 {
     /**
@@ -11,32 +9,35 @@ class DanaSignatureService
      */
     public function generateSignature($method, $relativePath, $body, $timestamp)
     {
-        // 1. Load Private Key
+        // 1. Load Private Key Path
         $privateKeyPath = config('services.dana.private_key_path');
         
-        // Pastikan path sesuai dengan penyimpanan Anda (disini asumsi di storage/app)
-        $privateKeyContent = Storage::get($privateKeyPath); 
+        // Cek file ada atau tidak
+        if (!file_exists($privateKeyPath)) {
+            throw new \Exception("Private Key tidak ditemukan di: " . $privateKeyPath);
+        }
         
-        if (!$privateKeyContent) {
-            throw new \Exception("Private Key tidak ditemukan di storage.");
+        // Ambil isinya
+        $privateKeyContent = file_get_contents($privateKeyPath);
+
+        // [FIX 1] Convert String menjadi OpenSSL Resource
+        $privateKey = openssl_pkey_get_private($privateKeyContent);
+        if (!$privateKey) {
+            throw new \Exception("Format Private Key INVALID. Cek isi file .pem Anda.");
         }
 
-        $privateKey = openssl_pkey_get_private($privateKeyContent);
-
-        // 2. Minify Body (Hapus spasi/newline yang tidak perlu)
-        // Jika body kosong (GET request), string kosong. Jika array, json_encode.
+        // 2. Minify Body
         $minifiedBody = empty($body) ? '' : json_encode($body);
 
-        // 3. Hash Body (SHA-256 -> Hex -> Lowercase)
-        // Rumus: LowerCase(HexEncode(SHA-256(Minify(<HTTP BODY>))))
+        // 3. Hash Body
         $hashedBody = strtolower(hash('sha256', $minifiedBody));
 
         // 4. Compose String to Sign
-        // Format: <HTTP METHOD> + ":" + <RELATIVE PATH URL> + ":" + <HASHED BODY> + ":" + <X-TIMESTAMP>
         $stringToSign = strtoupper($method) . ":" . $relativePath . ":" . $hashedBody . ":" . $timestamp;
 
-        // 5. Sign dengan RSA-2048 dan Private Key
+        // 5. Sign dengan RSA-2048
         $signature = '';
+        // [FIX 1b] Sekarang variabel $privateKey sudah ada isinya
         openssl_sign($stringToSign, $signature, $privateKey, OPENSSL_ALGO_SHA256);
 
         // 6. Base64 Encode hasilnya
@@ -44,25 +45,37 @@ class DanaSignatureService
     }
 
     public function verifySignature($method, $relativePath, $body, $timestamp, $signatureFromHeader)
-{
-    // 1. Load DANA Public Key
-    // Pastikan format public key diawali "-----BEGIN PUBLIC KEY-----" dst
-    $danaPublicKey = config('services.dana.public_key');
-    
-    // 2. Re-create String to Verify (Sama seperti proses request)
-    $minifiedBody = is_array($body) ? json_encode($body) : $body;
-    $hashedBody = strtolower(hash('sha256', $minifiedBody));
-    
-    $stringToVerify = strtoupper($method) . ":" . $relativePath . ":" . $hashedBody . ":" . $timestamp;
+    {
+        // [FIX 2] Load DANA Public Key dari FILE (Bukan config string)
+        $publicKeyPath = config('services.dana.public_key_path');
 
-    // 3. Verifikasi
-    $isValid = openssl_verify(
-        $stringToVerify, 
-        base64_decode($signatureFromHeader), 
-        $danaPublicKey, 
-        OPENSSL_ALGO_SHA256
-    );
+        if (!file_exists($publicKeyPath)) {
+            throw new \Exception("Public Key DANA tidak ditemukan di: " . $publicKeyPath);
+        }
 
-    return $isValid === 1;
-}
+        $danaPublicKeyContent = file_get_contents($publicKeyPath);
+        
+        // Convert ke resource untuk validasi
+        $danaPublicKey = openssl_pkey_get_public($danaPublicKeyContent);
+        if (!$danaPublicKey) {
+             throw new \Exception("Format Public Key DANA INVALID.");
+        }
+        
+        // 2. Re-create String to Verify
+        // Pastikan urutan dan logic sama persis dengan request
+        $minifiedBody = is_array($body) ? json_encode($body) : $body;
+        $hashedBody = strtolower(hash('sha256', $minifiedBody));
+        
+        $stringToVerify = strtoupper($method) . ":" . $relativePath . ":" . $hashedBody . ":" . $timestamp;
+
+        // 3. Verifikasi
+        $isValid = openssl_verify(
+            $stringToVerify, 
+            base64_decode($signatureFromHeader), 
+            $danaPublicKey, 
+            OPENSSL_ALGO_SHA256
+        );
+
+        return $isValid === 1;
+    }
 }
