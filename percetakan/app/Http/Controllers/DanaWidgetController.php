@@ -25,38 +25,45 @@ class DanaWidgetController extends Controller
      */
     public function createPayment(Request $request)
     {
-        Log::info('========== DANA WIDGET PAYMENT START (ENUM FIX) ==========');
+        Log::info('========== DANA PAYMENT GATEWAY FIX ==========');
 
         $orderId = 'INV-' . time();
         $amount  = '10000.00'; 
+        
+        // Pastikan URL return benar (mengarah ke /public jika di hosting)
         $returnUrl = route('dana.return');
 
-        // 1. Setup Body: BERSIH & STANDAR
+        // 1. Setup Body Sesuai Spesifikasi Swagger Payment Gateway
         $bodyArray = [
-            // Identitas Merchant (Wajib)
+            // Identitas
             "merchantId" => config('services.dana.merchant_id'),
-            
             "partnerReferenceNo" => $orderId,
             
+            // Nominal
             "amount" => [
                 "value" => $amount,
                 "currency" => "IDR"
             ],
             
-            // "additionalInfo" dengan "IS_WIDGET" adalah kunci agar endpoint redirection bekerja
+            // [WAJIB] Spesifikasi Payment Gateway
+            // Tanpa ini, endpoint /payment-gateway/... akan error 500
+            "orderTerminalType" => "WEB", 
+            
+            // Info Tambahan
             "additionalInfo" => [
                 "origin" => "IS_WIDGET"
             ],
             
+            // URL Redirect
             "urlParams" => [
                 "url" => $returnUrl,
                 "type" => "NOTIFICATION"
             ]
             
-            // CATATAN:
-            // Kita menghapus "payOptionDetails" karena "DANA_WALLET" itu INVALID.
-            // Dengan menghapusnya, user akan diarahkan ke halaman kasir DANA 
-            // dan bisa memilih bayar pakai Saldo (BALANCE) atau Kartu di sana.
+            // [CATATAN PENTING]
+            // Jangan sertakan "payOptionDetails" dulu.
+            // Memasukkan value yang salah (misal: DANA_WALLET) akan bikin Crash 500.
+            // Biarkan kosong agar DANA menampilkan halaman kasir standar.
         ];
 
         // Encode JSON
@@ -65,8 +72,8 @@ class DanaWidgetController extends Controller
 
         $method = 'POST';
         
-        // KEMBALI KE ENDPOINT WIDGET (Sesuai Dokumen image_985920.png)
-        $relativePath = '/rest/redirection/v1.0/debit/payment-host-to-host'; 
+        // Endpoint Swagger
+        $relativePath = '/payment-gateway/v1.0/debit/payment-host-to-host.htm'; 
         
         $timestamp = Carbon::now()->toIso8601String();
 
@@ -76,7 +83,7 @@ class DanaWidgetController extends Controller
             return response()->json(['error' => 'Signature Error: ' . $e->getMessage()], 500);
         }
 
-        // Gunakan HTTPS untuk kestabilan
+        // Gunakan HTTPS
         $fullUrl = 'https://api.sandbox.dana.id' . $relativePath;
         $externalId = Str::random(32);
 
@@ -98,11 +105,11 @@ class DanaWidgetController extends Controller
             
             $result = $response->json();
 
-            // Cek Response Code 200 (Success)
+            // Cek Response Code (Bisa 2000000 atau 200xxxx)
             if (isset($result['responseCode']) && substr($result['responseCode'], 0, 3) == '200') {
                  Log::info('Success! Redirecting user...');
                  
-                 // Endpoint Widget biasanya mengembalikan 'redirectUrl' atau 'webRedirectUrl'
+                 // Ambil URL Redirect
                  $redirectUrl = $result['webRedirectUrl'] ?? $result['redirectUrl'] ?? null;
                  
                  if($redirectUrl) {
@@ -110,6 +117,7 @@ class DanaWidgetController extends Controller
                  }
             }
 
+            // Jika gagal, return JSON agar terbaca di browser
             Log::warning('DANA Failed:', $result);
             return response()->json($result);
 
