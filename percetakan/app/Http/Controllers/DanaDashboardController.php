@@ -67,27 +67,28 @@ class DanaDashboardController extends Controller
     {
         Log::info('=========================================');
         Log::info('[CALLBACK] DANA Redirect Back Received');
-        Log::info('[CALLBACK] Full Query Params:', $request->all());
+        Log::info('[CALLBACK] Full Params:', $request->all());
 
-        $authCode = $request->authCode;
+        // Cek parameter error dari DANA
+        if ($request->has('responseCode') && $request->responseCode != '2001000') {
+             Log::error('[CALLBACK] DANA Error: ' . $request->responseMessage);
+             return redirect()->route('dana.dashboard')->with('error', 'DANA Error: ' . $request->responseMessage);
+        }
+
+        // DANA kadang mengirim 'authCode', kadang 'auth_code'
+        $authCode = $request->authCode ?? $request->auth_code ?? null;
         
         if(!$authCode) {
             Log::error('[CALLBACK] GAGAL: Auth Code tidak ditemukan di URL!');
-            return redirect()->route('dana.dashboard')->with('error', 'Gagal Binding: Auth Code tidak ditemukan.');
+            return redirect()->route('dana.dashboard')->with('error', 'Gagal: Auth Code tidak ditemukan. Cek Log.');
         }
 
-        Log::info("[CALLBACK] Auth Code Berhasil Didapat: $authCode");
+        Log::info("[CALLBACK] SUKSES! Auth Code: $authCode");
 
-        // Simpan Auth Code ke Session (Untuk Testing)
+        // Simpan session
         session(['dana_auth_code' => $authCode]);
         
-        // Disini seharusnya proses "Apply Token" (Tukar AuthCode -> AccessToken)
-        // Karena endpoint apply token belum kita set, kita pakai dummy dulu atau manual.
-        // session(['dana_access_token' => 'TOKEN_DARI_APPLY_TOKEN_API']); 
-
-        Log::info('[CALLBACK] Auth Code disimpan ke Session. Redirect ke Dashboard.');
-
-        return redirect()->route('dana.dashboard')->with('success', "Binding Berhasil! Auth Code: $authCode");
+        return redirect()->route('dana.dashboard')->with('success', "Binding Berhasil! Auth Code: " . Str::limit($authCode, 10));
     }
 
     // =========================================================================
