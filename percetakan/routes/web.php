@@ -14,51 +14,51 @@ use Illuminate\Support\Facades\Artisan;
 use App\Http\Controllers\DanaWidgetController;
 use App\Http\Controllers\DanaDashboardController;
 
-// Dashboard Utama
+/*
+|--------------------------------------------------------------------------
+| DANA DASHBOARD INTEGRATION (PRIORITY)
+|--------------------------------------------------------------------------
+*/
+
+// 1. Dashboard Utama
 Route::get('/dana/dashboard', [DanaDashboardController::class, 'index'])->name('dana.dashboard');
 
-// Proses-proses
+// 2. Proses Binding (Redirect ke Portal DANA)
 Route::post('/dana/bind', [DanaDashboardController::class, 'startBinding'])->name('dana.do_bind');
-// Ganti baris callback yang lama dengan ini:
-Route::match(['get', 'post'], '/dana/callback', [App\Http\Controllers\DanaDashboardController::class, 'handleCallback'])->name('dana.callback');
+
+// 3. Callback (Wajib DanaDashboardController agar Redirect sukses)
+Route::match(['get', 'post'], '/dana/callback', [DanaDashboardController::class, 'handleCallback'])->name('dana.callback');
+
+// 4. Fitur Dashboard (Cek Saldo & Topup)
 Route::post('/dana/check-balance', [DanaDashboardController::class, 'checkBalance'])->name('dana.check_balance');
 Route::post('/dana/topup', [DanaDashboardController::class, 'topupSaldo'])->name('dana.topup');
 
+/*
+|--------------------------------------------------------------------------
+| DANA WIDGET / API / TESTING (SECONDARY)
+|--------------------------------------------------------------------------
+*/
 
-// 1. Buat Pembayaran
-//Route::get('/dana/pay', [DanaWidgetController::class, 'createPayment'])->name('dana.pay');
-Route::any('/dana/pay', [DanaWidgetController::class, 'createPayment'])->name('dana.pay');
+// Webhook Notification
+Route::post('/dana/notify', [DanaWidgetController::class, 'handleNotify'])->name('dana.notify');
 
-// 2. Halaman Balik (Return)
+// Halaman Return Sukses
 Route::get('/dana/return', function () {
     return view('dana_success');
 })->name('dana.return');
 
-// 3. Cek Status Manual (Baru)
+// Payment & Transaction
+Route::any('/dana/pay', [DanaWidgetController::class, 'createPayment'])->name('dana.pay');
 Route::get('/dana/status/{orderId}', [DanaWidgetController::class, 'checkStatus'])->name('dana.status');
 
-// Route untuk Test Disbursement (Kirim Uang ke User)
-Route::get('/dana/test-disburse', [App\Http\Controllers\DanaWidgetController::class, 'disburseTopUp']);
+// Testing Routes (Manual Trigger lewat URL)
+Route::get('/dana/test-disburse', [DanaWidgetController::class, 'disburseTopUp']);
+Route::get('/dana/test-inquiry', [DanaWidgetController::class, 'disburseAccountInquiry']);
+Route::get('/dana/test-topup', [DanaWidgetController::class, 'disburseTopUp']);
+Route::get('/dana/test-status', [DanaWidgetController::class, 'disburseCheckStatus']);
 
-// 1. Cek Akun User DANA (Account Inquiry)
-Route::get('/dana/test-inquiry', [App\Http\Controllers\DanaWidgetController::class, 'disburseAccountInquiry']);
-
-// 2. Kirim Uang (TopUp)
-Route::get('/dana/test-topup', [App\Http\Controllers\DanaWidgetController::class, 'disburseTopUp']);
-
-// 3. Cek Status Transaksi (Status Inquiry)
-// Nanti aksesnya: /dana/test-status?order_id=TOPUP-123456...
-Route::get('/dana/test-status', [App\Http\Controllers\DanaWidgetController::class, 'disburseCheckStatus']);
-
-Route::post('/dana/notify', [App\Http\Controllers\DanaWidgetController::class, 'handleNotify'])->name('dana.notify');
-
-// 1. Trigger Binding (User klik "Sambungkan DANA")
-Route::get('/dana/bind', [App\Http\Controllers\DanaWidgetController::class, 'initiateBinding'])->name('dana.bind');
-
-Route::get('/dana/test-balance', [App\Http\Controllers\DanaWidgetController::class, 'balanceInquiry']);
-
-// 2. Callback (Tempat DANA melempar balik user + Auth Code)
-Route::get('/dana/callback', [App\Http\Controllers\DanaWidgetController::class, 'handleCallback'])->name('dana.callback');
+// Cek Saldo Manual (API Test)
+Route::get('/dana/test-balance', [DanaWidgetController::class, 'balanceInquiry']);
 
 Route::middleware(['auth'])->group(function () {
 });
