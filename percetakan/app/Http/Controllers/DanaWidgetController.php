@@ -25,22 +25,18 @@ class DanaWidgetController extends Controller
      */
     public function createPayment(Request $request)
     {
-        // Setup Data
-        // Kita pakai prefix baru 'TRY-' biar fresh
-        $orderId     = 'TRY-' . time();
+        // 1. Setup Data
+        // Gunakan 'INV-' agar terlihat profesional
+        $orderId     = 'INV-' . time();
         $returnUrl   = route('dana.return');
-        
-        // Waktu: Format ISO8601 Wajib ada Timezone (+07:00)
         $expiryTime  = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP');
 
-        // BODY "JALAN TENGAH"
-        // 1. Ada MCC (Wajib biar ga error 400)
-        // 2. Tidak ada Goods (Biar ga error 500 karena salah hitung harga)
+        // 2. Body "WINNING FORMULA" (MCC Ada, Goods Hilang)
         $bodyArray = [
             "partnerReferenceNo" => $orderId,
             "merchantId" => config('services.dana.merchant_id'),
             "amount" => [
-                "value" => "10000.00", // String, 2 desimal
+                "value" => "10000.00",
                 "currency" => "IDR"
             ],
             "validUpTo" => $expiryTime,
@@ -57,15 +53,11 @@ class DanaWidgetController extends Controller
                 ]
             ],
             "additionalInfo" => [
-                // [PENTING] Kembalikan MCC ini. 
-                // Tanpa ini, kena 400 Invalid Field.
-                "mcc" => "5732", 
-                
+                "mcc" => "5732", // Wajib
                 "order" => [
                     "orderTitle" => "Invoice " . $orderId,
-                    "merchantTransType" => "01", // Kita coba "01" (Sales)
+                    "merchantTransType" => "01",
                     "scenario" => "REDIRECT",
-                    // Goods kita kosongkan dulu untuk menghindari Error 500
                 ],
                 "envInfo" => [
                     "sourcePlatform" => "IPG",
@@ -97,13 +89,23 @@ class DanaWidgetController extends Controller
                 'X-TIMESTAMP'  => $timestamp,
                 'X-SIGNATURE'  => $signature,
                 'Content-Type' => 'application/json',
-                // Tetap gunakan 95221 karena ini sudah terbukti lolos validasi header
                 'CHANNEL-ID'   => '95221', 
             ])
             ->withBody($jsonBody, 'application/json')
             ->post($fullUrl);
 
-            return response()->json($response->json());
+            $result = $response->json();
+
+            // [PRODUCTION MODE] Redirect User ke DANA
+            if (isset($result['responseCode']) && $result['responseCode'] == '2005400') {
+                 $redirectUrl = $result['webRedirectUrl'] ?? null;
+                 if($redirectUrl) {
+                    return redirect($redirectUrl); // <--- INI PERUBAHANNYA
+                 }
+            }
+
+            // Kalau gagal, baru tampilkan JSON error
+            return response()->json($result);
 
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
