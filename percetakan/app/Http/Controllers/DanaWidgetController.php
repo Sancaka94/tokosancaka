@@ -282,4 +282,109 @@ class DanaWidgetController extends Controller
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
+
+    // [SCENARIO 1] CHECK ACCOUNT VALIDITY
+    public function disburseAccountInquiry()
+    {
+        Log::info('========== DANA ACCOUNT INQUIRY TEST ==========');
+
+        // Ganti dengan Nomor HP Sandbox Anda
+        $phoneNumber = '085745808809'; 
+        
+        $bodyArray = [
+            "partnerReferenceNo" => 'INQ-' . time(),
+            "amount" => [
+                "value" => "1000.00",
+                "currency" => "IDR"
+            ],
+            "customerNumber" => $phoneNumber,
+            "additionalInfo" => [
+                "fundType" => "TRANS_TO_USER"
+            ]
+        ];
+
+        return $this->sendDanaRequest('POST', '/v1.0/emoney/account-inquiry.htm', $bodyArray);
+    }
+
+    // [SCENARIO 2] EXECUTE TOP UP
+    public function disburseTopUp()
+    {
+        Log::info('========== DANA TOPUP TEST ==========');
+
+        // Ganti dengan Nomor HP Sandbox Anda
+        $phoneNumber = '085745808809';
+        $orderId     = 'TOPUP-' . time();
+
+        $bodyArray = [
+            "partnerReferenceNo" => $orderId,
+            "amount" => [
+                "value" => "1000.00",
+                "currency" => "IDR"
+            ],
+            "feeAmount" => [
+                "value" => "0.00",
+                "currency" => "IDR"
+            ],
+            "customerNumber" => $phoneNumber,
+            "additionalInfo" => [
+                "fundType" => "TRANS_TO_USER"
+            ]
+        ];
+
+        // Simpan Order ID di Log agar bisa dicopy untuk cek status
+        Log::info("CREATED ORDER ID: " . $orderId);
+
+        return $this->sendDanaRequest('POST', '/v1.0/emoney/topup.htm', $bodyArray);
+    }
+
+    // [SCENARIO 3] CHECK STATUS
+    // Akses via browser: /dana/test-status?order_id=TOPUP-1767...
+    public function disburseCheckStatus(Request $request)
+    {
+        Log::info('========== DANA CHECK STATUS TEST ==========');
+
+        // Ambil Order ID dari parameter URL
+        $originalOrderId = $request->query('order_id');
+
+        if (!$originalOrderId) {
+            return response()->json(['error' => 'Harap masukkan parameter ?order_id=TOPUP-xxxx di URL'], 400);
+        }
+
+        $bodyArray = [
+            "partnerReferenceNo" => 'CHK-' . time(), // ID baru untuk request pengecekan
+            "originalPartnerReferenceNo" => $originalOrderId, // ID Transaksi yang mau dicek
+            "merchantId" => config('services.dana.merchant_id'),
+        ];
+
+        return $this->sendDanaRequest('POST', '/v1.0/emoney/topup-status.htm', $bodyArray);
+    }
+
+    // HELPER: Mengirim Request ke DANA
+    private function sendDanaRequest($method, $relativePath, $bodyArray)
+    {
+        $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String();
+
+        try {
+            $signature = $this->danaSignature->generateSignature($method, $relativePath, $jsonBody, $timestamp);
+            $fullUrl = 'https://api.sandbox.dana.id' . $relativePath;
+            $externalId = \Illuminate\Support\Str::random(32);
+
+            $response = \Illuminate\Support\Facades\Http::withHeaders([
+                'X-PARTNER-ID' => config('services.dana.client_id'),
+                'X-EXTERNAL-ID' => $externalId,
+                'X-TIMESTAMP'  => $timestamp,
+                'X-SIGNATURE'  => $signature,
+                'Content-Type' => 'application/json',
+                'CHANNEL-ID'   => '95221', 
+            ])
+            ->withBody($jsonBody, 'application/json')
+            ->post($fullUrl);
+
+            return response()->json($response->json());
+
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
 }

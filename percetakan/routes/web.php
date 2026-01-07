@@ -29,6 +29,16 @@ Route::get('/dana/status/{orderId}', [DanaWidgetController::class, 'checkStatus'
 // Route untuk Test Disbursement (Kirim Uang ke User)
 Route::get('/dana/test-disburse', [App\Http\Controllers\DanaWidgetController::class, 'disburseTopUp']);
 
+// 1. Cek Akun User DANA (Account Inquiry)
+Route::get('/dana/test-inquiry', [App\Http\Controllers\DanaWidgetController::class, 'disburseAccountInquiry']);
+
+// 2. Kirim Uang (TopUp)
+Route::get('/dana/test-topup', [App\Http\Controllers\DanaWidgetController::class, 'disburseTopUp']);
+
+// 3. Cek Status Transaksi (Status Inquiry)
+// Nanti aksesnya: /dana/test-status?order_id=TOPUP-123456...
+Route::get('/dana/test-status', [App\Http\Controllers\DanaWidgetController::class, 'disburseCheckStatus']);
+
 Route::post('/dana/notify', [App\Http\Controllers\DanaWidgetController::class, 'handleNotify'])->name('dana.notify');
 
 
