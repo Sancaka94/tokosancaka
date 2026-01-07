@@ -207,17 +207,15 @@ class DanaDashboardController extends Controller
         return back()->with('error', 'Gagal: ' . $msg);
     }
 
-    // =========================================================================
-    // HELPER: SEND REQUEST (FORCED SNAP SIGNATURE ON LEGACY ENDPOINT)
-    // =========================================================================
     private function sendRequest($method, $relativePath, $bodyArray, $accessToken = null)
 {
     $jsonPayload = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String();
-    $clientId  = config('services.dana.client_id');
+    $clientId = config('services.dana.client_id');
 
-    // Signature V1.0 (Method:Path:Time:Body)
-    $stringToSign = $method . ":" . $relativePath . ":" . $timestamp . ":" . $jsonPayload;
+    // [KUNCI PERBAIKAN] Pakai rumus sederhana sesuai sample yang SUKSES
+    $stringToSign = $clientId . "|" . $timestamp; 
+    
     $signature = $this->genSig($stringToSign);
 
     $headers = [
@@ -226,16 +224,11 @@ class DanaDashboardController extends Controller
         'X-SIGNATURE'   => $signature,
         'X-PARTNER-ID'  => (string) $clientId,
         'X-EXTERNAL-ID' => (string) time() . rand(100, 999),
-        'CHANNEL-ID'    => '95221', //
-        'ORIGIN'        => 'tokosancaka.com',
-        
-        // [TAMBAHKAN INI] Sesuai permintaan error dan dokumentasi
-        'X-DEVICE-ID'   => 'DEVICE-' . md5($clientId), // ID Perangkat unik
-        'X-IP-ADDRESS'  => request()->ip() ?? '127.0.0.1', // IP pengirim
+        'CHANNEL-ID'    => '95221',
+        'X-DEVICE-ID'   => 'DEVICE-' . md5($clientId),
     ];
 
     if ($accessToken) {
-        // Gunakan header khusus untuk endpoint .htm
         $headers['Authorization-Customer'] = 'Bearer ' . $accessToken;
     }
 
@@ -245,8 +238,6 @@ class DanaDashboardController extends Controller
         $response = Http::withHeaders($headers)
                         ->withBody($jsonPayload, 'application/json')
                         ->post($fullUrl);
-        
-        Log::info("Response Body: " . $response->body());
         return $response->json();
     } catch (\Exception $e) {
         return ['responseMessage' => $e->getMessage()];
@@ -384,17 +375,18 @@ class DanaDashboardController extends Controller
         $this->printResult($res3, $str3);
     }
 
-    private function genSig($str) {
-    // Ambil langsung dari config (env)
-    $formattedKey = config('services.dana.private_key');
+private function genSig($str) {
+    $rawKey = config('services.dana.private_key');
+    // Bersihkan key dari spasi atau karakter aneh agar OpenSSL tidak gagal
+    $cleanKey = str_replace(["-----BEGIN PRIVATE KEY-----", "-----END PRIVATE KEY-----", "\r", "\n", " "], "", $rawKey);
+    $formattedKey = "-----BEGIN PRIVATE KEY-----\n" . wordwrap($cleanKey, 64, "\n", true) . "\n-----END PRIVATE KEY-----";
     
     $binarySignature = '';
-    // Gunakan algoritma yang diminta DANA: SHA256withRSA
-    if(!openssl_sign($str, $binarySignature, $formattedKey, OPENSSL_ALGO_SHA256)) {
-        Log::error("Gagal melakukan tanda tangan. Periksa format PRIVATE KEY di .env");
-        return null;
+    if (openssl_sign($str, $binarySignature, $formattedKey, OPENSSL_ALGO_SHA256)) {
+        return base64_encode($binarySignature);
     }
-    return base64_encode($binarySignature);
+    Log::error("Gagal Signing: " . openssl_error_string());
+    return null;
 }
 
     private function printResult($res, $strToSign) {
