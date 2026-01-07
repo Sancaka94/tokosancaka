@@ -88,19 +88,19 @@ class DanaDashboardController extends Controller
         if(isset($tokenResponse['accessToken'])) {
             $accessToken = $tokenResponse['accessToken'];
             
-            // Simpan ke Session
             session(['dana_access_token' => $accessToken]);
             session(['dana_auth_code'  => $authCode]);
 
             Log::info("[CALLBACK] SUKSES! Token tersimpan. Redirecting to Dashboard...");
             
-            // [KUNCI REDIRECT] Ini yang membuat browser pindah halaman
             return redirect()->route('dana.dashboard')->with('success', 'Binding Sukses! Saldo Siap Dicek.');
         } 
         
-        // Jika Gagal
-        Log::error("[CALLBACK] Gagal Tukar Token.", $tokenResponse);
-        return redirect()->route('dana.dashboard')->with('error', 'Binding Gagal saat menukar Token.');
+        // [FIX ERROR DISINI]
+        // Kita bungkus $tokenResponse dengan [(array)...] agar tidak error jika nilainya null
+        Log::error("[CALLBACK] Gagal Tukar Token.", (array)$tokenResponse);
+        
+        return redirect()->route('dana.dashboard')->with('error', 'Binding Gagal saat menukar Token. Cek Log.');
     }
 
     // HELPER APPLY TOKEN (Wajib Ada)
