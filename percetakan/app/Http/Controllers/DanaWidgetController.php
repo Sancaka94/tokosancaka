@@ -221,7 +221,7 @@ class DanaWidgetController extends Controller
     {
         Log::info('========== DANA ACCOUNT INQUIRY TEST ==========');
 
-        $phoneNumber = '085745808809'; // Ganti dengan No HP Sandbox Anda
+        $phoneNumber = '6285745808809'; // Ganti dengan No HP Sandbox Anda
         
         $bodyArray = [
             "partnerReferenceNo" => 'INQ-' . time(),
@@ -244,7 +244,7 @@ class DanaWidgetController extends Controller
     {
         Log::info('========== DANA TOPUP TEST ==========');
 
-        $phoneNumber = '085745808809'; // Ganti dengan No HP Sandbox Anda
+        $phoneNumber = '6285745808809'; // Ganti dengan No HP Sandbox Anda
         $orderId     = 'TOPUP-' . time();
 
         $bodyArray = [
