@@ -214,37 +214,37 @@ class DanaDashboardController extends Controller
 {
     $jsonPayload = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String();
-    $clientId  = config('services.dana.client_id'); // Pastikan DANA_CLIENT_ID di .env ada isinya!
+    $clientId  = config('services.dana.client_id');
 
-    // Format Signature V1.0
+    // Signature V1.0 (Method:Path:Time:Body)
     $stringToSign = $method . ":" . $relativePath . ":" . $timestamp . ":" . $jsonPayload;
     $signature = $this->genSig($stringToSign);
 
-    // HEADERS - Sesuaikan persis dengan dokumentasi
     $headers = [
-        'Content-Type'   => 'application/json',
-        'X-TIMESTAMP'    => $timestamp,
-        'X-SIGNATURE'    => $signature,
-        'X-PARTNER-ID'   => (string) $clientId, // Dipaksa string agar tidak hilang
-        'X-EXTERNAL-ID'  => (string) time() . rand(100, 999), // Harus unik per hari
-        'CHANNEL-ID'     => '95221', // Sesuai dokumentasi Mas
-        'ORIGIN'         => 'tokosancaka.com',
+        'Content-Type'  => 'application/json',
+        'X-TIMESTAMP'   => $timestamp,
+        'X-SIGNATURE'   => $signature,
+        'X-PARTNER-ID'  => (string) $clientId,
+        'X-EXTERNAL-ID' => (string) time() . rand(100, 999),
+        'CHANNEL-ID'    => '95221',
+        'ORIGIN'        => 'tokosancaka.com',
     ];
 
-    // Disbursement butuh Authorization Bearer jika pakai Token B2B
-    // Tapi untuk pengetesan awal, kita coba kirim tanpa ini dulu atau pastikan Token valid.
+    // [KUNCI PERBAIKAN]
+    // Dokumentasi .htm mewajibkan "Authorization-Customer" (dengan tanda hubung)
+    // bukan "Authorization" biasa.
     if ($accessToken) {
-        $headers['Authorization'] = 'Bearer ' . $accessToken;
+        $headers['Authorization-Customer'] = 'Bearer ' . $accessToken;
     }
 
     $fullUrl = 'https://api.sandbox.dana.id' . $relativePath;
-
-    Log::info("DEBUG HEADERS: ", $headers); // Cek log untuk memastikan X-PARTNER-ID muncul
 
     try {
         $response = Http::withHeaders($headers)
                         ->withBody($jsonPayload, 'application/json')
                         ->post($fullUrl);
+        
+        Log::info("Response Body: " . $response->body());
         return $response->json();
     } catch (\Exception $e) {
         return ['responseMessage' => $e->getMessage()];
