@@ -211,85 +211,17 @@ class DanaWidgetController extends Controller
         ]);
     }
 
-    // METHOD BARU: DISBURSEMENT / TOP UP KE USER
-    public function disburseTopUp()
-    {
-        Log::info('========== DANA DISBURSEMENT TEST START ==========');
+    // =========================================================================
+    // DANA DISBURSEMENT (KIRIM UANG) - TESTING SCENARIOS
+    // =========================================================================
 
-        $orderId    = 'TOPUP-' . time();
-        $amount     = '1000.00'; // Nominal Topup
-        
-        // [WAJIB DIISI] Nomor HP User DANA yang mau di-topup
-        // Gunakan nomor HP Sandbox Anda (misal: 08123456789)
-        $phoneNumber = '085745808809'; // <--- GANTI INI DENGAN NOMOR HP SANDBOX ANDA
-
-        // BODY REQUEST DISBURSEMENT
-        // Endpoint: /v1.0/emoney/topup.htm
-        $bodyArray = [
-            "partnerReferenceNo" => $orderId,
-            "amount" => [
-                "value" => $amount,
-                "currency" => "IDR"
-            ],
-
-            // [SOLUSI ERROR 4003802]
-            // Tambahkan feeAmount (Biaya Admin), set 0.00 saja untuk test
-            "feeAmount" => [
-                "value" => "0.00",
-                "currency" => "IDR"
-            ],
-            // Identitas Penerima (User DANA)
-            "payeeInfo" => [
-                "payeeId" => $phoneNumber,
-                "payeeType" => "MSISDN" // Tipe ID (Nomor HP)
-            ],
-            // Wajib untuk Disbursement
-            "additionalInfo" => [
-                "fundType" => "TRANS_TO_USER" // Kode umum transfer ke user
-            ]
-        ];
-
-        $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-        
-        $method = 'POST';
-        $relativePath = '/v1.0/emoney/topup.htm'; // <--- Endpoint BEDA dengan Checkout
-        $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String();
-
-        try {
-            // Generate Signature
-            $signature = $this->danaSignature->generateSignature($method, $relativePath, $jsonBody, $timestamp);
-            
-            $fullUrl = 'https://api.sandbox.dana.id' . $relativePath;
-            $externalId = \Illuminate\Support\Str::random(32);
-
-            Log::info('Hitting Disbursement Endpoint: ' . $fullUrl);
-
-            $response = \Illuminate\Support\Facades\Http::withHeaders([
-                'X-PARTNER-ID' => config('services.dana.client_id'),
-                'X-EXTERNAL-ID' => $externalId,
-                'X-TIMESTAMP'  => $timestamp,
-                'X-SIGNATURE'  => $signature,
-                'Content-Type' => 'application/json',
-                'CHANNEL-ID'   => '95221', 
-            ])
-            ->withBody($jsonBody, 'application/json')
-            ->post($fullUrl);
-
-            // Tampilkan hasil JSON di browser biar gampang dicek
-            return response()->json($response->json());
-
-        } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
-        }
-    }
-
-    // [SCENARIO 1] CHECK ACCOUNT VALIDITY
+    // [SCENARIO 1] CHECK ACCOUNT VALIDITY (Wajib untuk Checklist Dashboard)
+    // Route: /dana/test-inquiry
     public function disburseAccountInquiry()
     {
         Log::info('========== DANA ACCOUNT INQUIRY TEST ==========');
 
-        // Ganti dengan Nomor HP Sandbox Anda
-        $phoneNumber = '085745808809'; 
+        $phoneNumber = '085745808809'; // Ganti dengan No HP Sandbox Anda
         
         $bodyArray = [
             "partnerReferenceNo" => 'INQ-' . time(),
@@ -306,13 +238,13 @@ class DanaWidgetController extends Controller
         return $this->sendDanaRequest('POST', '/v1.0/emoney/account-inquiry.htm', $bodyArray);
     }
 
-    // [SCENARIO 2] EXECUTE TOP UP
+    // [SCENARIO 2] EXECUTE TOP UP (Wajib untuk Checklist Dashboard)
+    // Route: /dana/test-topup
     public function disburseTopUp()
     {
         Log::info('========== DANA TOPUP TEST ==========');
 
-        // Ganti dengan Nomor HP Sandbox Anda
-        $phoneNumber = '085745808809';
+        $phoneNumber = '085745808809'; // Ganti dengan No HP Sandbox Anda
         $orderId     = 'TOPUP-' . time();
 
         $bodyArray = [
@@ -321,6 +253,7 @@ class DanaWidgetController extends Controller
                 "value" => "1000.00",
                 "currency" => "IDR"
             ],
+            // Fee Amount Wajib Ada
             "feeAmount" => [
                 "value" => "0.00",
                 "currency" => "IDR"
@@ -331,19 +264,17 @@ class DanaWidgetController extends Controller
             ]
         ];
 
-        // Simpan Order ID di Log agar bisa dicopy untuk cek status
         Log::info("CREATED ORDER ID: " . $orderId);
 
         return $this->sendDanaRequest('POST', '/v1.0/emoney/topup.htm', $bodyArray);
     }
 
-    // [SCENARIO 3] CHECK STATUS
-    // Akses via browser: /dana/test-status?order_id=TOPUP-1767...
+    // [SCENARIO 3] CHECK STATUS (Wajib untuk Checklist Dashboard)
+    // Route: /dana/test-status?order_id=TOPUP-xxxx
     public function disburseCheckStatus(Request $request)
     {
         Log::info('========== DANA CHECK STATUS TEST ==========');
 
-        // Ambil Order ID dari parameter URL
         $originalOrderId = $request->query('order_id');
 
         if (!$originalOrderId) {
@@ -351,15 +282,17 @@ class DanaWidgetController extends Controller
         }
 
         $bodyArray = [
-            "partnerReferenceNo" => 'CHK-' . time(), // ID baru untuk request pengecekan
-            "originalPartnerReferenceNo" => $originalOrderId, // ID Transaksi yang mau dicek
+            "partnerReferenceNo" => 'CHK-' . time(), 
+            "originalPartnerReferenceNo" => $originalOrderId, 
             "merchantId" => config('services.dana.merchant_id'),
         ];
 
         return $this->sendDanaRequest('POST', '/v1.0/emoney/topup-status.htm', $bodyArray);
     }
 
-    // HELPER: Mengirim Request ke DANA
+    // =========================================================================
+    // HELPER FUNCTION (Agar kodingan tidak berulang-ulang)
+    // =========================================================================
     private function sendDanaRequest($method, $relativePath, $bodyArray)
     {
         $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
@@ -369,6 +302,8 @@ class DanaWidgetController extends Controller
             $signature = $this->danaSignature->generateSignature($method, $relativePath, $jsonBody, $timestamp);
             $fullUrl = 'https://api.sandbox.dana.id' . $relativePath;
             $externalId = \Illuminate\Support\Str::random(32);
+
+            Log::info("Hitting Endpoint: $relativePath");
 
             $response = \Illuminate\Support\Facades\Http::withHeaders([
                 'X-PARTNER-ID' => config('services.dana.client_id'),
