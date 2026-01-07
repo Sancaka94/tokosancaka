@@ -25,37 +25,36 @@ class DanaWidgetController extends Controller
      */
     public function createPayment(Request $request)
     {
-        Log::info('========== DANA GAPURA PAYMENT START ==========');
+        Log::info('========== DANA GAPURA PAYMENT (STRICT SAMPLE MATCH) ==========');
 
         $orderId = 'INV-' . time();
+        // Use a realistic amount
         $amount  = '10000.00'; 
         
-        // Pastikan URL return benar (mengarah ke /public jika di hosting cPanel)
         $returnUrl = route('dana.return');
 
-        // Waktu Wajib: Jakarta Time (GMT+7)
-        // Dokumen mewajibkan format: YYYY-MM-DDTHH:mm:ss+07:00
-        $expiryTime = Carbon::now('Asia/Jakarta')->addMinutes(60)->toIso8601String();
+        // 1. Calculate Expiry Time (Required by ValidUpTo)
+        // Format: YYYY-MM-DDTHH:mm:ss+07:00
+        $expiryTime = Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP');
 
-        // 1. Setup Body Sesuai Dokumen Gapura
+        // 2. Construct Body EXACTLY like the "Request Sample Gapura Hosted Checkout"
         $bodyArray = [
-            // Identitas
-            "merchantId" => config('services.dana.merchant_id'),
             "partnerReferenceNo" => $orderId,
+            "merchantId" => config('services.dana.merchant_id'),
             
             "amount" => [
                 "value" => $amount,
                 "currency" => "IDR"
             ],
             
-            // [WAJIB BARU] Parameter ini sebelumnya tidak ada, makanya Error 500
-            "validUpTo" => $expiryTime, 
+            // [REQUIRED] From documentation
+            "validUpTo" => $expiryTime,
             
-            // URL Redirect
+            // [REQUIRED] URL Parameters
             "urlParams" => [
                 [
                     "url" => $returnUrl,
-                    "type" => "PAY_RETURN", // Sesuai Sample Gapura
+                    "type" => "PAY_RETURN",
                     "isDeeplink" => "Y"
                 ],
                 [
@@ -65,11 +64,31 @@ class DanaWidgetController extends Controller
                 ]
             ],
             
-            // Info Tambahan (Sesuai Sample Gapura Hosted Checkout)
+            // [CRITICAL FIX] Structure MUST match the Sample JSON
             "additionalInfo" => [
+                "order" => [
+                    "merchantTransType" => "type", // From sample
+                    "orderTitle" => "Payment for " . $orderId, // Required field
+                    "scenario" => "REDIRECT", // Important for Hosted Checkout
+                    "goods" => [
+                        [
+                            "description" => "Item Digital",
+                            "price" => [
+                                "value" => $amount,
+                                "currency" => "IDR"
+                            ],
+                            "quantity" => "1",
+                            "unit" => "pcs",
+                            "merchantGoodsId" => "ITEM-001",
+                            "category" => "digital"
+                        ]
+                    ]
+                ],
                 "envInfo" => [
-                    "sourcePlatform" => "IPG",
-                    "orderTerminalType" => "WEB" // Wajib ada di sini
+                    "sourcePlatform" => "IPG", // From sample
+                    "terminalType" => "SYSTEM", // From sample (Was missing before)
+                    "orderTerminalType" => "WEB", // From sample
+                    "websiteLanguage" => "id_ID"
                 ]
             ]
         ];
@@ -78,21 +97,17 @@ class DanaWidgetController extends Controller
         Log::info('Request Body: ' . $jsonBody);
 
         $method = 'POST';
-        
-        // ENDPOINT GAPURA
-        // Perhatikan ada .htm di belakangnya
+        // Endpoint from your documentation
         $relativePath = '/payment-gateway/v1.0/debit/payment-host-to-host.htm'; 
         
         $timestamp = Carbon::now('Asia/Jakarta')->toIso8601String();
 
         try {
-            // Generate Signature
             $signature = $this->danaSignature->generateSignature($method, $relativePath, $jsonBody, $timestamp);
         } catch (\Exception $e) {
-            return response()->json(['error' => 'Signature Error: ' . $e->getMessage()], 500);
+            return response()->json(['error' => 'Signature Error'], 500);
         }
 
-        // URL Sandbox
         $fullUrl = 'https://api.sandbox.dana.id' . $relativePath;
         $externalId = Str::random(32);
 
@@ -105,21 +120,20 @@ class DanaWidgetController extends Controller
                 'X-TIMESTAMP'  => $timestamp,
                 'X-SIGNATURE'  => $signature,
                 'Content-Type' => 'application/json',
-                'CHANNEL-ID'   => 'MOBILE_WEB', //
+                'CHANNEL-ID'   => 'MOBILE_WEB', // Standard for Web
             ])
             ->withBody($jsonBody, 'application/json')
             ->post($fullUrl);
 
-            Log::info('DANA Response Code: ' . $response->status());
+            Log::info('DANA Response:', $response->json());
             
             $result = $response->json();
 
-            // Cek Response Code
-            // Sukses = 2005400
+            // Check for Success (2005400)
             if (isset($result['responseCode']) && $result['responseCode'] == '2005400') {
                  Log::info('Success! Redirecting user...');
                  
-                 // Ambil URL Redirect
+                 // Get Redirect URL
                  $redirectUrl = $result['webRedirectUrl'] ?? null;
                  
                  if($redirectUrl) {
@@ -127,8 +141,6 @@ class DanaWidgetController extends Controller
                  }
             }
 
-            // Jika gagal, log dan tampilkan
-            Log::warning('DANA Failed:', $result);
             return response()->json($result);
 
         } catch (\Exception $e) {
@@ -136,7 +148,6 @@ class DanaWidgetController extends Controller
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
-    
 
     /**
      * FUNGSI 2: CEK STATUS PEMBAYARAN (QUERY PAYMENT)
