@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\OrderController; // <-- BARIS INI WAJIB ADA
 use App\Http\Controllers\ProductController;
@@ -10,9 +11,46 @@ use App\Http\Controllers\AffiliateController;
 use App\Http\Controllers\CouponController;
 use App\Http\Controllers\MemberAuthController;
 
-Route::get('/cek-config-auth', function() {
-    // Tampilkan daftar guards yang terbaca oleh Laravel saat ini
-    dd(Config::get('auth.guards'));
+Route::get('/test-dana-keys', function () {
+    // Ambil path dari config
+    $privateKeyPath = config('services.dana.private_key_path'); // sesuaikan dengan config services.php Anda
+    $publicKeyPath  = config('services.dana.public_key_path');  // sesuaikan dengan config services.php Anda
+
+    echo "<h1>DANA Key Check</h1>";
+
+    // 1. Cek Private Key (Milik Anda)
+    echo "Checking Private Key at: <code>storage/app/$privateKeyPath</code>... <br>";
+    if (Storage::exists($privateKeyPath)) {
+        $privContent = Storage::get($privateKeyPath);
+        $privResource = openssl_pkey_get_private($privContent);
+        
+        if ($privResource) {
+            echo "<span style='color:green'><strong>[OK]</strong> Private Key valid dan bisa dibaca OpenSSL.</span><br>";
+        } else {
+            echo "<span style='color:red'><strong>[ERROR]</strong> File ada, tapi format Key INVALID. Cek copy-paste Anda.</span><br>";
+            echo "OpenSSL Error: " . openssl_error_string() . "<br>";
+        }
+    } else {
+        echo "<span style='color:red'><strong>[ERROR]</strong> File Private Key TIDAK DITEMUKAN.</span><br>";
+    }
+
+    echo "<hr>";
+
+    // 2. Cek Public Key (Milik DANA)
+    echo "Checking DANA Public Key at: <code>storage/app/$publicKeyPath</code>... <br>";
+    if (Storage::exists($publicKeyPath)) {
+        $pubContent = Storage::get($publicKeyPath);
+        $pubResource = openssl_pkey_get_public($pubContent);
+        
+        if ($pubResource) {
+            echo "<span style='color:green'><strong>[OK]</strong> Public Key DANA valid dan bisa dibaca OpenSSL.</span><br>";
+        } else {
+            echo "<span style='color:red'><strong>[ERROR]</strong> File ada, tapi format Key INVALID. Pastikan header -----BEGIN PUBLIC KEY----- ada.</span><br>";
+            echo "OpenSSL Error: " . openssl_error_string() . "<br>";
+        }
+    } else {
+        echo "<span style='color:red'><strong>[ERROR]</strong> File Public Key TIDAK DITEMUKAN.</span><br>";
+    }
 });
 
 
