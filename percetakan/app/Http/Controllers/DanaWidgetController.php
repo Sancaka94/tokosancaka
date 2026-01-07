@@ -378,14 +378,9 @@ class DanaWidgetController extends Controller
             'allowRegistration' => 'true'
         ];
 
-        // 5. Build Full URL
-        // Sandbox Base URL untuk Web Redirect biasanya berbeda dengan API
-        // Tapi untuk Widget API biasanya: https://m.sandbox.dana.id/d/portal/oauth
-        // ATAU cek dokumentasi spesifik URL entry pointnya. 
-        // Berdasarkan endpoint docs: GET /v1.0/get-auth-code
-        // Kita tembak ke API Gateway dulu, nanti dia yang kasih redirect.
+        // BENAR (Ini Halaman Web Portal DANA Sandbox):
+        $baseUrl = 'https://m.sandbox.dana.id/d/portal/oauth'; 
         
-        $baseUrl = 'https://api.sandbox.dana.id/v1.0/get-auth-code';
         $fullRedirectUrl = $baseUrl . '?' . http_build_query($queryParams);
 
         Log::info("Generated Binding URL: " . $fullRedirectUrl);
