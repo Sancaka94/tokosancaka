@@ -231,6 +231,13 @@ class DanaWidgetController extends Controller
                 "value" => $amount,
                 "currency" => "IDR"
             ],
+
+            // [SOLUSI ERROR 4003802]
+            // Tambahkan feeAmount (Biaya Admin), set 0.00 saja untuk test
+            "feeAmount" => [
+                "value" => "0.00",
+                "currency" => "IDR"
+            ],
             // Identitas Penerima (User DANA)
             "payeeInfo" => [
                 "payeeId" => $phoneNumber,
