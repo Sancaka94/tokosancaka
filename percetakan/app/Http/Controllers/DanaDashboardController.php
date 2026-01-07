@@ -214,39 +214,40 @@ class DanaDashboardController extends Controller
     }
 
     // =========================================================================
-    // HELPER: SEND REQUEST (STRICT ORDER & LEGACY SIGNATURE)
+    // HELPER: SEND REQUEST (STRICT COMPLIANCE WITH DOCS)
     // =========================================================================
     private function sendRequest($method, $relativePath, $bodyArray, $accessToken = null)
     {
         Log::info("--- START REQUEST [$method] $relativePath ---");
         
-        // 1. URUTKAN KEY JSON (SORTING A-Z)
-        // Penting: DANA kadang menolak jika urutan di Body beda dengan Signature
+        // 1. URUTKAN & ENCODE JSON (Strict Mode)
+        // DANA V1.0 sangat sensitif terhadap urutan key JSON
         ksort($bodyArray); 
         if(isset($bodyArray['additionalInfo']) && is_array($bodyArray['additionalInfo'])) {
             ksort($bodyArray['additionalInfo']);
         }
-
-        // 2. ENCODE JSON (Pastikan tanpa spasi/pretty print)
+        
+        // Pastikan tidak ada spasi (minified)
         $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         
         $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String();
         $clientId  = config('services.dana.client_id');
         
-        // 3. TENTUKAN RUMUS SIGNATURE
+        // 2. TENTUKAN RUMUS SIGNATURE
         if ($accessToken) {
-            // [TRANSAKSI - BALANCE INQUIRY/TOPUP] -> Format V1.0 Legacy
+            // [TRANSAKSI - BALANCE INQUIRY]
+            // Sesuai dokumentasi endpoint .htm dengan X-PARTNER-ID
             // Rumus: Method + ":" + Path + ":" + Timestamp + ":" + Body
             $stringToSign = $method . ":" . $relativePath . ":" . $timestamp . ":" . $jsonBody;
         } else {
-            // [APPLY TOKEN] -> Format SNAP B2B2C
-            // Rumus: ClientID + "|" + Timestamp
+            // [APPLY TOKEN - SNAP]
+            // Khusus Apply Token yang sukses sebelumnya
             $stringToSign = $clientId . "|" . $timestamp;
         }
 
         Log::info("StringToSign: " . $stringToSign);
 
-        // 4. GENERATE SIGNATURE
+        // 3. GENERATE SIGNATURE
         $signature = '';
         try {
             $rawKey = config('services.dana.private_key');
@@ -254,29 +255,35 @@ class DanaDashboardController extends Controller
             $formattedKey = "-----BEGIN PRIVATE KEY-----\n" . wordwrap($cleanKey, 64, "\n", true) . "\n-----END PRIVATE KEY-----";
             
             $binarySignature = '';
-            openssl_sign($stringToSign, $binarySignature, $formattedKey, OPENSSL_ALGO_SHA256);
+            // Algoritma wajib SHA256withRSA
+            if(!openssl_sign($stringToSign, $binarySignature, $formattedKey, OPENSSL_ALGO_SHA256)) {
+                throw new \Exception("OpenSSL Sign Failed");
+            }
             $signature = base64_encode($binarySignature);
         } catch (\Exception $e) {
-            return ['error' => 'Signature Error'];
+            return ['error' => 'Signature Error: ' . $e->getMessage()];
         }
 
-        // 5. HEADERS
+        // 4. SUSUN HEADERS (Sesuai Dokumentasi Persis)
         $headers = [
-            'Content-Type'  => 'application/json',
-            'X-TIMESTAMP'   => $timestamp,
-            'X-SIGNATURE'   => $signature,
-            'CHANNEL-ID'    => '95221', 
+            'Content-Type'  => 'application/json', //
+            'X-TIMESTAMP'   => $timestamp,         //
+            'X-SIGNATURE'   => $signature,         //
+            'CHANNEL-ID'    => '95221',            //
+            // [PENTING] Header ORIGIN wajib ada sesuai Request Sample
+            'ORIGIN'        => 'https://tokosancaka.com', //
         ];
 
-        // LOGIKA HEADER SPESIFIK
         if($accessToken) {
-            // Header Transaksi (V1.0)
-            $headers['X-PARTNER-ID'] = $clientId; 
-            $headers['X-EXTERNAL-ID'] = \Illuminate\Support\Str::random(32);
-            $headers['X-DEVICE-ID'] = 'DEVICE-' . time();
+            // Header untuk Balance Inquiry / Topup
+            $headers['X-PARTNER-ID']  = $clientId; //
+            $headers['X-EXTERNAL-ID'] = \Illuminate\Support\Str::random(32); //
+            $headers['X-DEVICE-ID']   = 'DEVICE-' . time(); //
+            
+            // Authorization-Customer berisi Access Token
             $headers['Authorization-Customer'] = 'Bearer ' . $accessToken;
         } else {
-            // Header Apply Token (SNAP)
+            // Header khusus Apply Token (SNAP Style)
             $headers['X-CLIENT-KEY'] = $clientId;
         }
 
