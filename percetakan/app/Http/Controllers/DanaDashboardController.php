@@ -431,43 +431,30 @@ class DanaDashboardController extends Controller
 
     public function testKeyData()
 {
-    // 1. Ambil Key dari Config
     $rawKey = config('services.dana.private_key');
     
-    echo "<h2>🛠 DANA Key Validator</h2>";
-    echo "<b>Client ID:</b> " . config('services.dana.client_id') . "<br>";
+    echo "<h2>🛠 DANA Key Extractor</h2>";
     
-    // 2. Cek apakah string mengandung header PEM
+    // Pastikan format PEM lengkap
     if (!str_contains($rawKey, '-----BEGIN PRIVATE KEY-----')) {
-        echo "<p style='color:red;'>❌ ERROR: Header '-----BEGIN PRIVATE KEY-----' tidak ditemukan!</p>";
-        // Mari kita coba perbaiki secara otomatis di memori untuk test
         $formattedKey = "-----BEGIN PRIVATE KEY-----\n" . wordwrap($rawKey, 64, "\n", true) . "\n-----END PRIVATE KEY-----";
     } else {
-        echo "<p style='color:green;'>✅ Header ditemukan.</p>";
         $formattedKey = $rawKey;
     }
-    
-    
 
-    // 3. Test Loading Key ke OpenSSL
     $res = openssl_get_privatekey($formattedKey);
-    $details = openssl_pkey_get_details($res);
     if ($res === false) {
-        echo "<p style='color:red;'>❌ ERROR FATAL: OpenSSL tidak bisa membaca Key ini. Format rusak atau isi bukan RSA Private Key!</p>";
-        echo "<i>Saran: Generate ulang key menggunakan OpenSSL atau RSA Generator online.</i>";
-        echo "<textarea style='width:100%; height:200px;'>" . $details['key'] . "</textarea>";
+        echo "<p style='color:red;'>❌ ERROR: Private Key di .env rusak!</p>";
     } else {
-        echo "<p style='color:green;'>✅ SUKSES: OpenSSL berhasil membaca Private Key Anda.</p>";
+        // AMBIL PUBLIC KEY DARI PRIVATE KEY TERSEBUT
+        $details = openssl_pkey_get_details($res);
+        $publicKey = $details['key'];
+
+        echo "<p style='color:green;'>✅ Public Key Berhasil Diekstrak!</p>";
+        echo "<p>Silakan <b>Copy SEMUA teks di bawah ini</b> dan masukkan ke Dashboard DANA (Bagian Signature/Public Key):</p>";
+        echo "<textarea style='width:100%; height:250px; font-family:monospace; background:#f4f4f4; padding:10px;' readonly>" . $publicKey . "</textarea>";
         
-        // 4. Test Signing
-        $dataToSign = "TEST_DATA_SIGNATURE";
-        $binarySig = "";
-        if (openssl_sign($dataToSign, $binarySig, $res, OPENSSL_ALGO_SHA256)) {
-             echo "<p style='color:green;'>✅ SUKSES: Berhasil melakukan simulasi tanda tangan (Signing).</p>";
-             echo "<b>Signature Result:</b> " . base64_encode($binarySig);
-        } else {
-             echo "<p style='color:red;'>❌ ERROR: Gagal melakukan Signing meskipun Key terbaca.</p>";
-        }
+        echo "<br><br><p>Setelah di-update di DANA, silakan coba Cek Saldo lagi menggunakan Skenario 1.</p>";
     }
 }
 
