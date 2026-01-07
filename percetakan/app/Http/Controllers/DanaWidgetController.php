@@ -210,4 +210,69 @@ class DanaWidgetController extends Controller
             'X-TIMESTAMP' => \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String()
         ]);
     }
+
+    // METHOD BARU: DISBURSEMENT / TOP UP KE USER
+    public function disburseTopUp()
+    {
+        Log::info('========== DANA DISBURSEMENT TEST START ==========');
+
+        $orderId    = 'TOPUP-' . time();
+        $amount     = '1000.00'; // Nominal Topup
+        
+        // [WAJIB DIISI] Nomor HP User DANA yang mau di-topup
+        // Gunakan nomor HP Sandbox Anda (misal: 08123456789)
+        $phoneNumber = '085745808809'; // <--- GANTI INI DENGAN NOMOR HP SANDBOX ANDA
+
+        // BODY REQUEST DISBURSEMENT
+        // Endpoint: /v1.0/emoney/topup.htm
+        $bodyArray = [
+            "partnerReferenceNo" => $orderId,
+            "amount" => [
+                "value" => $amount,
+                "currency" => "IDR"
+            ],
+            // Identitas Penerima (User DANA)
+            "payeeInfo" => [
+                "payeeId" => $phoneNumber,
+                "payeeType" => "MSISDN" // Tipe ID (Nomor HP)
+            ],
+            // Wajib untuk Disbursement
+            "additionalInfo" => [
+                "fundType" => "TRANS_TO_USER" // Kode umum transfer ke user
+            ]
+        ];
+
+        $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        
+        $method = 'POST';
+        $relativePath = '/v1.0/emoney/topup.htm'; // <--- Endpoint BEDA dengan Checkout
+        $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String();
+
+        try {
+            // Generate Signature
+            $signature = $this->danaSignature->generateSignature($method, $relativePath, $jsonBody, $timestamp);
+            
+            $fullUrl = 'https://api.sandbox.dana.id' . $relativePath;
+            $externalId = \Illuminate\Support\Str::random(32);
+
+            Log::info('Hitting Disbursement Endpoint: ' . $fullUrl);
+
+            $response = \Illuminate\Support\Facades\Http::withHeaders([
+                'X-PARTNER-ID' => config('services.dana.client_id'),
+                'X-EXTERNAL-ID' => $externalId,
+                'X-TIMESTAMP'  => $timestamp,
+                'X-SIGNATURE'  => $signature,
+                'Content-Type' => 'application/json',
+                'CHANNEL-ID'   => '95221', 
+            ])
+            ->withBody($jsonBody, 'application/json')
+            ->post($fullUrl);
+
+            // Tampilkan hasil JSON di browser biar gampang dicek
+            return response()->json($response->json());
+
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
 }

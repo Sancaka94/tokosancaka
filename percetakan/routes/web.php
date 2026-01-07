@@ -26,6 +26,9 @@ Route::get('/dana/return', function () {
 // 3. Cek Status Manual (Baru)
 Route::get('/dana/status/{orderId}', [DanaWidgetController::class, 'checkStatus'])->name('dana.status');
 
+// Route untuk Test Disbursement (Kirim Uang ke User)
+Route::get('/dana/test-disburse', [App\Http\Controllers\DanaWidgetController::class, 'disburseTopUp']);
+
 Route::post('/dana/notify', [App\Http\Controllers\DanaWidgetController::class, 'handleNotify'])->name('dana.notify');
 
 
