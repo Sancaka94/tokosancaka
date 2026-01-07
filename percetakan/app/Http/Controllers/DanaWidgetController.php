@@ -293,6 +293,7 @@ class DanaWidgetController extends Controller
     // =========================================================================
     // HELPER FUNCTION (Agar kodingan tidak berulang-ulang)
     // =========================================================================
+    // HELPER: Mengirim Request ke DANA (Versi dengan Log Response)
     private function sendDanaRequest($method, $relativePath, $bodyArray)
     {
         $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
@@ -304,6 +305,7 @@ class DanaWidgetController extends Controller
             $externalId = \Illuminate\Support\Str::random(32);
 
             Log::info("Hitting Endpoint: $relativePath");
+            Log::info("Request Body: $jsonBody"); // Log apa yang dikirim
 
             $response = \Illuminate\Support\Facades\Http::withHeaders([
                 'X-PARTNER-ID' => config('services.dana.client_id'),
@@ -316,9 +318,14 @@ class DanaWidgetController extends Controller
             ->withBody($jsonBody, 'application/json')
             ->post($fullUrl);
 
+            // [TAMBAHAN] Log Balasan dari DANA
+            Log::info("DANA Response Code: " . $response->status());
+            Log::info("DANA Response Body: " . $response->body());
+
             return response()->json($response->json());
 
         } catch (\Exception $e) {
+            Log::error("DANA HTTP Error: " . $e->getMessage());
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
