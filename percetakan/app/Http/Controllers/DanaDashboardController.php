@@ -63,32 +63,63 @@ class DanaDashboardController extends Controller
     // =========================================================================
     // 3. HANDLE CALLBACK (TERIMA AUTH CODE)
     // =========================================================================
+    // =========================================================================
+    // 3. HANDLE CALLBACK (OTOMATIS TUKAR AUTH CODE JADI TOKEN)
+    // =========================================================================
     public function handleCallback(Request $request)
     {
         Log::info('=========================================');
-        Log::info('[CALLBACK] DANA Redirect Back Received');
-        Log::info('[CALLBACK] Full Params:', $request->all());
+        Log::info('[CALLBACK] DANA Redirect Received');
 
-        // Cek parameter error dari DANA
-        if ($request->has('responseCode') && $request->responseCode != '2001000') {
-             Log::error('[CALLBACK] DANA Error: ' . $request->responseMessage);
-             return redirect()->route('dana.dashboard')->with('error', 'DANA Error: ' . $request->responseMessage);
-        }
-
-        // DANA kadang mengirim 'authCode', kadang 'auth_code'
+        // 1. Ambil Auth Code
         $authCode = $request->authCode ?? $request->auth_code ?? null;
         
         if(!$authCode) {
-            Log::error('[CALLBACK] GAGAL: Auth Code tidak ditemukan di URL!');
-            return redirect()->route('dana.dashboard')->with('error', 'Gagal: Auth Code tidak ditemukan. Cek Log.');
+            Log::error('[CALLBACK] GAGAL: Auth Code tidak ditemukan.');
+            return redirect()->route('dana.dashboard')->with('error', 'Gagal Binding: Auth Code hilang.');
         }
 
-        Log::info("[CALLBACK] SUKSES! Auth Code: $authCode");
+        Log::info("[CALLBACK] Auth Code: $authCode");
 
-        // Simpan session
-        session(['dana_auth_code' => $authCode]);
+        // 2. PROSES TUKAR AUTH CODE -> ACCESS TOKEN (Apply Token)
+        // Kita panggil fungsi internal untuk menukar token ke API DANA
+        $tokenResult = $this->exchangeAuthCodeForToken($authCode);
+
+        if(isset($tokenResult['accessToken'])) {
+            // SUKSES! Simpan Token ke Session
+            $accessToken = $tokenResult['accessToken'];
+            session(['dana_access_token' => $accessToken]);
+            session(['dana_auth_code'  => $authCode]); // Simpan buat cadangan
+
+            Log::info("[CALLBACK] TOKEN EXCHANGE SUCCESS! Token: " . substr($accessToken, 0, 10) . "...");
+            
+            return redirect()->route('dana.dashboard')->with('success', 'Binding Sukses! Access Token berhasil disimpan. Silakan Cek Saldo.');
+        } else {
+            // Gagal Tukar Token
+            Log::error("[CALLBACK] Gagal Tukar Token. Response:", $tokenResult);
+            return redirect()->route('dana.dashboard')->with('error', 'Binding berhasil tapi Gagal ambil Token. Cek Log.');
+        }
+    }
+
+    // =========================================================================
+    // HELPER: APPLY TOKEN (TUKAR CODE JADI TOKEN)
+    // =========================================================================
+    private function exchangeAuthCodeForToken($authCode)
+    {
+        Log::info('[APPLY TOKEN] Menukar Auth Code dengan Access Token...');
+
+        $body = [
+            "grantType" => "authorization_code",
+            "authCode"  => $authCode,
+            "partnerId" => config('services.dana.client_id'),
+        ];
+
+        // Endpoint Apply Token DANA
+        // Biasanya /v1.0/oauth/token.htm atau /v1.0/oauth/token
+        // Kita coba endpoint standar Sandbox
+        $response = $this->sendRequest('POST', '/v1.0/oauth/token.htm', $body);
         
-        return redirect()->route('dana.dashboard')->with('success', "Binding Berhasil! Auth Code: " . Str::limit($authCode, 10));
+        return $response;
     }
 
     // =========================================================================
