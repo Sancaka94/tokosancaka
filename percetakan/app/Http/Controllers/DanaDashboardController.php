@@ -103,20 +103,75 @@ class DanaDashboardController extends Controller
         return redirect()->route('dana.dashboard')->with('error', 'Binding Gagal saat menukar Token. Cek Log.');
     }
 
-    // HELPER APPLY TOKEN (Wajib Ada)
+    // =========================================================================
+    // HELPER: APPLY TOKEN (VERSI SNAP B2B2C) - FINAL FIX
+    // =========================================================================
     private function exchangeAuthCodeForToken($authCode)
     {
-        Log::info('[APPLY TOKEN] Menukar Auth Code...');
+        Log::info('[APPLY TOKEN] Memulai Request SNAP B2B2C...');
         
-        $body = [
-            "grantType" => "authorization_code",
-            "authCode"  => $authCode,
-            "partnerId" => config('services.dana.client_id'),
-            "clientSecret" => config('services.dana.client_secret'),
+        $clientId  = config('services.dana.client_id');
+        $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String();
+
+        // 1. GENERATE SIGNATURE KHUSUS SNAP
+        // Rumus: stringToSign = client_ID + "|" + X-TIMESTAMP
+        $stringToSign = $clientId . "|" . $timestamp;
+        
+        Log::info("[APPLY TOKEN] StringToSign: " . $stringToSign);
+
+        $signature = '';
+        try {
+            $rawKey = config('services.dana.private_key');
+            $cleanKey = str_replace(["-----BEGIN PRIVATE KEY-----", "-----END PRIVATE KEY-----", "\r", "\n", " "], "", $rawKey);
+            $formattedKey = "-----BEGIN PRIVATE KEY-----\n" . wordwrap($cleanKey, 64, "\n", true) . "\n-----END PRIVATE KEY-----";
+            
+            $binarySignature = '';
+            // Algoritma: SHA256withRSA
+            if(!openssl_sign($stringToSign, $binarySignature, $formattedKey, OPENSSL_ALGO_SHA256)) {
+                throw new \Exception("OpenSSL Sign Failed");
+            }
+            $signature = base64_encode($binarySignature);
+        } catch (\Exception $e) {
+            Log::error("[APPLY TOKEN] Gagal Sign: " . $e->getMessage());
+            return ['error' => 'Sign Error'];
+        }
+
+        // 2. HEADERS KHUSUS SNAP
+        // Perhatikan: X-CLIENT-KEY, bukan X-PARTNER-ID
+        $headers = [
+            'Content-Type' => 'application/json',
+            'X-TIMESTAMP'  => $timestamp,
+            'X-CLIENT-KEY' => $clientId,
+            'X-SIGNATURE'  => $signature,
         ];
 
-        // Endpoint Apply Token (Sandbox)
-        return $this->sendRequest('POST', '/oauth/as/token.htm', $body);
+        // 3. BODY KHUSUS SNAP
+        $body = [
+            "grantType"      => "AUTHORIZATION_CODE",
+            "authCode"       => $authCode,
+            "refreshToken"   => "", // Kosongkan string
+            "additionalInfo" => (object)[] // Object kosong {}
+        ];
+
+        // 4. KIRIM REQUEST KE ENDPOINT SNAP
+        $url = 'https://api.sandbox.dana.id/v1.0/access-token/b2b2c.htm';
+
+        Log::info("Hitting URL: $url");
+        Log::info("Headers:", $headers);
+        Log::info("Body:", $body);
+
+        try {
+            $response = Http::withHeaders($headers)->post($url, $body);
+            
+            Log::info("--- SNAP RESPONSE RECEIVED ---");
+            Log::info("Response: " . $response->body());
+
+            return $response->json();
+
+        } catch (\Exception $e) {
+            Log::error("[APPLY TOKEN] Connection Error: " . $e->getMessage());
+            return ['error' => $e->getMessage()];
+        }
     }
     // =========================================================================
     // 4. CEK SALDO (BALANCE INQUIRY)
