@@ -73,7 +73,8 @@ class KirimAjaController extends Controller
                 }
                 
                 // Cari model berdasarkan invoice number
-                $order = Order::where('invoice_number', $orderId)->first();
+                // Tambah lockForUpdate() biar saldo AMAN dari duplikat
+                $order = Order::where('invoice_number', $orderId)->lockForUpdate()->first();
                 $pesanan = Pesanan::where('nomor_invoice', $orderId)->first();
                 $orderMarketplace = OrderMarketplace::where('invoice_number', $orderId)->first(); 
                 
