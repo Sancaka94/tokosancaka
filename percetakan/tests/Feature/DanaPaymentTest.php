@@ -5,37 +5,49 @@ namespace Tests\Feature;
 use Tests\TestCase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\URL;
 
 class DanaPaymentTest extends TestCase
 {
+    /**
+     * Setup: Dijalankan otomatis sebelum SETIAP test.
+     * Kita paksa aplikasi 'lupa' kalau dia ada di subfolder cPanel.
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // 1. Paksa URL Root ke Localhost. 
+        // Ini agar Router Laravel hanya melihat '/dana/pay', bukan '/percetakan/public/dana/pay'
+        Config::set('app.url', 'http://localhost');
+        URL::forceRootUrl('http://localhost');
+    }
+
     public function test_create_payment_redirects_to_dana_successfully()
     {
-        // 1. Setup Mock (Pura-pura jadi server DANA)
+        // 2. Setup Mock (Pura-pura jadi server DANA)
         Http::fake([
             'api.sandbox.dana.id/*' => Http::response([
                 'responseCode' => '2000000',
                 'responseMessage' => 'Success',
-                'webRedirectUrl' => 'https://m.sandbox.dana.id/d/portal/cashier/checkout?bizNo=Test12345',
-                'redirectUrl' => 'https://m.sandbox.dana.id/d/portal/cashier/checkout?bizNo=Test12345'
+                'webRedirectUrl' => 'https://m.sandbox.dana.id/d/portal/cashier/checkout?bizNo=Test123',
+                'redirectUrl' => 'https://m.sandbox.dana.id/d/portal/cashier/checkout?bizNo=Test123'
             ], 200),
         ]);
 
-        // 2. Tentukan URL Target (Sesuai keinginan Anda: ADA PUBLIC-NYA)
-        // Kita hardcode string-nya biar pasti benar secara visual
-        $targetUrlVisual = "https://tokosancaka.com/percetakan/public/dana/pay";
+        // 3. Tentukan URL Target
+        // Karena config sudah di-reset di setUp(), route() akan menghasilkan 'http://localhost/dana/pay'
+        // Ini SANGAT AMAN untuk testing internal.
+        $targetUrl = route('dana.pay'); 
         
-        echo "\n[INFO] Testing URL: " . $targetUrlVisual . "\n";
+        echo "\n[INFO] Internal Test URL: " . $targetUrl . "\n";
 
-        // 3. Eksekusi Request Menggunakan "Relative Path"
-        // [TRIK JITU]: Kita akses '/dana/pay' langsung.
-        // Ini mem-bypass kebingungan Laravel soal folder '/percetakan/public'.
-        // Secara logika ini SAMA SAJA dengan mengakses full URL, tapi 100% anti-error 404 di testing.
-        $response = $this->get('/dana/pay');
+        // 4. Eksekusi Request
+        $response = $this->get($targetUrl);
 
-        // 4. Debugging jika masih error (Akan muncul di terminal)
+        // Debug jika masih error
         if ($response->status() !== 302) {
-            echo "\n[ERROR] Status Code: " . $response->status();
-            echo "\n[ERROR] Response: " . substr($response->getContent(), 0, 500) . "...\n";
+             echo "\n[ERROR HTML] " . substr($response->getContent(), 0, 200) . "...\n";
         }
 
         // 5. Cek Hasil Redirect
@@ -53,10 +65,10 @@ class DanaPaymentTest extends TestCase
             ], 500),
         ]);
 
-        // Akses Relative Path lagi
-        $response = $this->get('/dana/pay');
+        // Akses Route
+        $response = $this->get(route('dana.pay'));
 
-        // Harusnya return JSON error (200 OK dengan isi JSON error), bukan crash
+        // Harusnya 200 OK (Return JSON Error), bukan 404/500 Crash
         $response->assertStatus(200);
         $response->assertJson(['responseCode' => '500']);
     }
