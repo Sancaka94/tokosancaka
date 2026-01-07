@@ -175,69 +175,57 @@ class DanaDashboardController extends Controller
     }
     
     // =========================================================================
-    // 4. CEK SALDO (FIXED LOGIC)
+    // 4. CEK SALDO (PURE SNAP VERSION - TANPA .HTM)
     // =========================================================================
     public function checkBalance(Request $request)
     {
         Log::info('=========================================');
-        Log::info('[CEK SALDO] Request Initiated');
+        Log::info('[CEK SALDO] Request Initiated (PURE SNAP)');
 
         $accessToken = $request->access_token; 
         if(!$accessToken) return back()->with('error', 'Access Token Wajib Diisi!');
 
-        // Struktur Body Wajib V1.0
+        // BODY SNAP STANDAR (Beda struktur dengan yg lama)
+        // Biasanya SNAP tidak butuh additionalInfo yang njelimet
         $body = [
             "partnerReferenceNo" => 'BAL-' . time(),
             "balanceTypes"       => ["BALANCE"],
-            "additionalInfo"     => ["accessToken" => $accessToken]
+            "additionalInfo"     => [
+                "accessToken" => $accessToken
+            ]
         ];
 
-        // Kirim Request
-        $response = $this->sendRequest('POST', '/v1.0/balance-inquiry.htm', $body, $accessToken);
+        // PERHATIKAN: URL TIDAK PAKAI .htm
+        $response = $this->sendRequest('POST', '/v1.0/balance-inquiry', $body, $accessToken);
         
-        // Cek Response Code
         if(isset($response['responseCode']) && $response['responseCode'] == '2001100') {
-            // Ambil nominal saldo
             $saldo = $response['accountInfos'][0]['availableBalance']['value'] ?? '0';
-            
             Log::info("[CEK SALDO] SUKSES! Saldo: $saldo");
-            
-            // Kirim ke Blade session 'saldo_terbaru'
-            return back()
-                ->with('success', "Cek Saldo Berhasil!")
-                ->with('saldo_terbaru', $saldo); 
+            return back()->with('success', "Cek Saldo Berhasil!")->with('saldo_terbaru', $saldo); 
         }
 
         $msg = $response['responseMessage'] ?? 'Unknown Error';
-        return back()->with('error', 'Gagal Cek Saldo: ' . $msg);
+        return back()->with('error', 'Gagal: ' . $msg . ' (Code: ' . ($response['responseCode']??'-') . ')');
     }
 
     // =========================================================================
-    // HELPER: SEND REQUEST (HYBRID SIGNATURE SWITCHER)
+    // HELPER: SEND REQUEST (PURE SNAP SIGNATURE)
     // =========================================================================
     private function sendRequest($method, $relativePath, $bodyArray, $accessToken = null)
     {
         Log::info("--- START REQUEST [$method] $relativePath ---");
         
-        // 1. JSON ENCODE (Minified, tanpa spasi)
-        // Kita sort dulu key-nya biar aman (A-Z)
-        ksort($bodyArray);
-        if(isset($bodyArray['additionalInfo']) && is_array($bodyArray['additionalInfo'])) {
-            ksort($bodyArray['additionalInfo']);
-        }
+        // 1. JSON ENCODE
         $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-        
         $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String();
         $clientId  = config('services.dana.client_id');
         
-        // 2. LOGIKA TANDA TANGAN (SIGNATURE SWITCHING)
+        // 2. RUMUS SNAP ASLI
+        // Rumus: Method + "|" + Path + "|" + AccessToken + "|" + Timestamp + "|" + Body
         if ($accessToken) {
-            // [JIKA CEK SALDO / TRANSAKSI] -> Pakai Format V1.0
-            // Rumus: Method + ":" + Path + ":" + Timestamp + ":" + Body
-            $stringToSign = $method . ":" . $relativePath . ":" . $timestamp . ":" . $jsonBody;
+            $stringToSign = $method . "|" . $relativePath . "|" . $accessToken . "|" . $timestamp . "|" . $jsonBody;
         } else {
-            // [JIKA APPLY TOKEN] -> Pakai Format SNAP (Terbukti Sukses)
-            // Rumus: ClientID + "|" + Timestamp
+            // Apply Token (Client|Time)
             $stringToSign = $clientId . "|" . $timestamp;
         }
 
@@ -257,7 +245,7 @@ class DanaDashboardController extends Controller
             return ['error' => 'Signature Error'];
         }
 
-        // 4. HEADERS
+        // 4. HEADERS SNAP MURNI
         $headers = [
             'Content-Type'  => 'application/json',
             'X-TIMESTAMP'   => $timestamp,
@@ -266,23 +254,24 @@ class DanaDashboardController extends Controller
             'ORIGIN'        => 'https://tokosancaka.com',
         ];
 
-        // 5. HEADER SWITCHING
         if($accessToken) {
-            // Transaksi V1.0 butuh X-PARTNER-ID
+            // SNAP Wajib X-PARTNER-ID untuk transaksi
             $headers['X-PARTNER-ID'] = $clientId; 
             $headers['X-EXTERNAL-ID'] = \Illuminate\Support\Str::random(32);
             $headers['X-DEVICE-ID'] = 'DEVICE-' . time();
             $headers['Authorization-Customer'] = 'Bearer ' . $accessToken;
         } else {
-            // Apply Token SNAP butuh X-CLIENT-KEY
             $headers['X-CLIENT-KEY'] = $clientId;
         }
 
+        // HAPUS .htm DARI URL
         $fullUrl = 'https://api.sandbox.dana.id' . $relativePath;
         
+        Log::info("Hitting URL: $fullUrl");
+
         try {
             $response = Http::withHeaders($headers)->withBody($jsonBody, 'application/json')->post($fullUrl);
-            Log::info("Response: " . $response->body());
+            Log::info("Body: " . $response->body());
             return $response->json();
         } catch (\Exception $e) {
             return ['error' => $e->getMessage()];
