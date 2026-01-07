@@ -211,21 +211,14 @@ class DanaWidgetController extends Controller
         ]);
     }
 
-    // =========================================================================
-    // DANA DISBURSEMENT (KIRIM UANG) - TESTING SCENARIOS
-    // =========================================================================
-
-    // [SCENARIO 1] CHECK ACCOUNT VALIDITY (Wajib untuk Checklist Dashboard)
-    // Route: /dana/test-inquiry
-    // [SCENARIO 1] CHECK ACCOUNT VALIDITY (REVISI)
-    // [SCENARIO 1] CHECK ACCOUNT VALIDITY (FORMAT FIX)
+ 
     public function disburseAccountInquiry()
     {
         Log::info('========== DANA ACCOUNT INQUIRY TEST (FORMAT 8...) ==========');
 
         // REVISI: Coba hapus '0' atau '62' di depan. Langsung angka 8.
         // Asumsi nomor asli: 085745808809 -> Jadi: 85745808809
-        $phoneNumber = '85745808809'; 
+        $phoneNumber = '+6285745808809'; 
         
         $bodyArray = [
             "partnerReferenceNo" => 'INQ-' . time(),
