@@ -29,7 +29,7 @@ Route::prefix('dana')->name('dana.')->group(function () {
     // 2. Route Account Binding (Logika Awal)
     Route::post('/do-bind', [DanaDashboardController::class, 'startBinding'])->name('do_bind');
     // 3. Callback (Wajib DanaDashboardController agar Redirect sukses)
-    Route::get('/dana/callback', [DanaDashboardController::class, 'handleCallback'])->name('dana.callback');
+    Route::get('/callback', [DanaDashboardController::class, 'handleCallback'])->name('dana.callback');
     // 3. Route Monitoring Saldo (SNAP)
     Route::post('/check-balance', [DanaDashboardController::class, 'checkBalance'])->name('check_balance');
 
