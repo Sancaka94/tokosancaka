@@ -559,29 +559,28 @@ public function customerTopup(Request $request)
 
     // --- [BODY: HARUS SESUAI DOKUMEN BOS] ---
     $body = [
-        "partnerReferenceNo" => $partnerRef,
-        "customerNumber"     => $cleanPhone,
-        "amount" => [
-            "value"    => $valStr,
-            "currency" => "IDR"
-        ],
-        "feeAmount" => [
-            "value"    => $valStr, // Di doku bos nominal fee disamakan dengan amount
-            "currency" => "IDR"
-        ],
-        "transactionDate" => $timestamp,
-        "sessionId"       => (string) Str::uuid(), // Sesuaikan sessionId
-        "categoryId"      => "6",
-        "notes"           => "notes test", // Sesuai dokumen bos
-        "additionalInfo"  => [
-            "extendInfo"         => "{\"memo\": \"topup order memo\"}", // String JSON di dalam string!
-            "accountType"        => "NAME_DEPOSIT",
-            "fundType"           => "AGENT_TOPUP_FOR_USER_SETTLE",
-            "externalDivisionId" => "91080916Division",
-            "chargeTarget"       => "DIVISION",
-            "customerId"         => "20200519111215830121DANAW3ID009200305573" // Sesuai dokumen bos
-        ]
-    ];
+    "partnerReferenceNo" => $partnerRef,
+    "customerNumber"     => $cleanPhone,
+    "amount" => [
+        "value"    => $valStr,
+        "currency" => "IDR"
+    ],
+    "feeAmount" => [
+        "value"    => "0.00", // Di Sandbox real, fee biasanya 0.00
+        "currency" => "IDR"
+    ],
+    "transactionDate" => $timestamp,
+    "sessionId"       => (string) Str::uuid(),
+    "categoryId"      => "6",
+    "notes"           => "Topup Sancaka",
+    "additionalInfo"  => [
+        // PAKAI INI SAJA (Standar Merchant Disbursement)
+        "accountType"  => "NAME_DEPOSIT",
+        "fundType"     => "AGENT_TOPUP_FOR_USER_SETTLE",
+        "chargeTarget" => "MERCHANT" // Ganti DIVISION ke MERCHANT
+        // externalDivisionId dan customerId DIHAPUS karena pemicu PARAM_ILLEGAL
+    ]
+];
 
     // --- [LOG 4] SIGNATURE & SECURITY ---
     $path = '/v1.0/emoney/topup.htm';
