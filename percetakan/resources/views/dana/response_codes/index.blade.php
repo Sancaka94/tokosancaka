@@ -94,6 +94,71 @@
         </form>
     </div>
 
+    {{-- 
+        ====================================================
+        STATUS LAPORAN KATEGORI (MUNCUL JIKA DIPILIH)
+        ====================================================
+    --}}
+    @if(request()->filled('category') && request('category') !== 'ALL')
+        @php
+            $selectedCat = request('category');
+            
+            // Tentukan Tema Warna Berdasarkan Kategori
+            $theme = match($selectedCat) {
+                'INQUIRY' => ['bg' => 'bg-indigo-50', 'border' => 'border-indigo-100', 'text' => 'text-indigo-600', 'icon' => 'bg-indigo-100'],
+                'TOPUP'   => ['bg' => 'bg-emerald-50', 'border' => 'border-emerald-100', 'text' => 'text-emerald-600', 'icon' => 'bg-emerald-100'],
+                'GENERAL' => ['bg' => 'bg-slate-100', 'border' => 'border-slate-200', 'text' => 'text-slate-600', 'icon' => 'bg-white'],
+                default   => ['bg' => 'bg-blue-50', 'border' => 'border-blue-100', 'text' => 'text-blue-600', 'icon' => 'bg-blue-100']
+            };
+        @endphp
+
+        <div class="{{ $theme['bg'] }} border {{ $theme['border'] }} rounded-2xl p-5 mb-6 flex flex-col sm:flex-row items-center justify-between shadow-sm animate-fade-in-down">
+            
+            <div class="flex items-center gap-4">
+                {{-- Icon Kategori --}}
+                <div class="w-14 h-14 {{ $theme['icon'] }} {{ $theme['text'] }} rounded-2xl flex items-center justify-center text-2xl shadow-sm">
+                    <i class="fas fa-layer-group"></i>
+                </div>
+                
+                <div>
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Laporan Kategori</p>
+                    <h2 class="text-2xl font-black {{ $theme['text'] }} tracking-tight">{{ $selectedCat }}</h2>
+                    <p class="text-xs text-slate-500 font-medium">Menampilkan data spesifik untuk kategori ini.</p>
+                </div>
+            </div>
+
+            {{-- Statistik Angka --}}
+            <div class="mt-4 sm:mt-0 flex items-center gap-6">
+                
+                {{-- Total Data --}}
+                <div class="text-right bg-white/60 p-3 rounded-xl border border-white/50 backdrop-blur-sm">
+                    <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Total Item</p>
+                    <p class="text-3xl font-black {{ $theme['text'] }}">{{ $codes->total() }}</p>
+                </div>
+
+                {{-- Hiasan Visual (Opsional) --}}
+                <div class="hidden md:block h-10 w-[1px] bg-slate-300/50"></div>
+
+                {{-- Status Filter Info (Jika ada filter status juga) --}}
+                @if(request()->filled('status') && request('status') !== 'ALL')
+                    <div class="text-right">
+                        <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Filter Status</p>
+                        @if(request('status') == '1')
+                            <span class="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 bg-white px-2 py-1 rounded-lg border border-emerald-100 shadow-sm">
+                                <i class="fas fa-check-circle"></i> SUKSES
+                            </span>
+                        @else
+                            <span class="inline-flex items-center gap-1 text-xs font-bold text-rose-600 bg-white px-2 py-1 rounded-lg border border-rose-100 shadow-sm">
+                                <i class="fas fa-times-circle"></i> GAGAL
+                            </span>
+                        @endif
+                    </div>
+                @endif
+
+            </div>
+        </div>
+    @endif
+
     {{-- MAIN TABLE --}}
     <div class="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
         <div class="overflow-x-auto custom-scrollbar">
