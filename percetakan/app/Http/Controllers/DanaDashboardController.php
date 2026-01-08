@@ -175,7 +175,7 @@ class DanaDashboardController extends Controller
             $amount = $result['accountInfos'][0]['availableBalance']['value'];
             // Simpan ke dana_user_balance (Pemisah Profit)
             DB::table('affiliates')->where('id', $request->affiliate_id)->update(['dana_user_balance' => $amount, 'updated_at' => now()]);
-            return back()->with('success', 'Saldo Riil DANA Terupdate!');
+            return back()->with('success', 'Saldo Real DANA Terupdate!');
         }
         return back()->with('error', 'Gagal: ' . ($result['responseMessage'] ?? 'Error'));
     }
