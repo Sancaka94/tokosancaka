@@ -177,6 +177,18 @@ class DanaDashboardController extends Controller
     // Ambil data dari database berdasarkan ID yang dikirim dari dashboard
     $aff = DB::table('affiliates')->where('id', $request->affiliate_id)->first();
     
+    // --- LOGIKA PEMBERSIHAN NOMOR HP (Agar jadi format 62...) ---
+    $rawPhone = $request->phone ?? $aff->whatsapp;
+    // Hapus semua karakter non-digit (spasi, +, -, dll)
+    $cleanPhone = preg_replace('/[^0-9]/', '', $rawPhone);
+    
+    // Jika diawali 0, ganti jadi 62
+    if (substr($cleanPhone, 0, 1) === '0') {
+        $cleanPhone = '62' . substr($cleanPhone, 1);
+    }
+    // Jika diawali +, biarkan karena sudah dibuang preg_replace, pastikan 62
+    // -----------------------------------------------------------
+
     $timestamp = now('Asia/Jakarta')->toIso8601String();
     $path = '/v1.0/emoney/account-inquiry.htm';
     
