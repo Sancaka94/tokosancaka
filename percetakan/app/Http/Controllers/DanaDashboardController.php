@@ -174,87 +174,63 @@ class DanaDashboardController extends Controller
         }
     }
     
-    // =========================================================================
-    // 4. CEK SALDO (HYBRID: URL LEGACY + SIGNATURE SNAP)
-    // =========================================================================
     public function checkBalance(Request $request)
-    {
-        Log::info('=========================================');
-        Log::info('[CEK SALDO] Request Initiated (HYBRID FIX)');
+{
+    $accessToken = $request->access_token ?? session('dana_access_token');
 
-        $accessToken = $request->access_token; 
-        if(!$accessToken) return back()->with('error', 'Access Token Wajib Diisi!');
+    // Susun secara alfabetis atau sesuai contoh dokumentasi
+    $body = [
+        "additionalInfo" => [
+            "accessToken" => $accessToken
+        ],
+        "balanceTypes" => ["BALANCE"],
+        "partnerReferenceNo" => "BAL" . date('YmdHis')
+    ];
 
-        // Body sesuai Screenshot Legacy
-        $data = [
-            "partnerReferenceNo" => 'BAL-' . time(),
-            "balanceTypes"       => ["BALANCE"],
-            "additionalInfo"     => [
-                "accessToken" => $accessToken
-            ]
-        ];
-
-        // URL TETAP .HTM (Sesuai Screenshot)
-        $response = $this->sendRequest('POST', '/v1.0/balance-inquiry.htm', $data, $accessToken);
-        
-        if(isset($response['responseCode']) && $response['responseCode'] == '2001100') {
-            $saldo = $response['accountInfos'][0]['availableBalance']['value'] ?? '0';
-            Log::info("[CEK SALDO] SUKSES! Saldo: $saldo");
-            return back()->with('success', "Cek Saldo Berhasil!")->with('saldo_terbaru', $saldo); 
-        }
-
-        $msg = $response['responseMessage'] ?? 'Unknown Error';
-        return back()->with('error', 'Gagal: ' . $msg);
-    }
+    // Pastikan path diawali dengan slash /
+    $response = $this->sendRequest('POST', '/v1.0/balance-inquiry.htm', $body, $accessToken);
+    
+    return back()->with('response', $response);
+}
 
     private function sendRequest($method, $relativePath, $bodyArray, $accessToken = null)
 {
     $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String();
     $clientId  = config('services.dana.client_id');
 
-    // 1. MINIFIKASI JSON (Sangat Krusial)
-    // Jangan biarkan ada spasi setelah koma atau titik dua
+    // Pakai opsi JSON_UNESCAPED_SLASHES dan pastikan tidak ada whitespace
     $jsonPayload = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
-    // 2. PROSES HASHING BODY (Hanya untuk Service B2B2C)
-    // Rumus SNAP: lower(hex(sha256(minified_body)))
+    // Hashing Body (Lowercase Hex)
     $hashedBody = strtolower(hash('sha256', $jsonPayload));
 
-    // 3. SUSUN STRING TO SIGN
-    if ($accessToken) {
-        // Format: METHOD:URL:ACCESS_TOKEN:TIMESTAMP:HASHED_BODY
-        $stringToSign = $method . ":" . $relativePath . ":" . $accessToken . ":" . $timestamp . ":" . $hashedBody;
-    } else {
-        // Untuk Auth (B2B) biasanya: CLIENT_ID|TIMESTAMP
-        $stringToSign = $clientId . "|" . $timestamp;
-    }
+    // StringToSign: METHOD:PATH:TOKEN:TIMESTAMP:HASHEDBODY
+    // Pastikan relativePath diawali '/' (contoh: /v1.0/balance-inquiry.htm)
+    $stringToSign = strtoupper($method) . ":" . $relativePath . ":" . $accessToken . ":" . $timestamp . ":" . $hashedBody;
 
-    Log::info("[DEBUG] StringToSign: " . $stringToSign);
+    Log::info("[FINAL CHECK] StringToSign: " . $stringToSign);
 
-    // 4. GENERATE SIGNATURE RSA-SHA256
     $signature = $this->genSig($stringToSign);
 
-    // 5. HEADERS
     $headers = [
         'Content-Type'           => 'application/json',
         'X-TIMESTAMP'            => $timestamp,
         'X-SIGNATURE'            => $signature,
         'X-PARTNER-ID'           => $clientId,
-        'X-EXTERNAL-ID'          => (string) rand(100000, 999999) . time(),
+        'X-EXTERNAL-ID'          => strval(mt_rand(1000000000, 9999999999) . mt_rand(1000000000, 9999999999)),
         'X-DEVICE-ID'            => '09864ADCASA', 
         'CHANNEL-ID'             => '95221',
         'Authorization-Customer' => 'Bearer ' . $accessToken,
-        'ORIGIN'                 => 'tokosancaka.com'
     ];
 
     $url = config('services.dana.base_url') . $relativePath;
 
     try {
+        // Menggunakan body mentah untuk memastikan tidak ada perubahan karakter oleh library HTTP
         $response = Http::withHeaders($headers)
                         ->withBody($jsonPayload, 'application/json')
                         ->post($url);
 
-        Log::info("[DEBUG] Response Body: " . $response->body());
         return $response->json();
     } catch (\Exception $e) {
         return ['responseMessage' => $e->getMessage()];
