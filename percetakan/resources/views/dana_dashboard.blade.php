@@ -59,6 +59,39 @@
 </div>
 @endif
 
+{{-- AREA MONITORING RESPONSE CODE DANA --}}
+<div class="space-y-3 mb-4">
+    {{-- 1. Notifikasi Jika Sukses (Response 2003700) --}}
+    @if(session('success'))
+    <div class="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl shadow-sm animate-bounce-short">
+        <div class="flex items-center gap-3">
+            <div class="bg-emerald-500 text-white p-1.5 rounded-lg shadow-sm">
+                <i class="fas fa-check-double text-xs"></i>
+            </div>
+            <div>
+                <p class="text-[9px] font-black text-emerald-400 uppercase tracking-widest leading-none mb-1">DANA SUCCESS</p>
+                <p class="text-[11px] font-bold text-emerald-700 leading-tight">{{ session('success') }}</p>
+            </div>
+        </div>
+    </div>
+    @endif
+
+    {{-- 2. Notifikasi Jika Error / Test Case (4033702, 4043711, dll) --}}
+    @if(session('error'))
+    <div class="p-4 bg-rose-50 border border-rose-200 rounded-2xl shadow-sm border-l-4 border-l-rose-500">
+        <div class="flex items-center gap-3">
+            <div class="bg-rose-500 text-white p-1.5 rounded-lg shadow-sm">
+                <i class="fas fa-exclamation-triangle text-xs"></i>
+            </div>
+            <div>
+                <p class="text-[9px] font-black text-rose-400 uppercase tracking-widest leading-none mb-1">DANA RESPONSE</p>
+                <p class="text-[11px] font-bold text-rose-700 leading-tight">{{ session('error') }}</p>
+            </div>
+        </div>
+    </div>
+    @endif
+</div>
+
     {{-- MAIN TABLE --}}
     <div class="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden mb-10">
         <div class="overflow-x-auto custom-scrollbar">
@@ -474,39 +507,6 @@
                                 <div class="text-sm font-black text-emerald-700 truncate px-2">{{ $aff->dana_user_name }}</div>
                             </div>
                             @endif
-
-                            {{-- AREA MONITORING RESPONSE CODE DANA --}}
-<div class="space-y-3 mb-4">
-    {{-- 1. Notifikasi Jika Sukses (Response 2003700) --}}
-    @if(session('success'))
-    <div class="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl shadow-sm animate-bounce-short">
-        <div class="flex items-center gap-3">
-            <div class="bg-emerald-500 text-white p-1.5 rounded-lg shadow-sm">
-                <i class="fas fa-check-double text-xs"></i>
-            </div>
-            <div>
-                <p class="text-[9px] font-black text-emerald-400 uppercase tracking-widest leading-none mb-1">DANA SUCCESS</p>
-                <p class="text-[11px] font-bold text-emerald-700 leading-tight">{{ session('success') }}</p>
-            </div>
-        </div>
-    </div>
-    @endif
-
-    {{-- 2. Notifikasi Jika Error / Test Case (4033702, 4043711, dll) --}}
-    @if(session('error'))
-    <div class="p-4 bg-rose-50 border border-rose-200 rounded-2xl shadow-sm border-l-4 border-l-rose-500">
-        <div class="flex items-center gap-3">
-            <div class="bg-rose-500 text-white p-1.5 rounded-lg shadow-sm">
-                <i class="fas fa-exclamation-triangle text-xs"></i>
-            </div>
-            <div>
-                <p class="text-[9px] font-black text-rose-400 uppercase tracking-widest leading-none mb-1">DANA RESPONSE</p>
-                <p class="text-[11px] font-bold text-rose-700 leading-tight">{{ session('error') }}</p>
-            </div>
-        </div>
-    </div>
-    @endif
-</div>
 
                             <button class="w-full py-3 bg-slate-800 text-white rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-black transition-all shadow-lg shadow-slate-200 mt-2">
                                 <i class="fas fa-search mr-2"></i> Cek Akun
