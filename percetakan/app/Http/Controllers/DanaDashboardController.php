@@ -266,6 +266,25 @@ class DanaDashboardController extends Controller
                 'created_at' => now()
             ]);
 
+            // --- NOTIFIKASI WHATSAPP VIA FONTE ---
+    $pesan = "✅ *PENCAIRAN PROFIT BERHASIL*\n\n";
+    $pesan .= "Halo " . $aff->name . ",\n";
+    $pesan .= "Saldo profit Anda telah berhasil dicairkan ke akun DANA.\n\n";
+    $pesan .= "Detail Transaksi:\n";
+    $pesan .= "▪️ Nominal: Rp " . number_format($request->amount, 0, ',', '.') . "\n";
+    $pesan .= "▪️ No. DANA: " . $cleanPhone . "\n";
+    $pesan .= "▪️ Ref: " . $partnerRef . "\n";
+    $pesan .= "▪️ Waktu: " . now()->format('d/m/Y H:i') . "\n\n";
+    $pesan .= "Terima kasih telah bersama Toko Sancaka!";
+
+    $this->sendWhatsApp($cleanPhone, $pesan);
+    
+    // Opsional: Kirim juga ke nomor bos/admin untuk monitoring
+    $this->sendWhatsApp('6285745808809', "Admin Report: Topup Sukses Rp " . $request->amount . " ke " . $aff->name);
+
+    return back()->with('success', '💸 Topup Berhasil dan Notifikasi WA Terkirim!');
+}
+
             Log::info('[DANA TOPUP] BERHASIL & TERSIMPAN DI DB');
             return back()->with('success', '💸 Topup Berhasil dan Tercatat!');
         }
@@ -380,6 +399,65 @@ public function accountInquiry(Request $request)
     return back()->with('error', 'Sistem Error: ' . $e->getMessage());
 }
 
+}
+
+public function handleWebhook(Request $request)
+{
+    Log::info('========== DANA WEBHOOK INCOMING ==========', $request->all());
+    
+    $head = $request->input('request.head');
+    $body = $request->input('request.body');
+
+    if ($head['function'] === 'dana.acquiring.order.finishNotify') {
+        $merchantTransId = $body['merchantTransId'];
+        $status = $body['acquirementStatus']; // Contoh: CLOSED, FAILED, SUCCESS
+
+        // Ambil data transaksi dari audit log kita
+        $trx = DB::table('dana_transactions')->where('reference_no', $merchantTransId)->first();
+
+        if ($trx) {
+            // Update Status di Audit Log
+            DB::table('dana_transactions')->where('id', $trx->id)->update(['status' => $status]);
+
+            // LOGIKA REFUND: Jika statusnya CLOSED (timeout) atau FAILED
+            if (in_array($status, ['CLOSED', 'FAILED']) && $trx->status === 'SUCCESS') {
+                DB::table('affiliates')->where('id', $trx->affiliate_id)->increment('balance', $trx->amount);
+                
+                // Tandai di audit log bahwa ini sudah direfund
+                DB::table('dana_transactions')->where('id', $trx->id)->update(['status' => 'REFUNDED']);
+                Log::info('[WEBHOOK] Saldo Profit Berhasil Direfund!', ['affiliate' => $trx->affiliate_id]);
+            }
+        }
+    }
+
+    return response()->json(['response' => ['head' => ['resultCode' => 'SUCCESS']]]);
+}
+
+private function sendWhatsApp($to, $message)
+{
+    $token = "ynMyPswSKr14wdtXMJF7"; // Ganti dengan token Fonte bos
+    
+    // Pastikan nomor format 62...
+    $to = preg_replace('/[^0-9]/', '', $to);
+    if (substr($to, 0, 1) === '0') $to = '62' . substr($to, 1);
+
+    Log::info('[FONTE] Mengirim pesan ke ' . $to);
+
+    try {
+        $response = Http::withHeaders([
+            'Authorization' => $token
+        ])->post('https://api.fonnte.com/send', [
+            'target' => $to,
+            'message' => $message,
+            'countryCode' => '62', // optional
+        ]);
+
+        Log::info('[FONTE] Respon:', $response->json());
+        return $response->json();
+    } catch (\Exception $e) {
+        Log::error('[FONTE] Error: ' . $e->getMessage());
+        return false;
+    }
 }
 
 }
