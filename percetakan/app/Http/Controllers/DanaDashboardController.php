@@ -57,11 +57,7 @@ class DanaDashboardController extends Controller
     }
 
     public function checkBalance(Request $request) {
-    Log::info('--- [START] CEK SALDO DANA ---');
-
     $accessToken = $request->access_token ?? session('dana_access_token');
-    if (!$accessToken) return back()->with('error', 'Token Kosong.');
-
     $timestamp = now('Asia/Jakarta')->toIso8601String();
     $path = '/v1.0/balance-inquiry.htm';
     
@@ -71,51 +67,36 @@ class DanaDashboardController extends Controller
         'additionalInfo' => ['accessToken' => $accessToken]
     ];
 
-    // [PENTING] Gunakan opsi JSON_UNESCAPED_SLASHES agar format JSON bersih (Compact)
-    $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
-    
-    // 1. Generate Signature SNAP
+    // STEP 1 & 2: Minify & Hash Body (Lowercase Hex)
+    $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     $hashedBody = strtolower(hash('sha256', $jsonBody));
-    
-    // Pastikan urutan string to sign benar: METHOD:PATH:TOKEN:TIME:HASHBODY
-    $stringToSign = "POST:" . $path . ":" . $accessToken . ":" . $timestamp . ":" . $hashedBody;
-    
+
+    // STEP 3: Compose String To Sign (IKUTI URUTAN DOKUMENTASI)
+    // Format: METHOD:PATH:HASHBODY:TIMESTAMP
+    $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
+
+    // STEP 4: Generate Signature (RSA-2048 SHA-256)
     $signature = $this->generateSignature($stringToSign);
+
+    Log::info('[FIXED] StringToSign Sesuai Dokumen: ' . $stringToSign);
 
     $headers = [
         'X-TIMESTAMP'   => $timestamp,
-        'X-SIGNATURE'   => $signature,
+        'X-SIGNATURE'   => $signature, // STEP 5
         'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
         'X-EXTERNAL-ID' => (string) time(),
         'X-DEVICE-ID'   => 'DANA-DASHBOARD-STATION',
         'CHANNEL-ID'    => '95221',
         'ORIGIN'        => config('services.dana.origin'),
-        'X-IP-ADDRESS'  => $request->ip() ?? '127.0.0.1',
         'Authorization-Customer' => 'Bearer ' . $accessToken,
         'Content-Type'  => 'application/json'
     ];
 
-    Log::info('[CEK SALDO] StringToSign: ' . $stringToSign);
+    $response = Http::withHeaders($headers)
+                    ->withBody($jsonBody, 'application/json')
+                    ->post('https://api.sandbox.dana.id' . $path);
 
-    try {
-        // [PENTING] Gunakan withBody agar Laravel tidak merubah format JSON secara otomatis
-        $response = Http::withHeaders($headers)
-                        ->withBody($jsonBody, 'application/json') 
-                        ->post('https://api.sandbox.dana.id' . $path);
-
-        $result = $response->json();
-        Log::info('[CEK SALDO] Respon Raw:', [$response->body()]);
-
-        if (isset($result['responseCode']) && $result['responseCode'] == '2001100') {
-            $amount = $result['accountInfos'][0]['availableBalance']['value'] ?? 0;
-            return back()->with('success', 'Saldo Berhasil!')->with('saldo_terbaru', $amount);
-        }
-
-        return back()->with('error', 'Gagal: ' . ($result['responseMessage'] ?? 'Unknown Error'));
-
-    } catch (\Exception $e) {
-        return back()->with('error', 'Sistem Error: ' . $e->getMessage());
-    }
+    return $this->handleResponse($response);
 }
 
     private function generateSignature($stringToSign) {
