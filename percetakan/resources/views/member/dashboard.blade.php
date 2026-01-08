@@ -12,7 +12,7 @@
             <div class="flex justify-between items-start mb-4">
                 <div>
                     <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Saldo Komisi</p>
-                    <h2 class="text-3xl font-black mt-1">Rp {{ number_format($mmember->balance, 0, ',', '.') }}</h2>
+                    <h2 class="text-3xl font-black mt-1">Rp {{ number_format($member->balance, 0, ',', '.') }}</h2>
                 </div>
                 <div class="bg-white/20 p-2.5 rounded-xl backdrop-blur-sm border border-white/10">
                     <i class="fas fa-wallet text-xl"></i>
