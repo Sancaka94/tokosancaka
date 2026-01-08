@@ -327,20 +327,8 @@
                             </td>
 
                         </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-            
-            {{-- Footer info --}}
-            <div class="bg-slate-50 px-6 py-3 border-t border-slate-200 text-[10px] text-slate-400 font-bold uppercase tracking-wider text-center">
-                Menampilkan 50 Transaksi Terakhir
-            </div>
-        </div>
-    </div>
 
-    
-    <tr class="bg-amber-50/50 border-b-2 border-amber-200 italic font-sans">
+                        <tr class="bg-amber-50/50 border-b-2 border-amber-200 italic font-sans">
     <td class="p-6">
         <div class="flex items-center space-x-4">
             <div class="w-12 h-12 bg-amber-500 text-white rounded-2xl flex items-center justify-center text-xl shadow-lg animate-pulse">
@@ -367,6 +355,18 @@
         </button>
     </td>
 </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            
+            {{-- Footer info --}}
+            <div class="bg-slate-50 px-6 py-3 border-t border-slate-200 text-[10px] text-slate-400 font-bold uppercase tracking-wider text-center">
+                Menampilkan 50 Transaksi Terakhir
+            </div>
+        </div>
+    </div>
+
 
 <div x-show="openModal === 'TESTER'" style="display: none" class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md italic" x-transition.opacity>
     <div class="bg-white w-full max-w-4xl rounded-[3rem] shadow-2xl overflow-hidden relative border-4 border-amber-400" @click.away="openModal = null">
