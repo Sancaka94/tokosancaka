@@ -211,38 +211,54 @@ class DanaDashboardController extends Controller
 {
     $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String();
     $clientId  = config('services.dana.client_id');
-    
-    // Pastikan body terminify dengan benar
+
+    // 1. MINIFIKASI JSON (Sangat Krusial)
+    // Jangan biarkan ada spasi setelah koma atau titik dua
     $jsonPayload = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-    
-    // RUMUS SNAP ASYMMETRIC SERVICE (B2B2C)
-    // 1. Hash Body dulu: lower(hex(sha256(payload)))
+
+    // 2. PROSES HASHING BODY (Hanya untuk Service B2B2C)
+    // Rumus SNAP: lower(hex(sha256(minified_body)))
     $hashedBody = strtolower(hash('sha256', $jsonPayload));
-    
-    // 2. Susun String To Sign
-    // Format: METHOD:URL:ACCESS_TOKEN:TIMESTAMP:HASHED_BODY
-    $stringToSign = $method . ":" . $relativePath . ":" . $accessToken . ":" . $timestamp . ":" . $hashedBody;
 
-    Log::info("StringToSign Fix: " . $stringToSign);
+    // 3. SUSUN STRING TO SIGN
+    if ($accessToken) {
+        // Format: METHOD:URL:ACCESS_TOKEN:TIMESTAMP:HASHED_BODY
+        $stringToSign = $method . ":" . $relativePath . ":" . $accessToken . ":" . $timestamp . ":" . $hashedBody;
+    } else {
+        // Untuk Auth (B2B) biasanya: CLIENT_ID|TIMESTAMP
+        $stringToSign = $clientId . "|" . $timestamp;
+    }
 
-    // 3. Generate Signature menggunakan Private Key (RSA SHA256)
+    Log::info("[DEBUG] StringToSign: " . $stringToSign);
+
+    // 4. GENERATE SIGNATURE RSA-SHA256
     $signature = $this->genSig($stringToSign);
 
+    // 5. HEADERS
     $headers = [
         'Content-Type'           => 'application/json',
         'X-TIMESTAMP'            => $timestamp,
         'X-SIGNATURE'            => $signature,
         'X-PARTNER-ID'           => $clientId,
-        'X-EXTERNAL-ID'          => (string) rand(100000, 999999) . time(), // Harus Unik
-        'X-DEVICE-ID'            => '09864ADCASA', // Gunakan dari contoh Anda
+        'X-EXTERNAL-ID'          => (string) rand(100000, 999999) . time(),
+        'X-DEVICE-ID'            => '09864ADCASA', 
         'CHANNEL-ID'             => '95221',
         'Authorization-Customer' => 'Bearer ' . $accessToken,
-        'ORIGIN'                 => 'tokosancaka.com',
+        'ORIGIN'                 => 'tokosancaka.com'
     ];
 
-    $fullUrl = 'https://api.sandbox.dana.id' . $relativePath;
+    $url = config('services.dana.base_url') . $relativePath;
 
-    return Http::withHeaders($headers)->withBody($jsonPayload, 'application/json')->post($fullUrl)->json();
+    try {
+        $response = Http::withHeaders($headers)
+                        ->withBody($jsonPayload, 'application/json')
+                        ->post($url);
+
+        Log::info("[DEBUG] Response Body: " . $response->body());
+        return $response->json();
+    } catch (\Exception $e) {
+        return ['responseMessage' => $e->getMessage()];
+    }
 }
 
     // =========================================================================
