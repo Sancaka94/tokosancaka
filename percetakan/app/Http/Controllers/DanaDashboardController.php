@@ -52,35 +52,44 @@ class DanaDashboardController extends Controller
 
     // 3. LOGIKA BARU: Cek Saldo (Tetap saya sertakan karena ini yang tadi sukses 2001100)
     public function checkBalance(Request $request)
-    {
-        $accessToken = $request->access_token ?? session('dana_access_token');
-        if (!$accessToken) return back()->with('error', 'Token Kosong.');
+{
+    $accessToken = $request->access_token ?? session('dana_access_token');
+    if (!$accessToken) return back()->with('error', 'Token Kosong.');
 
-        $timestamp = now('Asia/Jakarta')->toIso8601String();
-        $path = '/v1.0/balance-inquiry.htm';
-        
-        $body = [
-            'partnerReferenceNo' => 'BAL' . time(),
-            'balanceTypes' => ['BALANCE'],
-            'additionalInfo' => ['accessToken' => $accessToken]
-        ];
+    $timestamp = now('Asia/Jakarta')->toIso8601String();
+    $path = '/v1.0/balance-inquiry.htm';
+    
+    $body = [
+        'partnerReferenceNo' => 'BAL' . time(),
+        'balanceTypes' => ['BALANCE'],
+        'additionalInfo' => ['accessToken' => $accessToken]
+    ];
 
-        $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-        $hashedBody = strtolower(hash('sha256', $jsonBody));
-        $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
-        
-        $signature = $this->generateSignature($stringToSign);
+    $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    $hashedBody = strtolower(hash('sha256', $jsonBody));
 
-        $response = Http::withHeaders([
-            'X-TIMESTAMP'   => $timestamp,
-            'X-SIGNATURE'   => $signature,
-            'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
-            'X-EXTERNAL-ID' => (string) time(),
-            'CHANNEL-ID'    => '95221',
-            'ORIGIN'        => config('services.dana.origin'),
-            'Authorization-Customer' => 'Bearer ' . $accessToken,
-            'Content-Type'  => 'application/json'
-        ])->withBody($jsonBody, 'application/json')->post('https://api.sandbox.dana.id' . $path);
+    // Urutan SNAP Sukses: METHOD:PATH:HASH:TIMESTAMP
+    $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
+    $signature = $this->generateSignature($stringToSign);
+
+    // HEADERS LENGKAP (Jangan ada yang dirubah lagi bos)
+    $headers = [
+        'X-TIMESTAMP'   => $timestamp,
+        'X-SIGNATURE'   => $signature,
+        'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
+        'X-EXTERNAL-ID' => (string) time(),
+        'X-DEVICE-ID'   => 'DANA-DASHBOARD-STATION', // INI YANG TADI ILANG
+        'CHANNEL-ID'    => '95221',                  // INI JUGA WAJIB
+        'ORIGIN'        => config('services.dana.origin'),
+        'X-IP-ADDRESS'  => $request->ip() ?? '127.0.0.1',
+        'Authorization-Customer' => 'Bearer ' . $accessToken,
+        'Content-Type'  => 'application/json'
+    ];
+
+    try {
+        $response = Http::withHeaders($headers)
+                        ->withBody($jsonBody, 'application/json')
+                        ->post('https://api.sandbox.dana.id' . $path);
 
         $result = $response->json();
 
@@ -90,7 +99,10 @@ class DanaDashboardController extends Controller
         }
 
         return back()->with('error', 'Gagal: ' . ($result['responseMessage'] ?? 'Error'));
+    } catch (\Exception $e) {
+        return back()->with('error', 'Sistem Error: ' . $e->getMessage());
     }
+}
 
     // =========================================================================
     // 4. TOPUP / TRANSFER
