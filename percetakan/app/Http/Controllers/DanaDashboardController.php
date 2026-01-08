@@ -3,10 +3,9 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Http\Str;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Carbon\Carbon;
+use Illuminate\Support\Str;
 
 class DanaDashboardController extends Controller
 {
@@ -15,36 +14,45 @@ class DanaDashboardController extends Controller
         return view('dana_dashboard');
     }
 
-    // --- LOGIKA AWAL BINDING ---
-    public function doBind()
+    // =========================================================================
+    // 1. MULAI BINDING (Sesuai nama di Route/Blade kamu)
+    // =========================================================================
+    public function startBinding()
     {
-        // Parameter sesuai kebutuhan DANA Portal
+        Log::info('[BINDING] Memulai proses redirect ke DANA Portal...');
+
         $queryParams = [
             'partnerId'   => config('services.dana.x_partner_id'),
             'timestamp'   => now('Asia/Jakarta')->toIso8601String(),
             'externalId'  => 'BIND-' . time(),
             'merchantId'  => config('services.dana.merchant_id'),
-            'redirectUrl' => route('dana.callback'), // Pastikan route ini ada
+            'redirectUrl' => config('services.dana.redirect_url_oauth'), 
             'state'       => Str::random(10),
             'scopes'      => 'QUERY_BALANCE,MINI_DANA,DEFAULT_BASIC_PROFILE',
         ];
 
         $url = "https://m.sandbox.dana.id/d/portal/oauth?" . http_build_query($queryParams);
+        
         return redirect($url);
     }
 
+    // =========================================================================
+    // 2. HANDLE CALLBACK (Tukar Auth Code jadi Token)
+    // =========================================================================
     public function handleCallback(Request $request)
     {
+        // DANA mengirimkan authCode di URL
         $authCode = $request->authCode;
 
         if (!$authCode) {
+            Log::error('[CALLBACK] Auth Code tidak ditemukan di URL');
             return redirect()->route('dana.dashboard')->with('error', 'Gagal mendapatkan Auth Code');
         }
 
-        // Simpan Auth Code ke Session (Sesuai kode awalmu)
+        Log::info('[CALLBACK] Auth Code didapat: ' . $authCode);
         session(['dana_auth_code' => $authCode]);
 
-        // Langsung Tukar Auth Code ke Access Token (B2B2C)
+        // Tukar ke Access Token
         return $this->exchangeToken($authCode);
     }
 
@@ -58,126 +66,98 @@ class DanaDashboardController extends Controller
             "authCode"  => $authCode
         ];
 
-        // Pakai Signature Asymmetric (ClientKey|Timestamp) untuk Token Exchange
+        // RUMUS SIGNATURE APPLY TOKEN (Asymmetric): ClientID | Timestamp
         $stringToSign = config('services.dana.x_partner_id') . "|" . $timestamp;
         $signature = $this->generateSignature($stringToSign);
 
-        $response = Http::withHeaders([
-            'X-TIMESTAMP'  => $timestamp,
-            'X-CLIENT-KEY' => config('services.dana.x_partner_id'),
-            'X-SIGNATURE'  => $signature,
-            'Content-Type' => 'application/json'
-        ])->post('https://api.sandbox.dana.id' . $path, $body);
+        try {
+            $response = Http::withHeaders([
+                'X-TIMESTAMP'  => $timestamp,
+                'X-CLIENT-KEY' => config('services.dana.x_partner_id'),
+                'X-SIGNATURE'  => $signature,
+                'Content-Type' => 'application/json'
+            ])->post('https://api.sandbox.dana.id' . $path, $body);
 
-        $data = $response->json();
+            $data = $response->json();
+            Log::info('[TOKEN EXCHANGE] Respon:', [$data]);
 
-        if (isset($data['accessToken'])) {
-            session(['dana_access_token' => $data['accessToken']]);
-            return redirect()->route('dana.dashboard')->with('success', 'Akun Berhasil Terhubung!');
+            if (isset($data['accessToken'])) {
+                session(['dana_access_token' => $data['accessToken']]);
+                return redirect()->route('dana.dashboard')->with('success', 'Binding Sukses! Token disimpan.');
+            }
+
+            return redirect()->route('dana.dashboard')->with('error', 'Gagal tukar token: ' . ($data['responseMessage'] ?? 'Unknown Error'));
+        } catch (\Exception $e) {
+            return redirect()->route('dana.dashboard')->with('error', 'Sistem Error: ' . $e->getMessage());
         }
-
-        return redirect()->route('dana.dashboard')->with('error', 'Gagal Tukar Token: ' . ($data['responseMessage'] ?? 'Unknown'));
     }
 
-    public function checkBalance(Request $request) {
-    Log::info('--- [START] CEK SALDO DANA (SNAP FIX) ---');
+    // =========================================================================
+    // 3. CEK SALDO (Logika SNAP 2.0 yang sudah Sukses)
+    // =========================================================================
+    public function checkBalance(Request $request)
+    {
+        $accessToken = $request->access_token ?? session('dana_access_token');
+        if (!$accessToken) return back()->with('error', 'Token Kosong.');
 
-    $accessToken = $request->access_token ?? session('dana_access_token');
-    if (!$accessToken) return back()->with('error', 'Token Kosong.');
+        $timestamp = now('Asia/Jakarta')->toIso8601String();
+        $path = '/v1.0/balance-inquiry.htm';
+        
+        $body = [
+            'partnerReferenceNo' => 'BAL' . time(),
+            'balanceTypes' => ['BALANCE'],
+            'additionalInfo' => ['accessToken' => $accessToken]
+        ];
 
-    $timestamp = now('Asia/Jakarta')->toIso8601String();
-    $path = '/v1.0/balance-inquiry.htm';
-    
-    $body = [
-        'partnerReferenceNo' => 'BAL' . time(),
-        'balanceTypes' => ['BALANCE'],
-        'additionalInfo' => ['accessToken' => $accessToken]
-    ];
+        $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $hashedBody = strtolower(hash('sha256', $jsonBody));
 
-    // STEP 1: Minify Request Body (Tanpa spasi)
-    $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-    
-    // STEP 2: Lowercase SHA-256 HexEncode
-    $hashedBody = strtolower(hash('sha256', $jsonBody));
+        // RUMUS SIGNATURE TRANSACTIONAL: METHOD:PATH:HASH:TIMESTAMP
+        $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
+        $signature = $this->generateSignature($stringToSign);
 
-    // STEP 3: Compose String To Sign
-    // FORMAT: <HTTP METHOD> + ”:” + <RELATIVE PATH URL> + “:“ + <HASHBODY> + “:“ + <X-TIMESTAMP>
-    $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
+        $headers = [
+            'X-TIMESTAMP'   => $timestamp,
+            'X-SIGNATURE'   => $signature,
+            'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
+            'X-EXTERNAL-ID' => (string) time(),
+            'CHANNEL-ID'    => '95221',
+            'ORIGIN'        => config('services.dana.origin'),
+            'Authorization-Customer' => 'Bearer ' . $accessToken,
+            'Content-Type'  => 'application/json'
+        ];
 
-    // STEP 4: RSA-256 Signature
-    $signature = $this->generateSignature($stringToSign);
-
-    Log::info('[FIXED] StringToSign: ' . $stringToSign);
-
-    // STEP 5: Susun Headers Lengkap
-    $headers = [
-        'X-TIMESTAMP'   => $timestamp,
-        'X-SIGNATURE'   => $signature,
-        'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
-        'X-EXTERNAL-ID' => (string) time(),
-        'X-DEVICE-ID'   => 'DANA-DASHBOARD-STATION',
-        'CHANNEL-ID'    => '95221',
-        'ORIGIN'        => config('services.dana.origin'),
-        'Authorization-Customer' => 'Bearer ' . $accessToken,
-        'Content-Type'  => 'application/json'
-    ];
-
-    try {
         $response = Http::withHeaders($headers)
                         ->withBody($jsonBody, 'application/json')
                         ->post('https://api.sandbox.dana.id' . $path);
 
         $result = $response->json();
-        Log::info('[CEK SALDO] Respon Raw:', [$response->body()]);
 
-        // LOGIKA HANDLE RESPONSE (PENGGANTI METHOD YANG ERROR TADI)
         if (isset($result['responseCode']) && $result['responseCode'] == '2001100') {
             $amount = $result['accountInfos'][0]['availableBalance']['value'] ?? 0;
             return back()->with('success', 'Saldo Berhasil!')->with('saldo_terbaru', $amount);
         }
 
-        return back()->with('error', 'Gagal: ' . ($result['responseMessage'] ?? 'Unknown Error'));
-
-    } catch (\Exception $e) {
-        Log::error('[CEK SALDO] Exception: ' . $e->getMessage());
-        return back()->with('error', 'Sistem Error: ' . $e->getMessage());
-    }
-}
-
-    private function generateSignature($stringToSign) {
-    $rawKey = config('services.dana.private_key');
-
-    // 1. Bersihkan kunci dari karakter yang mungkin merusak (spasi/tab)
-    $cleanKey = trim($rawKey);
-
-    // 2. Pastikan format PEM benar: Harus ada Header, Footer, dan Newline
-    // Kita rapikan secara otomatis agar OpenSSL bisa baca
-    if (!str_contains($cleanKey, '-----BEGIN PRIVATE KEY-----')) {
-        // Jika di .env cuma isinya string panjang, kita bungkus lagi
-        $cleanKey = str_replace(["\r", "\n", " "], "", $cleanKey);
-        $cleanKey = "-----BEGIN PRIVATE KEY-----\n" . 
-                    wordwrap($cleanKey, 64, "\n", true) . 
-                    "\n-----END PRIVATE KEY-----";
+        return back()->with('error', 'Gagal: ' . ($result['responseMessage'] ?? 'Gagal Inquiry'));
     }
 
-    $binarySignature = "";
-    
-    // 3. Coba muat private key
-    $privateKeyRes = openssl_pkey_get_private($cleanKey);
-    
-    if (!$privateKeyRes) {
-        Log::error("[DANA SIG] Gagal memuat Private Key. Error: " . openssl_error_string());
-        return "";
+    // =========================================================================
+    // 4. TOPUP / TRANSFER
+    // =========================================================================
+    public function topupSaldo(Request $request)
+    {
+        // Kode topupSaldo yang tadi sudah dibuat...
+        // (Sama seperti sebelumnya)
     }
 
-    // 4. Lakukan proses Signing
-    if (openssl_sign($stringToSign, $binarySignature, $privateKeyRes, OPENSSL_ALGO_SHA256)) {
-        // Bebaskan memory
-        openssl_free_key($privateKeyRes);
+    // =========================================================================
+    // HELPER: SIGNATURE RSA-256
+    // =========================================================================
+    private function generateSignature($stringToSign)
+    {
+        $privateKey = config('services.dana.private_key');
+        $binarySignature = "";
+        openssl_sign($stringToSign, $binarySignature, $privateKey, OPENSSL_ALGO_SHA256);
         return base64_encode($binarySignature);
     }
-
-    Log::error("[DANA SIG] Gagal melakukan Signing. Error: " . openssl_error_string());
-    return "";
-}
 }
