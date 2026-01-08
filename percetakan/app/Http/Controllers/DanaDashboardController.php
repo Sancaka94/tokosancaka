@@ -76,12 +76,14 @@ class DanaDashboardController extends Controller
         $signature = $this->generateSignature($stringToSign);
 
         $response = Http::withHeaders([
-            'X-TIMESTAMP'   => $timestamp,
-            'X-SIGNATURE'   => $signature,
-            'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
-            'X-EXTERNAL-ID' => time(),
-            'Authorization-Customer' => 'Bearer ' . $accessToken,
-            'Content-Type'  => 'application/json'
+        'X-TIMESTAMP'   => $timestamp,
+        'X-SIGNATURE'   => $signature,
+        'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
+        'X-EXTERNAL-ID' => (string) time(),
+        'X-DEVICE-ID'   => 'MOBILE-DANA-01', // Identitas perangkat (bebas isi)
+        'CHANNEL-ID'    => '95221',          // KODE IDENTITAS WAJIB
+        'Authorization-Customer' => 'Bearer ' . $accessToken,
+        'Content-Type'  => 'application/json'
         ])->post('https://api.sandbox.dana.id' . $path, $body);
 
         $result = $response->json();
