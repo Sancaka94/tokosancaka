@@ -31,17 +31,23 @@ class DanaDashboardController extends Controller
 
     // 2. LOGIKA AWAL: Hanya ambil authCode dari URL dan simpan ke session
     public function handleCallback(Request $request)
-    {
-        $authCode = $request->authCode;
+{
+    // Coba ambil semua input untuk pengecekan
+    Log::info('[DANA CALLBACK] Data Masuk:', $request->all());
 
-        if ($authCode) {
-            // Simpan ke session agar muncul di blade {{ session('dana_auth_code') }}
-            session(['dana_auth_code' => $authCode]);
-            return redirect()->route('dana.dashboard')->with('success', 'Auth Code Berhasil Didapat!');
-        }
+    // Ambil authCode sesuai kode awal Anda
+    $authCode = $request->input('authCode');
 
-        return redirect()->route('dana.dashboard')->with('error', 'Gagal mendapatkan Auth Code dari DANA');
+    if ($authCode) {
+        // Simpan ke session agar muncul di Blade
+        session(['dana_auth_code' => $authCode]);
+        return redirect()->route('dana.dashboard')->with('success', 'Auth Code Berhasil Didapat!');
     }
+
+    // Jika authCode tidak ada, cek apakah ada error dari DANA (misal user cancel)
+    $errorMsg = $request->input('error') ?: 'Gagal mendapatkan Auth Code dari DANA';
+    return redirect()->route('dana.dashboard')->with('error', $errorMsg);
+}
 
     // 3. LOGIKA BARU: Cek Saldo (Tetap saya sertakan karena ini yang tadi sukses 2001100)
     public function checkBalance(Request $request)
