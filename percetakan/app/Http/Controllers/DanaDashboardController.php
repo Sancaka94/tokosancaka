@@ -276,23 +276,23 @@ class DanaDashboardController extends Controller
 
             // C. Kirim Notifikasi WhatsApp ke USER (Affiliate)
             $pesanUser = "✅ *PENCAIRAN PROFIT BERHASIL*\n\n";
-            $pesanUser .= "Halo " . $aff->name . ",\n";
-            $pesanUser .= "Pencairan profit Anda ke DANA telah sukses.\n\n";
-            $pesanUser .= "*Detail:* \n";
-            $pesanUser .= "▪️ Nominal: Rp " . number_format($request->amount, 0, ',', '.') . "\n";
-            $pesanUser .= "▪️ No. DANA: " . $cleanPhone . "\n";
-            $pesanUser .= "▪️ Ref ID: " . $partnerRef . "\n";
-            $pesanUser .= "▪️ Waktu: " . now()->format('d/m H:i') . " WIB\n\n";
-            $pesanUser .= "Saldo profit Anda telah otomatis terpotong. Terima kasih!";
+            $pesanUser = "Halo " . $aff->name . ",\n";
+            $pesanUser = "Pencairan profit Anda ke DANA telah sukses.\n\n";
+            $pesanUser = "*Detail:* \n";
+            $pesanUser = "▪️ Nominal: Rp " . number_format($request->amount, 0, ',', '.') . "\n";
+            $pesanUser = "▪️ No. DANA: " . $cleanPhone . "\n";
+            $pesanUser = "▪️ Ref ID: " . $partnerRef . "\n";
+            $pesanUser = "▪️ Waktu: " . now()->format('d/m H:i') . " WIB\n\n";
+            $pesanUser = "Saldo profit Anda telah otomatis terpotong. Terima kasih!";
             
             $this->sendWhatsApp($cleanPhone, $pesanUser);
 
             // D. Kirim Notifikasi ke ADMIN (Nomor Bos)
             $pesanAdmin = "📢 *LAPORAN TOPUP SUKSES*\n\n";
-            $pesanAdmin .= "Affiliate: " . $aff->name . " (ID: " . $aff->id . ")\n";
-            $pesanAdmin .= "Nominal: Rp " . number_format($request->amount, 0, ',', '.') . "\n";
-            $pesanAdmin .= "Tujuan: " . $cleanPhone . "\n";
-            $pesanAdmin .= "Status: Saldo Berhasil Dipotong.";
+            $pesanAdmin = "Affiliate: " . $aff->name . " (ID: " . $aff->id . ")\n";
+            $pesanAdmin = "Nominal: Rp " . number_format($request->amount, 0, ',', '.') . "\n";
+            $pesanAdmin = "Tujuan: " . $cleanPhone . "\n";
+            $pesanAdmin = "Status: Saldo Berhasil Dipotong.";
             
             $this->sendWhatsApp('6285745808809', $pesanAdmin); // Nomor Admin Bos
 
