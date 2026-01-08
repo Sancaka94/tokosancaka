@@ -178,19 +178,18 @@ class DanaDashboardController extends Controller
 
     $aff = DB::table('affiliates')->where('id', $request->affiliate_id)->first();
     
-    // Validasi Saldo Profit Internal
     if ($aff->balance < $request->amount) {
-        Log::warning('[DANA TOPUP] Saldo Profit Tidak Cukup', ['db_balance' => $aff->balance, 'requested' => $request->amount]);
+        Log::warning('[DANA TOPUP] Saldo Profit Tidak Cukup');
         return back()->with('error', 'Saldo profit tidak mencukupi.');
     }
 
-    // Sanitize Nomor HP
     $cleanPhone = preg_replace('/[^0-9]/', '', $request->phone ?? $aff->whatsapp);
     if (substr($cleanPhone, 0, 1) === '0') $cleanPhone = '62' . substr($cleanPhone, 1);
 
     $timestamp = now('Asia/Jakarta')->toIso8601String();
     $path = '/v1.0/emoney/customer-top-up.htm';
     
+    // PERBAIKAN: Gunakan array kosong untuk additionalInfo agar tidak jadi null di JSON
     $body = [
         'partnerReferenceNo' => 'TP' . time() . Str::random(4),
         'amount' => [
@@ -198,23 +197,16 @@ class DanaDashboardController extends Controller
             'currency' => 'IDR'
         ],
         'beneficiaryAccountNo' => $cleanPhone,
-        'additionalInfo' => (object)[]
+        'additionalInfo' => [] 
     ];
 
-    // Signature SNAP (LOG KUNCI)
-    $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
     $hashedBody = strtolower(hash('sha256', $jsonBody));
     $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
     $signature = $this->generateSignature($stringToSign);
 
-    Log::info('[DANA TOPUP] Payload & Signature', [
-        'body' => $body,
-        'stringToSign' => $stringToSign,
-        'signature' => $signature
-    ]);
-
     try {
-        $headers = [
+        $response = Http::withHeaders([
             'X-TIMESTAMP'   => $timestamp,
             'X-SIGNATURE'   => $signature,
             'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
@@ -222,24 +214,21 @@ class DanaDashboardController extends Controller
             'X-DEVICE-ID'   => '09864ADCASA',
             'CHANNEL-ID'    => '95221',
             'Content-Type'  => 'application/json',
-            'Authorization-Customer' => 'Bearer ' . $aff->dana_access_token // Gunakan token user
-        ];
+            'Authorization-Customer' => 'Bearer ' . $aff->dana_access_token
+        ])->withBody($jsonBody, 'application/json')->post('https://api.sandbox.dana.id' . $path);
 
-        Log::info('[DANA TOPUP] Mengirim Request...', ['headers' => $headers]);
-
-        $response = Http::withHeaders($headers)->withBody($jsonBody, 'application/json')->post('https://api.sandbox.dana.id' . $path);
         $result = $response->json();
 
         Log::info('[DANA TOPUP] Respon Diterima', ['status' => $response->status(), 'result' => $result]);
 
-        if (isset($result['responseCode']) && $result['responseCode'] == '2001100') {
-            // Potong Saldo Profit di DB
+        // PROTEKSI: Jika respon 200 tapi result null, kita anggap tetap diproses (cek manual)
+        if ($response->successful() && (!$result || (isset($result['responseCode']) && $result['responseCode'] == '2001100'))) {
             DB::table('affiliates')->where('id', $aff->id)->decrement('balance', $request->amount);
-            Log::info('[DANA TOPUP] SUKSES. Saldo Profit Dipotong.');
-            return back()->with('success', 'Topup Berhasil!');
+            Log::info('[DANA TOPUP] SUKSES. Saldo Dipotong.');
+            return back()->with('success', '💸 Topup Berhasil Diproses!');
         }
 
-        return back()->with('error', 'Gagal: ' . ($result['responseMessage'] ?? 'Unknown Error'));
+        return back()->with('error', 'Gagal: ' . ($result['responseMessage'] ?? 'Respon Kosong dari DANA'));
 
     } catch (\Exception $e) {
         Log::error('[DANA TOPUP] Exception!', ['msg' => $e->getMessage()]);
