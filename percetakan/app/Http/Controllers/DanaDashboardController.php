@@ -42,18 +42,16 @@ class DanaDashboardController extends Controller
     Log::info('[DANA CALLBACK] Mendapatkan Auth Code:', $request->all());
 
     $authCode = $request->input('auth_code');
-    // Ambil ID dari state yang kita kirim saat startBinding (contoh: ID-11)
     $state = $request->input('state');
     $affiliateId = $state ? str_replace('ID-', '', $state) : 11;
 
     if ($authCode) {
-        // 1. Simpan Auth Code dulu (biar tidak hilang kalau exchange gagal)
+        // Simpan Auth Code-nya dulu ke database sesuai row affiliate
         DB::table('affiliates')->where('id', $affiliateId)->update([
             'dana_auth_code' => $authCode,
             'updated_at' => now()
         ]);
 
-        // 2. LANGSUNG TUKAR KE ACCESS TOKEN (Logika Exchange Token)
         try {
             $timestamp = now('Asia/Jakarta')->toIso8601String();
             $path = '/v1.0/access-token/b2b2c.htm';
@@ -69,35 +67,39 @@ class DanaDashboardController extends Controller
             $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
             $signature = $this->generateSignature($stringToSign);
 
-            $response = Http::withHeaders([
-                'X-TIMESTAMP' => $timestamp,
-                'X-SIGNATURE' => $signature,
-                'X-PARTNER-ID' => config('services.dana.x_partner_id'),
+            // HEADERS WAJIB (Termasuk X-CLIENT-KEY agar tidak error asu lagi)
+            $headers = [
+                'X-TIMESTAMP'   => $timestamp,
+                'X-SIGNATURE'   => $signature,
+                'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
+                'X-CLIENT-KEY'  => config('services.dana.x_partner_id'), // INI YANG TADI KURANG BOS
                 'X-EXTERNAL-ID' => (string) time(),
-                'Content-Type' => 'application/json'
-            ])->post('https://api.sandbox.dana.id' . $path, $body);
+                'Content-Type'  => 'application/json'
+            ];
+
+            $response = Http::withHeaders($headers)
+                            ->withBody($jsonBody, 'application/json')
+                            ->post('https://api.sandbox.dana.id' . $path);
 
             $result = $response->json();
 
             if (isset($result['responseCode']) && $result['responseCode'] == '2001100') {
-                // SUKSES! Simpan Token ke Database
-                $accessToken = $result['accessToken'];
+                // SUKSES! Simpan Token agar status jadi HIJAU
                 DB::table('affiliates')->where('id', $affiliateId)->update([
-                    'dana_access_token' => $accessToken,
+                    'dana_access_token' => $result['accessToken'],
                     'updated_at' => now()
                 ]);
-                return redirect()->route('dana.dashboard')->with('success', 'Akun Berhasil Terhubung & Token Didapat!');
+                return redirect()->route('dana.dashboard')->with('success', 'Akun Berhasil Terhubung!');
             }
 
-            Log::error('[EXCHANGE FAILED]', [$result]);
-            return redirect()->route('dana.dashboard')->with('error', 'Auth Code OK, tapi Gagal Tukar Token: ' . ($result['responseMessage'] ?? 'Unknown'));
+            return redirect()->route('dana.dashboard')->with('error', 'Gagal Tukar Token: ' . ($result['responseMessage'] ?? 'Unknown Error'));
 
         } catch (\Exception $e) {
             return redirect()->route('dana.dashboard')->with('error', 'Sistem Error: ' . $e->getMessage());
         }
     }
 
-    return redirect()->route('dana.dashboard')->with('error', 'Gagal mendapatkan Auth Code');
+    return redirect()->route('dana.dashboard')->with('error', 'Auth Code Kosong');
 }
 
     // 3. CEK SALDO USER (LOGIKA SNAP 2001100 - TIDAK DIRUBAH)
