@@ -85,11 +85,11 @@
                         {{-- Balance Monitoring (Profit vs Real DANA) --}}
                         <td>
                             <div class="mb-2">
-                                <div class="balance-label text-muted">Profit Sancaka (Internal)</div>
+                                <div class="balance-label text-muted">Profit Sancaka (Affiliete)</div>
                                 <div class="fw-bold text-dark">Rp {{ number_format($aff->balance, 0, ',', '.') }}</div>
                             </div>
                             <div>
-                                <div class="balance-label text-primary">Saldo Akun DANA (Riil)</div>
+                                <div class="balance-label text-primary">Saldo Akun DANA (Real)</div>
                                 <div class="fw-bold text-primary">Rp {{ number_format($aff->dana_user_balance, 0, ',', '.') }}</div>
                             </div>
                         </td>
