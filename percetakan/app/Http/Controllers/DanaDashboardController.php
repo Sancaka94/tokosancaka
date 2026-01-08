@@ -196,15 +196,15 @@ class DanaDashboardController extends Controller
         return base64_encode($binarySignature);
     }
 
-    public function topupSaldo(Request $request)
+   public function topupSaldo(Request $request)
 {
     Log::info('[DANA TOPUP] --- MEMULAI PROSES TOPUP ---', ['affiliate_id' => $request->affiliate_id]);
 
     $aff = DB::table('affiliates')->where('id', $request->affiliate_id)->first();
     
-    if ($aff->balance < $request->amount) {
-        Log::warning('[DANA TOPUP] Saldo Profit Tidak Cukup');
-        return back()->with('error', 'Saldo profit tidak mencukupi.');
+    if (!$aff || $aff->balance < $request->amount) {
+        Log::warning('[DANA TOPUP] Saldo Tidak Cukup atau Affiliate Tidak Ditemukan');
+        return back()->with('error', 'Gagal: Saldo tidak mencukupi.');
     }
 
     $cleanPhone = preg_replace('/[^0-9]/', '', $request->phone ?? $aff->whatsapp);
@@ -212,10 +212,10 @@ class DanaDashboardController extends Controller
 
     $timestamp = now('Asia/Jakarta')->toIso8601String();
     $path = '/v1.0/emoney/customer-top-up.htm';
+    $partnerRef = 'TP' . time() . Str::random(4);
     
-    // PERBAIKAN: Gunakan array kosong untuk additionalInfo agar tidak jadi null di JSON
     $body = [
-        'partnerReferenceNo' => 'TP' . time() . Str::random(4),
+        'partnerReferenceNo' => $partnerRef,
         'amount' => [
             'value' => number_format((float)$request->amount, 2, '.', ''),
             'currency' => 'IDR'
@@ -229,33 +229,48 @@ class DanaDashboardController extends Controller
     $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
     $signature = $this->generateSignature($stringToSign);
 
+    // DEFINISIKAN HEADERS DI SINI AGAR TIDAK UNDEFINED
+    $headers = [
+        'X-TIMESTAMP'   => $timestamp,
+        'X-SIGNATURE'   => $signature,
+        'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
+        'X-EXTERNAL-ID' => (string) time() . Str::random(4),
+        'X-DEVICE-ID'   => '09864ADCASA',
+        'CHANNEL-ID'    => '95221',
+        'Content-Type'  => 'application/json',
+        'Authorization-Customer' => 'Bearer ' . $aff->dana_access_token
+    ];
+
     try {
-    $response = Http::withHeaders($headers)->withBody($jsonBody, 'application/json')->post('https://api.sandbox.dana.id' . $path);
-    $result = $response->json();
+        Log::info('[DANA TOPUP] Mengirim Request...', ['headers' => $headers]);
 
-    // Sesuai log bos, status 200 result null kita anggap sukses
-    if ($response->successful() && (!$result || (isset($result['responseCode']) && $result['responseCode'] == '2001100'))) {
-        
-        // 1. Potong Saldo Profit
-        DB::table('affiliates')->where('id', $aff->id)->decrement('balance', $request->amount);
+        $response = Http::withHeaders($headers)->withBody($jsonBody, 'application/json')->post('https://api.sandbox.dana.id' . $path);
+        $result = $response->json();
 
-        // 2. --- CATAT KE TABEL TRANSAKSI ---
-        DB::table('dana_transactions')->insert([
-            'affiliate_id' => $aff->id,
-            'type' => 'TOPUP',
-            'reference_no' => $body['partnerReferenceNo'],
-            'phone' => $cleanPhone,
-            'amount' => $request->amount,
-            'status' => 'SUCCESS',
-            'response_payload' => json_encode($result), // Akan menyimpan null jika DANA tidak kirim balik
-            'created_at' => now()
-        ]);
+        Log::info('[DANA TOPUP] Respon Diterima', ['status' => $response->status(), 'result' => $result]);
 
-        Log::info('[DANA TOPUP] SUKSES. Saldo Dipotong & Dicatat di DB.');
-        return back()->with('success', '💸 Topup Berhasil!');
-    }
+        // CEK SUKSES (HTTP 200)
+        if ($response->successful()) {
+            // Potong Saldo Profit
+            DB::table('affiliates')->where('id', $aff->id)->decrement('balance', $request->amount);
 
-        return back()->with('error', 'Gagal: ' . ($result['responseMessage'] ?? 'Respon Kosong dari DANA'));
+            // SIMPAN KE DATABASE TRANSAKSI (WAJIB)
+            DB::table('dana_transactions')->insert([
+                'affiliate_id' => $aff->id,
+                'type' => 'TOPUP',
+                'reference_no' => $partnerRef,
+                'phone' => $cleanPhone,
+                'amount' => $request->amount,
+                'status' => 'SUCCESS',
+                'response_payload' => json_encode($result),
+                'created_at' => now()
+            ]);
+
+            Log::info('[DANA TOPUP] BERHASIL & TERSIMPAN DI DB');
+            return back()->with('success', '💸 Topup Berhasil dan Tercatat!');
+        }
+
+        return back()->with('error', 'Gagal: ' . ($result['responseMessage'] ?? 'Respon Server Error'));
 
     } catch (\Exception $e) {
         Log::error('[DANA TOPUP] Exception!', ['msg' => $e->getMessage()]);
