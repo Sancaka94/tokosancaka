@@ -37,7 +37,7 @@ class DanaDashboardController extends Controller
         return redirect("https://m.sandbox.dana.id/d/portal/oauth?" . http_build_query($queryParams));
     }
 
-    public function handleCallback(Request $request)
+   public function handleCallback(Request $request)
 {
     Log::info('[DANA CALLBACK] Mendapatkan Auth Code:', $request->all());
 
@@ -55,6 +55,7 @@ class DanaDashboardController extends Controller
         try {
             $timestamp = now('Asia/Jakarta')->toIso8601String();
             $clientId = config('services.dana.x_partner_id');
+            $externalId = (string) time();
             
             // Signature B2B2C: ClientID|Timestamp
             $stringToSign = $clientId . "|" . $timestamp;
@@ -72,23 +73,46 @@ class DanaDashboardController extends Controller
                 'X-SIGNATURE'   => $signature,
                 'X-PARTNER-ID'  => $clientId,
                 'X-CLIENT-KEY'  => $clientId,
-                'X-EXTERNAL-ID' => (string) time(),
+                'X-EXTERNAL-ID' => $externalId,
                 'Content-Type'  => 'application/json'
             ])->post('https://api.sandbox.dana.id' . $path, $body);
 
             $result = $response->json();
-
-            // PERBAIKAN: DANA Sandbox sukses pakai 2007400
             $successCodes = ['2001100', '2007400'];
 
             if (isset($result['responseCode']) && in_array($result['responseCode'], $successCodes)) {
-                // AMBIL ACCESS TOKEN DARI LOG TADI BOS
+                // 1. UPDATE TOKEN KE DATABASE
                 DB::table('affiliates')->where('id', $affiliateId)->update([
                     'dana_access_token' => $result['accessToken'],
                     'updated_at' => now()
                 ]);
+
+                // 2. CATAT KE RIWAYAT TRANSAKSI (AUDIT BINDING)
+                DB::table('dana_transactions')->insert([
+                    'affiliate_id' => $affiliateId,
+                    'type' => 'BINDING',
+                    'reference_no' => $externalId,
+                    'phone' => '-', // Binding tidak pakai nomor tujuan
+                    'amount' => 0,
+                    'status' => 'SUCCESS',
+                    'response_payload' => json_encode($result),
+                    'created_at' => now()
+                ]);
+
                 return redirect()->route('dana.dashboard')->with('success', 'Akun Berhasil Terhubung (Status: ' . $result['responseMessage'] . ')');
             }
+
+            // JIKA GAGAL TUKAR TOKEN, TETAP CATAT RIWAYAT GAGALNYA
+            DB::table('dana_transactions')->insert([
+                'affiliate_id' => $affiliateId,
+                'type' => 'BINDING',
+                'reference_no' => $externalId,
+                'phone' => '-',
+                'amount' => 0,
+                'status' => 'FAILED',
+                'response_payload' => json_encode($result),
+                'created_at' => now()
+            ]);
 
             Log::error('[EXCHANGE FAILED]', $result);
             return redirect()->route('dana.dashboard')->with('error', 'Gagal Tukar Token: ' . ($result['responseMessage'] ?? 'Unknown Error'));
