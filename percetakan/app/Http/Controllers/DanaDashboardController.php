@@ -200,16 +200,20 @@ class DanaDashboardController extends Controller
 {
     Log::info('[DANA TOPUP] --- MEMULAI PROSES TOPUP ---', ['affiliate_id' => $request->affiliate_id]);
 
+    // 1. Ambil data affiliate
     $aff = DB::table('affiliates')->where('id', $request->affiliate_id)->first();
     
+    // 2. Validasi Saldo Profit
     if (!$aff || $aff->balance < $request->amount) {
         Log::warning('[DANA TOPUP] Saldo Tidak Cukup atau Affiliate Tidak Ditemukan');
-        return back()->with('error', 'Gagal: Saldo tidak mencukupi.');
+        return back()->with('error', 'Gagal: Saldo profit tidak mencukupi.');
     }
 
+    // 3. Sanitasi Nomor HP (Ubah 08xx jadi 628xx)
     $cleanPhone = preg_replace('/[^0-9]/', '', $request->phone ?? $aff->whatsapp);
     if (substr($cleanPhone, 0, 1) === '0') $cleanPhone = '62' . substr($cleanPhone, 1);
 
+    // 4. Siapkan Data Request
     $timestamp = now('Asia/Jakarta')->toIso8601String();
     $path = '/v1.0/emoney/customer-top-up.htm';
     $partnerRef = 'TP' . time() . Str::random(4);
@@ -221,7 +225,7 @@ class DanaDashboardController extends Controller
             'currency' => 'IDR'
         ],
         'beneficiaryAccountNo' => $cleanPhone,
-        'additionalInfo' => [] 
+        'additionalInfo' => (object)[] 
     ];
 
     $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
@@ -229,13 +233,13 @@ class DanaDashboardController extends Controller
     $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
     $signature = $this->generateSignature($stringToSign);
 
-    // DEFINISIKAN HEADERS DI SINI AGAR TIDAK UNDEFINED
+    // 5. Definisikan Headers
     $headers = [
         'X-TIMESTAMP'   => $timestamp,
         'X-SIGNATURE'   => $signature,
         'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
         'X-EXTERNAL-ID' => (string) time() . Str::random(4),
-        'X-DEVICE-ID'   => '09864ADCASA',
+        'X-DEVICE-ID'   => 'DANA-DASHBOARD-STATION',
         'CHANNEL-ID'    => '95221',
         'Content-Type'  => 'application/json',
         'Authorization-Customer' => 'Bearer ' . $aff->dana_access_token
@@ -244,17 +248,21 @@ class DanaDashboardController extends Controller
     try {
         Log::info('[DANA TOPUP] Mengirim Request...', ['headers' => $headers]);
 
-        $response = Http::withHeaders($headers)->withBody($jsonBody, 'application/json')->post('https://api.sandbox.dana.id' . $path);
+        $response = Http::withHeaders($headers)
+            ->withBody($jsonBody, 'application/json')
+            ->post('https://api.sandbox.dana.id' . $path);
+            
         $result = $response->json();
 
         Log::info('[DANA TOPUP] Respon Diterima', ['status' => $response->status(), 'result' => $result]);
 
-        // CEK SUKSES (HTTP 200)
+        // 6. Cek Keberhasilan (Status 200 di Sandbox seringkali result-nya null)
         if ($response->successful()) {
-            // Potong Saldo Profit
+            
+            // A. Potong Saldo Profit Affiliate
             DB::table('affiliates')->where('id', $aff->id)->decrement('balance', $request->amount);
 
-            // SIMPAN KE DATABASE TRANSAKSI (WAJIB)
+            // B. Catat ke Audit Log Transaksi
             DB::table('dana_transactions')->insert([
                 'affiliate_id' => $aff->id,
                 'type' => 'TOPUP',
@@ -266,30 +274,34 @@ class DanaDashboardController extends Controller
                 'created_at' => now()
             ]);
 
-            // --- NOTIFIKASI WHATSAPP VIA FONTE ---
-    $pesan = "✅ *PENCAIRAN PROFIT BERHASIL*\n\n";
-    $pesan .= "Halo " . $aff->name . ",\n";
-    $pesan .= "Saldo profit Anda telah berhasil dicairkan ke akun DANA.\n\n";
-    $pesan .= "Detail Transaksi:\n";
-    $pesan .= "▪️ Nominal: Rp " . number_format($request->amount, 0, ',', '.') . "\n";
-    $pesan .= "▪️ No. DANA: " . $cleanPhone . "\n";
-    $pesan .= "▪️ Ref: " . $partnerRef . "\n";
-    $pesan .= "▪️ Waktu: " . now()->format('d/m/Y H:i') . "\n\n";
-    $pesan .= "Terima kasih telah bersama Toko Sancaka!";
+            // C. Kirim Notifikasi WhatsApp ke USER (Affiliate)
+            $pesanUser = "✅ *PENCAIRAN PROFIT BERHASIL*\n\n";
+            $pesanUser .= "Halo " . $aff->name . ",\n";
+            $pesanUser .= "Pencairan profit Anda ke DANA telah sukses.\n\n";
+            $pesanUser .= "*Detail:* \n";
+            $pesanUser .= "▪️ Nominal: Rp " . number_format($request->amount, 0, ',', '.') . "\n";
+            $pesanUser .= "▪️ No. DANA: " . $cleanPhone . "\n";
+            $pesanUser .= "▪️ Ref ID: " . $partnerRef . "\n";
+            $pesanUser .= "▪️ Waktu: " . now()->format('d/m H:i') . " WIB\n\n";
+            $pesanUser .= "Saldo profit Anda telah otomatis terpotong. Terima kasih!";
+            
+            $this->sendWhatsApp($cleanPhone, $pesanUser);
 
-    $this->sendWhatsApp($cleanPhone, $pesan);
-    
-    // Opsional: Kirim juga ke nomor bos/admin untuk monitoring
-    $this->sendWhatsApp('6285745808809', "Admin Report: Topup Sukses Rp " . $request->amount . " ke " . $aff->name);
+            // D. Kirim Notifikasi ke ADMIN (Nomor Bos)
+            $pesanAdmin = "📢 *LAPORAN TOPUP SUKSES*\n\n";
+            $pesanAdmin .= "Affiliate: " . $aff->name . " (ID: " . $aff->id . ")\n";
+            $pesanAdmin .= "Nominal: Rp " . number_format($request->amount, 0, ',', '.') . "\n";
+            $pesanAdmin .= "Tujuan: " . $cleanPhone . "\n";
+            $pesanAdmin .= "Status: Saldo Berhasil Dipotong.";
+            
+            $this->sendWhatsApp('6285745808809', $pesanAdmin); // Nomor Admin Bos
 
-    return back()->with('success', '💸 Topup Berhasil dan Notifikasi WA Terkirim!');
-}
-
-            Log::info('[DANA TOPUP] BERHASIL & TERSIMPAN DI DB');
-            return back()->with('success', '💸 Topup Berhasil dan Tercatat!');
+            Log::info('[DANA TOPUP] BERHASIL & WA TERKIRIM');
+            
+            return back()->with('success', '💸 Topup Berhasil, Saldo Dipotong, dan WA Terkirim!');
         }
 
-        return back()->with('error', 'Gagal: ' . ($result['responseMessage'] ?? 'Respon Server Error'));
+        return back()->with('error', 'Gagal dari DANA: ' . ($result['responseMessage'] ?? 'Respon Server Error'));
 
     } catch (\Exception $e) {
         Log::error('[DANA TOPUP] Exception!', ['msg' => $e->getMessage()]);
@@ -389,7 +401,14 @@ public function accountInquiry(Request $request)
         'created_at' => now()
     ]);
 
-    return back()->with('success', '✅ Inquiry Sukses! Pemilik Akun: ' . $customerName);
+    $pesanInquiry = "🛡️ *VERIFIKASI AKUN DANA*\n\n";
+    $pesanInquiry .= "Sistem kami baru saja memverifikasi akun DANA Anda.\n";
+    $pesanInquiry .= "Nama Terdaftar: *" . $customerName . "*\n";
+    $pesanInquiry .= "Status: Akun Valid & Siap menerima pencairan profit.";
+
+    $this->sendWhatsApp($cleanPhone, $pesanInquiry);
+
+    return back()->with('success', '✅ Inquiry Sukses & Notifikasi WA Terkirim!');
 }
 
     return back()->with('error', 'Gagal Inquiry: ' . ($result['responseMessage'] ?? 'Unknown Error'));
