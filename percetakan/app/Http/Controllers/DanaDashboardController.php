@@ -322,8 +322,12 @@ class DanaDashboardController extends Controller
 
 public function accountInquiry(Request $request)
 {
-    // 1. LOG INPUT REQUEST
-    Log::info('[DANA INQUIRY] Start Process', ['affiliate_id' => $request->affiliate_id, 'amount' => $request->amount]);
+    // --- [LOG 1] INPUT REQUEST ---
+    Log::info('[DANA INQUIRY] Start Process', [
+        'affiliate_id' => $request->affiliate_id, 
+        'amount' => $request->amount,
+        'ip' => $request->ip()
+    ]);
 
     $aff = DB::table('affiliates')->where('id', $request->affiliate_id)->first();
     if (!$aff) {
@@ -331,7 +335,7 @@ public function accountInquiry(Request $request)
         return back()->with('error', 'Affiliate tidak ditemukan.');
     }
 
-    // 2. LOG SANITIZE NOMOR HP
+    // --- [LOG 2] SANITASI NOMOR HP ---
     $rawPhone = $request->phone ?? $aff->whatsapp;
     $cleanPhone = preg_replace('/[^0-9]/', '', $rawPhone);
     if (substr($cleanPhone, 0, 1) === '0') {
@@ -341,12 +345,13 @@ public function accountInquiry(Request $request)
 
     $timestamp = now('Asia/Jakarta')->toIso8601String();
     $path = '/v1.0/emoney/account-inquiry.htm';
-    
+    $amountValue = $request->amount ?? 10000;
+
     $body = [
         "partnerReferenceNo" => "INQ" . time() . Str::random(5),
         "customerNumber"     => $cleanPhone,
         "amount" => [
-            "value"    => number_format((float)($request->amount ?? 21000000), 2, '.', ''),
+            "value"    => number_format((float)$amountValue, 2, '.', ''),
             "currency" => "IDR"
         ],
         "transactionDate" => $timestamp,
@@ -358,19 +363,18 @@ public function accountInquiry(Request $request)
         ]
     ];
 
-    // 3. LOG SIGNATURE PROCESS
+    // --- [LOG 3] SIGNATURE PROCESS ---
     $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     $hashedBody = strtolower(hash('sha256', $jsonBody));
     $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
     $signature = $this->generateSignature($stringToSign);
 
-    Log::info('[DANA INQUIRY] Signature Generated', [
+    Log::info('[DANA INQUIRY] Security Detail', [
         'path' => $path,
         'stringToSign' => $stringToSign,
         'signature' => $signature
     ]);
 
-    // 4. LOG FULL REQUEST HEADERS & BODY
     $headers = [
         'Content-Type'  => 'application/json',
         'Authorization' => 'Bearer ' . $aff->dana_access_token,
@@ -380,55 +384,93 @@ public function accountInquiry(Request $request)
         'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
         'X-EXTERNAL-ID' => (string) time() . Str::random(5),
         'X-IP-ADDRESS'  => $request->ip() ?? '127.0.0.1',
-        'X-DEVICE-ID'   => '09864ADCASA',
+        'X-DEVICE-ID'   => 'DANA-DASHBOARD-01',
         'CHANNEL-ID'    => '95221'
     ];
-    Log::info('[DANA INQUIRY] Sending Request to DANA', ['url' => 'https://api.sandbox.dana.id' . $path, 'headers' => $headers, 'body' => $body]);
 
     try {
-    $response = Http::withHeaders($headers)->withBody($jsonBody, 'application/json')->post('https://api.sandbox.dana.id' . $path);
-    $result = $response->json();
+        // --- [LOG 4] SENDING REQUEST ---
+        Log::info('[DANA INQUIRY] Sending Request to DANA', ['body' => $body]);
 
-    Log::info('[DANA INQUIRY] Response Received', ['status' => $response->status(), 'result' => $result]);
+        $response = Http::withHeaders($headers)->withBody($jsonBody, 'application/json')->post('https://api.sandbox.dana.id' . $path);
+        $result = $response->json();
 
-    // PERBAIKAN: Masukkan 2003700 ke dalam daftar kode sukses
-    $successInquiryCodes = ['2000000', '2003700'];
+        // --- [LOG 5] RESPONSE RECEIVED ---
+        Log::info('[DANA INQUIRY] Response Received', ['status' => $response->status(), 'result' => $result]);
 
-   if (isset($result['responseCode']) && in_array($result['responseCode'], $successInquiryCodes)) {
-    $customerName = $result['customerName'] ?? ($result['additionalInfo']['customerName'] ?? 'Akun Valid');
-    
-    // Update nama di tabel affiliates
-    DB::table('affiliates')->where('id', $request->affiliate_id)->update(['dana_user_name' => $customerName]);
+        $resCode = $result['responseCode'] ?? '5003700';
+        $resMsg = $result['responseMessage'] ?? 'Unexpected response';
 
-    // --- CATAT KE TABEL TRANSAKSI ---
-    DB::table('dana_transactions')->insert([
-        'affiliate_id' => $request->affiliate_id,
-        'type' => 'INQUIRY',
-        'reference_no' => $body['partnerReferenceNo'],
-        'phone' => $cleanPhone,
-        'amount' => 0,
-        'status' => 'SUCCESS',
-        'response_payload' => json_encode($result),
-        'created_at' => now()
-    ]);
+        // --- [DATABASE 1] CATAT KE TABEL TRANSAKSI (AUDIT LOG) ---
+        DB::table('dana_transactions')->insert([
+            'affiliate_id' => $request->affiliate_id,
+            'type' => 'INQUIRY',
+            'reference_no' => $body['partnerReferenceNo'],
+            'phone' => $cleanPhone,
+            'amount' => $amountValue,
+            'status' => in_array($resCode, ['2000000', '2003700']) ? 'SUCCESS' : 'FAILED',
+            'response_payload' => json_encode($result),
+            'created_at' => now()
+        ]);
 
-    $pesanInquiry = "🛡️ *VERIFIKASI AKUN DANA*\n\n";
-    $pesanInquiry .= "Sistem kami baru saja memverifikasi akun DANA Anda.\n";
-    $pesanInquiry .= "Nama Terdaftar: *" . $customerName . "*\n";
-    $pesanInquiry .= "Status: Akun Valid & Siap menerima pencairan profit.";
+        // --- [MAPPING] RESPOND CODE SESUAI DOKUMENTASI BOS ---
+        $responseMapping = [
+            '2003700' => '✅ SUCCESS: Account Inquiry processed.',
+            '4003700' => '❌ FAILED: Bad Request (General).',
+            '4003701' => '❌ FAILED: Invalid Field Format.',
+            '4003702' => '❌ FAILED: Invalid Mandatory Field.',
+            '4013700' => '❌ UNAUTHORIZED: General Auth Error.',
+            '4013701' => '❌ UNAUTHORIZED: Invalid B2B Token.',
+            '4013702' => '❌ UNAUTHORIZED: Invalid Customer Token.',
+            '4033702' => '⚠️ TEST CASE: Exceeds Amount Limit (21jt).',
+            '4033705' => '❌ FAILED: Do Not Honor (Abnormal Status).',
+            '4033714' => '❌ FAILED: Insufficient Funds (Merchant).',
+            '4033718' => '❌ FAILED: Inactive Account.',
+            '4043711' => '❌ FAILED: Invalid Account/Not Found.',
+            '4293700' => '❌ FAILED: Too Many Requests.',
+            '5003701' => '❌ FAILED: Internal Server Error.',
+        ];
 
-    $this->sendWhatsApp($cleanPhone, $pesanInquiry);
+        $displayMsg = $responseMapping[$resCode] ?? "[$resCode] $resMsg";
 
-    return back()->with('success', '✅ Inquiry Sukses & Notifikasi WA Terkirim!');
-}
+        // --- [DATABASE 2] UPDATE NAMA KE TABEL AFFILIATES ---
+        if (in_array($resCode, ['2000000', '2003700'])) {
+            $customerName = $result['additionalInfo']['customerName'] ?? 'Akun Valid';
+            
+            DB::table('affiliates')->where('id', $request->affiliate_id)->update([
+                'dana_user_name' => $customerName,
+                'updated_at' => now()
+            ]);
 
-    return back()->with('error', 'Gagal Inquiry: ' . ($result['responseMessage'] ?? 'Unknown Error'));
+            // --- [FONNTE 1] WA KE USER ---
+            $pesanUser = "🛡️ *Sancaka DANA Center - Verifikasi*\n\n";
+            $pesanUser .= "Halo *" . $aff->name . "*,\n";
+            $pesanUser .= "Akun DANA Anda berhasil diverifikasi.\n\n";
+            $pesanUser .= "▪️ Nama: *" . $customerName . "*\n";
+            $pesanUser .= "▪️ No. DANA: " . $cleanPhone . "\n";
+            $pesanUser .= "▪️ Status: ✅ *AKUN VALID*\n\n";
+            $pesanUser .= "Terima kasih!";
+            $this->sendWhatsApp($cleanPhone, $pesanUser);
 
-} catch (\Exception $e) {
-    Log::error('[DANA INQUIRY] System Exception', ['message' => $e->getMessage()]);
-    return back()->with('error', 'Sistem Error: ' . $e->getMessage());
-}
+            return back()->with('success', $displayMsg);
+        }
 
+        // --- [FONNTE 2] WA KE ADMIN (NOMOR BOS) UNTUK ERROR/TEST CASE ---
+        $pesanAdmin = "📢 *DANA INQUIRY NOTIFICATION*\n\n";
+        $pesanAdmin .= "▪️ Affiliate: " . $aff->name . "\n";
+        $pesanAdmin .= "▪️ Target: " . $cleanPhone . "\n";
+        $pesanAdmin .= "▪️ Nominal: Rp " . number_format($amountValue, 0, ',', '.') . "\n";
+        $pesanAdmin .= "▪️ Result: " . $displayMsg . "\n";
+        $pesanAdmin .= "▪️ Waktu: " . now()->format('H:i:s') . " WIB";
+        $this->sendWhatsApp('6285745808809', $pesanAdmin);
+
+        return back()->with('error', $displayMsg);
+
+    } catch (\Exception $e) {
+        // --- [LOG 6] EXCEPTION ERROR ---
+        Log::error('[DANA INQUIRY] Exception!', ['message' => $e->getMessage()]);
+        return back()->with('error', 'Sistem Error: ' . $e->getMessage());
+    }
 }
 
 public function handleWebhook(Request $request)
