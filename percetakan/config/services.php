@@ -40,19 +40,17 @@ return [
     ],
 
     'dana' => [
-        'merchant_id' => env('DANA_MERCHANT_ID'),
-        'client_id' => env('DANA_CLIENT_ID'),
-        'client_secret' => env('DANA_CLIENT_SECRET'),
-        'base_url' => env('DANA_URL', 'https://api.sandbox.dana.id'),
-        'private_key' => file_exists(storage_path('app/dana/private.pem')) 
-                     ? file_get_contents(storage_path('app/dana/private.pem')) 
-                     : env('DANA_PRIVATE_KEY'),
-        
-        // Path ke file kunci privat Anda (untuk tanda tangan request)
-        'private_key_path' => env('DANA_PRIVATE_KEY_PATH', 'keys/dana_private_key.pem'),
-        
-        // Path ke file kunci publik DANA (untuk verifikasi balasan/callback)
-        'public_key_path' => env('DANA_PUBLIC_KEY_PATH', 'keys/dana_public_key.pem'),
+        'merchant_id'         => env('MERCHANT_ID'),
+        'x_partner_id'        => env('X_PARTNER_ID'),
+        'private_key'         => env('PRIVATE_KEY'),
+        'private_key_path'    => env('PRIVATE_KEY_PATH'),
+        'origin'              => env('ORIGIN'),
+        'dana_public_key'     => env('DANA_PUBLIC_KEY'),
+        'dana_public_key_path'=> env('DANA_PUBLIC_KEY_PATH'),
+        'client_secret'       => env('CLIENT_SECRET'),
+        'redirect_url_oauth'  => env('REDIRECT_URL_OAUTH'),
+        'external_shop_id'    => env('EXTERNAL_SHOP_ID'),
+        'dana_env'            => env('DANA_ENV', 'SANDBOX'),
     ],
 
     // --- KONFIGURASI KIRIMINAJA ---
