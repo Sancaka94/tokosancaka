@@ -1,0 +1,89 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\DanaResponseCode;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+
+class DanaResponseCodeController extends Controller
+{
+    /**
+     * Menampilkan daftar data (Read).
+     */
+    public function index()
+    {
+        // Mengambil data urut berdasarkan response_code, dipaginate 10 per halaman
+        $codes = DanaResponseCode::orderBy('response_code', 'asc')->paginate(10);
+
+        // Pastikan nama view sesuai folder Anda. 
+        // Jika file blade ada di: resources/views/dana/response_codes/index.blade.php
+        return view('dana.response_codes.index', compact('codes'));
+    }
+
+    /**
+     * Menyimpan data baru (Create).
+     */
+    public function store(Request $request)
+    {
+        // 1. Validasi Input
+        $validated = $request->validate([
+            'response_code' => 'required|string|unique:dana_response_codes,response_code|max:50',
+            'category'      => 'required|string|in:INQUIRY,TOPUP,GENERAL',
+            'message_title' => 'required|string|max:255',
+            'description'   => 'nullable|string',
+            'solution'      => 'nullable|string',
+            'is_success'    => 'required|boolean', // Menerima 0 atau 1
+        ]);
+
+        // 2. Simpan ke Database
+        DanaResponseCode::create($validated);
+
+        // 3. Redirect kembali dengan pesan sukses
+        return redirect()->route('dana_response_codes.index')
+                         ->with('success', 'Kode respon berhasil ditambahkan.');
+    }
+
+    /**
+     * Mengupdate data yang ada (Update).
+     */
+    public function update(Request $request, $id)
+    {
+        $code = DanaResponseCode::findOrFail($id);
+
+        // 1. Validasi Input
+        $validated = $request->validate([
+            // Unique validation tapi kecualikan ID ini sendiri (agar tidak error jika tidak ganti kode)
+            'response_code' => [
+                'required', 
+                'string', 
+                'max:50',
+                Rule::unique('dana_response_codes', 'response_code')->ignore($code->id)
+            ],
+            'category'      => 'required|string|in:INQUIRY,TOPUP,GENERAL',
+            'message_title' => 'required|string|max:255',
+            'description'   => 'nullable|string',
+            'solution'      => 'nullable|string',
+            'is_success'    => 'required|boolean',
+        ]);
+
+        // 2. Update Data
+        $code->update($validated);
+
+        // 3. Redirect kembali
+        return redirect()->route('dana_response_codes.index')
+                         ->with('success', 'Data kode respon berhasil diperbarui.');
+    }
+
+    /**
+     * Menghapus data (Delete).
+     */
+    public function destroy($id)
+    {
+        $code = DanaResponseCode::findOrFail($id);
+        $code->delete();
+
+        return redirect()->route('dana_response_codes.index')
+                         ->with('success', 'Kode respon berhasil dihapus.');
+    }
+}
