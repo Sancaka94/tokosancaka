@@ -558,27 +558,27 @@ public function customerTopup(Request $request)
     $timestamp = now('Asia/Jakarta')->toIso8601String();
 
     // --- [LOG 3] PENYUSUNAN BODY SESUAI DOKUMENTASI ---
-    $body = [
+$body = [
     "partnerReferenceNo" => $partnerRef,
     "customerNumber"     => $cleanPhone,
     "amount" => [
         "value"    => number_format((float)$request->amount, 2, '.', ''),
         "currency" => "IDR"
     ],
-    // DANA sering menolak jika feeAmount tidak dikirim lengkap atau null
+    // DANA mewajibkan feeAmount dikirim meskipun 0.00
     "feeAmount" => [
-        "value"    => "0.00", 
+        "value"    => "0.00",
         "currency" => "IDR"
     ],
     "transactionDate" => $timestamp,
     "sessionId"       => Str::random(12),
-    "categoryId"      => "6", // Wajib string "6" untuk topup emoney
-    "notes"           => "Disb Sancaka",
+    "categoryId"      => "6",
+    "notes"           => "Topup Sancaka",
     "additionalInfo"  => [
-        // Jangan dikosongkan, DANA Disbursement butuh flag ini:
-        "accountType" => "NAME_DEPOSIT",
-        "fundType"    => "AGENT_TOPUP_FOR_USER_SETTLE",
-        "chargeTarget"=> "MERCHANT" 
+        // Sandbox DANA sangat mewajibkan 3 field ini dengan nilai string yang tepat
+        "accountType"  => "NAME_DEPOSIT",
+        "fundType"     => "AGENT_TOPUP_FOR_USER_SETTLE",
+        "chargeTarget" => "MERCHANT"
     ]
 ];
 
