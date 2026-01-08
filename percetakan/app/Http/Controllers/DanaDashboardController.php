@@ -43,66 +43,76 @@ class DanaDashboardController extends Controller
 
     $authCode = $request->input('auth_code');
     $state = $request->input('state');
+    // Ambil ID Affiliate dari state, default ke 11 jika tidak ada
     $affiliateId = $state ? str_replace('ID-', '', $state) : 11;
 
-    if ($authCode) {
-        // Simpan Auth Code-nya dulu ke database
-        DB::table('affiliates')->where('id', $affiliateId)->update([
-            'dana_auth_code' => $authCode,
-            'updated_at' => now()
-        ]);
+    if (!$authCode) {
+        return redirect()->route('dana.dashboard')->with('error', 'Auth Code Kosong');
+    }
 
-        try {
-            $timestamp = now('Asia/Jakarta')->toIso8601String();
-            $clientId = config('services.dana.x_partner_id');
-            $externalId = (string) time();
-            
-            // Signature B2B2C: ClientID|Timestamp
-            $stringToSign = $clientId . "|" . $timestamp;
-            $signature = $this->generateSignature($stringToSign);
+    // 1. Simpan Auth Code-nya dulu ke database sebagai jejak awal
+    DB::table('affiliates')->where('id', $affiliateId)->update([
+        'dana_auth_code' => $authCode,
+        'updated_at' => now()
+    ]);
 
-            $path = '/v1.0/access-token/b2b2c.htm';
-            $body = [
-                'grantType' => 'authorization_code',
-                'authCode' => $authCode,
-                'additionalInfo' => (object)[]
-            ];
+    try {
+        $timestamp = now('Asia/Jakarta')->toIso8601String();
+        $clientId = config('services.dana.x_partner_id');
+        $externalId = (string) time();
+        
+        // Signature B2B2C: ClientID|Timestamp
+        $stringToSign = $clientId . "|" . $timestamp;
+        $signature = $this->generateSignature($stringToSign);
 
-            $response = Http::withHeaders([
-                'X-TIMESTAMP'   => $timestamp,
-                'X-SIGNATURE'   => $signature,
-                'X-PARTNER-ID'  => $clientId,
-                'X-CLIENT-KEY'  => $clientId,
-                'X-EXTERNAL-ID' => $externalId,
-                'Content-Type'  => 'application/json'
-            ])->post('https://api.sandbox.dana.id' . $path, $body);
+        $path = '/v1.0/access-token/b2b2c.htm';
+        $body = [
+            'grantType' => 'authorization_code',
+            'authCode' => $authCode,
+            'additionalInfo' => (object)[]
+        ];
 
-            $result = $response->json();
-            $successCodes = ['2001100', '2007400'];
+        $response = Http::withHeaders([
+            'X-TIMESTAMP'   => $timestamp,
+            'X-SIGNATURE'   => $signature,
+            'X-PARTNER-ID'  => $clientId,
+            'X-CLIENT-KEY'  => $clientId,
+            'X-EXTERNAL-ID' => $externalId,
+            'Content-Type'  => 'application/json'
+        ])->post('https://api.sandbox.dana.id' . $path, $body);
 
-            if (isset($result['responseCode']) && in_array($result['responseCode'], $successCodes)) {
-                // 1. UPDATE TOKEN KE DATABASE
-                DB::table('affiliates')->where('id', $affiliateId)->update([
-                    'dana_access_token' => $result['accessToken'],
-                    'updated_at' => now()
-                ]);
+        $result = $response->json();
+        // Kode sukses DANA Sandbox seringkali 2007400 untuk B2B2C
+        $successCodes = ['2001100', '2007400'];
 
-                // 2. CATAT KE RIWAYAT TRANSAKSI (AUDIT BINDING)
+        if (isset($result['responseCode']) && in_array($result['responseCode'], $successCodes)) {
+            // A. UPDATE TOKEN KE DATABASE (Prioritas Utama)
+            DB::table('affiliates')->where('id', $affiliateId)->update([
+                'dana_access_token' => $result['accessToken'],
+                'updated_at' => now()
+            ]);
+
+            // B. CATAT KE RIWAYAT TRANSAKSI (Gunakan try-catch agar tidak crash jika DB error)
+            try {
                 DB::table('dana_transactions')->insert([
                     'affiliate_id' => $affiliateId,
                     'type' => 'BINDING',
                     'reference_no' => $externalId,
-                    'phone' => '-', // Binding tidak pakai nomor tujuan
+                    'phone' => '-', 
                     'amount' => 0,
                     'status' => 'SUCCESS',
                     'response_payload' => json_encode($result),
                     'created_at' => now()
                 ]);
-
-                return redirect()->route('dana.dashboard')->with('success', 'Akun Berhasil Terhubung (Status: ' . $result['responseMessage'] . ')');
+            } catch (\Exception $dbEx) {
+                Log::error('[DANA CALLBACK] Gagal simpan log transaksi: ' . $dbEx->getMessage());
             }
 
-            // JIKA GAGAL TUKAR TOKEN, TETAP CATAT RIWAYAT GAGALNYA
+            return redirect()->route('dana.dashboard')->with('success', '✅ Akun Berhasil Terhubung!');
+        }
+
+        // JIKA GAGAL TUKAR TOKEN
+        try {
             DB::table('dana_transactions')->insert([
                 'affiliate_id' => $affiliateId,
                 'type' => 'BINDING',
@@ -113,16 +123,17 @@ class DanaDashboardController extends Controller
                 'response_payload' => json_encode($result),
                 'created_at' => now()
             ]);
-
-            Log::error('[EXCHANGE FAILED]', $result);
-            return redirect()->route('dana.dashboard')->with('error', 'Gagal Tukar Token: ' . ($result['responseMessage'] ?? 'Unknown Error'));
-
-        } catch (\Exception $e) {
-            return redirect()->route('dana.dashboard')->with('error', 'Sistem Error: ' . $e->getMessage());
+        } catch (\Exception $dbEx) {
+            Log::error('[DANA CALLBACK] Gagal simpan log error: ' . $dbEx->getMessage());
         }
-    }
 
-    return redirect()->route('dana.dashboard')->with('error', 'Auth Code Kosong');
+        Log::error('[EXCHANGE FAILED]', $result);
+        return redirect()->route('dana.dashboard')->with('error', 'Gagal Tukar Token: ' . ($result['responseMessage'] ?? 'Unknown Error'));
+
+    } catch (\Exception $e) {
+        Log::error('[DANA CALLBACK] System Error:', ['msg' => $e->getMessage()]);
+        return redirect()->route('dana.dashboard')->with('error', 'Sistem Error: ' . $e->getMessage());
+    }
 }
 
     // 3. CEK SALDO USER (LOGIKA SNAP 2001100 - TIDAK DIRUBAH)
