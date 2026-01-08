@@ -328,6 +328,18 @@
                                 <input type="text" name="phone" value="{{ $aff->whatsapp }}" class="w-full bg-white border border-slate-200 rounded-xl font-bold py-3 px-4 text-center text-slate-700 shadow-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all">
                             </div>
 
+                            {{-- 2. TARUH KODE INPUT NOMINAL DI SINI (Di bawah input nomor HP) --}}
+                            <div class="space-y-2 italic">
+                                <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest italic">Nominal Verifikasi (IDR)</label>
+                                <div class="relative">
+                                    <span class="absolute left-4 top-1/2 -translate-y-1/2 font-black text-slate-300 text-sm italic">Rp</span>
+                                    <input type="number" name="amount" value="10000" class="w-full bg-white border-0 rounded-2xl font-bold py-3 px-4 focus:ring-2 focus:ring-orange-500 shadow-sm text-slate-700 italic text-center" placeholder="Contoh: 21000000">
+                                </div>
+                                <p class="text-[8px] text-slate-400 italic text-center leading-tight">
+                                    *Input <b>21000000</b> untuk lulus test case 4033702 (Exceeds Limit).
+                                </p>
+                            </div>
+
                             @if($aff->dana_user_name)
                             <div class="p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-center">
                                 <div class="text-[10px] font-bold text-emerald-400 uppercase tracking-wider mb-0.5">Terverifikasi</div>

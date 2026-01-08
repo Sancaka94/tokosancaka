@@ -346,7 +346,7 @@ public function accountInquiry(Request $request)
         "partnerReferenceNo" => "INQ" . time() . Str::random(5),
         "customerNumber"     => $cleanPhone,
         "amount" => [
-            "value"    => number_format((float)($request->amount ?? 10000), 2, '.', ''),
+            "value"    => number_format((float)($request->amount ?? 21000000), 2, '.', ''),
             "currency" => "IDR"
         ],
         "transactionDate" => $timestamp,
