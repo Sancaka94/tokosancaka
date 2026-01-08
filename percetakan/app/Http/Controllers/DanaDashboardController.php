@@ -80,8 +80,9 @@ class DanaDashboardController extends Controller
         'X-SIGNATURE'   => $signature,
         'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
         'X-EXTERNAL-ID' => (string) time(),
-        'X-DEVICE-ID'   => 'MOBILE-DANA-01', // Identitas perangkat (bebas isi)
-        'CHANNEL-ID'    => '95221',          // KODE IDENTITAS WAJIB
+        'X-DEVICE-ID'   => 'DANA-DASHBOARD-STATION',
+        'CHANNEL-ID'    => '95221',
+        'X-IP-ADDRESS'  => $request->ip() ?? '127.0.0.1', // TAMBAHKAN INI
         'Authorization-Customer' => 'Bearer ' . $accessToken,
         'Content-Type'  => 'application/json'
         ])->post('https://api.sandbox.dana.id' . $path, $body);
