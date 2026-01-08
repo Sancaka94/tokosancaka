@@ -559,29 +559,28 @@ public function customerTopup(Request $request)
 
     // --- [LOG 3] PENYUSUNAN BODY SESUAI DOKUMENTASI ---
     $body = [
-        "partnerReferenceNo" => $partnerRef,
-        "customerNumber"     => $cleanPhone,
-        "amount" => [
-            "value"    => $amountValue,
-            "currency" => "IDR"
-        ],
-        "feeAmount" => [
-            "value"    => "0.00", // Sesuaikan jika ada fee
-            "currency" => "IDR"
-        ],
-        "transactionDate" => $timestamp,
-        "sessionId"       => Str::random(12),
-        "categoryId"      => "6",
-        "notes"           => "Topup Sancaka - " . $aff->name,
-        "additionalInfo"  => [
-            "extendInfo"         => json_encode(["memo" => "Topup via Sancaka Dashboard"]),
-            "accountType"        => "NAME_DEPOSIT",
-            "fundType"           => "AGENT_TOPUP_FOR_USER_SETTLE",
-            "externalDivisionId" => "",
-            "chargeTarget"       => "MERCHANT",
-            "customerId"         => ""
-        ]
-    ];
+    "partnerReferenceNo" => $partnerRef,
+    "customerNumber"     => $cleanPhone,
+    "amount" => [
+        "value"    => number_format((float)$request->amount, 2, '.', ''),
+        "currency" => "IDR"
+    ],
+    // DANA sering menolak jika feeAmount tidak dikirim lengkap atau null
+    "feeAmount" => [
+        "value"    => "0.00", 
+        "currency" => "IDR"
+    ],
+    "transactionDate" => $timestamp,
+    "sessionId"       => Str::random(12),
+    "categoryId"      => "6", // Wajib string "6" untuk topup emoney
+    "notes"           => "Disb Sancaka",
+    "additionalInfo"  => [
+        // Jangan dikosongkan, DANA Disbursement butuh flag ini:
+        "accountType" => "NAME_DEPOSIT",
+        "fundType"    => "AGENT_TOPUP_FOR_USER_SETTLE",
+        "chargeTarget"=> "MERCHANT" 
+    ]
+];
 
     // --- [LOG 4] SIGNATURE & SECURITY ---
     $path = '/v1.0/emoney/topup.htm';
