@@ -89,38 +89,52 @@ class DanaDashboardController extends Controller
         }
     }
 
-    // =========================================================================
-    // 3. CEK SALDO (Menggunakan SDK)
-    // =========================================================================
-    public function checkBalance()
-    {
-        $accessToken = session('dana_access_token');
+    public function checkBalance(Request $request)
+{
+    Log::info('[CEK SALDO] Memulai request menggunakan Direct Array...');
+    
+    // Ambil token dari input form dashboard atau dari session
+    $accessToken = $request->access_token ?? session('dana_access_token');
 
-        if (!$accessToken) {
-            return back()->with('error', 'Silakan sambungkan akun DANA terlebih dahulu.');
-        }
-
-        try {
-            // Buat Request Object sesuai standar SDK
-            $balanceRequest = new BalanceInquiryRequest([
-                'partnerReferenceNo' => 'BAL' . time(),
-                'balanceTypes' => ['BALANCE'],
-                'additionalInfo' => ['accessToken' => $accessToken]
-            ]);
-
-            // SDK otomatis menghitung Signature B2B2C yang rumit (Method:Path:Token:Time:Hash)
-            $result = $this->apiInstance->balanceInquiry($balanceRequest, $accessToken);
-
-            if ($result->getResponseCode() == '2001100') {
-                $amount = $result->getAccountInfos()[0]->getAvailableBalance()->getValue();
-                return back()->with('success', 'Saldo Berhasil Diambil!')->with('saldo_terbaru', $amount);
-            }
-
-            return back()->with('error', 'Gagal: ' . $result->getResponseMessage());
-
-        } catch (\Exception $e) {
-            Log::error("DANA Balance Error: " . $e->getMessage());
-            return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
-        }
+    if (!$accessToken) {
+        return back()->with('error', 'Token tidak ditemukan. Silakan sambungkan akun dulu.');
     }
+
+    try {
+        // Susun body langsung pakai array (Sesuai yang sukses di test_dana.php)
+        $body = [
+            'partnerReferenceNo' => 'BAL' . date('YmdHis'),
+            'balanceTypes' => ['BALANCE'],
+            'additionalInfo' => [
+                'accessToken' => $accessToken
+            ]
+        ];
+
+        // Panggil API (SDK akan otomatis mengonversi array ini jadi JSON)
+        $result = $this->apiInstance->balanceInquiry($body, $accessToken);
+
+        // SDK akan mengembalikan hasil dalam bentuk Array atau Object
+        // Kita ambil nilainya dengan pengecekan aman
+        if (isset($result['responseCode']) && $result['responseCode'] == '2001100') {
+            $amount = $result['accountInfos'][0]['availableBalance']['value'] ?? '0';
+            
+            return back()->with('success', 'Cek Saldo Berhasil!')
+                         ->with('saldo_terbaru', $amount);
+        }
+
+        $msg = $result['responseMessage'] ?? 'Respon tidak dikenal';
+        return back()->with('error', 'Gagal dari DANA: ' . $msg);
+
+    } catch (\Exception $e) {
+        Log::error("[CEK SALDO ERROR] " . $e->getMessage());
+        
+        // Jika error 401, biasanya signature atau token bermasalah
+        if (method_exists($e, 'getResponseBody')) {
+            $errorBody = $e->getResponseBody();
+            return back()->with('error', 'Error API: ' . $errorBody);
+        }
+        
+        return back()->with('error', 'Sistem Error: ' . $e->getMessage());
+    }
+}
 }
