@@ -231,15 +231,10 @@
             </table>
         </div>
     </div>
-    
-    <div class="text-center pb-5">
-        <span class="badge bg-white text-muted shadow-sm p-2 px-3">
-            <i class="bi bi-cpu"></i> DANA Integration Layer v2.0 - SNAP & Open API Standard
-        </span>
-    </div>
-</div>
 
-<div class="card mt-4 shadow-sm border-0 rounded-4">
+    {{-- Riwayat Transaksi Terakhir (Audit Log) --}}
+
+    <div class="card mt-4 shadow-sm border-0 rounded-4">
     <div class="card-header bg-dark text-white fw-bold py-3">
         <i class="bi bi-clock-history"></i> Riwayat Transaksi Terakhir (Audit Log)
     </div>
@@ -281,6 +276,15 @@
         </div>
     </div>
 </div>
+    
+    <div class="text-center pb-5">
+        <span class="badge bg-white text-muted shadow-sm p-2 px-3">
+            <i class="bi bi-cpu"></i> DANA Integration Layer v2.0 - SNAP & Open API Standard
+        </span>
+    </div>
+</div>
+
+
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
