@@ -8,18 +8,40 @@ use Illuminate\Validation\Rule;
 
 class DanaResponseCodeController extends Controller
 {
-    /**
-     * Menampilkan daftar data (Read).
-     */
-    public function index()
-    {
-        // Mengambil data urut berdasarkan response_code, dipaginate 10 per halaman
-        $codes = DanaResponseCode::orderBy('response_code', 'asc')->paginate(10);
+    public function index(Request $request)
+{
+    // 1. Inisialisasi Query
+    $query = DanaResponseCode::query();
 
-        // Pastikan nama view sesuai folder Anda. 
-        // Jika file blade ada di: resources/views/dana/response_codes/index.blade.php
-        return view('dana.response_codes.index', compact('codes'));
+    // 2. Logika Pencarian (Search All Columns)
+    if ($request->filled('search')) {
+        $search = $request->search;
+        $query->where(function($q) use ($search) {
+            $q->where('response_code', 'like', "%{$search}%")
+              ->orWhere('message_title', 'like', "%{$search}%")
+              ->orWhere('description', 'like', "%{$search}%")
+              ->orWhere('solution', 'like', "%{$search}%");
+        });
     }
+
+    // 3. Filter Kategori
+    if ($request->filled('category') && $request->category !== 'ALL') {
+        $query->where('category', $request->category);
+    }
+
+    // 4. Filter Status (Sukses/Gagal)
+    if ($request->filled('status') && $request->status !== 'ALL') {
+        // Jika value '1' (Sukses) atau '0' (Gagal)
+        $query->where('is_success', $request->status);
+    }
+
+    // 5. Ambil data dengan Pagination & Append Query String (agar filter tidak hilang saat pindah halaman)
+    $codes = $query->orderBy('response_code', 'asc')
+                   ->paginate(10)
+                   ->withQueryString();
+
+    return view('dana.response_codes.index', compact('codes'));
+}
 
     /**
      * Menyimpan data baru (Create).
