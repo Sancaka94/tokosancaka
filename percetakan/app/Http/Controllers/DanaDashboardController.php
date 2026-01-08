@@ -82,6 +82,7 @@ class DanaDashboardController extends Controller
         'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
         'X-EXTERNAL-ID' => (string) time(),
         'X-DEVICE-ID'   => 'DANA-DASHBOARD-STATION',
+        'ORIGIN'        => 'https://tokosancaka.com', // TAMBAHKAN INI (Sesuaikan dengan dashboard DANA)
         'CHANNEL-ID'    => '95221',
         'X-IP-ADDRESS'  => $request->ip() ?? '127.0.0.1',
         'Authorization-Customer' => 'Bearer ' . $accessToken,
