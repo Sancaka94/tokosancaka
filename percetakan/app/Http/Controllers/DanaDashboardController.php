@@ -230,27 +230,30 @@ class DanaDashboardController extends Controller
     $signature = $this->generateSignature($stringToSign);
 
     try {
-        $response = Http::withHeaders([
-            'X-TIMESTAMP'   => $timestamp,
-            'X-SIGNATURE'   => $signature,
-            'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
-            'X-EXTERNAL-ID' => (string) time() . Str::random(4),
-            'X-DEVICE-ID'   => '09864ADCASA',
-            'CHANNEL-ID'    => '95221',
-            'Content-Type'  => 'application/json',
-            'Authorization-Customer' => 'Bearer ' . $aff->dana_access_token
-        ])->withBody($jsonBody, 'application/json')->post('https://api.sandbox.dana.id' . $path);
+    $response = Http::withHeaders($headers)->withBody($jsonBody, 'application/json')->post('https://api.sandbox.dana.id' . $path);
+    $result = $response->json();
 
-        $result = $response->json();
+    // Sesuai log bos, status 200 result null kita anggap sukses
+    if ($response->successful() && (!$result || (isset($result['responseCode']) && $result['responseCode'] == '2001100'))) {
+        
+        // 1. Potong Saldo Profit
+        DB::table('affiliates')->where('id', $aff->id)->decrement('balance', $request->amount);
 
-        Log::info('[DANA TOPUP] Respon Diterima', ['status' => $response->status(), 'result' => $result]);
+        // 2. --- CATAT KE TABEL TRANSAKSI ---
+        DB::table('dana_transactions')->insert([
+            'affiliate_id' => $aff->id,
+            'type' => 'TOPUP',
+            'reference_no' => $body['partnerReferenceNo'],
+            'phone' => $cleanPhone,
+            'amount' => $request->amount,
+            'status' => 'SUCCESS',
+            'response_payload' => json_encode($result), // Akan menyimpan null jika DANA tidak kirim balik
+            'created_at' => now()
+        ]);
 
-        // PROTEKSI: Jika respon 200 tapi result null, kita anggap tetap diproses (cek manual)
-        if ($response->successful() && (!$result || (isset($result['responseCode']) && $result['responseCode'] == '2001100'))) {
-            DB::table('affiliates')->where('id', $aff->id)->decrement('balance', $request->amount);
-            Log::info('[DANA TOPUP] SUKSES. Saldo Dipotong.');
-            return back()->with('success', '💸 Topup Berhasil Diproses!');
-        }
+        Log::info('[DANA TOPUP] SUKSES. Saldo Dipotong & Dicatat di DB.');
+        return back()->with('success', '💸 Topup Berhasil!');
+    }
 
         return back()->with('error', 'Gagal: ' . ($result['responseMessage'] ?? 'Respon Kosong dari DANA'));
 
@@ -335,16 +338,22 @@ public function accountInquiry(Request $request)
     $successInquiryCodes = ['2000000', '2003700'];
 
    if (isset($result['responseCode']) && in_array($result['responseCode'], $successInquiryCodes)) {
-    // Ambil nama dari respon DANA (Sandbox pakai key customerName)
     $customerName = $result['customerName'] ?? ($result['additionalInfo']['customerName'] ?? 'Akun Valid');
     
-    // SIMPAN KE DATABASE AGAR MUNCUL DI BLADE
-    DB::table('affiliates')->where('id', $request->affiliate_id)->update([
-        'dana_user_name' => $customerName,
-        'updated_at' => now()
-    ]);
+    // Update nama di tabel affiliates
+    DB::table('affiliates')->where('id', $request->affiliate_id)->update(['dana_user_name' => $customerName]);
 
-    Log::info('[DANA INQUIRY] Nama Disimpan ke DB', ['name' => $customerName]);
+    // --- CATAT KE TABEL TRANSAKSI ---
+    DB::table('dana_transactions')->insert([
+        'affiliate_id' => $request->affiliate_id,
+        'type' => 'INQUIRY',
+        'reference_no' => $body['partnerReferenceNo'],
+        'phone' => $cleanPhone,
+        'amount' => 0,
+        'status' => 'SUCCESS',
+        'response_payload' => json_encode($result),
+        'created_at' => now()
+    ]);
 
     return back()->with('success', '✅ Inquiry Sukses! Pemilik Akun: ' . $customerName);
 }
