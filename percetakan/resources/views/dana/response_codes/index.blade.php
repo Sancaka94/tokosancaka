@@ -29,6 +29,66 @@
     </div>
     @endif
 
+    {{-- FILTER & SEARCH SECTION --}}
+    <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 mb-6">
+        <form action="{{ route('dana_response_codes.index') }}" method="GET" class="flex flex-col md:flex-row gap-4 items-center justify-between">
+            
+            {{-- KIRI: Pencarian --}}
+            <div class="w-full md:w-1/3 relative">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <i class="fas fa-search text-slate-400"></i>
+                </div>
+                <input type="text" 
+                       name="search" 
+                       value="{{ request('search') }}" 
+                       class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-blue-500 focus:border-blue-500 transition-all" 
+                       placeholder="Cari kode, pesan, atau solusi...">
+            </div>
+
+            {{-- KANAN: Filter Dropdown --}}
+            <div class="flex flex-col md:flex-row gap-3 w-full md:w-auto">
+                
+                {{-- Filter Kategori --}}
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fas fa-filter text-slate-400 text-xs"></i>
+                    </div>
+                    <select name="category" onchange="this.form.submit()" class="pl-8 pr-8 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-600 focus:ring-blue-500 focus:border-blue-500 cursor-pointer hover:bg-slate-50 transition">
+                        <option value="ALL">Semua Kategori</option>
+                        <option value="INQUIRY" {{ request('category') == 'INQUIRY' ? 'selected' : '' }}>INQUIRY</option>
+                        <option value="TOPUP" {{ request('category') == 'TOPUP' ? 'selected' : '' }}>TOPUP</option>
+                        <option value="GENERAL" {{ request('category') == 'GENERAL' ? 'selected' : '' }}>GENERAL</option>
+                    </select>
+                </div>
+
+                {{-- Filter Status --}}
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fas fa-check-circle text-slate-400 text-xs"></i>
+                    </div>
+                    <select name="status" onchange="this.form.submit()" class="pl-8 pr-8 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-600 focus:ring-blue-500 focus:border-blue-500 cursor-pointer hover:bg-slate-50 transition">
+                        <option value="ALL">Semua Status</option>
+                        <option value="1" {{ request('status') === '1' ? 'selected' : '' }}>Sukses (Success)</option>
+                        <option value="0" {{ request('status') === '0' ? 'selected' : '' }}>Gagal (Failed)</option>
+                    </select>
+                </div>
+
+                {{-- Tombol Cari & Reset --}}
+                <div class="flex gap-2">
+                    <button type="submit" class="bg-slate-800 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-black transition shadow-md">
+                        Cari
+                    </button>
+                    
+                    @if(request()->hasAny(['search', 'category', 'status']))
+                        <a href="{{ route('dana_response_codes.index') }}" class="bg-rose-50 text-rose-600 border border-rose-100 px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-rose-100 transition flex items-center" title="Reset Filter">
+                            <i class="fas fa-times"></i>
+                        </a>
+                    @endif
+                </div>
+            </div>
+        </form>
+    </div>
+
     {{-- MAIN TABLE --}}
     <div class="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
         <div class="overflow-x-auto custom-scrollbar">
