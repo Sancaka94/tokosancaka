@@ -119,69 +119,72 @@
                                 </form>
 
                                 {{-- TOMBOL BUKA MODAL TOPUP --}}
-                                <button @click="openModal = {{ $aff->id }}" class="w-10 h-10 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-600 hover:text-white shadow-sm transition-all flex items-center justify-center" title="Cairkan Profit">
-                                    <i class="fas fa-hand-holding-dollar"></i>
+                                <button @click="openModal = {{ $aff->id }}" 
+                                        class="h-10 w-10 flex items-center justify-center bg-rose-50 text-rose-600 rounded-2xl hover:bg-rose-600 hover:text-white hover:shadow-lg hover:shadow-rose-500/30 transition-all duration-300" 
+                                        title="Cairkan Profit">
+                                    <i class="fas fa-hand-holding-dollar text-lg"></i>
                                 </button>
                             </div>
                         </td>
                     </tr>
 
                     <template x-if="openModal === {{ $aff->id }}">
-                        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm">
-                            <div class="bg-white w-full max-w-md rounded-[3rem] shadow-2xl p-8 relative" @click.away="openModal = null">
-                                <button @click="openModal = null" class="absolute top-8 right-8 text-slate-300 hover:text-slate-600 transition-colors">
-                                    <i class="fas fa-times-circle text-2xl"></i>
-                                </button>
-                                
-                                <div class="text-center mb-8">
-                                    <div class="w-20 h-20 bg-rose-50 text-rose-500 rounded-[2rem] flex items-center justify-center mx-auto mb-4 shadow-inner">
-                                        <i class="fas fa-bolt-lightning text-4xl"></i>
-                                    </div>
-                                    <h2 class="text-2xl font-black text-slate-800 tracking-tight">Cairkan Profit</h2>
-                                    <p class="text-slate-400 text-sm font-medium">Pencairan Dana: <b>{{ $aff->name }}</b></p>
-                                </div>
+    <div class="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm">
+        <div class="bg-white w-full max-w-md rounded-[3rem] shadow-2xl p-8 relative" @click.away="openModal = null">
+            
+            <button @click="openModal = null" class="absolute top-8 right-8 text-slate-300 hover:text-slate-600">
+                <i class="fas fa-times-circle text-2xl"></i>
+            </button>
+            
+            <div class="text-center mb-8">
+                <div class="w-20 h-20 bg-rose-50 text-rose-500 rounded-[2rem] flex items-center justify-center mx-auto mb-4 shadow-inner">
+                    <i class="fas fa-bolt-lightning text-4xl"></i>
+                </div>
+                <h2 class="text-2xl font-black text-slate-800">Cairkan Profit</h2>
+                <p class="text-slate-400 text-sm font-medium">Kirim ke: <b>{{ $aff->name }}</b></p>
+            </div>
 
-                                <div class="space-y-6">
-                                    {{-- STEP 1: VERIFIKASI NAMA --}}
-                                    <form action="{{ route('dana.account_inquiry') }}" method="POST" class="bg-slate-50 p-5 rounded-[2rem] border border-slate-100">
-                                        @csrf
-                                        <input type="hidden" name="affiliate_id" value="{{ $aff->id }}">
-                                        <label class="text-[10px] font-black text-slate-400 uppercase block mb-3 tracking-[0.1em]">Verification Number</label>
-                                        <div class="relative mb-4">
-                                            <i class="fas fa-mobile-screen absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"></i>
-                                            <input type="text" name="phone" value="{{ $aff->whatsapp }}" class="w-full bg-white border-0 rounded-2xl font-bold py-3 pl-11 pr-4 focus:ring-2 focus:ring-blue-500 shadow-sm">
-                                        </div>
-                                        @if($aff->dana_user_name)
-                                        <div class="mb-4 p-3 bg-emerald-50 border border-emerald-100 rounded-2xl text-xs font-bold text-emerald-600 flex items-center gap-2">
-                                            <i class="fas fa-user-check"></i> {{ $aff->dana_user_name }}
-                                        </div>
-                                        @endif
-                                        <button class="w-full py-3.5 bg-slate-800 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-900 shadow-lg transition-all">
-                                            <i class="fas fa-magnifying-glass mr-2"></i> Verifikasi Akun
-                                        </button>
-                                    </form>
-
-                                    {{-- STEP 2: TRANSFER --}}
-                                    <form action="{{ route('dana.topup') }}" method="POST" class="bg-rose-50 p-6 rounded-[2.5rem] border border-rose-100 shadow-inner">
-                                        @csrf
-                                        <input type="hidden" name="affiliate_id" value="{{ $aff->id }}">
-                                        <input type="hidden" name="phone" value="{{ $aff->whatsapp }}">
-                                        <div class="text-center mb-6">
-                                            <p class="text-[10px] font-bold text-rose-300 uppercase tracking-widest mb-1">Available Profit</p>
-                                            <p class="text-3xl font-black text-rose-600 tracking-tighter">Rp {{ number_format($aff->balance, 0, ',', '.') }}</p>
-                                        </div>
-                                        <div class="relative mb-6">
-                                            <span class="absolute left-5 top-1/2 -translate-y-1/2 font-black text-slate-300">Rp</span>
-                                            <input type="number" name="amount" value="1000" min="1000" max="{{ $aff->balance }}" class="w-full bg-white border-0 rounded-2xl py-4 pl-12 pr-6 text-right text-2xl font-black text-slate-800 focus:ring-2 focus:ring-rose-500 shadow-sm">
-                                        </div>
-                                        <button class="w-full py-4 bg-gradient-to-r from-rose-500 to-rose-600 text-white rounded-2xl font-black shadow-xl shadow-rose-200 hover:scale-[1.02] active:scale-[0.98] transition-all uppercase tracking-widest text-sm" onclick="return confirm('Kirim dana sekarang?')">
-                                            <i class="fas fa-paper-plane mr-2"></i> Kirim Sekarang
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
+            <div class="space-y-6">
+                <form action="{{ route('dana.account_inquiry') }}" method="POST" class="bg-slate-50 p-5 rounded-[2rem] border border-slate-100">
+                    @csrf
+                    <input type="hidden" name="affiliate_id" value="{{ $aff->id }}">
+                    <label class="text-[10px] font-black text-slate-400 uppercase block mb-2 tracking-widest">Nomor DANA</label>
+                    <input type="text" name="phone" value="{{ $aff->whatsapp }}" class="w-full bg-white border-0 rounded-2xl font-bold py-3 px-4 focus:ring-2 focus:ring-blue-500 shadow-sm mb-3">
+                    
+                    @if($aff->dana_user_name)
+                        <div class="mb-3 p-3 bg-emerald-50 text-emerald-600 rounded-2xl text-xs font-bold flex items-center gap-2">
+                            <i class="fas fa-user-check"></i> {{ $aff->dana_user_name }}
                         </div>
-                    </template>
+                    @endif
+
+                    <button type="submit" class="w-full py-3 bg-slate-800 text-white rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-slate-900 transition-all">
+                        Cek Nama Pemilik
+                    </button>
+                </form>
+
+                <form action="{{ route('dana.topup') }}" method="POST" class="bg-rose-50 p-6 rounded-[2.5rem] border border-rose-100">
+                    @csrf
+                    <input type="hidden" name="affiliate_id" value="{{ $aff->id }}">
+                    <input type="hidden" name="phone" value="{{ $aff->whatsapp }}">
+                    
+                    <div class="text-center mb-4">
+                        <p class="text-[10px] font-bold text-rose-300 uppercase">Profit Tersedia</p>
+                        <p class="text-3xl font-black text-rose-600 tracking-tighter">Rp {{ number_format($aff->balance, 0, ',', '.') }}</p>
+                    </div>
+
+                    <div class="relative mb-6">
+                        <span class="absolute left-5 top-1/2 -translate-y-1/2 font-black text-slate-300">Rp</span>
+                        <input type="number" name="amount" value="1000" min="1000" max="{{ $aff->balance }}" class="w-full bg-white border-0 rounded-2xl py-4 pl-12 pr-6 text-right text-2xl font-black text-slate-800 focus:ring-2 focus:ring-rose-500 shadow-sm">
+                    </div>
+
+                    <button type="submit" class="w-full py-4 bg-gradient-to-r from-rose-500 to-rose-600 text-white rounded-2xl font-black shadow-xl shadow-rose-200 hover:scale-[1.02] active:scale-[0.98] transition-all uppercase tracking-widest text-sm" onclick="return confirm('Kirim dana sekarang?')">
+                        Proses Kirim
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</template>
                     @endforeach
                 </tbody>
             </table>
