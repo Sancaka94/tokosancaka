@@ -3,57 +3,80 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Http\Str;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
 class DanaDashboardController extends Controller
 {
-    public function index() {
+    public function index()
+    {
         return view('dana_dashboard');
     }
 
-    public function startBinding() {
+    // --- LOGIKA AWAL BINDING ---
+    public function doBind()
+    {
+        // Parameter sesuai kebutuhan DANA Portal
         $queryParams = [
             'partnerId'   => config('services.dana.x_partner_id'),
             'timestamp'   => now('Asia/Jakarta')->toIso8601String(),
-            'externalId'  => 'USER-' . time(),
+            'externalId'  => 'BIND-' . time(),
             'merchantId'  => config('services.dana.merchant_id'),
-            'redirectUrl' => config('services.dana.redirect_url_oauth'),
-            'state'       => bin2hex(random_bytes(8)),
-            'scopes'      => 'DEFAULT_BASIC_PROFILE,QUERY_BALANCE,MINI_DANA',
+            'redirectUrl' => route('dana.callback'), // Pastikan route ini ada
+            'state'       => Str::random(10),
+            'scopes'      => 'QUERY_BALANCE,MINI_DANA,DEFAULT_BASIC_PROFILE',
         ];
-        return redirect('https://m.sandbox.dana.id/d/portal/oauth?' . http_build_query($queryParams));
+
+        $url = "https://m.sandbox.dana.id/d/portal/oauth?" . http_build_query($queryParams);
+        return redirect($url);
     }
 
-    public function handleCallback(Request $request) {
+    public function handleCallback(Request $request)
+    {
         $authCode = $request->authCode;
-        if (!$authCode) return redirect()->route('dana.dashboard')->with('error', 'Auth Code hilang.');
 
-        // 1. Ambil Token (B2B2C)
+        if (!$authCode) {
+            return redirect()->route('dana.dashboard')->with('error', 'Gagal mendapatkan Auth Code');
+        }
+
+        // Simpan Auth Code ke Session (Sesuai kode awalmu)
+        session(['dana_auth_code' => $authCode]);
+
+        // Langsung Tukar Auth Code ke Access Token (B2B2C)
+        return $this->exchangeToken($authCode);
+    }
+
+    private function exchangeToken($authCode)
+    {
         $timestamp = now('Asia/Jakarta')->toIso8601String();
-        $clientId  = config('services.dana.x_partner_id');
+        $path = '/v1.0/access-token/b2b2c.htm';
         
-        // Signature Asymmetric (ClientKey|Timestamp)
-        $stringToSign = $clientId . "|" . $timestamp;
+        $body = [
+            "grantType" => "AUTHORIZATION_CODE",
+            "authCode"  => $authCode
+        ];
+
+        // Pakai Signature Asymmetric (ClientKey|Timestamp) untuk Token Exchange
+        $stringToSign = config('services.dana.x_partner_id') . "|" . $timestamp;
         $signature = $this->generateSignature($stringToSign);
 
         $response = Http::withHeaders([
             'X-TIMESTAMP'  => $timestamp,
-            'X-CLIENT-KEY' => $clientId,
+            'X-CLIENT-KEY' => config('services.dana.x_partner_id'),
             'X-SIGNATURE'  => $signature,
             'Content-Type' => 'application/json'
-        ])->post('https://api.sandbox.dana.id/v1.0/access-token/b2b2c.htm', [
-            "grantType" => "AUTHORIZATION_CODE",
-            "authCode"  => $authCode
-        ]);
+        ])->post('https://api.sandbox.dana.id' . $path, $body);
 
         $data = $response->json();
+
         if (isset($data['accessToken'])) {
             session(['dana_access_token' => $data['accessToken']]);
-            return redirect()->route('dana.dashboard')->with('success', 'Akun Terhubung!');
+            return redirect()->route('dana.dashboard')->with('success', 'Akun Berhasil Terhubung!');
         }
-        return redirect()->route('dana.dashboard')->with('error', 'Gagal: ' . ($data['responseMessage'] ?? 'Unknown Error'));
+
+        return redirect()->route('dana.dashboard')->with('error', 'Gagal Tukar Token: ' . ($data['responseMessage'] ?? 'Unknown'));
     }
 
     public function checkBalance(Request $request) {
