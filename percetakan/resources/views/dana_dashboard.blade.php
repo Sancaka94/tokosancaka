@@ -38,6 +38,57 @@
         </div>
     </div>
 
+    @if(session('dana_report'))
+<div class="mt-8 overflow-hidden rounded-[3rem] border-2 shadow-2xl animate-fadeIn italic
+    {{ session('dana_report')->is_success ? 'border-emerald-200 bg-emerald-50' : 'border-rose-200 bg-rose-50' }}">
+    
+    <div class="flex flex-col md:flex-row italic">
+        {{-- Sisi Ikon & Kode --}}
+        <div class="p-8 flex flex-col items-center justify-center text-center italic border-b md:border-b-0 md:border-r 
+            {{ session('dana_report')->is_success ? 'bg-emerald-500 text-white border-emerald-100' : 'bg-rose-500 text-white border-rose-100' }}">
+            <div class="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mb-4 shadow-inner">
+                <i class="fas {{ session('dana_report')->is_success ? 'fa-check-double' : 'fa-exclamation-triangle' }} text-2xl"></i>
+            </div>
+            <p class="text-[10px] font-black uppercase tracking-widest opacity-80 mb-1">Response Code</p>
+            <h2 class="text-3xl font-black italic tracking-tighter">{{ session('dana_report')->response_code }}</h2>
+        </div>
+
+        {{-- Sisi Detail Deskripsi --}}
+        <div class="flex-1 p-8 italic">
+            <div class="flex items-center gap-2 mb-4">
+                <span class="px-3 py-1 bg-white border rounded-full text-[9px] font-black text-slate-400 uppercase tracking-widest shadow-sm">
+                    Category: {{ session('dana_report')->category }}
+                </span>
+                <span class="text-[9px] font-bold text-slate-400 italic">Matched from Sancaka Library</span>
+            </div>
+
+            <h3 class="text-xl font-black text-slate-800 uppercase italic mb-2 tracking-tight">
+                {{ session('dana_report')->message_title }}
+            </h3>
+            
+            <p class="text-xs font-bold text-slate-500 italic leading-relaxed mb-6">
+                {{ session('dana_report')->description }}
+            </p>
+
+            {{-- Box Solusi --}}
+            <div class="p-5 bg-white rounded-[2rem] border-2 border-dashed italic
+                {{ session('dana_report')->is_success ? 'border-emerald-200' : 'border-rose-200' }}">
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="w-8 h-8 rounded-xl flex items-center justify-center 
+                        {{ session('dana_report')->is_success ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600' }}">
+                        <i class="fas fa-lightbulb text-xs"></i>
+                    </div>
+                    <span class="text-[10px] font-black uppercase tracking-widest text-slate-400 italic">Solusi / Langkah Partner</span>
+                </div>
+                <p class="text-[11px] font-black text-slate-700 italic leading-snug">
+                    {{ session('dana_report')->solution }}
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
+
     {{-- MAIN TABLE --}}
     <div class="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden mb-10">
         <div class="overflow-x-auto custom-scrollbar">
