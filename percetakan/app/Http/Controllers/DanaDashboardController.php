@@ -119,15 +119,39 @@ class DanaDashboardController extends Controller
 }
 
     private function generateSignature($stringToSign) {
-    $privateKey = config('services.dana.private_key');
-    
-    // Pastikan key dalam format PEM yang benar (ada baris baru)
-    $cleanKey = str_replace(["\r", " "], "", $privateKey); 
-    
+    $rawKey = config('services.dana.private_key');
+
+    // 1. Bersihkan kunci dari karakter yang mungkin merusak (spasi/tab)
+    $cleanKey = trim($rawKey);
+
+    // 2. Pastikan format PEM benar: Harus ada Header, Footer, dan Newline
+    // Kita rapikan secara otomatis agar OpenSSL bisa baca
+    if (!str_contains($cleanKey, '-----BEGIN PRIVATE KEY-----')) {
+        // Jika di .env cuma isinya string panjang, kita bungkus lagi
+        $cleanKey = str_replace(["\r", "\n", " "], "", $cleanKey);
+        $cleanKey = "-----BEGIN PRIVATE KEY-----\n" . 
+                    wordwrap($cleanKey, 64, "\n", true) . 
+                    "\n-----END PRIVATE KEY-----";
+    }
+
     $binarySignature = "";
-    if (openssl_sign($stringToSign, $binarySignature, $cleanKey, OPENSSL_ALGO_SHA256)) {
+    
+    // 3. Coba muat private key
+    $privateKeyRes = openssl_pkey_get_private($cleanKey);
+    
+    if (!$privateKeyRes) {
+        Log::error("[DANA SIG] Gagal memuat Private Key. Error: " . openssl_error_string());
+        return "";
+    }
+
+    // 4. Lakukan proses Signing
+    if (openssl_sign($stringToSign, $binarySignature, $privateKeyRes, OPENSSL_ALGO_SHA256)) {
+        // Bebaskan memory
+        openssl_free_key($privateKeyRes);
         return base64_encode($binarySignature);
     }
+
+    Log::error("[DANA SIG] Gagal melakukan Signing. Error: " . openssl_error_string());
     return "";
 }
 }
