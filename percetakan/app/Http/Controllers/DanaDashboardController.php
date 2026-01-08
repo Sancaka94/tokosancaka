@@ -46,7 +46,7 @@ class DanaDashboardController extends Controller
     $affiliateId = $state ? str_replace('ID-', '', $state) : 11;
 
     if ($authCode) {
-        // Simpan Auth Code dulu ke database agar data tidak hilang
+        // Simpan Auth Code-nya dulu ke database
         DB::table('affiliates')->where('id', $affiliateId)->update([
             'dana_auth_code' => $authCode,
             'updated_at' => now()
@@ -56,8 +56,7 @@ class DanaDashboardController extends Controller
             $timestamp = now('Asia/Jakarta')->toIso8601String();
             $clientId = config('services.dana.x_partner_id');
             
-            // LOGIKA ASYMMETRIC SIGNATURE UNTUK TOKEN (B2B2C)
-            // Format wajib: ClientID|Timestamp
+            // Signature B2B2C: ClientID|Timestamp
             $stringToSign = $clientId . "|" . $timestamp;
             $signature = $this->generateSignature($stringToSign);
 
@@ -68,7 +67,6 @@ class DanaDashboardController extends Controller
                 'additionalInfo' => (object)[]
             ];
 
-            // Request Token ke DANA
             $response = Http::withHeaders([
                 'X-TIMESTAMP'   => $timestamp,
                 'X-SIGNATURE'   => $signature,
@@ -80,17 +78,20 @@ class DanaDashboardController extends Controller
 
             $result = $response->json();
 
-            // Jika Berhasil (Code 2001100), Status Dashboard akan jadi HIJAU
-            if (isset($result['responseCode']) && $result['responseCode'] == '2001100') {
+            // PERBAIKAN: DANA Sandbox sukses pakai 2007400
+            $successCodes = ['2001100', '2007400'];
+
+            if (isset($result['responseCode']) && in_array($result['responseCode'], $successCodes)) {
+                // AMBIL ACCESS TOKEN DARI LOG TADI BOS
                 DB::table('affiliates')->where('id', $affiliateId)->update([
                     'dana_access_token' => $result['accessToken'],
                     'updated_at' => now()
                 ]);
-                return redirect()->route('dana.dashboard')->with('success', 'Akun Berhasil Terhubung & Token Disimpan!');
+                return redirect()->route('dana.dashboard')->with('success', 'Akun Berhasil Terhubung (Status: ' . $result['responseMessage'] . ')');
             }
 
             Log::error('[EXCHANGE FAILED]', $result);
-            return redirect()->route('dana.dashboard')->with('error', 'Gagal Tukar Token: ' . ($result['responseMessage'] ?? 'Unauthorized'));
+            return redirect()->route('dana.dashboard')->with('error', 'Gagal Tukar Token: ' . ($result['responseMessage'] ?? 'Unknown Error'));
 
         } catch (\Exception $e) {
             return redirect()->route('dana.dashboard')->with('error', 'Sistem Error: ' . $e->getMessage());
