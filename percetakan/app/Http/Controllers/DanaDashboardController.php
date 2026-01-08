@@ -313,22 +313,36 @@ public function accountInquiry(Request $request)
     Log::info('[DANA INQUIRY] Sending Request to DANA', ['url' => 'https://api.sandbox.dana.id' . $path, 'headers' => $headers, 'body' => $body]);
 
     try {
-        $response = Http::withHeaders($headers)->withBody($jsonBody, 'application/json')->post('https://api.sandbox.dana.id' . $path);
-        $result = $response->json();
+    $response = Http::withHeaders($headers)->withBody($jsonBody, 'application/json')->post('https://api.sandbox.dana.id' . $path);
+    $result = $response->json();
 
-        // 5. LOG RESPONSE
-        Log::info('[DANA INQUIRY] Response Received', ['status' => $response->status(), 'result' => $result]);
+    Log::info('[DANA INQUIRY] Response Received', ['status' => $response->status(), 'result' => $result]);
 
-        if (isset($result['responseCode']) && $result['responseCode'] == '2000000') {
-            return back()->with('success', 'Inquiry Sukses! Nama: ' . ($result['additionalInfo']['customerName'] ?? 'Valid'));
-        }
+    // PERBAIKAN: Masukkan 2003700 ke dalam daftar kode sukses
+    $successInquiryCodes = ['2000000', '2003700'];
 
-        return back()->with('error', 'Gagal Inquiry: ' . ($result['responseMessage'] ?? 'Limit Exceed'));
+   if (isset($result['responseCode']) && in_array($result['responseCode'], $successInquiryCodes)) {
+    // Ambil nama dari respon DANA (Sandbox pakai key customerName)
+    $customerName = $result['customerName'] ?? ($result['additionalInfo']['customerName'] ?? 'Akun Valid');
+    
+    // SIMPAN KE DATABASE AGAR MUNCUL DI BLADE
+    DB::table('affiliates')->where('id', $request->affiliate_id)->update([
+        'dana_user_name' => $customerName,
+        'updated_at' => now()
+    ]);
 
-    } catch (\Exception $e) {
-        Log::error('[DANA INQUIRY] System Exception', ['message' => $e->getMessage()]);
-        return back()->with('error', 'Sistem Error: ' . $e->getMessage());
-    }
+    Log::info('[DANA INQUIRY] Nama Disimpan ke DB', ['name' => $customerName]);
+
+    return back()->with('success', '✅ Inquiry Sukses! Pemilik Akun: ' . $customerName);
+}
+
+    return back()->with('error', 'Gagal Inquiry: ' . ($result['responseMessage'] ?? 'Unknown Error'));
+
+} catch (\Exception $e) {
+    Log::error('[DANA INQUIRY] System Exception', ['message' => $e->getMessage()]);
+    return back()->with('error', 'Sistem Error: ' . $e->getMessage());
+}
+
 }
 
 }

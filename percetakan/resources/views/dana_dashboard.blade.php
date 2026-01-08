@@ -168,6 +168,13 @@
                             <div class="mb-2">
                                 <label class="form-label small">Nomor HP DANA Tujuan</label>
                                 <input type="text" name="phone" class="form-control form-control-sm" value="{{ $aff->whatsapp }}" required>
+                            
+                                {{-- TAMPILAN NAMA HASIL VERIFIKASI --}}
+                                    @if($aff->dana_user_name)
+                                        <div class="mt-2 p-2 bg-success-subtle border border-success rounded small text-success fw-bold">
+                                            <i class="bi bi-person-check-fill"></i> Terverifikasi: {{ $aff->dana_user_name }}
+                                        </div>
+                                    @endif
                             </div>
                             <button type="submit" class="btn btn-info btn-sm w-100 text-white rounded-pill">
                                 <i class="bi bi-search"></i> Cek Nama Pemilik Akun
