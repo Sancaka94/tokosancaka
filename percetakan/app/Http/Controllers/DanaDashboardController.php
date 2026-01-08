@@ -57,7 +57,11 @@ class DanaDashboardController extends Controller
     }
 
     public function checkBalance(Request $request) {
+    Log::info('--- [START] CEK SALDO DANA (SNAP FIX) ---');
+
     $accessToken = $request->access_token ?? session('dana_access_token');
+    if (!$accessToken) return back()->with('error', 'Token Kosong.');
+
     $timestamp = now('Asia/Jakarta')->toIso8601String();
     $path = '/v1.0/balance-inquiry.htm';
     
@@ -67,22 +71,25 @@ class DanaDashboardController extends Controller
         'additionalInfo' => ['accessToken' => $accessToken]
     ];
 
-    // STEP 1 & 2: Minify & Hash Body (Lowercase Hex)
+    // STEP 1: Minify Request Body (Tanpa spasi)
     $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    
+    // STEP 2: Lowercase SHA-256 HexEncode
     $hashedBody = strtolower(hash('sha256', $jsonBody));
 
-    // STEP 3: Compose String To Sign (IKUTI URUTAN DOKUMENTASI)
-    // Format: METHOD:PATH:HASHBODY:TIMESTAMP
+    // STEP 3: Compose String To Sign
+    // FORMAT: <HTTP METHOD> + ”:” + <RELATIVE PATH URL> + “:“ + <HASHBODY> + “:“ + <X-TIMESTAMP>
     $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
 
-    // STEP 4: Generate Signature (RSA-2048 SHA-256)
+    // STEP 4: RSA-256 Signature
     $signature = $this->generateSignature($stringToSign);
 
-    Log::info('[FIXED] StringToSign Sesuai Dokumen: ' . $stringToSign);
+    Log::info('[FIXED] StringToSign: ' . $stringToSign);
 
+    // STEP 5: Susun Headers Lengkap
     $headers = [
         'X-TIMESTAMP'   => $timestamp,
-        'X-SIGNATURE'   => $signature, // STEP 5
+        'X-SIGNATURE'   => $signature,
         'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
         'X-EXTERNAL-ID' => (string) time(),
         'X-DEVICE-ID'   => 'DANA-DASHBOARD-STATION',
@@ -92,11 +99,26 @@ class DanaDashboardController extends Controller
         'Content-Type'  => 'application/json'
     ];
 
-    $response = Http::withHeaders($headers)
-                    ->withBody($jsonBody, 'application/json')
-                    ->post('https://api.sandbox.dana.id' . $path);
+    try {
+        $response = Http::withHeaders($headers)
+                        ->withBody($jsonBody, 'application/json')
+                        ->post('https://api.sandbox.dana.id' . $path);
 
-    return $this->handleResponse($response);
+        $result = $response->json();
+        Log::info('[CEK SALDO] Respon Raw:', [$response->body()]);
+
+        // LOGIKA HANDLE RESPONSE (PENGGANTI METHOD YANG ERROR TADI)
+        if (isset($result['responseCode']) && $result['responseCode'] == '2001100') {
+            $amount = $result['accountInfos'][0]['availableBalance']['value'] ?? 0;
+            return back()->with('success', 'Saldo Berhasil!')->with('saldo_terbaru', $amount);
+        }
+
+        return back()->with('error', 'Gagal: ' . ($result['responseMessage'] ?? 'Unknown Error'));
+
+    } catch (\Exception $e) {
+        Log::error('[CEK SALDO] Exception: ' . $e->getMessage());
+        return back()->with('error', 'Sistem Error: ' . $e->getMessage());
+    }
 }
 
     private function generateSignature($stringToSign) {
