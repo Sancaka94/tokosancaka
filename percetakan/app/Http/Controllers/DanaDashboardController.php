@@ -46,7 +46,7 @@ class DanaDashboardController extends Controller
     $affiliateId = $state ? str_replace('ID-', '', $state) : 11;
 
     if ($authCode) {
-        // Simpan Auth Code-nya dulu ke database sesuai row affiliate
+        // Simpan Auth Code dulu ke database agar data tidak hilang
         DB::table('affiliates')->where('id', $affiliateId)->update([
             'dana_auth_code' => $authCode,
             'updated_at' => now()
@@ -54,45 +54,43 @@ class DanaDashboardController extends Controller
 
         try {
             $timestamp = now('Asia/Jakarta')->toIso8601String();
-            $path = '/v1.0/access-token/b2b2c.htm';
+            $clientId = config('services.dana.x_partner_id');
             
+            // LOGIKA ASYMMETRIC SIGNATURE UNTUK TOKEN (B2B2C)
+            // Format wajib: ClientID|Timestamp
+            $stringToSign = $clientId . "|" . $timestamp;
+            $signature = $this->generateSignature($stringToSign);
+
+            $path = '/v1.0/access-token/b2b2c.htm';
             $body = [
                 'grantType' => 'authorization_code',
                 'authCode' => $authCode,
                 'additionalInfo' => (object)[]
             ];
 
-            $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
-            $hashedBody = strtolower(hash('sha256', $jsonBody));
-            $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
-            $signature = $this->generateSignature($stringToSign);
-
-            // HEADERS WAJIB (Termasuk X-CLIENT-KEY agar tidak error asu lagi)
-            $headers = [
+            // Request Token ke DANA
+            $response = Http::withHeaders([
                 'X-TIMESTAMP'   => $timestamp,
                 'X-SIGNATURE'   => $signature,
-                'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
-                'X-CLIENT-KEY'  => config('services.dana.x_partner_id'), // INI YANG TADI KURANG BOS
+                'X-PARTNER-ID'  => $clientId,
+                'X-CLIENT-KEY'  => $clientId,
                 'X-EXTERNAL-ID' => (string) time(),
                 'Content-Type'  => 'application/json'
-            ];
-
-            $response = Http::withHeaders($headers)
-                            ->withBody($jsonBody, 'application/json')
-                            ->post('https://api.sandbox.dana.id' . $path);
+            ])->post('https://api.sandbox.dana.id' . $path, $body);
 
             $result = $response->json();
 
+            // Jika Berhasil (Code 2001100), Status Dashboard akan jadi HIJAU
             if (isset($result['responseCode']) && $result['responseCode'] == '2001100') {
-                // SUKSES! Simpan Token agar status jadi HIJAU
                 DB::table('affiliates')->where('id', $affiliateId)->update([
                     'dana_access_token' => $result['accessToken'],
                     'updated_at' => now()
                 ]);
-                return redirect()->route('dana.dashboard')->with('success', 'Akun Berhasil Terhubung!');
+                return redirect()->route('dana.dashboard')->with('success', 'Akun Berhasil Terhubung & Token Disimpan!');
             }
 
-            return redirect()->route('dana.dashboard')->with('error', 'Gagal Tukar Token: ' . ($result['responseMessage'] ?? 'Unknown Error'));
+            Log::error('[EXCHANGE FAILED]', $result);
+            return redirect()->route('dana.dashboard')->with('error', 'Gagal Tukar Token: ' . ($result['responseMessage'] ?? 'Unauthorized'));
 
         } catch (\Exception $e) {
             return redirect()->route('dana.dashboard')->with('error', 'Sistem Error: ' . $e->getMessage());
