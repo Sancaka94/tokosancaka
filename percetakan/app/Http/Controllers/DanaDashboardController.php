@@ -57,44 +57,47 @@ class DanaDashboardController extends Controller
     }
 
     public function checkBalance(Request $request) {
-        $accessToken = $request->access_token ?? session('dana_access_token');
-        if (!$accessToken) return back()->with('error', 'Token Kosong.');
+    $accessToken = $request->access_token ?? session('dana_access_token');
+    if (!$accessToken) return "STOP! Token Kosong.";
 
-        $timestamp = now('Asia/Jakarta')->toIso8601String();
-        $path = '/v1.0/balance-inquiry.htm';
-        
-        $body = [
-            'partnerReferenceNo' => 'BAL' . time(),
-            'balanceTypes' => ['BALANCE'],
-            'additionalInfo' => ['accessToken' => $accessToken]
-        ];
+    $timestamp = now('Asia/Jakarta')->toIso8601String();
+    $path = '/v1.0/balance-inquiry.htm';
+    
+    $body = [
+        'partnerReferenceNo' => 'BAL' . time(),
+        'balanceTypes' => ['BALANCE'],
+        'additionalInfo' => ['accessToken' => $accessToken]
+    ];
 
-        // 2. Generate Signature SNAP (Method:Path:Token:Time:HashBody)
-        $jsonBody = json_encode($body);
-        $hashedBody = strtolower(hash('sha256', $jsonBody));
-        $stringToSign = "POST:" . $path . ":" . $accessToken . ":" . $timestamp . ":" . $hashedBody;
-        $signature = $this->generateSignature($stringToSign);
+    // 1. Generate Signature
+    $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
+    $hashedBody = strtolower(hash('sha256', $jsonBody));
+    $stringToSign = "POST:" . $path . ":" . $accessToken . ":" . $timestamp . ":" . $hashedBody;
+    $signature = $this->generateSignature($stringToSign);
 
-        $response = Http::withHeaders([
+    // 2. Kumpulkan Headers
+    $headers = [
         'X-TIMESTAMP'   => $timestamp,
         'X-SIGNATURE'   => $signature,
         'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
         'X-EXTERNAL-ID' => (string) time(),
         'X-DEVICE-ID'   => 'DANA-DASHBOARD-STATION',
         'CHANNEL-ID'    => '95221',
-        'X-IP-ADDRESS'  => $request->ip() ?? '127.0.0.1', // TAMBAHKAN INI
+        'X-IP-ADDRESS'  => $request->ip() ?? '127.0.0.1',
         'Authorization-Customer' => 'Bearer ' . $accessToken,
         'Content-Type'  => 'application/json'
-        ])->post('https://api.sandbox.dana.id' . $path, $body);
+    ];
 
-        $result = $response->json();
-        if (isset($result['responseCode']) && $result['responseCode'] == '2001100') {
-            $amount = $result['accountInfos'][0]['availableBalance']['value'] ?? 0;
-            return back()->with('success', 'Saldo Berhasil!')->with('saldo_terbaru', $amount);
-        }
-
-        return back()->with('error', 'Gagal: ' . ($result['responseMessage'] ?? 'Unknown Error'));
-    }
+    // 3. JEBAKAN DD!
+    dd([
+        'URL' => 'https://api.sandbox.dana.id' . $path,
+        'METHOD' => 'POST',
+        'HEADERS_KITA' => $headers,
+        'BODY_KITA' => $body,
+        'STRING_TO_SIGN' => $stringToSign,
+        'RAW_JSON' => $jsonBody
+    ]);
+}
 
     private function generateSignature($stringToSign) {
         $privateKey = config('services.dana.private_key');
