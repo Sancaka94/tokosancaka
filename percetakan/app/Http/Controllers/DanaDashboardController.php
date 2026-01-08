@@ -553,34 +553,35 @@ public function customerTopup(Request $request)
     $cleanPhone = preg_replace('/[^0-9]/', '', $request->phone);
     if (substr($cleanPhone, 0, 1) === '0') { $cleanPhone = '62' . substr($cleanPhone, 1); }
     
-    $amountValue = number_format((float)$request->amount, 2, '.', '');
-    $partnerRef = 'TOPUP' . time() . Str::random(5);
     $timestamp = now('Asia/Jakarta')->toIso8601String();
+    $partnerRef = (string) time() . Str::random(8); // Sesuai partnerReferenceNo di dokumen
+    $valStr = number_format((float)$request->amount, 2, '.', '');
 
-    // --- [LOG 3] PENYUSUNAN BODY SESUAI DOKUMENTASI ---
-$body = [
-    "partnerReferenceNo" => $partnerRef,
-    "customerNumber"     => $cleanPhone,
-    "amount" => [
-        "value"    => number_format((float)$request->amount, 2, '.', ''),
-        "currency" => "IDR"
-    ],
-    // DANA mewajibkan feeAmount dikirim meskipun 0.00
-    "feeAmount" => [
-        "value"    => "0.00",
-        "currency" => "IDR"
-    ],
-    "transactionDate" => $timestamp,
-    "sessionId"       => Str::random(12),
-    "categoryId"      => "6",
-    "notes"           => "Topup Sancaka",
-    "additionalInfo"  => [
-        // Sandbox DANA sangat mewajibkan 3 field ini dengan nilai string yang tepat
-        "accountType"  => "NAME_DEPOSIT",
-        "fundType"     => "AGENT_TOPUP_FOR_USER_SETTLE",
-        "chargeTarget" => "MERCHANT"
-    ]
-];
+    // --- [BODY: HARUS SESUAI DOKUMEN BOS] ---
+    $body = [
+        "partnerReferenceNo" => $partnerRef,
+        "customerNumber"     => $cleanPhone,
+        "amount" => [
+            "value"    => $valStr,
+            "currency" => "IDR"
+        ],
+        "feeAmount" => [
+            "value"    => $valStr, // Di doku bos nominal fee disamakan dengan amount
+            "currency" => "IDR"
+        ],
+        "transactionDate" => $timestamp,
+        "sessionId"       => (string) Str::uuid(), // Sesuaikan sessionId
+        "categoryId"      => "6",
+        "notes"           => "notes test", // Sesuai dokumen bos
+        "additionalInfo"  => [
+            "extendInfo"         => "{\"memo\": \"topup order memo\"}", // String JSON di dalam string!
+            "accountType"        => "NAME_DEPOSIT",
+            "fundType"           => "AGENT_TOPUP_FOR_USER_SETTLE",
+            "externalDivisionId" => "91080916Division",
+            "chargeTarget"       => "DIVISION",
+            "customerId"         => "20200519111215830121DANAW3ID009200305573" // Sesuai dokumen bos
+        ]
+    ];
 
     // --- [LOG 4] SIGNATURE & SECURITY ---
     $path = '/v1.0/emoney/topup.htm';
