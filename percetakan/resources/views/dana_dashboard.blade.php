@@ -234,54 +234,41 @@
 
     {{-- Riwayat Transaksi Terakhir (Audit Log) --}}
 
-    <div class="card mt-4 shadow-sm border-0 rounded-4">
-    <div class="card-header bg-dark text-white fw-bold py-3">
-        <i class="bi bi-clock-history"></i> Riwayat Transaksi Terakhir (Audit Log)
-    </div>
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-striped table-hover mb-0 admin-table">
-                <thead class="table-light">
-                    <tr>
-                        <th>Waktu</th>
-                        <th>Affiliate</th>
-                        <th>No. Referensi</th>
-                        <th>Tujuan</th>
-                        <th>Nominal</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @php
-                        $history = DB::table('dana_transactions')->orderBy('id', 'desc')->limit(10)->get();
-                    @endphp
-                    @forelse($history as $log)
-                    <tr>
-                        <td>{{ $log->created_at }}</td>
-                        <td>ID: {{ $log->affiliate_id }}</td>
-                        <td><small class="text-muted">{{ $log->reference_no }}</small></td>
-                        <td>{{ $log->phone }}</td>
-                        <td class="fw-bold text-danger">Rp {{ number_format($log->amount, 0, ',', '.') }}</td>
-                        <td>
-                            <span class="badge {{ $log->status == 'SUCCESS' ? 'bg-success' : 'bg-warning' }}">
-                                {{ $log->status }}
-                            </span>
-                        </td>
-                        {{-- Di dalam Foreach Riwayat Transaksi --}}
-                        <td>
-                            @if($log->type == 'BINDING')
-                                <span class="badge bg-primary text-white">OAuth Binding</span>
-                            @else
-                                <span class="badge bg-danger text-white">Topup Saldo</span>
-                            @endif
-                        </td>
-                    </tr>
-                    @empty
-                    <tr><td colspan="6" class="text-center py-4">Belum ada riwayat transaksi hari ini.</td></tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
+    <div class="table-admin p-3 mt-4">
+    <h5 class="fw-bold mb-3"><i class="bi bi-journal-text"></i> Audit Log Transaksi</h5>
+    <div class="table-responsive">
+        <table class="table table-sm table-hover small">
+            <thead class="table-light">
+                <tr>
+                    <th>Waktu</th>
+                    <th>Tipe</th>
+                    <th>Affiliate</th>
+                    <th>Nomor / Ref</th>
+                    <th>Nominal</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @php
+                    $logs = DB::table('dana_transactions')->orderBy('id', 'desc')->limit(15)->get();
+                @endphp
+                @foreach($logs as $log)
+                <tr>
+                    <td>{{ $log->created_at }}</td>
+                    <td>
+                        <span class="badge {{ $log->type == 'TOPUP' ? 'bg-danger' : 'bg-info' }}">{{ $log->type }}</span>
+                    </td>
+                    <td>ID: {{ $log->affiliate_id }}</td>
+                    <td>
+                        {{ $log->phone }}<br>
+                        <small class="text-muted">{{ $log->reference_no }}</small>
+                    </td>
+                    <td class="fw-bold">Rp {{ number_format($log->amount, 0, ',', '.') }}</td>
+                    <td><span class="text-success fw-bold">{{ $log->status }}</span></td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
     </div>
 </div>
     
