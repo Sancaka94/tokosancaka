@@ -199,33 +199,6 @@
                         </td>
                     </tr>
 
-                    <tr class="bg-amber-50/50 border-b-2 border-amber-200 italic font-sans">
-    <td class="p-6">
-        <div class="flex items-center space-x-4">
-            <div class="w-12 h-12 bg-amber-500 text-white rounded-2xl flex items-center justify-center text-xl shadow-lg animate-pulse">
-                <i class="fas fa-vial"></i>
-            </div>
-            <div>
-                <div class="font-black text-amber-800 text-sm uppercase">SANDBOX TESTER</div>
-                <div class="text-[10px] text-amber-600 font-bold uppercase tracking-widest mt-1 italic">Mode Uji Coba Manual</div>
-            </div>
-        </div>
-    </td>
-    <td class="p-6 text-center italic">
-        <span class="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-[10px] font-black uppercase border border-amber-200 shadow-sm">
-            Ready to Test
-        </span>
-    </td>
-    <td class="p-6 italic" colspan="2">
-        <div class="text-[9px] font-black text-amber-400 uppercase tracking-widest mb-1 italic">Tujuan Testing</div>
-        <div class="text-xs font-bold text-slate-600 italic">Gunakan baris ini untuk menyelesaikan Checklist DANA Portal</div>
-    </td>
-    <td class="p-6 italic text-center">
-        <button @click="openModal = 'TESTER'" class="w-12 h-12 bg-amber-600 text-white rounded-2xl hover:bg-amber-700 shadow-xl transition-all flex items-center justify-center group">
-            <i class="fas fa-flask-bubble text-lg group-hover:rotate-12 transition-transform"></i>
-        </button>
-    </td>
-</tr>
                     @endforeach
                 </tbody>
             </table>
@@ -366,85 +339,6 @@
             </div>
         </div>
     </div>
-
-
-<div x-show="openModal === 'TESTER'" style="display: none" class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md italic" x-transition.opacity>
-    <div class="bg-white w-full max-w-4xl rounded-[3rem] shadow-2xl overflow-hidden relative border-4 border-amber-400" @click.away="openModal = null">
-        
-        <button @click="openModal = null" class="absolute top-6 right-8 text-slate-300 hover:text-slate-600 transition-colors z-10 italic">
-            <i class="fas fa-times-circle text-2xl"></i>
-        </button>
-
-        <div x-data="{ testPhone: '0811742234', testAmount: '1' }" class="flex flex-col md:flex-row italic">
-            
-            {{-- KIRI: VERIFIKASI (INQUIRY) --}}
-            <div class="w-full md:w-5/12 bg-slate-50 p-8 border-r border-slate-100 italic">
-                <div class="flex items-center gap-4 mb-8 italic">
-                    <div class="h-12 w-12 bg-amber-500 rounded-2xl flex items-center justify-center text-white shadow-lg italic">
-                        <i class="fas fa-search-dollar text-xl italic"></i>
-                    </div>
-                    <div class="italic">
-                        <h3 class="text-xl font-black text-slate-800 tracking-tight italic">TEST INQUIRY</h3>
-                        <p class="text-[10px] text-amber-500 font-bold uppercase tracking-widest italic leading-tight">Gunakan No: 08123456667 (Do Not Honor)</p>
-                    </div>
-                </div>
-
-                <form action="{{ route('dana.account_inquiry') }}" method="POST" class="space-y-6 italic">
-                    @csrf
-                    <input type="hidden" name="affiliate_id" value="11">
-                    
-                    <div class="space-y-2 italic">
-                        <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest italic block text-center">Nomor Test (Manual)</label>
-                        <input type="text" name="phone" x-model="testPhone" class="w-full bg-white border border-amber-200 rounded-2xl font-bold py-3 px-4 focus:ring-2 focus:ring-amber-500 shadow-sm text-slate-700 italic text-center outline-none">
-                    </div>
-
-                    <div class="space-y-2 italic text-center">
-                        <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest italic">Nominal Test (21jt = Limit)</label>
-                        <input type="number" name="amount" value="10000" class="w-full bg-white border border-amber-200 rounded-2xl font-bold py-3 px-4 focus:ring-2 focus:ring-amber-500 shadow-sm text-slate-700 italic text-center outline-none">
-                    </div>
-
-                    <button class="w-full py-4 bg-amber-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-amber-700 shadow-lg italic transition-all">
-                        <i class="fas fa-vial mr-2 italic"></i> TEMBAK ACCOUNT INQUIRY
-                    </button>
-                </form>
-            </div>
-
-            {{-- KANAN: EKSEKUSI (TOPUP) --}}
-            <div class="w-full md:w-7/12 p-8 bg-white italic border-l-4 border-dashed border-amber-100">
-                <div class="flex items-center justify-between mb-8 italic">
-                    <div class="italic">
-                        <h3 class="text-xl font-black text-slate-800 tracking-tight italic">TEST TOPUP</h3>
-                        <p class="text-[10px] text-rose-500 font-bold uppercase tracking-widest italic">Gunakan No: 0811742234 (Success)</p>
-                    </div>
-                </div>
-
-                <form action="{{ route('dana.topup') }}" method="POST" class="space-y-6 italic">
-                    @csrf
-                    <input type="hidden" name="affiliate_id" value="11">
-                    <input type="hidden" name="phone" :value="testPhone">
-
-                    <div class="p-4 bg-amber-50 rounded-2xl border border-amber-100 italic text-center mb-4">
-                        <p class="text-[9px] font-black text-amber-500 uppercase tracking-widest italic mb-1">Target Kirim Manual</p>
-                        <p class="text-lg font-black text-slate-700 italic" x-text="testPhone"></p>
-                    </div>
-
-                    <div class="space-y-2 italic">
-                        <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest italic block text-center">Nominal Test (1-10 = Success)</label>
-                        <div class="relative italic">
-                            <span class="absolute left-6 top-1/2 -translate-y-1/2 font-black text-slate-300 text-xl italic pointer-events-none">Rp</span>
-                            <input type="number" name="amount" x-model="testAmount" class="w-full bg-slate-50 border border-amber-200 rounded-[2rem] py-5 pl-16 pr-8 text-right text-3xl font-black text-slate-800 focus:ring-4 focus:ring-amber-500/20 shadow-inner italic transition-all" required>
-                        </div>
-                    </div>
-
-                    <button type="submit" class="w-full py-5 bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-[2.5rem] font-black shadow-xl shadow-amber-200 hover:scale-[1.02] active:scale-[0.98] transition-all uppercase tracking-widest text-sm italic" onclick="return confirm('Tembak Topup Manual ke DANA Sandbox?')">
-                        <i class="fas fa-rocket mr-2 italic"></i> TEMBAK TOPUP.HTM
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-    
     
     {{-- 
         ====================================================
