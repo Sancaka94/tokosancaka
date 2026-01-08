@@ -171,4 +171,65 @@ class DanaDashboardController extends Controller
         openssl_sign($stringToSign, $binarySignature, $privateKey, OPENSSL_ALGO_SHA256);
         return base64_encode($binarySignature);
     }
+
+    public function accountInquiry(Request $request)
+{
+    // Ambil data dari database berdasarkan ID yang dikirim dari dashboard
+    $aff = DB::table('affiliates')->where('id', $request->affiliate_id)->first();
+    
+    $timestamp = now('Asia/Jakarta')->toIso8601String();
+    $path = '/v1.0/emoney/account-inquiry.htm';
+    
+    // 1. Susun Body Persis Sesuai Request Bos
+    $body = [
+        "partnerReferenceNo" => "INQ" . time() . Str::random(5),
+        "customerNumber"     => $request->phone ?? $aff->whatsapp,
+        "amount" => [
+            "value"    => number_format((float)($request->amount ?? 10000), 2, '.', ''),
+            "currency" => "IDR"
+        ],
+        "transactionDate" => $timestamp,
+        "additionalInfo"  => [
+            "fundType"           => "AGENT_TOPUP_FOR_USER_SETTLE",
+            "externalDivisionId" => "91080916Division",
+            "chargeTarget"       => "DIVISION",
+            "customerId"         => $aff->dana_user_id ?? "" // Diambil dari database jika ada
+        ]
+    ];
+
+    // 2. Generate Signature SNAP (POST:PATH:HASH:TIMESTAMP)
+    $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    $hashedBody = strtolower(hash('sha256', $jsonBody));
+    $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
+    $signature = $this->generateSignature($stringToSign);
+
+    // 3. Eksekusi Request dengan Headers Lengkap Tanpa Ada Yang Beda
+    try {
+        $response = Http::withHeaders([
+            'Content-Type'  => 'application/json',
+            'Authorization' => 'Bearer ' . $aff->dana_access_token,
+            'X-TIMESTAMP'   => $timestamp,
+            'X-SIGNATURE'   => $signature,
+            'ORIGIN'        => config('services.dana.origin'),
+            'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
+            'X-EXTERNAL-ID' => (string) time() . Str::random(5),
+            'X-IP-ADDRESS'  => $request->ip() ?? '127.0.0.1',
+            'X-DEVICE-ID'   => '09864ADCASA', // Sesuai permintaan bos
+            'CHANNEL-ID'    => '95221'       // Sesuai permintaan bos
+        ])->withBody($jsonBody, 'application/json')->post('https://api.sandbox.dana.id' . $path);
+
+        $result = $response->json();
+
+        // Jika Sukses (Response Code 2000000)
+        if (isset($result['responseCode']) && $result['responseCode'] == '2000000') {
+            return back()->with('success', 'Inquiry Sukses! Nama: ' . ($result['additionalInfo']['customerName'] ?? 'Valid'));
+        }
+
+        return back()->with('error', 'Gagal Inquiry: ' . ($result['responseMessage'] ?? 'Akun Tidak Ditemukan'));
+
+    } catch (\Exception $e) {
+        return back()->with('error', 'Sistem Error: ' . $e->getMessage());
+    }
+}
+
 }

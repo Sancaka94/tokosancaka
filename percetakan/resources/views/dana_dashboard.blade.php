@@ -145,40 +145,78 @@
                             </div>
 
                             {{-- Modal Topup Per User --}}
-                            <div class="modal fade" id="modalTopup{{ $aff->id }}" tabindex="-1">
-                                <div class="modal-dialog modal-dialog-centered">
-                                    <div class="modal-content text-start border-0 shadow-lg">
-                                        <form action="{{ route('dana.topup') }}" method="POST">
-                                            @csrf
-                                            <div class="modal-header bg-danger text-white">
-                                                <h5 class="modal-title fw-bold"><i class="bi bi-send-fill me-2"></i> Disbursement: {{ $aff->name }}</h5>
-                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                                            </div>
-                                            <div class="modal-body p-4">
-                                                <input type="hidden" name="affiliate_id" value="{{ $aff->id }}">
-                                                <div class="alert alert-warning py-2 small">
-                                                    <i class="bi bi-info-circle"></i> Dana akan dipotong dari <strong>Saldo Merchant</strong> dan dikirim ke akun DANA user.
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label class="form-label fw-bold">Nomor WhatsApp Tujuan</label>
-                                                    <input type="text" name="phone" class="form-control" value="{{ $aff->whatsapp }}" required>
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label class="form-label fw-bold">Nominal Pencairan (IDR)</label>
-                                                    <div class="input-group">
-                                                        <span class="input-group-text bg-light fw-bold">Rp</span>
-                                                        <input type="number" name="amount" class="form-control" value="1000" min="100" required>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="modal-footer bg-light">
-                                                <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Batal</button>
-                                                <button type="submit" class="btn btn-danger rounded-pill px-4 shadow">Proses Transfer</button>
-                                            </div>
-                                        </form>
-                                    </div>
-                                </div>
+<div class="modal fade" id="modalTopup{{ $aff->id }}" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content text-start border-0 shadow-lg">
+            
+            {{-- HEADER MODAL --}}
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title fw-bold"><i class="bi bi-send-fill me-2"></i> Pencairan Profit: {{ $aff->name }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body p-4">
+                {{-- STEP 1: VERIFIKASI AKUN (ACCOUNT INQUIRY) --}}
+                <div class="card mb-3 border-info">
+                    <div class="card-header bg-info-subtle small fw-bold text-info">
+                        <i class="bi bi-shield-check"></i> TAHAP 1: VERIFIKASI PENERIMA
+                    </div>
+                    <div class="card-body">
+                        <form action="{{ route('dana.account_inquiry') }}" method="POST">
+                            @csrf
+                            <input type="hidden" name="affiliate_id" value="{{ $aff->id }}">
+                            <div class="mb-2">
+                                <label class="form-label small">Nomor HP DANA Tujuan</label>
+                                <input type="text" name="phone" class="form-control form-control-sm" value="{{ $aff->whatsapp }}" required>
                             </div>
+                            <button type="submit" class="btn btn-info btn-sm w-100 text-white rounded-pill">
+                                <i class="bi bi-search"></i> Cek Nama Pemilik Akun
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <hr>
+
+                {{-- STEP 2: EKSEKUSI TRANSFER --}}
+                <form action="{{ route('dana.topup') }}" method="POST">
+                    @csrf
+                    <input type="hidden" name="affiliate_id" value="{{ $aff->id }}">
+                    <input type="hidden" name="phone" value="{{ $aff->whatsapp }}">
+                    
+                    <div class="card border-danger">
+                        <div class="card-header bg-danger-subtle small fw-bold text-danger">
+                            <i class="bi bi-cash-coin"></i> TAHAP 2: KIRIM SALDO PROFIT
+                        </div>
+                        <div class="card-body">
+                            <div class="alert alert-light border small py-2 mb-3">
+                                <div class="text-muted">Profit Tersedia:</div>
+                                <div class="fw-bold text-dark fs-5">Rp {{ number_format($aff->balance, 0, ',', '.') }}</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label fw-bold small text-danger">Nominal Cair (IDR)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light fw-bold">Rp</span>
+                                    <input type="number" name="amount" class="form-control" value="1000" min="100" max="{{ $aff->balance }}" required>
+                                </div>
+                                <small class="text-muted" style="font-size: 0.7rem;">*Maksimal sesuai saldo profit</small>
+                            </div>
+
+                            <button type="submit" class="btn btn-danger w-100 rounded-pill shadow-sm" onclick="return confirm('Apakah Anda yakin ingin mencairkan saldo profit ini?')">
+                                <i class="bi bi-check2-all"></i> Proses Transfer Sekarang
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            
+            <div class="modal-footer bg-light py-2">
+                <button type="button" class="btn btn-link text-muted btn-sm text-decoration-none" data-bs-dismiss="modal">Tutup</button>
+            </div>
+        </div>
+    </div>
+</div>
                         </td>
                     </tr>
                     @endforeach
