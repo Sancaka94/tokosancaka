@@ -172,86 +172,77 @@ class DanaDashboardController extends Controller
         return base64_encode($binarySignature);
     }
 
-    public function accountInquiry(Request $request)
+    public function topupSaldo(Request $request)
 {
-    // 1. LOG INPUT REQUEST
-    Log::info('[DANA INQUIRY] Start Process', ['affiliate_id' => $request->affiliate_id, 'amount' => $request->amount]);
+    Log::info('[DANA TOPUP] --- MEMULAI PROSES TOPUP ---', ['affiliate_id' => $request->affiliate_id]);
 
     $aff = DB::table('affiliates')->where('id', $request->affiliate_id)->first();
-    if (!$aff) {
-        Log::error('[DANA INQUIRY] Affiliate Not Found', ['id' => $request->affiliate_id]);
-        return back()->with('error', 'Affiliate tidak ditemukan.');
+    
+    // Validasi Saldo Profit Internal
+    if ($aff->balance < $request->amount) {
+        Log::warning('[DANA TOPUP] Saldo Profit Tidak Cukup', ['db_balance' => $aff->balance, 'requested' => $request->amount]);
+        return back()->with('error', 'Saldo profit tidak mencukupi.');
     }
 
-    // 2. LOG SANITIZE NOMOR HP
-    $rawPhone = $request->phone ?? $aff->whatsapp;
-    $cleanPhone = preg_replace('/[^0-9]/', '', $rawPhone);
-    if (substr($cleanPhone, 0, 1) === '0') {
-        $cleanPhone = '62' . substr($cleanPhone, 1);
-    }
-    Log::info('[DANA INQUIRY] Phone Sanitized', ['original' => $rawPhone, 'clean' => $cleanPhone]);
+    // Sanitize Nomor HP
+    $cleanPhone = preg_replace('/[^0-9]/', '', $request->phone ?? $aff->whatsapp);
+    if (substr($cleanPhone, 0, 1) === '0') $cleanPhone = '62' . substr($cleanPhone, 1);
 
     $timestamp = now('Asia/Jakarta')->toIso8601String();
-    $path = '/v1.0/emoney/account-inquiry.htm';
+    $path = '/v1.0/emoney/customer-top-up.htm';
     
     $body = [
-        "partnerReferenceNo" => "INQ" . time() . Str::random(5),
-        "customerNumber"     => $cleanPhone,
-        "amount" => [
-            "value"    => number_format((float)($request->amount ?? 10000), 2, '.', ''),
-            "currency" => "IDR"
+        'partnerReferenceNo' => 'TP' . time() . Str::random(4),
+        'amount' => [
+            'value' => number_format((float)$request->amount, 2, '.', ''),
+            'currency' => 'IDR'
         ],
-        "transactionDate" => $timestamp,
-        "additionalInfo"  => [
-            "fundType"           => "AGENT_TOPUP_FOR_USER_SETTLE",
-            "externalDivisionId" => "", 
-            "chargeTarget"       => "MERCHANT", 
-            "customerId"         => ""
-        ]
+        'beneficiaryAccountNo' => $cleanPhone,
+        'additionalInfo' => (object)[]
     ];
 
-    // 3. LOG SIGNATURE PROCESS
+    // Signature SNAP (LOG KUNCI)
     $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     $hashedBody = strtolower(hash('sha256', $jsonBody));
     $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
     $signature = $this->generateSignature($stringToSign);
 
-    Log::info('[DANA INQUIRY] Signature Generated', [
-        'path' => $path,
+    Log::info('[DANA TOPUP] Payload & Signature', [
+        'body' => $body,
         'stringToSign' => $stringToSign,
         'signature' => $signature
     ]);
 
-    // 4. LOG FULL REQUEST HEADERS & BODY
-    $headers = [
-        'Content-Type'  => 'application/json',
-        'Authorization' => 'Bearer ' . $aff->dana_access_token,
-        'X-TIMESTAMP'   => $timestamp,
-        'X-SIGNATURE'   => $signature,
-        'ORIGIN'        => config('services.dana.origin'),
-        'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
-        'X-EXTERNAL-ID' => (string) time() . Str::random(5),
-        'X-IP-ADDRESS'  => $request->ip() ?? '127.0.0.1',
-        'X-DEVICE-ID'   => '09864ADCASA',
-        'CHANNEL-ID'    => '95221'
-    ];
-    Log::info('[DANA INQUIRY] Sending Request to DANA', ['url' => 'https://api.sandbox.dana.id' . $path, 'headers' => $headers, 'body' => $body]);
-
     try {
+        $headers = [
+            'X-TIMESTAMP'   => $timestamp,
+            'X-SIGNATURE'   => $signature,
+            'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
+            'X-EXTERNAL-ID' => (string) time() . Str::random(4),
+            'X-DEVICE-ID'   => '09864ADCASA',
+            'CHANNEL-ID'    => '95221',
+            'Content-Type'  => 'application/json',
+            'Authorization-Customer' => 'Bearer ' . $aff->dana_access_token // Gunakan token user
+        ];
+
+        Log::info('[DANA TOPUP] Mengirim Request...', ['headers' => $headers]);
+
         $response = Http::withHeaders($headers)->withBody($jsonBody, 'application/json')->post('https://api.sandbox.dana.id' . $path);
         $result = $response->json();
 
-        // 5. LOG RESPONSE
-        Log::info('[DANA INQUIRY] Response Received', ['status' => $response->status(), 'result' => $result]);
+        Log::info('[DANA TOPUP] Respon Diterima', ['status' => $response->status(), 'result' => $result]);
 
-        if (isset($result['responseCode']) && $result['responseCode'] == '2000000') {
-            return back()->with('success', 'Inquiry Sukses! Nama: ' . ($result['additionalInfo']['customerName'] ?? 'Valid'));
+        if (isset($result['responseCode']) && $result['responseCode'] == '2001100') {
+            // Potong Saldo Profit di DB
+            DB::table('affiliates')->where('id', $aff->id)->decrement('balance', $request->amount);
+            Log::info('[DANA TOPUP] SUKSES. Saldo Profit Dipotong.');
+            return back()->with('success', 'Topup Berhasil!');
         }
 
-        return back()->with('error', 'Gagal Inquiry: ' . ($result['responseMessage'] ?? 'Limit Exceed'));
+        return back()->with('error', 'Gagal: ' . ($result['responseMessage'] ?? 'Unknown Error'));
 
     } catch (\Exception $e) {
-        Log::error('[DANA INQUIRY] System Exception', ['message' => $e->getMessage()]);
+        Log::error('[DANA TOPUP] Exception!', ['msg' => $e->getMessage()]);
         return back()->with('error', 'Sistem Error: ' . $e->getMessage());
     }
 }
