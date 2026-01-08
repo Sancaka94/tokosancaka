@@ -198,6 +198,34 @@
                             </div>
                         </td>
                     </tr>
+
+                    <tr class="bg-amber-50/50 border-b-2 border-amber-200 italic font-sans">
+    <td class="p-6">
+        <div class="flex items-center space-x-4">
+            <div class="w-12 h-12 bg-amber-500 text-white rounded-2xl flex items-center justify-center text-xl shadow-lg animate-pulse">
+                <i class="fas fa-vial"></i>
+            </div>
+            <div>
+                <div class="font-black text-amber-800 text-sm uppercase">SANDBOX TESTER</div>
+                <div class="text-[10px] text-amber-600 font-bold uppercase tracking-widest mt-1 italic">Mode Uji Coba Manual</div>
+            </div>
+        </div>
+    </td>
+    <td class="p-6 text-center italic">
+        <span class="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-[10px] font-black uppercase border border-amber-200 shadow-sm">
+            Ready to Test
+        </span>
+    </td>
+    <td class="p-6 italic" colspan="2">
+        <div class="text-[9px] font-black text-amber-400 uppercase tracking-widest mb-1 italic">Tujuan Testing</div>
+        <div class="text-xs font-bold text-slate-600 italic">Gunakan baris ini untuk menyelesaikan Checklist DANA Portal</div>
+    </td>
+    <td class="p-6 italic text-center">
+        <button @click="openModal = 'TESTER'" class="w-12 h-12 bg-amber-600 text-white rounded-2xl hover:bg-amber-700 shadow-xl transition-all flex items-center justify-center group">
+            <i class="fas fa-flask-bubble text-lg group-hover:rotate-12 transition-transform"></i>
+        </button>
+    </td>
+</tr>
                     @endforeach
                 </tbody>
             </table>
@@ -327,34 +355,6 @@
                             </td>
 
                         </tr>
-
-                        <tr class="bg-amber-50/50 border-b-2 border-amber-200 italic font-sans">
-    <td class="p-6">
-        <div class="flex items-center space-x-4">
-            <div class="w-12 h-12 bg-amber-500 text-white rounded-2xl flex items-center justify-center text-xl shadow-lg animate-pulse">
-                <i class="fas fa-vial"></i>
-            </div>
-            <div>
-                <div class="font-black text-amber-800 text-sm uppercase">SANDBOX TESTER</div>
-                <div class="text-[10px] text-amber-600 font-bold uppercase tracking-widest mt-1 italic">Mode Uji Coba Manual</div>
-            </div>
-        </div>
-    </td>
-    <td class="p-6 text-center italic">
-        <span class="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-[10px] font-black uppercase border border-amber-200 shadow-sm">
-            Ready to Test
-        </span>
-    </td>
-    <td class="p-6 italic" colspan="2">
-        <div class="text-[9px] font-black text-amber-400 uppercase tracking-widest mb-1 italic">Tujuan Testing</div>
-        <div class="text-xs font-bold text-slate-600 italic">Gunakan baris ini untuk menyelesaikan Checklist DANA Portal</div>
-    </td>
-    <td class="p-6 italic text-center">
-        <button @click="openModal = 'TESTER'" class="w-12 h-12 bg-amber-600 text-white rounded-2xl hover:bg-amber-700 shadow-xl transition-all flex items-center justify-center group">
-            <i class="fas fa-flask-bubble text-lg group-hover:rotate-12 transition-transform"></i>
-        </button>
-    </td>
-</tr>
                         @endforeach
                     </tbody>
                 </table>
