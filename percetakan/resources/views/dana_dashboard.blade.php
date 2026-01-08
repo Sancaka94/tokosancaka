@@ -410,58 +410,77 @@
 
                     {{-- KANAN: PENCAIRAN (Putih Bersih) --}}
                     <div class="w-full md:w-7/12 p-8 relative">
-                        <div class="mb-8 flex justify-between items-start">
-                            <div>
-                                <h3 class="text-xl font-black text-slate-800 uppercase tracking-tight">Pencairan</h3>
-                                <p class="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Transfer Profit</p>
-                            </div>
-                            <div class="text-right">
-                                <div class="text-[10px] font-bold text-slate-300 uppercase">Penerima</div>
-                                <div class="font-bold text-slate-700 text-sm">{{ Str::limit($aff->name, 15) }}</div>
-                            </div>
-                        </div>
+                        
+                        {{-- SISIPAN: NAVIGASI TAB MODAL --}}
+<div class="flex space-x-2 mb-8 bg-slate-100 p-1.5 rounded-[2rem] italic border border-slate-200">
+    <button onclick="switchTab(event, 'tab-cek-akun-{{ $aff->id }}')" class="tab-btn-{{ $aff->id }} active w-full py-3 rounded-[1.8rem] text-[9px] font-black uppercase tracking-widest transition-all italic flex items-center justify-center gap-1">
+        <i class="fas fa-search text-[10px]"></i> Verif
+    </button>
+    <button onclick="switchTab(event, 'tab-topup-v1-{{ $aff->id }}')" class="tab-btn-{{ $aff->id }} w-full py-3 rounded-[1.8rem] text-[9px] font-black uppercase tracking-widest transition-all italic flex items-center justify-center gap-1">
+        <i class="fas fa-wallet text-[10px]"></i> Topup V1
+    </button>
+    <button onclick="switchTab(event, 'tab-disb-v1-{{ $aff->id }}')" class="tab-btn-{{ $aff->id }} w-full py-3 rounded-[1.8rem] text-[9px] font-black uppercase tracking-widest transition-all italic text-blue-600 flex items-center justify-center gap-1">
+        <i class="fas fa-rocket text-[10px]"></i> Disb V1
+    </button>
+</div>
 
-                        <form action="{{ route('dana.topup') }}" method="POST" class="space-y-6">
-                            @csrf
-                            <input type="hidden" name="affiliate_id" value="{{ $aff->id }}">
-                            <input type="hidden" name="phone" value="{{ $aff->whatsapp }}">
+{{-- TAB 1: KONTEN CEK AKUN --}}
+<div id="tab-cek-akun-{{ $aff->id }}" class="tab-content-{{ $aff->id }} block animate-fadeIn">
+    <div class="mb-6">
+        <h3 class="text-xl font-black text-slate-800 uppercase tracking-tight">Verifikasi Akun</h3>
+        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Inquiry Endpoint</p>
+    </div>
+    <form action="{{ route('dana.account_inquiry') }}" method="POST" class="space-y-6">
+        @csrf
+        <input type="hidden" name="affiliate_id" value="{{ $aff->id }}">
+        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4">
+             <label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Target Phone</label>
+             <input type="text" name="phone" value="{{ $aff->whatsapp }}" class="w-full bg-transparent font-black text-slate-700 outline-none">
+        </div>
+        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4">
+             <label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Nominal Pemicu</label>
+             <input type="number" name="amount" value="10000" class="w-full bg-transparent font-black text-slate-700 outline-none">
+        </div>
+        <button type="submit" class="w-full py-4 bg-slate-800 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest italic shadow-lg">PROSES CEK NAMA</button>
+    </form>
+</div>
 
-                            {{-- Info Cards --}}
-                            <div class="grid grid-cols-2 gap-3">
-                                <div class="p-3 bg-blue-50 rounded-xl border border-blue-100 text-center">
-                                    <div class="text-[10px] font-bold text-blue-400 uppercase tracking-wide">Saldo Profit</div>
-                                    <div class="text-base font-black text-blue-600">Rp {{ number_format($aff->balance, 0, ',', '.') }}</div>
-                                </div>
-                                <div class="p-3 bg-slate-50 rounded-xl border border-slate-100 text-center">
-                                    <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Status</div>
-                                    <div class="text-xs font-bold text-slate-600 mt-0.5">Siap Transfer</div>
-                                </div>
-                            </div>
+{{-- TAB 2: KONTEN TOPUP V1 (LEGACY) --}}
+<div id="tab-topup-v1-{{ $aff->id }}" class="tab-content-{{ $aff->id }} hidden animate-fadeIn">
+    <div class="mb-6">
+        <h3 class="text-xl font-black text-rose-600 uppercase tracking-tight">Topup Saldo V1</h3>
+        <p class="text-[10px] text-rose-400 font-bold uppercase tracking-widest">Legacy PPOB API</p>
+    </div>
+    <form action="{{ route('dana.topup') }}" method="POST" class="space-y-6">
+        @csrf
+        <input type="hidden" name="affiliate_id" value="{{ $aff->id }}">
+        <div class="relative">
+            <span class="absolute left-4 top-1/2 -translate-y-1/2 font-black text-slate-300">Rp</span>
+            <input type="number" name="amount" value="1000" class="w-full bg-slate-50 border border-rose-100 rounded-2xl py-4 pr-4 text-right text-3xl font-black text-rose-600 outline-none italic" required>
+        </div>
+        <button type="submit" class="w-full py-4 bg-gradient-to-r from-rose-500 to-rose-600 text-white rounded-2xl font-black shadow-xl shadow-rose-200 uppercase tracking-widest text-sm italic" onclick="return confirm('Kirim via Topup V1?')">EKSEKUSI V1</button>
+    </form>
+</div>
 
-                            {{-- Input Nominal --}}
-                            <div class="space-y-2">
-                                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider pl-1">Nominal Transfer</label>
-                                <div class="relative">
-                                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                        <span class="text-slate-400 font-bold text-lg">Rp</span>
-                                    </div>
-                                    <input type="number" 
-                                           name="amount" 
-                                           value="1000" 
-                                           min="1000" 
-                                           max="{{ $aff->balance }}" 
-                                           class="w-full bg-slate-50 border border-slate-200 rounded-2xl py-4 pl-12 pr-4 text-3xl font-black text-slate-800 focus:ring-4 focus:ring-rose-500/10 focus:border-rose-500 outline-none transition-all placeholder-slate-300" 
-                                           required>
-                                </div>
-                            </div>
-
-                            {{-- Button Eksekusi --}}
-                            <button type="submit" 
-                                    class="w-full py-4 bg-gradient-to-r from-rose-500 to-rose-600 text-white rounded-2xl font-black text-sm shadow-xl shadow-rose-200 hover:scale-[1.01] hover:shadow-rose-300 transition-all uppercase tracking-widest flex items-center justify-center gap-2" 
-                                    onclick="return confirm('Yakin ingin mencairkan saldo ini?')">
-                                <i class="fas fa-paper-plane"></i> Eksekusi Transfer
-                            </button>
-                        </form>
+{{-- TAB 3: KONTEN DISBURSEMENT V1 (NEW) --}}
+<div id="tab-disb-v1-{{ $aff->id }}" class="tab-content-{{ $aff->id }} hidden animate-fadeIn">
+    <div class="mb-6">
+        <h3 class="text-xl font-black text-blue-600 uppercase tracking-tight">Disbursement V1</h3>
+        <p class="text-[10px] text-blue-400 font-bold uppercase tracking-widest">Professional Transfer API</p>
+    </div>
+    <form action="{{ route('dana.execute_disbursement') }}" method="POST" class="space-y-6">
+        @csrf
+        <input type="hidden" name="affiliate_id" value="{{ $aff->id }}">
+        <input type="hidden" name="phone" value="{{ $aff->whatsapp }}">
+        <div class="relative">
+            <span class="absolute left-4 top-1/2 -translate-y-1/2 font-black text-slate-300">Rp</span>
+            <input type="number" name="amount" value="1000" class="w-full bg-slate-50 border border-blue-100 rounded-2xl py-4 pr-4 text-right text-3xl font-black text-blue-600 outline-none italic" required>
+        </div>
+        <button type="submit" class="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-2xl font-black shadow-xl shadow-blue-200 uppercase tracking-widest text-sm italic" onclick="return confirm('Kirim via Disbursement V1?')">EKSEKUSI DISB V1</button>
+    </form>
+</div>
+                          
+                        
                     </div>
                 </div>
             </div>
@@ -469,4 +488,37 @@
     @endforeach
 
 </div>
+
+<script>
+function switchTab(evt, tabId) {
+    // Ambil ID Affiliate dari tabId (contoh: tab-cek-akun-11)
+    const affId = tabId.split('-').pop();
+    
+    // Sembunyikan konten tab spesifik affiliate tersebut
+    document.querySelectorAll('.tab-content-' + affId).forEach(content => {
+        content.classList.add('hidden');
+        content.classList.remove('block');
+    });
+
+    // Reset button active spesifik affiliate tersebut
+    document.querySelectorAll('.tab-btn-' + affId).forEach(btn => {
+        btn.classList.remove('active', 'bg-white', 'shadow-sm');
+        btn.classList.add('text-slate-400');
+    });
+
+    // Tampilkan tab target
+    const targetContent = document.getElementById(tabId);
+    targetContent.classList.remove('hidden');
+    targetContent.classList.add('block');
+
+    // Aktifkan button yang diklik
+    evt.currentTarget.classList.add('active', 'bg-white', 'shadow-sm');
+    evt.currentTarget.classList.remove('text-slate-400');
+}
+</script>
+
+<style>
+    .tab-btn-{{ $aff->id ?? '' }}.active { background: white; box-shadow: 0 1px 2px rgba(0,0,0,0.1); color: #1e293b !important; }
+</style>
+
 @endsection
