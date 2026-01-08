@@ -211,29 +211,38 @@ class DanaDashboardController extends Controller
 {
     $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String();
     $clientId  = config('services.dana.client_id');
+    
+    // Pastikan body terminify dengan benar
     $jsonPayload = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    
+    // RUMUS SNAP ASYMMETRIC SERVICE (B2B2C)
+    // 1. Hash Body dulu: lower(hex(sha256(payload)))
+    $hashedBody = strtolower(hash('sha256', $jsonPayload));
+    
+    // 2. Susun String To Sign
+    // Format: METHOD:URL:ACCESS_TOKEN:TIMESTAMP:HASHED_BODY
+    $stringToSign = $method . ":" . $relativePath . ":" . $accessToken . ":" . $timestamp . ":" . $hashedBody;
 
-    if ($accessToken) {
-        // PERBAIKAN DI SINI: Tambahkan hash sha256
-        $hashedBody = strtolower(hash('sha256', $jsonPayload));
-        $stringToSign = $method . ":" . $relativePath . ":" . $accessToken . ":" . $timestamp . ":" . $hashedBody;
-    } else {
-        $stringToSign = $clientId . "|" . $timestamp;
-    }
+    Log::info("StringToSign Fix: " . $stringToSign);
 
+    // 3. Generate Signature menggunakan Private Key (RSA SHA256)
     $signature = $this->genSig($stringToSign);
 
     $headers = [
-        'Content-Type'   => 'application/json',
-        'X-TIMESTAMP'    => $timestamp,
-        'X-SIGNATURE'    => $signature,
-        'X-PARTNER-ID'   => $clientId,
-        'X-EXTERNAL-ID'  => (string) time() . rand(100, 999),
-        'CHANNEL-ID'     => '95221',
+        'Content-Type'           => 'application/json',
+        'X-TIMESTAMP'            => $timestamp,
+        'X-SIGNATURE'            => $signature,
+        'X-PARTNER-ID'           => $clientId,
+        'X-EXTERNAL-ID'          => (string) rand(100000, 999999) . time(), // Harus Unik
+        'X-DEVICE-ID'            => '09864ADCASA', // Gunakan dari contoh Anda
+        'CHANNEL-ID'             => '95221',
         'Authorization-Customer' => 'Bearer ' . $accessToken,
+        'ORIGIN'                 => 'tokosancaka.com',
     ];
 
-    return Http::withHeaders($headers)->withBody($jsonPayload, 'application/json')->post(config('services.dana.base_url') . $relativePath)->json();
+    $fullUrl = 'https://api.sandbox.dana.id' . $relativePath;
+
+    return Http::withHeaders($headers)->withBody($jsonPayload, 'application/json')->post($fullUrl)->json();
 }
 
     // =========================================================================
