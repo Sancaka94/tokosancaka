@@ -3,154 +3,149 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DANA Integration Dashboard</title>
+    <title>Admin DANA Central Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <style>
-        .card { border: none; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 8px 20px rgba(0,0,0,0.05); transition: transform 0.3s; overflow: hidden; }
-        .card:hover { transform: translateY(-5px); }
-        .header { background: linear-gradient(135deg, #108ee9 0%, #0676c4 100%); color: white; padding: 40px 20px; margin-bottom: 30px; border-radius: 0 0 50px 50px; text-align: center; }
-        .monitor-display { background: #f8f9fa; border-bottom: 2px dashed #dee2e6; padding: 20px; text-align: center; }
-        .saldo-value { font-size: 2rem; font-weight: 800; color: #108ee9; }
-        .status-dot { height: 8px; width: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; }
-        .bg-gradient-blue { background: linear-gradient(45deg, #108ee9, #0072ff); color: white; }
-        .bg-gradient-green { background: linear-gradient(45deg, #28a745, #20c997); color: white; }
-        .bg-gradient-red { background: linear-gradient(45deg, #dc3545, #f86d70); color: white; }
+        .table-admin { background: white; border-radius: 15px; overflow: hidden; box-shadow: 0 8px 20px rgba(0,0,0,0.05); }
+        .header-admin { background: linear-gradient(135deg, #108ee9 0%, #0676c4 100%); color: white; padding: 30px; border-radius: 0 0 30px 30px; }
+        .status-badge { font-size: 0.75rem; padding: 5px 12px; border-radius: 50px; }
+        .btn-action { padding: 2px 10px; font-size: 0.8rem; }
     </style>
 </head>
 <body class="bg-light">
 
-<div class="header shadow">
-    <h1><i class="bi bi-wallet2"></i> DANA API Dashboard</h1>
-    <p class="opacity-75">Control Center: Disbursement & Binding Monitoring</p>
-</div>
-
-<div class="container">
-
-    {{-- Notifikasi Global --}}
-    @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm mb-4" role="alert">
-            <i class="bi bi-check-circle-fill me-2"></i> {{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+<div class="header-admin shadow-sm mb-4">
+    <div class="container d-flex justify-content-between align-items-center">
+        <div>
+            <h2 class="mb-0 fw-bold"><i class="bi bi-shield-lock"></i> DANA Admin Center</h2>
+            <p class="mb-0 opacity-75">Monitoring Saldo & Token Seluruh Affiliate</p>
         </div>
-    @endif
-    
-    @if(session('error'))
-        <div class="alert alert-danger alert-dismissible fade show border-0 shadow-sm mb-4" role="alert">
-            <i class="bi bi-exclamation-triangle-fill me-2"></i> {{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-    @endif
-
-    <div class="row">
-        {{-- KOLOM 1: ACCOUNT BINDING --}}
-        <div class="col-md-4">
-            <div class="card h-100">
-                <div class="bg-gradient-blue p-3 text-center">
-                    <h5 class="mb-0 fw-bold"><i class="bi bi-link-45deg"></i> 1. Binding Akun</h5>
-                </div>
-                <div class="monitor-display">
-                    <span class="text-muted small d-block">Status Koneksi</span>
-                    @if(session('dana_access_token'))
-                        <div class="text-success fw-bold"><span class="status-dot bg-success"></span> Terhubung</div>
-                        <code class="small text-truncate d-block mt-2">{{ Str::limit(session('dana_access_token'), 20) }}</code>
-                    @else
-                        <div class="text-danger fw-bold"><span class="status-dot bg-danger"></span> Putus</div>
-                        <span class="small text-muted">Silakan lakukan binding</span>
-                    @endif
-                </div>
-                <div class="card-body">
-                    @if(session('dana_auth_code'))
-                        <div class="alert alert-info py-2 small border-0 bg-light mb-3">
-                            <i class="bi bi-key"></i> <strong>Auth Code:</strong>
-                            <div class="text-truncate">{{ session('dana_auth_code') }}</div>
-                        </div>
-                    @endif
-
-                    <form action="{{ route('dana.do_bind') }}" method="POST">
-                        @csrf
-                        <button type="submit" class="btn btn-primary w-100 py-2 shadow-sm rounded-pill">
-                             Jalankan Binding
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        {{-- KOLOM 2: CEK SALDO USER --}}
-        <div class="col-md-4">
-            <div class="card h-100">
-                <div class="bg-gradient-green p-3 text-center">
-                    <h5 class="mb-0 fw-bold"><i class="bi bi-person-circle"></i> 2. Saldo User</h5>
-                </div>
-                <div class="monitor-display">
-                    <span class="text-muted small d-block">Available Balance (User)</span>
-                    <div class="saldo-value">
-                        <small class="fs-6">Rp</small> {{ number_format((float) (session('saldo_terbaru') ?? 0), 0, ',', '.') }}
-                    </div>
-                    <span class="text-muted xx-small" style="font-size: 0.7rem;">
-                        <i class="bi bi-clock"></i> {{ session('saldo_terbaru') !== null ? now()->format('H:i:s') : 'Belum dicek' }}
-                    </span>
-                </div>
-                <div class="card-body">
-                    <form action="{{ route('dana.check_balance') }}" method="POST">
-                        @csrf
-                        <div class="mb-3">
-                            <label class="form-label small fw-bold text-success">Access Token User</label>
-                            <input type="text" name="access_token" class="form-control form-control-sm border-success border-opacity-25" 
-                                   value="{{ session('dana_access_token') }}" placeholder="Token required...">
-                        </div>
-                        <button type="submit" class="btn btn-success w-100 py-2 shadow-sm rounded-pill" {{ !session('dana_access_token') ? 'disabled' : '' }}>
-                            <i class="bi bi-arrow-repeat"></i> Cek Saldo User
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        {{-- KOLOM 3: CEK SALDO MERCHANT & TOPUP --}}
-        <div class="col-md-4">
-            <div class="card h-100">
-                <div class="bg-gradient-red p-3 text-center">
-                    <h5 class="mb-0 fw-bold"><i class="bi bi-bank"></i> 3. Saldo Merchant</h5>
-                </div>
-                <div class="monitor-display">
-                    <span class="text-muted small d-block">Deposit Balance (Merchant)</span>
-                    <div class="saldo-value text-danger">
-                        <small class="fs-6">Rp</small> {{ number_format((float) (session('saldo_merchant') ?? 0), 0, ',', '.') }}
-                    </div>
-                    <form action="{{ route('dana.check_merchant_balance') }}" method="POST" class="mt-2">
-                        @csrf
-                        <button type="submit" class="btn btn-sm btn-outline-danger border-0 py-0">
-                            <i class="bi bi-arrow-clockwise"></i> Refresh Saldo Merchant
-                        </button>
-                    </form>
-                </div>
-                <div class="card-body">
-                    <form action="{{ route('dana.topup') }}" method="POST">
-                        @csrf
-                        <div class="row g-2 mb-3">
-                            <div class="col-7">
-                                <label class="form-label small fw-bold text-danger">Target Phone</label>
-                                <input type="text" name="phone" class="form-control form-control-sm" value="085745808809" required>
-                            </div>
-                            <div class="col-5">
-                                <label class="form-label small fw-bold text-danger">Amount</label>
-                                <input type="number" name="amount" class="form-control form-control-sm" value="1000" required>
-                            </div>
-                        </div>
-                        <button type="submit" class="btn btn-danger w-100 py-2 shadow-sm rounded-pill">
-                            <i class="bi bi-cash-stack"></i> Eksekusi Topup
-                        </button>
-                    </form>
-                </div>
-            </div>
+        <div class="text-end">
+            <span class="badge bg-white text-primary p-2 px-3">
+                <i class="bi bi-calendar-event"></i> {{ now()->format('d M Y') }}
+            </span>
         </div>
     </div>
-    
-    <div class="text-center mt-5 mb-5">
-        <div class="badge bg-white text-muted shadow-sm p-2 px-3 rounded-pill">
-            <span class="status-dot bg-primary"></span> DANA Sandbox Version 2.0 (Open API + SNAP)
+</div>
+
+<div class="container-fluid px-4">
+    {{-- Notifikasi --}}
+    @if(session('success'))
+        <div class="alert alert-success border-0 shadow-sm">{{ session('success') }}</div>
+    @endif
+    @if(session('error'))
+        <div class="alert alert-danger border-0 shadow-sm">{{ session('error') }}</div>
+    @endif
+
+    <div class="table-admin p-3">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Affiliate</th>
+                        <th>Status Binding</th>
+                        <th>Saldo User (DANA)</th>
+                        <th>Saldo Merchant (Pusat)</th>
+                        <th>Token & Auth Code</th>
+                        <th class="text-center">Aksi Sinkron</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($affiliates as $aff)
+                    <tr>
+                        <td>
+                            <div class="fw-bold">{{ $aff->name }}</div>
+                            <small class="text-muted"><i class="bi bi-whatsapp"></i> {{ $aff->whatsapp }}</small>
+                        </td>
+                        <td>
+                            @if($aff->dana_access_token)
+                                <span class="status-badge bg-success-subtle text-success border border-success">
+                                    <i class="bi bi-check-circle"></i> Terhubung
+                                </span>
+                            @else
+                                <span class="status-badge bg-danger-subtle text-danger border border-danger">
+                                    <i class="bi bi-x-circle"></i> Terputus
+                                </span>
+                            @endif
+                        </td>
+                        <td>
+                            <div class="fw-bold text-success">Rp {{ number_format($aff->balance, 0, ',', '.') }}</div>
+                            <small class="text-muted" style="font-size: 0.7rem;">Update: {{ $aff->updated_at }}</small>
+                        </td>
+                        <td>
+                            <div class="fw-bold text-danger">Rp {{ number_format($aff->dana_merchant_balance, 0, ',', '.') }}</div>
+                            <form action="{{ route('dana.check_merchant_balance') }}" method="POST">
+                                @csrf
+                                <input type="hidden" name="affiliate_id" value="{{ $aff->id }}">
+                                <button type="submit" class="btn btn-link btn-sm p-0 text-decoration-none" style="font-size: 0.7rem;">Refresh Merchant</button>
+                            </form>
+                        </td>
+                        <td style="max-width: 200px;">
+                            <div class="text-truncate small text-muted"><strong>Token:</strong> {{ $aff->dana_access_token ?: '-' }}</div>
+                            <div class="text-truncate small text-muted"><strong>Auth:</strong> {{ $aff->dana_auth_code ?: '-' }}</div>
+                        </td>
+                        <td class="text-center">
+                            <div class="d-flex gap-1 justify-content-center">
+                                {{-- Tombol Binding --}}
+                                <form action="{{ route('dana.do_bind') }}" method="POST">
+                                    @csrf
+                                    <input type="hidden" name="affiliate_id" value="{{ $aff->id }}">
+                                    <button type="submit" class="btn btn-primary btn-action" title="Lakukan Binding">
+                                        <i class="bi bi-link"></i>
+                                    </button>
+                                </form>
+
+                                {{-- Tombol Cek Saldo User --}}
+                                <form action="{{ route('dana.check_balance') }}" method="POST">
+                                    @csrf
+                                    <input type="hidden" name="affiliate_id" value="{{ $aff->id }}">
+                                    <input type="hidden" name="access_token" value="{{ $aff->dana_access_token }}">
+                                    <button type="submit" class="btn btn-success btn-action" title="Update Saldo User" {{ !$aff->dana_access_token ? 'disabled' : '' }}>
+                                        <i class="bi bi-arrow-repeat"></i>
+                                    </button>
+                                </form>
+
+                                {{-- Tombol Topup Modal --}}
+                                <button class="btn btn-danger btn-action" data-bs-toggle="modal" data-bs-target="#modalTopup{{ $aff->id }}">
+                                    <i class="bi bi-cash-stack"></i>
+                                </button>
+                            </div>
+
+                            {{-- Modal Topup Per User --}}
+                            <div class="modal fade" id="modalTopup{{ $aff->id }}" tabindex="-1">
+                                <div class="modal-dialog modal-dialog-centered">
+                                    <div class="modal-content text-start">
+                                        <form action="{{ route('dana.topup') }}" method="POST">
+                                            @csrf
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">Top Up: {{ $aff->name }}</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <input type="hidden" name="affiliate_id" value="{{ $aff->id }}">
+                                                <div class="mb-3">
+                                                    <label class="form-label">Nomor WhatsApp (Tujuan)</label>
+                                                    <input type="text" name="phone" class="form-control" value="{{ $aff->whatsapp }}" required>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label">Nominal Transfer (Rp)</label>
+                                                    <input type="number" name="amount" class="form-control" value="1000" required>
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                                                <button type="submit" class="btn btn-danger">Kirim Uang Sekarang</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
         </div>
     </div>
 </div>

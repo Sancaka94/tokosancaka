@@ -10,12 +10,11 @@ use Illuminate\Support\Str;
 
 class DanaDashboardController extends Controller
 {
-    public function index(Request $request)
-    {
-        // Ambil data affiliate (Default ID 11 seperti di database bos)
-        $affiliate = DB::table('affiliates')->where('id', $request->id ?? 11)->first();
-        return view('dana_dashboard', compact('affiliate'));
-    }
+    public function index()
+{
+    $affiliates = DB::table('affiliates')->orderBy('id', 'DESC')->get();
+    return view('dana_dashboard', compact('affiliates'));
+}
 
     public function handleCallback(Request $request)
     {
