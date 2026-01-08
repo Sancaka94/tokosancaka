@@ -23,6 +23,9 @@ class Affiliate extends Authenticatable
         'coupon_code',
         'is_active',
         'balance',
+        'dana_merchant_balance',    // Saldo DANA Merchant (Pusat)
+        'dana_access_token',       // Token DANA
+        'dana_auth_code',          // Auth Code DANA
         'pin'
     ];
 
