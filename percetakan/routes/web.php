@@ -20,18 +20,29 @@ use App\Http\Controllers\DanaDashboardController;
 |--------------------------------------------------------------------------
 */
 
-// 1. Dashboard Utama
-Route::get('/dana/dashboard', [DanaDashboardController::class, 'index'])->name('dana.dashboard');
+// Grouping untuk fitur DANA agar lebih rapi
+Route::prefix('dana')->name('dana.')->group(function () {
+    
+    // 1. Route Dashboard Utama
+    Route::get('/dashboard', [DanaDashboardController::class, 'index'])->name('dashboard');
 
-// 2. Proses Binding (Redirect ke Portal DANA)
-Route::post('/dana/bind', [DanaDashboardController::class, 'startBinding'])->name('dana.do_bind');
+    // 2. Route Account Binding (Logika Awal)
+    Route::post('/do-bind', [DanaDashboardController::class, 'startBinding'])->name('do_bind');
+    // 3. Callback (Wajib DanaDashboardController agar Redirect sukses)
+    Route::match(['get', 'post'], '/dana/callback', [DanaDashboardController::class, 'handleCallback'])->name('dana.callback');
 
-// 3. Callback (Wajib DanaDashboardController agar Redirect sukses)
-Route::match(['get', 'post'], '/dana/callback', [DanaDashboardController::class, 'handleCallback'])->name('dana.callback');
+    // 3. Route Monitoring Saldo (SNAP)
+    Route::post('/check-balance', [DanaDashboardController::class, 'checkBalance'])->name('check_balance');
 
-// 4. Fitur Dashboard (Cek Saldo & Topup)
-Route::post('/dana/check-balance', [DanaDashboardController::class, 'checkBalance'])->name('dana.check_balance');
-Route::post('/dana/topup', [DanaDashboardController::class, 'topupSaldo'])->name('dana.topup');
+    // 4. Route Disbursement: Check Merchant Balance (Open API v2.0)
+    // Digunakan untuk verifikasi kecukupan dana sebelum top up
+    Route::post('/check-merchant-balance', [DanaDashboardController::class, 'checkMerchantBalance'])->name('check_merchant_balance');
+
+    // 5. Route Disbursement: Customer Top Up
+    // Digunakan untuk eksekusi kirim uang ke user
+    Route::post('/topup', [DanaDashboardController::class, 'topupSaldo'])->name('topup');
+});
+
 
 /*
 |--------------------------------------------------------------------------
