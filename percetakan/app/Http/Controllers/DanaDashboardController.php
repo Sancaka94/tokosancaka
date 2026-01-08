@@ -174,28 +174,22 @@ class DanaDashboardController extends Controller
 
     public function accountInquiry(Request $request)
 {
-    // Ambil data dari database berdasarkan ID yang dikirim dari dashboard
     $aff = DB::table('affiliates')->where('id', $request->affiliate_id)->first();
     
-    // --- LOGIKA PEMBERSIHAN NOMOR HP (Agar jadi format 62...) ---
+    // 1. Bersihkan nomor HP wajib diawali 62
     $rawPhone = $request->phone ?? $aff->whatsapp;
-    // Hapus semua karakter non-digit (spasi, +, -, dll)
     $cleanPhone = preg_replace('/[^0-9]/', '', $rawPhone);
-    
-    // Jika diawali 0, ganti jadi 62
     if (substr($cleanPhone, 0, 1) === '0') {
         $cleanPhone = '62' . substr($cleanPhone, 1);
     }
-    // Jika diawali +, biarkan karena sudah dibuang preg_replace, pastikan 62
-    // -----------------------------------------------------------
 
     $timestamp = now('Asia/Jakarta')->toIso8601String();
     $path = '/v1.0/emoney/account-inquiry.htm';
     
-    // 1. Susun Body Persis Sesuai Request Bos
+    // 2. Susun Body (Perbaikan pada additionalInfo agar tidak 'division not exist')
     $body = [
         "partnerReferenceNo" => "INQ" . time() . Str::random(5),
-        "customerNumber"     => $request->phone ?? $aff->whatsapp,
+        "customerNumber"     => $cleanPhone,
         "amount" => [
             "value"    => number_format((float)($request->amount ?? 10000), 2, '.', ''),
             "currency" => "IDR"
@@ -203,19 +197,18 @@ class DanaDashboardController extends Controller
         "transactionDate" => $timestamp,
         "additionalInfo"  => [
             "fundType"           => "AGENT_TOPUP_FOR_USER_SETTLE",
-            "externalDivisionId" => "91080916Division",
-            "chargeTarget"       => "DIVISION",
-            "customerId"         => $aff->dana_user_id ?? "" // Diambil dari database jika ada
+            "externalDivisionId" => "", // KOSONGKAN JIKA ERROR DIVISION NOT EXIST
+            "chargeTarget"       => "MERCHANT", // UBAH KE MERCHANT JIKA DIVISION TIDAK ADA
+            "customerId"         => ""
         ]
     ];
 
-    // 2. Generate Signature SNAP (POST:PATH:HASH:TIMESTAMP)
+    // LOGIKA SIGNATURE SNAP TETAP DIKUNCI (SUKSES 2001100)
     $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     $hashedBody = strtolower(hash('sha256', $jsonBody));
     $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
     $signature = $this->generateSignature($stringToSign);
 
-    // 3. Eksekusi Request dengan Headers Lengkap Tanpa Ada Yang Beda
     try {
         $response = Http::withHeaders([
             'Content-Type'  => 'application/json',
@@ -226,18 +219,18 @@ class DanaDashboardController extends Controller
             'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
             'X-EXTERNAL-ID' => (string) time() . Str::random(5),
             'X-IP-ADDRESS'  => $request->ip() ?? '127.0.0.1',
-            'X-DEVICE-ID'   => '09864ADCASA', // Sesuai permintaan bos
-            'CHANNEL-ID'    => '95221'       // Sesuai permintaan bos
+            'X-DEVICE-ID'   => '09864ADCASA',
+            'CHANNEL-ID'    => '95221'
         ])->withBody($jsonBody, 'application/json')->post('https://api.sandbox.dana.id' . $path);
 
         $result = $response->json();
 
-        // Jika Sukses (Response Code 2000000)
         if (isset($result['responseCode']) && $result['responseCode'] == '2000000') {
             return back()->with('success', 'Inquiry Sukses! Nama: ' . ($result['additionalInfo']['customerName'] ?? 'Valid'));
         }
 
-        return back()->with('error', 'Gagal Inquiry: ' . ($result['responseMessage'] ?? 'Akun Tidak Ditemukan'));
+        // Tampilkan pesan error asli dari DANA untuk debug
+        return back()->with('error', 'Gagal Inquiry: ' . ($result['responseMessage'] ?? 'Error Unknown'));
 
     } catch (\Exception $e) {
         return back()->with('error', 'Sistem Error: ' . $e->getMessage());
