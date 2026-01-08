@@ -176,9 +176,13 @@ class DanaDashboardController extends Controller
     
     public function checkBalance(Request $request)
 {
+    Log::info('[CEK SALDO] Memulai request...');
     $accessToken = $request->access_token ?? session('dana_access_token');
 
-    // Susun secara alfabetis atau sesuai contoh dokumentasi
+    if (!$accessToken) {
+        return back()->with('error', 'Token tidak ditemukan di session.');
+    }
+
     $body = [
         "additionalInfo" => [
             "accessToken" => $accessToken
@@ -187,106 +191,57 @@ class DanaDashboardController extends Controller
         "partnerReferenceNo" => "BAL" . date('YmdHis')
     ];
 
-    // Pastikan path diawali dengan slash /
     $response = $this->sendRequest('POST', '/v1.0/balance-inquiry.htm', $body, $accessToken);
     
-    return back()->with('response', $response);
+    // Log hasil mentah dari DANA untuk memastikan server menjawab
+    Log::info('[CEK SALDO] Respon DANA:', (array)$response);
+
+    if (isset($response['responseCode']) && $response['responseCode'] == '2001100') {
+        $amount = $response['accountInfos'][0]['availableBalance']['value'] ?? '0';
+        return back()->with('success', 'Cek Saldo Berhasil!')->with('saldo_terbaru', $amount);
+    }
+
+    $errorMsg = $response['responseMessage'] ?? 'Koneksi Timeout atau Respon Kosong';
+    return back()->with('error', 'Gagal: ' . $errorMsg)->with('raw_debug', $response);
 }
 
     private function sendRequest($method, $relativePath, $bodyArray, $accessToken = null)
 {
-    $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String();
-    $clientId  = config('services.dana.client_id');
-
-    // Pakai opsi JSON_UNESCAPED_SLASHES dan pastikan tidak ada whitespace
-    $jsonPayload = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-
-    // Hashing Body (Lowercase Hex)
-    $hashedBody = strtolower(hash('sha256', $jsonPayload));
-
-    // StringToSign: METHOD:PATH:TOKEN:TIMESTAMP:HASHEDBODY
-    // Pastikan relativePath diawali '/' (contoh: /v1.0/balance-inquiry.htm)
-    $stringToSign = strtoupper($method) . ":" . $relativePath . ":" . $accessToken . ":" . $timestamp . ":" . $hashedBody;
-
-    Log::info("[FINAL CHECK] StringToSign: " . $stringToSign);
-
-    $signature = $this->genSig($stringToSign);
-
-    $headers = [
-        'Content-Type'           => 'application/json',
-        'X-TIMESTAMP'            => $timestamp,
-        'X-SIGNATURE'            => $signature,
-        'X-PARTNER-ID'           => $clientId,
-        'X-EXTERNAL-ID'          => strval(mt_rand(1000000000, 9999999999) . mt_rand(1000000000, 9999999999)),
-        'X-DEVICE-ID'            => '09864ADCASA', 
-        'CHANNEL-ID'             => '95221',
-        'Authorization-Customer' => 'Bearer ' . $accessToken,
-    ];
-
-    $url = config('services.dana.base_url') . $relativePath;
-
     try {
-        // Menggunakan body mentah untuk memastikan tidak ada perubahan karakter oleh library HTTP
+        $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String();
+        $clientId  = config('services.dana.client_id');
+        $jsonPayload = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $hashedBody = strtolower(hash('sha256', $jsonPayload));
+        $stringToSign = strtoupper($method) . ":" . $relativePath . ":" . $accessToken . ":" . $timestamp . ":" . $hashedBody;
+
+        $signature = $this->genSig($stringToSign);
+
+        $headers = [
+            'Content-Type'           => 'application/json',
+            'X-TIMESTAMP'            => $timestamp,
+            'X-SIGNATURE'            => $signature,
+            'X-PARTNER-ID'           => $clientId,
+            'X-EXTERNAL-ID'          => (string) mt_rand(1000, 9999) . time(),
+            'X-DEVICE-ID'            => '09864ADCASA', 
+            'CHANNEL-ID'             => '95221',
+            'Authorization-Customer' => 'Bearer ' . $accessToken,
+        ];
+
+        $url = rtrim(config('services.dana.base_url'), '/') . $relativePath;
+
+        // Tambahkan timeout agar tidak menggantung jika server DANA lambat
         $response = Http::withHeaders($headers)
+                        ->timeout(30)
                         ->withBody($jsonPayload, 'application/json')
                         ->post($url);
 
         return $response->json();
+
     } catch (\Exception $e) {
-        return ['responseMessage' => $e->getMessage()];
+        Log::error("[DANA ERROR] " . $e->getMessage());
+        return ['responseMessage' => 'Exception: ' . $e->getMessage()];
     }
 }
-
-    // =========================================================================
-    // 5. TOPUP / TRANSFER SALDO
-    // =========================================================================
-    public function topupSaldo(Request $request)
-    {
-        Log::info('=========================================');
-        Log::info('[TOPUP] Request Initiated');
-
-        $phoneInput = $request->phone;
-        $amount = $request->amount;
-        $finalPhone = $phoneInput;
-
-        Log::info("[TOPUP] Input Awal -> Phone: $phoneInput, Amount: $amount");
-
-        // 1. Validasi Format Nomor (Ubah 08 jadi 62)
-        if(substr($phoneInput, 0, 2) == '08') {
-            $finalPhone = '62' . substr($phoneInput, 1);
-            Log::info("[TOPUP] Format Phone Diubah ke International: $finalPhone");
-        }
-
-        // 2. Override Nomor Magic Sandbox (Khusus Testing)
-        if(env('APP_ENV') != 'production') {
-            Log::info('[TOPUP] Mode SANDBOX Terdeteksi: Menggunakan Magic Number 08123456789');
-            $finalPhone = '08123456789'; 
-        }
-
-        $orderId = 'TOPUP-' . time();
-        Log::info("[TOPUP] Generated Order ID: $orderId");
-
-        $body = [
-            "partnerReferenceNo" => $orderId,
-            "amount" => ["value" => $amount . ".00", "currency" => "IDR"],
-            "feeAmount" => ["value" => "0.00", "currency" => "IDR"],
-            "customerNumber" => $finalPhone,
-            "additionalInfo" => ["fundType" => "TRANS_TO_USER"]
-        ];
-
-        // Kirim Request
-        Log::info('[TOPUP] Mengirim Request ke Helper...');
-        $response = $this->sendRequest('POST', '/v1.0/emoney/topup.htm', $body);
-
-        // Cek Hasil
-        if(isset($response['responseCode']) && substr($response['responseCode'], 0, 3) == '200') {
-            Log::info("[TOPUP] SUKSES! Response Code: " . $response['responseCode']);
-            return back()->with('success', "Topup Rp $amount ke $finalPhone Berhasil!");
-        }
-
-        Log::error('[TOPUP] GAGAL. Pesan Error DANA:', $response);
-        return back()->with('error', 'Topup Gagal: ' . json_encode($response));
-    }
 
     public function debugForce()
     {
