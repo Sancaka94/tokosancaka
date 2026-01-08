@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 class DanaDashboardController extends Controller
 {
@@ -14,87 +13,37 @@ class DanaDashboardController extends Controller
         return view('dana_dashboard');
     }
 
-    // =========================================================================
-    // 1. MULAI BINDING (Sesuai nama di Route/Blade kamu)
-    // =========================================================================
+    // 1. LOGIKA AWAL: Hanya Redirect ke DANA
     public function startBinding()
     {
-        Log::info('[BINDING] Memulai proses redirect ke DANA Portal...');
-
         $queryParams = [
             'partnerId'   => config('services.dana.x_partner_id'),
             'timestamp'   => now('Asia/Jakarta')->toIso8601String(),
             'externalId'  => 'BIND-' . time(),
             'merchantId'  => config('services.dana.merchant_id'),
-            'redirectUrl' => config('services.dana.redirect_url_oauth'), 
-            'state'       => Str::random(10),
+            'redirectUrl' => config('services.dana.redirect_url_oauth'),
+            'state'       => bin2hex(random_bytes(8)),
             'scopes'      => 'QUERY_BALANCE,MINI_DANA,DEFAULT_BASIC_PROFILE',
         ];
 
-        $url = "https://m.sandbox.dana.id/d/portal/oauth?" . http_build_query($queryParams);
-        
-        return redirect($url);
+        return redirect("https://m.sandbox.dana.id/d/portal/oauth?" . http_build_query($queryParams));
     }
 
-    // =========================================================================
-    // 2. HANDLE CALLBACK (Tukar Auth Code jadi Token)
-    // =========================================================================
+    // 2. LOGIKA AWAL: Hanya ambil authCode dari URL dan simpan ke session
     public function handleCallback(Request $request)
     {
-        // DANA mengirimkan authCode di URL
         $authCode = $request->authCode;
 
-        if (!$authCode) {
-            Log::error('[CALLBACK] Auth Code tidak ditemukan di URL');
-            return redirect()->route('dana.dashboard')->with('error', 'Gagal mendapatkan Auth Code');
+        if ($authCode) {
+            // Simpan ke session agar muncul di blade {{ session('dana_auth_code') }}
+            session(['dana_auth_code' => $authCode]);
+            return redirect()->route('dana.dashboard')->with('success', 'Auth Code Berhasil Didapat!');
         }
 
-        Log::info('[CALLBACK] Auth Code didapat: ' . $authCode);
-        session(['dana_auth_code' => $authCode]);
-
-        // Tukar ke Access Token
-        return $this->exchangeToken($authCode);
+        return redirect()->route('dana.dashboard')->with('error', 'Gagal mendapatkan Auth Code dari DANA');
     }
 
-    private function exchangeToken($authCode)
-    {
-        $timestamp = now('Asia/Jakarta')->toIso8601String();
-        $path = '/v1.0/access-token/b2b2c.htm';
-        
-        $body = [
-            "grantType" => "AUTHORIZATION_CODE",
-            "authCode"  => $authCode
-        ];
-
-        // RUMUS SIGNATURE APPLY TOKEN (Asymmetric): ClientID | Timestamp
-        $stringToSign = config('services.dana.x_partner_id') . "|" . $timestamp;
-        $signature = $this->generateSignature($stringToSign);
-
-        try {
-            $response = Http::withHeaders([
-                'X-TIMESTAMP'  => $timestamp,
-                'X-CLIENT-KEY' => config('services.dana.x_partner_id'),
-                'X-SIGNATURE'  => $signature,
-                'Content-Type' => 'application/json'
-            ])->post('https://api.sandbox.dana.id' . $path, $body);
-
-            $data = $response->json();
-            Log::info('[TOKEN EXCHANGE] Respon:', [$data]);
-
-            if (isset($data['accessToken'])) {
-                session(['dana_access_token' => $data['accessToken']]);
-                return redirect()->route('dana.dashboard')->with('success', 'Binding Sukses! Token disimpan.');
-            }
-
-            return redirect()->route('dana.dashboard')->with('error', 'Gagal tukar token: ' . ($data['responseMessage'] ?? 'Unknown Error'));
-        } catch (\Exception $e) {
-            return redirect()->route('dana.dashboard')->with('error', 'Sistem Error: ' . $e->getMessage());
-        }
-    }
-
-    // =========================================================================
-    // 3. CEK SALDO (Logika SNAP 2.0 yang sudah Sukses)
-    // =========================================================================
+    // 3. LOGIKA BARU: Cek Saldo (Tetap saya sertakan karena ini yang tadi sukses 2001100)
     public function checkBalance(Request $request)
     {
         $accessToken = $request->access_token ?? session('dana_access_token');
@@ -111,12 +60,11 @@ class DanaDashboardController extends Controller
 
         $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         $hashedBody = strtolower(hash('sha256', $jsonBody));
-
-        // RUMUS SIGNATURE TRANSACTIONAL: METHOD:PATH:HASH:TIMESTAMP
         $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
+        
         $signature = $this->generateSignature($stringToSign);
 
-        $headers = [
+        $response = Http::withHeaders([
             'X-TIMESTAMP'   => $timestamp,
             'X-SIGNATURE'   => $signature,
             'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
@@ -125,11 +73,7 @@ class DanaDashboardController extends Controller
             'ORIGIN'        => config('services.dana.origin'),
             'Authorization-Customer' => 'Bearer ' . $accessToken,
             'Content-Type'  => 'application/json'
-        ];
-
-        $response = Http::withHeaders($headers)
-                        ->withBody($jsonBody, 'application/json')
-                        ->post('https://api.sandbox.dana.id' . $path);
+        ])->withBody($jsonBody, 'application/json')->post('https://api.sandbox.dana.id' . $path);
 
         $result = $response->json();
 
@@ -138,7 +82,7 @@ class DanaDashboardController extends Controller
             return back()->with('success', 'Saldo Berhasil!')->with('saldo_terbaru', $amount);
         }
 
-        return back()->with('error', 'Gagal: ' . ($result['responseMessage'] ?? 'Gagal Inquiry'));
+        return back()->with('error', 'Gagal: ' . ($result['responseMessage'] ?? 'Error'));
     }
 
     // =========================================================================
