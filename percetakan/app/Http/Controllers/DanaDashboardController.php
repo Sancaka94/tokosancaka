@@ -60,10 +60,7 @@ class DanaDashboardController extends Controller
     Log::info('--- [START] CEK SALDO DANA ---');
 
     $accessToken = $request->access_token ?? session('dana_access_token');
-    if (!$accessToken) {
-        Log::warning('[CEK SALDO] Token tidak ditemukan.');
-        return back()->with('error', 'Token Kosong.');
-    }
+    if (!$accessToken) return back()->with('error', 'Token Kosong.');
 
     $timestamp = now('Asia/Jakarta')->toIso8601String();
     $path = '/v1.0/balance-inquiry.htm';
@@ -74,13 +71,17 @@ class DanaDashboardController extends Controller
         'additionalInfo' => ['accessToken' => $accessToken]
     ];
 
-    // 1. Generate Signature
-    $jsonBody = json_encode($body);
+    // [PENTING] Gunakan opsi JSON_UNESCAPED_SLASHES agar format JSON bersih (Compact)
+    $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
+    
+    // 1. Generate Signature SNAP
     $hashedBody = strtolower(hash('sha256', $jsonBody));
+    
+    // Pastikan urutan string to sign benar: METHOD:PATH:TOKEN:TIME:HASHBODY
     $stringToSign = "POST:" . $path . ":" . $accessToken . ":" . $timestamp . ":" . $hashedBody;
+    
     $signature = $this->generateSignature($stringToSign);
 
-    // 2. Susun Headers (Lengkap dengan ORIGIN yang tadi hilang)
     $headers = [
         'X-TIMESTAMP'   => $timestamp,
         'X-SIGNATURE'   => $signature,
@@ -88,44 +89,45 @@ class DanaDashboardController extends Controller
         'X-EXTERNAL-ID' => (string) time(),
         'X-DEVICE-ID'   => 'DANA-DASHBOARD-STATION',
         'CHANNEL-ID'    => '95221',
-        'ORIGIN'        => config('services.dana.origin'), // Diambil dari config yang Anda set tadi
+        'ORIGIN'        => config('services.dana.origin'),
         'X-IP-ADDRESS'  => $request->ip() ?? '127.0.0.1',
         'Authorization-Customer' => 'Bearer ' . $accessToken,
         'Content-Type'  => 'application/json'
     ];
 
-    // 3. LOG SEMUA DATA REQUEST
-    Log::info('[CEK SALDO] URL: https://api.sandbox.dana.id' . $path);
-    Log::info('[CEK SALDO] Headers:', $headers);
-    Log::info('[CEK SALDO] Body:', $body);
     Log::info('[CEK SALDO] StringToSign: ' . $stringToSign);
 
     try {
-        $response = Http::withHeaders($headers)->post('https://api.sandbox.dana.id' . $path, $body);
-        $result = $response->json();
+        // [PENTING] Gunakan withBody agar Laravel tidak merubah format JSON secara otomatis
+        $response = Http::withHeaders($headers)
+                        ->withBody($jsonBody, 'application/json') 
+                        ->post('https://api.sandbox.dana.id' . $path);
 
-        // LOG RESPON DANA
+        $result = $response->json();
         Log::info('[CEK SALDO] Respon Raw:', [$response->body()]);
 
         if (isset($result['responseCode']) && $result['responseCode'] == '2001100') {
             $amount = $result['accountInfos'][0]['availableBalance']['value'] ?? 0;
-            Log::info("[CEK SALDO] SUKSES. Saldo: $amount");
             return back()->with('success', 'Saldo Berhasil!')->with('saldo_terbaru', $amount);
         }
 
-        Log::error('[CEK SALDO] Gagal dari DANA:', $result);
         return back()->with('error', 'Gagal: ' . ($result['responseMessage'] ?? 'Unknown Error'));
 
     } catch (\Exception $e) {
-        Log::error('[CEK SALDO] Exception: ' . $e->getMessage());
         return back()->with('error', 'Sistem Error: ' . $e->getMessage());
     }
 }
 
     private function generateSignature($stringToSign) {
-        $privateKey = config('services.dana.private_key');
-        $binarySignature = "";
-        openssl_sign($stringToSign, $binarySignature, $privateKey, OPENSSL_ALGO_SHA256);
+    $privateKey = config('services.dana.private_key');
+    
+    // Pastikan key dalam format PEM yang benar (ada baris baru)
+    $cleanKey = str_replace(["\r", " "], "", $privateKey); 
+    
+    $binarySignature = "";
+    if (openssl_sign($stringToSign, $binarySignature, $cleanKey, OPENSSL_ALGO_SHA256)) {
         return base64_encode($binarySignature);
     }
+    return "";
+}
 }
