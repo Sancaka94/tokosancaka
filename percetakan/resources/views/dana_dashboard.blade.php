@@ -267,6 +267,14 @@
                                 {{ $log->status }}
                             </span>
                         </td>
+                        {{-- Di dalam Foreach Riwayat Transaksi --}}
+                        <td>
+                            @if($log->type == 'BINDING')
+                                <span class="badge bg-primary text-white">OAuth Binding</span>
+                            @else
+                                <span class="badge bg-danger text-white">Topup Saldo</span>
+                            @endif
+                        </td>
                     </tr>
                     @empty
                     <tr><td colspan="6" class="text-center py-4">Belum ada riwayat transaksi hari ini.</td></tr>
