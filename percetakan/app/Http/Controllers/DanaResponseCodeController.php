@@ -10,10 +10,13 @@ class DanaResponseCodeController extends Controller
 {
     public function index(Request $request)
 {
-    // 1. Inisialisasi Query
+    // 1. AMBIL LIST KATEGORI UNIK (Tambahkan baris ini)
+    // Ini akan mencari semua jenis kategori yang ada di database secara otomatis
+    $categories = DanaResponseCode::select('category')->distinct()->pluck('category');
+
+    // 2. Query Data Utama (Logic Search & Filter tetap sama)
     $query = DanaResponseCode::query();
 
-    // 2. Logika Pencarian (Search All Columns)
     if ($request->filled('search')) {
         $search = $request->search;
         $query->where(function($q) use ($search) {
@@ -24,23 +27,20 @@ class DanaResponseCodeController extends Controller
         });
     }
 
-    // 3. Filter Kategori
     if ($request->filled('category') && $request->category !== 'ALL') {
         $query->where('category', $request->category);
     }
 
-    // 4. Filter Status (Sukses/Gagal)
     if ($request->filled('status') && $request->status !== 'ALL') {
-        // Jika value '1' (Sukses) atau '0' (Gagal)
         $query->where('is_success', $request->status);
     }
 
-    // 5. Ambil data dengan Pagination & Append Query String (agar filter tidak hilang saat pindah halaman)
     $codes = $query->orderBy('response_code', 'asc')
                    ->paginate(10)
                    ->withQueryString();
 
-    return view('dana.response_codes.index', compact('codes'));
+    // 3. KIRIM VARIABEL $categories KE VIEW
+    return view('dana.response_codes.index', compact('codes', 'categories'));
 }
 
     /**
