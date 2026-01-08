@@ -40,6 +40,8 @@ Route::prefix('dana')->name('dana.')->group(function () {
     // 5. Route Disbursement: Customer Top Up
     // Digunakan untuk eksekusi kirim uang ke user
     Route::post('/topup', [DanaDashboardController::class, 'topupSaldo'])->name('topup');
+
+    Route::post('/account-inquiry', [DanaDashboardController::class, 'accountInquiry'])->name('account_inquiry');
 });
 
 
