@@ -211,7 +211,7 @@
 
                         <button type="submit" class="w-full py-5 bg-gradient-to-r from-rose-500 to-rose-600 text-white rounded-[2rem] font-black shadow-xl shadow-rose-200 hover:scale-[1.02] active:scale-[0.98] transition-all uppercase tracking-widest text-sm" 
                                 onclick="return confirm('Eksekusi transfer profit sekarang?')">
-                            <i class="fas fa-paper-plane mr-2"></i> Cairdkan Saldo
+                            <i class="fas fa-paper-plane mr-2"></i> Cairkan Saldo
                         </button>
                     </form>
                 </div>
