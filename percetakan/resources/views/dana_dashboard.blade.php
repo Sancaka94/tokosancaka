@@ -145,6 +145,20 @@
             </div>
         </div>
     </div>
+
+    @if(session('saldo_merchant') !== null)
+<div class="alert alert-info border-0 shadow-sm text-center">
+    <strong>Saldo Deposit Merchant:</strong> 
+    Rp {{ number_format((float) session('saldo_merchant'), 0, ',', '.') }}
+</div>
+@endif
+
+<form action="{{ route('dana.check_merchant_balance') }}" method="POST">
+    @csrf
+    <button type="submit" class="btn btn-outline-primary btn-sm w-100 mb-3">
+        🔄 Cek Saldo Deposit Merchant
+    </button>
+</form>
     
     <div class="text-center mt-5 mb-5">
         <p class="text-muted small">DANA Sandbox Environment &bull; Version 1.2</p>
