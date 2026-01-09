@@ -24,9 +24,12 @@ class DanaWidgetController extends Controller
     $timestamp = Carbon::now('Asia/Jakarta')->toIso8601String();
     $totalValue = "10000.00"; 
 
-    $bodyArray = [
+    $partnerId = config('services.dana.x_partner_id'); // 2025081520100641466855
+
+$bodyArray = [
     "partnerReferenceNo" => $orderId,
-    "merchantId"         => config('services.dana.merchant_id'),
+    "merchantId"         => $partnerId, // DISAMAKAN DENGAN X-PARTNER-ID
+    "subMerchantId"      => "",         // Tambahkan field ini (ada di dokumentasi Anda)
     "amount" => [
         "value"    => $totalValue,
         "currency" => "IDR"
@@ -42,9 +45,9 @@ class DanaWidgetController extends Controller
             "merchantTransType" => "01",
             "scenario"          => "REDIRECT",
             "buyer" => [
-                "externalUserType" => "", // TAMBAHKAN INI
+                "externalUserType" => "",
                 "nickname"         => "Guest",
-                "externalUserId"   => "", // TAMBAHKAN INI
+                "externalUserId"   => "",
                 "userId"           => "12345"
             ],
             "goods" => [
@@ -55,7 +58,8 @@ class DanaWidgetController extends Controller
                     "price"           => ["value" => $totalValue, "currency" => "IDR"],
                     "quantity"        => "1"
                 ]
-            ]
+            ],
+            "extendInfo" => ""
         ],
         "mcc"     => "5732",
         "envInfo" => [
@@ -64,7 +68,7 @@ class DanaWidgetController extends Controller
             "orderTerminalType" => "WEB",
             "clientIp"          => "127.0.0.1"
         ],
-        "extendInfo" => "" // Pastikan ini string kosong jika tidak dipakai
+        "extendInfo" => ""
     ]
 ];
 
