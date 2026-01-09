@@ -553,7 +553,7 @@
                         preloader.style.display = 'none';
                         // Simpan status agar tidak muncul lagi saat pindah menu
                         sessionStorage.setItem('sancaka_loaded', 'true');
-                    }, 500);
+                    }, 1000);
                 }, 1000); // Durasi loading awal (bisa dikurangi jika dirasa kelamaan)
             });
         }
