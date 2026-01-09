@@ -20,106 +20,82 @@ class DanaWidgetController extends Controller
 
     public function createPayment(Request $request)
 {
-    Log::info('DANA_SNAP_START: Inisiasi proses Payment Host-to-Host.');
+    Log::info('DANA_SNAP_START: Inisiasi proses Payment.');
 
-    // 1. Persiapan Variabel Dasar dari Config & Request
-    $orderId    = 'INV-' . time();
-    $returnUrl  = route('dana.return'); // Pastikan route ini ada
-    $timestamp  = Carbon::now('Asia/Jakarta')->toIso8601String();
-    $externalId = Str::random(32);
-    
-    Log::info('DANA_SNAP_SETUP: Identitas transaksi disiapkan.', [
-        'order_id'    => $orderId,
-        'external_id' => $externalId,
-        'timestamp'   => $timestamp,
-        'merchant_id' => config('services.dana.merchant_id')
-    ]);
+    $orderId = 'INV-' . time();
+    $timestamp = Carbon::now('Asia/Jakarta')->toIso8601String();
+    $amountValue = "10000.00"; // Contoh nilai, pastikan 2 desimal
 
-    // 2. Membangun Payload Sesuai Spesifikasi SNAP BI
-    // Di dalam Controller Anda (createPayment)
-
-$amountValue = "10000.00"; // Pastikan string dengan 2 angka di belakang koma
-
-$bodyArray = [
-    "partnerReferenceNo" => $orderId,
-    "merchantId"         => config('services.dana.merchant_id'),
-    "amount" => [
-        "value"    => $amountValue,
-        "currency" => "IDR"
-    ],
-    "validUpTo"          => Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP'),
-    "urlParams" => [
-        [
-            "url" => $returnUrl,
-            "type" => "PAY_RETURN",
-            "isDeeplink" => "Y"
+    // BODY PAYLOAD - Disesuaikan agar TIDAK General Error
+    $bodyArray = [
+        "partnerReferenceNo" => $orderId,
+        "merchantId"         => config('services.dana.merchant_id'),
+        "subMerchantId"      => "",
+        "amount" => [
+            "value"    => $amountValue,
+            "currency" => "IDR"
         ],
-        [
-            "url" => $returnUrl,
-            "type" => "NOTIFICATION",
-            "isDeeplink" => "Y"
-        ]
-    ],
-    "additionalInfo" => [
-        "mcc" => "5732",
-        "order" => [
-            "orderTitle"        => "Payment " . $orderId,
-            "merchantTransType" => "01",
-            "scenario"          => "REDIRECT",
-            "goods" => [
-                [
-                    "merchantGoodsId" => "ITEM-01",
-                    "description"     => "Product Description",
-                    "category"        => "Digital",
-                    "price" => [
-                        "value"    => $amountValue, // Harus sama dengan amount.value di atas
-                        "currency" => "IDR"
-                    ],
-                    "unit"     => "Pcs",
-                    "quantity" => "1" // JANGAN KOSONGKAN INI
-                ]
+        "externalStoreId"    => config('services.dana.external_shop_id'),
+        "validUpTo"          => Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP'),
+        "disabledPayMethods" => "CREDIT_CARD",
+        "urlParams" => [
+            [
+                "url" => route('dana.return'),
+                "type" => "PAY_RETURN",
+                "isDeeplink" => "Y"
+            ],
+            [
+                "url" => route('dana.return'),
+                "type" => "NOTIFICATION",
+                "isDeeplink" => "Y"
             ]
         ],
-        "envInfo" => [
-            "sourcePlatform"    => "IPG",
-            "terminalType"      => "SYSTEM",
-            "orderTerminalType" => "WEB"
+        "additionalInfo" => [
+            "order" => [
+                "merchantTransType" => "01",
+                "orderTitle"        => "Payment Gateway Order",
+                "scenario"          => "REDIRECT",
+                "goods" => [
+                    [
+                        "unit"            => "Pcs",
+                        "category"        => "Digital",
+                        "price"           => ["value" => $amountValue, "currency" => "IDR"],
+                        "merchantGoodsId" => "PROD-001",
+                        "description"     => "Product Description",
+                        "quantity"        => "1", // WAJIB ADA STRING ANGKA
+                        "snapshotUrl"     => "http://snap.url.com",
+                        "extendInfo"      => ""
+                    ]
+                ],
+                "shippingInfo" => [], // Biarkan kosong jika tidak perlu
+                "extendInfo"   => ""
+            ],
+            "mcc"     => "5732",
+            "envInfo" => [
+                "sourcePlatform"    => "IPG",
+                "terminalType"      => "SYSTEM",
+                "orderTerminalType" => "WEB",
+                "clientIp"          => $request->ip(),
+                "osType"            => "Windows.PC"
+            ],
+            "extendInfo" => "" // Jika diisi harus valid escaped JSON string
         ]
-    ]
-];
+    ];
 
     $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     $relativePath = '/payment-gateway/v1.0/debit/payment-host-to-host.htm';
 
-    // 3. Signature & Token Generation
     try {
-        // Ambil Bearer Token (B2B)
-        $accessToken = $this->danaSignature->getAccessToken(); 
+        $accessToken = $this->danaSignature->getAccessToken();
         
-        // Generate Signature untuk H2H (menggunakan Token, Method, Path, dan Body)
-        $signature = $this->danaSignature->generateSignature('POST', $relativePath, $jsonBody, $timestamp, $accessToken);
+        // Pastikan generateSignature menggunakan ASYMMETRIC (RSA) sesuai dokumen terbaru Anda
+        $signature = $this->danaSignature->generateSignature('POST', $relativePath, $jsonBody, $timestamp);
         
-        Log::info('DANA_SNAP_AUTH: Access Token & Signature berhasil didapatkan.');
-    } catch (\Exception $e) {
-        Log::error('DANA_SNAP_AUTH_ERROR: Gagal saat otentikasi/signature.', [
-            'message' => $e->getMessage()
-        ]);
-        return response()->json(['error' => 'Security Handshake Failed'], 500);
-    }
+        Log::info('DANA_SIGN_STS_VERIFIED: Signature H2H dibuat.');
 
-    // 4. Eksekusi Request ke DANA
-    $baseUrl = config('services.dana.dana_env') === 'PRODUCTION' 
-               ? 'https://api.dana.id' 
-               : 'https://api.sandbox.dana.id';
-               
-    $fullUrl = $baseUrl . $relativePath;
-
-    try {
-        Log::info('DANA_SNAP_REQUEST_SENDING: Mengirim request ke API DANA.', [
-            'url'           => $fullUrl,
-            'x_partner_id'  => config('services.dana.x_partner_id'),
-            'x_external_id' => $externalId
-        ]);
+        $baseUrl = config('services.dana.dana_env') === 'PRODUCTION' 
+                   ? 'https://api.dana.id' 
+                   : 'https://api.sandbox.dana.id';
 
         $response = Http::withHeaders([
             'Authorization' => 'Bearer ' . $accessToken,
@@ -128,38 +104,21 @@ $bodyArray = [
             'X-SIGNATURE'   => $signature,
             'ORIGIN'        => config('services.dana.origin'),
             'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
-            'X-EXTERNAL-ID' => $externalId,
+            'X-EXTERNAL-ID' => Str::random(32),
             'CHANNEL-ID'    => '95221'
         ])
         ->withBody($jsonBody, 'application/json')
-        ->post($fullUrl);
+        ->post($baseUrl . $relativePath);
 
-        $result = $response->json();
+        Log::info('DANA_FINAL_RESPONSE', ['body' => $response->json()]);
 
-        Log::info('DANA_SNAP_RESPONSE: Response diterima dari DANA.', [
-            'status' => $response->status(),
-            'body'   => $result
-        ]);
-
-        // 5. Handling Response Redirection
-        if ($response->successful() && isset($result['webRedirectUrl'])) {
-            Log::info('DANA_SNAP_REDIRECT: Sukses, User diarahkan ke URL DANA.');
-            return redirect($result['webRedirectUrl']);
-        }
-
-        Log::error('DANA_SNAP_FAILED: Gagal memproses pembayaran.', [
-            'response' => $result
-        ]);
-        return response()->json($result, $response->status());
+        return $response->json();
 
     } catch (\Exception $e) {
-        Log::error('DANA_SNAP_CONNECTION_ERROR: Kegagalan sistem/jaringan.', [
-            'message' => $e->getMessage()
-        ]);
-        return response()->json(['error' => 'Internal Connection Error'], 500);
+        Log::error('DANA_FATAL_ERROR: ' . $e->getMessage());
+        return response()->json(['error' => $e->getMessage()], 500);
     }
 }
-
     
 
     /**
