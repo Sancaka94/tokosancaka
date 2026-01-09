@@ -9,68 +9,33 @@ use Carbon\Carbon;
 
 class DanaSignatureService
 {
-    public function getAccessToken()
+    public function generateSignature($method, $path, $body, $timestamp, $accessToken)
 {
-    Log::info('DANA_AUTH: Memulai pengambilan Access Token B2B.');
+    Log::info('DANA_SIGN_GEN: Memulai pembuatan signature transaksi.');
 
-    if (Cache::has('dana_access_token')) {
-        Log::info('DANA_AUTH: Menggunakan token dari Cache.');
-        return Cache::get('dana_access_token');
+    // 1. Minify & Hash Body
+    if (is_array($body) || is_object($body)) {
+        $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    } else {
+        $jsonBody = $body;
     }
-
-    $timestamp = Carbon::now('Asia/Jakarta')->toIso8601String();
-    $path = '/v1.0/access-token/b2b.htm';
     
-    $partnerId = config('services.dana.x_partner_id'); // Ini adalah Client ID Anda
-    $stringToSign = $partnerId . "|" . $timestamp;
+    // Hash body dengan SHA256 lalu lowercase hex
+    $hashedBody = strtolower(hash('sha256', $jsonBody));
+
+    // 2. String to Sign sesuai Standar SNAP BI (Gunakan karakter | sebagai pemisah)
+    // FORMAT: HTTPMethod + "|" + RelativePath + "|" + AccessToken + "|" + HashedBody + "|" + Timestamp
+    $stringToSign = strtoupper($method) . "|" . $path . "|" . $accessToken . "|" . $hashedBody . "|" . $timestamp;
+
+    Log::info('DANA_SIGN_STS: String to Sign disusun.', ['sts' => $stringToSign]);
+
+    // 3. HMAC-SHA512 menggunakan Client Secret
+    $clientSecret = config('services.dana.client_secret');
     
-    try {
-        $signature = $this->generateAsymmetricSignature($stringToSign);
-    } catch (\Exception $e) {
-        Log::error('DANA_AUTH_SIGNATURE_FAILED: ' . $e->getMessage());
-        throw $e;
-    }
+    // Pastikan menggunakan raw binary (true) untuk hash_hmac sebelum di-base64
+    $signature = base64_encode(hash_hmac('sha512', $stringToSign, $clientSecret, true));
 
-    $baseUrl = config('services.dana.dana_env') === 'PRODUCTION' 
-               ? 'https://api.dana.id' 
-               : 'https://api.sandbox.dana.id';
-
-    try {
-        // PERBAIKAN: Tambahkan X-CLIENT-KEY di Header
-        $response = Http::withHeaders([
-            'X-TIMESTAMP'  => $timestamp,
-            'X-PARTNER-ID' => $partnerId,
-            'X-CLIENT-KEY' => $partnerId, // WAJIB ADA (Isinya sama dengan X-PARTNER-ID)
-            'X-SIGNATURE'  => $signature,
-            'Content-Type' => 'application/json',
-        ])->post($baseUrl . $path, [
-            'grantType' => 'client_credentials',
-            'additionalInfo' => (object)[]
-        ]);
-
-        $result = $response->json();
-
-        if ($response->successful() && isset($result['accessToken'])) {
-            Log::info('DANA_AUTH_SUCCESS: Token berhasil didapatkan.');
-            $expiry = ($result['expiresIn'] ?? 3600) - 300;
-            Cache::put('dana_access_token', $result['accessToken'], $expiry);
-            return $result['accessToken'];
-        }
-
-        Log::error('DANA_AUTH_FAILED: Respon DANA detail.', [
-            'result' => $result,
-            'sent_headers' => [
-                'X-PARTNER-ID' => $partnerId,
-                'X-CLIENT-KEY' => $partnerId,
-                'X-TIMESTAMP' => $timestamp
-            ]
-        ]);
-        throw new \Exception("DANA Auth Error: " . ($result['responseMessage'] ?? 'Unknown Error'));
-
-    } catch (\Exception $e) {
-        Log::error('DANA_AUTH_HTTP_ERROR: ' . $e->getMessage());
-        throw $e;
-    }
+    return $signature;
 }
 
     /**
