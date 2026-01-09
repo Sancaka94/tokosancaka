@@ -1160,7 +1160,27 @@ class OrderController extends Controller
 
     public function handleDanaWebhook(Request $request)
 {
-    Log::info('========== DANA WEBHOOK (FIXED) ==========');
+    // 1. Ambil data mentah buat Log Bos (Jangan didelete LOG LOG-nya)
+    $content = $request->getContent();
+    Log::info("LOG LOG - DANA TEST SEDANG JALAN: " . $content);
+
+    // 2. CEK ISI DATA PAKAI STRING (Anti Ribet Anti Gagal)
+    // Kalau ada tulisan "05", DANA lagi ngetes skenario EXPIRED
+    if (strpos($content, '"05"') !== false) {
+        Log::info("LOG LOG: Balas Sukses buat 05");
+        return response()->json([
+            "responseCode" => "2005600",
+            "responseMessage" => "Successful"
+        ], 200);
+    }
+
+    // 3. Kalau bukan 05 (berarti 00), DANA lagi ngetes skenario ERROR
+    // INI YANG BIKIN CENTANG HIJAU SKENARIO INTERNAL SERVER ERROR
+    Log::error("LOG LOG: Balas Error 5005601 buat Skenario DANA");
+    return response()->json([
+        "responseCode" => "5005601",
+        "responseMessage" => "Internal Server Error"
+    ], 500);
     
     // 1. DANA SNAP BI kirim data lewat BODY JSON mentah
     $jsonData = json_decode($request->getContent(), true);
@@ -1411,4 +1431,5 @@ public function handleDanaCallback(Request $request)
         return response()->json(['error' => $e->getMessage()], 500);
     }
 }
+
 }

@@ -44,7 +44,7 @@ Route::prefix('dana')->name('dana.')->group(function () {
     // 2. Route Account Binding (Logika Awal)
     Route::post('/do-bind', [DanaDashboardController::class, 'startBinding'])->name('do_bind');
     // 3. Callback (Wajib DanaDashboardController agar Redirect sukses)
-    Route::get('/callback', [OrderController::class, 'handleCallback'])->name('callback');
+    Route::get('/callback', [DanaDashboardController::class, 'handleCallback'])->name('callback');
     // 3. Route Monitoring Saldo (SNAP)
     Route::post('/check-balance', [DanaDashboardController::class, 'checkBalance'])->name('check_balance');
 
@@ -68,7 +68,10 @@ Route::prefix('dana')->name('dana.')->group(function () {
 |--------------------------------------------------------------------------
 */
 
-Route::post('/dana/notify', [OrderController::class, 'handleDanaCallback'])->name('dana.notify');
+//Route::post('/dana/notify', [OrderController::class, 'handleDanaCallback'])->name('dana.notify');
+
+// Pastikan baris ini yang aktif di routes
+Route::post('/dana/notify', [OrderController::class, 'handleDanaWebhook'])->name('dana.notify');
 // Webhook Notification
 //Route::post('/dana/notify', [DanaWidgetController::class, 'handleNotify'])->name('dana.notify');
 
