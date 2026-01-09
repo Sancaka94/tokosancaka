@@ -250,7 +250,7 @@
                             class="cursor-pointer border-2 rounded-xl p-2 flex flex-col items-center justify-center gap-1 transition relative overflow-hidden group h-20"
                             :class="paymentMethod === 'dana' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-100 bg-white hover:border-blue-200 hover:bg-slate-50'">
                             
-                            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/Logo_dan_id.png/640px-Logo_dan_id.png" 
+                            <img src="https://tokosancaka.com/storage/logo/dana.png" 
                                 alt="DANA" class="h-4 object-contain mb-1 transition-all group-hover:scale-110">
                             
                             <span class="text-[10px] font-bold text-center uppercase tracking-tighter">DANA</span>
