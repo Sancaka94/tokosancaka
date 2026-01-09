@@ -1263,46 +1263,48 @@ class OrderController extends Controller
         return view('orders.show', compact('order'));
     }
 
-    public function checkTransactionStatus($orderNumber)
+    public function checkTransactionStatus(Request $request, \App\Services\DanaSignatureService $danaService)
 {
-    Log::info('DANA_STATUS_CHECK: Memulai pengecekan status.', ['order_number' => $orderNumber]);
+    // Ambil orderNumber dari request (misal lewat input postman atau parameter)
+    $orderNumber = $request->input('order_number');
 
-    // 1. Ambil data order dari DB lu
+    Log::info('DANA_STATUS_CHECK_START: Memulai pengecekan status.', ['order' => $orderNumber]);
+
     $order = \App\Models\Order::where('order_number', $orderNumber)->first();
     if (!$order) {
-        Log::error('DANA_STATUS_ERROR: Order tidak ditemukan di database.', ['order' => $orderNumber]);
-        return false;
+        Log::error('DANA_STATUS_NOT_FOUND: Order tidak ada di DB.', ['order' => $orderNumber]);
+        return response()->json(['message' => 'Order not found'], 404);
     }
 
     $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String();
-    $path = '/v1.1/debit/status'; // Sesuaikan dengan endpoint DANA SNAP
+    $path = '/v1.1/debit/status'; 
     
-    // 2. Susun Body (Sesuai spek yang lu kirim)
+    // Body Inquiry Status SNAP BI
     $bodyArray = [
         "originalPartnerReferenceNo" => $order->order_number,
-        "originalReferenceNo"        => "", // Kosongkan jika belum punya ReferenceNo dari DANA
-        "serviceCode"                => "05", // 05 biasanya untuk H2H Debit / Redirect
+        "originalReferenceNo"        => "", 
+        "serviceCode"                => "05", 
         "transactionDate"            => $order->created_at->toIso8601String(),
         "amount" => [
             "value"    => number_format($order->final_price, 2, '.', ''),
             "currency" => "IDR"
         ],
         "merchantId"    => config('services.dana.merchant_id'),
-        "additionalInfo" => (object)[] // Kirim objek kosong sesuai spek
+        "additionalInfo" => (object)[] 
     ];
 
     $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
     try {
-        // 3. Generate Auth & Signature (Pake Service Lu)
-        $accessToken = $this->danaSignature->getAccessToken();
-        $signature = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
+        // PERBAIKAN: Gunakan $danaService (dari parameter method), bukan $this->danaSignature
+        $accessToken = $danaService->getAccessToken();
+        $signature = $danaService->generateSignature('POST', $path, $jsonBody, $timestamp);
 
-        Log::info('DANA_STATUS_SIGN_STS', [
-            'sts' => "POST:$path:" . strtolower(hash('sha256', $jsonBody)) . ":$timestamp"
+        Log::info('DANA_STATUS_SIGN_GENERATED', [
+            'order' => $orderNumber,
+            'signature' => $signature
         ]);
 
-        // 4. Eksekusi Request
         $baseUrl = config('services.dana.dana_env') === 'PRODUCTION' ? 'https://api.dana.id' : 'https://api.sandbox.dana.id';
         
         $response = \Illuminate\Support\Facades\Http::withHeaders([
@@ -1320,25 +1322,16 @@ class OrderController extends Controller
 
         $result = $response->json();
 
-        Log::info('DANA_STATUS_RESPONSE_RECEIVED', [
-            'http_status' => $response->status(),
-            'body'        => $result
+        Log::info('DANA_STATUS_RESPONSE', [
+            'status' => $response->status(),
+            'body'   => $result
         ]);
 
-        // 5. Interpretasi Status DANA
-        if ($response->successful() && isset($result['responseCode'])) {
-            // responseCode 2005500 = Success (DIBAYAR)
-            // responseCode 2005501 = Pending
-            // responseCode 4045500 = Not Found
-            return $result;
-        }
-
-        Log::error('DANA_STATUS_FAILED_API', $result);
-        return $result;
+        return response()->json($result);
 
     } catch (\Exception $e) {
-        Log::error('DANA_STATUS_EXCEPTION', ['msg' => $e->getMessage()]);
-        return null;
+        Log::error('DANA_STATUS_FATAL_ERROR', ['msg' => $e->getMessage()]);
+        return response()->json(['error' => $e->getMessage()], 500);
     }
 }
 }

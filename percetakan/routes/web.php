@@ -14,6 +14,12 @@ use Illuminate\Support\Facades\Artisan;
 use App\Http\Controllers\DanaWidgetController;
 use App\Http\Controllers\DanaDashboardController;
 use App\Http\Controllers\DanaResponseCodeController;
+use App\Http\Controllers\SystemLogController;
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('/system-logs', [SystemLogController::class, 'index'])->name('logs.index');
+    Route::delete('/system-logs/clear', [SystemLogController::class, 'clear'])->name('logs.clear');
+});
 
 Route::resource('dana_response_codes', DanaResponseCodeController::class);
 
