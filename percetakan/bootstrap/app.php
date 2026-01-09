@@ -17,7 +17,9 @@ return Application::configure(basePath: dirname(__DIR__))
         // Karena server luar (KiriminAja/Tripay/Doku) tidak memiliki token CSRF aplikasi kita.
         $middleware->validateCsrfTokens(except: [
             'api/kiriminaja/webhook', // Webhook KiriminAja
-            'dana/notify', // Whitelist route ini
+            //'dana/*',           // Membuka semua jalur DANA
+            'dana/notify',      // Spesifik notifikasi
+            'dana/callback',    // Spesifik callback
             'dana/pay',
             'dana/return',
             'dana/*', // Tambahkan ini
