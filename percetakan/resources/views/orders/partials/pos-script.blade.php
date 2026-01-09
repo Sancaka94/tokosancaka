@@ -344,6 +344,9 @@ addToCart(id, name, price, maxStock, weight = 0, image = null) {
             },
             
             async checkout() {
+                console.log("LOG: Memulai proses Checkout...");
+                console.log("LOG: Metode Pembayaran: " + this.paymentMethod);
+
                 if (this.customerType === 'guest' && this.deliveryType === 'shipping') {
                     if (!this.customerName || this.customerName.trim().length < 3) {
                         alert('❌ Mohon isi NAMA PENERIMA untuk keperluan pengiriman ekspedisi!');
@@ -391,6 +394,7 @@ addToCart(id, name, price, maxStock, weight = 0, image = null) {
                 }
 
                 this.isProcessing = true;
+                console.log("LOG: Mengirim data ke Server Sancaka...");
                 
                 let formData = new FormData();
                 formData.append('items', JSON.stringify(this.cart));
@@ -450,6 +454,7 @@ addToCart(id, name, price, maxStock, weight = 0, image = null) {
                     }
 
                     const result = await response.json();
+                    console.log("LOG: Response Server Diterima:", result);
 
                     if (result.status === 'success') {
                         console.log("LOG: Transaksi DB Berhasil.");
@@ -475,7 +480,7 @@ addToCart(id, name, price, maxStock, weight = 0, image = null) {
                         throw new Error(result.message);
                     }
                 } catch (error) {
-                    console.error(error);
+                    console.error("LOG ERROR:", error);
                     alert('❌ Gagal: ' + error.message);
                 } finally {
                     this.isProcessing = false;
