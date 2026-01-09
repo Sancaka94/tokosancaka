@@ -1291,8 +1291,12 @@ public function handleDanaCallback(Request $request)
             Log::warning("WEBHOOK STATUS LAIN: $statusRaw");
         }
 
-        return response()->json(['responseCode' => '200', 'responseMessage' => 'Success'], 200);
-    }
+        // UBAH RETURN MENJADI INI (Sesuai permintaan Test Scenario):
+    return response()->json([
+        'responseCode' => '2005600', 
+        'responseMessage' => 'Successful'
+    ], 200);
+}
 
     // =========================================================================
     // SET CALLBACK URL (Jalankan sekali saja via Postman/Browser)
