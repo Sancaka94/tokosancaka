@@ -55,6 +55,20 @@
             <span>Laporan Penjualan</span>
         </a>
 
+        {{-- [NEW] MENU INTEGRASI DANA --}}
+        <div class="mt-6 mb-2 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            Integrasi & Log
+        </div>
+
+        <a href="{{ route('dana.dashboard') }}" 
+           class="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors duration-200
+           {{ request()->routeIs('dana.dashboard') 
+             ? 'bg-blue-600 text-white shadow-md' 
+             : 'text-slate-300 hover:bg-slate-700 hover:text-white' }}">
+            <i class="fas fa-wallet w-5 text-center {{ request()->routeIs('dana.dashboard') ? 'text-white' : 'text-sky-400' }}"></i>
+            <span>DANA Dashboard</span>
+        </a>
+
         <div class="mt-6 mb-2 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
             Marketing & Relasi
         </div>
@@ -140,6 +154,14 @@
                         : 'text-slate-400 hover:text-white hover:bg-slate-700/50' }}">
                     <span>Edit Profile</span>
                 </a>
+
+                {{-- [NEW] MENU LIHAT LOG --}}
+                <a href="{{ url('storage/logs/laravel.log') }}" target="_blank"
+                class="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors duration-200 text-slate-300 hover:bg-slate-700 hover:text-white mt-1">
+                    <i class="fas fa-bug w-5 text-center text-red-400"></i>
+                    <span>Lihat Log System</span>
+                </a>
+
             </div>
         </div>
 
