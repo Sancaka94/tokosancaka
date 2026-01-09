@@ -209,7 +209,7 @@
                                 <option value="4">Dokumen / Berkas / Buku</option>
                                 <option value="5">Peralatan Rumah Tangga</option>
                                 <option value="6">Aksesoris</option>
-                                <option value="7">Lain-Lain</option>
+                                <option value="7" selected>Lain-Lain</option>
                                 <option value="8">Dokumen Berharga</option>
                                 <option value="9">Peralatan Kesehatan / Kecantikan / Kosmetik</option>
                                 <option value="10">Peralatan Olahraga & Hiburan</option>
@@ -551,64 +551,65 @@ document.addEventListener('DOMContentLoaded', function () {
     setupAddressSearch('sender');
     setupAddressSearch('receiver');
 
-    // --- LOGIKA OTOMATISASI & PROTEKSI ASURANSI (ADMIN - STRICT) ---
-const itemTypeSelect = document.getElementById('item_type');
-const asuransiSelect = document.getElementById('ansuransi');
+  document.addEventListener('DOMContentLoaded', function () {
+    const itemTypeSelect = document.getElementById('item_type');
+    const asuransiSelect = document.getElementById('ansuransi');
+    const wajibAsuransiIds = ['1', '3', '4', '8'];
 
-// ID WAJIB: 1(Elektronik), 3(Pecah Belah), 4(Dokumen), 8(Dokumen Berharga)
-const wajibAsuransiIds = ['1', '3', '4', '8'];
+    function handleAsuransiProtection(isInitial = false) {
+        const selectedType = itemTypeSelect.value;
+        const itemTypeName = itemTypeSelect.options[itemTypeSelect.selectedIndex].text;
 
-function handleAsuransiProtection() {
-    const selectedType = itemTypeSelect.value;
-    const itemTypeName = itemTypeSelect.options[itemTypeSelect.selectedIndex].text;
+        if (wajibAsuransiIds.includes(selectedType)) {
+            asuransiSelect.value = 'iya';
+            
+            // Tampilkan alert hanya jika user yang mengubah (bukan saat awal buka halaman)
+            if (!isInitial) {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Asuransi Wajib Aktif',
+                    text: `Kategori "${itemTypeName}" wajib menggunakan asuransi. Pilihan dikunci ke "Iya".`,
+                    confirmButtonText: 'Saya Mengerti',
+                    confirmButtonColor: '#d33'
+                });
+            }
 
-    if (wajibAsuransiIds.includes(selectedType)) {
-        // 1. Paksa set ke "Iya"
-        asuransiSelect.value = 'iya';
-        
-        // 2. Tampilkan Peringatan
-        Swal.fire({
-            icon: 'info',
-            title: 'Asuransi Wajib Aktif',
-            text: `Kategori "${itemTypeName}" wajib menggunakan asuransi demi keamanan. Pilihan asuransi telah dikunci ke "Iya".`,
-            confirmButtonText: 'Saya Mengerti',
-            confirmButtonColor: '#d33'
-        });
+            asuransiSelect.classList.add('bg-gray-200', 'cursor-not-allowed');
+            asuransiSelect.style.pointerEvents = 'none'; 
+        } else {
+            // Jika pilih Lain-Lain atau kategori opsional lainnya
+            asuransiSelect.classList.remove('bg-gray-200', 'cursor-not-allowed');
+            asuransiSelect.style.pointerEvents = 'auto';
+            // Jangan paksa ke 'tidak' jika ini adalah inisialisasi awal, 
+            // biarkan mengikuti value default dari HTML
+            if (!isInitial) {
+                asuransiSelect.value = 'tidak';
+            }
+        }
 
-        // 3. Kunci secara visual dan fungsional agar tidak bisa diganti
-        asuransiSelect.classList.add('bg-gray-200', 'cursor-not-allowed');
-        asuransiSelect.style.pointerEvents = 'none'; 
-    } else {
-        // Kembalikan ke normal untuk kategori opsional
-        asuransiSelect.classList.remove('bg-gray-200', 'cursor-not-allowed');
-        asuransiSelect.style.pointerEvents = 'auto';
+        // Reset ekspedisi jika terjadi perubahan (bukan saat awal buka)
+        if (!isInitial) {
+            document.getElementById('expedition').value = '';
+            document.getElementById('selected_expedition_display').value = '';
+        }
     }
 
-    // Reset pilihan ekspedisi karena komponen biaya asuransi berubah
-    document.getElementById('expedition').value = '';
-    document.getElementById('selected_expedition_display').value = '';
-    
-    if (typeof runValidityChecks === "function") {
-        runValidityChecks();
-    }
-}
+    // Jalankan pengecekan pertama kali saat halaman dibuka
+    handleAsuransiProtection(true);
 
-// Event saat jenis barang diubah
-itemTypeSelect.addEventListener('change', handleAsuransiProtection);
+    // Jalankan saat ada perubahan manual oleh user
+    itemTypeSelect.addEventListener('change', function() {
+        handleAsuransiProtection(false);
+    });
 
-// Tambahan: Cegah perubahan manual jika user mencoba klik paksa pada select asuransi
-asuransiSelect.addEventListener('mousedown', function(e) {
-    if (wajibAsuransiIds.includes(itemTypeSelect.value)) {
-        e.preventDefault();
-        this.blur();
-        Swal.fire({
-            icon: 'error',
-            title: 'Akses Ditolak',
-            text: 'Asuransi tidak dapat diubah (Wajib Iya) untuk kategori barang ini.',
-            timer: 2000,
-            showConfirmButton: false
-        });
-    }
+    // Mencegah klik pada asuransi jika kategori wajib terpilih
+    asuransiSelect.addEventListener('mousedown', function(e) {
+        if (wajibAsuransiIds.includes(itemTypeSelect.value)) {
+            e.preventDefault();
+            this.blur();
+            Swal.fire('Info', 'Asuransi wajib "Iya" untuk kategori ini.', 'info');
+        }
+    });
 });
 
     document.getElementById('selected_expedition_display').addEventListener('click', runCekOngkir);
