@@ -1227,6 +1227,10 @@ class OrderController extends Controller
     public function handleDanaCallback(Request $request)
     {
         Log::info("========== DANA WEBHOOK (OrderController) ==========");
+
+        // --- DEBUGGING UTAMA: LOG SEMUA ISI REQUEST ---
+        Log::info("FULL PAYLOAD:", $request->all()); 
+        Log::info("HEADERS:", $request->headers->all());
         
         // 1. Deteksi Format Payload (SNAP BI vs DANA V2 Notify)
         $payload = $request->all();
