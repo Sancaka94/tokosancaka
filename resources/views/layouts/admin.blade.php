@@ -39,6 +39,57 @@
 
         /* Teks Vertikal untuk tombol Monitor */
         .writing-vertical { writing-mode: vertical-rl; text-orientation: mixed; }
+
+        /* Preloader Styles */
+#preloader {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #ffffff; /* Latar belakang putih bersih */
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    transition: opacity 0.5s ease;
+}
+
+.loader-logo {
+    width: 120px; /* Ukuran logo Sancaka */
+    margin-bottom: 20px;
+    animation: pulse 2s infinite ease-in-out;
+}
+
+/* Animasi Loading Titik-Titik ala Shopee */
+.shopee-loader {
+    display: flex;
+    gap: 8px;
+}
+
+.shopee-loader div {
+    width: 12px;
+    height: 12px;
+    background-color: #ee4d2d; /* Warna orange kemerahan */
+    border-radius: 50%;
+    animation: shopee-bounce 1.4s infinite ease-in-out both;
+}
+
+.shopee-loader div:nth-child(1) { animation-delay: -0.32s; }
+.shopee-loader div:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes shopee-bounce {
+    0%, 80%, 100% { transform: scale(0); }
+    40% { transform: scale(1.0); }
+}
+
+@keyframes pulse {
+    0% { transform: scale(0.95); opacity: 0.8; }
+    50% { transform: scale(1); opacity: 1; }
+    100% { transform: scale(0.95); opacity: 0.8; }
+}
+
     </style>
     
     @stack('styles')
@@ -51,6 +102,15 @@
             {{ $error_message }}
         </div>
     @endif
+
+    <div id="preloader">
+        <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="Sancaka Logo" class="loader-logo">
+        <div class="shopee-loader">
+            <div></div>
+            <div></div>
+            <div></div>
+        </div>
+    </div>
 
     {{-- WRAPPER UTAMA --}}
     <div x-data="{ sidebarOpen: window.innerWidth > 1024 }"
