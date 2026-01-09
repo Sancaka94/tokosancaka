@@ -20,109 +20,115 @@ class DanaWidgetController extends Controller
 
   public function createPayment(Request $request)
 {
-    Log::info('DANA_H2H_START: Memulai request pembayaran final.');
+    \Illuminate\Support\Facades\Log::info('DANA_H2H_START: Memulai pembuatan order.');
 
-    $orderId = 'INV-' . time();
-    $timestamp = Carbon::now('Asia/Jakarta')->toIso8601String();
-    $totalValue = "10000.00"; 
-    $partnerId = config('services.dana.x_partner_id');
+    // 1. Setup Data menggunakan Config Baru
+    $orderId     = 'INV-' . time();
+    $returnUrl   = route('dana.return');
+    $timestamp   = \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String();
+    $expiryTime  = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP');
 
-    // Body Payload hasil audit DD (Lengkap & Sinkron)
+    \Illuminate\Support\Facades\Log::info('DANA_H2H_SETUP', [
+        'order_id' => $orderId,
+        'merchant_id' => config('services.dana.merchant_id')
+    ]);
+
+    // 2. Body "WINNING FORMULA" (Struktur yang kmrn jalan)
     $bodyArray = [
         "partnerReferenceNo" => $orderId,
-        "merchantId"         => $partnerId, // Disamakan dengan Partner ID sesuai hasil audit
-        "subMerchantId"      => "",
+        "merchantId" => config('services.dana.merchant_id'),
         "amount" => [
-            "value"    => $totalValue,
+            "value" => "10000.00",
             "currency" => "IDR"
         ],
-        "validUpTo" => Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP'),
+        "validUpTo" => $expiryTime,
         "urlParams" => [
-            ["url" => "https://tokosancaka.com/return", "type" => "PAY_RETURN", "isDeeplink" => "Y"],
-            ["url" => "https://tokosancaka.com/notify", "type" => "NOTIFICATION", "isDeeplink" => "Y"]
+            [
+                "url" => $returnUrl,
+                "type" => "PAY_RETURN",
+                "isDeeplink" => "Y"
+            ],
+            [
+                "url" => $returnUrl,
+                "type" => "NOTIFICATION",
+                "isDeeplink" => "Y"
+            ]
         ],
         "additionalInfo" => [
+            "mcc" => "5732", 
             "order" => [
-                "orderTitle"        => "Payment " . $orderId,
+                "orderTitle" => "Invoice " . $orderId,
                 "merchantTransType" => "01",
-                "scenario"          => "REDIRECT",
-                "buyer" => [
-                    "externalUserType" => "",
-                    "nickname"         => "Guest",
-                    "externalUserId"   => "",
-                    "userId"           => "12345"
-                ],
-                "goods" => [
-                    [
-                        "merchantGoodsId" => "G001",
-                        "description"     => "Product Description",
-                        "category"        => "Digital",
-                        "price"           => ["value" => $totalValue, "currency" => "IDR"],
-                        "quantity"        => "1"
-                    ]
-                ],
-                "extendInfo" => ""
+                "scenario" => "REDIRECT",
             ],
-            "mcc"     => "5732",
             "envInfo" => [
-                "sourcePlatform"    => "IPG",
-                "terminalType"      => "SYSTEM",
+                "sourcePlatform" => "IPG",
+                "terminalType" => "SYSTEM",
                 "orderTerminalType" => "WEB",
-                "clientIp"          => "127.0.0.1"
-            ],
-            "extendInfo" => ""
+            ]
         ]
     ];
 
-    // 1. JSON Encode - Dikunci agar Signature & Body identik
     $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-    $path = '/payment-gateway/v1.0/debit/payment-host-to-host.htm';
+    $method = 'POST';
+    $relativePath = '/payment-gateway/v1.0/debit/payment-host-to-host.htm'; 
+
+    // 3. Signature Generation
+    try {
+        // Ambil Access Token dulu (B2B) karena config baru mewajibkan Bearer Token
+        $accessToken = $this->danaSignature->getAccessToken();
+        
+        // Generate signature (Pastikan service Anda sudah update menggunakan RSA Asymmetric)
+        $signature = $this->danaSignature->generateSignature($method, $relativePath, $jsonBody, $timestamp);
+        
+        \Illuminate\Support\Facades\Log::info('DANA_H2H_SIGNATURE_SUCCESS');
+    } catch (\Exception $e) {
+        \Illuminate\Support\Facades\Log::error('DANA_H2H_SIGNATURE_FAILED', ['msg' => $e->getMessage()]);
+        return response()->json(['error' => 'Signature/Auth Error'], 500);
+    }
+
+    // 4. Hit API DANA Sandbox
+    $fullUrl = (config('services.dana.dana_env') == 'PRODUCTION' ? 'https://api.dana.id' : 'https://api.sandbox.dana.id') . $relativePath;
+    $externalId = \Illuminate\Support\Str::random(32);
 
     try {
-        // 2. Auth & Signature
-        $accessToken = $this->danaSignature->getAccessToken();
-        $signature = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
+        \Illuminate\Support\Facades\Log::info('DANA_H2H_SENDING_REQUEST', ['url' => $fullUrl]);
 
-        Log::info('DANA_H2H_PAYLOAD: Menyiapkan pengiriman.', [
-            'order_id' => $orderId,
-            'timestamp' => $timestamp
-        ]);
-
-        // 3. Eksekusi Request
         $response = \Illuminate\Support\Facades\Http::withHeaders([
-            'Authorization' => 'Bearer ' . $accessToken,
-            'Content-Type'  => 'application/json',
-            'X-TIMESTAMP'   => $timestamp,
-            'X-SIGNATURE'   => $signature,
-            'ORIGIN'        => config('services.dana.origin'),
-            'X-PARTNER-ID'  => $partnerId,
-            'X-EXTERNAL-ID' => \Illuminate\Support\Str::random(32),
-            'CHANNEL-ID'    => '95221'
+            'Authorization'  => 'Bearer ' . $accessToken, // Tambahkan Bearer sesuai spek baru
+            'X-PARTNER-ID'   => config('services.dana.x_partner_id'),
+            'X-EXTERNAL-ID'  => $externalId,
+            'X-TIMESTAMP'    => $timestamp,
+            'X-SIGNATURE'    => $signature,
+            'Content-Type'   => 'application/json',
+            'CHANNEL-ID'     => '95221', 
+            'ORIGIN'         => config('services.dana.origin'),
         ])
         ->withBody($jsonBody, 'application/json')
-        ->post('https://api.sandbox.dana.id' . $path);
+        ->post($fullUrl);
 
         $result = $response->json();
 
-        Log::info('DANA_H2H_RESPONSE: Respon diterima.', [
+        \Illuminate\Support\Facades\Log::info('DANA_H2H_RESPONSE_RECEIVED', [
             'status' => $response->status(),
-            'body'   => $result
+            'body' => $result
         ]);
 
-        // 4. Redirect jika sukses
-        if ($response->successful() && isset($result['webRedirectUrl'])) {
-            Log::info('DANA_H2H_SUCCESS: Redirecting to DANA.');
-            return redirect($result['webRedirectUrl']);
+        // 5. Redirect User ke DANA jika Sukses
+        if (isset($result['responseCode']) && $result['responseCode'] == '2005400') {
+            $redirectUrl = $result['webRedirectUrl'] ?? null;
+            if($redirectUrl) {
+                \Illuminate\Support\Facades\Log::info('DANA_H2H_REDIRECTING', ['url' => $redirectUrl]);
+                return redirect($redirectUrl);
+            }
         }
 
-        Log::error('DANA_H2H_FAILED: Gagal memproses order.', $result);
+        \Illuminate\Support\Facades\Log::error('DANA_H2H_FAILED_PROCESS', $result);
         return response()->json($result, $response->status());
 
     } catch (\Exception $e) {
-        Log::error('DANA_H2H_EXCEPTION: Kesalahan sistem.', [
-            'message' => $e->getMessage()
-        ]);
-        return response()->json(['error' => 'Internal Server Error'], 500);
+        \Illuminate\Support\Facades\Log::error('DANA_H2H_HTTP_ERROR', ['msg' => $e->getMessage()]);
+        return response()->json(['error' => $e->getMessage()], 500);
     }
 }
     
