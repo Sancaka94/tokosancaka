@@ -982,33 +982,58 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     // ----------------------------------------------------------------------------------
 
-    // --- LOGIKA OTOMATISASI ASURANSI BERDASARKAN JENIS BARANG (CUSTOMER) ---
-    const itemTypeSelect = document.getElementById('item_type');
-    const asuransiSelect = document.getElementById('ansuransi');
+    // --- LOGIKA OTOMATISASI & PERINGATAN ASURANSI (CUSTOMER) ---
+const itemTypeSelect = document.getElementById('item_type');
+const asuransiSelect = document.getElementById('ansuransi');
 
-    // ID Wajib Asuransi: 1(Elektronik), 3(Pecah Belah), 4(Dokumen), 8(Dokumen Berharga)
-    const wajibAsuransiIds = ['1', '3', '4', '8'];
+// Daftar ID WAJIB asuransi: 1(Elektronik), 3(Pecah Belah), 4(Dokumen), 8(Dokumen Berharga)
+const wajibAsuransiIds = ['1', '3', '4', '8'];
 
-    itemTypeSelect.addEventListener('change', function() {
-        const selectedValue = this.value;
+// 1. Logika saat Jenis Barang diubah
+itemTypeSelect.addEventListener('change', function() {
+    const selectedValue = this.value;
 
-        if (wajibAsuransiIds.includes(selectedValue)) {
-            // Jika kategori WAJIB: Set ke "Iya"
-            asuransiSelect.value = 'iya';
-            // Opsional: Beri info ke customer agar tidak bingung
-            console.log("Kategori barang ini wajib asuransi.");
-        } else {
-            // Jika kategori OPSIONAL: Default ke "Tidak"
-            asuransiSelect.value = 'tidak';
-        }
+    if (wajibAsuransiIds.includes(selectedValue)) {
+        asuransiSelect.value = 'iya';
+        console.log("Kategori wajib asuransi: Otomatis memilih 'Iya'");
+    } else {
+        asuransiSelect.value = 'tidak';
+    }
+    
+    // Reset ekspedisi karena biaya asuransi berubah
+    document.getElementById('expedition').value = '';
+    document.getElementById('selected_expedition_display').value = '';
+    document.getElementById('selected_expedition_display').placeholder = 'Asuransi berubah, klik untuk cek ulang';
+});
 
-        // OTOMATIS RESET EKSPEDISI
-        // Ini penting karena komponen biaya berubah, customer harus klik "Cek Ongkir" lagi
-        document.getElementById('expedition').value = '';
-        document.getElementById('selected_expedition_display').value = '';
-        document.getElementById('selected_expedition_display').placeholder = 'Layanan asuransi berubah, klik untuk cek ulang';
-    });
-    // ----------------------------------------------------------------------
+// 2. Logika Peringatan saat status Asuransi diubah manual ke "Tidak"
+asuransiSelect.addEventListener('change', function() {
+    const selectedType = itemTypeSelect.value;
+    const itemTypeName = itemTypeSelect.options[itemTypeSelect.selectedIndex].text;
+
+    // Jika barang termasuk kategori wajib tapi user mencoba pilih "Tidak"
+    if (wajibAsuransiIds.includes(selectedType) && this.value === 'tidak') {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Peringatan Keamanan',
+            text: `Kategori "${itemTypeName}" WAJIB menggunakan asuransi untuk perlindungan barang Anda.`,
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Tetap Tanpa Asuransi',
+            cancelButtonText: 'Gunakan Asuransi (Iya)'
+        }).then((result) => {
+            if (result.isDismissed) {
+                // Jika user klik batal atau menutup modal, kembalikan ke "Iya"
+                this.value = 'iya';
+            }
+        });
+    }
+
+    // Setiap perubahan asuransi wajib reset pilihan ekspedisi
+    document.getElementById('expedition').value = '';
+    document.getElementById('selected_expedition_display').value = '';
+});
 
     // --- INISIALISASI & EVENT LISTENERS ---
     setupContactSearch('sender');
