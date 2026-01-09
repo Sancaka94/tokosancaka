@@ -5,53 +5,68 @@ namespace App\Services;
 class DanaSignatureService
 {
     /**
-     * Generate X-SIGNATURE sesuai standar SNAP / Widget DANA
+     * Mendapatkan Access Token B2B (Bearer Token)
      */
-    public function generateSignature($method, $relativePath, $body, $timestamp)
+    public function getAccessToken()
     {
-        // 1. Load Private Key Path (Menggunakan Path Absolut dari config)
-        $privateKeyPath = config('services.dana.private_key_path');
+        Log::info('DANA_AUTH: Memulai pengambilan Access Token B2B.');
+
+        // Cek Cache agar tidak request berulang kali (Token biasanya valid 1-2 jam)
+        if (Cache::has('dana_access_token')) {
+            Log::info('DANA_AUTH: Menggunakan token dari Cache.');
+            return Cache::get('dana_access_token');
+        }
+
+        $timestamp = Carbon::now('Asia/Jakarta')->toIso8601String();
+        $path = '/v1.0/access-token/b2b.htm';
         
-        // Cek keberadaan file
-        if (!file_exists($privateKeyPath)) {
-            throw new \Exception("Private Key tidak ditemukan di: " . $privateKeyPath);
-        }
+        // 1. Membuat Signature Auth (Asymmetric Signature)
+        // Format: X-PARTNER-ID + "|" + X-TIMESTAMP
+        $stringToSign = config('services.dana.x_partner_id') . "|" . $timestamp;
         
-        // Baca isi file
-        $privateKeyContent = file_get_contents($privateKeyPath);
-
-        // Convert String menjadi OpenSSL Resource
-        $privateKey = openssl_pkey_get_private($privateKeyContent);
-        if (!$privateKey) {
-            throw new \Exception("Format Private Key INVALID. Cek isi file .pem Anda.");
+        try {
+            $signature = $this->generateAsymmetricSignature($stringToSign);
+            Log::info('DANA_AUTH_SIGNATURE: Signature Auth berhasil dibuat.');
+        } catch (\Exception $e) {
+            Log::error('DANA_AUTH_SIGNATURE_FAILED: ' . $e->getMessage());
+            throw $e;
         }
 
-        // 2. Minify Body (KUNCI PERBAIKAN DISINI)
-        // Kita harus memastikan string yang di-hash SAMA PERSIS dengan string yang dikirim via HTTP
-        if (is_string($body)) {
-            // Jika Controller sudah mengirim JSON String mentah, pakai langsung.
-            // Ini mencegah double-encoding (contoh: "{"key"..."} menjadi "{\"key\"...")
-            $minifiedBody = $body;
-        } else {
-            // Jika masih Array, encode dengan standar DANA (Tanpa escape slash)
-            $minifiedBody = empty($body) ? '' : json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $baseUrl = config('services.dana.dana_env') === 'PRODUCTION' 
+                   ? 'https://api.dana.id' 
+                   : 'https://api.sandbox.dana.id';
+
+        // 2. Request Token ke DANA
+        try {
+            $response = Http::withHeaders([
+                'X-TIMESTAMP'  => $timestamp,
+                'X-PARTNER-ID' => config('services.dana.x_partner_id'),
+                'X-SIGNATURE'  => $signature,
+                'Content-Type' => 'application/json',
+            ])->post($baseUrl . $path, [
+                'grantType' => 'client_credentials',
+                'additionalInfo' => (object)[]
+            ]);
+
+            $result = $response->json();
+
+            if ($response->successful() && isset($result['accessToken'])) {
+                Log::info('DANA_AUTH_SUCCESS: Token berhasil didapatkan.');
+                
+                // Simpan di cache (dikurangi 5 menit untuk safety margin)
+                $expiry = ($result['expiresIn'] ?? 3600) - 300;
+                Cache::put('dana_access_token', $result['accessToken'], $expiry);
+
+                return $result['accessToken'];
+            }
+
+            Log::error('DANA_AUTH_FAILED: Respon DANA tidak memberikan token.', $result);
+            throw new \Exception("DANA Auth Error: " . ($result['message'] ?? 'Unknown Error'));
+
+        } catch (\Exception $e) {
+            Log::error('DANA_AUTH_HTTP_ERROR: ' . $e->getMessage());
+            throw $e;
         }
-
-        // 3. Hash Body (SHA-256 -> Hex -> Lowercase)
-        $hashedBody = strtolower(hash('sha256', $minifiedBody));
-
-        // 4. Compose String to Sign
-        // Format: METHOD:URL:HASH:TIMESTAMP
-        $stringToSign = strtoupper($method) . ":" . $relativePath . ":" . $hashedBody . ":" . $timestamp;
-
-        // 5. Sign dengan RSA-2048
-        $signature = '';
-        if (!openssl_sign($stringToSign, $signature, $privateKey, OPENSSL_ALGO_SHA256)) {
-            throw new \Exception("Gagal melakukan signing OpenSSL: " . openssl_error_string());
-        }
-
-        // 6. Base64 Encode hasilnya
-        return base64_encode($signature);
     }
 
     /**
