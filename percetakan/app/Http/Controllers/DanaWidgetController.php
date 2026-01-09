@@ -84,7 +84,7 @@ class DanaWidgetController extends Controller
 
         try {
             $response = \Illuminate\Support\Facades\Http::withHeaders([
-                'X-PARTNER-ID' => config('services.dana.client_id'),
+                'X-PARTNER-ID' => config('services.dana.x_partner_id'),
                 'X-EXTERNAL-ID' => $externalId,
                 'X-TIMESTAMP'  => $timestamp,
                 'X-SIGNATURE'  => $signature,
@@ -136,7 +136,7 @@ class DanaWidgetController extends Controller
             $signature = $this->danaSignature->generateSignature($method, $relativePath, $body, $timestamp);
 
             $response = Http::withHeaders([
-                'X-PARTNER-ID' => config('services.dana.client_id'),
+                'X-PARTNER-ID' => config('services.dana.x_partner_id'),
                 'X-EXTERNAL-ID' => Str::random(32),
                 'X-TIMESTAMP'  => $timestamp,
                 'X-SIGNATURE'  => $signature,
