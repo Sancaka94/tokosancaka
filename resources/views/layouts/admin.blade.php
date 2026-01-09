@@ -53,7 +53,8 @@
     @endif
 
     {{-- WRAPPER UTAMA --}}
-    <div x-data="{ sidebarOpen: window.innerWidth > 1024 }" 
+    <div x-data="{ sidebarOpen: window.innerWidth > 1024 }"
+         x-cloak 
          @resize.window="sidebarOpen = window.innerWidth > 1024" 
          class="flex h-screen w-full bg-gray-100">
          
