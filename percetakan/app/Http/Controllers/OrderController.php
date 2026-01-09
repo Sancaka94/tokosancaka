@@ -747,7 +747,7 @@ class OrderController extends Controller
                                     "isDeeplink" => "Y"
                                 ],
                                 [
-                                    "url" => route('dana.return'),
+                                    "url" => route('dana.notify'),
                                     "type" => "NOTIFICATION",
                                     "isDeeplink" => "Y"
                                 ]
