@@ -917,7 +917,8 @@ class OrderController extends Controller
                 'message'        => 'Transaksi Berhasil!',
                 'invoice'        => $order->order_number,
                 'order_id'       => $order->id,
-                'payment_url'    => $order->payment_url,
+                //'payment_url'    => $order->payment_url,
+                'payment_url'    => $paymentUrl, // <--- PASTIKAN INI TERKIRIM
                 'change_amount'  => $changeAmount,
                 'payment_method' => $metodeBayarFix 
             ]);

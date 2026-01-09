@@ -459,16 +459,12 @@ addToCart(id, name, price, maxStock, weight = 0, image = null) {
                     if (result.status === 'success') {
                         console.log("LOG: Transaksi DB Berhasil.");
                         // LOGIKA REDIRECT DANA / PAYMENT GATEWAY
-                    if (result.payment_url) {
-                        console.log("LOG: Redirecting User ke: " + result.payment_url);
-                        
-                        // Gunakan alert atau sweetalert jika ada
-                        alert("✅ Pesanan dibuat! Anda akan dialihkan ke halaman DANA.");
-                        
-                        // Redirect di tab yang sama agar flow user tidak terputus
-                        window.location.href = result.payment_url;
-                        return;
-                    }
+                    // INI KUNCINYA: Jika dapet payment_url, langsung lari ke DANA
+                        if (result.payment_url) {
+                            console.log("LOG: Redirecting ke DANA...");
+                            window.location.href = result.payment_url; // Ganti window.open jadi ini biar lancar
+                            return;
+                        }
                         this.showPaymentModal = false;
                         this.customerNote = ''; 
                         let msg = `✅ Transaksi Berhasil!\nInvoice: ${result.invoice}`;
