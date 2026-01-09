@@ -1178,7 +1178,7 @@ class OrderController extends Controller
         "responseCode" => "5005601",
         "responseMessage" => "Internal Server Error"
     ], 500);
-}
+
     // --- [AKHIR LOGIKA TEST] ---
     
     // 1. DANA SNAP BI kirim data lewat BODY JSON mentah
