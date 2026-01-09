@@ -68,7 +68,9 @@ Route::prefix('dana')->name('dana.')->group(function () {
 |--------------------------------------------------------------------------
 */
 
-Route::post('/dana/notify', [OrderController::class, 'handleDanaCallback'])->name('dana.notify');
+//Route::post('/dana/notify', [OrderController::class, 'handleDanaCallback'])->name('dana.notify');
+
+Route::post('/dana/notify', [OrderController::class, 'handleDanaWebhook']);
 // Webhook Notification
 //Route::post('/dana/notify', [DanaWidgetController::class, 'handleNotify'])->name('dana.notify');
 
