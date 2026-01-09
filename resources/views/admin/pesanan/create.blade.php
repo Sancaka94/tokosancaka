@@ -551,34 +551,63 @@ document.addEventListener('DOMContentLoaded', function () {
     setupAddressSearch('sender');
     setupAddressSearch('receiver');
 
-    // --- LOGIKA OTOMATISASI ASURANSI BERDASARKAN JENIS BARANG ---
+    // --- LOGIKA OTOMATISASI & PROTEKSI ASURANSI (ADMIN - STRICT) ---
 const itemTypeSelect = document.getElementById('item_type');
 const asuransiSelect = document.getElementById('ansuransi');
 
-// Sesuai gambar: 1(Elektronik), 3(Pecah Belah), 4(Dokumen), 8(Dokumen Berharga) adalah WAJIB
+// ID WAJIB: 1(Elektronik), 3(Pecah Belah), 4(Dokumen), 8(Dokumen Berharga)
 const wajibAsuransiIds = ['1', '3', '4', '8'];
 
-itemTypeSelect.addEventListener('change', function() {
-    const selectedValue = this.value;
+function handleAsuransiProtection() {
+    const selectedType = itemTypeSelect.value;
+    const itemTypeName = itemTypeSelect.options[itemTypeSelect.selectedIndex].text;
 
-    if (wajibAsuransiIds.includes(selectedValue)) {
-        // Jika masuk kategori WAJIB
+    if (wajibAsuransiIds.includes(selectedType)) {
+        // 1. Paksa set ke "Iya"
         asuransiSelect.value = 'iya';
-        // Opsional: Jika ingin mengunci pilihan agar admin tidak bisa ubah ke 'tidak'
-        // asuransiSelect.options[0].disabled = true; 
+        
+        // 2. Tampilkan Peringatan
+        Swal.fire({
+            icon: 'info',
+            title: 'Asuransi Wajib Aktif',
+            text: `Kategori "${itemTypeName}" wajib menggunakan asuransi demi keamanan. Pilihan asuransi telah dikunci ke "Iya".`,
+            confirmButtonText: 'Saya Mengerti',
+            confirmButtonColor: '#d33'
+        });
+
+        // 3. Kunci secara visual dan fungsional agar tidak bisa diganti
+        asuransiSelect.classList.add('bg-gray-200', 'cursor-not-allowed');
+        asuransiSelect.style.pointerEvents = 'none'; 
     } else {
-        // Jika kategori OPSIONAL (Default tidak asuransi)
-        asuransiSelect.value = 'tidak';
-        // asuransiSelect.options[0].disabled = false;
+        // Kembalikan ke normal untuk kategori opsional
+        asuransiSelect.classList.remove('bg-gray-200', 'cursor-not-allowed');
+        asuransiSelect.style.pointerEvents = 'auto';
     }
 
-    // PENTING: Reset pilihan ekspedisi karena asuransi merubah komponen biaya
+    // Reset pilihan ekspedisi karena komponen biaya asuransi berubah
     document.getElementById('expedition').value = '';
     document.getElementById('selected_expedition_display').value = '';
     
-    // Jalankan validasi tombol
     if (typeof runValidityChecks === "function") {
         runValidityChecks();
+    }
+}
+
+// Event saat jenis barang diubah
+itemTypeSelect.addEventListener('change', handleAsuransiProtection);
+
+// Tambahan: Cegah perubahan manual jika user mencoba klik paksa pada select asuransi
+asuransiSelect.addEventListener('mousedown', function(e) {
+    if (wajibAsuransiIds.includes(itemTypeSelect.value)) {
+        e.preventDefault();
+        this.blur();
+        Swal.fire({
+            icon: 'error',
+            title: 'Akses Ditolak',
+            text: 'Asuransi tidak dapat diubah (Wajib Iya) untuk kategori barang ini.',
+            timer: 2000,
+            showConfirmButton: false
+        });
     }
 });
 
