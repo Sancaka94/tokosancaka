@@ -35,7 +35,8 @@
             tripayChannels: [],     
             isLoadingChannels: false,
             cashAmount: '',         
-            affiliatePin: '',       
+            affiliatePin: '',
+            danaRedirectUrl: '', // LOG: Simpan URL redirect DANA di sini       
 
             // --- 5. PENGIRIMAN (KIRIMINAJA) ---
             deliveryType: 'pickup', 
@@ -372,6 +373,11 @@ addToCart(id, name, price, maxStock, weight = 0, image = null) {
                     if (this.getSelectedAffiliateBalance() < this.grandTotal) { alert('❌ Saldo Profit kurang!'); return; }
                     if (!this.affiliatePin || this.affiliatePin.length < 4) { alert('❌ Masukkan PIN Keamanan!'); return; }
                 }
+                else if (this.paymentMethod === 'dana') {
+                console.log("LOG: Persiapan pengalihan ke DANA Gateway...");
+                // DANA tidak butuh validasi saldo di sisi client karena diproses di gateway
+                }
+
 
                 if (this.deliveryType === 'shipping') {
                     if (!this.destinationDistrictId) {
@@ -446,6 +452,18 @@ addToCart(id, name, price, maxStock, weight = 0, image = null) {
                     const result = await response.json();
 
                     if (result.status === 'success') {
+                        console.log("LOG: Transaksi DB Berhasil.");
+                        // LOGIKA REDIRECT DANA / PAYMENT GATEWAY
+                    if (result.payment_url) {
+                        console.log("LOG: Redirecting User ke: " + result.payment_url);
+                        
+                        // Gunakan alert atau sweetalert jika ada
+                        alert("✅ Pesanan dibuat! Anda akan dialihkan ke halaman DANA.");
+                        
+                        // Redirect di tab yang sama agar flow user tidak terputus
+                        window.location.href = result.payment_url;
+                        return;
+                    }
                         this.showPaymentModal = false;
                         this.customerNote = ''; 
                         let msg = `✅ Transaksi Berhasil!\nInvoice: ${result.invoice}`;
