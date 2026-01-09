@@ -533,5 +533,15 @@
         if(overlay) overlay.addEventListener('click', toggleSidebar);
     });
 </script>
+<script>
+    // Menghilangkan preloader saat semua elemen selesai dimuat
+    window.addEventListener('load', function() {
+        const preloader = document.getElementById('preloader');
+        setTimeout(() => {
+            preloader.style.opacity = '0';
+            setTimeout(() => { preloader.style.display = 'none'; }, 500);
+        }, 300);
+    });
+</script>
 </body>
 </html>
