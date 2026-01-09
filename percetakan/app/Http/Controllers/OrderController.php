@@ -1161,6 +1161,15 @@ class OrderController extends Controller
     public function handleDanaWebhook(Request $request)
 {
     Log::info('========== DANA WEBHOOK (FIXED) ==========');
+
+    // --- [BARIS TITIPAN UNTUK TEST DANA - BOLEH DIHAPUS NANTI] ---
+    // Kode ini sengaja ditaruh di atas agar DANA langsung dapat respon 500
+    Log::error("LOG LOG: Sedang menjalankan simulasi 5005601 untuk portal DANA.");
+    return response()->json([
+        "responseCode" => "5005601",
+        "responseMessage" => "Internal Server Error"
+    ], 500); 
+    // --- [BATAS BARIS TITIPAN] ---
     
     // 1. DANA SNAP BI kirim data lewat BODY JSON mentah
     $jsonData = json_decode($request->getContent(), true);
