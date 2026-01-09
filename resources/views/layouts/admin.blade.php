@@ -189,7 +189,7 @@
 
                 const notification = new Notification(title, {
                     body: message,
-                    icon: 'https://tokosancaka.biz.id/storage/uploads/sancaka.png' // Icon notifikasi
+                    icon: 'https://tokosancaka.com/storage/uploads/sancaka.png' // Icon notifikasi
                 });
 
                 if (url) {
