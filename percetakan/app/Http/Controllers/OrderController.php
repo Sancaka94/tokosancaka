@@ -1164,32 +1164,32 @@ class OrderController extends Controller
     $jsonData = json_decode($request->getContent(), true);
     Log::info("LOG LOG: Menerima notifikasi dari DANA portal.");
 
-    // 2. Cek apakah datanya berbentuk array (bungkus [0])
-    $data = isset($jsonData[0]) ? $jsonData[0] : $jsonData;
-
-    // 3. Ambil statusnya dari DANA
-    $statusDANA = $data['latestTransactionStatus'] ?? null;
-
-    // --- [MULAI SKENARIO TEST - URUTAN DIPERBAIKI] ---
+    // --- [LOGIKA SMART UNTUK TEST DANA] ---
     
-    // SKENARIO 1: Transaction Closed/Expired (DANA kirim status 05)
+    // Karena DANA kirim pakai [ {data} ], kita harus ambil isi di dalam kurung siku pertama [0]
+    $dataTest = isset($jsonData[0]) ? $jsonData[0] : $jsonData;
+    
+    // Ambil status dari data yang sudah diekstrak
+    $statusDANA = $dataTest['latestTransactionStatus'] ?? null;
+
+    // SKENARIO 1: Jika status 05 (Expired/Closed)
     if ($statusDANA == '05') {
-        Log::info("LOG LOG: Skenario EXPIRED (05) terdeteksi. Mengirim 2005600.");
+        Log::info("LOG LOG: Skenario EXPIRED (05) TERDETEKSI. Mengirim respon 200.");
         return response()->json([
             "responseCode" => "2005600",
             "responseMessage" => "Successful"
         ], 200); 
     }
 
-    // SKENARIO 2: Internal Server Error (Untuk transaksi selain status 05)
-    // Ini untuk menyelesaikan tes "Internal Server Error Response from Partner"
+    // SKENARIO 2: Jika status lainnya (untuk tes Internal Server Error)
+    // Ini akan menangkap status '00' atau lainnya dan membalas 500
     Log::error("LOG LOG: Simulasi Internal Server Error (5005601) dikirim.");
     return response()->json([
         "responseCode" => "5005601",
         "responseMessage" => "Internal Server Error"
     ], 500);
 
-    // --- [AKHIR SKENARIO TEST] ---
+    // --- [AKHIR LOGIKA TEST] ---
     
     // 1. DANA SNAP BI kirim data lewat BODY JSON mentah
     $jsonData = json_decode($request->getContent(), true);
