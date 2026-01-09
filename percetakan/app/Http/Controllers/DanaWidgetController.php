@@ -24,63 +24,67 @@ class DanaWidgetController extends Controller
 
     $orderId = 'INV-' . time();
     $timestamp = Carbon::now('Asia/Jakarta')->toIso8601String();
-    $amountValue = "10000.00"; // Contoh nilai, pastikan 2 desimal
+    // Pastikan variabel ini konsisten
+$totalValue = "10000.00"; 
 
-    // BODY PAYLOAD - Disesuaikan agar TIDAK General Error
-    $bodyArray = [
-        "partnerReferenceNo" => $orderId,
-        "merchantId"         => config('services.dana.merchant_id'),
-        "subMerchantId"      => "",
-        "amount" => [
-            "value"    => $amountValue,
-            "currency" => "IDR"
+$bodyArray = [
+    "partnerReferenceNo" => $orderId,
+    "merchantId"         => config('services.dana.merchant_id'),
+    "subMerchantId"      => "", // Jika tidak ada, kosongkan string
+    "amount" => [
+        "value"    => $totalValue,
+        "currency" => "IDR"
+    ],
+    "externalStoreId"    => config('services.dana.external_shop_id') ?? "",
+    "validUpTo"          => Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP'),
+    "disabledPayMethods" => "CREDIT_CARD",
+    "urlParams" => [
+        [
+            "url" => route('dana.return'),
+            "type" => "PAY_RETURN",
+            "isDeeplink" => "Y"
         ],
-        "externalStoreId"    => config('services.dana.external_shop_id'),
-        "validUpTo"          => Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP'),
-        "disabledPayMethods" => "CREDIT_CARD",
-        "urlParams" => [
-            [
-                "url" => route('dana.return'),
-                "type" => "PAY_RETURN",
-                "isDeeplink" => "Y"
-            ],
-            [
-                "url" => route('dana.return'),
-                "type" => "NOTIFICATION",
-                "isDeeplink" => "Y"
-            ]
-        ],
-        "additionalInfo" => [
-            "order" => [
-                "merchantTransType" => "01",
-                "orderTitle"        => "Payment Gateway Order",
-                "scenario"          => "REDIRECT",
-                "goods" => [
-                    [
-                        "unit"            => "Pcs",
-                        "category"        => "Digital",
-                        "price"           => ["value" => $amountValue, "currency" => "IDR"],
-                        "merchantGoodsId" => "PROD-001",
-                        "description"     => "Product Description",
-                        "quantity"        => "1", // WAJIB ADA STRING ANGKA
-                        "snapshotUrl"     => "http://snap.url.com",
-                        "extendInfo"      => ""
-                    ]
-                ],
-                "shippingInfo" => [], // Biarkan kosong jika tidak perlu
-                "extendInfo"   => ""
-            ],
-            "mcc"     => "5732",
-            "envInfo" => [
-                "sourcePlatform"    => "IPG",
-                "terminalType"      => "SYSTEM",
-                "orderTerminalType" => "WEB",
-                "clientIp"          => $request->ip(),
-                "osType"            => "Windows.PC"
-            ],
-            "extendInfo" => "" // Jika diisi harus valid escaped JSON string
+        [
+            "url" => route('dana.return'),
+            "type" => "NOTIFICATION",
+            "isDeeplink" => "Y"
         ]
-    ];
+    ],
+    "additionalInfo" => [
+        "order" => [
+            "merchantTransType" => "01", // Ubah dari 'type' ke '01'
+            "orderTitle"        => "Payment Gateway Order",
+            "scenario"          => "REDIRECT",
+            "goods" => [
+                [
+                    "unit"            => "Kg",
+                    "category"        => "travelling/subway",
+                    "price"           => [
+                        "value"    => $totalValue, // Harus sama dengan amount.value jika qty = 1
+                        "currency" => "IDR"
+                    ],
+                    "merchantShippingId" => "564314314574327545",
+                    "merchantGoodsId"    => "24525635625623",
+                    "description"        => "Women Summer Dress New White Lace",
+                    "snapshotUrl"        => "http://snap.url.com",
+                    "quantity"           => "1", // JANGAN KOSONG ("")
+                    "extendInfo"         => ""
+                ]
+            ],
+            "shippingInfo" => [], // Jika tidak perlu, biarkan array kosong
+            "extendInfo"   => ""
+        ],
+        "mcc"     => "5732",
+        "envInfo" => [
+            "sourcePlatform"    => "IPG",
+            "terminalType"      => "SYSTEM",
+            "orderTerminalType" => "WEB",
+            "clientIp"          => $request->ip(),
+            "osType"            => "Windows.PC"
+        ],
+        "extendInfo" => "" 
+    ]
+];
 
     $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     $relativePath = '/payment-gateway/v1.0/debit/payment-host-to-host.htm';
