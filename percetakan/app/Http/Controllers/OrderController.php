@@ -1160,33 +1160,25 @@ class OrderController extends Controller
 
     public function handleDanaWebhook(Request $request)
 {
-    // 1. AMBIL DATA MENTAH DULU
-    $content = $request->getContent();
-    $jsonData = json_decode($content, true);
-    Log::info("LOG LOG: Menerima notifikasi dari DANA portal.");
+    $rawString = $request->getContent();
+    Log::info("LOG LOG: DANA Portal memanggil Webhook. Isi: " . $rawString);
 
-    // --- [LOGIKA TEST DANA - TARUH DI ATAS AGAR CEPAT RESPON] ---
-    $dataTest = isset($jsonData[0]) ? $jsonData[0] : $jsonData;
-    $statusDANA = $dataTest['latestTransactionStatus'] ?? $dataTest['transactionStatus'] ?? null;
-
-    // A. Skenario EXPIRED (Status 05) -> Harus balas 200
-    if ($statusDANA == '05') {
-        Log::info("LOG LOG: Skenario 05 Terdeteksi. Mengirim 2005600.");
+    // SKENARIO EXPIRED (Cari angka 05 di dalam string mentah)
+    if (strpos($rawString, '"05"') !== false) {
+        Log::info("LOG LOG: Mengirim respon SUKSES (2005600) untuk status 05.");
         return response()->json([
             "responseCode" => "2005600",
             "responseMessage" => "Successful"
         ], 200);
     }
 
-    // B. Skenario SIMULASI ERROR -> Harus balas 500
-    // Aktifkan ini hanya jika Anda sedang tes "Internal Server Error" di portal DANA
-    if ($statusDANA == '00') { 
-        Log::error("LOG LOG: Skenario Simulasi Error dikirim.");
-        return response()->json([
-            "responseCode" => "5005601",
-            "responseMessage" => "Internal Server Error"
-        ], 500);
-    }
+    // SKENARIO ERROR (Default untuk tes Internal Server Error)
+    Log::error("LOG LOG: Mengirim respon ERROR (5005601) untuk tes Internal Server Error.");
+    return response()->json([
+        "responseCode" => "5005601",
+        "responseMessage" => "Internal Server Error"
+    ], 500);
+}
     // --- [AKHIR LOGIKA TEST] ---
     
     // 1. DANA SNAP BI kirim data lewat BODY JSON mentah
