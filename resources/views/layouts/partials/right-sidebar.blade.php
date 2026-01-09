@@ -6,10 +6,11 @@
             <div x-data="{ activityOpen: false }" 
                  class="fixed inset-y-0 right-0 z-[80] flex items-center justify-end h-screen pointer-events-none">
                 
-                {{-- TRIGGER TOMBOL (Posisi agak ke atas: top-[40%]) --}}
-                <div @mouseenter="activityOpen = true"
-                     class="absolute right-0 top-[33%] transform -translate-y-1/2 pointer-events-auto bg-blue-600 text-white py-4 px-1 rounded-l-xl shadow-lg cursor-pointer transition-all duration-300 hover:bg-blue-700 hover:pr-3 z-[81]"
-                     :class="activityOpen ? 'translate-x-full opacity-0' : 'translate-x-0 opacity-100'">
+                {{-- TRIGGER TOMBOL (Posisi AKTIVITAS) --}}
+                <div @mouseenter="activityOpen = true; monitorOpen = false"
+                    class="fixed right-0 top-[33%] transform -translate-y-1/2 pointer-events-auto bg-blue-600 text-white py-4 px-1 rounded-l-xl shadow-lg cursor-pointer transition-all duration-300 hover:bg-blue-700 hover:pr-3 z-[90]"
+                    {{-- Tombol tetap muncul (opacity-100) meskipun panel sedang terbuka --}}
+                    :class="activityOpen ? 'translate-x-0 opacity-100' : 'translate-x-0 opacity-100'">
                     <div class="flex flex-col items-center gap-2">
                         <i class="fas fa-history animate-pulse text-[10px]"></i>
                         <span class="text-[10px] font-bold writing-vertical tracking-widest" style="writing-mode: vertical-rl; text-orientation: mixed;">AKTIVITAS</span>
@@ -107,10 +108,11 @@
             <div x-data="{ monitorOpen: false }" 
                  class="fixed inset-y-0 right-0 z-[70] flex items-center justify-end h-screen pointer-events-none">
                  
-                {{-- TRIGGER TOMBOL (Posisi Tengah: top-1/2) --}}
-                <div @mouseenter="monitorOpen = true"
-                     class="absolute right-0 top-1/2 transform -translate-y-1/2 pointer-events-auto bg-red-600 text-white py-4 px-1 rounded-l-xl shadow-lg cursor-pointer transition-all duration-300 hover:bg-red-700 hover:pr-3 z-[71]"
-                     :class="monitorOpen ? 'translate-x-full opacity-0' : 'translate-x-0 opacity-100'">
+                {{-- TRIGGER TOMBOL (Posisi MONITOR) --}}
+                <div @mouseenter="monitorOpen = true; activityOpen = false"
+                    class="fixed right-0 top-1/2 transform -translate-y-1/2 pointer-events-auto bg-red-600 text-white py-4 px-1 rounded-l-xl shadow-lg cursor-pointer transition-all duration-300 hover:bg-red-700 hover:pr-3 z-[90]"
+                    {{-- Tombol tetap muncul (opacity-100) meskipun panel sedang terbuka --}}
+                    :class="monitorOpen ? 'translate-x-0 opacity-100' : 'translate-x-0 opacity-100'">
                     <div class="flex flex-col items-center gap-2">
                         <i class="fas fa-desktop animate-pulse text-[10px]"></i>
                         <span class="text-[10px] font-bold writing-vertical tracking-widest" style="writing-mode: vertical-rl; text-orientation: mixed;">MONITOR</span>
