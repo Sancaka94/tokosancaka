@@ -551,67 +551,6 @@ document.addEventListener('DOMContentLoaded', function () {
     setupAddressSearch('sender');
     setupAddressSearch('receiver');
 
-  document.addEventListener('DOMContentLoaded', function () {
-    const itemTypeSelect = document.getElementById('item_type');
-    const asuransiSelect = document.getElementById('ansuransi');
-    const wajibAsuransiIds = ['1', '3', '4', '8'];
-
-    function handleAsuransiProtection(isInitial = false) {
-        const selectedType = itemTypeSelect.value;
-        const itemTypeName = itemTypeSelect.options[itemTypeSelect.selectedIndex].text;
-
-        if (wajibAsuransiIds.includes(selectedType)) {
-            asuransiSelect.value = 'iya';
-            
-            // Tampilkan alert hanya jika user yang mengubah (bukan saat awal buka halaman)
-            if (!isInitial) {
-                Swal.fire({
-                    icon: 'info',
-                    title: 'Asuransi Wajib Aktif',
-                    text: `Kategori "${itemTypeName}" wajib menggunakan asuransi. Pilihan dikunci ke "Iya".`,
-                    confirmButtonText: 'Saya Mengerti',
-                    confirmButtonColor: '#d33'
-                });
-            }
-
-            asuransiSelect.classList.add('bg-gray-200', 'cursor-not-allowed');
-            asuransiSelect.style.pointerEvents = 'none'; 
-        } else {
-            // Jika pilih Lain-Lain atau kategori opsional lainnya
-            asuransiSelect.classList.remove('bg-gray-200', 'cursor-not-allowed');
-            asuransiSelect.style.pointerEvents = 'auto';
-            // Jangan paksa ke 'tidak' jika ini adalah inisialisasi awal, 
-            // biarkan mengikuti value default dari HTML
-            if (!isInitial) {
-                asuransiSelect.value = 'tidak';
-            }
-        }
-
-        // Reset ekspedisi jika terjadi perubahan (bukan saat awal buka)
-        if (!isInitial) {
-            document.getElementById('expedition').value = '';
-            document.getElementById('selected_expedition_display').value = '';
-        }
-    }
-
-    // Jalankan pengecekan pertama kali saat halaman dibuka
-    handleAsuransiProtection(true);
-
-    // Jalankan saat ada perubahan manual oleh user
-    itemTypeSelect.addEventListener('change', function() {
-        handleAsuransiProtection(false);
-    });
-
-    // Mencegah klik pada asuransi jika kategori wajib terpilih
-    asuransiSelect.addEventListener('mousedown', function(e) {
-        if (wajibAsuransiIds.includes(itemTypeSelect.value)) {
-            e.preventDefault();
-            this.blur();
-            Swal.fire('Info', 'Asuransi wajib "Iya" untuk kategori ini.', 'info');
-        }
-    });
-});
-
     document.getElementById('selected_expedition_display').addEventListener('click', runCekOngkir);
 
     ongkirModalEl.addEventListener('click', function(e) {
@@ -682,6 +621,71 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('receiver_contact_results').classList.add('hidden');
         }
     });
+
+    // --- LOGIKA OTOMATISASI & PROTEKSI ASURANSI (FIXED) ---
+const itemTypeSelect = document.getElementById('item_type');
+const asuransiSelect = document.getElementById('ansuransi');
+const wajibAsuransiIds = ['1', '3', '4', '8'];
+
+function applyStrictInsurance() {
+    if (!itemTypeSelect || !asuransiSelect) return;
+
+    const selectedType = itemTypeSelect.value;
+    const itemTypeName = itemTypeSelect.options[itemTypeSelect.selectedIndex].text;
+
+    if (wajibAsuransiIds.includes(selectedType)) {
+        // 1. Paksa ke "Iya"
+        asuransiSelect.value = 'iya';
+        
+        // 2. Kunci elemen (Visual & Interaksi)
+        asuransiSelect.classList.add('bg-gray-200', 'cursor-not-allowed');
+        asuransiSelect.style.pointerEvents = 'none'; 
+        
+        // 3. Tampilkan Peringatan jika bukan saat inisialisasi halaman
+        if (window.isInitialLoadDone) {
+            Swal.fire({
+                icon: 'info',
+                title: 'Asuransi Wajib',
+                text: `Kategori "${itemTypeName}" wajib menggunakan asuransi. Pilihan dikunci ke "Iya".`,
+                confirmButtonColor: '#ef4444'
+            });
+        }
+    } else {
+        // Kembalikan ke normal jika bukan kategori wajib
+        asuransiSelect.classList.remove('bg-gray-200', 'cursor-not-allowed');
+        asuransiSelect.style.pointerEvents = 'auto';
+    }
+
+    // 4. RESET EKSPEDISI (Penting: Biaya berubah, tombol harus balik ke disabled)
+    const expeditionDisplay = document.getElementById('selected_expedition_display');
+    const expeditionValue = document.getElementById('expedition');
+    if (expeditionDisplay && expeditionValue) {
+        expeditionValue.value = '';
+        expeditionDisplay.value = '';
+        expeditionDisplay.placeholder = 'Data berubah, klik untuk cek ulang';
+    }
+
+    // 5. Pemicu validasi tombol "Buat Pesanan"
+    if (typeof runValidityChecks === "function") {
+        runValidityChecks();
+    }
+}
+
+// Jalankan saat ganti jenis barang
+itemTypeSelect.addEventListener('change', applyStrictInsurance);
+
+// Proteksi tambahan: Mencegah klik paksa
+asuransiSelect.addEventListener('mousedown', function(e) {
+    if (wajibAsuransiIds.includes(itemTypeSelect.value)) {
+        e.preventDefault();
+        this.blur();
+    }
+});
+
+// Jalankan saat pertama kali buka halaman (Inisialisasi)
+window.isInitialLoadDone = false;
+applyStrictInsurance();
+window.isInitialLoadDone = true;
     
     // --- START: Validity + Potong Saldo check logic ---
     (function() {
