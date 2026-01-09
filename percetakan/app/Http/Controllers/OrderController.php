@@ -1219,14 +1219,78 @@ class OrderController extends Controller
 
 public function handleDanaCallback(Request $request)
     {
-        Log::info("========== DANA WEBHOOK DEBUG MODE ==========");
+        Log::info("========== DANA WEBHOOK INCOMING ==========");
         
-        // 1. LOG SEMUA DATA YANG MASUK (RAW)
-        // Kita perlu melihat ini di storage/logs/laravel.log nanti
-        Log::info("FULL HEADERS:", $request->headers->all());
-        Log::info("FULL CONTENT:", $request->all()); 
+        // 1. Ambil Data (Support berbagai format DANA Sandbox/Production)
+        $payload = $request->all();
         
-        // --- Sementara kita return sukses dulu agar DANA tidak retry terus ---
+        // Coba ambil Order ID dari berbagai kemungkinan key
+        $orderNumber = $payload['originalPartnerReferenceNo'] ?? // Format Sandbox SNAP BI (Sesuai Log Anda)
+                       $payload['partnerReferenceNo'] ??         // Format Dokumentasi Lama
+                       $payload['merchantTransId'] ??            // Format V2
+                       null;
+
+        // Cek Status Transaksi
+        $statusRaw = $payload['transactionStatusDesc'] ??        // Format Sandbox SNAP BI (SUCCESS)
+                     $payload['transactionStatus'] ??            // Format Dokumentasi Lama
+                     $payload['acquirementStatus'] ??            // Format V2
+                     null;
+
+        // Ambil Reference No DANA
+        $refNoDana = $payload['originalReferenceNo'] ?? 
+                     $payload['referenceNo'] ?? 
+                     $payload['acquirementId'] ?? 
+                     null;
+
+        Log::info("Parsed Data Final:", [
+            'OrderNo' => $orderNumber,
+            'Status'  => $statusRaw,
+            'RefDana' => $refNoDana
+        ]);
+
+        // 2. Validasi Data
+        if (!$orderNumber) {
+            Log::error("WEBHOOK ERROR: Order Number tidak ditemukan dalam payload.");
+            return response()->json(['responseCode' => '400', 'responseMessage' => 'Bad Request'], 400);
+        }
+
+        // 3. Cari Order di DB
+        $order = Order::where('order_number', $orderNumber)->first();
+        if (!$order) {
+            Log::error("WEBHOOK ERROR: Order #$orderNumber tidak ditemukan di DB.");
+            return response()->json(['responseCode' => '404', 'responseMessage' => 'Order Not Found'], 404);
+        }
+
+        // 4. Cek Idempotency
+        if ($order->payment_status === 'paid') {
+            Log::info("WEBHOOK INFO: Order #$orderNumber sudah lunas. Skip.");
+            return response()->json(['responseCode' => '200', 'responseMessage' => 'Success'], 200);
+        }
+
+        // 5. Update Status
+        // Status Sukses di Log Anda adalah "SUCCESS" atau "00"
+        $isSuccess = in_array($statusRaw, ['SUCCESS', 'PAID', 'FINISHED', '00']);
+
+        if ($isSuccess) {
+            
+            $order->update([
+                'status'         => 'processing',
+                'payment_status' => 'paid',
+                'note'           => $order->note . "\n[DANA PAID] Ref: $refNoDana | Time: " . now(),
+            ]);
+
+            Log::info("WEBHOOK SUKSES: Order #$orderNumber LUNAS.");
+
+            if ($order->coupon_id) {
+                $this->_processAffiliateCommission($order->coupon->code ?? '', $order->final_price);
+            }
+            
+            $this->_sendWaNotification($order, $order->final_price, null, 'paid');
+
+        } else {
+            Log::warning("WEBHOOK STATUS LAIN: $statusRaw");
+        }
+
         return response()->json(['responseCode' => '200', 'responseMessage' => 'Success'], 200);
     }
 
