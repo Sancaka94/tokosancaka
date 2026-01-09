@@ -982,57 +982,55 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     // ----------------------------------------------------------------------------------
 
-    // --- LOGIKA OTOMATISASI & PERINGATAN ASURANSI (CUSTOMER) ---
+    // --- LOGIKA OTOMATISASI ASURANSI (PROTEKSI KETAT) ---
 const itemTypeSelect = document.getElementById('item_type');
 const asuransiSelect = document.getElementById('ansuransi');
 
-// Daftar ID WAJIB asuransi: 1(Elektronik), 3(Pecah Belah), 4(Dokumen), 8(Dokumen Berharga)
+// ID WAJIB: 1(Elektronik), 3(Pecah Belah), 4(Dokumen), 8(Dokumen Berharga)
 const wajibAsuransiIds = ['1', '3', '4', '8'];
 
-// 1. Logika saat Jenis Barang diubah
-itemTypeSelect.addEventListener('change', function() {
-    const selectedValue = this.value;
-
-    if (wajibAsuransiIds.includes(selectedValue)) {
-        asuransiSelect.value = 'iya';
-        console.log("Kategori wajib asuransi: Otomatis memilih 'Iya'");
-    } else {
-        asuransiSelect.value = 'tidak';
-    }
-    
-    // Reset ekspedisi karena biaya asuransi berubah
-    document.getElementById('expedition').value = '';
-    document.getElementById('selected_expedition_display').value = '';
-    document.getElementById('selected_expedition_display').placeholder = 'Asuransi berubah, klik untuk cek ulang';
-});
-
-// 2. Logika Peringatan saat status Asuransi diubah manual ke "Tidak"
-asuransiSelect.addEventListener('change', function() {
+function proteksiAsuransi() {
     const selectedType = itemTypeSelect.value;
     const itemTypeName = itemTypeSelect.options[itemTypeSelect.selectedIndex].text;
 
-    // Jika barang termasuk kategori wajib tapi user mencoba pilih "Tidak"
-    if (wajibAsuransiIds.includes(selectedType) && this.value === 'tidak') {
+    if (wajibAsuransiIds.includes(selectedType)) {
+        // 1. Otomatis set ke "Iya"
+        asuransiSelect.value = 'iya';
+        
+        // 2. Tampilkan peringatan satu arah (tanpa pilihan "Tetap Tanpa Asuransi")
         Swal.fire({
-            icon: 'warning',
-            title: 'Peringatan Keamanan',
-            text: `Kategori "${itemTypeName}" WAJIB menggunakan asuransi untuk perlindungan barang Anda.`,
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Tetap Tanpa Asuransi',
-            cancelButtonText: 'Gunakan Asuransi (Iya)'
-        }).then((result) => {
-            if (result.isDismissed) {
-                // Jika user klik batal atau menutup modal, kembalikan ke "Iya"
-                this.value = 'iya';
-            }
+            icon: 'info',
+            title: 'Asuransi Diaktifkan',
+            text: `Kategori "${itemTypeName}" wajib menggunakan asuransi demi keamanan barang. Pilihan telah dikunci ke "Iya".`,
+            confirmButtonText: 'Saya Mengerti',
+            confirmButtonColor: '#3085d6',
+            allowOutsideClick: false // Pengguna harus klik tombol untuk menutup
         });
-    }
 
-    // Setiap perubahan asuransi wajib reset pilihan ekspedisi
+        // 3. Kunci field agar tidak bisa diganti manual
+        asuransiSelect.classList.add('bg-gray-200', 'cursor-not-allowed');
+        asuransiSelect.style.pointerEvents = 'none'; // Benar-benar tidak bisa diklik
+    } else {
+        // Kembalikan ke normal jika kategori bukan wajib
+        asuransiSelect.classList.remove('bg-gray-200', 'cursor-not-allowed');
+        asuransiSelect.style.pointerEvents = 'auto';
+    }
+    
+    // Reset data ekspedisi karena biaya berubah
     document.getElementById('expedition').value = '';
     document.getElementById('selected_expedition_display').value = '';
+}
+
+// Jalankan fungsi saat Jenis Barang diubah
+itemTypeSelect.addEventListener('change', proteksiAsuransi);
+
+// Tambahan: Pastikan saat user mencoba klik asuransi yang terkunci, muncul info lagi
+asuransiSelect.addEventListener('mousedown', function(e) {
+    if (wajibAsuransiIds.includes(itemTypeSelect.value)) {
+        e.preventDefault();
+        this.blur();
+        Swal.fire('Info', 'Asuransi tidak dapat diubah untuk kategori barang ini.', 'info');
+    }
 });
 
     // --- INISIALISASI & EVENT LISTENERS ---
