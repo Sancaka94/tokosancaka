@@ -20,13 +20,10 @@ class DanaWidgetController extends Controller
 
     public function createPayment(Request $request)
 {
-    Log::info('DANA_DEBUG_START');
-
     $orderId = 'INV-' . time();
     $timestamp = Carbon::now('Asia/Jakarta')->toIso8601String();
     $totalValue = "10000.00"; 
 
-    // BODY PALING MINIMALIS (Sesuai dokumentasi wajib)
     $bodyArray = [
         "partnerReferenceNo" => $orderId,
         "merchantId"         => config('services.dana.merchant_id'),
@@ -36,8 +33,8 @@ class DanaWidgetController extends Controller
         ],
         "validUpTo" => Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP'),
         "urlParams" => [
-            ["url" => route('dana.return'), "type" => "PAY_RETURN", "isDeeplink" => "Y"],
-            ["url" => route('dana.return'), "type" => "NOTIFICATION", "isDeeplink" => "Y"]
+            ["url" => "https://yourdomain.com/return", "type" => "PAY_RETURN", "isDeeplink" => "Y"],
+            ["url" => "https://yourdomain.com/notify", "type" => "NOTIFICATION", "isDeeplink" => "Y"]
         ],
         "additionalInfo" => [
             "order" => [
@@ -54,7 +51,7 @@ class DanaWidgetController extends Controller
                         "description"     => "Product Description",
                         "category"        => "Digital",
                         "price"           => ["value" => $totalValue, "currency" => "IDR"],
-                        "quantity"        => "1" // Wajib string "1"
+                        "quantity"        => "1"
                     ]
                 ]
             ],
@@ -68,36 +65,28 @@ class DanaWidgetController extends Controller
         ]
     ];
 
-    // PENTING: JSON harus di-encode SEKALI di sini untuk Signature & Request Body
+    // 1. JSON Encode (Ini yang harus kita kunci)
     $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    
     $path = '/payment-gateway/v1.0/debit/payment-host-to-host.htm';
+    $accessToken = $this->danaSignature->getAccessToken();
+    
+    // 2. Buat Signature
+    $signature = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
 
-    try {
-        $accessToken = $this->danaSignature->getAccessToken();
-        
-        // Pastikan generateSignature HANYA menerima 4 parameter (Method, Path, JSON Body, Timestamp)
-        $signature = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
-
-        $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . $accessToken,
-            'Content-Type'  => 'application/json',
+    // 3. JEBAKAN DD
+    dd([
+        'DEBUG_INFO' => 'Bandingkan data di bawah ini dengan dokumentasi DANA',
+        'HEADERS' => [
             'X-TIMESTAMP'   => $timestamp,
             'X-SIGNATURE'   => $signature,
-            'ORIGIN'        => config('services.dana.origin'),
             'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
-            'X-EXTERNAL-ID' => Str::random(32),
-            'CHANNEL-ID'    => '95221'
-        ])
-        ->withBody($jsonBody, 'application/json') 
-        ->post('https://api.sandbox.dana.id' . $path);
-
-        Log::info('DANA_DEBUG_RESPONSE', ['body' => $response->json()]);
-        return $response->json();
-
-    } catch (\Exception $e) {
-        Log::error('DANA_DEBUG_ERROR', ['msg' => $e->getMessage()]);
-        return response()->json(['error' => $e->getMessage()], 500);
-    }
+            'Authorization' => 'Bearer ' . $accessToken,
+        ],
+        'BODY_STRING' => $jsonBody,
+        'HASHED_BODY_MANUAL' => strtolower(hash('sha256', $jsonBody)),
+        'STRING_TO_SIGN_FINAL' => "POST:" . $path . ":" . strtolower(hash('sha256', $jsonBody)) . ":" . $timestamp
+    ]);
 }
     
 
