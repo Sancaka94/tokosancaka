@@ -460,6 +460,10 @@ class OrderController extends Controller
             
             Log::info("Final Price Calculation: ($subtotal - $discount) + $biayaOngkir = $finalPrice");
 
+            // [PERBAIKAN KRUSIAL] Generate Order Number di sini biar bisa dipake DANA
+            $orderNumber = 'SCK-' . date('ymdHis') . rand(100, 999);
+            Log::info("Generated Order Number: {$orderNumber}");
+
             // 5. DATA CUSTOMER
             $paymentStatus = 'unpaid';
             $paymentUrl    = null;    
@@ -523,80 +527,86 @@ class OrderController extends Controller
                     Log::info("Potong Saldo Berhasil. Sisa Saldo: " . $affiliatePayor->balance);
                 break;
 
-                case 'dana': // <--- IMPLEMENTASI DANA BARU
-                Log::info("Memulai Proses Pembayaran DANA SNAP BI...");
-                try {
-                    $orderIdForDana = 'INV-' . time(); // ID unik untuk DANA
-                    $timestamp = Carbon::now('Asia/Jakarta')->toIso8601String();
-                    
-                    // Payload Winning Formula
-                    $bodyArray = [
-                        "partnerReferenceNo" => $orderIdForDana,
-                        "merchantId" => config('services.dana.merchant_id'),
-                        "amount" => [
-                            "value" => number_format($finalPrice, 2, '.', ''), // Pastikan format 0.00
-                            "currency" => "IDR"
-                        ],
-                        "validUpTo" => Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP'),
-                        "urlParams" => [
-                            ["url" => url('/'), "type" => "PAY_RETURN", "isDeeplink" => "Y"],
-                            ["url" => url('/api/dana/webhook'), "type" => "NOTIFICATION", "isDeeplink" => "Y"]
-                        ],
-                        "additionalInfo" => [
-                            "mcc" => "5732",
-                            "order" => [
-                                "orderTitle" => "Order " . $orderNumber,
-                                "merchantTransType" => "01",
-                                "scenario" => "REDIRECT",
+                case 'dana':
+                    Log::info("Memulai Proses Pembayaran DANA SNAP BI...");
+                    try {
+                        $timestamp = Carbon::now('Asia/Jakarta')->toIso8601String();
+                        $expiryTime = Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP');
+                        
+                        // Body "WINNING FORMULA" Lu - Diadjust dikit biar dinamis
+                        $bodyArray = [
+                            "partnerReferenceNo" => $orderNumber, // Pake order number yang udah di-gen
+                            "merchantId" => config('services.dana.merchant_id'),
+                            "amount" => [
+                                "value" => number_format($finalPrice, 2, '.', ''), // Wajib 2 desimal
+                                "currency" => "IDR"
                             ],
-                            "envInfo" => [
-                                "sourcePlatform" => "IPG",
-                                "terminalType" => "SYSTEM",
-                                "orderTerminalType" => "WEB",
+                            "validUpTo" => $expiryTime,
+                            "urlParams" => [
+                                [
+                                    "url" => route('dana.return'),
+                                    "type" => "PAY_RETURN",
+                                    "isDeeplink" => "Y"
+                                ],
+                                [
+                                    "url" => route('dana.return'),
+                                    "type" => "NOTIFICATION",
+                                    "isDeeplink" => "Y"
+                                ]
+                            ],
+                            "additionalInfo" => [
+                                "mcc" => "5732", 
+                                "order" => [
+                                    "orderTitle" => "Invoice " . $orderNumber,
+                                    "merchantTransType" => "01",
+                                    "scenario" => "REDIRECT",
+                                ],
+                                "envInfo" => [
+                                    "sourcePlatform" => "IPG",
+                                    "terminalType" => "SYSTEM",
+                                    "orderTerminalType" => "WEB",
+                                ]
                             ]
-                        ]
-                    ];
+                        ];
 
-                    $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-                    $path = '/payment-gateway/v1.0/debit/payment-host-to-host.htm';
+                        $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+                        $relativePath = '/payment-gateway/v1.0/debit/payment-host-to-host.htm'; 
 
-                    // Signature & Token
-                    $accessToken = $danaService->getAccessToken();
-                    $signature = $danaService->generateSignature('POST', $path, $jsonBody, $timestamp);
+                        // Signature & Token menggunakan Service Lu
+                        $accessToken = $danaService->getAccessToken();
+                        $signature = $danaService->generateSignature('POST', $relativePath, $jsonBody, $timestamp);
 
-                    Log::info('DANA_H2H_SENDING', ['order_ref' => $orderIdForDana]);
+                        Log::info('DANA_SIGNATURE_READY', ['order' => $orderNumber]);
 
-                    $baseUrl = config('services.dana.dana_env') === 'PRODUCTION' ? 'https://api.dana.id' : 'https://api.sandbox.dana.id';
-                    
-                    $response = Http::withHeaders([
-                        'Authorization' => 'Bearer ' . $accessToken,
-                        'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
-                        'X-EXTERNAL-ID' => Str::random(32),
-                        'X-TIMESTAMP'   => $timestamp,
-                        'X-SIGNATURE'   => $signature,
-                        'Content-Type'  => 'application/json',
-                        'CHANNEL-ID'    => '95221',
-                        'ORIGIN'        => config('services.dana.origin'),
-                    ])
-                    ->withBody($jsonBody, 'application/json')
-                    ->post($baseUrl . $path);
+                        $baseUrl = config('services.dana.dana_env') === 'PRODUCTION' ? 'https://api.dana.id' : 'https://api.sandbox.dana.id';
+                        
+                        $response = Http::withHeaders([
+                            'Authorization'  => 'Bearer ' . $accessToken,
+                            'X-PARTNER-ID'   => config('services.dana.x_partner_id'),
+                            'X-EXTERNAL-ID'  => Str::random(32),
+                            'X-TIMESTAMP'    => $timestamp,
+                            'X-SIGNATURE'    => $signature,
+                            'Content-Type'   => 'application/json',
+                            'CHANNEL-ID'     => '95221', 
+                            'ORIGIN'         => config('services.dana.origin'),
+                        ])
+                        ->withBody($jsonBody, 'application/json')
+                        ->post($baseUrl . $relativePath);
 
-                    $result = $response->json();
-                    Log::info('DANA_RESPONSE_RECEIVED', $result);
+                        $result = $response->json();
+                        Log::info('DANA_RESPONSE_RECEIVED', $result);
 
-                    if (isset($result['responseCode']) && $result['responseCode'] == '2005400') {
-                        $paymentUrl = $result['webRedirectUrl'];
-                        $paymentStatus = 'unpaid';
-                        Log::info("DANA Payment URL Generated: " . $paymentUrl);
-                    } else {
-                        Log::error("DANA API Error", $result);
-                        throw new \Exception("DANA Payment Failed: " . ($result['responseMessage'] ?? 'Unknown Error'));
+                        if (isset($result['responseCode']) && $result['responseCode'] == '2005400') {
+                             $paymentUrl = $result['webRedirectUrl'] ?? null;
+                             Log::info("DANA REDIRECT URL: " . $paymentUrl);
+                        } else {
+                             throw new \Exception("DANA API Error: " . ($result['responseMessage'] ?? 'General Error'));
+                        }
+                    } catch (\Exception $e) {
+                        Log::error("DANA FATAL ERROR: " . $e->getMessage());
+                        throw $e;
                     }
-                } catch (\Exception $e) {
-                    Log::error("DANA FATAL ERROR: " . $e->getMessage());
-                    throw $e;
-                }
-                break;
+                    break;
 
                 case 'tripay':
                 case 'doku':
@@ -606,7 +616,7 @@ class OrderController extends Controller
             }
 
             // 7. GENERATE ORDER NUMBER
-            $orderNumber = 'SCK-' . date('ymdHis') . rand(100, 999);
+            //$orderNumber = 'SCK-' . date('ymdHis') . rand(100, 999);
             $shippingRef = null;
             Log::info("Generated Order Number: {$orderNumber}");
 
