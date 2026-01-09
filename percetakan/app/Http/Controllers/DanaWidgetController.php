@@ -26,7 +26,7 @@ class DanaWidgetController extends Controller
 
     $bodyArray = [
         "partnerReferenceNo" => $orderId,
-        "merchantId"         => config('services.dana.merchant_id'),
+        "merchantId" => config('services.dana.x_partner_id'),
         "amount" => [
             "value"    => $totalValue,
             "currency" => "IDR"
