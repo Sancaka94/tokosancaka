@@ -24,67 +24,84 @@ class DanaWidgetController extends Controller
 
     $orderId = 'INV-' . time();
     $timestamp = Carbon::now('Asia/Jakarta')->toIso8601String();
-    $totalAmount = "10000.00"; // Wajib format 0.00
+    $totalValue = "10000.00"; // Pastikan 2 desimal
 
-    $bodyArray = [
-        "partnerReferenceNo" => $orderId,
-        "merchantId"         => config('services.dana.merchant_id'),
-        "subMerchantId"      => "", 
-        "amount" => [
-            "value"    => $totalAmount,
-            "currency" => "IDR"
+$bodyArray = [
+    "partnerReferenceNo" => $orderId,
+    "merchantId"         => config('services.dana.merchant_id'),
+    "amount" => [
+        "value"    => $totalValue,
+        "currency" => "IDR"
+    ],
+    "validUpTo" => Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP'),
+    "urlParams" => [
+        [
+            "url" => route('dana.return'),
+            "type" => "PAY_RETURN",
+            "isDeeplink" => "Y"
         ],
-        "externalStoreId"    => config('services.dana.external_shop_id') ?? "",
-        "validUpTo"          => Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP'),
-        "disabledPayMethods" => "CREDIT_CARD",
-        "urlParams" => [
-            ["url" => route('dana.return'), "type" => "PAY_RETURN", "isDeeplink" => "Y"],
-            ["url" => route('dana.return'), "type" => "NOTIFICATION", "isDeeplink" => "Y"]
-        ],
-        "additionalInfo" => [
-            "order" => [
-                "merchantTransType" => "01",
-                "orderTitle"        => "Invoice " . $orderId,
-                "scenario"          => "REDIRECT",
-                "goods" => [[
-                    "unit"            => "Pcs",
-                    "category"        => "Digital",
-                    "price"           => ["value" => $totalAmount, "currency" => "IDR"],
+        [
+            "url" => route('dana.return'), // Pastikan ini URL valid (https)
+            "type" => "NOTIFICATION",
+            "isDeeplink" => "Y"
+        ]
+    ],
+    "additionalInfo" => [
+        "order" => [
+            "orderTitle"        => "Pembayaran " . $orderId,
+            "merchantTransType" => "01",
+            "scenario"          => "REDIRECT",
+            "buyer" => [ // Dokumentasi menyebut ini REQUIRED
+                "nickname" => "Guest User",
+                "userId"   => "" 
+            ],
+            "goods" => [
+                [
                     "merchantGoodsId" => "GDS-001",
                     "description"     => "Digital Product",
-                    "quantity"        => "1", // WAJIB STRING ANGKA, TIDAK BOLEH KOSONG
-                    "merchantShippingId" => "SHIP-".time()
-                ]],
-                "extendInfo" => ""
-            ],
-            "mcc"     => "5732",
-            "envInfo" => [
-                "sourcePlatform"    => "IPG",
-                "terminalType"      => "SYSTEM", // Sesuaikan dengan enum: SYSTEM/WEB
-                "orderTerminalType" => "WEB",
-                "clientIp"          => $request->ip()
+                    "category"        => "Digital",
+                    "price" => [
+                        "value"    => $totalValue,
+                        "currency" => "IDR"
+                    ],
+                    "quantity" => "1", // WAJIB STRING "1", BUKAN INTEGER 1
+                    "unit"     => "Pcs"
+                ]
             ]
+        ],
+        "mcc"     => "5732",
+        "envInfo" => [
+            "sourcePlatform"    => "IPG",
+            "terminalType"      => "SYSTEM",
+            "orderTerminalType" => "WEB",
+            "clientIp"          => $request->ip()
         ]
-    ];
+    ]
+];
 
     $path = '/payment-gateway/v1.0/debit/payment-host-to-host.htm';
 
     try {
         $accessToken = $this->danaSignature->getAccessToken();
-        $signature   = $this->danaSignature->generateSignature('POST', $path, $bodyArray, $timestamp);
+        // Pastikan body di-encode satu kali saja
+$jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
-        Log::info('DANA_H2H_SENDING', ['partner_ref' => $orderId]);
+// Kirim ke generateSignature
+$signature = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
 
-        $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . $accessToken,
-            'Content-Type'  => 'application/json',
-            'X-TIMESTAMP'   => $timestamp,
-            'X-SIGNATURE'   => $signature,
-            'ORIGIN'        => config('services.dana.origin'),
-            'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
-            'X-EXTERNAL-ID' => Str::random(32),
-            'CHANNEL-ID'    => '95221'
-        ])->post('https://api.sandbox.dana.id' . $path, $bodyArray);
+// Kirim request menggunakan withBody (bukan array langsung)
+$response = Http::withHeaders([
+    'Authorization' => 'Bearer ' . $accessToken,
+    'Content-Type'  => 'application/json',
+    'X-TIMESTAMP'   => $timestamp,
+    'X-SIGNATURE'   => $signature,
+    'ORIGIN'        => config('services.dana.origin'),
+    'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
+    'X-EXTERNAL-ID' => Str::random(32),
+    'CHANNEL-ID'    => '95221'
+])
+->withBody($jsonBody, 'application/json') // MENGGUNAKAN STRING JSON YANG SAMA
+->post('https://api.sandbox.dana.id' . $path);
 
         Log::info('DANA_H2H_RESPONSE', ['res' => $response->json()]);
 
