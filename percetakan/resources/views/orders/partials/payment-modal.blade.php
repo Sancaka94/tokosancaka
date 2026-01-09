@@ -245,7 +245,23 @@
                             <span class="text-[10px] font-bold text-center">DOKU</span>
                             <div x-show="paymentMethod === 'doku'" class="absolute top-1 right-1 text-red-500"><i class="fas fa-check-circle text-[10px]"></i></div>
                         </div>
+
+                        <div @click="paymentMethod = 'dana'" 
+                            class="cursor-pointer border-2 rounded-xl p-2 flex flex-col items-center justify-center gap-1 transition relative overflow-hidden group h-20"
+                            :class="paymentMethod === 'dana' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-100 bg-white hover:border-blue-200 hover:bg-slate-50'">
+                            
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/Logo_dan_id.png/640px-Logo_dan_id.png" 
+                                alt="DANA" class="h-4 object-contain mb-1 transition-all group-hover:scale-110">
+                            
+                            <span class="text-[10px] font-bold text-center uppercase tracking-tighter">DANA</span>
+                            
+                            <div x-show="paymentMethod === 'dana'" class="absolute top-1 right-1 text-blue-500 animate-bounce">
+                                <i class="fas fa-check-circle text-[10px]"></i>
+                            </div>
+                        </div>
+
                     </div>
+
 
                     <div class="mt-5 pt-5 border-t border-dashed border-slate-200">
                         
@@ -312,11 +328,20 @@
             Kembali
         </button>
         
-        <button @click="checkout()" :disabled="isProcessing" 
-                class="w-full sm:w-auto px-8 py-3 bg-red-600 text-white rounded-xl font-bold text-lg shadow-lg shadow-red-200 hover:bg-red-700 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
-            <span x-show="!isProcessing">Bayar & Cetak Struk</span>
-            <span x-show="isProcessing"><i class="fas fa-spinner fa-spin"></i> Proses...</span>
-            <i x-show="!isProcessing" class="fas fa-arrow-right"></i>
-        </button>
+        <button @click="checkout()" :disabled="isProcessing || (paymentMethod === 'cash' && change < 0)" 
+        class="w-full sm:w-auto px-8 py-3 rounded-xl font-bold text-lg shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        :class="paymentMethod === 'dana' ? 'bg-blue-600 shadow-blue-200 hover:bg-blue-700' : 'bg-red-600 shadow-red-200 hover:bg-red-700'">
+    
+    <span x-show="!isProcessing">
+        <span x-text="paymentMethod === 'dana' ? 'Bayar via DANA' : 'Bayar & Cetak Struk'"></span>
+    </span>
+    
+    <span x-show="isProcessing">
+        <i class="fas fa-spinner fa-spin"></i> Sedang Memproses...
+    </span>
+    
+    <i x-show="!isProcessing" class="fas fa-arrow-right"></i>
+</button>
+
     </div>
 </div>
