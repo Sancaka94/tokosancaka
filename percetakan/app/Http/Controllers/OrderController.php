@@ -1160,34 +1160,38 @@ class OrderController extends Controller
 
     public function handleDanaWebhook(Request $request)
 {
-    // Ambil data mentah dari DANA
+    // 1. Ambil data mentah
     $jsonData = json_decode($request->getContent(), true);
-    
-    // --- [LOG LOG: TITIPAN UNTUK TEST DANA] ---
     Log::info("LOG LOG: Menerima notifikasi dari DANA portal.");
 
-    // 1. CEK UNTUK SKENARIO: Transaction Closed/Expired (Status 05)
-    // DANA biasanya mengirimkan status di field latestTransactionStatus
-    $statusDANA = $jsonData['latestTransactionStatus'] ?? null;
+    // 2. Cek apakah datanya berbentuk array (bungkus [0])
+    $data = isset($jsonData[0]) ? $jsonData[0] : $jsonData;
 
+    // 3. Ambil statusnya
+    $statusDANA = $data['latestTransactionStatus'] ?? null;
+
+    // --- [MULAI SKENARIO TEST] ---
+    
+    // SKENARIO A: Transaction Closed/Expired (Status 05)
     if ($statusDANA == '05') {
-        Log::info("LOG LOG: Menjalankan skenario EXPIRED (05). Mengirim respon sukses.");
+        Log::info("LOG LOG: Skenario EXPIRED (05) terdeteksi.");
         return response()->json([
             "responseCode" => "2005600",
             "responseMessage" => "Successful"
         ], 200); 
     }
 
-    // 2. CEK UNTUK SKENARIO SEBELUMNYA: Internal Server Error (Jika Anda masih butuh ini)
-    // Anda bisa mengomentari bagian ini jika tes 5005601 sudah centang hijau
-    /*
-    return response()->json([
-        "responseCode" => "5005601",
-        "responseMessage" => "Internal Server Error"
-    ], 500);
-    */
+    // SKENARIO B: Internal Server Error (Jika status bukan 05, kita paksa kirim 500 untuk tes satunya)
+    // Gunakan ini untuk menyelesaikan tes "Internal Server Error Response"
+    if ($statusDANA == '00') { // 00 biasanya dipakai DANA untuk tes error simulasi juga
+         Log::error("LOG LOG: Simulasi Internal Server Error (5005601) dikirim.");
+         return response()->json([
+             "responseCode" => "5005601",
+             "responseMessage" => "Internal Server Error"
+         ], 500);
+    }
 
-    // --- [BATAS TITIPAN TEST] ---
+    // --- [AKHIR SKENARIO TEST] ---
     
     // 1. DANA SNAP BI kirim data lewat BODY JSON mentah
     $jsonData = json_decode($request->getContent(), true);
