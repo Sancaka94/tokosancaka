@@ -8,7 +8,7 @@
                 
                 {{-- TRIGGER TOMBOL (Posisi agak ke atas: top-[40%]) --}}
                 <div @mouseenter="activityOpen = true"
-                     class="absolute right-0 top-[30%] transform -translate-y-1/2 pointer-events-auto bg-blue-600 text-white py-4 px-1 rounded-l-xl shadow-lg cursor-pointer transition-all duration-300 hover:bg-blue-700 hover:pr-3 z-[81]"
+                     class="absolute right-0 top-[33%] transform -translate-y-1/2 pointer-events-auto bg-blue-600 text-white py-4 px-1 rounded-l-xl shadow-lg cursor-pointer transition-all duration-300 hover:bg-blue-700 hover:pr-3 z-[81]"
                      :class="activityOpen ? 'translate-x-full opacity-0' : 'translate-x-0 opacity-100'">
                     <div class="flex flex-col items-center gap-2">
                         <i class="fas fa-history animate-pulse text-[10px]"></i>
