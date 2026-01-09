@@ -66,109 +66,90 @@
                         <th class="p-5 w-20 text-center">Aksi</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-50 text-sm" x-data="{ activeLog: null }">
-                    @forelse($logs as $index => $log)
-                    <tr class="hover:bg-slate-50 transition-colors group">
-                        
-                        {{-- LEVEL BADGE --}}
-                        <td class="p-5 text-center align-top">
-                            @php
-                                $color = match($log['level']) {
-                                    'ERROR', 'CRITICAL', 'EMERGENCY' => 'bg-rose-100 text-rose-700 border-rose-200',
-                                    'WARNING', 'ALERT' => 'bg-amber-100 text-amber-700 border-amber-200',
-                                    'INFO', 'NOTICE' => 'bg-blue-100 text-blue-700 border-blue-200',
-                                    'DEBUG' => 'bg-slate-100 text-slate-600 border-slate-200',
-                                    default => 'bg-slate-100 text-slate-600 border-slate-200'
-                                };
-                                $icon = match($log['level']) {
-                                    'ERROR', 'CRITICAL' => 'fa-times-circle',
-                                    'WARNING' => 'fa-exclamation-triangle',
-                                    'INFO' => 'fa-info-circle',
-                                    default => 'fa-bug'
-                                };
-                            @endphp
-                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[9px] font-black border {{ $color }}">
-                                <i class="fas {{ $icon }}"></i> {{ $log['level'] }}
-                            </span>
-                        </td>
+                {{-- Pastikan Alpine.js sudah dimuat di layout induk Anda --}}
+{{-- <script src="//unpkg.com/alpinejs" defer></script> --}}
 
-                        {{-- WAKTU --}}
-                        <td class="p-5 align-top">
-                            <span class="text-xs font-mono font-bold text-slate-600">
-                                {{ $log['date'] }}
-                            </span>
-                        </td>
+<tbody class="divide-y divide-slate-50" x-data="{ openModal: null }">
+    @forelse($logs as $index => $log) {{-- Asumsi variabel $logs dari controller --}}
+    <tr class="hover:bg-slate-50 transition-colors">
+        {{-- Kolom LEVEL --}}
+        <td class="p-5 align-top">
+            {{-- Contoh logika warna badge --}}
+            @php
+                $levelColor = match(strtolower($log['level'])) {
+                    'error' => 'bg-rose-100 text-rose-700 border-rose-200',
+                    'warning' => 'bg-amber-100 text-amber-700 border-amber-200',
+                    default => 'bg-blue-100 text-blue-700 border-blue-200'
+                };
+            @endphp
+            <span class="px-3 py-1 rounded-full text-[10px] font-bold tracking-wide uppercase border {{ $levelColor }}">
+                {{ $log['level'] }}
+            </span>
+        </td>
 
-                        {{-- PESAN (TRUNCATED) --}}
-                        <td class="p-5 align-top">
-                            <div class="font-mono text-xs text-slate-700 line-clamp-2 log-font">
-                                {{ Str::limit($log['message'], 150) }}
-                            </div>
-                        </td>
+        {{-- Kolom WAKTU --}}
+        <td class="p-5 align-top">
+            <div class="font-bold text-slate-700 text-sm">{{ \Carbon\Carbon::parse($log['date'])->format('Y-m-d') }}</div>
+            <div class="text-xs font-mono text-slate-500">{{ \Carbon\Carbon::parse($log['date'])->format('H:i:s') }}</div>
+        </td>
 
-                        {{-- ENVIRONMENT --}}
-                        <td class="p-5 align-top text-center">
-                            <span class="text-[10px] font-bold text-slate-400 uppercase">{{ $log['env'] }}</span>
-                        </td>
+        {{-- Kolom PESAN / ERROR (DENGAN TOMBOL LIHAT DETAIL) --}}
+        <td class="p-5 align-top">
+            <div class="flex items-start justify-between gap-3">
+                {{-- Tampilkan 2 baris pertama saja agar rapi --}}
+                <div class="text-sm text-slate-600 font-mono line-clamp-2" title="{{ $log['message'] }}">
+                    {{ Str::limit($log['message'], 150) }}
+                </div>
+                
+                {{-- Tombol untuk membuka Modal --}}
+                <button @click="openModal = {{ $index }}" 
+                        class="shrink-0 p-2 bg-white border border-slate-200 rounded-lg text-slate-500 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-all"
+                        title="Lihat Pesan Lengkap">
+                    <i class="fas fa-eye"></i>
+                </button>
+            </div>
 
-                        {{-- AKSI (MODAL TRIGGER) --}}
-                        <td class="p-5 align-top text-center">
-                            <button @click="activeLog = {{ json_encode($log) }}" 
-                                    class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white transition flex items-center justify-center border border-indigo-100 shadow-sm">
-                                <i class="fas fa-eye text-xs"></i>
+            {{-- =================MODAL DETAIL PESAN================= --}}
+            {{-- Modal ini tersembunyi dan hanya muncul saat tombol ditekan --}}
+            <template x-if="openModal === {{ $index }}">
+                <div class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm"
+                     @click.self="openModal = null">
+                    
+                    <div class="bg-white w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                        {{-- Header Modal --}}
+                        <div class="flex justify-between items-center p-5 border-b border-slate-100 bg-slate-50">
+                            <h3 class="text-lg font-bold text-slate-800">Detail Pesan Log</h3>
+                            <button @click="openModal = null" class="text-slate-400 hover:text-slate-600 transition">
+                                <i class="fas fa-times text-xl"></i>
                             </button>
-                        </td>
-                    </tr>
-                    @empty
-                    <tr>
-                        <td colspan="5" class="p-10 text-center text-slate-400 italic bg-slate-50">
-                            <i class="fas fa-check-circle text-4xl mb-3 text-slate-300"></i>
-                            <p>Tidak ada log ditemukan atau file log bersih.</p>
-                        </td>
-                    </tr>
-                    @endforelse
-
-                    {{-- MODAL DETAIL --}}
-                    <div x-show="activeLog" 
-                         style="display: none"
-                         class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm"
-                         x-transition.opacity>
+                        </div>
                         
-                        <div class="bg-white w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]" @click.away="activeLog = null">
-                            
-                            {{-- Modal Header --}}
-                            <div class="bg-slate-100 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
-                                <div class="flex items-center gap-3">
-                                    <span class="font-black text-slate-700 text-lg">Log Detail</span>
-                                    <span class="text-xs font-mono bg-slate-200 px-2 py-1 rounded text-slate-600" x-text="activeLog?.date"></span>
-                                    <span class="text-xs font-bold px-2 py-1 rounded uppercase" 
-                                          :class="{
-                                              'bg-rose-100 text-rose-700': ['ERROR','CRITICAL'].includes(activeLog?.level),
-                                              'bg-amber-100 text-amber-700': activeLog?.level === 'WARNING',
-                                              'bg-blue-100 text-blue-700': activeLog?.level === 'INFO',
-                                              'bg-slate-200 text-slate-700': !['ERROR','CRITICAL','WARNING','INFO'].includes(activeLog?.level)
-                                          }"
-                                          x-text="activeLog?.level">
-                                    </span>
-                                </div>
-                                <button @click="activeLog = null" class="text-slate-400 hover:text-slate-700 transition"><i class="fas fa-times text-xl"></i></button>
-                            </div>
-
-                            {{-- Modal Body (Scrollable) --}}
-                            <div class="p-6 overflow-y-auto bg-slate-50 custom-scrollbar flex-1">
-                                <div class="bg-slate-900 text-green-400 p-4 rounded-xl font-mono text-xs leading-relaxed whitespace-pre-wrap break-all shadow-inner border border-slate-700 h-full overflow-auto">
-                                    <span x-text="activeLog?.message"></span>
-                                </div>
-                            </div>
-
-                            {{-- Modal Footer --}}
-                            <div class="bg-white px-6 py-4 border-t border-slate-200 text-right">
-                                <button @click="activeLog = null" class="bg-slate-800 text-white px-6 py-2 rounded-lg font-bold text-sm hover:bg-black transition">Tutup</button>
-                            </div>
+                        {{-- Body Modal (Tempat Pesan Lengkap) --}}
+                        <div class="p-6 overflow-y-auto custom-scrollbar bg-slate-800">
+                            {{-- Gunakan tag <pre> atau class 'whitespace-pre-wrap' agar format text terjaga --}}
+                            <pre class="text-xs font-mono text-green-400 whitespace-pre-wrap break-all">{{ $log['message'] }}</pre>
+                        </div>
+                        
+                        {{-- Footer Modal --}}
+                        <div class="p-4 border-t border-slate-100 bg-slate-50 text-right">
+                            <button @click="openModal = null" class="px-5 py-2.5 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl text-sm hover:bg-slate-100 transition">
+                                Tutup
+                            </button>
                         </div>
                     </div>
-
-                </tbody>
+                </div>
+            </template>
+            {{-- ===================================================== --}}
+        </td>
+    </tr>
+    @empty
+    <tr>
+        <td colspan="3" class="p-8 text-center text-slate-400 italic">
+            Tidak ada data log.
+        </td>
+    </tr>
+    @endforelse
+</tbody>
             </table>
         </div>
 
