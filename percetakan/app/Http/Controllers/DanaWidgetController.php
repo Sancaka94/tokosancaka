@@ -20,100 +20,83 @@ class DanaWidgetController extends Controller
 
     public function createPayment(Request $request)
 {
-    Log::info('DANA_H2H_START');
+    Log::info('DANA_DEBUG_START');
 
     $orderId = 'INV-' . time();
     $timestamp = Carbon::now('Asia/Jakarta')->toIso8601String();
-    $totalValue = "10000.00"; // Pastikan 2 desimal
+    $totalValue = "10000.00"; 
 
-$bodyArray = [
-    "partnerReferenceNo" => $orderId,
-    "merchantId"         => config('services.dana.merchant_id'),
-    "amount" => [
-        "value"    => $totalValue,
-        "currency" => "IDR"
-    ],
-    "validUpTo" => Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP'),
-    "urlParams" => [
-        [
-            "url" => route('dana.return'),
-            "type" => "PAY_RETURN",
-            "isDeeplink" => "Y"
+    // BODY PALING MINIMALIS (Sesuai dokumentasi wajib)
+    $bodyArray = [
+        "partnerReferenceNo" => $orderId,
+        "merchantId"         => config('services.dana.merchant_id'),
+        "amount" => [
+            "value"    => $totalValue,
+            "currency" => "IDR"
         ],
-        [
-            "url" => route('dana.return'), // Pastikan ini URL valid (https)
-            "type" => "NOTIFICATION",
-            "isDeeplink" => "Y"
-        ]
-    ],
-    "additionalInfo" => [
-        "order" => [
-            "orderTitle"        => "Pembayaran " . $orderId,
-            "merchantTransType" => "01",
-            "scenario"          => "REDIRECT",
-            "buyer" => [ // Dokumentasi menyebut ini REQUIRED
-                "nickname" => "Guest User",
-                "userId"   => "" 
-            ],
-            "goods" => [
-                [
-                    "merchantGoodsId" => "GDS-001",
-                    "description"     => "Digital Product",
-                    "category"        => "Digital",
-                    "price" => [
-                        "value"    => $totalValue,
-                        "currency" => "IDR"
-                    ],
-                    "quantity" => "1", // WAJIB STRING "1", BUKAN INTEGER 1
-                    "unit"     => "Pcs"
+        "validUpTo" => Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP'),
+        "urlParams" => [
+            ["url" => route('dana.return'), "type" => "PAY_RETURN", "isDeeplink" => "Y"],
+            ["url" => route('dana.return'), "type" => "NOTIFICATION", "isDeeplink" => "Y"]
+        ],
+        "additionalInfo" => [
+            "order" => [
+                "orderTitle"        => "Payment " . $orderId,
+                "merchantTransType" => "01",
+                "scenario"          => "REDIRECT",
+                "buyer" => [
+                    "nickname" => "Guest",
+                    "userId"   => "12345"
+                ],
+                "goods" => [
+                    [
+                        "merchantGoodsId" => "G001",
+                        "description"     => "Product Description",
+                        "category"        => "Digital",
+                        "price"           => ["value" => $totalValue, "currency" => "IDR"],
+                        "quantity"        => "1" // Wajib string "1"
+                    ]
                 ]
+            ],
+            "mcc"     => "5732",
+            "envInfo" => [
+                "sourcePlatform"    => "IPG",
+                "terminalType"      => "SYSTEM",
+                "orderTerminalType" => "WEB",
+                "clientIp"          => "127.0.0.1"
             ]
-        ],
-        "mcc"     => "5732",
-        "envInfo" => [
-            "sourcePlatform"    => "IPG",
-            "terminalType"      => "SYSTEM",
-            "orderTerminalType" => "WEB",
-            "clientIp"          => $request->ip()
         ]
-    ]
-];
+    ];
 
+    // PENTING: JSON harus di-encode SEKALI di sini untuk Signature & Request Body
+    $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     $path = '/payment-gateway/v1.0/debit/payment-host-to-host.htm';
 
     try {
         $accessToken = $this->danaSignature->getAccessToken();
-        // Pastikan body di-encode satu kali saja
-$jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        
+        // Pastikan generateSignature HANYA menerima 4 parameter (Method, Path, JSON Body, Timestamp)
+        $signature = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
 
-// Kirim ke generateSignature
-$signature = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
+        $response = Http::withHeaders([
+            'Authorization' => 'Bearer ' . $accessToken,
+            'Content-Type'  => 'application/json',
+            'X-TIMESTAMP'   => $timestamp,
+            'X-SIGNATURE'   => $signature,
+            'ORIGIN'        => config('services.dana.origin'),
+            'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
+            'X-EXTERNAL-ID' => Str::random(32),
+            'CHANNEL-ID'    => '95221'
+        ])
+        ->withBody($jsonBody, 'application/json') 
+        ->post('https://api.sandbox.dana.id' . $path);
 
-// Kirim request menggunakan withBody (bukan array langsung)
-$response = Http::withHeaders([
-    'Authorization' => 'Bearer ' . $accessToken,
-    'Content-Type'  => 'application/json',
-    'X-TIMESTAMP'   => $timestamp,
-    'X-SIGNATURE'   => $signature,
-    'ORIGIN'        => config('services.dana.origin'),
-    'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
-    'X-EXTERNAL-ID' => Str::random(32),
-    'CHANNEL-ID'    => '95221'
-])
-->withBody($jsonBody, 'application/json') // MENGGUNAKAN STRING JSON YANG SAMA
-->post('https://api.sandbox.dana.id' . $path);
-
-        Log::info('DANA_H2H_RESPONSE', ['res' => $response->json()]);
-
-        if ($response->successful() && isset($response->json()['webRedirectUrl'])) {
-            return redirect($response->json()['webRedirectUrl']);
-        }
-
-        return response()->json($response->json(), $response->status());
+        Log::info('DANA_DEBUG_RESPONSE', ['body' => $response->json()]);
+        return $response->json();
 
     } catch (\Exception $e) {
-        Log::error('DANA_H2H_FATAL', ['msg' => $e->getMessage()]);
-        return response()->json(['error' => 'Internal Server Error'], 500);
+        Log::error('DANA_DEBUG_ERROR', ['msg' => $e->getMessage()]);
+        return response()->json(['error' => $e->getMessage()], 500);
     }
 }
     
