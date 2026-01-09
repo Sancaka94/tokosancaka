@@ -1158,6 +1158,86 @@ class OrderController extends Controller
         }
     }
 
+    /**
+     * ========================================================================
+     * HANDLE WEBHOOK / CALLBACK DANA
+     * Route: POST /dana/callback
+     * ========================================================================
+     */
+    public function handleCallback(Request $request, DanaSignatureService $danaService)
+    {
+        // 1. Log Payload Masuk (Untuk Debugging)
+        Log::info("========== DANA WEBHOOK INCOMING ==========");
+        Log::info("Headers:", $request->headers->all());
+        Log::info("Payload:", $request->all());
+
+        try {
+            // 2. Ambil Data Kunci dari Payload DANA
+            // DANA SNAP biasanya mengirim partnerReferenceNo sebagai Order ID kita
+            $orderNumber = $request->input('partnerReferenceNo'); 
+            $refNoDana   = $request->input('referenceNo');       
+            $status      = $request->input('transactionStatus'); // SUCCESS / PAID
+            $amount      = $request->input('amount.value');      
+
+            // Validasi Data Minimun
+            if (!$orderNumber) {
+                Log::error("WEBHOOK ERROR: Order Number (partnerReferenceNo) tidak ada.");
+                return response()->json(['responseCode' => '400', 'responseMessage' => 'Bad Request'], 400);
+            }
+
+            // 3. Cari Order di Database
+            $order = Order::where('order_number', $orderNumber)->first();
+
+            if (!$order) {
+                Log::error("WEBHOOK ERROR: Order #$orderNumber tidak ditemukan di DB.");
+                return response()->json(['responseCode' => '404', 'responseMessage' => 'Order Not Found'], 404);
+            }
+
+            // 4. Cek Status (Idempotency) - Jika sudah lunas, jangan diproses lagi
+            if ($order->payment_status === 'paid') {
+                Log::info("WEBHOOK INFO: Order #$orderNumber sudah lunas sebelumnya. Skip.");
+                return response()->json(['responseCode' => '200', 'responseMessage' => 'Success'], 200);
+            }
+
+            // 5. Proses Update Jika Status SUKSES
+            // Status sukses DANA bisa "SUCCESS" atau "PAID"
+            if (in_array($status, ['SUCCESS', 'PAID'])) {
+                
+                // Update Order Utama
+                $order->update([
+                    'status'         => 'processing', // Ubah dari pending -> processing
+                    'payment_status' => 'paid',
+                    'note'           => $order->note . "\n[DANA PAID] Ref: $refNoDana | Time: " . now(),
+                ]);
+
+                Log::info("WEBHOOK SUKSES: Order #$orderNumber berhasil diupdate LUNAS.");
+
+                // A. Proses Komisi Affiliate (Jika pakai Kupon)
+                if ($order->coupon_id) {
+                    $this->_processAffiliateCommission($order);
+                }
+
+                // B. Kirim Notifikasi WA (Sukses Bayar)
+                $this->_sendWaNotification($order);
+
+            } else {
+                Log::warning("WEBHOOK WARNING: Status transaksi #$orderNumber adalah $status (Bukan SUCCESS).");
+                // Opsional: Handle status EXPIRED / FAILED jika perlu
+            }
+
+            // Response Wajib ke DANA (200 OK)
+            return response()->json([
+                'responseCode' => '200', 
+                'responseMessage' => 'Success'
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::error("WEBHOOK EXCEPTION: " . $e->getMessage());
+            // Tetap return 500 agar DANA tahu ada error di server kita
+            return response()->json(['responseCode' => '500', 'responseMessage' => 'Internal Server Error'], 500);
+        }
+    }
+
     // =========================================================================
     // SET CALLBACK URL (Jalankan sekali saja via Postman/Browser)
     // =========================================================================
