@@ -156,7 +156,7 @@
                 </a>
 
                 {{-- [NEW] MENU LIHAT LOG --}}
-                <a href="{{ url('admin.logs') }}" target="_blank"
+                <a href="{{ url('admin/logs') }}" target="_blank"
                 class="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors duration-200 text-slate-300 hover:bg-slate-700 hover:text-white mt-1">
                     <i class="fas fa-bug w-5 text-center text-red-400"></i>
                     <span>Lihat Log System</span>
