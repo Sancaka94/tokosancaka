@@ -40,6 +40,8 @@
         /* Teks Vertikal untuk tombol Monitor */
         .writing-vertical { writing-mode: vertical-rl; text-orientation: mixed; }
 
+        
+
         /* Preloader Styles */
 #preloader {
     position: fixed;
@@ -53,7 +55,7 @@
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    transition: opacity 0.5s ease;
+    transition: opacity 0.5s ease; /* Mencegah tampilan konten 'melompat' saat preloader aktif */
 }
 
 .loader-logo {
@@ -534,14 +536,29 @@
     });
 </script>
 <script>
-    // Menghilangkan preloader saat semua elemen selesai dimuat
-    window.addEventListener('load', function() {
+    // Fungsi untuk mengontrol preloader agar hanya muncul sekali per sesi
+    (function() {
         const preloader = document.getElementById('preloader');
-        setTimeout(() => {
-            preloader.style.opacity = '0';
-            setTimeout(() => { preloader.style.display = 'none'; }, 500);
-        }, 300);
-    });
+        
+        // Cek apakah user sudah pernah melihat loading di sesi ini
+        if (sessionStorage.getItem('sancaka_loaded')) {
+            // Jika sudah pernah, langsung hilangkan preloader tanpa animasi
+            preloader.style.display = 'none';
+        } else {
+            // Jika ini kunjungan pertama di sesi ini, jalankan animasi loading
+            window.addEventListener('load', function() {
+                setTimeout(() => {
+                    preloader.style.opacity = '0';
+                    setTimeout(() => {
+                        preloader.style.display = 'none';
+                        // Simpan status agar tidak muncul lagi saat pindah menu
+                        sessionStorage.setItem('sancaka_loaded', 'true');
+                    }, 500);
+                }, 500); // Durasi loading awal (bisa dikurangi jika dirasa kelamaan)
+            });
+        }
+    })();
 </script>
+
 </body>
 </html>
