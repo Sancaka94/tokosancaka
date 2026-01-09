@@ -1167,29 +1167,27 @@ class OrderController extends Controller
     // 2. Cek apakah datanya berbentuk array (bungkus [0])
     $data = isset($jsonData[0]) ? $jsonData[0] : $jsonData;
 
-    // 3. Ambil statusnya
+    // 3. Ambil statusnya dari DANA
     $statusDANA = $data['latestTransactionStatus'] ?? null;
 
-    // --- [MULAI SKENARIO TEST] ---
+    // --- [MULAI SKENARIO TEST - URUTAN DIPERBAIKI] ---
     
-    // SKENARIO A: Transaction Closed/Expired (Status 05)
+    // SKENARIO 1: Transaction Closed/Expired (DANA kirim status 05)
     if ($statusDANA == '05') {
-        Log::info("LOG LOG: Skenario EXPIRED (05) terdeteksi.");
+        Log::info("LOG LOG: Skenario EXPIRED (05) terdeteksi. Mengirim 2005600.");
         return response()->json([
             "responseCode" => "2005600",
             "responseMessage" => "Successful"
         ], 200); 
     }
 
-    // SKENARIO B: Internal Server Error (Jika status bukan 05, kita paksa kirim 500 untuk tes satunya)
-    // Gunakan ini untuk menyelesaikan tes "Internal Server Error Response"
-    if ($statusDANA == '00') { // 00 biasanya dipakai DANA untuk tes error simulasi juga
-         Log::error("LOG LOG: Simulasi Internal Server Error (5005601) dikirim.");
-         return response()->json([
-             "responseCode" => "5005601",
-             "responseMessage" => "Internal Server Error"
-         ], 500);
-    }
+    // SKENARIO 2: Internal Server Error (Untuk transaksi selain status 05)
+    // Ini untuk menyelesaikan tes "Internal Server Error Response from Partner"
+    Log::error("LOG LOG: Simulasi Internal Server Error (5005601) dikirim.");
+    return response()->json([
+        "responseCode" => "5005601",
+        "responseMessage" => "Internal Server Error"
+    ], 500);
 
     // --- [AKHIR SKENARIO TEST] ---
     
