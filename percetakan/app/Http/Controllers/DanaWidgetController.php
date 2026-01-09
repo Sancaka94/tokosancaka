@@ -36,63 +36,57 @@ class DanaWidgetController extends Controller
     ]);
 
     // 2. Membangun Payload Sesuai Spesifikasi SNAP BI
-    $bodyArray = [
-        "partnerReferenceNo" => $orderId,
-        "merchantId"         => config('services.dana.merchant_id'),
-        "subMerchantId"      => "", 
-        "amount" => [
-            "value"    => "10000.00", // Sesuaikan dengan kebutuhan
-            "currency" => "IDR"
+    // Di dalam Controller Anda (createPayment)
+
+$amountValue = "10000.00"; // Pastikan string dengan 2 angka di belakang koma
+
+$bodyArray = [
+    "partnerReferenceNo" => $orderId,
+    "merchantId"         => config('services.dana.merchant_id'),
+    "amount" => [
+        "value"    => $amountValue,
+        "currency" => "IDR"
+    ],
+    "validUpTo"          => Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP'),
+    "urlParams" => [
+        [
+            "url" => $returnUrl,
+            "type" => "PAY_RETURN",
+            "isDeeplink" => "Y"
         ],
-        "externalStoreId" => config('services.dana.external_shop_id'), 
-        "validUpTo"       => Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP'),
-        "disabledPayMethods" => "CREDIT_CARD",
-        "urlParams" => [
-            [
-                "url" => $returnUrl,
-                "type" => "PAY_RETURN",
-                "isDeeplink" => "Y"
-            ],
-            [
-                "url" => $returnUrl,
-                "type" => "NOTIFICATION",
-                "isDeeplink" => "Y"
+        [
+            "url" => $returnUrl,
+            "type" => "NOTIFICATION",
+            "isDeeplink" => "Y"
+        ]
+    ],
+    "additionalInfo" => [
+        "mcc" => "5732",
+        "order" => [
+            "orderTitle"        => "Payment " . $orderId,
+            "merchantTransType" => "01",
+            "scenario"          => "REDIRECT",
+            "goods" => [
+                [
+                    "merchantGoodsId" => "ITEM-01",
+                    "description"     => "Product Description",
+                    "category"        => "Digital",
+                    "price" => [
+                        "value"    => $amountValue, // Harus sama dengan amount.value di atas
+                        "currency" => "IDR"
+                    ],
+                    "unit"     => "Pcs",
+                    "quantity" => "1" // JANGAN KOSONGKAN INI
+                ]
             ]
         ],
-        "additionalInfo" => [
-            "order" => [
-                "merchantTransType" => "01",
-                "orderTitle"        => "Payment Gateway Order",
-                "scenario"          => "REDIRECT",
-                "goods" => [
-                    [
-                        "unit"     => "Pcs",
-                        "category" => "Digital",
-                        "price"    => ["value" => "10000.00", "currency" => "IDR"],
-                        "merchantGoodsId" => "ITEM-01",
-                        "description"     => "Pembelian Produk",
-                        "quantity"        => "1",
-                        "snapshotUrl"     => "",
-                        "extendInfo"      => ""
-                    ]
-                ],
-                "shippingInfo" => [],
-                "extendInfo"   => ""
-            ],
-            "mcc"     => "5732",
-            "envInfo" => [
-                "sourcePlatform"    => "IPG",
-                "terminalType"      => "SYSTEM",
-                "orderTerminalType" => "WEB",
-                "clientIp"          => $request->ip(),
-                "osType"            => "Windows.PC",
-                "appVersion"        => "1.0",
-                "sdkVersion"        => "1.0",
-                "websiteLanguage"   => "en_US"
-            ],
-            "extendInfo" => json_encode(["key" => "value"])
+        "envInfo" => [
+            "sourcePlatform"    => "IPG",
+            "terminalType"      => "SYSTEM",
+            "orderTerminalType" => "WEB"
         ]
-    ];
+    ]
+];
 
     $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     $relativePath = '/payment-gateway/v1.0/debit/payment-host-to-host.htm';
