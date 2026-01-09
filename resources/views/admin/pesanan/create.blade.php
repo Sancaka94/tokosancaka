@@ -622,70 +622,78 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // --- LOGIKA OTOMATISASI & PROTEKSI ASURANSI (FIXED) ---
+   // --- LOGIKA OTOMATISASI, WARNA & PROTEKSI ASURANSI ---
 const itemTypeSelect = document.getElementById('item_type');
 const asuransiSelect = document.getElementById('ansuransi');
 const wajibAsuransiIds = ['1', '3', '4', '8'];
 
-function applyStrictInsurance() {
+function applyStrictInsurance(isInitial = false) {
     if (!itemTypeSelect || !asuransiSelect) return;
 
     const selectedType = itemTypeSelect.value;
     const itemTypeName = itemTypeSelect.options[itemTypeSelect.selectedIndex].text;
 
     if (wajibAsuransiIds.includes(selectedType)) {
-        // 1. Paksa ke "Iya"
+        // --- KONDISI WAJIB (MERAH) ---
         asuransiSelect.value = 'iya';
+        asuransiSelect.classList.remove('bg-green-50', 'border-green-300', 'text-green-600');
+        asuransiSelect.classList.add('bg-red-50', 'border-red-300', 'text-red-600', 'font-semibold');
         
-        // 2. Kunci elemen (Visual & Interaksi)
-        asuransiSelect.classList.add('bg-gray-200', 'cursor-not-allowed');
+        // Kunci elemen
+        asuransiSelect.classList.add('cursor-not-allowed');
         asuransiSelect.style.pointerEvents = 'none'; 
         
-        // 3. Tampilkan Peringatan jika bukan saat inisialisasi halaman
-        if (window.isInitialLoadDone) {
+        if (!isInitial) {
             Swal.fire({
                 icon: 'info',
                 title: 'Asuransi Wajib',
-                text: `Kategori "${itemTypeName}" wajib menggunakan asuransi. Pilihan dikunci ke "Iya".`,
+                text: `Kategori "${itemTypeName}" wajib asuransi. Pilihan dikunci ke "Iya".`,
                 confirmButtonColor: '#ef4444'
             });
         }
     } else {
-        // Kembalikan ke normal jika bukan kategori wajib
-        asuransiSelect.classList.remove('bg-gray-200', 'cursor-not-allowed');
+        // --- KONDISI OPSIONAL (HIJAU) ---
+        asuransiSelect.classList.remove('bg-red-50', 'border-red-300', 'text-red-600');
+        asuransiSelect.classList.add('bg-green-50', 'border-green-300', 'text-green-600', 'font-semibold');
+        
+        asuransiSelect.classList.remove('cursor-not-allowed');
         asuransiSelect.style.pointerEvents = 'auto';
+
+        if (!isInitial) asuransiSelect.value = 'tidak';
     }
 
-    // 4. RESET EKSPEDISI (Penting: Biaya berubah, tombol harus balik ke disabled)
-    const expeditionDisplay = document.getElementById('selected_expedition_display');
-    const expeditionValue = document.getElementById('expedition');
-    if (expeditionDisplay && expeditionValue) {
-        expeditionValue.value = '';
-        expeditionDisplay.value = '';
-        expeditionDisplay.placeholder = 'Data berubah, klik untuk cek ulang';
+    // Reset Ekspedisi jika berubah
+    if (!isInitial) {
+        const expeditionDisplay = document.getElementById('selected_expedition_display');
+        const expeditionValue = document.getElementById('expedition');
+        if (expeditionDisplay && expeditionValue) {
+            expeditionValue.value = '';
+            expeditionDisplay.value = '';
+            expeditionDisplay.placeholder = 'Data berubah, klik untuk cek ulang';
+        }
     }
 
-    // 5. Pemicu validasi tombol "Buat Pesanan"
-    if (typeof runValidityChecks === "function") {
-        runValidityChecks();
-    }
+    if (typeof runValidityChecks === "function") runValidityChecks();
 }
 
-// Jalankan saat ganti jenis barang
-itemTypeSelect.addEventListener('change', applyStrictInsurance);
+// Event ganti barang
+itemTypeSelect.addEventListener('change', () => applyStrictInsurance(false));
 
-// Proteksi tambahan: Mencegah klik paksa
-asuransiSelect.addEventListener('mousedown', function(e) {
-    if (wajibAsuransiIds.includes(itemTypeSelect.value)) {
-        e.preventDefault();
-        this.blur();
+// Update warna jika user ganti manual di kategori opsional
+asuransiSelect.addEventListener('change', function() {
+    if (this.value === 'iya') {
+        this.classList.replace('bg-green-50', 'bg-red-50');
+        this.classList.replace('border-green-300', 'border-red-300');
+        this.classList.replace('text-green-600', 'text-red-600');
+    } else {
+        this.classList.replace('bg-red-50', 'bg-green-50');
+        this.classList.replace('border-red-300', 'border-green-300');
+        this.classList.replace('text-red-600', 'text-green-600');
     }
 });
 
-// Jalankan saat pertama kali buka halaman (Inisialisasi)
-window.isInitialLoadDone = false;
-applyStrictInsurance();
-window.isInitialLoadDone = true;
+// Jalankan awal
+applyStrictInsurance(true);
     
     // --- START: Validity + Potong Saldo check logic ---
     (function() {
