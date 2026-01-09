@@ -70,7 +70,8 @@ Route::prefix('dana')->name('dana.')->group(function () {
 
 //Route::post('/dana/notify', [OrderController::class, 'handleDanaCallback'])->name('dana.notify');
 
-Route::post('/dana/notify', [OrderController::class, 'handleDanaWebhook']);
+// Pastikan baris ini yang aktif di routes
+Route::post('/dana/notify', [OrderController::class, 'handleDanaWebhook'])->name('dana.notify');
 // Webhook Notification
 //Route::post('/dana/notify', [DanaWidgetController::class, 'handleNotify'])->name('dana.notify');
 
