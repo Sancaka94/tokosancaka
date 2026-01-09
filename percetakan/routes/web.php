@@ -14,11 +14,17 @@ use Illuminate\Support\Facades\Artisan;
 use App\Http\Controllers\DanaWidgetController;
 use App\Http\Controllers\DanaDashboardController;
 use App\Http\Controllers\DanaResponseCodeController;
-use App\Http\Controllers\SystemLogController;
+use App\Http\Controllers\LogViewerController;
 
-Route::middleware(['auth'])->group(function () {
-    Route::get('/system-logs', [SystemLogController::class, 'index'])->name('logs.index');
-    Route::delete('/system-logs/clear', [SystemLogController::class, 'clear'])->name('logs.clear');
+// Sesuaikan middleware dengan kebutuhan admin panel Anda (misal: 'auth', 'admin')
+Route::middleware(['auth'])->prefix('admin/logs')->name('admin.logs.')->group(function () {
+    
+    // Halaman Viewer (GET)
+    Route::get('/', [LogViewerController::class, 'index'])->name('index');
+    
+    // Proses Hapus (POST) - Sesuai fetch di Javascript Anda
+    Route::post('/clear', [LogViewerController::class, 'clear'])->name('clear');
+
 });
 
 Route::resource('dana_response_codes', DanaResponseCodeController::class);
