@@ -9,7 +9,72 @@ use Carbon\Carbon;
 
 class DanaSignatureService
 {
-    public function generateSignature($method, $path, $body, $timestamp, $accessToken)
+    /**
+     * Mendapatkan Access Token B2B (Bearer Token)
+     */
+    public function getAccessToken()
+    {
+        Log::info('DANA_AUTH: Memulai pengambilan Access Token B2B.');
+
+        // Cek Cache agar tidak request berulang kali (Token biasanya valid 1-2 jam)
+        if (Cache::has('dana_access_token')) {
+            Log::info('DANA_AUTH: Menggunakan token dari Cache.');
+            return Cache::get('dana_access_token');
+        }
+
+        $timestamp = Carbon::now('Asia/Jakarta')->toIso8601String();
+        $path = '/v1.0/access-token/b2b.htm';
+        
+        // 1. Membuat Signature Auth (Asymmetric Signature)
+        // Format String to Sign: X-PARTNER-ID + "|" + X-TIMESTAMP
+        $stringToSign = config('services.dana.x_partner_id') . "|" . $timestamp;
+        
+        try {
+            $signature = $this->generateAsymmetricSignature($stringToSign);
+            Log::info('DANA_AUTH_SIGNATURE: Signature Auth berhasil dibuat.');
+        } catch (\Exception $e) {
+            Log::error('DANA_AUTH_SIGNATURE_FAILED: ' . $e->getMessage());
+            throw $e;
+        }
+
+        $baseUrl = config('services.dana.dana_env') === 'PRODUCTION' 
+                   ? 'https://api.dana.id' 
+                   : 'https://api.sandbox.dana.id';
+
+        // 2. Request Token ke DANA
+        try {
+            $response = Http::withHeaders([
+                'X-TIMESTAMP'  => $timestamp,
+                'X-PARTNER-ID' => config('services.dana.x_partner_id'),
+                'X-SIGNATURE'  => $signature,
+                'Content-Type' => 'application/json',
+            ])->post($baseUrl . $path, [
+                'grantType' => 'client_credentials',
+                'additionalInfo' => (object)[]
+            ]);
+
+            $result = $response->json();
+
+            if ($response->successful() && isset($result['accessToken'])) {
+                Log::info('DANA_AUTH_SUCCESS: Token berhasil didapatkan.');
+                
+                // Simpan di cache (dikurangi 5 menit untuk safety margin)
+                $expiry = ($result['expiresIn'] ?? 3600) - 300;
+                Cache::put('dana_access_token', $result['accessToken'], $expiry);
+
+                return $result['accessToken'];
+            }
+
+            Log::error('DANA_AUTH_FAILED: Respon DANA tidak memberikan token.', $result);
+            throw new \Exception("DANA Auth Error: " . ($result['message'] ?? 'Unknown Error'));
+
+        } catch (\Exception $e) {
+            Log::error('DANA_AUTH_HTTP_ERROR: ' . $e->getMessage());
+            throw $e;
+        }
+    }
+
+   public function generateSignature($method, $path, $body, $timestamp, $accessToken)
 {
     Log::info('DANA_SIGN_GEN: Memulai pembuatan signature transaksi.');
 
@@ -37,36 +102,6 @@ class DanaSignatureService
 
     return $signature;
 }
-
-    /**
-     * Generate Signature untuk Transaksi H2H (Symmetric Signature)
-     * Menggunakan: HTTP Method + Relative Path + AccessToken + HashedBody + Timestamp
-     */
-    public function generateSignature($method, $path, $body, $timestamp, $accessToken)
-    {
-        Log::info('DANA_SIGN_GEN: Memulai pembuatan signature transaksi.');
-
-        // 1. Minify & Hash Body
-        if (is_array($body) || is_object($body)) {
-            $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-        } else {
-            $jsonBody = $body;
-        }
-        
-        $hashedBody = strtolower(hash('sha256', $jsonBody));
-
-        // 2. String to Sign sesuai Standar SNAP BI
-        // Format: HTTPMethod + ":" + RelativePath + ":" + AccessToken + ":" + HashedBody + ":" + Timestamp
-        $stringToSign = strtoupper($method) . ":" . $path . ":" . $accessToken . ":" . $hashedBody . ":" . $timestamp;
-
-        Log::info('DANA_SIGN_STS: String to Sign disusun.', ['sts' => $stringToSign]);
-
-        // 3. HMAC-SHA512 menggunakan Client Secret
-        $clientSecret = config('services.dana.client_secret');
-        $signature = base64_encode(hash_hmac('sha512', $stringToSign, $clientSecret, true));
-
-        return $signature;
-    }
 
     public function generateAsymmetricSignature($stringToSign)
 {
