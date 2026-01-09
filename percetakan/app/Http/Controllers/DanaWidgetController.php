@@ -20,86 +20,60 @@ class DanaWidgetController extends Controller
 
     public function createPayment(Request $request)
 {
-    Log::info('DANA_SNAP_START: Inisiasi proses Payment.');
+    Log::info('DANA_H2H_START');
 
     $orderId = 'INV-' . time();
     $timestamp = Carbon::now('Asia/Jakarta')->toIso8601String();
-    // Pastikan variabel ini konsisten
-$totalValue = "10000.00"; 
+    $totalAmount = "10000.00"; // Wajib format 0.00
 
-$bodyArray = [
-    "partnerReferenceNo" => $orderId,
-    "merchantId"         => config('services.dana.merchant_id'),
-    "subMerchantId"      => "", // Jika tidak ada, kosongkan string
-    "amount" => [
-        "value"    => $totalValue,
-        "currency" => "IDR"
-    ],
-    "externalStoreId"    => config('services.dana.external_shop_id') ?? "",
-    "validUpTo"          => Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP'),
-    "disabledPayMethods" => "CREDIT_CARD",
-    "urlParams" => [
-        [
-            "url" => route('dana.return'),
-            "type" => "PAY_RETURN",
-            "isDeeplink" => "Y"
+    $bodyArray = [
+        "partnerReferenceNo" => $orderId,
+        "merchantId"         => config('services.dana.merchant_id'),
+        "subMerchantId"      => "", 
+        "amount" => [
+            "value"    => $totalAmount,
+            "currency" => "IDR"
         ],
-        [
-            "url" => route('dana.return'),
-            "type" => "NOTIFICATION",
-            "isDeeplink" => "Y"
-        ]
-    ],
-    "additionalInfo" => [
-        "order" => [
-            "merchantTransType" => "01", // Ubah dari 'type' ke '01'
-            "orderTitle"        => "Payment Gateway Order",
-            "scenario"          => "REDIRECT",
-            "goods" => [
-                [
-                    "unit"            => "Kg",
-                    "category"        => "travelling/subway",
-                    "price"           => [
-                        "value"    => $totalValue, // Harus sama dengan amount.value jika qty = 1
-                        "currency" => "IDR"
-                    ],
-                    "merchantShippingId" => "564314314574327545",
-                    "merchantGoodsId"    => "24525635625623",
-                    "description"        => "Women Summer Dress New White Lace",
-                    "snapshotUrl"        => "http://snap.url.com",
-                    "quantity"           => "1", // JANGAN KOSONG ("")
-                    "extendInfo"         => ""
-                ]
+        "externalStoreId"    => config('services.dana.external_shop_id') ?? "",
+        "validUpTo"          => Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP'),
+        "disabledPayMethods" => "CREDIT_CARD",
+        "urlParams" => [
+            ["url" => route('dana.return'), "type" => "PAY_RETURN", "isDeeplink" => "Y"],
+            ["url" => route('dana.return'), "type" => "NOTIFICATION", "isDeeplink" => "Y"]
+        ],
+        "additionalInfo" => [
+            "order" => [
+                "merchantTransType" => "01",
+                "orderTitle"        => "Invoice " . $orderId,
+                "scenario"          => "REDIRECT",
+                "goods" => [[
+                    "unit"            => "Pcs",
+                    "category"        => "Digital",
+                    "price"           => ["value" => $totalAmount, "currency" => "IDR"],
+                    "merchantGoodsId" => "GDS-001",
+                    "description"     => "Digital Product",
+                    "quantity"        => "1", // WAJIB STRING ANGKA, TIDAK BOLEH KOSONG
+                    "merchantShippingId" => "SHIP-".time()
+                ]],
+                "extendInfo" => ""
             ],
-            "shippingInfo" => [], // Jika tidak perlu, biarkan array kosong
-            "extendInfo"   => ""
-        ],
-        "mcc"     => "5732",
-        "envInfo" => [
-            "sourcePlatform"    => "IPG",
-            "terminalType"      => "SYSTEM",
-            "orderTerminalType" => "WEB",
-            "clientIp"          => $request->ip(),
-            "osType"            => "Windows.PC"
-        ],
-        "extendInfo" => "" 
-    ]
-];
+            "mcc"     => "5732",
+            "envInfo" => [
+                "sourcePlatform"    => "IPG",
+                "terminalType"      => "SYSTEM", // Sesuaikan dengan enum: SYSTEM/WEB
+                "orderTerminalType" => "WEB",
+                "clientIp"          => $request->ip()
+            ]
+        ]
+    ];
 
-    $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-    $relativePath = '/payment-gateway/v1.0/debit/payment-host-to-host.htm';
+    $path = '/payment-gateway/v1.0/debit/payment-host-to-host.htm';
 
     try {
         $accessToken = $this->danaSignature->getAccessToken();
-        
-        // Pastikan generateSignature menggunakan ASYMMETRIC (RSA) sesuai dokumen terbaru Anda
-        $signature = $this->danaSignature->generateSignature('POST', $relativePath, $jsonBody, $timestamp);
-        
-        Log::info('DANA_SIGN_STS_VERIFIED: Signature H2H dibuat.');
+        $signature   = $this->danaSignature->generateSignature('POST', $path, $bodyArray, $timestamp);
 
-        $baseUrl = config('services.dana.dana_env') === 'PRODUCTION' 
-                   ? 'https://api.dana.id' 
-                   : 'https://api.sandbox.dana.id';
+        Log::info('DANA_H2H_SENDING', ['partner_ref' => $orderId]);
 
         $response = Http::withHeaders([
             'Authorization' => 'Bearer ' . $accessToken,
@@ -110,17 +84,19 @@ $bodyArray = [
             'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
             'X-EXTERNAL-ID' => Str::random(32),
             'CHANNEL-ID'    => '95221'
-        ])
-        ->withBody($jsonBody, 'application/json')
-        ->post($baseUrl . $relativePath);
+        ])->post('https://api.sandbox.dana.id' . $path, $bodyArray);
 
-        Log::info('DANA_FINAL_RESPONSE', ['body' => $response->json()]);
+        Log::info('DANA_H2H_RESPONSE', ['res' => $response->json()]);
 
-        return $response->json();
+        if ($response->successful() && isset($response->json()['webRedirectUrl'])) {
+            return redirect($response->json()['webRedirectUrl']);
+        }
+
+        return response()->json($response->json(), $response->status());
 
     } catch (\Exception $e) {
-        Log::error('DANA_FATAL_ERROR: ' . $e->getMessage());
-        return response()->json(['error' => $e->getMessage()], 500);
+        Log::error('DANA_H2H_FATAL', ['msg' => $e->getMessage()]);
+        return response()->json(['error' => 'Internal Server Error'], 500);
     }
 }
     
