@@ -18,6 +18,123 @@ class DanaWidgetController extends Controller
         $this->danaSignature = $danaSignature;
     }
 
+    public function createPayment(Request $request)
+{
+    Log::info('DANA_PAYMENT_START: Memulai proses pembuatan pembayaran.');
+
+    // 1. Setup Data
+    $orderId     = 'INV-' . time();
+    $returnUrl   = route('dana.return');
+    $expiryTime  = Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP');
+
+    Log::info('DANA_PAYMENT_SETUP: Data dasar disiapkan.', [
+        'order_id' => $orderId,
+        'expiry'   => $expiryTime
+    ]);
+
+    // 2. Body Payload
+    $bodyArray = [
+        "partnerReferenceNo" => $orderId,
+        "merchantId" => config('services.dana.merchant_id'),
+        "amount" => [
+            "value" => "10000.00",
+            "currency" => "IDR"
+        ],
+        "validUpTo" => $expiryTime,
+        "urlParams" => [
+            [
+                "url" => $returnUrl,
+                "type" => "PAY_RETURN",
+                "isDeeplink" => "Y"
+            ],
+            [
+                "url" => $returnUrl,
+                "type" => "NOTIFICATION",
+                "isDeeplink" => "Y"
+            ]
+        ],
+        "additionalInfo" => [
+            "mcc" => "5732", 
+            "order" => [
+                "orderTitle" => "Invoice " . $orderId,
+                "merchantTransType" => "01",
+                "scenario" => "REDIRECT",
+            ],
+            "envInfo" => [
+                "sourcePlatform" => "IPG",
+                "terminalType" => "SYSTEM",
+                "orderTerminalType" => "WEB",
+            ]
+        ]
+    ];
+
+    $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    $method = 'POST';
+    $relativePath = '/payment-gateway/v1.0/debit/payment-host-to-host.htm'; 
+    $timestamp = Carbon::now('Asia/Jakarta')->toIso8601String();
+
+    // 3. Signature Generation
+    try {
+        $signature = $this->danaSignature->generateSignature($method, $relativePath, $jsonBody, $timestamp);
+        Log::info('DANA_SIGNATURE_SUCCESS: Signature berhasil dibuat.');
+    } catch (\Exception $e) {
+        Log::error('DANA_SIGNATURE_FAILED: Gagal generate signature.', [
+            'message' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+        return response()->json(['error' => 'Signature Error'], 500);
+    }
+
+    // 4. Hit API DANA
+    $fullUrl = 'https://api.sandbox.dana.id' . $relativePath;
+    $externalId = Str::random(32);
+
+    Log::info('DANA_REQUEST_SENDING: Mengirim request ke API DANA.', [
+        'url' => $fullUrl,
+        'X-EXTERNAL-ID' => $externalId,
+        'payload' => $bodyArray
+    ]);
+
+    try {
+        $response = Http::withHeaders([
+            'X-PARTNER-ID' => config('services.dana.x_partner_id'),
+            'X-EXTERNAL-ID' => $externalId,
+            'X-TIMESTAMP'  => $timestamp,
+            'X-SIGNATURE'  => $signature,
+            'Content-Type' => 'application/json',
+            'CHANNEL-ID'   => '95221', 
+        ])
+        ->withBody($jsonBody, 'application/json')
+        ->post($fullUrl);
+
+        $result = $response->json();
+
+        Log::info('DANA_RESPONSE_RECEIVED: Response diterima.', [
+            'status' => $response->status(),
+            'body'   => $result
+        ]);
+
+        // 5. Handling Response
+        if (isset($result['responseCode']) && $result['responseCode'] == '2005400') {
+             $redirectUrl = $result['webRedirectUrl'] ?? null;
+             if($redirectUrl) {
+                Log::info('DANA_REDIRECTING: Mengarahkan user ke halaman DANA.', ['url' => $redirectUrl]);
+                return redirect($redirectUrl);
+             }
+             Log::warning('DANA_REDIRECT_MISSING: Response 2005400 tapi redirect URL tidak ada.');
+        }
+
+        Log::error('DANA_PAYMENT_FAILED: Transaksi gagal diproses oleh API.', $result);
+        return response()->json($result);
+
+    } catch (\Exception $e) {
+        Log::error('DANA_HTTP_ERROR: Terjadi kesalahan koneksi/HTTP.', [
+            'message' => $e->getMessage()
+        ]);
+        return response()->json(['error' => $e->getMessage()], 500);
+    }
+}
+
     /**
      * FUNGSI 1: MEMBUAT PEMBAYARAN (WIDGET PAYMENT)
      * Endpoint: /rest/redirection/v1.0/debit/payment-host-to-host
