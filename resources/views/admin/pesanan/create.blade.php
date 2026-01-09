@@ -202,55 +202,18 @@
                             <select name="item_type" id="item_type"
                                 class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5"
                                 required>
-                                <option value="" disabled>Pilih...</option> <option value="1">Elektronik</option>
-                                <option value="2">Handphone / Tablet</option>
-                                <option value="3">Laptop / Komputer</option>
-                                <option value="4">Aksesoris Elektronik</option>
-
-                                <option value="5">Pakaian</option>
-                                <option value="6">Tas / Dompet</option>
-                                <option value="7">Sepatu / Sandal</option>
-                                <option value="8">Aksesoris Fashion</option>
-
-                                <option value="9">Pecah Belah</option>
-                                <option value="10">Barang Mudah Rusak</option>
-
-                                <option value="11">Dokumen</option>
-                                <option value="12">Buku & Alat Tulis</option>
-
-                                <option value="13">Peralatan Rumah Tangga</option>
-                                <option value="14">Furniture Kecil</option>
-
-                                <option value="15">Kosmetik & Perawatan</option>
-                                <option value="16">Parfum</option>
-
-                                <option value="17">Makanan / Minuman</option>
-                                <option value="18">Makanan Beku (Frozen Food)</option>
-
-                                <option value="19">Mainan / Hobi</option>
-                                <option value="20">Koleksi & Merchandise</option>
-
-                                <option value="21">Obat-obatan / Suplemen</option>
-                                <option value="22">Alat Kesehatan</option>
-
-                                <option value="23">Sparepart / Komponen</option>
-                                <option value="24">Aksesoris Kendaraan</option>
-
-                                <option value="25">Alat Olahraga</option>
-                                <option value="26">Alat Musik</option>
-
-                                <option value="27">Perhiasan / Jam Tangan</option>
-
-                                <option value="28">Alat Pertukangan</option>
-                                <option value="29">Bahan Bangunan</option>
-                                <option value="30">Peralatan Industri</option>
-
-                                <option value="31">Barang Cair (Non-Bahan Kimia Berbahaya)</option>
-                                <option value="32">Bahan Kimia Ringan</option>
-
-                                <option value="33" selected>Barang Umum</option>
-
-                                <option value="99">Lainnya</option>
+                                <option value="" disabled>Pilih...</option>
+                                <option value="1">Peralatan Elektronik & Gadget</option>
+                                <option value="2">Pakaian / Baju / Kain</option>
+                                <option value="3">Pecah Belah</option>
+                                <option value="4">Dokumen / Berkas / Buku</option>
+                                <option value="5">Peralatan Rumah Tangga</option>
+                                <option value="6">Aksesoris</option>
+                                <option value="7">Lain-Lain</option>
+                                <option value="8">Dokumen Berharga</option>
+                                <option value="9">Peralatan Kesehatan / Kecantikan / Kosmetik</option>
+                                <option value="10">Peralatan Olahraga & Hiburan</option>
+                                <option value="11">Perlengkapan Mobil & Motor</option>
                             </select>
                         </div>
 

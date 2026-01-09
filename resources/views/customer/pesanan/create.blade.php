@@ -329,31 +329,17 @@
                             <label for="item_type" class="block mb-2 text-sm font-medium text-gray-700 required-label">Jenis Barang</label>
                             <select name="item_type" id="item_type" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 @error('item_type') is-invalid @enderror" required>
                                 <option value="" disabled selected>Pilih...</option>
-                                <option value="1">Elektronik</option>
-                                <option value="2">Pakaian</option>
+                                <option value="1">Peralatan Elektronik & Gadget</option>
+                                <option value="2">Pakaian / Baju / Kain</option>
                                 <option value="3">Pecah Belah</option>
-                                <option value="4">Dokumen</option>
-                                <option value="5">Rumah Tangga</option>
+                                <option value="4">Dokumen / Berkas / Buku</option>
+                                <option value="5">Peralatan Rumah Tangga</option>
                                 <option value="6">Aksesoris</option>
-                                <option value="7">Lainnya</option>
-                                <option value="8">Makanan & Minuman</option>
-                                <option value="9">Peralatan Dapur</option>
-                                <option value="10">Peralatan Kantor</option>
-                                <option value="11">Buku & Alat Tulis</option>
-                                <option value="12">Mainan & Hobi</option>
-                                <option value="13">Peralatan Olahraga</option>
-                                <option value="14">Kosmetik & Kecantikan</option>
-                                <option value="15">Kesehatan & Obat</option>
-                                <option value="16">Alat Musik</option>
-                                <option value="17">Perhiasan</option>
-                                <option value="18">Otomotif</option>
-                                <option value="19">Peralatan Pertukangan</option>
-                                <option value="20">Dekorasi Rumah</option>
-                                <option value="21">Produk Bayi & Anak</option>
-                                <option value="22">Peralatan Kebersihan</option>
-                                <option value="23">Bahan Bangunan</option>
-                                <option value="24">Alat Elektrik</option>
-                                <option value="25">Tanaman & Pertanian</option>
+                                <option value="7">Lain-Lain</option>
+                                <option value="8">Dokumen Berharga</option>
+                                <option value="9">Peralatan Kesehatan / Kecantikan / Kosmetik</option>
+                                <option value="10">Peralatan Olahraga & Hiburan</option>
+                                <option value="11">Perlengkapan Mobil & Motor</option>
                             </select>
                             @error('item_type')
                                 <div class="invalid-feedback text-sm text-red-600 mt-1">{{ $message }}</div>
