@@ -18,82 +18,112 @@ class DanaWidgetController extends Controller
         $this->danaSignature = $danaSignature;
     }
 
-    public function createPayment(Request $request)
+  public function createPayment(Request $request)
 {
+    Log::info('DANA_H2H_START: Memulai request pembayaran final.');
+
     $orderId = 'INV-' . time();
     $timestamp = Carbon::now('Asia/Jakarta')->toIso8601String();
     $totalValue = "10000.00"; 
+    $partnerId = config('services.dana.x_partner_id');
 
-    $partnerId = config('services.dana.x_partner_id'); // 2025081520100641466855
-
-$bodyArray = [
-    "partnerReferenceNo" => $orderId,
-    "merchantId"         => $partnerId, // DISAMAKAN DENGAN X-PARTNER-ID
-    "subMerchantId"      => "",         // Tambahkan field ini (ada di dokumentasi Anda)
-    "amount" => [
-        "value"    => $totalValue,
-        "currency" => "IDR"
-    ],
-    "validUpTo" => Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP'),
-    "urlParams" => [
-        ["url" => "https://tokosancaka.com/return", "type" => "PAY_RETURN", "isDeeplink" => "Y"],
-        ["url" => "https://tokosancaka.com/notify", "type" => "NOTIFICATION", "isDeeplink" => "Y"]
-    ],
-    "additionalInfo" => [
-        "order" => [
-            "orderTitle"        => "Payment " . $orderId,
-            "merchantTransType" => "01",
-            "scenario"          => "REDIRECT",
-            "buyer" => [
-                "externalUserType" => "",
-                "nickname"         => "Guest",
-                "externalUserId"   => "",
-                "userId"           => "12345"
+    // Body Payload hasil audit DD (Lengkap & Sinkron)
+    $bodyArray = [
+        "partnerReferenceNo" => $orderId,
+        "merchantId"         => $partnerId, // Disamakan dengan Partner ID sesuai hasil audit
+        "subMerchantId"      => "",
+        "amount" => [
+            "value"    => $totalValue,
+            "currency" => "IDR"
+        ],
+        "validUpTo" => Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP'),
+        "urlParams" => [
+            ["url" => "https://tokosancaka.com/return", "type" => "PAY_RETURN", "isDeeplink" => "Y"],
+            ["url" => "https://tokosancaka.com/notify", "type" => "NOTIFICATION", "isDeeplink" => "Y"]
+        ],
+        "additionalInfo" => [
+            "order" => [
+                "orderTitle"        => "Payment " . $orderId,
+                "merchantTransType" => "01",
+                "scenario"          => "REDIRECT",
+                "buyer" => [
+                    "externalUserType" => "",
+                    "nickname"         => "Guest",
+                    "externalUserId"   => "",
+                    "userId"           => "12345"
+                ],
+                "goods" => [
+                    [
+                        "merchantGoodsId" => "G001",
+                        "description"     => "Product Description",
+                        "category"        => "Digital",
+                        "price"           => ["value" => $totalValue, "currency" => "IDR"],
+                        "quantity"        => "1"
+                    ]
+                ],
+                "extendInfo" => ""
             ],
-            "goods" => [
-                [
-                    "merchantGoodsId" => "G001",
-                    "description"     => "Product Description",
-                    "category"        => "Digital",
-                    "price"           => ["value" => $totalValue, "currency" => "IDR"],
-                    "quantity"        => "1"
-                ]
+            "mcc"     => "5732",
+            "envInfo" => [
+                "sourcePlatform"    => "IPG",
+                "terminalType"      => "SYSTEM",
+                "orderTerminalType" => "WEB",
+                "clientIp"          => "127.0.0.1"
             ],
             "extendInfo" => ""
-        ],
-        "mcc"     => "5732",
-        "envInfo" => [
-            "sourcePlatform"    => "IPG",
-            "terminalType"      => "SYSTEM",
-            "orderTerminalType" => "WEB",
-            "clientIp"          => "127.0.0.1"
-        ],
-        "extendInfo" => ""
-    ]
-];
+        ]
+    ];
 
-    // 1. JSON Encode (Ini yang harus kita kunci)
+    // 1. JSON Encode - Dikunci agar Signature & Body identik
     $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-    
     $path = '/payment-gateway/v1.0/debit/payment-host-to-host.htm';
-    $accessToken = $this->danaSignature->getAccessToken();
-    
-    // 2. Buat Signature
-    $signature = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
 
-    // 3. JEBAKAN DD
-    dd([
-        'DEBUG_INFO' => 'Bandingkan data di bawah ini dengan dokumentasi DANA',
-        'HEADERS' => [
+    try {
+        // 2. Auth & Signature
+        $accessToken = $this->danaSignature->getAccessToken();
+        $signature = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
+
+        Log::info('DANA_H2H_PAYLOAD: Menyiapkan pengiriman.', [
+            'order_id' => $orderId,
+            'timestamp' => $timestamp
+        ]);
+
+        // 3. Eksekusi Request
+        $response = \Illuminate\Support\Facades\Http::withHeaders([
+            'Authorization' => 'Bearer ' . $accessToken,
+            'Content-Type'  => 'application/json',
             'X-TIMESTAMP'   => $timestamp,
             'X-SIGNATURE'   => $signature,
-            'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
-            'Authorization' => 'Bearer ' . $accessToken,
-        ],
-        'BODY_STRING' => $jsonBody,
-        'HASHED_BODY_MANUAL' => strtolower(hash('sha256', $jsonBody)),
-        'STRING_TO_SIGN_FINAL' => "POST:" . $path . ":" . strtolower(hash('sha256', $jsonBody)) . ":" . $timestamp
-    ]);
+            'ORIGIN'        => config('services.dana.origin'),
+            'X-PARTNER-ID'  => $partnerId,
+            'X-EXTERNAL-ID' => \Illuminate\Support\Str::random(32),
+            'CHANNEL-ID'    => '95221'
+        ])
+        ->withBody($jsonBody, 'application/json')
+        ->post('https://api.sandbox.dana.id' . $path);
+
+        $result = $response->json();
+
+        Log::info('DANA_H2H_RESPONSE: Respon diterima.', [
+            'status' => $response->status(),
+            'body'   => $result
+        ]);
+
+        // 4. Redirect jika sukses
+        if ($response->successful() && isset($result['webRedirectUrl'])) {
+            Log::info('DANA_H2H_SUCCESS: Redirecting to DANA.');
+            return redirect($result['webRedirectUrl']);
+        }
+
+        Log::error('DANA_H2H_FAILED: Gagal memproses order.', $result);
+        return response()->json($result, $response->status());
+
+    } catch (\Exception $e) {
+        Log::error('DANA_H2H_EXCEPTION: Kesalahan sistem.', [
+            'message' => $e->getMessage()
+        ]);
+        return response()->json(['error' => 'Internal Server Error'], 500);
+    }
 }
     
 
