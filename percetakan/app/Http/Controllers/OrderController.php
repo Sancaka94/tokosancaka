@@ -344,7 +344,7 @@ class OrderController extends Controller
         }
     }
 
-    public function store(Request $request, DokuJokulService $dokuService, KiriminAjaService $kiriminAja)
+    public function store(Request $request, DokuJokulService $dokuService, KiriminAjaService $kiriminAja, \App\Services\DanaSignatureService $danaService)
     {
         // [LOG 1] Cek Input Mentah dari Frontend
         Log::info('================ START ORDER STORE ================');
