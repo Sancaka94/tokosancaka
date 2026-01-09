@@ -1160,36 +1160,33 @@ class OrderController extends Controller
 
     public function handleDanaWebhook(Request $request)
 {
-    // 1. Ambil data mentah
-    $jsonData = json_decode($request->getContent(), true);
+    // 1. AMBIL DATA MENTAH DULU
+    $content = $request->getContent();
+    $jsonData = json_decode($content, true);
     Log::info("LOG LOG: Menerima notifikasi dari DANA portal.");
 
-    // --- [LOGIKA SMART UNTUK TEST DANA] ---
-    
-    // Karena DANA kirim pakai [ {data} ], kita harus ambil isi di dalam kurung siku pertama [0]
+    // --- [LOGIKA TEST DANA - TARUH DI ATAS AGAR CEPAT RESPON] ---
     $dataTest = isset($jsonData[0]) ? $jsonData[0] : $jsonData;
-    
-    // Ambil status dari data yang sudah diekstrak
-    $statusDANA = $dataTest['latestTransactionStatus'] ?? null;
+    $statusDANA = $dataTest['latestTransactionStatus'] ?? $dataTest['transactionStatus'] ?? null;
 
-    // SKENARIO 1: Jika status 05 (Expired/Closed)
+    // A. Skenario EXPIRED (Status 05) -> Harus balas 200
     if ($statusDANA == '05') {
-        Log::info("LOG LOG: Skenario EXPIRED (05) TERDETEKSI. Mengirim respon 200.");
+        Log::info("LOG LOG: Skenario 05 Terdeteksi. Mengirim 2005600.");
         return response()->json([
             "responseCode" => "2005600",
             "responseMessage" => "Successful"
-        ], 200); 
+        ], 200);
     }
 
-    // SKENARIO 2: Jika status lainnya (untuk tes Internal Server Error)
-    // Ini akan menangkap status '00' atau lainnya dan membalas 500
-    Log::error("LOG LOG: Simulasi Internal Server Error (5005601) dikirim.");
-    return response()->json([
-        "responseCode" => "5005601",
-        "responseMessage" => "Internal Server Error"
-    ], 500);
-    
-
+    // B. Skenario SIMULASI ERROR -> Harus balas 500
+    // Aktifkan ini hanya jika Anda sedang tes "Internal Server Error" di portal DANA
+    if ($statusDANA == '00') { 
+        Log::error("LOG LOG: Skenario Simulasi Error dikirim.");
+        return response()->json([
+            "responseCode" => "5005601",
+            "responseMessage" => "Internal Server Error"
+        ], 500);
+    }
     // --- [AKHIR LOGIKA TEST] ---
     
     // 1. DANA SNAP BI kirim data lewat BODY JSON mentah
