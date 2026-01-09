@@ -104,31 +104,36 @@ class DanaSignatureService
         return $signature;
     }
 
-    /**
-     * Generate Asymmetric Signature menggunakan Private Key (RSA-SHA256)
-     * Digunakan untuk Auth B2B (mendapatkan token)
-     */
     public function generateAsymmetricSignature($stringToSign)
-    {
-        $privateKey = config('services.dana.private_key');
+{
+    $privateKey = config('services.dana.private_key');
 
-        // Jika isi config adalah path file, ambil isinya
-        if (file_exists($privateKey)) {
-            $privateKey = file_get_contents($privateKey);
-        }
-
-        $binarySignature = "";
-        $pkeyResource = openssl_get_privatekey($privateKey);
-
-        if (!$pkeyResource) {
-            throw new \Exception("DANA Error: Private Key tidak valid. Pastikan format .pem benar.");
-        }
-
-        openssl_sign($stringToSign, $binarySignature, $pkeyResource, OPENSSL_ALGO_SHA256);
-        
-        return base64_encode($binarySignature);
+    // Cek jika private key kosong
+    if (empty($privateKey)) {
+        Log::error('DANA_KEY_ERROR: Private Key kosong di config.');
+        throw new \Exception("Private Key is empty.");
     }
 
+    // Jika berupa path, ambil isinya
+    if (file_exists($privateKey)) {
+        $privateKey = file_get_contents($privateKey);
+    }
+
+    $binarySignature = "";
+    $pkeyResource = openssl_get_privatekey($privateKey);
+
+    if (!$pkeyResource) {
+        // Log detail untuk melihat apakah formatnya terbaca
+        Log::error('DANA_KEY_ERROR: Format Private Key salah.', [
+            'key_start' => substr($privateKey, 0, 20) . '...',
+            'openssl_error' => openssl_error_string()
+        ]);
+        throw new \Exception("Private Key tidak valid. Pastikan format .pem benar.");
+    }
+
+    openssl_sign($stringToSign, $binarySignature, $pkeyResource, OPENSSL_ALGO_SHA256);
+    return base64_encode($binarySignature);
+}
     /**
      * Verifikasi Signature dari DANA (Callback/Return)
      */
