@@ -1217,6 +1217,125 @@ class OrderController extends Controller
     return response()->json(['responseCode' => '4040000', 'responseMessage' => 'Invalid Order Data'], 404);
 }
 
+/**
+     * ========================================================================
+     * HANDLE DANA WEBHOOK (DANA NOTIFY)
+     * Support: SNAP BI & DANA Notification 2.0 (Nested JSON)
+     * Route: POST /dana/notify
+     * ========================================================================
+     */
+    public function handleDanaCallback(Request $request)
+    {
+        Log::info("========== DANA WEBHOOK (OrderController) ==========");
+        
+        // 1. Deteksi Format Payload (SNAP BI vs DANA V2 Notify)
+        $payload = $request->all();
+        $isV2Notify = isset($payload['request']['body']); // Cek apakah format V2 (Nested)
+
+        $orderNumber = null;
+        $status = null;
+        $amount = 0;
+        $refNoDana = null;
+
+        try {
+            if ($isV2Notify) {
+                // --- LOGIKA DANA NOTIFICATION 2.0 ---
+                Log::info("Mode: DANA Notification 2.0");
+                
+                $body = $payload['request']['body'];
+                $status = $body['acquirementStatus'] ?? null; // SUCCESS, CLOSED, INIT
+                $amount = $body['orderAmount']['value'] ?? 0;
+                $refNoDana = $body['acquirementId'] ?? null;
+
+                // CARI ORDER ID (SCK-...)
+                // Cek 1: merchantTransId
+                $orderNumber = $body['merchantTransId'] ?? null;
+
+                // Cek 2: extendInfo -> originalMerchantTransId (Biasanya ID asli ada disini untuk V2)
+                if (isset($body['extendInfo'])) {
+                    $extendInfo = json_decode($body['extendInfo'], true);
+                    if (isset($extendInfo['originalMerchantTransId'])) {
+                        $orderNumber = $extendInfo['originalMerchantTransId'];
+                    }
+                }
+
+            } else {
+                // --- LOGIKA SNAP BI (Standard Open API) ---
+                Log::info("Mode: SNAP BI Standard");
+                
+                $orderNumber = $request->input('partnerReferenceNo');
+                $refNoDana   = $request->input('referenceNo');
+                $status      = $request->input('transactionStatus'); // SUCCESS / PAID
+                $amount      = $request->input('amount.value');
+            }
+
+            Log::info("Parsed Data:", [
+                'OrderNo' => $orderNumber,
+                'Status'  => $status,
+                'RefDana' => $refNoDana
+            ]);
+
+            // 2. Validasi Data
+            if (!$orderNumber) {
+                Log::error("WEBHOOK ERROR: Order Number tidak ditemukan.");
+                return response()->json(['responseCode' => '400', 'responseMessage' => 'Bad Request'], 400);
+            }
+
+            // 3. Cari Order di Database
+            $order = Order::where('order_number', $orderNumber)->first();
+
+            if (!$order) {
+                Log::error("WEBHOOK ERROR: Order #$orderNumber tidak ditemukan di DB.");
+                return response()->json(['responseCode' => '404', 'responseMessage' => 'Order Not Found'], 404);
+            }
+
+            // 4. Cek Idempotency (Jika sudah lunas, jangan diproses lagi)
+            if ($order->payment_status === 'paid') {
+                Log::info("WEBHOOK INFO: Order #$orderNumber sudah lunas. Skip.");
+                return response()->json(['responseCode' => '200', 'responseMessage' => 'Success'], 200);
+            }
+
+            // 5. Update Status
+            // Status Sukses DANA V2: SUCCESS / FINISHED
+            // Status Sukses SNAP: PAID
+            if (in_array($status, ['SUCCESS', 'PAID', 'FINISHED'])) {
+                
+                $order->update([
+                    'status'         => 'processing', // Ubah status jadi diproses
+                    'payment_status' => 'paid',
+                    'note'           => $order->note . "\n[DANA PAID] Ref: $refNoDana | Time: " . now(),
+                ]);
+
+                Log::info("WEBHOOK SUKSES: Order #$orderNumber LUNAS.");
+
+                // Proses Komisi Affiliate (Jika ada kupon)
+                if ($order->coupon_id && $order->coupon) {
+                    $this->_processAffiliateCommission($order->coupon->code, $order->final_price);
+                }
+
+                // Kirim Notifikasi WA (Menggunakan helper yang ada di OrderController)
+                $this->_sendWaNotification($order, $order->final_price, null, 'paid');
+
+            } elseif ($status === 'CLOSED') {
+                // Status CLOSED berarti Expired atau Dibatalkan User
+                Log::warning("WEBHOOK CLOSED: Transaksi #$orderNumber kadaluarsa/gagal.");
+                
+                // Opsional: Batalkan order jika masih pending
+                if ($order->status === 'pending') {
+                    $order->update(['status' => 'cancelled', 'note' => $order->note . "\n[DANA] Payment Timeout/Closed."]);
+                }
+            } else {
+                Log::warning("WEBHOOK UNKNOWN STATUS: $status");
+            }
+
+            return response()->json(['responseCode' => '200', 'responseMessage' => 'Success'], 200);
+
+        } catch (\Exception $e) {
+            Log::error("WEBHOOK EXCEPTION: " . $e->getMessage());
+            return response()->json(['responseCode' => '500', 'responseMessage' => 'Internal Server Error'], 500);
+        }
+    }
+
 
     // =========================================================================
     // SET CALLBACK URL (Jalankan sekali saja via Postman/Browser)
