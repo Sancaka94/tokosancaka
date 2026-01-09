@@ -1166,6 +1166,15 @@ class OrderController extends Controller
     $jsonData = json_decode($request->getContent(), true);
     Log::info('RAW WEBHOOK DATA:', [$jsonData]);
 
+    // --- START LOG LOG (SIMULASI INTERNAL SERVER ERROR UNTUK TES DANA) ---
+    Log::error("LOG LOG: Simulasi Internal Server Error untuk Skenario Tes DANA.");
+    
+    return response()->json([
+        "responseCode" => "5005601",
+        "responseMessage" => "Internal Server Error"
+    ], 500); 
+    // --- END LOG LOG ---
+
     // 2. Ambil Order Number & Nominal dari JSON DANA
     $orderNumber = $jsonData['partnerReferenceNo'] ?? null;
     $amountValue = $jsonData['amount']['value'] ?? null;
