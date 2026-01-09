@@ -25,45 +25,48 @@ class DanaWidgetController extends Controller
     $totalValue = "10000.00"; 
 
     $bodyArray = [
-        "partnerReferenceNo" => $orderId,
-        "merchantId" => config('services.dana.x_partner_id'),
-        "amount" => [
-            "value"    => $totalValue,
-            "currency" => "IDR"
-        ],
-        "validUpTo" => Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP'),
-        "urlParams" => [
-            ["url" => "https://yourdomain.com/return", "type" => "PAY_RETURN", "isDeeplink" => "Y"],
-            ["url" => "https://yourdomain.com/notify", "type" => "NOTIFICATION", "isDeeplink" => "Y"]
-        ],
-        "additionalInfo" => [
-            "order" => [
-                "orderTitle"        => "Payment " . $orderId,
-                "merchantTransType" => "01",
-                "scenario"          => "REDIRECT",
-                "buyer" => [
-                    "nickname" => "Guest",
-                    "userId"   => "12345"
-                ],
-                "goods" => [
-                    [
-                        "merchantGoodsId" => "G001",
-                        "description"     => "Product Description",
-                        "category"        => "Digital",
-                        "price"           => ["value" => $totalValue, "currency" => "IDR"],
-                        "quantity"        => "1"
-                    ]
-                ]
+    "partnerReferenceNo" => $orderId,
+    "merchantId"         => config('services.dana.merchant_id'),
+    "amount" => [
+        "value"    => $totalValue,
+        "currency" => "IDR"
+    ],
+    "validUpTo" => Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP'),
+    "urlParams" => [
+        ["url" => "https://tokosancaka.com/return", "type" => "PAY_RETURN", "isDeeplink" => "Y"],
+        ["url" => "https://tokosancaka.com/notify", "type" => "NOTIFICATION", "isDeeplink" => "Y"]
+    ],
+    "additionalInfo" => [
+        "order" => [
+            "orderTitle"        => "Payment " . $orderId,
+            "merchantTransType" => "01",
+            "scenario"          => "REDIRECT",
+            "buyer" => [
+                "externalUserType" => "", // TAMBAHKAN INI
+                "nickname"         => "Guest",
+                "externalUserId"   => "", // TAMBAHKAN INI
+                "userId"           => "12345"
             ],
-            "mcc"     => "5732",
-            "envInfo" => [
-                "sourcePlatform"    => "IPG",
-                "terminalType"      => "SYSTEM",
-                "orderTerminalType" => "WEB",
-                "clientIp"          => "127.0.0.1"
+            "goods" => [
+                [
+                    "merchantGoodsId" => "G001",
+                    "description"     => "Product Description",
+                    "category"        => "Digital",
+                    "price"           => ["value" => $totalValue, "currency" => "IDR"],
+                    "quantity"        => "1"
+                ]
             ]
-        ]
-    ];
+        ],
+        "mcc"     => "5732",
+        "envInfo" => [
+            "sourcePlatform"    => "IPG",
+            "terminalType"      => "SYSTEM",
+            "orderTerminalType" => "WEB",
+            "clientIp"          => "127.0.0.1"
+        ],
+        "extendInfo" => "" // Pastikan ini string kosong jika tidak dipakai
+    ]
+];
 
     // 1. JSON Encode (Ini yang harus kita kunci)
     $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
