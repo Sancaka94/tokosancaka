@@ -1262,4 +1262,83 @@ class OrderController extends Controller
 
         return view('orders.show', compact('order'));
     }
+
+    public function checkTransactionStatus($orderNumber)
+{
+    Log::info('DANA_STATUS_CHECK: Memulai pengecekan status.', ['order_number' => $orderNumber]);
+
+    // 1. Ambil data order dari DB lu
+    $order = \App\Models\Order::where('order_number', $orderNumber)->first();
+    if (!$order) {
+        Log::error('DANA_STATUS_ERROR: Order tidak ditemukan di database.', ['order' => $orderNumber]);
+        return false;
+    }
+
+    $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String();
+    $path = '/v1.1/debit/status'; // Sesuaikan dengan endpoint DANA SNAP
+    
+    // 2. Susun Body (Sesuai spek yang lu kirim)
+    $bodyArray = [
+        "originalPartnerReferenceNo" => $order->order_number,
+        "originalReferenceNo"        => "", // Kosongkan jika belum punya ReferenceNo dari DANA
+        "serviceCode"                => "05", // 05 biasanya untuk H2H Debit / Redirect
+        "transactionDate"            => $order->created_at->toIso8601String(),
+        "amount" => [
+            "value"    => number_format($order->final_price, 2, '.', ''),
+            "currency" => "IDR"
+        ],
+        "merchantId"    => config('services.dana.merchant_id'),
+        "additionalInfo" => (object)[] // Kirim objek kosong sesuai spek
+    ];
+
+    $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+    try {
+        // 3. Generate Auth & Signature (Pake Service Lu)
+        $accessToken = $this->danaSignature->getAccessToken();
+        $signature = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
+
+        Log::info('DANA_STATUS_SIGN_STS', [
+            'sts' => "POST:$path:" . strtolower(hash('sha256', $jsonBody)) . ":$timestamp"
+        ]);
+
+        // 4. Eksekusi Request
+        $baseUrl = config('services.dana.dana_env') === 'PRODUCTION' ? 'https://api.dana.id' : 'https://api.sandbox.dana.id';
+        
+        $response = \Illuminate\Support\Facades\Http::withHeaders([
+            'Authorization'  => 'Bearer ' . $accessToken,
+            'X-PARTNER-ID'   => config('services.dana.x_partner_id'),
+            'X-EXTERNAL-ID'  => \Illuminate\Support\Str::random(32),
+            'X-TIMESTAMP'    => $timestamp,
+            'X-SIGNATURE'    => $signature,
+            'Content-Type'   => 'application/json',
+            'CHANNEL-ID'     => '95221',
+            'ORIGIN'         => config('services.dana.origin'),
+        ])
+        ->withBody($jsonBody, 'application/json')
+        ->post($baseUrl . $path);
+
+        $result = $response->json();
+
+        Log::info('DANA_STATUS_RESPONSE_RECEIVED', [
+            'http_status' => $response->status(),
+            'body'        => $result
+        ]);
+
+        // 5. Interpretasi Status DANA
+        if ($response->successful() && isset($result['responseCode'])) {
+            // responseCode 2005500 = Success (DIBAYAR)
+            // responseCode 2005501 = Pending
+            // responseCode 4045500 = Not Found
+            return $result;
+        }
+
+        Log::error('DANA_STATUS_FAILED_API', $result);
+        return $result;
+
+    } catch (\Exception $e) {
+        Log::error('DANA_STATUS_EXCEPTION', ['msg' => $e->getMessage()]);
+        return null;
+    }
+}
 }
