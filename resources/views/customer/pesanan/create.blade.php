@@ -1001,7 +1001,7 @@ function proteksiAsuransi() {
         Swal.fire({
             icon: 'info',
             title: 'Asuransi Diaktifkan',
-            text: `Kategori "${itemTypeName}" wajib menggunakan asuransi demi keamanan barang. Pilihan telah dikunci ke "Iya".`,
+            text: `Kategori "${itemTypeName}" wajib menggunakan asuransi demi keamanan barang. Pilihan telah dikunci ke "ASURANSI".`,
             confirmButtonText: 'Saya Mengerti',
             confirmButtonColor: '#3085d6',
             allowOutsideClick: false // Pengguna harus klik tombol untuk menutup
