@@ -982,6 +982,34 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     // ----------------------------------------------------------------------------------
 
+    // --- LOGIKA OTOMATISASI ASURANSI BERDASARKAN JENIS BARANG (CUSTOMER) ---
+    const itemTypeSelect = document.getElementById('item_type');
+    const asuransiSelect = document.getElementById('ansuransi');
+
+    // ID Wajib Asuransi: 1(Elektronik), 3(Pecah Belah), 4(Dokumen), 8(Dokumen Berharga)
+    const wajibAsuransiIds = ['1', '3', '4', '8'];
+
+    itemTypeSelect.addEventListener('change', function() {
+        const selectedValue = this.value;
+
+        if (wajibAsuransiIds.includes(selectedValue)) {
+            // Jika kategori WAJIB: Set ke "Iya"
+            asuransiSelect.value = 'iya';
+            // Opsional: Beri info ke customer agar tidak bingung
+            console.log("Kategori barang ini wajib asuransi.");
+        } else {
+            // Jika kategori OPSIONAL: Default ke "Tidak"
+            asuransiSelect.value = 'tidak';
+        }
+
+        // OTOMATIS RESET EKSPEDISI
+        // Ini penting karena komponen biaya berubah, customer harus klik "Cek Ongkir" lagi
+        document.getElementById('expedition').value = '';
+        document.getElementById('selected_expedition_display').value = '';
+        document.getElementById('selected_expedition_display').placeholder = 'Layanan asuransi berubah, klik untuk cek ulang';
+    });
+    // ----------------------------------------------------------------------
+
     // --- INISIALISASI & EVENT LISTENERS ---
     setupContactSearch('sender');
     setupContactSearch('receiver');

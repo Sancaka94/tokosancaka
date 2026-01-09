@@ -551,6 +551,37 @@ document.addEventListener('DOMContentLoaded', function () {
     setupAddressSearch('sender');
     setupAddressSearch('receiver');
 
+    // --- LOGIKA OTOMATISASI ASURANSI BERDASARKAN JENIS BARANG ---
+const itemTypeSelect = document.getElementById('item_type');
+const asuransiSelect = document.getElementById('ansuransi');
+
+// Sesuai gambar: 1(Elektronik), 3(Pecah Belah), 4(Dokumen), 8(Dokumen Berharga) adalah WAJIB
+const wajibAsuransiIds = ['1', '3', '4', '8'];
+
+itemTypeSelect.addEventListener('change', function() {
+    const selectedValue = this.value;
+
+    if (wajibAsuransiIds.includes(selectedValue)) {
+        // Jika masuk kategori WAJIB
+        asuransiSelect.value = 'iya';
+        // Opsional: Jika ingin mengunci pilihan agar admin tidak bisa ubah ke 'tidak'
+        // asuransiSelect.options[0].disabled = true; 
+    } else {
+        // Jika kategori OPSIONAL (Default tidak asuransi)
+        asuransiSelect.value = 'tidak';
+        // asuransiSelect.options[0].disabled = false;
+    }
+
+    // PENTING: Reset pilihan ekspedisi karena asuransi merubah komponen biaya
+    document.getElementById('expedition').value = '';
+    document.getElementById('selected_expedition_display').value = '';
+    
+    // Jalankan validasi tombol
+    if (typeof runValidityChecks === "function") {
+        runValidityChecks();
+    }
+});
+
     document.getElementById('selected_expedition_display').addEventListener('click', runCekOngkir);
 
     ongkirModalEl.addEventListener('click', function(e) {
