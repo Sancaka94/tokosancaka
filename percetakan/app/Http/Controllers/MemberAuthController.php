@@ -147,7 +147,7 @@ class MemberAuthController extends Controller
     $affiliateId = $state ? str_replace('ID-', '', $state) : 11;
 
     if (!$authCode) {
-        return redirect()->route('dana.dashboard')->with('error', 'Auth Code Kosong');
+        return redirect()->route('member.dashboard')->with('error', 'Auth Code Kosong');
     }
 
     // 1. Simpan Auth Code-nya dulu ke database sebagai jejak awal
@@ -208,7 +208,7 @@ class MemberAuthController extends Controller
                 Log::error('[DANA CALLBACK] Gagal simpan log transaksi: ' . $dbEx->getMessage());
             }
 
-            return redirect()->route('dana.dashboard')->with('success', '✅ Akun Berhasil Terhubung!');
+            return redirect()->route('member.dashboard')->with('success', '✅ Akun Berhasil Terhubung!');
         }
 
         // JIKA GAGAL TUKAR TOKEN
@@ -228,11 +228,11 @@ class MemberAuthController extends Controller
         }
 
         Log::error('[EXCHANGE FAILED]', $result);
-        return redirect()->route('dana.dashboard')->with('error', 'Gagal Tukar Token: ' . ($result['responseMessage'] ?? 'Unknown Error'));
+        return redirect()->route('member.dashboard')->with('error', 'Gagal Tukar Token: ' . ($result['responseMessage'] ?? 'Unknown Error'));
 
     } catch (\Exception $e) {
         Log::error('[DANA CALLBACK] System Error:', ['msg' => $e->getMessage()]);
-        return redirect()->route('dana.dashboard')->with('error', 'Sistem Error: ' . $e->getMessage());
+        return redirect()->route('member.dashboard')->with('error', 'Sistem Error: ' . $e->getMessage());
     }
 }
 
