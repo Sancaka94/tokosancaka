@@ -299,7 +299,7 @@ public function index()
         // [LOG 1] START REQUEST
         Log::info('[DANA CREATE SHOP] 1. Memulai Proses', [
             'user_id' => auth()->id(),
-            'raw_input' => $request->except(['shop_logo', 'business_doc_file']) // Log input text saja
+            'external_shop_id' => $request->externalShopId 
         ]);
 
         // 1. VALIDASI INPUT
@@ -329,25 +329,15 @@ public function index()
             $base64Logo = base64_encode(file_get_contents($request->file('shop_logo')->getRealPath()));
             $base64Doc  = base64_encode(file_get_contents($request->file('business_doc_file')->getRealPath()));
 
-            Log::info('[DANA CREATE SHOP] 2. File Berhasil Dikonversi ke Base64');
-
-            // --- 3. PERSIAPAN VARIABEL ---
-            $reqTime = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
-            $reqMsgId = (string) Str::uuid();
-            $clientId = config('services.dana.client_id');
-            $clientSecret = config('services.dana.client_secret');
-            $baseUrl = config('services.dana.base_url') ?? 'https://api.sandbox.dana.id';
-            $baseUrl = rtrim($baseUrl, '/');
-
-            // [LOG 3] INSERT DATABASE
-            Log::info('[DANA CREATE SHOP] 3. Menyimpan ke Database Lokal...');
-
-            $shopIdLocal = DB::table('dana_shops')->insertGetId([
+            // --- 3. PERSIAPAN DB DATA (UPDATE OR INSERT) ---
+            
+            // Susun data dalam array agar rapi
+            $dbData = [
                 'user_id' => auth()->id(),
                 'merchant_id' => $request->merchantId,
                 'parent_division_id' => $request->parentDivisionId,
                 'main_name' => $request->mainName,
-                'external_shop_id' => $request->externalShopId,
+                // 'external_shop_id' -> Kita set nanti di logika insert
                 'shop_desc' => $request->shopDesc,
                 'shop_parent_type' => $request->shopParentType,
                 'size_type' => $request->sizeType,
@@ -373,12 +363,36 @@ public function index()
                 'non_director_pics' => json_encode($request->nonDirectorPics ?? []),
                 'logo_path' => $logoPath,
                 'doc_path' => $docPath,
-                'dana_status' => 'PENDING',
-                'created_at' => now(),
+                'dana_status' => 'PENDING', // Reset status jadi PENDING saat update
                 'updated_at' => now(),
-            ]);
+            ];
 
-            Log::info('[DANA CREATE SHOP] 3. Database Tersimpan. ID Lokal: ' . $shopIdLocal);
+            // [LOGIC PENTING] Cek apakah data sudah ada?
+            $existingShop = DB::table('dana_shops')
+                ->where('external_shop_id', $request->externalShopId)
+                ->first();
+
+            if ($existingShop) {
+                // --- UPDATE (Jika Duplicate) ---
+                DB::table('dana_shops')->where('id', $existingShop->id)->update($dbData);
+                $shopIdLocal = $existingShop->id;
+                Log::info("[DANA CREATE SHOP] 3. Data Diupdate (Overwrite). ID: $shopIdLocal");
+            } else {
+                // --- INSERT (Jika Baru) ---
+                $dbData['external_shop_id'] = $request->externalShopId; // Tambahkan Key Unik
+                $dbData['created_at'] = now();
+                
+                $shopIdLocal = DB::table('dana_shops')->insertGetId($dbData);
+                Log::info("[DANA CREATE SHOP] 3. Data Baru Disimpan. ID: $shopIdLocal");
+            }
+
+            // --- 4. PERSIAPAN API REQUEST ---
+            $reqTime = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+            $reqMsgId = (string) Str::uuid();
+            $clientId = config('services.dana.client_id');
+            $clientSecret = config('services.dana.client_secret');
+            $baseUrl = config('services.dana.base_url') ?? 'https://api.sandbox.dana.id';
+            $baseUrl = rtrim($baseUrl, '/');
 
             // --- 5. SUSUN PAYLOAD API DANA ---
             $payload = [
@@ -401,9 +415,7 @@ public function index()
                         "shopAddress"      => $request->shopAddress, 
                         "shopDesc"         => $request->shopDesc ?? '-',
                         "externalShopId"   => $request->externalShopId,
-                        "logoUrlMap"       => [
-                            "PC_LOGO" => $base64Logo
-                        ],
+                        "logoUrlMap"       => [ "PC_LOGO" => $base64Logo ],
                         "extInfo"          => $request->extInfo,
                         "sizeType"         => $request->sizeType,
                         "ln"               => $request->ln,
@@ -440,25 +452,20 @@ public function index()
                 ]
             ];
 
-            // [LOG 4] PAYLOAD DEBUG (Sangat Penting untuk cek PARAM_MISSING)
-            // Kita sembunyikan Base64 agar log tidak meledak, tapi log struktur lainnya
+            // Log Payload (Hidden Base64)
             $debugPayload = $payload;
-            $debugPayload['request']['body']['logoUrlMap']['PC_LOGO'] = 'BASE64_HIDDEN';
-            $debugPayload['request']['body']['businessDocs'][0]['docFile'] = 'BASE64_HIDDEN';
-            
-            Log::info('[DANA CREATE SHOP] 4. Payload Disusun (Cek Struktur)', ['payload_preview' => $debugPayload]);
+            $debugPayload['request']['body']['logoUrlMap']['PC_LOGO'] = 'HIDDEN';
+            $debugPayload['request']['body']['businessDocs'][0]['docFile'] = 'HIDDEN';
+            Log::info('[DANA CREATE SHOP] 4. Payload Ready', ['payload' => $debugPayload]);
 
-            // --- 6. GENERATE SIGNATURE ---
+            // --- 6. SIGNATURE & REQUEST ---
             $endpointPath = '/dana/merchant/shop/createShop.htm';
             $signatureString = $danaService->generateSignature('POST', $endpointPath, $payload['request'], $reqTime);
             
             $finalPayload = $payload;
             $finalPayload['signature'] = $signatureString;
-            
-            Log::info('[DANA CREATE SHOP] 5. Signature Generated', ['sig' => $signatureString]);
 
-            // --- 7. KIRIM REQUEST ---
-            Log::info('[DANA CREATE SHOP] 6. Mengirim Request ke URL: ' . $baseUrl . $endpointPath);
+            Log::info('[DANA CREATE SHOP] 5. Sending Request...');
 
             $response = Http::withHeaders([
                 'Content-Type' => 'application/json',
@@ -466,11 +473,9 @@ public function index()
             ])->post($baseUrl . $endpointPath, $finalPayload);
 
             $result = $response->json();
-            
-            // [LOG 7] RESPONSE LENGKAP
-            Log::info('[DANA CREATE SHOP] 7. Response Diterima:', ['result' => $result]);
+            Log::info('[DANA CREATE SHOP] 6. Response Received', ['result' => $result]);
 
-            // --- 8. HANDLING RESPON ---
+            // --- 7. HANDLING RESPON ---
             $danaResultInfo = $result['response']['body']['resultInfo'] ?? [];
             $danaStatus     = $danaResultInfo['resultStatus'] ?? 'F';
             $danaMsg        = $danaResultInfo['resultMsg'] ?? 'Unknown Error';
@@ -486,8 +491,7 @@ public function index()
                 ]);
                 DB::commit();
                 
-                Log::info('[DANA CREATE SHOP] 8. Sukses & Commit DB');
-                return redirect()->route('customer.dashboard')->with('success', "Toko Berhasil Dibuat! Shop ID: $danaShopId");
+                return redirect()->route('customer.dashboard')->with('success', "Toko Berhasil Dibuat/Diupdate! Shop ID: $danaShopId");
 
             } else {
                 DB::table('dana_shops')->where('id', $shopIdLocal)->update([
@@ -497,20 +501,12 @@ public function index()
                 ]);
                 DB::commit(); 
 
-                Log::warning('[DANA CREATE SHOP] 8. Gagal & Log DB Tersimpan', ['msg' => $danaMsg]);
                 return back()->withInput()->with('error', "Gagal Mendaftar ke DANA: $danaMsg ($danaCode)");
             }
 
         } catch (\Exception $e) {
             DB::rollBack();
-            // [LOG ERROR]
-            Log::error('[DANA CREATE SHOP] CRITICAL ERROR', [
-                'message' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            
+            Log::error('[DANA CREATE SHOP] ERROR', ['msg' => $e->getMessage()]);
             return back()->withInput()->with('error', 'Terjadi kesalahan sistem: ' . $e->getMessage());
         }
     }
