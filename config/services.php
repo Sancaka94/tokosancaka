@@ -48,6 +48,20 @@ return [
         'key' => env('FONNTE_API_KEY'),
     ],
 
+      'dana' => [
+        'merchant_id'         => env('MERCHANT_ID'),
+        'x_partner_id'        => env('X_PARTNER_ID'),
+        'private_key'         => env('PRIVATE_KEY'),
+        'private_key_path'    => env('PRIVATE_KEY_PATH'),
+        'origin'              => env('ORIGIN'),
+        'dana_public_key'     => env('DANA_PUBLIC_KEY'),
+        'dana_public_key_path'=> env('DANA_PUBLIC_KEY_PATH'),
+        'client_secret'       => env('CLIENT_SECRET'),
+        'redirect_url_oauth'  => env('REDIRECT_URL_OAUTH'),
+        'external_shop_id'    => env('EXTERNAL_SHOP_ID'),
+        'dana_env'            => env('DANA_ENV', 'SANDBOX'),
+    ],
+
     'openai' => [
     'key' => env('OPENAI_API_KEY'),
     'model' => env('OPENAI_MODEL', 'gpt-4o-mini'),

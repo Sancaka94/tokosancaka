@@ -15,6 +15,8 @@ use Illuminate\Support\Str;
 use Carbon\Carbon;
 use App\Http\View\Composers\CustomerLayoutComposer;
 
+use App\Services\DanaSignatureService;
+
 class DashboardController extends Controller
 {
 public function index()
