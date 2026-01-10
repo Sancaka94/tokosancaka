@@ -1,10 +1,33 @@
-{{--
+{{-- 
     File: resources/views/layouts/partials/customer/sidebar.blade.php
-    Fitur:
-    1. Mobile: Drawer (Klik toggle untuk buka/tutup).
-    2. Desktop: Mini Sidebar (Icon Only).
-    3. Desktop Interaction: Bisa KLIK tombol toggle (lock open) ATAU HOVER mouse (temporary open).
 --}}
+
+{{-- ✅ TAMBAHAN CSS: Kustomisasi Scrollbar agar tipis dan elegan di PC --}}
+<style>
+    /* Default: Scrollbar halus untuk browser berbasis Webkit (Chrome, Edge, Safari) */
+    .custom-sidebar-scroll::-webkit-scrollbar {
+        width: 5px; /* Lebar scrollbar tipis */
+    }
+    
+    .custom-sidebar-scroll::-webkit-scrollbar-track {
+        background: transparent; /* Background track transparan */
+    }
+    
+    .custom-sidebar-scroll::-webkit-scrollbar-thumb {
+        background-color: rgba(255, 255, 255, 0.2); /* Warna scrollbar putih transparan */
+        border-radius: 20px; /* Sudut membulat */
+    }
+    
+    .custom-sidebar-scroll::-webkit-scrollbar-thumb:hover {
+        background-color: rgba(255, 255, 255, 0.4); /* Lebih terang saat di-hover mouse ke scrollbar */
+    }
+
+    /* Firefox */
+    .custom-sidebar-scroll {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+    }
+</style>
 
 <div x-data="{ isExpanded: false, isHovered: false }" class="h-full">
 
@@ -24,7 +47,12 @@
             sidebarOpen ? 'translate-x-0 ease-out' : '-translate-x-full ease-in',
             (isExpanded || isHovered) ? 'w-64' : 'w-64 lg:w-20'
         ]"
-        class="fixed inset-y-0 left-0 z-[100] overflow-y-auto bg-blue-900 text-white transition-all duration-300 transform lg:translate-x-0 lg:static lg:inset-0 shadow-xl scrollbar-hide"
+        {{-- 
+           ✅ PERUBAHAN DI SINI:
+           1. Menghapus 'scrollbar-hide'
+           2. Menambahkan 'custom-sidebar-scroll'
+        --}}
+        class="fixed inset-y-0 left-0 z-[100] overflow-y-auto bg-blue-900 text-white transition-all duration-300 transform lg:translate-x-0 lg:static lg:inset-0 shadow-xl custom-sidebar-scroll"
         x-cloak>
 
         {{-- Header Sidebar --}}
@@ -282,7 +310,6 @@
                             <a href="{{ route('customer.merchant.index') }}" 
                             class="{{ request()->routeIs('customer.merchant.*') ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
                                 <i class="fas fa-store mr-3 flex-shrink-0 h-6 w-6 {{ request()->routeIs('customer.merchant.*') ? 'text-white' : 'text-gray-400 group-hover:text-gray-300' }}"></i>
-                                
                                 Data Toko DANA
                             </a>
                             <a href="{{ route('seller.doku.index') }}" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded-md transition-colors duration-200 {{ request()->routeIs('seller.doku.*') ? 'bg-gray-800 text-white' : '' }}">
