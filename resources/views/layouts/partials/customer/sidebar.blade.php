@@ -1,31 +1,36 @@
-{{-- 
-    File: resources/views/layouts/partials/customer/sidebar.blade.php
---}}
+{{-- File: resources/views/layouts/partials/customer/sidebar.blade.php --}}
 
-{{-- ✅ TAMBAHAN CSS: Kustomisasi Scrollbar agar tipis dan elegan di PC --}}
+{{-- ✅ CSS SCROLLBAR KHUSUS (Updated: Lebih Kontras & Wajib Muncul) --}}
 <style>
-    /* Default: Scrollbar halus untuk browser berbasis Webkit (Chrome, Edge, Safari) */
+    /* Pastikan scrollbar muncul di Webkit (Chrome, Edge, Opera) */
     .custom-sidebar-scroll::-webkit-scrollbar {
-        width: 5px; /* Lebar scrollbar tipis */
-    }
-    
-    .custom-sidebar-scroll::-webkit-scrollbar-track {
-        background: transparent; /* Background track transparan */
-    }
-    
-    .custom-sidebar-scroll::-webkit-scrollbar-thumb {
-        background-color: rgba(255, 255, 255, 0.2); /* Warna scrollbar putih transparan */
-        border-radius: 20px; /* Sudut membulat */
-    }
-    
-    .custom-sidebar-scroll::-webkit-scrollbar-thumb:hover {
-        background-color: rgba(255, 255, 255, 0.4); /* Lebih terang saat di-hover mouse ke scrollbar */
+        width: 8px !important; /* Lebar scrollbar */
+        display: block !important;
     }
 
-    /* Firefox */
+    /* Warna Track (Jalur Scrollbar) */
+    .custom-sidebar-scroll::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.1) !important; /* Gelap transparan */
+        border-radius: 4px;
+    }
+
+    /* Warna Thumb (Batang Geser) - Putih agak terang agar terlihat di background biru */
+    .custom-sidebar-scroll::-webkit-scrollbar-thumb {
+        background-color: rgba(255, 255, 255, 0.4) !important; 
+        border-radius: 10px;
+        border: 2px solid rgba(30, 58, 138, 0); /* Trik agar terlihat lebih kecil dari track */
+        background-clip: padding-box;
+    }
+
+    /* Saat Mouse Hover di Scrollbar -> Lebih Putih */
+    .custom-sidebar-scroll::-webkit-scrollbar-thumb:hover {
+        background-color: rgba(255, 255, 255, 0.7) !important;
+    }
+
+    /* Untuk Firefox */
     .custom-sidebar-scroll {
-        scrollbar-width: thin;
-        scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+        scrollbar-width: thin !important;
+        scrollbar-color: rgba(255, 255, 255, 0.4) rgba(0, 0, 0, 0.1) !important;
     }
 </style>
 
@@ -38,26 +43,23 @@
         {{-- Event Hover untuk Desktop --}}
         @mouseenter="isHovered = true"
         @mouseleave="isHovered = false"
-        {{-- 
-            LOGIKA LEBAR:
-            - Mobile: Selalu w-64 (dikontrol transform translate).
-            - Desktop: Jika diklik (isExpanded) ATAU di-hover (isHovered) -> Lebar 64. Jika tidak -> Lebar 20 (Mini).
-        --}}
+        {{-- Logika Lebar --}}
         :class="[
             sidebarOpen ? 'translate-x-0 ease-out' : '-translate-x-full ease-in',
             (isExpanded || isHovered) ? 'w-64' : 'w-64 lg:w-20'
         ]"
         {{-- 
-           ✅ PERUBAHAN DI SINI:
-           1. Menghapus 'scrollbar-hide'
-           2. Menambahkan 'custom-sidebar-scroll'
+            ✅ PERBAIKAN CLASS:
+            1. 'h-screen' & 'sticky' dihilangkan, ganti 'fixed' agar tinggi konsisten.
+            2. 'custom-sidebar-scroll' diterapkan.
+            3. 'overflow-y-auto' WAJIB ada.
+            4. 'bottom-0' ditambahkan agar tingginya mentok bawah layar.
         --}}
-        class="fixed inset-y-0 left-0 z-[100] overflow-y-auto bg-blue-900 text-white transition-all duration-300 transform lg:translate-x-0 lg:static lg:inset-0 shadow-xl custom-sidebar-scroll"
+        class="fixed inset-y-0 left-0 bottom-0 z-[100] overflow-y-auto bg-blue-900 text-white transition-all duration-300 transform lg:translate-x-0 lg:static lg:h-screen shadow-xl custom-sidebar-scroll"
         x-cloak>
 
-        {{-- Header Sidebar --}}
-        <div class="flex flex-col items-center justify-center py-6 border-b border-blue-800/50 sticky top-0 bg-blue-900 z-10 transition-all duration-300">
-            
+        {{-- Header Sidebar (Sticky di dalam Sidebar) --}}
+        <div class="flex flex-col items-center justify-center py-6 border-b border-blue-800/50 sticky top-0 bg-blue-900 z-10 transition-all duration-300"> 
             {{-- Tombol Toggle Manual (Desktop) --}}
             <button @click="isExpanded = !isExpanded" 
                     class="absolute top-2 right-2 p-1 rounded-md hover:bg-blue-800 text-blue-200 focus:outline-none hidden lg:block"
@@ -376,5 +378,5 @@
             </svg>
         </button>
     </div>
-    
+
 </div>
