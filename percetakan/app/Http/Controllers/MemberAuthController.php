@@ -806,4 +806,80 @@ public function customerTopup(Request $request)
     }
 }
 
+public function checkTopupStatus(Request $request)
+{
+    // --- [LOG 1] START INQUIRY ---
+    Log::info('[DANA INQUIRY STATUS] Memulai pengecekan status...', [
+        'partnerReferenceNo' => $request->reference_no,
+        'affiliate_id' => $request->affiliate_id
+    ]);
+
+    $aff = DB::table('affiliates')->where('id', $request->affiliate_id)->first();
+    $trx = DB::table('dana_transactions')->where('reference_no', $request->reference_no)->first();
+
+    if (!$trx) return back()->with('error', 'Data transaksi tidak ditemukan di database.');
+
+    $timestamp = now('Asia/Jakarta')->toIso8601String();
+    $path = '/v1.0/emoney/topup-status.htm';
+
+    // --- [BODY] SESUAI DOKUMENTASI ---
+    $body = [
+        "originalPartnerReferenceNo" => $trx->reference_no, // Required
+        "originalReferenceNo"        => "", // Opsional, bisa kosong jika belum ada
+        "originalExternalId"         => "", // Opsional
+        "serviceCode"                => "38", // Wajib "38" untuk Topup
+        "additionalInfo"             => (object)[]
+    ];
+
+    $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
+    $hashedBody = strtolower(hash('sha256', $jsonBody));
+    $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
+    $signature = $this->generateSignature($stringToSign);
+
+    $headers = [
+        'Content-Type'   => 'application/json', // Required
+        'Authorization'  => 'Bearer ' . $aff->dana_access_token,
+        'X-TIMESTAMP'    => $timestamp, // Required
+        'X-SIGNATURE'    => $signature, // Required
+        'X-PARTNER-ID'   => config('services.dana.x_partner_id'), // Required
+        'X-EXTERNAL-ID'  => (string) time() . Str::random(6), // Required
+        'CHANNEL-ID'     => '95221' // Required
+    ];
+
+    try {
+        // --- [LOG 2] SENDING REQUEST ---
+        Log::info('[DANA INQUIRY STATUS] Mengirim Request Status ke DANA', ['body' => $body]);
+
+        $response = Http::withHeaders($headers)->withBody($jsonBody, 'application/json')->post('https://api.sandbox.dana.id' . $path);
+        $result = $response->json();
+
+        // --- [LOG 3] RESPONSE RECEIVED ---
+        Log::info('[DANA INQUIRY STATUS] Respon Diterima', ['result' => $result]);
+
+        if (isset($result['responseCode']) && $result['responseCode'] == '2003900') {
+            $status = $result['latestTransactionStatus']; // 00, 01, dll
+            
+            // --- [LOG 4] MAPPING STATUS ---
+            if ($status == '00') {
+                // SUCCESS: Mark as Success
+                DB::table('dana_transactions')->where('id', $trx->id)->update(['status' => 'SUCCESS']);
+                return back()->with('success', '✅ Transaksi BERHASIL (Confirmed by DANA)');
+            } elseif (in_array($status, ['01', '02', '03'])) {
+                // PENDING: Hold money & retry
+                return back()->with('error', '⏳ Transaksi masih PENDING di sistem DANA.');
+            } else {
+                // FAILED/CANCELLED: Mark as Failed
+                DB::table('dana_transactions')->where('id', $trx->id)->update(['status' => 'FAILED']);
+                return back()->with('error', '❌ Transaksi GAGAL: ' . ($result['transactionStatusDesc'] ?? 'Failed'));
+            }
+        }
+
+        return back()->with('error', 'Gagal cek status: ' . ($result['responseMessage'] ?? 'Unknown Error'));
+
+    } catch (\Exception $e) {
+        Log::error('[DANA INQUIRY STATUS] System Error', ['msg' => $e->getMessage()]);
+        return back()->with('error', 'Sistem Error: ' . $e->getMessage());
+    }
+}
+
 }

@@ -303,10 +303,24 @@
 
                                 {{-- Kolom status --}}
                                 <td class="px-4 py-4 text-center">
-                                    <span class="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[9px] font-black uppercase {{ $trx->status == 'SUCCESS' ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white' }}">
-                                        <i class="fas {{ $trx->status == 'SUCCESS' ? 'fa-check-circle' : 'fa-times-circle' }}"></i>
-                                        {{ $trx->status }}
-                                    </span>
+                                    <div class="flex flex-col items-center gap-1">
+                                        <span class="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[9px] font-black uppercase {{ $trx->status == 'SUCCESS' ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white' }}">
+                                            <i class="fas {{ $trx->status == 'SUCCESS' ? 'fa-check-circle' : 'fa-times-circle' }}"></i>
+                                            {{ $trx->status }}
+                                        </span>
+
+                                        {{-- Tombol Cek Status Manual sesuai dokumentasi Retry --}}
+                                        @if($trx->status != 'SUCCESS')
+                                        <form action="{{ route('dana.checkStatus') }}" method="POST">
+                                            @csrf
+                                            <input type="hidden" name="affiliate_id" value="{{ $member->id }}">
+                                            <input type="hidden" name="reference_no" value="{{ $trx->reference_no }}">
+                                            <button type="submit" class="text-[8px] font-bold text-blue-600 hover:underline mt-1 uppercase">
+                                                <i class="fas fa-sync-alt animate-spin-slow"></i> Cek Status
+                                            </button>
+                                        </form>
+                                        @endif
+                                    </div>
                                 </td>
                             </tr>
                             @empty
