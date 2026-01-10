@@ -81,6 +81,12 @@
                     <i class="fas fa-hand-holding-usd"></i> Cairkan Saldo
                 </button>
                 @endif
+
+                {{-- Tombol Baru: Cairkan ke Bank --}}
+                <button onclick="openBankModal('{{ $member->id }}', '{{ $member->balance }}')" 
+                        class="flex-1 text-[10px] bg-slate-600 text-white py-2 rounded-lg font-bold hover:bg-slate-700 transition flex items-center justify-center gap-1">
+                    <i class="fas fa-university"></i> Ke Rekening Bank
+                </button>
             </div>
         </div>
     </div>
@@ -413,6 +419,58 @@
         </div>
     </div>
 
+    {{-- MODAL PENCAIRAN KE BANK --}}
+<div id="bankModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden">
+        <div class="bg-slate-800 p-6 text-white">
+            <h3 class="text-lg font-black uppercase italic tracking-tighter">Cairkan Ke Bank</h3>
+            <p class="text-slate-400 text-[10px] uppercase font-bold tracking-widest">Bank Account Inquiry</p>
+        </div>
+        
+        <form action="{{ route('member.dana.bankInquiry') }}" method="POST" class="p-6">
+            @csrf
+            <input type="hidden" name="affiliate_id" id="bank_aff_id">
+            
+            {{-- Pilih Bank --}}
+            <div class="mb-4">
+                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Pilih Bank Tujuan</label>
+                <select name="bank_code" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 focus:ring-2 focus:ring-blue-500 transition">
+                    <option value="002">BRI</option>
+                    <option value="008">MANDIRI</option>
+                    <option value="009">BNI</option>
+                    <option value="014">BCA</option>
+                    <option value="427">BANK SYARIAH INDONESIA (BSI)</option>
+                </select>
+            </div>
+
+            {{-- Nomor Rekening --}}
+            <div class="mb-4">
+                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Nomor Rekening</label>
+                <input type="text" name="account_no" required placeholder="Contoh: 01234567890" 
+                       class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 focus:border-blue-500 transition">
+            </div>
+
+            {{-- Nominal --}}
+            <div class="mb-6">
+                <div class="flex justify-between items-center mb-1">
+                    <label class="text-[10px] font-black text-slate-400 uppercase">Nominal Transfer</label>
+                    <span class="text-[10px] font-black text-blue-600 uppercase" id="bank_max_balance"></span>
+                </div>
+                <input type="number" name="amount" required min="10000" step="1" placeholder="Min. 10.000" 
+                       class="w-full px-4 py-4 bg-slate-50 border border-slate-200 rounded-xl font-black text-2xl text-slate-800 focus:border-blue-500 transition">
+                <p class="text-[8px] text-slate-400 mt-2 italic">*Pengecekan ini membutuhkan waktu sekitar 8 detik.</p>
+            </div>
+
+            <div class="flex gap-3">
+                <button type="button" onclick="closeBankModal()" class="flex-1 py-3 text-slate-400 font-bold text-xs uppercase transition">Batal</button>
+                <button type="submit" class="flex-[2] py-3 bg-slate-800 text-white rounded-xl font-black text-xs uppercase shadow-lg hover:bg-slate-900 transition">
+                    <i class="fas fa-search"></i> Cek Rekening
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
     <script>
         function openTopupModal(id, balance, phone) {
             document.getElementById('modal_aff_id').value = id;
@@ -425,6 +483,20 @@
         function closeTopupModal() {
             document.getElementById('topupModal').classList.add('hidden');
         }
+    </script>
+
+    <script> 
+
+        function openBankModal(id, balance) {
+    document.getElementById('bank_aff_id').value = id;
+    document.getElementById('bank_max_balance').innerText = 'Limit: Rp ' + new Intl.NumberFormat('id-ID').format(balance);
+    document.getElementById('bankModal').classList.remove('hidden');
+        }
+
+        function closeBankModal() {
+            document.getElementById('bankModal').classList.add('hidden');
+        }
+
     </script>
 
     {{-- TAMBAHKAN CSS ANIMASI DI BAGIAN PALING BAWAH --}}

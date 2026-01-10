@@ -181,6 +181,8 @@ Route::prefix('member')->name('member.')->group(function () {
         Route::put('/settings/pin', [\App\Http\Controllers\MemberProfileController::class, 'updatePin'])->name('settings.update-pin');
     
         Route::post('/dana/check-status', [MemberAuthController::class, 'checkTopupStatus'])->name('dana.checkStatus');
+
+        Route::post('/bank-inquiry', [MemberAuthController::class, 'bankAccountInquiry'])->name('bankInquiry');
     });
 });
 
