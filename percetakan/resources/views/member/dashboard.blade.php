@@ -4,6 +4,39 @@
 
 @section('content')
 
+{{-- 1. TARUH KODE NOTIFIKASI DI SINI --}}
+    <div class="mb-6">
+        {{-- Notifikasi Sukses --}}
+        @if(session('success'))
+        <div class="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-2xl flex items-center gap-3 shadow-sm animate-fade-in mb-3">
+            <i class="fas fa-check-circle text-lg"></i>
+            <p class="text-xs font-bold">{{ session('success') }}</p>
+        </div>
+        @endif
+
+        {{-- Notifikasi Gagal --}}
+        @if(session('error'))
+        <div class="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-2xl flex items-center gap-3 shadow-sm animate-fade-in mb-3">
+            <i class="fas fa-exclamation-triangle text-lg"></i>
+            <p class="text-xs font-bold">{{ session('error') }}</p>
+        </div>
+        @endif
+
+        {{-- Laporan Sistem DANA Detail --}}
+        @if(session('dana_report'))
+        <div class="p-4 rounded-2xl border {{ session('dana_report')->is_success ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-rose-50 border-rose-200 text-rose-800' }} shadow-sm">
+            <div class="flex items-start gap-3">
+                <i class="fas {{ session('dana_report')->is_success ? 'fa-check-circle' : 'fa-info-circle' }} mt-0.5"></i>
+                <div>
+                    <p class="font-black text-[9px] uppercase tracking-wider mb-1 opacity-70">DANA System Report</p>
+                    <p class="font-bold text-sm">{{ session('dana_report')->message_title }}</p>
+                    <p class="text-[10px] opacity-80 mt-1 leading-relaxed">{{ session('dana_report')->description }}</p>
+                </div>
+            </div>
+        </div>
+        @endif
+    </div>
+
     {{-- CARD SALDO & KODE REFERAL --}}
     <div class="relative bg-slate-800 rounded-3xl p-6 text-white shadow-xl overflow-hidden mb-6 group transition-all hover:shadow-2xl hover:scale-[1.01]">
         <div class="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 rounded-full bg-white/10 blur-2xl group-hover:bg-white/15 transition"></div>
@@ -115,6 +148,7 @@
                     <span class="text-[10px] font-bold text-slate-600 group-hover:text-purple-600">Verify</span>
                 </button>
             </form>
+
             
             <a href="#" class="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center gap-2 hover:border-orange-300 hover:shadow-md transition group">
                 <div class="w-10 h-10 rounded-full bg-orange-50 text-orange-600 flex items-center justify-center text-lg group-hover:bg-orange-600 group-hover:text-white transition">
@@ -220,5 +254,14 @@
             document.getElementById('topupModal').classList.add('hidden');
         }
     </script>
+
+    {{-- TAMBAHKAN CSS ANIMASI DI BAGIAN PALING BAWAH --}}
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
+    </style>
 
 @endsection
