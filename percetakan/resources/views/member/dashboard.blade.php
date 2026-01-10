@@ -70,7 +70,7 @@
     <div class="bg-blue-50 border border-blue-100 rounded-2xl p-4 mb-6 flex items-center justify-between">
         <div class="flex items-center gap-3">
             <div class="bg-blue-600 p-2 rounded-lg">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_danain.png" class="h-3 brightness-0 invert" alt="DANA">
+                <img src="https://tokosancaka.com/storage/logo/dana.png" class="h-3 brightness-0 invert" alt="DANA">
             </div>
             <div>
                 <p class="text-[10px] font-bold text-blue-800 uppercase leading-none">{{ $member->dana_user_name ?? 'Akun Terhubung' }}</p>
