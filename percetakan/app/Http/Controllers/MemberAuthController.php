@@ -691,7 +691,8 @@ public function customerTopup(Request $request, \App\Services\DanaSignatureServi
         "additionalInfo"  => [
             "accountType"  => "NAME_DEPOSIT",
             "fundType"     => "AGENT_TOPUP_FOR_USER_SETTLE",
-            "chargeTarget" => "MERCHANT"
+            "chargeTarget" => "MERCHANT",
+            "fundType" => "AGENT_TOPUP_FOR_USER_SETTLE" // WAJIB
         ]
     ];
 
