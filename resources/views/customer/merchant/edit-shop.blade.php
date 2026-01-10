@@ -79,6 +79,23 @@
                             <option value="UME" {{ (old('sizeType', $shop->size_type) == 'UME') ? 'selected' : '' }}>UME (Menengah)</option>
                         </select>
                     </div>
+
+                    <div class="sm:col-span-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Kepemilikan Toko</label>
+                        <select name="shopOwning" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm sm:text-sm">
+                            <option value="DIRECT_OWNED" {{ (old('shopOwning', $shop->shop_owning ?? '') == 'DIRECT_OWNED') ? 'selected' : '' }}>Milik Sendiri (Direct Owned)</option>
+                            <option value="FRANCHISED" {{ (old('shopOwning', $shop->shop_owning ?? '') == 'FRANCHISED') ? 'selected' : '' }}>Waralaba (Franchised)</option>
+                        </select>
+                    </div>
+
+                    <div class="sm:col-span-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Tipe Bisnis</label>
+                        <select name="shopBizType" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm sm:text-sm">
+                            <option value="ONLINE" {{ (old('shopBizType', $shop->shop_biz_type ?? '') == 'ONLINE') ? 'selected' : '' }}>Online</option>
+                            <option value="OFFLINE" {{ (old('shopBizType', $shop->shop_biz_type ?? '') == 'OFFLINE') ? 'selected' : '' }}>Offline</option>
+                        </select>
+                    </div>
+
                 </div>
             </div>
         </div>
@@ -258,35 +275,70 @@
             </div>
         </div>
 
-        {{-- CARD 5: LEGALITAS --}}
+        {{-- CARD 5: LEGALITAS & DOKUMEN BISNIS --}}
         <div class="bg-white overflow-hidden shadow rounded-lg border border-gray-200 mb-6">
             <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
-                <h3 class="text-lg leading-6 font-medium text-gray-900">5. Legalitas</h3>
+                <h3 class="text-lg leading-6 font-medium text-gray-900">5. Legalitas & Dokumen Bisnis</h3>
             </div>
             <div class="px-6 py-6 bg-white">
                 <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+                    
                     <div class="sm:col-span-2">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Brand Name</label>
                         <input type="text" name="brandName" required value="{{ old('brandName', $shop->brand_name) }}" class="shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
                     </div>
-                    <div class="sm:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Badan Usaha</label>
-                        <select name="businessEntity" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm sm:text-sm">
-                            <option value="individu" selected>Perorangan</option>
-                        </select>
-                    </div>
+
                     <div class="sm:col-span-2">
                         <label class="block text-sm font-medium text-gray-700 mb-1">MCC Code</label>
                         <input type="text" name="mccCodes[]" value="0783" required class="shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
                     </div>
-                    <div class="sm:col-span-3">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">NPWP</label>
+                    
+                    <div class="sm:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">NPWP (Tax No)</label>
                         <input type="text" name="taxNo" required value="{{ old('taxNo', $shop->tax_no) }}" class="shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
                     </div>
-                    <div class="sm:col-span-3">
+
+                    {{-- ALAMAT NPWP --}}
+                    <div class="sm:col-span-6">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Alamat NPWP</label>
                         <input type="text" name="taxAddress[address1]" required value="{{ old('taxAddress.address1', $shop->tax_address['address1'] ?? '') }}" class="shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
                     </div>
+
+                    <div class="sm:col-span-6 border-t border-gray-100 my-2 pt-4">
+                        <h4 class="text-sm font-bold text-gray-900 uppercase mb-4">Detail Dokumen Bisnis</h4>
+                    </div>
+
+                    {{-- BADAN USAHA (Pemicu Perubahan Dropdown) --}}
+                    <div class="sm:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Badan Usaha</label>
+                        <select name="businessEntity" id="businessEntity" onchange="adjustDocType()" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm sm:text-sm">
+                            <option value="individu" {{ (old('businessEntity', $shop->business_entity ?? '') == 'individu') ? 'selected' : '' }}>Perorangan (Individu)</option>
+                            <option value="pt" {{ (old('businessEntity', $shop->business_entity ?? '') == 'pt') ? 'selected' : '' }}>PT (Perseroan Terbatas)</option>
+                            <option value="cv" {{ (old('businessEntity', $shop->business_entity ?? '') == 'cv') ? 'selected' : '' }}>CV</option>
+                            <option value="yayasan" {{ (old('businessEntity', $shop->business_entity ?? '') == 'yayasan') ? 'selected' : '' }}>Yayasan</option>
+                        </select>
+                    </div>
+
+                    {{-- TIPE DOKUMEN (Isinya berubah via JS) --}}
+                    <div class="sm:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Tipe Dokumen</label>
+                        <select name="docType" id="docType" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm sm:text-sm">
+                            {{-- Option akan diisi oleh Javascript --}}
+                        </select>
+                        {{-- Hidden Input untuk menyimpan value lama saat validasi gagal --}}
+                        <input type="hidden" id="oldDocType" value="{{ old('docType', 'KTP') }}">
+                    </div>
+
+                    {{-- NOMOR DOKUMEN --}}
+                    <div class="sm:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nomor Dokumen (docId)</label>
+                        <input type="text" name="docId" required 
+                            value="{{ old('docId', $shop->owner_id_no ?? '') }}" 
+                            placeholder="NIK / NIB / No. SIUP"
+                            class="shadow-sm border-gray-300 rounded-md block w-full sm:text-sm px-3 py-2 border">
+                        <p class="text-xs text-gray-500 mt-1">KTP (16 digit), NIB (13 digit)</p>
+                    </div>
+
                 </div>
             </div>
         </div>
@@ -338,4 +390,51 @@
 
     </form>
 </div>
+
+{{-- SCRIPT PENGATUR LOGIKA DOKUMEN --}}
+<script>
+    function adjustDocType() {
+        var entity = document.getElementById("businessEntity").value;
+        var docSelect = document.getElementById("docType");
+        var oldVal = document.getElementById("oldDocType").value;
+        
+        // Kosongkan opsi saat ini
+        docSelect.innerHTML = "";
+
+        var options = [];
+
+        if (entity === "individu") {
+            // Jika Individu: KTP, SIM, PASSPORT
+            options = [
+                {val: "KTP", text: "KTP (Kartu Tanda Penduduk)"},
+                {val: "SIM", text: "SIM (Surat Izin Mengemudi)"},
+                {val: "PASSPORT", text: "Passport"}
+            ];
+        } else {
+            // Jika Badan Usaha Lain: NIB, SIUP
+            options = [
+                {val: "NIB", text: "NIB (Nomor Induk Berusaha)"},
+                {val: "SIUP", text: "SIUP (Surat Izin Usaha Perdagangan)"}
+            ];
+        }
+
+        // Masukkan opsi ke dropdown
+        options.forEach(function(opt) {
+            var option = document.createElement("option");
+            option.value = opt.val;
+            option.text = opt.text;
+            // Pilih kembali value lama jika cocok
+            if(opt.val === oldVal) {
+                option.selected = true;
+            }
+            docSelect.appendChild(option);
+        });
+    }
+
+    // Jalankan saat halaman dimuat pertama kali
+    document.addEventListener("DOMContentLoaded", function() {
+        adjustDocType();
+    });
+</script>
+
 @endsection

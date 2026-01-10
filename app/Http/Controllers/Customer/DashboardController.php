@@ -779,6 +779,10 @@ public function index()
             $reqTime  = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
             $reqMsgId = (string) Str::uuid();
 
+            // Ambil dari input form, jika kosong ambil dari data lama, jika masih kosong default 'DIRECT_OWNED'
+            $shopOwning  = $request->input('shopOwning') ?: ($oldShop->shop_owning ?? 'DIRECT_OWNED');
+            $shopBizType = $request->input('shopBizType') ?: ($oldShop->shop_biz_type ?? 'ONLINE');
+
             // --- 5. DB UPDATE (Hanya update record yang ada) ---
             DB::table('dana_shops')->where('id', $id)->update([
                 'main_name' => $request->mainName,
@@ -786,6 +790,9 @@ public function index()
                 'shop_parent_type' => $request->shopParentType,
                 'size_type' => $request->sizeType,
                 'lat' => $request->lat, 'ln' => $request->ln,
+
+                'shop_owning' => $shopOwning,    // <--- Ganti $request->shopOwning jadi variabel $shopOwning
+                'shop_biz_type' => $shopBizType, // <--- Ganti $request->shopBizType jadi variabel $shopBizType
                 
                 'shop_address' => json_encode($fixedShopAddress),
                 'owner_address' => json_encode($fixedOwnerAddress),
@@ -851,15 +858,17 @@ public function index()
                     "posNumber"        => "0",
                     "mccCodes"         => $request->mccCodes,
                     "businessEntity"   => $request->businessEntity,
-                    "shopOwning"       => $request->shopOwning, 
-                    "shopBizType"      => $request->shopBizType, 
+                    "shopOwning"       => $shopOwning,  // <--- Ganti jadi variabel $shopOwning
+                    "shopBizType"      => $shopBizType, // <--- Ganti jadi variabel $shopBizType 
                     
+                    // UPDATE BAGIAN businessDocs
                     "businessDocs"     => [[
-                        "docType" => ($request->businessEntity == 'individu') ? 'KTP' : 'SIUP',
-                        "docId"   => $request->ownerIdNo,
-                        "docFile" => $base64Doc // Wajib kirim Base64
+                        "docType" => $request->docType, // Ambil dari input
+                        "docId"   => $request->docId,   // Ambil dari input
+                        "docFile" => $base64Doc         // File Base64
                     ]],
                     
+                    "ownerIdNo"        => ($request->docType == 'KTP') ? $request->docId : $request->ownerIdNo,
                     "taxNo"            => $request->taxNo,
                     "brandName"        => $request->brandName,
                     "directorPics"     => $request->directorPics ?? [],
