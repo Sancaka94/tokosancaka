@@ -182,6 +182,18 @@ Route::prefix('member')->name('member.')->group(function () {
     });
 });
 
+// Diletakkan di dalam middleware auth:member agar aman
+Route::middleware('auth:member')->prefix('dana')->name('dana.')->group(function () {
+    // Binding OAuth
+    Route::post('/bind', [MemberAuthController::class, 'startBinding'])->name('startBinding');
+    Route::get('/callback', [MemberAuthController::class, 'handleCallback'])->name('callback');
+    
+    // Inquiry & Topup
+    Route::post('/balance', [MemberAuthController::class, 'checkBalance'])->name('checkBalance');
+    Route::post('/inquiry', [MemberAuthController::class, 'accountInquiry'])->name('accountInquiry');
+    Route::post('/topup', [MemberAuthController::class, 'customerTopup'])->name('customerTopup');
+});
+
 // Route untuk halaman Cara / Panduan
 Route::get('/cara', function () {
     return view('cara');
