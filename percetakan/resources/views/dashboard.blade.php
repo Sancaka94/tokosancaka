@@ -19,84 +19,88 @@
         </a>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        
-        <div class="bg-white rounded-lg p-5 shadow-sm border-l-4 border-indigo-500 flex items-center justify-between group hover:shadow-md transition-all">
-            <div>
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Total Omzet</p>
-                <h3 class="text-2xl font-black text-slate-800">
-                    Rp {{ number_format($totalOmzet ?? 0, 0, ',', '.') }}
-                </h3>
-                <p class="text-[10px] text-emerald-600 font-bold mt-1">
-                    <i class="fas fa-check-circle"></i> Paid Only
-                </p>
-            </div>
-            <div class="h-12 w-12 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 text-xl group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-                <i class="fas fa-wallet"></i>
-            </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6 mb-8">
+    
+    {{-- Total Omzet --}}
+    <div class="bg-white rounded-lg p-5 shadow-sm border-l-4 border-indigo-500 flex items-center justify-between group hover:shadow-md transition-all">
+        <div class="min-w-0">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Total Omzet</p>
+            <h3 class="text-xl font-black text-slate-800 truncate">
+                Rp {{ number_format($totalOmzet ?? 0, 0, ',', '.') }}
+            </h3>
+            <p class="text-[10px] text-emerald-600 font-bold mt-1">
+                <i class="fas fa-check-circle"></i> Paid Only
+            </p>
         </div>
-
-        <div class="bg-white rounded-lg p-5 shadow-sm border-l-4 border-emerald-500 flex items-center justify-between group hover:shadow-md transition-all">
-            <div>
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Item Terjual</p>
-                <h3 class="text-2xl font-black text-slate-800">
-                    {{ number_format($totalTerjual ?? 0) }}
-                </h3>
-                <p class="text-[10px] text-slate-400 font-bold mt-1 uppercase">Unit Produk</p>
-            </div>
-            <div class="h-12 w-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 text-xl group-hover:bg-emerald-600 group-hover:text-white transition-colors">
-                <i class="fas fa-box-open"></i>
-            </div>
+        <div class="h-12 w-12 flex-shrink-0 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 text-xl group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+            <i class="fas fa-wallet"></i>
         </div>
-
-        {{-- CARD SALDO MERCHANT DANA (DISBURSEMENT) --}}
-        <div class="bg-white rounded-lg p-5 shadow-sm border-l-4 border-indigo-600 flex items-center justify-between group hover:shadow-md transition-all">
-            <div class="flex-1">
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Saldo Deposit DANA</p>
-                <h3 class="text-2xl font-black text-slate-800">
-                    {{-- Mengambil data saldo dari affiliate ID 11 (Admin/Master) --}}
-                    Rp {{ number_format($merchantBalance ?? 0, 0, ',', '.') }}
-                </h3>
-                <form action="{{ route('dana.checkMerchantBalance') }}" method="POST" class="mt-2">
-                    @csrf
-                    <input type="hidden" name="affiliate_id" value="11"> {{-- ID Default Admin --}}
-                    <button type="submit" class="text-[9px] font-black text-indigo-600 uppercase flex items-center gap-1 hover:text-indigo-800 transition">
-                        <i class="fas fa-sync-alt"></i> Refresh Saldo
-                    </button>
-                </form>
-            </div>
-            <div class="h-12 w-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-xl group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-                <i class="fas fa-vault"></i>
-            </div>
-        </div>
-
-        <div class="bg-white rounded-lg p-5 shadow-sm border-l-4 border-amber-500 flex items-center justify-between group hover:shadow-md transition-all">
-            <div>
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Pelanggan</p>
-                <h3 class="text-2xl font-black text-slate-800">
-                    {{ number_format($totalPelanggan ?? 0) }}
-                </h3>
-                <p class="text-[10px] text-slate-400 font-bold mt-1 uppercase">Orang</p>
-            </div>
-            <div class="h-12 w-12 rounded-full bg-amber-50 flex items-center justify-center text-amber-600 text-xl group-hover:bg-amber-500 group-hover:text-white transition-colors">
-                <i class="fas fa-users"></i>
-            </div>
-        </div>
-
-        <div class="bg-white rounded-lg p-5 shadow-sm border-l-4 border-red-500 flex items-center justify-between group hover:shadow-md transition-all">
-            <div>
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">User / Staff</p>
-                <h3 class="text-2xl font-black text-slate-800">
-                    {{ number_format($totalUser ?? 0) }}
-                </h3>
-                <p class="text-[10px] text-slate-400 font-bold mt-1 uppercase">Akun Aktif</p>
-            </div>
-            <div class="h-12 w-12 rounded-full bg-red-50 flex items-center justify-center text-red-600 text-xl group-hover:bg-red-500 group-hover:text-white transition-colors">
-                <i class="fas fa-user-shield"></i>
-            </div>
-        </div>
-
     </div>
+
+    {{-- Item Terjual --}}
+    <div class="bg-white rounded-lg p-5 shadow-sm border-l-4 border-emerald-500 flex items-center justify-between group hover:shadow-md transition-all">
+        <div class="min-w-0">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Item Terjual</p>
+            <h3 class="text-xl font-black text-slate-800">
+                {{ number_format($totalTerjual ?? 0) }}
+            </h3>
+            <p class="text-[10px] text-slate-400 font-bold mt-1 uppercase">Unit Produk</p>
+        </div>
+        <div class="h-12 w-12 flex-shrink-0 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 text-xl group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+            <i class="fas fa-box-open"></i>
+        </div>
+    </div>
+
+    {{-- CARD SALDO MERCHANT DANA - DIPERBAIKI --}}
+    <div class="bg-white rounded-lg p-5 shadow-sm border-l-4 border-blue-600 flex items-center justify-between group hover:shadow-md transition-all">
+        <div class="min-w-0 flex-1">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Saldo Deposit DANA</p>
+            <h3 class="text-lg font-black text-slate-800 truncate" title="Rp {{ number_format($merchantBalance ?? 0, 0, ',', '.') }}">
+                Rp {{ number_format($merchantBalance ?? 0, 0, ',', '.') }}
+            </h3>
+            {{-- Perbaikan Rute: Pastikan menggunakan member.dana.checkMerchantBalance --}}
+            <form action="{{ route('member.dana.checkMerchantBalance') }}" method="POST" class="mt-2">
+                @csrf
+                <input type="hidden" name="affiliate_id" value="11">
+                <button type="submit" class="text-[9px] font-black text-blue-600 uppercase flex items-center gap-1 hover:text-blue-800 transition">
+                    <i class="fas fa-sync-alt"></i> Refresh Saldo
+                </button>
+            </form>
+        </div>
+        <div class="h-12 w-12 flex-shrink-0 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 text-xl group-hover:bg-blue-600 group-hover:text-white transition-colors ml-2">
+            <i class="fas fa-vault"></i>
+        </div>
+    </div>
+
+    {{-- Pelanggan --}}
+    <div class="bg-white rounded-lg p-5 shadow-sm border-l-4 border-amber-500 flex items-center justify-between group hover:shadow-md transition-all">
+        <div class="min-w-0">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Pelanggan</p>
+            <h3 class="text-xl font-black text-slate-800">
+                {{ number_format($totalPelanggan ?? 0) }}
+            </h3>
+            <p class="text-[10px] text-slate-400 font-bold mt-1 uppercase">Orang</p>
+        </div>
+        <div class="h-12 w-12 flex-shrink-0 rounded-full bg-amber-50 flex items-center justify-center text-amber-600 text-xl group-hover:bg-amber-500 group-hover:text-white transition-colors">
+            <i class="fas fa-users"></i>
+        </div>
+    </div>
+
+    {{-- User / Staff --}}
+    <div class="bg-white rounded-lg p-5 shadow-sm border-l-4 border-red-500 flex items-center justify-between group hover:shadow-md transition-all">
+        <div class="min-w-0">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">User / Staff</p>
+            <h3 class="text-xl font-black text-slate-800">
+                {{ number_format($totalUser ?? 0) }}
+            </h3>
+            <p class="text-[10px] text-slate-400 font-bold mt-1 uppercase">Akun Aktif</p>
+        </div>
+        <div class="h-12 w-12 flex-shrink-0 rounded-full bg-red-50 flex items-center justify-center text-red-600 text-xl group-hover:bg-red-500 group-hover:text-white transition-colors">
+            <i class="fas fa-user-shield"></i>
+        </div>
+    </div>
+
+</div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
