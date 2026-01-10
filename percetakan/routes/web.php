@@ -130,6 +130,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/affiliate/sync-balance', [AffiliateController::class, 'syncBalance'])->name('affiliate.sync');
 
     // Rute tambahan untuk produk
+    Route::delete('/orders/{id}', [OrderController::class, 'destroy'])->name('orders.destroy');
 
     // Daftar Produk & Form Tambah
     Route::get('/products', [ProductController::class, 'index'])->name('products.index');
