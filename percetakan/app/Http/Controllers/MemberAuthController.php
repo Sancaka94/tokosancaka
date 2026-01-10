@@ -696,7 +696,7 @@ public function customerTopup(Request $request, \App\Services\DanaSignatureServi
     "partnerReferenceNo" => $partnerRef, //
     "customerNumber"     => "620000000000", // Wajib literal
     "amount" => [
-        "value"    => number_format((float)$request->amount, 2, '.', ''), // Wajib .00
+        "value"    => $valStr,
         "currency" => "IDR"
     ],
     "feeAmount" => [
