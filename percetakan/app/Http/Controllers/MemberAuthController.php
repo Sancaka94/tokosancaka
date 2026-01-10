@@ -730,7 +730,7 @@ public function customerTopup(Request $request, \App\Services\DanaSignatureServi
             'ORIGIN'         => config('services.dana.origin'),
             'X-PARTNER-ID'   => config('services.dana.x_partner_id'),
             'X-EXTERNAL-ID'  => (string) time() . Str::random(4),
-            'X-IP-ADDRESS'   => $request->ip() ?? '127.0.0.1',
+            'X-IP-ADDRESS'   => '202.10.43.112',
             'X-DEVICE-ID'    => 'SANCAKA-POS-01',
             'CHANNEL-ID'     => '95221'
         ];
