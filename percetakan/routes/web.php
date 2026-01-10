@@ -137,7 +137,8 @@ Route::middleware('auth')->group(function () {
     
     Route::delete('/orders/{id}', [OrderController::class, 'destroy'])->name('orders.destroy');
 
-    
+    Route::post('/check-merchant-balance', [DanaDashboardController::class, 'checkMerchantBalance'])->name('checkMerchantBalance');
+
 
     // Daftar Produk & Form Tambah
     Route::get('/products', [ProductController::class, 'index'])->name('products.index');
@@ -191,10 +192,6 @@ Route::prefix('member')->name('member.')->group(function () {
         // Rute untuk validasi rekening bank (Inquiry)
         Route::post('/bank-inquiry', [MemberAuthController::class, 'bankAccountInquiry'])->name('bankInquiry');
         
-        // --- FITUR MONITORING SALDO MERCHANT ---
-        // Rute untuk cek saldo deposit merchant (Open API v2.0)
-        Route::post('/check-merchant-balance', [MemberAuthController::class, 'checkMerchantBalance'])->name('checkMerchantBalance');
-
         // --- FITUR PENGECEKAN STATUS ---
         // Rute untuk sinkronisasi status transaksi secara manual
         Route::post('/check-status', [MemberAuthController::class, 'checkTopupStatus'])->name('checkStatus');

@@ -49,6 +49,27 @@
             </div>
         </div>
 
+        {{-- CARD SALDO MERCHANT DANA (DISBURSEMENT) --}}
+        <div class="bg-white rounded-lg p-5 shadow-sm border-l-4 border-indigo-600 flex items-center justify-between group hover:shadow-md transition-all">
+            <div class="flex-1">
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Saldo Deposit DANA</p>
+                <h3 class="text-2xl font-black text-slate-800">
+                    {{-- Mengambil data saldo dari affiliate ID 11 (Admin/Master) --}}
+                    Rp {{ number_format($merchantBalance ?? 0, 0, ',', '.') }}
+                </h3>
+                <form action="{{ route('dana.checkMerchantBalance') }}" method="POST" class="mt-2">
+                    @csrf
+                    <input type="hidden" name="affiliate_id" value="11"> {{-- ID Default Admin --}}
+                    <button type="submit" class="text-[9px] font-black text-indigo-600 uppercase flex items-center gap-1 hover:text-indigo-800 transition">
+                        <i class="fas fa-sync-alt"></i> Refresh Saldo
+                    </button>
+                </form>
+            </div>
+            <div class="h-12 w-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-xl group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                <i class="fas fa-vault"></i>
+            </div>
+        </div>
+
         <div class="bg-white rounded-lg p-5 shadow-sm border-l-4 border-amber-500 flex items-center justify-between group hover:shadow-md transition-all">
             <div>
                 <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Pelanggan</p>
