@@ -224,8 +224,9 @@
             cb.addEventListener('change', toggleDeleteButton);
         });
 
-        btnDelete.addEventListener('click', function() {
-            if (confirm('Yakin ingin menghapus secara PERMANEN data yang dipilih?')) {
+        // Pastikan tombol memicu submit form
+        document.getElementById('btn-delete-selected').addEventListener('click', function() {
+            if (confirm('Hapus permanen data terpilih?')) {
                 document.getElementById('form-bulk-delete').submit();
             }
         });

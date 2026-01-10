@@ -1496,45 +1496,50 @@ public function handleDanaCallback(Request $request)
 
     public function bulkDestroy(Request $request)
 {
-    $ids = $request->ids;
+    // Ambil array ID dari form
+    $ids = $request->input('ids');
+
     if (!$ids || count($ids) == 0) {
-        return redirect()->back()->with('error', 'Tidak ada data yang dipilih.');
+        return redirect()->back()->with('error', 'Tidak ada pesanan yang dipilih.');
     }
 
     Log::info("================ START BULK DESTROY ================");
-    Log::info("LOG LOG: Memulai hapus masal untuk ID: " . implode(',', $ids));
+    Log::info("LOG LOG: Memulai penghapusan masal untuk ID: " . implode(', ', $ids));
 
     DB::beginTransaction();
     try {
+        // Ambil data beserta relasinya untuk hapus file & balikkan stok
         $orders = Order::whereIn('id', $ids)->with(['items', 'attachments'])->get();
 
         foreach ($orders as $order) {
-            // 1. Kembalikan Stok (Hanya jika belum selesai)
+            // 1. Balikkan Stok jika status belum selesai
             if (in_array($order->status, ['pending', 'processing'])) {
                 foreach ($order->items as $item) {
                     Product::where('id', $item->product_id)->increment('stock', $item->quantity);
                 }
             }
 
-            // 2. Hapus File Lampiran
+            // 2. Hapus file lampiran di storage
             foreach ($order->attachments as $attachment) {
-                if (\Illuminate\Support\Facades\Storage::disk('public')->exists($attachment->file_path)) {
-                    \Illuminate\Support\Facades\Storage::disk('public')->delete($attachment->file_path);
+                if (\Storage::disk('public')->exists($attachment->file_path)) {
+                    \Storage::disk('public')->delete($attachment->file_path);
                 }
             }
         }
 
-        // 3. Hapus Database
+        // 3. Hapus data dari database
+        // Cascade delete akan otomatis menghapus detail/lampiran jika diset di migration,
+        // jika tidak, hapus manual relasinya dulu.
         Order::whereIn('id', $ids)->delete();
 
         DB::commit();
-        Log::info("LOG LOG: Bulk delete berhasil. " . count($ids) . " data dihapus.");
+        Log::info("LOG LOG: Bulk delete BERHASIL. " . count($ids) . " data dihapus.");
 
-        return redirect()->route('orders.index')->with('success', count($ids) . ' pesanan berhasil dihapus permanen.');
+        return redirect()->route('orders.index')->with('success', count($ids) . ' pesanan berhasil dihapus.');
     } catch (\Exception $e) {
         DB::rollBack();
-        Log::error("LOG LOG: Bulk delete GAGAL. Pesan: " . $e->getMessage());
-        return redirect()->back()->with('error', 'Gagal menghapus data: ' . $e->getMessage());
+        Log::error("LOG LOG: Bulk delete GAGAL. Error: " . $e->getMessage());
+        return redirect()->back()->with('error', 'Terjadi kesalahan saat menghapus data.');
     }
 }
 
