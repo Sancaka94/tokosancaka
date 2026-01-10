@@ -34,6 +34,11 @@ class DashboardController extends Controller
         // Jumlah User/Staff yang bisa login ke sistem
         $totalUser = User::count();
 
+        // Ambil Saldo Merchant DANA (Disbursement Account)
+        // Diambil dari kolom dana_merchant_balance di tabel affiliates untuk ID Master (11)
+        $merchantBalance = DB::table('affiliates')
+                            ->where('id', 11)
+                            ->value('dana_merchant_balance') ?? 0;
 
         // 2. DATA UNTUK GRAFIK (OPSIONAL - 7 Hari Terakhir)
         
@@ -59,15 +64,16 @@ class DashboardController extends Controller
 
         // 4. KIRIM DATA KE VIEW
         return view('dashboard', [
-            'totalOmzet'    => $totalOmzet,
-            'totalProduk'   => $totalProduk,
-            'totalTerjual'  => $totalTerjual,
-            'totalPelanggan'=> $totalPelanggan,
-            'totalUser'     => $totalUser,
-            'salesData'     => $salesData,
-            'recentOrders'  => $recentOrders,
-            'newProducts'   => $newProducts,
-            'hariIni'       => Carbon::now()->translatedFormat('d F Y')
+            'totalOmzet'      => $totalOmzet,
+            'totalProduk'     => $totalProduk,
+            'totalTerjual'    => $totalTerjual,
+            'totalPelanggan'  => $totalPelanggan,
+            'totalUser'       => $totalUser,
+            'merchantBalance' => $merchantBalance, // <--- Data Saldo Merchant Baru
+            'salesData'       => $salesData,
+            'recentOrders'    => $recentOrders,
+            'newProducts'     => $newProducts,
+            'hariIni'         => Carbon::now()->translatedFormat('d F Y')
         ]);
     }
 }
