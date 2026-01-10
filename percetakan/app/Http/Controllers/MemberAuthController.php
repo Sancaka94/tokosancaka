@@ -708,14 +708,11 @@ public function customerTopup(Request $request, \App\Services\DanaSignatureServi
     "categoryId"      => "6",
     "notes"           => "Topup Sancaka Aff " . $aff->id,
     "additionalInfo"  => [
-        "extendInfo"  => json_encode([
-                "memo" => "topup order"
-            ]),
-        "accountType" => "NAME_DEPOSIT",
-        "fundType"    => "TRANS_TO_USER", // Required
-        //"chargeTarget"=> "MERCHANT",
-        // Gunakan pemisah agar terbaca sebagai string valid
-        "customerId"  => $customId
+        // PAKAI INI SAJA (Standar Merchant Disbursement)
+        "accountType"  => "NAME_DEPOSIT",
+        "fundType"     => "AGENT_TOPUP_FOR_USER_SETTLE",
+        "chargeTarget" => "MERCHANT" // Ganti DIVISION ke MERCHANT
+        // externalDivisionId dan customerId DIHAPUS karena pemicu PARAM_ILLEGAL
     ]
 ];
 
