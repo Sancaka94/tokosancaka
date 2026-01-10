@@ -101,10 +101,9 @@ class MemberAuthController extends Controller
 
         // Ambil Riwayat Transaksi DANA (Topup/Cairkan) & Komisi
         $transactions = DB::table('dana_transactions')
-                        ->where('affiliate_id', $member->id)
-                        ->orderBy('created_at', 'desc')
-                        ->take(10)
-                        ->get();
+        ->where('affiliate_id', 11) // Sesuaikan dengan Auth user
+        ->orderBy('created_at', 'desc')
+        ->paginate(5); // <--- INI KUNCINYA
 
         return view('member.dashboard', compact('member', 'orders', 'transactions'));
     }
