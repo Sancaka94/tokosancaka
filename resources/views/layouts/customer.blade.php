@@ -65,10 +65,11 @@
 
                 {{-- ✅ DIUBAH: Pindahkan footer ke dalam kolom konten utama --}}
 
-                <footer class="bg-white border-t border-gray-200 p-4 shrink-0">
+                {{-- ✅ UPDATE: Menggunakan 'py-2' (padding atas-bawah kecil) agar footer ramping --}}
+                <footer class="bg-white border-t border-gray-200 py-2 px-6 shrink-0 z-20 relative">
                     @include('layouts.partials.customer.footer')
                 </footer>
-                
+
             </div>
         </div>
     
