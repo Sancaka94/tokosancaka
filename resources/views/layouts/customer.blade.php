@@ -33,10 +33,6 @@
         .modal-transition { transition: opacity 0.3s ease, transform 0.3s ease; }
         .modal-hidden { opacity: 0; transform: scale(0.95); pointer-events: none; }
         .modal-visible { opacity: 1; transform: scale(1); pointer-events: auto; }
-   
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-    
     </style>
     
     @stack('styles')
@@ -46,38 +42,36 @@
 {{-- Include Notifikasi Sandbox --}}
 @include('components.sandbox_alert')
 
-<body class="bg-gray-100 text-gray-800 font-sans antialiased">
+<body class="bg-gray-100 text-gray-800">
 
-    <div x-data="{ sidebarOpen: false }" class="flex h-screen overflow-hidden bg-gray-100">
-        
-        <div :class="sidebarOpen ? 'block' : 'hidden'" class="fixed z-20 inset-0 bg-black opacity-50 transition-opacity lg:hidden" @click="sidebarOpen = false"></div>
-        
-        <aside class="fixed inset-y-0 left-0 z-30 bg-blue-900 transition-all duration-300 ease-in-out
-                      w-64 transform lg:w-20 lg:hover:w-64 group 
-                      overflow-y-auto no-scrollbar"
-               :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'">
+    {{-- ✅ DIUBAH: Tambahkan h-screen dan overflow-hidden di wrapper utama agar body tidak scroll --}}
+        <div x-data="{ sidebarOpen: false, isNotificationsMenuOpen: false, isProfileMenuOpen: false }" class="flex h-screen overflow-hidden">
             
             @include('layouts.partials.customer.sidebar')
 
-        </aside>
+            <div class="flex-1 flex flex-col overflow-hidden">
+                @include('layouts.partials.customer.topbar')
 
-        <div class="flex-1 flex flex-col min-w-0 overflow-hidden lg:ml-20 transition-all duration-300">
-            
-            @include('layouts.partials.customer.topbar')
+                {{-- ✅ DIUBAH: Pindahkan overflow-y-auto ke sini agar scrollbar ada di area utama saja --}}
+                <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100">
+                    
+                    {{-- ✅ DIUBAH: Hapus 'h-screen' dan 'overflow-y-auto' dari sini --}}
+                    <div class="container mx-auto px-6 py-8">
+                        @yield('content')
+                    </div>
+                    
+                  
+                </main>
 
-            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-6">
-                <div class="container mx-auto">
-                    @include('components.sandbox_alert')
-                    @yield('content')
-                </div>
-            </main>
+                {{-- ✅ DIUBAH: Pindahkan footer ke dalam kolom konten utama --}}
 
-            <footer class="bg-white border-t border-gray-200 p-4 shrink-0">
-                @include('layouts.partials.customer.footer')
-            </footer>
-
+                <footer class="bg-white border-t border-gray-200 p-4 shrink-0">
+                    @include('layouts.partials.customer.footer')
+                </footer>
+                
+            </div>
         </div>
-    </div>
+    
     
    {{-- ================================================================= --}}
     {{-- KODE JAVASCRIPT UTAMA (INI YANG KITA PERBARUI) --}}
