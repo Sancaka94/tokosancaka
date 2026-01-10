@@ -294,248 +294,247 @@ public function index()
         return view('customer.merchant.create-shop');
     }
 
-    public function storeShop(Request $request, DanaSignatureService $danaService)
-    {
-        // [LOG 1] START REQUEST
-        Log::info('[DANA CREATE SHOP] 1. Memulai Proses', [
+    public function storeShop(Request $request)
+{
+    // [LOG 1] START REQUEST
+    Log::info('[DANA CREATE SHOP] 1. Memulai Proses', ['user_id' => auth()->id()]);
+
+    // 1. VALIDASI
+    $request->validate([
+        'merchantId' => 'required',
+        'mainName' => 'required|string|max:255',
+        'externalShopId' => 'required',
+        'shop_logo' => 'required|image|mimes:png|max:2048',
+        'business_doc_file' => 'required|mimes:pdf,jpg,jpeg,png|max:2048',
+        'lat' => 'required', 'ln' => 'required',
+        'shopAddress.province' => 'required', 'shopAddress.city' => 'required',
+    ]);
+
+    DB::beginTransaction();
+
+    try {
+        // [LOG 2] FILE PROCESSING
+        Log::info('[DANA CREATE SHOP] 2. Memproses File Upload...');
+        $logoPath = $request->file('shop_logo')->store('public/uploads/dana/logos');
+        $docPath  = $request->file('business_doc_file')->store('public/uploads/dana/docs');
+
+        // Base64 Conversion
+        $base64Logo = base64_encode(file_get_contents($request->file('shop_logo')->getRealPath()));
+        $base64Doc  = base64_encode(file_get_contents($request->file('business_doc_file')->getRealPath()));
+
+        // --- 3. PERSIAPAN CONFIG ---
+        $clientId     = config('services.dana.x_partner_id'); // Sesuai config array Anda
+        $clientSecret = config('services.dana.client_secret');
+        $baseUrl      = config('services.dana.base_url') ?? 'https://api.sandbox.dana.id';
+        $baseUrl      = rtrim($baseUrl, '/');
+
+        // Fallback jika env kosong
+        if (empty($clientId)) $clientId = '2014000014442';
+
+        $reqTime  = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+        $reqMsgId = (string) Str::uuid();
+
+        // Fix Defaults
+        $shopOwning  = $request->shopOwning ?? 'DIRECT_OWNED';
+        $shopBizType = $request->shopBizType ?? 'ONLINE';
+
+        // Fix Tax Address
+        $rawTax = $request->input('taxAddress', []);
+        $fixTaxAddress = [
+            "country"     => "Indonesia",
+            "province"    => $rawTax['province'] ?? $request->input('shopAddress.province'),
+            "city"        => $rawTax['city'] ?? $request->input('shopAddress.city'),
+            "area"        => $request->input('shopAddress.area'), 
+            "address1"    => $rawTax['address1'] ?? $request->input('shopAddress.address1'),
+            "address2"    => "-",
+            "postcode"    => $rawTax['postcode'] ?? $request->input('shopAddress.postcode'),
+            "subDistrict" => "-"
+        ];
+
+        // --- 4. DB UPDATE/INSERT ---
+        $dbData = [
             'user_id' => auth()->id(),
-            'external_shop_id' => $request->externalShopId 
-        ]);
+            'merchant_id' => $request->merchantId,
+            'parent_division_id' => $request->parentDivisionId,
+            'main_name' => $request->mainName,
+            'shop_desc' => $request->shopDesc,
+            'shop_parent_type' => $request->shopParentType,
+            'size_type' => $request->sizeType,
+            'shop_owning' => $shopOwning,
+            'shop_biz_type' => $shopBizType,
+            'loyalty' => $request->loyalty ?? 'true',
+            'lat' => $request->lat, 'ln' => $request->ln,
+            'shop_address' => json_encode($request->shopAddress),
+            'ext_info' => json_encode($request->extInfo),
+            'owner_first_name' => $request->input('ownerName.firstName'),
+            'owner_last_name' => $request->input('ownerName.lastName'),
+            'owner_phone' => $request->input('ownerPhoneNumber.mobileNo'),
+            'owner_id_type' => $request->ownerIdType,
+            'owner_id_no' => $request->ownerIdNo,
+            'owner_address' => json_encode($request->ownerAddress),
+            'business_entity' => $request->businessEntity,
+            'mcc_codes' => json_encode($request->mccCodes),
+            'brand_name' => $request->brandName,
+            'tax_no' => $request->taxNo,
+            'tax_address' => json_encode($fixTaxAddress),
+            'director_pics' => json_encode($request->directorPics ?? []),
+            'non_director_pics' => json_encode($request->nonDirectorPics ?? []),
+            'logo_path' => $logoPath,
+            'doc_path' => $docPath,
+            'dana_status' => 'PENDING',
+            'updated_at' => now(),
+        ];
 
-        // 1. VALIDASI INPUT
-        $request->validate([
-            'merchantId' => 'required',
-            'mainName' => 'required|string|max:255',
-            'externalShopId' => 'required',
-            'shop_logo' => 'required|image|mimes:png|max:2048',
-            'business_doc_file' => 'required|mimes:pdf,jpg,jpeg,png|max:2048',
-            'lat' => 'required',
-            'ln' => 'required',
-            'shopAddress.province' => 'required',
-            'shopAddress.city' => 'required',
-        ]);
-
-        DB::beginTransaction();
-
-        try {
-            // [LOG 2] FILE PROCESSING
-            Log::info('[DANA CREATE SHOP] 2. Memproses File Upload...');
-            
-            // A. Simpan file fisik
-            $logoPath = $request->file('shop_logo')->store('public/uploads/dana/logos');
-            $docPath  = $request->file('business_doc_file')->store('public/uploads/dana/docs');
-
-            // B. Konversi ke Base64
-            $base64Logo = base64_encode(file_get_contents($request->file('shop_logo')->getRealPath()));
-            $base64Doc  = base64_encode(file_get_contents($request->file('business_doc_file')->getRealPath()));
-
-            // --- 3. PERSIAPAN CONFIG & DEFAULT VALUE (FIX PARAM_MISSING) ---
-            
-            // [FIX 1] AMBIL DARI CONFIG USER YANG BENAR
-            // Anda menggunakan 'x_partner_id' di config, bukan 'client_id'
-            $clientId     = config('services.dana.x_partner_id'); 
-            $clientSecret = config('services.dana.client_secret');
-            $baseUrl      = config('services.dana.base_url') ?? 'https://api.sandbox.dana.id';
-            $baseUrl      = rtrim($baseUrl, '/'); // Hapus slash di akhir
-            
-            // Cek jika config kosong (Safety Check)
-            if (empty($clientId)) {
-                Log::error('[DANA CONFIG] x_partner_id KOSONG di .env! Menggunakan Fallback Sandbox.');
-                $clientId = '2014000014442'; // Fallback Sandbox ID
-            }
-
-            $reqTime  = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
-            $reqMsgId = (string) Str::uuid();
-
-            // [FIX 2] PARAM_MISSING: SHOP OWNING & BIZ TYPE
-            // Form Anda mengirim null jika select option tidak dipilih/default
-            $shopOwning  = $request->shopOwning ?? 'DIRECT_OWNED';
-            $shopBizType = $request->shopBizType ?? 'ONLINE';
-
-            // [FIX 3] PARAM_MISSING: TAX ADDRESS
-            // DANA menolak jika taxAddress tidak lengkap (butuh country, city, dll)
-            $rawTax = $request->input('taxAddress', []);
-            $fixTaxAddress = [
-                "country"     => "Indonesia",
-                "province"    => $rawTax['province'] ?? $request->input('shopAddress.province'),
-                "city"        => $rawTax['city'] ?? $request->input('shopAddress.city'),
-                "area"        => $request->input('shopAddress.area'), 
-                "address1"    => $rawTax['address1'] ?? $request->input('shopAddress.address1'),
-                "address2"    => "-",
-                "postcode"    => $rawTax['postcode'] ?? $request->input('shopAddress.postcode'),
-                "subDistrict" => "-"
-            ];
-
-            // --- 4. PERSIAPAN DB DATA (UPDATE OR INSERT) ---
-            $dbData = [
-                'user_id' => auth()->id(),
-                'merchant_id' => $request->merchantId,
-                'parent_division_id' => $request->parentDivisionId,
-                'main_name' => $request->mainName,
-                'shop_desc' => $request->shopDesc,
-                'shop_parent_type' => $request->shopParentType,
-                'size_type' => $request->sizeType,
-                'shop_owning' => $shopOwning,   // <--- VALUE FIXED
-                'shop_biz_type' => $shopBizType, // <--- VALUE FIXED
-                'loyalty' => $request->loyalty ?? 'true',
-                'lat' => $request->lat,
-                'ln' => $request->ln,
-                'shop_address' => json_encode($request->shopAddress),
-                'ext_info' => json_encode($request->extInfo),
-                'owner_first_name' => $request->input('ownerName.firstName'),
-                'owner_last_name' => $request->input('ownerName.lastName'),
-                'owner_phone' => $request->input('ownerPhoneNumber.mobileNo'),
-                'owner_id_type' => $request->ownerIdType,
-                'owner_id_no' => $request->ownerIdNo,
-                'owner_address' => json_encode($request->ownerAddress),
-                'business_entity' => $request->businessEntity,
-                'mcc_codes' => json_encode($request->mccCodes),
-                'brand_name' => $request->brandName,
-                'tax_no' => $request->taxNo,
-                'tax_address' => json_encode($fixTaxAddress), // <--- VALUE FIXED
-                'director_pics' => json_encode($request->directorPics ?? []),
-                'non_director_pics' => json_encode($request->nonDirectorPics ?? []),
-                'logo_path' => $logoPath,
-                'doc_path' => $docPath,
-                'dana_status' => 'PENDING',
-                'updated_at' => now(),
-            ];
-
-            // Cek Duplicate External Shop ID
-            $existingShop = DB::table('dana_shops')
-                ->where('external_shop_id', $request->externalShopId)
-                ->first();
-
-            if ($existingShop) {
-                // UPDATE
-                DB::table('dana_shops')->where('id', $existingShop->id)->update($dbData);
-                $shopIdLocal = $existingShop->id;
-                Log::info("[DANA CREATE SHOP] 3. Data Diupdate. ID: $shopIdLocal");
-            } else {
-                // INSERT
-                $dbData['external_shop_id'] = $request->externalShopId;
-                $dbData['created_at'] = now();
-                $shopIdLocal = DB::table('dana_shops')->insertGetId($dbData);
-                Log::info("[DANA CREATE SHOP] 3. Data Baru Disimpan. ID: $shopIdLocal");
-            }
-
-            // --- 5. SUSUN PAYLOAD API DANA ---
-            $payload = [
-                "request" => [
-                    "head" => [
-                        "version"      => "2.0",
-                        "function"     => "dana.merchant.shop.createShop",
-                        "clientId"     => $clientId, // <--- AMBIL DARI x_partner_id CONFIG
-                        "clientSecret" => $clientSecret,
-                        "reqTime"      => $reqTime,
-                        "reqMsgId"     => $reqMsgId,
-                        "reserve"      => "{}"
-                    ],
-                    "body" => [
-                        "apiVersion"       => "3",
-                        "merchantId"       => $request->merchantId,
-                        "parentDivisionId" => $request->parentDivisionId,
-                        "shopParentType"   => $request->shopParentType,
-                        "mainName"         => $request->mainName,
-                        "shopAddress"      => $request->shopAddress, 
-                        "shopDesc"         => $request->shopDesc ?? '-',
-                        "externalShopId"   => $request->externalShopId,
-                        "logoUrlMap"       => [ "PC_LOGO" => $base64Logo ],
-                        "extInfo"          => $request->extInfo,
-                        "sizeType"         => $request->sizeType,
-                        "ln"               => $request->ln,
-                        "lat"              => $request->lat,
-                        "loyalty"          => "true",
-                        "ownerAddress"     => $request->ownerAddress,
-                        "ownerName"        => $request->ownerName,
-                        "ownerPhoneNumber" => [
-                            "mobileNo" => $request->input('ownerPhoneNumber.mobileNo'),
-                            "mobileId" => Str::random(10),
-                            "verified" => "true"
-                        ],
-                        "ownerIdType"      => $request->ownerIdType,
-                        "ownerIdNo"        => $request->ownerIdNo,
-                        "deviceNumber"     => "0",
-                        "posNumber"        => "0",
-                        "mccCodes"         => $request->mccCodes,
-                        "businessEntity"   => $request->businessEntity,
-                        
-                        // [FIXED VARIABLES]
-                        "shopOwning"       => $shopOwning, 
-                        "shopBizType"      => $shopBizType, 
-                        "taxAddress"       => $fixTaxAddress, 
-
-                        "businessDocs"     => [
-                            [
-                                "docType" => ($request->businessEntity == 'individu') ? 'KTP' : 'SIUP',
-                                "docId"   => $request->ownerIdNo,
-                                "docFile" => $base64Doc
-                            ]
-                        ],
-                        "taxNo"            => $request->taxNo,
-                        "brandName"        => $request->brandName,
-                        "directorPics"     => $request->directorPics ?? [],
-                        "nonDirectorPics"  => $request->nonDirectorPics ?? []
-                    ]
-                ]
-            ];
-
-            // Debug Payload (Hidden Base64)
-            $debugPayload = $payload;
-            $debugPayload['request']['body']['logoUrlMap']['PC_LOGO'] = 'HIDDEN';
-            $debugPayload['request']['body']['businessDocs'][0]['docFile'] = 'HIDDEN';
-            Log::info('[DANA CREATE SHOP] 4. Payload Ready', ['payload' => $debugPayload]);
-
-            // --- 6. SIGNATURE & REQUEST ---
-            $endpointPath = '/dana/merchant/shop/createShop.htm';
-            $signatureString = $danaService->generateSignature('POST', $endpointPath, $payload['request'], $reqTime);
-            
-            $finalPayload = $payload;
-            $finalPayload['signature'] = $signatureString;
-
-            Log::info('[DANA CREATE SHOP] 5. Sending Request to: ' . $baseUrl . $endpointPath);
-
-            $response = Http::withHeaders([
-                'Content-Type' => 'application/json',
-                'Accept'       => 'application/json',
-            ])->post($baseUrl . $endpointPath, $finalPayload);
-
-            $result = $response->json();
-            Log::info('[DANA CREATE SHOP] 6. Response Received', ['result' => $result]);
-
-            // --- 7. HANDLING RESPON ---
-            $danaResultInfo = $result['response']['body']['resultInfo'] ?? [];
-            $danaStatus     = $danaResultInfo['resultStatus'] ?? 'F';
-            $danaMsg        = $danaResultInfo['resultMsg'] ?? 'Unknown Error';
-            $danaCode       = $danaResultInfo['resultCode'] ?? '-';
-            $danaShopId     = $result['response']['body']['shopId'] ?? null;
-
-            if ($danaStatus === 'S') {
-                DB::table('dana_shops')->where('id', $shopIdLocal)->update([
-                    'dana_status'       => 'SUCCESS',
-                    'dana_shop_id'      => $danaShopId,
-                    'dana_response_msg' => "Success ($danaCode): $danaMsg",
-                    'updated_at'        => now()
-                ]);
-                DB::commit();
-                
-                return redirect()->route('customer.dashboard')->with('success', "Toko Berhasil Dibuat! Shop ID: $danaShopId");
-            } else {
-                DB::table('dana_shops')->where('id', $shopIdLocal)->update([
-                    'dana_status'       => 'FAILED',
-                    'dana_response_msg' => "$danaMsg (Code: $danaCode)",
-                    'updated_at'        => now()
-                ]);
-                DB::commit(); 
-
-                return back()->withInput()->with('error', "Gagal Mendaftar ke DANA: $danaMsg ($danaCode)");
-            }
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('[DANA CREATE SHOP] ERROR', ['msg' => $e->getMessage(), 'line' => $e->getLine()]);
-            return back()->withInput()->with('error', 'Terjadi kesalahan sistem: ' . $e->getMessage());
+        $existingShop = DB::table('dana_shops')->where('external_shop_id', $request->externalShopId)->first();
+        if ($existingShop) {
+            DB::table('dana_shops')->where('id', $existingShop->id)->update($dbData);
+            $shopIdLocal = $existingShop->id;
+            Log::info("[DANA CREATE SHOP] 3. Data Updated. ID: $shopIdLocal");
+        } else {
+            $dbData['external_shop_id'] = $request->externalShopId;
+            $dbData['created_at'] = now();
+            $shopIdLocal = DB::table('dana_shops')->insertGetId($dbData);
+            Log::info("[DANA CREATE SHOP] 3. Data Inserted. ID: $shopIdLocal");
         }
+
+        // --- 5. DATA REQUEST ---
+        // Struktur data murni (Array)
+        $requestData = [
+            "head" => [
+                "version"      => "2.0",
+                "function"     => "dana.merchant.shop.createShop",
+                "clientId"     => $clientId,
+                "clientSecret" => $clientSecret,
+                "reqTime"      => $reqTime,
+                "reqMsgId"     => $reqMsgId,
+                "reserve"      => "{}"
+            ],
+            "body" => [
+                "apiVersion"       => "3",
+                "merchantId"       => $request->merchantId,
+                "parentDivisionId" => $request->parentDivisionId,
+                "shopParentType"   => $request->shopParentType,
+                "mainName"         => $request->mainName,
+                "shopAddress"      => $request->shopAddress, 
+                "shopDesc"         => $request->shopDesc ?? '-',
+                "externalShopId"   => $request->externalShopId,
+                "logoUrlMap"       => [ "PC_LOGO" => $base64Logo ],
+                "extInfo"          => $request->extInfo,
+                "sizeType"         => $request->sizeType,
+                "ln"               => $request->ln,
+                "lat"              => $request->lat,
+                "loyalty"          => "true",
+                "ownerAddress"     => $request->ownerAddress,
+                "ownerName"        => $request->ownerName,
+                "ownerPhoneNumber" => [
+                    "mobileNo" => $request->input('ownerPhoneNumber.mobileNo'),
+                    "mobileId" => Str::random(10),
+                    "verified" => "true"
+                ],
+                "ownerIdType"      => $request->ownerIdType,
+                "ownerIdNo"        => $request->ownerIdNo,
+                "deviceNumber"     => "0",
+                "posNumber"        => "0",
+                "mccCodes"         => $request->mccCodes,
+                "businessEntity"   => $request->businessEntity,
+                "shopOwning"       => $shopOwning, 
+                "shopBizType"      => $shopBizType, 
+                "taxAddress"       => $fixTaxAddress, 
+                "businessDocs"     => [[
+                    "docType" => ($request->businessEntity == 'individu') ? 'KTP' : 'SIUP',
+                    "docId"   => $request->ownerIdNo,
+                    "docFile" => $base64Doc
+                ]],
+                "taxNo"            => $request->taxNo,
+                "brandName"        => $request->brandName,
+                "directorPics"     => $request->directorPics ?? [],
+                "nonDirectorPics"  => $request->nonDirectorPics ?? []
+            ]
+        ];
+
+        // --- 6. SIGNATURE GENERATION (METODE MANUAL SESUAI CONTOH ANDA) ---
+        
+        $path = '/dana/merchant/shop/createShop.htm';
+        
+        // 1. Encode JSON tanpa escape slash (Sesuai contoh)
+        $jsonBody = json_encode($requestData, JSON_UNESCAPED_SLASHES);
+        
+        // 2. Hash Body (SHA256 Lowercase)
+        $hashedBody = strtolower(hash('sha256', $jsonBody));
+        
+        // 3. Susun String to Sign
+        $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $reqTime;
+        
+        Log::info('[DANA SIGNATURE] StringToSign: ' . $stringToSign);
+
+        // 4. Sign dengan Private Key (Manual OpenSSL)
+        $privateKey = config('services.dana.private_key'); // Ambil string key dari env
+        
+        // Pastikan format key benar
+        if (!Str::contains($privateKey, 'BEGIN PRIVATE KEY')) {
+            $privateKey = "-----BEGIN PRIVATE KEY-----\n" . wordwrap($privateKey, 64, "\n", true) . "\n-----END PRIVATE KEY-----";
+        }
+
+        $binarySignature = '';
+        if (!openssl_sign($stringToSign, $binarySignature, $privateKey, OPENSSL_ALGO_SHA256)) {
+            throw new \Exception("Gagal membuat signature RSA. Cek Private Key.");
+        }
+        $signatureString = base64_encode($binarySignature);
+
+        Log::info('[DANA SIGNATURE] Result: ' . $signatureString);
+
+        // --- 7. FINAL PAYLOAD ---
+        $finalPayloadArray = [
+            "request"   => $requestData,
+            "signature" => $signatureString
+        ];
+        
+        // Encode payload final dengan format yang sama
+        $finalJsonPayload = json_encode($finalPayloadArray, JSON_UNESCAPED_SLASHES);
+
+        // --- 8. SEND REQUEST ---
+        Log::info('[DANA CREATE SHOP] 6. Sending Request (Manual JSON)...');
+
+        $response = Http::withHeaders([
+            'Content-Type' => 'application/json',
+            'Accept'       => 'application/json',
+        ])->withBody($finalJsonPayload, 'application/json')
+          ->post($baseUrl . $path);
+
+        $result = $response->json();
+        Log::info('[DANA CREATE SHOP] 7. Response:', ['result' => $result]);
+
+        // --- 9. HANDLING RESPON ---
+        $danaResultInfo = $result['response']['body']['resultInfo'] ?? [];
+        $danaStatus     = $danaResultInfo['resultStatus'] ?? 'F';
+        $danaMsg        = $danaResultInfo['resultMsg'] ?? 'Unknown Error';
+        $danaCode       = $danaResultInfo['resultCode'] ?? '-';
+        $danaShopId     = $result['response']['body']['shopId'] ?? null;
+
+        if ($danaStatus === 'S') {
+            DB::table('dana_shops')->where('id', $shopIdLocal)->update([
+                'dana_status'       => 'SUCCESS',
+                'dana_shop_id'      => $danaShopId,
+                'dana_response_msg' => "Success ($danaCode): $danaMsg",
+                'updated_at'        => now()
+            ]);
+            DB::commit();
+            return redirect()->route('customer.dashboard')->with('success', "Toko Berhasil Dibuat! Shop ID: $danaShopId");
+        } else {
+            DB::table('dana_shops')->where('id', $shopIdLocal)->update([
+                'dana_status'       => 'FAILED',
+                'dana_response_msg' => "$danaMsg (Code: $danaCode)",
+                'updated_at'        => now()
+            ]);
+            DB::commit(); 
+            return back()->withInput()->with('error', "Gagal Mendaftar ke DANA: $danaMsg ($danaCode)");
+        }
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('[DANA CREATE SHOP] ERROR', ['msg' => $e->getMessage(), 'line' => $e->getLine()]);
+        return back()->withInput()->with('error', 'Sistem Error: ' . $e->getMessage());
     }
+}
 }
 
