@@ -423,6 +423,10 @@ Route::middleware(['auth', RoleMiddleware::class . ':Pelanggan|Seller'])->prefix
         
         // 3. Proses Simpan ke API (Store)
         Route::post('/store', [DashboardController::class, 'storeShop'])->name('store');
+
+        // 4. Data CRUD Lainnya (Edit, Update) DANA SHOP
+        Route::get('/edit/{id}', [DashboardController::class, 'editShopForm'])->name('edit');
+        Route::post('/update/{id}', [DashboardController::class, 'updateShop'])->name('update');
     });
 
 
