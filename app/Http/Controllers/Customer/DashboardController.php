@@ -438,7 +438,11 @@ public function index()
 
 
             // --- E. KIRIM REQUEST ---
-            $baseUrl = config('services.dana.base_url'); // https://api.sandbox.dana.id atau Production
+            // Gunakan config, jika kosong pakai Sandbox DANA sebagai cadangan
+            $baseUrl = config('services.dana.base_url') ?? 'https://api.sandbox.dana.id';
+
+            // Pastikan tidak ada slash ganda (opsional, tapi bagus untuk keamanan format)
+            $baseUrl = rtrim($baseUrl, '/');
             
             Log::info('[DANA CREATE SHOP] Sending Request...', ['reqMsgId' => $reqMsgId]);
 

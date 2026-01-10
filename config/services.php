@@ -60,6 +60,7 @@ return [
         'redirect_url_oauth'  => env('REDIRECT_URL_OAUTH'),
         'external_shop_id'    => env('EXTERNAL_SHOP_ID'),
         'dana_env'            => env('DANA_ENV', 'SANDBOX'),
+        'base_url'            => env('DANA_BASE_URL', 'https://api.sandbox.dana.id'), // Tambahkan default value ini
     ],
 
     'openai' => [
