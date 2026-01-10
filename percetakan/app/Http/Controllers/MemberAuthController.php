@@ -650,6 +650,18 @@ public function customerTopup(Request $request, \App\Services\DanaSignatureServi
         'amount' => $request->amount,
     ]);
 
+    // 1. Ambil Data dari Tabel Affiliates (Hasil SELECT Anda)
+    $affId = $aff->id; // Contoh: 11
+    $whatsapp = preg_replace('/[^0-9]/', '', $aff->whatsapp); // Pastikan angka saja: 085745808809
+    $tglDaftar = date('Ymd', strtotime($aff->created_at)); // Contoh: 20260104
+
+    // 2. Susun Customer ID (ID-HP-TglDaftar)
+    // Contoh Hasil: 11-085745808809-20260104
+    $customId = $affId . '-' . $whatsapp . '-' . $tglDaftar;
+
+    // 3. Pastikan tidak lebih dari 32 karakter (Aturan DANA)
+    $customId = substr($customId, 0, 32);
+
     // --- [LOG 2] SANITASI NOMOR HP (WAJIB 628xxx) ---
     $rawPhone = $request->phone;
     $cleanPhone = preg_replace('/[^0-9]/', '', $rawPhone); // Hapus karakter non-angka
@@ -675,7 +687,7 @@ public function customerTopup(Request $request, \App\Services\DanaSignatureServi
     // Menyertakan feeAmount karena statusnya Required di dokumen terbaru
     $body = [
         "partnerReferenceNo" => $partnerRef,
-        "customerNumber"     => $cleanPhone,
+        "customerNumber"     => "620000000000",
         "amount" => [
             "value"    => $valStr,
             "currency" => "IDR"
@@ -689,10 +701,13 @@ public function customerTopup(Request $request, \App\Services\DanaSignatureServi
         "categoryId"      => "6",
         "notes"           => "Topup Sancaka",
         "additionalInfo"  => [
-            "accountType"  => "NAME_DEPOSIT",
-            "fundType"     => "AGENT_TOPUP_FOR_USER_SETTLE",
-            "chargeTarget" => "MERCHANT"
-            //"fundType" => "AGENT_TOPUP_FOR_USER_SETTLE" // WAJIB
+            "extendInfo"         => json_encode(["memo" => "topup order memo"]), // Format JSON String
+            "accountType"        => "NAME_DEPOSIT",
+            "fundType"           => "AGENT_TOPUP_FOR_USER_SETTLE", // Required
+            "externalDivisionId" => "", // Kosongkan jika bukan sub-merchant
+            "chargeTarget"       => "MERCHANT", // Gunakan MERCHANT sesuai profil Anda
+            // Customer ID hasil gabungan ID, No HP, dan Tgl Daftar
+            "customerId"         => $customId
         ]
     ];
 
