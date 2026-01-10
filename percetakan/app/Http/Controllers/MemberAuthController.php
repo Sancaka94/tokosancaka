@@ -721,7 +721,7 @@ public function customerTopup(Request $request)
         
         $resCode = $result['responseCode'] ?? '5003801';
 
-        // --- [SMART MATCHING] COCOKKAN DENGAN DATABASE dana_response_codes ---
+        // --- [SMART MATCHING] ---
         $library = DB::table('dana_response_codes')
                     ->where('response_code', $resCode)
                     ->where('category', 'TOPUP')
@@ -729,16 +729,25 @@ public function customerTopup(Request $request)
 
         // Jika kode baru, catat otomatis
         if (!$library) {
+            // [FIX LOGIC] Tentukan status sukses berdasarkan kode yang dikenal
+            // 2000000 = Sukses Umum, 2003800 = Sukses Topup
+            $isSuccessCode = in_array($resCode, ['2000000', '2003800']);
+
             DB::table('dana_response_codes')->insert([
                 'response_code' => $resCode,
                 'category'      => 'TOPUP',
-                'message_title' => 'New Code Detected',
-                'description'   => $result['responseMessage'] ?? 'Unknown Error',
+                'message_title' => $isSuccessCode ? 'Transaction Success' : 'New Code Detected',
+                'description'   => $result['responseMessage'] ?? 'Auto Generated',
                 'solution'      => 'Cek Dokumentasi DANA',
-                'is_success'    => false,
+                'is_success'    => $isSuccessCode, // <--- GUNAKAN VARIABEL INI
                 'created_at'    => now()
             ]);
-            $library = DB::table('dana_response_codes')->where('response_code', $resCode)->where('category', 'TOPUP')->first();
+            
+            // Refresh data library
+            $library = DB::table('dana_response_codes')
+                        ->where('response_code', $resCode)
+                        ->where('category', 'TOPUP')
+                        ->first();
         }
 
         // --- [DATABASE] CATAT KE dana_transactions ---
