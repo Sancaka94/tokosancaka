@@ -45,7 +45,7 @@
 <body class="bg-gray-100 text-gray-800">
 
     {{-- ✅ DIUBAH: Mengubah container utama menjadi flex dengan tinggi layar penuh (h-screen) --}}
-    <div x-data="{ sidebarOpen: false, isNotificationsMenuOpen: false, isProfileMenuOpen: false }" class="flex h-screen">
+    <div x-data="{ sidebarOpen: false, isNotificationsMenuOpen: false, isProfileMenuOpen: false }" class="flex">
         <!-- Sidebar -->
         @include('layouts.partials.customer.sidebar')
 
@@ -55,14 +55,15 @@
 
             <!-- Main content -->
             <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100">
-                <div class="container mx-auto px-6 py-8">
+                <div class="container mx-auto px-6 py-8 h-screen">
+                    {{-- ✅ DIUBAH: Menambahkan wrapper konten dengan padding --}}
                     @yield('content')
                 </div>
             </main>
 
             <!-- Footer -->
             @include('layouts.partials.customer.footer')
-            
+
         </div>
     </div>
     
