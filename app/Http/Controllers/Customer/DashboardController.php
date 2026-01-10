@@ -320,6 +320,7 @@ public function index()
             $base64Doc  = base64_encode(file_get_contents($request->file('business_doc_file')->getRealPath()));
 
             // --- 3. CONFIG ---
+            // --- 3. CONFIG & DEFAULTS ---
             $clientId     = config('services.dana.x_partner_id'); 
             $clientSecret = config('services.dana.client_secret');
             $baseUrl      = config('services.dana.base_url') ?? 'https://api.sandbox.dana.id';
@@ -330,19 +331,43 @@ public function index()
             $reqTime  = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
             $reqMsgId = (string) Str::uuid();
 
-            // Defaults & Fixes
+            // Defaults
             $shopOwning  = $request->shopOwning ?? 'DIRECT_OWNED';
             $shopBizType = $request->shopBizType ?? 'ONLINE';
 
+            // [FIX ADDRESS VALIDATION]
+            // DANA menolak "Ngawi", harus "Kab. Ngawi" atau "Kota Madiun"
+            $rawCity = $request->input('shopAddress.city');
+            
+            // Cek apakah user sudah mengetik "Kab" atau "Kota", jika belum, tambahkan "Kab. "
+            if (!Str::startsWith(strtoupper($rawCity), ['KAB', 'KOTA'])) {
+                $fixedCity = 'Kab. ' . $rawCity; 
+            } else {
+                $fixedCity = $rawCity;
+            }
+
+            // Buat Array Alamat yang sudah distandarisasi (Pakai ini untuk DB dan API)
+            $fixedShopAddress = [
+                "country"     => "Indonesia",
+                "province"    => $request->input('shopAddress.province'), // Pastikan ini "Jawa Timur" (bukan Jatim)
+                "city"        => $fixedCity, // <--- SUDAH DITAMBAH "Kab."
+                "area"        => $request->input('shopAddress.area'), 
+                "address1"    => $request->input('shopAddress.address1'),
+                "address2"    => "-", // Wajib ada isinya walau strip
+                "postcode"    => $request->input('shopAddress.postcode'),
+                "subDistrict" => "-"  // Wajib ada isinya walau strip
+            ];
+
+            // Fix Tax Address (Samakan dengan shop address yang sudah diperbaiki)
             $rawTax = $request->input('taxAddress', []);
             $fixTaxAddress = [
                 "country"     => "Indonesia",
-                "province"    => $rawTax['province'] ?? $request->input('shopAddress.province'),
-                "city"        => $rawTax['city'] ?? $request->input('shopAddress.city'),
+                "province"    => $rawTax['province'] ?? $fixedShopAddress['province'],
+                "city"        => $rawTax['city'] ?? $fixedShopAddress['city'],
                 "area"        => $request->input('shopAddress.area'), 
-                "address1"    => $rawTax['address1'] ?? $request->input('shopAddress.address1'),
+                "address1"    => $rawTax['address1'] ?? $fixedShopAddress['address1'],
                 "address2"    => "-",
-                "postcode"    => $rawTax['postcode'] ?? $request->input('shopAddress.postcode'),
+                "postcode"    => $rawTax['postcode'] ?? $fixedShopAddress['postcode'],
                 "subDistrict" => "-"
             ];
 
@@ -359,7 +384,7 @@ public function index()
                 'shop_biz_type' => $shopBizType,
                 'loyalty' => $request->loyalty ?? 'true',
                 'lat' => $request->lat, 'ln' => $request->ln,
-                'shop_address' => json_encode($request->shopAddress),
+                'shop_address' => json_encode($fixedShopAddress), // <--- GANTI INI
                 'ext_info' => json_encode($request->extInfo),
                 'owner_first_name' => $request->input('ownerName.firstName'),
                 'owner_last_name' => $request->input('ownerName.lastName'),
@@ -409,7 +434,7 @@ public function index()
                     "parentDivisionId" => $request->parentDivisionId,
                     "shopParentType"   => $request->shopParentType,
                     "mainName"         => $request->mainName,
-                    "shopAddress"      => $request->shopAddress, 
+                    "shopAddress"      => $fixedShopAddress, // <--- GANTI INI 
                     "shopDesc"         => $request->shopDesc ?? '-',
                     "externalShopId"   => $request->externalShopId,
                     "logoUrlMap"       => [ "PC_LOGO" => $base64Logo ],
