@@ -42,28 +42,45 @@
 {{-- Include Notifikasi Sandbox --}}
 @include('components.sandbox_alert')
 
-<body class="bg-gray-100 text-gray-800">
+<body class="bg-gray-100 text-gray-800 font-sans antialiased">
 
-    {{-- ✅ DIUBAH: Tambahkan h-screen dan overflow-hidden di wrapper utama agar body tidak scroll --}}
-        <div x-data="{ sidebarOpen: false, isNotificationsMenuOpen: false, isProfileMenuOpen: false }" class="flex h-screen overflow-hidden">
-            
+    {{-- 1. WRAPPER UTAMA: h-screen & overflow-hidden (Kunci agar tidak ada double scroll di body) --}}
+    <div x-data="{ sidebarOpen: false }" class="flex h-screen overflow-hidden bg-gray-100">
+        
+        {{-- 2. SIDEBAR WRAPPER --}}
+        {{-- Tambahkan 'overflow-y-auto' agar sidebar bisa discroll mandiri jika menu panjang --}}
+        {{-- Tambahkan 'h-full' agar tingginya pas layar --}}
+        <div :class="sidebarOpen ? 'block' : 'hidden'" class="fixed z-20 inset-0 bg-black opacity-50 transition-opacity lg:hidden" @click="sidebarOpen = false"></div>
+        
+        <div :class="sidebarOpen ? 'translate-x-0 ease-out' : '-translate-x-full ease-in'" class="fixed z-30 inset-y-0 left-0 w-64 transition duration-300 transform bg-white overflow-y-auto lg:translate-x-0 lg:static lg:inset-0">
             @include('layouts.partials.customer.sidebar')
-
-            <div class="flex-1 flex flex-col overflow-hidden">
-                @include('layouts.partials.customer.topbar')
-
-                {{-- ✅ DIUBAH: Pindahkan overflow-y-auto ke sini agar scrollbar ada di area utama saja --}}
-                <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100">
-                    
-                    {{-- ✅ DIUBAH: Hapus 'h-screen' dan 'overflow-y-auto' dari sini --}}
-                    <div class="container mx-auto px-6 py-8">
-                        @yield('content')
-                    </div>
-                    
-                    @include('layouts.partials.customer.footer')
-                </main>
-            </div>
         </div>
+
+        {{-- 3. AREA KANAN (Konten Utama) --}}
+        <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+            
+            {{-- A. TOPBAR (Diam di atas) --}}
+            @include('layouts.partials.customer.topbar')
+
+            {{-- B. MAIN CONTENT (Ini yang bisa di-scroll) --}}
+            {{-- 'flex-1': Mengambil sisa ruang --}}
+            {{-- 'overflow-y-auto': Agar cuma area ini yang ada scrollbarnya --}}
+            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-6">
+                {{-- Container konten --}}
+                <div class="container mx-auto">
+                    @include('components.sandbox_alert')
+                    @yield('content')
+                </div>
+            </main>
+
+            {{-- C. FOOTER (Sticky di bawah layar) --}}
+            {{-- Ditaruh DI LUAR <main> agar tidak ikut terscroll --}}
+            <footer class="bg-white border-t border-gray-200 p-4 shrink-0">
+                @include('layouts.partials.customer.footer')
+            </footer>
+
+        </div>
+    </div>
     
     
    {{-- ================================================================= --}}
