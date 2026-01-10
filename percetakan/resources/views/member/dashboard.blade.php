@@ -76,7 +76,7 @@
                         <p class="text-lg font-black text-amber-900 mt-1">Rp {{ number_format($member->dana_merchant_balance ?? 0, 0, ',', '.') }}</p>
                     </div>
                 </div>
-                <form action="{{ route('dana.checkMerchantBalance') }}" method="POST">
+                <form action="{{ route('member.dana.checkMerchantBalance') }}" method="POST">
                     @csrf
                     <input type="hidden" name="affiliate_id" value="{{ $member->id }}">
                     <button type="submit" class="bg-white p-2 text-amber-600 border border-amber-200 rounded-lg hover:bg-amber-100 transition shadow-sm">
