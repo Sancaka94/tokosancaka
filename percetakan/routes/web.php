@@ -76,9 +76,9 @@ Route::post('/dana/notify', [OrderController::class, 'handleDanaWebhook'])->name
 //Route::post('/dana/notify', [DanaWidgetController::class, 'handleNotify'])->name('dana.notify');
 
 // Halaman Return Sukses
-Route::get('/dana/return', function () {
-    return view('dana_success');
-})->name('dana.return');
+Route::get('/dana/return', function () {return view('dana_success');})->name('dana.return');
+
+/*
 
 // Payment & Transaction
 Route::any('/dana/pay', [DanaWidgetController::class, 'createPayment'])->name('dana.pay');
@@ -98,6 +98,8 @@ Route::get('/dana/debug-force', [App\Http\Controllers\DanaDashboardController::c
 Route::get('/dana/test-key', [DanaDashboardController::class, 'testKeyData']);
 
 Route::get('/dana/test-inquiry', [App\Http\Controllers\DanaDashboardController::class, 'accountInquiry']);
+
+*/
 
 Route::middleware(['auth'])->group(function () {
 });
