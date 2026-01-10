@@ -696,13 +696,14 @@ public function customerTopup(Request $request, \App\Services\DanaSignatureServi
     // --- [BODY: HARUS SESUAI DOKUMEN BOS] ---
     // Menyertakan feeAmount karena statusnya Required di dokumen terbaru
     $body = [
-    "partnerReferenceNo" => $partnerRef,
-    "customerNumber"     => $cleanPhone,
+    "partnerReferenceNo" => "SNC-20260110-0001",
+    "customerNumber"     => "085745808809",
     "amount" => [
-        "value"    => $value,
+        "value"    => "10000",
         "currency" => "IDR"
     ]
 ];
+
 
 
     try {
