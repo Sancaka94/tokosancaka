@@ -274,6 +274,11 @@
                             <a href="{{ route('seller.dashboard') }}" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded-md transition-colors duration-200 {{ request()->routeIs('seller.dashboard') ? 'bg-gray-800 text-white' : '' }}">
                                 <i class="fas fa-tachometer-alt fa-fw w-4 mr-2"></i> Dashboard Toko
                             </a>
+                            {{-- [MENU BARU]: CREATE SHOP DANA --}}
+                            <a href="{{ route('customer.merchant.create') }}" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded-md transition-colors duration-200 {{ request()->routeIs('customer.merchant.create') ? 'bg-gray-800 text-white' : '' }}">
+                                <i class="fas fa-id-card fa-fw w-4 mr-2 text-blue-400"></i> Daftar Merchant DANA
+                            </a>
+                            {{-- END MENU BARU --}}
                             <a href="{{ route('seller.doku.index') }}" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded-md transition-colors duration-200 {{ request()->routeIs('seller.doku.*') ? 'bg-gray-800 text-white' : '' }}">
                                 <i class="fas fa-wallet fa-fw w-4 mr-2"></i> Dompet Sancaka
                             </a>
