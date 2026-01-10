@@ -7,87 +7,77 @@
     
     <title>Dashboard Pelanggan - {{ config('app.name', 'Sancaka Express') }}</title>
 
-    <!-- TailwindCSS CDN -->
+    {{-- CDN & Fonts --}}
     <script src="https://cdn.tailwindcss.com"></script>
-
-    <!-- Google Fonts - Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
     <link rel="icon" href="https://tokosancaka.com/storage/uploads/sancaka.png" type="image/png">
-    <link rel="shortcut icon" href="https://tokosancaka.com/storage/uploads/sancaka.png" type="image/png">
-    <link rel="apple-touch-icon" href="https://tokosancaka.com/storage/uploads/sancaka.png">
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-
-    <!-- AlpineJS -->
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
-
-    <!-- di dalam <head> -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css">
 
     <style>
         body { font-family: 'Inter', sans-serif; }
         [x-cloak] { display: none !important; }
-        .modal-transition { transition: opacity 0.3s ease, transform 0.3s ease; }
-        .modal-hidden { opacity: 0; transform: scale(0.95); pointer-events: none; }
-        .modal-visible { opacity: 1; transform: scale(1); pointer-events: auto; }
+        /* Hilangkan scrollbar di sidebar/main tapi tetap bisa discroll (Opsional, biar rapi) */
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
     
     @stack('styles')
 </head>
-{{-- ✅ DIUBAH: Menghapus flex-col dan min-h-screen dari body --}}
 
-{{-- Include Notifikasi Sandbox --}}
 @include('components.sandbox_alert')
 
-<body class="bg-gray-100 text-gray-800 font-sans antialiased">
+{{-- 
+    KUNCI UTAMA 1: 
+    h-screen & overflow-hidden di BODY/WRAPPER.
+    Ini memaksa website tingginya FIX 100% layar monitor. 
+    Tidak akan ada scrollbar di body kanan (browser).
+--}}
+<body class="bg-gray-100 text-gray-800 antialiased h-screen overflow-hidden flex">
 
-    {{-- 
-       PERBAIKAN 1: Tambahkan 'overflow-hidden' di sini. 
-       Ini Wajib! Agar scrollbar Body hilang dan aplikasi terkunci di 100% tinggi layar.
-    --}}
-    <div x-data="{ sidebarOpen: false, isNotificationsMenuOpen: false, isProfileMenuOpen: false }" 
-         class="flex h-screen overflow-hidden">
+    <div x-data="{ sidebarOpen: false }" class="flex w-full h-full">
         
+        {{-- 
+            KUNCI UTAMA 2: SIDEBAR 
+            Include Sidebar di sini. Flexbox akan otomatis membuatnya sejajar.
+            Sidebar di file partial Anda harus punya class 'h-full' agar tidak kepotong.
+            (Tapi secara default flex item akan stretch height, jadi aman).
+        --}}
         @include('layouts.partials.customer.sidebar')
 
-        {{-- PERBAIKAN 2: Pastikan ada 'h-full' agar wrapper ini tingginya mentok bawah --}}
-        <div class="flex-1 flex flex-col h-full overflow-hidden">
+        {{-- 
+            KUNCI UTAMA 3: KOLOM KANAN (Header + Main + Footer)
+            flex-1: Ambil sisa lebar.
+            flex-col: Susun ke bawah.
+            h-full: Tinggi mentok layar.
+            overflow-hidden: Cegah scrollbar ganda.
+        --}}
+        <div class="flex-1 flex flex-col h-full overflow-hidden relative">
             
             @include('layouts.partials.customer.topbar')
 
-            {{-- 
-               - flex-1: Mengambil sisa ruang antara Topbar & Footer.
-               - overflow-y-auto: Scrollbar hanya muncul di kotak ini.
-            --}}
-            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100">
+            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 scroll-smooth">
                 <div class="container mx-auto px-6 py-8">
                     @yield('content')
                 </div>
             </main>
 
-            <footer class="bg-white text-gray-600 body-font border-t border-gray-200 z-10 shrink-0">
-                <div class="container px-5 py-4 mx-auto flex items-center sm:flex-row flex-col">
+            <footer class="bg-white text-gray-600 border-t border-gray-200 z-20 shrink-0">
+                <div class="container px-5 py-3 mx-auto flex items-center sm:flex-row flex-col">
                     <a class="flex title-font font-medium items-center md:justify-start justify-center text-gray-900">
-                         <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="Logo Sancaka Express" class="w-8 h-8">
-                        <span class="ml-3 text-lg">Sancaka Express</span>
+                         <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="Logo" class="w-6 h-6">
+                        <span class="ml-2 text-base font-semibold">Sancaka Express</span>
                     </a>
-                    <p class="text-sm text-gray-500 sm:ml-4 sm:pl-4 sm:border-l-2 sm:border-gray-200 sm:py-2 sm:mt-0 mt-4">
-                        © {{ date('Y') }} Sancaka Express —
-                        <a href="#" class="text-gray-600 ml-1" rel="noopener noreferrer" target="_blank">@sancakaexpress</a>
+                    <p class="text-xs text-gray-500 sm:ml-4 sm:pl-4 sm:border-l-2 sm:border-gray-200 sm:py-2 sm:mt-0 mt-2">
+                        © {{ date('Y') }} Sancaka Express
                     </p>
-                    <span class="inline-flex sm:ml-auto sm:mt-0 mt-4 justify-center sm:justify-start">
-                        <a class="text-gray-500 hover:text-indigo-600">
-                            <i class="fab fa-facebook-f"></i>
-                        </a>
-                        <a class="ml-3 text-gray-500 hover:text-indigo-600">
-                            <i class="fab fa-twitter"></i>
-                        </a>
-                        <a class="ml-3 text-gray-500 hover:text-indigo-600">
-                            <i class="fab fa-instagram"></i>
-                        </a>
+                    <span class="inline-flex sm:ml-auto sm:mt-0 mt-2 justify-center sm:justify-start">
+                        <a href="#" class="text-gray-400 hover:text-blue-600"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#" class="ml-3 text-gray-400 hover:text-blue-400"><i class="fab fa-twitter"></i></a>
+                        <a href="#" class="ml-3 text-gray-400 hover:text-pink-600"><i class="fab fa-instagram"></i></a>
                     </span>
                 </div>
             </footer>
