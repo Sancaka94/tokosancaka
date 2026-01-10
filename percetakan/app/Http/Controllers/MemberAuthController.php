@@ -662,26 +662,29 @@ public function customerTopup(Request $request, \App\Services\DanaSignatureServi
     // 3. Persiapan Data Request Sesuai Dokumentasi
     $timestamp = now('Asia/Jakarta')->toIso8601String(); 
     $path = '/v1.0/emoney/topup.htm';
+    $partnerRef = Str::limit('REF' . time() . Str::random(10), 64, '');
     
+    // --- STRUKTUR JSON HARUS PERSIS SAMPEL DOKUMENTASI ---
     $body = [
-        "partnerReferenceNo" => (string) Str::limit('REF' . time() . Str::random(10), 64, ''), // Max 64
+        "partnerReferenceNo" => $partnerRef,
         "customerNumber"     => $cleanPhone, // Format 628xxx
         "amount" => [
             "value"    => number_format((float)$request->amount, 2, '.', ''), // Wajib desimal .00
             "currency" => "IDR"
         ],
         "feeAmount" => [
-            "value"    => "0.00", // Wajib ada (Required)
+            "value"    => "0.00", // WAJIB ADA (Required)
             "currency" => "IDR"
         ],
         "transactionDate" => $timestamp,
-        "sessionId"       => (string) Str::limit(Session::getId(), 25, ''), // Max 25
-        "categoryId"      => "6", // Max 10
+        "sessionId"       => Str::limit(Session::getId(), 25, ''), // Max 25 karakter
+        "categoryId"      => "6", // Max 10 karakter
         "notes"           => "Topup Sancaka POS",
         "additionalInfo"  => [
             "accountType"  => "NAME_DEPOSIT",
             "fundType"     => "AGENT_TOPUP_FOR_USER_SETTLE", // Wajib
-            "chargeTarget" => "MERCHANT" // Sesuai dokumen
+            "chargeTarget" => "MERCHANT" // Sesuai instruksi Disbursement
+            // customerId & externalDivisionId DIHAPUS agar tidak PARAM_ILLEGAL
         ]
     ];
 
