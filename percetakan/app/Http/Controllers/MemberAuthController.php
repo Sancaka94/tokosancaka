@@ -87,26 +87,31 @@ class MemberAuthController extends Controller
     /**
      * 3. Halaman Dashboard Member
      */
-    public function dashboard()
-    {
-        // Ambil data member yang sedang login dari guard 'member'
-        $member = Auth::guard('member')->user();
+    public function dashboard(Request $request)
+{
+    $member = Auth::guard('member')->user();
 
-        // Ambil Riwayat Pesanan
-        // Logika: Mencari order dimana 'customer_phone' sama dengan 'whatsapp' member
-        $orders = Order::where('customer_phone', $member->whatsapp)
-                       ->orderBy('created_at', 'desc')
-                       ->take(10) // Ambil 10 transaksi terakhir
-                       ->get();
+    // 1. Ambil Riwayat Pesanan (Tetap)
+    $orders = Order::where('customer_phone', $member->whatsapp)
+                   ->orderBy('created_at', 'desc')
+                   ->take(10)
+                   ->get();
 
-        // Ambil Riwayat Transaksi DANA (Topup/Cairkan) & Komisi
-        $transactions = DB::table('dana_transactions')
-        ->where('affiliate_id', 11) // Sesuaikan dengan Auth user
-        ->orderBy('created_at', 'desc')
-        ->paginate(5); // <--- INI KUNCINYA
+    // 2. Query Riwayat Transaksi dengan Filter
+    $query = DB::table('dana_transactions')->where('affiliate_id', $member->id);
 
-        return view('member.dashboard', compact('member', 'orders', 'transactions'));
+    if ($request->filled('type')) {
+        $query->where('type', $request->type);
     }
+
+    if ($request->filled('start_date') && $request->filled('end_date')) {
+        $query->whereBetween('created_at', [$request->start_date . ' 00:00:00', $request->end_date . ' 23:59:59']);
+    }
+
+    $transactions = $query->orderBy('created_at', 'desc')->get();
+
+    return view('member.dashboard', compact('member', 'orders', 'transactions'));
+}
 
     /**
      * 4. Proses Logout
