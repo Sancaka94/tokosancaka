@@ -709,6 +709,14 @@ public function customerTopup(Request $request, \App\Services\DanaSignatureServi
         $result = $response->json();
         $resCode = $result['responseCode'] ?? '5003801';
 
+        Log::info('[DANA TOPUP] Response Mentah:', $result); // LOG LOG tetap ada
+
+        // Jika gagal, kirim response asli ke view
+        if (!in_array($resCode, ['2000000', '2003800'])) {
+            return back()->with('error', 'Gagal dari DANA!')
+                        ->with('raw_response', $result); // <--- Tambahkan ini
+        }
+
         Log::info('[DANA TOPUP] Respon Diterima', ['status' => $response->status(), 'result' => $result]);
 
         // --- [SMART MATCHING] COCOKKAN DENGAN DATABASE dana_response_codes ---
