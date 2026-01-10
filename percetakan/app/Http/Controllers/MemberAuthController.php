@@ -896,36 +896,30 @@ public function checkTopupStatus(Request $request)
 
 public function bankAccountInquiry(Request $request)
 {
-    // --- [LOG 1] START PROCESS ---
-    Log::info('[DANA BANK INQUIRY] Memulai validasi rekening...', [
-        'bank_code' => $request->bank_code,
-        'account_no' => $request->account_no,
-        'amount' => $request->amount
-    ]);
-
-    $aff = DB::table('affiliates')->where('id', $request->affiliate_id)->first();
+    // Ambil data affiliate Admin (ID 11)
+    $aff = DB::table('affiliates')->where('id', 11)->first();
     
-    // DATA WAJIB DARI PORTAL SANDBOX ANDA
-    $merchantAccount = "20070000000474167738"; 
+    // Gunakan DNID utuh dari database
+    $customerNumber = $aff->dana_user_name; // Hasil: "DNID 085745808809"
+
     $timestamp = now('Asia/Jakarta')->toIso8601String();
     $path = '/v1.0/emoney/bank-account-inquiry.htm';
     $partnerRef = 'BNK' . time() . Str::random(5);
 
-    // --- [BODY] SESUAI DOKUMEN SNAP ---
     $body = [
-        "partnerReferenceNo" => $partnerRef, // Harus unik
-        "customerNumber"     => $merchantAccount, // Pakai Account Number Portal
-        "beneficiaryAccountNumber" => $request->account_no, // Rekening tujuan
+        "partnerReferenceNo" => $partnerRef,
+        "customerNumber"     => $customerNumber, // Mengirim DNID
+        "beneficiaryAccountNumber" => $request->account_no,
         "amount" => [
-            "value"    => number_format((float)$request->amount, 2, '.', ''), // Contoh: 10000.00
-            "currency" => "IDR" //
+            "value"    => number_format((float)$request->amount, 2, '.', ''),
+            "currency" => "IDR"
         ],
         "additionalInfo" => [
-            "fundType"               => "MERCHANT_WITHDRAW_FOR_CORPORATE", //
-            "chargeTarget"           => "MERCHANT", //
-            "beneficiaryBankCode"    => $request->bank_code, //
-            "beneficiaryAccountName" => $request->account_name ?? "", //
-            "accountType"            => "SETTLEMENT_ACCOUNT" //
+            "fundType"               => "MERCHANT_WITHDRAW_FOR_CORPORATE",
+            "chargeTarget"           => "MERCHANT",
+            "beneficiaryBankCode"    => $request->bank_code,
+            "beneficiaryAccountName" => $request->account_name ?? "",
+            "accountType"            => "SETTLEMENT_ACCOUNT"
         ]
     ];
 
