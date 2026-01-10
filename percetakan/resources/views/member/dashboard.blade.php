@@ -210,19 +210,6 @@
 
     {{-- BAGIAN FILTER & EXPORT --}}
     <div class="mt-8 mb-4">
-        <div class="flex justify-between items-center mb-4 px-1">
-            <h3 class="font-bold text-slate-700 text-sm italic uppercase tracking-tighter">Riwayat & Laporan Profit</h3>
-            <div class="flex gap-2">
-                {{-- Tombol Export --}}
-                <a href="#" class="p-2 bg-rose-100 text-rose-600 rounded-lg hover:bg-rose-200 transition" title="Export PDF">
-                    <i class="fas fa-file-pdf"></i>
-                </a>
-                <a href="#" class="p-2 bg-emerald-100 text-emerald-600 rounded-lg hover:bg-emerald-200 transition" title="Export Excel">
-                    <i class="fas fa-file-excel"></i>
-                </a>
-            </div>
-        </div>
-
         {{-- Form Filter --}}
         <form action="{{ route('member.dashboard') }}" method="GET" class="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm mb-4">
             <div class="grid grid-cols-2 gap-3 mb-3">
