@@ -59,10 +59,11 @@
                     @yield('content')
                 </div>
             </main>
-        </div>
 
-        
-        
+            <!-- Footer -->
+            @include('layouts.partials.customer.footer')
+            
+        </div>
     </div>
     
     
