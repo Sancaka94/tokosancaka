@@ -321,6 +321,7 @@ public function index()
 
             // --- 3. CONFIG ---
             // --- 3. CONFIG & DEFAULTS ---
+            // --- 3. CONFIG & SMART DATA FORMATTING ---
             $clientId     = config('services.dana.x_partner_id'); 
             $clientSecret = config('services.dana.client_secret');
             $baseUrl      = config('services.dana.base_url') ?? 'https://api.sandbox.dana.id';
@@ -335,35 +336,50 @@ public function index()
             $shopOwning  = $request->shopOwning ?? 'DIRECT_OWNED';
             $shopBizType = $request->shopBizType ?? 'ONLINE';
 
-            // [FIX ADDRESS VALIDATION]
-            // DANA menolak "Ngawi", harus "Kab. Ngawi" atau "Kota Madiun"
-            $rawCity = $request->input('shopAddress.city');
+            // [LOGIC PEMBERSIH KOTA OTOMATIS]
+            // Ambil input mentah, hilangkan spasi depan/belakang, jadikan Huruf Besar Awal
+            $rawCity = Str::title(trim($request->input('shopAddress.city'))); // contoh: "  ngawi " -> "Ngawi"
             
-            // Cek apakah user sudah mengetik "Kab" atau "Kota", jika belum, tambahkan "Kab. "
-            if (!Str::startsWith(strtoupper($rawCity), ['KAB', 'KOTA'])) {
-                $fixedCity = 'Kab. ' . $rawCity; 
-            } else {
+            if (Str::startsWith($rawCity, 'Kota ')) {
+                // Jika user ketik "Kota Madiun", biarkan
                 $fixedCity = $rawCity;
+            } elseif (Str::startsWith($rawCity, 'Kabupaten ')) {
+                // Jika user ketik "Kabupaten Ngawi" -> ubah jadi "Kab. Ngawi"
+                $fixedCity = Str::replaceFirst('Kabupaten', 'Kab.', $rawCity);
+            } elseif (Str::startsWith($rawCity, 'Kab ')) {
+                // Jika user ketik "Kab Ngawi" (kurang titik) -> ubah jadi "Kab. Ngawi"
+                $fixedCity = Str::replaceFirst('Kab ', 'Kab. ', $rawCity);
+            } elseif (Str::startsWith($rawCity, 'Kab.')) {
+                // Jika sudah "Kab. Ngawi", biarkan
+                $fixedCity = $rawCity;
+            } else {
+                // Jika user cuma ketik "Ngawi", "Madiun", "Solo" -> Tambahkan "Kab. "
+                // Asumsi mayoritas adalah Kabupaten.
+                $fixedCity = 'Kab. ' . $rawCity;
             }
 
-            // Buat Array Alamat yang sudah distandarisasi (Pakai ini untuk DB dan API)
+            // [LOGIC PEMBERSIH PROVINSI]
+            // "jawa timur" -> "Jawa Timur"
+            $fixedProvince = Str::title(trim($request->input('shopAddress.province')));
+
+            // SUSUN ARRAY SHOP ADDRESS YANG SUDAH BERSIH (PAKAI INI KE DB & API)
             $fixedShopAddress = [
                 "country"     => "Indonesia",
-                "province"    => $request->input('shopAddress.province'), // Pastikan ini "Jawa Timur" (bukan Jatim)
-                "city"        => $fixedCity, // <--- SUDAH DITAMBAH "Kab."
+                "province"    => $fixedProvince, 
+                "city"        => $fixedCity, // <--- HASIL AUTO-CORRECT
                 "area"        => $request->input('shopAddress.area'), 
                 "address1"    => $request->input('shopAddress.address1'),
-                "address2"    => "-", // Wajib ada isinya walau strip
+                "address2"    => "-", 
                 "postcode"    => $request->input('shopAddress.postcode'),
-                "subDistrict" => "-"  // Wajib ada isinya walau strip
+                "subDistrict" => "-"  
             ];
 
-            // Fix Tax Address (Samakan dengan shop address yang sudah diperbaiki)
+            // FIX TAX ADDRESS (Copy dari Shop Address yang sudah bersih)
             $rawTax = $request->input('taxAddress', []);
             $fixTaxAddress = [
                 "country"     => "Indonesia",
                 "province"    => $rawTax['province'] ?? $fixedShopAddress['province'],
-                "city"        => $rawTax['city'] ?? $fixedShopAddress['city'],
+                "city"        => $rawTax['city'] ?? $fixedShopAddress['city'], // <--- IKUT HASIL AUTO-CORRECT
                 "area"        => $request->input('shopAddress.area'), 
                 "address1"    => $rawTax['address1'] ?? $fixedShopAddress['address1'],
                 "address2"    => "-",
