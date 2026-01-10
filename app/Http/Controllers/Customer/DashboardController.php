@@ -642,7 +642,7 @@ public function index()
         $shop->director_pics = json_decode($shop->director_pics, true);
         $shop->non_director_pics = json_decode($shop->non_director_pics, true);
 
-        return view('customer.merchant.create-shop', compact('shop')); // Reuse view create
+        return view('customer.merchant.edit-shop', compact('shop')); // Reuse view create
     }
 
     /**
