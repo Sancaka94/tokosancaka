@@ -649,9 +649,23 @@ public function customerTopup(Request $request)
         return back()->with('error', 'Affiliate tidak terdaftar di sistem.');
     }
 
-    // --- [LOG 2] SANITASI NOMOR & NOMINAL ---
-    $cleanPhone = preg_replace('/[^0-9]/', '', $request->phone);
-    if (substr($cleanPhone, 0, 1) === '0') { $cleanPhone = '62' . substr($cleanPhone, 1); }
+    // --- PERBAIKAN KRUSIAL: SANITASI NOMOR HP ---
+    $rawPhone = $request->phone;
+    // Hapus semua karakter non-angka
+    $cleanPhone = preg_replace('/[^0-9]/', '', $rawPhone);
+
+    // Pastikan diawali dengan 62
+    if (substr($cleanPhone, 0, 2) === '62') {
+        // Sudah benar 62xxx, biarkan saja
+    } elseif (substr($cleanPhone, 0, 1) === '0') {
+        // Jika 08xxx ubah jadi 628xxx
+        $cleanPhone = '62' . substr($cleanPhone, 1);
+    } elseif (substr($cleanPhone, 0, 1) === '8') {
+        // Jika langsung 8xxx (seperti kasus di LOG LOG Anda), tambah 62 di depan
+        $cleanPhone = '62' . $cleanPhone;
+    }
+
+    Log::info('[DANA TOPUP] Phone Adjusted for API', ['original' => $rawPhone, 'fixed' => $cleanPhone]);
     
     $timestamp = now('Asia/Jakarta')->toIso8601String();
     $partnerRef = (string) time() . Str::random(8); // Sesuai partnerReferenceNo di dokumen
