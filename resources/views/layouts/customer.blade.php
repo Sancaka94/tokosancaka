@@ -33,6 +33,10 @@
         .modal-transition { transition: opacity 0.3s ease, transform 0.3s ease; }
         .modal-hidden { opacity: 0; transform: scale(0.95); pointer-events: none; }
         .modal-visible { opacity: 1; transform: scale(1); pointer-events: auto; }
+   
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    
     </style>
     
     @stack('styles')
@@ -44,44 +48,36 @@
 
 <body class="bg-gray-100 text-gray-800 font-sans antialiased">
 
-    {{-- 1. WRAPPER UTAMA: h-screen & overflow-hidden (Kunci agar tidak ada double scroll di body) --}}
     <div x-data="{ sidebarOpen: false }" class="flex h-screen overflow-hidden bg-gray-100">
         
-        {{-- 2. SIDEBAR WRAPPER --}}
-        {{-- Tambahkan 'overflow-y-auto' agar sidebar bisa discroll mandiri jika menu panjang --}}
-        {{-- Tambahkan 'h-full' agar tingginya pas layar --}}
         <div :class="sidebarOpen ? 'block' : 'hidden'" class="fixed z-20 inset-0 bg-black opacity-50 transition-opacity lg:hidden" @click="sidebarOpen = false"></div>
         
-        <div :class="sidebarOpen ? 'translate-x-0 ease-out' : '-translate-x-full ease-in'" class="fixed z-30 inset-y-0 left-0 w-64 transition duration-300 transform bg-white overflow-y-auto lg:translate-x-0 lg:static lg:inset-0">
-            @include('layouts.partials.customer.sidebar')
-        </div>
-
-        {{-- 3. AREA KANAN (Konten Utama) --}}
-        <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <aside class="fixed inset-y-0 left-0 z-30 bg-blue-900 transition-all duration-300 ease-in-out
+                      w-64 transform lg:w-20 lg:hover:w-64 group 
+                      overflow-y-auto no-scrollbar"
+               :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'">
             
-            {{-- A. TOPBAR (Diam di atas) --}}
+            @include('layouts.partials.customer.sidebar')
+
+        </aside>
+
+        <div class="flex-1 flex flex-col min-w-0 overflow-hidden lg:ml-20 transition-all duration-300">
+            
             @include('layouts.partials.customer.topbar')
 
-            {{-- B. MAIN CONTENT (Ini yang bisa di-scroll) --}}
-            {{-- 'flex-1': Mengambil sisa ruang --}}
-            {{-- 'overflow-y-auto': Agar cuma area ini yang ada scrollbarnya --}}
             <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-6">
-                {{-- Container konten --}}
                 <div class="container mx-auto">
                     @include('components.sandbox_alert')
                     @yield('content')
                 </div>
             </main>
 
-            {{-- C. FOOTER (Sticky di bawah layar) --}}
-            {{-- Ditaruh DI LUAR <main> agar tidak ikut terscroll --}}
             <footer class="bg-white border-t border-gray-200 p-4 shrink-0">
                 @include('layouts.partials.customer.footer')
             </footer>
 
         </div>
     </div>
-    
     
    {{-- ================================================================= --}}
     {{-- KODE JAVASCRIPT UTAMA (INI YANG KITA PERBARUI) --}}
