@@ -44,10 +44,19 @@
                 <div class="p-5">
                     <div class="flex items-center">
                         <div class="flex-shrink-0">
-                            @if($shop->logo_path)
-                                {{-- Menampilkan Logo (Pastikan php artisan storage:link sudah jalan) --}}
+                            @php
+                                // LOGIKA LOGO: Ambil dari Auth (Store Utama) -> Fallback ke Shop DANA -> Null
+                                $logoUrl = null;
+                                if (auth()->user()->store_logo_path) {
+                                    $logoUrl = Storage::url(auth()->user()->store_logo_path);
+                                } elseif ($shop->logo_path) {
+                                    $logoUrl = Storage::url($shop->logo_path);
+                                }
+                            @endphp
+
+                            @if($logoUrl)
                                 <img class="h-12 w-12 rounded-full object-cover border border-gray-300" 
-                                     src="{{ Storage::url($shop->logo_path) }}" 
+                                     src="{{ $logoUrl }}" 
                                      alt="{{ $shop->main_name }}">
                             @else
                                 <span class="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center border border-gray-300">
@@ -106,8 +115,8 @@
 
                 {{-- ACTION BUTTONS --}}
                 <div class="bg-gray-50 px-5 py-3 border-t border-gray-200 flex justify-end space-x-3">
-                    {{-- Tombol Edit (Jika Gagal, boleh edit ulang) --}}
-                    <a href="{{ route('customer.merchant.create') }}?edit={{ $shop->id }}" class="text-sm font-medium text-blue-600 hover:text-blue-500">
+                    {{-- FIX: Menggunakan Route Edit yang benar --}}
+                    <a href="{{ route('customer.merchant.edit', $shop->id) }}" class="text-sm font-medium text-blue-600 hover:text-blue-500">
                         Update Data
                     </a>
                 </div>
