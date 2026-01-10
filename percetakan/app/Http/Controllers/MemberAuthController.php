@@ -694,7 +694,7 @@ public function customerTopup(Request $request, \App\Services\DanaSignatureServi
     // Menyertakan feeAmount karena statusnya Required di dokumen terbaru
     $body = [
     "partnerReferenceNo" => $partnerRef, //
-    "customerNumber"     => $cleanPhone, // Wajib literal
+    "customerNumber"     => (string) $cleanPhone, // Wajib literal
     "amount" => [
         "value"    => $valStr,
         "currency" => "IDR"
@@ -713,7 +713,7 @@ public function customerTopup(Request $request, \App\Services\DanaSignatureServi
             ]),
         "accountType" => "NAME_DEPOSIT",
         "fundType"    => "TRANS_TO_USER", // Required
-        "chargeTarget"=> "MERCHANT",
+        //"chargeTarget"=> "MERCHANT",
         // Gunakan pemisah agar terbaca sebagai string valid
         "customerId"  => $customId
     ]
