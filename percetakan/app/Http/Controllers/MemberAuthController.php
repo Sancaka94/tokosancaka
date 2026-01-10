@@ -706,6 +706,36 @@ public function customerTopup(Request $request, \App\Services\DanaSignatureServi
                    ? 'https://api.dana.id' 
                    : 'https://api.sandbox.dana.id';
 
+        Log::info('[DANA TOPUP] Sending Request to DANA', [
+
+            'path' => $path,
+            'body' => $body,
+            'timestamp' => $timestamp,
+            'signature' => $signature
+        ]);
+
+        // --- KODE DD UNTUK DEBUGGING REQUEST ---
+dd([
+    'URL_TARGET' => $baseUrl . $path,
+    'METHOD' => 'POST',
+    'HEADERS_SENT' => $headers,
+    'BODY_RAW' => $body,
+    'BODY_JSON_ENCODED' => $jsonPayload, // Ini yang benar-benar dikirim ke DANA
+    'SIGNATURE_COMPONENTS' => [
+        'path' => $path,
+        'timestamp' => $timestamp,
+        'hashedBody' => strtolower(hash('sha256', $jsonPayload)),
+        'stringToSign' => "POST:" . $path . ":" . strtolower(hash('sha256', $jsonPayload)) . ":" . $timestamp
+    ],
+    'CHECKLIST_DANA_REQUIREMENTS' => [
+        'customerNumber_format' => $body['customerNumber'], // Harus 628...
+        'amount_value_format' => $body['amount']['value'], // Harus .00
+        'feeAmount_exists' => isset($body['feeAmount']), // Harus ada
+        'sessionId_length' => strlen($body['sessionId']), // Maks 25
+        'fundType' => $body['additionalInfo']['fundType'] ?? 'MISSING' // Wajib ada
+    ]
+]);
+
         $response = Http::withHeaders([
             'Content-Type'   => 'application/json',
             'Authorization'  => 'Bearer ' . $aff->dana_access_token,
