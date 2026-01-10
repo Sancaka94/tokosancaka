@@ -675,12 +675,11 @@ public function customerTopup(Request $request)
     "categoryId"      => "6",
     "notes"           => "Topup Sancaka",
     "additionalInfo"  => [
-        // PAKAI INI SAJA (Standar Merchant Disbursement)
-        "accountType"  => "NAME_DEPOSIT",
-        "fundType"     => "AGENT_TOPUP_FOR_USER_SETTLE",
-        "chargeTarget" => "MERCHANT" // Ganti DIVISION ke MERCHANT
-        // externalDivisionId dan customerId DIHAPUS karena pemicu PARAM_ILLEGAL
-    ]
+            "fundType"           => "AGENT_TOPUP_FOR_USER_SETTLE",
+            "externalDivisionId" => "", 
+            "chargeTarget"       => "MERCHANT", 
+            "customerId"         => ""
+        ]
 ];
 
     // --- [LOG 4] SIGNATURE & SECURITY ---
