@@ -638,61 +638,56 @@ public function customerTopup(Request $request, \App\Services\DanaSignatureServi
     // --- [LOG 1] START PROCESS ---
     Log::info('[DANA TOPUP] --- MEMULAI PROSES TOPUP (1 PINTU) ---', [
         'affiliate_id' => $request->affiliate_id,
+        'target_phone' => $request->phone,
         'amount' => $request->amount,
     ]);
 
-    // 1. Ambil Data Affiliate
+    // Ambil Data Affiliate
     $aff = DB::table('affiliates')->where('id', $request->affiliate_id)->first();
     if (!$aff) {
         Log::error('[DANA TOPUP] Affiliate Tidak Ditemukan', ['id' => $request->affiliate_id]);
         return back()->with('error', 'Affiliate tidak terdaftar di sistem.');
     }
 
-    // 2. Sanitasi Nomor HP (Wajib format 628xxx)
-    $rawPhone = $request->phone;
-    $cleanPhone = preg_replace('/[^0-9]/', '', $rawPhone);
-    if (substr($cleanPhone, 0, 2) === '62') {
-        // Sudah benar
-    } elseif (substr($cleanPhone, 0, 1) === '0') {
-        $cleanPhone = '62' . substr($cleanPhone, 1);
-    } else {
-        $cleanPhone = '62' . $cleanPhone;
-    }
-
-    // 3. Persiapan Data Request Sesuai Dokumentasi
-    $timestamp = now('Asia/Jakarta')->toIso8601String(); 
-    $path = '/v1.0/emoney/topup.htm';
-    $partnerRef = Str::limit('REF' . time() . Str::random(10), 64, '');
+    // --- [LOG 2] SANITASI NOMOR & NOMINAL ---
+    $cleanPhone = preg_replace('/[^0-9]/', '', $request->phone);
+    if (substr($cleanPhone, 0, 1) === '0') { $cleanPhone = '62' . substr($cleanPhone, 1); }
     
-    // --- STRUKTUR JSON HARUS PERSIS SAMPEL DOKUMENTASI ---
+    $timestamp = now('Asia/Jakarta')->toIso8601String();
+    $path = '/v1.0/emoney/topup.htm';
+    $partnerRef = (string) time() . Str::random(8);
+    $valStr = number_format((float)$request->amount, 2, '.', '');
+
+    // --- [BODY: HARUS SESUAI DOKUMEN BOS] ---
+    // Menyertakan feeAmount karena statusnya Required di dokumen terbaru
     $body = [
         "partnerReferenceNo" => $partnerRef,
-        "customerNumber"     => $cleanPhone, // Format 628xxx
+        "customerNumber"     => $cleanPhone,
         "amount" => [
-            "value"    => number_format((float)$request->amount, 2, '.', ''), // Wajib desimal .00
+            "value"    => $valStr,
             "currency" => "IDR"
         ],
         "feeAmount" => [
-            "value"    => "0.00", // WAJIB ADA (Required)
+            "value"    => "0.00",
             "currency" => "IDR"
         ],
         "transactionDate" => $timestamp,
-        "sessionId"       => Str::limit(Session::getId(), 25, ''), // Max 25 karakter
-        "categoryId"      => "6", // Max 10 karakter
-        "notes"           => "Topup Sancaka POS",
+        "sessionId"       => (string) Str::limit(Session::getId(), 25, ''),
+        "categoryId"      => "6",
+        "notes"           => "Topup Sancaka",
         "additionalInfo"  => [
             "accountType"  => "NAME_DEPOSIT",
-            "fundType"     => "AGENT_TOPUP_FOR_USER_SETTLE", // Wajib
-            "chargeTarget" => "MERCHANT" // Sesuai instruksi Disbursement
-            // customerId & externalDivisionId DIHAPUS agar tidak PARAM_ILLEGAL
+            "fundType"     => "AGENT_TOPUP_FOR_USER_SETTLE",
+            "chargeTarget" => "MERCHANT"
         ]
     ];
 
     try {
-        // 4. Generate Signature 1 Pintu via Service
+        // --- [LOG 3] SIGNATURE 1 PINTU ---
+        // Service akan menghash body ini secara konsisten
         $signature = $danaService->generateSignature('POST', $path, $body, $timestamp);
 
-        // 5. Eksekusi Request ke DANA
+        // --- [LOG 4] SENDING REQUEST ---
         $baseUrl = config('services.dana.dana_env') === 'PRODUCTION' 
                    ? 'https://api.dana.id' 
                    : 'https://api.sandbox.dana.id';
@@ -704,7 +699,7 @@ public function customerTopup(Request $request, \App\Services\DanaSignatureServi
             'X-SIGNATURE'    => $signature,
             'ORIGIN'         => config('services.dana.origin'),
             'X-PARTNER-ID'   => config('services.dana.x_partner_id'),
-            'X-EXTERNAL-ID'  => (string) time(),
+            'X-EXTERNAL-ID'  => (string) time() . Str::random(4),
             'X-IP-ADDRESS'   => $request->ip() ?? '127.0.0.1',
             'X-DEVICE-ID'    => 'SANCAKA-POS-01',
             'CHANNEL-ID'     => '95221'
@@ -714,45 +709,58 @@ public function customerTopup(Request $request, \App\Services\DanaSignatureServi
         $result = $response->json();
         $resCode = $result['responseCode'] ?? '5003801';
 
-        // 6. Logging Response DANA (Jangan hapus LOG LOG ini)
-        Log::info('[DANA TOPUP] Response Received', ['status' => $response->status(), 'result' => $result]);
+        Log::info('[DANA TOPUP] Respon Diterima', ['status' => $response->status(), 'result' => $result]);
 
-        // 7. Simpan ke Audit Log Transaksi
+        // --- [SMART MATCHING] COCOKKAN DENGAN DATABASE dana_response_codes ---
+        $library = DB::table('dana_response_codes')
+                    ->where('response_code', $resCode)
+                    ->where('category', 'TOPUP')
+                    ->first();
+
+        if (!$library) {
+            DB::table('dana_response_codes')->insert([
+                'response_code' => $resCode,
+                'category'      => 'TOPUP',
+                'message_title' => 'New Code Detected',
+                'description'   => $result['responseMessage'] ?? 'Unknown Error',
+                'solution'      => 'Cek Dokumentasi DANA',
+                'is_success'    => in_array($resCode, ['2000000', '2003800']),
+                'created_at'    => now()
+            ]);
+            $library = DB::table('dana_response_codes')->where('response_code', $resCode)->where('category', 'TOPUP')->first();
+        }
+
+        // --- [DATABASE] CATAT KE dana_transactions ---
         DB::table('dana_transactions')->insert([
             'affiliate_id' => $aff->id,
             'type' => 'TOPUP',
-            'reference_no' => $body['partnerReferenceNo'],
+            'reference_no' => $partnerRef,
             'phone' => $cleanPhone,
             'amount' => $request->amount,
-            'status' => in_array($resCode, ['2000000', '2003800']) ? 'SUCCESS' : 'FAILED',
+            'status' => $library->is_success ? 'SUCCESS' : 'FAILED',
             'response_payload' => json_encode($result),
             'created_at' => now()
         ]);
 
-        // 8. Handle Notifikasi WhatsApp (Fonnte)
-        $waToken = "ynMyPswSKr14wdtXMJF7"; // Token Fonnte Anda
+        $waToken = "ynMyPswSKr14wdtXMJF7";
 
-        if ($response->successful() && in_array($resCode, ['2000000', '2003800'])) {
-            // Potong Saldo Profit Affiliate
+        if ($library->is_success) {
+            // Update balance jika sukses
             DB::table('affiliates')->where('id', $aff->id)->decrement('balance', $request->amount);
+
+            $msgUser = "✅ *TOPUP BERHASIL*\n\nHalo *{$aff->name}*,\nTopup DANA ke {$cleanPhone} senilai Rp " . number_format($request->amount) . " berhasil.\n\nRef ID: {$partnerRef}\nWaktu: " . now()->format('d/m H:i') . " WIB\nTerima kasih!";
+            $this->sendWhatsApp($cleanPhone, $msgUser, $waToken);
             
-            // Pesan WA ke User
-            $msg = "✅ *TOPUP BERHASIL*\n\nHalo *{$aff->name}*,\nPencairan saldo ke DANA berhasil.\n\n▪️ Nominal: Rp " . number_format($request->amount, 0, ',', '.') . "\n▪️ No. DANA: " . $cleanPhone . "\n▪️ Ref ID: " . $body['partnerReferenceNo'] . "\n\nTerima kasih!";
-            $this->sendWhatsApp($cleanPhone, $msg, $waToken);
-            
-            Log::info("LOG LOG: Topup Berhasil untuk Affiliate #{$aff->id}");
-            return back()->with('success', 'Pencairan saldo berhasil diproses!');
+            return back()->with('success', 'Topup Berhasil!')->with('dana_report', $library);
+        } else {
+            $msgAdmin = "⚠️ *DANA TOPUP ALERT*\n\nAffiliate: {$aff->name}\nTarget: {$cleanPhone}\nNominal: Rp " . number_format($request->amount) . "\nResponse: [{$resCode}] {$library->message_title}\nDesc: {$library->description}";
+            $this->sendWhatsApp("6285745808809", $msgAdmin, $waToken);
+
+            return back()->with('error', 'Gagal: ' . $library->message_title)->with('dana_report', $library);
         }
 
-        // Jika Gagal, kirim info error ke WA Admin
-        $errorMsg = $result['responseMessage'] ?? 'Format Parameter Ilegal';
-        $msgAdmin = "⚠️ *DANA TOPUP FAILED*\n\nAffiliate: {$aff->name}\nTarget: {$cleanPhone}\nError: [{$resCode}] {$errorMsg}";
-        $this->sendWhatsApp('6285745808809', $msgAdmin, $waToken);
-
-        return back()->with('error', 'Gagal: ' . $errorMsg);
-
     } catch (\Exception $e) {
-        Log::error('[DANA TOPUP] Exception: ' . $e->getMessage());
+        Log::error('[DANA TOPUP] EXCEPTION ERROR', ['msg' => $e->getMessage()]);
         return back()->with('error', 'Sistem Error: ' . $e->getMessage());
     }
 }
