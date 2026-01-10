@@ -55,7 +55,7 @@
 
             <!-- Main content -->
             <main class="flex-1 overflow-x-hidden bg-gray-100">
-                <div class="container mx-auto px-6 py-8 h-screen  overflow-y-auto">
+                <div class="container mx-auto px-6 py-8 h-screen overflow-y-auto">
                     {{-- ✅ DIUBAH: Menambahkan wrapper konten dengan padding --}}
                     @yield('content')
                 </div>
