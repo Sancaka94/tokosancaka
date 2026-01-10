@@ -852,6 +852,8 @@ public function checkTopupStatus(Request $request)
 
         $response = Http::withHeaders($headers)->withBody($jsonBody, 'application/json')->post('https://api.sandbox.dana.id' . $path);
         $result = $response->json();
+        $resCode = $result['responseCode'] ?? ''; // <--- TAMBAHKAN BARIS INI
+
 
         // --- [LOG 3] RESPONSE RECEIVED ---
         Log::info('[DANA INQUIRY STATUS] Respon Diterima', ['result' => $result]);
@@ -873,6 +875,16 @@ public function checkTopupStatus(Request $request)
                 return back()->with('error', '❌ Transaksi GAGAL: ' . ($result['transactionStatusDesc'] ?? 'Failed'));
             }
         }
+        
+        // TAMBAHKAN LOGIKA INI BOS:
+    elseif ($resCode == '4043901') {
+        // Jika DANA bilang tidak ketemu, tandai Gagal Permanen
+        DB::table('dana_transactions')->where('id', $trx->id)->update([
+            'status' => 'FAILED',
+            'retry_count' => 5 // Hentikan Auto-Retry
+        ]);
+        return back()->with('error', '❌ Transaksi Tidak Ditemukan di DANA (Silakan coba Topup ulang).');
+    }
 
         return back()->with('error', 'Gagal cek status: ' . ($result['responseMessage'] ?? 'Unknown Error'));
 

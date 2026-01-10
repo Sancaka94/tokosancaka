@@ -311,7 +311,7 @@
 
                                         {{-- Tombol Cek Status Manual sesuai dokumentasi Retry --}}
                                         @if($trx->status != 'SUCCESS')
-                                        <form action="{{ route('dana.checkStatus') }}" method="POST">
+                                        <form action="{{ route('member.dana.checkStatus') }}" method="POST">
                                             @csrf
                                             <input type="hidden" name="affiliate_id" value="{{ $member->id }}">
                                             <input type="hidden" name="reference_no" value="{{ $trx->reference_no }}">
