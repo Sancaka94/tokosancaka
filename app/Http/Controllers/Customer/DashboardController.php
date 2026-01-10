@@ -853,7 +853,7 @@ public function index()
                         "verified" => "true"
                     ],
                     "ownerIdType"      => $request->ownerIdType,
-                    "ownerIdNo"        => $request->ownerIdNo,
+                    "ownerIdNo"        => ($request->docType == 'KTP') ? $request->docId : $request->ownerIdNo,
                     "deviceNumber"     => "0",
                     "posNumber"        => "0",
                     "mccCodes"         => $request->mccCodes,
@@ -868,7 +868,7 @@ public function index()
                         "docFile" => $base64Doc         // File Base64
                     ]],
                     
-                    "ownerIdNo"        => ($request->docType == 'KTP') ? $request->docId : $request->ownerIdNo,
+                    
                     "taxNo"            => $request->taxNo,
                     "brandName"        => $request->brandName,
                     "directorPics"     => $request->directorPics ?? [],
